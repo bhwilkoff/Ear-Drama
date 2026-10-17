@@ -1,12 +1,14 @@
 # A public-domain radio drama app — research (2026-10-17)
 
-> **STATUS: RESEARCH COMPLETE, NOTHING BUILT.** The owner will build it in a
-> future session from an updated Universal App Template. This file is the
-> synthesis and the starting point; the evidence is in seven detail files under
-> `docs/research/radio/`. Every external claim there carries a source URL, and
-> anything not confirmed from a primary source is marked UNVERIFIED. The early
-> drafts were search-only (the environment's network policy blocked direct
-> fetches); the owner opened access mid-session, and the facts marked
+> **STATUS: RESEARCH COMPLETE; A DRAFT CATALOG IS BUILT (`radio-catalog/`); NO
+> APP YET.** The owner will build the app in a future session from an updated
+> Universal App Template. This file is the synthesis and the starting point; the
+> evidence is in seven detail files under `docs/research/radio/`, and the
+> rights-designated database and its pipeline are in `radio-catalog/` (README,
+> DECISIONS, `dist/` snapshot — §10 below). Every external claim carries a source
+> URL, and anything not confirmed from a primary source is marked UNVERIFIED.
+> The early drafts were search-only (the environment's network policy blocked
+> direct fetches); the owner opened access mid-session, and the facts marked
 > **MEASURED 2026-10-17** were then checked with the command printed beside them.
 
 Owner, 2026-10-17: *"I'd really like to develop a new app in a similar vein to
@@ -391,6 +393,35 @@ there. Ordered by what they unblock.
    NC-ND applies), and info@archive.org before the first full harvest.
 
 ---
+
+## 10. The draft catalog (`radio-catalog/`), 2026-10-17
+
+Owner: *"Can you start work on building out a full database with each of the
+rights designations considered. I like the idea of moving to a 'take down
+request' model ... but a licensed model at $1000 per year is definitely not in
+keeping with our regular process."* So Q1 is answered (unclaimed broadcasts are
+kept and removed on request; no SoundExchange licence) — `radio-catalog/DECISIONS.md`
+001, with 002 (an uploader's licence tag neither admits nor hides).
+
+- **Pipeline** (stdlib Python, self-contained so it can move to the app's repo):
+  harvesters for archive.org, LibriVox, the Copyright Office's pre-1972
+  schedules (299,447 rows), RadioEchoes, **OTRR's episode logs** and the Generic
+  Radio Workshop scripts; `fetch_cce_drama_renewals.py` (11,166 printed drama
+  renewals, 679 radio); `build_db.py` -> series / episodes / recordings /
+  credits / scripts / wants; `audit_audio_rights.py`, two layers, with tests
+  whose broken controls are recorded in the README.
+- **The spine changed after measurement**: OTRR's public log endpoint (219,203
+  logged broadcasts) names the archive.org file that plays each broadcast plus
+  its credits, so it is the first source of identity; RadioEchoes stays for its
+  genre tags and as a second witness of survival (§5.2 predates this).
+- **Defaults applied pending the owner**: non-US hidden; post-1972 hidden; a
+  series with 10+ live script renewals claimed as a series; GRW scripts shown in
+  full only for a clean episode, otherwise linked to GRW (scripts are the
+  stronger copyright — *Lone Ranger*, 1984).
+- **The snapshot** (`radio-catalog/dist/`, a DRAFT built mid-harvest): see its
+  README for counts and how to rebuild from the cached harvests. It rides the
+  feature branch only because no release upload was possible from the session;
+  move it to a Release before merging.
 
 ## 9. Found along the way, outside this research
 
