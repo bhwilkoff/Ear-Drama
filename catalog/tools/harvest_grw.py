@@ -13,6 +13,8 @@ import os
 import re
 import sys
 import time
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
@@ -67,6 +69,25 @@ def main():
     fetch_texts(out, scripts, len(series), failed)
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def redirect_target(url):
+    """Where a GRW /show/ page redirects, without following it (None if it does not)."""
+    opener = urllib.request.build_opener(_NoRedirect)
+    try:
+        opener.open(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=30)
+        return None
+    except urllib.error.HTTPError as e:
+        return e.headers.get("Location") if 300 <= e.code < 400 else None
+    except Exception:
+        return None
+    finally:
+        time.sleep(1)
+
+
 def fetch_texts(out, scripts, n_series, failed):
     # Save the index before the long text pass: a run stopped mid-way (a session
     # restart killed one on 2026-10-17) must not lose what it already read.
@@ -76,10 +97,15 @@ def fetch_texts(out, scripts, n_series, failed):
         path = os.path.join(out, "text", sid + ".txt")
         if os.path.exists(path):
             continue
-        if EXTERNAL_ID.fullmatch(sid):
-            # A 16-hex id is GRW's link to a script hosted elsewhere (it 302s to
+        if EXTERNAL_ID.fullmatch(sid) or s.get("external"):
+            # GRW's link to a script hosted elsewhere (its /show/ page 302s to
             # another site, MEASURED 2026-10-18); GRW holds no text for it.
             s["external"] = True
+            continue
+        where = redirect_target(f"{BASE}/show/{sid}")
+        if where and not where.startswith(BASE) and not where.startswith("/"):
+            s["external"] = True
+            s["external_url"] = where
             continue
         body = ia.get(f"{BASE}/files/generic_radio_workshop_radio_script_{sid}.txt", ua=UA, raw=True, timeout=90)
         time.sleep(DELAY)
