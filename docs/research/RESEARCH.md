@@ -29,6 +29,7 @@ immediate use."*
 | `radio/04-audio-platform-engineering.md` | Per-platform audio engineering (Apple incl. CarPlay/Watch, Android incl. Auto/TV, Roku, web, speakers), the audio pipeline, review pitfalls |
 | `radio/05-design-research.md` | Precedent teardown, 697 measured App Store reviews, the episodic model, "Tonight in 1947", IA, 21 proposed binding rules, twelve owner questions |
 | `radio/06-archive-watch-reuse.md` | Every Archive Watch tool, workflow and decision judged reuse / adapt / replace for audio; transferable lessons; the new repo's layout |
+| `radio/08-collaborative-productions.md` | Collaborative radio plays recorded one role at a time (08a voices and mixing, 08b scripts, 08c collaboration and storage) |
 | `radio/07-archive-org-ingest.md` | The archive.org corpus in depth: item and file structure, filename grammar, APIs, the ingest algorithm and dedupe |
 | `tools/probe_otr_corpus.py` | Stdlib-only probe of the archive.org corpus (counts, formats, filename hit rates, hours, duplicates) |
 | `radio/data/` | The probe's 400-item sample report and the famous-series structure notes (2026-10-17) |
@@ -422,6 +423,15 @@ kept and removed on request; no SoundExchange licence) — `radio-catalog/DECISI
   README for counts and how to rebuild from the cached harvests. It rides the
   feature branch only because no release upload was possible from the session;
   move it to a Release before merging.
+
+## 11. Collaborative radio plays (2026-10-18)
+
+The owner asked whether listeners could record new radio plays together, one
+role at a time, against live device voices that are never stored. Feasible on
+phones and Macs, and the licences agree with the design: Apple permits system
+voices while the software runs and forbids recording or publishing them. Synthesis
+and owner questions C1-C10: `radio/08-collaborative-productions.md` (detail in
+08a, 08b, 08c; prototype parsers in `radio-catalog/prototypes/scripts/`).
 
 ## 9. Found along the way, outside this research
 
