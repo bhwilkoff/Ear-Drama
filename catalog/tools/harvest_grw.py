@@ -56,6 +56,10 @@ def main():
         for date, sid, title in ROW.findall(page):
             scripts.setdefault(sid, {"id": sid, "series": name, "series_slug": slug, "title": html.unescape(title).strip(),
                                      "date_text": date.strip(), "date": iso(date), "url": f"{BASE}/show/{sid}"})
+    # Save the index before the long text pass: a run stopped mid-way (a session
+    # restart killed one on 2026-10-17) must not lose what it already read.
+    ia.write_json(os.path.join(out, "scripts.json"), {"series": len(series), "scripts": list(scripts.values()),
+                                                       "failed": failed, "complete": False})
     for sid, s in scripts.items():
         path = os.path.join(out, "text", sid + ".txt")
         if os.path.exists(path):
@@ -74,7 +78,7 @@ def main():
         with open(path, "wb") as f:
             f.write(body)
     ia.write_json(os.path.join(out, "scripts.json"), {"series": len(series), "scripts": list(scripts.values()),
-                                                       "failed": failed})
+                                                       "failed": failed, "complete": True})
     print(f"{len(series)} series, {len(scripts)} scripts, {len(failed)} failed", file=sys.stderr)
     if not scripts:
         sys.exit(1)
