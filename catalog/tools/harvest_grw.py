@@ -22,6 +22,7 @@ UA = "Mozilla/5.0 (Macintosh) ArchiveWatch-RadioCatalog (catalog build; links ba
 DELAY = 3
 SERIES = re.compile(r"<a href=series/([A-Za-z0-9_-]+)>([^<]+)")
 ROW = re.compile(r"<tr><td>([^<]*)</td><td><a href='/show/([0-9A-Za-z]+)'>([^<]*)</a>")
+EXTERNAL_ID = re.compile(r"[0-9a-f]{16}")
 MONTHS = {m: i for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(), 1)}
 
 
@@ -63,6 +64,11 @@ def main():
     for sid, s in scripts.items():
         path = os.path.join(out, "text", sid + ".txt")
         if os.path.exists(path):
+            continue
+        if EXTERNAL_ID.fullmatch(sid):
+            # A 16-hex id is GRW's link to a script hosted elsewhere (it 302s to
+            # another site, MEASURED 2026-10-18); GRW holds no text for it.
+            s["external"] = True
             continue
         body = ia.get(f"{BASE}/files/generic_radio_workshop_radio_script_{sid}.txt", ua=UA, raw=True, timeout=90)
         time.sleep(DELAY)
