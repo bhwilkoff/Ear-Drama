@@ -42,6 +42,13 @@ def iso(d):
 def main():
     out = os.path.join(ia.CACHE, "grw")
     os.makedirs(os.path.join(out, "text"), exist_ok=True)
+    index = os.path.join(out, "scripts.json")
+    if os.path.exists(index) and "--refresh" not in sys.argv:
+        # Reuse the saved index: re-crawling 206 series pages (~10 min) on every
+        # restart meant a run never reached the text pass (2026-10-18).
+        saved = ia.read_json(index)
+        fetch_texts(out, {s["id"]: s for s in saved["scripts"]}, saved["series"], [])
+        return
     lib = fetch("/library.php")
     if not lib:
         raise SystemExit("GRW library unreadable")
@@ -57,9 +64,13 @@ def main():
         for date, sid, title in ROW.findall(page):
             scripts.setdefault(sid, {"id": sid, "series": name, "series_slug": slug, "title": html.unescape(title).strip(),
                                      "date_text": date.strip(), "date": iso(date), "url": f"{BASE}/show/{sid}"})
+    fetch_texts(out, scripts, len(series), failed)
+
+
+def fetch_texts(out, scripts, n_series, failed):
     # Save the index before the long text pass: a run stopped mid-way (a session
     # restart killed one on 2026-10-17) must not lose what it already read.
-    ia.write_json(os.path.join(out, "scripts.json"), {"series": len(series), "scripts": list(scripts.values()),
+    ia.write_json(os.path.join(out, "scripts.json"), {"series": n_series, "scripts": list(scripts.values()),
                                                        "failed": failed, "complete": False})
     for sid, s in scripts.items():
         path = os.path.join(out, "text", sid + ".txt")
@@ -83,9 +94,9 @@ def main():
             body = m.group(1).encode("utf-8")
         with open(path, "wb") as f:
             f.write(body)
-    ia.write_json(os.path.join(out, "scripts.json"), {"series": len(series), "scripts": list(scripts.values()),
+    ia.write_json(os.path.join(out, "scripts.json"), {"series": n_series, "scripts": list(scripts.values()),
                                                        "failed": failed, "complete": True})
-    print(f"{len(series)} series, {len(scripts)} scripts, {len(failed)} failed", file=sys.stderr)
+    print(f"{n_series} series, {len(scripts)} scripts, {len(failed)} failed", file=sys.stderr)
     if not scripts:
         sys.exit(1)
 

@@ -4,7 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 for t in "harvest_otrr.py:otrr.log" "harvest_grw.py:grw.log" "harvest_radioechoes.py:re.log"; do
   cmd=${t%%:*}; log=${t##*:}
-  if ! pgrep -f "python3 tools/$cmd" >/dev/null; then
+  if ! pgrep -f "^python3 tools/$cmd" >/dev/null; then
     nohup python3 "tools/$cmd" >> ".cache/$log" 2>&1 &
     echo "started $cmd"
   fi
