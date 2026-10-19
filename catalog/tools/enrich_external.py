@@ -24,6 +24,7 @@ Series names are keyed with tools/otr_parse.py norm_series, as build_db.py does.
 """
 import argparse
 import datetime
+import glob
 import gzip
 import json
 import os
@@ -71,51 +72,87 @@ def variants(name):
 
 
 class SeriesIndex:
+    """Every series name we know, keyed as build_db.py keys it. `known` is the
+    set worth matching: a spine or OTRR-logged series, or one with 5+ episodes.
+    OTRR-logged programs and RadioEchoes series that the build has not (yet)
+    made a series row for are included too (`in_db` False), so a later build
+    that adds them finds their Wikidata row waiting. Names reach keys two ways:
+    `direct` (the series' own name, its key, editorial aliases) and `otrr_alias`
+    (another title OTRR files under the same program id) — the second is looser
+    and scores lower."""
+
     def __init__(self, db):
-        self.name = {}
-        self.years = {}
-        self.known = set()
-        self.by = defaultdict(set)
+        self.name, self.years, self.known, self.in_db = {}, {}, set(), set()
+        self.by = defaultdict(dict)       # variant -> {key: route}
+        self.otrr, self.radioechoes = set(), set()
         for key, name, first, last, eps, spine in db.execute(
                 "SELECT key, name, first_date, last_date, episodes, in_spine FROM series"):
             self.name[key] = name
+            self.in_db.add(key)
             self.years[key] = (_year(first), _year(last))
             if spine or (eps or 0) >= 5:
                 self.known.add(key)
-            for v in variants(name) | {key}:
-                self.by[v].add(key)
-        self.otrr = set()
-        # OTRR alternate titles: every title of a program reaches its key
-        pt = load(os.path.join(CACHE, "otrr", "pTitles.json"), [])
+            self._add(name, key, "direct")
+            self._add(key, key, "direct")
+        ol = load(os.path.join(CACHE, "otrr", "otterlog.json"), [])
+        for r in ol:
+            k = P.norm_series(r["ptitle"])
+            if not k:
+                continue
+            self.otrr.add(k)
+            self.known.add(k)
+            self.name.setdefault(k, r["ptitle"])
+            self._add(r["ptitle"], k, "direct")
+            a, b = self.years.get(k, (None, None))
+            self.years[k] = (a or _year(r.get("min")), b or _year(r.get("max")))
+        for path in glob.glob(os.path.join(CACHE, "radioechoes", "series", "*.json")):
+            d = load(path, {})
+            k = P.norm_series(d.get("series"))
+            if not k:
+                continue
+            self.radioechoes.add(k)
+            self.known.add(k)
+            self.name.setdefault(k, d["series"])
+            self._add(d["series"], k, "direct")
+            ys = [_year((e.get("date") or "").replace(".", "-")) for e in d.get("episodes", [])]
+            ys = [y for y in ys if y]
+            if ys:
+                a, b = self.years.get(k, (None, None))
+                self.years[k] = (a or min(ys), b or max(ys))
+        for alias, target in (load(os.path.join(EDITORIAL, "series_aliases.json"), {}) or {}).items():
+            if not alias.startswith("_"):
+                for k in self.lookup(target, known_only=False):
+                    self.by[P.norm_series(alias)].setdefault(k, "direct")
+        # OTRR alternate titles: every title of a program reaches that program's keys
         groups = defaultdict(list)
-        for r in pt:
+        for r in load(os.path.join(CACHE, "otrr", "pTitles.json"), []):
             groups[r["idp"]].append(r["title"])
-        ol = {r["idp"]: r for r in load(os.path.join(CACHE, "otrr", "otterlog.json"), [])}
-        for idp, titles in groups.items():
+        for titles in groups.values():
             keys = set()
             for t in titles:
-                keys |= {k for v in variants(t) for k in self.by.get(v, ())}
-            if not keys:
-                continue
-            if idp in ol:
-                self.otrr |= keys
-                self.known |= keys
-                lo, hi = _year(ol[idp].get("min")), _year(ol[idp].get("max"))
-                for k in keys:
-                    a, b = self.years.get(k, (None, None))
-                    self.years[k] = (a or lo, b or hi)
+                keys |= self.lookup(t, known_only=False)
             for t in titles:
                 for v in variants(t):
-                    self.by[v] |= keys
-        for alias, target in (load(os.path.join(EDITORIAL, "series_aliases.json"), {}) or {}).items():
-            if alias.startswith("_"):
-                continue
-            tk = {k for v in variants(target) for k in self.by.get(v, ())}
-            self.by[P.norm_series(alias)] |= tk
+                    for k in keys:
+                        self.by[v].setdefault(k, "otrr_alias")
+
+    def _add(self, name, key, route):
+        for v in variants(name) | {P.norm_series(name)}:
+            if v:
+                self.by[v][key] = route if self.by[v].get(key) != "direct" else "direct"
+
+    def routes(self, name, known_only=True):
+        out = {}
+        for v in variants(name):
+            for k, r in self.by.get(v, {}).items():
+                if known_only and k not in self.known:
+                    continue
+                if out.get(k) != "direct":
+                    out[k] = r
+        return out
 
     def lookup(self, name, known_only=True):
-        keys = {k for v in variants(name) for k in self.by.get(v, ())}
-        return {k for k in keys if k in self.known} if known_only else keys
+        return set(self.routes(name, known_only))
 
 
 def _year(s):
@@ -148,11 +185,18 @@ def titles_agree(a, b):
 
 # ---------------------------------------------------------------- Wikidata
 
-def wd_years(it):
+def wd_years(it, cats=()):
+    """Year range from the item's dates, else from decade categories its enwiki
+    article sits in ("1940s American radio programs")."""
     ys = [_year(v) for k in ("start", "end", "inception", "dissolved", "published")
           for v in it["props"].get(k, [])]
     ys = [y for y in ys if y]
-    return (min(ys), max(ys)) if ys else (None, None)
+    if ys:
+        return (min(ys), max(ys)), "wikidata"
+    dec = [int(m.group(1)) for c in cats for m in [re.search(r"\b(19[0-9]0)s\b", c)] if m]
+    if dec:
+        return (min(dec), max(dec) + 9), "enwiki_decade_category"
+    return (None, None), None
 
 
 def radio_program_category(cat):
@@ -166,7 +210,16 @@ def radio_program_category(cat):
 
 
 def match_wikidata(idx, items, enwiki_radio):
-    """Return ({key: (qid, evidence)}, rejected Counter, ambiguous list)."""
+    """Return ({key: evidence}, rejected Counter, ambiguous list).
+
+    Names reach a series only by the `direct` route (its own name, key or an
+    editorial alias), never through another title OTRR files under the same id.
+    Radio evidence is a radio-program class (P31), or — only for an item with
+    NO P31 at all — an enwiki article in a radio-program category; an item
+    typed as something else (a TV series, a fictional character) never matches
+    on its category. Years must overlap (±2) when both sides have them; with
+    none on either side the match needs a strong class or category, the item's
+    label, and US origin or an American category. A tie is left ambiguous."""
     american = {}
     for v in enwiki_radio.values():
         cats = [c for c in v.get("cats", []) if radio_program_category(c)]
@@ -177,28 +230,35 @@ def match_wikidata(idx, items, enwiki_radio):
     for q, it in items.items():
         rc = it.get("radio_class") or []
         strong = any(c != RADIO_DRAMA for c in rc)
-        in_cat = q in american
+        typed = bool(it["props"].get("instance_of"))
+        in_cat = q in american and not typed
         if not rc and not in_cat:
-            rejected["not_radio"] += 1
+            rejected["not_radio" if not typed else "typed_not_radio"] += 1
             continue
         names = [("label", it.get("label"))] + [("alias", a) for a in it.get("aliases", [])]
         if it.get("enwiki"):
             names.append(("enwiki", it["enwiki"]))
-        wy = wd_years(it)
+        wy, ysrc = wd_years(it, american.get(q, []))
         country = it["props"].get("country", [])
         for kind, nm in names:
-            for key in idx.lookup(nm):
+            for key, route in idx.routes(nm).items():
+                if route != "direct":
+                    # OTRR files predecessors and spin-offs under one program id
+                    # (Sam 'n' Henry under Amos 'n' Andy): never a Wikidata identity.
+                    rejected["otrr_alias_only"] += 1
+                    continue
                 oy = idx.years.get(key, (None, None))
-                ev = {"qid": q, "name": nm, "name_kind": kind, "wd_years": list(wy), "our_years": list(oy),
+                ev = {"qid": q, "name": nm, "name_kind": kind, "route": route,
+                      "wd_years": list(wy), "wd_years_source": ysrc, "our_years": list(oy),
                       "radio_class": rc, "enwiki_category": american.get(q, [])[:3],
                       "country": country}
-                score = {"label": 2, "enwiki": 2, "alias": 1}[kind]
+                score = {"label": 2, "enwiki": 2, "alias": 1}[kind] - (1 if route == "otrr_alias" else 0)
                 score += 2 if strong else (1 if in_cat else 0)
                 if wy[0] and oy[0]:
                     lo, hi = oy[0], oy[1] or oy[0]
                     if wy[0] <= hi + YEAR_SLACK and wy[1] >= lo - YEAR_SLACK:
                         ev["years"] = "overlap"
-                        score += 3
+                        score += 3 if ysrc == "wikidata" else 1
                     else:
                         ev["years"] = "disagree"
                         rejected["years_disagree"] += 1
@@ -208,7 +268,8 @@ def match_wikidata(idx, items, enwiki_radio):
                     if not strong and not in_cat:
                         rejected["radio_drama_no_years"] += 1
                         continue
-                    if kind == "alias" or not (in_cat or "Q30" in country):
+                    if kind == "alias" or route == "otrr_alias" or not (in_cat or "Q30" in country
+                                                                         or q in american):
                         rejected["weak_no_years"] += 1
                         continue
                 if country and "Q30" not in country:
@@ -224,7 +285,18 @@ def match_wikidata(idx, items, enwiki_radio):
             if e["qid"] not in best or e["score"] > best[e["qid"]]["score"]:
                 best[e["qid"]] = e
         ranked = sorted(best.values(), key=lambda e: -e["score"])
-        if len(ranked) > 1 and ranked[0]["score"] == ranked[1]["score"]:
+        tied = [e for e in ranked if e["score"] == ranked[0]["score"]]
+        if len(tied) > 1 and all(e["radio_class"] and e["wd_years"][0] for e in tied) \
+                and len({tuple(e["wd_years"]) for e in tied}) == 1:
+            # Wikidata holds the same radio series twice (The Lone Ranger:
+            # Q107183100 "radio serial" and Q116487002 "radio series", both
+            # 1933-01-30). Take the item with more statements; name the other.
+            tied.sort(key=lambda e: (-len(items[e["qid"]]["props"]) - len(items[e["qid"]]["external_ids"]),
+                                     int(e["qid"][1:])))
+            tied[0]["wikidata_duplicates"] = [e["qid"] for e in tied[1:]]
+            matched[key] = tied[0]
+            continue
+        if len(tied) > 1:
             ambiguous.append({"key": key, "qids": [e["qid"] for e in ranked[:4]], "score": ranked[0]["score"]})
             continue
         matched[key] = ranked[0]
@@ -237,6 +309,7 @@ DDL = """
 DROP TABLE IF EXISTS series_wikidata;
 CREATE TABLE series_wikidata (
   series_key TEXT PRIMARY KEY, qid TEXT, label TEXT, enwiki TEXT,
+  in_db INTEGER,                 -- 0: an OTRR/RadioEchoes series the build has no row for yet
   confidence INTEGER,            -- match score (title kind + radio class + years + country)
   match_evidence TEXT,           -- JSON: name matched, its kind, both year ranges, radio class, country
   broadcaster TEXT, production_company TEXT, genre TEXT,   -- JSON [{qid,label}]
@@ -285,7 +358,7 @@ def lab(labels, q):
     return {"qid": q, "label": labels.get(q)} if q and q[:1] == "Q" else {"value": q}
 
 
-def write_wikidata(db, matched, items, labels):
+def write_wikidata(db, matched, items, labels, in_db=()):
     rows = []
     roles = [("creator", "creator"), ("author", "author"), ("screenwriter", "screenwriter"),
              ("director", "director"), ("producer", "producer"), ("composer", "composer"),
@@ -298,7 +371,7 @@ def write_wikidata(db, matched, items, labels):
         cast = [lab(labels, q) for q in p.get("cast", []) + p.get("voice_actor", [])]
         eps = p.get("episodes", [])
         rows.append((
-            key, ev["qid"], it.get("label"), it.get("enwiki"), ev["score"], json.dumps(ev),
+            key, ev["qid"], it.get("label"), it.get("enwiki"), int(key in in_db), ev["score"], json.dumps(ev),
             json.dumps([lab(labels, q) for q in p.get("broadcaster", [])]),
             json.dumps([lab(labels, q) for q in p.get("production_company", [])]),
             json.dumps([lab(labels, q) for q in p.get("genre", [])]),
@@ -308,8 +381,16 @@ def write_wikidata(db, matched, items, labels):
             (x.get("P1407") or [None])[0], (x.get("P345") or [None])[0], json.dumps(x.get("P724", [])),
             (p.get("image") or [None])[0], (p.get("logo") or [None])[0], (p.get("commons_category") or [None])[0],
             f"https://www.wikidata.org/wiki/{ev['qid']}"))
-    db.executemany("INSERT INTO series_wikidata VALUES (" + ",".join("?" * 22) + ")", rows)
+    db.executemany("INSERT INTO series_wikidata VALUES (" + ",".join("?" * 23) + ")", rows)
     return len(rows)
+
+
+def witness_keys(idx, name):
+    """Series keys for a log's or page's series name: its direct keys, or —
+    only when it has none — the keys an OTRR alternate title reaches."""
+    r = idx.routes(name)
+    direct = {k for k, v in r.items() if v == "direct"}
+    return direct or set(r)
 
 
 def collect_witnesses(idx, matched):
@@ -326,7 +407,7 @@ def collect_witnesses(idx, matched):
         for r in hw:
             s = r["series"]
             if s not in cache:
-                cache[s] = idx.lookup(s)
+                cache[s] = witness_keys(idx, s)
             if not cache[s]:
                 unmatched["haendiges"] += 1
             for k in cache[s]:
@@ -336,7 +417,7 @@ def collect_witnesses(idx, matched):
         absent.append("wikipedia")
     else:
         for r in ww:
-            keys = set(by_qid.get(r.get("page_qid"), ())) or idx.lookup(r["series"])
+            keys = set(by_qid.get(r.get("page_qid"), ())) or witness_keys(idx, r["series"])
             if not keys:
                 unmatched["wikipedia"] += 1
             for k in keys:
@@ -469,7 +550,7 @@ def main():
     enw = load(os.path.join(wd, "enwiki_radio.json"), {})
     labels = load(os.path.join(wd, "labels.json.gz"), {})
     matched, rejected, ambiguous = match_wikidata(idx, items, enw)
-    n_wd = write_wikidata(db, matched, items, labels)
+    n_wd = write_wikidata(db, matched, items, labels, idx.in_db)
     rows, ab2, unmatched = collect_witnesses(idx, matched)
     absent += ab2
     n_w, n_dis = write_witnesses(db, rows)
@@ -483,9 +564,11 @@ def main():
     rep = {
         "date": datetime.date.today().isoformat(),
         "sources_absent": absent,
-        "series_known": len(idx.known), "series_otrr_logged": len(idx.otrr),
+        "series_known": len(idx.known),
         "series_with_qid": n_wd,
-        "series_with_qid_otrr": len(set(matched) & idx.otrr),
+        "series_with_qid_in_db": len(set(matched) & idx.in_db),
+        "otrr_logged_programs": len(idx.otrr), "otrr_logged_with_qid": len(set(matched) & idx.otrr),
+        "radioechoes_series": len(idx.radioechoes), "radioechoes_with_qid": len(set(matched) & idx.radioechoes),
         "series_with_qid_spine": q("SELECT COUNT(*) FROM series_wikidata w JOIN series s ON s.key=w.series_key WHERE s.in_spine=1"),
         "wikidata_items_considered": len(items), "wikidata_rejected": dict(rejected),
         "wikidata_ambiguous": len(ambiguous), "ambiguous_sample": ambiguous[:20],

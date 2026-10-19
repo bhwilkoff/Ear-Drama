@@ -103,17 +103,20 @@ def mkdb():
 class FakeIdx(E.SeriesIndex):
     def __init__(self, db):  # no caches: names and years from the db only
         from collections import defaultdict
-        self.name, self.years, self.known, self.by, self.otrr = {}, {}, set(), defaultdict(set), set()
+        self.name, self.years, self.known, self.in_db = {}, {}, set(), set()
+        self.by, self.otrr, self.radioechoes = defaultdict(dict), set(), set()
         for key, name, first, last in db.execute("SELECT key, name, first_date, last_date FROM series"):
             self.name[key] = name
             self.years[key] = (E._year(first), E._year(last))
             self.known.add(key)
-            for v in E.variants(name) | {key}:
-                self.by[v].add(key)
+            self.in_db.add(key)
+            self._add(name, key, "direct")
+            self._add(key, key, "direct")
 
 
-def item(q, label, rc=("Q3511312",), start=None, end=None, country=("Q30",), aliases=(), enwiki=None):
-    p = {"country": list(country)}
+def item(q, label, rc=("Q3511312",), start=None, end=None, country=("Q30",), aliases=(), enwiki=None,
+         typed=True):
+    p = {"country": list(country), "instance_of": list(rc) or (["Q5398426"] if typed else [])}
     if start:
         p["start"] = [start]
     if end:
@@ -167,20 +170,31 @@ def main():
         "Q100": item("Q100", "Escape", start="1985-01-01", end="1990-01-01"),               # wrong era
         "Q200": item("Q200", "Fibber McGee & Molly", start="1935-04-16"),                    # & vs and
         "Q301": item("Q301", "The Shadow", start="1937-01-01", end="1954-01-01"),
-        "Q302": item("Q302", "The Shadow", start="1937-01-01", end="1954-01-01"),            # tie
+        "Q302": item("Q302", "The Shadow", start="1938-01-01", end="1953-01-01"),            # tie, other years
+        "Q801": item("Q801", "Gunsmoke", start="1952-04-26", end="1961-06-18"),              # Wikidata duplicates:
+        "Q802": item("Q802", "Gunsmoke", rc=("Q3956369",), start="1952-04-26", end="1961-06-18"),  # same dates
         "Q400": item("Q400", "Dragnet", rc=("Q2635894",), country=()),                       # a single play, no years
         "Q500": item("Q500", "Gunsmoke", rc=(), start="1955-09-10", end="1975-03-31"),       # the TV series only
     }
-    m, rej, amb = E.match_wikidata(idx, items, {})
+    items["Q600"] = item("Q600", "Escape", rc=(), typed=False, start="1947-07-07")      # untyped, in a radio category
+    items["Q700"] = item("Q700", "Dragnet", rc=(), start="1949-06-03")                  # typed TV, in a radio category
+    enw = {"Escape (radio program)": {"qid": "Q600", "cats": ["Category:American radio dramas"]},
+           "Dragnet (franchise)": {"qid": "Q700", "cats": ["Category:American radio dramas"]}}
+    m, rej, amb = E.match_wikidata(idx, items, enw)
     f += ok("wikidata: title + radio class + years", m.get("suspense", {}).get("qid") == "Q1548940")
     f += ok("wikidata (control): non-radio item never matches", all(v["qid"] not in ("Q999", "Q500")
                                                                      for v in m.values()))
-    f += ok("wikidata (control): years that do not overlap refuse the match", "escape" not in m
-            and rej["years_disagree"] >= 1)
+    f += ok("wikidata (control): years that do not overlap refuse the match",
+            m.get("escape", {}).get("qid") != "Q100" and rej["years_disagree"] >= 1)
+    f += ok("wikidata: an untyped item in a radio-program category matches", m.get("escape", {}).get("qid") == "Q600")
+    f += ok("wikidata (control): an item typed as TV never matches on its category",
+            m.get("dragnet", {}).get("qid") != "Q700")
     f += ok("wikidata: & and 'and' are one name", m.get("fibbermcgeeandmolly", {}).get("qid") == "Q200")
     f += ok("wikidata (control): a tie is ambiguous, not a match", "theshadow" not in m
             and any(a["key"] == "theshadow" for a in amb))
     f += ok("wikidata (control): a radio-drama play with no years is refused", "dragnet" not in m)
+    f += ok("wikidata: two radio items with the same dates are duplicates, one is taken and the other named",
+            m.get("gunsmoke", {}).get("qid") == "Q801" and m["gunsmoke"].get("wikidata_duplicates") == ["Q802"])
     # --- witnesses
     db.executescript(E.DDL)
     rows = [("suspense", "1942-06-17", "THE BURNING COURT", "1", "haendiges", "u1"),

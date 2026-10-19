@@ -26,6 +26,7 @@ non-zero when it read nothing, and records what it could not read.
 | `keep_unclaimed` | `rec_orphan_unclaimed` | plays; rights line "no claim known; removed on request", never "public domain" |
 | `hide_claim` | `rec_takedown`, `rec_schedule_claim`, `rec_rights_holder_claim`, `rec_post_1972`, `rec_foreign_origin`, `work_script_claim`, `work_adapted_renewed` | hidden |
 | `hide_unidentified` | `rec_no_evidence` | hidden: no series and date to check a claim against |
+| `hide_out_of_scope` | `rec_out_of_scope` | hidden: identified as music, a modern podcast or scripture (`content_kind`), not radio. Vintage commercials and station lectures are broadcasts and stay in — an owner question |
 
 Order: hides before rescues, first match wins; the stricter of the recording and
 underlying-work layers wins. Every row's `evidence` lists what decided it, each

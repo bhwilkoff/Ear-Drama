@@ -199,6 +199,14 @@ def an_expired_renewal_claims_nothing():
 
 
 @case
+def non_radio_content_is_out_of_scope_and_broadcasts_are_not():
+    for kind in ("music", "podcast", "scripture"):
+        assert A.judge(ep(content_kind=kind), ctx())["state"] == "hide_out_of_scope", kind
+    for kind in ("radio", "commercial", "lecture", None):
+        assert A.judge(ep(content_kind=kind), ctx())["state"] == "keep_unclaimed", kind
+
+
+@case
 def hides_run_before_rescues():
     c = ctx(gov_series={"x": {}}, series_foreign={"x": {"term": "BBC"}})
     assert A.judge(ep(series_key="x"), c)["rec_bucket"] == "rec_foreign_origin"
