@@ -362,7 +362,7 @@ there. Ordered by what they unblock.
 | # | Question | Blocks |
 |---|---|---|
 | Q1 | **Orphans**: show only the strict tier; show unclaimed broadcasts on demand and hide on the first claim (recommended — §3a); or a curated noncommercial-use set? Plus: license the Radio channels through SoundExchange? | The size and identity of the catalog |
-| Q2 | **A separate app, or a Radio section in Archive Watch?** (App Store 4.3(a) bears on it; the people/works graph is shared either way) | Repo, bundle id, template choice |
+| Q2 | ~~**A separate app, or a Radio section in Archive Watch?**~~ ANSWERED 2026-10-19: *"It is definitely a separate app."* (radio-catalog DECISIONS 003) (App Store 4.3(a) bears on it; the people/works graph is shared either way) | Repo, bundle id, template choice |
 | Q3 | File noncommercial-use notices ($50 each), after a lawyer confirms a free store app is noncommercial? | Tier B |
 | Q4 | Unregistered network scripts: protected (hide) or follow Q1? | The underlying-work layer |
 | Q5 | Commercially sold series with no takedown: hide? | `rec_commercially_exploited` |

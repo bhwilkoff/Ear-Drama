@@ -44,3 +44,20 @@ playback).
 corpus, on a claim over the compilation that the app already honors. This
 departs from 02-rights §10's proposed `rec_uploader_cannot_license` hide, which
 was written before Decision 001.
+
+## 003 — The radio app is its own app, not a section of Archive Watch
+*Date: 2026-10-19*
+
+The radio drama app ships as a separate app with its own repository, bundle ids
+and store listings. This catalog pipeline moves there when that repository is
+created.
+
+**Why**: the owner, 2026-10-19: *"It is definitely a separate app."* (Answering
+RADIO-DRAMA.md §7 Q2.) App Store guideline 4.3(a) ("Don't create multiple Bundle
+IDs of the same app") is answered by the app's different content and audio-first
+design, which the research (`docs/research/radio/04`, `05`) documents.
+
+**How to apply**: nothing here imports Archive Watch code at runtime; the one
+file this pipeline reads from Archive Watch (`shared/editorial/cce_renewals.json`)
+is copied into the new repository when it moves. Cross-links to Archive Watch
+films (RADIO-DRAMA §6) are links between two apps, by archive.org id.
