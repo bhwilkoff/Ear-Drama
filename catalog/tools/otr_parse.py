@@ -402,7 +402,7 @@ def series_variants_simple(raw):
 
 def reorder_title(t):
     """OTRR writes "Shadow, The"; the display name is "The Shadow"."""
-    m = re.match(r"^(.*), (The|A|An)$", (t or "").strip())
+    m = re.match(r"^(.*), (The Adventures of|Adventures of|The|A|An)$", (t or "").strip(), re.I)
     return f"{m.group(2)} {m.group(1)}" if m else (t or "").strip()
 
 
@@ -475,6 +475,11 @@ _MUSIC_RECORD = re.compile(r"\b(orchestra|band|quartet|trio|his|her|and his|sing
 # "VintageCommercialsTingPimpleCream", "Commercials.19xx.xx.xx_Radio_Promo", "Boyce & Hart - Coke Spot # 1"
 _COMMERCIAL = re.compile(r"(commercials?|promos?\b|\bspots?\b|jingles?|\bpsa\b|\bads?\b|advert)", re.I)
 _PODCAST = re.compile(r"\bpodcasts?\b", re.I)
+
+
+def is_scripture_name(stem_text):
+    s = re.sub(r"^\d{1,4}[ ._-]+", "", re.sub(r"[_]+", " ", stem_text or "").strip())
+    return bool(_SCRIPTURE.match(s))
 
 
 def content_kind(stem_text, length_s, item_title="", item_collections=(), item_text="", known_series=False):
