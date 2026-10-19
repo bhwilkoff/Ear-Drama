@@ -156,6 +156,8 @@ def main():
     e = W.table_rows(ESCAPE)
     f += ok("wikipedia: mm-dd-yy cell and row-header number", e and e[0]["date"] == "1947-07-07"
             and e[0]["title"] == "The Man Who Would Be King")
+    notes = '{| class="wikitable"\n! Date !! Program notes\n|-\n| August 25, 1946 || Fifth and last program on the case.\n|-\n| September 1, 1946 || x\n|}\n'
+    f += ok("wikipedia (control): a notes column is never read as a title", W.table_rows(notes) == [])
     ep = W.episode_list_rows(EPLIST)
     f += ok("wikipedia: {{Episode list}} with {{Start date}}", ep == [
         {"date": "1955-05-01", "title": "The Parade", "num": "3", "shape": "episode_list"}])
@@ -195,6 +197,9 @@ def main():
     f += ok("wikidata (control): a radio-drama play with no years is refused", "dragnet" not in m)
     f += ok("wikidata: two radio items with the same dates are duplicates, one is taken and the other named",
             m.get("gunsmoke", {}).get("qid") == "Q801" and m["gunsmoke"].get("wikidata_duplicates") == ["Q802"])
+    f += ok("titles: one letter apart agree", E.titles_agree("The Thirteenth Truck", "The Thirteenth Trunk") == 1)
+    f += ok("titles (control): different stories disagree",
+            E.titles_agree("MessageFromTheHills", "Revenge on the Shadow") == 0)
     # --- witnesses
     db.executescript(E.DDL)
     rows = [("suspense", "1942-06-17", "THE BURNING COURT", "1", "haendiges", "u1"),

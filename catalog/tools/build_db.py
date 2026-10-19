@@ -39,6 +39,15 @@ ITEM_NOISE = re.compile(
     r"by year|vol(ume)?\.?\s*\d+|part\s*\d+|\d{4}(\s*-\s*\d{2,4})?|mp3s?|archive|library)\b", re.I)
 
 
+# Decision 149's rule carried over: the regime's own speeches and broadcasts are
+# never recommended and always findable; the evidence is the speaker or event
+# named in the title WITH a speech or rally; a program ABOUT Hitler is not his
+# broadcast (Decision 149: never widen on a keyword).
+_NAZI = r"(?:Adolf Hitler|Hitler|Goebbels|G(?:ö|oe)ring|Himmler)"
+_SPEECH = r"(?:Rede|Ansprache|Sportpalast\w*|speech|address|broadcast to)"
+NO_RECOMMEND = re.compile(rf"\b(?:{_NAZI}\b.{{0,40}}\b{_SPEECH}|{_SPEECH}\b.{{0,40}}\b{_NAZI}\b|Reichstagsrede|Reichsparteitag)", re.I)
+
+
 def load(path, default):
     return ia.read_json(path) if os.path.exists(path) else default
 
@@ -808,9 +817,21 @@ def main():
             ep["people"] = orow["people"]
             ep["otrr_eid"] = orow["eid"]
         ep["recordings"].append(r["rec"])
+    # Track A's corpus kinds (editorial/extra_seeds.json): an episode whose every
+    # recording comes from aircheck (DJ / Top-40) or shortwave-DX items is that
+    # kind, not drama, however its file names parse.
+    seed_kind = {k: v.get("kind") for k, v in
+                 (load(os.path.join(ia.EDITORIAL, "extra_seeds.json"), {}).get("ids") or {}).items()}
+    CORPUS_KIND = {"aircheck": "aircheck", "shortwave_dx": "shortwave"}
     for ep in episodes.values():
         ks = collections.Counter(k or "radio" for k in ep.pop("kinds"))
         ep["content_kind"] = ks.most_common(1)[0][0]
+        kinds = {CORPUS_KIND.get(seed_kind.get(r["archive_id"])) for r in ep["recordings"]}
+        if ep["content_kind"] == "radio" and len(kinds) == 1 and None not in kinds:
+            ep["content_kind"] = kinds.pop()
+        nr = NO_RECOMMEND.search(" ".join(str(x or "") for x in (ep.get("series_name"), ep.get("title"))))
+        if nr:
+            ep["no_recommend"] = f"Nazi-state speech or broadcast ({nr.group(0)})"
     del recs_out
 
     # LibriVox: each project is a "play" series; its sections are its parts.
@@ -934,13 +955,14 @@ def main():
         bucket_count[j["work_bucket"]] += 1
         db.execute("INSERT INTO episodes (id, series_key, air_date, date_source, num, title, aka, decade, recordings, "
                    "median_length_s, has_transcript, spine, state, rec_bucket, work_bucket, evidence, content_kind, "
-                   "identity) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+                   "identity, no_recommend) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             ep["id"], ep["series_key"], ep["date"], ep["date_source"], ep["num"], ep["title"], ep["aka"],
             ep["decade"], len(recs), med, any(r["transcript"] for r in recs),
             json.dumps(ep.get("spine")) if ep.get("spine") else None,
             j["state"], j["rec_bucket"], j["work_bucket"], json.dumps(j["evidence"], ensure_ascii=False),
             ep.get("content_kind") or "radio",
-            json.dumps(ep.get("identity"), ensure_ascii=False) if ep.get("identity") else None))
+            json.dumps(ep.get("identity"), ensure_ascii=False) if ep.get("identity") else None,
+            ep.get("no_recommend")))
         for i, r in enumerate(recs):
             db.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
                 ep["id"], i, r["archive_id"], r["file"], r["url"], r["format"], r["source"], r["size"],

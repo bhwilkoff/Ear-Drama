@@ -26,8 +26,9 @@ CREATE TABLE episodes (
   state TEXT,                    -- keep_clean | keep_unclaimed | hide_claim | hide_unidentified
   rec_bucket TEXT, work_bucket TEXT,
   evidence TEXT,                 -- JSON list, each with a source a reader can open
-  content_kind TEXT,             -- radio | music | commercial | scripture | podcast | lecture (build_db: identity)
-  identity TEXT                  -- JSON: how series/date/number/title were found, OTRR eid, disagreements
+  content_kind TEXT,             -- radio | music | commercial | scripture | podcast | lecture | aircheck | shortwave (build_db: identity)
+  identity TEXT,                 -- JSON: how series/date/number/title were found, OTRR eid, disagreements
+  no_recommend TEXT              -- reason a client never picks this for a listener (search still finds it)
 );
 CREATE TABLE recordings (
   episode_id TEXT, rank INTEGER,   -- rank 0 is the default copy

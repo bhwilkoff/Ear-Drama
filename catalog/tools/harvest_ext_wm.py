@@ -7,6 +7,7 @@ its retries returns None; the caller records it as a failure, never as empty.
 """
 import gzip
 import hashlib
+import http.client
 import json
 import os
 import sys
@@ -35,6 +36,9 @@ def _key(url, data):
 
 
 def call(url, params, *, cache_dir, post=False, tries=7, use_cache=True):
+    # A body cut off mid-stream (seen on 450-550 KB SPARQL answers through this
+    # proxy, 2026-10-19) is retried at most 3 times: the same request is cut the
+    # same way, and a series of 120 s backoffs stalls the harvest.
     """GET/POST a JSON API; cached under .cache/<cache_dir>/<sha1>.json.gz."""
     qs = urllib.parse.urlencode(params, doseq=True)
     d = os.path.join(CACHE, cache_dir)
@@ -45,6 +49,7 @@ def call(url, params, *, cache_dir, post=False, tries=7, use_cache=True):
             return json.load(f)
     host = urllib.parse.urlparse(url).netloc
     delay = 5.0
+    cut = 0
     for attempt in range(tries):
         wait = PAUSE.get(host, 2.0) - (time.time() - _last.get(host, 0))
         if wait > 0:
@@ -80,6 +85,10 @@ def call(url, params, *, cache_dir, post=False, tries=7, use_cache=True):
             break
         except Exception as e:  # noqa: BLE001 - retried, then recorded
             print(f"retry {attempt}: {e} {url}", file=sys.stderr)
+            if isinstance(e, (json.JSONDecodeError, http.client.IncompleteRead)):
+                cut += 1
+                if cut >= 3:
+                    break
             time.sleep(delay)
             delay = min(delay * 2, 120)
     FAILED.append({"url": url, "params": qs[:500]})
@@ -191,13 +200,14 @@ def entity_data(host, eid, cache_dir):
     return obj
 
 
-def mwapi(endpoint, params, outputs, cache_dir):
+def mwapi(endpoint, params, outputs, cache_dir, limit=None):
     """A MediaWiki Generator call made BY the query service (SERVICE wikibase:mwapi),
     which reaches enwiki/Commons when their APIs refuse this IP. `outputs` maps a
     variable name to an apiOutput path ("@title", "imageinfo/ii/@url")."""
     ps = " ".join(f'mwapi:{k} "{v}" ;' for k, v in params.items())
     outs = " ".join(f'?{k} wikibase:apiOutput "{p}" .' for k, p in outputs.items())
+    lim = f' wikibase:limit "{limit}" ;' if limit else ""
     q = f"""SELECT * WHERE {{ SERVICE wikibase:mwapi {{
-        bd:serviceParam wikibase:endpoint "{endpoint}" ; wikibase:api "Generator" ; {ps[:-1]} .
+        bd:serviceParam wikibase:endpoint "{endpoint}" ; wikibase:api "Generator" ;{lim} {ps[:-1]} .
         {outs} }} }}"""
     return sparql(q, cache_dir=cache_dir)

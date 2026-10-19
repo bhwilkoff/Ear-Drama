@@ -164,6 +164,10 @@ def episode_list_rows(text):
 
 DATE_H = re.compile(r"date|air|broadcast", re.I)
 TITLE_H = re.compile(r"title|episode|story|play|program", re.I)
+# Columns that are prose or people, never the episode's title ("Program notes",
+# "Cast", "Guest star"): a title read from one would be someone's sentence.
+NOT_TITLE_H = re.compile(r"note|summary|synopsis|description|plot|cast|star|guest|writer|author|"
+                         r"director|host|sponsor|music|remark|comment", re.I)
 NUM_H = re.compile(r"^(no\.?|#|number|ep\.?|episode\s*(no\.?|#))$", re.I)
 
 
@@ -212,7 +216,7 @@ def table_rows(text):
             continue
         di = next((i for i, h in enumerate(header) if DATE_H.search(h)), None)
         ti = next((i for i, h in enumerate(header) if TITLE_H.search(h) and i != di
-                   and not NUM_H.match(h)), None)
+                   and not NUM_H.match(h) and not NOT_TITLE_H.search(h)), None)
         ni = next((i for i, h in enumerate(header) if NUM_H.match(h)), None)
         if di is None or ti is None:
             continue
@@ -224,7 +228,7 @@ def table_rows(text):
             g = lambda i: r[i - off] if i is not None and 0 <= i - off < len(r) else ""  # noqa: E731
             date = parse_date(g(di), year)
             title = re.sub(r"^\d+[.)]\s*", "", plain(g(ti))).strip().strip('"').strip()
-            if date and title and len(title) < 200:
+            if date and title and len(title) <= 120 and not re.fullmatch(r"[\d\W]+", title):
                 rows.append({"date": date, "title": title, "num": plain(g(ni)) or None,
                              "shape": "wikitable"})
     return rows
@@ -281,7 +285,7 @@ def main():
           f"{len(guesses)} list-page guesses", flush=True)
     pages = fetch_wikitext(ask)
     print(f"{len(pages)} pages read of {len(ask)} asked", flush=True)
-    rows, used = [], {}
+    rows, used, skipped_tv = [], {}, []
     for title, pg in pages.items():
         found = episode_list_rows(pg["text"]) + table_rows(pg["text"])
         seen = set()
@@ -293,6 +297,13 @@ def main():
                 uniq.append(r)
         if len(uniq) < 3:   # a lone dated row in an article is not an episode list
             continue
+        # A guessed "List of <series> episodes" is often the TELEVISION list
+        # (Father Knows Best, Lassie, I Love Lucy): keep a page only if its
+        # title is not a TV title and its opening names radio.
+        lead = plain(pg["text"][:4000]).lower()
+        if re.search(r"\b(tv|television)\b", title, re.I) or "radio" not in lead:
+            skipped_tv.append(title)
+            continue
         url = "https://en.wikipedia.org/wiki/" + urllib.parse.quote(title.replace(" ", "_"))
         series = page_series(title)
         qid = qids.get(title) or qids.get(series)
@@ -301,8 +312,10 @@ def main():
             rows.append({"page": title, "series": series, "page_qid": qid, "url": url, **r})
     write_json(os.path.join(DIR, "witnesses.json.gz"), rows, gz=True)
     write_json(os.path.join(DIR, "pages.json"), used)
+    write_json(os.path.join(DIR, "skipped_not_radio.json"), sorted(skipped_tv))
     write_json(os.path.join(DIR, "failed.json"), wm.FAILED)
-    print(f"{len(used)} pages with episode tables, {len(rows)} dated rows, failed reads {len(wm.FAILED)}")
+    print(f"{len(used)} pages with episode tables, {len(rows)} dated rows, {len(skipped_tv)} tables skipped "
+          f"as not radio, failed reads {len(wm.FAILED)}")
     if not pages:
         sys.exit(1)
 

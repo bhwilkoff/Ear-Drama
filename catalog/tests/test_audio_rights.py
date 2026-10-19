@@ -200,7 +200,7 @@ def an_expired_renewal_claims_nothing():
 
 @case
 def non_radio_content_is_out_of_scope_and_broadcasts_are_not():
-    for kind in ("music", "podcast", "scripture"):
+    for kind in ("music", "podcast", "scripture", "aircheck", "shortwave"):
         assert A.judge(ep(content_kind=kind), ctx())["state"] == "hide_out_of_scope", kind
     for kind in ("radio", "commercial", "lecture", None):
         assert A.judge(ep(content_kind=kind), ctx())["state"] == "keep_unclaimed", kind

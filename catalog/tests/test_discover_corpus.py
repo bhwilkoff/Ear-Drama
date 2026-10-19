@@ -2,7 +2,7 @@
 
 Accept cases sit beside REJECT controls that differ in the one signal the rule
 reads. Control seen failing: with classify() replaced by `return True, "x", None`
-this test reported 9 failures (every reject case); with the 1980+ file rule
+this test reported 12 failures (every reject case); with the 1980+ file rule
 deleted it reported 1 (the modern-dated twin).
 
     python3 tests/test_discover_corpus.py
@@ -35,8 +35,12 @@ CASES = [
      meta(OTR_FILES, title="Gunsmoke"), True),
     ("control: same series hit, files dated 1985-87", cand("series_title"),
      meta(MODERN_FILES, title="Gunsmoke", subject=["old time radio"]), False),
-    ("old-time radio subject, undated files", cand(),
+    ("old-time radio subject, upload-dated, found by series title", cand("series_title"),
      meta(["ep1.mp3"], title="Box 13", subject=["old time radio"], year="2015"), True),
+    ("control: same, found only by a term query", cand(),
+     meta(["ep1.mp3"], title="OTR Mixdown", subject=["old time radio"], year="2016"), False),
+    ("old-time radio subject, undated item", cand(),
+     meta(["ep1.mp3"], title="Box 13", subject=["old time radio"]), True),
     ("control: old-time radio subject on a podcast", cand(),
      meta(["ep1.mp3"], title="Filthy '47 - Part 1", subject=["podcast", "old-time radio"],
           collection=["podcasts"], year="2020"), False),
@@ -53,11 +57,18 @@ CASES = [
     ("OTR episode in a podcast feed, found by series title", cand("series_title"),
      meta(["u0ch8hzqvyrhcfm-Thriller832.mp3"], title="Phone Call From Death by The Whistler",
           subject=["Podcast", "otr"], year="2024"), True),
+    ("podcast mirror episode titled 'by <known series>'", cand(),
+     meta(["x.mp3"], title="The Vanishing Lady by Escape", subject=["Podcast"], year="2023"), True),
+    ("control: podcast episode 'by' an unknown name", cand(),
+     meta(["x.mp3"], title="The Vanishing Lady by Zzqx Productions", subject=["Podcast"], year="2023"), False),
     ("a broadcast's air date says radio", cand(),
      meta(["AV_475.mp3"], title="Hasidic Protests / Elie Wiesel. Air date: 1972-02-27."), True),
     ("control: the same talk with no air date", cand(),
      meta(["AV_475.mp3"], title="Hasidic Protests / Elie Wiesel. 1972-02-27."), False),
     ("OTRR's own log names the item", cand("otrr_archive_id"), meta(["x.mp3"]), True),
+    ("control: every file private (podcast mirror)", cand("series_title"),
+     {"item": {"mediatype": "audio", "title": "Star Bright by X Minus One", "subject": ["otr"]},
+      "files": [{"name": "yus8afaegqxguaa-SciFi728.mp3", "private": "true"}]}, False),
     ("control: dark item", cand("otrr_archive_id"), dict(meta(["x.mp3"]), is_dark=True), False),
     ("control: no metadata", cand(), None, False),
 ]

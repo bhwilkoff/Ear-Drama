@@ -103,11 +103,12 @@ OTR_RX = re.compile(r"old[- ]?time[- ]?radio|\botrr?\b|golden age of radio|radio
                     r"vintage radio|classic radio|old radio|nostalgia radio|lux radio|mercury theat", re.I)
 STRONG_RX = re.compile(r"old[- ]?time[- ]?radio|oldtimeradio|\botrr?\b|golden age of radio|\bafrts?\b|"
                        r"armed forces radio|transcription disc|electrical transcription|vintage radio|"
-                       r"classic radio|nostalgia radio", re.I)
+                       r"nostalgia radio", re.I)
+# "Classic Radio" is NOT strong: radio4all files 885 modern community-radio shows under it.
 PODCAST_RX = re.compile(r"podcast", re.I)
 MUSIC_RX = re.compile(r"78 ?rpm|\bmusic\b|\bjazz\b|\borch\b|orchestra|\bpop\b|big band|\bsongs?\b|"
                       r"\balbum\b|\bconcert\b|\blive at\b|ragtime|dixieland|\bblues\b|\bfolk\b", re.I)
-YEAR_IN_TEXT = re.compile(r"\b19[2-7]\d\b|\(\d{1,2}[-/.]\d{1,2}[-/.][2-7]\d\)|(?<![\d.-])[2-7]\d[-.]\d\d[-.]\d\d(?![\d.-])|(?<![\d.-])\d{1,2}-\d{1,2}-[2-7]\d(?![\d.-])")
+YEAR_IN_TEXT = re.compile(r"\b19[2-7]\d\b|\(\d{1,2}[-/.]\d{1,2}[-/.][3-7]\d\)|(?<![\d.-])[3-7]\d[-.]\d\d[-.]\d\d(?![\d.-])|(?<![\d.-])\d{1,2}-\d{1,2}-[3-7]\d(?![\d.-])")
 RADIO_WORD = re.compile(r"\bradio\b|\bwireless\b|\bbroadcasts?\b|\bair ?date\b|\baired\b", re.I)
 AIRCHECK_RX = re.compile(r"aircheck|top 40|\bdj\b|disc jockey|jingles?\b", re.I)
 DX_RX = re.compile(r"shortwave|short wave|\bdx\b|\bkhz\b|\bswl\b", re.I)
@@ -186,6 +187,23 @@ def series_names():
         seen.add(k)
         out.append(n)
     return sorted(out)
+
+
+_SERIES_NORMS = None
+
+
+def series_norms():
+    """Every OTRR program title and RadioEchoes series name, normalized (no length filter)."""
+    global _SERIES_NORMS
+    if _SERIES_NORMS is None:
+        raw = [p["ptitle"] for p in ia.read_json(os.path.join(ia.CACHE, "otrr", "otterlog.json"))]
+        for f in glob.glob(os.path.join(ia.CACHE, "radioechoes", "series", "*.json")):
+            raw.append(ia.read_json(f).get("series") or "")
+        _SERIES_NORMS = {P.norm_series(n) for n in raw if len(P.norm_series(n)) >= 4}
+    return _SERIES_NORMS
+
+
+BY_SERIES = re.compile(r"\bby (?:the )?(.+?)\s*$", re.I)
 
 
 def run_query(family, label, q):
@@ -382,6 +400,9 @@ def classify(c, meta):
         return False, f"mediatype {mt}", None
     if not meta.get("files"):
         return False, "no audio files", None
+    if all(f.get("private") == "true" for f in meta["files"]):
+        # podcasts_mirror items: 2,853 of them on 2026-10-19, every file private (not playable).
+        return False, "every audio file is private (not playable)", None
     n, dated, old_f, mod_f = file_dates(meta["files"])
     desc = it.get("description") if isinstance(it.get("description"), str) else ""
     desc = desc[:1500]
@@ -407,9 +428,14 @@ def classify(c, meta):
     if (series or "uploader" in fams) and tdate and tdate[:4] <= "1979":
         return True, "series title or OTR uploader + a pre-1980 broadcast date in the title", kind
     if podcast:
+        by = BY_SERIES.search(title)
+        if by and P.norm_series(by.group(1)) in series_norms():
+            return True, "podcast episode titled 'by <a known series>'", kind
         if strong and (old or series):
             return True, "old-time-radio episode in a podcast feed" + (" (dated)" if old else " (series title)"), kind
         return False, "podcast, no pre-1980 evidence" if not old else "podcast, nothing says radio", kind
+    if strong and not old and yr is not None and yr >= 1990 and not series:
+        return False, "old-time-radio term on an item dated 1990+, nothing pre-1980, no series title", kind
     if strong:
         return True, "old-time-radio term" + (" + pre-1980 evidence" if old else ""), kind
     if radio and old:

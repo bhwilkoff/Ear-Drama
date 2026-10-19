@@ -62,13 +62,13 @@ def _add(files, rows, tag):
                       "height": int(r["h"]) if r.get("h") else None, "mime": r.get("mime")})
 
 
-def members(cat, depth, files, seen):
+def members(cat, depth, files, seen, limit=None):
     if cat in seen:
         return
     seen.add(cat)
     rows = wm.mwapi(HOST, {"generator": "categorymembers", "gcmtitle": cat.replace('"', '\\"'),
                            "gcmtype": "file|subcat", "gcmlimit": "max", "prop": "imageinfo",
-                           "iiprop": "url|size|mime"}, OUTPUTS, "commons/mwapi")
+                           "iiprop": "url|size|mime"}, OUTPUTS, "commons/mwapi", limit=limit)
     if rows is None:
         print(f"  {cat}: FAILED", file=sys.stderr)
         return
@@ -76,7 +76,7 @@ def members(cat, depth, files, seen):
     if depth > 0:
         for r in rows:
             if r.get("ns") == "14":
-                members(r["title"], depth - 1, files, seen)
+                members(r["title"], depth - 1, files, seen, limit)
 
 
 def search(q, files, tag):
@@ -142,7 +142,7 @@ def main():
         for f in it["props"].get("image", []) + it["props"].get("logo", []):
             by_title("File:" + f, files, f"wikidata:{q}")
         for c in it["props"].get("commons_category", []):
-            members("Category:" + c, 1, files, seen)
+            members("Category:" + c, 1, files, seen, limit=300)
     print(f"+ wikidata images and categories: {len(files)} files", flush=True)
     titles = sorted(t for t, v in files.items() if v.get("url"))
     for i, t in enumerate(titles):

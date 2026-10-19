@@ -17,7 +17,7 @@ States, in the order a client must treat them:
     hide_claim        a claim a reader can open (schedule, claimant, takedown,
                       renewal, post-1972, non-US origin)
     hide_unidentified no series or date to check a claim against
-    hide_out_of_scope identified as music, a modern podcast or scripture, not radio
+    hide_out_of_scope identified as music, a modern podcast, scripture, a DJ aircheck or shortwave DX
 """
 import datetime
 import re
@@ -152,10 +152,12 @@ def _renewal_ev(r):
             "printed": r.get("text")}
 
 
-# Identified but not a radio broadcast (build_db's content_kind): not this app's
-# catalog, whatever its rights. Commercials and station lectures ARE broadcasts
-# and stay in (owner question in README).
-OUT_OF_SCOPE = {"music", "podcast", "scripture"}
+# Identified but not a radio drama/program broadcast (build_db's content_kind):
+# not this app's catalog, whatever its rights. Commercials and station lectures
+# ARE broadcasts and stay in. Airchecks (DJ / Top-40 shows: other owners' records,
+# many on the pre-1972 schedules) and shortwave DX (foreign stations) are out by
+# default — owner questions in README.
+OUT_OF_SCOPE = {"music", "podcast", "scripture", "aircheck", "shortwave"}
 
 
 def judge(ep, ctx):

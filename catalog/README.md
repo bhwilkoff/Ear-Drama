@@ -26,7 +26,7 @@ non-zero when it read nothing, and records what it could not read.
 | `keep_unclaimed` | `rec_orphan_unclaimed` | plays; rights line "no claim known; removed on request", never "public domain" |
 | `hide_claim` | `rec_takedown`, `rec_schedule_claim`, `rec_rights_holder_claim`, `rec_post_1972`, `rec_foreign_origin`, `work_script_claim`, `work_adapted_renewed` | hidden |
 | `hide_unidentified` | `rec_no_evidence` | hidden: no series and date to check a claim against |
-| `hide_out_of_scope` | `rec_out_of_scope` | hidden: identified as music, a modern podcast or scripture (`content_kind`), not radio. Vintage commercials and station lectures are broadcasts and stay in — an owner question |
+| `hide_out_of_scope` | `rec_out_of_scope` | hidden: identified as music, a modern podcast, scripture, a DJ/Top-40 aircheck or shortwave DX (`content_kind`). Vintage commercials and station lectures are broadcasts and stay in. Airchecks and shortwave are out by default — owner questions |
 
 Order: hides before rescues, first match wins; the stricter of the recording and
 underlying-work layers wins. Every row's `evidence` lists what decided it, each
@@ -96,6 +96,12 @@ lists Tepperman scripts in one volume) and never renewed in print. Gunsmoke,
 Dragnet and Johnny Dollar (1949-52) would renew in 1977-80, mostly in the online
 records. The "Jack Benny" and "Lights Out" hits are stage plays with those
 words in their titles, not the radio series.
+
+**Never recommended, always findable** (`episodes.no_recommend`, Archive Watch
+Decision 149 carried over): the Nazi state's own speeches and rallies — a named
+official with a speech word, "Reichstagsrede", "Reichsparteitag". Track A found 287
+such items entering through a RadioEchoes series. A program ABOUT Hitler is not
+flagged (`tests/test_no_recommend.py` holds that control).
 
 ## Editorial (each entry needs a source a reader can open)
 

@@ -24,6 +24,7 @@ Series names are keyed with tools/otr_parse.py norm_series, as build_db.py does.
 """
 import argparse
 import datetime
+import difflib
 import glob
 import gzip
 import json
@@ -165,6 +166,7 @@ def _year(s):
 
 def nt(s):
     s = (s or "").lower()
+    s = re.sub(r",\s*(the|a|an)\s*$", "", s)          # "1,000,000 Pound Penny,The"
     s = re.sub(r"\(.*?\)", " ", s)
     s = re.sub(r"^\s*(the|a|an)\s+", "", s)
     return re.sub(r"[^a-z0-9]", "", s)
@@ -175,6 +177,9 @@ def titles_agree(a, b):
     if not x or not y:
         return None
     if x == y or (min(len(x), len(y)) >= 5 and (x in y or y in x)):
+        return 1
+    # one letter or a spelling apart: Truck/Trunk, Bureacrat/Bureaucrat, Honor/Honour
+    if min(len(x), len(y)) >= 6 and difflib.SequenceMatcher(None, x, y).ratio() >= 0.85:
         return 1
     ta = set(re.findall(r"[a-z0-9]+", (a or "").lower())) - {"the", "a", "an", "of", "and"}
     tb = set(re.findall(r"[a-z0-9]+", (b or "").lower())) - {"the", "a", "an", "of", "and"}
@@ -421,6 +426,13 @@ def collect_witnesses(idx, matched):
             if not keys:
                 unmatched["wikipedia"] += 1
             for k in keys:
+                # A list page can be the TV run's (Father Knows Best, Death Valley
+                # Days): a row outside the series' known radio years is dropped.
+                lo, hi = idx.years.get(k, (None, None))
+                y = int(r["date"][:4])
+                if lo and not (lo - 1 <= y <= (hi or lo) + 1):
+                    unmatched["wikipedia_outside_series_years"] += 1
+                    continue
                 out.append((k, r["date"], r["title"], r.get("num"), "wikipedia", r["url"]))
     we = load(os.path.join(CACHE, "wikidata", "episodes.json.gz"))
     if we is None:
