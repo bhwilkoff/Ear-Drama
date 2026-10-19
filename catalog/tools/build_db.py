@@ -829,7 +829,9 @@ def main():
         kinds = {CORPUS_KIND.get(seed_kind.get(r["archive_id"])) for r in ep["recordings"]}
         if ep["content_kind"] == "radio" and len(kinds) == 1 and None not in kinds:
             ep["content_kind"] = kinds.pop()
-        nr = NO_RECOMMEND.search(" ".join(str(x or "") for x in (ep.get("series_name"), ep.get("title"))))
+        # Series name and title are tested apart: "Founder's Day Speech" + "Adolph Hitler and
+        # the Nazi Movement" is a US talk ABOUT him, and only matched when joined.
+        nr = NO_RECOMMEND.search(str(ep.get("title") or "")) or NO_RECOMMEND.search(str(ep.get("series_name") or ""))
         if nr:
             ep["no_recommend"] = f"Nazi-state speech or broadcast ({nr.group(0)})"
     del recs_out

@@ -10,7 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_db as B
 
 FLAG = ["Adolf Hitler - Reichstagsrede 1939-09-01", "Goebbels Sportpalastrede", "Rede Hermann Göring 1942"]
-KEEP = ["The Shadow 1938-10-09 Death Stalks the Shadow", "Words at War 1944-06-06 The Hitler Gang"]
+KEEP = ["The Shadow 1938-10-09 Death Stalks the Shadow", "Words at War 1944-06-06 The Hitler Gang",
+        "Adolph Hitler and the Nazi Movement"]  # its series is "Founder's Day Speech": tested apart, not joined
 
 
 def main():
@@ -23,7 +24,7 @@ def main():
         if B.NO_RECOMMEND.search(t):
             failed += 1
             print("FAIL control flagged:", t)
-    print(f"{5 - failed}/5 passed")
+    print(f"{6 - failed}/6 passed")
     sys.exit(1 if failed else 0)
 
 
