@@ -22,10 +22,12 @@ Writes .cache/commons/files.json.gz {title: {...}}, depicts_labels.json and
 failed.json; exits non-zero when no file could be read.
 """
 import gzip
+import hashlib
 import json
 import os
 import re
 import sys
+import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ia_lib import CACHE, write_json  # noqa: E402
@@ -89,13 +91,16 @@ def search(q, files, tag):
 
 
 def by_title(title, files, tag):
-    """One named file (a Wikidata P18): its image info, via allimages from its name."""
+    """One named file (a Wikidata P18/P154). Its URL follows from its name
+    (upload.wikimedia.org's md5 path); size and page id are left unknown rather
+    than spend a ~50 s MWAPI query per file (measured 2026-10-19). Its page is
+    still read for the licence template."""
     name = title.split(":", 1)[1].replace(" ", "_")
-    rows = wm.mwapi(HOST, {"generator": "allimages", "gaifrom": name.replace('"', '\\"'), "gailimit": "1",
-                           "prop": "imageinfo", "iiprop": "url|size|mime"}, OUTPUTS, "commons/mwapi")
-    rows = [r for r in rows or [] if r["title"].replace(" ", "_") == "File:" + name]
-    if rows:
-        _add(files, rows, tag)
+    h = hashlib.md5(name.encode()).hexdigest()
+    e = files.setdefault("File:" + name.replace("_", " "), {"found_via": set()})
+    e["found_via"].add(tag)
+    e.setdefault("url", f"https://upload.wikimedia.org/wikipedia/commons/{h[0]}/{h[:2]}/{urllib.parse.quote(name)}")
+    e.setdefault("pageid", None)
 
 
 def template_class(text):
@@ -154,7 +159,7 @@ def main():
             v.update(page_facts(text))
             v["pd_class"], v["template"] = template_class(text)
             v["license_short"] = v["template"] or license_short(text)
-        ed = wm.entity_data(HOST, f"M{v['pageid']}", "commons/sdc")
+        ed = wm.entity_data(HOST, f"M{v['pageid']}", "commons/sdc") if v.get("pageid") else None
         st = (ed or {}).get("entities", {}).get(f"M{v['pageid']}", {}).get("statements") or {}
         v["depicts"] = [c["mainsnak"]["datavalue"]["value"]["id"] for c in
                         (st.get("P180", []) if isinstance(st, dict) else []) if c["mainsnak"].get("datavalue")]
