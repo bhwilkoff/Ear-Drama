@@ -2,7 +2,17 @@
 2026-10-19). Every rule has a control: the case the rule must NOT fire on.
 
 Broken controls, 2026-10-19, each run against a mutated copy (RADIO_TOOLS=<copy>):
-    BROKEN_CONTROLS
+    prefix rule without word ends                   56/59
+    an alias two programs share is folded           58/59
+    one-word generic aliases kept ("Interviews")    58/59
+    a conflicting log title is applied              58/59
+    no duration check on series + date              58/59
+    title -> date in an unchecked series            58/59 (first PASSED 59/59: the control series
+                                                     had no log titles at all; Escape's row added)
+    number -> date in an unchecked series           58/59
+    podcast rule ignores a known series             58/59
+    no abbreviation-plausibility check              57/59
+    short learned prefixes always applied           58/59
 """
 import collections
 import os
@@ -110,9 +120,10 @@ rows = [row("1", "10", "1942-06-17", "The Burning Court", "1", 1790, [{"id": "9"
         row("2", "10", "1942-06-24", "Wanted, Single Woman", "2", 1790),
         row("3", "10", "1942-07-01", "Road to Freedom", "3", 600),
         row("4", "10", "1942-07-08", "Cabin B-13", "4"),
-        row("5", "10", "1942-07-15", "Wraith", "5")]
+        row("5", "10", "1942-07-15", "Wraith", "5"),
+        row("6", "11", "1950-01-01", "Wanted, Single Woman")]       # Escape's log has the title too
 # five dated files in Suspense whose own titles agree with the log -> titles may date others
-trusted = [rec("suspense", r["date"], r["title"]) for r in rows]
+trusted = [rec("suspense", r["date"], r["title"]) for r in rows if r["idp"] == "10"]
 r1 = rec("suspense", "1942-06-17", None)
 r2 = rec("suspense", "1942-07-01", "Road to Freedom", length=1800)      # the log's copy is 600 s
 r3 = rec("suspense", "1942-07-08", "The Hitch-Hiker")                    # the log says Cabin B-13
@@ -130,12 +141,12 @@ check("series + title dates an undated file", (r4["date"], r4["date_source"]), (
 check("control: title -> date in a series never checked", r5["date"], None)
 
 # number -> date only where numbers have been seen to agree
-nums = [rec("suspense", r["date"], None, num=int(r["epnum"])) for r in rows]
+nums = [rec("suspense", r["date"], None, num=int(r["epnum"])) for r in rows if r["epnum"]]
 u = rec("suspense", None, None, num=3)
 stats = collections.Counter()
 B.match_logs(nums + [u], rows, reg2, {}, stats)
 check("number -> date in a series whose numbers agree", u["date"], "1942-07-01")
-bad = [rec("suspense", r["date"], None, num=int(r["epnum"]) + 1) for r in rows]
+bad = [rec("suspense", r["date"], None, num=int(r["epnum"]) + 1) for r in rows if r["epnum"]]
 u2 = rec("suspense", None, None, num=3)
 B.match_logs(bad + [u2], rows, reg2, {}, collections.Counter())
 check("control: number -> date where numbers disagree", u2["date"], None)

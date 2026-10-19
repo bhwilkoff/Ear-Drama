@@ -1,9 +1,10 @@
 """File-name parsing against real archive.org names (docs/research/radio/07).
 
 Broken controls, 2026-10-19, each run against a mutated copy of otr_parse.py (RADIO_TOOLS=...):
-    F12 keeps a year as the number           (see the report)
-    F10b guesses M-D when both are <= 12      (see the report)
-    F13 keeps the leading track number        (see the report)
+    F12 keeps a year as the number           39/41
+    F10b guesses M-D when both are <= 12      40/41
+    F13 keeps the leading track number        40/41
+    junk titles ("Audio file") kept          40/41
 """
 import os
 import sys

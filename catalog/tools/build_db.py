@@ -280,13 +280,19 @@ def item_full_date(it):
     return None
 
 
+# For measuring each identity step's effect on a full build (the report's ablation table):
+# RADIO_SKIP=logs,uiuc,learn,newfamilies,fallbacks turns those steps off.
+SKIP = set(filter(None, os.environ.get("RADIO_SKIP", "").split(",")))
+NEW_FAMILIES = ("F2c_", "F7b_", "F7c_", "F4b_", "F10_", "F10b_", "F11", "F12_", "F13_", "F14_", "F1h_")
+
+
 def first_parse(f, it, ident, n_audio, uiuc):
     """Everything a file says about itself, before any series is resolved."""
     name = f["name"]
     st = P.stem(name)
     idt = {}
     um = P.UIUC_FILE.search(name)
-    if um and uiuc.get(um.group(0)):
+    if um and uiuc.get(um.group(0)) and "uiuc" not in SKIP:
         u = uiuc[um.group(0)]
         prog = u["program"] if u.get("program") and len(u["program"]) <= 70 else None
         ser = prog or re.sub(r"\s*(#\s*\d+|\d+|part\s*\d+(\s*of\s*\d+)?)\s*$", "", u["title"] or "", flags=re.I).strip()
@@ -297,6 +303,9 @@ def first_parse(f, it, ident, n_audio, uiuc):
                "uiuc_item": u["item"], "speaker": u.get("speaker")}
         return p, "uiuc_findingaid" if u["date"] else None, idt, u
     p = P.parse(name)
+    if "newfamilies" in SKIP and p["family"].startswith(NEW_FAMILIES):
+        p = {"family": "F6_none", "series": None, "date": None, "decade": None, "num": None, "title": None,
+             "aka": None, "variant": None}
     date_source = "filename" if p["date"] else None
     if not p["date"]:
         # Fallbacks, in order: the ID3 title tag, then for a single-episode item its own
@@ -310,6 +319,8 @@ def first_parse(f, it, ident, n_audio, uiuc):
                          family=q["family"] + "+alt")
                 date_source = "filename_alt"
                 break
+    if "fallbacks" in SKIP:
+        return p, date_source, idt, None
     if not p["date"]:
         for src, txt in (("id3_title_text", f.get("title")), ("id3_album_text", f.get("album")),
                          ("filename_text", st)):
@@ -649,7 +660,7 @@ def main():
                           "text": text, "tstems": tstems, "n_scripture": n_scripture})
 
     # Abbreviations learned from the corpus join the registry before anything resolves.
-    learned = learn_abbreviations(files, reg, set(aliases.get("_rejected") or []))
+    learned = learn_abbreviations(files, reg, set(aliases.get("_rejected") or [])) if "learn" not in SKIP else {}
     for fk, e in learned.items():
         if e["applied"]:
             reg.add(fk, canon(e["series"]), fk, "learned alias")
@@ -751,7 +762,8 @@ def main():
     del files
 
     # Pass 3: OTRR's logs and the spine fill what the names left out.
-    match_logs(recs_out, otrr_rows, reg, re_by_key, stats)
+    if "logs" not in SKIP:
+        match_logs(recs_out, otrr_rows, reg, re_by_key, stats)
 
     # Group files into broadcasts.
     episodes = {}

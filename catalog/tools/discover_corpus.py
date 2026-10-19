@@ -107,7 +107,10 @@ STRONG_RX = re.compile(r"old[- ]?time[- ]?radio|oldtimeradio|\botrr?\b|golden ag
 PODCAST_RX = re.compile(r"podcast", re.I)
 MUSIC_RX = re.compile(r"78 ?rpm|\bmusic\b|\bjazz\b|\borch\b|orchestra|\bpop\b|big band|\bsongs?\b|"
                       r"\balbum\b|\bconcert\b|\blive at\b|ragtime|dixieland|\bblues\b|\bfolk\b", re.I)
-YEAR_IN_TEXT = re.compile(r"\b19[2-7]\d\b|\(\d{1,2}[-/.]\d{1,2}[-/.][2-7]\d\)|\b[2-7]\d[-.]\d\d[-.]\d\d\b")
+YEAR_IN_TEXT = re.compile(r"\b19[2-7]\d\b|\(\d{1,2}[-/.]\d{1,2}[-/.][2-7]\d\)|(?<![\d.-])[2-7]\d[-.]\d\d[-.]\d\d(?![\d.-])|(?<![\d.-])\d{1,2}-\d{1,2}-[2-7]\d(?![\d.-])")
+RADIO_WORD = re.compile(r"\bradio\b|\bwireless\b|\bbroadcasts?\b|\bair ?date\b|\baired\b", re.I)
+AIRCHECK_RX = re.compile(r"aircheck|top 40|\bdj\b|disc jockey|jingles?\b", re.I)
+DX_RX = re.compile(r"shortwave|short wave|\bdx\b|\bkhz\b|\bswl\b", re.I)
 
 
 def qkey(q):
@@ -357,45 +360,72 @@ def file_dates(files):
     return len(stems), dated, old, modern
 
 
+def kind_of(text):
+    """A coarse label for the build to filter on; never a reason to accept or reject."""
+    if AIRCHECK_RX.search(text):
+        return "aircheck"
+    if DX_RX.search(text):
+        return "shortwave_dx"
+    return "program"
+
+
 def classify(c, meta):
-    """Return (accept: bool, reason). Pure: every input is passed in."""
+    """Return (accept, reason, kind). Pure: every input is passed in."""
     fams = {f["family"] for f in c["found_by"]}
     if meta is None:
-        return False, "no metadata (fetch failed or light gate refused)"
+        return False, "no metadata (fetch failed or light gate refused)", None
     it = meta.get("item") or {}
     if meta.get("is_dark"):
-        return False, "item is dark"
+        return False, "item is dark", None
     mt = it.get("mediatype") or c.get("mediatype")
     if mt != "audio":
-        return False, f"mediatype {mt}"
+        return False, f"mediatype {mt}", None
     if not meta.get("files"):
-        return False, "no audio files"
+        return False, "no audio files", None
     n, dated, old_f, mod_f = file_dates(meta["files"])
-    desc = (it.get("description") or "")[:1500] if isinstance(it.get("description"), str) else ""
-    text = " ".join(as_list(it.get("subject")) + [it.get("title") or ""] +
+    desc = it.get("description") if isinstance(it.get("description"), str) else ""
+    desc = desc[:1500]
+    title = " ".join(as_list(it.get("title")))
+    text = " ".join(as_list(it.get("subject")) + [title] +
                     [x for x in as_list(it.get("collection")) if not x.startswith("fav-")])
+    kind = kind_of(text + " " + desc)
     yr = item_year(it)
-    old = (yr is not None and yr <= 1979) or old_f >= 1 or bool(YEAR_IN_TEXT.search(it.get("title") or ""))
-    radio = bool(OTR_RX.search(text) or OTR_RX.search(desc))
+    tdate = P.parse(title)["date"]
+    title_old = bool(YEAR_IN_TEXT.search(title)) or bool(tdate and tdate[:4] <= "1979")
+    old = (yr is not None and yr <= 1979) or old_f >= 1 or title_old
+    radio = bool(OTR_RX.search(text) or OTR_RX.search(desc) or RADIO_WORD.search(text)
+                 or RADIO_WORD.search(desc[:300]))
     strong = bool(STRONG_RX.search(text) or STRONG_RX.search(desc))
     podcast = bool(PODCAST_RX.search(text))
+    series = "series_title" in fams
     if "otrr_archive_id" in fams:
-        return True, "OTRR log names this archive id"
+        return True, "OTRR log names this archive id", kind
     if dated >= 3 and mod_f >= 0.8 * dated:
-        return False, f"files dated 1980+ ({mod_f}/{dated})"
-    if old_f >= 2 and old_f >= 0.3 * max(dated, 1) and (radio or fams & {"series_title", "co_collection", "uploader"}):
-        return True, f"files parse as pre-1980 broadcasts ({old_f}/{n})"
-    if podcast and not old:
-        return False, "podcast, no pre-1980 evidence"
+        return False, f"files dated 1980+ ({mod_f}/{dated})", kind
+    if old_f >= 1 and old_f >= 0.3 * dated and (radio or fams & {"series_title", "co_collection", "uploader"}):
+        return True, f"files parse as pre-1980 broadcasts ({old_f}/{n})", kind
+    if (series or "uploader" in fams) and tdate and tdate[:4] <= "1979":
+        return True, "series title or OTR uploader + a pre-1980 broadcast date in the title", kind
+    if podcast:
+        if strong and (old or series):
+            return True, "old-time-radio episode in a podcast feed" + (" (dated)" if old else " (series title)"), kind
+        return False, "podcast, no pre-1980 evidence" if not old else "podcast, nothing says radio", kind
     if strong:
-        return True, "old-time-radio term" + (" + pre-1980 evidence" if old else "")
+        return True, "old-time-radio term" + (" + pre-1980 evidence" if old else ""), kind
     if radio and old:
-        return True, "radio term + pre-1980 evidence"
+        return True, "radio term + pre-1980 evidence", kind
     if radio:
-        return False, "radio term, no pre-1980 evidence (modern audio drama?)"
+        return False, "radio term, no pre-1980 evidence (modern audio drama?)", kind
     if old:
-        return False, "pre-1980 but nothing says radio (music/speech?)"
-    return False, "no radio or pre-1980 evidence"
+        return False, "pre-1980 but nothing says radio (music/speech?)", kind
+    return False, "no radio or pre-1980 evidence", kind
+
+
+def _tally(xs):
+    out = {}
+    for x in xs:
+        out[x] = out.get(x, 0) + 1
+    return dict(sorted(out.items(), key=lambda kv: -kv[1]))
 
 
 def stage_classify(results, cand, have):
@@ -403,9 +433,9 @@ def stage_classify(results, cand, have):
     for i, c in sorted(cand.items()):
         if light_gate(c):
             meta = load_meta(i)
-            ok, why = classify(c, meta) if meta is not None else (False, "metadata fetch failed")
+            ok, why, kind = classify(c, meta) if meta is not None else (False, "metadata fetch failed", None)
         else:
-            meta = None
+            meta, kind = None, None
             ok, why = False, "light gate: " + ("not audio" if c.get("mediatype") != "audio"
                                                else "no radio term and no pre-1980 year")
         rec = {"found_by": sorted({f["label"] for f in c["found_by"]}),
@@ -413,9 +443,11 @@ def stage_classify(results, cand, have):
         if ok:
             files = (meta or {}).get("files") or []
             rec["audio_files"] = len(files)
+            rec["kind"] = kind
             accepted[i] = rec
         else:
-            rec["title"] = (c.get("title") or ((meta or {}).get("item") or {}).get("title") or "")[:120]
+            t = c.get("title") or ((meta or {}).get("item") or {}).get("title") or ""
+            rec["title"] = " ".join(as_list(t))[:120]
             rejected[i] = rec
     qrep = []
     for r in results:
@@ -433,7 +465,13 @@ def stage_classify(results, cand, have):
     ia.write_json(EXTRA, extra)
     ia.write_json(os.path.join(DISC, "report.json"),
                   {"queries": qrep, "candidates": len(cand), "accepted": len(accepted),
-                   "rejected": len(rejected), "rejected_items": rejected})
+                   "rejected": len(rejected),
+                   "rejected_by_reason": _tally(r["reason"] for r in rejected.values()),
+                   "accepted_by_reason": _tally(r["reason"].split(" (")[0] for r in accepted.values()),
+                   "accepted_by_kind": _tally(r["kind"] for r in accepted.values()),
+                   # Every item that was fetched and judged; light-gate refusals are tallied only.
+                   "rejected_items": {k: v for k, v in rejected.items()
+                                      if not v["reason"].startswith("light gate")}})
     print(f"candidates {len(cand)} accepted {len(accepted)} rejected {len(rejected)}", file=sys.stderr)
     return accepted
 

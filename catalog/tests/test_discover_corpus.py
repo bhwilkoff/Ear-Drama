@@ -1,8 +1,8 @@
 """discover_corpus's classifier and guards, on item shapes seen 2026-10-19.
 
-Every ACCEPT case has a REJECT twin that differs in the one signal the rule
-reads. Control seen failing: with classify() replaced by `return True, "x"`
-this test reported 8 failures (every reject case); with the 1980+ file rule
+Accept cases sit beside REJECT controls that differ in the one signal the rule
+reads. Control seen failing: with classify() replaced by `return True, "x", None`
+this test reported 9 failures (every reject case); with the 1980+ file rule
 deleted it reported 1 (the modern-dated twin).
 
     python3 tests/test_discover_corpus.py
@@ -50,6 +50,13 @@ CASES = [
                                     "files": [{"name": "a.mp3"}]}, False),
     ("control: audio item with no audio files", cand(),
      {"item": {"mediatype": "audio", "subject": ["old time radio"]}, "files": []}, False),
+    ("OTR episode in a podcast feed, found by series title", cand("series_title"),
+     meta(["u0ch8hzqvyrhcfm-Thriller832.mp3"], title="Phone Call From Death by The Whistler",
+          subject=["Podcast", "otr"], year="2024"), True),
+    ("a broadcast's air date says radio", cand(),
+     meta(["AV_475.mp3"], title="Hasidic Protests / Elie Wiesel. Air date: 1972-02-27."), True),
+    ("control: the same talk with no air date", cand(),
+     meta(["AV_475.mp3"], title="Hasidic Protests / Elie Wiesel. 1972-02-27."), False),
     ("OTRR's own log names the item", cand("otrr_archive_id"), meta(["x.mp3"]), True),
     ("control: dark item", cand("otrr_archive_id"), dict(meta(["x.mp3"]), is_dark=True), False),
     ("control: no metadata", cand(), None, False),
@@ -59,7 +66,7 @@ CASES = [
 def main():
     failed = 0
     for label, c, m, want in CASES:
-        got, why = D.classify(c, m)
+        got, why, _ = D.classify(c, m)
         if got != want:
             failed += 1
             print(f"FAIL {label}: got {got} ({why})")
