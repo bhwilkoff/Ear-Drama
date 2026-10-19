@@ -84,34 +84,436 @@ def pick_files(files):
     return out
 
 
-class SeriesResolver:
-    def __init__(self, aliases, known):
-        self.aliases = {k: v for k, v in aliases.items() if not k.startswith("_")}
-        self.known = known  # norm -> display name
+class Registry:
+    """One canonical key per program. Every name a source uses for a program — OTRR's
+    program titles and all their alias titles (pTitles), RadioEchoes' series names, the
+    editorial and learned aliases — is a key that resolves to the canonical key, which is
+    norm_series of the program's display name (RadioEchoes' when the spine has it)."""
 
-    def key(self, raw):
-        n = P.norm_series(raw)
-        if n in self.aliases:
-            return P.norm_series(self.aliases[n]), self.aliases[n]
-        return n, raw
+    def __init__(self):
+        self.k2c, self.src = {}, {}
+        self.name = {}
+        self.idps = collections.defaultdict(set)
+        self.idp2c = {}
+        self.re_keys = set()
 
-    def resolve(self, file_series, item_series_name):
-        cands = []
-        for raw, origin in ((file_series, "file"), (item_series_name, "item")):
-            if raw:
-                k, disp = self.key(raw)
-                if k:
-                    cands.append((k, disp, origin))
-        for k, disp, origin in cands:
-            if k in self.known:
-                return k, self.known[k], origin + ":known"
-        for k, disp, origin in cands:
-            if origin == "file" and len(k) >= 5:
-                return k, disp, "file"
-        if cands:
-            k, disp, origin = cands[-1]
-            return k, disp, origin
-        return None, None, "none"
+    def add(self, key, canon, alias, source, override=False):
+        if not key or not canon or (key in self.k2c and not override):
+            return
+        self.k2c[key] = canon
+        self.src[key] = (alias, source)
+
+    def resolve(self, raw, prefix=True):
+        vs = P.series_variants(raw)
+        for i, v in enumerate(vs):
+            c = self.k2c.get(v)
+            if c:
+                return c, "exact" if i == 0 else "variant"
+        if not prefix or not vs:
+            return None, None
+        # "Lum and Abner of the classic Show" -> lumandabner: the longest known key the name
+        # starts with, ending where a word ends, two words and eight letters at least.
+        # MEASURED 2026-10-19: without the word rules "Conflicting Concepts of Education" became
+        # "Conflict", "Whistler's Mother" The Whistler, "American Armed Forces Radio" Americana.
+        words = [P.norm_series(w) for w in re.split(r"\s+", P._fold(raw).strip())]
+        words = [w for w in words if w]
+        if words and words[0] in ("the", "otrr"):
+            words = words[1:]
+        acc = ""
+        bounds = []
+        for w in words:
+            acc += w
+            bounds.append(acc)
+        for i in range(len(bounds) - 2, 0, -1):
+            k = bounds[i]
+            if len(k) >= 8 and k in self.k2c:
+                return self.k2c[k], "prefix"
+        return None, None
+
+    def display(self, canon, fallback=None):
+        return self.name.get(canon) or fallback
+
+
+# One-word OTRR alias titles that name a kind of program, not a program (MEASURED 2026-10-19:
+# "Interviews" filed files from three shows under Adventures by Morse). "Superman" stays.
+GENERIC_ALIAS_WORDS = {"interviews", "interview", "christmas", "music", "news", "comedy", "drama", "mystery",
+                       "theater", "variety", "sports", "specials", "special", "commercials", "documentary",
+                       "religion", "religious", "education", "children", "western", "westerns", "detective",
+                       "horror", "science", "history", "quiz", "talk", "speeches", "speech", "concert", "concerts",
+                       "poetry", "audition", "auditions", "promos", "promo", "misc", "miscellaneous", "various",
+                       "sermon", "sermons", "newscast", "newscasts", "bulletins", "bulletin", "dance", "jazz",
+                       "classical", "opera", "country", "gospel", "hymns", "serial", "serials", "soap", "radio"}
+
+
+def build_registry(re_series, otrr_progs, ptitles, aliases, editorial_named):
+    reg = Registry()
+    re_eps = collections.Counter()
+    re_name = {}
+    for s in re_series:
+        k = P.norm_series(s["series"])
+        if k:
+            re_eps[k] += len(s.get("episodes") or [])
+            re_name.setdefault(k, s["series"])
+    reg.re_keys = set(re_name)
+    names_by_idp = collections.defaultdict(set)
+    for idp, t in otrr_progs.items():
+        names_by_idp[idp].add(t)
+    for r in ptitles:
+        if r.get("idp") and r.get("title"):
+            names_by_idp[r["idp"]].add(r["title"])
+    key_idps = collections.defaultdict(set)
+    for idp, names in names_by_idp.items():
+        for n in names:
+            for k in {P.norm_series(n), P.norm_series(P.reorder_title(n))}:
+                if len(k) >= 4:
+                    key_idps[k].add(idp)
+    stats = collections.Counter()
+    for idp in sorted(names_by_idp, key=lambda x: int(x) if x.isdigit() else 0):
+        names = names_by_idp[idp]
+        main = P.reorder_title(otrr_progs.get(idp) or sorted(names)[0])
+        keys = {}
+        for n in names:
+            # An alias of one word ("Interviews", "Christmas") names too much; the program's own
+            # title may be one word ("Suspense").
+            if n != otrr_progs.get(idp) and len(re.findall(r"[A-Za-z0-9]+", P.reorder_title(n))) < 2 and \
+                    P.norm_series(n) in GENERIC_ALIAS_WORDS:
+                stats["otrr_alias_one_word_skipped"] += 1
+                continue
+            for k in (P.norm_series(n), P.norm_series(P.reorder_title(n))):
+                if len(k) >= 4 and len(key_idps[k]) == 1:
+                    keys.setdefault(k, n)
+                elif len(k) >= 4:
+                    stats["otrr_alias_ambiguous"] += 1
+        hits = [k for k in keys if k in re_name]
+        if hits:
+            canon = max(hits, key=lambda k: (re_eps[k], k))
+            reg.name.setdefault(canon, re_name[canon])
+            stats["otrr_programs_on_spine"] += 1
+        else:
+            canon = P.norm_series(main)
+            reg.name.setdefault(canon, main)
+        if not canon:
+            continue
+        reg.idps[canon].add(idp)
+        reg.idp2c[idp] = canon
+        reg.add(canon, canon, main, f"otrr:{idp}")
+        for k, n in keys.items():
+            reg.add(k, canon, n, f"otrr:{idp}")
+    for k, n in re_name.items():
+        reg.add(k, k, n, "radioechoes")
+        reg.name.setdefault(reg.k2c[k], n)
+    for name, origin in editorial_named:
+        c = reg.resolve(name)[0] or P.norm_series(name)
+        reg.add(P.norm_series(name), c, name, origin)
+        reg.name.setdefault(c, name)
+    for abbr, name in aliases.items():
+        if abbr.startswith("_") or not isinstance(name, str):
+            continue
+        c = reg.resolve(name)[0] or P.norm_series(name)
+        reg.add(P.norm_series(abbr), c, abbr, "editorial alias", override=True)
+        reg.name.setdefault(c, name)
+    # "_learned" is re-derived by every build (learn_abbreviations) and only RECORDED in the
+    # file, with its evidence; "_rejected" is the editorial veto.
+    return reg, stats
+
+
+def learn_abbreviations(files, reg, rejected):
+    """Abbreviations a file name uses for a series, learned where the file's prefix is
+    unknown and its item (or OTRR's log) names a known series: "esca" in Escape1953,
+    "dimx" in Dimension-X. Kept only when the prefix could abbreviate that series
+    (P.is_abbreviation), at least 3 files across the corpus say so, and 80% agree."""
+    votes = collections.defaultdict(collections.Counter)
+    items = collections.defaultdict(lambda: collections.defaultdict(set))
+    for fr in files:
+        fs = fr["p"]["series"]
+        if not fs:
+            continue
+        fk = P.norm_series(fs)
+        if not fk or fk in reg.k2c or reg.resolve(fs)[0]:
+            continue
+        target = reg.idp2c.get(fr["orow"]["idp"]) if fr.get("orow") else None
+        if not target and fr.get("item_series"):
+            target = reg.resolve(fr["item_series"])[0]
+        if target:
+            votes[fk][target] += 1
+            items[fk][target].add(fr["ident"])
+    learned = {}
+    for fk, c in votes.items():
+        if fk in rejected:
+            continue
+        target, n = c.most_common(1)[0]
+        total = sum(c.values())
+        name = reg.display(target, target)
+        if n < 3 or n / total < 0.8:
+            continue
+        if not (P.is_abbreviation(fk, target) or fk == P.initials(name)):
+            continue
+        # A two- or three-letter prefix ("md", "st", "la") applies corpus-wide only when two
+        # uploads independently use it for the same series; otherwise it is recorded, not applied.
+        applied = len(fk) >= 4 or (len(items[fk][target]) >= 2 and n >= 20)
+        learned[fk] = {"series": name, "files": n, "disagree": total - n, "items": len(items[fk][target]),
+                       "applied": applied, "evidence": sorted(items[fk][target])[:5],
+                       "why": "file-name prefix vs item title / OTRR log"}
+    return learned
+
+
+def item_dirs(name):
+    parts = name.split("/")[:-1]
+    out = []
+    for d in reversed(parts):
+        d = re.sub(r"\.(flac\d*|mp3|ogg)$", "", d, flags=re.I)
+        if re.fullmatch(r"[\d\s._-]*|undated|mp3s?|disc\s*\d+|cd\s*\d+|side\s*[ab]|vol(ume)?\s*\d+", d.strip(), re.I):
+            continue
+        out.append(d)
+    return out
+
+
+def item_full_date(it):
+    for k in ("date", "year"):
+        v = it.get(k)
+        if isinstance(v, list):
+            v = v[0] if v else None
+        m = re.fullmatch(r"(19[2-9]\d)-(\d\d)-(\d\d)", str(v or "").strip()[:10])
+        if m and P.valid_date(*m.groups()):
+            return m.group(0)
+    return None
+
+
+def first_parse(f, it, ident, n_audio, uiuc):
+    """Everything a file says about itself, before any series is resolved."""
+    name = f["name"]
+    st = P.stem(name)
+    idt = {}
+    um = P.UIUC_FILE.search(name)
+    if um and uiuc.get(um.group(0)):
+        u = uiuc[um.group(0)]
+        prog = u["program"] if u.get("program") and len(u["program"]) <= 70 else None
+        ser = prog or re.sub(r"\s*(#\s*\d+|\d+|part\s*\d+(\s*of\s*\d+)?)\s*$", "", u["title"] or "", flags=re.I).strip()
+        p = {"family": "UIUC_findingaid", "series": ser or None, "date": u["date"],
+             "decade": (u["date"] or "")[:3] + "0s" if u["date"] else None, "num": None, "title": u["title"],
+             "aka": None, "variant": None}
+        idt = {"uiuc": f"https://archives.library.illinois.edu/archon/?p=collections/findingaid&id=1994&q=#id{u['anchor']}",
+               "uiuc_item": u["item"], "speaker": u.get("speaker")}
+        return p, "uiuc_findingaid" if u["date"] else None, idt, u
+    p = P.parse(name)
+    date_source = "filename" if p["date"] else None
+    if not p["date"]:
+        # Fallbacks, in order: the ID3 title tag, then for a single-episode item its own
+        # title and identifier; then a date written out in the title or album tag.
+        ttag = f.get("title") if isinstance(f.get("title"), str) else None
+        alts = [ttag] + ([it.get("title"), ident] if n_audio <= 2 else [])
+        for alt in alts:
+            q = P.parse(alt or "") if alt else None
+            if q and q["date"]:
+                p = dict(q, series=q["series"] or p["series"], title=q["title"] or p["title"],
+                         family=q["family"] + "+alt")
+                date_source = "filename_alt"
+                break
+    if not p["date"]:
+        for src, txt in (("id3_title_text", f.get("title")), ("id3_album_text", f.get("album")),
+                         ("filename_text", st)):
+            dt = P.parse_text_date(txt if isinstance(txt, str) else "")
+            if dt:
+                p = dict(p, date=dt, decade=dt[:3] + "0s")
+                date_source = src
+                break
+    if not p["date"] and n_audio == 1:
+        dt = P.parse_text_date(it.get("title") or "") or item_full_date(it)
+        if dt:
+            p = dict(p, date=dt, decade=dt[:3] + "0s")
+            date_source = "item_metadata"
+    if not p["title"] and n_audio == 1 and P.is_titleish(it.get("title") or ""):
+        p = dict(p, title=re.sub(r"\s+", " ", it["title"]).strip())
+        idt["title_from"] = "item_title"
+    return p, date_source, idt, None
+
+
+def date_source_of(r):
+    return r["date_source"] if r["date"] else None
+
+
+def _title_keys(t):
+    """A title's match keys: itself, and the part after a " - " (file titles often carry the
+    series first: "Suspense - The Burning Court")."""
+    out = []
+    for x in [t] + ([t.rsplit(" - ", 1)[1]] if t and " - " in t else []):
+        nt = A.norm_title(x)
+        if len(nt) >= 6 and not nt.isdigit():
+            out.append(nt)
+    return out
+
+
+_STOP = {"the", "and", "with", "guest", "guests", "part", "episode", "show", "program", "for", "from", "pt"}
+TITLE_SIM_FLOOR = 0.34
+
+
+def title_words(t):
+    t = re.sub(r"([a-z])([A-Z])", r"\1 \2", t or "")
+    return {w for w in re.findall(r"[a-z]{3,}", t.lower()) if w not in _STOP}
+
+
+def title_similarity(a, b):
+    """Shared words over the shorter title's words; 1.0 when either has no words to compare."""
+    wa, wb = title_words(a), title_words(b)
+    if not wa or not wb:
+        return 1.0
+    return len(wa & wb) / min(len(wa), len(wb))
+
+
+NUM_DATE_FLOOR = (0.9, 5)   # a series' numbers give dates only where 90% of 5+ checkable files agree
+
+
+def match_logs(recs, otrr_rows, reg, re_by_key, stats):
+    """Fill date, number, title and credits from OTRR's logs (and dates from the spine) for
+    files the log does not list by name. Three rules, each recorded in `identity`:
+      series + air date   -> the log row of that date (duration checked against the copies
+                             the log lists, 0.6-1.6x; a mismatch is recorded, not applied)
+      series + title      -> the date, when the series' log (or spine) has that title on one date
+      series + number     -> the date, only in series where numbers and dates already agree
+                             on 90% of 5+ files that carry both (NUM_DATE_FLOOR)"""
+    by_cd, by_ct, by_cn = (collections.defaultdict(list) for _ in range(3))
+    for row in otrr_rows:
+        c = reg.idp2c.get(row["idp"])
+        if not c:
+            continue
+        if row["date"]:
+            by_cd[(c, row["date"])].append(row)
+        for nt in _title_keys(row["title"]):
+            by_ct[(c, nt)].append(row)
+        if str(row.get("epnum") or "").isdigit() and int(row["epnum"]) > 0:
+            by_cn[(c, int(row["epnum"]))].append(row)
+    re_ct = collections.defaultdict(set)
+    for c, ss in re_by_key.items():
+        for s in ss:
+            for e in s.get("episodes") or []:
+                dt = (e.get("date") or "").replace(".", "-")
+                if re.fullmatch(r"19\d\d-\d\d-\d\d", dt) and P.valid_date(*dt.split("-")):
+                    for nt in _title_keys(e.get("title")):
+                        re_ct[(c, nt)].add(dt)
+
+    def apply_row(r, row, method):
+        if r["title"] and row["title"] and title_similarity(r["title"], row["title"]) < TITLE_SIM_FLOOR:
+            r["idt"].setdefault("disagree", []).append({"otrr_eid_title_conflict": row["eid"], "otrr_title": row["title"]})
+            stats["otrr_title_conflict_not_applied"] += 1
+            return False
+        r["orow"] = row
+        r["idt"]["otrr_eid"] = row["eid"]
+        r["idt"]["otrr_match"] = method
+        if row["title"]:
+            if r["title"] and A.norm_title(r["title"]) != A.norm_title(row["title"]):
+                r["idt"]["title_by_name"] = r["title"]
+                stats["otrr_title_differs_similar"] += 1
+            r["title"] = row["title"]
+        if str(row.get("epnum") or "").isdigit() and int(row["epnum"]) > 0:
+            if r["num"] is not None and r["num"] != int(row["epnum"]):
+                r["idt"].setdefault("disagree", []).append({"num_by_name": r["num"]})
+                stats["otrr_num_disagrees"] += 1
+            r["num"] = int(row["epnum"])
+        return True
+
+    # 1. series + air date
+    for r in recs:
+        if r["orow"] or not r["key"] or not r["date"]:
+            continue
+        rows = by_cd.get((r["key"], r["date"]))
+        if not rows:
+            continue
+        if len(rows) > 1:
+            tk = set(_title_keys(r["title"]))
+            pick = [x for x in rows if tk & set(_title_keys(x["title"]))]
+            if len(pick) != 1:
+                stats["otrr_series_date_ambiguous"] += 1
+                continue
+            rows = pick
+        row = rows[0]
+        secs = [float(fl["seconds"]) for fl in row["files"] if re.fullmatch(r"\d+(\.\d+)?", str(fl.get("seconds") or ""))
+                and float(fl["seconds"]) > 0]
+        dur = "no_duration"
+        if secs and r["length"]:
+            ratio = r["length"] / statistics.median(secs)
+            if not 0.6 <= ratio <= 1.6:
+                stats["otrr_series_date_duration_mismatch"] += 1
+                r["idt"].setdefault("disagree", []).append({"otrr_eid_duration_mismatch": row["eid"],
+                                                            "ratio": round(ratio, 2)})
+                continue
+            dur = "duration_verified"
+        if apply_row(r, row, "series_date:" + dur):
+            stats["otrr_series_date"] += 1
+            stats["otrr_series_date:" + dur] += 1
+
+    # 2. series + title -> date, in series where the log's (or the spine's) title->date already
+    # agrees with the files that carry both a date and their own title (NUM_DATE_FLOOR).
+    # MEASURED 2026-10-19: corpus-wide the log's title->date agrees on only ~1 in 5 such files
+    # (repeat performances of one script, re-used titles), the spine's on ~9 in 10.
+    tagree = {"otrr": collections.defaultdict(lambda: [0, 0]), "spine": collections.defaultdict(lambda: [0, 0])}
+    for r in recs:
+        t0 = r.get("title0")
+        if not (r["key"] and r["date"] and t0) or r["date_source"] == "otrr_log":
+            continue
+        for nt in _title_keys(t0):
+            dates = {x["date"] for x in by_ct.get((r["key"], nt)) or [] if x["date"]}
+            sd = re_ct.get((r["key"], nt)) or set()
+            if len(dates) == 1:
+                tagree["otrr"][r["key"]][0] += next(iter(dates)) == r["date"]
+                tagree["otrr"][r["key"]][1] += 1
+            if len(sd) == 1:
+                tagree["spine"][r["key"]][0] += next(iter(sd)) == r["date"]
+                tagree["spine"][r["key"]][1] += 1
+            if dates or sd:
+                break
+    tok = {}
+    for src, d in tagree.items():
+        tok[src] = {k for k, (a, n) in d.items() if n >= NUM_DATE_FLOOR[1] and a / n >= NUM_DATE_FLOOR[0]}
+        stats[f"title_date_{src}_checks"] = sum(n for a, n in d.values())
+        stats[f"title_date_{src}_agree"] = sum(a for a, n in d.values())
+        stats[f"title_date_{src}_series_trusted"] = len(tok[src])
+        stats[f"title_date_{src}_trusted_checks"] = sum(d[k][1] for k in tok[src])
+        stats[f"title_date_{src}_trusted_agree"] = sum(d[k][0] for k in tok[src])
+    for r in recs:
+        if r["date"] or not r["key"] or not r["title"]:
+            continue
+        for nt in _title_keys(r["title"]):
+            rows = by_ct.get((r["key"], nt)) or []
+            dates = {x["date"] for x in rows if x["date"]}
+            if len(dates) == 1 and r["key"] in tok["otrr"]:
+                if len(rows) == 1 and not apply_row(r, rows[0], "series_title"):
+                    break
+                r["date"], r["date_source"] = dates.pop(), "otrr_title"
+                stats["date_from_otrr_title"] += 1
+                break
+            sd = re_ct.get((r["key"], nt)) or set()
+            if len(sd) == 1 and r["key"] in tok["spine"]:
+                r["date"], r["date_source"] = next(iter(sd)), "spine_title"
+                r["idt"]["spine_match"] = "series_title"
+                stats["date_from_spine_title"] += 1
+                break
+        if r["date"]:
+            r["decade"] = r["date"][:3] + "0s"
+
+    # 3. series + number -> date, where the series' numbering is shown to agree with the log
+    agree = collections.defaultdict(lambda: [0, 0])
+    for r in recs:
+        if r["key"] and r["date"] and r["num"] and r["idt"].get("otrr_match") is None and \
+                r["date_source"] not in ("otrr_log", "otrr_title"):
+            dates = {x["date"] for x in by_cn.get((r["key"], r["num"]), []) if x["date"]}
+            if len(dates) == 1:
+                agree[r["key"]][0] += next(iter(dates)) == r["date"]
+                agree[r["key"]][1] += 1
+    ok = {k for k, (a, n) in agree.items() if n >= NUM_DATE_FLOOR[1] and a / n >= NUM_DATE_FLOOR[0]}
+    stats["num_date_series_checked"] = len(agree)
+    stats["num_date_series_trusted"] = len(ok)
+    stats["num_date_checks_agree"] = sum(a for a, n in agree.values())
+    stats["num_date_checks"] = sum(n for a, n in agree.values())
+    for r in recs:
+        if r["date"] or not r["key"] or r["num"] is None or r["key"] not in ok:
+            continue
+        rows = [x for x in by_cn.get((r["key"], r["num"]), []) if x["date"]]
+        if len({x["date"] for x in rows}) == 1:
+            if len(rows) == 1 and not apply_row(r, rows[0], "series_num"):
+                continue
+            r["date"], r["date_source"] = rows[0]["date"], "otrr_num"
+            r["decade"] = r["date"][:3] + "0s"
+            stats["date_from_otrr_num"] += 1
 
 
 GENERIC_SERIES = {"various", "variousartists", "unknown", "misc", "miscellaneous", "radio", "oldtimeradio"}
@@ -162,51 +564,59 @@ def make_schedule_matcher(by_title, by_artist):
 
 def main():
     t0 = time.time()
-    os.makedirs(ia.OUT, exist_ok=True)
+    args = sys.argv[1:]
+    out_dir = args[args.index("--out") + 1] if "--out" in args else ia.OUT
+    os.makedirs(out_dir, exist_ok=True)
     ed = lambda n: load(os.path.join(ia.EDITORIAL, n), {})
     aliases = ed("series_aliases.json")
-    claims = {k: v for k, v in ed("audio_claims.json").items() if not k.startswith("_")}
-    gov = {k: v for k, v in ed("gov_series.json").items() if not k.startswith("_")}
+    claims_raw = {k: v for k, v in ed("audio_claims.json").items() if not k.startswith("_")}
+    gov_raw = {k: v for k, v in ed("gov_series.json").items() if not k.startswith("_")}
     takedowns = list((ed("takedowns.json").get("requests") or {}).values())
     lic_ev = ed("licence_evidence.json").get("evidence") or {}
     pub_rec = ed("published_records.json").get("records") or {}
+    stats = collections.Counter()
 
     # The spine: RadioEchoes series names are the canonical display names.
     re_series = []
     for f in sorted(glob.glob(os.path.join(ia.CACHE, "radioechoes", "series", "*.json"))):
         re_series.append(ia.read_json(f))
-    known = {}
-    re_by_key = {}
-    for s in re_series:
-        k = P.norm_series(s["series"])
-        if k:
-            known.setdefault(k, s["series"])
-            re_by_key.setdefault(k, []).append(s)
-    for d in (gov, claims):
-        for k, v in d.items():
-            known.setdefault(k, v["series"])
-    for v in aliases.values() if isinstance(aliases, dict) else []:
-        if isinstance(v, str):
-            known.setdefault(P.norm_series(v), v)
     # OTRR's logs: each row names the archive.org file that plays it, so a file
     # found there takes its series, date, number, title and credits from the log
     # rather than from its name (date_source "otrr_log").
     otrr_by_file = {}
     otrr_rows = []
+    otrr_progs = {p["idp"]: p["ptitle"] for p in load(os.path.join(ia.CACHE, "otrr", "otterlog.json"), [])}
     for f in sorted(glob.glob(os.path.join(ia.CACHE, "otrr", "programs", "*.json.gz"))):
         prog = ia.read_json(f)
-        k = P.norm_series(prog["program"])
-        if k:
-            known.setdefault(k, prog["program"])
+        otrr_progs.setdefault(prog["idp"], prog["program"])
         for r in prog["episodes"]:
+            r.setdefault("idp", prog["idp"])
             otrr_rows.append(r)
             for fl in r["files"]:
                 otrr_by_file[(fl["archive_id"], fl["file"])] = r
-    resolver = SeriesResolver(aliases, known)
+    ptitles = load(os.path.join(ia.CACHE, "otrr", "pTitles.json"), [])
+    if not ptitles:
+        print("WARNING: no OTRR alias titles (.cache/otrr/pTitles.json); series will not fold aliases", file=sys.stderr)
+    named = [(v["series"] if isinstance(v, dict) else v, "audio_claims") for v in claims_raw.values()] + \
+            [(v["series"] if isinstance(v, dict) else v, "gov_series") for v in gov_raw.values()]
+    reg, rstats = build_registry(re_series, otrr_progs, ptitles, aliases, named)
+    stats.update({"registry:" + k: v for k, v in rstats.items()})
+    canon = lambda name: reg.resolve(name)[0] or P.norm_series(name)
+    claims = {canon(v["series"] if isinstance(v, dict) else v): v for v in claims_raw.values()}
+    gov = {canon(v["series"] if isinstance(v, dict) else v): v for v in gov_raw.values()}
+    re_by_key = collections.defaultdict(list)
+    for s in re_series:
+        k = reg.k2c.get(P.norm_series(s["series"]))
+        if k:
+            re_by_key[k].append(s)
 
+    uiuc_html = os.path.join(ia.CACHE, "uiuc", "findingaid_1994.html")
+    uiuc = P.parse_uiuc_findingaid(open(uiuc_html, encoding="utf-8", errors="replace").read()) \
+        if os.path.exists(uiuc_html) else {}
+
+    # Pass 1: what every file says about itself.
     items = {}
-    episodes = {}
-    stats = collections.Counter()
+    files = []
     meta_files = sorted(glob.glob(os.path.join(ia.CACHE, "meta", "*.json.gz")))
     for mf in meta_files:
         d = ia.read_json(mf)
@@ -230,72 +640,167 @@ def main():
         n_audio = len(chosen)
         for f in chosen:
             stats["files"] += 1
-            p = P.parse(f["name"])
-            if not p["date"]:
-                # Fallbacks, in order: the ID3 title tag, then for a single-episode
-                # item its own title and identifier.
-                alts = [f.get("title") if isinstance(f.get("title"), str) else None] + ([it.get("title"), ident] if n_audio <= 2 else [])
-                for alt in alts:
-                    q = P.parse(alt or "") if alt else None
-                    if q and q["date"]:
-                        p = dict(q, series=q["series"] or p["series"], title=q["title"] or p["title"],
-                                 family=q["family"] + "+alt")
-                        break
-            stats["family:" + p["family"]] += 1
-            tag = P.parse_album_tag(f.get("album"))
-            date = p["date"] or (tag or {}).get("date")
-            date_source = "filename" if p["date"] else ("album_tag" if tag and tag.get("date") else None)
-            if p["date"] and tag and tag.get("date") and tag["date"] != p["date"]:
-                stats["date_tag_disagrees"] += 1
-            key, sname, how = resolver.resolve(p["series"], isr)
-            title = p["title"] or (f.get("title") if not P.parse(f.get("title") or "")["date"] else None)
-            num = p["num"] if p["num"] is not None else (tag or {}).get("num")
-            orow = otrr_by_file.get((ident, f["name"]))
-            if orow:
-                key, sname, how = P.norm_series(orow["program"]), orow["program"], "otrr_log"
-                if orow["date"]:
-                    if date and date != orow["date"]:
-                        stats["date_otrr_disagrees"] += 1
-                    date, date_source = orow["date"], "otrr_log"
-                title = orow["title"] or title
-                num = int(orow["epnum"]) if str(orow.get("epnum") or "").isdigit() else num
-            stats["series:" + how] += 1
-            if not key:
-                ek = f"x:{ident}/{f['name']}"
-            elif date:
-                ek = f"{key}|{date}"
-            elif num is not None:
-                ek = f"{key}|n{num}"
-            elif title:
-                ek = f"{key}|t{A.norm_title(title)}"
+            p, date_source, idt, uiuc_row = first_parse(f, it, ident, n_audio, uiuc)
+            files.append({"f": f, "p": p, "date_source": date_source, "idt": idt, "uiuc": uiuc_row,
+                          "ident": ident, "item_series": isr, "item_title": it.get("title"),
+                          "orow": otrr_by_file.get((ident, f["name"])), "colls": colls, "d": d, "it": it,
+                          "text": text, "tstems": tstems})
+
+    # Abbreviations learned from the corpus join the registry before anything resolves.
+    learned = learn_abbreviations(files, reg, set(aliases.get("_rejected") or []))
+    for fk, e in learned.items():
+        if e["applied"]:
+            reg.add(fk, canon(e["series"]), fk, "learned alias")
+    stats["learned_aliases"] = len(learned)
+    stats["learned_aliases_applied"] = sum(1 for e in learned.values() if e["applied"])
+    if "--write-aliases" in args:
+        aliases["_learned"] = dict(sorted(learned.items()))
+        aliases.setdefault("_rejected", [])
+        aliases["_learned_doc"] = ("Learned by build_db.learn_abbreviations: a file-name prefix the registry did not "
+                                   "know, in items whose title (or OTRR's log) names a known series, kept when it "
+                                   "could abbreviate that series, 3+ files say so and 80% agree. Move a wrong one "
+                                   "to _rejected.")
+        ia.write_json(os.path.join(ia.EDITORIAL, "series_aliases.json"), aliases)
+
+    # Pass 2: resolve each file's series against the registry.
+    recs_out = []
+    known_canon = set(reg.k2c.values())
+    seen_names = collections.defaultdict(set)
+    for fr in files:
+        f, p, it, ident = fr["f"], fr["p"], fr["it"], fr["ident"]
+        idt = dict(fr["idt"])
+        cands = [("file", p["series"])] + [("dir", x) for x in item_dirs(f["name"])] + \
+                [("item", fr["item_series"]), ("item_title", it.get("title"))]
+        tags = [("id3_album", f.get("album")), ("id3_artist", f.get("artist"))]
+        key = sname = how = None
+        for origin, raw in cands + tags:
+            if raw and isinstance(raw, str):
+                c, m = reg.resolve(raw, prefix=not origin.startswith("id3"))
+                if c:
+                    key, sname, how = c, raw, f"{origin}:{m}"
+                    break
+        if not key:
+            for origin, raw in cands:
+                k = P.norm_series(raw) if raw else ""
+                if k and (origin != "file" or len(k) >= 5) and k not in P.GENERIC_FILE_SERIES:
+                    key, sname, how = k, raw, origin
+                    break
+        if not key:
+            how = "none"
+        date, date_source = p["date"], fr["date_source"]
+        tag = P.parse_album_tag(f.get("album"))
+        if not date and tag and tag.get("date"):
+            date, date_source = tag["date"], "album_tag"
+        if p["date"] and tag and tag.get("date") and tag["date"] != p["date"]:
+            stats["date_tag_disagrees"] += 1
+            idt.setdefault("disagree", []).append({"album_tag": tag["date"]})
+        title = p["title"] or (f.get("title") if isinstance(f.get("title"), str) and
+                               not P.parse(f.get("title") or "")["date"] and P.is_titleish(f.get("title")) else None)
+        num = p["num"] if p["num"] is not None else (tag or {}).get("num")
+        orow = fr["orow"]
+        if orow:
+            okey = reg.idp2c.get(orow["idp"]) or canon(orow["program"])
+            if key and key != okey:
+                idt.setdefault("disagree", []).append({"series_by_name": key})
+            key, sname, how = okey, orow["program"], "otrr_log"
+            if orow["date"]:
+                if date and date != orow["date"]:
+                    stats["date_otrr_disagrees"] += 1
+                    idt.setdefault("disagree", []).append({date_source or "name": date})
+                date, date_source = orow["date"], "otrr_log"
+            title = orow["title"] or title
+            num = int(orow["epnum"]) if str(orow.get("epnum") or "").isdigit() and orow["epnum"] != "0" else num
+            idt["otrr_eid"] = orow["eid"]
+        stats["series:" + how.split(":")[0] + (":" + how.split(":")[1] if ":" in how else "")] += 1
+        stats["family:" + p["family"]] += 1
+        length = seconds(f.get("length"))
+        kind = None
+        if fr["uiuc"] and fr["uiuc"].get("speaker") and how.split(":")[0] not in ("otrr_log",) and \
+                not (key in reg.re_keys or key in reg.idps):
+            kind = "lecture"
+        if not kind and not orow:
+            kind, rule = P.content_kind(P.stem(f["name"]), length, fr["item_title"], fr["colls"], fr["text"],
+                                        known_series=key in known_canon)
+            if kind:
+                idt["kind_rule"] = rule
+        if sname:
+            seen_names[key].add(sname)
+        d = fr["d"]
+        uiuc_text = (" " + (fr["uiuc"].get("title") or "")) if fr["uiuc"] else ""
+        recs_out.append({"key": key, "sname": reg.display(key, sname) if key else None, "how": how, "raw": sname,
+                         "title0": p["title"],
+                         "date": date, "date_source": date_source, "num": num, "title": title, "aka": p["aka"],
+                         "decade": p["decade"], "kind": kind, "idt": idt, "orow": orow, "length": length,
+                         "rec": {
+            "archive_id": ident, "file": f["name"], "format": f.get("format"), "source": f.get("source"),
+            "size": int(f["size"]) if str(f.get("size", "")).isdigit() else None,
+            "length_s": length, "kbps": bitrate_kbps(f), "md5": f.get("md5"),
+            "variant": p["variant"], "collections": fr["colls"], "is_dark": d.get("is_dark"),
+            "creator": f.get("creator") or f.get("artist") or it.get("creator"),
+            "item_text": fr["text"] + uiuc_text + " " + " ".join(str(f.get(k) or "") for k in ("album", "genre", "artist")),
+            "producer_text": " ".join(str(it.get(k) or "") for k in ("creator", "publisher", "contributor")),
+            "otrr": ident.upper().startswith("OTRR_") or "lumedwards" in fr["colls"],
+            "transcript": stem_key(f["name"]) in fr["tstems"],
+            "url": f"https://archive.org/download/{ident}/{f['name']}"}})
+    del files
+
+    # Pass 3: OTRR's logs and the spine fill what the names left out.
+    match_logs(recs_out, otrr_rows, reg, re_by_key, stats)
+
+    # Group files into broadcasts.
+    episodes = {}
+    by_md5 = {}
+    for r in recs_out:
+        key, date, num, title = r["key"], r["date"], r["num"], r["title"]
+        if not key:
+            ek = None
+        elif date:
+            ek = f"{key}|{date}"
+        elif num is not None:
+            ek = f"{key}|n{num}"
+        elif title and A.norm_title(title):
+            ek = f"{key}|t{A.norm_title(title)}"
+        else:
+            ek = None
+        if ek is None:
+            # The same file uploaded to several items is one recording of one unknown broadcast.
+            md5 = r["rec"]["md5"]
+            ek = by_md5.get(md5) if md5 else None
+            if ek is None:
+                ek = f"x:{r['rec']['archive_id']}/{r['rec']['file']}"
+                if md5:
+                    by_md5[md5] = ek
             else:
-                ek = f"x:{ident}/{f['name']}"
-            ep = episodes.setdefault(ek, {"id": ek, "series_key": key, "series_name": sname, "date": date,
-                                          "date_source": date_source, "num": num, "title": title,
-                                          "aka": p["aka"], "decade": p["decade"], "recordings": []})
-            if not ep["title"] and title:
-                ep["title"] = title
-            if orow and orow["people"] and not ep.get("people"):
-                ep["people"] = orow["people"]
-                ep["otrr_eid"] = orow["eid"]
-            ep["recordings"].append({
-                "archive_id": ident, "file": f["name"], "format": f.get("format"), "source": f.get("source"),
-                "size": int(f["size"]) if str(f.get("size", "")).isdigit() else None,
-                "length_s": seconds(f.get("length")), "kbps": bitrate_kbps(f), "md5": f.get("md5"),
-                "variant": p["variant"], "collections": colls, "is_dark": d.get("is_dark"),
-                "creator": f.get("creator") or f.get("artist") or it.get("creator"),
-                "item_text": text + " " + " ".join(str(f.get(k) or "") for k in ("album", "genre", "artist")),
-                "producer_text": " ".join(str(it.get(k) or "") for k in ("creator", "publisher", "contributor")),
-                "otrr": ident.upper().startswith("OTRR_") or "lumedwards" in colls,
-                "transcript": stem_key(f["name"]) in tstems,
-                "url": f"https://archive.org/download/{ident}/{f['name']}"})
+                stats["x_merged_by_md5"] += 1
+        ep = episodes.setdefault(ek, {"id": ek, "series_key": key if not ek.startswith("x:") else key,
+                                      "series_name": r["sname"], "date": date if not ek.startswith("x:") else date,
+                                      "date_source": date_source_of(r), "num": num, "title": title,
+                                      "aka": r["aka"], "decade": r["decade"], "recordings": [], "kinds": [],
+                                      "identity": {"series": r["how"], "as": r["raw"]}})
+        if not ep["title"] and title:
+            ep["title"] = title
+        ep["kinds"].append(r["kind"])
+        for k2, v in r["idt"].items():
+            if k2 == "disagree":
+                ep["identity"].setdefault("disagree", []).extend(v)
+            else:
+                ep["identity"].setdefault(k2, v)
+        orow = r["orow"]
+        if orow and orow["people"] and not ep.get("people"):
+            ep["people"] = orow["people"]
+            ep["otrr_eid"] = orow["eid"]
+        ep["recordings"].append(r["rec"])
+    for ep in episodes.values():
+        ks = collections.Counter(k or "radio" for k in ep.pop("kinds"))
+        ep["content_kind"] = ks.most_common(1)[0][0]
+    del recs_out
 
     # LibriVox: each project is a "play" series; its sections are its parts.
     lv = load(os.path.join(ia.CACHE, "librivox.json.gz"), [])
     for b in lv:
         key = "librivox" + str(b["id"])
         name = b.get("title")
-        known[key] = name
+        reg.name[key] = name
         for sec in sorted(b.get("sections") or [], key=lambda s: int(s.get("section_number") or 0)):
             ek = f"{key}|s{sec.get('section_number')}"
             episodes[ek] = {"id": ek, "series_key": key, "series_name": name, "date": None, "date_source": None,
@@ -339,7 +844,7 @@ def main():
     script_ren = collections.defaultdict(list)
     for r in load(os.path.join(ia.CACHE, "cce_drama_renewals.json.gz"), []):
         name = r.get("series") or re.split(r",|\bNo\.", r["title"])[0]
-        k, _ = resolver.key(name)
+        k = canon(name)
         if k in by_series and r.get("orig_year"):
             script_ren[k].append(r)
     if not script_ren:
@@ -375,7 +880,7 @@ def main():
     grw = load(os.path.join(ia.CACHE, "grw", "scripts.json"), {"scripts": []})
     script_rows = []
     for sc in grw["scripts"]:
-        k, _ = resolver.key(re.sub(r"^The\s+", "", sc["series"]))
+        k = canon(sc["series"])
         ep = episodes.get(f"{k}|{sc['date']}") if sc.get("date") else None
         if ep is None and sc.get("date"):
             # GRW names some series differently ("Columbia Workshop" vs "The Columbia Workshop"):
@@ -391,7 +896,7 @@ def main():
         stats["scripts"] += 1
         stats["scripts_matched"] += bool(ep)
 
-    db_path = os.path.join(ia.OUT, "radio-catalog.sqlite")
+    db_path = os.path.join(out_dir, "radio-catalog.sqlite")
     tmp = db_path + ".tmp"
     if os.path.exists(tmp):
         os.remove(tmp)
@@ -409,11 +914,15 @@ def main():
         state_count[j["state"]] += 1
         bucket_count[j["rec_bucket"]] += 1
         bucket_count[j["work_bucket"]] += 1
-        db.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        db.execute("INSERT INTO episodes (id, series_key, air_date, date_source, num, title, aka, decade, recordings, "
+                   "median_length_s, has_transcript, spine, state, rec_bucket, work_bucket, evidence, content_kind, "
+                   "identity) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             ep["id"], ep["series_key"], ep["date"], ep["date_source"], ep["num"], ep["title"], ep["aka"],
             ep["decade"], len(recs), med, any(r["transcript"] for r in recs),
             json.dumps(ep.get("spine")) if ep.get("spine") else None,
-            j["state"], j["rec_bucket"], j["work_bucket"], json.dumps(j["evidence"], ensure_ascii=False)))
+            j["state"], j["rec_bucket"], j["work_bucket"], json.dumps(j["evidence"], ensure_ascii=False),
+            ep.get("content_kind") or "radio",
+            json.dumps(ep.get("identity"), ensure_ascii=False) if ep.get("identity") else None))
         for i, r in enumerate(recs):
             db.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
                 ep["id"], i, r["archive_id"], r["file"], r["url"], r["format"], r["source"], r["size"],
@@ -421,11 +930,18 @@ def main():
     for k, eps in by_series.items():
         ss = re_by_key.get(k) or []
         dates = sorted(e["date"] for e in eps if e["date"])
-        db.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?)", (
-            k, known.get(k) or eps[0]["series_name"], ss[0]["genre"] if ss else None,
+        db.execute("INSERT INTO series (key, name, genre, first_date, last_date, episodes, is_librivox, "
+                   "foreign_evidence, claim, in_spine, otrr_programs, alias_names) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+            k, reg.display(k, eps[0]["series_name"]), ss[0]["genre"] if ss else None,
             dates[0] if dates else None, dates[-1] if dates else None, len(eps),
             k.startswith("librivox"), json.dumps(series_foreign.get(k)) if k in series_foreign else None,
-            json.dumps(claims.get(k) or gov.get(k)) if (k in claims or k in gov) else None, bool(ss)))
+            json.dumps(claims.get(k) or gov.get(k)) if (k in claims or k in gov) else None, bool(ss),
+            json.dumps(sorted(reg.idps[k])) if reg.idps.get(k) else None,
+            json.dumps(sorted(seen_names.get(k) or [])[:50], ensure_ascii=False) if seen_names.get(k) else None))
+    for ak, ck in reg.k2c.items():
+        if ck in by_series:
+            alias, source = reg.src[ak]
+            db.execute("INSERT INTO series_aliases VALUES (?,?,?,?)", (ak, ck, alias, source))
     for it in items.values():
         db.execute("INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?)", (
             it["id"], it["title"], json.dumps(it["collections"]), it["licenseurl"], it["uploader"],
@@ -436,7 +952,7 @@ def main():
     # OTRR log rows that say a recording survives but name no file we harvested.
     for r in otrr_rows:
         if r["exists"] and r["date"] and not r["files"]:
-            k = P.norm_series(r["program"])
+            k = reg.idp2c.get(r["idp"]) or canon(r["program"])
             if f"{k}|{r['date']}" not in episodes:
                 wants.append((k, r["date"], r["title"], "otrr"))
     states = dict(db.execute("SELECT id, state FROM episodes").fetchall())
@@ -457,7 +973,7 @@ def main():
               "states": dict(state_count), "buckets": dict(bucket_count), "wants": len(wants),
               "spine_series": len(re_series), "schedules_rows": len(sched["rows"]),
               "librivox_projects": len(lv), "stats": dict(stats), "seconds": round(time.time() - t0)}
-    ia.write_json(os.path.join(ia.OUT, "build_report.json"), report)
+    ia.write_json(os.path.join(out_dir, "build_report.json"), report)
     print(json.dumps({k: report[k] for k in ("items", "episodes", "series", "states", "wants")}, indent=1))
     # A build that judged nothing is a failed build (ENGINEERING-PROCESS §2).
     if not episodes:

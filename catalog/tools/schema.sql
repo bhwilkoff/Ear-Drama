@@ -10,7 +10,9 @@ CREATE TABLE series (
   is_librivox INTEGER,
   foreign_evidence TEXT,         -- JSON, when the series is judged non-US
   claim TEXT,                    -- JSON: editorial claim or government-work entry
-  in_spine INTEGER
+  in_spine INTEGER,
+  otrr_programs TEXT,            -- JSON list of OTRR program ids folded into this series
+  alias_names TEXT               -- JSON list of the names this series was found under
 );
 CREATE TABLE episodes (
   id TEXT PRIMARY KEY,           -- "<series>|<YYYY-MM-DD>" | "<series>|n<num>" | "<series>|t<title>" | "x:<item>/<file>"
@@ -23,7 +25,9 @@ CREATE TABLE episodes (
   spine TEXT,                    -- JSON: the matching RadioEchoes episode
   state TEXT,                    -- keep_clean | keep_unclaimed | hide_claim | hide_unidentified
   rec_bucket TEXT, work_bucket TEXT,
-  evidence TEXT                  -- JSON list, each with a source a reader can open
+  evidence TEXT,                 -- JSON list, each with a source a reader can open
+  content_kind TEXT,             -- radio | music | commercial | scripture | podcast | lecture (build_db: identity)
+  identity TEXT                  -- JSON: how series/date/number/title were found, OTRR eid, disagreements
 );
 CREATE TABLE recordings (
   episode_id TEXT, rank INTEGER,   -- rank 0 is the default copy
@@ -54,3 +58,7 @@ CREATE INDEX script_ep ON scripts(episode_id);
 CREATE TABLE credits (episode_id TEXT, person_id TEXT, name TEXT, role TEXT, source TEXT);  -- facts from OTRR's logs
 CREATE INDEX credit_ep ON credits(episode_id);
 CREATE INDEX credit_person ON credits(person_id);
+CREATE TABLE series_aliases (     -- every name key the registry resolves, and why
+  alias_key TEXT, series_key TEXT, alias TEXT, source TEXT
+);
+CREATE INDEX sa_series ON series_aliases(series_key);

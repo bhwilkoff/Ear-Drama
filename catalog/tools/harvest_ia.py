@@ -1,7 +1,13 @@
 """Enumerate archive.org's old-time radio items and cache a slim copy of each
 item's metadata (item fields + per-file audio rows + review summary).
 
-    python3 tools/harvest_ia.py [--workers 3] [--limit N] [--refresh]
+    python3 tools/harvest_ia.py [--workers 3] [--limit N] [--refresh] [--ids FILE]
+
+Beyond the five seeds it enumerates editorial/extra_seeds.json (written by
+tools/discover_corpus.py): its "queries" are scraped like seeds, its "ids" are
+taken as given. --ids adds a file of identifiers (one per line). An item whose
+metadata discover_corpus already fetched is copied from .cache/discover/meta/
+rather than fetched twice.
 
 Seeds and the never-enumerate list come from docs/research/radio/07 (MEASURED
 2026-10-17). Output: .cache/seeds.json, .cache/meta/<id>.json.gz,
@@ -33,10 +39,27 @@ FILE_KEYS = ("name", "source", "format", "size", "length", "md5", "title", "albu
              "track", "creator", "artist", "genre", "original", "private", "bitrate")
 
 
-def enumerate_seeds():
+def load_extra(ids_file=None):
+    """(queries {name: q}, ids {id: seed label}) from extra_seeds.json and --ids."""
+    queries, ids = {}, {}
+    path = os.path.join(ia.EDITORIAL, "extra_seeds.json")
+    if os.path.exists(path):
+        ex = ia.read_json(path)
+        queries = dict(ex.get("queries") or {})
+        for i in ex.get("ids") or {}:
+            ids[i] = "extra_seeds"
+    if ids_file:
+        with open(ids_file) as f:
+            for line in f:
+                if line.strip() and not line.startswith("#"):
+                    ids.setdefault(line.strip(), "ids_file")
+    return queries, ids
+
+
+def enumerate_seeds(extra_queries=None, extra_ids=None):
     ids = {}
     counts = {}
-    for name, q in SEEDS.items():
+    for name, q in list(SEEDS.items()) + list((extra_queries or {}).items()):
         n = 0
         for it in ia.scrape(q, FIELDS):
             ids.setdefault(it["identifier"], {"seeds": [], "mediatype": it.get("mediatype"),
@@ -49,6 +72,13 @@ def enumerate_seeds():
         if expected is not None and n < expected * 0.98:
             raise RuntimeError(f"seed {name}: scraped {n} of numFound {expected}")
         print(f"seed {name}: {n} (numFound {expected})", file=sys.stderr)
+    added = 0
+    for i, label in (extra_ids or {}).items():
+        if i not in ids:
+            added += 1
+        ids.setdefault(i, {"seeds": []})["seeds"].append(label)
+    counts["extra_ids"] = {"listed": len(extra_ids or {}), "new": added}
+    print(f"extra ids: {len(extra_ids or {})} listed, {added} not in any seed", file=sys.stderr)
     return ids, counts
 
 
@@ -79,6 +109,10 @@ def fetch(ident, refresh):
     path = os.path.join(ia.CACHE, "meta", ident + ".json.gz")
     if os.path.exists(path) and not refresh:
         return ident, "cached"
+    found = os.path.join(ia.CACHE, "discover", "meta", ident + ".json.gz")
+    if os.path.exists(found) and not refresh:
+        ia.write_json(path, ia.read_json(found), gz=True)
+        return ident, "copied"
     md = ia.get(ia.META + ident, timeout=120)
     if md is None:
         return ident, "failed"
@@ -93,9 +127,11 @@ def main():
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--limit", type=int)
     ap.add_argument("--refresh", action="store_true")
+    ap.add_argument("--ids", help="file of extra archive.org identifiers, one per line")
     a = ap.parse_args()
     t0 = time.time()
-    ids, counts = enumerate_seeds()
+    xq, xi = load_extra(a.ids)
+    ids, counts = enumerate_seeds(xq, xi)
     ia.write_json(os.path.join(ia.CACHE, "seeds.json"), {"counts": counts, "items": ids})
     todo = sorted(ids)[: a.limit] if a.limit else sorted(ids)
     status = {}
@@ -111,7 +147,7 @@ def main():
     ia.write_json(os.path.join(ia.CACHE, "harvest_report.json"), report)
     print(report["status"], file=sys.stderr)
     # A harvest that read nothing new and cached nothing is a failed harvest.
-    if not tally.get("fetched") and not tally.get("cached"):
+    if not tally.get("fetched") and not tally.get("cached") and not tally.get("copied"):
         sys.exit(1)
 
 
