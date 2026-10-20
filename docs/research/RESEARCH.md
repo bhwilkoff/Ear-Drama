@@ -433,6 +433,17 @@ voices while the software runs and forbids recording or publishing them. Synthes
 and owner questions C1-C10: `radio/08-collaborative-productions.md` (detail in
 08a, 08b, 08c; prototype parsers in `radio-catalog/prototypes/scripts/`).
 
+### 10a. The expansion, 2026-10-19/20 (owner: *"We want the most complete database possible"*)
+
+Four tracks, each with a report in `radio-catalog/reports/`: **A** corpus (+6,659
+archive.org items found by 449 measured queries), **B** identity (unidentified
+41,927 -> 1,290; a series registry from OTRR's 14,976 alias titles), **C** people
+and programs (all 124,919 RadioGOLDINdex records; OTRRpedia's 10,783 programs and
+51,130 people), **D** external (Wikidata, Wikipedia episode tables, 2,371 Haendiges
+logs, Commons art with licence evidence). Result: 157,503 episodes, 121,907 playable
+(~47,700 hours), half of the dated ones with credits, a Goldin match and an
+independent witness — full table in `radio-catalog/dist/README.md`.
+
 ## 9. Found along the way, outside this research
 
 - **A live Archive Watch defect** (`radio/06` §4): `discover_archive_collections.

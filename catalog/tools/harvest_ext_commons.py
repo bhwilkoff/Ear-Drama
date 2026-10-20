@@ -40,12 +40,15 @@ PUBLICITY = ["Category:NBC Radio publicity photos", "Category:CBS Radio publicit
              "Category:Blue Network publicity photos"]
 SEARCH_TEMPLATES = ["PD-US-no notice", "PD-US-not renewed", "PD-US-expired",
                     "PD-US-no notice advertisement"]
-# Template names (and the redirects seen on file pages) -> the class we record.
+# Template names, and the redirects to them read from Commons 2026-10-19
+# (Template:PD-Pre1978 and PD-US-pre1978 are "#REDIRECT [[Template:PD-US-no notice]]",
+# PD-1923 and PD-US-1923 redirect to PD-US-expired, PD-US-no renewal to PD-US-not
+# renewed, PD-US-no notice ad to the advertisement template) -> the class recorded.
 PD_ALIASES = {
-    "pdusnonotice": "PD-US-no notice", "pdnonotice": "PD-US-no notice",
-    "pdusnotrenewed": "PD-US-not renewed", "pdnotrenewed": "PD-US-not renewed",
+    "pdusnonotice": "PD-US-no notice", "pdpre1978": "PD-US-no notice", "pduspre1978": "PD-US-no notice",
+    "pdusnotrenewed": "PD-US-not renewed", "pdusnorenewal": "PD-US-not renewed",
     "pdusexpired": "PD-US-expired", "pd1923": "PD-US-expired", "pdus1923": "PD-US-expired",
-    "pdusnonoticeadvertisement": "PD-US-no notice advertisement",
+    "pdusnonoticeadvertisement": "PD-US-no notice advertisement", "pdusnonoticead": "PD-US-no notice advertisement",
     "pdusdefectivenotice": "PD-US-defective notice", "pdus197889": "PD-US-1978-89",
 }
 OUTPUTS = {"title": "@title", "ns": "@ns", "pageid": "@pageid", "url": "imageinfo/ii/@url",
@@ -103,12 +106,24 @@ def by_title(title, files, tag):
     e.setdefault("pageid", None)
 
 
+# Wrappers whose FIRST parameter names the licence: {{PD-Art|PD-US-not renewed}},
+# {{PD-scan|PD-US-no notice}}. A parameter wins over the wrapper's own redirect.
+WRAPPERS = {"pdart", "pdscan", "pdpre1978", "pduspre1978"}
+
+
 def template_class(text):
-    """(class, template as written) of the first PD-US template on a file page."""
-    for m in re.finditer(r"\{\{\s*([^|{}]+?)\s*(?:\||\}\})", text or ""):
-        k = re.sub(r"[^a-z0-9]", "", m.group(1).lower())
+    """(class, template as written) of the first PD-US template on a file page,
+    directly or as a wrapper's first parameter."""
+    for m in re.finditer(r"\{\{\s*([^|{}]+?)\s*(\|[^{}]*)?\}\}", text or ""):
+        name = m.group(1).strip()
+        k = re.sub(r"[^a-z0-9]", "", name.lower())
+        if k in WRAPPERS and m.group(2):
+            inner = m.group(2)[1:].split("|")[0].strip()
+            ik = re.sub(r"[^a-z0-9]", "", inner.lower())
+            if ik in PD_ALIASES:
+                return PD_ALIASES[ik], f"{name}|{inner}"
         if k in PD_ALIASES:
-            return PD_ALIASES[k], m.group(1).strip()
+            return PD_ALIASES[k], name
     return None, None
 
 

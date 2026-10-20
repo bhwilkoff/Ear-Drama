@@ -319,7 +319,7 @@ CREATE TABLE series_wikidata (
   match_evidence TEXT,           -- JSON: name matched, its kind, both year ranges, radio class, country
   broadcaster TEXT, production_company TEXT, genre TEXT,   -- JSON [{qid,label}]
   episodes_count INTEGER, start TEXT, end TEXT,
-  cast TEXT, creators TEXT,      -- JSON [{qid,label,role}]
+  cast_members TEXT, creators TEXT,   -- JSON [{qid,label}] / [{qid,label,role}]
   external_ids TEXT,             -- JSON {property: [values]}
   musicbrainz_series TEXT, imdb TEXT, ia_ids TEXT,
   image TEXT, logo TEXT, commons_category TEXT,
@@ -350,7 +350,7 @@ CREATE TABLE art (
   url TEXT, page TEXT, width INTEGER, height INTEGER, mime TEXT,
   license_template TEXT,         -- the PD template on the file page, or 'other:<licence>'
   usable INTEGER,                -- 1 when license_template is a PD-US class
-  evidence_url TEXT,             -- the file page (template + description), plus credit links in found_via
+  evidence_url TEXT,             -- the file page (template + description); found_via holds its |source= links
   match_basis TEXT, found_via TEXT
 );
 CREATE INDEX art_series ON art(series_key);
@@ -494,10 +494,10 @@ def write_witnesses(db, rows):
 
 
 def license_template(f):
-    for t in f.get("templates", []):
-        n = t.split(":", 1)[-1]
-        if n in PD_CLASSES:
-            return n
+    """The PD-US class harvest_ext_commons.py read on the file page (its
+    `template` field says how it was written there), else 'other:<licence>'."""
+    if f.get("pd_class") in PD_CLASSES:
+        return f["pd_class"]
     return "other:" + (f.get("license_short") or "unknown")
 
 
@@ -540,7 +540,12 @@ def write_art(db, idx, matched, items, files, dlabels):
         for (k, pq), (pn, basis) in uniq.items():
             rows.append((title, k, pq, pn, f["url"], f.get("page"), f.get("width"), f.get("height"),
                          f.get("mime"), lt, int(lt in PD_CLASSES), evidence, basis,
-                         json.dumps({"via": f.get("found_via", []), "credit_links": f.get("credit_links", [])})))
+                         json.dumps({"via": f.get("found_via", []), "template_as_written": f.get("template"),
+                                     # a still from the TV run of a radio series (Life of Riley's TV cast)
+                                     "mentions_television": bool(re.search(
+                                         r"\b(television|TV)\b", title + " " + " ".join(f.get("categories", [])))),
+                                     "source_links": f.get("source_links", []),
+                                     "date_field": f.get("date_field")})))
     db.executemany("INSERT INTO art VALUES (" + ",".join("?" * 14) + ")", rows)
     return len(rows)
 

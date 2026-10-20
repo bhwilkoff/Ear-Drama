@@ -7,17 +7,22 @@ Every case is checked against a synthetic database built here, never the live
 one, so it runs without the caches. Broken controls, 2026-10-19, each run
 against a mutated copy of the tool (the count is what that copy scored):
 
-    Wikidata year check removed (disagree accepted)    26/27
-    a non-radio item accepted                          26/27
-    tie broken by order instead of refused             26/27
-    year context ignored (X Minus One "April 22")      25/27
-    an invented year when no heading gives one         26/27
-    'Title Unknown' kept as a title                    26/27
-    unterminated title not joined                      26/27
-    every licence marked usable                        26/27
-    same-title date check removed                      26/27
+    Wikidata year check removed (disagree accepted)    34/35
+    a non-radio item accepted                          33/35
+    an item typed TV vouched for by its category       33/35
+    tie broken by order instead of refused             34/35
+    Wikidata-duplicate rule removed                    34/35
+    year context ignored (X Minus One "April 22")      33/35
+    an invented year when no heading gives one         34/35
+    a notes column readable as a title                 34/35
+    'Title Unknown' kept as a title                    34/35
+    unterminated title not joined                      34/35
+    no fuzzy title agreement (Truck/Trunk)             34/35
+    every licence marked usable                        34/35
+    a PD redirect name not recognized                  34/35
+    same-title date check removed                      34/35
 
-Two controls first PASSED (27/27) against their mutation and were rewritten:
+Two controls first PASSED (27/27, an earlier count) against their mutation and were rewritten:
 the non-radio item lost on score to a radio one rather than being refused (a
 TV-only Gunsmoke item is now the only candidate), and the licence test had no
 non-PD file to mark usable (a CC file is now written beside the PD one).
@@ -220,16 +225,16 @@ def main():
         "SELECT COUNT(*) FROM episode_witnesses WHERE episode_id IS NULL").fetchone()[0] == 2)
     # --- art
     f += ok("art: PD-US-not renewed is a usable class",
-            E.license_template({"templates": ["Template:PD-US-not renewed"]}) == "PD-US-not renewed")
+            E.license_template({"pd_class": "PD-US-not renewed"}) == "PD-US-not renewed")
     f += ok("art (control): a CC licence is not a PD class", E.license_template(
-        {"templates": [], "license_short": "CC BY-SA 4.0"}) not in E.PD_CLASSES)
+        {"pd_class": None, "license_short": "cc-by-sa-4.0"}) not in E.PD_CLASSES)
     files = {"File:Suspense cast 1950.jpg": {
         "pageid": 1, "url": "https://upload/x.jpg", "page": "https://commons/File:x", "width": 800,
         "height": 600, "categories": ["Category:Suspense (radio series)"],
-        "templates": ["Template:PD-US-not renewed"], "found_via": []},
+        "pd_class": "PD-US-not renewed", "found_via": []},
         "File:Modern Suspense fan art.png": {
         "pageid": 2, "url": "https://upload/y.png", "page": "https://commons/File:y", "width": 800,
-        "height": 600, "categories": ["Category:Suspense (radio series)"], "templates": [],
+        "height": 600, "categories": ["Category:Suspense (radio series)"], "pd_class": None,
         "license_short": "CC BY-SA 4.0", "found_via": []}}
     E.write_art(db, idx, m, items, files, {})
     f += ok("art: a '(radio series)' category ties the file to the series", db.execute(
@@ -238,7 +243,11 @@ def main():
         "SELECT license_template, usable FROM art WHERE file LIKE '%fan art%'").fetchall()
         == [("other:CC BY-SA 4.0", 0)])
     f += ok("commons: a PD template on the page, through a redirect name", C.template_class(
-        "{{Information|source=x}}\n{{PD-noNotice}}") == ("PD-US-no notice", "PD-noNotice"))
+        "{{Information|source=x}}\n{{PD-Pre1978}}") == ("PD-US-no notice", "PD-Pre1978"))
+    f += ok("commons: a wrapper's first parameter names the licence", C.template_class(
+        "== {{int:license-header}} ==\n{{PD-Art|PD-US-not renewed}}") == ("PD-US-not renewed", "PD-Art|PD-US-not renewed"))
+    f += ok("commons (control): a bare PD-Art (a museum-scan rule, no US class) is not PD-US",
+            C.template_class("{{PD-Art}}") == (None, None))
     f += ok("commons (control): a CC page has no PD class",
             C.template_class("{{Information}}\n{{cc-by-sa-4.0}}") == (None, None))
     total = len(checks)
