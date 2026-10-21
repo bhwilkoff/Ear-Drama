@@ -68,9 +68,11 @@ def fold(s):
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9' ]", " ", s)).strip()
 
 
+# Words that put a record in broadcasting. "studio", "program" and "show" are
+# deliberately absent: a photographer's studio and a theater program are not radio.
 RADIO_WORDS = re.compile(
-    r"\b(radio|broadcast\w*|microphone|announcer|nbc|cbs|mutual broadcasting|blue network|wjz|weaf|wor|wabc|"
-    r"wgn|wmaq|kdka|on the air|air show|program|sound effects?|transcription|studio)\b")
+    r"\b(radio|broadcast\w*|microphones?|announcer|nbc|cbs|mutual broadcasting|blue network|wjz|weaf|wabc|"
+    r"wgn|wmaq|kdka|on the air|sound effects?|transcriptions?)\b")
 
 # A series name that is an ordinary word or phrase is never matched by name
 # alone in an archive's free text ("Suspense", "The Shadow", "Escape").

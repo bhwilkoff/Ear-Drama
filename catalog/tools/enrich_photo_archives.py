@@ -287,7 +287,11 @@ def magazines(c, rep):
     cce_hits = collections.defaultdict(lambda: collections.defaultdict(list))
     for h in cce.get("hits") or []:
         for d in h["orig_dates"]:
-            cce_hits[h["canonical"]][int(d[:4])].append(h)
+            # a monthly is registered on its on-sale date, a month or more before
+            # its cover date: the Jan 1944 Radio Mirror is (c) 10Dec43 (R519469).
+            # A November or December (c) date is the next cover year's issue.
+            y, mo = int(d[:4]), int(d[5:7])
+            cce_hits[h["canonical"]][y + 1 if mo >= 11 else y].append(h)
     scanned_years = {v["year"] for v in cce.get("volumes") or []}
     cce_scanned = bool(scanned_years) and scanned_years >= set(range(1958, 1978))
     years = collections.defaultdict(set)
