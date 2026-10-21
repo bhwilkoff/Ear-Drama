@@ -7,18 +7,19 @@ the live database, so it runs anywhere. Broken controls, 2026-10-21, each run
 against a deliberately loosened copy of the tool (the count is what that copy
 scored; every one fails at least one case here):
 
-    date check removed (any name match accepted)            see CONTROLS below
-    a year one apart counted as agreement
-    a month-day match alone counted as agreement
-    undated: first candidate taken instead of exactly one
-    undated: occupation not required
-    undated: era not checked
-    every licence class marked usable
-    a deletion request ignored
-    PD-old-70 (no US template) treated as PD in the US
-    middle initial dropped when the FIRST token is an initial
+    a date conflict ignored when the other date agrees      61/62
+    a year one apart counted as agreement                   61/62
+    a month-day match alone counted as agreement            61/62
+    undated: the first candidate taken, not exactly one     61/62
+    undated: occupation not required                        61/62
+    undated: era not checked                                60/62
+    every licence class marked usable                       61/62
+    a deletion request ignored                              60/62
+    PD-old-70 (no US template) treated as PD in the US      60/62
+    a middle initial dropped when the FIRST token is one    61/62
 
-CONTROLS is filled from the runs recorded in reports/E-people-portraits.md.
+The first control PASSED (56/56) against its mutation until a case was added
+where one date agrees and the other conflicts (a namesake born the same year).
 """
 import json
 import os
@@ -125,6 +126,11 @@ check("PD-self", LC("{{PD-self}}")[0] == "pd_release")
 check("a deletion request voids the licence", LC("{{Delete|reason=x}}\n{{PD-US-no notice}}")[0] == "contested")
 check("no permission", LC("{{No permission since|month=May}}{{cc-by-4.0}}")[0] == "contested")
 check("Flickr no known restrictions", LC("{{Flickr-no known copyright restrictions}}")[0] == "no_known_restrictions")
+check("self with a nested author template", LC("{{self|author={{user at project|R|wikipedia|en}}|Cc-by-sa-3.0}}")[0] == "cc_by_sa")
+check("PD-old-auto-1978 redirects to no notice", LC("{{PD-old-auto-1978}}")[0] == "pd_us")
+check("PD-Pre1964 redirects to not renewed", LC("{{PD-Pre1964}}")[0] == "pd_us")
+check("another country's PD is not US evidence", LC("{{PD-Canada}}")[0] == "pd_source_only")
+check("LOC no-known-restrictions is not a status", LC("{{PD-Van Vechten}}")[0] == "no_known_restrictions")
 check("unknown", LC("{{Information|description=x}}")[0] == "unknown")
 check("unread page", LC(None)[0] == "unread")
 check("usable set", {c for c in ("pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa")} == P.USABLE

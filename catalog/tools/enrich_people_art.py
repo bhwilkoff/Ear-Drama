@@ -50,6 +50,7 @@ person still opens the page before a portrait ships (Track D: many no-notice tag
 rest on no visible evidence).
 """
 import gzip
+import hashlib
 import json
 import os
 import re
@@ -78,6 +79,14 @@ PREFER = {c: i for i, c in enumerate(("pd_us", "pd_us_gov", "cc0", "pd_release",
 OBLIGATIONS = {"cc_by": "attribution", "cc_by_sa": "attribution, share-alike"}
 CONTESTED = re.compile(r"^(delete|deletionrequest|copyvio|nopermissionsince|nosourcesince|"
                        r"nolicensesince|nolicense|speedydelete|speedy|dr|copyrightviolation)$")
+# Read from Commons 2026-10-21 (index.php?action=raw on the template pages):
+# PD-old-auto-1978 is "#REDIRECT [[Template:PD-US-no notice]]", PD-Pre1964 redirects
+# to PD-US-not renewed; NoC-US is rightsstatements.org's "No Copyright - United
+# States", the holding institution's own determination. PD-Van Vechten wraps the
+# Library of Congress "no known copyright restrictions" statement, which is not a
+# determination of status, so it is not counted usable.
+ALIASES = {"pdoldauto1978": "pd_us", "pdpre1964": "pd_us", "nocus": "pd_us",
+           "pdvanvechten": "no_known_restrictions"}
 WRAP_PARAMS = {"self", "pdart", "pdscan", "licensedpdart", "pdarttwo", "licensedpdarttwo",
                "multilicensereplacing", "selfie"}
 
@@ -155,9 +164,9 @@ def year(s):
 
 def _event(ours, wd_years, wd_date):
     """How one event (birth or death) compares: day (same full date), year (same
-    year, or one apart), monthday (same month and day, years 2-5 apart: the
+    year, or one apart), monthday (same month and day, years 2-10 apart: the
     shaved or misread birth year of a performer, seen 2026-10-21 on Joseph
-    Kearns, Hans Conried, Alice Faye), near (one year apart: not a conflict, and
+    Kearns, Hans Conried, Alice Faye; Gracie Allen by seven), near (one year apart: not a conflict, and
     agreement only beside a monthday), unknown (a side has no year), conflict."""
     y = year(ours)
     wy = set(wd_years or [])
@@ -170,7 +179,7 @@ def _event(ours, wd_years, wd_date):
         return "day" if same_md and ours == wd_date else "year"
     if any(abs(y - w) <= 1 for w in wy):
         return "near"
-    if same_md and any(abs(y - w) <= 5 for w in wy):
+    if same_md and any(abs(y - w) <= 10 for w in wy):
         return "monthday"
     return "conflict"
 
@@ -239,16 +248,23 @@ def license_class(text):
     """(class, template as written, obligations) for one Commons file page."""
     if text is None:
         return "unread", None, None
-    toks = []
-    for name, params in _templates(text):
-        toks.append(name)
-        if _k(name) in WRAP_PARAMS:
-            toks += params
+    toks = [name for name, _ in _templates(text)]
+    flat = text
+    for _ in range(4):  # flatten nested templates so a wrapper's own parameters can be read
+        flat2 = re.sub(r"\{\{(?:[^{}|]*\|)*?[^{}]*\{\{[^{}]*\}\}", lambda m: m.group(0)[:m.group(0).rfind("{{")], flat)
+        if flat2 == flat:
+            break
+        flat = flat2
+    for m in re.finditer(r"\{\{\s*([^|{}]+?)\s*\|([^{}]*)\}\}", flat):
+        if _k(m.group(1)) in WRAP_PARAMS:
+            toks += [x.strip() for x in m.group(2).split("|") if x.strip() and "=" not in x]
     found = {}
     for t in toks:
         k = _k(t)
         low = t.lower().strip()
-        if CONTESTED.match(k):
+        if k in ALIASES:
+            found.setdefault(ALIASES[k], t)
+        elif CONTESTED.match(k):
             found.setdefault("contested", t)
         elif k.startswith("pdusgov"):
             found.setdefault("pd_us_gov", t)
@@ -264,7 +280,7 @@ def license_class(text):
             found.setdefault("cc_by", t)
         elif k.startswith("gfdl"):
             found.setdefault("gfdl_only", t)
-        elif k.startswith("pdold") or k in ("pdart", "pdscan"):
+        elif k.startswith("pdold") or (k.startswith("pd") and k not in WRAP_PARAMS and len(k) > 2):
             found.setdefault("pd_source_only", t)
         elif "noknowncopyrightrestrictions" in k:
             found.setdefault("no_known_restrictions", t)
@@ -359,7 +375,10 @@ def match_all(people, names_idx, ents):
     res = {}
     for p in people:
         vs = name_variants(p["name"], p["names"], p["birth_name"])
-        if not vs or not all(v in names_idx for v in vs):
+        if not vs:
+            res[p["id"]] = (None, "not_a_personal_name", None, vs)
+            continue
+        if not all(v in names_idx for v in vs):
             res[p["id"]] = (None, "not_queried", None, vs)
             continue
         qs = {q for v in vs for q in names_idx[v]}
@@ -383,6 +402,18 @@ def depicts_index():
         for q in v.get("depicts") or []:
             idx.setdefault(q, []).append(t)
     return idx
+
+
+def page_text(filename):
+    """A Commons file page's wikitext from this track's cache or Track D's, else None."""
+    title = "File:" + filename.replace("_", " ")
+    key = hashlib.sha1(("commons.wikimedia.org|" + title).encode()).hexdigest() + ".json.gz"
+    for d in (os.path.join(DIR, "commons_raw"), os.path.join(CACHE, "commons", "raw")):
+        p = os.path.join(d, key)
+        if os.path.exists(p):
+            with gzip.open(p, "rt", encoding="utf-8") as f:
+                return json.load(f).get("text")
+    return None
 
 
 SCHEMA = """
@@ -435,7 +466,11 @@ def main():
             if fn in seen:
                 continue
             seen.add(fn)
-            fv = files.get(fn) or {}
+            fv = dict(files.get(fn) or {})
+            text = page_text(fn)
+            if text is not None:  # classed again from the page, so a rule change needs no re-harvest
+                fv["class"], fv["template"], _ = license_class(text)
+                fv.update(file_facts(text))
             cls = fv.get("class", "unread")
             page, thumb = commons_urls(fn)
             art_rows.append((p["id"], q, fn, via, cls, int(cls in USABLE), fv.get("template"),
