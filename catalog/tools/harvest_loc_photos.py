@@ -156,8 +156,12 @@ def record(r):
     largest = jpgs[-1] if jpgs else (imgs[-1] if imgs else None)
     contributors = r.get("contributor") or it.get("contributors") or []
     rights = it.get("rights_advisory") or it.get("rights_information") or ""
+    if isinstance(rights, list):  # some records carry the advisory as a list of sentences
+        rights = " ".join(map(str, rights))
     partof = r.get("partof") or []
     call = it.get("call_number") or ""
+    if isinstance(call, list):
+        call = " | ".join(map(str, call))
     creator_text = " | ".join(map(str, contributors + partof + [call]))
     cls, why = M.rights_class(rights, creator_text)
     online = bool(largest) and not r.get("access_restricted")
@@ -182,11 +186,11 @@ def db_terms():
     ser = [n for (n,) in c.execute(
         "select name from series where name is not null and (first_date is null or first_date < '1966') "
         "order by episodes desc limit 400")]
-    ser = [n for n in ser if M.series_name_ok(n)][:220]
+    ser = [n for n in ser if M.series_name_ok(n)][:120]
     ppl = [n for (n,) in c.execute(
         "select p.name from episode_credits e join people p on p.id = e.person_id "
         "group by e.person_id order by count(distinct e.episode_id) desc limit 500")]
-    ppl = [n for n in ppl if M.name_ok(n)][:400]
+    ppl = [n for n in ppl if M.name_ok(n)][:200]
     return ser, ppl
 
 
