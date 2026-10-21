@@ -29,7 +29,9 @@ import ia_lib as ia
 import otr_parse as P
 import audit_audio_rights as A
 
-AW_RENEWALS = os.path.join(os.path.dirname(ia.ROOT), "shared", "editorial", "cce_renewals.json")
+# A copy of Archive Watch's shared/editorial/cce_renewals.json (tools/fetch_cce_renewals.py
+# there), so this catalog builds outside that repository.
+AW_RENEWALS = os.path.join(ia.EDITORIAL, "film_renewals_cce.json")
 PLAYABLE = {"VBR MP3": 0, "128Kbps MP3": 0, "320Kbps MP3": 0, "256Kbps MP3": 0, "192Kbps MP3": 0,
             "160Kbps MP3": 0, "96Kbps MP3": 0, "64Kbps MP3": 0, "48Kbps MP3": 0, "32Kbps MP3": 0,
             "24Kbps MP3": 0, "16Kbps MP3": 0, "MP3": 0, "Ogg Vorbis": 1, "MPEG-4 Audio": 2, "Opus": 2}

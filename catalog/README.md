@@ -3,7 +3,8 @@
 Owner, 2026-10-17: *"Can you start work on building out a full database with each
 of the rights designations considered."* Research: `../docs/research/RADIO-DRAMA.md`.
 Self-contained so it can move to the radio app's own repository unchanged
-(stdlib Python only; it reads one Archive Watch file, `shared/editorial/cce_renewals.json`).
+(stdlib Python only). `editorial/film_renewals_cce.json` is a copy of Archive Watch's
+`shared/editorial/cce_renewals.json`, the printed film renewals the Lux-style adaptation check reads.
 
 ## Run
 
