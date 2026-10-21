@@ -37,12 +37,16 @@ LICENCES (`license_class`, read from the Commons file page's wikitext; Track D's
                       defective notice / PD-US / PD-1996 / *-expired (PD-old-auto-expired)
           pd_us_gov   PD-USGov* (a federal employee's work)
           cc0         CC0 / cc-zero
-          pd_release  PD-self / PD-author / PD-user (the author's own release)
+          pd_release  PD-self / PD-author / PD-user / PD-Gottlieb / PD-NYWT&S (the
+                      author's or rights holder's own release)
+          free_use    "Copyrighted free use" (the holder permits any use)
           cc_by       CC BY (attribution required)
           cc_by_sa    CC BY-SA (attribution + share-alike)
   not     gfdl_only   GFDL with no CC alternative (the licence text must travel)
           pd_source_only  PD-old-* with no US template (no US evidence)
-          no_known_restrictions  Flickr "no known copyright restrictions"
+          no_known_restrictions  Flickr / Library of Congress "no known copyright
+                      restrictions" (PD-Van Vechten, PD-Bain, PD-Harris-Ewing ...): a
+                      statement that nothing is known, not a determination
           contested   a deletion request, copyvio, no-permission/no-source/no-licence tag
           unknown     nothing recognized
 A file page is recorded with its template as written and its author/source; a
@@ -74,8 +78,8 @@ RELEVANT_OCC = re.compile(
     r"violinist|arranger|comedian|entertainer|performer|vaudevillian|ventriloquist|"
     r"journalist|newscaster|news anchor|commentator|narrator|impressionist|humorist|"
     r"sound designer|showrunner|dancer|magician)\b", re.I)
-USABLE = {"pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa"}
-PREFER = {c: i for i, c in enumerate(("pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa"))}
+USABLE = {"pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa"}
+PREFER = {c: i for i, c in enumerate(("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa"))}
 OBLIGATIONS = {"cc_by": "attribution", "cc_by_sa": "attribution, share-alike"}
 CONTESTED = re.compile(r"^(delete|deletionrequest|copyvio|nopermissionsince|nosourcesince|"
                        r"nolicensesince|nolicense|speedydelete|speedy|dr|copyrightviolation)$")
@@ -85,8 +89,25 @@ CONTESTED = re.compile(r"^(delete|deletionrequest|copyvio|nopermissionsince|noso
 # States", the holding institution's own determination. PD-Van Vechten wraps the
 # Library of Congress "no known copyright restrictions" statement, which is not a
 # determination of status, so it is not counted usable.
+# The same day, the collection tags met on these portraits: PD-Gottlieb ("In
+# accordance with the wishes of William Gottlieb, the photographs in this
+# collection entered into the public domain on February 16, 2010") and PD-NYWT&S
+# (a staff photographer's work for hire, placed in the public domain by the deed
+# of gift) are the rights holder's own release; PD-old-*-1923 redirect to the
+# *-expired templates; PD-old-auto-1964 expands to PD-US-not renewed (+ PD-old-X);
+# LATimes UCLA says UCLA holds the copyright and publishes the archive under CC BY
+# 4.0; User:Gazebo/CC-license is that uploader's own CC BY-SA. PD-Bain,
+# PD-Harris-Ewing and PD-National Photo Company are, like PD-Van Vechten, the
+# Library of Congress "no known copyright restrictions" statement.
 ALIASES = {"pdoldauto1978": "pd_us", "pdpre1964": "pd_us", "nocus": "pd_us",
-           "pdvanvechten": "no_known_restrictions"}
+           "pdold701923": "pd_us", "pdoldauto1923": "pd_us", "pdold1001923": "pd_us",
+           "pdoldauto1964": "pd_us",
+           "pdgottlieb": "pd_release", "pdnywts": "pd_release",
+           "latimesucla": "cc_by", "usergazebocclicense": "cc_by_sa",
+           "copyrightedfreeuse": "free_use",
+           "pdvanvechten": "no_known_restrictions", "pdvv": "no_known_restrictions",
+           "pdbain": "no_known_restrictions", "pdharrisewing": "no_known_restrictions",
+           "pdnationalphotocompany": "no_known_restrictions"}
 WRAP_PARAMS = {"self", "pdart", "pdscan", "licensedpdart", "pdarttwo", "licensedpdarttwo",
                "multilicensereplacing", "selfie"}
 
@@ -257,7 +278,10 @@ def license_class(text):
         flat = flat2
     for m in re.finditer(r"\{\{\s*([^|{}]+?)\s*\|([^{}]*)\}\}", flat):
         if _k(m.group(1)) in WRAP_PARAMS:
-            toks += [x.strip() for x in m.group(2).split("|") if x.strip() and "=" not in x]
+            for x in m.group(2).split("|"):
+                x = re.sub(r"^\s*\d+\s*=", "", x).strip()  # {{PD-scan|1=PD-US-no notice}}
+                if x and "=" not in x:
+                    toks.append(x)
     found = {}
     for t in toks:
         k = _k(t)
@@ -289,7 +313,7 @@ def license_class(text):
         found["pd_us"] = tw
     if "contested" in found:
         return "contested", found["contested"], None
-    for c in ("pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa", "gfdl_only",
+    for c in ("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa", "gfdl_only",
               "pd_source_only", "no_known_restrictions"):
         if c in found:
             return c, found[c], OBLIGATIONS.get(c)
