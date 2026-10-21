@@ -7,17 +7,19 @@ Synthetic inputs only (no caches, no network). Broken controls, 2026-10-21,
 each run against a mutated copy of the tool (the count is what that copy
 scored); see reports/F-photo-archives.md:
 
-    government creator beats "publication may be restricted"   37/39
-    radio word no longer required for a series match            38/39
-    series year window ignored                                  38/39
-    generic one-word series names allowed                       38/39
-    subject-heading lifespan not compared                       38/39
-    an ambiguous name resolved to its first person              38/39
-    OBP CCE-only check trusted for 1951-1963 issues             38/39
-    renewal floor month ignored (whole first year PD)           38/39
-    NPG portrait lifespan not compared                          38/39
-    NPG portrait accepted with no lifespan to compare           38/39
-    CCE block runs into the next title's renewal                37/39
+    government creator beats "publication may be restricted"   40/42
+    radio word no longer required for a series match            41/42
+    series year window ignored                                  41/42
+    generic one-word series names allowed                       41/42
+    subject-heading lifespan not compared                       41/42
+    an ambiguous name resolved to its first person              41/42
+    OBP CCE-only check trusted for 1951-1963 issues             41/42
+    renewal floor month ignored (whole first year PD)           41/42
+    NPG portrait lifespan not compared                          41/42
+    NPG portrait accepted with no lifespan to compare           41/42
+    homonym rule removed (the Mae West life vest)               41/42
+    an undated record matched to a series                       41/42
+    CCE block runs into the next title's renewal                40/42
 
 The lifespan control first PASSED (34/34, an earlier count) against its mutation: its case also
 tripped the "record year before the person was 10" rule. It now has no record
@@ -61,6 +63,7 @@ check("series name + radio word + year in run -> match", [k for k, _ in M.match_
 check("year far outside the run -> no match", M.match_series(t, 1975, SER) == [])
 check("generic one-word series name never matched", M.match_series("Suspense radio program cast at CBS", 1945, SER) == [])
 check("no radio word -> no match", M.match_series("Fibber McGee and Molly at home", 1941, SER) == [])
+check("undated record never matched to a series", M.match_series(t, None, SER) == [])
 check("leading The dropped", [k for k, _ in M.match_series("Brace Beemer, the Lone Ranger of radio", 1945, SER)] == ["lone"])
 
 # ---- people matching
@@ -78,6 +81,13 @@ f, r = M.match_people("Orson Welles radio broadcast", [], 1920, IDX, YRS)
 check("record year before person aged 10 -> refused", f == [])
 f, r = M.match_people("Orson Welles radio broadcast", [], 1938, IDX, YRS)
 check("free-text name + radio word + plausible year -> match", [p for p, _ in f] == ["p4"])
+
+IDX["mae west"] = {"p5"}
+YRS["p5"] = (1893, 1980)
+f, r = M.match_people("Mitchell Field. An American pursuit pilot in combat gear, Mae West and radio", [], 1942, IDX, YRS)
+check("homonym (the Mae West life vest) -> refused", f == [])
+f, r = M.match_people("Mae West at the NBC microphone", [], 1937, IDX, YRS)
+check("homonym control: the actress at a microphone -> match", [p for p, _ in f] == ["p5"])
 
 # ---- NPG portraits
 SIT = M.sitters(["Arnold Newman, 3 Mar 1918 - 6 Jun 2006", "Orson Welles, 6 May 1915 - 10 Oct 1985"])

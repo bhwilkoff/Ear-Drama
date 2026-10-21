@@ -186,11 +186,11 @@ def db_terms():
     ser = [n for (n,) in c.execute(
         "select name from series where name is not null and (first_date is null or first_date < '1966') "
         "order by episodes desc limit 400")]
-    ser = [n for n in ser if M.series_name_ok(n)][:60]
+    ser = [n for n in ser if M.series_name_ok(n)][:220]
     ppl = [n for (n,) in c.execute(
         "select p.name from episode_credits e join people p on p.id = e.person_id "
         "group by e.person_id order by count(distinct e.episode_id) desc limit 500")]
-    ppl = [n for n in ppl if M.name_ok(n)][:100]
+    ppl = [n for n in ppl if M.name_ok(n)][:400]
     return ser, ppl
 
 

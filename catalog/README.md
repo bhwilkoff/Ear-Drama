@@ -19,6 +19,18 @@ Caches live in `.cache/` and outputs in `out/` (both gitignored; the database is
 never committed, as Archive Watch Decisions 017/018). Every harvester exits
 non-zero when it read nothing, and records what it could not read.
 
+## Images (2026-10-21; reports/E and F)
+
+    python3 tools/harvest_people_wikidata.py          # people -> Wikidata + portraits; ~2.8 h cold, resumable
+    python3 tools/harvest_loc_photos.py --phase all   # Library of Congress; 20 req/min, exit 3 = blocked an hour, re-run
+    python3 tools/harvest_smithsonian.py              # Smithsonian Open Access bulk files (no key)
+    python3 tools/harvest_magazine_rights.py          # radio magazines: renewal status by title and year
+    python3 tools/enrich_people_art.py && python3 tools/enrich_photo_archives.py   # post-build, seconds
+    python3 tests/test_people_art.py && python3 tests/test_photo_archives.py
+
+Images follow the audio's take-down rule (owner, 2026-10-21: no review queue):
+used when the image's own record carries the evidence, removed on request.
+
 ## The rights states (`tools/audit_audio_rights.py`, DECISIONS 001-002)
 
 | State | Buckets | Client |

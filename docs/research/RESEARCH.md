@@ -1,7 +1,7 @@
 # A public-domain radio drama app — research (2026-10-17)
 
 > **STATUS: RESEARCH COMPLETE; A DRAFT CATALOG IS BUILT (`radio-catalog/`); NO
-> APP YET.** The owner will build the app in a future session from an updated
+> APP YET. The app is named EAR DRAMA (owner, 2026-10-21; §12).** The owner will build the app in a future session from an updated
 > Universal App Template. This file is the synthesis and the starting point; the
 > evidence is in seven detail files under `docs/research/radio/`, and the
 > rights-designated database and its pipeline are in `radio-catalog/` (README,
@@ -443,6 +443,53 @@ and programs (all 124,919 RadioGOLDINdex records; OTRRpedia's 10,783 programs an
 logs, Commons art with licence evidence). Result: 157,503 episodes, 121,907 playable
 (~47,700 hours), half of the dated ones with credits, a Goldin match and an
 independent witness — full table in `radio-catalog/dist/README.md`.
+
+## 12. Visual assets and the Ear Drama brand (2026-10-21)
+
+Owner, 2026-10-21: *"The app is going to be called "Ear Drama". We don't have a
+review queue (not really, anyway) for Archive Watch, so I don't think we should
+build one for images specifically in this new app. Please move forward with the
+research necessary before I move this project into its own repository."* So
+images follow the audio's rule: used when their OWN record carries public-domain
+or free-licence evidence a reader can open, removed on request. Three tracks:
+
+- **E, people portraits** (`radio-catalog/reports/E-people-portraits.md`):
+  credited people matched to Wikidata on name plus dates (or one radio-trade
+  candidate of the right era when we hold no dates): 5,204 of 18,855, 1,109 of
+  the top 2,000. 3,177 people have a usable portrait (734 of the top 2,000),
+  most PD-US; 315 only under CC BY / BY-SA, which must show the author and
+  licence. About 1 in 30 matches is someone else, mostly undated ones. Many
+  Wikidata images are TV-era stills.
+- **F, photo archives and magazines** (`radio-catalog/reports/F-photo-archives.md`):
+  Library of Congress Prints & Photographs (12,091 records, 5,116 usable: no
+  known restrictions or government work) and Smithsonian Open Access from its
+  public bulk files (14,671 CC0, nearly all the National Portrait Gallery). 179
+  more people get a photo naming them; **no series photo is usable** (the
+  network press prints that name series are restricted or unknown), so series
+  art comes through the stars. Magazine rights by title and year: Radio Guide
+  1931-43, Radio Stars, Tune In and Radio Mirror to 1943 not renewed; Radio
+  Mirror 1944-63 renewed, which archive.org's own copyright field gets wrong
+  for 34 volumes. NARA, NYPL and DPLA need free keys (owner).
+- **The brand** (`radio/09-ear-drama-brand.md`): no conflicting app or US mark
+  for "Ear Drama"; EARPLAY (audio drama, registered 2024) is the nearest; the
+  .com and .app were registered 2026-10-13, .org/.fm free. Twelve icon sources,
+  all public domain or CC0, led by a CC0 Western Electric ring microphone; Big
+  Shoulders + Public Sans (OFL); an on-air red and dial cyan, contrast-checked
+  and clear of the genre accents (three of which, 05 §3.3, fail 3:1 on white);
+  every platform's asset specs; owner decisions B1-B18.
+
+Owner questions from E and F (one line each; detail in the reports):
+
+| # | Question |
+|---|---|
+| V1 | Show portraits from undated matches (about 1 in 30 is someone else), or only date-confirmed ones? |
+| V2 | Library of Congress "no known restrictions" (Bain, Harris & Ewing, Van Vechten): usable? |
+| V3 | Federal Theatre Project photos, whose records carry no rights sentence: usable on the WPA credit alone? |
+| V4 | A holder's CC0 on a post-1930 portrait (National Portrait Gallery): accept as is? |
+| V5 | A photo inside an unrenewed magazine issue: usable on the issue's evidence alone? |
+| V6 | Free API keys for NARA, NYPL and DPLA (an account or email is yours to give) |
+
+The move to Ear Drama's own repository: `radio/10-repository-move.md`.
 
 ## 9. Found along the way, outside this research
 

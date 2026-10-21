@@ -90,8 +90,9 @@ owner's, not this research's):
 
 ## 6. Order
 
-1. Wait for the three 2026-10-21 tracks (people portraits, photo archives,
-   brand) to land on this branch.
+1. ~~Wait for the three 2026-10-21 tracks~~ DONE 2026-10-21: people portraits
+   (`radio-catalog/reports/E`), photo archives (`F`), the brand (`09`); results
+   and owner questions V1-V6 in RADIO-DRAMA §12, B1-B18 in 09 §7.
 2. Create the repository from the updated Universal App Template.
 3. Move §1, then upload §2's Release.
 4. Rename §3; write the new CLAUDE.md with §5.

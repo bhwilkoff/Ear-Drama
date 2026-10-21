@@ -17,16 +17,16 @@ statements are the holders' own words. No image binary was downloaded.
 | `tools/harvest_smithsonian.py` | Smithsonian Open Access bulk metadata from the public S3 bucket (no key), streamed and filtered per shard; one cache file per shard under `.cache/smithsonian/` |
 | `tools/harvest_magazine_rights.py` | Radio magazines: Online Books Page periodical-renewal inventory, our own reading of the CCE Part 2 renewal entries 1958-1977, worldradiohistory.com issue inventory, archive.org Media History Digital Library volumes. Cache `.cache/magazines/` |
 | `tools/enrich_photo_archives.py` | POST-BUILD: adds only `archive_photos`, `archive_photo_links`, `magazine_rights`, `magazine_scans`; drops and rebuilds them each run; writes `out/enrich_photo_archives_report.json` |
-| `tests/test_photo_archives.py` | 39 checks on synthetic data; 11 mutation controls in its docstring |
+| `tests/test_photo_archives.py` | 42 checks on synthetic data; 13 mutation controls in its docstring |
 
 Re-run (all resumable from cache):
 
-    python3 tools/harvest_loc_photos.py --phase search   # ~650 queries at 6 s = ~75 min; exit 3 = blocked, re-run after an hour
-    python3 tools/harvest_loc_photos.py --phase all      # adds item JSON for usable matched records
+    python3 tools/harvest_loc_photos.py --phase all      # 185 queries / 568 pages, ~2.5 h at the measured 3-5 req/min, then
+                                                         # item JSON for usable matched records (150 a run); exit 3 = blocked: re-run after an hour
     python3 tools/harvest_smithsonian.py                 # 1,024 shards, ~3 GB streamed, ~25 min; cached shards skipped
     python3 tools/harvest_magazine_rights.py             # ~75 MB of CCE OCR first run; then cached
     python3 tools/enrich_photo_archives.py               # ~15 s, no network
-    python3 tests/test_photo_archives.py                 # 39/39
+    python3 tests/test_photo_archives.py                 # 42/42
 
 ## Rights classes (`photo_match.rights_class`)
 
@@ -38,11 +38,82 @@ Re-run (all resumable from cache):
 | `restricted` | the record says publication may be / is restricted, copyright, permission required; or (SI) "Usage conditions apply" | no |
 | `unknown` | anything else: "Rights status not evaluated", no statement, no image online | no |
 
-A restriction always beats a government creator: LoC marks a World-Telegram
-print of an OWI photo "Publication may be restricted", because the print may
-have come through a wire service. `usable` also needs an image URL online.
+A restriction always beats a government creator: when a record names a
+federal creator and also says "Publication may be restricted" (World-Telegram
+prints of OWI photos do), the record's own restriction wins. `usable` also
+needs an image URL online.
 
-LOC_SECTION
+## 1. Library of Congress Prints & Photographs
+
+**Access, measured.** loc.gov's JSON API is keyless; its published limit
+(loc.gov/apis/json-and-yaml/working-within-limits, read 2026-10-21) is **20
+requests a minute, with a one-hour block that restarts on any request made
+during it**. The first run, at one request per 4 s and after ~15 probes, was
+blocked (429) after ~30 requests in five minutes on this shared egress IP; the
+harvester now paces at 6 s, stops on a 429 or a CAPTCHA page instead of
+retrying into the block, and resumes from its page cache. Responses took 5-15 s
+each, so the effective rate was 3-5 requests a minute. Search pages of 100
+results were cut mid-body by the proxy (IncompleteRead at 81 KB of 2.4 MB);
+`c=50` with `at=results,pagination` (~380 KB a page) reads cleanly. A search
+page already carries each record's title, date, rights advisory, subjects,
+contributors, call number and preview URLs, so one request reads 50 records.
+
+**Queries run** (`/photos/?q=...&fo=json`): 17 topics dated 1920-1965 (radio,
+microphone, broadcasting, radio station / program / announcer / receiver / set /
+actors / studio, sound effects, the four networks by name, network broadcast,
+transcription); 8 collection queries (`fa=partof:bain collection`,
+`harris & ewing collection`, the FSA/OWI black-and-white negatives,
+`federal theatre project, 1935 to 1939`, and text queries for the World-Telegram
+— `radio world-telegram`, `radio NYWTS` — and `radio look magazine`, which are
+not facets on /photos/); and a quoted-name query for the top 60 series and the
+top 100 people by credited episodes. 185 queries, 568 pages, 0 failed.
+Not run (budget): the next 160 series and 300 people the harvester can list;
+they resume with the same command after raising the two slice limits in
+`db_terms()`.
+
+**Records: 12,091 photographs** (other formats dropped).
+
+| Rights class | Records | Usable (image online) |
+|---|---|---|
+| no_known_restrictions | 2,488 | 2,471 |
+| government | 2,735 | 2,645 |
+| restricted | 1,721 | 0 |
+| unknown | 5,147 | 0 |
+| **total** | **12,091** | **5,116** |
+
+By collection, as the statements read:
+
+- **Harris & Ewing** (243 radio records) and **Bain** (57): "No known
+  restrictions on publication."
+- **FSA/OWI** (377): "No known restrictions. For information, see U.S. Farm
+  Security Administration/Office of War Information Black & White Photographs"
+  -> government. This is the wartime-radio set: OWI's own radio shows *You
+  Can't Do Business With Hitler* and *Three Thirds of a Nation* in rehearsal,
+  Elmer Davis at a line of microphones, Marian Anderson broadcasting from the
+  Interior Department (1943).
+- **Federal Theatre Project, 1935-1939** (1,730, Music Division): **no rights
+  sentence at all in the API record**; classed government on the creator
+  (Federal Theatre Project (U.S.), a WPA unit). Includes FTP portraits (Orson
+  Welles, Ian Keith) and the FTP radio division. Owner question below.
+- **New York World-Telegram & Sun** (~170 by text query): almost all
+  "Publication may be restricted. For information see 'New York World-Telegram
+  & ...'" -> restricted; a few staff prints say "No known restrictions".
+- **Look** (149): mixed — 19 no known restrictions, 76 restricted, 30 unknown.
+- **William P. Gottlieb** (jazz, 1938-48): "Mr. Gottlieb has dedicated these
+  works to the public domain, but rights of privacy and publicity may apply"
+  -> no_known_restrictions, with the publicity caveat in the statement itself.
+- Theodor Horydczak (211), Herbert Block and NBC-credited press prints:
+  "Publication may be restricted" -> restricted.
+- Veterans History Project and American Folklife Center card files: no
+  statement -> unknown (and mostly not photographs of broadcasts).
+
+**Largest image**: the search page lists the 640-px reference JPEG (`r.jpg`)
+or, for FSA/OWI and Bain, the 1,024-px `v.jpg`; the item JSON lists every file,
+including the TIFF master (`u.tif`). Item JSON was fetched for **122 of the 165
+usable matched records** (112 with a TIFF master) before loc.gov answered 429
+on the item endpoint; the other 43 resume with `--phase all` after an hour and
+keep the preview URL meanwhile. The FTP prints are served through IIIF at full
+size (up to 6,385 px wide).
 
 ## 2. Smithsonian Open Access (bulk, keyless)
 
@@ -176,7 +247,42 @@ row says so first.
   elsewhere: a theater program listing 40 names, a mural study). Only `title`
   and `heading` should be offered as art.
 
-MATCH_SECTION
+**Measured** (`archive_photo_links`, usable records only):
+
+| Source | Person links (title / heading) | People with a usable title or heading photo | Series links |
+|---|---|---|---|
+| LoC | 131 title, 0 heading (+55 mentioned) | 73 | 0 usable |
+| Smithsonian (NPG) | 301 title (+54 mentioned) | 114 | 0 usable |
+| **both** | | **179 distinct people** | |
+
+Examples: Graham McNamee (Bain, 1925, no known restrictions); Rudy Vallee at a
+microphone (1930, no known restrictions; and NPG portraits 1928, 1930, CC0);
+Fulton Lewis, Jr. creating the radio gallery (Harris & Ewing 1939); Elmer Davis
+(OWI 1942); Jackie Gleason (Look 1952, no known restrictions); Orson Welles and
+Ian Keith (Federal Theatre Project); Edgar Bergen 1948, Gene Autry 1942, Milton
+Berle 1953 (NPG, CC0). The `people` table also holds the authors and guests
+the logs credit, so Poe, Dickens and Einstein are among the
+179 — correctly, since they are credited on our episodes.
+
+**Series: none usable.** LoC's photographs that do name a series — *Fibber
+McGee and Molly* (1944, 1950), *Information Please* (1941), *The Campbell
+Playhouse* (Welles at the microphones, 1938), *Your Hit Parade* (1946, 1949),
+*Grand Ole Opry* (1947), *Command Performance* — are NBC/CBS press prints in the
+World-Telegram and Look files, and their records say "Publication may be
+restricted" or nothing: 22 links, all restricted or unknown. Series art from
+LoC therefore comes through the PEOPLE (the star at the microphone), as
+05-design §3 anticipated. **One near miss**: *You Can't Do Business With
+Hitler* (OWI, 1942; 3+ government photos of the cast rehearsing) is a series
+in our DB (12 episodes) with no dates, and the series rule requires a known run;
+dating that series (editorial) would bring it in.
+
+Refusals (report `refused`): 2,011 record-year-after-death; 2,042 free-text
+names with no broadcasting word; 57 before the person was 10; 43 ambiguous
+names; 68 NPG portraits with no lifespan to compare; 51 lifespan
+disagreements; 6 homonyms (the *Mae West* life vest — the first LoC pass tied
+six OWI "pursuit pilot in combat gear" photos to the actress, which is why the
+rule exists). Series named for a person ("Bing Crosby", "Winston Churchill")
+are matched through the person only.
 
 ## 5. Not harvested, with the exact route
 
@@ -188,6 +294,20 @@ MATCH_SECTION
 | DPLA | `api.dp.la/v2/items?q=radio+microphone` answered 403 invalid_api_key | a key is issued by `POST /v2/api_key/<email>`; an email is the owner's to give |
 | Copyright Office online records (1978+ renewals, for 1951-1963 issues) | the public-records API answers, but a title query returns registrations from the card catalog, not RE renewals (104 "Radio mirror" hits, all B-registrations) | the `unchecked` 1951-1963 magazine years need a renewal-class query or the CPRS UI |
 
+## Tests and controls
+
+`tests/test_photo_archives.py` 42/42. Each control was run against a mutated
+copy of the tools and failed (counts in the docstring): a government creator
+beating a restriction 40/42, no broadcasting word for series 41/42, the series
+year window ignored 41/42, generic one-word names 41/42, the LoC heading
+lifespan not compared 41/42, an ambiguous name resolved 41/42, OBP's CCE-only
+check trusted for 1951-63 41/42, the first-renewed month ignored 41/42, the NPG
+portrait lifespan not compared or not required 41/42 each, the homonym rule
+41/42, undated series matches 41/42, a CCE block running into the next title
+40/42. The lifespan control first PASSED its mutation (its case also tripped
+the age-10 rule) and was rewritten. `test_enrich_external.py` (37/37) and
+`test_audio_rights.py` (22/22) still pass; no shared tool or table was edited.
+
 ## Open
 
 - Owner: does a photo from a `not_renewed` magazine issue ship without a
@@ -196,4 +316,12 @@ MATCH_SECTION
 - Owner: NPG's CC0 includes post-1930 photographs (Milton Berle 1953). The
   holder's own CC0 is the evidence under the rule; say if it should be held to
   the photo's age as well.
+- Owner: the Federal Theatre Project records carry no rights sentence; they
+  are classed `government` on the WPA creator alone (1,730 records, incl. FTP
+  radio-division photos). Say if a creator credit is enough without a
+  statement.
 - Keys for NARA, NYPL and DPLA would widen the pool; each is a free signup.
+- Remaining harvest: 43 item JSONs (TIFF masters); the next 160 series and 300
+  people name queries; dates for *You Can't Do Business With Hitler*; the
+  1951-1963 magazine years marked `unchecked` (none in the current scan
+  inventory) need a CPRS renewal-class query.

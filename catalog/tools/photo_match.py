@@ -128,9 +128,13 @@ def match_series(rec_text, rec_year, series_rows, radio_required=True):
     """series_rows: [(key, name, first_year, last_year)]. Returns list of
     (key, basis). A match needs the series' own name as a phrase, a radio word in
     the same record, and (when both are known) the record's year inside the
-    series' run +/- 2. A record naming two series is kept for both."""
+    series' run +/- 2; an undated record is never matched to a series (a Federal
+    Theatre Project folder "Behind the scenes" is not the radio program). A record
+    naming two series is kept for both."""
     text = fold(rec_text)
     if radio_required and not RADIO_WORDS.search(text):
+        return []
+    if not rec_year:  # an undated record cannot be checked against a run
         return []
     idx, longest = _series_index(series_rows)
     toks = text.split()
@@ -144,7 +148,7 @@ def match_series(rec_text, rec_year, series_rows, radio_required=True):
                     continue
                 seen.add(key)
                 basis = f"series name '{name}' in record text"
-                basis += f"; record year {rec_year} within run {fy}-{ly}" if rec_year and fy else "; no year to compare"
+                basis += f"; record year {rec_year} within run {fy}-{ly}"
                 out.append((key, basis))
     return out
 
@@ -163,6 +167,11 @@ def subject_names(subjects):
         last, first = m.group(1).strip(), re.sub(r"\(.*?\)", "", m.group(2)).strip()
         out.append((fold(f"{first} {last}"), int(m.group(3)), int(m.group(4)) if m.group(4) else None))
     return out
+
+
+# A person's name that is also a thing's name in period captions: the Mae West
+# was the airman's inflatable life vest (LoC: "pursuit pilot in combat gear").
+HOMONYMS = {"mae west": re.compile(r"life (?:vest|jacket|preserver)|pilot|flier|flyer|airm[ae]n|combat gear|parachute")}
 
 
 def name_ok(name):
@@ -194,6 +203,9 @@ def match_people(rec_text, subjects, rec_year, name_index, people_years):
             continue
         if len(ids) > 1:
             refused.append((n, f"name resolves to {len(ids)} people"))
+            continue
+        if n in HOMONYMS and HOMONYMS[n].search(text):
+            refused.append((n, "name is also an object's name in this record"))
             continue
         if how == "record text" and not RADIO_WORDS.search(text):
             refused.append((n, "name in free text with no radio word on the record"))

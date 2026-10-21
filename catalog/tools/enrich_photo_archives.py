@@ -128,6 +128,10 @@ def load_targets(c):
             ys = {years[i] for i in ids}
             if len(ys) == 1 and ys != {(None, None)}:
                 name_index[n] = set(sorted(ids)[:1])
+    # a series named for a person ("Bing Crosby", "Winston Churchill") is found
+    # through the person; matching it as a series would tie every caption that
+    # names the man to his program
+    series = [row for row in series if re.sub(r"^the ", "", M.fold(row[1])) not in name_index]
     return series, dict(name_index), years
 
 
