@@ -5,8 +5,9 @@ image binaries). reports/F-photo-archives.md.
 
 loc.gov's JSON API is keyless; its documented limit (loc.gov/apis/json-and-yaml/
 working-within-limits, read 2026-10-21) is 20 requests a minute, with a ONE-HOUR
-block that restarts on any request made during it. So: one request every 4 s
-(15/min), and a 429 or a CAPTCHA page STOPS the run (exit 3) rather than
+block that restarts on any request made during it. So: one request every 6 s
+(10/min; the egress IP is shared and a first run at 4 s was blocked after
+~30 requests in five minutes), and a 429 or a CAPTCHA page STOPS the run (exit 3) rather than
 retrying into the block. Every response is cached under .cache/loc/, so a
 re-run (after a restart, or the next day) resumes where it stopped.
 
@@ -28,6 +29,7 @@ Output: .cache/loc/records.json.gz — {id: record} (see `record()`), plus
 import argparse
 import gzip
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -49,8 +51,8 @@ RECORDS = os.path.join(DIR, "records.json.gz")
 FAILS = os.path.join(DIR, "failures.json")
 DB = os.path.join(L.OUT, "radio-catalog.sqlite")
 BASE = "https://www.loc.gov/photos/"
-PACE = 4.0
-PER = 100
+PACE = 6.0
+PER = 50
 
 TOPICS = ["radio", "microphone", "broadcasting", "radio station", "radio program", "radio announcer",
           "radio receiver", "radio set", "radio actors", "radio studio", "sound effects",
@@ -99,7 +101,7 @@ def fetch(url, budget):
                 time.sleep(20 * (attempt + 1))
                 continue
             return None, f"HTTP {e.code}"
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.IncompleteRead) as e:
             time.sleep(20 * (attempt + 1))
             continue
         try:
@@ -125,7 +127,7 @@ def search(label, params, budget, fails):
     page = 1
     out = []
     while True:
-        p = dict(params, fo="json", c=PER, sp=page)
+        p = dict(params, fo="json", c=PER, sp=page, at="results,pagination")
         path = os.path.join(QDIR, qkey(p) + ".json.gz")
         if os.path.exists(path):
             d = L.read_json(path)

@@ -7,7 +7,8 @@ DEMO_KEY answered OVER_RATE_LIMIT from this egress IP on the first call
 (2026-10-21) — it is shared. The bucket is the same EDAN records, line-delimited
 JSON, 256 shards a unit (NMAH ~9.8 MB a shard), read at ~10 MB/s.
 
-Each shard is streamed, filtered (a radio word AND a broadcast word, below) and
+Each shard is streamed, filtered (a radio word AND a broadcast word, below;
+for the NPG, any record whose image is CC0) and
 only the matches are written to .cache/smithsonian/<unit>/<shard>.json.gz, so a
 re-run skips finished shards (resumable). A record keeps: title, date, unit,
 record id + guid, object type, topics, names, the RECORD's metadata usage and
@@ -34,8 +35,17 @@ CONTEXT = re.compile(r"\b(broadcast\w*|program\w*|microphone\w*|announcer|studio
                      r"mutual|actor|actress|comedian|show|serial|drama|wjz|weaf|kdka|transcription|on the air)\b", re.I)
 
 
+# National Portrait Gallery: a portrait rarely says "radio", so every record
+# whose image the NPG marks CC0 is kept and matched to our people by its title.
+ALL_CC0_UNITS = {"NPG"}
+
+
 def keep(d):
     c = d.get("content") or {}
+    if d.get("unitCode") in ALL_CC0_UNITS:
+        media = ((c.get("descriptiveNonRepeating") or {}).get("online_media") or {}).get("media") or []
+        if any((m.get("usage") or {}).get("access") == "CC0" for m in media):
+            return True
     txt = json.dumps({k: c.get(k) for k in ("freetext", "indexedStructured")}, ensure_ascii=False) + " " + (d.get("title") or "")
     return bool(RADIO.search(txt) and CONTEXT.search(txt))
 

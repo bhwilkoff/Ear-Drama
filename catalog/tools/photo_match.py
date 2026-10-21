@@ -14,6 +14,8 @@ open, and removed on request.
                            the record does not say publication is restricted
     restricted             the record says publication may be / is restricted,
                            copyright, or permission required
+    cc0                    the holder marks the image file itself CC0
+                           (Smithsonian Open Access per-media usage)
     unknown                anything else ("Rights status not evaluated", no
                            statement, served by appointment only)
 
@@ -25,7 +27,7 @@ is restricted (LoC applies it because the print may come from a wire service).
 import re
 import unicodedata
 
-USABLE = ("no_known_restrictions", "government")
+USABLE = ("no_known_restrictions", "government", "cc0")
 
 _RESTRICT = re.compile(
     r"publication (?:may be|is) restricted|restricted|copyright(?:ed)?\b(?! (?:status )?(?:not|undetermined|unknown))|"
@@ -74,7 +76,7 @@ RADIO_WORDS = re.compile(
 # alone in an archive's free text ("Suspense", "The Shadow", "Escape").
 GENERIC = set("""suspense escape shadow whistler mystery theater theatre the program show hour news music
 quiz family hollywood broadway america american adventure adventures stories story tales drama comedy western
-first nighter""".split())
+first nighter radio theater playhouse workshop hour half time series""".split())
 
 
 def series_name_ok(name):
@@ -103,6 +105,23 @@ def year_of(s):
     return int(m.group(1)) if m else None
 
 
+_SER_INDEX = {}
+
+
+def _series_index(series_rows):
+    """folded name (leading 'the' dropped) -> [(key, name, fy, ly)], built once per list."""
+    k = id(series_rows)
+    if k not in _SER_INDEX:
+        idx = {}
+        for row in series_rows:
+            if series_name_ok(row[1]):
+                f = re.sub(r"^the ", "", fold(row[1]))
+                idx.setdefault(f, []).append(row)
+        _SER_INDEX.clear()
+        _SER_INDEX[k] = (idx, max((len(f.split()) for f in idx), default=1))
+    return _SER_INDEX[k]
+
+
 def match_series(rec_text, rec_year, series_rows, radio_required=True):
     """series_rows: [(key, name, first_year, last_year)]. Returns list of
     (key, basis). A match needs the series' own name as a phrase, a radio word in
@@ -111,15 +130,20 @@ def match_series(rec_text, rec_year, series_rows, radio_required=True):
     text = fold(rec_text)
     if radio_required and not RADIO_WORDS.search(text):
         return []
-    out = []
-    for key, name, fy, ly in series_rows:
-        if not series_name_ok(name) or not phrase_in(name, text):
-            continue
-        if rec_year and fy and ly and not (fy - 2 <= rec_year <= ly + 2):
-            continue
-        basis = f"series name '{name}' in record text"
-        basis += f"; record year {rec_year} within run {fy}-{ly}" if rec_year and fy else "; no year to compare"
-        out.append((key, basis))
+    idx, longest = _series_index(series_rows)
+    toks = text.split()
+    seen, out = set(), []
+    for n in range(1, min(longest, 12) + 1):
+        for i in range(len(toks) - n + 1):
+            for key, name, fy, ly in idx.get(" ".join(toks[i:i + n]), ()):
+                if key in seen:
+                    continue
+                if rec_year and fy and ly and not (fy - 2 <= rec_year <= ly + 2):
+                    continue
+                seen.add(key)
+                basis = f"series name '{name}' in record text"
+                basis += f"; record year {rec_year} within run {fy}-{ly}" if rec_year and fy else "; no year to compare"
+                out.append((key, basis))
     return out
 
 
@@ -190,4 +214,48 @@ def match_people(rec_text, subjects, rec_year, name_index, people_years):
         if hb and by:
             basis += f"; lifespan agrees ({hb})"
         found.append((pid, basis))
+    return found, refused
+
+
+_SITTER = re.compile(r"^(.+?),\s*(?:c\.\s*)?(?:\d{1,2}\s+\w{3}\s+)?(\d{4}|\?)\s*-\s*(?:c\.\s*)?(?:\d{1,2}\s+\w{3}\s+)?(\d{4})?\s*$")
+
+
+def sitters(names):
+    """NPG name lines 'Orson Welles, 6 May 1915 - 10 Oct 1985' -> [('orson welles', 1915, 1985)]."""
+    out = []
+    for s in names or []:
+        m = _SITTER.match(s.strip())
+        if m:
+            b = int(m.group(2)) if m.group(2) and m.group(2) != "?" else None
+            d = int(m.group(3)) if m.group(3) else None
+            out.append((fold(m.group(1)), b, d))
+    return out
+
+
+def match_portrait(title, sitter_list, name_index, people_years):
+    """A portrait: the record's own title is the sitter's name, that name resolves
+    to ONE of our people, and the sitter's printed lifespan agrees with ours
+    (birth or death year within 1). With no year on either side to compare, the
+    name alone is refused — a portrait gallery holds many people of one name."""
+    t = fold(title)
+    found, refused = [], []
+    for n, b, d in sitter_list:
+        if n != t or not name_ok(n):
+            continue
+        ids = name_index.get(n)
+        if not ids:
+            continue
+        if len(ids) > 1:
+            refused.append((n, f"name resolves to {len(ids)} people"))
+            continue
+        pid = next(iter(ids))
+        by, dy = people_years.get(pid, (None, None))
+        agree = [x for x in ((b, by), (d, dy)) if x[0] and x[1]]
+        if not agree:
+            refused.append((n, "portrait with no lifespan to compare"))
+            continue
+        if any(abs(x - y) > 1 for x, y in agree):
+            refused.append((n, f"sitter lifespan {b}-{d} vs ours {by}-{dy}"))
+            continue
+        found.append((pid, f"portrait: record title is the sitter '{n}'; lifespan {b}-{d} agrees"))
     return found, refused

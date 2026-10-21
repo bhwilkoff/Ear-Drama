@@ -74,6 +74,7 @@ RELEVANT_OCC = re.compile(
     r"journalist|newscaster|news anchor|commentator|narrator|impressionist|humorist|"
     r"sound designer|showrunner|dancer|magician)\b", re.I)
 USABLE = {"pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa"}
+PREFER = {c: i for i, c in enumerate(("pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa"))}
 OBLIGATIONS = {"cc_by": "attribution", "cc_by_sa": "attribution, share-alike"}
 CONTESTED = re.compile(r"^(delete|deletionrequest|copyvio|nopermissionsince|nosourcesince|"
                        r"nolicensesince|nolicense|speedydelete|speedy|dr|copyrightviolation)$")
@@ -464,7 +465,7 @@ def report(people, res, ents, art_rows):
         classes = {}
         for p in usable:
             best = sorted((r for r in by_person[p["id"]] if r[5]),
-                          key=lambda r: ["pd_us", "pd_us_gov", "cc0", "pd_release", "cc_by", "cc_by_sa"].index(r[4]))[0]
+                          key=lambda r: PREFER.get(r[4], 99))[0]
             classes[best[4]] = classes.get(best[4], 0) + 1
         bases = {}
         for p in sub:
