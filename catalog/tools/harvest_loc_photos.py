@@ -186,11 +186,11 @@ def db_terms():
     ser = [n for (n,) in c.execute(
         "select name from series where name is not null and (first_date is null or first_date < '1966') "
         "order by episodes desc limit 400")]
-    ser = [n for n in ser if M.series_name_ok(n)][:120]
+    ser = [n for n in ser if M.series_name_ok(n)][:60]
     ppl = [n for (n,) in c.execute(
         "select p.name from episode_credits e join people p on p.id = e.person_id "
         "group by e.person_id order by count(distinct e.episode_id) desc limit 500")]
-    ppl = [n for n in ppl if M.name_ok(n)][:200]
+    ppl = [n for n in ppl if M.name_ok(n)][:100]
     return ser, ppl
 
 
@@ -247,6 +247,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--phase", default="all", choices=["search", "items", "all"])
     ap.add_argument("--max-requests", type=int, default=2000)
+    ap.add_argument("--max-items", type=int, default=150,
+                    help="item JSON fetches this run (the rest keep the search page's largest preview)")
     a = ap.parse_args()
     os.makedirs(QDIR, exist_ok=True)
     os.makedirs(IDIR, exist_ok=True)
@@ -260,8 +262,11 @@ def main():
             import enrich_photo_archives as E
             targets = E.loc_targets(list(recs.values()))
             print(f"items: {len(targets)} usable matched records", file=sys.stderr)
-            for rid in targets:
+            todo = [rid for rid in targets if not os.path.exists(
+                os.path.join(IDIR, re.sub(r"[^\w.-]", "_", rid) + ".json.gz"))]
+            for rid in todo[:a.max_items]:
                 item_files(recs[rid], a.max_requests, fails)
+            print(f"items: fetched {min(len(todo), a.max_items)} of {len(todo)} not yet cached", file=sys.stderr)
     except Blocked as e:
         status = f"stopped: {e}"
         print(status, file=sys.stderr)
