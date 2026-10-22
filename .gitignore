@@ -93,3 +93,6 @@ Secrets.xcconfig
 # The bench manifest names real devices (UDIDs, IPs, account labels) — per machine.
 # Start from tools/bench.example.json; ~/.device-bench.json is the machine-wide home.
 tools/bench.json
+
+# The web data plane for local development: a symlink to catalog/out/web (never committed)
+/data

@@ -1,0 +1,266 @@
+"""The web projection: the static JSON the browser reads (docs/CATALOG-CONTRACT.md §4).
+
+    python3 tools/build_web_projection.py                       # out/publish/ear-drama.sqlite -> out/web/, clean only
+    python3 tools/build_web_projection.py --include-unclaimed   # the gate open (only once the DMCA agent is registered)
+    python3 tools/build_web_projection.py --src PATH --out DIR
+
+Cut from the served projection (build_projection.py), never built separately.
+The public-web gate is this one flag: without --include-unclaimed only
+`rights = clean` rows are written, whatever the source holds, so a build that
+forgets the flag stays on the safe side.
+
+Layout (every row positional; fields are only ever appended):
+    manifest.json                 counts, field names, shard math, the rights lines, measured bytes
+    index/series.json             the gatekeeper: every served series
+    index/listen.json             Listen shelves, by rule from data (recommendAnd applied)
+    index/days/MM-DD.json         This Day in Radio (recommendAnd applied)
+    index/aliases.json            old episode id -> new id
+    series/{key}.json             one series page: seasons, episodes oldest first (R1)
+    episodes/{shard}.json         Detail, shard = FNV-1a(id) & SHARD_MASK, as 3 hex digits
+    search/terms/{p}.json         word -> delta-coded doc numbers, by the word's first two characters
+    search/docs/{k}.json          the doc table, DOC_CHUNK rows per file
+
+Search is word-prefix, never substring (contract §3.4), tokenized as FTS5's
+unicode61 does: lowercase, diacritics folded, split on anything that is not a
+letter or a digit. Doc numbers run in series order (most episodes first), then
+oldest first, so a result page touches few doc chunks.
+"""
+import argparse
+import datetime
+import gzip
+import json
+import os
+import re
+import shutil
+import sqlite3
+import sys
+import unicodedata
+
+sys.path.insert(0, os.path.dirname(__file__))
+import ia_lib as ia
+
+SCHEMA_VERSION = 1
+SHARD_MASK = 0xFFF
+DOC_CHUNK = 500
+SHELF_SERIES = 12
+SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks"]
+EPISODE_FIELDS = ["id", "date", "season", "num", "title", "rights", "length", "url"]
+DETAIL_FIELDS = ["series", "title", "date", "season", "num", "network", "networkSource", "rights", "rightsBasis",
+                 "length", "dateSource", "aka", "recordings", "credits"]
+RECORDING_FIELDS = ["url", "archiveId", "format", "kbps", "length", "variant", "partial"]
+CREDIT_FIELDS = ["name", "role", "character", "person"]
+DAY_FIELDS = ["id", "date", "title", "series", "length", "url"]
+DOC_FIELDS = ["id", "title", "date", "series"]
+# The rights line, contract §5.5. Published so no client words it for itself.
+RIGHTS_LINES = {
+    "unclaimed": "No rights claim known. Removed on request.",
+    "rec_gov_work": "Government recording",
+    "rec_librivox": "LibriVox recording",
+    "rec_pd_published_age": "Published before 1926",
+    "rec_cc_corroborated": "Creative Commons recording",
+}
+VARIANT_LINES = {"AFRS": "Armed Forces Radio rebroadcast", "AFRTS": "Armed Forces Radio rebroadcast"}
+PARTIAL_LINE = "Incomplete copy"
+
+
+def fnv1a(s):
+    h = 0x811C9DC5
+    for b in s.encode("utf-8"):
+        h ^= b
+        h = (h * 0x01000193) & 0xFFFFFFFF
+    return h
+
+
+def shard_of(episode_id):
+    return format(fnv1a(episode_id) & SHARD_MASK, "03x")
+
+
+def tokens(text):
+    """unicode61's words: case and diacritics folded, split on non-alphanumerics."""
+    if not text:
+        return []
+    folded = "".join(c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c)).lower()
+    spaced = "".join(c if unicodedata.category(c)[0] in "LN" else " " for c in folded)
+    return spaced.split()
+
+
+def term_file(word):
+    """The term shard a word lives in: its first two characters, spelled safely as a file name."""
+    p = word[:2]
+    return p if re.fullmatch(r"[a-z0-9]{2}", p) else "x" + "".join(format(ord(c), "x") for c in p)
+
+
+def dump(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+
+
+def build(src, out, include_unclaimed=False):
+    if os.path.isdir(out):
+        shutil.rmtree(out)
+    os.makedirs(out)
+    s = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
+    rights = ("clean", "unclaimed") if include_unclaimed else ("clean",)
+    q = ",".join("?" * len(rights))
+
+    eps = {}
+    for row in s.execute(f"SELECT id, series_key, air_date, season, num, title, aka, length_s, rights, rights_basis, "
+                         f"no_recommend, network, network_source, date_source FROM episodes WHERE rights IN ({q})",
+                         rights):
+        eps[row[0]] = row
+    recs = {}
+    for eid, rank, aid, url, fmt, kbps, length, variant, partial in s.execute(
+            "SELECT episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings "
+            "ORDER BY episode_id, rank"):
+        if eid in eps:
+            recs.setdefault(eid, []).append([url, aid, fmt, kbps, length, variant, partial])
+    names = dict(s.execute("SELECT id, name FROM people"))
+    credits = {}
+    for eid, pid, role, ch in s.execute("SELECT episode_id, person_id, role, character FROM credits"):
+        if eid in eps and pid in names:
+            credits.setdefault(eid, []).append([names[pid], role, ch, pid])
+    for eid in [e for e in eps if not recs.get(e)]:
+        del eps[eid]   # nothing to play: never listed
+
+    by_series = {}
+    for e in eps.values():
+        by_series.setdefault(e[1], []).append(e)
+    series = {}
+    for key, name, genre, first, last, nets in s.execute(
+            "SELECT key, name, genre, first_date, last_date, networks FROM series"):
+        if key in by_series:
+            series[key] = [key, name, genre, first, last, len(by_series[key]),
+                           ", ".join(json.loads(nets)) if nets else None]
+    for k in [k for k in by_series if k not in series]:
+        for e in by_series.pop(k):
+            del eps[e[0]]   # an episode whose series is not served is not served
+    aliases = {o: n for o, n in s.execute("SELECT old_id, new_id FROM episode_aliases") if n in eps}
+    s.close()
+
+    def oldest_first(e):
+        return (e[2] is None, e[2] or "", e[4] if e[4] is not None else 1 << 30, (e[5] or "").lower(), e[0])
+
+    # The gatekeeper index.
+    index_rows = sorted(series.values(), key=lambda r: (r[1].lower(), r[0]))
+    dump(os.path.join(out, "index", "series.json"), {"fields": SERIES_FIELDS, "rows": index_rows})
+
+    # Series pages.
+    for key, rows in by_series.items():
+        rows.sort(key=oldest_first)
+        seasons = sorted({e[3] for e in rows if e[3]})
+        meta = series[key]
+        dump(os.path.join(out, "series", f"{key}.json"), {
+            "key": key, "name": meta[1], "genre": meta[2], "first": meta[3], "last": meta[4],
+            "networks": meta[6], "seasons": seasons, "fields": EPISODE_FIELDS,
+            "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] for e in rows]})
+
+    # Detail shards.
+    shards = {}
+    for eid, e in eps.items():
+        shards.setdefault(shard_of(eid), {})[eid] = [
+            e[1], e[5], e[2], e[3], e[4], e[11], e[12], e[8], e[9], e[7], e[13], e[6], recs[eid],
+            credits.get(eid, [])]
+    for sh, rows in shards.items():
+        dump(os.path.join(out, "episodes", f"{sh}.json"), rows)
+
+    # Listen: shelves by rule, recommendAnd applied (contract §5).
+    rec_ok = [e for e in eps.values() if e[10] is None]
+    rec_count = {}
+    for e in rec_ok:
+        rec_count[e[1]] = rec_count.get(e[1], 0) + 1
+    by_genre = {}
+    for k, n in rec_count.items():
+        g = series[k][2]
+        if g:
+            by_genre.setdefault(g, []).append(k)
+    shelves = []
+    for g, keys in sorted(by_genre.items(), key=lambda kv: (-sum(rec_count[k] for k in kv[1]), kv[0])):
+        keys.sort(key=lambda k: (-rec_count[k], series[k][1].lower()))
+        shelves.append({"rule": "genre", "genre": g, "series": [series[k] for k in keys[:SHELF_SERIES]]})
+    top = sorted(rec_count, key=lambda k: (-rec_count[k], series[k][1].lower()))[:SHELF_SERIES]
+    dump(os.path.join(out, "index", "listen.json"), {
+        "fields": SERIES_FIELDS, "most": [series[k] for k in top], "shelves": shelves})
+
+    days = {}
+    for e in rec_ok:
+        if e[2] and len(e[2]) == 10:
+            days.setdefault(e[2][5:], []).append(e)
+    for md, rows in days.items():
+        rows.sort(key=oldest_first)
+        dump(os.path.join(out, "index", "days", f"{md}.json"), {"fields": DAY_FIELDS, "rows": [
+            [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0]] for e in rows]})
+    dump(os.path.join(out, "index", "aliases.json"), aliases)
+
+    # Search: doc numbers in series order (most episodes first), then oldest first.
+    order = sorted(by_series, key=lambda k: (-len(by_series[k]), k))
+    docs = [e for k in order for e in by_series[k]]
+    postings = {}
+    for n, e in enumerate(docs):
+        words = set(tokens(e[5]) + tokens(e[6]) + tokens(series[e[1]][1]))
+        for c in credits.get(e[0], []):
+            words.update(tokens(c[0]))
+        for w in words:
+            if len(w) >= 2:
+                postings.setdefault(w, []).append(n)
+    files = {}
+    for w, ns in postings.items():
+        files.setdefault(term_file(w), {})[w] = [ns[0]] + [b - a for a, b in zip(ns, ns[1:])]
+    for f, words in files.items():
+        dump(os.path.join(out, "search", "terms", f"{f}.json"), words)
+    for k in range(0, len(docs), DOC_CHUNK):
+        dump(os.path.join(out, "search", "docs", f"{k // DOC_CHUNK}.json"),
+             [[e[0], e[5], e[2], e[1]] for e in docs[k:k + DOC_CHUNK]])
+
+    manifest = {
+        "schemaVersion": SCHEMA_VERSION,
+        "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "cleanOnly": not include_unclaimed,
+        "counts": {"series": len(series), "episodes": len(eps), "shards": len(shards), "days": len(days),
+                   "terms": len(postings), "termFiles": len(files), "docs": len(docs)},
+        "shard": {"hash": "fnv1a32-utf8", "mask": SHARD_MASK, "digits": 3},
+        "search": {"docChunk": DOC_CHUNK, "minWord": 2, "prefix": 2},
+        "fields": {"series": SERIES_FIELDS, "episode": EPISODE_FIELDS, "detail": DETAIL_FIELDS,
+                   "recording": RECORDING_FIELDS, "credit": CREDIT_FIELDS, "day": DAY_FIELDS, "doc": DOC_FIELDS},
+        "rightsLines": RIGHTS_LINES, "variantLines": VARIANT_LINES, "partialLine": PARTIAL_LINE,
+    }
+    manifest["bytes"] = measure(out)
+    dump(os.path.join(out, "manifest.json"), manifest)
+    return manifest
+
+
+def measure(out):
+    """Raw and gzip bytes per part, and the largest file of each, so a size claim is a reading."""
+    parts = {}
+    for root, _dirs, fs in os.walk(out):
+        for f in fs:
+            p = os.path.join(root, f)
+            rel = os.path.relpath(p, out)
+            part = rel.split(os.sep)[0] if os.sep in rel else rel
+            if part in ("index", "search"):
+                part = os.sep.join(rel.split(os.sep)[:2])
+            with open(p, "rb") as fh:
+                raw = fh.read()
+            z = len(gzip.compress(raw, 6))
+            a = parts.setdefault(part, {"files": 0, "raw": 0, "gzip": 0, "maxRaw": 0, "maxGzip": 0, "maxFile": ""})
+            a["files"] += 1
+            a["raw"] += len(raw)
+            a["gzip"] += z
+            if len(raw) > a["maxRaw"]:
+                a.update(maxRaw=len(raw), maxGzip=z, maxFile=rel)
+    return parts
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--src", default=os.path.join(ia.OUT, "publish", "ear-drama.sqlite"))
+    ap.add_argument("--out", default=os.path.join(ia.OUT, "web"))
+    ap.add_argument("--include-unclaimed", action="store_true",
+                    help="open the public-web gate; only once the DMCA agent is registered")
+    a = ap.parse_args()
+    m = build(a.src, a.out, a.include_unclaimed)
+    print(json.dumps({k: m[k] for k in ("cleanOnly", "counts", "bytes")}, indent=1))
+
+
+if __name__ == "__main__":
+    main()
