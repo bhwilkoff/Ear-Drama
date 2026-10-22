@@ -47,3 +47,9 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Verification: `test_audio_rights.py` 24/24; the new case fails under three broken controls (never sees a performer; counts announcers as performers; leaves the producer-text rescue unguarded). MEASURED on the restored snapshot's credits: Command Performance 203 of 315 episodes credit a performer and move from keep_clean to keep_unclaimed; Jubilee 106 of 252 (already hidden by the music rule).
 - Owner question (logged, not blocking): 112 Command Performance episodes have no credits at all, so the literal rule keeps them as government work, though nearly every episode of the series had network stars. Presume stars for the whole series instead?
 - Next: the version ranking (catalog 007).
+
+### Tick 8, 2026-10-22, data: the default copy is tested (catalog 007)
+- Finding: `build_db` already ranked recordings complete-before-partial, then domestic before variant, then OTRR, then bitrate. Catalog 007's "How to apply", written this afternoon, said kind first, which would play a seven-minute domestic fragment ahead of a whole AFRS disc. The code was right; the decision's wording was not.
+- Implementation: the sort moved into `build_db.order_recordings` (no behavior change); catalog 007's "How to apply" amended with the reason; LOOP-PLAN's rights item checked (ticks 6-8).
+- Verification: `test_identity.py` 61/61 with two new checks (domestic OTRR, domestic, AFRS, fragment; bitrate never outranks the domestic copy); a kind-first ordering fails the first. All ten catalog suites pass.
+- Next: `docs/CATALOG-CONTRACT.md` (M1).

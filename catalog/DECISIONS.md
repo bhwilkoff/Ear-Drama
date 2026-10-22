@@ -131,5 +131,9 @@ pick, even when the disc sounds better.
 **Why**: the owner chose R5 for Q9 on 2026-10-22. The sponsor and the pitch are
 the era's history (R8), and the domestic copy is what people heard that night.
 
-**How to apply**: version ranking sorts kind first (domestic before AFRS), then
-completeness by duration, then measured bitrate; never the format label.
+**How to apply** (amended the same day, tick 8): `build_db.order_recordings` sorts
+a complete copy before a partial one (under 60% of the median length), then the
+domestic broadcast before an AFRS, AFRTS, or rehearsal variant, then OTRR's copy,
+then the measured bitrate; never the format label. Completeness comes before kind
+because a seven-minute fragment of the domestic broadcast is not the broadcast as
+aired; the first wording here put kind first, which the test's control now refuses.

@@ -157,6 +157,18 @@ GENERIC_ALIAS_WORDS = {"interviews", "interview", "christmas", "music", "news", 
                        "classical", "opera", "country", "gospel", "hymns", "serial", "serials", "soap", "radio"}
 
 
+def order_recordings(recs):
+    """The default copy first (catalog DECISIONS 007): a complete copy before a partial
+    one (under 60% of the episode's median length), then the domestic broadcast before
+    an AFRS/AFRTS or rehearsal variant, then OTRR's copy, then the higher measured
+    bitrate. A fragment of the domestic broadcast never beats a whole AFRS disc."""
+    med = statistics.median([r["length_s"] for r in recs if r["length_s"]] or [0]) or None
+    for r in recs:
+        r["partial"] = bool(med and r["length_s"] and r["length_s"] < 0.6 * med)
+    recs.sort(key=lambda r: (r["partial"], bool(r["variant"]), not r["otrr"], -(r["kbps"] or 0)))
+    return recs
+
+
 def build_registry(re_series, otrr_progs, ptitles, aliases, editorial_named):
     reg = Registry()
     re_eps = collections.Counter()
@@ -958,10 +970,7 @@ def main():
     bucket_count = collections.Counter()
     for ep in episodes.values():
         recs = ep["recordings"]
-        med = statistics.median([r["length_s"] for r in recs if r["length_s"]] or [0]) or None
-        for r in recs:
-            r["partial"] = bool(med and r["length_s"] and r["length_s"] < 0.6 * med)
-        recs.sort(key=lambda r: (r["partial"], bool(r["variant"]), not r["otrr"], -(r["kbps"] or 0)))
+        order_recordings(recs)
         j = A.judge(ep, ctx)
         state_count[j["state"]] += 1
         bucket_count[j["rec_bucket"]] += 1

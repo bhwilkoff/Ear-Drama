@@ -188,5 +188,15 @@ check("finding aid: title and date", (u["UIUC_Archives_1306005_0007_A"]["title"]
 check("finding aid: one entry, two sides", u.get("UIUC_Archives_1306005_0021_B", {}).get("program"), "Farm and Home Week")
 check("control: finding aid entry with no date", u["UIUC_Archives_1306005_0001_B"]["date"], None)
 
+# --- the default copy (catalog DECISIONS 007) -------------------------------------
+def copy(name, length, variant=None, otrr=False, kbps=64):
+    return {"name": name, "length_s": length, "variant": variant, "otrr": otrr, "kbps": kbps}
+got = [r["name"] for r in B.order_recordings([copy("afrs", 1740, "AFRS", kbps=128), copy("fragment", 463),
+                                               copy("domestic", 1720), copy("domestic-otrr", 1710, otrr=True, kbps=32)])]
+check("default copy: domestic, OTRR first, then AFRS, fragment last", got,
+      ["domestic-otrr", "domestic", "afrs", "fragment"])
+check("control: bitrate never outranks the domestic copy",
+      B.order_recordings([copy("afrs", 1740, "AFRS", kbps=256), copy("domestic", 1740, kbps=32)])[0]["name"], "domestic")
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)
