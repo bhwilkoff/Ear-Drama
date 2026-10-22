@@ -39,12 +39,15 @@
   apex to one to `bhwilkoff.github.io` (GitHub's documented form) at 13:21 MT,
   but the old record's TTL is 4 hours. After that, if Settings > Pages still
   lists only eardrama.org, remove and re-add the custom domain there.
-- **CI**: Android builds and its unit tests pass in CI (run 39839218802,
-  dispatched). **To check**: on 2026-10-22 no push to this repo triggered any
-  workflow, and GitHub's event feed showed no push events, while dispatches
-  ran. Push the next `android/` change and confirm Android Build starts on
-  its own; if it does not, look at the repository's Actions settings and
-  GitHub status before touching the workflows.
+- **CI**: **push events do not start Actions workflows in this repo**
+  (measured 2026-10-22). e798457 changed `AppVersion.xcconfig` and 9cffd08
+  `android-build.yml`, both inside Android Build's push paths, and neither
+  started a run; Pages deploys do run on every push. The workflow is active,
+  Actions is enabled with all actions allowed, the repo is not a fork, GitHub
+  status is operational, and the repo's event feed holds no PushEvent at all.
+  Until it is solved, dispatch: `gh workflow run android-build.yml --ref main`
+  (run 39862707734 for e798457). Next to try: the owner looks at Settings >
+  Actions > General, or asks GitHub Support.
 - **The research** starts at `docs/research/RESEARCH.md` (§7 owner
   questions, §8 the first build session in order). The catalog pipeline is
   `catalog/` with its own `DECISIONS.md`; its database and caches are on the
