@@ -325,3 +325,13 @@ the age-10 rule) and was rewritten. `test_enrich_external.py` (37/37) and
   people name queries; dates for *You Can't Do Business With Hitler*; the
   1951-1963 magazine years marked `unchecked` (none in the current scan
   inventory) need a CPRS renewal-class query.
+
+## Addendum 2026-10-22: the widened name searches
+
+The name queries were widened to 220 series and 400 people (`db_terms()`), and
+run after loc.gov's hour-long 429 blocks lifted. Result: Library of Congress
+12,091 -> 12,664 records, 5,116 -> 5,247 usable; people with a usable photo
+naming them 179 -> 181; series still 0. **228 queries fail with HTTP 520**
+(loc.gov's origin, not a rate limit; the same query answered 200 when tried by
+hand, slowly) on two successive passes; failed queries are not cached, so
+`python3 tools/harvest_loc_photos.py --phase all` retries only those.

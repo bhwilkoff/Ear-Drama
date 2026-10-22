@@ -461,9 +461,10 @@ or free-licence evidence a reader can open, removed on request. Three tracks:
   licence. About 1 in 30 matches is someone else, mostly undated ones. Many
   Wikidata images are TV-era stills.
 - **F, photo archives and magazines** (`radio-catalog/reports/F-photo-archives.md`):
-  Library of Congress Prints & Photographs (12,091 records, 5,116 usable: no
-  known restrictions or government work) and Smithsonian Open Access from its
-  public bulk files (14,671 CC0, nearly all the National Portrait Gallery). 179
+  Library of Congress Prints & Photographs (12,664 records, 5,247 usable: no
+  known restrictions or government work; 228 name searches still fail with
+  loc.gov's own HTTP 520 and are retried by re-running the harvester) and Smithsonian Open Access from its
+  public bulk files (14,671 CC0, nearly all the National Portrait Gallery). 181
   more people get a photo naming them; **no series photo is usable** (the
   network press prints that name series are restricted or unknown), so series
   art comes through the stars. Magazine rights by title and year: Radio Guide
