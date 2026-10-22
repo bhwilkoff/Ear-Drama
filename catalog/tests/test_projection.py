@@ -134,7 +134,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: the contract catches a leaked hidden row and a raw space", sorted(violations(dst)),
           ["every episode is clean or unclaimed", "no URL holds a raw space"])
 
-real = os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
+real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):
     check("contract holds on the real artifact", violations(real), {})
 else:
