@@ -61,3 +61,75 @@ design, which the research (`docs/research/04`, `05`) documents.
 file this pipeline reads from Archive Watch (`shared/editorial/cce_renewals.json`)
 is copied into the new repository when it moves. Cross-links to Archive Watch
 films (RESEARCH §6) are links between two apps, by archive.org id.
+
+## 004 — An unregistered network script follows the recording: kept while unclaimed
+*Date: 2026-10-22*
+
+A script with no registration, renewal, or sourced claim does not hide its
+episode; the episode takes the recording layer's state. A script registered and
+renewed (the CCE drama renewals, 679 of them radio) still hides it as
+`work_script_claim`.
+
+**Why**: the owner answered RESEARCH §7 Q4 on 2026-10-22 with the take-down
+model rather than "protected: hide". Treating every unregistered script as
+protected would remove most network drama on a claim nobody has made, while the
+real script risk is the registered and renewed kind (*Lone Ranger*, 1984).
+
+**How to apply**: the CCE renewals must be wired into the audit before any
+old-time radio item is published (README: "not yet wired in"), with a test and
+a control. A registration found later is a new hide bucket, never a list of ids.
+
+## 005 — A named, sourced claimant hides a series; a sales listing alone does not
+*Date: 2026-10-22*
+
+A series hides when a claim a reader can open names it (The Shadow and Condé
+Nast, The Lone Ranger, the Lum and Abner takedowns). A licensee selling the
+series on CDs is not, by itself, a claim.
+
+**Why**: the owner chose this for Q5 on 2026-10-22 over "hide anything sold" and
+"keep until a takedown". It is the rule the audit already applies; a sales
+catalog says what someone sells, not what they own.
+
+**How to apply**: `rec_rights_holder_claim` needs a source on every row; a new
+claimant enters through `editorial/audio_claims.json` with its evidence link.
+
+## 006 — The remaining buckets, with a stricter rule for music
+*Date: 2026-10-22*
+
+These settle Q6-Q9 and 02-rights §11 items 5-10:
+
+| Bucket | Rule |
+|---|---|
+| Non-US productions | hidden unless licensed |
+| Post-1972 series (CBS Radio Mystery Theater) | hidden unless licensed |
+| A general takedown naming no episodes | hides the whole series; the letter is kept in `takedowns.json` |
+| 10+ live script renewals in a series | a series claim |
+| CBS news broadcasts Sony scheduled | hidden; news is out of scope anyway |
+| Music and variety shows built on popular songs | **hidden** (stricter than drama) |
+| AFRS originals | kept as government work only when no commercial performer is credited |
+| WWII and Cold War propaganda | never recommended, always findable (Archive Watch 149; `no_recommend`) |
+| Noncommercial-use notices ($50 each) | not filed |
+
+**Why**: the owner accepted the defaults on 2026-10-22, "but stricter music".
+Song copyrights are the live risk in a variety hour: the music publishers are
+active, and their works are registered, so a hidden variety show costs little
+drama and removes the claim most likely to be made.
+
+**How to apply**: music and variety need a `content_kind` from data (archive.org
+subjects, log genres, Goldin's program type), never from a model's reading of a
+title; a comedy-variety show whose songs are incidental stays with drama only
+when its data says so. The AFRS rule reads the credits table. Each row above is
+a bucket with a paired test and a broken control in `tests/test_audio_rights.py`.
+
+## 007 — The default copy is the domestic network broadcast, commercials included
+*Date: 2026-10-22*
+
+When a domestic network copy and an AFRS disc of one broadcast both survive, the
+domestic copy plays by default and the AFRS disc is a version a listener can
+pick, even when the disc sounds better.
+
+**Why**: the owner chose R5 for Q9 on 2026-10-22. The sponsor and the pitch are
+the era's history (R8), and the domestic copy is what people heard that night.
+
+**How to apply**: version ranking sorts kind first (domestic before AFRS), then
+completeness by duration, then measured bitrate; never the format label.

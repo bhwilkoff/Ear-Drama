@@ -201,8 +201,9 @@ real-device check before "done."
 **Ear Drama** (eardrama.org, `app.eardrama`) turns the Internet Archive's
 radio drama and old-time radio into a place to listen: series and episodes
 with dates, casts, networks, and sponsors, a Radio tab that rebuilds a real
-broadcast evening, and a player built for bedtime and the car. Free, no ads,
-no account. It is Archive Watch's sister app on the same source, and its
+broadcast evening, a player built for bedtime and the car, and radio plays
+people record together. Free, no ads; signing in is optional (Decision 057).
+It is Archive Watch's sister app on the same source, and its
 research starts at `docs/research/RESEARCH.md`; the catalog pipeline and its
 own decision log are in `catalog/`.
 

@@ -5,7 +5,7 @@ from the Internet Archive: series and episodes with their dates, casts,
 networks, and sponsors, a Radio tab that rebuilds a real broadcast
 evening from the newspaper listings of the day, and a player made for
 the two places people actually listen, at bedtime and in the car. No
-ads, no account. It lives at [eardrama.org](https://eardrama.org).
+ads, and no account needed to listen. It lives at [eardrama.org](https://eardrama.org).
 
 It is Archive Watch's sister app. Both read the same archive, and Ear
 Drama was researched inside Archive Watch for six days before it moved

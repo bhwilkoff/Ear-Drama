@@ -16,9 +16,16 @@
 
 ## Current state
 
-- **Status**: research done, repository set up, nothing built yet
-  (2026-10-22). The web app and the native apps are still the template's
-  starters, renamed to Ear Drama.
+- **Status**: research done, owner questions answered, the 1.0 loop drafted
+  (2026-10-22); nothing built yet. The web app and the native apps are still
+  the template's starters, renamed to Ear Drama. **The build runs from
+  `LOOP-PLAN.md`**: `/loop Read LOOP-PLAN.md and run the next tick`.
+- **1.0** (Decisions 056-060, catalog 004-007): the core five at parity,
+  every other platform a stub; done when the web is live with the full audited
+  catalog and the natives are on TestFlight and Play internal. Optional
+  Apple/Google sign-in on a Worker + D1; Radio evenings, Listen Together,
+  transcripts; shared plays phases 1-2 (radio and stage scripts, CC0, archive.org,
+  teacher classes). Palette and genre hues wait on design research (M0).
 - **Identity**: `app.eardrama` on every platform; home eardrama.org
   (DECISIONS 054). **eardrama.org is live on GitHub Pages over HTTPS**
   (2026-10-22): DNS at WordPress.com (my.wordpress.com/domains/eardrama.org)
@@ -44,22 +51,10 @@
   `catalog-2026-10-21` Release (`catalog/README.md`, "Start from the
   published snapshot"). 157,503 episodes, 16,113 series; all ten catalog
   test suites pass against a restore from that Release.
-- **Next actions** (RESEARCH §8, adapted to where we are):
-  1. Owner: decide the platform set for v1 (all of Archive Watch's, plus CarPlay and Android
-     Auto, which the research says are the car use) -> DECISIONS.
-  2. Request the CarPlay audio entitlement on day one
-     (developer.apple.com/contact/carplay); Apple's review of it is slow.
-  3. Write `docs/CATALOG-CONTRACT.md` for episodes first, then the publish
-     step that turns `catalog/` output into what clients read.
-  4. Ingest and publish the clean pools first (LibriVox, government work),
-     so there is a lawful catalog on day one; the audio rights audit and its
-     controls before any old-time radio item is published.
-  5. The first client: the web app's Listen, Series, and the player.
-  6. Outreach in parallel: RadioEchoes, Goldin/UMKC, OTRR, and
-     info@archive.org before the first full harvest.
-- **Open owner questions**: RESEARCH §7 Q3-Q12 (Q1 settled by catalog
-  DECISIONS 001, Q2 by 003); V1-V6 (RESEARCH §12, images); B2-B18
-  (`docs/research/09-ear-drama-brand.md` §7; B1 is answered: eardrama.org).
+- **Next actions**: M0 in `LOOP-PLAN.md`; the owner's open items are its
+  "Needs Ben" table (DMCA agent, CarPlay entitlement, store records, OAuth
+  clients, Worker, archive.org account). Outreach and trademark are off for now
+  (Decision 060).
 - **Not set up yet, and why**: App Store Connect and Play records, and the
   signing secrets `appstore-build.yml` and `play-release.yml` need
   (`docs/CLOUD-SUBMISSION.md`). They wait for the first build worth
@@ -70,66 +65,9 @@
 
 ## Milestones
 
-### M0: Project setup
-
-- [ ] Platform set decided + logged in DECISIONS.md
-- [ ] AGENTS.md filled in with project identity (app name, what it
-      does, tech-stack specifics, design tokens)
-- [ ] PARITY.md skeleton sections filled in with intended verbs
-- [ ] **Web**: runs locally out of the box
-      (`python3 -m http.server 8080`, then http://localhost:8080);
-      `index.html`, `css/styles.css`, `js/app.js` render your first
-      view; GitHub Pages enabled
-- [ ] **Apple (universal)**: the project is generated from
-      `project.yml` by the agent, never clicked through Xcode. Rename
-      `AppName` and the bundle ids in `project.yml` (no spaces), run
-      `xcodegen generate`, then build unsigned for iOS Simulator,
-      tvOS Simulator, and macOS and run the Core tests, per
-      `apple/README.md`. ONE target, four destinations; sources stay
-      in `apple/`; `AppVersion.xcconfig` is already wired
-- [ ] **Android**: `cd android && ./gradlew :app:assembleDebug`
-      builds out of the box; open `android/` in Android Studio; rename
-      the package from `com.example.appname` to your reverse-DNS and
-      rebuild; smoke-test on a device or emulator
-- [ ] **CI / submission**: `.github/workflows/appstore-build.yml`
-      (one workflow covers iOS + macOS + tvOS) with the seven signing
-      secrets seeded per `docs/CLOUD-SUBMISSION.md`;
-      `.github/workflows/android-build.yml` for CI builds and
-      `.github/workflows/play-release.yml` to publish to Play (internal
-      track first, then promote)
-- [ ] First commit pushed
-
-### M1: [First user-visible capability]
-
-<!-- One sentence: what can a user DO after this milestone? -->
-
-Before implementing, run the `learning-orientation-design` skill:
-
-- [ ] Deepens understanding
-- [ ] Invites participation
-- [ ] Supports agency
-- [ ] Clarity over cleverness
-
-**Acceptance criteria** (observable by users, not developers):
-
-- [ ] Web: …
-- [ ] iOS: …
-- [ ] macOS: …
-- [ ] tvOS: …
-- [ ] Android: …
-
-**Parity check**: update PARITY.md row(s) for this capability in
-the same change set. Reject the PR if PARITY.md is silent.
-
-### M2: [Second user-visible capability]
-
-- Learning-orientation check passed
-- **Acceptance**:
-  - [ ] Web: …
-  - [ ] iOS: …
-  - [ ] macOS: …
-  - [ ] tvOS: …
-  - [ ] Android: …
+The 1.0 milestones (M0 to M10), their play gates, and the owner's open items
+live in `LOOP-PLAN.md`; the tick log is `AUTONOMOUS_PROGRESS.md`. Ready-to-play
+notes go at the top of this file's Current State.
 
 ---
 

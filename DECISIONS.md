@@ -1323,3 +1323,153 @@ silently re-litigated.
 Ear Drama form. A new rights bucket is a rule with a paired test in
 `catalog/tests/test_audio_rights.py`, never a list of ids.
 
+
+---
+
+## 056: Version 1.0 is the core five, with every other platform as a stub
+
+*Date: 2026-10-22*
+
+Ear Drama 1.0 is the web app, iOS/iPadOS, macOS, tvOS, and Android at full
+feature parity. CarPlay, Android Auto, Android TV and Fire TV, Roku,
+webOS/Tizen, watchOS, and Wear OS each exist at 1.0 as a stub: a target that
+builds in CI and launches, with its PARITY.md column marked ⏳, built out only
+after the core five are complete. 1.0 is done when the web app is live at
+eardrama.org with the full audited catalog and the four native apps are in
+beta (TestFlight and Play's internal track) for the owner to play.
+
+**Why**: the owner, 2026-10-22: *"I want the Core Five for 1.0, but I want each
+of these other platforms as a stub that should be built out once we have the
+full functionality built for the core platforms."* They chose "web live,
+natives in beta" as the finish line, so public store releases are a 1.x step
+taken after real-device play.
+
+**How to apply**: a stub is never a second feature set; it grows from the
+core's shared code once the core is done. Request the CarPlay audio
+entitlement early anyway, because Apple's review of it is slow and asking costs
+nothing. The full catalog means everything the two-layer audit keeps
+(catalog DECISIONS 001, 004-007), unclaimed recordings included, which is why
+the public web launch waits on the registered DMCA agent.
+
+---
+
+## 057: Signing in is optional; it syncs, and it is required to make plays with others
+
+*Date: 2026-10-22*
+
+Anyone can listen without an account, with history kept on the device. Sign
+in with Apple and Sign in with Google, on all five platforms, add cross-device
+sync of history, queue, and followed series, and are required to record,
+cast, or publish a shared play. Accounts and every shared or synced record live
+on a Cloudflare Worker with D1 (Decision 047's hosted split), the stack Archive
+Watch's rooms already run; personal sync rides the same Worker, so no record
+lives in two stores.
+
+**Why**: the owner, 2026-10-22: *"I think we will likely need to think about
+accounts pretty quickly. We already have accounts built out for using Apple and
+Google logins on our other apps, so let's start there. ... it will be very hard
+for people to collaborate upon the plays/dramas together without it being tied
+to their accounts."* They chose optional sign-in and the Worker over Supabase.
+This replaces the research's "no account" line (AGENTS.md "What this app does").
+
+**How to apply**: the first launch plays with zero taps (bedtime is a use;
+05 §1.4). Account deletion ships with sign-in on every platform (Decision 035).
+Refresh the token before every Worker call. Port the sign-in from Archive Watch
+(`docs/runbooks/google-oauth-setup.md`; its PARITY "Sign-in" row) rather than
+writing it again.
+
+**Who was in the room, who gains, who pays:** the owner decided. Listeners who
+never make a play pay nothing; contributors give an identity to the Worker; the
+owner carries the account-deletion and moderation obligations.
+
+---
+
+## 058: Listening features in 1.0: Radio evenings, Listen Together, transcripts
+
+*Date: 2026-10-22*
+
+Beyond Continue, Series, Search, Library, the sleep timer, speed, and
+downloads, 1.0 carries the Radio tab (Tonight in 19xx and genre channels on one
+clock), Listen Together (SharePlay on Apple devices; Worker rooms elsewhere),
+and transcripts. Archive Watch cross-links wait for 1.x.
+
+- **Tonight in 19xx** picks the same calendar date in the best-surviving year,
+  offered only above a coverage floor, with gaps shown as gaps (R9); below the
+  floor it falls back to the best evening for today's weekday.
+- **Series pages group by broadcast season** ("1949-50", fall to summer);
+  summer replacements are their own run.
+- **Transcripts** are archive.org's existing speech-to-text, labeled automatic:
+  always searchable, shown on screen only where they pass a measured quality
+  check (R16).
+
+**Why**: the owner chose these on 2026-10-22 (RESEARCH §7 Q10, Q12; 05 §10 Q3,
+Q4, Q11, Q12) and left the film cross-links out of 1.0.
+
+**How to apply**: the evening builder, the season grouping, and the transcript
+quality gate are pipeline outputs every client reads (the data plane), never
+client logic. The coverage floor is measured over real evenings before it is
+fixed, and recorded here with its number.
+
+---
+
+## 059: Shared plays in 1.0: pass the phone and invite links, radio and stage scripts, CC0
+
+*Date: 2026-10-22*
+
+1.0 carries phases 1 and 2 of the collaborative plays (research 08): recording
+role by role on one device, then invite-only shared productions by link through
+the Worker, with report, block, and filter (guideline 1.2). Radio scripts and
+public-domain stage plays can both be cast, each when its own record carries
+the rights evidence, with no approval queue. Contributions are dedicated CC0
+and uploaded to archive.org through one Ear Drama account. A teacher account
+can run a class and give consent for students under 13 (the school-authorization
+route); without one, under-13s record on a device only. A synthetic voice is a
+live stand-in and is never stored (Decision 055).
+
+**Why**: the owner, 2026-10-22, chose phases 1 and 2, radio plus stage plays,
+archive.org storage, and teacher-managed classes. On the license they wrote:
+*"CC0 is my preferred mode, but I don't want us to allow for anyone to take the
+recordings and use them for AI training or coding."* Told that CC0 waives every
+right and so cannot carry that condition, and that archive.org is open to every
+crawler, they chose CC0 with a clear warning over a license that restricts AI use.
+
+**How to apply**: the consent screen says, before a first recording is uploaded,
+that the recording is permanent, public, and reusable by anyone, including for
+AI training and voice cloning; those words are the owner's to approve. Teacher
+classes need a privacy policy that covers school consent before they open.
+Stage plays need their stage directions read for radio, by the people casting
+them, never rewritten by a model.
+
+**Who was in the room, who gains, who pays:** the owner decided. Families,
+classes, and performers gain a stage; contributors give up control of their
+recordings for good, which is why the warning is plain; teachers carry
+consent for their students.
+
+---
+
+## 060: The look: the ring microphone, Big Shoulders and Public Sans, new genre hues
+
+*Date: 2026-10-22*
+
+The app icon is the CC0 Western Electric ring microphone, cut out on a flat
+ground (09 §2.3, candidate 1). Big Shoulders sets display type and the
+wordmark; body text is the system face on Apple and Android; Public Sans is
+bundled only on the web, Roku, and store art, and the web may self-host the two
+faces. Genres get a new hue set of Ear Drama's own rather than Archive Watch's
+hues with new meanings. The brand palette is not chosen yet: it waits on
+research that starts from the Human Shaped color work.
+
+**Why**: the owner, 2026-10-22, chose B4/B5, B6/B7/B9, and Q11, and on the
+palette (B10-B12) asked: *"Please do additional design research on color
+combinations. There is some really good work done for picking the Human Shaped
+colors and branding in here /Users/bhwilkoff/Documents/GitHub/UniversalAppTemplate
+and in here /Users/bhwilkoff/Documents/GitHub/humanshaped-site"*. Store and
+asset words: the agent drafts, the owner approves (B8, B15); nothing ships to a
+listing unapproved. No trademark filing or clearance for now (B2, B3); no
+outreach to RadioEchoes, Goldin, OTRR, or archive.org for now; harvests stay
+polite.
+
+**How to apply**: the palette and the genre hues are proposed together, as
+rendered directions in light and dark on real screens, and the owner picks;
+then `design-tokens.json`, the generator, and every platform. Brand colors stay
+chrome, genre hues stay content (Decision 012).
