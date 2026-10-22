@@ -1,0 +1,398 @@
+{
+ "onair": {
+  "title": "On Air",
+  "light": {
+   "background": "#FFFFFF",
+   "surface": "#F4F4F5",
+   "surfaceAlt": "#E8E8EB",
+   "text": "#131316",
+   "textMuted": "#5C5C66",
+   "border": "#D8D8DD",
+   "primary": "#B0152F",
+   "onPrimary": "#FFFFFF",
+   "secondary": "#0B6E99",
+   "onSecondary": "#FFFFFF",
+   "link": "#0B6E99",
+   "focus": "#0B6E99",
+   "success": "#1D7A4A",
+   "warning": "#8A5300",
+   "error": "#C2410C",
+   "errorSurface": "#FDEEE8"
+  },
+  "dark": {
+   "background": "#0F0F11",
+   "surface": "#19191C",
+   "surfaceAlt": "#232327",
+   "text": "#F2F2F4",
+   "textMuted": "#C4C4CC",
+   "border": "#34343A",
+   "primary": "#E3384B",
+   "onPrimary": "#120708",
+   "secondary": "#5AB4D6",
+   "onSecondary": "#06141B",
+   "link": "#6CC0E0",
+   "focus": "#6CC0E0",
+   "success": "#5CC593",
+   "warning": "#E8B04B",
+   "error": "#FF9466",
+   "errorSurface": "#3A1F16"
+  },
+  "genres": {
+   "light": {
+    "drama": "#B42575",
+    "mystery": "#3753A2",
+    "scifi": "#03838C",
+    "western": "#A06841",
+    "comedy": "#8D8300",
+    "news": "#44420E",
+    "documentary": "#217500",
+    "serials": "#5D0087"
+   },
+   "dark": {
+    "drama": "#FF91C3",
+    "mystery": "#8DACFA",
+    "scifi": "#16E3F2",
+    "western": "#D97E37",
+    "comedy": "#E2D32B",
+    "news": "#CECEC0",
+    "documentary": "#81CB70",
+    "serials": "#AE6DDC"
+   }
+  },
+  "genreSeed": {
+   "drama": [
+    352,
+    0.5,
+    0.16,
+    0.75,
+    0.13
+   ],
+   "mystery": [
+    275,
+    0.47,
+    0.16,
+    0.73,
+    0.12
+   ],
+   "scifi": [
+    200,
+    0.55,
+    0.1,
+    0.82,
+    0.11
+   ],
+   "western": [
+    55,
+    0.52,
+    0.11,
+    0.73,
+    0.11
+   ],
+   "comedy": [
+    100,
+    0.57,
+    0.12,
+    0.84,
+    0.14
+   ],
+   "news": [
+    115,
+    0.42,
+    0.04,
+    0.8,
+    0.04
+   ],
+   "documentary": [
+    148,
+    0.5,
+    0.13,
+    0.77,
+    0.14
+   ],
+   "serials": [
+    308,
+    0.42,
+    0.16,
+    0.7,
+    0.14
+   ]
+  },
+  "idea": "A studio's red light meant the microphone was live: a WEEI studio sign photographed in Boston warns that silence is required while the red light is on, and Australia's national sound archive keeps a 1940 lightbox lit for the same reason. Here red is kept for the one thing that is live (Play, and what is playing), and the blue of 1930s mirrored-glass sets carries everything else you can touch.",
+  "icon": {
+   "light": {
+    "ground": "#B0152F",
+    "mic": "#FFFFFF",
+    "note": "Icon: white ring microphone on tally red"
+   },
+   "dark": {
+    "ground": "#0F0F11",
+    "mic": "#E3384B",
+    "note": "Dark icon: red microphone on the studio black"
+   }
+  }
+ },
+ "tuningeye": {
+  "title": "Tuning Eye",
+  "light": {
+   "background": "#FFFFFF",
+   "surface": "#F3F5F4",
+   "surfaceAlt": "#E6EAE8",
+   "text": "#111614",
+   "textMuted": "#56605B",
+   "border": "#D5DBD8",
+   "primary": "#0F6B55",
+   "onPrimary": "#FFFFFF",
+   "secondary": "#5B3A29",
+   "onSecondary": "#FFFFFF",
+   "link": "#0F6B55",
+   "focus": "#0F6B55",
+   "success": "#3B6E14",
+   "warning": "#8A5300",
+   "error": "#B42318",
+   "errorSurface": "#FDECEA"
+  },
+  "dark": {
+   "background": "#0D100F",
+   "surface": "#161A18",
+   "surfaceAlt": "#202522",
+   "text": "#E9EEEB",
+   "textMuted": "#C1CAC5",
+   "border": "#2F3632",
+   "primary": "#56D6A8",
+   "onPrimary": "#06120D",
+   "secondary": "#A88B76",
+   "onSecondary": "#160C06",
+   "link": "#6EDDB4",
+   "focus": "#6EDDB4",
+   "success": "#A6D46A",
+   "warning": "#E8B04B",
+   "error": "#FF8A80",
+   "errorSurface": "#3A1D1B"
+  },
+  "genres": {
+   "light": {
+    "drama": "#960023",
+    "mystery": "#1336A4",
+    "scifi": "#B14CB2",
+    "western": "#9B603D",
+    "comedy": "#998100",
+    "news": "#53574A",
+    "documentary": "#116880",
+    "serials": "#B66F7E"
+   },
+   "dark": {
+    "drama": "#CE3D4A",
+    "mystery": "#5F88E8",
+    "scifi": "#DC8DDB",
+    "western": "#F78D4D",
+    "comedy": "#F4D025",
+    "news": "#A3B37D",
+    "documentary": "#55D6FF",
+    "serials": "#FCC8D1"
+   }
+  },
+  "genreSeed": {
+   "drama": [
+    22,
+    0.43,
+    0.16,
+    0.62,
+    0.15
+   ],
+   "mystery": [
+    262,
+    0.42,
+    0.15,
+    0.66,
+    0.12
+   ],
+   "scifi": [
+    322,
+    0.57,
+    0.15,
+    0.8,
+    0.11
+   ],
+   "western": [
+    52,
+    0.56,
+    0.12,
+    0.76,
+    0.12
+   ],
+   "comedy": [
+    95,
+    0.6,
+    0.12,
+    0.84,
+    0.14
+   ],
+   "news": [
+    118,
+    0.43,
+    0.045,
+    0.79,
+    0.045
+   ],
+   "documentary": [
+    225,
+    0.53,
+    0.1,
+    0.8,
+    0.1
+   ],
+   "serials": [
+    358,
+    0.62,
+    0.12,
+    0.83,
+    0.09
+   ]
+  },
+  "idea": "From 1935, RCA's 6E5 tuning eye glowed green behind the dial, its dark wedge closing as a station came in, and Bakelite cabinets came out brown or black because the wood-flour filler that made them strong hid any lighter dye. Green means tuned in (Play, progress, the selected tab), on a near-neutral ground with walnut brown for the mark.",
+  "icon": {
+   "light": {
+    "ground": "#0F6B55",
+    "mic": "#FFFFFF",
+    "note": "Icon: white microphone on tuning green"
+   },
+   "dark": {
+    "ground": "#0D100F",
+    "mic": "#56D6A8",
+    "note": "Dark icon: phosphor microphone on near-black"
+   }
+  }
+ },
+ "catalin": {
+  "title": "Catalin",
+  "light": {
+   "background": "#FFFFFF",
+   "surface": "#F5F4F3",
+   "surfaceAlt": "#EAE7E5",
+   "text": "#17120F",
+   "textMuted": "#615955",
+   "border": "#DCD7D4",
+   "primary": "#7A1F2B",
+   "onPrimary": "#FFFFFF",
+   "secondary": "#B7791F",
+   "onSecondary": "#1A1206",
+   "link": "#7A1F2B",
+   "focus": "#7A1F2B",
+   "success": "#1E7A4F",
+   "warning": "#8A4B00",
+   "error": "#C0261A",
+   "errorSurface": "#FDECEA"
+  },
+  "dark": {
+   "background": "#110E0D",
+   "surface": "#1B1716",
+   "surfaceAlt": "#26201F",
+   "text": "#F1ECE9",
+   "textMuted": "#CBC1BC",
+   "border": "#3A3230",
+   "primary": "#E2A13B",
+   "onPrimary": "#1A1206",
+   "secondary": "#D06470",
+   "onSecondary": "#120607",
+   "link": "#EBB45A",
+   "focus": "#EBB45A",
+   "success": "#5CC593",
+   "warning": "#F2C57A",
+   "error": "#FF8A80",
+   "errorSurface": "#3A1D1B"
+  },
+  "genres": {
+   "light": {
+    "drama": "#CA2F7C",
+    "mystery": "#0353AD",
+    "scifi": "#058DA1",
+    "western": "#AB5D47",
+    "comedy": "#8F8400",
+    "news": "#3C4333",
+    "documentary": "#206F05",
+    "serials": "#64266C"
+   },
+   "dark": {
+    "drama": "#F8A0C2",
+    "mystery": "#70ABFE",
+    "scifi": "#43DEFA",
+    "western": "#CC8773",
+    "comedy": "#E1D32B",
+    "news": "#C5CEB9",
+    "documentary": "#72C660",
+    "serials": "#C269CE"
+   }
+  },
+  "genreSeed": {
+   "drama": [
+    355,
+    0.52,
+    0.17,
+    0.76,
+    0.13
+   ],
+   "mystery": [
+    265,
+    0.48,
+    0.16,
+    0.73,
+    0.12
+   ],
+   "scifi": [
+    210,
+    0.56,
+    0.1,
+    0.83,
+    0.1
+   ],
+   "western": [
+    45,
+    0.53,
+    0.12,
+    0.74,
+    0.12
+   ],
+   "comedy": [
+    112,
+    0.58,
+    0.12,
+    0.85,
+    0.14
+   ],
+   "news": [
+    135,
+    0.42,
+    0.04,
+    0.79,
+    0.04
+   ],
+   "documentary": [
+    145,
+    0.5,
+    0.12,
+    0.76,
+    0.13
+   ],
+   "serials": [
+    315,
+    0.44,
+    0.16,
+    0.71,
+    0.14
+   ]
+  },
+  "idea": "Catalin was cast without filler, so late-1930s sets came in butterscotch, oxblood, and marbled onyx, and collectors note that red, black, and maroon kept their color while lighter shades yellowed toward butterscotch. Oxblood leads in light mode and butterscotch in dark, the pairing of a 1939 DeWald set in butterscotch with oxblood trim.",
+  "icon": {
+   "light": {
+    "ground": "#7A1F2B",
+    "mic": "#E2A13B",
+    "note": "Icon: butterscotch microphone on oxblood"
+   },
+   "dark": {
+    "ground": "#110E0D",
+    "mic": "#E2A13B",
+    "note": "Dark icon: butterscotch microphone on onyx"
+   }
+  }
+ }
+}
