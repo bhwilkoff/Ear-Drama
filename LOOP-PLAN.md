@@ -109,7 +109,7 @@ after the owner has played it; until then it is *built*.
 
 ### M0. Foundations
 
-- [ ] PARITY.md §0 records the platform set (core five, the stubs as ⏳ columns
+- [x] PARITY.md §0 records the platform set (core five, the stubs as ⏳ columns
       with Decision 056 as the reason), and a row for every 1.0 verb below.
 - [ ] Confirm that a push triggers CI (the open question in the scratchpad):
       push an `android/` change and watch Android Build start on its own.

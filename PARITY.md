@@ -1,4 +1,4 @@
-# [APP NAME]: Cross-Platform Feature Parity
+# Ear Drama: Cross-Platform Feature Parity
 
 > **Single source of truth** for what's shipping where. Updated in
 > the SAME change set as any user-facing feature.
@@ -38,13 +38,15 @@ returning to the platform it started on.
 
 ## 0. Platform set
 
-<!-- Pin the platform decision here so it's not re-litigated. Which of
-     web / iOS / iPadOS / macOS / tvOS / Android ship, and WHY each earns
-     its place (or is 🚫 out of scope), with DECISIONS.md refs. Name the
-     LEAD platform (ships first, others mirror). tvOS earns its place when
-     content is lean-back; macOS is nearly free once the universal Apple
-     target exists; skip a platform whose idiom fights the app. A platform
-     not yet reached is ⏳ with a note, never silence. -->
+**1.0 is the core five at one feature set** (Decision 056): web, iOS/iPadOS,
+macOS, tvOS, and Android. The **web leads**: it is the landing twin for every
+share link and the fastest to see, and the natives mirror it. tvOS earns its
+place because listening is lean-back; macOS shares the Apple Core.
+
+**Stubs at 1.0, built out after the core five** (Decision 056): CarPlay,
+Android Auto, Android TV / Fire TV, Roku, webOS / Tizen, watchOS, and Wear OS.
+Each is a target that builds and launches, ⏳ in every row until then.
+Windows is 🔮: not in the owner's set for 1.0.
 
 ---
 
@@ -90,21 +92,40 @@ When shipping any user-facing feature:
 
 | Verb | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| <!-- add verbs here as you ship them --> | | | | | | |
+| Listen (Continue, Tonight in 19xx, shelves by rule) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Decision 058; R13 lists from data |
+| Series (genre, network, decade, kind; runs, seasons, episodes) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Broadcast seasons (058); oldest first (R1) |
+| Radio (evenings and genre channels on one clock) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Gaps stated, never filled (R9) |
+| Search (titles, people, transcript text, dates) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
+| Library (followed series, queue, downloads, history) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Device-local until sync (M5) |
+| Plays (record a radio or stage play together) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Decision 059; TVs play back only |
 
 ---
 
-## 2. Find / explore
+## 2. Listening
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
+| Episode detail (date, network, sponsor, cast, versions, rights line) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Unclaimed reads "no claim known; removed on request", never public domain |
+| Player: background play, system controls, speed, skip | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | iPhone web cannot be relied on for background audio |
+| Sleep timer: "end of this episode" first, fades (R20) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
+| Serials stop at the end of an arc (R3) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
+| Commercials chaptered, never skipped (R8) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
+| Loudness gain applied at playback | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Gain from the pipeline; never re-encoded |
+| Versions picker; domestic copy by default | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | catalog Decision 007 |
+| Transcripts, labeled automatic | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Shown only above the measured quality gate (058) |
+| Downloads | ⏳ | ⏳ | ⏳ | n/a | ⏳ | tvOS has no durable storage for media |
+| Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
 
 ---
 
-## 3. [Next verb]
+## 3. Making plays
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
+| Pass the phone: record role by role on one device | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Web with headphones only; live stand-in voices never stored |
+| Invite-link productions | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Sign-in required; report, block, filter |
+| Teacher classes (consent for under-13s) | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Behind the privacy policy that covers school consent |
+| Play back a finished play | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 
 ---
 
