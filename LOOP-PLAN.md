@@ -115,7 +115,7 @@ after the owner has played it; until then it is *built*.
       with Decision 056 as the reason), and a row for every 1.0 verb below.
 - [ ] Confirm that a push triggers CI (the open question in the scratchpad):
       push an `android/` change and watch Android Build start on its own.
-- [ ] The generated project is named for the app: rename `AppName` in
+- [x] The generated project is named for the app: rename `AppName` in
       `project.yml`, `xcodegen generate`, unsigned builds for iOS, tvOS, and
       macOS, the Core tests, and an Android debug build, all warning-free.
 - [ ] **Palette and genre research** (060). Read the Human Shaped color work

@@ -75,8 +75,8 @@ fun AppRoot(
             Scaffold(
                 topBar = {
                     CenterAlignedTopAppBar(
-                        title = { Text("App Name") },
-                        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(),
+                        title = { Text("Ear Drama") },
+                        colors = TopAppBarDefaults.topAppBarColors(),
                     )
                 },
             ) { padding ->

@@ -16,3 +16,9 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - CI: today's pushes each started a Pages deploy (push events arrive), but 9cffd08 touched `android-build.yml`, inside its own push paths, and no Android Build ran. This push changes `AppVersion.xcconfig`, also in those paths: watching for a push-triggered run.
 - Next: confirm the Android run; the Android debug build (M0).
 - CI result: no push-triggered run for e798457 after 80 s; Pages ran. Checked: workflow active, Actions enabled (all actions), not a fork, githubstatus operational, event feed has no PushEvent since the Release at 1:03 PM MT. Dispatched Android Build (39862707734) instead; result read next tick. Recorded in SCRATCHPAD Current State.
+
+### Tick 3, 2026-10-22, Android: zero warnings on the Android build
+- Context: dispatched Android Build 39862707734 (e798457) passed, with the debug build and unit tests run (not skipped), and printed one Kotlin warning: `centerAlignedTopAppBarColors()` is deprecated.
+- Implementation: `AppRoot.kt` uses `topAppBarColors()`; its title reads "Ear Drama", not "App Name". `android/local.properties` (gitignored) points at `~/Library/Android/sdk`, as Archive Watch's does. Version 1.0.2 (3).
+- Verification: local `assembleDebug testDebugUnitTest`: BUILD SUCCESSFUL, no `w:` lines; Gradle daemons stopped after. CI run dispatched for the push (push events still start nothing). Built, not device-verified. M0's rename item is checked: Apple and Android both build warning-free.
+- Next: read this tick's CI run; then the fonts item (palette and icon wait on the owner's pick).
