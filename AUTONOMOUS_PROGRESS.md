@@ -92,3 +92,6 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Found: the largest genreless series are unfolded uploads of known series ("SUSPENSE Radio Digitally Restored" 306, "NakedGordPresentsTheJackBennyProgram 834" 358) and catch-all collections ("Singles & Doubles Collection" 939, "500 Christmas Shows" 328). Folding them is an identity task (`canonical-entity-identity`, the series registry), next on the main thread after the measurements land.
 - Measurements: loudness 60/198, transcripts 80/190 at the tick's start.
 - Transcripts MEASURED (184 episodes, 25 series, 4 skipped on archive.org 500s): precision median 0.934 (p25 0.891, p10 0.782); recall median 0.752. Near-zero pairs (Gunsmoke, Whistler, Black Museum, Sealed Book) are scripts joined to the wrong broadcast: an identity signal for the series-folding work. Recorded in Decision 058. Next for transcripts: a script-free gate (repeated n-gram runs, words per minute) calibrated on these 184.
+
+### Tick 15, 2026-10-22, opt: scratchpad boilerplate out, declined ideas in
+- Removed the scratchpad's "When to add a binding design doc" (AGENTS.md "Binding design docs" carries it) and the template's example out-of-scope row; added the six ideas the owner declined or deferred today, so no session re-litigates them. Net -14 lines in the file every session loads.
