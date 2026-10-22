@@ -1,4 +1,4 @@
-# Project Scratchpad: [APP NAME]
+# Project Scratchpad: Ear Drama
 
 > Active working notes, loaded into every session, so keep it small.
 > Keep only the two most recent session-log entries; roll older ones
@@ -16,24 +16,39 @@
 
 ## Current state
 
-- **Status**: NOT STARTED
-- **Active milestone**: M0
-- **Last session**: none yet
-- **Next actions**:
-  1. Read `docs/path/00-why-we-build.md` and
-     `docs/path/01-first-prototype.md`
-  2. Decide the platform set (all five? skip tvOS? add Windows?)
-     → DECISIONS.md
-  3. Fill in AGENTS.md project identity sections (CLAUDE.md imports it)
-  4. Rename the app in `project.yml`, then the agent runs
-     `xcodegen generate` and builds iOS, tvOS, and macOS unsigned,
-     per apple/README.md
-  5. Open `android/` in Android Studio, rename `com.example.appname`
-  6. Enable GitHub Pages on main branch (+ `.nojekyll` if serving
-     `/.well-known/`)
-  7. Drop verification files in `/.well-known/` once the
-     `appID` / `package_name` / fingerprints are known
-- **Open questions**: none yet
+- **Status**: research done, repository set up, nothing built yet
+  (2026-10-22). The web app and the native apps are still the template's
+  starters, renamed to Ear Drama.
+- **Identity**: `app.eardrama` on every platform; home eardrama.org
+  (DECISIONS 054). The domain is bought; DNS is not pointed anywhere yet.
+- **The research** starts at `docs/research/RESEARCH.md` (§7 owner
+  questions, §8 the first build session in order). The catalog pipeline is
+  `catalog/` with its own `DECISIONS.md`; its database and caches are on the
+  `catalog-2026-10-21` Release (`catalog/README.md`, "Start from the
+  published snapshot"). 157,503 episodes, 16,113 series; all ten catalog
+  test suites pass against a restore from that Release.
+- **Next actions** (RESEARCH §8, adapted to where we are):
+  1. Owner: point eardrama.org at GitHub Pages (below) and decide the
+     platform set for v1 (all of Archive Watch's, plus CarPlay and Android
+     Auto, which the research says are the car use) -> DECISIONS.
+  2. Request the CarPlay audio entitlement on day one
+     (developer.apple.com/contact/carplay); Apple's review of it is slow.
+  3. Write `docs/CATALOG-CONTRACT.md` for episodes first, then the publish
+     step that turns `catalog/` output into what clients read.
+  4. Ingest and publish the clean pools first (LibriVox, government work),
+     so there is a lawful catalog on day one; the audio rights audit and its
+     controls before any old-time radio item is published.
+  5. The first client: the web app's Listen, Series, and the player.
+  6. Outreach in parallel: RadioEchoes, Goldin/UMKC, OTRR, and
+     info@archive.org before the first full harvest.
+- **Open owner questions**: RESEARCH §7 Q3-Q12 (Q1 settled by catalog
+  DECISIONS 001, Q2 by 003); V1-V6 (RESEARCH §12, images); B2-B18
+  (`docs/research/09-ear-drama-brand.md` §7; B1 is answered: eardrama.org).
+- **Not set up yet, and why**: App Store Connect and Play records, and the
+  signing secrets `appstore-build.yml` and `play-release.yml` need
+  (`docs/CLOUD-SUBMISSION.md`). They wait for the first build worth
+  uploading. The Tizen package id `EarDramaTV` is a placeholder until a
+  Samsung submission.
 
 ---
 
@@ -146,42 +161,17 @@ the entry retire when circumstances change).
 
 ## Session log
 
-<!-- Append-only. Format: state found → work done → state left.
-     Keep entries short: one paragraph per session. -->
+<!-- Append-only. Format: state found -> work done -> state left. Keep the
+     two newest here; roll older ones word for word into docs/SESSION-LOG.md. -->
 
-**2026-08-24: Windows scaffold + Tidbits lessons ported.** Found: sixth-gen
-template with docs/windows/ present but no `windows/` source scaffold, a
-WINDOWS-STORE-SUBMISSION.md that was an unadapted Tidbits copy (real Store
-IDs), a playbook describing a pre-ship layout, and no vendored Windows skill.
-Done: committed the `windows/` scaffold (AppName.Core / .App / .HeadlessTests /
-.Windows: the as-shipped Tidbits architecture with every version gotcha
-pre-solved; builds clean, 11 headless tests pass, shell PNGs verified light +
-dark at 1180×760 and the 900×680 floor, versions stamped from
-AppVersion.xcconfig); generalized WINDOWS-STORE-SUBMISSION.md (placeholders +
-§0 checklist, all 12 gotchas + IAP §7 kept); rewrote WINDOWS-PLAYBOOK.md to the
-as-built flat layout (.NET 10, TFM-isolation, DPAPI, narrow-width shell
-renders, network-race flag); added the `windows-production-gotchas` skill;
-added a `## Windows app` CLAUDE.md section + Windows columns in both design
-tables; appended DECISIONS 035–039 (anonymous-account deletion, query-not-load,
-generator merge guards, randomness-outside-selection, per-store billing
-shapes); README tree/step-12 + CONTRIBUTING now name the scaffold. Left: green;
-Store assets (7 PNGs) intentionally not generated (per-app branding);
-first-Windows-run baselines armed via `-f update_baselines=true` as documented.
-
-**2026-08-24 (second pass): parity + store-approval hardening.** Found: the
-scaffold wave left three lesson families unported: multi-store IAP release
-choreography, Play pre-launch/publish traps, and the parity-audit method
-lessons. Done: new `docs/store/IAP-RELEASE-CHOREOGRAPHY.md` (financial
-paperwork as owner-only critical path, one-review-submission-per-IAP-product /
-ship serially, the Ready-to-Submit trap, per-platform License Agreement,
-empty-success vs thrown-error, per-store query shapes, real-provisioning-only
-purchase verification, the launch-order checklist); store-submission-playbook
-gained the IAP section + the internal-track-has-no-pre-launch-report /
-Test-Lab-yourself / refused-to-auto-submit / all-or-nothing-submit bullets;
-play-cli-submission gained Rules 7–8 (Console stalls, testlab-android.sh);
-cross-platform-parity-discipline gained the degenerate-outcome audit pass
-(tie/zero/empty/cold-quit), the both-directions stale-⏳ check (false docs vs
-false cells), and the failure-class organization for whole-platform-port
-audits; tvos-platform-patterns gained the SignInWithAppleButton-in-Form
-swallowed-click gotcha; CLAUDE.md table + README tree point at the new doc.
-Left: green.
+**2026-10-22: the repository.** Owner: *"Alright, I think we are ready to
+make a copy of the Universal App Template for Ear Drama and port over the full
+set of research and information that we have done in this repository."* Made
+`bhwilkoff/Ear-Drama` (public) from the template the same day it was brought
+up to date with Archive Watch (template audit 2026-10-22). Moved the research
+and `catalog/` from Archive Watch's `claude/radio-drama-research-lpvgea` branch
+with their history (`git filter-repo`: 51 commits, the data stripped from every
+one), joined the split data parts into the `catalog-2026-10-21` Release (every
+part matched the branch's SHA256SUMS; the database opens with the counts its
+README states), applied the renames in research 10 §3, and set the identity
+(`app.eardrama`, "Ear Drama", eardrama.org). Left: green; see Current state.

@@ -891,7 +891,7 @@ for it.
 - **The privacy policy must change.** Today it says the apps "never send us
   information about you" except a room's playback position. A contributor's
   voice, chosen credit name and the take's time would become published data. A
-  separate privacy page for the radio app is cleaner than amending Archive
+  separate privacy page for Ear Drama is cleaner than amending Archive
   Watch's.
 - **Erasure.** Under GDPR, voice is personal data. A request to delete a take
   can be honored on archive.org (DELETE, cascade) and in D1. CC0 copies made by
@@ -952,7 +952,7 @@ available in this session; the questions are paraphrased from CLAUDE.md):
     sheet as a file the user owns.
 - **Needs:**
   - the script JSON format with line ids,
-  - a vetted script list (from radio-catalog and the 02-rights script rules),
+  - a vetted script list (from catalog and the 02-rights script rules),
   - TTS voice assignment per role,
   - cue-response recorder, line markers, local EDL renderer,
   - on-device script match (optional).
@@ -1040,7 +1040,7 @@ available in this session; the questions are paraphrased from CLAUDE.md):
   consent?
 - **Q10.** Who handles takedown and erasure requests, and what response time do
   the terms promise?
-- **Q11.** Is this a section of the radio app, or does it also come to Archive
+- **Q11.** Is this a section of Ear Drama, or does it also come to Archive
   Watch (teleplays, "plays in general")? Teleplays add picture and are out of
   scope here.
 
@@ -1149,4 +1149,4 @@ unless noted)
   `worker/src/together.js`, `worker/wrangler.toml`
 - `tools/archive_lib.py`
 - `privacy.html`
-- `docs/research/RADIO-DRAMA.md`, `docs/research/radio/02-rights.md` §3
+- `docs/research/RESEARCH.md`, `docs/research/02-rights.md` §3

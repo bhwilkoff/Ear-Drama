@@ -104,7 +104,7 @@
     if (!fromHistory) {
       const url = name === 'home' ? '?' : `?view=${name}`;
       history.pushState({ view: name }, '', url);
-      document.title = name === 'home' ? 'App Name' : `App Name — ${name}`;
+      document.title = name === 'home' ? 'Ear Drama' : `Ear Drama: ${name}`;
     }
 
     // Stop/cleanup for views that need it when leaving:

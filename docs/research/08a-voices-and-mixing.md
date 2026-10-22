@@ -727,5 +727,5 @@ account.
   <https://sound-effects.bbcrewind.co.uk>; Freesound API overview
   <https://freesound.org/docs/api/overview.html>; archive.org advancedsearch and
   metadata (MEASURED queries, §8.2); <https://musopen.org>
-- Project context: `docs/research/radio/02-rights.md` §1 (§1401), §3 (scripts, music);
+- Project context: `docs/research/02-rights.md` §1 (§1401), §3 (scripts, music);
   Decisions 050, 140

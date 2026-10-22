@@ -26,7 +26,7 @@
 
 ## 1. What Archive Watch already has that carries straight over [R]
 
-| Piece | Where it lives in Archive Watch | Use in the radio app |
+| Piece | Where it lives in Archive Watch | Use in Ear Drama |
 |---|---|---|
 | Now Playing + remote commands | `ArchiveWatch/ArchiveWatch/Services/NowPlayingWarmup.swift`, `Views/AVPlayerScreen.swift` | Starting point. Audio needs skip intervals and rate; video needs neither |
 | Audio session handling | `Services/TVAudioSession.swift`, Studio files | Category and interruption pattern |
@@ -39,7 +39,7 @@
 | Resilient loader | Decisions 021/031/034/077 (node pinning, failover, 30-second start guarantee) | Same need. Archive storage nodes fail the same way for MP3 as for MP4 |
 | AirPlay rule | Decision 051: the receiver gets the published origin URL, never 127.0.0.1 | Same rule for AirPlay 2 and HomePod |
 
-What Archive Watch never needed, and the radio app does: skip intervals, playback rate, sleep timer, chapters, a car browse tree, a watch app, smart resume tuned for 30-minute episodes, gapless queueing.
+What Archive Watch never needed, and Ear Drama does: skip intervals, playback rate, sleep timer, chapters, a car browse tree, a watch app, smart resume tuned for 30-minute episodes, gapless queueing.
 
 ---
 
@@ -151,7 +151,7 @@ What Archive Watch never needed, and the radio app does: skip intervals, playbac
 - Cast reaches Google Nest speakers and Cast-enabled speakers [K]. Media3 has a `CastPlayer` (`media3-cast`) that swaps in for ExoPlayer [K]. Note that Cast needs Google Play Services, so it is a `google`-flavor-only feature, and Archive Watch's Fire TV rule is zero GMS [R: docs/TV-PLATFORM-EXPANSION.md item 6].
 
 ### 3.7 Google TV and Fire TV
-- **Keep MediaSession ON for audio on TV.** The TV app quality text [V, last updated 2026-06-29]. TV-NP: "If the app continues to play audio after the user returns to the home screen or switches to another app, the app provides media controls in the system UI (such as a card or notification) so users can return to the app to control playback ... Video apps must not use these media controls" (May 2024: "updated to apply only to audio playback, not video"). TV-PA: selecting those controls opens a screen where the user can pause. TV-PC: D-pad center pauses and resumes; left and right fast-forward and rewind "the current track". Archive Watch's TV session is off because it is a video app [R]; the radio app inverts that by rule, not by taste.
+- **Keep MediaSession ON for audio on TV.** The TV app quality text [V, last updated 2026-06-29]. TV-NP: "If the app continues to play audio after the user returns to the home screen or switches to another app, the app provides media controls in the system UI (such as a card or notification) so users can return to the app to control playback ... Video apps must not use these media controls" (May 2024: "updated to apply only to audio playback, not video"). TV-PA: selecting those controls opens a screen where the user can pause. TV-PC: D-pad center pauses and resumes; left and right fast-forward and rewind "the current track". Archive Watch's TV session is off because it is a video app [R]; Ear Drama inverts that by rule, not by taste.
 - Fire TV: no specific audio guidance was retrieved (search budget exhausted) [UNVERIFIED]. Fire OS is Android, so the Media3 session gives the system's media controls [K]. Amazon's review checks Back behavior (Archive Watch's A16: Back returns to the launcher from root [R]).
 - A TV audio screen needs something to look at: series art, episode art, an elapsed bar, and transcript lines if they exist. Burn-in: keep slowly moving or dimming art on OLED [K].
 
@@ -538,10 +538,10 @@ Audio pipeline
 - https://github.com/linto-ai/whisper-timestamped/issues/74 (Silero near-silence)
 
 Repository (Archive Watch's own evidence)
-- /home/user/Archive-Watch/docs/app-store-review-5.2.3-response.md
-- /home/user/Archive-Watch/docs/decisions/DECISIONS-031-060.md (039b and its successor)
-- /home/user/Archive-Watch/docs/CATALOG-CONTRACT.md, /home/user/Archive-Watch/docs/WEB-DESIGN.md §2.5 (Range/CORS measured 2026-06-09)
-- /home/user/Archive-Watch/docs/TV-PLATFORM-EXPANSION.md item 5, /home/user/Archive-Watch/docs/TV-PLATFORM-BACKLOG.md A15 (TV-NP)
-- /home/user/Archive-Watch/ArchiveWatch/ArchiveWatch/Services/{NowPlayingWarmup,TVAudioSession,DownloadManager,WatchTogether,BackgroundRefresh}.swift
-- /home/user/Archive-Watch/android/app/src/main/java/app/archivewatch/android/ui/screens/PlayerScreen.kt
-- /home/user/Archive-Watch/watch.js (Media Session, around line 3655)
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/docs/app-store-review-5.2.3-response.md
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/docs/decisions/DECISIONS-031-060.md (039b and its successor)
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/docs/CATALOG-CONTRACT.md, https://github.com/bhwilkoff/Archive-Watch/blob/main/docs/WEB-DESIGN.md §2.5 (Range/CORS measured 2026-06-09)
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/docs/TV-PLATFORM-EXPANSION.md item 5, https://github.com/bhwilkoff/Archive-Watch/blob/main/docs/TV-PLATFORM-BACKLOG.md A15 (TV-NP)
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/ArchiveWatch/ArchiveWatch/Services/{NowPlayingWarmup,TVAudioSession,DownloadManager,WatchTogether,BackgroundRefresh}.swift
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/android/app/src/main/java/app/archivewatch/android/ui/screens/PlayerScreen.kt
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/watch.js (Media Session, around line 3655)

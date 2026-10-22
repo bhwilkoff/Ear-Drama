@@ -19,7 +19,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ia_lib import CACHE  # noqa: E402
 
-UA = ("ArchiveWatch-RadioCatalog/0.1 (https://archivewatch.org; "
+UA = ("EarDrama-Catalog/0.1 (https://eardrama.org; "
       "radio catalog enrichment, read-only, low rate)")
 SPARQL = "https://query.wikidata.org/sparql"
 WD_API = "https://www.wikidata.org/w/api.php"

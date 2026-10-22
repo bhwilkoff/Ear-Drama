@@ -947,6 +947,6 @@ Audience
 - https://radioink.com/?p=102771
 
 Repository (read directly)
-- /home/user/Archive-Watch/CLAUDE.md, docs/iOS-DESIGN.md (§1, §5), docs/tvOS-DESIGN.md (§9),
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/CLAUDE.md, docs/iOS-DESIGN.md (§1, §5), docs/tvOS-DESIGN.md (§9),
   docs/decisions/DECISIONS-031-060.md (041), docs/decisions/DECISIONS-127-145.md (139, 144),
   DECISIONS.md (097, 149, 151, 158), catalog-index.json (schema 15, 35,290 rows; title checks in §5.2)

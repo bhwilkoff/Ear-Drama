@@ -1,7 +1,7 @@
 # Radio catalog — decisions
 
 Append-only, lead-with-WHY (the Archive Watch format). This pipeline will move to
-the radio app's own repository when it is created; these entries move with it.
+Ear Drama's own repository when it is created; these entries move with it.
 
 ## 001 — Unclaimed broadcasts are kept and removed on request; nothing is kept on a paid licence
 *Date: 2026-10-17*
@@ -19,7 +19,7 @@ recording until 2067 (17 U.S.C. §1401), so "public domain by age" frees almost 
 radio drama; but §1401(f)(5) denies statutory damages and fees to an owner who
 filed no schedule, and §1401(f)(3) applies the DMCA safe harbor — the reason
 archive.org and RadioEchoes run on notice and takedown
-(`docs/research/radio/02-rights.md` §12).
+(`docs/research/02-rights.md` §12).
 
 **How to apply**: never label `keep_unclaimed` "public domain" in any client —
 its rights line says no claim is known and that it is removed on request
@@ -48,16 +48,16 @@ was written before Decision 001.
 ## 003 — The radio app is its own app, not a section of Archive Watch
 *Date: 2026-10-19*
 
-The radio drama app ships as a separate app with its own repository, bundle ids
+Ear Drama ships as a separate app with its own repository, bundle ids
 and store listings. This catalog pipeline moves there when that repository is
 created.
 
 **Why**: the owner, 2026-10-19: *"It is definitely a separate app."* (Answering
-RADIO-DRAMA.md §7 Q2.) App Store guideline 4.3(a) ("Don't create multiple Bundle
+RESEARCH.md §7 Q2.) App Store guideline 4.3(a) ("Don't create multiple Bundle
 IDs of the same app") is answered by the app's different content and audio-first
-design, which the research (`docs/research/radio/04`, `05`) documents.
+design, which the research (`docs/research/04`, `05`) documents.
 
 **How to apply**: nothing here imports Archive Watch code at runtime; the one
 file this pipeline reads from Archive Watch (`shared/editorial/cce_renewals.json`)
 is copied into the new repository when it moves. Cross-links to Archive Watch
-films (RADIO-DRAMA §6) are links between two apps, by archive.org id.
+films (RESEARCH §6) are links between two apps, by archive.org id.

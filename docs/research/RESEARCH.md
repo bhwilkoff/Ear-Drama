@@ -1,10 +1,10 @@
 # A public-domain radio drama app — research (2026-10-17)
 
-> **STATUS: RESEARCH COMPLETE; A DRAFT CATALOG IS BUILT (`radio-catalog/`); NO
+> **STATUS: RESEARCH COMPLETE; A DRAFT CATALOG IS BUILT (`catalog/`); NO
 > APP YET. The app is named EAR DRAMA (owner, 2026-10-21; §12).** The owner will build the app in a future session from an updated
 > Universal App Template. This file is the synthesis and the starting point; the
-> evidence is in seven detail files under `docs/research/radio/`, and the
-> rights-designated database and its pipeline are in `radio-catalog/` (README,
+> evidence is in seven detail files under `docs/research/`, and the
+> rights-designated database and its pipeline are in `catalog/` (README,
 > DECISIONS, `dist/` snapshot — §10 below). Every external claim carries a source
 > URL, and anything not confirmed from a primary source is marked UNVERIFIED.
 > The early drafts were search-only (the environment's network policy blocked
@@ -23,15 +23,15 @@ immediate use."*
 
 | File | Covers |
 |---|---|
-| `radio/01-content-sources.md` | Every repository holding radio drama, ranked: what, access, terms, rights posture, role. §0 has 22 measured facts |
-| `radio/02-rights.md` | US law for pre-1972 recordings and scripts, read from the statute; the proposed two-layer audio rights audit; ten owner questions |
-| `radio/03-metadata-sources.md` | The radio equivalents of TMDb/TVmaze/Wikidata: episode logs, Wikidata classes, newspaper listings, artwork, scripts; the enrichment cascade |
-| `radio/04-audio-platform-engineering.md` | Per-platform audio engineering (Apple incl. CarPlay/Watch, Android incl. Auto/TV, Roku, web, speakers), the audio pipeline, review pitfalls |
-| `radio/05-design-research.md` | Precedent teardown, 697 measured App Store reviews, the episodic model, "Tonight in 1947", IA, 21 proposed binding rules, twelve owner questions |
-| `radio/06-archive-watch-reuse.md` | Every Archive Watch tool, workflow and decision judged reuse / adapt / replace for audio; transferable lessons; the new repo's layout |
-| `radio/08-collaborative-productions.md` | Collaborative radio plays recorded one role at a time (08a voices and mixing, 08b scripts, 08c collaboration and storage) |
-| `radio/07-archive-org-ingest.md` | The archive.org corpus in depth: item and file structure, filename grammar, APIs, the ingest algorithm and dedupe |
-| `tools/probe_otr_corpus.py` | Stdlib-only probe of the archive.org corpus (counts, formats, filename hit rates, hours, duplicates) |
+| `01-content-sources.md` | Every repository holding radio drama, ranked: what, access, terms, rights posture, role. §0 has 22 measured facts |
+| `02-rights.md` | US law for pre-1972 recordings and scripts, read from the statute; the proposed two-layer audio rights audit; ten owner questions |
+| `03-metadata-sources.md` | The radio equivalents of TMDb/TVmaze/Wikidata: episode logs, Wikidata classes, newspaper listings, artwork, scripts; the enrichment cascade |
+| `04-audio-platform-engineering.md` | Per-platform audio engineering (Apple incl. CarPlay/Watch, Android incl. Auto/TV, Roku, web, speakers), the audio pipeline, review pitfalls |
+| `05-design-research.md` | Precedent teardown, 697 measured App Store reviews, the episodic model, "Tonight in 1947", IA, 21 proposed binding rules, twelve owner questions |
+| `06-archive-watch-reuse.md` | Every Archive Watch tool, workflow and decision judged reuse / adapt / replace for audio; transferable lessons; the new repo's layout |
+| `08-collaborative-productions.md` | Collaborative radio plays recorded one role at a time (08a voices and mixing, 08b scripts, 08c collaboration and storage) |
+| `07-archive-org-ingest.md` | The archive.org corpus in depth: item and file structure, filename grammar, APIs, the ingest algorithm and dedupe |
+| `catalog/tools/probe_otr_corpus.py` | Stdlib-only probe of the archive.org corpus (counts, formats, filename hit rates, hours, duplicates) |
 | `radio/data/` | The probe's 400-item sample report and the famous-series structure notes (2026-10-17) |
 
 ---
@@ -67,7 +67,7 @@ ready either way.
 
 ## 2. What is out there (content)
 
-Ranked from `radio/01-content-sources.md` §"Sources to build on":
+Ranked from `01-content-sources.md` §"Sources to build on":
 
 | Source | Role | Measured / key fact |
 |---|---|---|
@@ -94,7 +94,7 @@ Mark, all assertions. `licenseurl` may neither admit nor exclude an item.
 The owner asked, 2026-10-17: *"How does the modernization act make it so that
 audio is copyrighted but not video. That doesn't make sense? These recordings
 aren't music. And clearly public domain recordings (by age) should still be
-available."* The answer, in `radio/02-rights.md` (top) with the statute quoted:
+available."* The answer, in `02-rights.md` (top) with the statute quoted:
 
 - **"Sound recording" is any recorded sound**, drama and speech included, except
   a film's soundtrack, which belongs to the film (17 U.S.C. §101). The Act's name
@@ -182,11 +182,11 @@ keep.
 Old-time radio does not have the shape of a film catalog, nor quite of TV:
 
 - **The episode is the catalog row; the archive.org item is provenance.** An
-  item usually holds a whole series, year or set (`radio/07` §1). An episode is
+  item usually holds a whole series, year or set (`07` §1). An episode is
   identified by item + file, then by its natural key.
 - **The natural key is (series, broadcast date).** It is in the filenames:
   OTRR's canonical `Series_YY-MM-DD_epNNN_Title[_aka_Alt][_epAFRTS]`, `xx` for
-  unknown parts, and at least five other date spellings (`radio/07` §2, with a
+  unknown parts, and at least five other date spellings (`07` §2, with a
   real example of each and the regexes).
 - **Script → broadcast → recording.** A script is performed more than once
   ("Sorry, Wrong Number" aired on Suspense eight times, 1943-60; X Minus One's
@@ -207,7 +207,7 @@ Old-time radio does not have the shape of a film catalog, nor quite of TV:
 - **A series is a list of dated runs, and each run has a kind**: anthology,
   continuing character, serial (arcs, cliffhangers), daily strip/soap,
   comedy-variety, news, broadcast day. Shows changed kind mid-life (Johnny
-  Dollar's five-part stories of 1955-56). Kind decides queueing (`radio/05` §2).
+  Dollar's five-part stories of 1955-56). Kind decides queueing (`05` §2).
 - **Every field carries its source** (Decision 124), and every date has its
   witness, because the logs disagree.
 
@@ -219,8 +219,8 @@ These are the recipes a build session can run. Each points at the section with
 the commands or code.
 
 ### 5.1 Enumerate and split the corpus
-1. Run `python3 tools/probe_otr_corpus.py` (stdlib only) for today's counts,
-   formats, filename hit rates and duplicate rate (`radio/07` §"To measure").
+1. Run `python3 catalog/tools/probe_otr_corpus.py` (stdlib only) for today's counts,
+   formats, filename hit rates and duplicate rate (`07` §"To measure").
 2. Enumerate items with the Scrape API (cursor paging) over
    `collection:oldtimeradio`, `collection:lumedwards`, `identifier:OTRR_*` and
    `collection:librivoxaudio` with the drama genres; fetch `/metadata/{id}` for
@@ -230,7 +230,7 @@ the commands or code.
    images, not streamable). Use advancedsearch `numFound` for counts: the scrape
    API's `total_only` returned 8,952 for every query (MEASURED).
 3. Split each item into episodes; parse filenames with the 14 regex families in
-   `radio/07` (93.8% of 16,544 sampled files parse, 80% to a full date) plus a
+   `07` (93.8% of 16,544 sampled files parse, 80% to a full date) plus a
    series-abbreviation alias table (`FMM`, `JB`, `YTJD`, `CP`, `Pwh`...); fall back to ID3 tags (the measured 128 kbps Suspense upload
    carries the air date in clean tags); record `(series, date, number, title)`
    and provenance.
@@ -243,14 +243,14 @@ the commands or code.
 6. Be polite: honest User-Agent, sequential with backoff, only 404/410 means
    gone; email info@archive.org before the first full harvest.
 
-### 5.2 Enrich (the cascade, `radio/03` §"Recommended cascade")
+### 5.2 Enrich (the cascade, `03` §"Recommended cascade")
 1. Filename + ID3 → the natural key.
 2. Series → Wikidata (CC0; `radio series` Q14623351; Suspense is Q1548940 with
    P1113 = 946 episodes), checked against years and network. SPARQL in
-   `radio/03` "To measure". Few episodes exist on Wikidata; there is no
+   `03` "To measure". Few episodes exist on Wikidata; there is no
    RadioGOLDINdex property — proposing one is a contribution back.
 3. **The spine is RadioEchoes** (owner, 2026-10-17: *"Can we use radioechoes as
-   the spine and archive.org as the content source?"* — yes; `radio/03`
+   the spine and archive.org as the content source?"* — yes; `03`
    addendum): 5,069 human-genred series, each a page of dated episodes with
    title, length and a `series_YYYY-MM-DD_title.mp3` key (Suspense: 917,
    MEASURED). No API or stated terms; robots allows all at a 10-second crawl
@@ -276,7 +276,7 @@ the commands or code.
    (Decision 026); when a match is cleared, remove what it filled (Decision 150).
 
 ### 5.3 Judge rights
-Implement `audit_audio_rights.py` from `radio/02` §10 with its machine-readable
+Implement `audit_audio_rights.py` from `02` §10 with its machine-readable
 claim sources, in this order of value: the pre-1972 schedules (new
 `fetch_p72_schedules.py`, Solr proxy measured), CCE drama volumes (a parser
 beside `fetch_cce_renewals.py`), `cce_renewals.json` for Lux/Screen Guild, the
@@ -286,7 +286,7 @@ Copyright Office's online records for 1978+, archive.org darkened items and
 ### 5.4 Prepare the audio
 Measure loudness in CI with ffmpeg's `ebur128` filter (~10 s per 30-minute file,
 against ~53 s for `loudnorm`), store the gain in the catalog, apply it at
-playback; never re-encode or re-host (`radio/04` §8). The two measured Suspense
+playback; never re-encode or re-host (`04` §8). The two measured Suspense
 uploads read -18.85 and -18.39 LUFS; confirm a playback target near -18 LUFS on a
 200-file sample. Never trim silence; chapter the commercials, never skip them.
 Transcripts: archive.org has ALREADY generated speech-to-text (vtt/txt/srt) for
@@ -301,13 +301,13 @@ The Archive Watch data plane carries over: catalog source and SQLite on a GitHub
 Release (`catalog_release.py`, `sqlite_publish_guard.py`, `merge_catalogs.py`,
 `catalog_delta.py` as-is), a Pages index for the web, editorial JSON, the
 workflow-health auditor. The new repo's full `tools/` and workflow layout, and
-the do-not-copy list, are `radio/06` §5.
+the do-not-copy list, are `06` §5.
 
 ---
 
 ## 6. Design and platforms
 
-From `radio/05` (design) and `radio/04` (engineering):
+From `05` (design) and `04` (engineering):
 
 - **The existing OTR apps are weak** (697 US App Store reviews of nine apps,
   MEASURED): billing is the top complaint (90), then crashes (50), no resume, no
@@ -330,8 +330,8 @@ From `radio/05` (design) and `radio/04` (engineering):
 - **IA**: Listen · Series · Radio · Search · Library; four car tabs (Continue,
   Radio, Series, Downloads), lists not grids; typographic cards; genres take the
   semantic accents and chrome never does. 21 proposed binding rules (R1-R21) in
-  `radio/05` §9, each with its reason.
-- **Platform rules that change the build** (`radio/04`, read on primary pages
+  `05` §9, each with its reason.
+- **Platform rules that change the build** (`04`, read on primary pages
   2026-10):
   - CarPlay needs the `com.apple.developer.carplay-audio` entitlement (request at
     developer.apple.com/contact/carplay); at most 4 tabs and 5 screens deep; no
@@ -356,13 +356,13 @@ From `radio/05` (design) and `radio/04` (engineering):
 
 ## 7. Decisions reserved for the owner
 
-Consolidated from `radio/02` §11 and `radio/05` §10; the exact wording of each is
+Consolidated from `02` §11 and `05` §10; the exact wording of each is
 there. Ordered by what they unblock.
 
 | # | Question | Blocks |
 |---|---|---|
 | Q1 | **Orphans**: show only the strict tier; show unclaimed broadcasts on demand and hide on the first claim (recommended — §3a); or a curated noncommercial-use set? Plus: license the Radio channels through SoundExchange? | The size and identity of the catalog |
-| Q2 | ~~**A separate app, or a Radio section in Archive Watch?**~~ ANSWERED 2026-10-19: *"It is definitely a separate app."* (radio-catalog DECISIONS 003) (App Store 4.3(a) bears on it; the people/works graph is shared either way) | Repo, bundle id, template choice |
+| Q2 | ~~**A separate app, or a Radio section in Archive Watch?**~~ ANSWERED 2026-10-19: *"It is definitely a separate app."* (catalog DECISIONS 003) (App Store 4.3(a) bears on it; the people/works graph is shared either way) | Repo, bundle id, template choice |
 | Q3 | File noncommercial-use notices ($50 each), after a lawyer confirms a free store app is noncommercial? | Tier B |
 | Q4 | Unregistered network scripts: protected (hide) or follow Q1? | The underlying-work layer |
 | Q5 | Commercially sold series with no takedown: hide? | `rec_commercially_exploited` |
@@ -379,9 +379,9 @@ there. Ordered by what they unblock.
 ## 8. The first build session, in order
 
 1. Owner answers Q1 and Q2 (the rest can follow).
-2. Run `tools/probe_otr_corpus.py` and the LibriVox drama enumeration; record the
+2. Run `catalog/tools/probe_otr_corpus.py` and the LibriVox drama enumeration; record the
    numbers as MEASURED with the date.
-3. Stand up the new repo from the template with the `radio/06` §5 pipeline
+3. Stand up the new repo from the template with the `06` §5 pipeline
    layout; copy the plumbing as-is; write `CATALOG-CONTRACT.md` for episodes
    first.
 4. Build ingest (§5.1) against the clean pools first (LibriVox, government) so
@@ -395,13 +395,13 @@ there. Ordered by what they unblock.
 
 ---
 
-## 10. The draft catalog (`radio-catalog/`), 2026-10-17
+## 10. The draft catalog (`catalog/`), 2026-10-17
 
 Owner: *"Can you start work on building out a full database with each of the
 rights designations considered. I like the idea of moving to a 'take down
 request' model ... but a licensed model at $1000 per year is definitely not in
 keeping with our regular process."* So Q1 is answered (unclaimed broadcasts are
-kept and removed on request; no SoundExchange licence) — `radio-catalog/DECISIONS.md`
+kept and removed on request; no SoundExchange licence) — `catalog/DECISIONS.md`
 001, with 002 (an uploader's licence tag neither admits nor hides).
 
 - **Pipeline** (stdlib Python, self-contained so it can move to the app's repo):
@@ -419,7 +419,7 @@ kept and removed on request; no SoundExchange licence) — `radio-catalog/DECISI
   series with 10+ live script renewals claimed as a series; GRW scripts shown in
   full only for a clean episode, otherwise linked to GRW (scripts are the
   stronger copyright — *Lone Ranger*, 1984).
-- **The snapshot** (`radio-catalog/dist/`, a DRAFT built mid-harvest): see its
+- **The snapshot** (`catalog/dist/`, a DRAFT built mid-harvest): see its
   README for counts and how to rebuild from the cached harvests. It rides the
   feature branch only because no release upload was possible from the session;
   move it to a Release before merging.
@@ -430,19 +430,19 @@ The owner asked whether listeners could record new radio plays together, one
 role at a time, against live device voices that are never stored. Feasible on
 phones and Macs, and the licences agree with the design: Apple permits system
 voices while the software runs and forbids recording or publishing them. Synthesis
-and owner questions C1-C10: `radio/08-collaborative-productions.md` (detail in
-08a, 08b, 08c; prototype parsers in `radio-catalog/prototypes/scripts/`).
+and owner questions C1-C10: `08-collaborative-productions.md` (detail in
+08a, 08b, 08c; prototype parsers in `catalog/prototypes/scripts/`).
 
 ### 10a. The expansion, 2026-10-19/20 (owner: *"We want the most complete database possible"*)
 
-Four tracks, each with a report in `radio-catalog/reports/`: **A** corpus (+6,659
+Four tracks, each with a report in `catalog/reports/`: **A** corpus (+6,659
 archive.org items found by 449 measured queries), **B** identity (unidentified
 41,927 -> 1,290; a series registry from OTRR's 14,976 alias titles), **C** people
 and programs (all 124,919 RadioGOLDINdex records; OTRRpedia's 10,783 programs and
 51,130 people), **D** external (Wikidata, Wikipedia episode tables, 2,371 Haendiges
 logs, Commons art with licence evidence). Result: 157,503 episodes, 121,907 playable
 (~47,700 hours), half of the dated ones with credits, a Goldin match and an
-independent witness — full table in `radio-catalog/dist/README.md`.
+independent witness — full table in `catalog/dist/README.md`.
 
 ## 12. Visual assets and the Ear Drama brand (2026-10-21)
 
@@ -453,14 +453,14 @@ research necessary before I move this project into its own repository."* So
 images follow the audio's rule: used when their OWN record carries public-domain
 or free-licence evidence a reader can open, removed on request. Three tracks:
 
-- **E, people portraits** (`radio-catalog/reports/E-people-portraits.md`):
+- **E, people portraits** (`catalog/reports/E-people-portraits.md`):
   credited people matched to Wikidata on name plus dates (or one radio-trade
   candidate of the right era when we hold no dates): 5,204 of 18,855, 1,109 of
   the top 2,000. 3,177 people have a usable portrait (734 of the top 2,000),
   most PD-US; 315 only under CC BY / BY-SA, which must show the author and
   licence. About 1 in 30 matches is someone else, mostly undated ones. Many
   Wikidata images are TV-era stills.
-- **F, photo archives and magazines** (`radio-catalog/reports/F-photo-archives.md`):
+- **F, photo archives and magazines** (`catalog/reports/F-photo-archives.md`):
   Library of Congress Prints & Photographs (12,664 records, 5,247 usable: no
   known restrictions or government work; 228 name searches still fail with
   loc.gov's own HTTP 520 and are retried by re-running the harvester) and Smithsonian Open Access from its
@@ -471,7 +471,7 @@ or free-licence evidence a reader can open, removed on request. Three tracks:
   1931-43, Radio Stars, Tune In and Radio Mirror to 1943 not renewed; Radio
   Mirror 1944-63 renewed, which archive.org's own copyright field gets wrong
   for 34 volumes. NARA, NYPL and DPLA need free keys (owner).
-- **The brand** (`radio/09-ear-drama-brand.md`): no conflicting app or US mark
+- **The brand** (`09-ear-drama-brand.md`): no conflicting app or US mark
   for "Ear Drama"; EARPLAY (audio drama, registered 2024) is the nearest; the
   .com and .app were registered 2026-10-13, .org/.fm free. Twelve icon sources,
   all public domain or CC0, led by a CC0 Western Electric ring microphone; Big
@@ -490,11 +490,11 @@ Owner questions from E and F (one line each; detail in the reports):
 | V5 | A photo inside an unrenewed magazine issue: usable on the issue's evidence alone? |
 | V6 | Free API keys for NARA, NYPL and DPLA (an account or email is yours to give) |
 
-The move to Ear Drama's own repository: `radio/10-repository-move.md`.
+The move to Ear Drama's own repository: `10-repository-move.md`.
 
 ## 9. Found along the way, outside this research
 
-- **A live Archive Watch defect** (`radio/06` §4): `discover_archive_collections.
+- **A live Archive Watch defect** (`06` §4): `discover_archive_collections.
   scrape_query` stops with a bare `return` on a failed response and
   `archive_lib.adv_search` returns `[]`, so a throttled call reads as "nothing
   found" — ENGINEERING-PROCESS §1's "absence is not evidence". Not fixed here.

@@ -2,7 +2,7 @@
 
 *Date: 2026-10-17*
 
-This maps the Archive Watch repo (`/home/user/Archive-Watch`) for a sister app:
+This maps the Archive Watch repo ([Archive Watch](https://github.com/bhwilkoff/Archive-Watch)) for a sister app:
 public-domain old-time radio (OTR) and radio drama. It would be audio-first and
 episodic, use the same Internet Archive source, and ship on the same set of
 platforms. Nothing has been built. A future session will build it from a
@@ -165,7 +165,7 @@ Verdicts: **REUSE AS-IS**, **ADAPT**, **REPLACE**, **N/A**.
 |---|---|---|
 | Decision 016 + `build_canonical_tv.py` | ADAPT the architecture, REPLACE the source | The idea maps exactly: a **canonical series → season → episode spine** from an authority, with archive files mapped onto canonical episodes, extras never given an invented number, and `canonicalEpisodesCount` versus what we have giving the "X of Y" count. TVmaze does not cover radio. Candidate authorities, all **unverified** for API/terms/licence: RadioGOLDINdex (radiogoldindex.com), Jerry Haendiges' logs, the OTRR's own logs and OTRRpedia, Wikipedia episode lists, Wikidata. Radio has no seasons. Model it as `seasons: [{seasonNumber: <year or null>}]`, or add a `runs` / `broadcastYear` grouping. `parse_sxe` / `parse_epnum` → `parse_airdate` + log-number parsing. `map_items_to_canonical` matches on airdate first, then log number, then fuzzy title. |
 | `series/*.json` v2 shape | ADAPT | Keep `seriesID`, `title`, `yearStart`/`yearEnd`, `overview`, `posterURL`, `genres`, `networks`, `creator`, `cast`, `episodesCount`, `canonicalEpisodesCount`. Each episode gains `fileName`, `audioFile {name, format, sizeBytes, bitrate, tier}`, `airDate` as the primary key field, `logNumber`, `sponsor`, `network`, and per-episode `cast`. `videoFile` → `audioFile`. Keep non-ASCII slugs percent-encoded (a real iOS 404, CATALOG-CONTRACT §6.3). |
-| Decision 045 (episodes are first-class items, materialized in `build_sqlite.populate_series` as `tv-episode`) | ADAPT; becomes THE model | In the radio app almost everything is an episode. Make the episode the primary item from the start, with id `archiveID/fileName` or a stable hash. Favorites, playlists, sharing, history and search then work per episode with no special cases. The series card is the derived row. |
+| Decision 045 (episodes are first-class items, materialized in `build_sqlite.populate_series` as `tv-episode`) | ADAPT; becomes THE model | In Ear Drama almost everything is an episode. Make the episode the primary item from the start, with id `archiveID/fileName` or a stable hash. Favorites, playlists, sharing, history and search then work per episode with no special cases. The series card is the derived row. |
 | `backfill_tv_episodes.py` (`parse_se`, `search_term`, `per_want_search`, `regroup_seasons`, daily-capped `--max-series`) | ADAPT | Same job: OTR uploads split one show across many items. Note its own lesson: it applied **no rights test**, which is how 1,920 TV items reached users unaudited (Decision 027 addendum, `audit_tv_rights.py`). In the new app, rights-gate at ingest from day one. |
 | `build_episode_wants.py` | ADAPT | Missing-episode queue against the canonical log. |
 | `audit_series_episodes.py` | ADAPT | Its `wrong_show`, `review_content` and `scrape_mirror` classes all recur in audio: podcast "reviews" of a show, a different show in the same batch, re-encodes. |

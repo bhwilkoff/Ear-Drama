@@ -1,5 +1,12 @@
 # Moving Ear Drama into its own repository (2026-10-21)
 
+> **Done 2026-10-22.** This repository was made from the Universal App
+> Template; the research and catalog came over with their history
+> (`git filter-repo`, with `dist/`, `out/` and `.cache/` removed from every
+> commit); the data is on the `catalog-2026-10-21` Release; the renames in
+> §3 are applied (the database file keeps its name, `radio-catalog.sqlite`).
+> The text below is the plan as written, kept as a record.
+
 Owner, 2026-10-21: *"The app is going to be called "Ear Drama". ... Please move
 forward with the research necessary before I move this project into its own
 repository."* This file lists what moves, what stays, and the order to do it in.

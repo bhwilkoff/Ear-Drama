@@ -1,7 +1,7 @@
 """The audio rights audit, one case per bucket, each with an unflagged control.
 
     python3 tests/test_audio_rights.py
-Broken-control record (2026-10-17): see radio-catalog/README.md "Tests".
+Broken-control record (2026-10-17): see catalog/README.md "Tests".
 """
 import datetime
 import os

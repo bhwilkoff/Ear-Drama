@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <widget xmlns="http://www.w3.org/ns/widgets"
         xmlns:tizen="http://tizen.org/ns/widgets"
-        id="http://example.com/AppName"
+        id="https://eardrama.org/EarDrama"
         version="0.1.0"
         viewmodes="maximized">
 
-  <tizen:application id="ExampleApp.AppName"
-                     package="ExampleApp"
+  <tizen:application id="EarDramaTV.EarDrama"
+                     package="EarDramaTV"
                      required_version="6.5"/>
 
-  <name>App Name</name>
+  <name>Ear Drama</name>
   <description>FILL IN: one-sentence store description.</description>
-  <author href="https://example.com" email="you@example.com">FILL IN author</author>
+  <author href="https://eardrama.org" email="you@example.com">FILL IN author</author>
 
   <content src="index.html"/>
   <icon src="icon.png"/>
@@ -30,7 +30,7 @@
   <!-- List every host the app fetches from (Decision 028: progressive
        HTTPS media needs no DRM or transcode on any of these platforms). -->
   <access origin="*" subdomains="true"/>
-  <tizen:allow-navigation>example.com *.example.com</tizen:allow-navigation>
+  <tizen:allow-navigation>eardrama.org *.eardrama.org</tizen:allow-navigation>
 
   <tizen:privilege name="http://tizen.org/privilege/internet"/>
   <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>

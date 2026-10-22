@@ -19,7 +19,7 @@ This file is the synthesis. The evidence is in three detail files:
 | `08b-scripts.md` | Which scripts are genuinely free, measured; parsing scripts into roles, lines and cues; the script data model; the day-one library |
 | `08c-collaboration-and-storage.md` | LibriVox's precedent, archive.org's upload and ownership rules, the relay, the coordination layer, identity, platform policy, phases |
 
-Prototype parsers and a worked example: `radio-catalog/prototypes/scripts/`.
+Prototype parsers and a worked example: `catalog/prototypes/scripts/`.
 
 ---
 

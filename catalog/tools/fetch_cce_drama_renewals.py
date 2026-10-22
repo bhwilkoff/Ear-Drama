@@ -3,7 +3,7 @@
 (Class D dramas, and Class C scripts) printed in the Catalog of Copyright
 Entries, 1951-1977, as a table the audit can read.
 
-WHY (docs/research/radio/02-rights.md §3.1): a radio script registered as an
+WHY (docs/research/02-rights.md §3.1): a radio script registered as an
 unpublished drama under the 1909 Act and RENEWED in its 28th year is protected
 for 95 years from registration, and a free recording of a protected script is
 not free (Lone Ranger Television v. Program Radio, 9th Cir. 1984). The

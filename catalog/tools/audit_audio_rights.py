@@ -6,7 +6,7 @@ with our regular process." So an unclaimed pre-1972 broadcast is KEPT
 (`keep_unclaimed`), and hidden the moment a claim a reader can open appears;
 no recording is kept on a paid licence.
 
-Why that posture holds (docs/research/radio/02-rights.md §12, statute read
+Why that posture holds (docs/research/02-rights.md §12, statute read
 2026-10-17): 17 U.S.C. §1401(f)(5) bars statutory damages and fees unless the
 owner filed a schedule; §1401(f)(3) applies the §512 safe harbor. The app
 never calls `keep_unclaimed` public domain (Decision 153's lesson).

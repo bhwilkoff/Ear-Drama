@@ -66,6 +66,11 @@ def edits(app_id, name):
         ("tools/app_config.py", r'(ANDROID_PACKAGE\s*=\s*")([^"]+)(")', app_id, False),
         ("tools/app_config.py", r'(ANDROID_PACKAGE_DEBUG\s*=\s*")([^"]+)(")', app_id + ".debug", False),
         ("tools/app_config.py", r'(PRODUCT_NAME\s*=\s*")([^"]+)(")', name.replace('"', "'"), False),
+        ("tv/webos/appinfo.json", r'("id":\s*")([^"]+)(")', app_id, False),
+        ("tv/webos/appinfo.json", r'("title":\s*")([^"]*)(")', name.replace('"', "'"), False),
+        ("tv/tizen/config.xml", r"(<name>)([^<]*)(</name>)", xml, False),
+        ("index.html", r"(<title>)([^<]*)(</title>)", xml, False),
+        ("index.html", r'(<meta name="apple-mobile-web-app-title" content=")([^"]*)(")', xml, False),
     ]
 
 
@@ -75,6 +80,7 @@ IDENTITY_LINES = [
     ("project.yml", r"PRODUCT_BUNDLE_IDENTIFIER:\s*(\S+)"),
     (".github/workflows/android-build.yml", r"packageName:\s*(\S+)"),
     ("tools/app_config.py", r'ANDROID_PACKAGE\s*=\s*"([^"]+)"'),
+    ("tv/webos/appinfo.json", r'"id":\s*"([^"]+)"'),
 ]
 
 

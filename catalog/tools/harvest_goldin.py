@@ -41,7 +41,7 @@ import ia_lib as ia
 
 RG = "https://radiogoldin.library.umkc.edu"
 SEARCH = RG + "/Home/radioGoldIndexSearch"
-UA = "Mozilla/5.0 ArchiveWatch-RadioCatalog (catalog build; credits RadioGOLDINdex)"
+UA = "Mozilla/5.0 EarDrama-Catalog (catalog build; credits RadioGOLDINdex)"
 OUT = os.path.join(ia.CACHE, "goldin")
 PAGES = os.path.join(OUT, "pages")
 RECORDS = os.path.join(OUT, "records")

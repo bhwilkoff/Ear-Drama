@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 probe_otr_corpus.py — measure the archive.org old-time-radio corpus for the
-radio sister app (docs/research/radio/07-archive-org-ingest.md).
+radio sister app (docs/research/07-archive-org-ingest.md).
 
 Read-only. Stdlib only. Polite: one request at a time, a pause between
 requests, backoff on 429/5xx, resumable cache of metadata responses.
@@ -33,7 +33,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-UA = "ArchiveWatch-OTRProbe/1.0 (https://archivewatch.org; research, read-only)"
+UA = "EarDrama-OTRProbe/1.0 (https://eardrama.org; research, read-only)"
 SCRAPE = "https://archive.org/services/search/v1/scrape"
 META = "https://archive.org/metadata/"
 

@@ -1,4 +1,4 @@
-"""File-name parsing against real archive.org names (docs/research/radio/07).
+"""File-name parsing against real archive.org names (docs/research/07).
 
 Broken controls, 2026-10-19, each run against a mutated copy of otr_parse.py (RADIO_TOOLS=...):
     F12 keeps a year as the number           39/41

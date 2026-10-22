@@ -9,7 +9,7 @@ Inputs (all under .cache/, written by the harvest_* and fetch_* tools):
   p72_schedules.json.gz      the Copyright Office's pre-1972 schedules
 plus editorial/*.json and Archive Watch's shared/editorial/cce_renewals.json.
 
-Model (docs/research/RADIO-DRAMA.md §4): series -> episode (the broadcast,
+Model (docs/research/RESEARCH.md §4): series -> episode (the broadcast,
 keyed by series + air date) -> recording (a file in an archive.org item).
 """
 import collections

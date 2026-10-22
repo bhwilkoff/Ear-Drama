@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 
 BASE = "https://www.genericradio.com"
-UA = "Mozilla/5.0 (Macintosh) ArchiveWatch-RadioCatalog (catalog build; links back to every script)"
+UA = "Mozilla/5.0 (Macintosh) EarDrama-Catalog (catalog build; links back to every script)"
 DELAY = 3
 SERIES = re.compile(r"<a href=series/([A-Za-z0-9_-]+)>([^<]+)")
 ROW = re.compile(r"<tr><td>([^<]*)</td><td><a href='/show/([0-9A-Za-z]+)'>([^<]*)</a>")

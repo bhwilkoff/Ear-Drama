@@ -22,7 +22,7 @@ android {
     compileSdk = 37                    // the 2026.05 Compose BOM requires compiling against API 37
 
     defaultConfig {
-        applicationId = "com.example.appname"  // FILL IN
+        applicationId = "app.eardrama"  // FILL IN
         minSdk = 29                            // Android 10 — >95% device coverage in 2026
         targetSdk = 36                         // bump to 37 when Android 17 ships + Play forces
         // Play rejects ANY previously-uploaded versionCode — bump +1 before

@@ -1,10 +1,10 @@
 {
-  "id": "com.example.appname",
+  "id": "app.eardrama",
   "version": "0.1.0",
   "vendor": "FILL IN vendor",
   "type": "web",
   "main": "index.html",
-  "title": "App Name",
+  "title": "Ear Drama",
   "icon": "icon.png",
   "largeIcon": "largeIcon.png",
   "splashBackground": "splash.png",

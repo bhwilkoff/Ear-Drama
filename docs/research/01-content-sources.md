@@ -674,4 +674,4 @@ Also measure, by hand, for the rights track:
 - https://www.uni-saarland.de/en/fachrichtung/geschichte/institut/fachdidaktik-geschichte/gudig-die-lernwerkstatt-geschichtsunterrichtdigital/der-grosse-gudig-werkzeugkasten/audio.html
 - https://www.musicbusinessworldwide.com/nmpa-hits-spotify-with-extensive-takedown-action-over-unlicensed-songs-in-podcasts
 - https://copyrightandtechnology.com/2019/04/27/podcasting-leaves-the-copyright-garden-of-eden/
-- Internal precedent: /home/user/Archive-Watch/tools/probe_collections.py, /home/user/Archive-Watch/tools/build-catalog.mjs, /home/user/Archive-Watch/tools/fetch_archive_own_meta.py
+- Internal precedent: https://github.com/bhwilkoff/Archive-Watch/blob/main/tools/probe_collections.py, https://github.com/bhwilkoff/Archive-Watch/blob/main/tools/build-catalog.mjs, https://github.com/bhwilkoff/Archive-Watch/blob/main/tools/fetch_archive_own_meta.py

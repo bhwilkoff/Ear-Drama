@@ -1,10 +1,21 @@
-# radio-catalog — the rights-designated catalog for the radio drama app
+# catalog — the rights-designated catalog for Ear Drama
 
 Owner, 2026-10-17: *"Can you start work on building out a full database with each
-of the rights designations considered."* Research: `../docs/research/RADIO-DRAMA.md`.
-Self-contained so it can move to the radio app's own repository unchanged
-(stdlib Python only). `editorial/film_renewals_cce.json` is a copy of Archive Watch's
+of the rights designations considered."* Research: `../docs/research/RESEARCH.md`.
+Self-contained, stdlib Python only. It was built in Archive Watch's research
+branch and moved here, with its history, on 2026-10-22. `editorial/film_renewals_cce.json` is a copy of Archive Watch's
 `shared/editorial/cce_renewals.json`, the printed film renewals the Lux-style adaptation check reads.
+
+## Start from the published snapshot
+
+The built database and every harvest cache are on the
+[`catalog-2026-10-21` Release](https://github.com/bhwilkoff/Ear-Drama/releases/tag/catalog-2026-10-21),
+never in git. From this folder:
+
+    gh release download catalog-2026-10-21 -R bhwilkoff/Ear-Drama -D dist
+    (cd dist && shasum -a 256 -c SHA256SUMS)
+    mkdir -p out .cache && xz -dc dist/radio-catalog.sqlite.xz > out/radio-catalog.sqlite
+    xz -dc dist/harvest-cache.tar.xz | tar -x -C .cache    # rebuild without re-harvesting
 
 ## Run
 

@@ -2,7 +2,7 @@
 
 Copied from tools/probe_otr_corpus.py (MEASURED 2026-10-17: 14 families parse
 93.8% of 16,544 sampled episode files, 80% to a full broadcast date). Every
-pattern's example is a real file name; see docs/research/radio/07.
+pattern's example is a real file name; see docs/research/07.
 """
 import re
 

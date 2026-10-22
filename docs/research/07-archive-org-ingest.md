@@ -8,7 +8,7 @@ live archive.org APIs**, with the exact query beside it. Raw outputs are in
 (`report.json`, `items.jsonl` with 12,171 items, `files.jsonl` with 16,544
 parsed audio files, `meta/` with 400 cached metadata responses,
 `famous_structure.txt`). These are session scratch files: rerun the probe
-to reproduce them. The probe is saved as `tools/probe_otr_corpus.py`
+to reproduce them. The probe is saved as `catalog/tools/probe_otr_corpus.py`
 (Python 3 stdlib only) and also printed in full at the end of this
 document. Facts that came only from web search are marked
 "per search snippet", and anything not confirmed is marked UNVERIFIED.
@@ -206,7 +206,7 @@ Measured over 16,544 audio works (one row per original plus its
 derivatives) from 400 sampled items: 201 OTRR items, 199 others, chosen at
 random with seed 17. In the table, "Share" is the share of all 16,544
 works, and "OTRR files" is the count among the 14,729 OTRR works. The
-regexes are the ones in `tools/probe_otr_corpus.py` and are tried in this
+regexes are the ones in `catalog/tools/probe_otr_corpus.py` and are tried in this
 order:
 
 | Family | Real example (item) | Share | OTRR files |
@@ -481,7 +481,7 @@ items by hours: `OTRR_LoneRanger_Singles` 1,051 h · `OTRR_Lux_Radio_Theater_Sin
 
 ## 6. Still to measure
 
-1. **Full pass**: `python3 -I tools/probe_otr_corpus.py --sample all --pause 1.0 --out <dir>`
+1. **Full pass**: `python3 -I catalog/tools/probe_otr_corpus.py --sample all --pause 1.0 --out <dir>`
    (~20 h). It gives true totals, distinct broadcasts and the cross-item
    duplicate rate.
 2. **Reviews that name episodes**: for the ten most-reviewed OTRR items,
@@ -517,18 +517,18 @@ curl -sI "https://archive.org/download/OTRR_Suspense_Singles_By_Year_1942/Suspen
 # views
 curl -s "https://be-api.us.archive.org/views/v1/short/OTRR_Suspense_Singles,TSP420617,OTRR_Gunsmoke_Singles"
 # the probe (sections 2, 5)
-python3 -I tools/probe_otr_corpus.py --out otr-probe --sample 400 --pause 0.7
+python3 -I catalog/tools/probe_otr_corpus.py --out otr-probe --sample 400 --pause 0.7
 ```
 
 ---
 
-## Appendix — `tools/probe_otr_corpus.py` (as run 2026-10-17)
+## Appendix — `catalog/tools/probe_otr_corpus.py` (as run 2026-10-17)
 
 ```python
 #!/usr/bin/env python3
 """
 probe_otr_corpus.py — measure the archive.org old-time-radio corpus for the
-radio sister app (docs/research/radio/07-archive-org-ingest.md).
+radio sister app (docs/research/07-archive-org-ingest.md).
 
 Read-only. Stdlib only. Polite: one request at a time, a pause between
 requests, backoff on 429/5xx, resumable cache of metadata responses.
@@ -541,10 +541,10 @@ Outputs (in --out, default ./otr_probe):
   report.txt      the same, readable
 
 Usage:
-  python3 tools/probe_otr_corpus.py                    # enumerate all, sample 400 items' metadata
-  python3 tools/probe_otr_corpus.py --sample 0         # enumerate + count only
-  python3 tools/probe_otr_corpus.py --sample all       # every item's metadata (slow: hours)
-  python3 tools/probe_otr_corpus.py --pause 1.5 --out /tmp/otr
+  python3 catalog/tools/probe_otr_corpus.py                    # enumerate all, sample 400 items' metadata
+  python3 catalog/tools/probe_otr_corpus.py --sample 0         # enumerate + count only
+  python3 catalog/tools/probe_otr_corpus.py --sample all       # every item's metadata (slow: hours)
+  python3 catalog/tools/probe_otr_corpus.py --pause 1.5 --out /tmp/otr
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# [APP NAME]: Agent Project Context
+# Ear Drama: Agent Project Context
 
 ## Why we build
 
@@ -198,7 +198,13 @@ real-device check before "done."
 
 ## What this app does
 
-<!-- FILL IN: One paragraph on what your app does and who it's for -->
+**Ear Drama** (eardrama.org, `app.eardrama`) turns the Internet Archive's
+radio drama and old-time radio into a place to listen: series and episodes
+with dates, casts, networks, and sponsors, a Radio tab that rebuilds a real
+broadcast evening, and a player built for bedtime and the car. Free, no ads,
+no account. It is Archive Watch's sister app on the same source, and its
+research starts at `docs/research/RESEARCH.md`; the catalog pipeline and its
+own decision log are in `catalog/`.
 
 Available as a **web app**, a **native iOS/iPadOS app**, a **native
 macOS app**, a **native Apple TV (tvOS) app**, and a **native Android
@@ -400,6 +406,12 @@ State section first, then work.
   with a note, never silence.
 - **Update SCRATCHPAD.md "Out of scope" when rejecting an idea**, so it
   is not re-litigated next session.
+- **Ear Drama's catalog rules** (owner; DECISIONS 055 and
+  `catalog/DECISIONS.md`): unclaimed recordings are kept and removed on
+  request, never called public domain; no paid license; an image is used
+  when its own record carries the evidence (no review queue); a synthetic
+  voice is a live stand-in only, never stored. *Check:
+  `catalog/tests/test_audio_rights.py`.*
 - **AGENTS.md stays under 24,000 bytes.** A new platform rule goes in its
   `docs/platforms/` page. *Check: `tools/test_agent_files.py`.*
 

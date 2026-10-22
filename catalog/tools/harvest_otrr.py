@@ -1,6 +1,6 @@
 """Harvest the Old Time Radio Researchers' episode logs (otrr.org's public JSON
 endpoint, found in its own site JS; robots.txt allows all): 3,918 programs with
-logs, 219,203 log rows (MEASURED 2026-10-17, docs/research/radio/03 §0).
+logs, 219,203 log rows (MEASURED 2026-10-17, docs/research/03 §0).
 
 Each log row names the archive.org identifier and file that play it, so this is
 the bridge from a broadcast to its recordings, and the people credited. FACTS
@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 
 OT = "https://www.otrr.org/php/jqSelectM7.php"
-UA = "Mozilla/5.0 ArchiveWatch-RadioCatalog (catalog build; credits OTRR)"
+UA = "Mozilla/5.0 EarDrama-Catalog (catalog build; credits OTRR)"
 DELAY = 1.5
 
 

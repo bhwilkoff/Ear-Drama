@@ -38,6 +38,9 @@ with tempfile.TemporaryDirectory() as tmp:
         if (ROOT / rel).exists():
             (root / rel).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(ROOT / rel, root / rel)
+    # The fixture is a FRESH copy whatever this tree is: an app that has already
+    # set its identity must still be able to run this test.
+    ident.apply(root, ident.PLACEHOLDER, "App Name")
     os.environ["GITHUB_REPOSITORY"] = "someone/bird-log"
 
     check(ident.leftovers(root), "a fresh copy still has the placeholder")
@@ -68,6 +71,9 @@ with tempfile.TemporaryDirectory() as tmp:
     check('ANDROID_PACKAGE_DEBUG = "org.someone.birdlog.debug"' in cfg, "harness debug package")
     check('ANDROID_MAIN_ACTIVITY = "com.example.appname.MainActivity"' in cfg,
           "the activity's class name stays with the code's namespace")
+    check('"id": "org.someone.birdlog"' in read("tv/webos/appinfo.json"), "webOS app id")
+    check("<name>Bird &amp; Log</name>" in read("tv/tizen/config.xml"), "Tizen app name")
+    check("<title>Bird &amp; Log</title>" in read("index.html"), "web page title")
     check(not ident.leftovers(root), "no identity line keeps the placeholder", "; ".join(ident.leftovers(root)))
     check(ident.main(["--check", "--root", tmp]) == 0, "--check passes once it is set")
 

@@ -486,7 +486,7 @@ Three of the proposed genre accents fall below 3:1 as marks on white:
 `#C9A66B` western 2.30, `#E8A317` serials 2.17, `#3FA796` documentary 2.93
 (drama 3.07, comedy 3.14 and news 3.25 barely pass). On `#0A0A0A` every accent
 passes (3.82-9.13). If genre rules are drawn on a light ground they need a darker
-tone in light mode; this belongs to Q11 (RADIO-DRAMA §7), not to the chrome.
+tone in light mode; this belongs to Q11 (RESEARCH §7), not to the chrome.
 
 ---
 

@@ -1,4 +1,4 @@
-# [APP NAME] — Architecture & Technology Decisions
+# Ear Drama — Architecture & Technology Decisions
 
 Entries capture the *why* behind choices — not the *what* (the code
 already shows that). Each entry should answer: **"what would the next
@@ -1262,3 +1262,64 @@ platform still maps tokens into its own idiom by hand (Android's
 `Theme.kt` slots, Windows control styles, Apple views), and Apple keeps
 system text styles for Dynamic Type. A deleted platform folder is
 skipped, not recreated.
+
+---
+
+## 054: Ear Drama is its own app and repository, `app.eardrama`, at eardrama.org
+
+*Date: 2026-10-22*
+
+Ear Drama ships as a separate app from Archive Watch, made from the
+Universal App Template in its own public repository
+(`bhwilkoff/Ear-Drama`), with the identifier `app.eardrama` on every
+platform and eardrama.org as its home, as archivewatch.org is Archive
+Watch's.
+
+**Why**: the owner, 2026-10-19: *"It is definitely a separate app."*
+(`catalog/DECISIONS.md` 003). On 2026-10-22 they chose the identifier and
+said of the domain: *"I purchased eardrama.org and that is what I would
+like to use for this like we use archivewatch.org."* (eardrama.com and
+eardrama.app are registered, but not as this app's home.) Public, like
+Archive Watch, because GitHub's macOS runners are free for public
+repositories and the cloud build is the default ship path.
+
+**How to apply**: never reuse Archive Watch's bundle id, App Store record,
+signing secrets, or Worker; App Store guideline 4.3(a) ("Don't create
+multiple Bundle IDs of the same app") is the review risk for a second app
+from one template, so the two apps must stay different in kind (films vs
+radio). Cross-links between them go by archive.org id. A User-Agent names
+Ear Drama and eardrama.org.
+
+---
+
+## 055: The catalog's rules are the owner's, carried from Archive Watch and the research
+
+*Date: 2026-10-22*
+
+The catalog in `catalog/` keeps its own decision log
+(`catalog/DECISIONS.md`), and it binds the apps as much as this file does.
+These rules came over with it (`docs/research/10-repository-move.md` §5):
+
+| Rule | Source |
+|---|---|
+| Take-down model for audio and images: kept when unclaimed, hidden on a claim a reader can open, removed on request; never "public domain" for unclaimed | owner 2026-10-17; catalog DECISIONS 001 |
+| No paid license (no SoundExchange statutory license) | owner 2026-10-17 |
+| No review queue: an image is used when its own record carries the evidence | owner 2026-10-21 |
+| No AI-written lists or copy in the product; only essential information on screen; US English; no emojis | Archive Watch, owner 2026-09-22 and 09-26 |
+| Real devices only for testing | Archive Watch DEVICE-TESTING |
+| Brand chrome and semantic genre accents never mix | Archive Watch Decision 013 |
+| A photo is never reshaped: fit at its own aspect | Archive Watch Decision 097 |
+| Public domain by age follows the calendar | Archive Watch Decision 137 |
+| Never recommended, always findable (Nazi-state speeches) | Archive Watch Decision 149; catalog `no_recommend` |
+| A synthetic voice is a live stand-in only, never stored | owner 2026-10-18; research 08a |
+| Every catalog writer is additive and merge-guarded; a run that read nothing goes red | Archive Watch Decisions 020, 093, 107 |
+
+**Why**: they were each decided once, with a reason, during six days of
+research in Archive Watch; a new repository is exactly where they would be
+silently re-litigated.
+
+**How to apply**: the skills `evidence-gated-catalog-curation` and
+`internet-archive-source` carry the general form; this table is the
+Ear Drama form. A new rights bucket is a rule with a paired test in
+`catalog/tests/test_audio_rights.py`, never a list of ids.
+

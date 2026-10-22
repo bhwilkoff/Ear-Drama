@@ -543,7 +543,7 @@ Via search results only
 - https://www.greatdetectives.net/detectives/about/copyright-questions/
 
 Archive Watch (the model extended)
-- /home/user/Archive-Watch/tools/audit_rights.py (`bucket()`, `HIDE_BUCKETS`)
-- /home/user/Archive-Watch/tools/fetch_cce_renewals.py
-- /home/user/Archive-Watch/shared/editorial/cce_renewals.json
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/tools/audit_rights.py (`bucket()`, `HIDE_BUCKETS`)
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/tools/fetch_cce_renewals.py
+- https://github.com/bhwilkoff/Archive-Watch/blob/main/shared/editorial/cce_renewals.json
 - Decisions 137, 140 (docs/decisions/DECISIONS-127-145.md); 151, 152, 156, 157 (DECISIONS.md)

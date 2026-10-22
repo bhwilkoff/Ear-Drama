@@ -41,7 +41,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 
 OT = "https://www.otrr.org/php/jqSelectM7.php"
-UA = "Mozilla/5.0 ArchiveWatch-RadioCatalog (catalog build; credits OTRR)"
+UA = "Mozilla/5.0 EarDrama-Catalog (catalog build; credits OTRR)"
 OUT = os.path.join(ia.CACHE, "otrrpedia")
 DELAY = 1.5
 

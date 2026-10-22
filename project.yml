@@ -8,7 +8,7 @@
 # bundleIdPrefix + PRODUCT_BUNDLE_IDENTIFIER. No spaces in the name.
 name: AppName
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: app
   createIntermediateGroups: true
   # Floors are chosen by the hardware they reach, and tools/test_ios_floor.py +
   # test_tvos_floor.py hold them in CI. iOS 18 keeps the iPhone XS / XR that
@@ -56,13 +56,13 @@ targets:
         - AppNameTests
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.appname
+        PRODUCT_BUNDLE_IDENTIFIER: app.eardrama
         PRODUCT_NAME: AppName
         # Xcode writes the Info.plist from INFOPLIST_KEY_* settings, so there
         # is no plist file to drift. CFBundleVersion and the short version are
         # filled from AppVersion.xcconfig automatically.
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: AppName
+        INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every
         # TestFlight / App Store build.
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
@@ -101,6 +101,6 @@ targets:
           - "**/*.md"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.example.appname.CoreTests
+        PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.CoreTests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO

@@ -22,7 +22,7 @@ def main():
         off = 0
         while True:
             d = ia.get(API, {"genre": g, "format": "json", "limit": 100, "offset": off, "extended": 1},
-                       ua="Mozilla/5.0 (ArchiveWatch-RadioCatalog; catalog build)", pause=2)
+                       ua="Mozilla/5.0 (EarDrama-Catalog; catalog build)", pause=2)
             if d is None:
                 raise SystemExit(f"LibriVox read failed: genre {g} offset {off}")
             page = d.get("books") or []

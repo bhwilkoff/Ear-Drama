@@ -108,7 +108,7 @@ should mark `MUSIC:` cues as "not performable" unless the composition is itself 
 - From 1947, each annual "Dramas and Works Prepared for Oral Delivery" volume prints the
   year's *registrations*. The 1947 preface says it lists "all registrations in Class C … and
   Class D … Radio, television and film scripts comprise a substantial portion".
-- From 1951, the same volumes print *renewals*, which the radio-catalog already parsed
+- From 1951, the same volumes print *renewals*, which the catalog already parsed
   (11,166 rows).
 - Radio series are entered under the series with each script's air date and registration
   number. Example: "FIBBER MC GEE AND MOLLY. (Radio program) … © S.C. Johnson & son, inc. …
@@ -513,7 +513,7 @@ curl -A "ArchiveWatch-research/1.0 (contact)" \
   https://www.gutenberg.org/ebooks/2467 , https://www.gutenberg.org/ebooks/7986
 - Standard Ebooks drama: https://standardebooks.org/ebooks?tags%5B%5D=drama ;
   https://standardebooks.org/ebooks/oscar-wilde/the-importance-of-being-earnest/text/single-page (CC0)
-- LibriVox API: https://librivox.org/api/feed/audiobooks/?id=243&format=json&extended=1 ; cached harvest `radio-catalog/.cache/librivox.json.gz`
+- LibriVox API: https://librivox.org/api/feed/audiobooks/?id=243&format=json&extended=1 ; cached harvest `catalog/.cache/librivox.json.gz`
 - Wikisource API (Category:Plays): https://en.wikisource.org/w/api.php?action=query&prop=categoryinfo&titles=Category:Plays&format=json
 - Folger downloads ("free to use for all non-commercial purposes"): https://www.folger.edu/explore/shakespeares-works/download/
 - DraCor corpora and licences: https://dracor.org/api/v1/corpora
@@ -523,12 +523,12 @@ curl -A "ArchiveWatch-research/1.0 (contact)" \
 - USDA / NAL on archive.org: https://archive.org/details/usda-unclesamsforrang ,
   https://archive.org/details/usda-usdaradioservice , item https://archive.org/details/CAT11087275262
   (and its `_djvu.txt`, `_hocr.html`)
-- Catalog of Copyright Entries, Dramas 1947-1977 (cached `radio-catalog/.cache/cce_drama/`), e.g.
+- Catalog of Copyright Entries, Dramas 1947-1977 (cached `catalog/.cache/cce_drama/`), e.g.
   https://archive.org/details/catalogofcopyrig3134libr (1947) ; New Series Part 1 Group 3, 1938:
   https://archive.org/details/catalogofcopyrig111libr
 - Gutenberg radio plays on archive.org: https://archive.org/details/thelandingofthep27357gut ,
   https://archive.org/details/washingtoncrossi28205gut
-- Prior project research: `docs/research/radio/02-rights.md` §3; `radio-catalog/README.md`
+- Prior project research: `docs/research/02-rights.md` §3; `catalog/README.md`
 
 **UNVERIFIED in this document:**
 - the first publication year of Carlton's *Dramatic Hours in Colonial History* (Gutenberg's
@@ -537,7 +537,7 @@ curl -A "ArchiveWatch-research/1.0 (contact)" \
 - the Library of Congress's custody of Class D deposit copies;
 - the Wikisource deep count.
 
-Prototype code (copied into the repo 2026-10-18; they read caches under radio-catalog/.cache and a scratch directory — adjust paths before rerunning):
-`radio-catalog/prototypes/scripts/radio_parse.py`,
+Prototype code (copied into the repo 2026-10-18; they read caches under catalog/.cache and a scratch directory — adjust paths before rerunning):
+`catalog/prototypes/scripts/radio_parse.py`,
 `.../parse/stage_parse.py`, `.../parse/to_model.py`, `.../parse/measure_grw.py`,
 `.../cce_regs.py`, `.../cce_match.py`, worked-example output `.../pilgrims_model.json`.

@@ -9,7 +9,7 @@ taken as given. --ids adds a file of identifiers (one per line). An item whose
 metadata discover_corpus already fetched is copied from .cache/discover/meta/
 rather than fetched twice.
 
-Seeds and the never-enumerate list come from docs/research/radio/07 (MEASURED
+Seeds and the never-enumerate list come from docs/research/07 (MEASURED
 2026-10-17). Output: .cache/seeds.json, .cache/meta/<id>.json.gz,
 .cache/harvest_report.json (counts, and every item that could not be read).
 """

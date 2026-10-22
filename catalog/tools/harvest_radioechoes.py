@@ -1,6 +1,6 @@
 """Crawl RadioEchoes' series list and each series page: the episode spine
 (owner, 2026-10-17: "Can we use radioechoes as the spine and archive.org as
-the content source?" — yes; docs/research/radio/03 addendum).
+the content source?" — yes; docs/research/03 addendum).
 
 robots.txt: Disallow nothing public, Crawl-delay 10 — honored. Resumable: a
 series page already cached is not fetched again. Facts only (Feist); RadioEchoes
@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 
 BASE = "https://www.radioechoes.com/"
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 ArchiveWatch-RadioCatalog"
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 EarDrama-Catalog"
 DELAY = 10
 SERIES_LINK = re.compile(r'href="\?page=series&genre=([^&"]+)&series=([^"]+)"')
 EP = re.compile(r'mode=play&dl_mp3folder=([^&]*)&dl_file=([^&"]+)&dl_series=([^&"]*)&dl_title=([^&"]*)&dl_date=([^&"]*)&dl_size=([^&"]*)"')

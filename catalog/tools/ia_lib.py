@@ -12,7 +12,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-UA = "ArchiveWatch-RadioCatalog/0.1 (https://archivewatch.org; catalog build, read-only)"
+UA = "EarDrama-Catalog/0.1 (https://eardrama.org; catalog build, read-only)"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, ".cache")
 OUT = os.path.join(ROOT, "out")
