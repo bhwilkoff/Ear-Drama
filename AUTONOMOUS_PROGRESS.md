@@ -60,3 +60,8 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Measured along the way: 79,612 episodes are undated, with ids from a title slug or an archive path (why the aliases table is in v1); stored download URLs hold raw spaces (the publish step percent-encodes).
 - Owner item added to Needs Ben: Pages source to GitHub Actions before the first publish.
 - Next: the publish step's projection builder, measuring the sizes the draft marks.
+
+### Tick 10, 2026-10-22, opt: DECISIONS.md rolled, 72 KB to 25.5 KB
+- Implementation: entries 001-045 (the template's inherited decisions) moved verbatim to `docs/decisions/DECISIONS-001-045.md`; `DECISIONS.md` keeps its preamble, a one-line index of all 60 entries (archived ones marked), and 046-060 in full.
+- Verification: a script split the pre-roll file from git on its `## NNN` headings and found every entry verbatim in one of the two files; agent-files and US English checks pass. LOOP-PLAN's first-opt-tick item done.
+- Next: the publish step's projection builder (M1), measuring the sizes the contract marks.
