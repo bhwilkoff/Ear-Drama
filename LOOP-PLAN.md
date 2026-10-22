@@ -16,8 +16,10 @@ keeps building the next one while I play the last.
 
 ## Starting and resuming the loop
 
-Type `/loop Read LOOP-PLAN.md and run the next tick`. With no interval named,
-that is a 5-minute cron (the memory rule), and the first tick runs at once.
+Type `/loop Read LOOP-PLAN.md and run the next tick`. The first tick runs at
+once, and each tick ends by scheduling the next one five minutes after it
+finishes: a cooldown, never a wall-clock cron (owner, 2026-10-22: *"Make sure
+that loops run on a 5 minute cool down"*).
 
 Each tick reads, in order: this file; the Current State in `SCRATCHPAD.md`;
 the last three entries of `AUTONOMOUS_PROGRESS.md` (create it on tick 1);
