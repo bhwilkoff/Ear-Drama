@@ -20,7 +20,24 @@
   (2026-10-22). The web app and the native apps are still the template's
   starters, renamed to Ear Drama.
 - **Identity**: `app.eardrama` on every platform; home eardrama.org
-  (DECISIONS 054). The domain is bought; DNS is not pointed anywhere yet.
+  (DECISIONS 054). **eardrama.org is live on GitHub Pages over HTTPS**
+  (2026-10-22): DNS at WordPress.com (my.wordpress.com/domains/eardrama.org)
+  holds GitHub's four A and four AAAA records at the apex and `www` as a
+  CNAME to `bhwilkoff.github.io`; the `_github-pages-challenge` TXT record
+  verifies the domain. Pages serves `main` from the root, with `CNAME` and
+  `.nojekyll` committed. `http://` and `http://www` redirect to
+  `https://eardrama.org`. **Open**: the certificate covered only the apex
+  at first, so `https://www.eardrama.org` fails its certificate check (as
+  `https://www.archivewatch.org` does today). `www` moved from a CNAME to the
+  apex to one to `bhwilkoff.github.io` (GitHub's documented form) at 13:21 MT,
+  but the old record's TTL is 4 hours. After that, if Settings > Pages still
+  lists only eardrama.org, remove and re-add the custom domain there.
+- **CI**: Android builds and its unit tests pass in CI (run 39839218802,
+  dispatched). **To check**: on 2026-10-22 no push to this repo triggered any
+  workflow, and GitHub's event feed showed no push events, while dispatches
+  ran. Push the next `android/` change and confirm Android Build starts on
+  its own; if it does not, look at the repository's Actions settings and
+  GitHub status before touching the workflows.
 - **The research** starts at `docs/research/RESEARCH.md` (§7 owner
   questions, §8 the first build session in order). The catalog pipeline is
   `catalog/` with its own `DECISIONS.md`; its database and caches are on the
@@ -28,8 +45,7 @@
   published snapshot"). 157,503 episodes, 16,113 series; all ten catalog
   test suites pass against a restore from that Release.
 - **Next actions** (RESEARCH §8, adapted to where we are):
-  1. Owner: point eardrama.org at GitHub Pages (below) and decide the
-     platform set for v1 (all of Archive Watch's, plus CarPlay and Android
+  1. Owner: decide the platform set for v1 (all of Archive Watch's, plus CarPlay and Android
      Auto, which the research says are the car use) -> DECISIONS.
   2. Request the CarPlay audio entitlement on day one
      (developer.apple.com/contact/carplay); Apple's review of it is slow.
