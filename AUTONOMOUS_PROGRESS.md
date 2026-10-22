@@ -65,3 +65,10 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Implementation: entries 001-045 (the template's inherited decisions) moved verbatim to `docs/decisions/DECISIONS-001-045.md`; `DECISIONS.md` keeps its preamble, a one-line index of all 60 entries (archived ones marked), and 046-060 in full.
 - Verification: a script split the pre-roll file from git on its `## NNN` headings and found every entry verbatim in one of the two files; agent-files and US English checks pass. LOOP-PLAN's first-opt-tick item done.
 - Next: the publish step's projection builder (M1), measuring the sizes the contract marks.
+
+### Tick 11, 2026-10-22, data: the served projection, built and measured
+- Implementation: `catalog/tools/build_projection.py` cuts `ear-drama.sqlite` from the research database: only `keep_*` rows; recordings in the pipeline's rank with percent-encoded URLs; series, people, credits; contentless FTS5; `season()` (September opens a season); a floor that refuses a shrunken projection; raw DEFLATE `.zz`; `manifest.json` with counts, bytes, sha256. `--clean-only` is the public-web gate.
+- MEASURED (restored snapshot, 16 s): 121,907 episodes, 239,304 recordings, 10,910 series, 17,046 people, 285,751 credits. First cut 190 MB / 35.7 MB compressed; credits were stored twice and the FTS kept its own text copy; after removing both and the raw file path: 133 MB on disk, 27.4 MB compressed. Clean-only: 15,125 episodes, 6.2 MB / 1.2 MB. Every episode has a rank-0 recording; no URL holds a raw space. "sorr* wrong" finds Sorry, Wrong Number; people:moorehead finds credited episodes.
+- Data defect seen (for the pipeline, not the client): a 1943-05-25 Suspense broadcast sits under series `1943radionews` with an upload's raw title ("CBS-Suspense---Sorry-Wrong-Number-East-Coast").
+- Not yet: the snapshot predates ticks 6-8's rules (the projection follows whatever database it reads); contract tests; the web projection; publishing. Contract §2-3.4 updated with the sizes and the slimmer shape.
+- Next: `catalog/tests/test_projection.py` (season, URL encoding, the served-state and rank-0 contract tests, with controls).

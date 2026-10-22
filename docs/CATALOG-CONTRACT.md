@@ -24,7 +24,7 @@ field here; it never computes one.
 
 | Asset | Host | For | Notes |
 |---|---|---|---|
-| `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`); *size to measure* |
+| `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`), built by `catalog/tools/build_projection.py`; MEASURED 2026-10-22: 27.4 MB compressed, 133 MB on disk, 121,907 episodes (clean-only: 1.2 MB, 6.2 MB, 15,125) |
 | `manifest.json` | the same Release, and Pages | every client, tooling | `schemaVersion`, `generatedAt`, row counts, bytes, sha256 |
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
 | `data/index/*.json`, `data/series/*.json`, `data/episodes/{shard}.json`, `data/evenings/*.json` | GitHub Pages, deployed by Actions (never committed) | web, smart-TV web, Roku | §4; *layout to measure* |
@@ -79,8 +79,8 @@ many copies survive.
 
 ### 3.2 `recordings`, the copies
 
-`(episode_id, rank, archive_id, file, url, format, kbps, length_s, variant,
-partial)`. Rank 0 is the default copy, chosen by `build_db.order_recordings`
+`(episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial)`;
+`url` is percent-encoded by the pipeline and is the only path a client plays. Rank 0 is the default copy, chosen by `build_db.order_recordings`
 (catalog DECISIONS 007): complete before partial, domestic before AFRS, OTRR's
 copy, then measured bitrate. The versions picker lists the rest in rank order.
 
@@ -92,16 +92,17 @@ copy, then measured bitrate. The versions picker lists the rest in rank order.
 - `runs`: `(id, series_key, first_date, last_date, kind, network)`; kind is one
   of anthology, character, serial, strip, comedy-variety, news, broadcast-day.
 - `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art` row or NULL).
-- `credits`: `(episode_id, person_id, role)`, a join table for "with this
-  person" queries.
+- `credits`: `(episode_id, person_id, role, character)`, the one home of
+  credits: Detail joins it to `people` (they are not repeated in `detail_json`).
 - `art`: images with their evidence (`url`, `width`, `height`, `license`,
   `evidence_url`, `author` when the license requires credit). An image is
   served only when its own record carries the evidence (DECISIONS 055).
 
 ### 3.4 Search
 
-`episodes_fts` (FTS5): title, aka, series name, credited names, and transcript
-text where it passes the gate. Matching is word-prefix, never substring, on every
+`episodes_fts` (FTS5, contentless; a match's `rowid` is the episode's `rowid`):
+title and aka, series name, credited names, and later transcript text where it
+passes the gate. Matching is word-prefix, never substring, on every
 platform: "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful".
 
 ### 3.5 Forwarding ids
