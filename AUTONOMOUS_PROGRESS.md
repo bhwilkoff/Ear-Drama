@@ -27,3 +27,9 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Context: tick 3's dispatched Android Build (39863770465, 4efd2d1) passed with no `w:` lines. M1 item 1.
 - Verification, MEASURED 2026-10-22 against the `catalog-2026-10-21` restore (all 4 SHA256SUMS entries OK): all ten catalog suites pass, 362 tests (audio_rights 22, cce_drama_renewals 13, discover_corpus 24, enrich_db 52, enrich_external 37, identity 59, no_recommend 6, otr_parse 41, people_art 66, photo_archives 42). 157,503 episodes, 16,113 series, 300,935 recordings. Rights states: keep_unclaimed 106,782; keep_clean 15,125; hide_claim 25,021; hide_out_of_scope 9,285; hide_unidentified 1,290. These are before catalog Decisions 004-007 are wired in.
 - Next: wire the CCE drama renewals into the audit (catalog 004), with a test and a control seen to fail.
+
+### Tick 5, 2026-10-22, data: the script renewals were already in the audit
+- Context: M1 "wire the CCE drama renewals into the audit (catalog 004)".
+- Finding: they were already wired. `build_db.py` loads `.cache/cce_drama_renewals.json.gz` into the audit's `script_renewals`; the restored snapshot holds 469 `work_script_renewed` and 1,703 `work_series_renewals` episodes (and 2,391 `work_script_claim`, 347 `work_adapted_renewed`); `test_audio_rights.py` covers the match, the 10-renewal floor against 9, and the 96-year expiry. `catalog/README.md` said "not yet wired in", and catalog Decision 004's "How to apply" repeated it from the README. Absence in a doc is not evidence: the database said otherwise.
+- Implementation: README's defaults paragraph now states the owner's rulings, what the audit applies, and what it does not yet (the music rule, the AFRS credits rule, post-1949 film renewals). LOOP-PLAN splits the item.
+- Next: the stricter music bucket (006), with a test and a control.

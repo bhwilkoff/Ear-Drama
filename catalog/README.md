@@ -56,14 +56,17 @@ Order: hides before rescues, first match wins; the stricter of the recording and
 underlying-work layers wins. Every row's `evidence` lists what decided it, each
 with a source a reader can open.
 
-**Defaults applied where the owner has not ruled** (02-rights §11): non-US
-productions hidden (Q7); post-1972 hidden; AFRS rebroadcasts of network series
-judged as that series; government series kept with the §105/§1401 question noted
-(Q6); music and variety judged like drama (Q5); unregistered scripts unclaimed
-unless a claim is found (Q4). **Not yet checked by the audit**: script renewals in
-the printed Catalog of Copyright Entries drama volumes (parsed, below, not yet wired
-in), and film renewals after 1949 (Lux episodes adapting 1950s films read `work_none_found`
-only because that index is not built).
+**The owner's rulings** (2026-10-22, `DECISIONS.md` 004-007; 02-rights §11):
+non-US productions hidden; post-1972 hidden; AFRS rebroadcasts of network series
+judged as that series, and AFRS originals kept as government work only when no
+commercial performer is credited; music and variety shows built on popular songs
+hidden; unregistered scripts follow the recording (kept while unclaimed); a named,
+sourced claimant hides a series. **Applied by the audit today**: script renewals in
+the printed Catalog of Copyright Entries drama volumes (`work_script_renewed` for a
+matched episode, `work_series_renewals` at 10+ live renewals; 469 and 1,703 episodes
+in the 2026-10-21 snapshot). **Not yet applied**: the stricter music rule and the
+AFRS credits rule (006), and film renewals after 1949 (Lux episodes adapting 1950s
+films read `work_none_found` only because that index is not built).
 
 ## Script renewals in print (`tools/fetch_cce_drama_renewals.py`)
 
@@ -78,7 +81,7 @@ Copyright Office's online records take over). It writes
 `.cache/cce_drama_renewals.json.gz`, one row per original registration:
 title, episode, series, author, claimant, D/C registration and date, renewal
 number and date, volume, line and a `src` link that opens the scan at a search
-for the renewal number. It is not yet wired into the audit.
+for the renewal number. `build_db.py` passes it to the audit as `script_renewals`.
 
 **Measured 2026-10-17.** `title:("catalog of copyright entries") AND
 title:(dramas)` returns all 31 Third Series volumes, 1947-1977, one a year (plus

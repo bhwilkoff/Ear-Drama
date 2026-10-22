@@ -148,9 +148,10 @@ The clients read one published plane and re-derive nothing
 
 - [x] Restore the catalog from the `catalog-2026-10-21` Release and run all ten
       catalog test suites; record the counts as MEASURED with the date.
-- [ ] Wire the CCE drama renewals into the audit (catalog 004), add the stricter
-      music bucket and the AFRS credits rule (006), and the version ranking
-      (007), each with a paired test and a control seen to fail.
+- [x] The CCE drama renewals reach the audit (catalog 004): already wired in
+      `build_db.py`; 469 + 1,703 episodes hidden in the snapshot (tick 5).
+- [ ] Add the stricter music bucket and the AFRS credits rule (006), and the
+      version ranking (007), each with a paired test and a control seen to fail.
 - [ ] Write `docs/CATALOG-CONTRACT.md`: series, runs and their kinds, broadcast
       seasons, episodes, recordings and versions, people and credits, images
       with their evidence, transcripts, evenings, the rights line, and the
