@@ -59,7 +59,9 @@ def fetch_transcript(archive_id, file):
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             return None
-        raise
+        raise RuntimeError(f"HTTP {e.code}")
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise RuntimeError(str(e)[:80])
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "w", encoding="utf-8").write(text)
     time.sleep(1)
@@ -100,7 +102,11 @@ def main():
             spath = os.path.join(ia.CACHE, "grw", "text", sid + ".txt")
             if not os.path.exists(spath):
                 continue
-            t = fetch_transcript(aid, file)
+            try:
+                t = fetch_transcript(aid, file)
+            except RuntimeError as e:
+                print(f"skip {eid}: {e} (retried next run)", flush=True)
+                continue
             if t is None:
                 results[eid] = {"series": sk, "missing": True}
             else:
@@ -111,6 +117,7 @@ def main():
                 print(f"{i}/{len(todo)}", flush=True)
     rep = report(results)
     print(json.dumps(rep, indent=1))
+    ia.write_json(RESULTS, results)
     if not a.report and not rep["measured"]:
         sys.exit(1)
 
