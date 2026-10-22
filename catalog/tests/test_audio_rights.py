@@ -212,6 +212,22 @@ def hides_run_before_rescues():
     assert A.judge(ep(series_key="x"), c)["rec_bucket"] == "rec_foreign_origin"
 
 
+@case
+def music_led_series_hides_comedy_with_songs_stays():
+    hide = {"bingcrosby": ["Music", "Songs", "Variety"],
+            "goodnewsof1937to1940": ["Variety", "Music"]}
+    keep = {"jackbenny": ["Comedy", "Variety", "Music"],
+            "suspense": ["Mystery", "Suspense", "Anthology"],
+            "quizkids": ["Game Show"]}
+    c = ctx(series_genres={**hide, **keep})
+    for k in hide:
+        j = A.judge(ep(series_key=k), c)
+        assert (j["work_bucket"], j["state"]) == ("work_music_led", "hide_claim"), (k, j)
+    for k in keep:
+        assert A.judge(ep(series_key=k), c)["state"] == "keep_unclaimed", k
+    assert A.judge(ep(series_key="nogenres"), c)["state"] == "keep_unclaimed"
+
+
 def main():
     failed = 0
     for fn in CASES:

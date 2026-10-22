@@ -892,6 +892,15 @@ def main():
             script_ren[k].append(r)
     if not script_ren:
         print("WARNING: no script renewals matched any series; work_script_renewed cannot fire", file=sys.stderr)
+    series_genres = collections.defaultdict(list)
+    progs = load(os.path.join(ia.CACHE, "otrrpedia", "progPedia.json.gz"), [])
+    for p in sorted(progs, key=lambda p: int(p["idp"]) if str(p.get("idp", "")).isdigit() else 0):
+        k = reg.idp2c.get(p.get("idp"))
+        for g in p.get("genres") or []:
+            if k in by_series and g.get("genre") and g["genre"] not in series_genres[k]:
+                series_genres[k].append(g["genre"])
+    if not series_genres:
+        print("WARNING: no OTRRpedia genres matched any series; work_music_led cannot fire", file=sys.stderr)
     sched = load(os.path.join(ia.CACHE, "p72_schedules.json.gz"), {"rows": []})
     if not sched["rows"]:
         print("WARNING: no pre-1972 schedules cached; rec_schedule_claim cannot fire", file=sys.stderr)
@@ -899,7 +908,7 @@ def main():
     ctx = {"takedowns": takedowns, "schedule_match": make_schedule_matcher(bt, ba), "claims": claims,
            "series_post_1972": series_post, "series_foreign": series_foreign, "gov_series": gov,
            "licence_evidence": lic_ev, "published_records": pub_rec, "film_renewals": film_ren,
-           "script_renewals": script_ren,
+           "script_renewals": script_ren, "series_genres": series_genres,
            "today": datetime.date.today()}
 
     # The spine: attach RadioEchoes genre and episode facts; unmatched RE episodes are wants.

@@ -33,3 +33,10 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Finding: they were already wired. `build_db.py` loads `.cache/cce_drama_renewals.json.gz` into the audit's `script_renewals`; the restored snapshot holds 469 `work_script_renewed` and 1,703 `work_series_renewals` episodes (and 2,391 `work_script_claim`, 347 `work_adapted_renewed`); `test_audio_rights.py` covers the match, the 10-renewal floor against 9, and the 96-year expiry. `catalog/README.md` said "not yet wired in", and catalog Decision 004's "How to apply" repeated it from the README. Absence in a doc is not evidence: the database said otherwise.
 - Implementation: README's defaults paragraph now states the owner's rulings, what the audit applies, and what it does not yet (the music rule, the AFRS credits rule, post-1949 film renewals). LOOP-PLAN splits the item.
 - Next: the stricter music bucket (006), with a test and a control.
+
+### Tick 6, 2026-10-22, data: music-led series hide (catalog 006)
+- Context: M1, the stricter music rule.
+- Measured first (restored snapshot, series.genres_otrr): OTRRpedia genres leading with Music or Songs cover 195 series and 5,487 kept episodes (Bing Crosby 651, Guest Star 389, Grand Ole Opry 373, Bob Hope Show 238, Kraft Music Hall 167); music with no story genre adds 14 series and 154 episodes (Good News of 1937-40, Eddie Cantor's Time to Smile). Comedy with songs (Jack Benny: Comedy, Variety, Music) stays. 182 RadioEchoes-only "OTR-Variety" series with no OTRR genres carry no music evidence ("Christmas Shows" holds dramas) and stay under the drama rule.
+- Implementation: `audit_audio_rights.music_led(genres)` and the `work_music_led` hide (after a sourced work claim, before renewals); `build_db.py` reads OTRRpedia's program genres through the registry's `idp2c` map at audit time, as it does the script renewals, and warns when none match.
+- Verification: `test_audio_rights.py` 23/23; the new case fails under two broken controls (never hides; ignores story genres, which hides Jack Benny). A rebuild into the scratchpad is running to measure the real counts.
+- Next: read the rebuild's rights table; then the AFRS credits rule.

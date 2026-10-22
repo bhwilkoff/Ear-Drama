@@ -37,6 +37,19 @@ POST_1972 = datetime.date(1972, 2, 15)
 # fetch_cce_drama_renewals), so an unmatched episode of such a series is more
 # likely a lost entry than an unrenewed script. A default for the owner (README).
 SERIES_RENEWAL_FLOOR = 10
+# A series whose program genres lead with music, or carry music and no story genre,
+# is built on songs, whose copyrights are registered and actively claimed: hidden,
+# stricter than drama (owner, 2026-10-22; DECISIONS 006). Genres are OTRRpedia's,
+# in its own order; comedy with songs (Jack Benny: Comedy, Variety, Music) stays.
+MUSIC_GENRES = {"Music", "Songs", "Country Music"}
+STORY_GENRES = {"Comedy", "Sitcom", "Drama", "Anthology Drama", "Anthology", "Mystery", "Suspense", "Western",
+                "Crime", "Adventure", "Serial", "Romance", "Science Fiction", "Horror", "Private Detective",
+                "Police", "Action", "Youth", "Super Hero"}
+
+
+def music_led(genres):
+    g = list(genres or ())
+    return bool(g) and (g[0] in MUSIC_GENRES or (bool(set(g) & MUSIC_GENRES) and not set(g) & STORY_GENRES))
 
 
 def norm_title(t):
@@ -114,6 +127,9 @@ def work_bucket(ep, ctx):
     claim = ctx["claims"].get(key)
     if claim and claim["layer"] == "work":
         return "work_script_claim", [claim]
+    genres = ctx.get("series_genres", {}).get(key)
+    if music_led(genres):
+        return "work_music_led", [{"genres": genres, "source": "OTRRpedia program genres"}]
     live = [r for r in ctx.get("script_renewals", {}).get(key, [])
             if r["orig_year"] + 96 > (ctx.get("today") or datetime.date.today()).year]
     if live and ep.get("date"):
@@ -143,7 +159,7 @@ REC_STATE = {
     "rec_pd_published_age": "keep_clean",
     "rec_orphan_unclaimed": "keep_unclaimed", "rec_no_evidence": "hide_unidentified",
 }
-WORK_HIDES = {"work_script_claim", "work_script_renewed", "work_series_renewals", "work_adapted_renewed"}
+WORK_HIDES = {"work_script_claim", "work_music_led", "work_script_renewed", "work_series_renewals", "work_adapted_renewed"}
 
 
 def _renewal_ev(r):
