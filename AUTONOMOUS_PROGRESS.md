@@ -84,3 +84,10 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Implementation: `catalog/tools/measure_loudness.py`: a stratified 200-episode sample (decade x rights, at most two per series, chosen by a stable hash so re-runs measure the same files), ffmpeg `ebur128=peak=true` streamed from each default copy's URL through `ffmpeg_limits` (nice, half the cores), an honest User-Agent, two workers, results cached in `.cache/loudness.json`; `--report` gives the distribution, the share of cuts, and how many gains the true-peak clamp limits.
 - Verification so far: two-episode smoke run, -19.0 and -20.0 LUFS, ~10 s each; both gains peak-limited (old transfers peak near full scale), which the full sample will confirm or refute. The 200-file run is in the background.
 - Agents: none has reported yet.
+
+### Tick 14, 2026-10-22, data: genres from data, the eight
+- Implementation: `catalog/tools/genres.py`, the one mapping every builder imports: OTRRpedia's labels in their own order (45 labels mapped or left out on purpose), "Serial" deciding unless the show is a comedy (a serial queues by arc, R3), RadioEchoes' human tag when OTRRpedia is silent, LibriVox works as drama, otherwise no genre. `build_projection.py` stores `series.genre` and `genre_source`.
+- Verification: `test_projection.py` 30/30; the comedy-serial control caught a real bug on the first run (a Serial-first comedy came out "serial") before it shipped. Projection rebuilt from `out/next`, contract holds.
+- MEASURED coverage of served episodes: drama 27.6%, comedy 15.6%, mystery 9.8%, serial 8.3%, documentary 3.2%, western 1.9%, scifi 1.4%, news 1.1%, none 31.1% (8,568 small series).
+- Found: the largest genreless series are unfolded uploads of known series ("SUSPENSE Radio Digitally Restored" 306, "NakedGordPresentsTheJackBennyProgram 834" 358) and catch-all collections ("Singles & Doubles Collection" 939, "500 Christmas Shows" 328). Folding them is an identity task (`canonical-entity-identity`, the series registry), next on the main thread after the measurements land.
+- Measurements: loudness 60/198, transcripts 80/190 at the tick's start.
