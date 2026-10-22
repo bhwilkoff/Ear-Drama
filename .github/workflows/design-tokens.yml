@@ -1,0 +1,61 @@
+# The look is chosen once, in design-tokens.json, and every platform's token
+# file is written from it by tools/design_tokens.mjs. This fails a change that
+# edits a generated file by hand, forgets to run the generator, or drops a
+# text pair below WCAG AA contrast. The paths are the JSON, the tools, and
+# every file the generator writes.
+
+name: Design Tokens
+
+on:
+  pull_request:
+    paths:
+      - 'design-tokens.json'
+      - 'tools/design_tokens.mjs'
+      - 'tools/test_design_tokens.mjs'
+      - 'css/styles.css'
+      - 'index.html'
+      - 'manifest.json'
+      - 'tv.css'
+      - 'cast/index.html'
+      - 'tv/webos/appinfo.json'
+      - 'apple/Core/Design.swift'
+      - 'apple/Assets.xcassets/AccentColor.colorset/**'
+      - 'android/app/src/main/java/**/ui/theme/**'
+      - 'android/app/src/main/res/values/colors.xml'
+      - 'android/app/src/main/res/values-night/colors.xml'
+      - 'windows/*.App/App.axaml'
+      - 'windows/*.App/AppxManifest.xml'
+      - '.github/workflows/design-tokens.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'design-tokens.json'
+      - 'tools/design_tokens.mjs'
+      - 'tools/test_design_tokens.mjs'
+      - 'css/styles.css'
+      - 'index.html'
+      - 'manifest.json'
+      - 'tv.css'
+      - 'cast/index.html'
+      - 'tv/webos/appinfo.json'
+      - 'apple/Core/Design.swift'
+      - 'apple/Assets.xcassets/AccentColor.colorset/**'
+      - 'android/app/src/main/java/**/ui/theme/**'
+      - 'android/app/src/main/res/values/colors.xml'
+      - 'android/app/src/main/res/values-night/colors.xml'
+      - 'windows/*.App/App.axaml'
+      - 'windows/*.App/AppxManifest.xml'
+      - '.github/workflows/design-tokens.yml'
+  workflow_dispatch:
+
+jobs:
+  tokens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Every platform matches design-tokens.json
+        run: node tools/test_design_tokens.mjs

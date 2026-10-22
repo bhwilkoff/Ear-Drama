@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX package identity. Identity is what unblocks the good parts: protocol
+  activation (appname://), toasts, jump lists — all of which throw NO_PACKAGE
+  without it. It is also what the Microsoft Store submission requires.
+
+  IDENTITY IS NOT FREELY EDITABLE. Name / Publisher / Version must match Partner
+  Center EXACTLY (case- and whitespace-sensitive); a mismatch fails upload with a
+  generic error that does not name the offending field. Copy them verbatim from
+  Partner Center -> Product management -> View app identity details. The placeholder
+  Publisher below is a self-signed dev identity for sideload only; the Store
+  bootstrap replaces it (see docs/windows/WINDOWS-STORE-SUBMISSION.md).
+
+  VERSION RULE: four segments, and the FOURTH MUST BE 0 — it is reserved by the
+  Store. So marketing version 1.2.3 becomes 1.2.3.0, and the build number has
+  nowhere to live here. Version is stamped by tools/stamp_msix_version.py from
+  AppVersion.xcconfig; do not hand-edit it.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 rescap">
+
+  <Identity
+    Name="YourPublisher.AppName"
+    Publisher="CN=AppNameDev"
+    Version="1.0.0.0" />
+
+  <Properties>
+    <DisplayName>App Name</DisplayName>
+    <PublisherDisplayName>Your Publisher</PublisherDisplayName>
+    <Logo>Assets\Windows\StoreLogo.png</Logo>
+    <Description>One sentence describing the app.</Description>
+  </Properties>
+
+  <Dependencies>
+    <!-- Keep MinVersion in lockstep with AppName.Windows.csproj's
+         TargetPlatformMinVersion, or CA1416 stays quiet about APIs missing on the
+         oldest Windows 10 the Store will install this on. -->
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="AppName" Executable="AppName.App.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="App Name"
+        Description="One sentence describing the app."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Windows\Square150x150Logo.png"
+        Square44x44Logo="Assets\Windows\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Windows\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Windows\Square71x71Logo.png"
+          Square310x310Logo="Assets\Windows\Square310x310Logo.png" />
+        <uap:SplashScreen Image="Assets\Windows\SplashScreen.png" BackgroundColor="#3F5E78" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Deep links: EVERY shape the app emits must be declared here or an
+             external open fails silently. Audit this list whenever a new URL shape
+             ships (same rule as the Android manifest's intent-filters). -->
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="appname" DesiredView="default">
+            <uap:DisplayName>App Name</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+
+        <!-- The https twin: your-domain.com deep links open the app rather than the
+             browser. Pair with /.well-known/windows-app-web-link on the domain, which
+             names the PackageFamilyName — its hash suffix comes from the REAL Partner
+             Center Publisher, so this can only be completed once Store identity
+             exists. -->
+        <uap3:Extension Category="windows.appUriHandler">
+          <uap3:AppUriHandler>
+            <uap3:Host Name="your-domain.example" />
+          </uap3:AppUriHandler>
+        </uap3:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <!-- Required by EntryPoint="Windows.FullTrustApplication": a packaged desktop
+         (Win32) app is full-trust by definition, and makeappx rejects the manifest
+         without it (error 80080204). This is the standard desktop-bridge capability,
+         not an escalation. The Store's Submission Options page has a REQUIRED
+         justification field for it — see WINDOWS-STORE-SUBMISSION.md. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

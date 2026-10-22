@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- NEVER change this TFM to net10.0-windows* — one WinRT-needing feature is not a
+         reason. The Windows TFM turns on MSBuild's Appx/PRI indexing over @(Content)
+         (which this project has) and every MSIX publish then dies with MSB4062
+         ExpandPriContent, a task that ships with Visual Studio and not the dotnet CLI.
+         WinRT code goes in AppName.Windows (its own content-free library), loaded
+         reflectively. See AppName.Windows/AppName.Windows.csproj. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <!-- Marketing version, kept in lockstep with AppVersion.xcconfig by
+         tools/stamp_msix_version.py. Bump on EVERY Store ship: the Store reserves the
+         4th version segment, so two builds of the same marketing version are
+         indistinguishable in Partner Center. -->
+    <Version>1.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- Compiled bindings ON: with x:DataType on every view, a binding typo is a
+         build error instead of a silent runtime blank. -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+    <!-- Shared data plane: link the repo's /assets JSON in (never copy into git) so
+         Windows consumes the same published data as web/Android/Apple. Uncomment when
+         your app has shared data:
+    <Content Include="..\..\assets\*.json" Link="Data\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.5" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <!-- FluentAvaloniaUI 3.x prefixes every control "FA" (FANavigationView, not
+         NavigationView) — "Unable to resolve type NavigationView" means you used the
+         v2 name. -->
+    <PackageReference Include="FluentAvaloniaUI" Version="3.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+    <!-- AV playback (when the app needs it): LibVLCSharp, with natives conditioned on
+         the RID. Referencing .Mac and .Windows unconditionally ships the 42MB macOS
+         dylib + the 99MB win-x86 tree inside the win-x64 Store package. With no RID
+         (the Mac dev head / headless tests) both come along, which is what lets
+         playback be exercised locally.
+    <PackageReference Include="LibVLCSharp" Version="3.9.4" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.21"
+                      Condition="'$(RuntimeIdentifier)' == '' or $(RuntimeIdentifier.StartsWith('win'))" />
+    <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.1.3.1"
+                      Condition="'$(RuntimeIdentifier)' == '' or $(RuntimeIdentifier.StartsWith('osx'))" />
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppName.Core\AppName.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Trim what a win-x64 ship must never carry: dual-arch native trees and native
+       .pdb symbols were over half of a 211MB package once. Extend the globs as
+       native packages are added (e.g. $(PublishDir)libvlc\win-x86\**\*). -->
+  <Target Name="TrimWindowsPublishBloat" AfterTargets="Publish"
+          Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <ItemGroup>
+      <_PublishBloat Include="$(PublishDir)*.pdb" />
+      <_PublishBloat Include="$(PublishDir)libvlc\win-x86\**\*" />
+    </ItemGroup>
+    <Delete Files="@(_PublishBloat)" />
+    <RemoveDir Directories="$(PublishDir)libvlc\win-x86" />
+    <Message Importance="high" Text="Trimmed native pdbs (+ any win-x86 natives) from $(PublishDir)" />
+  </Target>
+
+</Project>

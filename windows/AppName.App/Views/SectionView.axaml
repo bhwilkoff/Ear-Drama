@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:AppName.App.ViewModels"
+             x:Class="AppName.App.Views.SectionView"
+             x:DataType="vm:SectionViewModel">
+    <!-- Placeholder section frame demonstrating the type ramp + card tokens. Replace
+         with real views; every list/grid you add must define its loading, empty,
+         error, and offline states (universal-feature-states). -->
+    <ScrollViewer>
+        <StackPanel Margin="32,24" Spacing="16" MaxWidth="760" HorizontalAlignment="Left">
+            <TextBlock Classes="view-heading" Text="{Binding Title}"/>
+            <TextBlock Classes="body" Text="{Binding Blurb}" TextWrapping="Wrap"/>
+            <Border Classes="card">
+                <StackPanel Spacing="10">
+                    <TextBlock Classes="section-header" Text="Planned surfaces"/>
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Classes="body" Text="{Binding}" Margin="0,3" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            <Button Classes="accent chunky" Content="Primary action"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

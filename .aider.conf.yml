@@ -1,0 +1,10 @@
+# Aider reads this file when it starts in this folder (aider.chat/docs/config/aider_conf.html).
+# It is for the open path in docs/path/setup.md, "If you will not use an AI company."
+# There is no key in this file, and there never should be.
+
+# The short instructions, sized for a small model's context. AGENTS.md is the full source.
+read:
+  - AGENTS-SHORT.md
+
+# Uncomment the model you chose. ollama_chat/ is Aider's prefix for a model on your own computer.
+# model: ollama_chat/olmo-3:7b-instruct

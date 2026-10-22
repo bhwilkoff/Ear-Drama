@@ -1,0 +1,106 @@
+# XcodeGen spec for the ONE universal Apple target (iPhone, iPad, Mac, Apple TV).
+# The agent creates the project with `xcodegen generate` (brew install xcodegen);
+# nobody clicks through Xcode's New Project sheet. AppName.xcodeproj is generated
+# output and gitignored: change the project HERE, then regenerate. A hand-edit in
+# Xcode is silently wiped on the next generate.
+#
+# To adopt: rename `AppName` (name, target, PRODUCT_NAME, scheme) and set
+# bundleIdPrefix + PRODUCT_BUNDLE_IDENTIFIER. No spaces in the name.
+name: AppName
+options:
+  bundleIdPrefix: com.example
+  createIntermediateGroups: true
+  # Floors are chosen by the hardware they reach, and tools/test_ios_floor.py +
+  # test_tvos_floor.py hold them in CI. iOS 18 keeps the iPhone XS / XR that
+  # iOS 26 dropped; tvOS 26 keeps the Apple TV HD that tvOS 27 dropped.
+  deploymentTarget:
+    iOS: "18.0"
+    tvOS: "26.0"
+    macOS: "26.0"
+  groupSortPosition: top
+# MARKETING_VERSION / CURRENT_PROJECT_VERSION come ONLY from this file
+# (Decision 003). Never set them on the target; a target copy shadows it.
+configFiles:
+  Debug: AppVersion.xcconfig
+  Release: AppVersion.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # Approachable concurrency: code is MainActor-isolated by default, so
+    # SwiftUI views and @Observable stores need no annotation. APIClient is an
+    # actor and stays off the main actor on its own.
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    CODE_SIGN_STYLE: Automatic
+    # Left empty on purpose: never commit a team id to the template. Simulator
+    # and CODE_SIGNING_ALLOWED=NO builds need none. For a device or archive
+    # build, set your 10-char Team ID here in the adopting app, or pass
+    # DEVELOPMENT_TEAM=XXXXXXXXXX to xcodebuild (tools/submit-appstore.sh
+    # passes $ASC_TEAM_ID).
+    DEVELOPMENT_TEAM: ""
+targets:
+  AppName:
+    type: application
+    # One target, four destinations (Decision 013, amended by 019). Per-platform
+    # UI is guarded by #if os(iOS) / os(macOS) / os(tvOS) inside each file, so
+    # every file compiles into every slice with no exclusion lists.
+    supportedDestinations: [iOS, tvOS, macOS]
+    sources:
+      - path: apple
+        excludes:
+          - "Tests/**"
+          # The folder READMEs are notes for people, not app resources.
+          - "**/*.md"
+    scheme:
+      testTargets:
+        - AppNameTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.appname
+        PRODUCT_NAME: AppName
+        # Xcode writes the Info.plist from INFOPLIST_KEY_* settings, so there
+        # is no plist file to drift. CFBundleVersion and the short version are
+        # filled from AppVersion.xcconfig automatically.
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: AppName
+        # Standard HTTPS only: skips the export-compliance question on every
+        # TestFlight / App Store build.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        # Mac App Store listing category; ignored on iOS and tvOS. FILL IN.
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # tvOS needs a LAYERED "App Icon & Top Shelf Image" brandassets set,
+        # never the square iOS appiconset (see branding/README.md). Until one
+        # exists the tvOS slice names no icon; point these at it when it lands.
+        "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvos*]": ""
+        "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvsimulator*]": ""
+        # The Mac App Store requires the sandbox. Xcode derives the
+        # entitlements from these settings, so there is no .entitlements file
+        # to maintain. Add only the scopes the app actually uses.
+        "ENABLE_APP_SANDBOX[sdk=macosx*]": YES
+        "ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]": YES
+        "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+
+  # Core unit tests. NOT hosted in the app: hosting the universal app built the
+  # app module twice ("Multiple commands produce AppName.swiftmodule") in
+  # Tidbits Trivia. Compiling Core/ straight into the bundle avoids that, and
+  # Core is the shared logic the universal target exists for. macOS-only, so
+  # `xcodebuild test -destination platform=macOS` needs no simulator.
+  AppNameTests:
+    type: bundle.unit-test
+    supportedDestinations: [macOS]
+    sources:
+      - path: apple/Tests
+      - path: apple/Core
+        excludes:
+          - "**/*.md"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.appname.CoreTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO

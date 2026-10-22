@@ -1,0 +1,152 @@
+# TEMPLATE: a scheduled workflow that mutates a shared data file, done right.
+# Copy into .github/workflows/, rename, and fill the FILL-IN markers.
+# The doctrine behind every line: docs/CI-FLEET.md. Validate the gating with
+# `python3 tools/check_workflow_gates.py` after any edit to the apply job.
+#
+# Shape (docs/CI-FLEET.md section 1, "The shared lock is the scarcest resource"):
+#   compute:  NO lock. Fetch a read-only snapshot, do the long work under a
+#              BUDGET, emit a field-level delta as you go, bank it as an
+#              artifact even on failure.
+#   apply:    holds the shared lock for ~2 minutes. Fetch FRESH, merge the
+#              delta, publish. Gated so an empty run touches nothing.
+# A verdict step makes red mean broken: a backstop timeout on a run whose
+# work still published is a warning, not a failure (docs/CI-FLEET.md
+# section 5, "A red X is reserved for broken"; DECISIONS.md 031).
+
+name: FILL-IN descriptive name
+
+on:
+  schedule:
+    - cron: '17 4 * * *'          # off the hour: :00 crons pile onto each other
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Items to process this run'
+        default: '500'
+
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    # No shared concurrency group here: this job never mutates shared state.
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Fetch data (read-only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: FILL-IN  # e.g. python tools/data_release.py fetch (you create this)
+
+      - name: Snapshot (for the delta)
+        run: python tools/catalog_delta.py snapshot --out /tmp/before.json
+
+      - name: Do the work
+        # The tool's --max-minutes is the real bound: it stops starting new
+        # items and RETURNS, so the steps below still run. It must be able to
+        # fire INSIDE one item (a between-items check is defeated by a single
+        # expensive item), and it must measure from PROCESS START.
+        # The step timeout is a BACKSTOP for a hang the budget cannot reach;
+        # continue-on-error keeps a fired backstop from failing a run whose
+        # work still ships. The verdict step decides.
+        id: work
+        continue-on-error: true
+        timeout-minutes: 270
+        run: |
+          set -o pipefail   # `tool | tee` otherwise masks the tool's exit code
+          python tools/FILL-IN.py \
+            --limit ${{ github.event.inputs.limit || '500' }} \
+            --max-minutes 240 | tee work.log
+          echo '## FILL-IN' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"; tail -3 work.log >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Extract what changed
+        if: always()
+        run: python tools/catalog_delta.py extract --snapshot /tmp/before.json --out deltas.json
+
+      - name: Keep the deltas
+        # Upload even after a timeout. A partial run is still worth keeping.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: FILL-IN-deltas
+          path: deltas.json
+          if-no-files-found: ignore
+
+      - name: Fail only if the backstop fired AND nothing was produced
+        if: always() && steps.work.outcome == 'failure'
+        run: |
+          EMPTY=$(python3 -c "import json;d=json.load(open('deltas.json'));print('yes' if not d.get('changes') and not d.get('removals') else 'no')" 2>/dev/null || echo yes)
+          if [ "$EMPTY" = "no" ]; then
+            echo "::warning::The backstop timeout fired, but the run's work shipped; not failing (red is reserved for broken)."
+          else
+            echo "::error::Killed by the backstop timeout with NOTHING produced."
+            exit 1
+          fi
+
+  apply:
+    needs: compute
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The ONLY job holding the shared writers lock, for ~2 minutes. GitHub
+    # keeps ONE pending job per group (a newer arrival DESTROYS the older
+    # pending one), so short holds are what keep the whole fleet alive.
+    # tools/retry_infra_failures.py heals a displaced pending apply.
+    concurrency:
+      group: data-writers
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: FILL-IN-deltas
+        continue-on-error: true
+
+      # Every step after this gate MUST carry the gate condition.
+      # tools/check_workflow_gates.py enforces it. An ungated step runs
+      # against a data file that was never fetched.
+      - name: Stop if nothing changed
+        id: gate
+        run: |
+          EMPTY=$(python3 -c "import json;d=json.load(open('deltas.json'));print('yes' if not d.get('changes') and not d.get('removals') else 'no')" 2>/dev/null || echo yes)
+          if [ "$EMPTY" = "yes" ]; then
+            echo "nothing to apply"; echo "go=no" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch data (fresh, so it preserves other writers' work)
+        if: steps.gate.outputs.go == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: FILL-IN  # same fetch as above
+
+      - name: Apply the deltas
+        if: steps.gate.outputs.go == 'yes'
+        run: python tools/catalog_delta.py apply --deltas deltas.json
+
+      - name: Publish
+        if: steps.gate.outputs.go == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # If publishing a SQLite index several workflows append to, bracket
+          # it with tools/sqlite_publish_guard.py (snapshot after restore,
+          # check before upload) and NEVER swallow a failed restore. Only a
+          # non-existent release is a first run (docs/CI-FLEET.md section 3,
+          # "Restores never swallow; publishes never shrink").
+          bash tools/gh_retry.sh FILL-IN   # e.g. gh release upload ... --clobber
+
+      - name: Trigger downstream rebuild
+        if: steps.gate.outputs.go == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash tools/gh_dispatch.sh FILL-IN.yml   # fire-and-forget, exits 0

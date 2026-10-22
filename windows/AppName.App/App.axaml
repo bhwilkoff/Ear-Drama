@@ -1,0 +1,181 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="AppName.App.App"
+             xmlns:local="using:AppName.App"
+             xmlns:sty="using:FluentAvalonia.Styling"
+             RequestedThemeVariant="Default">
+    <!-- "Default" follows the system light/dark; FluentAvaloniaTheme gives the WinUI 11 look. -->
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <!-- Design tokens: change design-tokens.json at the repository root and run
+             `node tools/design_tokens.mjs`; every platform follows. Light and Dark
+             follow the system theme. -->
+        <ResourceDictionary>
+            <!-- BEGIN design-tokens:resources. Generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. -->
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <Color x:Key="BrandPrimary">#3F5E78</Color>
+                    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="#3F5E78"/>
+                    <Color x:Key="BrandOnPrimary">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="BrandOnPrimaryBrush" Color="#FFFFFF"/>
+                    <Color x:Key="BrandBackground">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="BrandBackgroundBrush" Color="#FFFFFF"/>
+                    <Color x:Key="BrandSurface">#F5F6F8</Color>
+                    <SolidColorBrush x:Key="BrandSurfaceBrush" Color="#F5F6F8"/>
+                    <Color x:Key="BrandSurfaceAlt">#EBEDF0</Color>
+                    <SolidColorBrush x:Key="BrandSurfaceAltBrush" Color="#EBEDF0"/>
+                    <Color x:Key="BrandText">#1A1C1F</Color>
+                    <SolidColorBrush x:Key="BrandTextBrush" Color="#1A1C1F"/>
+                    <Color x:Key="BrandTextMuted">#5B6270</Color>
+                    <SolidColorBrush x:Key="BrandTextMutedBrush" Color="#5B6270"/>
+                    <Color x:Key="BrandBorder">#D3D7DE</Color>
+                    <SolidColorBrush x:Key="BrandBorderBrush" Color="#D3D7DE"/>
+                    <Color x:Key="SemanticSuccess">#1E7A4F</Color>
+                    <SolidColorBrush x:Key="SemanticSuccessBrush" Color="#1E7A4F"/>
+                    <Color x:Key="SemanticWarning">#8A5A00</Color>
+                    <SolidColorBrush x:Key="SemanticWarningBrush" Color="#8A5A00"/>
+                    <Color x:Key="SemanticError">#B42318</Color>
+                    <SolidColorBrush x:Key="SemanticErrorBrush" Color="#B42318"/>
+                    <Color x:Key="SemanticErrorSurface">#FDECEA</Color>
+                    <SolidColorBrush x:Key="SemanticErrorSurfaceBrush" Color="#FDECEA"/>
+                    <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#39556C"/>
+                    <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#324B60"/>
+                    <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#663F5E78"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <Color x:Key="BrandPrimary">#A7BFD6</Color>
+                    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="#A7BFD6"/>
+                    <Color x:Key="BrandOnPrimary">#0F1720</Color>
+                    <SolidColorBrush x:Key="BrandOnPrimaryBrush" Color="#0F1720"/>
+                    <Color x:Key="BrandBackground">#141619</Color>
+                    <SolidColorBrush x:Key="BrandBackgroundBrush" Color="#141619"/>
+                    <Color x:Key="BrandSurface">#1D2024</Color>
+                    <SolidColorBrush x:Key="BrandSurfaceBrush" Color="#1D2024"/>
+                    <Color x:Key="BrandSurfaceAlt">#272B30</Color>
+                    <SolidColorBrush x:Key="BrandSurfaceAltBrush" Color="#272B30"/>
+                    <Color x:Key="BrandText">#ECEEF1</Color>
+                    <SolidColorBrush x:Key="BrandTextBrush" Color="#ECEEF1"/>
+                    <Color x:Key="BrandTextMuted">#A2A9B4</Color>
+                    <SolidColorBrush x:Key="BrandTextMutedBrush" Color="#A2A9B4"/>
+                    <Color x:Key="BrandBorder">#3A3F47</Color>
+                    <SolidColorBrush x:Key="BrandBorderBrush" Color="#3A3F47"/>
+                    <Color x:Key="SemanticSuccess">#5CC593</Color>
+                    <SolidColorBrush x:Key="SemanticSuccessBrush" Color="#5CC593"/>
+                    <Color x:Key="SemanticWarning">#E8B04B</Color>
+                    <SolidColorBrush x:Key="SemanticWarningBrush" Color="#E8B04B"/>
+                    <Color x:Key="SemanticError">#FF8A80</Color>
+                    <SolidColorBrush x:Key="SemanticErrorBrush" Color="#FF8A80"/>
+                    <Color x:Key="SemanticErrorSurface">#3A1D1B</Color>
+                    <SolidColorBrush x:Key="SemanticErrorSurfaceBrush" Color="#3A1D1B"/>
+                    <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#96ACC1"/>
+                    <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#8699AB"/>
+                    <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66A7BFD6"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <x:Double x:Key="Space1">4</x:Double>
+            <x:Double x:Key="Space2">8</x:Double>
+            <x:Double x:Key="Space3">12</x:Double>
+            <x:Double x:Key="Space4">16</x:Double>
+            <x:Double x:Key="Space6">24</x:Double>
+            <x:Double x:Key="Space8">32</x:Double>
+            <CornerRadius x:Key="RadiusControl">8</CornerRadius>
+            <CornerRadius x:Key="RadiusCard">12</CornerRadius>
+            <!-- END design-tokens:resources -->
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <!-- The brand accent (instead of the default purple) and the type ramp. -->
+        <!-- BEGIN design-tokens:styles. Generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. -->
+        <sty:FluentAvaloniaTheme CustomAccentColor="#3F5E78" />
+
+        <!-- The six-level type ramp, adopted via Classes. Refuse a seventh level. -->
+        <Style Selector="TextBlock.view-heading"> <!-- L1 pageTitle -->
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="TextBlock.section-header"> <!-- L2 sectionHeader -->
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+        <Style Selector="TextBlock.body-strong"> <!-- L3 bodyStrong -->
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="TextBlock.body"> <!-- L4 body -->
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+        <Style Selector="TextBlock.caption"> <!-- L5 caption -->
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrandTextMutedBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.tabular"> <!-- L6 tabular -->
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,monospace"/>
+        </Style>
+        <!-- END design-tokens:styles -->
+
+        <!-- Reusable design-token styles — one definition, many views. Adopt via
+             Classes="card" etc.; never restyle at a call site. -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource RadiusCard}"/>
+            <Setter Property="Padding" Value="20"/>
+            <!-- The card owns its elevation shadow — never hand-add shadow padding at
+                 a call site. Kept subtle so it reads native on Fluent. -->
+            <Setter Property="BoxShadow" Value="0 1 8 0 #1A000000"/>
+        </Style>
+
+        <!-- The brand CTA. FluentAvalonia derives a LIGHTER accent for the dark theme
+             (AccentFillColorDefaultBrush -> Light1/2/3), which washes a brand-colored
+             hero out while hard-coded brand fills beside it stay saturated — adjacent
+             CTAs disagreeing. The brand primary is a token on every platform (one value
+             for light, one for dark, from design-tokens.json), so pin it here. Fluent's derived accent still drives focus rings and
+             selection, which is the correct native behaviour for those. -->
+        <Style Selector="Button.accent /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BrandPrimaryBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrandOnPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandPrimaryBrush}"/>
+        </Style>
+        <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BrandPrimaryHoverBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrandOnPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandPrimaryHoverBrush}"/>
+        </Style>
+        <Style Selector="Button.accent:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BrandPrimaryPressedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrandOnPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandPrimaryPressedBrush}"/>
+        </Style>
+        <Style Selector="Button.accent:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource BrandPrimaryDisabledBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrandOnPrimaryBrush}"/>
+        </Style>
+        <!-- Same rule, different control: a switched-on ToggleSwitch is an accent
+             surface too. Pin the "on" fill in both themes. -->
+        <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds">
+            <Setter Property="Background" Value="{DynamicResource BrandPrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandPrimaryBrush}"/>
+        </Style>
+
+        <Style Selector="Button.chunky">
+            <Setter Property="Padding" Value="24,13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        </Style>
+        <Style Selector="Button.compact">
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="CornerRadius" Value="{DynamicResource RadiusControl}"/>
+        </Style>
+
+    </Application.Styles>
+</Application>

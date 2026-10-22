@@ -1,0 +1,41 @@
+{
+  "$about": "The one source of the app's look. Change a value here, run `node tools/design_tokens.mjs`, and every platform's token file is rewritten to match; `node tools/test_design_tokens.mjs` fails if any of them drifts. These values are the template's PLACEHOLDER look (a quiet slate on neutral gray), there to be replaced through the make-it-look-like-itself skill.",
+  "color": {
+    "brand": {
+      "primary":      { "light": "#3F5E78", "dark": "#A7BFD6", "use": "the main action, the selected item, the accent" },
+      "onPrimary":    { "light": "#FFFFFF", "dark": "#0F1720", "use": "text and icons on primary" },
+      "background":   { "light": "#FFFFFF", "dark": "#141619", "use": "the page" },
+      "surface":      { "light": "#F5F6F8", "dark": "#1D2024", "use": "cards, panels, the sidebar" },
+      "surfaceAlt":   { "light": "#EBEDF0", "dark": "#272B30", "use": "hover, a quieter second surface" },
+      "text":         { "light": "#1A1C1F", "dark": "#ECEEF1", "use": "body text" },
+      "textMuted":    { "light": "#5B6270", "dark": "#A2A9B4", "use": "secondary text, captions" },
+      "border":       { "light": "#D3D7DE", "dark": "#3A3F47", "use": "hairlines and outlines" }
+    },
+    "semantic": {
+      "success":      { "light": "#1E7A4F", "dark": "#5CC593", "use": "an operation that worked" },
+      "warning":      { "light": "#8A5A00", "dark": "#E8B04B", "use": "something needs attention" },
+      "error":        { "light": "#B42318", "dark": "#FF8A80", "use": "something failed" },
+      "errorSurface": { "light": "#FDECEA", "dark": "#3A1D1B", "use": "the error banner's fill" }
+    }
+  },
+  "font": {
+    "body": {
+      "web": "system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "native": "the platform's system face (SF Pro, Roboto, Segoe UI Variable)"
+    },
+    "mono": {
+      "web": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "windows": "Cascadia Mono,Consolas,Menlo,monospace"
+    }
+  },
+  "type": [
+    { "id": "pageTitle",     "level": "L1", "size": 28, "weight": 700, "web": "view-heading",   "apple": "largeTitle", "tvos": "title",    "android": "displaySmall",  "windows": "view-heading" },
+    { "id": "sectionHeader", "level": "L2", "size": 20, "weight": 700, "web": "section-header", "apple": "title2",     "tvos": "title3",   "android": "headlineSmall", "windows": "section-header" },
+    { "id": "bodyStrong",    "level": "L3", "size": 16, "weight": 600, "web": "body-strong",    "apple": "headline",   "tvos": "headline", "android": "titleMedium",   "windows": "body-strong" },
+    { "id": "body",          "level": "L4", "size": 16, "weight": 400, "web": "body",           "apple": "body",       "tvos": "body",     "android": "bodyMedium",    "windows": "body" },
+    { "id": "caption",       "level": "L5", "size": 13, "weight": 400, "web": "caption",        "apple": "caption",    "tvos": "caption",  "android": "labelMedium",   "windows": "caption" },
+    { "id": "tabular",       "level": "L6", "size": 14, "weight": 400, "web": "tabular",        "apple": "body",       "tvos": "body",     "android": "bodySmall",     "windows": "tabular", "mono": true }
+  ],
+  "space": { "1": 4, "2": 8, "3": 12, "4": 16, "6": 24, "8": 32 },
+  "radius": { "control": 8, "card": 12 }
+}

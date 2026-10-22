@@ -1,0 +1,163 @@
+using System.Runtime.InteropServices;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media.Imaging;
+using Avalonia.Threading;
+
+namespace AppName.HeadlessTests;
+
+/// Visual-regression gate. Snapshots that are captured but never COMPARED only
+/// surface a regression if a human happens to look at the artifact; this diffs each
+/// render against a committed baseline so the CI run fails on an unintended visual
+/// change.
+///
+/// Baselines are captured on WINDOWS, the ship target, and only enforced there:
+/// Skia's rasterization and font fallback are not guaranteed identical between the
+/// macOS dev head and Windows, so a Mac-captured baseline would fail on CI for
+/// reasons that have nothing to do with the app. On non-Windows the comparison is
+/// skipped (the render still runs, so a crash/layout exception is still caught).
+///
+/// Refresh baselines with APPNAME_UPDATE_BASELINES=1 — run it on windows-latest via
+/// `gh workflow run windows-repl.yml -f update_baselines=true`, then download and
+/// commit the artifact. Baseline-gated renders MUST be deterministic: fixed
+/// fixtures, never anything drawn from live or random data.
+public static class VisualBaseline
+{
+    private const double DefaultTolerance = 0.001; // 0.1% of pixels may differ
+
+    private static string BaselineDir()
+    {
+        // Walk up from the test binary to the project dir so baselines live in the
+        // repo, not in bin/.
+        var d = new DirectoryInfo(AppContext.BaseDirectory);
+        while (d is not null && !File.Exists(Path.Combine(d.FullName, "AppName.HeadlessTests.csproj")))
+            d = d.Parent;
+        var root = d?.FullName ?? AppContext.BaseDirectory;
+        return Path.Combine(root, "Baselines", "windows");
+    }
+
+    private static string ArtifactDir()
+    {
+        var d = Environment.GetEnvironmentVariable("APPNAME_ARTIFACTS")
+                ?? Path.Combine(AppContext.BaseDirectory, "artifacts");
+        Directory.CreateDirectory(d);
+        return d;
+    }
+
+    private static bool Enforced =>
+        RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+        && Environment.GetEnvironmentVariable("APPNAME_UPDATE_BASELINES") != "1";
+
+    private static bool Updating =>
+        Environment.GetEnvironmentVariable("APPNAME_UPDATE_BASELINES") == "1";
+
+    /// Capture `win`, always write the artifact PNG, and — on Windows — assert it
+    /// matches the committed baseline within `tolerance` (fraction of differing
+    /// pixels).
+    public static void Matches(Window win, string name, double tolerance = DefaultTolerance)
+    {
+        Dispatcher.UIThread.RunJobs();
+        var frame = win.CaptureRenderedFrame()
+                    ?? throw new InvalidOperationException($"'{name}' captured no frame — is the window shown?");
+
+        var artifact = Path.Combine(ArtifactDir(), $"{name}.png");
+        frame.Save(artifact);
+
+        var baselineDir = BaselineDir();
+        var baselinePath = Path.Combine(baselineDir, $"{name}.png");
+
+        if (Updating)
+        {
+            Directory.CreateDirectory(baselineDir);
+            frame.Save(baselinePath);
+            return;
+        }
+
+        if (!Enforced) return; // macOS dev head: render-only, no pixel gate
+
+        Assert.True(File.Exists(baselinePath),
+            $"No baseline for '{name}'. Run the windows-repl workflow with " +
+            $"update_baselines=true, then commit Baselines/windows/{name}.png.");
+
+        using var expected = new Bitmap(baselinePath);
+        var (differing, total, reason) = Compare(expected, Normalize(frame));
+
+        if (reason is not null)
+        {
+            frame.Save(Path.Combine(ArtifactDir(), $"{name}-actual.png"));
+            Assert.Fail($"'{name}' does not match its baseline: {reason}. " +
+                        $"See {name}-actual.png in the artifacts.");
+        }
+
+        var fraction = total == 0 ? 0 : (double)differing / total;
+        if (fraction > tolerance)
+        {
+            frame.Save(Path.Combine(ArtifactDir(), $"{name}-actual.png"));
+            Assert.Fail(
+                $"'{name}' drifted from its baseline: {fraction:P3} of pixels differ " +
+                $"({differing}/{total}), tolerance {tolerance:P3}. " +
+                $"Compare {name}.png (baseline) with {name}-actual.png in the artifacts. " +
+                $"If the change is intended, refresh the baseline with update_baselines=true.");
+        }
+    }
+
+    /// Round-trip a bitmap through a PNG encode/decode so it lands in the SAME pixel
+    /// format as a baseline loaded from disk.
+    ///
+    /// This is load-bearing, not a nicety. Bitmap.CopyPixels hands back each
+    /// bitmap's NATIVE format, and a freshly-captured frame's format is not the same
+    /// as a PNG-decoded file's — the channel order differs (RGBA vs BGRA). Comparing
+    /// them directly reads R against B, so pixel-IDENTICAL renders report as
+    /// different wherever the image is coloured (grey pixels have R==G==B and
+    /// silently agree). The tempting "fix" — refreshing the baselines — would hide
+    /// it forever while leaving the gate blind to real drift. Always normalize
+    /// through one decode path, and test the gate on COLOURED pixels.
+    internal static Bitmap Normalize(Bitmap bmp)
+    {
+        using var ms = new MemoryStream();
+        bmp.Save(ms);
+        ms.Position = 0;
+        return new Bitmap(ms);
+    }
+
+    /// Per-pixel compare. Returns (differingPixels, totalPixels, fatalReason).
+    /// Both bitmaps MUST have come through the same decode path — see Normalize.
+    internal static (int, int, string?) Compare(Bitmap expected, Bitmap actual)
+    {
+        var es = expected.PixelSize;
+        var a2 = actual.PixelSize;
+        if (es != a2)
+            return (0, 0, $"size changed {es.Width}x{es.Height} -> {a2.Width}x{a2.Height}");
+
+        int w = es.Width, h = es.Height, stride = w * 4, len = stride * h;
+        var eBuf = Marshal.AllocHGlobal(len);
+        var aBuf = Marshal.AllocHGlobal(len);
+        try
+        {
+            expected.CopyPixels(new PixelRect(0, 0, w, h), eBuf, len, stride);
+            actual.CopyPixels(new PixelRect(0, 0, w, h), aBuf, len, stride);
+
+            var e = new byte[len];
+            var a = new byte[len];
+            Marshal.Copy(eBuf, e, 0, len);
+            Marshal.Copy(aBuf, a, 0, len);
+
+            int differing = 0;
+            for (int i = 0; i < len; i += 4)
+            {
+                // Tolerate 1-level channel noise from rasterization; count anything
+                // above it.
+                if (Math.Abs(e[i] - a[i]) > 1 || Math.Abs(e[i + 1] - a[i + 1]) > 1 ||
+                    Math.Abs(e[i + 2] - a[i + 2]) > 1 || Math.Abs(e[i + 3] - a[i + 3]) > 1)
+                    differing++;
+            }
+            return (differing, w * h, null);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(eBuf);
+            Marshal.FreeHGlobal(aBuf);
+        }
+    }
+}

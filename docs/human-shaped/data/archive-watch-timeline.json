@@ -1,0 +1,147 @@
+{
+  "app": "Archive Watch",
+  "site": "https://archivewatch.org/",
+  "repository": "https://github.com/bhwilkoff/Archive-Watch",
+  "computed_on": "2026-10-02",
+  "method": {
+    "branch": "main, every commit reachable from HEAD (merges included)",
+    "date_used": "author date, converted to Mountain time (America/Denver), where Ben lives",
+    "window": "2026-04-17 through 2026-09-30 inclusive (author date before 2026-10-01T00:00 Mountain)",
+    "commands": [
+      "TZ=America/Denver git log --format='%H|%ad|%an|%B' --date=format-local:%Y-%m-%dT%H:%M:%S",
+      "a commit counts as Claude co-authored when its message has a line starting 'Co-Authored-By:' that contains 'Claude'",
+      "platform first appearance: git log --diff-filter=A --reverse -- <path> for the platform's folder or manifest, cross-checked against commit subjects"
+    ],
+    "notes": [
+      "Counting by UTC instead of Mountain time gives 4,302 commits through September 30. Earlier template pages quote 4,285 and 4,298, counted on other days with other cutoffs.",
+      "Store dates come from public store data gathered 2026-10-01 (App Store) or from the commit that recorded a listing going live. They are marked with their source."
+    ]
+  },
+  "totals": {
+    "commits_through_2026_09_30": 4306,
+    "commits_with_claude_coauthor": 2753,
+    "commits_by_github_actions_bot": 1439,
+    "commits_authored_as_claude_on_the_web": 6,
+    "commits_under_bens_name": 2861,
+    "share_of_non_bot_commits_with_claude_coauthor": 0.96,
+    "days_with_at_least_one_commit": 129,
+    "calendar_days_in_window": 167,
+    "commits_by_month": {
+      "2026-04": 65,
+      "2026-05": 29,
+      "2026-06": 857,
+      "2026-07": 322,
+      "2026-08": 814,
+      "2026-09": 2219
+    },
+    "claude_coauthored_by_month": {
+      "2026-04": 54,
+      "2026-05": 23,
+      "2026-06": 613,
+      "2026-07": 63,
+      "2026-08": 431,
+      "2026-09": 1569
+    }
+  },
+  "platforms": [
+    {
+      "platform": "tvOS (Apple TV)",
+      "code_first_appeared": "2026-04-17",
+      "evidence": "4162f8043, 18:12: 'Fill in project identity, log Decisions 006-010, scaffold enrichment pipeline' (Swift models and networking; Decision 006 made the app Apple TV only). The Xcode project itself entered the repository 2026-04-19 07:11 (6078d7aad).",
+      "store": "App Store",
+      "store_first_release": "2026-06-10",
+      "store_source": "iTunes Search API first release date, gathered 2026-10-01 (humanshaped-site research notes)"
+    },
+    {
+      "platform": "iOS (iPhone)",
+      "code_first_appeared": "2026-06-09",
+      "evidence": "72ef368a9, 14:08: 'iOS: universal-app Swift conversion - iOS + tvOS both build green'",
+      "store": "App Store (same listing as tvOS)",
+      "store_first_release": null,
+      "store_source": "The listing's first release date is the app's, not this platform's. iPhone submission copy was written 2026-06-11 (c1785da73)."
+    },
+    {
+      "platform": "iPadOS (iPad)",
+      "code_first_appeared": "2026-06-09",
+      "evidence": "Same universal target as iOS; 9ca029e40 the same day: 'iOS: make the Home hero adapt to iPad / regular width'. A distinct iPad design followed Ben's 2026-08-28 request.",
+      "store": "App Store (same listing)",
+      "store_first_release": null
+    },
+    {
+      "platform": "Web (archivewatch.org)",
+      "code_first_appeared": "2026-06-09",
+      "evidence": "7e8b8a4f5, 19:17: 'Web PWA viewer (P3)'. The viewer moved to the site root on 2026-06-10 (e307c1aa8, Decision 030). The repository held the template's placeholder web files from the initial commit, and an editorial dashboard from 2026-04-17, but no public viewer.",
+      "store": "the open web",
+      "store_first_release": "2026-06-10",
+      "store_source": "e307c1aa8, viewer at the site root"
+    },
+    {
+      "platform": "Android (phones and tablets)",
+      "code_first_appeared": "2026-06-09",
+      "evidence": "449caabb5, 19:45: 'Android: ship the Phase P4 native app'",
+      "store": "Google Play",
+      "store_first_release": "by 2026-06-29",
+      "store_source": "d943464ce: 'Submit all platforms: Android 1.3.241 (vc9) to Play production'. Earlier uploads were made by hand and are not dated here."
+    },
+    {
+      "platform": "macOS (Mac)",
+      "code_first_appeared": "2026-06-22",
+      "evidence": "f67101eed, 19:35: 'macOS Phase 0: native browse/play/library/search shell on the shared Core'",
+      "store": "App Store (same listing)",
+      "store_first_release": null,
+      "store_source": "Mac App Store build path landed 2026-06-28 (04d1b98d6)"
+    },
+    {
+      "platform": "Android TV / Google TV",
+      "code_first_appeared": "2026-08-03",
+      "evidence": "5f85adf7c, 16:12: 'android(tv): TV form-factor manifest contract + banner'; a2d295f12, 16:38: Compose-for-TV shell. The parity push began 2026-08-27.",
+      "store": "Google Play (same listing)",
+      "store_first_release": null,
+      "store_source": "de1320615, 2026-08-06: 'session log for the TV wave - Play submitted'"
+    },
+    {
+      "platform": "Fire TV",
+      "code_first_appeared": "2026-08-03",
+      "evidence": "c9472d290, 16:46: 'Fire TV GMS gate'; 94b917bc2, 2026-08-04: google/amazon store flavors",
+      "store": "Amazon Appstore",
+      "store_first_release": "by 2026-09-07",
+      "store_source": "1752fdd72, 2026-08-31: submitted; 0ca913a60, 2026-09-07: 'link the live Amazon listing from the site'"
+    },
+    {
+      "platform": "Google Cast receiver",
+      "code_first_appeared": "2026-08-04",
+      "evidence": "0dba3ff75, 22:42: 'cast: CAF v3 custom web receiver + web sender'",
+      "store": "none (a receiver page, not a store app)",
+      "store_first_release": null,
+      "store_source": "de1320615, 2026-08-06: 'Cast published'"
+    },
+    {
+      "platform": "Roku",
+      "code_first_appeared": "2026-09-03",
+      "evidence": "13e190121, 16:54: 'Roku tick 1: device harness, first sideloaded channel'. A sideload build for 2011-12 players followed 2026-09-14 (333f1219e).",
+      "store": "Roku Channel Store",
+      "store_first_release": "by 2026-09-10",
+      "store_source": "d72b49856, 2026-09-10: Ben reports the channel live; the site adds the Roku link"
+    },
+    {
+      "platform": "Smart-TV web (LG webOS, Samsung Tizen)",
+      "code_first_appeared": "2026-08-03",
+      "evidence": "84f47cf60, 16:43: 'smart-TV layer + webOS/Tizen packaging from the ONE shared web app'. Samsung work restarted on real TVs 2026-09-09.",
+      "store": "LG Content Store, Samsung Apps",
+      "store_first_release": null,
+      "store_source": "Not submitted as of 2026-09-30 (SCRATCHPAD at HEAD: 'NOT SUBMITTED - owner steps')"
+    },
+    {
+      "platform": "Windows",
+      "code_first_appeared": null,
+      "evidence": "No Windows project in Archive Watch. Windows was built for Tidbits Trivia.",
+      "store": null,
+      "store_first_release": null
+    }
+  ],
+  "context": {
+    "catalog_size": "around 32,000 titles (Archive Watch README at HEAD)",
+    "app_store_version_2026_09_30": "1.43.0 (iTunes Search API, gathered 2026-10-01)",
+    "price": "free, no ads, no account, no tracking (README)"
+  }
+}

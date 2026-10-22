@@ -1,0 +1,900 @@
+{
+  "about": "Each session's default run of show, for a 75-minute session. Each entry in `weeks` is one session (week 0 is Prep), and the site seeds a new cohort's sessions from this file, and every scene stays editable in the class builder. Scenes use the site's shape (assets/show-lib.js on the site branch): kind, title, minutes, body (what the main stage shows), and config. Written by Claude from docs/research/curriculum/00-curriculum-design.md, October 7, 2026, awaiting Ben's review. A scene's optional `note` is for the teacher only, and a week's `questions` go into the cohort's question bank (kind, prompt, choices, points).",
+  "source": "docs/research/curriculum/00-curriculum-design.md",
+  "minutes": 75,
+  "weeks": [
+    {
+      "key": "prep",
+      "week": 0,
+      "title": "Cohort Prep: getting set up and meeting your group",
+      "move": "Publish",
+      "question": "What do I need in order to build at all?",
+      "guide": "before.md",
+      "scenes": [
+        {
+          "kind": "talk",
+          "title": "Arrive",
+          "minutes": 10,
+          "body": "Your name, and in one sentence, what you want your app to do for someone you know.",
+          "config": {}
+        },
+        {
+          "kind": "talk",
+          "title": "How we talk to one another",
+          "minutes": 8,
+          "body": "The four rules, said aloud.\n\nAnd one true story about a rough first week.",
+          "config": {}
+        },
+        {
+          "kind": "rooms",
+          "title": "Meet your group",
+          "minutes": 20,
+          "body": "Groups of three. Each person opens their app's address on their phone and shows it.",
+          "config": {
+            "prompt": "Show your app's address on your phone, and say one thing in your life you wish worked differently.",
+            "room_scenes": [
+              {
+                "title": "Show the address on your phone",
+                "minutes": 3
+              },
+              {
+                "title": "One thing you wish worked differently",
+                "minutes": 2
+              },
+              {
+                "title": "One question to understand it",
+                "minutes": 1
+              }
+            ]
+          },
+          "note": "Watch for anyone whose setup is still stuck, and anyone who has not met their trio yet."
+        },
+        {
+          "kind": "break",
+          "title": "Break",
+          "minutes": 3,
+          "body": null,
+          "config": {}
+        },
+        {
+          "kind": "design",
+          "title": "A strong bring-back and a weak one",
+          "minutes": 18,
+          "body": "Both shown, then everyone practices the three questions on the weak one, on the board.",
+          "config": {
+            "template": "questions"
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Start your noticing log",
+          "minutes": 11,
+          "body": "For five days, write one line whenever one of these happens:\n\nI wished something worked differently.\nI gave up on something I care about.\nI did something the long way because nothing helped.\nSomeone I know struggled with the same thing.\n\nNo app ideas yet. Just what happened.",
+          "config": {
+            "prompt": "What is one thing that happened today that could go in your log?"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "Check for understanding",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "What do you hope this app will do for someone?",
+            "kind": "short"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "How ready do you feel?",
+          "minutes": 2,
+          "body": null,
+          "config": {
+            "prompt": "How ready do you feel to build?",
+            "kind": "scale",
+            "points": 5,
+            "options": [
+              "Not ready yet",
+              "Ready to build"
+            ]
+          }
+        }
+      ],
+      "questions": [
+        {
+          "kind": "short",
+          "prompt": "What do you hope this app will do for someone?"
+        },
+        {
+          "kind": "scale",
+          "prompt": "How ready do you feel to build?",
+          "choices": [
+            "Not ready yet",
+            "Ready to build"
+          ],
+          "points": 5
+        },
+        {
+          "kind": "short",
+          "prompt": "What did your agent do for you during setup that you expected to have to do yourself?"
+        },
+        {
+          "kind": "choice",
+          "prompt": "Where will you keep your noticing log this week?",
+          "choices": [
+            "A notes app on my phone",
+            "Paper",
+            "My app's note",
+            "Somewhere else"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "week-1",
+      "week": 1,
+      "title": "Week 1: finding a problem worth building for",
+      "move": "Write",
+      "question": "What problem in your own life is worth building something for, and who else has it?",
+      "guide": "week-1.md",
+      "scenes": [
+        {
+          "kind": "talk",
+          "title": "Arrive",
+          "minutes": 5,
+          "body": "One line in the chat from your noticing log, one you are willing to share.\n\nThen what I heard in last week's answers, and what I changed because of it.",
+          "config": {}
+        },
+        {
+          "kind": "talk",
+          "title": "Two notes for one film",
+          "minutes": 3,
+          "body": "Two notes for the same film in Archive Watch, side by side.\n\nOne was written in a second by an AI. The other was written by someone who watched the film and shared it on archive.org.",
+          "config": {},
+          "note": "Prepare these before the session: copy one film's notes from its archive.org page, and ask your agent for a three-sentence summary of the same film. Label them A and B, and do not say which is which until people have answered."
+        },
+        {
+          "kind": "question",
+          "title": "What would be lost?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "Which would you rather read, and what would be lost if the app only had the first kind?",
+            "kind": "short"
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Our questions",
+          "minutes": 6,
+          "body": "Ask as many questions as you can.\n\nDo not stop to discuss, judge, or answer them.\n\nWrite each one down exactly as it was said.\n\nChange any statement into a question.",
+          "config": {
+            "prompt": "If anyone can build their own apps, it matters even more which apps they choose to build. What questions does that raise for you?"
+          },
+          "note": "These are the Question Formulation Technique's four rules (Right Question Institute). Collect every question in the session's thread. They become the cohort's list of what we need to know, and you come back to it every week."
+        },
+        {
+          "kind": "reflection",
+          "title": "Five from your log",
+          "minutes": 5,
+          "body": "With your agent closed, choose five lines from your log and write each as a problem, in your own words, one or two sentences each.",
+          "config": {
+            "prompt": "Which five things in your log would you most like to be different?"
+          }
+        },
+        {
+          "kind": "design",
+          "title": "Hold them to the tests",
+          "minutes": 10,
+          "body": "Put your two strongest on the board. For each test, mark yes, not yet, or I don't know. \"I don't know\" is an honest answer, and it is what this week's conversations are for.",
+          "config": {
+            "template": "problem-tests"
+          },
+          "note": "Watch for a problem that is really a measurement or a ranking, with nobody's story in it, and ask about it with a question, not a verdict."
+        },
+        {
+          "kind": "break",
+          "title": "Break",
+          "minutes": 3,
+          "body": null,
+          "config": {}
+        },
+        {
+          "kind": "talk",
+          "title": "What makes a problem statement strong",
+          "minutes": 4,
+          "body": "Four problems I wrote, in my own words. Each starts from a real situation in my life, says what a better life would look like, and then says \"I need something that...\"\n\nRead them as models, not answers. What do they do that you could do in yours?",
+          "config": {}
+        },
+        {
+          "kind": "question",
+          "title": "What do they do well?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "In a few words, what do these four problem statements do well?",
+            "kind": "words"
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Rewrite yours",
+          "minutes": 5,
+          "body": "Rewrite your strongest candidate in the same form: what happens in your life, then \"I need something that...\"\n\nThen one sentence on what the computer-shaped version of the same wish would be, so you can see what to steer away from.",
+          "config": {
+            "prompt": "What happens in your life, and what do you need?"
+          }
+        },
+        {
+          "kind": "rooms",
+          "title": "Critique in your trio",
+          "minutes": 18,
+          "body": "Groups of three. Be kind, be specific, be helpful, and offer suggestions as questions: \"Have you considered...?\"",
+          "config": {
+            "prompt": "Read your problem statement aloud. Then listen to the questions, and write down the one you want to answer.",
+            "room_scenes": [
+              {
+                "title": "Read your problem statement",
+                "minutes": 1
+              },
+              {
+                "title": "What is strong in it",
+                "minutes": 1
+              },
+              {
+                "title": "Have you considered...?",
+                "minutes": 3
+              },
+              {
+                "title": "Revise one line",
+                "minutes": 1
+              }
+            ]
+          },
+          "note": "Critique rules from Ron Berger. Watch for a statement that names a technology instead of a situation, and for a room where nobody asks a question."
+        },
+        {
+          "kind": "reflection",
+          "title": "Plan two conversations",
+          "minutes": 5,
+          "body": "Name two people who might have this problem too. Write three questions that start \"Tell me about the last time you...\" Do not describe an app.",
+          "config": {
+            "prompt": "Who are your two people, and what is your first question for them?"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "Who else has it?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "How sure are you, right now, that someone besides you has this problem?",
+            "kind": "scale",
+            "points": 5,
+            "options": [
+              "Not sure at all",
+              "I could name them"
+            ]
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What is still muddy?",
+          "minutes": 2,
+          "body": null,
+          "config": {
+            "prompt": "What is still muddy?",
+            "kind": "short"
+          }
+        }
+      ],
+      "questions": [
+        {
+          "kind": "short",
+          "prompt": "Which would you rather read, and what would be lost if the app only had the first kind?"
+        },
+        {
+          "kind": "words",
+          "prompt": "In a few words, what do these four problem statements do well?"
+        },
+        {
+          "kind": "scale",
+          "prompt": "How sure are you, right now, that someone besides you has this problem?",
+          "choices": [
+            "Not sure at all",
+            "I could name them"
+          ],
+          "points": 5
+        },
+        {
+          "kind": "short",
+          "prompt": "What is still muddy?"
+        },
+        {
+          "kind": "multi",
+          "prompt": "Which of these does your problem statement do?",
+          "choices": [
+            "Starts from something that happens in my life",
+            "Says what a better life would look like",
+            "Names who else has it",
+            "Never names a technology"
+          ]
+        },
+        {
+          "kind": "rank",
+          "prompt": "Which questions for your two conversations will tell you the most?",
+          "choices": [
+            "Tell me about the last time you...",
+            "What did you try?",
+            "What happened next?",
+            "Who else deals with this?"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "week-2",
+      "week": 2,
+      "title": "Week 2: the first app, and the same app on a second device",
+      "move": "Play",
+      "question": "What has to be the same on every device, and what should feel as if it was born there?",
+      "guide": "week-2.md",
+      "scenes": [
+        {
+          "kind": "talk",
+          "title": "Arrive",
+          "minutes": 5,
+          "body": "One line in the chat: what the person you talked to did first with your app.\n\nThen what I heard in last week's answers, and what I changed because of it.",
+          "config": {}
+        },
+        {
+          "kind": "rooms",
+          "title": "Show what you brought back",
+          "minutes": 30,
+          "body": "Groups of three, about ten minutes each. Your problem statement, then the app on your phone.",
+          "config": {
+            "prompt": "Read your problem statement, show the app on your phone, and say what the person you talked to did first.",
+            "room_scenes": [
+              {
+                "title": "Their question",
+                "minutes": 1
+              },
+              {
+                "title": "Show it, and one decision",
+                "minutes": 4
+              },
+              {
+                "title": "One clarifying question",
+                "minutes": 1
+              },
+              {
+                "title": "The three questions",
+                "minutes": 3
+              },
+              {
+                "title": "What comes next",
+                "minutes": 1
+              }
+            ]
+          },
+          "note": "Watch for a problem statement that has not changed since week 1, \"my friend liked it\" with nothing about what the person did, and a first version that grew past the smallest thing."
+        },
+        {
+          "kind": "break",
+          "title": "Break",
+          "minutes": 3,
+          "body": null,
+          "config": {}
+        },
+        {
+          "kind": "presenter",
+          "title": "What surprised us",
+          "minutes": 5,
+          "body": "One or two people: what a real person did with your app that you did not expect.",
+          "config": {
+            "prompt": "Listen for what the person did that the builder did not plan for."
+          }
+        },
+        {
+          "kind": "talk",
+          "title": "Where Archive Watch went next",
+          "minutes": 4,
+          "body": "Apple TV on April 17, where its people were. iPhone and iPad, the web, and Android on June 9. Mac on June 22. Roku on September 3.\n\nUse the order as a model, not an answer: where do the people you talked to already reach?",
+          "config": {}
+        },
+        {
+          "kind": "question",
+          "title": "Your second device",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "Which device will the people you talked to reach for, and why that one second?",
+            "kind": "short"
+          }
+        },
+        {
+          "kind": "design",
+          "title": "One verb, twice",
+          "minutes": 12,
+          "body": "The one thing your app must do everywhere, drawn twice: the way it works on your first platform, and the way it should feel on the second, with that device's own controls.\n\nPartners write one question beside each drawing.",
+          "config": {
+            "template": "blank"
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Start",
+          "minutes": 8,
+          "body": "Write the one verb that must be the same everywhere, and one rule about your data. Then send the first prompt of stage 02.",
+          "config": {
+            "prompt": "What is the first prompt you will send this week?"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "Data, or idiom?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "Which of these belong in the data, so every platform gets them the same way? Choose every one.",
+            "kind": "multi",
+            "options": [
+              "A film's title and year",
+              "Whether a film is saved",
+              "A trivia question's correct answer",
+              "Swipe to go back",
+              "The size of the play button"
+            ]
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What is still muddy?",
+          "minutes": 2,
+          "body": null,
+          "config": {
+            "prompt": "What is still muddy?",
+            "kind": "short"
+          }
+        }
+      ],
+      "questions": [
+        {
+          "kind": "short",
+          "prompt": "Which device will the people you talked to reach for, and why that one second?"
+        },
+        {
+          "kind": "multi",
+          "prompt": "Which of these belong in the data, so every platform gets them the same way? Choose every one.",
+          "choices": [
+            "A film's title and year",
+            "Whether a film is saved",
+            "A trivia question's correct answer",
+            "Swipe to go back",
+            "The size of the play button"
+          ]
+        },
+        {
+          "kind": "short",
+          "prompt": "What is still muddy?"
+        }
+      ]
+    },
+    {
+      "key": "week-3",
+      "week": 3,
+      "title": "Week 3: proof that it works, and someone else's hands",
+      "move": "Play, then Publish",
+      "question": "How do I know it works, and what happens when someone I did not build it with holds it?",
+      "guide": "week-3.md",
+      "scenes": [
+        {
+          "kind": "talk",
+          "title": "Arrive",
+          "minutes": 5,
+          "body": "One line in the chat: the one cell your own eyes proved wrong this week.\n\nThen what I heard in last week's answers, and what I changed because of it.",
+          "config": {}
+        },
+        {
+          "kind": "rooms",
+          "title": "Show what you brought back",
+          "minutes": 30,
+          "body": "Groups of three, about ten minutes each. Two devices in hand where you can.",
+          "config": {
+            "prompt": "Show one verb on both platforms, the cell your eyes proved wrong, and your app's look beside the template's.",
+            "room_scenes": [
+              {
+                "title": "Their question",
+                "minutes": 1
+              },
+              {
+                "title": "Show it, and one decision",
+                "minutes": 4
+              },
+              {
+                "title": "One clarifying question",
+                "minutes": 1
+              },
+              {
+                "title": "The three questions",
+                "minutes": 3
+              },
+              {
+                "title": "What comes next",
+                "minutes": 1
+              }
+            ]
+          },
+          "note": "Watch for a second platform that only runs in a simulator, a look with no line back to the people it is for, and anyone who has not named a person outside the cohort whose device the app could reach."
+        },
+        {
+          "kind": "break",
+          "title": "Break",
+          "minutes": 3,
+          "body": null,
+          "config": {}
+        },
+        {
+          "kind": "design",
+          "title": "Read one real prompt",
+          "minutes": 15,
+          "body": "A classmate's stuck moment, with their permission, or the doubled-up feed from stage 04. Write the prompt you would send before you see the real one.",
+          "config": {
+            "template": "prompt"
+          }
+        },
+        {
+          "kind": "talk",
+          "title": "Watching someone hold it",
+          "minutes": 4,
+          "body": "Give one person one thing to do with your app. Then watch, without explaining, and write down what they did, where they paused, and what they said, in their words.",
+          "config": {}
+        },
+        {
+          "kind": "reflection",
+          "title": "Start",
+          "minutes": 13,
+          "body": "Ask your agent to prove its next fix on your device. Then plan who will hold your app, on which device, and how it gets there for free.",
+          "config": {
+            "prompt": "Who will hold it, on which device, and how will it get there?"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What do you ask to see?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "When your agent says something is fixed, what do you ask to see, and why is its word not enough?",
+            "kind": "short"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What is still muddy?",
+          "minutes": 2,
+          "body": null,
+          "config": {
+            "prompt": "What is still muddy?",
+            "kind": "short"
+          }
+        }
+      ],
+      "questions": [
+        {
+          "kind": "short",
+          "prompt": "When your agent says something is fixed, what do you ask to see, and why is its word not enough?"
+        },
+        {
+          "kind": "short",
+          "prompt": "How do you know your last fix is real?"
+        },
+        {
+          "kind": "short",
+          "prompt": "What is still muddy?"
+        }
+      ]
+    },
+    {
+      "key": "week-4",
+      "week": 4,
+      "title": "Week 4: the app on someone else's device",
+      "move": "Publish, then Write",
+      "question": "What is happening to it when I am not holding it, and what do I want now that I live with it?",
+      "guide": "week-4.md",
+      "scenes": [
+        {
+          "kind": "talk",
+          "title": "Arrive",
+          "minutes": 5,
+          "body": "One line in the chat: who held your app this week, or what is in the way.\n\nThen what I heard in last week's answers, and what I changed because of it.",
+          "config": {}
+        },
+        {
+          "kind": "talk",
+          "title": "Forty-one versions shipped to nobody",
+          "minutes": 3,
+          "body": "On September 13, 2026, the App Store version of Archive Watch was 1.42.53. The repository was at 1.42.94: forty-one versions, all of them verified on real devices, and shipped to nobody.",
+          "config": {},
+          "note": "Read the story from the top of stage 05 in Ben's words. The point is the gap between verified and shipped, not the numbers."
+        },
+        {
+          "kind": "question",
+          "title": "Verified or shipped?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "What is the difference between a fix that is verified and a fix that is shipped?",
+            "kind": "short"
+          }
+        },
+        {
+          "kind": "rooms",
+          "title": "What they did first",
+          "minutes": 24,
+          "body": "Groups of three, about eight minutes each. Be kind, be specific, be helpful, and offer suggestions as questions: \"Have you considered...?\"",
+          "config": {
+            "prompt": "Show what the person did first, beside the guess you wrote before they held it.",
+            "room_scenes": [
+              {
+                "title": "Your guess, and what they did",
+                "minutes": 2
+              },
+              {
+                "title": "What is strong in it",
+                "minutes": 1
+              },
+              {
+                "title": "Have you considered...?",
+                "minutes": 3
+              },
+              {
+                "title": "One change you will make",
+                "minutes": 2
+              }
+            ]
+          },
+          "note": "Critique rules from Ron Berger: be kind, be specific, be helpful, and offer suggestions as questions. Visit every group tonight. Watch for anyone who has not handed the app to another person yet, and ask them privately what is in the way."
+        },
+        {
+          "kind": "break",
+          "title": "Break",
+          "minutes": 3,
+          "body": null,
+          "config": {}
+        },
+        {
+          "kind": "talk",
+          "title": "What makes a number honest",
+          "minutes": 4,
+          "body": "Three rules Pulse follows, from two days when it got a number wrong:\n\n\"A reader that cannot read says so, and never renders as a zero.\"\n\n\"A missing column is null, never zero.\"\n\n\"Zero is drawn, absence is written.\"",
+          "config": {},
+          "note": "From docs/PRODUCT-PULSE.md. Tell the Mac and Roku story from the top of stage 06 if there is time."
+        },
+        {
+          "kind": "design",
+          "title": "Choose your number, and hold it to the rules",
+          "minutes": 10,
+          "body": "Stage 06 starts here. Write the one number you will read this week and where it comes from. Under it, answer three questions: if the source could not be read, would it say so? Is a missing value shown as empty, not zero? Would you be tempted to make it go up for its own sake? If the last answer is yes, choose another number.",
+          "config": {
+            "template": "blank"
+          },
+          "note": "The third question is Goodhart's law as Marilyn Strathern put it: when a measure becomes a target, it ceases to be a good measure."
+        },
+        {
+          "kind": "reflection",
+          "title": "Plan to take it back",
+          "minutes": 5,
+          "body": "Name the person you will show your number to. You will ask them two things: what it means to them, and what it misses about them.",
+          "config": {
+            "prompt": "Who will you show your number to, and what do you expect them to say?"
+          }
+        },
+        {
+          "kind": "presenter",
+          "title": "One value at work",
+          "minutes": 7,
+          "body": "One decision a value changed this week, and what it cost. Then the one thing I heard across groups.",
+          "config": {
+            "prompt": "Listen for the value at work, and what it cost."
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Start",
+          "minutes": 5,
+          "body": "Stage 06 starts with the number you chose tonight, read the way Pulse reads it. Stage 07 starts with a want you notice while using your own app. Keep a log this week: the moment, what you were doing, and what was missing.",
+          "config": {
+            "prompt": "What is the first thing you will write in this week's log?"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What did they notice first?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "Rank what the other person noticed first.",
+            "kind": "rank",
+            "options": [
+              "What it is for",
+              "How it looks",
+              "What it does first",
+              "Something that broke",
+              "How fast it is"
+            ]
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What is still muddy?",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "What is still muddy?",
+            "kind": "short"
+          }
+        }
+      ],
+      "questions": [
+        {
+          "kind": "short",
+          "prompt": "What is the difference between a fix that is verified and a fix that is shipped?"
+        },
+        {
+          "kind": "rank",
+          "prompt": "Rank what the other person noticed first.",
+          "choices": [
+            "What it is for",
+            "How it looks",
+            "What it does first",
+            "Something that broke",
+            "How fast it is"
+          ]
+        },
+        {
+          "kind": "words",
+          "prompt": "In one word, how did it feel to hand it over?"
+        },
+        {
+          "kind": "short",
+          "prompt": "What is one thing about your app you can no longer see by using it yourself, and how will you find out about it?"
+        },
+        {
+          "kind": "short",
+          "prompt": "What is still muddy?"
+        }
+      ]
+    },
+    {
+      "key": "week-5",
+      "week": 5,
+      "title": "Week 5: a feature you wanted, shown to everyone",
+      "move": "Publish",
+      "question": "Is this version enough for its people, and what should the next builder not have to learn?",
+      "guide": "week-5.md",
+      "scenes": [
+        {
+          "kind": "talk",
+          "title": "Arrive",
+          "minutes": 5,
+          "body": "Guests, welcome.\n\nThe four rules, said once more, for everyone. Then what I heard in last week's answers.",
+          "config": {}
+        },
+        {
+          "kind": "talk",
+          "title": "A value that changed a decision",
+          "minutes": 3,
+          "body": "On September 20, the agent designed Archive Watch's Watch Together around a paid voice server, and I refused: \"The goal of this app (and all of my apps) is for them to cost $0 to run.\"\n\nValues climb from a reason, to a standing instruction, to a test.",
+          "config": {},
+          "note": "From the September section of docs/human-shaped/case-study-archive-watch.md. It is a model for stage 08, which starts tonight and is written in the days after the showing, not an answer to copy."
+        },
+        {
+          "kind": "rooms",
+          "title": "Last look in your trio",
+          "minutes": 17,
+          "body": "Groups of three, one last time, about five minutes each. Be kind, be specific, be helpful.",
+          "config": {
+            "prompt": "Explain every part of your app, even the parts the agent wrote, and the number and the feature you will show.",
+            "room_scenes": [
+              {
+                "title": "Show it, and one decision",
+                "minutes": 2
+              },
+              {
+                "title": "What is strong in it",
+                "minutes": 1
+              },
+              {
+                "title": "Have you considered...?",
+                "minutes": 2
+              }
+            ]
+          },
+          "note": "Critique rules from Ron Berger: be kind, be specific, be helpful, and offer suggestions as questions. Watch for a part of the app its builder cannot explain, and for a value that never changed a decision."
+        },
+        {
+          "kind": "break",
+          "title": "Break",
+          "minutes": 3,
+          "body": null,
+          "config": {}
+        },
+        {
+          "kind": "presenter",
+          "title": "The showing",
+          "minutes": 25,
+          "body": "Everyone, about two minutes each: the feature you wanted from your own use, and your one honest number with what its people said. The cohort's public page on humanshaped.org (/showcase/) is where guests found us.",
+          "config": {
+            "prompt": "Guests may ask one question each. Listen for what is enough, for now."
+          }
+        },
+        {
+          "kind": "design",
+          "title": "The three questions, on the showing",
+          "minutes": 8,
+          "body": "Where is it going, how is it going, and what is next, for the apps you just saw.",
+          "config": {
+            "template": "questions"
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Enough, for now",
+          "minutes": 5,
+          "body": "With your agent closed, write two sentences: what is enough about this version, for now, for the people you talked to in week 1, and what waits, written down rather than built.",
+          "config": {
+            "prompt": "What is enough about this version, for now, and for whom?"
+          }
+        },
+        {
+          "kind": "reflection",
+          "title": "Start",
+          "minutes": 4,
+          "body": "The cohort chooses its one lesson to send back to the template. Then everyone sends the first prompt of stage 08.",
+          "config": {
+            "prompt": "What is the first prompt of your stage 08?"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What waits",
+          "minutes": 3,
+          "body": null,
+          "config": {
+            "prompt": "What waits for the next version?",
+            "kind": "short"
+          }
+        },
+        {
+          "kind": "question",
+          "title": "What is still muddy?",
+          "minutes": 2,
+          "body": null,
+          "config": {
+            "prompt": "What is still muddy?",
+            "kind": "short"
+          }
+        }
+      ],
+      "questions": [
+        {
+          "kind": "short",
+          "prompt": "What is enough about this version, for now, and for whom?"
+        },
+        {
+          "kind": "short",
+          "prompt": "What waits for the next version?"
+        },
+        {
+          "kind": "short",
+          "prompt": "What will your agent know at the start of your next app that it did not know in week 1, and where does that knowledge live?"
+        },
+        {
+          "kind": "short",
+          "prompt": "What is still muddy?"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Pulse</title>
+<meta name="description" content="Every store, every review, every mention, in one place.">
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="pulse.css">
+</head>
+<body>
+
+<header class="top">
+  <h1><span class="mark" id="product"></span> Pulse</h1>
+  <span class="when" id="when">reading…</span>
+</header>
+
+<nav class="tabs" id="tabs" aria-label="Pulse views"></nav>
+
+<p class="load-error" id="status" role="alert" hidden></p>
+
+<main>
+  <div id="sec-overview">
+  <!-- Needs attention / Going well: two columns built from the RULES table in
+       pulse.js; they stack on a phone with Needs first. -->
+  <section class="board">
+    <div class="col">
+      <h2>Needs attention <span class="count" id="needs-n"></span></h2>
+      <ol id="needs" class="items"></ol>
+    </div>
+    <div class="col">
+      <h2>Going well <span class="count" id="well-n"></span></h2>
+      <ol id="well" class="items"></ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>At a glance</h2>
+    <div id="tiles" class="panels"></div>
+  </section>
+
+  <section>
+    <h2>Where we are shipping <span class="count" id="stores-n"></span></h2>
+    <div id="stores" class="rows"></div>
+  </section>
+
+  <section>
+    <h2>Over time</h2>
+    <div id="trend"></div>
+  </section>
+  </div>
+
+  <!-- One view per QUESTION, one per audience. The social program is its
+       own view: posting output and usage answer different questions. -->
+  <section id="sec-reach" hidden>
+    <p class="lede">Store-side counts only; the apps send nothing.</p>
+    <div id="tiles-reach" class="panels"></div>
+  </section>
+
+  <section id="sec-engagement" hidden>
+    <div id="tiles-engagement" class="panels"></div>
+  </section>
+
+  <section id="sec-health" hidden>
+    <div id="tiles-health" class="panels"></div>
+  </section>
+
+  <section id="sec-voice" hidden>
+    <div id="tiles-voice" class="panels"></div>
+    <h2 class="sub-h">What people said <span class="count" id="said-n"></span></h2>
+    <div class="chips" id="said-chips"></div>
+    <div id="said" class="rows said"></div>
+  </section>
+
+  <section id="sec-search" hidden>
+    <div id="tiles-search" class="panels"></div>
+  </section>
+
+  <section id="sec-ops" hidden>
+    <div id="tiles-ops" class="panels"></div>
+    <h2 class="sub-h">Where this came from <span class="count" id="src-n"></span></h2>
+    <div id="sources" class="rows sources"></div>
+  </section>
+
+  <section id="sec-program" hidden>
+    <div id="tiles-program" class="panels"></div>
+    <h2 class="sub-h">The program <span class="count" id="social-n"></span></h2>
+    <div id="social"></div>
+  </section>
+
+  <section id="sec-platform" hidden>
+    <p class="lede" id="platform-lede"></p>
+    <div id="platform-panels" class="panels"></div>
+    <h2 id="platform-h2" class="sub-h">Detail</h2>
+    <div id="platform-rows" class="rows"></div>
+  </section>
+
+</main>
+
+<!-- The ONE drill-down. Routed by the hash (#<view>/<drawer>), so every
+     drawer is linkable and survives a reload. -->
+<dialog class="drawer" id="drawer" aria-labelledby="drawer-title">
+  <div class="dr-in">
+    <div class="dr-head">
+      <h2 id="drawer-title"></h2>
+      <button type="button" class="dr-x" id="drawer-x" aria-label="Close">×</button>
+    </div>
+    <div class="dr-body" id="drawer-body"></div>
+  </div>
+</dialog>
+
+<footer>
+  Built by <code>tools/pulse_collect.py</code> from every channel it can read.
+  Unlisted — not linked from the site and excluded from search. Reviews and
+  ratings are the stores' own; mentions are public posts.
+</footer>
+
+<script src="charts.js"></script>
+<script src="pulse.js"></script>
+</body>
+</html>

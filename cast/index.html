@@ -1,0 +1,196 @@
+<!-- PORTED FROM ARCHIVE WATCH — CAF v3 custom Web Receiver. Replace app
+     URLs/branding with yours; register the receiver in the Cast Console ($5,
+     one-time) and declare at least one SENDER or publishing silently blocks. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>App Name — Cast Receiver</title>
+<!--
+  App Name — Google Cast Custom Web Receiver (CAF v3).
+
+  Hosted at https://example.com/cast/ and pointed at by the app ID
+  registered in the Google Cast SDK Developer Console (see
+  docs/TV-PLATFORM-BACKLOG.md §OWNER O1 — a one-time $5 registration).
+
+  Why a CUSTOM receiver rather than the Default Media Receiver: App Name
+  needs three things the default one will not do —
+    1. side-loaded WebVTT subtitle tracks (Decision 039), so captions survive
+       the cast instead of being dropped,
+    2. the provenance line (archive.org + public domain) on the loading screen,
+       which is the same attribution rule every other surface follows,
+    3. tolerance for archive.org's redirect + idle-reset behaviour, which the
+       default receiver surfaces as a hard error.
+
+  Receiver v2 is deprecated; this is v3 (CAF). Style is deliberately minimal —
+  a receiver is glanced at from a couch, not read.
+-->
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #000; color: #fff; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  /* BEGIN design-tokens. Generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. */
+  :root {
+    --brand-primary: #A7BFD6;
+    --brand-text-muted: #A2A9B4;
+  }
+  cast-media-player {
+    --theme-hue: 209;
+    --progress-color: #A7BFD6;
+  }
+  /* END design-tokens */
+  cast-media-player {
+    --splash-image: url('../assets/app-icon/app-icon.png');
+    --splash-size: contain;
+    --background-color: #000;
+    width: 100%; height: 100%;
+  }
+  /* Provenance, always on screen while idle — the same attribution the apps
+     carry (Decision 007 / the Archive credit). */
+  #credit {
+    position: fixed; left: 0; right: 0; bottom: 3%;
+    text-align: center; font-size: 1.6vh; letter-spacing: .08em;
+    color: var(--brand-text-muted); text-transform: uppercase; pointer-events: none;
+  }
+  /* A cast that fails must SAY so. "Nothing happened" is the worst possible
+     feedback on a screen the viewer is sitting ten feet from, with no controls
+     on the device showing the error. */
+  #error {
+    position: fixed; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: 2vh; background: #000; text-align: center; padding: 0 8vw;
+  }
+  #error.shown { display: flex; }
+  #error h1 { font-size: 3.4vh; font-weight: 600; margin: 0; }
+  #error p  { font-size: 2.2vh; color: #b9b9b9; margin: 0; max-width: 70ch; }
+  #error code { color: var(--brand-primary); font-size: 1.8vh; }
+</style>
+</head>
+<body>
+  <cast-media-player></cast-media-player>
+  <div id="credit">example.com · public domain · courtesy of the Internet Archive</div>
+  <div id="error" role="alert">
+    <h1>Can’t play this title</h1>
+    <p id="error-detail"></p>
+    <p><code id="error-code"></code></p>
+  </div>
+
+  <!-- Absolute https, not protocol-relative: keeps this identical to the rule
+       the app shell follows, where "//host" breaks under a file:// origin. -->
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    const context = cast.framework.CastReceiverContext.getInstance();
+    const playerManager = context.getPlayerManager();
+
+    /**
+     * Sender-supplied WebVTT tracks arrive in `media.tracks`. The Default Media
+     * Receiver ignores them; we keep them and let the receiver expose them, so
+     * a cast film keeps the captions the phone/web player had.
+     */
+    playerManager.setMessageInterceptor(
+      cast.framework.messages.MessageType.LOAD,
+      function (request) {
+        if (!request.media) return request;
+
+        // archive.org serves progressive H.264 MP4 and 302s to a storage node.
+        // Declaring the type explicitly stops the receiver guessing from a URL
+        // whose extension is hidden behind the redirect.
+        request.media.contentType = request.media.contentType || 'video/mp4';
+        request.media.streamType = cast.framework.messages.StreamType.BUFFERED;
+
+        const meta = request.media.metadata;
+        if (meta && !meta.metadataType) {
+          meta.metadataType = cast.framework.messages.MetadataType.MOVIE;
+        }
+
+        // Carrying subtitles is the main reason this receiver exists, so make
+        // them actually LEGIBLE and actually ON:
+        //
+        //  - CAF's default caption style is small and often near-invisible over
+        //    bright archival footage. A TV is watched from ten feet; this
+        //    mirrors the ten-foot type floor the TV apps use.
+        //  - A track that is present but not in `activeTrackIds` is simply off.
+        //    The local web player defaults English on (`track.default = true`),
+        //    so casting the same film would otherwise LOSE the captions the
+        //    viewer already had — the exact regression this receiver exists to
+        //    prevent.
+        const style = new cast.framework.messages.TextTrackStyle();
+        style.foregroundColor = '#FFFFFFFF';
+        style.backgroundColor = '#000000B3';   // legible over bright frames
+        style.edgeType = cast.framework.messages.TextTrackEdgeType.OUTLINE;
+        style.edgeColor = '#000000FF';
+        style.fontScale = 1.2;
+        style.fontFamily = 'sans-serif';
+        style.fontGenericFamily =
+          cast.framework.messages.TextTrackFontGenericFamily.SANS_SERIF;
+        request.media.textTrackStyle = style;
+
+        const tracks = request.media.tracks || [];
+        if (tracks.length && !(request.activeTrackIds || []).length) {
+          const text = tracks.filter(function (t) { return t.type === 'TEXT'; });
+          const pick = text.find(function (t) {
+            return (t.language || '').toLowerCase().indexOf('en') === 0;
+          }) || text[0];
+          if (pick) request.activeTrackIds = [pick.trackId];
+        }
+        return request;
+      },
+    );
+
+    // Surface real errors rather than a silent black screen — archive.org can
+    // rate-limit or a node can 5xx mid-cast, and "nothing happened" is the
+    // worst possible feedback on a TV across the room. This previously only
+    // wrote to a console nobody can read from a couch.
+    const ERROR_TEXT = {
+      100: 'The video could not be loaded. archive.org may be rate-limiting this device — try again in a minute.',
+      101: 'This title timed out while loading.',
+      102: 'Playback was aborted.',
+      104: 'The video file could not be read.',
+      110: 'The source could not be reached.',
+    };
+    function showError(code) {
+      const box = document.getElementById('error');
+      document.getElementById('error-detail').textContent =
+        ERROR_TEXT[code] || 'This title could not be played from the Internet Archive.';
+      document.getElementById('error-code').textContent = code ? 'Error ' + code : '';
+      box.classList.add('shown');
+    }
+    function clearError() {
+      document.getElementById('error').classList.remove('shown');
+    }
+
+    playerManager.addEventListener(
+      cast.framework.events.EventType.ERROR,
+      function (e) {
+        const code = e && (e.detailedErrorCode || e.reason);
+        // eslint-disable-next-line no-console
+        console.error('[AW cast] playback error', code, e);
+        showError(code);
+      },
+    );
+
+    playerManager.addEventListener(
+      cast.framework.events.EventType.MEDIA_FINISHED,
+      function () { document.getElementById('credit').hidden = false; },
+    );
+    playerManager.addEventListener(
+      cast.framework.events.EventType.PLAYER_LOAD_COMPLETE,
+      function () {
+        document.getElementById('credit').hidden = true;
+        clearError();          // a retry that succeeds must clear the message
+      },
+    );
+
+    const options = new cast.framework.CastReceiverOptions();
+    // A film is long and viewers pause; don't tear the session down on a pause.
+    options.maxInactivity = 3600;
+    context.start(options);
+  })();
+  </script>
+</body>
+</html>

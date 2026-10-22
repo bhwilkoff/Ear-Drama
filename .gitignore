@@ -1,0 +1,95 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+# The project is GENERATED from project.yml (`xcodegen generate`); project.yml
+# is the source of truth, so the .xcodeproj at the root never enters git.
+/*.xcodeproj/
+build/
+DerivedData/
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+*.moved-aside
+*.pbxuser
+*.perspectivev3
+!default.pbxuser
+!default.perspectivev3
+*.mode1v3
+*.mode2v3
+!default.mode1v3
+!default.mode2v3
+xcshareddata/WorkspaceSettings.xcsettings
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+
+# iOS
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# CocoaPods (if ever used)
+Pods/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Node (shouldn't be needed, but just in case)
+node_modules/
+
+# Environment / secrets
+.env
+.env.local
+*.key
+credentials.json
+
+# Android — Gradle wrapper jar is committed via android/.gitignore exception;
+# everything else is generated. Per-module .gitignore in android/ owns the
+# canonical list — duplicate the top entries here so a clone-then-rm-android
+# user doesn't accidentally commit caches.
+android/.gradle/
+android/.idea/
+android/build/
+android/**/build/
+android/local.properties
+# gradle-wrapper.jar IS committed — needed for ./gradlew on first clone
+
+# Android secrets — keystores + Firebase config out of git permanently
+android/keystore/
+*.jks
+*.keystore
+google-services.json
+play-service-account.json
+*.aab
+*.apk
+
+# IntelliJ / Android Studio
+*.iml
+.kotlin/
+
+# Native debug symbols
+native-debug-symbols.zip
+
+# --- Universal template additions ---
+__pycache__/
+*.pyc
+tools/.play-venv/
+tools/*/.build/
+# Secrets NEVER enter the tree (an AuthKey_*.p8 in a repo root is an incident)
+AuthKey_*.p8
+*.p12
+asc-credentials.env
+*_keys.env
+Secrets.xcconfig
+
+# The bench manifest names real devices (UDIDs, IPs, account labels) — per machine.
+# Start from tools/bench.example.json; ~/.device-bench.json is the machine-wide home.
+tools/bench.json

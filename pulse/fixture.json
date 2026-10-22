@@ -1,0 +1,3797 @@
+{
+ "app": {
+  "name": "Sample App",
+  "site": "https://sample.example",
+  "timezone": "America/Denver",
+  "repo": "example-owner/sample-app",
+  "repoUrl": "https://github.com/example-owner/sample-app",
+  "appleAppId": "1234567890",
+  "playPackage": "com.example.sample",
+  "profiles": {
+   "bluesky": "https://bsky.app/profile/sample.example",
+   "mastodon": "https://mastodon.social/@sample",
+   "youtube": "https://www.youtube.com/@sample",
+   "instagram": "https://www.instagram.com/sample.example/"
+  },
+  "tallies": [
+   "rooms"
+  ]
+ },
+ "generatedAt": "2026-09-30T13:20:00+00:00",
+ "stores": [
+  {
+   "store": "App Store",
+   "platform": "Apple TV",
+   "state": "READY_FOR_SALE",
+   "version": "1.4.2",
+   "live": "1.4.2",
+   "route": "App Store Connect API",
+   "url": "https://appstoreconnect.apple.com/"
+  },
+  {
+   "store": "App Store",
+   "platform": "iPhone & iPad",
+   "state": "WAITING_FOR_REVIEW",
+   "version": "1.4.3",
+   "live": "1.4.2",
+   "inFlight": {
+    "version": "1.4.3",
+    "state": "WAITING_FOR_REVIEW"
+   },
+   "route": "App Store Connect API",
+   "url": "https://appstoreconnect.apple.com/"
+  },
+  {
+   "store": "App Store",
+   "platform": "Mac",
+   "state": "READY_FOR_SALE",
+   "version": "1.4.2",
+   "live": "1.4.2",
+   "since": "2026-09-25",
+   "route": "App Store Connect API",
+   "url": "https://appstoreconnect.apple.com/"
+  },
+  {
+   "store": "Google Play",
+   "platform": "Production",
+   "state": "INPROGRESS",
+   "version": "1.4.3",
+   "live": "1.4.2",
+   "build": "1042",
+   "inFlight": {
+    "version": "1.4.3",
+    "build": "1043",
+    "state": "INPROGRESS"
+   },
+   "route": "Play Developer API",
+   "url": "https://play.google.com/console"
+  },
+  {
+   "store": "Google Play",
+   "platform": "Internal",
+   "state": "COMPLETED",
+   "version": "1.4.3",
+   "live": "1.4.3",
+   "build": "1043",
+   "route": "Play Developer API",
+   "url": "https://play.google.com/console"
+  },
+  {
+   "store": "Amazon Appstore",
+   "platform": "Fire TV",
+   "state": "LIVE",
+   "version": "vc1042",
+   "live": "vc1042",
+   "versionCode": 1042,
+   "since": "2026-09-10",
+   "api": "vitals",
+   "manual": true,
+   "read": "Amazon submission API",
+   "route": "Submission API (live build), Sales report (installs)",
+   "url": "https://developer.amazon.com/"
+  },
+  {
+   "store": "Roku Channel Store",
+   "platform": "Roku",
+   "state": "LIVE",
+   "version": "1.0.12",
+   "live": "1.0.12",
+   "since": "2026-09-22",
+   "manual": true,
+   "read": "seen in Roku's own delivery",
+   "route": "Looker scheduled delivery (no API)",
+   "url": "https://developer.roku.com/"
+  },
+  {
+   "store": "LG Content Store",
+   "platform": "webOS",
+   "state": "NOT SUBMITTED",
+   "version": null,
+   "since": null,
+   "manual": true,
+   "route": "declared by hand (no API)",
+   "url": "https://seller.lgappstv.com/"
+  },
+  {
+   "store": "Web (PWA)",
+   "platform": "the website",
+   "state": "LIVE",
+   "version": "a1b2c3d",
+   "since": "2026-09-30T09:05:00+00:00",
+   "manual": true,
+   "read": "the newest successful deploy",
+   "url": "https://sample.example"
+  }
+ ],
+ "ratings": [
+  {
+   "store": "App Store",
+   "average": 4.42,
+   "count": 69,
+   "url": "https://apps.apple.com/"
+  },
+  {
+   "store": "Google Play",
+   "average": 4.1,
+   "count": null,
+   "via": "Play's daily export",
+   "url": "https://play.google.com/"
+  }
+ ],
+ "reviews": [
+  {
+   "store": "App Store",
+   "id": "r1",
+   "rating": 2,
+   "title": "Stopped playing after the update",
+   "body": "Since the last update nothing plays on my Apple TV. I wish it had a way to report this in the app.",
+   "author": "viewer_one",
+   "territory": "USA",
+   "date": "2026-09-27T14:05:00+00:00",
+   "responded": false,
+   "url": "https://appstoreconnect.apple.com/"
+  },
+  {
+   "store": "App Store",
+   "id": "r2",
+   "rating": 5,
+   "title": "Exactly what I wanted",
+   "body": "Works really well and the design is beautiful. Thank you for making this.",
+   "author": "viewer_two",
+   "territory": "GBR",
+   "date": "2026-09-24T14:05:00+00:00",
+   "responded": true,
+   "url": "https://appstoreconnect.apple.com/"
+  },
+  {
+   "store": "Google Play",
+   "id": "g1",
+   "rating": 4,
+   "title": "",
+   "body": "Great app. Would be great to have a watchlist.",
+   "author": "A Person",
+   "territory": "EN",
+   "date": "2026-09-28T14:05:00+00:00",
+   "responded": false,
+   "device": "sabrina",
+   "appVersion": "1.4.2",
+   "url": "https://play.google.com/console"
+  }
+ ],
+ "mentions": [
+  {
+   "source": "Reddit",
+   "title": "Anyone tried Sample App on Apple TV?",
+   "excerpt": "It is on the App Store now and it is great.",
+   "url": "https://reddit.example/1",
+   "author": "u/someone",
+   "date": "2026-09-26T14:05:00+00:00"
+  },
+  {
+   "source": "Bluesky",
+   "title": "",
+   "excerpt": "Please add Chromecast support to sample.example!",
+   "url": "https://bsky.example/2",
+   "author": "someone.bsky.social",
+   "date": "2026-09-29T14:05:00+00:00",
+   "likes": 4
+  }
+ ],
+ "distribution": {
+  "App Store": {
+   "1": 1,
+   "2": 2,
+   "3": 3,
+   "4": 9,
+   "5": 25
+  },
+  "Google Play": {
+   "1": 0,
+   "2": 0,
+   "3": 1,
+   "4": 3,
+   "5": 5
+  }
+ },
+ "asks": [
+  {
+   "kind": "review",
+   "who": "viewer_one",
+   "where": "App Store",
+   "url": "https://appstoreconnect.apple.com/",
+   "date": "2026-09-27T14:05:00+00:00",
+   "text": "I wish it had a way to report this in the app."
+  },
+  {
+   "kind": "mention",
+   "who": "someone.bsky.social",
+   "where": "Bluesky",
+   "url": "https://bsky.example/2",
+   "date": "2026-09-29T14:05:00+00:00",
+   "text": "Please add Chromecast support to sample.example!"
+  }
+ ],
+ "loves": [
+  {
+   "kind": "review",
+   "who": "viewer_two",
+   "where": "App Store",
+   "url": "https://appstoreconnect.apple.com/",
+   "date": "2026-09-24T14:05:00+00:00",
+   "text": "Works really well and the design is beautiful."
+  }
+ ],
+ "social": {
+  "posts": [
+   {
+    "at": "2026-09-30T15:05:00+00:00",
+    "platform": "bluesky",
+    "title": "Sample post 1",
+    "id": "item-0",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/bluesky/0",
+    "likes": null,
+    "reposts": 1,
+    "replies": 2,
+    "views": null,
+    "window": null,
+    "live": true
+   },
+   {
+    "at": "2026-09-29T15:05:00+00:00",
+    "platform": "mastodon",
+    "title": "Sample post 2",
+    "id": "item-1",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/mastodon/1",
+    "likes": null,
+    "reposts": 3,
+    "replies": 1,
+    "views": null,
+    "window": null,
+    "live": true
+   },
+   {
+    "at": "2026-09-28T15:05:00+00:00",
+    "platform": "youtube",
+    "title": "Sample post 3",
+    "id": "item-2",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/youtube/2",
+    "likes": 6,
+    "reposts": 1,
+    "replies": 0,
+    "views": 237,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-27T15:05:00+00:00",
+    "platform": "instagram",
+    "title": "Sample post 4",
+    "id": "item-3",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/instagram/3",
+    "likes": 10,
+    "reposts": 0,
+    "replies": 2,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-26T15:05:00+00:00",
+    "platform": "bluesky",
+    "title": "Sample post 5",
+    "id": "item-4",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/bluesky/4",
+    "likes": 12,
+    "reposts": 0,
+    "replies": 1,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-25T15:05:00+00:00",
+    "platform": "mastodon",
+    "title": "Sample post 6",
+    "id": "item-5",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/mastodon/5",
+    "likes": 1,
+    "reposts": 0,
+    "replies": 0,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-24T15:05:00+00:00",
+    "platform": "youtube",
+    "title": "Sample post 7",
+    "id": "item-6",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/youtube/6",
+    "likes": 8,
+    "reposts": 3,
+    "replies": 0,
+    "views": 275,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-23T15:05:00+00:00",
+    "platform": "instagram",
+    "title": "Sample post 8",
+    "id": "item-7",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/instagram/7",
+    "likes": 4,
+    "reposts": 1,
+    "replies": 0,
+    "views": null,
+    "window": "144h",
+    "live": false
+   },
+   {
+    "at": "2026-09-22T15:05:00+00:00",
+    "platform": "bluesky",
+    "title": "Sample post 9",
+    "id": "item-8",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/bluesky/8",
+    "likes": 1,
+    "reposts": 3,
+    "replies": 0,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-21T15:05:00+00:00",
+    "platform": "mastodon",
+    "title": "Sample post 10",
+    "id": "item-9",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/mastodon/9",
+    "likes": 12,
+    "reposts": 0,
+    "replies": 0,
+    "views": null,
+    "window": "144h",
+    "live": null
+   },
+   {
+    "at": "2026-09-20T15:05:00+00:00",
+    "platform": "youtube",
+    "title": "Sample post 11",
+    "id": "item-10",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/youtube/10",
+    "likes": 14,
+    "reposts": 3,
+    "replies": 0,
+    "views": 247,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-19T15:05:00+00:00",
+    "platform": "instagram",
+    "title": "Sample post 12",
+    "id": "item-11",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/instagram/11",
+    "likes": 4,
+    "reposts": 3,
+    "replies": 1,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-18T15:05:00+00:00",
+    "platform": "bluesky",
+    "title": "Sample post 13",
+    "id": "item-12",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/bluesky/12",
+    "likes": 1,
+    "reposts": 0,
+    "replies": 0,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-17T15:05:00+00:00",
+    "platform": "mastodon",
+    "title": "Sample post 14",
+    "id": "item-13",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/mastodon/13",
+    "likes": 11,
+    "reposts": 0,
+    "replies": 2,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-16T15:05:00+00:00",
+    "platform": "youtube",
+    "title": "Sample post 15",
+    "id": "item-14",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/youtube/14",
+    "likes": 0,
+    "reposts": 0,
+    "replies": 1,
+    "views": 298,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-15T15:05:00+00:00",
+    "platform": "instagram",
+    "title": "Sample post 16",
+    "id": "item-15",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/instagram/15",
+    "likes": 12,
+    "reposts": 1,
+    "replies": 2,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-14T15:05:00+00:00",
+    "platform": "bluesky",
+    "title": "Sample post 17",
+    "id": "item-16",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/bluesky/16",
+    "likes": 14,
+    "reposts": 3,
+    "replies": 2,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-13T15:05:00+00:00",
+    "platform": "mastodon",
+    "title": "Sample post 18",
+    "id": "item-17",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/mastodon/17",
+    "likes": 13,
+    "reposts": 2,
+    "replies": 1,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-12T15:05:00+00:00",
+    "platform": "youtube",
+    "title": "Sample post 19",
+    "id": "item-18",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/youtube/18",
+    "likes": 12,
+    "reposts": 2,
+    "replies": 0,
+    "views": 59,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-11T15:05:00+00:00",
+    "platform": "instagram",
+    "title": "Sample post 20",
+    "id": "item-19",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/instagram/19",
+    "likes": 2,
+    "reposts": 1,
+    "replies": 1,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-10T15:05:00+00:00",
+    "platform": "bluesky",
+    "title": "Sample post 21",
+    "id": "item-20",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/bluesky/20",
+    "likes": 5,
+    "reposts": 2,
+    "replies": 2,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-09T15:05:00+00:00",
+    "platform": "mastodon",
+    "title": "Sample post 22",
+    "id": "item-21",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/mastodon/21",
+    "likes": 11,
+    "reposts": 0,
+    "replies": 1,
+    "views": null,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-08T15:05:00+00:00",
+    "platform": "youtube",
+    "title": "Sample post 23",
+    "id": "item-22",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/youtube/22",
+    "likes": 0,
+    "reposts": 3,
+    "replies": 1,
+    "views": 259,
+    "window": "144h",
+    "live": true
+   },
+   {
+    "at": "2026-09-07T15:05:00+00:00",
+    "platform": "instagram",
+    "title": "Sample post 24",
+    "id": "item-23",
+    "slot": "evening",
+    "format": "clip",
+    "url": "https://social.example/instagram/23",
+    "likes": 2,
+    "reposts": 1,
+    "replies": 2,
+    "views": null,
+    "window": "144h",
+    "live": true
+   }
+  ],
+  "totalPosts": 23,
+  "measured": 22,
+  "deleted": 1,
+  "unverified": 1,
+  "byPlatform": {
+   "bluesky": {
+    "posts": 6,
+    "likes": 30,
+    "replies": 4,
+    "reposts": 6,
+    "views": 0,
+    "measured": 5
+   },
+   "mastodon": {
+    "posts": 6,
+    "likes": 35,
+    "replies": 4,
+    "reposts": 6,
+    "views": 0,
+    "measured": 5
+   },
+   "youtube": {
+    "posts": 6,
+    "likes": 40,
+    "replies": 4,
+    "reposts": 6,
+    "views": 900,
+    "measured": 5
+   },
+   "instagram": {
+    "posts": 6,
+    "likes": 45,
+    "replies": 4,
+    "reposts": 6,
+    "views": 0,
+    "measured": 5
+   }
+  },
+  "reach": {
+   "bluesky": {
+    "followers": 140,
+    "posts": 60
+   },
+   "mastodon": {
+    "followers": 55,
+    "posts": 58
+   },
+   "youtube": {
+    "error": "the token is youtube.upload only, by design \u2014 stats need youtube.readonly"
+   },
+   "instagram": {
+    "followers": 72,
+    "posts": 30
+   }
+  }
+ },
+ "github": {
+  "stars": 17,
+  "forks": 2,
+  "watchers": 3,
+  "openIssues": 4,
+  "views14d": 170,
+  "uniques14d": 40,
+  "clones14d": 9,
+  "url": "https://github.com/example-owner/sample-app"
+ },
+ "health": {
+  "appleDownloads": {
+   "daily": [
+    {
+     "date": "2026-08-31",
+     "units": 26,
+     "byDevice": {
+      "iPhone": 11,
+      "iPad": 4,
+      "Apple TV": 9,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-01",
+     "units": 14,
+     "byDevice": {
+      "iPhone": 6,
+      "iPad": 3,
+      "Apple TV": 5,
+      "Desktop": 0
+     }
+    },
+    {
+     "date": "2026-09-02",
+     "units": 42,
+     "byDevice": {
+      "iPhone": 25,
+      "iPad": 4,
+      "Apple TV": 12,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-03",
+     "units": 35,
+     "byDevice": {
+      "iPhone": 22,
+      "iPad": 2,
+      "Apple TV": 9,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-04",
+     "units": 31,
+     "byDevice": {
+      "iPhone": 20,
+      "iPad": 3,
+      "Apple TV": 7,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-05",
+     "units": 30,
+     "byDevice": {
+      "iPhone": 14,
+      "iPad": 5,
+      "Apple TV": 11,
+      "Desktop": 0
+     }
+    },
+    {
+     "date": "2026-09-06",
+     "units": 40,
+     "byDevice": {
+      "iPhone": 27,
+      "iPad": 2,
+      "Apple TV": 9,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-07",
+     "units": 30,
+     "byDevice": {
+      "iPhone": 15,
+      "iPad": 9,
+      "Apple TV": 5,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-08",
+     "units": 35,
+     "byDevice": {
+      "iPhone": 20,
+      "iPad": 7,
+      "Apple TV": 7,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-09",
+     "units": 28,
+     "byDevice": {
+      "iPhone": 17,
+      "iPad": 5,
+      "Apple TV": 5,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-10",
+     "units": 37,
+     "byDevice": {
+      "iPhone": 19,
+      "iPad": 5,
+      "Apple TV": 11,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-11",
+     "units": 21,
+     "byDevice": {
+      "iPhone": 10,
+      "iPad": 4,
+      "Apple TV": 6,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-12",
+     "units": 35,
+     "byDevice": {
+      "iPhone": 22,
+      "iPad": 4,
+      "Apple TV": 8,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-13",
+     "units": 37,
+     "byDevice": {
+      "iPhone": 16,
+      "iPad": 8,
+      "Apple TV": 11,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-14",
+     "units": 28,
+     "byDevice": {
+      "iPhone": 15,
+      "iPad": 2,
+      "Apple TV": 11,
+      "Desktop": 0
+     }
+    },
+    {
+     "date": "2026-09-15",
+     "units": 33,
+     "byDevice": {
+      "iPhone": 14,
+      "iPad": 6,
+      "Apple TV": 12,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-16",
+     "units": 31,
+     "byDevice": {
+      "iPhone": 15,
+      "iPad": 6,
+      "Apple TV": 9,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-17",
+     "units": 34,
+     "byDevice": {
+      "iPhone": 20,
+      "iPad": 4,
+      "Apple TV": 8,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-18",
+     "units": 31,
+     "byDevice": {
+      "iPhone": 17,
+      "iPad": 3,
+      "Apple TV": 11,
+      "Desktop": 0
+     }
+    },
+    {
+     "date": "2026-09-19",
+     "units": 36,
+     "byDevice": {
+      "iPhone": 21,
+      "iPad": 4,
+      "Apple TV": 9,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-20",
+     "units": 37,
+     "byDevice": {
+      "iPhone": 20,
+      "iPad": 9,
+      "Apple TV": 7,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-21",
+     "units": 30,
+     "byDevice": {
+      "iPhone": 14,
+      "iPad": 5,
+      "Apple TV": 10,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-22",
+     "units": 27,
+     "byDevice": {
+      "iPhone": 17,
+      "iPad": 0,
+      "Apple TV": 9,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-23",
+     "units": 27,
+     "byDevice": {
+      "iPhone": 14,
+      "iPad": 2,
+      "Apple TV": 10,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-24",
+     "units": 40,
+     "byDevice": {
+      "iPhone": 20,
+      "iPad": 4,
+      "Apple TV": 14,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-25",
+     "units": 24,
+     "byDevice": {
+      "iPhone": 15,
+      "iPad": 3,
+      "Apple TV": 5,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-26",
+     "units": 30,
+     "byDevice": {
+      "iPhone": 10,
+      "iPad": 6,
+      "Apple TV": 14,
+      "Desktop": 0
+     }
+    },
+    {
+     "date": "2026-09-27",
+     "units": 30,
+     "byDevice": {
+      "iPhone": 25,
+      "iPad": 0,
+      "Apple TV": 4,
+      "Desktop": 1
+     }
+    },
+    {
+     "date": "2026-09-28",
+     "units": 26,
+     "byDevice": {
+      "iPhone": 18,
+      "iPad": 3,
+      "Apple TV": 3,
+      "Desktop": 2
+     }
+    },
+    {
+     "date": "2026-09-29",
+     "units": 28,
+     "byDevice": {
+      "iPhone": 10,
+      "iPad": 7,
+      "Apple TV": 10,
+      "Desktop": 1
+     }
+    }
+   ],
+   "total14d": 431,
+   "total28d": 893,
+   "byDevice": {
+    "iPhone": 509,
+    "Apple TV": 261,
+    "iPad": 129,
+    "Desktop": 34
+   },
+   "byCountry": {
+    "US": 700,
+    "GB": 120,
+    "CA": 80,
+    "DE": 40,
+    "AU": 30
+   },
+   "byVersion": {
+    "1.4.2": 800,
+    "1.4.1": 170
+   },
+   "perDevice": {
+    "iPhone": {
+     "units": 509,
+     "byCountry": {
+      "US": 356,
+      "GB": 61,
+      "CA": 40
+     },
+     "byVersion": {
+      "1.4.2": 407,
+      "1.4.1": 101
+     }
+    },
+    "iPad": {
+     "units": 129,
+     "byCountry": {
+      "US": 90,
+      "GB": 15,
+      "CA": 10
+     },
+     "byVersion": {
+      "1.4.2": 103,
+      "1.4.1": 25
+     }
+    },
+    "Apple TV": {
+     "units": 261,
+     "byCountry": {
+      "US": 182,
+      "GB": 31,
+      "CA": 20
+     },
+     "byVersion": {
+      "1.4.2": 208,
+      "1.4.1": 52
+     }
+    },
+    "Desktop": {
+     "units": 34,
+     "byCountry": {
+      "US": 23,
+      "GB": 4,
+      "CA": 2
+     },
+     "byVersion": {
+      "1.4.2": 27,
+      "1.4.1": 6
+     }
+    }
+   },
+   "skippedProductTypes": {
+    "7": 310,
+    "7T": 41,
+    "3F": 12
+   }
+  },
+  "applePerf": {
+   "metrics": [
+    {
+     "platform": "iOS",
+     "category": "launch",
+     "metric": "launchTime",
+     "value": 0.82,
+     "unit": "s"
+    },
+    {
+     "platform": "iOS",
+     "category": "hang",
+     "metric": "hangRate",
+     "value": 0.4,
+     "unit": "s/h"
+    }
+   ],
+   "regressions": [],
+   "improving": [
+    "Launch time improved 12% in 1.4.2"
+   ]
+  },
+  "playVitals": {
+   "crashRate": 0.0061,
+   "crashRateDays": 28,
+   "anrRate": 0.0021,
+   "anrRateDays": 28
+  },
+  "playCrashes": [
+   {
+    "type": "CRASH",
+    "cause": "java.lang.IllegalArgumentException",
+    "location": "androidx.compose.foundation.lazy.LazyList",
+    "users": 7,
+    "reports": 11,
+    "lastSeen": "2026-09-28T14:05:00+00:00",
+    "firstBuild": "1038",
+    "lastBuild": "1042",
+    "api": "29-35",
+    "stale": false,
+    "url": "https://play.google.com/console/crashes/aaaa1111bbbb2222",
+    "fixedIn": {
+     "versionCode": 1043,
+     "version": "1.4.3",
+     "what": "duplicate lazy-list keys",
+     "fix": "uniqueBy at every call site"
+    },
+    "ours": "Exception java.lang.IllegalArgumentException \u00b7 at com.example.sample.ui.Shelf.kt:88"
+   },
+   {
+    "type": "ANR",
+    "cause": "Input dispatching timed out",
+    "location": "android.os.MessageQueue",
+    "users": 2,
+    "reports": 2,
+    "lastSeen": "2026-09-25T14:05:00+00:00",
+    "firstBuild": "1042",
+    "lastBuild": "1042",
+    "api": "33-34",
+    "stale": false,
+    "url": "https://play.google.com/console/anrs/cccc3333dddd4444",
+    "fixedIn": null,
+    "ours": null
+   },
+   {
+    "type": "CRASH",
+    "cause": "java.lang.NullPointerException",
+    "location": "com.example.sample.Player",
+    "users": 5,
+    "reports": 9,
+    "lastSeen": "2026-09-04T14:05:00+00:00",
+    "firstBuild": "1030",
+    "lastBuild": "1036",
+    "api": "29-34",
+    "stale": true,
+    "url": "https://play.google.com/console/crashes/eeee5555ffff6666",
+    "fixedIn": null,
+    "ours": null
+   }
+  ],
+  "playLiveBuild": 1042,
+  "playUsers": {
+   "daily": [
+    {
+     "date": "2026-09-26",
+     "users": 120.0
+    }
+   ],
+   "byDimension": {},
+   "window": "2026-08-30..2026-09-26"
+  },
+  "playInstalls": {
+   "asOf": "2026-09-21",
+   "daily": [
+    {
+     "date": "2026-08-25",
+     "installs": 20,
+     "uninstalls": 1,
+     "upgrades": 30,
+     "activeDevices": 900,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-08-26",
+     "installs": 36,
+     "uninstalls": 5,
+     "upgrades": 30,
+     "activeDevices": 906,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-08-27",
+     "installs": 20,
+     "uninstalls": 4,
+     "upgrades": 30,
+     "activeDevices": 912,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-08-28",
+     "installs": 22,
+     "uninstalls": 3,
+     "upgrades": 30,
+     "activeDevices": 918,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-08-29",
+     "installs": 23,
+     "uninstalls": 7,
+     "upgrades": 30,
+     "activeDevices": 924,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-08-30",
+     "installs": 15,
+     "uninstalls": 3,
+     "upgrades": 30,
+     "activeDevices": 930,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-08-31",
+     "installs": 27,
+     "uninstalls": 7,
+     "upgrades": 30,
+     "activeDevices": 936,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-01",
+     "installs": 12,
+     "uninstalls": 5,
+     "upgrades": 30,
+     "activeDevices": 942,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-02",
+     "installs": 23,
+     "uninstalls": 2,
+     "upgrades": 30,
+     "activeDevices": 948,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-03",
+     "installs": 25,
+     "uninstalls": 1,
+     "upgrades": 30,
+     "activeDevices": 954,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-04",
+     "installs": 26,
+     "uninstalls": 1,
+     "upgrades": 30,
+     "activeDevices": 960,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-05",
+     "installs": 10,
+     "uninstalls": 2,
+     "upgrades": 30,
+     "activeDevices": 966,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-06",
+     "installs": 24,
+     "uninstalls": 6,
+     "upgrades": 30,
+     "activeDevices": 972,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-07",
+     "installs": 14,
+     "uninstalls": 2,
+     "upgrades": 30,
+     "activeDevices": 978,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-08",
+     "installs": 15,
+     "uninstalls": 3,
+     "upgrades": 30,
+     "activeDevices": 984,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-09",
+     "installs": 14,
+     "uninstalls": 3,
+     "upgrades": 30,
+     "activeDevices": 990,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-10",
+     "installs": 33,
+     "uninstalls": 2,
+     "upgrades": 30,
+     "activeDevices": 996,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-11",
+     "installs": 29,
+     "uninstalls": 6,
+     "upgrades": 30,
+     "activeDevices": 1002,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-12",
+     "installs": 22,
+     "uninstalls": 4,
+     "upgrades": 30,
+     "activeDevices": 1008,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-13",
+     "installs": 18,
+     "uninstalls": 5,
+     "upgrades": 30,
+     "activeDevices": 1014,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-14",
+     "installs": 12,
+     "uninstalls": 6,
+     "upgrades": 30,
+     "activeDevices": 1020,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-15",
+     "installs": 25,
+     "uninstalls": 3,
+     "upgrades": 30,
+     "activeDevices": 1026,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-16",
+     "installs": 34,
+     "uninstalls": 6,
+     "upgrades": 30,
+     "activeDevices": 1032,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-17",
+     "installs": 11,
+     "uninstalls": 6,
+     "upgrades": 30,
+     "activeDevices": 1038,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-18",
+     "installs": 15,
+     "uninstalls": 5,
+     "upgrades": 30,
+     "activeDevices": 1044,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-19",
+     "installs": 25,
+     "uninstalls": null,
+     "upgrades": 30,
+     "activeDevices": 1050,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-20",
+     "installs": 24,
+     "uninstalls": 2,
+     "upgrades": 30,
+     "activeDevices": 1056,
+     "userInstalls": 20
+    },
+    {
+     "date": "2026-09-21",
+     "installs": 23,
+     "uninstalls": 7,
+     "upgrades": 30,
+     "activeDevices": 1062,
+     "userInstalls": 20
+    }
+   ],
+   "installs28d": 597,
+   "uninstalls28d": 107,
+   "activeDevices": 1062,
+   "byCountry": {
+    "US": 300,
+    "IN": 120,
+    "BR": 80
+   },
+   "byDevice": {
+    "sabrina": 90,
+    "gazelle": 40
+   },
+   "byOs": {
+    "Android 14": 200,
+    "Android 12": 90
+   },
+   "byVersion": {
+    "1042": 500
+   },
+   "byLanguage": {
+    "en_US": 400
+   },
+   "readVia": "service account",
+   "staleDays": 9,
+   "fileWritten": "2026-09-27T20:05:00+00:00",
+   "monthsFound": [
+    "2026-09"
+   ]
+  },
+  "playDaily": {
+   "ratings": [
+    {
+     "date": "2026-08-31",
+     "daily": 4.0,
+     "total": 4.05
+    },
+    {
+     "date": "2026-09-01",
+     "daily": 4.0,
+     "total": 4.052
+    },
+    {
+     "date": "2026-09-02",
+     "daily": 4.0,
+     "total": 4.054
+    },
+    {
+     "date": "2026-09-03",
+     "daily": 4.0,
+     "total": 4.056
+    },
+    {
+     "date": "2026-09-04",
+     "daily": 4.0,
+     "total": 4.058
+    },
+    {
+     "date": "2026-09-05",
+     "daily": 4.0,
+     "total": 4.06
+    },
+    {
+     "date": "2026-09-06",
+     "daily": 4.0,
+     "total": 4.062
+    },
+    {
+     "date": "2026-09-07",
+     "daily": 4.0,
+     "total": 4.064
+    },
+    {
+     "date": "2026-09-08",
+     "daily": 4.0,
+     "total": 4.066
+    },
+    {
+     "date": "2026-09-09",
+     "daily": 4.0,
+     "total": 4.068
+    },
+    {
+     "date": "2026-09-10",
+     "daily": 4.0,
+     "total": 4.07
+    },
+    {
+     "date": "2026-09-11",
+     "daily": 4.0,
+     "total": 4.072
+    },
+    {
+     "date": "2026-09-12",
+     "daily": 4.0,
+     "total": 4.074
+    },
+    {
+     "date": "2026-09-13",
+     "daily": 4.0,
+     "total": 4.076
+    },
+    {
+     "date": "2026-09-14",
+     "daily": 4.0,
+     "total": 4.078
+    },
+    {
+     "date": "2026-09-15",
+     "daily": 4.0,
+     "total": 4.08
+    },
+    {
+     "date": "2026-09-16",
+     "daily": 4.0,
+     "total": 4.082
+    },
+    {
+     "date": "2026-09-17",
+     "daily": 4.0,
+     "total": 4.084
+    },
+    {
+     "date": "2026-09-18",
+     "daily": 4.0,
+     "total": 4.086
+    },
+    {
+     "date": "2026-09-19",
+     "daily": 4.0,
+     "total": 4.088
+    },
+    {
+     "date": "2026-09-20",
+     "daily": 4.0,
+     "total": 4.09
+    },
+    {
+     "date": "2026-09-21",
+     "daily": 4.0,
+     "total": 4.092
+    },
+    {
+     "date": "2026-09-22",
+     "daily": 4.0,
+     "total": 4.094
+    },
+    {
+     "date": "2026-09-23",
+     "daily": 4.0,
+     "total": 4.096
+    },
+    {
+     "date": "2026-09-24",
+     "daily": 4.0,
+     "total": 4.098
+    },
+    {
+     "date": "2026-09-25",
+     "daily": 4.0,
+     "total": 4.1
+    },
+    {
+     "date": "2026-09-26",
+     "daily": 4.0,
+     "total": 4.102
+    }
+   ],
+   "crashes": [
+    {
+     "date": "2026-08-31",
+     "crashes": 1,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-01",
+     "crashes": 2,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-02",
+     "crashes": 3,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-03",
+     "crashes": 0,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-04",
+     "crashes": 4,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-05",
+     "crashes": 0,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-06",
+     "crashes": 0,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-07",
+     "crashes": 3,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-08",
+     "crashes": 1,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-09",
+     "crashes": 3,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-10",
+     "crashes": 4,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-11",
+     "crashes": 4,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-12",
+     "crashes": 1,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-13",
+     "crashes": 2,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-14",
+     "crashes": 0,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-15",
+     "crashes": 2,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-16",
+     "crashes": 3,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-17",
+     "crashes": 3,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-18",
+     "crashes": 0,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-19",
+     "crashes": 0,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-20",
+     "crashes": 0,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-21",
+     "crashes": 2,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-22",
+     "crashes": 4,
+     "anrs": 1
+    },
+    {
+     "date": "2026-09-23",
+     "crashes": 1,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-24",
+     "crashes": 0,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-25",
+     "crashes": 0,
+     "anrs": 0
+    },
+    {
+     "date": "2026-09-26",
+     "crashes": 0,
+     "anrs": 1
+    }
+   ],
+   "asOf": "2026-09-26"
+  },
+  "playAcquisition": {
+   "daily": [
+    {
+     "date": "2026-08-27",
+     "acquisitions": 21,
+     "visitors": 56
+    },
+    {
+     "date": "2026-08-28",
+     "acquisitions": 10,
+     "visitors": 46
+    },
+    {
+     "date": "2026-08-29",
+     "acquisitions": 14,
+     "visitors": 57
+    },
+    {
+     "date": "2026-08-30",
+     "acquisitions": 15,
+     "visitors": 56
+    },
+    {
+     "date": "2026-08-31",
+     "acquisitions": 18,
+     "visitors": 64
+    },
+    {
+     "date": "2026-09-01",
+     "acquisitions": 17,
+     "visitors": 48
+    },
+    {
+     "date": "2026-09-02",
+     "acquisitions": 12,
+     "visitors": 40
+    },
+    {
+     "date": "2026-09-03",
+     "acquisitions": 14,
+     "visitors": 44
+    },
+    {
+     "date": "2026-09-04",
+     "acquisitions": 16,
+     "visitors": 67
+    },
+    {
+     "date": "2026-09-05",
+     "acquisitions": 13,
+     "visitors": 50
+    },
+    {
+     "date": "2026-09-06",
+     "acquisitions": 15,
+     "visitors": 67
+    },
+    {
+     "date": "2026-09-07",
+     "acquisitions": 14,
+     "visitors": 68
+    },
+    {
+     "date": "2026-09-08",
+     "acquisitions": 18,
+     "visitors": 56
+    },
+    {
+     "date": "2026-09-09",
+     "acquisitions": 20,
+     "visitors": 80
+    },
+    {
+     "date": "2026-09-10",
+     "acquisitions": 19,
+     "visitors": 55
+    },
+    {
+     "date": "2026-09-11",
+     "acquisitions": 11,
+     "visitors": 60
+    },
+    {
+     "date": "2026-09-12",
+     "acquisitions": 16,
+     "visitors": 28
+    },
+    {
+     "date": "2026-09-13",
+     "acquisitions": 18,
+     "visitors": 73
+    },
+    {
+     "date": "2026-09-14",
+     "acquisitions": 22,
+     "visitors": 69
+    },
+    {
+     "date": "2026-09-15",
+     "acquisitions": 21,
+     "visitors": 68
+    },
+    {
+     "date": "2026-09-16",
+     "acquisitions": 16,
+     "visitors": 59
+    },
+    {
+     "date": "2026-09-17",
+     "acquisitions": 13,
+     "visitors": 71
+    },
+    {
+     "date": "2026-09-18",
+     "acquisitions": 13,
+     "visitors": 40
+    },
+    {
+     "date": "2026-09-19",
+     "acquisitions": 13,
+     "visitors": 53
+    },
+    {
+     "date": "2026-09-20",
+     "acquisitions": 13,
+     "visitors": 59
+    },
+    {
+     "date": "2026-09-21",
+     "acquisitions": 11,
+     "visitors": 57
+    },
+    {
+     "date": "2026-09-22",
+     "acquisitions": 17,
+     "visitors": 47
+    }
+   ],
+   "asOf": "2026-09-22",
+   "acquisitions28d": 420,
+   "visitors28d": 1538,
+   "conversion28d": 0.2731,
+   "byCountry": {
+    "US": 200,
+    "IN": 90
+   },
+   "bySource": {
+    "Google Play search": 240,
+    "Third-party referrers": 60
+   }
+  },
+  "amazonVitals": {
+   "freshness": {},
+   "empty": [
+    "crashMetricSet",
+    "anrMetricSet",
+    "lmkMetricSet"
+   ],
+   "package": "com.example.sample",
+   "console": "https://developer.amazon.com/"
+  },
+  "amazonInstalls": {
+   "daily": [
+    {
+     "date": "2026-09-10",
+     "installs": 1
+    },
+    {
+     "date": "2026-09-12",
+     "installs": 3
+    },
+    {
+     "date": "2026-09-15",
+     "installs": 2
+    },
+    {
+     "date": "2026-09-21",
+     "installs": 4
+    },
+    {
+     "date": "2026-09-24",
+     "installs": 1
+    },
+    {
+     "date": "2026-09-28",
+     "installs": 2
+    }
+   ],
+   "byCountry": [
+    {
+     "key": "US",
+     "value": 10
+    },
+    {
+     "key": "GB",
+     "value": 3
+    }
+   ],
+   "total": 13,
+   "periods": [
+    "2026-09"
+   ],
+   "noReport": [],
+   "transactionTypes": {
+    "Charge": 13,
+    "Refund": 1
+   },
+   "readVia": "Appstore Sales Reporting API (free installs are $0.00 Charge rows)",
+   "console": "https://developer.amazon.com/"
+  },
+  "amazonLive": {
+   "liveVersionCode": 1042,
+   "builds": [
+    {
+     "versionCode": 1042,
+     "name": "1.4.2"
+    }
+   ],
+   "submissionInFlight": false,
+   "readVia": "a temporary edit, created and deleted",
+   "console": "https://developer.amazon.com/"
+  },
+  "rokuEngagement": {
+   "daily": [
+    {
+     "date": "2026-09-21",
+     "Channel Installs": 2,
+     "Channel Uninstalls": 0,
+     "Visitors": 40,
+     "Viewers": 25,
+     "Bounce Rate": 38.0,
+     "Total Minutes Streamed": 600
+    },
+    {
+     "date": "2026-09-22",
+     "Channel Installs": 12,
+     "Channel Uninstalls": 0,
+     "Visitors": 41,
+     "Viewers": 26,
+     "Bounce Rate": 37.0,
+     "Total Minutes Streamed": 620
+    },
+    {
+     "date": "2026-09-23",
+     "Channel Installs": 19,
+     "Channel Uninstalls": 2,
+     "Visitors": 42,
+     "Viewers": 27,
+     "Bounce Rate": 36.0,
+     "Total Minutes Streamed": 640
+    },
+    {
+     "date": "2026-09-24",
+     "Channel Installs": 2,
+     "Channel Uninstalls": 0,
+     "Visitors": 43,
+     "Viewers": 28,
+     "Bounce Rate": 35.0,
+     "Total Minutes Streamed": 660
+    },
+    {
+     "date": "2026-09-25",
+     "Channel Installs": 7,
+     "Channel Uninstalls": 1,
+     "Visitors": 44,
+     "Viewers": 29,
+     "Bounce Rate": 34.0,
+     "Total Minutes Streamed": 680
+    },
+    {
+     "date": "2026-09-26",
+     "Channel Installs": 18,
+     "Channel Uninstalls": 1,
+     "Visitors": 45,
+     "Viewers": 30,
+     "Bounce Rate": 33.0,
+     "Total Minutes Streamed": 700
+    },
+    {
+     "date": "2026-09-27",
+     "Channel Installs": 17,
+     "Channel Uninstalls": 2,
+     "Visitors": 46,
+     "Viewers": 31,
+     "Bounce Rate": 32.0,
+     "Total Minutes Streamed": 720
+    },
+    {
+     "date": "2026-09-28",
+     "Total Count of Crashes": 3.0
+    },
+    {
+     "date": "2026-09-29",
+     "Total Count of Crashes": 1.0
+    }
+   ],
+   "headline": {
+    "Account Channel Installs": 310.0,
+    "Account Channel Uninstalls": 22.0,
+    "Channel Crashes as % of Total Devices Streaming": 2.6,
+    "Rebuffers per Hours Streamed": 0.21,
+    "Average Minutes Streamed per Viewer": 23.5,
+    "Avg Daily Viewers": 31.0,
+    "Hours Streamed": 160.0
+   },
+   "tiles": [
+    "new_installs",
+    "brightscript_crash_logs"
+   ],
+   "dropsRead": 0,
+   "unreadable": [],
+   "byReport": {
+    "App Health": {
+     "daily": [
+      {
+       "date": "2026-09-28",
+       "Total Count of Crashes": 3.0
+      },
+      {
+       "date": "2026-09-29",
+       "Total Count of Crashes": 1.0
+      }
+     ],
+     "headline": {},
+     "tiles": [
+      "brightscript_crash_logs"
+     ],
+     "tables": {
+      "brightscript_crash_logs": [
+       {
+        "Date": "2026-09-28",
+        "Roku OS Release": "14.5.0",
+        "App Version": "1.0.12",
+        "Error Text": "&hf4 invalid component",
+        "Total Count of Crashes": "3",
+        "Total Count of Devices with Crashes": "2"
+       },
+       {
+        "Date": "2026-09-29",
+        "Roku OS Release": "13.0.0",
+        "App Version": "1.0.12",
+        "Error Text": "type mismatch",
+        "Total Count of Crashes": "1",
+        "Total Count of Devices with Crashes": "1"
+       }
+      ]
+     },
+     "emptyTiles": [
+      "malone"
+     ]
+    },
+    "App Engagement": {
+     "daily": [
+      {
+       "date": "2026-09-21",
+       "Channel Installs": 2,
+       "Channel Uninstalls": 0,
+       "Visitors": 40,
+       "Viewers": 25,
+       "Bounce Rate": 38.0,
+       "Total Minutes Streamed": 600
+      },
+      {
+       "date": "2026-09-22",
+       "Channel Installs": 12,
+       "Channel Uninstalls": 0,
+       "Visitors": 41,
+       "Viewers": 26,
+       "Bounce Rate": 37.0,
+       "Total Minutes Streamed": 620
+      },
+      {
+       "date": "2026-09-23",
+       "Channel Installs": 19,
+       "Channel Uninstalls": 2,
+       "Visitors": 42,
+       "Viewers": 27,
+       "Bounce Rate": 36.0,
+       "Total Minutes Streamed": 640
+      },
+      {
+       "date": "2026-09-24",
+       "Channel Installs": 2,
+       "Channel Uninstalls": 0,
+       "Visitors": 43,
+       "Viewers": 28,
+       "Bounce Rate": 35.0,
+       "Total Minutes Streamed": 660
+      },
+      {
+       "date": "2026-09-25",
+       "Channel Installs": 7,
+       "Channel Uninstalls": 1,
+       "Visitors": 44,
+       "Viewers": 29,
+       "Bounce Rate": 34.0,
+       "Total Minutes Streamed": 680
+      },
+      {
+       "date": "2026-09-26",
+       "Channel Installs": 18,
+       "Channel Uninstalls": 1,
+       "Visitors": 45,
+       "Viewers": 30,
+       "Bounce Rate": 33.0,
+       "Total Minutes Streamed": 700
+      },
+      {
+       "date": "2026-09-27",
+       "Channel Installs": 17,
+       "Channel Uninstalls": 2,
+       "Visitors": 46,
+       "Viewers": 31,
+       "Bounce Rate": 32.0,
+       "Total Minutes Streamed": 720
+      }
+     ],
+     "headline": {},
+     "tiles": [
+      "new_installs"
+     ],
+     "tables": {},
+     "emptyTiles": []
+    }
+   },
+   "versionsSeen": [
+    {
+     "version": "1.0.11",
+     "firstSeen": "2026-09-10",
+     "lastSeen": "2026-09-21"
+    },
+    {
+     "version": "1.0.12",
+     "firstSeen": "2026-09-22",
+     "lastSeen": "2026-09-29"
+    }
+   ],
+   "reportsSeen": [
+    "App Engagement",
+    "App Health"
+   ],
+   "readVia": "Looker scheduled delivery -> Worker /ingest/roku (no Roku API exists)",
+   "console": "https://developer.roku.com/"
+  },
+  "webUsage": {
+   "daily": [
+    {
+     "date": "2026-08-21",
+     "views": 295,
+     "visits": null
+    },
+    {
+     "date": "2026-08-22",
+     "views": 278,
+     "visits": null
+    },
+    {
+     "date": "2026-08-23",
+     "views": 295,
+     "visits": null
+    },
+    {
+     "date": "2026-08-24",
+     "views": 350,
+     "visits": null
+    },
+    {
+     "date": "2026-08-25",
+     "views": 320,
+     "visits": null
+    },
+    {
+     "date": "2026-08-26",
+     "views": 342,
+     "visits": null
+    },
+    {
+     "date": "2026-08-27",
+     "views": 333,
+     "visits": null
+    },
+    {
+     "date": "2026-08-28",
+     "views": 293,
+     "visits": null
+    },
+    {
+     "date": "2026-08-29",
+     "views": 351,
+     "visits": null
+    },
+    {
+     "date": "2026-08-30",
+     "views": 303,
+     "visits": null
+    },
+    {
+     "date": "2026-08-31",
+     "views": 363,
+     "visits": 84
+    },
+    {
+     "date": "2026-09-01",
+     "views": 325,
+     "visits": 95
+    },
+    {
+     "date": "2026-09-02",
+     "views": 355,
+     "visits": 105
+    },
+    {
+     "date": "2026-09-03",
+     "views": 372,
+     "visits": 85
+    },
+    {
+     "date": "2026-09-04",
+     "views": 387,
+     "visits": 82
+    },
+    {
+     "date": "2026-09-05",
+     "views": 370,
+     "visits": 82
+    },
+    {
+     "date": "2026-09-06",
+     "views": 367,
+     "visits": 95
+    },
+    {
+     "date": "2026-09-07",
+     "views": 357,
+     "visits": 74
+    },
+    {
+     "date": "2026-09-08",
+     "views": 410,
+     "visits": 104
+    },
+    {
+     "date": "2026-09-09",
+     "views": 371,
+     "visits": 119
+    },
+    {
+     "date": "2026-09-10",
+     "views": 425,
+     "visits": 80
+    },
+    {
+     "date": "2026-09-11",
+     "views": 358,
+     "visits": 87
+    },
+    {
+     "date": "2026-09-12",
+     "views": 359,
+     "visits": 99
+    },
+    {
+     "date": "2026-09-13",
+     "views": 417,
+     "visits": 85
+    },
+    {
+     "date": "2026-09-14",
+     "views": 441,
+     "visits": 115
+    },
+    {
+     "date": "2026-09-15",
+     "views": 384,
+     "visits": 103
+    },
+    {
+     "date": "2026-09-16",
+     "views": 436,
+     "visits": 92
+    },
+    {
+     "date": "2026-09-17",
+     "views": 382,
+     "visits": 82
+    },
+    {
+     "date": "2026-09-18",
+     "views": 373,
+     "visits": 109
+    },
+    {
+     "date": "2026-09-19",
+     "views": 370,
+     "visits": 103
+    },
+    {
+     "date": "2026-09-20",
+     "views": 417,
+     "visits": 102
+    },
+    {
+     "date": "2026-09-21",
+     "views": 381,
+     "visits": 117
+    },
+    {
+     "date": "2026-09-22",
+     "views": 380,
+     "visits": 97
+    },
+    {
+     "date": "2026-09-23",
+     "views": 449,
+     "visits": 106
+    },
+    {
+     "date": "2026-09-24",
+     "views": 448,
+     "visits": 116
+    },
+    {
+     "date": "2026-09-25",
+     "views": 396,
+     "visits": 121
+    },
+    {
+     "date": "2026-09-26",
+     "views": 479,
+     "visits": 122
+    },
+    {
+     "date": "2026-09-27",
+     "views": 502,
+     "visits": 116
+    },
+    {
+     "date": "2026-09-28",
+     "views": 489,
+     "visits": 122
+    },
+    {
+     "date": "2026-09-29",
+     "views": 433,
+     "visits": 102
+    }
+   ],
+   "views28d": 11308,
+   "visits28d": 2822,
+   "byPath": {
+    "/": 3000,
+    "/browse": 2100,
+    "/item": 1700,
+    "/search": 800,
+    "/about": 120
+   },
+   "since": "2026-07-02",
+   "splitFrom": "2026-08-31"
+  },
+  "tallies": {
+   "rooms": {
+    "label": "Rooms opened",
+    "kinds": [
+     "room",
+     "guest"
+    ],
+    "daily": [
+     {
+      "date": "2026-08-31",
+      "room": 4,
+      "guest": 8
+     },
+     {
+      "date": "2026-09-01",
+      "room": 5,
+      "guest": 9
+     },
+     {
+      "date": "2026-09-02",
+      "room": 4,
+      "guest": 13
+     },
+     {
+      "date": "2026-09-03",
+      "room": 2,
+      "guest": 15
+     },
+     {
+      "date": "2026-09-04",
+      "room": 11,
+      "guest": 15
+     },
+     {
+      "date": "2026-09-05",
+      "room": 5,
+      "guest": 8
+     },
+     {
+      "date": "2026-09-06",
+      "room": 5,
+      "guest": 10
+     },
+     {
+      "date": "2026-09-07",
+      "room": 4,
+      "guest": 15
+     },
+     {
+      "date": "2026-09-08",
+      "room": 7,
+      "guest": 9
+     },
+     {
+      "date": "2026-09-09",
+      "room": 9,
+      "guest": 7
+     },
+     {
+      "date": "2026-09-10",
+      "room": 8,
+      "guest": 18
+     },
+     {
+      "date": "2026-09-11",
+      "room": 3,
+      "guest": 12
+     },
+     {
+      "date": "2026-09-12",
+      "room": 7,
+      "guest": 13
+     },
+     {
+      "date": "2026-09-13",
+      "room": 5,
+      "guest": 18
+     },
+     {
+      "date": "2026-09-14",
+      "room": 6,
+      "guest": 13
+     },
+     {
+      "date": "2026-09-15",
+      "room": 4,
+      "guest": 1
+     },
+     {
+      "date": "2026-09-16",
+      "room": 4,
+      "guest": 14
+     },
+     {
+      "date": "2026-09-17",
+      "room": 3,
+      "guest": 13
+     },
+     {
+      "date": "2026-09-18",
+      "room": 6,
+      "guest": 11
+     },
+     {
+      "date": "2026-09-19",
+      "room": 6,
+      "guest": 15
+     },
+     {
+      "date": "2026-09-20",
+      "room": 5,
+      "guest": 14
+     },
+     {
+      "date": "2026-09-21",
+      "room": 2,
+      "guest": 10
+     },
+     {
+      "date": "2026-09-22",
+      "room": 1,
+      "guest": 12
+     },
+     {
+      "date": "2026-09-23",
+      "room": 3,
+      "guest": 14
+     },
+     {
+      "date": "2026-09-24",
+      "room": 5,
+      "guest": 8
+     },
+     {
+      "date": "2026-09-25",
+      "room": 3,
+      "guest": 15
+     },
+     {
+      "date": "2026-09-26",
+      "room": 4,
+      "guest": 10
+     },
+     {
+      "date": "2026-09-27",
+      "room": 6,
+      "guest": 9
+     },
+     {
+      "date": "2026-09-28",
+      "room": 3,
+      "guest": 8
+     },
+     {
+      "date": "2026-09-29",
+      "room": 2,
+      "guest": 16
+     }
+    ],
+    "since": "2026-08-31",
+    "last28": {
+     "room": 129,
+     "guest": 323
+    },
+    "prev28": {
+     "room": 13,
+     "guest": 30
+    },
+    "note": "Kept by the server as it opens rooms: day | kind | count, nothing else."
+   }
+  },
+  "searchConsole": {
+   "through": "2026-09-27",
+   "daily": [
+    {
+     "date": "2026-07-28",
+     "clicks": 17,
+     "impressions": 912,
+     "ctr": 0.021,
+     "position": 14.2
+    },
+    {
+     "date": "2026-07-29",
+     "clicks": 15,
+     "impressions": 838,
+     "ctr": 0.021,
+     "position": 14.149999999999999
+    },
+    {
+     "date": "2026-07-30",
+     "clicks": 14,
+     "impressions": 948,
+     "ctr": 0.021,
+     "position": 14.1
+    },
+    {
+     "date": "2026-07-31",
+     "clicks": 25,
+     "impressions": 963,
+     "ctr": 0.021,
+     "position": 14.049999999999999
+    },
+    {
+     "date": "2026-08-01",
+     "clicks": 17,
+     "impressions": 887,
+     "ctr": 0.021,
+     "position": 14.0
+    },
+    {
+     "date": "2026-08-02",
+     "clicks": 18,
+     "impressions": 974,
+     "ctr": 0.021,
+     "position": 13.95
+    },
+    {
+     "date": "2026-08-03",
+     "clicks": 22,
+     "impressions": 964,
+     "ctr": 0.021,
+     "position": 13.899999999999999
+    },
+    {
+     "date": "2026-08-04",
+     "clicks": 22,
+     "impressions": 1005,
+     "ctr": 0.021,
+     "position": 13.85
+    },
+    {
+     "date": "2026-08-05",
+     "clicks": 33,
+     "impressions": 1044,
+     "ctr": 0.021,
+     "position": 13.799999999999999
+    },
+    {
+     "date": "2026-08-06",
+     "clicks": 22,
+     "impressions": 917,
+     "ctr": 0.021,
+     "position": 13.75
+    },
+    {
+     "date": "2026-08-07",
+     "clicks": 29,
+     "impressions": 1118,
+     "ctr": 0.021,
+     "position": 13.7
+    },
+    {
+     "date": "2026-08-08",
+     "clicks": 14,
+     "impressions": 1049,
+     "ctr": 0.021,
+     "position": 13.649999999999999
+    },
+    {
+     "date": "2026-08-09",
+     "clicks": 29,
+     "impressions": 1097,
+     "ctr": 0.021,
+     "position": 13.6
+    },
+    {
+     "date": "2026-08-10",
+     "clicks": 25,
+     "impressions": 1167,
+     "ctr": 0.021,
+     "position": 13.549999999999999
+    },
+    {
+     "date": "2026-08-11",
+     "clicks": 27,
+     "impressions": 1032,
+     "ctr": 0.021,
+     "position": 13.5
+    },
+    {
+     "date": "2026-08-12",
+     "clicks": 28,
+     "impressions": 1162,
+     "ctr": 0.021,
+     "position": 13.45
+    },
+    {
+     "date": "2026-08-13",
+     "clicks": 42,
+     "impressions": 1086,
+     "ctr": 0.021,
+     "position": 13.399999999999999
+    },
+    {
+     "date": "2026-08-14",
+     "clicks": 24,
+     "impressions": 1036,
+     "ctr": 0.021,
+     "position": 13.35
+    },
+    {
+     "date": "2026-08-15",
+     "clicks": 26,
+     "impressions": 1043,
+     "ctr": 0.021,
+     "position": 13.299999999999999
+    },
+    {
+     "date": "2026-08-16",
+     "clicks": 28,
+     "impressions": 1101,
+     "ctr": 0.021,
+     "position": 13.25
+    },
+    {
+     "date": "2026-08-17",
+     "clicks": 35,
+     "impressions": 1210,
+     "ctr": 0.021,
+     "position": 13.2
+    },
+    {
+     "date": "2026-08-18",
+     "clicks": 27,
+     "impressions": 1137,
+     "ctr": 0.021,
+     "position": 13.149999999999999
+    },
+    {
+     "date": "2026-08-19",
+     "clicks": 35,
+     "impressions": 1315,
+     "ctr": 0.021,
+     "position": 13.1
+    },
+    {
+     "date": "2026-08-20",
+     "clicks": 27,
+     "impressions": 1187,
+     "ctr": 0.021,
+     "position": 13.049999999999999
+    },
+    {
+     "date": "2026-08-21",
+     "clicks": 30,
+     "impressions": 1203,
+     "ctr": 0.021,
+     "position": 13.0
+    },
+    {
+     "date": "2026-08-22",
+     "clicks": 31,
+     "impressions": 1132,
+     "ctr": 0.021,
+     "position": 12.95
+    },
+    {
+     "date": "2026-08-23",
+     "clicks": 32,
+     "impressions": 1315,
+     "ctr": 0.021,
+     "position": 12.899999999999999
+    },
+    {
+     "date": "2026-08-24",
+     "clicks": 36,
+     "impressions": 1409,
+     "ctr": 0.021,
+     "position": 12.85
+    },
+    {
+     "date": "2026-08-25",
+     "clicks": 34,
+     "impressions": 1411,
+     "ctr": 0.021,
+     "position": 12.799999999999999
+    },
+    {
+     "date": "2026-08-26",
+     "clicks": 35,
+     "impressions": 1198,
+     "ctr": 0.021,
+     "position": 12.75
+    },
+    {
+     "date": "2026-08-27",
+     "clicks": 30,
+     "impressions": 1350,
+     "ctr": 0.021,
+     "position": 12.7
+    },
+    {
+     "date": "2026-08-28",
+     "clicks": 39,
+     "impressions": 1461,
+     "ctr": 0.021,
+     "position": 12.649999999999999
+    },
+    {
+     "date": "2026-08-29",
+     "clicks": 46,
+     "impressions": 1437,
+     "ctr": 0.021,
+     "position": 12.6
+    },
+    {
+     "date": "2026-08-30",
+     "clicks": 47,
+     "impressions": 1449,
+     "ctr": 0.021,
+     "position": 12.549999999999999
+    },
+    {
+     "date": "2026-08-31",
+     "clicks": 39,
+     "impressions": 1451,
+     "ctr": 0.021,
+     "position": 12.5
+    },
+    {
+     "date": "2026-09-01",
+     "clicks": 41,
+     "impressions": 1383,
+     "ctr": 0.021,
+     "position": 12.45
+    },
+    {
+     "date": "2026-09-02",
+     "clicks": 38,
+     "impressions": 1487,
+     "ctr": 0.021,
+     "position": 12.399999999999999
+    },
+    {
+     "date": "2026-09-03",
+     "clicks": 38,
+     "impressions": 1428,
+     "ctr": 0.021,
+     "position": 12.35
+    },
+    {
+     "date": "2026-09-04",
+     "clicks": 42,
+     "impressions": 1357,
+     "ctr": 0.021,
+     "position": 12.299999999999999
+    },
+    {
+     "date": "2026-09-05",
+     "clicks": 40,
+     "impressions": 1466,
+     "ctr": 0.021,
+     "position": 12.25
+    },
+    {
+     "date": "2026-09-06",
+     "clicks": 32,
+     "impressions": 1575,
+     "ctr": 0.021,
+     "position": 12.2
+    },
+    {
+     "date": "2026-09-07",
+     "clicks": 43,
+     "impressions": 1408,
+     "ctr": 0.021,
+     "position": 12.149999999999999
+    },
+    {
+     "date": "2026-09-08",
+     "clicks": 46,
+     "impressions": 1415,
+     "ctr": 0.021,
+     "position": 12.1
+    },
+    {
+     "date": "2026-09-09",
+     "clicks": 53,
+     "impressions": 1531,
+     "ctr": 0.021,
+     "position": 12.049999999999999
+    },
+    {
+     "date": "2026-09-10",
+     "clicks": 45,
+     "impressions": 1597,
+     "ctr": 0.021,
+     "position": 12.0
+    },
+    {
+     "date": "2026-09-11",
+     "clicks": 52,
+     "impressions": 1574,
+     "ctr": 0.021,
+     "position": 11.95
+    },
+    {
+     "date": "2026-09-12",
+     "clicks": 47,
+     "impressions": 1494,
+     "ctr": 0.021,
+     "position": 11.899999999999999
+    },
+    {
+     "date": "2026-09-13",
+     "clicks": 44,
+     "impressions": 1583,
+     "ctr": 0.021,
+     "position": 11.85
+    },
+    {
+     "date": "2026-09-14",
+     "clicks": 53,
+     "impressions": 1531,
+     "ctr": 0.021,
+     "position": 11.799999999999999
+    },
+    {
+     "date": "2026-09-15",
+     "clicks": 37,
+     "impressions": 1703,
+     "ctr": 0.021,
+     "position": 11.75
+    },
+    {
+     "date": "2026-09-16",
+     "clicks": 39,
+     "impressions": 1715,
+     "ctr": 0.021,
+     "position": 11.7
+    },
+    {
+     "date": "2026-09-17",
+     "clicks": 58,
+     "impressions": 1663,
+     "ctr": 0.021,
+     "position": 11.649999999999999
+    },
+    {
+     "date": "2026-09-18",
+     "clicks": 45,
+     "impressions": 1611,
+     "ctr": 0.021,
+     "position": 11.6
+    },
+    {
+     "date": "2026-09-19",
+     "clicks": 59,
+     "impressions": 1638,
+     "ctr": 0.021,
+     "position": 11.549999999999999
+    },
+    {
+     "date": "2026-09-20",
+     "clicks": 53,
+     "impressions": 1840,
+     "ctr": 0.021,
+     "position": 11.5
+    },
+    {
+     "date": "2026-09-21",
+     "clicks": 55,
+     "impressions": 1757,
+     "ctr": 0.021,
+     "position": 11.45
+    },
+    {
+     "date": "2026-09-22",
+     "clicks": 56,
+     "impressions": 1848,
+     "ctr": 0.021,
+     "position": 11.399999999999999
+    },
+    {
+     "date": "2026-09-23",
+     "clicks": 49,
+     "impressions": 1686,
+     "ctr": 0.021,
+     "position": 11.35
+    },
+    {
+     "date": "2026-09-24",
+     "clicks": 52,
+     "impressions": 1881,
+     "ctr": 0.021,
+     "position": 11.299999999999999
+    },
+    {
+     "date": "2026-09-25",
+     "clicks": 58,
+     "impressions": 1768,
+     "ctr": 0.021,
+     "position": 11.25
+    },
+    {
+     "date": "2026-09-26",
+     "clicks": 47,
+     "impressions": 1656,
+     "ctr": 0.021,
+     "position": 11.2
+    },
+    {
+     "date": "2026-09-27",
+     "clicks": 66,
+     "impressions": 1740,
+     "ctr": 0.021,
+     "position": 11.149999999999999
+    }
+   ],
+   "last28": {
+    "clicks": 1327,
+    "impressions": 44786,
+    "ctr": 0.022,
+    "position": 12.9,
+    "days": 28
+   },
+   "prev28": {
+    "clicks": 855,
+    "impressions": 33035,
+    "ctr": 0.02,
+    "position": 14.0,
+    "days": 28
+   },
+   "queries": [
+    {
+     "key": "sample app",
+     "clicks": 210,
+     "impressions": 3100,
+     "ctr": 0.068,
+     "position": 2.1,
+     "prevClicks": 150,
+     "prevImpressions": 2500,
+     "prevPosition": 2.6
+    },
+    {
+     "key": "sample app apple tv",
+     "clicks": 44,
+     "impressions": 900,
+     "ctr": 0.049,
+     "position": 6.3,
+     "prevClicks": 0,
+     "prevImpressions": 0,
+     "prevPosition": null
+    }
+   ],
+   "pages": [
+    {
+     "key": "https://sample.example/",
+     "clicks": 300,
+     "impressions": 5000,
+     "ctr": 0.06,
+     "position": 3.0,
+     "prevClicks": 250,
+     "prevImpressions": 4600,
+     "prevPosition": 3.3
+    }
+   ],
+   "focusPages": {
+    "pattern": "/item/",
+    "clicks": 90,
+    "impressions": 4000,
+    "pages": 60,
+    "top": []
+   },
+   "countries": [
+    {
+     "key": "usa",
+     "clicks": 320,
+     "impressions": 7000,
+     "ctr": 0.046,
+     "position": 11.0,
+     "prevClicks": 280,
+     "prevImpressions": 6500,
+     "prevPosition": 12.0
+    }
+   ],
+   "devices": [
+    {
+     "key": "DESKTOP",
+     "clicks": 250,
+     "impressions": 5200,
+     "ctr": 0.048,
+     "position": 10.0,
+     "prevClicks": 200,
+     "prevImpressions": 5000,
+     "prevPosition": 11.0
+    }
+   ],
+   "sitemaps": [
+    {
+     "path": "https://sample.example/sitemap.xml",
+     "lastSubmitted": "2026-09-20T14:05:00+00:00",
+     "lastDownloaded": "2026-09-29T14:05:00+00:00",
+     "isPending": false,
+     "errors": 0,
+     "warnings": 0,
+     "submitted": 1200,
+     "indexed": 460
+    }
+   ],
+   "url": "https://search.google.com/search-console"
+  },
+  "searchIndex": {
+   "published": 1200,
+   "sampled": 150,
+   "pattern": "/item/",
+   "indexedShare": 0.47,
+   "byState": {
+    "Submitted and indexed": 70,
+    "Discovered - currently not indexed": 60,
+    "URL is unknown to Google": 20
+   },
+   "faults": [
+    {
+     "url": "https://sample.example/item/x",
+     "state": "Duplicate, Google chose different canonical than user",
+     "verdict": "NEUTRAL",
+     "lastCrawl": "2026-09-27T14:05:00+00:00",
+     "fetch": "SUCCESSFUL",
+     "googleCanonical": "https://sample.example/item/y"
+    }
+   ],
+   "examples": []
+  },
+  "issues": [
+   {
+    "number": 12,
+    "title": "Subtitles drift on long files",
+    "author": "outsider",
+    "url": "https://github.com/",
+    "updated": "2026-09-28T14:05:00+00:00",
+    "labels": [
+     "bug"
+    ],
+    "external": true
+   }
+  ],
+  "workflows": [
+   {
+    "severity": "FAILED",
+    "workflow": "Nightly build  conclusion=failure"
+   }
+  ]
+ },
+ "sources": {
+  "apple_stores": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "apple_reviews": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "apple_rating": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "apple_performance": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "apple_downloads": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_stores": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_reviews": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_vitals": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_crashes": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_users": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_reports": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_daily_exports": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_rating": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "play_acquisition": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "amazon_vitals": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "amazon_installs": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "amazon_live": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "roku_engagement": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "manual_stores": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "social_program": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "social_reach": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "social_liveness": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "mentions_reddit": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "mentions_hn": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "mentions_lemmy": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "mentions_news": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "mentions_bluesky": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "github": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "workflows": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "web_usage": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "counter_tallies": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "search_console": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "search_index": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "distribution": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "asks": {
+   "ok": true,
+   "note": "read",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "youtube_channel": {
+   "ok": true,
+   "note": "stats need youtube.readonly (the token is upload-only, by design), 0 comment(s)",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "mentions_mastodon": {
+   "ok": false,
+   "note": "no Mastodon credential in this environment",
+   "at": "2026-09-30T13:20:00+00:00"
+  },
+  "social_replies": {
+   "ok": false,
+   "note": "not configured: no social.profiles.threads",
+   "at": "2026-09-30T13:20:00+00:00",
+   "off": true
+  },
+  "cloud_api_usage": {
+   "ok": false,
+   "note": "not configured: set cloudUsage.project and cloudUsage.service",
+   "at": "2026-09-30T13:20:00+00:00",
+   "off": true
+  }
+ },
+ "stale": {
+  "playInstalls": "2026-09-21"
+ },
+ "history": [
+  {
+   "date": "2026-09-01",
+   "appleRating": 4.3,
+   "appleRatings": 40,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 30,
+   "mentions": 8,
+   "posts": 40,
+   "likes": 300,
+   "followers": 210,
+   "stars": 12,
+   "views14d": 140,
+   "pagesIndexed": 0.3,
+   "searchClicks28d": 500,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-02",
+   "appleRating": 4.3,
+   "appleRatings": 41,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 30,
+   "mentions": 8,
+   "posts": 41,
+   "likes": 309,
+   "followers": 213,
+   "stars": 12,
+   "views14d": 141,
+   "pagesIndexed": 0.306,
+   "searchClicks28d": 506,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-03",
+   "appleRating": 4.31,
+   "appleRatings": 42,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 30,
+   "mentions": 8,
+   "posts": 42,
+   "likes": 318,
+   "followers": 216,
+   "stars": 12,
+   "views14d": 142,
+   "pagesIndexed": 0.312,
+   "searchClicks28d": 512,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-04",
+   "appleRating": 4.31,
+   "appleRatings": 43,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 31,
+   "mentions": 8,
+   "posts": 43,
+   "likes": 327,
+   "followers": 219,
+   "stars": 12,
+   "views14d": 143,
+   "pagesIndexed": 0.318,
+   "searchClicks28d": 518,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-05",
+   "appleRating": 4.32,
+   "appleRatings": 44,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 31,
+   "mentions": 8,
+   "posts": 44,
+   "likes": 336,
+   "followers": 222,
+   "stars": 12,
+   "views14d": 144,
+   "pagesIndexed": 0.324,
+   "searchClicks28d": 524,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-06",
+   "appleRating": 4.32,
+   "appleRatings": 45,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 31,
+   "mentions": 9,
+   "posts": 45,
+   "likes": 345,
+   "followers": 225,
+   "stars": 12,
+   "views14d": 145,
+   "pagesIndexed": 0.33,
+   "searchClicks28d": 530,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-07",
+   "appleRating": 4.32,
+   "appleRatings": 46,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 32,
+   "mentions": 9,
+   "posts": 46,
+   "likes": 354,
+   "followers": 228,
+   "stars": 13,
+   "views14d": 146,
+   "pagesIndexed": 0.336,
+   "searchClicks28d": 536,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-08",
+   "appleRating": 4.33,
+   "appleRatings": 47,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 32,
+   "mentions": 9,
+   "posts": 47,
+   "likes": 363,
+   "followers": 231,
+   "stars": 13,
+   "views14d": 147,
+   "pagesIndexed": 0.342,
+   "searchClicks28d": 542,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-09",
+   "appleRating": 4.33,
+   "appleRatings": 48,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 32,
+   "mentions": 9,
+   "posts": 48,
+   "likes": 372,
+   "followers": 234,
+   "stars": 13,
+   "views14d": 148,
+   "pagesIndexed": 0.348,
+   "searchClicks28d": 548,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-10",
+   "appleRating": 4.34,
+   "appleRatings": 49,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 33,
+   "mentions": 9,
+   "posts": 49,
+   "likes": 381,
+   "followers": 237,
+   "stars": 13,
+   "views14d": 149,
+   "pagesIndexed": 0.354,
+   "searchClicks28d": 554,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-11",
+   "appleRating": 4.34,
+   "appleRatings": 50,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 33,
+   "mentions": 10,
+   "posts": 50,
+   "likes": 390,
+   "followers": 240,
+   "stars": 13,
+   "views14d": 150,
+   "pagesIndexed": 0.36,
+   "searchClicks28d": 560,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-12",
+   "appleRating": 4.34,
+   "appleRatings": 51,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 33,
+   "mentions": 10,
+   "posts": 51,
+   "likes": 399,
+   "followers": 243,
+   "stars": 13,
+   "views14d": 151,
+   "pagesIndexed": 0.366,
+   "searchClicks28d": 566,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-13",
+   "appleRating": 4.35,
+   "appleRatings": 52,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 34,
+   "mentions": 10,
+   "posts": 52,
+   "likes": 408,
+   "followers": 246,
+   "stars": 14,
+   "views14d": 152,
+   "pagesIndexed": 0.372,
+   "searchClicks28d": 572,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-14",
+   "appleRating": 4.35,
+   "appleRatings": 53,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 34,
+   "mentions": 10,
+   "posts": 53,
+   "likes": 417,
+   "followers": 249,
+   "stars": 14,
+   "views14d": 153,
+   "pagesIndexed": 0.378,
+   "searchClicks28d": 578,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-15",
+   "appleRating": 4.36,
+   "appleRatings": 54,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 34,
+   "mentions": 10,
+   "posts": 54,
+   "likes": 426,
+   "followers": 252,
+   "stars": 14,
+   "views14d": 154,
+   "pagesIndexed": 0.384,
+   "searchClicks28d": 584,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-16",
+   "appleRating": 4.36,
+   "appleRatings": 55,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 35,
+   "mentions": 11,
+   "posts": 55,
+   "likes": 435,
+   "followers": 255,
+   "stars": 14,
+   "views14d": 155,
+   "pagesIndexed": 0.39,
+   "searchClicks28d": 590,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-17",
+   "appleRating": 4.36,
+   "appleRatings": 56,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 35,
+   "mentions": 11,
+   "posts": 56,
+   "likes": 444,
+   "followers": 258,
+   "stars": 14,
+   "views14d": 156,
+   "pagesIndexed": 0.396,
+   "searchClicks28d": 596,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-18",
+   "appleRating": 4.37,
+   "appleRatings": 57,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 35,
+   "mentions": 11,
+   "posts": 57,
+   "likes": 453,
+   "followers": 261,
+   "stars": 14,
+   "views14d": 157,
+   "pagesIndexed": 0.402,
+   "searchClicks28d": 602,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-19",
+   "appleRating": 4.37,
+   "appleRatings": 58,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 36,
+   "mentions": 11,
+   "posts": 58,
+   "likes": 462,
+   "followers": 264,
+   "stars": 15,
+   "views14d": 158,
+   "pagesIndexed": 0.408,
+   "searchClicks28d": 608,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-20",
+   "appleRating": 4.38,
+   "appleRatings": 59,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 36,
+   "mentions": 11,
+   "posts": 59,
+   "likes": 471,
+   "followers": 267,
+   "stars": 15,
+   "views14d": 159,
+   "pagesIndexed": 0.414,
+   "searchClicks28d": 614,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-21",
+   "appleRating": 4.38,
+   "appleRatings": 60,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 36,
+   "mentions": 12,
+   "posts": 60,
+   "likes": 480,
+   "followers": 270,
+   "stars": 15,
+   "views14d": 160,
+   "pagesIndexed": 0.42,
+   "searchClicks28d": 620,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-22",
+   "appleRating": 4.38,
+   "appleRatings": 61,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 37,
+   "mentions": 12,
+   "posts": 61,
+   "likes": 489,
+   "followers": 273,
+   "stars": 15,
+   "views14d": 161,
+   "pagesIndexed": 0.426,
+   "searchClicks28d": 626,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-23",
+   "appleRating": 4.39,
+   "appleRatings": 62,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 37,
+   "mentions": 12,
+   "posts": 62,
+   "likes": 498,
+   "followers": 276,
+   "stars": 15,
+   "views14d": 162,
+   "pagesIndexed": 0.432,
+   "searchClicks28d": 632,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-24",
+   "appleRating": 4.39,
+   "appleRatings": 63,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 37,
+   "mentions": 12,
+   "posts": 63,
+   "likes": 507,
+   "followers": 279,
+   "stars": 15,
+   "views14d": 163,
+   "pagesIndexed": 0.438,
+   "searchClicks28d": 638,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-25",
+   "appleRating": 4.4,
+   "appleRatings": 64,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 38,
+   "mentions": 12,
+   "posts": 64,
+   "likes": 516,
+   "followers": 282,
+   "stars": 16,
+   "views14d": 164,
+   "pagesIndexed": 0.444,
+   "searchClicks28d": 644,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-26",
+   "appleRating": 4.4,
+   "appleRatings": 65,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 38,
+   "mentions": 13,
+   "posts": 65,
+   "likes": 525,
+   "followers": 285,
+   "stars": 16,
+   "views14d": 165,
+   "pagesIndexed": 0.45,
+   "searchClicks28d": 650,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-27",
+   "appleRating": 4.4,
+   "appleRatings": 66,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 38,
+   "mentions": 13,
+   "posts": 66,
+   "likes": 534,
+   "followers": 288,
+   "stars": 16,
+   "views14d": 166,
+   "pagesIndexed": 0.456,
+   "searchClicks28d": 656,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-28",
+   "appleRating": 4.41,
+   "appleRatings": 67,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 39,
+   "mentions": 13,
+   "posts": 67,
+   "likes": 543,
+   "followers": 291,
+   "stars": 16,
+   "views14d": 167,
+   "pagesIndexed": 0.462,
+   "searchClicks28d": 662,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-29",
+   "appleRating": 4.41,
+   "appleRatings": 68,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 39,
+   "mentions": 13,
+   "posts": 68,
+   "likes": 552,
+   "followers": 294,
+   "stars": 16,
+   "views14d": 168,
+   "pagesIndexed": 0.468,
+   "searchClicks28d": 668,
+   "urgent": 0
+  },
+  {
+   "date": "2026-09-30",
+   "appleRating": 4.42,
+   "appleRatings": 69,
+   "playRating": 4.1,
+   "playRatings": 22,
+   "reviews": 39,
+   "mentions": 13,
+   "posts": 69,
+   "likes": 561,
+   "followers": 297,
+   "stars": 16,
+   "views14d": 169,
+   "pagesIndexed": 0.474,
+   "searchClicks28d": 674,
+   "urgent": 1
+  }
+ ],
+ "repoVersion": "1.4.3",
+ "repoBuild": "1043",
+ "_": "SYNTHETIC FIXTURE from tools/pulse_make_fixture.py \u2014 every number is invented."
+}

@@ -1,0 +1,175 @@
+/**
+ * App — Main Application Logic
+ *
+ * Architecture: single IIFE wrapping the entire app.
+ * Views are <section> elements toggled by showView().
+ * Feature modules are nested IIFEs for encapsulation.
+ *
+ * Conventions:
+ *  - $('id') is shorthand for document.getElementById
+ *  - All API calls go through API (js/api.js)
+ *  - State is plain JS objects/variables (no framework)
+ *  - DOM updates use textContent (safe) or innerHTML (only with escHtml)
+ *
+ * See AGENTS.md for full conventions and DECISIONS.md for architecture choices.
+ */
+
+// Dark mode — flash-free init (runs before DOM renders)
+(function() {
+  const saved = localStorage.getItem('app_theme');
+  if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+})();
+
+(function () {
+  'use strict';
+
+  /* ---- Helpers ---- */
+  const $ = (id) => document.getElementById(id);
+
+  function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function showLoading() { /* TODO: show global loading indicator */ }
+  function hideLoading() { /* TODO: hide global loading indicator */ }
+
+  /* ---- DOM Refs ---- */
+  const authScreen = $('auth-screen');
+  const appScreen  = $('app-screen');
+  // Add more DOM refs as views are created:
+  // const viewHome = $('view-home');
+  // const navHomeBtn = $('nav-home-btn');
+
+  /* ---- State ---- */
+  let currentView = 'home';
+  let currentItem = null;
+  // Player-level mute (?mute=1 door). Every player reads it, so a harness run
+  // is silent unless it opts in.
+  let playerMuted = false;
+
+  /* ================================================================
+     VIEW SYSTEM
+  ================================================================ */
+
+  /**
+   * Switch the active view. Hides all views, shows the target.
+   * Updates sidebar nav active state and browser history.
+   *
+   * Wrapped in document.startViewTransition() when supported — gives
+   * us cross-view morphs at zero JS cost (analog to iOS
+   * .matchedTransitionSource + .zoom and Android sharedBounds). Falls
+   * back to instant swap when unsupported (Safari ≤ 18 / Firefox).
+   * The API auto-disables itself under prefers-reduced-motion.
+   *
+   * IntersectionObserver instances inside views MUST pass
+   * `root: document.getElementById('main-content')` since <main> is
+   * the scroll container (body is overflow:hidden flex-column).
+   * Disconnect observers when leaving the view to prevent memory leaks.
+   */
+  function showView(name, fromHistory = false) {
+    if (document.startViewTransition) {
+      document.startViewTransition(() => applyViewSwap(name, fromHistory));
+    } else {
+      applyViewSwap(name, fromHistory);
+    }
+  }
+
+  function applyViewSwap(name, fromHistory) {
+    currentView = name;
+
+    // Define your views and nav buttons here:
+    const views = {
+      // home: viewHome,
+    };
+    const navBtns = {
+      // home: navHomeBtn,
+    };
+
+    Object.entries(views).forEach(([n, el]) => {
+      if (el) { el.hidden = n !== name; }
+    });
+
+    Object.entries(navBtns).forEach(([n, btn]) => {
+      if (btn) {
+        btn.classList.toggle('active', n === name);
+        btn.setAttribute('aria-current', n === name ? 'page' : 'false');
+      }
+    });
+
+    // Close mobile sidebar on navigation
+    $('channels-sidebar')?.classList.remove('open');
+
+    if (!fromHistory) {
+      const url = name === 'home' ? '?' : `?view=${name}`;
+      history.pushState({ view: name }, '', url);
+      document.title = name === 'home' ? 'App Name' : `App Name — ${name}`;
+    }
+
+    // Stop/cleanup for views that need it when leaving:
+    // if (name !== 'tv') window.tvStop?.();
+  }
+
+  /* ================================================================
+     AUTH
+  ================================================================ */
+
+  // FILL IN: Your auth flow
+  // Example pattern:
+  // $('auth-form').addEventListener('submit', async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const session = await API.login(handle, password);
+  //     localStorage.setItem('session', JSON.stringify(session));
+  //     authScreen.hidden = true;
+  //     appScreen.hidden = false;
+  //     init();
+  //   } catch (err) {
+  //     $('auth-error').textContent = err.message;
+  //     $('auth-error').hidden = false;
+  //   }
+  // });
+
+  /* ================================================================
+     INITIALIZATION
+  ================================================================ */
+
+  async function init() {
+    // Check for saved session
+    // If authenticated: hide auth, show app, load first view
+    // If not: show auth screen
+
+    // URL routing (deep links / bookmarks). The URL is the web's door — the
+    // twin of the native harness hooks in tools/app_config.py:
+    //   ?view=<tab>          APP_START_TAB     (also a real, shareable URL)
+    //   ?item=<id>           APP_START_ITEM    (also a real, shareable URL)
+    //   ?mute=1              APP_MUTE
+    //   ?door_seconds=<n>    APP_DOOR_SECONDS  (return home after n seconds)
+    const params = new URLSearchParams(window.location.search);
+    const urlView = params.get('view');
+    if (urlView) {
+      showView(urlView, true);
+    } else {
+      showView('home', true);
+    }
+    const urlItem = params.get('item');
+    if (urlItem) currentItem = urlItem; // FILL IN: open the item's detail view
+    if (params.get('mute') === '1') playerMuted = true;
+    const doorSeconds = Number(params.get('door_seconds'));
+    if (doorSeconds > 0) {
+      setTimeout(() => { currentItem = null; showView('home'); }, doorSeconds * 1000);
+    }
+  }
+
+  // Browser back/forward
+  window.addEventListener('popstate', (e) => {
+    const view = e.state?.view || 'home';
+    showView(view, true);
+  });
+
+  /* ================================================================
+     BOOT
+  ================================================================ */
+  init();
+})();

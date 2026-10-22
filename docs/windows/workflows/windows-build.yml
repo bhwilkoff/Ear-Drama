@@ -1,0 +1,65 @@
+name: Windows build + snapshots
+
+# Real-Windows confirmation of the Avalonia app (WINDOWS-PLAYBOOK §4).
+# windows-latest is unlimited-free on a public repo. Builds the app, runs the
+# headless PNG snapshots ON Windows, cross-checks the win-x64 publish, and
+# uploads the PNGs + the .exe as artifacts.
+on:
+  workflow_dispatch: {}
+  push:
+    paths: ['windows/**', '.github/workflows/windows-build.yml']
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore AppName.slnx
+
+      - name: Build (Release)
+        run: dotnet build AppName.slnx -c Release --no-restore
+
+      - name: Headless snapshots (real Windows render)
+        env:
+          APPNAME_ARTIFACTS: ${{ github.workspace }}/windows/artifacts
+        run: dotnet test AppName.HeadlessTests/AppName.HeadlessTests.csproj -c Release --no-build
+
+      - name: Publish self-contained win-x64 .exe
+        run: dotnet publish AppName.App/AppName.App.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/win-x64
+
+      - name: Launch the real .exe + screenshot the live window (proves it LAUNCHES)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "publish/win-x64/AppName.App.exe" -PassThru
+          Start-Sleep -Seconds 10
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+          $g = [System.Drawing.Graphics]::FromImage($bmp)
+          $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $bmp.Save("$PWD/artifacts/launched-desktop.png")
+          if ($p.HasExited) { throw "AppName.App.exe exited early (code $($p.ExitCode)) — did not stay running" }
+          Stop-Process -Id $p.Id -Force
+          Write-Host "App launched and stayed running; desktop captured."
+
+      - name: Upload snapshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-snapshots
+          path: windows/artifacts/*.png
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: appname-win-x64
+          path: windows/publish/win-x64/AppName.App.exe

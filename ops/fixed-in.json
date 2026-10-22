@@ -1,0 +1,12 @@
+{
+ "_": "Crash clusters whose CAUSE is fixed in the repo but whose fix may not have reached users. A crash with a fix in hand asks to be SHIPPED, not fixed again. Keyed by the Play Console issue id (the hash in its issueUri). `versionCode` is the ANDROID versionCode that carries the fix; the page compares it to Play's live and in-flight builds (at or below live = shipped, clears as users update; at or below in-flight = in review; otherwise = in the repo, not released). An entry without a versionCode is shown as recorded and never compared: an Apple build number is a different counter. Play splits one bug across devices and versions, so list every cluster id that shares the cause. Remove an entry once the cluster stops appearing.",
+ "clusters": {},
+ "_example": {
+  "0123456789abcdef0123456789abcdef": {
+   "versionCode": 1042,
+   "version": "1.4.2",
+   "what": "duplicate lazy-list keys",
+   "fix": "uniqueBy at every call site; a negative-controlled test"
+  }
+ }
+}

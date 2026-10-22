@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+        Splash screen theme — applied to the launch window before
+        AppRoot composes. Android 12+ composites this over the
+        installed launcher icon via the Splash Screen API.
+    -->
+    <style name="Theme.AppName.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/brand_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.AppName</item>
+    </style>
+
+    <!--
+        Real app theme — DayNight so Compose's isSystemInDarkTheme()
+        works without per-Activity logic. Brand colors come from
+        Compose Theme.kt; this XML theme just gates window
+        flags + status bar appearance. Parent is a PLATFORM theme: the
+        Material Components (View) library is deliberately not a
+        dependency of this Compose-only app. DayNight needs API 29 (= minSdk).
+    -->
+    <style name="Theme.AppName" parent="android:Theme.DeviceDefault.DayNight">
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <item name="android:navigationBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
+    </style>
+</resources>

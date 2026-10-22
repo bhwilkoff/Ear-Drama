@@ -1,0 +1,15 @@
+# OPTIONAL EXAMPLE. Copy to wrangler.toml beside index.js and fill in.
+name = "your-app-pulse"
+main = "index.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# The site whose pages send the beacon (CORS). Also used to resolve paths.
+ALLOW_ORIGIN = "https://example.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pulse"
+database_id = "<from `wrangler d1 create pulse`>"
+
+# INGEST_TOKEN is a secret: `wrangler secret put INGEST_TOKEN`. Never in git.

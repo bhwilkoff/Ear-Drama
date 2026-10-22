@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The C# port of the shared logic — the Windows mirror of Swift Core / Kotlin /
+       JS. OS-agnostic: NO Avalonia, NO Win32, NO WinRT. Determinism-critical pieces
+       (daily picks, wire types, keys) must pass golden vectors against the other
+       stacks so a Windows player matches a phone/web player byte-for-byte. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AppName.HeadlessTests" />
+  </ItemGroup>
+
+</Project>

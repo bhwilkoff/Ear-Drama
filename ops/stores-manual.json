@@ -1,0 +1,57 @@
+{
+ "_": "Stores whose state no reader can fetch, declared by hand so the page shows the WHOLE estate rather than the half with an API. Move a row from _examples into stores when you ship there. Each row says its `route`. A read fact replaces a declared one: Amazon's live versionCode (amazon_live), Roku's field versions (roku_engagement) and the web row's newest deploy (product.deployWorkflow) overwrite what is typed here. Store names are matched literally by the collector and page: 'Amazon Appstore', 'Roku Channel Store', 'LG Content Store', 'Samsung Apps TV', 'Web (PWA)'.",
+ "stores": [],
+ "_examples": [
+  {
+   "store": "Amazon Appstore",
+   "platform": "Fire TV",
+   "state": "LIVE",
+   "version": "1.0.0",
+   "since": "2026-01-01",
+   "api": "vitals",
+   "route": "Submission API (live build), Sales report (installs), Vitals API",
+   "note": "",
+   "url": "https://developer.amazon.com/apps-and-games/console/apps/list.html"
+  },
+  {
+   "store": "Roku Channel Store",
+   "platform": "Roku",
+   "state": "SUBMITTED",
+   "version": "1.0.0",
+   "since": "2026-01-01",
+   "route": "Looker scheduled delivery to the drop box (no API)",
+   "note": "",
+   "url": "https://developer.roku.com/developer-channels/channels"
+  },
+  {
+   "store": "LG Content Store",
+   "platform": "webOS",
+   "state": "NOT SUBMITTED",
+   "version": null,
+   "since": null,
+   "route": "declared by hand (no API)",
+   "note": "",
+   "url": "https://seller.lgappstv.com/"
+  },
+  {
+   "store": "Samsung Apps TV",
+   "platform": "Tizen",
+   "state": "NOT SUBMITTED",
+   "version": null,
+   "since": null,
+   "route": "declared by hand (no API)",
+   "note": "",
+   "url": "https://seller.samsungapps.com/"
+  },
+  {
+   "store": "Web (PWA)",
+   "platform": "the website",
+   "state": "LIVE",
+   "version": "rolling",
+   "since": null,
+   "route": "the newest successful deploy workflow run",
+   "note": "",
+   "url": ""
+  }
+ ]
+}

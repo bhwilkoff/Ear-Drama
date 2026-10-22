@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets"
+        xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://example.com/AppName"
+        version="0.1.0"
+        viewmodes="maximized">
+
+  <tizen:application id="ExampleApp.AppName"
+                     package="ExampleApp"
+                     required_version="6.5"/>
+
+  <name>App Name</name>
+  <description>FILL IN: one-sentence store description.</description>
+  <author href="https://example.com" email="you@example.com">FILL IN author</author>
+
+  <content src="index.html"/>
+  <icon src="icon.png"/>
+
+  <!-- 1920x1080 is the design baseline (docs/templates/TV-DESIGN-template.md §4.1). -->
+  <tizen:profile name="tv"/>
+  <!-- Samsung's Seller Office pre-test refuses a package that names no screen
+       size ("screen size is not specified"). -->
+  <feature name="http://tizen.org/feature/screen.size.normal.1080.1920"/>
+  <tizen:setting screen-orientation="landscape"
+                 context-menu="disable"
+                 background-support="disable"
+                 encryption="disable"
+                 hwkey-event="enable"/>
+
+  <!-- List every host the app fetches from (Decision 028: progressive
+       HTTPS media needs no DRM or transcode on any of these platforms). -->
+  <access origin="*" subdomains="true"/>
+  <tizen:allow-navigation>example.com *.example.com</tizen:allow-navigation>
+
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+</widget>

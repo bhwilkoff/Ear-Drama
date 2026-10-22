@@ -1,0 +1,250 @@
+name: App Store build (cloud)
+
+# Build + sign + upload the macOS / iOS / tvOS App Store binaries on a GitHub-hosted macos runner
+# (RELEASED macOS + RELEASED Xcode). This sidesteps the two local-build rejections you hit when your
+# dev Mac runs a BETA macOS (see docs/CLOUD-SUBMISSION.md):
+#   - ITMS-90301 — Apple rejects App Store builds made on a BETA macOS.
+#   - ITMS-90111 — the Xcode/SDK floor; a GitHub runner always has a current GA Xcode.
+# Free for a PUBLIC repo. Signing is MANUAL via .p12 secrets (cloud/automatic signing fails for some
+# team ASC keys — see docs). Bump AppVersion.xcconfig + push BEFORE dispatching so the build number
+# is monotonic.
+#
+# MOVING TARGET: the `runs-on:` label and the Xcode version selected below MUST track the current
+# RELEASED macOS + Xcode. Apple raises the SDK floor every few weeks (ITMS-90111). When a build is
+# rejected for "Unsupported SDK or Xcode version", bump both here (newer `macos-NN` runner image +
+# newer `Xcode_NN.*` glob) and re-run.
+#
+# THIS WORKFLOW SUBMITS. Uploading is not shipping — a TestFlight build and an App Store version
+# are separate records — and finishing the job is not the owner's job: nobody opens App Store
+# Connect to press Submit. The last step opens the version on every platform, waits for THIS build
+# to go VALID, attaches it, and sends it for review (tools/asc_release.py). Dispatch with
+# submit=false only when a version is already in review and must not be disturbed.
+#
+# REQUIRED SECRETS (set once via tools/ci_make_signing_p12.py + gh secret set — see docs/CLOUD-SUBMISSION.md):
+#   APPLE_DIST_P12 / APPLE_INSTALLER_P12 — base64 of the Distribution / 3rd-Party-Mac-Installer .p12
+#   APPLE_P12_PASSWORD                   — the .p12 password
+#   APPLE_DIST_CERT_ID                   — the Distribution cert id (ties the App Store profiles to it)
+#   ASC_KEY_P8 / ASC_KEY_ID / ASC_ISSUER_ID — the App Store Connect API key (.p8 base64 + ids)
+# OPTIONAL REPO VARIABLES:
+#   APP_BUNDLE          — the app record's bundle id (else tools/app_config.py APPLE_BUNDLE_ID)
+#   APP_STORE_PLATFORMS — what `all` means to asc_release.py, e.g. "ios,mac" (else all three)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Which platform(s) to build + upload'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, mac, ios, tvos]
+      submit:
+        description: 'Submit for review once the build finishes processing'
+        required: false
+        default: true
+        type: boolean
+      notes:
+        description: "What's New (required to submit; blank = upload only, with a warning)"
+        required: false
+        type: string
+
+concurrency:
+  group: appstore-build
+  cancel-in-progress: false
+
+env:
+  APP_BUNDLE: ${{ vars.APP_BUNDLE }}
+  APP_STORE_PLATFORMS: ${{ vars.APP_STORE_PLATFORMS }}
+  # App-side keys the build needs in Secrets.xcconfig (gitignored, so a fresh checkout has NONE of
+  # them). Space-separated; each entry is SECRET_NAME, or XCCONFIG_KEY=SECRET_NAME when the build
+  # setting is named differently from the repo secret. Empty = the app has no build-time secrets.
+  XCCONFIG_SECRETS: ""
+
+jobs:
+  build:
+    # MOVING TARGET — keep this on the newest RELEASED macOS runner image (see header note).
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select a released Xcode (clears the ITMS-90111 SDK floor)
+        run: |
+          # MOVING TARGET — prefer the newest released Xcode present on the runner. Update the
+          # glob when Apple's floor moves (a build number ending in a lowercase letter is a BETA
+          # and is still rejected for App Review — pick a GA/RC).
+          XC="$(ls -d /Applications/Xcode_26.6*.app 2>/dev/null | sort -V | tail -1)"
+          [ -n "$XC" ] || XC="$(ls -d /Applications/Xcode_26.*.app 2>/dev/null | sort -V | tail -1)"
+          [ -n "$XC" ] || XC="$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -iv beta | sort -V | tail -1)"
+          echo "Selected Xcode: $XC"
+          sudo xcode-select -s "$XC"
+          echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
+          "$XC/Contents/Developer/usr/bin/xcodebuild" -version
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: pip install --quiet PyJWT cryptography requests
+
+      # A missing key is SILENT otherwise: the setting resolves to the literal "$(KEY)", the app
+      # treats an unresolved value as absent, and every cloud build ships without the feature.
+      # Write the file from repo secrets and fail loudly if any listed secret is empty.
+      - name: Write Secrets.xcconfig from repo secrets
+        if: env.XCCONFIG_SECRETS != ''
+        env:
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          secrets = json.loads(os.environ["ALL_SECRETS"])
+          lines, missing = [], []
+          for entry in os.environ["XCCONFIG_SECRETS"].split():
+              key, _, name = entry.partition("=")
+              name = name or key
+              value = secrets.get(name, "")
+              if not value:
+                  missing.append(name)
+              lines.append(f"{key} = {value}")
+          if missing:
+              print(f"::error::Missing repo secret(s): {' '.join(missing)} — the build would ship without them.")
+              sys.exit(1)
+          with open("Secrets.xcconfig", "w") as f:
+              f.write("// Generated by appstore-build.yml — do not commit.\n" + "\n".join(lines) + "\n")
+          for line in lines:                       # the shape, never the values
+              k, _, v = line.partition(" = ")
+              print(f"  {k} = <{len(v)} chars>")
+          PY
+
+      - name: Import signing certs into a temporary keychain
+        env:
+          P12PW: ${{ secrets.APPLE_P12_PASSWORD }}
+          DIST_P12_B64: ${{ secrets.APPLE_DIST_P12 }}
+          INST_P12_B64: ${{ secrets.APPLE_INSTALLER_P12 }}
+        run: |
+          KC="$RUNNER_TEMP/appname-signing.keychain-db"
+          KCPW="$(openssl rand -hex 16)"; echo "::add-mask::$KCPW"
+          security create-keychain -p "$KCPW" "$KC"
+          security set-keychain-settings -lut 7200 "$KC"
+          security unlock-keychain -p "$KCPW" "$KC"
+          printf '%s' "$DIST_P12_B64" | base64 -d > "$RUNNER_TEMP/dist.p12"
+          printf '%s' "$INST_P12_B64" | base64 -d > "$RUNNER_TEMP/inst.p12"
+          # -A -T codesign/productbuild = "allow these tools to use the key without a prompt".
+          security import "$RUNNER_TEMP/dist.p12" -k "$KC" -P "$P12PW" -A -T /usr/bin/codesign -T /usr/bin/productbuild
+          security import "$RUNNER_TEMP/inst.p12" -k "$KC" -P "$P12PW" -A -T /usr/bin/codesign -T /usr/bin/productbuild
+          # set-key-partition-list is REQUIRED on modern macOS or codesign hangs/fails asking for the key.
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPW" "$KC" >/dev/null
+          # Put the temp keychain first in the user search list (keep the existing ones) + make it default.
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | sed 's/[" ]//g')
+          security default-keychain -s "$KC"
+          rm -f "$RUNNER_TEMP/dist.p12" "$RUNNER_TEMP/inst.p12"
+          echo "--- signing identities on the runner ---"
+          security find-identity -v -p codesigning "$KC"
+          security find-identity -v "$KC" | grep -i installer || true
+
+      - name: Install the ASC API key + credentials
+        env:
+          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8 }}
+          KID: ${{ secrets.ASC_KEY_ID }}
+          ISS: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$ASC_KEY_P8_B64" | base64 -d > ~/.appstoreconnect/private_keys/AuthKey_${KID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${KID}.p8
+          printf 'ASC_KEY_ID=%s\nASC_ISSUER_ID=%s\n' "$KID" "$ISS" > tools/asc-credentials.env
+
+      # The archive runs with `-allowProvisioningUpdates`, and every runner is a fresh machine with an
+      # empty keychain — so Xcode mints a NEW Apple Development certificate on every build. They
+      # accumulate until Apple refuses ("Your account has reached the maximum number of
+      # certificates"), and then NOTHING can ship. The primary cleanup is the always()-guarded revoke
+      # at the END of this job; this pass catches what a force-killed earlier run left behind.
+      # continue-on-error: a pruning hiccup must never block a build that would otherwise ship.
+      - name: Prune throwaway runner certificates
+        continue-on-error: true
+        run: |
+          set -a; . tools/asc-credentials.env; set +a
+          python3 tools/asc_prune_certs.py --apply --keep 2
+
+      # A build number already on App Store Connect cannot be uploaded again, and the archive is the
+      # EXPENSIVE step — so find out in seconds, not at the end. The classic cause: the dispatch went
+      # out alongside a push that was rejected, and CI checked out a tree without the version bump.
+      - name: Refuse to rebuild an already-uploaded build number
+        working-directory: tools
+        run: |
+          BUILD=$(grep -oE 'CURRENT_PROJECT_VERSION = [0-9]+' ../AppVersion.xcconfig | grep -oE '[0-9]+')
+          VER=$(grep -oE 'MARKETING_VERSION = [0-9.]+' ../AppVersion.xcconfig | grep -oE '[0-9.]+')
+          echo "## Building $VER ($BUILD) — $(git -C .. log --oneline -1)" >> "$GITHUB_STEP_SUMMARY"
+          set -a; . ./asc-credentials.env; set +a
+          if [ -z "${APP_BUNDLE:-}" ]; then
+            APP_BUNDLE="$(python3 -c 'import app_config; print(app_config.APPLE_BUNDLE_ID)')"
+          fi
+          export APP_BUNDLE
+          python3 asc_build_exists.py "$VER" "$BUILD"
+
+      # The .xcodeproj is generated output (gitignored), so a fresh checkout has none. project.yml
+      # is the source of truth; every step below reads the project this creates.
+      - name: Generate the Xcode project from project.yml
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate
+
+      # Deployment floors are chosen by hardware reach; a raised floor silently stops shipping to
+      # devices. Both tests are no-ops (with a message) until the app has an Xcode project.
+      - name: Deployment floors have not drifted
+        run: |
+          python3 tools/test_ios_floor.py
+          python3 tools/test_tvos_floor.py
+
+      - name: Archive + sign + upload to App Store Connect
+        env:
+          ASC_DIST_CERT_ID: ${{ secrets.APPLE_DIST_CERT_ID }}
+          # ASC_TEAM_ID + ASC_ORG_NAME are consumed by tools/submit-appstore.sh (see that file's
+          # PER-APP CONFIG). Set them here from secrets/vars, or hardcode them in the script.
+          ASC_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_ORG_NAME: ${{ secrets.APPLE_ORG_NAME }}
+          PLATFORM: ${{ inputs.platform }}
+        run: |
+          echo "Building $PLATFORM | $(sw_vers -productVersion) ($(sw_vers -buildVersion)) | $(xcodebuild -version | tr '\n' ' ')"
+          tools/submit-appstore.sh "$PLATFORM"
+
+      # The certificate this run minted is useless the moment the runner is torn down, so revoke it
+      # here. `always()` because a cancelled or FAILED build mints one just the same. --keep 0 is
+      # safe only because this workflow's concurrency group admits one run at a time.
+      - name: Revoke this run's throwaway certificate
+        if: always()
+        continue-on-error: true
+        run: |
+          set -a; . tools/asc-credentials.env 2>/dev/null || true; set +a
+          [ -n "${ASC_KEY_ID:-}" ] || { echo "no ASC credentials on this run — nothing to prune"; exit 0; }
+          python3 tools/asc_prune_certs.py --apply --keep 0
+
+      # Apple refuses a submission with no What's New, so a dispatch without notes must not TRY —
+      # the red X would read as a failed build while the upload sits VALID. Upload is this
+      # workflow's job; a missing note is a warning, and appstore-submit.yml finishes the release.
+      - name: Not submitted — no What's New given
+        if: success() && inputs.submit && inputs.notes == ''
+        run: echo "::warning::build uploaded; NOT submitted because no What's New was given — run appstore-submit.yml (mode ship) with release_notes"
+
+      # Upload and submit are ONE act. Apple puts 10-30 minutes of processing between them and
+      # attach refuses a build that is not VALID, so the tool waits. Inputs arrive as ENVIRONMENT,
+      # never pasted into the script: a pasted What's New containing a quote closes the shell
+      # string (and free text pasted into a shell line is an injection route).
+      - name: Submit for review
+        if: success() && inputs.submit && inputs.notes != ''
+        working-directory: tools
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -a; . ./asc-credentials.env; set +a
+          printf '%s' "$NOTES" > "$RUNNER_TEMP/whats-new.txt"
+          python3 asc_release.py ship --platform "$PLATFORM" --submit \
+            --notes-file "$RUNNER_TEMP/whats-new.txt" --wait-build-minutes 40
+          python3 asc_release.py status >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Say what was NOT submitted
+        if: success() && !inputs.submit
+        run: echo "::warning::Uploaded but NOT submitted (submit=false). Dispatch 'App Store submit' (mode ship) when ready."
+
+      - name: Build log tail on failure
+        if: failure()
+        run: echo "::warning::Build failed — check the 'Archive + sign + upload' step output above."

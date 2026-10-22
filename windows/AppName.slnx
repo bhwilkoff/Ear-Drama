@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AppName.App/AppName.App.csproj" />
+  <Project Path="AppName.Core/AppName.Core.csproj" />
+  <Project Path="AppName.HeadlessTests/AppName.HeadlessTests.csproj" />
+  <Project Path="AppName.Windows/AppName.Windows.csproj" />
+</Solution>

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Skia" Version="12.0.5" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <!-- Avalonia.Headless.XUnit 12.x requires xunit v3; `dotnet new xunit` pins v2
+         and the two collide with CS0433 (InlineDataAttribute exists in both). -->
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AppName.App\AppName.App.csproj" />
+    <ProjectReference Include="..\AppName.Core\AppName.Core.csproj" />
+    <!-- The WinRT library is on a Windows TFM, so it cannot be REFERENCED from this
+         net10.0 project — the same wall that forces the app to load it reflectively.
+         Copy its output in as content instead, so contract tests can exercise the
+         real assembly rather than a description of it.
+         SkipGetTargetFrameworkProperties: without it MSBuild rejects the reference
+         outright on TFM compatibility, even though nothing is compiled against it. -->
+    <ProjectReference Include="..\AppName.Windows\AppName.Windows.csproj"
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true"
+                      OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

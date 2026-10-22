@@ -1,0 +1,16 @@
+{
+  "id": "com.example.appname",
+  "version": "0.1.0",
+  "vendor": "FILL IN vendor",
+  "type": "web",
+  "main": "index.html",
+  "title": "App Name",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "splashBackground": "splash.png",
+  "bgColor": "#141619",
+  "iconColor": "#A7BFD6",
+  "disableBackHistoryAPI": false,
+  "supportPortraitMode": false,
+  "requiredMemory": 150
+}

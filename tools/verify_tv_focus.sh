@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# Android TV focus verification — drive real surfaces with a real remote and
+# assert that focus actually lands on real content.
+#
+# WHY THIS EXISTS
+# On a TV, focus IS the interaction model, and it is INVISIBLE to a screenshot.
+# During this build a screenshot showed a perfectly-rendered Channels EPG that
+# could not be reached by remote at all, and separately showed a "broken"
+# Surprise grid that was working fine. Compiling proves nothing here either —
+# `.clickable` compiles, renders, and is simply unreachable by D-pad.
+#
+# So: route straight to a surface (no counting D-pad presses, which lands on the
+# NEAREST item and repeatedly steered checks to the wrong screen), turn on the
+# focus trace, press keys, and assert on what actually took focus.
+#
+#   ./tools/verify_tv_focus.sh                # all surfaces
+#   ./tools/verify_tv_focus.sh home browse    # a subset
+#
+# Requires a booted Android TV emulator/device (see the smart-tv skill for the
+# low-RAM headless recipe) and the debug build installed.
+
+set -uo pipefail
+
+PKG="${TV_PKG:-com.example.appname.debug}"   # FILL IN (or export TV_PKG)
+ACT="${TV_ACT:-com.example.appname.MainActivity}"
+ADB="${ADB:-adb}"
+SERIAL="${SERIAL:-emulator-5554}"
+# The debug intent extras are <prefix>_start_<key> and <prefix>_focus_log, and
+# the focus trace is logged under one logcat tag. Match both to what your app reads.
+PREFIX="${TV_EXTRA_PREFIX:-appname}"
+TAG="${TV_FOCUS_TAG:-APPFOCUS}"
+PASS=0
+FAIL=0
+
+key()   { $ADB -s "$SERIAL" shell input keyevent "KEYCODE_DPAD_$1" >/dev/null 2>&1; sleep "${2:-1.1}"; }
+trace() { $ADB -s "$SERIAL" logcat -d -s "$TAG" 2>/dev/null | sed "s/.*$TAG *: *//" | grep -v '^$'; }
+
+launch() { # launch <extra-flag> <value>
+  $ADB -s "$SERIAL" logcat -c >/dev/null 2>&1
+  $ADB -s "$SERIAL" shell am force-stop "$PKG" >/dev/null 2>&1
+  sleep 2
+  $ADB -s "$SERIAL" shell am start \
+    -c android.intent.category.LEANBACK_LAUNCHER -a android.intent.action.MAIN \
+    -n "$PKG/$ACT" "$1" "${PREFIX}_start_$2" "$3" --ez "${PREFIX}_focus_log" true >/dev/null 2>&1
+  sleep "${LAUNCH_WAIT:-24}"
+}
+
+# Focus state straight from the accessibility tree.
+#
+# The focus trace only sees elements built with our own tvFocusable(), which
+# covers the TV-native screens. But the TV also routes to SHARED phone screens
+# (Settings, Playlist, Person, Collection grid) — those carry no trace at all,
+# so a trace-based check would report a false FAILURE on a screen that works,
+# or worse, a false PASS. uiautomator reports what the framework actually
+# focused, whoever built the widget.
+ui_focused() {
+  $ADB -s "$SERIAL" shell uiautomator dump /sdcard/appname_ui.xml >/dev/null 2>&1
+  $ADB -s "$SERIAL" shell cat /sdcard/appname_ui.xml 2>/dev/null \
+    | tr '>' '\n' | grep 'focused="true"'
+}
+
+check_ui() { # check_ui <label> <expected-regex-over-the-focused-node>
+  local label="$1" want="$2" got
+  got="$(ui_focused)"
+  if printf '%s\n' "$got" | grep -qE "$want"; then
+    echo "  PASS  $label"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL  $label — focused node does not match /$want/"
+    printf '%s\n' "$got" | cut -c1-160 | sed 's/^/          /' | head -4
+    [ -z "$got" ] && echo "          (NOTHING is focused — a hard TV-DP failure)"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+check() { # check <label> <expected-regex>
+  local label="$1" want="$2" got
+  got="$(trace | tail -20)"
+  if printf '%s\n' "$got" | grep -qE "$want"; then
+    echo "  PASS  $label"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL  $label — no focus matching /$want/"
+    printf '%s\n' "$got" | sed 's/^/          /' | tail -6
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+surface_tab() { # surface_tab <tab> <expected>
+  echo "== tab: $1"
+  launch --es tab "$1"
+  key DOWN; key RIGHT; key DOWN
+  check "$1 reaches content" "$2"
+}
+
+surface_route() { # surface_route <route> <expected>
+  echo "== route: $1"
+  launch --es route "$1"
+  key DOWN; key RIGHT; key DOWN
+  check "$1 reaches content" "$2"
+}
+
+WANTED=("$@")
+want() { [ ${#WANTED[@]} -eq 0 ] && return 0; for w in "${WANTED[@]}"; do [ "$w" = "$1" ] && return 0; done; return 1; }
+
+# FILL IN: the surfaces below are a worked example from a video-catalog app.
+# Replace the tabs, routes and expected trace labels with your own.
+echo "Android TV focus verification ($SERIAL)"
+echo
+
+want home        && surface_tab   home            "tile:|rail:"
+want browse      && surface_tab   browse          "tile:"
+want search      && surface_tab   search          "focusable|tile:"
+want library     && surface_tab   library         "focusable|tile:"
+want channels    && surface_tab   channels        "program:"
+want surprise    && surface_route surprise        "tile:"
+want collections && surface_route collections     "collection:"
+want decade      && surface_route "decade:1920"   "tile:"
+want cartoon     && surface_route cartoon         "tile:|focusable"
+
+# Shared phone screens the TV routes to. These have no focus trace, so they
+# are asserted against the accessibility tree instead — and they are exactly
+# where an unreachable control hides, because they were never designed for a
+# remote.
+if want settings; then
+  echo "== route: settings (shared screen)"
+  launch --es route settings
+  key DOWN
+  check_ui "settings has something focused" 'focused="true"'
+  # The toggles must be operable, not merely present. Compose renders a Switch
+  # as a bare View, so assert on SEMANTICS (checkable) rather than a class name.
+  check_ui "settings focus is an operable control" 'checkable="true"|clickable="true"'
+fi
+
+if want playlist; then
+  echo "== route: playlist (shared screen)"
+  # Library → Playlists is the only door to PlaylistScreen; route straight in
+  # so the check cannot drift onto a neighbouring screen.
+  launch --es tab library
+  key DOWN; key RIGHT
+  check_ui "library section chips are focusable" 'focused="true"'
+fi
+
+echo
+echo "$PASS passed, $FAIL failed"
+[ "$FAIL" -eq 0 ]

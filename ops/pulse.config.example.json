@@ -1,0 +1,78 @@
+{
+ "_": "Pulse configuration. Copy to ops/pulse.config.json and fill in what your app has. A blank value turns that reader OFF and the page says 'not configured' for it, never a zero. App identity (App Store id, Android package, repo, product name, site, mention terms, Play reports bucket) falls back to tools/app_config.py when blank here. Credentials never go in this file: they are environment variables (see .github/workflows/pulse.yml).",
+ "product": {
+  "name": "",
+  "site": "",
+  "timezone": "America/Denver",
+  "repo": "",
+  "_repo": "owner/Repo on GitHub; stars, traffic, issues, and the deploy that ships the web row.",
+  "ownerLogins": [],
+  "_ownerLogins": "GitHub logins whose issues are OURS; everyone else's are 'from outside'.",
+  "deployWorkflow": "",
+  "_deployWorkflow": "e.g. deploy-pages.yml. The web store row's version is its newest successful run, read rather than typed."
+ },
+ "apple": {
+  "appStoreId": "",
+  "_appStoreId": "The numeric id in the App Store URL. It is also the ASC app id, and the sales report is filtered by it: the report covers the whole VENDOR account.",
+  "platforms": ["TV_OS", "IOS", "MAC_OS"]
+ },
+ "play": {
+  "package": "",
+  "stackMarker": "",
+  "_stackMarker": "A substring that only YOUR frames carry in a Java stack (your package, e.g. 'com.example.app'). The crash drawer shows the first such line."
+ },
+ "amazon": {
+  "package": "",
+  "_package": "The Fire TV package (often the same as play.package). Blank = the Amazon readers are off. AMAZON_APP_ID (the devportal id) is an env secret."
+ },
+ "roku": {
+  "consoleUrl": "",
+  "_consoleUrl": "Your channel's analytics page in the Roku Developer Dashboard (link only)."
+ },
+ "mentions": {
+  "strict": [],
+  "_strict": "Terms that on their own mean US: your domain, a one-word product name.",
+  "loose": "",
+  "_loose": "A product name that is also ordinary words. It counts only beside a corroborating word.",
+  "corroborate": ["apple tv", "tvos", "roku", "fire tv", "android tv", "app store", "google play", "sideload"],
+  "query": "",
+  "_query": "One search string for Reddit, Hacker News, Lemmy and Google News. Blank = those readers are off."
+ },
+ "social": {
+  "ledger": "social/posted.json",
+  "metrics": "social/metrics.json",
+  "_ledger": "Optional: a posting programme's ledger and its measured engagement. Absent files = the Program readers say so.",
+  "profiles": {
+   "bluesky": "",
+   "mastodon": "",
+   "instagram": "",
+   "threads": "",
+   "youtube": "",
+   "facebook": ""
+  }
+ },
+ "web": {
+  "counterOrigin": "",
+  "_counterOrigin": "Your privacy-first counter (pulse/worker-example). Blank = web usage and tallies are off. Env PULSE_COUNTER overrides.",
+  "ingestOrigin": "",
+  "_ingestOrigin": "The vendor drop box (same Worker). Roku's Looker schedule POSTs to <origin>/ingest/roku?t=<PULSE_INGEST_TOKEN>.",
+  "tallies": [],
+  "_tallies": "Anonymous day|kind|count tallies your server already keeps to PROVIDE a feature. Each: {\"name\": \"rooms\", \"label\": \"Rooms opened\", \"path\": \"/tally-daily?name=rooms\", \"kinds\": [\"room\", \"guest\"]}. Never a client-sent count."
+ },
+ "search": {
+  "site": "",
+  "_site": "The Search Console property exactly as registered: 'https://example.com/' (trailing slash) or 'sc-domain:example.com'.",
+  "pagePattern": "",
+  "_pagePattern": "A regex over sitemap URLs for the pages you want indexed, e.g. '/(item|series)/'. Blank = search_index is off.",
+  "sampleSize": 150
+ },
+ "cloudUsage": {
+  "project": "",
+  "_project": "A Google Cloud project whose API usage IS a product signal (e.g. the OAuth client's project). Reads are billed to it via x-goog-user-project.",
+  "service": "",
+  "_service": "e.g. youtube.googleapis.com",
+  "events": {},
+  "_events": "Name -> method suffix counted on 2xx, e.g. {\"broadcasts\": \"LiveBroadcastService.Insert\"}.",
+  "quotaPerDay": null
+ }
+}

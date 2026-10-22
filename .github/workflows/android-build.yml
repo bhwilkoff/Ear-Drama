@@ -1,0 +1,163 @@
+# Android CI — symmetric with Xcode Cloud (which watches the iOS
+# project). PR runs build + tests; tag push runs release bundle +
+# Play Store upload.
+#
+# Every build also keeps the APK it made, downloadable from the run's
+# page for 30 days, and a tag ending in -share (v1.2.0-share) publishes
+# it on the repository's Releases page, where anyone can install it
+# without a store account (docs/path/05-shipping.md, "Sharing it for
+# free"). With the upload-key secrets below it is release-signed, so a
+# new share installs over the last one; without them it is debug-signed
+# by a key the runner makes fresh each time, so a new share has to
+# replace the old install instead of updating it.
+#
+# Required GH Secrets:
+#   GOOGLE_WEB_CLIENT_ID         — for Sign in with Google one-tap
+#   KEYSTORE_BASE64              — `base64 -i upload.jks | pbcopy`
+#   KEYSTORE_PASSWORD            — upload-key store password
+#   KEY_ALIAS                    — upload-key alias
+#   KEY_PASSWORD                 — upload-key password
+#   PLAY_SERVICE_ACCOUNT_JSON    — Play Console API service-account JSON
+
+name: Android Build
+
+# Web- and docs-only changes do not build Android. The paths list is
+# everything this build reads: the module, the shared assets it mirrors,
+# the one version number (rootProject.file("../AppVersion.xcconfig")),
+# the version-contract test the job runs, and this file. Tag pushes
+# still release: "Path filters are not evaluated for pushes of tags"
+# (GitHub Actions workflow syntax docs).
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - 'assets/**'
+      - 'AppVersion.xcconfig'
+      - 'tools/test_version_contract.py'
+      - 'tools/set_app_identity.py'
+      - '.github/workflows/android-build.yml'
+  push:
+    branches: [main]
+    tags:
+      - 'v*-android'
+      - 'v*-share'
+    paths:
+      - 'android/**'
+      - 'assets/**'
+      - 'AppVersion.xcconfig'
+      - 'tools/test_version_contract.py'
+      - 'tools/set_app_identity.py'
+      - '.github/workflows/android-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # only the -share release step writes (a GitHub Release)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Write gradle.properties secrets
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          echo "GOOGLE_WEB_CLIENT_ID=$GOOGLE_WEB_CLIENT_ID" >> gradle.properties
+
+      - name: versionName is read from AppVersion.xcconfig, not a literal
+        run: python3 ../tools/test_version_contract.py
+
+      - name: The app has its own identity, not com.example.appname
+        run: python3 ../tools/set_app_identity.py --check
+
+      - name: Build debug + unit tests
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest --no-daemon
+
+      - name: Keep the debug APK with this run
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Build an APK to share (-share tags)
+        if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-share')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            mkdir -p keystore
+            echo "$KEYSTORE_BASE64" | base64 -d > keystore/upload.jks
+            cat >> gradle.properties <<EOF
+          UPLOAD_KEYSTORE_PATH=keystore/upload.jks
+          UPLOAD_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD
+          UPLOAD_KEY_ALIAS=$KEY_ALIAS
+          UPLOAD_KEY_PASSWORD=$KEY_PASSWORD
+          EOF
+            ./gradlew :app:assembleRelease --no-daemon
+            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/app.apk"
+            echo "SIGNED_WITH=your upload key, so it installs over the last share" >> "$GITHUB_ENV"
+          else
+            ./gradlew :app:assembleDebug --no-daemon
+            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/app.apk"
+            echo "SIGNED_WITH=a one-time debug key, so remove the last share before installing this one" >> "$GITHUB_ENV"
+          fi
+
+      - name: Publish it as a GitHub Release (-share tags)
+        if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-share')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$RUNNER_TEMP/app.apk#${GITHUB_REF_NAME}.apk" \
+            --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --prerelease \
+            --notes "An Android build to install by hand. Signed with $SIGNED_WITH."
+
+      - name: Reconstruct upload keystore (release only)
+        if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-android')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          mkdir -p keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > keystore/upload.jks
+          cat >> gradle.properties <<EOF
+          UPLOAD_KEYSTORE_PATH=keystore/upload.jks
+          UPLOAD_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD
+          UPLOAD_KEY_ALIAS=$KEY_ALIAS
+          UPLOAD_KEY_PASSWORD=$KEY_PASSWORD
+          EOF
+
+      - name: Build release bundle
+        if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-android')
+        run: ./gradlew :app:bundleRelease --no-daemon
+
+      - name: Upload AAB to Play Console (internal track)
+        if: startsWith(github.ref, 'refs/tags/v') && endsWith(github.ref, '-android')
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.example.appname   # FILL IN
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

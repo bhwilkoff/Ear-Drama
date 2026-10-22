@@ -1,0 +1,6 @@
+# Ollama gives a model only 2,000 tokens of context unless told otherwise, and quietly
+# drops what does not fit (aider.chat/docs/llms/ollama.html). This gives Olmo 3 room
+# for AGENTS-SHORT.md and a file or two. Raise num_ctx on a computer with 16 GB or more.
+- name: ollama_chat/olmo-3:7b-instruct
+  extra_params:
+    num_ctx: 8192

@@ -1,0 +1,120 @@
+{
+  "_comment": "Copy to ~/.device-bench.json (machine-wide) or tools/bench.json (gitignored). Keys are LEASE names. Roles: test | floor | os-control | owner-watches | owner-personal-never-touch. See tools/bench.py.",
+  "devices": {
+    "atv": {
+      "platform": "tvos",
+      "model": "Apple TV 4K (3rd gen)",
+      "os": "tvOS 26.x",
+      "udid": "00000000-0000-0000-0000-000000000001",
+      "address": "192.0.2.10",
+      "pyatv_id": "00:00:00:00:00:01",
+      "role": "test",
+      "apple_id": "test account A",
+      "capabilities": ["screenshot", "press", "launch", "install", "power", "diagfile"],
+      "quirks": ["one pyatv press can block captures for 45-60 s; use a door for multi-press navigation"],
+      "verified": "2026-01-01"
+    },
+    "atv-control": {
+      "platform": "tvos",
+      "model": "Apple TV 4K (3rd gen)",
+      "os": "tvOS 25.x",
+      "udid": "00000000-0000-0000-0000-000000000002",
+      "address": "192.0.2.11",
+      "pyatv_id": "00:00:00:00:00:02",
+      "role": "os-control",
+      "capabilities": ["screenshot", "press", "launch", "install", "power"],
+      "quirks": [],
+      "verified": "2026-01-01"
+    },
+    "atv-hd": {
+      "platform": "tvos",
+      "model": "Apple TV HD",
+      "os": "tvOS 26.x",
+      "udid": "00000000-0000-0000-0000-000000000003",
+      "role": "floor",
+      "capabilities": ["screenshot", "launch", "install"],
+      "quirks": ["captures sometimes come back 1280x720 = the TOP-LEFT crop of 1080p; check the width before calling it a layout blowup"],
+      "verified": "2026-01-01"
+    },
+    "atv-living": {
+      "platform": "tvos",
+      "model": "Apple TV 4K (2nd gen)",
+      "udid": "00000000-0000-0000-0000-000000000004",
+      "role": "owner-watches",
+      "capabilities": ["screenshot", "launch"],
+      "quirks": ["the owner's everyday TV — ask before waking it"]
+    },
+    "ipad": {
+      "platform": "ipados",
+      "model": "iPad Pro 12.9 (5th gen)",
+      "udid": "00000000-0000-0000-0000-000000000005",
+      "role": "test",
+      "apple_id": "test account A",
+      "capabilities": ["screenshot", "launch", "install", "deeplink", "diagfile"],
+      "quirks": ["passcode OFF, Auto-Lock NEVER, on a charger — there is no remote wake"]
+    },
+    "iphone": {
+      "platform": "ios",
+      "model": "iPhone 12",
+      "udid": "00000000-0000-0000-0000-000000000006",
+      "role": "test",
+      "apple_id": "test account B",
+      "capabilities": ["screenshot", "launch", "install", "deeplink"],
+      "quirks": ["a different Apple ID from the iPad: the real SharePlay/CloudKit peer"]
+    },
+    "iphone-personal": {
+      "platform": "ios",
+      "udid": "00000000-0000-0000-0000-000000000007",
+      "role": "owner-personal-never-touch",
+      "capabilities": [],
+      "quirks": ["paired for development, never a test device"]
+    },
+    "pixel": {
+      "platform": "android",
+      "model": "Pixel 8a",
+      "serial": "adb-XXXXXXXX-XXXXXX._adb-tls-connect._tcp",
+      "role": "test",
+      "capabilities": ["screenshot", "press", "launch", "install", "deeplink"],
+      "quirks": ["secure keyguard: owner unlocks ONCE; svc power stayon true + screen_off_timeout keep it open"]
+    },
+    "androidtv": {
+      "platform": "androidtv",
+      "model": "Google TV dongle",
+      "address": "192.0.2.20",
+      "serial": "192.0.2.20:5555",
+      "mdns_prefix": "adb-XXXXXXXX",
+      "role": "test",
+      "capabilities": ["screenshot", "press", "launch", "install", "deeplink"],
+      "quirks": ["the video plane is not composited into screencap — prove playback by player state, not pixels"]
+    },
+    "firetv": {
+      "platform": "firetv",
+      "model": "Fire TV Stick 4K Max",
+      "address": "192.0.2.21",
+      "serial": "192.0.2.21:5555",
+      "role": "test",
+      "capabilities": ["screenshot", "press", "launch", "install", "deeplink"],
+      "quirks": ["monkey reports success but never foregrounds: use am start -n"]
+    },
+    "roku": {
+      "platform": "roku",
+      "model": "Roku Streaming Stick 4K",
+      "address": "192.0.2.30",
+      "role": "test",
+      "capabilities": ["screenshot", "press", "launch", "install", "console", "deeplink"],
+      "quirks": ["ECP must be Permissive; screenshots capture only a sideloaded dev channel"]
+    },
+    "roku-floor": {
+      "platform": "roku",
+      "model": "Roku 2 XD",
+      "os": "Roku OS 9.1",
+      "address": "192.0.2.31",
+      "role": "floor",
+      "capabilities": ["screenshot", "press", "launch", "install", "console"],
+      "quirks": ["720p UI; the oldest firmware this app supports"]
+    },
+    "mac": {"platform": "macos", "role": "test", "capabilities": ["screenshot", "launch"], "quirks": ["window-id captures only"]},
+    "windows": {"platform": "windows", "address": "user@192.0.2.40", "role": "test", "capabilities": ["screenshot", "launch"], "quirks": []},
+    "web": {"platform": "web", "role": "test", "capabilities": ["screenshot", "press"], "quirks": []}
+  }
+}

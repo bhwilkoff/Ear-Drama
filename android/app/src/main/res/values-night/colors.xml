@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Design tokens (dark), generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. -->
+<!-- Compose reads Color.kt; these serve themes.xml (the splash) and the launcher icon. -->
+<resources>
+    <color name="brand_primary">#FFA7BFD6</color>
+    <color name="brand_background">#FF141619</color>
+    <color name="brand_surface">#FF1D2024</color>
+</resources>

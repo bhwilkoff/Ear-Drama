@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:FluentAvalonia.UI.Controls"
+        xmlns:vm="using:AppName.App.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1180" d:DesignHeight="760"
+        x:Class="AppName.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="App Name"
+        TransparencyLevelHint="Mica,AcrylicBlur,None"
+        Width="1180" Height="760" MinWidth="900" MinHeight="680">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <!-- The Windows shell idiom: FluentAvalonia NavigationView (note the FA prefix),
+         Settings as the built-in footer item. Content swaps in code-behind on
+         selection. Standard decorations keep Snap Layouts working for free. -->
+    <ui:FANavigationView x:Name="Nav"
+                         PaneTitle="App Name"
+                         PaneDisplayMode="Left"
+                         IsSettingsVisible="True"
+                         IsBackButtonVisible="False"
+                         SelectionChanged="OnNavSelectionChanged">
+        <ui:FANavigationView.MenuItems>
+            <ui:FANavigationViewItem Content="Home" Tag="home"/>
+            <ui:FANavigationViewItem Content="Library" Tag="library"/>
+        </ui:FANavigationView.MenuItems>
+
+        <ContentControl x:Name="ContentHost"/>
+    </ui:FANavigationView>
+</Window>
