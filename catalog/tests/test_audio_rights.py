@@ -228,6 +228,23 @@ def music_led_series_hides_comedy_with_songs_stays():
     assert A.judge(ep(series_key="nogenres"), c)["state"] == "keep_unclaimed"
 
 
+@case
+def afrs_original_with_credited_star_is_not_government_work():
+    afrs = {"commandperformance": {"series": "Command Performance",
+                                   "agency": "Armed Forces Radio Service (War Department)"},
+            "owiseries": {"series": "OWI", "agency": "Office of War Information"}}
+    gp = rec(producer_text="Armed Forces Radio Service, United States Army")
+    star = [{"name": "Bob Hope", "role": "m.c."}, {"name": "Ken Carpenter", "role": "announcer"}]
+    crew = [{"name": "Ken Carpenter", "role": "Announcer"}]
+    c = ctx(gov_series=afrs)
+    j = A.judge(ep(series_key="commandperformance", people=star, recordings=[gp]), c)
+    assert (j["rec_bucket"], j["state"]) == ("rec_orphan_unclaimed", "keep_unclaimed"), j
+    for people in (crew, [], None):
+        j = A.judge(ep(series_key="commandperformance", people=people), c)
+        assert j["rec_bucket"] == "rec_gov_work", (people, j)
+    assert A.judge(ep(series_key="owiseries", people=star), c)["rec_bucket"] == "rec_gov_work"
+
+
 def main():
     failed = 0
     for fn in CASES:

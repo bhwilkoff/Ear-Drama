@@ -46,6 +46,18 @@ STORY_GENRES = {"Comedy", "Sitcom", "Drama", "Anthology Drama", "Anthology", "My
                 "Crime", "Adventure", "Serial", "Romance", "Science Fiction", "Horror", "Private Detective",
                 "Police", "Action", "Youth", "Super Hero"}
 
+# An AFRS original is kept as government work only when no performer is credited
+# (owner, 2026-10-22; DECISIONS 006): the stars of Command Performance were on loan
+# from the networks, and their performances carry their own claims. A credit in any
+# other role (announcer, writer, crew) is the agency's own.
+NON_PERFORMER_ROLES = {"announcer", "writer", "author", "producer", "director", "engineer", "sound effects",
+                       "production", "script", "adaptation", "adapter"}
+
+
+def credited_performers(ep):
+    return [p["name"] for p in ep.get("people") or []
+            if (p.get("role") or "").strip().lower() not in NON_PERFORMER_ROLES]
+
 
 def music_led(genres):
     g = list(genres or ())
@@ -94,9 +106,11 @@ def rec_bucket(ep, ctx):
     if ctx["series_foreign"].get(key):
         return "rec_foreign_origin", [ctx["series_foreign"][key]]
 
-    if key in ctx["gov_series"]:
-        return "rec_gov_work", [ctx["gov_series"][key]]
-    for r in recs:
+    gov = ctx["gov_series"].get(key)
+    afrs_stars = bool(gov) and "Armed Forces Radio" in (gov.get("agency") or "") and credited_performers(ep)
+    if gov and not afrs_stars:
+        return "rec_gov_work", [gov]
+    for r in recs if not afrs_stars else ():
         m = GOV_PRODUCER.search(r.get("producer_text") or "")
         if m and not r.get("variant"):
             ev.append({"archive_id": r["archive_id"], "producer": m.group(0)})

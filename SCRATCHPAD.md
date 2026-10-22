@@ -20,7 +20,11 @@
   `docs/research/palette/index.html` (or the PNGs in `shots/`); the method and
   every number are in its README. Three directions: On Air, Tuning Eye,
   Catalin (the research recommends Catalin; it advises against On Air, whose
-  red is iHeartRadio's). Your pick unblocks the tokens and the icon (M0).
+  red is iHeartRadio's). Your pick unblocks the tokens and the icon (M0). **Also**: may the loop
+  download the two fonts (google/fonts on GitHub) and the CC0 microphone
+  photo (Wikimedia Commons)? And a rights call: 112 Command Performance
+  episodes credit nobody, so they stay government work under the AFRS rule;
+  presume network stars for the whole series instead (tick 7)?
 - **Status**: research done, owner questions answered, the 1.0 loop drafted
   (2026-10-22); nothing built yet. The web app and the native apps are still
   the template's starters, renamed to Ear Drama. **The build runs from
