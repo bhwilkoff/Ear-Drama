@@ -22,3 +22,8 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Implementation: `AppRoot.kt` uses `topAppBarColors()`; its title reads "Ear Drama", not "App Name". `android/local.properties` (gitignored) points at `~/Library/Android/sdk`, as Archive Watch's does. Version 1.0.2 (3).
 - Verification: local `assembleDebug testDebugUnitTest`: BUILD SUCCESSFUL, no `w:` lines; Gradle daemons stopped after. CI run dispatched for the push (push events still start nothing). Built, not device-verified. M0's rename item is checked: Apple and Android both build warning-free.
 - Next: read this tick's CI run; then the fonts item (palette and icon wait on the owner's pick).
+
+### Tick 4, 2026-10-22, data: the catalog restore is measured
+- Context: tick 3's dispatched Android Build (39863770465, 4efd2d1) passed with no `w:` lines. M1 item 1.
+- Verification, MEASURED 2026-10-22 against the `catalog-2026-10-21` restore (all 4 SHA256SUMS entries OK): all ten catalog suites pass, 362 tests (audio_rights 22, cce_drama_renewals 13, discover_corpus 24, enrich_db 52, enrich_external 37, identity 59, no_recommend 6, otr_parse 41, people_art 66, photo_archives 42). 157,503 episodes, 16,113 series, 300,935 recordings. Rights states: keep_unclaimed 106,782; keep_clean 15,125; hide_claim 25,021; hide_out_of_scope 9,285; hide_unidentified 1,290. These are before catalog Decisions 004-007 are wired in.
+- Next: wire the CCE drama renewals into the audit (catalog 004), with a test and a control seen to fail.

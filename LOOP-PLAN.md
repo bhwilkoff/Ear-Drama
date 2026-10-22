@@ -146,7 +146,7 @@ The clients read one published plane and re-derive nothing
 (`shared-data-plane-contract`, `web-catalog-data-layer`,
 `content-corpus-derivation`, `evidence-gated-catalog-curation`).
 
-- [ ] Restore the catalog from the `catalog-2026-10-21` Release and run all ten
+- [x] Restore the catalog from the `catalog-2026-10-21` Release and run all ten
       catalog test suites; record the counts as MEASURED with the date.
 - [ ] Wire the CCE drama renewals into the audit (catalog 004), add the stricter
       music bucket and the AFRS credits rule (006), and the version ranking
