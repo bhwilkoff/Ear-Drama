@@ -153,7 +153,7 @@ The clients read one published plane and re-derive nothing
 - [x] Add the stricter music bucket and the AFRS credits rule (006), and the
       version ranking (007), each with a paired test and a control seen to fail
       (ticks 6-8).
-- [ ] Write `docs/CATALOG-CONTRACT.md`: series, runs and their kinds, broadcast
+- [ ] Write `docs/CATALOG-CONTRACT.md` (DRAFT v1 written, tick 9; settled with the publish step): series, runs and their kinds, broadcast
       seasons, episodes, recordings and versions, people and credits, images
       with their evidence, transcripts, evenings, the rights line, and the
       `keep_unclaimed` publication flag. Test the documented shape against the
@@ -314,6 +314,7 @@ works elsewhere, and checks again.
 | What | Unblocks | By |
 |---|---|---|
 | Pick a palette direction | M0 tokens and icon | end of M0 |
+| Settings > Pages > Source: GitHub Actions (CATALOG-CONTRACT §4) | the web's data on Pages | before M1's publish |
 | Register a DMCA agent at copyright.gov ($6) | unclaimed episodes on the public web | before M2's public launch |
 | Request the CarPlay audio entitlement (developer.apple.com/contact/carplay) | the CarPlay stub, later the car | now; Apple is slow |
 | Create the App Store Connect record for `app.eardrama` and the seven signing secrets (`docs/CLOUD-SUBMISSION.md`) | TestFlight | before M3's gate |

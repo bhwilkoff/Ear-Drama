@@ -1,0 +1,201 @@
+# Ear Drama catalog contract
+
+> **DRAFT v1, 2026-10-22 (loop tick 9).** Nothing is published to this shape yet.
+> Sizes and the web projection's file layout are marked *to measure*, and are
+> settled by the publish step (LOOP-PLAN M1). When this doc and the code
+> disagree, the code wins, and the doc is fixed in the same change.
+
+I want every Ear Drama app, on every platform, to show the same episode with
+the same date, the same cast, the same rights line, and the same default copy,
+because none of them works any of it out for itself. The catalog in `catalog/`
+decides all of that once, in the pipeline, and publishes it; the apps read it
+and filter it with a `WHERE` clause. This is the `shared-data-plane-contract`
+skill applied to radio, and Archive Watch's `CATALOG-CONTRACT.md` is its model.
+
+## 1. The one rule
+
+No client re-derives, re-audits, re-matches, re-ranks, or re-hosts anything in
+this catalog. Rights states, the default copy, broadcast seasons, genres,
+evenings, the transcript gate, and the never-recommended flag are all pipeline
+outputs. A client that needs a value the plane does not carry asks for a new
+field here; it never computes one.
+
+## 2. Published assets
+
+| Asset | Host | For | Notes |
+|---|---|---|---|
+| `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`); *size to measure* |
+| `manifest.json` | the same Release, and Pages | every client, tooling | `schemaVersion`, `generatedAt`, row counts, bytes, sha256 |
+| `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
+| `data/index/*.json`, `data/series/*.json`, `data/episodes/{shard}.json`, `data/evenings/*.json` | GitHub Pages, deployed by Actions (never committed) | web, smart-TV web, Roku | §4; *layout to measure* |
+| `radio-catalog.sqlite.xz` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included; never read by a client |
+
+Audio is never re-hosted. Every client plays `https://archive.org/download/{id}/{file}`
+from the episode's default recording, percent-encoded by the pipeline (the stored
+URLs hold raw spaces today). The browser plays it through an `<audio>` element,
+which needs no CORS; archive.org's storage nodes also answered ranged GETs with
+`access-control-allow-origin: *` on 2026-10-17 (research 04 §5), which the web's
+loudness gain through Web Audio depends on and which the web must re-measure
+before relying on it.
+
+Refresh is an ETag-conditional GET (`If-None-Match`; 304 keeps the cache). A
+downloaded database is validated before the swap: a size floor, `PRAGMA
+integrity_check`, and `schemaVersion` at or above the app's minimum, then an
+atomic rename. A half-downloaded catalog never becomes the live one.
+
+## 3. The served projection (native SQLite)
+
+Only rows whose `state` begins with `keep_` are served. Hidden rows never leave
+the pipeline, so no client can show one by mistake. Every table below is
+additive: new columns only, clients ignore what they do not know, and a field
+is never renamed or repurposed.
+
+### 3.1 `episodes`, the catalog row
+
+The broadcast is the identity (research §4): one row per broadcast, however
+many copies survive.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | TEXT PK | stable episode id; dated episodes are `{seriesKey}|{YYYY-MM-DD}` |
+| `series_key` | TEXT | → `series.key` |
+| `air_date` | TEXT | `YYYY-MM-DD`, or NULL when no witness dates it |
+| `date_source` | TEXT | which witness dated it (filename, OTRR log, Goldin, ID3 album tag) |
+| `season` | TEXT | broadcast season, `1949-50`, computed in the pipeline (Decision 058); NULL when undated |
+| `run_id` | TEXT | the dated run it belongs to, with that run's kind (R2) |
+| `num` | INTEGER | log number, when a log gives one |
+| `title` | TEXT | display title |
+| `aka` | TEXT | alternate titles (AFRS retitlings), JSON array |
+| `length_s` | REAL | the default copy's measured length |
+| `rights` | TEXT | `clean` or `unclaimed` (§6) |
+| `rights_basis` | TEXT | the bucket that decided it, for the rights line's detail |
+| `no_recommend` | TEXT | NULL, or the reason it is never recommended (§6) |
+| `network`, `network_source` | TEXT | the network that aired it, and which witness says so |
+| `sponsor` | TEXT | dated sponsor, when a log gives one |
+| `has_transcript` | INTEGER | 1 when a transcript passes the gate (Decision 058) |
+| `gain_db` | REAL | playback gain toward the loudness target; NULL until measured |
+| `added_at` | TEXT | when the episode first appeared in a published catalog |
+| `detail_json` | TEXT | Detail-only fields (credits, versions, other performances, witnesses), decoded only on Detail |
+
+### 3.2 `recordings`, the copies
+
+`(episode_id, rank, archive_id, file, url, format, kbps, length_s, variant,
+partial)`. Rank 0 is the default copy, chosen by `build_db.order_recordings`
+(catalog DECISIONS 007): complete before partial, domestic before AFRS, OTRR's
+copy, then measured bitrate. The versions picker lists the rest in rank order.
+
+### 3.3 `series`, `runs`, `people`, `credits`, `art`
+
+- `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
+  `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
+  the logs say aired), `kind_summary`.
+- `runs`: `(id, series_key, first_date, last_date, kind, network)`; kind is one
+  of anthology, character, serial, strip, comedy-variety, news, broadcast-day.
+- `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art` row or NULL).
+- `credits`: `(episode_id, person_id, role)`, a join table for "with this
+  person" queries.
+- `art`: images with their evidence (`url`, `width`, `height`, `license`,
+  `evidence_url`, `author` when the license requires credit). An image is
+  served only when its own record carries the evidence (DECISIONS 055).
+
+### 3.4 Search
+
+`episodes_fts` (FTS5): title, aka, series name, credited names, and transcript
+text where it passes the gate. Matching is word-prefix, never substring, on every
+platform: "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful".
+
+### 3.5 Forwarding ids
+
+`episode_aliases (old_id, new_id)`. 79,612 episodes in the 2026-10-21 snapshot
+have no date, and their ids come from a title slug or an archive file path that
+can change when parsing improves. When an id changes, the old one forwards; a
+saved history, queue, or share link never breaks (`canonical-entity-identity`).
+
+## 4. The web projection (Pages)
+
+Cut from the served projection, never built separately. *Layout to measure*;
+the starting shape, Archive Watch's:
+
+- `data/index/series.json`: every served series as a positional row for
+  browsing and search.
+- `data/series/{key}.json`: one series page, its runs, seasons, and episode rows.
+- `data/episodes/{shard}.json`: Detail fields, sharded by a stable hash of the
+  episode id (FNV-1a, positions append-only), one shard per Detail view.
+- `data/evenings/{YYYY-MM-DD}.json` and `data/channels.json`: the Radio tab (§8).
+
+The series index is the gatekeeper for every thin client: an id absent from it
+is never fetched, listed, or linked. Deploying through Actions means the owner
+moves Settings > Pages > Source to GitHub Actions before the first publish.
+
+## 5. Query verbs
+
+Every client reproduces these natively; each says which filter clauses it applies.
+
+| Verb | Returns | Clauses |
+|---|---|---|
+| `continueListening` | the person's in-progress episodes | none (the person's own) |
+| `seriesBrowse(genre, network, decade, kind)` | series rows | `recommendAnd` on shelves only |
+| `seriesPage(key)` | runs, seasons, episodes, oldest first (R1) | none |
+| `episodeDetail(id)` | the row plus `detail_json`; resolves aliases | none |
+| `search(q)` | episodes and series, word-prefix | none |
+| `shelf(rule)` | episodes for a Listen shelf | `recommendAnd` |
+| `tonight(localDate)` | the evening for the person's own date | `recommendAnd` |
+| `withPerson(id)` | episodes crediting a person | none |
+
+### Named filter clauses
+
+- `recommendAnd`: `no_recommend IS NULL`. Every surface that chooses for the
+  listener (shelves, Tonight, channels, widgets, Top Shelf, autoplay after a
+  serial's arc) applies it; every surface the listener drives (search, browse,
+  series pages, Detail) does not.
+
+### 5.5 Display vocabulary
+
+| Field value | Shown as |
+|---|---|
+| `rights = clean` | the basis: "Government recording", "LibriVox recording", "Published before 1926" |
+| `rights = unclaimed` | "No rights claim known. Removed on request." Never "public domain" |
+| `variant = AFRS` / `AFRTS` | "Armed Forces Radio rebroadcast" |
+| `partial = 1` | "Incomplete copy" |
+| the eight genres | their names; hues per the owner's palette pick (Decision 060) |
+
+## 6. Policy flags
+
+- **Rights** come from `catalog/tools/audit_audio_rights.py`: hides run before
+  rescues, the stricter of the recording and underlying-work layers wins, and
+  every row carries its evidence. Only `keep_clean` (served as `clean`) and
+  `keep_unclaimed` (`unclaimed`) are served.
+- **The public-web gate**: until the DMCA agent is registered, the web
+  projection serves `clean` rows only. This is one flag in the publish step,
+  never a client filter (LOOP-PLAN standing rules).
+- **Never recommended, always findable**: `no_recommend` carries the reason
+  (Nazi-state speeches today; WWII propaganda per catalog DECISIONS 006).
+- **Take-downs** go in `catalog/editorial/takedowns.json` and remove the rows at
+  the next publish.
+
+## 7. Refresh protocol
+
+The publish workflow runs on a schedule and on dispatch, under one concurrency
+group with every other catalog writer. It merges onto the current artifact and
+refuses to publish a catalog that shrank past a floor without a recorded reason
+(Archive Watch Decision 020). A run that read nothing goes red.
+
+## 8. Extension files
+
+Small JSON the pipeline computes, so a widget or Top Shelf never opens the
+database: `tonight.json` keyed by calendar date (starting yesterday, so every
+time zone finds its own today, and a day once published keeps its value), and
+`channels.json`, the genre channels' schedules on the one clock (R10).
+
+## 9. Contract tests (to write with the publish step)
+
+Each asserts the documented shape over the real published artifact, every row,
+and has a negative control:
+
+1. No served row has a `state` outside `keep_clean` and `keep_unclaimed`.
+2. Every `rights = unclaimed` row's display string is never "public domain".
+3. Every episode has exactly one rank-0 recording with a percent-encoded URL.
+4. Every `no_recommend` episode is absent from every shelf, evening, and channel.
+5. Every web shard id is in the series index (the gatekeeper).
+6. Every id that left the catalog since the last publish is either aliased or
+   in `takedowns.json`.

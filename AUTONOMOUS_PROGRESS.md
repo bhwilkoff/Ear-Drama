@@ -53,3 +53,10 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Implementation: the sort moved into `build_db.order_recordings` (no behavior change); catalog 007's "How to apply" amended with the reason; LOOP-PLAN's rights item checked (ticks 6-8).
 - Verification: `test_identity.py` 61/61 with two new checks (domestic OTRR, domestic, AFRS, fragment; bitrate never outranks the domestic copy); a kind-first ordering fails the first. All ten catalog suites pass.
 - Next: `docs/CATALOG-CONTRACT.md` (M1).
+
+### Tick 9, 2026-10-22, data: CATALOG-CONTRACT.md, draft v1
+- Context: M1. Read `shared-data-plane-contract`, `web-catalog-data-layer`, and research 06 §1-2.3 (Archive Watch's contract carried to audio) first.
+- Implementation: `docs/CATALOG-CONTRACT.md` DRAFT v1: assets (native SQLite projection on a rolling Release, raw DEFLATE, ETag, validate-then-swap; web JSON on Pages deployed by Actions; audio never re-hosted), the served projection (only `keep_*` rows leave the pipeline), episodes/recordings/series/runs/people/credits/art, word-prefix FTS, an `episode_aliases` forwarding table, query verbs with the `recommendAnd` clause, display vocabulary (unclaimed is never "public domain"), the public-web gate as a publish-step flag, and six contract tests to write with the publish step.
+- Measured along the way: 79,612 episodes are undated, with ids from a title slug or an archive path (why the aliases table is in v1); stored download URLs hold raw spaces (the publish step percent-encodes).
+- Owner item added to Needs Ben: Pages source to GitHub Actions before the first publish.
+- Next: the publish step's projection builder, measuring the sizes the draft marks.
