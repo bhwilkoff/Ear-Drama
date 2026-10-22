@@ -1,0 +1,3746 @@
+{
+ "id": "gut-27357",
+ "roles": [
+  {
+   "id": "RROBINSON",
+   "name": "ROBINSON",
+   "lines": 44,
+   "words": 422,
+   "gender": null
+  },
+  {
+   "id": "RCARVER",
+   "name": "CARVER",
+   "lines": 67,
+   "words": 886,
+   "gender": null
+  },
+  {
+   "id": "RKIEFT",
+   "name": "KIEFT",
+   "lines": 55,
+   "words": 626,
+   "gender": null
+  },
+  {
+   "id": "RANNOUNCER",
+   "name": "ANNOUNCER",
+   "lines": 7,
+   "words": 666,
+   "gender": null
+  },
+  {
+   "id": "RWESTON",
+   "name": "WESTON",
+   "lines": 9,
+   "words": 104,
+   "gender": null
+  },
+  {
+   "id": "RJONES",
+   "name": "JONES",
+   "lines": 71,
+   "words": 795,
+   "gender": null
+  },
+  {
+   "id": "RVOICE",
+   "name": "VOICE",
+   "lines": 7,
+   "words": 32,
+   "gender": null
+  },
+  {
+   "id": "RMOB",
+   "name": "MOB",
+   "lines": 1,
+   "words": 14,
+   "gender": null
+  },
+  {
+   "id": "RALL",
+   "name": "ALL",
+   "lines": 3,
+   "words": 16,
+   "gender": null
+  },
+  {
+   "id": "RPETER",
+   "name": "PETER",
+   "lines": 29,
+   "words": 344,
+   "gender": null
+  }
+ ],
+ "lines": [
+  {
+   "id": "L0001",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "No word yet from Elder Brewster?"
+    }
+   ],
+   "text": "No word yet from Elder Brewster?",
+   "rev": 1,
+   "text_sha1": "8d54faa7ef"
+  },
+  {
+   "id": "L0002",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Nay, not a word. I fear me that he and Master Cushman have found it impossible to raise such a large sum of money."
+    }
+   ],
+   "text": "Nay, not a word. I fear me that he and Master Cushman have found it impossible to raise such a large sum of money.",
+   "rev": 1,
+   "text_sha1": "d8474e54ec"
+  },
+  {
+   "id": "L0003",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "If we delay much longer King James may repent himself of his generosity in allowing us to settle in Virginia."
+    }
+   ],
+   "text": "If we delay much longer King James may repent himself of his generosity in allowing us to settle in Virginia.",
+   "rev": 1,
+   "text_sha1": "f45068baf3"
+  },
+  {
+   "id": "L0004",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "I begin to fear that we are doomed to spend the rest of our days in Holland."
+    }
+   ],
+   "text": "I begin to fear that we are doomed to spend the rest of our days in Holland.",
+   "rev": 1,
+   "text_sha1": "a45472f4cf"
+  },
+  {
+   "id": "L0005",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Nay, nay, do not lose heart. Jehovah will find a way for his children. Remember, the Children of Israel wandered for forty years in the wilderness before they found rest in the Promised Land."
+    }
+   ],
+   "text": "Nay, nay, do not lose heart. Jehovah will find a way for his children. Remember, the Children of Israel wandered for forty years in the wilderness before they found rest in the Promised Land.",
+   "rev": 1,
+   "text_sha1": "ce6b8d6638"
+  },
+  {
+   "id": "L0006",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "I'll not lose faith, Pastor Robinson. I know a way will be found for us."
+    },
+    {
+     "sound": "knock"
+    }
+   ],
+   "text": "I'll not lose faith, Pastor Robinson. I know a way will be found for us.",
+   "rev": 1,
+   "text_sha1": "46f871099f"
+  },
+  {
+   "id": "L0007",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Will you see who's at the door?"
+    }
+   ],
+   "text": "Will you see who's at the door?",
+   "rev": 1,
+   "text_sha1": "37f6452142"
+  },
+  {
+   "id": "L0008",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Of course, Pastor."
+    },
+    {
+     "sound": "sound of opening door"
+    },
+    {
+     "say": "Good day to you, sir."
+    }
+   ],
+   "text": "Of course, Pastor. Good day to you, sir.",
+   "rev": 1,
+   "text_sha1": "b0137140aa"
+  },
+  {
+   "id": "L0009",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Does Master John Robinson dwell here?"
+    }
+   ],
+   "text": "Does Master John Robinson dwell here?",
+   "rev": 1,
+   "text_sha1": "a127eccaf4"
+  },
+  {
+   "id": "L0010",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Aye. Will you enter?"
+    }
+   ],
+   "text": "Aye. Will you enter?",
+   "rev": 1,
+   "text_sha1": "db09b49a4f"
+  },
+  {
+   "id": "L0011",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Thank you."
+    }
+   ],
+   "text": "Thank you.",
+   "rev": 1,
+   "text_sha1": "174534c6b3"
+  },
+  {
+   "id": "L0012",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Pastor Robinson, this gentleman would speak with you."
+    }
+   ],
+   "text": "Pastor Robinson, this gentleman would speak with you.",
+   "rev": 1,
+   "text_sha1": "26c6b9d4d4"
+  },
+  {
+   "id": "L0013",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Good morrow to you, sir."
+    }
+   ],
+   "text": "Good morrow to you, sir.",
+   "rev": 1,
+   "text_sha1": "429c3c1c09"
+  },
+  {
+   "id": "L0014",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Are you Pastor Robinson, then?"
+    }
+   ],
+   "text": "Are you Pastor Robinson, then?",
+   "rev": 1,
+   "text_sha1": "17395dc3a6"
+  },
+  {
+   "id": "L0015",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "I am. And to what do I owe the honor of this visit, Master--ah--?"
+    }
+   ],
+   "text": "I am. And to what do I owe the honor of this visit, Master--ah--?",
+   "rev": 1,
+   "text_sha1": "b8906c0c58"
+  },
+  {
+   "id": "L0016",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "My name is Kieft, Wilhelm Kieft, at your service."
+    }
+   ],
+   "text": "My name is Kieft, Wilhelm Kieft, at your service.",
+   "rev": 1,
+   "text_sha1": "05f2252a22"
+  },
+  {
+   "id": "L0017",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "I am honored, Master Kieft. Allow me to present Master Carver."
+    },
+    {
+     "direction": "they greet each other"
+    }
+   ],
+   "text": "I am honored, Master Kieft. Allow me to present Master Carver.",
+   "rev": 1,
+   "text_sha1": "88b920e508"
+  },
+  {
+   "id": "L0018",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "And now to the business that brought me here--it is rumored about Leyden that you and your company are about to leave Leyden. Is that true?"
+    }
+   ],
+   "text": "And now to the business that brought me here--it is rumored about Leyden that you and your company are about to leave Leyden. Is that true?",
+   "rev": 1,
+   "text_sha1": "67f0d967c9"
+  },
+  {
+   "id": "L0019",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "There is, as yet, nothing certain, Master Kieft."
+    }
+   ],
+   "text": "There is, as yet, nothing certain, Master Kieft.",
+   "rev": 1,
+   "text_sha1": "633dd0c5e4"
+  },
+  {
+   "id": "L0020",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "But you are planning an emigration to the New World, are you not?"
+    }
+   ],
+   "text": "But you are planning an emigration to the New World, are you not?",
+   "rev": 1,
+   "text_sha1": "0f8bbe2e9d"
+  },
+  {
+   "id": "L0021",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "It has been talked of, certainly, but thus far we have not found the means."
+    }
+   ],
+   "text": "It has been talked of, certainly, but thus far we have not found the means.",
+   "rev": 1,
+   "text_sha1": "43f36948ea"
+  },
+  {
+   "id": "L0022",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Well, Master Robinson, perhaps I can find them for you."
+    }
+   ],
+   "text": "Well, Master Robinson, perhaps I can find them for you.",
+   "rev": 1,
+   "text_sha1": "4332bc3195"
+  },
+  {
+   "id": "L0023",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Indeed!"
+    }
+   ],
+   "text": "Indeed!",
+   "rev": 1,
+   "text_sha1": "72517264c3"
+  },
+  {
+   "id": "L0024",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Tell us, Master Kieft!"
+    }
+   ],
+   "text": "Tell us, Master Kieft!",
+   "rev": 1,
+   "text_sha1": "57aa1e800b"
+  },
+  {
+   "id": "L0025",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I am a member of the Dutch West India Company, which possesses a large tract of land in the New World."
+    }
+   ],
+   "text": "I am a member of the Dutch West India Company, which possesses a large tract of land in the New World.",
+   "rev": 1,
+   "text_sha1": "c28ea6410e"
+  },
+  {
+   "id": "L0026",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Indeed, I did not know that."
+    }
+   ],
+   "text": "Indeed, I did not know that.",
+   "rev": 1,
+   "text_sha1": "2350839e61"
+  },
+  {
+   "id": "L0027",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Ah, yes, through the discovery of a countryman of yours, Henry Hudson, who sailed under our flag, we own the country from the Great South River to the Great North River, where, I am told, the climate is healthful and pleasant, and the land rich and bountiful."
+    }
+   ],
+   "text": "Ah, yes, through the discovery of a countryman of yours, Henry Hudson, who sailed under our flag, we own the country from the Great South River to the Great North River, where, I am told, the climate is healthful and pleasant, and the land rich and bountiful.",
+   "rev": 1,
+   "text_sha1": "0a4d61d1d7"
+  },
+  {
+   "id": "L0028",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "And what do you propose to us?"
+    }
+   ],
+   "text": "And what do you propose to us?",
+   "rev": 1,
+   "text_sha1": "83ac18847d"
+  },
+  {
+   "id": "L0029",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "My company is prepared to furnish you land upon which to found a colony, and capital to carry you and your people there and support you until you have made yourselves self-supporting."
+    }
+   ],
+   "text": "My company is prepared to furnish you land upon which to found a colony, and capital to carry you and your people there and support you until you have made yourselves self-supporting.",
+   "rev": 1,
+   "text_sha1": "0407434cd4"
+  },
+  {
+   "id": "L0030",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "And for this you would expect of us--what?"
+    }
+   ],
+   "text": "And for this you would expect of us--what?",
+   "rev": 1,
+   "text_sha1": "d6f05a6890"
+  },
+  {
+   "id": "L0031",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Some small share of your profits."
+    }
+   ],
+   "text": "Some small share of your profits.",
+   "rev": 1,
+   "text_sha1": "32af3f82dc"
+  },
+  {
+   "id": "L0032",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Yes, and what else?"
+    }
+   ],
+   "text": "Yes, and what else?",
+   "rev": 1,
+   "text_sha1": "e9899ca64f"
+  },
+  {
+   "id": "L0033",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Nothing, except that you should live under the Dutch flag and make our claim to the land secure."
+    }
+   ],
+   "text": "Nothing, except that you should live under the Dutch flag and make our claim to the land secure.",
+   "rev": 1,
+   "text_sha1": "9805529e2b"
+  },
+  {
+   "id": "L0034",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Your offer is generous, Master Kieft."
+    }
+   ],
+   "text": "Your offer is generous, Master Kieft.",
+   "rev": 1,
+   "text_sha1": "927df357b4"
+  },
+  {
+   "id": "L0035",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "And you make no other conditions than those you mention?"
+    }
+   ],
+   "text": "And you make no other conditions than those you mention?",
+   "rev": 1,
+   "text_sha1": "22de46fbbd"
+  },
+  {
+   "id": "L0036",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "None, I assure you."
+    }
+   ],
+   "text": "None, I assure you.",
+   "rev": 1,
+   "text_sha1": "d0d4a9fa3c"
+  },
+  {
+   "id": "L0037",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Can you offer them in writing so that our people may consider them?"
+    }
+   ],
+   "text": "Can you offer them in writing so that our people may consider them?",
+   "rev": 1,
+   "text_sha1": "8fed72ec14"
+  },
+  {
+   "id": "L0038",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Indeed, yes, if you are interested, my company will make you a written offer within a fortnight."
+    }
+   ],
+   "text": "Indeed, yes, if you are interested, my company will make you a written offer within a fortnight.",
+   "rev": 1,
+   "text_sha1": "763ff85a37"
+  },
+  {
+   "id": "L0039",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "We are interested, Master Kieft, very much so."
+    }
+   ],
+   "text": "We are interested, Master Kieft, very much so.",
+   "rev": 1,
+   "text_sha1": "810c9f34fc"
+  },
+  {
+   "id": "L0040",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Good. You shall receive our conditions as soon as I can arrange it. Good day!"
+    }
+   ],
+   "text": "Good. You shall receive our conditions as soon as I can arrange it. Good day!",
+   "rev": 1,
+   "text_sha1": "b0c4104675"
+  },
+  {
+   "id": "L0041",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Good day, sir, and thank you."
+    }
+   ],
+   "text": "Good day, sir, and thank you.",
+   "rev": 1,
+   "text_sha1": "7e16267c86"
+  },
+  {
+   "id": "L0042",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Jehovah has heard our prayer. The way is open. Mayhap--"
+    }
+   ],
+   "text": "Jehovah has heard our prayer. The way is open. Mayhap--",
+   "rev": 1,
+   "text_sha1": "345c78586e"
+  },
+  {
+   "id": "L0043",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Is it not a generous offer?"
+    }
+   ],
+   "text": "Is it not a generous offer?",
+   "rev": 1,
+   "text_sha1": "502b1b94e1"
+  },
+  {
+   "id": "L0044",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Generous? Aye, but still--"
+    }
+   ],
+   "text": "Generous? Aye, but still--",
+   "rev": 1,
+   "text_sha1": "8f51edd8a0"
+  },
+  {
+   "id": "L0045",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Well?"
+    }
+   ],
+   "text": "Well?",
+   "rev": 1,
+   "text_sha1": "6d43d98638"
+  },
+  {
+   "id": "L0046",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "I like it not."
+    }
+   ],
+   "text": "I like it not.",
+   "rev": 1,
+   "text_sha1": "f1e8104491"
+  },
+  {
+   "id": "L0047",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Indeed, and why not?"
+    }
+   ],
+   "text": "Indeed, and why not?",
+   "rev": 1,
+   "text_sha1": "cb14553298"
+  },
+  {
+   "id": "L0048",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Why should the Dutch West India Company make us such a generous offer?"
+    }
+   ],
+   "text": "Why should the Dutch West India Company make us such a generous offer?",
+   "rev": 1,
+   "text_sha1": "ffe0fbde54"
+  },
+  {
+   "id": "L0049",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Why indeed, but that we may establish for them a colony in the New World?"
+    }
+   ],
+   "text": "Why indeed, but that we may establish for them a colony in the New World?",
+   "rev": 1,
+   "text_sha1": "e2d60cfc29"
+  },
+  {
+   "id": "L0050",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Aye, a colony that will give them a stronger hold upon disputed land."
+    }
+   ],
+   "text": "Aye, a colony that will give them a stronger hold upon disputed land.",
+   "rev": 1,
+   "text_sha1": "3b146db4a9"
+  },
+  {
+   "id": "L0051",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Do you think the land is disputed?"
+    }
+   ],
+   "text": "Do you think the land is disputed?",
+   "rev": 1,
+   "text_sha1": "036e5df095"
+  },
+  {
+   "id": "L0052",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "I know but little of the New World. I know not even where the Great North River or the Great South River may be, but only this I know: King James and his Virginia Company would take it much amiss, that having a patent to lands in Virginia, we turned to the Dutch and settled under their flag."
+    }
+   ],
+   "text": "I know but little of the New World. I know not even where the Great North River or the Great South River may be, but only this I know: King James and his Virginia Company would take it much amiss, that having a patent to lands in Virginia, we turned to the Dutch and settled under their flag.",
+   "rev": 1,
+   "text_sha1": "6d7f6bf572"
+  },
+  {
+   "id": "L0053",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "And what has King James ever done for us but persecute us, drive us from our homes, and make of us pilgrims upon the face of the earth?"
+    }
+   ],
+   "text": "And what has King James ever done for us but persecute us, drive us from our homes, and make of us pilgrims upon the face of the earth?",
+   "rev": 1,
+   "text_sha1": "b2e41fbf8f"
+  },
+  {
+   "id": "L0054",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Aye, but I am an Englishman. I had looked with joy upon our emigration to America, because I had hoped we could once again live under British rule."
+    }
+   ],
+   "text": "Aye, but I am an Englishman. I had looked with joy upon our emigration to America, because I had hoped we could once again live under British rule.",
+   "rev": 1,
+   "text_sha1": "4c5c63f174"
+  },
+  {
+   "id": "L0055",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Many of our company have felt the same; but if we cannot go except under the Dutch flag, still we must go."
+    }
+   ],
+   "text": "Many of our company have felt the same; but if we cannot go except under the Dutch flag, still we must go.",
+   "rev": 1,
+   "text_sha1": "23dcf5390f"
+  },
+  {
+   "id": "L0056",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Aye."
+    }
+   ],
+   "text": "Aye.",
+   "rev": 1,
+   "text_sha1": "04532c97a3"
+  },
+  {
+   "id": "L0057",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "The hand of Jehovah leads us; we must follow."
+    }
+   ],
+   "text": "The hand of Jehovah leads us; we must follow.",
+   "rev": 1,
+   "text_sha1": "df8eb95e75"
+  },
+  {
+   "id": "L0058",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "So the offer of the Dutch West India Company was received and in due course of time the provisions were put into writing. The Pilgrim company discussed the offer from every angle. All of them would have preferred to settle under the British flag, if it could have been arranged, but because more than six months had passed and they had not found anyone who could finance them, they felt that the Dutch offer should be accepted.\nTherefore, near the end of February, 1620, Pastor Robinson and Elder Carver meet with Wilhelm Kieft to settle finally the matter of the emigration. Let us listen as they talk together."
+    }
+   ],
+   "text": "So the offer of the Dutch West India Company was received and in due course of time the provisions were put into writing. The Pilgrim company discussed the offer from every angle. All of them would have preferred to settle under the British flag, if it could have been arranged, but because more than six months had passed and they had not found anyone who could finance them, they felt that the Dutch offer should be accepted.\nTherefore, near the end of February, 1620, Pastor Robinson and Elder Carver meet with Wilhelm Kieft to settle finally the matter of the emigration. Let us listen as they talk together.",
+   "rev": 1,
+   "text_sha1": "2c5f4b02b2"
+  },
+  {
+   "id": "L0059",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Two ships and one thousand pounds, which you can repay in ten years."
+    }
+   ],
+   "text": "Two ships and one thousand pounds, which you can repay in ten years.",
+   "rev": 1,
+   "text_sha1": "c9b58c07e0"
+  },
+  {
+   "id": "L0060",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "And all your company demands is a monopoly in the fur trade?"
+    }
+   ],
+   "text": "And all your company demands is a monopoly in the fur trade?",
+   "rev": 1,
+   "text_sha1": "fac7aa854b"
+  },
+  {
+   "id": "L0061",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "That is all. Otherwise you shall do what pleases you; but all of the fur must belong to the Dutch West India Company."
+    }
+   ],
+   "text": "That is all. Otherwise you shall do what pleases you; but all of the fur must belong to the Dutch West India Company.",
+   "rev": 1,
+   "text_sha1": "862b9c9a99"
+  },
+  {
+   "id": "L0062",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "That seems just. What think you, Elder Carver?"
+    }
+   ],
+   "text": "That seems just. What think you, Elder Carver?",
+   "rev": 1,
+   "text_sha1": "2114a5503d"
+  },
+  {
+   "id": "L0063",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Who shall govern us, Master Kieft?"
+    }
+   ],
+   "text": "Who shall govern us, Master Kieft?",
+   "rev": 1,
+   "text_sha1": "00771407e5"
+  },
+  {
+   "id": "L0064",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "You shall say that yourself. Who governs you now?"
+    }
+   ],
+   "text": "You shall say that yourself. Who governs you now?",
+   "rev": 1,
+   "text_sha1": "edc8004c12"
+  },
+  {
+   "id": "L0065",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "We have no governor except the Elders of the Church."
+    }
+   ],
+   "text": "We have no governor except the Elders of the Church.",
+   "rev": 1,
+   "text_sha1": "150a7b8741"
+  },
+  {
+   "id": "L0066",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "It shall be the same in the New World."
+    }
+   ],
+   "text": "It shall be the same in the New World.",
+   "rev": 1,
+   "text_sha1": "469f7accc2"
+  },
+  {
+   "id": "L0067",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Do the terms satisfy you, Pastor Robinson?"
+    }
+   ],
+   "text": "Do the terms satisfy you, Pastor Robinson?",
+   "rev": 1,
+   "text_sha1": "f14f4428bf"
+  },
+  {
+   "id": "L0068",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Indeed, I am more than satisfied."
+    }
+   ],
+   "text": "Indeed, I am more than satisfied.",
+   "rev": 1,
+   "text_sha1": "4c83f7c860"
+  },
+  {
+   "id": "L0069",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Then shall we sign the articles?"
+    },
+    {
+     "direction": "rattle of paper"
+    }
+   ],
+   "text": "Then shall we sign the articles?",
+   "rev": 1,
+   "text_sha1": "514d2f31e7"
+  },
+  {
+   "id": "L0070",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "I can think of nothing more we should consider, can you, Elder?"
+    }
+   ],
+   "text": "I can think of nothing more we should consider, can you, Elder?",
+   "rev": 1,
+   "text_sha1": "abb418a5d3"
+  },
+  {
+   "id": "L0071",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Nothing."
+    }
+   ],
+   "text": "Nothing.",
+   "rev": 1,
+   "text_sha1": "1b3f141ab8"
+  },
+  {
+   "id": "L0072",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Then, if you have a quill, we can sign now."
+    },
+    {
+     "sound": "knock"
+    }
+   ],
+   "text": "Then, if you have a quill, we can sign now.",
+   "rev": 1,
+   "text_sha1": "0984cb731d"
+  },
+  {
+   "id": "L0073",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Your pardon, someone knocks."
+    }
+   ],
+   "text": "Your pardon, someone knocks.",
+   "rev": 1,
+   "text_sha1": "64e7cb09ad"
+  },
+  {
+   "id": "L0074",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "direction": "going"
+    },
+    {
+     "say": "I'll see who it is."
+    }
+   ],
+   "text": "I'll see who it is.",
+   "rev": 1,
+   "text_sha1": "1a3af86c90"
+  },
+  {
+   "id": "L0075",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Thank you, Elder. Ah, here is the quill. Now, where is the inkhorn? Ah, yes, here."
+    }
+   ],
+   "text": "Thank you, Elder. Ah, here is the quill. Now, where is the inkhorn? Ah, yes, here.",
+   "rev": 1,
+   "text_sha1": "8478772948"
+  },
+  {
+   "id": "L0076",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Sign here."
+    },
+    {
+     "direction": "rattle of paper"
+    }
+   ],
+   "text": "Sign here.",
+   "rev": 1,
+   "text_sha1": "77f2d8cb92"
+  },
+  {
+   "id": "L0077",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Let us wait for Elder Carver."
+    }
+   ],
+   "text": "Let us wait for Elder Carver.",
+   "rev": 1,
+   "text_sha1": "4bb94f4318"
+  },
+  {
+   "id": "L0078",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "mic": "off"
+    },
+    {
+     "say": "Oh, Pastor Robinson?"
+    }
+   ],
+   "text": "Oh, Pastor Robinson?",
+   "rev": 1,
+   "text_sha1": "a4ce1f3139"
+  },
+  {
+   "id": "L0079",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Yes?"
+    }
+   ],
+   "text": "Yes?",
+   "rev": 1,
+   "text_sha1": "2d46f46d11"
+  },
+  {
+   "id": "L0080",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Your pardon, sir, will you come here at once?"
+    }
+   ],
+   "text": "Your pardon, sir, will you come here at once?",
+   "rev": 1,
+   "text_sha1": "b2caedb8e2"
+  },
+  {
+   "id": "L0081",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "What is it?"
+    }
+   ],
+   "text": "What is it?",
+   "rev": 1,
+   "text_sha1": "89511a76c8"
+  },
+  {
+   "id": "L0082",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "mic": "off"
+    },
+    {
+     "say": "Thomas Weston of London desires to see you."
+    }
+   ],
+   "text": "Thomas Weston of London desires to see you.",
+   "rev": 1,
+   "text_sha1": "290e83c078"
+  },
+  {
+   "id": "L0083",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Can we not finish our business first?"
+    }
+   ],
+   "text": "Can we not finish our business first?",
+   "rev": 1,
+   "text_sha1": "31c3ef7498"
+  },
+  {
+   "id": "L0084",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Tell him to come in and sit down while we get this business finished."
+    }
+   ],
+   "text": "Tell him to come in and sit down while we get this business finished.",
+   "rev": 1,
+   "text_sha1": "f19275eee7"
+  },
+  {
+   "id": "L0085",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "mic": "off"
+    },
+    {
+     "say": "Will you come in, Master Weston?"
+    }
+   ],
+   "text": "Will you come in, Master Weston?",
+   "rev": 1,
+   "text_sha1": "90395788d5"
+  },
+  {
+   "id": "L0086",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "mic": "coming in"
+    },
+    {
+     "say": "Thank you. Have I the honor of addressing Master Robinson?"
+    }
+   ],
+   "text": "Thank you. Have I the honor of addressing Master Robinson?",
+   "rev": 1,
+   "text_sha1": "02f2ae9f4e"
+  },
+  {
+   "id": "L0087",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "I'm Robinson."
+    }
+   ],
+   "text": "I'm Robinson.",
+   "rev": 1,
+   "text_sha1": "17d237a569"
+  },
+  {
+   "id": "L0088",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "I'm Thomas Weston, and I have come on behalf of a company of London merchants--"
+    }
+   ],
+   "text": "I'm Thomas Weston, and I have come on behalf of a company of London merchants--",
+   "rev": 1,
+   "text_sha1": "03b2db3cc9"
+  },
+  {
+   "id": "L0089",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "direction": "sharply"
+    },
+    {
+     "say": "Master Robinson, your pardon, but may we not finish this business in hand?"
+    }
+   ],
+   "text": "Master Robinson, your pardon, but may we not finish this business in hand?",
+   "rev": 1,
+   "text_sha1": "18db220d3c"
+  },
+  {
+   "id": "L0090",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Certainly! Elder Carver, Master Kieft is waiting for us to sign the Articles of Emigration."
+    }
+   ],
+   "text": "Certainly! Elder Carver, Master Kieft is waiting for us to sign the Articles of Emigration.",
+   "rev": 1,
+   "text_sha1": "be317fae92"
+  },
+  {
+   "id": "L0091",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "Your pardon, Master Robinson, did you say \"Articles of Emigration\"?"
+    }
+   ],
+   "text": "Your pardon, Master Robinson, did you say \"Articles of Emigration\"?",
+   "rev": 1,
+   "text_sha1": "a0dcf426a6"
+  },
+  {
+   "id": "L0092",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Why, yes."
+    }
+   ],
+   "text": "Why, yes.",
+   "rev": 1,
+   "text_sha1": "5861f9e46f"
+  },
+  {
+   "id": "L0093",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "I have an offer to make you for the emigration of your company."
+    }
+   ],
+   "text": "I have an offer to make you for the emigration of your company.",
+   "rev": 1,
+   "text_sha1": "4cd6ec50bb"
+  },
+  {
+   "id": "L0094",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "What?"
+    }
+   ],
+   "text": "What?",
+   "rev": 1,
+   "text_sha1": "be65b9e347"
+  },
+  {
+   "id": "L0095",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Indeed!"
+    }
+   ],
+   "text": "Indeed!",
+   "rev": 1,
+   "text_sha1": "72517264c3"
+  },
+  {
+   "id": "L0096",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I must insist, sir--"
+    }
+   ],
+   "text": "I must insist, sir--",
+   "rev": 1,
+   "text_sha1": "02dc23e8e5"
+  },
+  {
+   "id": "L0097",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "One moment, Master Kieft."
+    }
+   ],
+   "text": "One moment, Master Kieft.",
+   "rev": 1,
+   "text_sha1": "ee30940b8e"
+  },
+  {
+   "id": "L0098",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Are you going to sign or not?"
+    }
+   ],
+   "text": "Are you going to sign or not?",
+   "rev": 1,
+   "text_sha1": "9472c9a6c2"
+  },
+  {
+   "id": "L0099",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Master Kieft, this may cause us to change our plans; we must consider. What is your offer, Master Weston?"
+    }
+   ],
+   "text": "Master Kieft, this may cause us to change our plans; we must consider. What is your offer, Master Weston?",
+   "rev": 1,
+   "text_sha1": "a8d27b7680"
+  },
+  {
+   "id": "L0100",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "A company of seven London merchants has agreed to furnish ships and capital to carry you and your people to America."
+    }
+   ],
+   "text": "A company of seven London merchants has agreed to furnish ships and capital to carry you and your people to America.",
+   "rev": 1,
+   "text_sha1": "df5fe57b04"
+  },
+  {
+   "id": "L0101",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "You have already agreed with me--"
+    }
+   ],
+   "text": "You have already agreed with me--",
+   "rev": 1,
+   "text_sha1": "fdf4ffaaa4"
+  },
+  {
+   "id": "L0102",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "We have signed nothing yet. Where, Master Weston, does your company propose that we settle?"
+    }
+   ],
+   "text": "We have signed nothing yet. Where, Master Weston, does your company propose that we settle?",
+   "rev": 1,
+   "text_sha1": "26aa100030"
+  },
+  {
+   "id": "L0103",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "In northern Virginia--between the Great South River and the Great North River."
+    }
+   ],
+   "text": "In northern Virginia--between the Great South River and the Great North River.",
+   "rev": 1,
+   "text_sha1": "c4266a2116"
+  },
+  {
+   "id": "L0104",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "That, sir, is the land of the Dutch West India Company."
+    }
+   ],
+   "text": "That, sir, is the land of the Dutch West India Company.",
+   "rev": 1,
+   "text_sha1": "49fb17d54d"
+  },
+  {
+   "id": "L0105",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "Your pardon, but King James has decreed--"
+    }
+   ],
+   "text": "Your pardon, but King James has decreed--",
+   "rev": 1,
+   "text_sha1": "d880cc1171"
+  },
+  {
+   "id": "L0106",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "direction": "getting angrier"
+    },
+    {
+     "say": "I care not what your sovereign may have decreed--he has no claim to that land. My company discovered and explored it!"
+    }
+   ],
+   "text": "I care not what your sovereign may have decreed--he has no claim to that land. My company discovered and explored it!",
+   "rev": 1,
+   "text_sha1": "6e2ef8fc0c"
+  },
+  {
+   "id": "L0107",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "Has your company established any plantations there?"
+    }
+   ],
+   "text": "Has your company established any plantations there?",
+   "rev": 1,
+   "text_sha1": "e1e75b6b7c"
+  },
+  {
+   "id": "L0108",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "That makes no difference."
+    }
+   ],
+   "text": "That makes no difference.",
+   "rev": 1,
+   "text_sha1": "2a285bec72"
+  },
+  {
+   "id": "L0109",
+   "role": "RWESTON",
+   "parts": [
+    {
+     "say": "Until you have established plantations, you cannot claim it."
+    }
+   ],
+   "text": "Until you have established plantations, you cannot claim it.",
+   "rev": 1,
+   "text_sha1": "c322156e38"
+  },
+  {
+   "id": "L0110",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I do not wish to argue with you, sir. I am here to close this business with you, Master Robinson. I am waiting--"
+    }
+   ],
+   "text": "I do not wish to argue with you, sir. I am here to close this business with you, Master Robinson. I am waiting--",
+   "rev": 1,
+   "text_sha1": "723e4a6d99"
+  },
+  {
+   "id": "L0111",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "We must have time to consider--"
+    }
+   ],
+   "text": "We must have time to consider--",
+   "rev": 1,
+   "text_sha1": "4f149ba391"
+  },
+  {
+   "id": "L0112",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I had your word."
+    }
+   ],
+   "text": "I had your word.",
+   "rev": 1,
+   "text_sha1": "7c555e12f5"
+  },
+  {
+   "id": "L0113",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Master Kieft, the situation has changed. We are Englishmen, and if we can emigrate under our own flag, you cannot blame us for preferring it to another."
+    }
+   ],
+   "text": "Master Kieft, the situation has changed. We are Englishmen, and if we can emigrate under our own flag, you cannot blame us for preferring it to another.",
+   "rev": 1,
+   "text_sha1": "b49ad3400f"
+  },
+  {
+   "id": "L0114",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "You have tricked us--you are not treating me fairly!"
+    }
+   ],
+   "text": "You have tricked us--you are not treating me fairly!",
+   "rev": 1,
+   "text_sha1": "137e751388"
+  },
+  {
+   "id": "L0115",
+   "role": "RROBINSON",
+   "parts": [
+    {
+     "say": "Now, sir--"
+    }
+   ],
+   "text": "Now, sir--",
+   "rev": 1,
+   "text_sha1": "c3ebea668e"
+  },
+  {
+   "id": "L0116",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "direction": "louder"
+    },
+    {
+     "say": "And I warn you if you go to our land under the British flag, you shall regret it, sir, you shall regret it. Good day!"
+    },
+    {
+     "sound": "sound of door slamming"
+    }
+   ],
+   "text": "And I warn you if you go to our land under the British flag, you shall regret it, sir, you shall regret it. Good day!",
+   "rev": 1,
+   "text_sha1": "0ceca9f294"
+  },
+  {
+   "id": "L0117",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "Thus the Pilgrims incurred the enmity of the Dutch West India Company, and though the terms of the London merchants were not so generous as those offered by the Dutch company, the Pilgrims accepted them and set about making their preparations for the great adventure.\nThey secured for their voyage two ships, the _Speedwell_ and the _Mayflower_.\nOur next scene is early in July of 1620. The _Mayflower_ has been engaged for the voyage, and is lying at anchor in the Thames River off London, where it is undergoing some repairs preparatory to taking on cargo, which is to come to the New World. Aboard the ship is only the master, Captain Jones, when he is disturbed by--"
+    }
+   ],
+   "text": "Thus the Pilgrims incurred the enmity of the Dutch West India Company, and though the terms of the London merchants were not so generous as those offered by the Dutch company, the Pilgrims accepted them and set about making their preparations for the great adventure.\nThey secured for their voyage two ships, the _Speedwell_ and the _Mayflower_.\nOur next scene is early in July of 1620. The _Mayflower_ has been engaged for the voyage, and is lying at anchor in the Thames River off London, where it is undergoing some repairs preparatory to taking on cargo, which is to come to the New World. Aboard the ship is only the master, Captain Jones, when he is disturbed by--",
+   "rev": 1,
+   "text_sha1": "af237c4d52"
+  },
+  {
+   "id": "L0118",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "mic": "off"
+    },
+    {
+     "say": "Ahoy, the _Mayflower_!"
+    }
+   ],
+   "text": "Ahoy, the _Mayflower_!",
+   "rev": 1,
+   "text_sha1": "bce34b622f"
+  },
+  {
+   "id": "L0119",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Ahoy! Who's hailing the _Mayflower_?"
+    }
+   ],
+   "text": "Ahoy! Who's hailing the _Mayflower_?",
+   "rev": 1,
+   "text_sha1": "d4974a7285"
+  },
+  {
+   "id": "L0120",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Here--alongside! May I come aboard?"
+    }
+   ],
+   "text": "Here--alongside! May I come aboard?",
+   "rev": 1,
+   "text_sha1": "1f4665601e"
+  },
+  {
+   "id": "L0121",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "What do you want?"
+    }
+   ],
+   "text": "What do you want?",
+   "rev": 1,
+   "text_sha1": "9b4b57569b"
+  },
+  {
+   "id": "L0122",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I want to talk to the master of the ship."
+    }
+   ],
+   "text": "I want to talk to the master of the ship.",
+   "rev": 1,
+   "text_sha1": "ee531970d7"
+  },
+  {
+   "id": "L0123",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I'm master. What do you want?"
+    }
+   ],
+   "text": "I'm master. What do you want?",
+   "rev": 1,
+   "text_sha1": "0677fb4a1b"
+  },
+  {
+   "id": "L0124",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "May I come aboard?"
+    }
+   ],
+   "text": "May I come aboard?",
+   "rev": 1,
+   "text_sha1": "ed371345ab"
+  },
+  {
+   "id": "L0125",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Come aboard. The ladder's over the side."
+    }
+   ],
+   "text": "Come aboard. The ladder's over the side.",
+   "rev": 1,
+   "text_sha1": "f341c1ccaf"
+  },
+  {
+   "id": "L0126",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "All right, I'm coming."
+    },
+    {
+     "direction": "lower"
+    },
+    {
+     "say": "Keep the boat alongside!"
+    }
+   ],
+   "text": "All right, I'm coming. Keep the boat alongside!",
+   "rev": 1,
+   "text_sha1": "056cf0bdaa"
+  },
+  {
+   "id": "L0127",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "Aye, aye, sir!"
+    }
+   ],
+   "text": "Aye, aye, sir!",
+   "rev": 1,
+   "text_sha1": "8120bbfb73"
+  },
+  {
+   "id": "L0128",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "direction": "low"
+    },
+    {
+     "say": "Stay here till I'm ready to leave!"
+    }
+   ],
+   "text": "Stay here till I'm ready to leave!",
+   "rev": 1,
+   "text_sha1": "5ee7d335f4"
+  },
+  {
+   "id": "L0129",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "Aye, aye, sir!"
+    }
+   ],
+   "text": "Aye, aye, sir!",
+   "rev": 1,
+   "text_sha1": "8120bbfb73"
+  },
+  {
+   "id": "L0130",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Here you are--right up here, sir. Give me your hand! Ah, there you are, sir!"
+    }
+   ],
+   "text": "Here you are--right up here, sir. Give me your hand! Ah, there you are, sir!",
+   "rev": 1,
+   "text_sha1": "cb8e3dd929"
+  },
+  {
+   "id": "L0131",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "mic": "in"
+    },
+    {
+     "say": "Thank you, sir. Are you the master of the ship?"
+    }
+   ],
+   "text": "Thank you, sir. Are you the master of the ship?",
+   "rev": 1,
+   "text_sha1": "9388848da5"
+  },
+  {
+   "id": "L0132",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I am, sir."
+    }
+   ],
+   "text": "I am, sir.",
+   "rev": 1,
+   "text_sha1": "3fd8bcc681"
+  },
+  {
+   "id": "L0133",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I understand you are engaged for the voyage."
+    }
+   ],
+   "text": "I understand you are engaged for the voyage.",
+   "rev": 1,
+   "text_sha1": "a0b258efe9"
+  },
+  {
+   "id": "L0134",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "That we are, sir, to America."
+    }
+   ],
+   "text": "That we are, sir, to America.",
+   "rev": 1,
+   "text_sha1": "d4d60d5665"
+  },
+  {
+   "id": "L0135",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Aye, yes--by a company of London merchants."
+    }
+   ],
+   "text": "Aye, yes--by a company of London merchants.",
+   "rev": 1,
+   "text_sha1": "adf2d3581c"
+  },
+  {
+   "id": "L0136",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "And what's that to you, sir, begging your pardon?"
+    }
+   ],
+   "text": "And what's that to you, sir, begging your pardon?",
+   "rev": 1,
+   "text_sha1": "e169f309c3"
+  },
+  {
+   "id": "L0137",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "No matter, I know well enough you are. And now, sir, I want to know if you'd like to put yourself in the way of earning a hundred pounds?"
+    }
+   ],
+   "text": "No matter, I know well enough you are. And now, sir, I want to know if you'd like to put yourself in the way of earning a hundred pounds?",
+   "rev": 1,
+   "text_sha1": "a3d67bf0b2"
+  },
+  {
+   "id": "L0138",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "A hundred! Law, sir, and who wouldn't?"
+    }
+   ],
+   "text": "A hundred! Law, sir, and who wouldn't?",
+   "rev": 1,
+   "text_sha1": "240e40710f"
+  },
+  {
+   "id": "L0139",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Exactly! I hoped I'd find you a man of sense."
+    }
+   ],
+   "text": "Exactly! I hoped I'd find you a man of sense.",
+   "rev": 1,
+   "text_sha1": "7e39252e5d"
+  },
+  {
+   "id": "L0140",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "What do you want me to do?"
+    }
+   ],
+   "text": "What do you want me to do?",
+   "rev": 1,
+   "text_sha1": "b08d7ab1c6"
+  },
+  {
+   "id": "L0141",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "You are sailing for northern Virginia, are you not?"
+    }
+   ],
+   "text": "You are sailing for northern Virginia, are you not?",
+   "rev": 1,
+   "text_sha1": "d9bb5d29e5"
+  },
+  {
+   "id": "L0142",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "That's the orders."
+    }
+   ],
+   "text": "That's the orders.",
+   "rev": 1,
+   "text_sha1": "9d02753196"
+  },
+  {
+   "id": "L0143",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Where do you expect to make land?"
+    }
+   ],
+   "text": "Where do you expect to make land?",
+   "rev": 1,
+   "text_sha1": "d0857373ec"
+  },
+  {
+   "id": "L0144",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I was looking to make it in the mouth of the Great North River."
+    }
+   ],
+   "text": "I was looking to make it in the mouth of the Great North River.",
+   "rev": 1,
+   "text_sha1": "91740e5eaa"
+  },
+  {
+   "id": "L0145",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Hm--you know, I suppose, that the Dutch West India Company claims all the land bordering on the Great North River."
+    }
+   ],
+   "text": "Hm--you know, I suppose, that the Dutch West India Company claims all the land bordering on the Great North River.",
+   "rev": 1,
+   "text_sha1": "d7b7975eb3"
+  },
+  {
+   "id": "L0146",
+   "role": "RJONES",
+   "parts": [
+    {
+     "direction": "laughing"
+    },
+    {
+     "say": "Why, sir, everybody claims it. That's no matter. King James has proclaimed that all the land that has been settled belongs to them that has settled it; the rest is anybody's. When the company I'm taking gets their plantation settled, the Dutch can't claim the land any longer."
+    }
+   ],
+   "text": "Why, sir, everybody claims it. That's no matter. King James has proclaimed that all the land that has been settled belongs to them that has settled it; the rest is anybody's. When the company I'm taking gets their plantation settled, the Dutch can't claim the land any longer.",
+   "rev": 1,
+   "text_sha1": "1ffb98dd87"
+  },
+  {
+   "id": "L0147",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Perhaps not, but your company is not going to land on Dutch territory."
+    }
+   ],
+   "text": "Perhaps not, but your company is not going to land on Dutch territory.",
+   "rev": 1,
+   "text_sha1": "3f7a34d87d"
+  },
+  {
+   "id": "L0148",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Eh?"
+    }
+   ],
+   "text": "Eh?",
+   "rev": 1,
+   "text_sha1": "17ae658334"
+  },
+  {
+   "id": "L0149",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "You are going to lose your bearings--"
+    }
+   ],
+   "text": "You are going to lose your bearings--",
+   "rev": 1,
+   "text_sha1": "6409c19fc8"
+  },
+  {
+   "id": "L0150",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Me--a sailor--lose my bearings?"
+    }
+   ],
+   "text": "Me--a sailor--lose my bearings?",
+   "rev": 1,
+   "text_sha1": "49e6641f7b"
+  },
+  {
+   "id": "L0151",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Certainly--for one hundred pounds."
+    }
+   ],
+   "text": "Certainly--for one hundred pounds.",
+   "rev": 1,
+   "text_sha1": "01e342c588"
+  },
+  {
+   "id": "L0152",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Well--"
+    }
+   ],
+   "text": "Well--",
+   "rev": 1,
+   "text_sha1": "62bd959f72"
+  },
+  {
+   "id": "L0153",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "And you will make land far to the north of the Great North River."
+    }
+   ],
+   "text": "And you will make land far to the north of the Great North River.",
+   "rev": 1,
+   "text_sha1": "f41c95ba21"
+  },
+  {
+   "id": "L0154",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I'll have to see the color of the money."
+    }
+   ],
+   "text": "I'll have to see the color of the money.",
+   "rev": 1,
+   "text_sha1": "e6b1c234c5"
+  },
+  {
+   "id": "L0155",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Is it a bargain?"
+    }
+   ],
+   "text": "Is it a bargain?",
+   "rev": 1,
+   "text_sha1": "e2bd7847a0"
+  },
+  {
+   "id": "L0156",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Have you got the money with you?"
+    }
+   ],
+   "text": "Have you got the money with you?",
+   "rev": 1,
+   "text_sha1": "7f316843c5"
+  },
+  {
+   "id": "L0157",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "I have, and on your promise, I'll pay it."
+    }
+   ],
+   "text": "I have, and on your promise, I'll pay it.",
+   "rev": 1,
+   "text_sha1": "4a4a96bb25"
+  },
+  {
+   "id": "L0158",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "All right. I'll see that the company is landed where you wish."
+    }
+   ],
+   "text": "All right. I'll see that the company is landed where you wish.",
+   "rev": 1,
+   "text_sha1": "c6fe303920"
+  },
+  {
+   "id": "L0159",
+   "role": "RKIEFT",
+   "parts": [
+    {
+     "say": "Good!"
+    }
+   ],
+   "text": "Good!",
+   "rev": 1,
+   "text_sha1": "e42ce7778e"
+  },
+  {
+   "id": "L0160",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "And so Captain Jones of the _Mayflower_ was bribed by Dutch gold to play false with the band of Pilgrims. You know the story of the long and difficult job the Pilgrims had in getting fairly started on their voyage. The _Speedwell_ sprang a leak, and they had to put back to Plymouth harbor where the ship was repaired. They made a second start, and again the _Speedwell_ became unseaworthy and the captain refused to go on, so a second time the little flotilla put back to Plymouth. This time, since the season was far advanced and the Pilgrims feared that winter would be upon them before they could get established in their new home, the _Speedwell_ was left behind, and on September 16, 1620, the _Mayflower_ left alone for the New World. Halfway across the ocean the ship was beset by a long series of storms, so severe that it took more than two months for the ship to make the trip across the Atlantic. At last, on the morning of November 20, 1620, the ship's company were awakened by the electric cry of--"
+    }
+   ],
+   "text": "And so Captain Jones of the _Mayflower_ was bribed by Dutch gold to play false with the band of Pilgrims. You know the story of the long and difficult job the Pilgrims had in getting fairly started on their voyage. The _Speedwell_ sprang a leak, and they had to put back to Plymouth harbor where the ship was repaired. They made a second start, and again the _Speedwell_ became unseaworthy and the captain refused to go on, so a second time the little flotilla put back to Plymouth. This time, since the season was far advanced and the Pilgrims feared that winter would be upon them before they could get established in their new home, the _Speedwell_ was left behind, and on September 16, 1620, the _Mayflower_ left alone for the New World. Halfway across the ocean the ship was beset by a long series of storms, so severe that it took more than two months for the ship to make the trip across the Atlantic. At last, on the morning of November 20, 1620, the ship's company were awakened by the electric cry of--",
+   "rev": 1,
+   "text_sha1": "c1823f25e5"
+  },
+  {
+   "id": "L0161",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "Land--ho! Land--land--ho!"
+    }
+   ],
+   "text": "Land--ho! Land--land--ho!",
+   "rev": 1,
+   "text_sha1": "6ff5b73674"
+  },
+  {
+   "id": "L0162",
+   "role": "RJONES",
+   "parts": [
+    {
+     "direction": "calling"
+    },
+    {
+     "say": "Where away?"
+    }
+   ],
+   "text": "Where away?",
+   "rev": 1,
+   "text_sha1": "0f6d9c0e3f"
+  },
+  {
+   "id": "L0163",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "Two points off the starboard bow!"
+    }
+   ],
+   "text": "Two points off the starboard bow!",
+   "rev": 1,
+   "text_sha1": "cc92b354fd"
+  },
+  {
+   "id": "L0164",
+   "role": "RMOB",
+   "parts": [
+    {
+     "direction": "voices swelling up"
+    },
+    {
+     "say": "Land! Land! Is it really land? Captain, Captain! Have we really made land? Land?"
+    },
+    {
+     "direction": "etc."
+    }
+   ],
+   "text": "Land! Land! Is it really land? Captain, Captain! Have we really made land? Land?",
+   "rev": 1,
+   "text_sha1": "da9bfcef4b"
+  },
+  {
+   "id": "L0165",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, we've made land! Helmsman, bring the ship to bear on land, dead ahead!"
+    }
+   ],
+   "text": "Aye, we've made land! Helmsman, bring the ship to bear on land, dead ahead!",
+   "rev": 1,
+   "text_sha1": "02ac50242d"
+  },
+  {
+   "id": "L0166",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "Aye, aye, sir, land dead ahead."
+    }
+   ],
+   "text": "Aye, aye, sir, land dead ahead.",
+   "rev": 1,
+   "text_sha1": "82d1fdfe85"
+  },
+  {
+   "id": "L0167",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "direction": "coming up"
+    },
+    {
+     "say": "Ah, Captain Jones, at last!"
+    }
+   ],
+   "text": "Ah, Captain Jones, at last!",
+   "rev": 1,
+   "text_sha1": "6d9f77bd36"
+  },
+  {
+   "id": "L0168",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, at last--land ahead!"
+    }
+   ],
+   "text": "Aye, at last--land ahead!",
+   "rev": 1,
+   "text_sha1": "8203f9a87d"
+  },
+  {
+   "id": "L0169",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Praise Jehovah!"
+    }
+   ],
+   "text": "Praise Jehovah!",
+   "rev": 1,
+   "text_sha1": "c66289573b"
+  },
+  {
+   "id": "L0170",
+   "role": "RALL",
+   "parts": [
+    {
+     "say": "Praise Jehovah! Amen!"
+    },
+    {
+     "direction": "etc."
+    }
+   ],
+   "text": "Praise Jehovah! Amen!",
+   "rev": 1,
+   "text_sha1": "1604e5f1d6"
+  },
+  {
+   "id": "L0171",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Captain, tell us, is this Virginia that lies before us?"
+    }
+   ],
+   "text": "Captain, tell us, is this Virginia that lies before us?",
+   "rev": 1,
+   "text_sha1": "d27fb9dcb2"
+  },
+  {
+   "id": "L0172",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I know not; I've not yet taken our bearings."
+    }
+   ],
+   "text": "I know not; I've not yet taken our bearings.",
+   "rev": 1,
+   "text_sha1": "e90d443e10"
+  },
+  {
+   "id": "L0173",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Do you not know where we are?"
+    }
+   ],
+   "text": "Do you not know where we are?",
+   "rev": 1,
+   "text_sha1": "37228753e1"
+  },
+  {
+   "id": "L0174",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "How should I? We've been tossed about in storms for a month, with no sun for days on end."
+    }
+   ],
+   "text": "How should I? We've been tossed about in storms for a month, with no sun for days on end.",
+   "rev": 1,
+   "text_sha1": "1ec736e92a"
+  },
+  {
+   "id": "L0175",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "There is sun this morning. Can you not take your bearings now?"
+    }
+   ],
+   "text": "There is sun this morning. Can you not take your bearings now?",
+   "rev": 1,
+   "text_sha1": "f5e4a8b70d"
+  },
+  {
+   "id": "L0176",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "The mate is figuring our position even now."
+    }
+   ],
+   "text": "The mate is figuring our position even now.",
+   "rev": 1,
+   "text_sha1": "5606de3657"
+  },
+  {
+   "id": "L0177",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Good!"
+    }
+   ],
+   "text": "Good!",
+   "rev": 1,
+   "text_sha1": "e42ce7778e"
+  },
+  {
+   "id": "L0178",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "Captain Jones?"
+    }
+   ],
+   "text": "Captain Jones?",
+   "rev": 1,
+   "text_sha1": "d55f5156c1"
+  },
+  {
+   "id": "L0179",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, mate, have you the position?"
+    }
+   ],
+   "text": "Aye, mate, have you the position?",
+   "rev": 1,
+   "text_sha1": "42af6d31a5"
+  },
+  {
+   "id": "L0180",
+   "role": "RVOICE",
+   "parts": [
+    {
+     "say": "I made it, sir, about seventy west by forty-two north."
+    }
+   ],
+   "text": "I made it, sir, about seventy west by forty-two north.",
+   "rev": 1,
+   "text_sha1": "884798cae8"
+  },
+  {
+   "id": "L0181",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Forty-two north--but, Captain, we are bound for forty north--we're out of our course."
+    }
+   ],
+   "text": "Forty-two north--but, Captain, we are bound for forty north--we're out of our course.",
+   "rev": 1,
+   "text_sha1": "598a7b4471"
+  },
+  {
+   "id": "L0182",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "What do you expect--with the storms we've had?"
+    }
+   ],
+   "text": "What do you expect--with the storms we've had?",
+   "rev": 1,
+   "text_sha1": "2bbda41fd7"
+  },
+  {
+   "id": "L0183",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Put your ship about--make for the south--this is not Virginia!"
+    }
+   ],
+   "text": "Put your ship about--make for the south--this is not Virginia!",
+   "rev": 1,
+   "text_sha1": "1b732da211"
+  },
+  {
+   "id": "L0184",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "We'll land here."
+    }
+   ],
+   "text": "We'll land here.",
+   "rev": 1,
+   "text_sha1": "20043d53f9"
+  },
+  {
+   "id": "L0185",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "We have no right to land here. Our charter grants us land in Virginia, not here!"
+    }
+   ],
+   "text": "We have no right to land here. Our charter grants us land in Virginia, not here!",
+   "rev": 1,
+   "text_sha1": "4db1bc0005"
+  },
+  {
+   "id": "L0186",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I can't help that. The ship is in bad shape--I won't risk sailing her any farther without repairs."
+    }
+   ],
+   "text": "I can't help that. The ship is in bad shape--I won't risk sailing her any farther without repairs.",
+   "rev": 1,
+   "text_sha1": "0d13e5f263"
+  },
+  {
+   "id": "L0187",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Very well, you may stop here for repairs, but we must go on as soon as they are made."
+    }
+   ],
+   "text": "Very well, you may stop here for repairs, but we must go on as soon as they are made.",
+   "rev": 1,
+   "text_sha1": "77711ce029"
+  },
+  {
+   "id": "L0188",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "It will take some time."
+    }
+   ],
+   "text": "It will take some time.",
+   "rev": 1,
+   "text_sha1": "d9e514d065"
+  },
+  {
+   "id": "L0189",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "My people will help you. We must speed the work."
+    }
+   ],
+   "text": "My people will help you. We must speed the work.",
+   "rev": 1,
+   "text_sha1": "e9e7923451"
+  },
+  {
+   "id": "L0190",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Of course, I'll speed it all I can, but a man can't do any more than he can do."
+    }
+   ],
+   "text": "Of course, I'll speed it all I can, but a man can't do any more than he can do.",
+   "rev": 1,
+   "text_sha1": "19b9804bcc"
+  },
+  {
+   "id": "L0191",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Well, get to it at once--this very day! We must get away from here within a fortnight or winter will be upon us."
+    }
+   ],
+   "text": "Well, get to it at once--this very day! We must get away from here within a fortnight or winter will be upon us.",
+   "rev": 1,
+   "text_sha1": "8df4ac853d"
+  },
+  {
+   "id": "L0192",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, so it will--and the winters in this country are bad."
+    }
+   ],
+   "text": "Aye, so it will--and the winters in this country are bad.",
+   "rev": 1,
+   "text_sha1": "a5fa3df98b"
+  },
+  {
+   "id": "L0193",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Then we must start south without delay."
+    }
+   ],
+   "text": "Then we must start south without delay.",
+   "rev": 1,
+   "text_sha1": "458164d2fa"
+  },
+  {
+   "id": "L0194",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Look you, Master Carver--"
+    }
+   ],
+   "text": "Look you, Master Carver--",
+   "rev": 1,
+   "text_sha1": "a3906d8c4e"
+  },
+  {
+   "id": "L0195",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Well, Captain?"
+    }
+   ],
+   "text": "Well, Captain?",
+   "rev": 1,
+   "text_sha1": "8a3ea1ecd4"
+  },
+  {
+   "id": "L0196",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Belikes 'twill be a month or more before I can make the _Mayflower_ seaworthy--"
+    }
+   ],
+   "text": "Belikes 'twill be a month or more before I can make the _Mayflower_ seaworthy--",
+   "rev": 1,
+   "text_sha1": "8cf7a2f7cf"
+  },
+  {
+   "id": "L0197",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "A month? Surely you can do better than that?"
+    }
+   ],
+   "text": "A month? Surely you can do better than that?",
+   "rev": 1,
+   "text_sha1": "350a2a4852"
+  },
+  {
+   "id": "L0198",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Perhaps not so well--why don't you land here?"
+    }
+   ],
+   "text": "Perhaps not so well--why don't you land here?",
+   "rev": 1,
+   "text_sha1": "3f8de145dd"
+  },
+  {
+   "id": "L0199",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Here?"
+    }
+   ],
+   "text": "Here?",
+   "rev": 1,
+   "text_sha1": "aa6c6378d1"
+  },
+  {
+   "id": "L0200",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye. 'Tis a goodly country--full as rich as Virginia."
+    }
+   ],
+   "text": "Aye. 'Tis a goodly country--full as rich as Virginia.",
+   "rev": 1,
+   "text_sha1": "707c463d0a"
+  },
+  {
+   "id": "L0201",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Nay, nay, 'tis not to be thought on. We have a patent to lands in Virginia--a charter to establish and rule a plantation there; but here--why, the land is not ours--"
+    }
+   ],
+   "text": "Nay, nay, 'tis not to be thought on. We have a patent to lands in Virginia--a charter to establish and rule a plantation there; but here--why, the land is not ours--",
+   "rev": 1,
+   "text_sha1": "8e584cc598"
+  },
+  {
+   "id": "L0202",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "It is if you take it--it belongs to no one else."
+    }
+   ],
+   "text": "It is if you take it--it belongs to no one else.",
+   "rev": 1,
+   "text_sha1": "3aebead18c"
+  },
+  {
+   "id": "L0203",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "But our Council would have no rights under the King--nay, nay. We go on to Virginia--as soon as you have made your repairs."
+    }
+   ],
+   "text": "But our Council would have no rights under the King--nay, nay. We go on to Virginia--as soon as you have made your repairs.",
+   "rev": 1,
+   "text_sha1": "56229aefd7"
+  },
+  {
+   "id": "L0204",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "So be it, Master Carver."
+    }
+   ],
+   "text": "So be it, Master Carver.",
+   "rev": 1,
+   "text_sha1": "77621336a7"
+  },
+  {
+   "id": "L0205",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "So the _Mayflower_ brought up to anchor just inside Cape Cod, near the present village of Provincetown. The voyage had been long and arduous. There had been much sickness aboard, and Captain Jones knew that most of the passengers longed to set foot on solid ground and begin the task of building their homes. So he determined to create further dissatisfaction among them.\nFor our next scene we are going into Captain Jones's cabin just as one of the five men of the company, Peter Brown, has come into the cabin on the captain's invitation."
+    }
+   ],
+   "text": "So the _Mayflower_ brought up to anchor just inside Cape Cod, near the present village of Provincetown. The voyage had been long and arduous. There had been much sickness aboard, and Captain Jones knew that most of the passengers longed to set foot on solid ground and begin the task of building their homes. So he determined to create further dissatisfaction among them.\nFor our next scene we are going into Captain Jones's cabin just as one of the five men of the company, Peter Brown, has come into the cabin on the captain's invitation.",
+   "rev": 1,
+   "text_sha1": "4a89295793"
+  },
+  {
+   "id": "L0206",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Sit you down, Master Brown, and find what comfort you can in my poor quarters."
+    }
+   ],
+   "text": "Sit you down, Master Brown, and find what comfort you can in my poor quarters.",
+   "rev": 1,
+   "text_sha1": "3cb713c53b"
+  },
+  {
+   "id": "L0207",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Poor! If this cabin is poor, Captain, what do ye call what us folks has to put up with, all crowded into the common cabin like sheep er worse?"
+    }
+   ],
+   "text": "Poor! If this cabin is poor, Captain, what do ye call what us folks has to put up with, all crowded into the common cabin like sheep er worse?",
+   "rev": 1,
+   "text_sha1": "94e5edb639"
+  },
+  {
+   "id": "L0208",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, 'tis too bad the cabin is not a better place for your goodly company."
+    }
+   ],
+   "text": "Aye, 'tis too bad the cabin is not a better place for your goodly company.",
+   "rev": 1,
+   "text_sha1": "9092a3eea5"
+  },
+  {
+   "id": "L0209",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Aye, well, we'll soon be out of it."
+    }
+   ],
+   "text": "Aye, well, we'll soon be out of it.",
+   "rev": 1,
+   "text_sha1": "8506da8156"
+  },
+  {
+   "id": "L0210",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I fear me, not so soon."
+    }
+   ],
+   "text": "I fear me, not so soon.",
+   "rev": 1,
+   "text_sha1": "6d43caa18d"
+  },
+  {
+   "id": "L0211",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Indeed, why?"
+    }
+   ],
+   "text": "Indeed, why?",
+   "rev": 1,
+   "text_sha1": "6c4ed3fc8d"
+  },
+  {
+   "id": "L0212",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "The ship must be repaired before we can go on."
+    }
+   ],
+   "text": "The ship must be repaired before we can go on.",
+   "rev": 1,
+   "text_sha1": "23b0ca2986"
+  },
+  {
+   "id": "L0213",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "How long will that take ye?"
+    }
+   ],
+   "text": "How long will that take ye?",
+   "rev": 1,
+   "text_sha1": "8594e9734f"
+  },
+  {
+   "id": "L0214",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Mayhap two months or more, I know not."
+    }
+   ],
+   "text": "Mayhap two months or more, I know not.",
+   "rev": 1,
+   "text_sha1": "70381bf202"
+  },
+  {
+   "id": "L0215",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Two months? Two months more in the cabin of this ship and half of our company will be dead."
+    }
+   ],
+   "text": "Two months? Two months more in the cabin of this ship and half of our company will be dead.",
+   "rev": 1,
+   "text_sha1": "db0e73ac54"
+  },
+  {
+   "id": "L0216",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, belikes they will--and winter will be upon us hard and heavy. The winters in this country are worse than any you have ever seen in England or Holland."
+    }
+   ],
+   "text": "Aye, belikes they will--and winter will be upon us hard and heavy. The winters in this country are worse than any you have ever seen in England or Holland.",
+   "rev": 1,
+   "text_sha1": "170c6eeb46"
+  },
+  {
+   "id": "L0217",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Indeed!"
+    }
+   ],
+   "text": "Indeed!",
+   "rev": 1,
+   "text_sha1": "72517264c3"
+  },
+  {
+   "id": "L0218",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "The snow lies so deep it would cover a man's head--the land is blotted out, and even the sea freezes--"
+    }
+   ],
+   "text": "The snow lies so deep it would cover a man's head--the land is blotted out, and even the sea freezes--",
+   "rev": 1,
+   "text_sha1": "5b3969867c"
+  },
+  {
+   "id": "L0219",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Then how could we get ashore?"
+    }
+   ],
+   "text": "Then how could we get ashore?",
+   "rev": 1,
+   "text_sha1": "527d5375f7"
+  },
+  {
+   "id": "L0220",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I know not."
+    }
+   ],
+   "text": "I know not.",
+   "rev": 1,
+   "text_sha1": "d99a09ab36"
+  },
+  {
+   "id": "L0221",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "And once ashore, how could we find a fair place to build our homes?"
+    }
+   ],
+   "text": "And once ashore, how could we find a fair place to build our homes?",
+   "rev": 1,
+   "text_sha1": "95c817eeea"
+  },
+  {
+   "id": "L0222",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "'Tis not for me to say."
+    }
+   ],
+   "text": "'Tis not for me to say.",
+   "rev": 1,
+   "text_sha1": "5c47deb370"
+  },
+  {
+   "id": "L0223",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Why can't we land right here, Captain?"
+    }
+   ],
+   "text": "Why can't we land right here, Captain?",
+   "rev": 1,
+   "text_sha1": "7422151dce"
+  },
+  {
+   "id": "L0224",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Because your Elder, Master Carver, says fix the ship and go on."
+    }
+   ],
+   "text": "Because your Elder, Master Carver, says fix the ship and go on.",
+   "rev": 1,
+   "text_sha1": "657f3ef010"
+  },
+  {
+   "id": "L0225",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "If Elder Carver says that, then there be naught that we kin do."
+    }
+   ],
+   "text": "If Elder Carver says that, then there be naught that we kin do.",
+   "rev": 1,
+   "text_sha1": "1c06dd5282"
+  },
+  {
+   "id": "L0226",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "You'd stay packed in the ship's cabin, facing sickness and death, rather than rise up like men and tell the Elder what you will and what you won't do, eh?"
+    }
+   ],
+   "text": "You'd stay packed in the ship's cabin, facing sickness and death, rather than rise up like men and tell the Elder what you will and what you won't do, eh?",
+   "rev": 1,
+   "text_sha1": "582c1e6598"
+  },
+  {
+   "id": "L0227",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Elder Carver and the twelve masters have the voice; we have naught to do but to obey."
+    }
+   ],
+   "text": "Elder Carver and the twelve masters have the voice; we have naught to do but to obey.",
+   "rev": 1,
+   "text_sha1": "faf3d3384a"
+  },
+  {
+   "id": "L0228",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Can it be that forty English freemen can't vote down twelve masters?"
+    }
+   ],
+   "text": "Can it be that forty English freemen can't vote down twelve masters?",
+   "rev": 1,
+   "text_sha1": "5ef2c4b427"
+  },
+  {
+   "id": "L0229",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Under our charter the freemen have no voice."
+    }
+   ],
+   "text": "Under our charter the freemen have no voice.",
+   "rev": 1,
+   "text_sha1": "947072a43d"
+  },
+  {
+   "id": "L0230",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Under the charter, eh?"
+    }
+   ],
+   "text": "Under the charter, eh?",
+   "rev": 1,
+   "text_sha1": "4718f222dd"
+  },
+  {
+   "id": "L0231",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Aye, so there's naught to do but what the masters say."
+    }
+   ],
+   "text": "Aye, so there's naught to do but what the masters say.",
+   "rev": 1,
+   "text_sha1": "16ada68b4c"
+  },
+  {
+   "id": "L0232",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Have you never heard of mutiny?"
+    }
+   ],
+   "text": "Have you never heard of mutiny?",
+   "rev": 1,
+   "text_sha1": "9942244ce3"
+  },
+  {
+   "id": "L0233",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Mutiny? Nay, we be lawful men, bound together in the love of Jehovah; we'll not mutiny! We must abide by our charter."
+    }
+   ],
+   "text": "Mutiny? Nay, we be lawful men, bound together in the love of Jehovah; we'll not mutiny! We must abide by our charter.",
+   "rev": 1,
+   "text_sha1": "8024b72611"
+  },
+  {
+   "id": "L0234",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "The charter, aye."
+    }
+   ],
+   "text": "The charter, aye.",
+   "rev": 1,
+   "text_sha1": "bc55df60f7"
+  },
+  {
+   "id": "L0235",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "So there's naught to do--"
+    }
+   ],
+   "text": "So there's naught to do--",
+   "rev": 1,
+   "text_sha1": "0b235f52aa"
+  },
+  {
+   "id": "L0236",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Hold--have you thought on this--the charter binds you under the King's grant in Virginia Plantation--"
+    }
+   ],
+   "text": "Hold--have you thought on this--the charter binds you under the King's grant in Virginia Plantation--",
+   "rev": 1,
+   "text_sha1": "e831536532"
+  },
+  {
+   "id": "L0237",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Aye."
+    }
+   ],
+   "text": "Aye.",
+   "rev": 1,
+   "text_sha1": "04532c97a3"
+  },
+  {
+   "id": "L0238",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "And you are not in Virginia--"
+    }
+   ],
+   "text": "And you are not in Virginia--",
+   "rev": 1,
+   "text_sha1": "c5155b7561"
+  },
+  {
+   "id": "L0239",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Nay, not yet."
+    }
+   ],
+   "text": "Nay, not yet.",
+   "rev": 1,
+   "text_sha1": "0a4ae2c2d8"
+  },
+  {
+   "id": "L0240",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "So you are not bound by the Virginia charter in these waters."
+    }
+   ],
+   "text": "So you are not bound by the Virginia charter in these waters.",
+   "rev": 1,
+   "text_sha1": "de1fde4e6c"
+  },
+  {
+   "id": "L0241",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Forsooth, Captain, I'd not thought on that."
+    }
+   ],
+   "text": "Forsooth, Captain, I'd not thought on that.",
+   "rev": 1,
+   "text_sha1": "1e5baecf53"
+  },
+  {
+   "id": "L0242",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "You have here all the rights of free-born Englishmen. And if you rise like men and demand that your Elders hearken to your voice, who shall gainsay you?"
+    }
+   ],
+   "text": "You have here all the rights of free-born Englishmen. And if you rise like men and demand that your Elders hearken to your voice, who shall gainsay you?",
+   "rev": 1,
+   "text_sha1": "d2e10ec1be"
+  },
+  {
+   "id": "L0243",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Aye--who--who, indeed? If we vote to land here, 'tis not mutiny."
+    }
+   ],
+   "text": "Aye--who--who, indeed? If we vote to land here, 'tis not mutiny.",
+   "rev": 1,
+   "text_sha1": "0262fdf4ab"
+  },
+  {
+   "id": "L0244",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Nay, 'tis but your right, if you want to land here."
+    }
+   ],
+   "text": "Nay, 'tis but your right, if you want to land here.",
+   "rev": 1,
+   "text_sha1": "a33c25594f"
+  },
+  {
+   "id": "L0245",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "We do--we do! Not a man in the company but would stay here if he had his way."
+    }
+   ],
+   "text": "We do--we do! Not a man in the company but would stay here if he had his way.",
+   "rev": 1,
+   "text_sha1": "026e1ef73e"
+  },
+  {
+   "id": "L0246",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Then have your way--like Englishmen! Go to your cabin. Talk to the men of your company, tell them what I have told you."
+    }
+   ],
+   "text": "Then have your way--like Englishmen! Go to your cabin. Talk to the men of your company, tell them what I have told you.",
+   "rev": 1,
+   "text_sha1": "f1aab3a168"
+  },
+  {
+   "id": "L0247",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Aye, Captain, I will! At once."
+    },
+    {
+     "direction": "going"
+    }
+   ],
+   "text": "Aye, Captain, I will! At once.",
+   "rev": 1,
+   "text_sha1": "c1e3dbb145"
+  },
+  {
+   "id": "L0248",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Good!"
+    },
+    {
+     "sound": "sound of door closing"
+    },
+    {
+     "direction": "to himself"
+    },
+    {
+     "say": "Well, Elder Carver, we shall see whose voice is stronger--yours, or the voice of forty English freemen!"
+    }
+   ],
+   "text": "Good!  Well, Elder Carver, we shall see whose voice is stronger--yours, or the voice of forty English freemen!",
+   "rev": 1,
+   "text_sha1": "2128ebfeb5"
+  },
+  {
+   "id": "L0249",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "Thus Captain Jones planted in the mind of one of the freemen of the Pilgrim company an idea which he was sure would bear fruit before many hours. He watched the company as first one man and then another fell in with Peter Brown. He felt the temper of the company changing, but he still did not feel that mutiny was likely against the strong religious authority of the Elders. And so to bring the matter to a head, he asked Carver to come to his cabin. As the door closes, the captain begins--"
+    }
+   ],
+   "text": "Thus Captain Jones planted in the mind of one of the freemen of the Pilgrim company an idea which he was sure would bear fruit before many hours. He watched the company as first one man and then another fell in with Peter Brown. He felt the temper of the company changing, but he still did not feel that mutiny was likely against the strong religious authority of the Elders. And so to bring the matter to a head, he asked Carver to come to his cabin. As the door closes, the captain begins--",
+   "rev": 1,
+   "text_sha1": "ac5e17f20c"
+  },
+  {
+   "id": "L0250",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "I fear me, Master Carver, we are in a bad way."
+    }
+   ],
+   "text": "I fear me, Master Carver, we are in a bad way.",
+   "rev": 1,
+   "text_sha1": "3457afd259"
+  },
+  {
+   "id": "L0251",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Indeed--why?"
+    }
+   ],
+   "text": "Indeed--why?",
+   "rev": 1,
+   "text_sha1": "4017ff510e"
+  },
+  {
+   "id": "L0252",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "The carpenter has gone over the ship timber by timber--"
+    }
+   ],
+   "text": "The carpenter has gone over the ship timber by timber--",
+   "rev": 1,
+   "text_sha1": "88a5f2c904"
+  },
+  {
+   "id": "L0253",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Well?"
+    }
+   ],
+   "text": "Well?",
+   "rev": 1,
+   "text_sha1": "6d43d98638"
+  },
+  {
+   "id": "L0254",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "It is a long, hard job we have before us."
+    }
+   ],
+   "text": "It is a long, hard job we have before us.",
+   "rev": 1,
+   "text_sha1": "66c1e3fe10"
+  },
+  {
+   "id": "L0255",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Oh, too bad, too bad! How long?"
+    }
+   ],
+   "text": "Oh, too bad, too bad! How long?",
+   "rev": 1,
+   "text_sha1": "d06731faa1"
+  },
+  {
+   "id": "L0256",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "What with finding the proper timbers ashore, and hewing them to fit our needs, I fear it may well be two months or more before we can leave these waters."
+    }
+   ],
+   "text": "What with finding the proper timbers ashore, and hewing them to fit our needs, I fear it may well be two months or more before we can leave these waters.",
+   "rev": 1,
+   "text_sha1": "3ca455c186"
+  },
+  {
+   "id": "L0257",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Surely you can make what repairs are necessary in less time--you need not rebuild the ship."
+    }
+   ],
+   "text": "Surely you can make what repairs are necessary in less time--you need not rebuild the ship.",
+   "rev": 1,
+   "text_sha1": "c019dced72"
+  },
+  {
+   "id": "L0258",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Nay--but the ship is sprung at every seam; 'tis nothing but good fortune that has kept it afloat so long."
+    }
+   ],
+   "text": "Nay--but the ship is sprung at every seam; 'tis nothing but good fortune that has kept it afloat so long.",
+   "rev": 1,
+   "text_sha1": "b6b3c1beab"
+  },
+  {
+   "id": "L0259",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "The seams sprung?"
+    }
+   ],
+   "text": "The seams sprung?",
+   "rev": 1,
+   "text_sha1": "16c0ae8389"
+  },
+  {
+   "id": "L0260",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye--all of them."
+    }
+   ],
+   "text": "Aye--all of them.",
+   "rev": 1,
+   "text_sha1": "7c43e1be23"
+  },
+  {
+   "id": "L0261",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Then our stores are in danger of being ruined."
+    }
+   ],
+   "text": "Then our stores are in danger of being ruined.",
+   "rev": 1,
+   "text_sha1": "239697017a"
+  },
+  {
+   "id": "L0262",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, they are even now in such danger they should be unshipped."
+    }
+   ],
+   "text": "Aye, they are even now in such danger they should be unshipped.",
+   "rev": 1,
+   "text_sha1": "49ee5c1549"
+  },
+  {
+   "id": "L0263",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Then we must do it--set your crew to the work at once."
+    }
+   ],
+   "text": "Then we must do it--set your crew to the work at once.",
+   "rev": 1,
+   "text_sha1": "0a0a290361"
+  },
+  {
+   "id": "L0264",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "The crew has more than it can do to repair the ship and make it ready to sail on to Virginia, since you insist on going on."
+    }
+   ],
+   "text": "The crew has more than it can do to repair the ship and make it ready to sail on to Virginia, since you insist on going on.",
+   "rev": 1,
+   "text_sha1": "73632d977b"
+  },
+  {
+   "id": "L0265",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Then I'll set our company to work on the stores--we must not let them be ruined."
+    }
+   ],
+   "text": "Then I'll set our company to work on the stores--we must not let them be ruined.",
+   "rev": 1,
+   "text_sha1": "80bf0cbef1"
+  },
+  {
+   "id": "L0266",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Nay, or you'll all face starvation, for you can count on nothing from the land at this late date."
+    }
+   ],
+   "text": "Nay, or you'll all face starvation, for you can count on nothing from the land at this late date.",
+   "rev": 1,
+   "text_sha1": "70b8fd0939"
+  },
+  {
+   "id": "L0267",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "I'll gather the company together at once and set them to work!"
+    }
+   ],
+   "text": "I'll gather the company together at once and set them to work!",
+   "rev": 1,
+   "text_sha1": "39c7faaa61"
+  },
+  {
+   "id": "L0268",
+   "role": "RJONES",
+   "parts": [
+    {
+     "say": "Aye, do, Master Carver."
+    }
+   ],
+   "text": "Aye, do, Master Carver.",
+   "rev": 1,
+   "text_sha1": "577c83af2c"
+  },
+  {
+   "id": "L0269",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "We must unship the stores;"
+    },
+    {
+     "direction": "going"
+    },
+    {
+     "say": "we'll begin at once."
+    },
+    {
+     "sound": "sound of door opening"
+    }
+   ],
+   "text": "We must unship the stores; we'll begin at once.",
+   "rev": 1,
+   "text_sha1": "8d14cba578"
+  },
+  {
+   "id": "L0270",
+   "role": "RJONES",
+   "parts": [
+    {
+     "direction": "to himself"
+    },
+    {
+     "say": "Mayhap your company will have something to say to that, Master Carver."
+    }
+   ],
+   "text": "Mayhap your company will have something to say to that, Master Carver.",
+   "rev": 1,
+   "text_sha1": "1b58ad51fc"
+  },
+  {
+   "id": "L0271",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "So Carver gathered together his company in the common cabin, and standing before the stern-faced, storm-weary gathering, the Elder spoke:"
+    }
+   ],
+   "text": "So Carver gathered together his company in the common cabin, and standing before the stern-faced, storm-weary gathering, the Elder spoke:",
+   "rev": 1,
+   "text_sha1": "4a91ba8be8"
+  },
+  {
+   "id": "L0272",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Men of the Pilgrim company, as no doubt you are all well aware by now, the land we made this morning with such joy and thanksgiving in our hearts is not the land of the Virginia Plantation."
+    }
+   ],
+   "text": "Men of the Pilgrim company, as no doubt you are all well aware by now, the land we made this morning with such joy and thanksgiving in our hearts is not the land of the Virginia Plantation.",
+   "rev": 1,
+   "text_sha1": "3683e2182e"
+  },
+  {
+   "id": "L0273",
+   "role": "RALL",
+   "parts": [
+    {
+     "say": "Aye, we know as much! So we have heard."
+    },
+    {
+     "direction": "etc."
+    }
+   ],
+   "text": "Aye, we know as much! So we have heard.",
+   "rev": 1,
+   "text_sha1": "69cde8393f"
+  },
+  {
+   "id": "L0274",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "But our ship is sore distressed from the buffeting of the storms, and Captain Jones must needs make repairs before we can sail on to our destination."
+    },
+    {
+     "direction": "protests and grumblings"
+    },
+    {
+     "say": "I would it were not so, for I know how weary you find yourselves after the many days upon the sea. But there's naught else to do."
+    }
+   ],
+   "text": "But our ship is sore distressed from the buffeting of the storms, and Captain Jones must needs make repairs before we can sail on to our destination. I would it were not so, for I know how weary you find yourselves after the many days upon the sea. But there's naught else to do.",
+   "rev": 1,
+   "text_sha1": "7234f79bd3"
+  },
+  {
+   "id": "L0275",
+   "role": "RPETER",
+   "parts": [
+    {
+     "direction": "calling"
+    },
+    {
+     "say": "Why can't we land here?"
+    },
+    {
+     "sound": "mob assents"
+    }
+   ],
+   "text": "Why can't we land here?",
+   "rev": 1,
+   "text_sha1": "22dde764c1"
+  },
+  {
+   "id": "L0276",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Nay, nay, it cannot be. This is not Virginia; we have no patent to these lands. We must sail on. The captain and his crew will make their repairs as soon as they can, but our stores in the hold are all of them in danger of spoiling--so we must needs unship them ourselves until such time as we may sail away from here. So let every man prepare himself for work."
+    }
+   ],
+   "text": "Nay, nay, it cannot be. This is not Virginia; we have no patent to these lands. We must sail on. The captain and his crew will make their repairs as soon as they can, but our stores in the hold are all of them in danger of spoiling--so we must needs unship them ourselves until such time as we may sail away from here. So let every man prepare himself for work.",
+   "rev": 1,
+   "text_sha1": "2f88055947"
+  },
+  {
+   "id": "L0277",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Master Carver--we are not able to work."
+    },
+    {
+     "sound": "mob assents"
+    }
+   ],
+   "text": "Master Carver--we are not able to work.",
+   "rev": 1,
+   "text_sha1": "56eac47632"
+  },
+  {
+   "id": "L0278",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "I know, but--"
+    }
+   ],
+   "text": "I know, but--",
+   "rev": 1,
+   "text_sha1": "9938d2767a"
+  },
+  {
+   "id": "L0279",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "And more--'tis not our wish to stay aboard this ship longer--"
+    },
+    {
+     "sound": "mob assents"
+    }
+   ],
+   "text": "And more--'tis not our wish to stay aboard this ship longer--",
+   "rev": 1,
+   "text_sha1": "9ba78200a3"
+  },
+  {
+   "id": "L0280",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "But we can do naught else--"
+    }
+   ],
+   "text": "But we can do naught else--",
+   "rev": 1,
+   "text_sha1": "19cf3f2dcb"
+  },
+  {
+   "id": "L0281",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Aye, we kin land here, and find a goodly place to build our homes and prepare against the winter that will be down upon us long before we kin get to Virginia."
+    },
+    {
+     "sound": "mob agrees heartily"
+    }
+   ],
+   "text": "Aye, we kin land here, and find a goodly place to build our homes and prepare against the winter that will be down upon us long before we kin get to Virginia.",
+   "rev": 1,
+   "text_sha1": "7118757c1a"
+  },
+  {
+   "id": "L0282",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Men--men--quiet--hark to me! We've no right under our charter to settle here!"
+    }
+   ],
+   "text": "Men--men--quiet--hark to me! We've no right under our charter to settle here!",
+   "rev": 1,
+   "text_sha1": "39556a1f4d"
+  },
+  {
+   "id": "L0283",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "Then tear up the charter."
+    },
+    {
+     "sound": "mob agrees"
+    }
+   ],
+   "text": "Then tear up the charter.",
+   "rev": 1,
+   "text_sha1": "47c2677061"
+  },
+  {
+   "id": "L0284",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Tear up the charter? Have no government? Nay, we can't do that!"
+    }
+   ],
+   "text": "Tear up the charter? Have no government? Nay, we can't do that!",
+   "rev": 1,
+   "text_sha1": "43d86ece78"
+  },
+  {
+   "id": "L0285",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "We be freemen, Master Carver; we have a right to a voice in what we'll do, and what we won't do--and we all want to land here, don't we, men?"
+    },
+    {
+     "direction": "all agree"
+    }
+   ],
+   "text": "We be freemen, Master Carver; we have a right to a voice in what we'll do, and what we won't do--and we all want to land here, don't we, men?",
+   "rev": 1,
+   "text_sha1": "6f9f062f1c"
+  },
+  {
+   "id": "L0286",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "But if we make our home here, we are outside the King's rule."
+    }
+   ],
+   "text": "But if we make our home here, we are outside the King's rule.",
+   "rev": 1,
+   "text_sha1": "de394f9386"
+  },
+  {
+   "id": "L0287",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "We'll rule ourselves--we be free-born Englishmen!"
+    },
+    {
+     "direction": "all agree"
+    }
+   ],
+   "text": "We'll rule ourselves--we be free-born Englishmen!",
+   "rev": 1,
+   "text_sha1": "147cbc4726"
+  },
+  {
+   "id": "L0288",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "Mayhap--if that is your wish--"
+    }
+   ],
+   "text": "Mayhap--if that is your wish--",
+   "rev": 1,
+   "text_sha1": "b4c46e28d9"
+  },
+  {
+   "id": "L0289",
+   "role": "RALL",
+   "parts": [
+    {
+     "say": "It is!\nAye, aye!"
+    },
+    {
+     "direction": "etc."
+    }
+   ],
+   "text": "It is!\nAye, aye!",
+   "rev": 1,
+   "text_sha1": "4806127e0f"
+  },
+  {
+   "id": "L0290",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "It may be for the best interest of the company and for the glory of Jehovah. I consent to your wishes."
+    },
+    {
+     "sound": "cheers"
+    },
+    {
+     "say": "But it behooves us to enter into a compact, one with the other--that no man may say, once we have landed in New England, that we have no law and cannot punish the disobedient."
+    }
+   ],
+   "text": "It may be for the best interest of the company and for the glory of Jehovah. I consent to your wishes. But it behooves us to enter into a compact, one with the other--that no man may say, once we have landed in New England, that we have no law and cannot punish the disobedient.",
+   "rev": 1,
+   "text_sha1": "09b96d8dd1"
+  },
+  {
+   "id": "L0291",
+   "role": "RPETER",
+   "parts": [
+    {
+     "say": "May it please ye, sir, we be more than willing for the masters to write a compact that all can sign to be governed like any free-born Englishmen by the will o' the majority--"
+    },
+    {
+     "direction": "all agree"
+    }
+   ],
+   "text": "May it please ye, sir, we be more than willing for the masters to write a compact that all can sign to be governed like any free-born Englishmen by the will o' the majority--",
+   "rev": 1,
+   "text_sha1": "9fb2055199"
+  },
+  {
+   "id": "L0292",
+   "role": "RCARVER",
+   "parts": [
+    {
+     "say": "So be it--let the masters of the company join me in my cabin, and we shall make a compact joining all the company of freemen into a body politic."
+    },
+    {
+     "sound": "cheers"
+    }
+   ],
+   "text": "So be it--let the masters of the company join me in my cabin, and we shall make a compact joining all the company of freemen into a body politic.",
+   "rev": 1,
+   "text_sha1": "149179a10e"
+  },
+  {
+   "id": "L0293",
+   "role": "RANNOUNCER",
+   "parts": [
+    {
+     "say": "And so in the cabin of the _Mayflower_ the masters of the company, twelve in number, met in the first American legislative assembly and drew up one of the most famous documents in American history--the Mayflower Compact--which organized the first self-governing community in the New World."
+    }
+   ],
+   "text": "And so in the cabin of the _Mayflower_ the masters of the company, twelve in number, met in the first American legislative assembly and drew up one of the most famous documents in American history--the Mayflower Compact--which organized the first self-governing community in the New World.",
+   "rev": 1,
+   "text_sha1": "2002b8b69d"
+  }
+ ]
+}
