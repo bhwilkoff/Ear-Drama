@@ -8,3 +8,10 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - Verification: docs only; `git diff` read before commit. Nothing to observe on a device.
 - Owner: opened the DMCA Designated Agent Directory (dmca.copyright.gov) in Chrome at the owner's request; registration is theirs.
 - Next: confirm a push triggers CI (an `android/` change), then the `AppName` rename in `project.yml`.
+
+### Tick 2, 2026-10-22, Apple: the generated project is named EarDrama
+- Context: M0 "the generated project is named for the app", and the open push-triggers-CI question.
+- Implementation: `project.yml` name, target, PRODUCT_NAME, and test target `AppName` -> `EarDrama`; `EarDramaApp.swift`; `tools/app_config.py` (app and executable names, the repo, eardrama.org, mention terms) and `submit-appstore.sh` (project, schemes); `apple/README.md`. `tools/test_app_identity.py` read the target as the literal `AppName`, so adopting the template broke its own test: it now reads the target from `project.yml`'s name (template-worthy; upstream). Version 1.0.1 (2).
+- Verification: `xcodegen generate`; unsigned Debug builds with Xcode 27.1 (DEVELOPER_DIR; xcode-select points at the Command Line Tools) for iOS Simulator, tvOS Simulator, and macOS: BUILD SUCCEEDED, no compiler warnings (one appintentsmetadataprocessor log line). Core tests: Swift Testing 1 test passed (XCTest's "Executed 0" counts only XCTest). Identity, version-contract, and US English tests pass. Built, not device-verified.
+- CI: today's pushes each started a Pages deploy (push events arrive), but 9cffd08 touched `android-build.yml`, inside its own push paths, and no Android Build ran. This push changes `AppVersion.xcconfig`, also in those paths: watching for a push-triggered run.
+- Next: confirm the Android run; the Android debug build (M0).

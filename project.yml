@@ -1,12 +1,12 @@
 # XcodeGen spec for the ONE universal Apple target (iPhone, iPad, Mac, Apple TV).
 # The agent creates the project with `xcodegen generate` (brew install xcodegen);
-# nobody clicks through Xcode's New Project sheet. AppName.xcodeproj is generated
+# nobody clicks through Xcode's New Project sheet. EarDrama.xcodeproj is generated
 # output and gitignored: change the project HERE, then regenerate. A hand-edit in
 # Xcode is silently wiped on the next generate.
 #
 # To adopt: rename `AppName` (name, target, PRODUCT_NAME, scheme) and set
 # bundleIdPrefix + PRODUCT_BUNDLE_IDENTIFIER. No spaces in the name.
-name: AppName
+name: EarDrama
 options:
   bundleIdPrefix: app
   createIntermediateGroups: true
@@ -39,7 +39,7 @@ settings:
     # passes $ASC_TEAM_ID).
     DEVELOPMENT_TEAM: ""
 targets:
-  AppName:
+  EarDrama:
     type: application
     # One target, four destinations (Decision 013, amended by 019). Per-platform
     # UI is guarded by #if os(iOS) / os(macOS) / os(tvOS) inside each file, so
@@ -53,11 +53,11 @@ targets:
           - "**/*.md"
     scheme:
       testTargets:
-        - AppNameTests
+        - EarDramaTests
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.eardrama
-        PRODUCT_NAME: AppName
+        PRODUCT_NAME: EarDrama
         # Xcode writes the Info.plist from INFOPLIST_KEY_* settings, so there
         # is no plist file to drift. CFBundleVersion and the short version are
         # filled from AppVersion.xcconfig automatically.
@@ -87,11 +87,11 @@ targets:
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
 
   # Core unit tests. NOT hosted in the app: hosting the universal app built the
-  # app module twice ("Multiple commands produce AppName.swiftmodule") in
+  # app module twice ("Multiple commands produce EarDrama.swiftmodule") in
   # Tidbits Trivia. Compiling Core/ straight into the bundle avoids that, and
   # Core is the shared logic the universal target exists for. macOS-only, so
   # `xcodebuild test -destination platform=macOS` needs no simulator.
-  AppNameTests:
+  EarDramaTests:
     type: bundle.unit-test
     supportedDestinations: [macOS]
     sources:

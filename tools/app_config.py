@@ -22,29 +22,29 @@ from pathlib import Path
 
 # --- App identity -------------------------------------------------------------
 APPLE_BUNDLE_ID = "app.eardrama"           # iOS / iPadOS / tvOS / macOS
-APPLE_APP_NAME = "AppName"                        # the .app / scheme name
+APPLE_APP_NAME = "EarDrama"                       # the .app / scheme name
 # The executable inside the .app — what `devicectl device info processes` prints
 # (an executable PATH, never the bundle id). Usually the same as the app name.
-APPLE_EXECUTABLE = "AppName"
+APPLE_EXECUTABLE = "EarDrama"
 ANDROID_PACKAGE = "app.eardrama"
 ANDROID_PACKAGE_DEBUG = "app.eardrama.debug"
 ANDROID_MAIN_ACTIVITY = "com.example.appname.MainActivity"
 WINDOWS_PROCESS = "AppName"                       # the .exe, minus the extension
 WEB_URL = "http://localhost:8080"
 # The Roku dev channel's display name, as /query/active-app prints it.
-ROKU_CHANNEL_NAME = "AppName"
+ROKU_CHANNEL_NAME = "Ear Drama"
 
 # --- Product health (tools/pulse_collect.py, /pulse) --------------------------
 # The numeric App Store id, from the listing URL or `v1/apps?filter[bundleId]=`.
 APPLE_APP_STORE_ID = ""                           # e.g. "1234567890"
-GITHUB_REPO = ""                                  # e.g. "owner/Repo"
+GITHUB_REPO = "bhwilkoff/Ear-Drama"
 PRODUCT_NAME = "Ear Drama"                          # how a human writes it
-PRODUCT_SITE = "https://example.com"              # the public site, no slash
+PRODUCT_SITE = "https://eardrama.org"             # the public site, no slash
 # What counts as somebody talking about US when searching the open web. The
 # LOOSE term is matched only alongside a corroborating word, because a product
 # name is usually also two ordinary English words.
-MENTION_STRICT = ("example.com", "appname")
-MENTION_LOOSE = "app name"
+MENTION_STRICT = ("eardrama.org", "eardrama")
+MENTION_LOOSE = "ear drama"
 # Play Console -> Download reports -> Statistics -> "Copy Cloud Storage URI".
 # NOT derivable from the developer id in the Console URL.
 PLAY_REPORTS_BUCKET = ""                          # e.g. "pubsite_prod_rev_0978..."

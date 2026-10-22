@@ -11,7 +11,7 @@ The project is generated, not created by hand.
 its four destinations, the deployment floors, Swift 6 settings, the
 asset catalog, the generated Info.plist, and a Core unit-test target.
 [XcodeGen](https://github.com/yonaskolb/XcodeGen) turns it into
-`AppName.xcodeproj`. The agent runs it. You only open Xcode if you
+`EarDrama.xcodeproj`. The agent runs it. You only open Xcode if you
 want to look.
 
 ## Creating the project (the agent does this at M0)
@@ -29,16 +29,16 @@ want to look.
 5. Build all three platforms, unsigned, before the first commit:
 
    ```sh
-   xcodebuild -project AppName.xcodeproj -scheme AppName \
+   xcodebuild -project EarDrama.xcodeproj -scheme EarDrama \
      -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-   xcodebuild -project AppName.xcodeproj -scheme AppName \
+   xcodebuild -project EarDrama.xcodeproj -scheme EarDrama \
      -destination 'generic/platform=tvOS Simulator' CODE_SIGNING_ALLOWED=NO build
-   xcodebuild -project AppName.xcodeproj -scheme AppName \
+   xcodebuild -project EarDrama.xcodeproj -scheme EarDrama \
      -destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO build
    ```
 
-6. Run the Core tests: `xcodebuild test -project AppName.xcodeproj
-   -scheme AppName -destination 'platform=macOS'
+6. Run the Core tests: `xcodebuild test -project EarDrama.xcodeproj
+   -scheme EarDrama -destination 'platform=macOS'
    CODE_SIGNING_ALLOWED=NO`.
 7. Check the floors: `python3 tools/test_ios_floor.py` and
    `python3 tools/test_tvos_floor.py`.
@@ -81,7 +81,7 @@ A few things the spec already carries, so nobody has to set them:
 ```
 apple/
 ├── App/                 ← entry point; #if os branches live here
-│   └── AppNameApp.swift
+│   └── EarDramaApp.swift
 ├── Core/                ← compiles for EVERY os() destination
 │   ├── Models/          ← data models (platform-agnostic)
 │   ├── Networking/      ← APIClient singleton
@@ -108,7 +108,7 @@ target compiles `Core/` directly rather than hosting the app.
 `_macOS.swift`, or `_tvOS.swift` and wrap their contents in
 `#if os(iOS)`, `#if os(macOS)`, or `#if os(tvOS)`. All three view
 trees live in the same target with no exclusion lists. `RootView`
-(in `AppNameApp.swift`) branches EXPLICITLY per platform. A bare
+(in `EarDramaApp.swift`) branches EXPLICITLY per platform. A bare
 `#else` silently hands a new platform the iOS view.
 
 If you are skipping a platform (Decision 014), keep the full split
@@ -129,7 +129,7 @@ nearly free to add later since it reuses the whole Core.
   containers are writable on device. The simulator is lenient and
   will not catch violations (Decision 017). Build your
   ModelContainer with an App Group `ModelConfiguration` and a
-  fallback chain (see `AppNameApp.swift`).
+  fallback chain (see `EarDramaApp.swift`).
 - **Focus**: read the `tvos-platform-patterns` skill before writing
   any tvOS view. `ContentView_tvOS.swift` is a focus-correct
   starting shape.

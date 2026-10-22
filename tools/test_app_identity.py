@@ -96,7 +96,8 @@ with tempfile.TemporaryDirectory() as tmp:
     check(parsed is True, "quotes and angle brackets in a name keep JSON and XML valid", str(parsed))
     try:
         import yaml
-        name = yaml.safe_load(read("project.yml"))["targets"]["AppName"]["settings"]["base"]["INFOPLIST_KEY_CFBundleDisplayName"]
+        spec = yaml.safe_load(read("project.yml"))
+        name = spec["targets"][spec["name"]]["settings"]["base"]["INFOPLIST_KEY_CFBundleDisplayName"]
         check(name == "Bird 'Log' <1>", "and project.yml still reads as YAML", repr(name))
     except ImportError:
         print("  SKIP  project.yml as YAML (PyYAML is not installed)")

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct AppNameApp: App {
+struct EarDramaApp: App {
     // Owned here (not `.environment(AppStore())` inline) so a re-evaluated
     // Scene body never swaps in a fresh store and drops navigation state.
     @State private var store = AppStore()

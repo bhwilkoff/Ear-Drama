@@ -33,14 +33,14 @@ fi
 # SCHEME      — the Xcode scheme per platform. The universal iOS/tvOS target usually shares ONE
 #               scheme (`AppName`); a macOS build is often a SEPARATE scheme — set it below.
 # ORG / TEAM  — the org name EXACTLY as it appears in your signing certs, and your 10-char Team ID.
-PROJECT="AppName.xcodeproj"
+PROJECT="EarDrama.xcodeproj"
 BID_FILTER="com.example.appname"
 ORG="${ASC_ORG_NAME:-<ORG_NAME>}"          # e.g. "Acme, Inc." — must match the cert's O= exactly
 TEAM="${ASC_TEAM_ID:?set ASC_TEAM_ID (your 10-char Apple Team ID)}"
 case "$PLATFORM" in
-  mac)  SCHEME="AppName"; DEST="generic/platform=macOS"; PKG=1 ;;   # ← if macOS is a separate scheme, set it here
-  ios)  SCHEME="AppName"; DEST="generic/platform=iOS";   PKG=0 ;;
-  tvos) SCHEME="AppName"; DEST="generic/platform=tvOS";  PKG=0 ;;
+  mac)  SCHEME="EarDrama"; DEST="generic/platform=macOS"; PKG=1 ;;   # ← if macOS is a separate scheme, set it here
+  ios)  SCHEME="EarDrama"; DEST="generic/platform=iOS";   PKG=0 ;;
+  tvos) SCHEME="EarDrama"; DEST="generic/platform=tvOS";  PKG=0 ;;
   *) echo "unknown platform '$PLATFORM' (use mac|ios|tvos|all)"; exit 1 ;;
 esac
 # ================================================================================================
