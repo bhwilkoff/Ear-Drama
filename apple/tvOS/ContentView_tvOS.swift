@@ -233,6 +233,7 @@ private struct EpisodeScreen_tvOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @State private var detail: EpisodeDetail??
+    @State private var transcriptOpen = false
     @FocusState private var playFocused: Bool
 
     var body: some View {
@@ -281,6 +282,13 @@ private struct EpisodeScreen_tvOS: View {
                     NavigationLink(value: Route.series(episode.seriesKey)) {
                         Label("Series", systemImage: "square.stack")
                     }
+                    if episode.transcriptURL != nil {
+                        Button {
+                            transcriptOpen = true
+                        } label: {
+                            Label(Transcript.label, systemImage: "text.quote")
+                        }
+                    }
                 }
                 .focusSection()
 
@@ -306,6 +314,11 @@ private struct EpisodeScreen_tvOS: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .defaultFocus($playFocused, true)
+        .fullScreenCover(isPresented: $transcriptOpen) {
+            if let url = episode.transcriptURL {
+                TranscriptScreen_tvOS(title: episode.displayTitle, url: url)
+            }
+        }
     }
 }
 
@@ -329,7 +342,9 @@ private struct SearchScreen_tvOS: View {
                 Section("Episodes") {
                     ForEach(results.episodes) { episode in
                         NavigationLink(value: Route.episode(episode.id)) {
-                            EpisodeRowLabel(episode: episode, showSeries: true)
+                            EpisodeRowLabel(episode: episode, showSeries: true,
+                                            note: results.transcriptOnly.contains(episode.id)
+                                                ? Transcript.searchNote : nil)
                         }
                     }
                 }
@@ -388,6 +403,7 @@ private struct LibraryScreen_tvOS: View {
 private struct NowPlaying_tvOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
+    @State private var transcriptOpen = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s8) {
@@ -418,6 +434,13 @@ private struct NowPlaying_tvOS: View {
                 Spacer()
                 SpeedMenu()
                 SleepButton()
+                if player.item?.episode.transcriptURL != nil {
+                    Button {
+                        transcriptOpen = true
+                    } label: {
+                        Label(Transcript.label, systemImage: "text.quote")
+                    }
+                }
             }
             .focusSection()
             if let message = player.errorMessage {
@@ -431,6 +454,11 @@ private struct NowPlaying_tvOS: View {
         .padding(.vertical, 60)
         .background(Color.brandBackground.ignoresSafeArea())
         .onPlayPauseCommand { player.togglePlayPause() }
+        .fullScreenCover(isPresented: $transcriptOpen) {
+            if let item = player.item, let url = item.episode.transcriptURL {
+                TranscriptScreen_tvOS(title: item.episode.displayTitle, url: url)
+            }
+        }
     }
 }
 #endif

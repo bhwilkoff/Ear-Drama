@@ -52,6 +52,10 @@ nonisolated struct EpisodeRow: Hashable, Sendable, Identifiable {
     /// contract §3.1; nil until measured. Read only by `episodeDetail`.
     var loudnessI: Double? = nil
     var loudnessTP: Double? = nil
+    /// archive.org's automatic transcript, set only where the quality gate
+    /// passed (contract §3.1, `has_transcript = 1`); fetched on demand, never
+    /// bundled. Read only by `episodeDetail`.
+    var transcriptURL: URL? = nil
 
     /// The episode's display title. A row the pipeline left untitled shows its
     /// log number, then its date, and only then the series name.
@@ -127,6 +131,9 @@ nonisolated struct SeriesPage: Hashable, Sendable {
 nonisolated struct SearchResults: Hashable, Sendable {
     var series: [SeriesRow] = []
     var episodes: [EpisodeRow] = []
+    /// Episodes found only by words in their transcript (contract §3.4), so a
+    /// row can say why it matched.
+    var transcriptOnly: Set<String> = []
     var isEmpty: Bool { series.isEmpty && episodes.isEmpty }
 }
 

@@ -60,6 +60,16 @@ struct EarDramaApp: App {
             await downloads.handleBackgroundEvents()
         }
         #endif
+        #if os(macOS)
+        WindowGroup(Transcript.label, id: TranscriptRef.windowID, for: TranscriptRef.self) { $ref in
+            if let ref {
+                TranscriptWindow_macOS(ref: ref)
+                    .environment(catalog)
+                    .tint(Color.brandPrimary)
+            }
+        }
+        .defaultSize(width: 560, height: 680)
+        #endif
     }
 }
 

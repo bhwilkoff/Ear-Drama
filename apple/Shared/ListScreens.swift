@@ -220,6 +220,11 @@ struct EpisodeScreen: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @Environment(DownloadStore.self) private var downloads
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #else
+    @State private var transcriptOpen = false
+    #endif
     @State private var detail: EpisodeDetail??
 
     var body: some View {
@@ -269,6 +274,18 @@ struct EpisodeScreen: View {
                 }
                 .disabled(detail.recordings.isEmpty)
                 DownloadControl(detail: detail)
+                if let url = episode.transcriptURL {
+                    Button {
+                        #if os(macOS)
+                        openWindow(id: TranscriptRef.windowID,
+                                   value: TranscriptRef(title: episode.displayTitle, url: url))
+                        #else
+                        transcriptOpen = true
+                        #endif
+                    } label: {
+                        Label(Transcript.label, systemImage: "text.quote")
+                    }
+                }
                 if !catalog.isOnline && downloads.record(for: episode.id)?.state != .downloaded { OfflineNotice() }
                 if isCurrent, let message = player.errorMessage {
                     Label(message, systemImage: "exclamationmark.triangle")
@@ -308,6 +325,9 @@ struct EpisodeScreen: View {
         .navigationTitle(episode.displayTitle)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $transcriptOpen) {
+            if let url = episode.transcriptURL { TranscriptSheet_iOS(url: url) }
+        }
         #endif
     }
 
@@ -369,7 +389,9 @@ struct SearchResultsList: View {
                             Section("Episodes") {
                                 ForEach(results.episodes) { episode in
                                     NavigationLink(value: Route.episode(episode.id)) {
-                                        EpisodeRowLabel(episode: episode, showSeries: true)
+                                        EpisodeRowLabel(episode: episode, showSeries: true,
+                                                        note: results.transcriptOnly.contains(episode.id)
+                                                            ? Transcript.searchNote : nil)
                                     }
                                     .playContextMenu(episode.id)
                                 }

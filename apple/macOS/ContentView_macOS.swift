@@ -58,6 +58,7 @@ private struct SearchScreen_macOS: View {
 struct TransportBar_macOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(spacing: Spacing.s2) {
@@ -86,6 +87,17 @@ struct TransportBar_macOS: View {
                 .frame(minWidth: 200)
                 SpeedMenu().fixedSize()
                 SleepButton().fixedSize()
+                if let item = player.item, let url = item.episode.transcriptURL {
+                    Button {
+                        openWindow(id: TranscriptRef.windowID,
+                                   value: TranscriptRef(title: item.episode.displayTitle, url: url))
+                    } label: {
+                        Image(systemName: "text.quote")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(Transcript.label)
+                    .accessibilityLabel(Transcript.label)
+                }
             }
             if let message = player.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
@@ -107,6 +119,7 @@ struct PlaybackCommands_macOS: Commands {
     let player: AudioPlayer
     let store: AppStore
     let downloads: DownloadStore
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandMenu("Controls") {
@@ -147,6 +160,13 @@ struct PlaybackCommands_macOS: Commands {
                 }
                 .disabled(player.item == nil)
             }
+            Divider()
+            Button(Transcript.label) {
+                guard let item = player.item, let url = item.episode.transcriptURL else { return }
+                openWindow(id: TranscriptRef.windowID, value: TranscriptRef(title: item.episode.displayTitle, url: url))
+            }
+            .keyboardShortcut("t", modifiers: [.command, .option])
+            .disabled(player.item?.episode.transcriptURL == nil)
         }
         CommandGroup(after: .sidebar) {
             ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in

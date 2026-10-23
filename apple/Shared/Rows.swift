@@ -8,6 +8,8 @@ import SwiftUI
 struct EpisodeRowLabel: View {
     let episode: EpisodeRow
     var showSeries = false
+    /// Why a search row matched, when the row itself cannot show it.
+    var note: String? = nil
     @Environment(ListeningHistory.self) private var history
 
     var body: some View {
@@ -27,6 +29,9 @@ struct EpisodeRowLabel: View {
                 }
                 if let duration = episode.durationText {
                     Text(verbatim: duration).monospacedDigit()
+                }
+                if let note {
+                    Text(note)
                 }
                 progressMark
             }

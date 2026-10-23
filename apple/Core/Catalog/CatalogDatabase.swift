@@ -22,6 +22,10 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let hasSponsor: Bool
     private let hasNoRecommend: Bool
     private let hasLoudness: Bool
+    private let hasTranscript: Bool
+    /// The index carries the transcript column (contract §3.4), so a match can
+    /// be told apart as transcript-only.
+    private let ftsHasTranscript: Bool
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
     let rightsLines: [String: String]
     private let sawCorruption = Mutex(false)
@@ -46,6 +50,9 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
         hasLoudness = Self.columnExists(h, table: "episodes", column: "loudness_i")
             && Self.columnExists(h, table: "episodes", column: "loudness_tp")
+        hasTranscript = Self.columnExists(h, table: "episodes", column: "transcript_url")
+            && Self.columnExists(h, table: "episodes", column: "has_transcript")
+        ftsHasTranscript = Self.columnExists(h, table: "episodes_fts", column: "transcript")
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
             sqlite3_close(h)
@@ -223,13 +230,16 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let id = resolve(rawID)
         let sponsorColumn = hasSponsor ? "e.sponsor" : "NULL"
         let loudnessColumns = hasLoudness ? "e.loudness_i, e.loudness_tp" : "NULL, NULL"
+        // §3.1: shown only where the gate passed, whatever else the row carries.
+        let transcriptColumn = hasTranscript ? "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" : "NULL"
         let found = rows("""
-            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns) FROM episodes e
-            JOIN series s ON s.key = e.series_key WHERE e.id = ?
+            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns), \(transcriptColumn)
+            FROM episodes e JOIN series s ON s.key = e.series_key WHERE e.id = ?
             """, [.text(id)]) { row -> (EpisodeRow, String?) in
             var episode = Self.episode(row)
             episode.loudnessI = row.double(12)
             episode.loudnessTP = row.double(13)
+            episode.transcriptURL = row.text(14).flatMap { URL(string: $0) }
             return (episode, row.text(11))
         }.first
         guard let (episode, sponsor) = found else { return nil }
@@ -270,11 +280,20 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     /// "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful".
     func search(_ query: String, limit: Int = 100) -> SearchResults {
         guard let match = Self.ftsQuery(query) else { return SearchResults() }
-        let episodes = rows("""
-            SELECT \(Self.episodeColumns) FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid
+        // The same terms without the transcript column: a row the full match
+        // finds and this one does not was found by its transcript alone.
+        let elsewhere = ftsHasTranscript ? Self.ftsQuery(query, columns: Self.nonTranscriptColumns) : nil
+        let flag = elsewhere == nil ? "0"
+            : "e.rowid NOT IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
+        var binds: [Bind] = elsewhere.map { [.text($0)] } ?? []
+        binds.append(.text(match))
+        let found = rows("""
+            SELECT \(Self.episodeColumns), \(flag) FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid
             JOIN series s ON s.key = e.series_key
             WHERE episodes_fts MATCH ? ORDER BY f.rank LIMIT \(limit)
-            """, [.text(match)], Self.episode)
+            """, binds) { row in (Self.episode(row), (row.int(11) ?? 0) != 0) }
+        let episodes = found.map(\.0)
+        let transcriptOnly = Set(found.filter(\.1).map(\.0.id))
         let phrase = query.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "_", with: "")
         let series = rows("""
@@ -282,17 +301,23 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             WHERE s.episodes > 0 AND (s.name LIKE ? OR s.name LIKE ?)
             ORDER BY s.episodes DESC LIMIT 20
             """, [.text("\(phrase)%"), .text("% \(phrase)%")], Self.series)
-        return SearchResults(series: series, episodes: episodes)
+        return SearchResults(series: series, episodes: episodes, transcriptOnly: transcriptOnly)
     }
 
+    /// Every FTS column but `transcript` (contract §3.4).
+    static let nonTranscriptColumns = ["title", "series", "people"]
+
     /// Each word becomes a quoted prefix term (`"sorr"*`), so FTS5 syntax in
-    /// what someone types is never interpreted.
-    static func ftsQuery(_ query: String) -> String? {
+    /// what someone types is never interpreted. `columns` limits every term
+    /// to those columns (`{title series people} : "sorr"*`).
+    static func ftsQuery(_ query: String, columns: [String]? = nil) -> String? {
         let words = query.split(whereSeparator: { !$0.isLetter && !$0.isNumber && $0 != "'" })
             .map { $0.replacingOccurrences(of: "'", with: "") }
             .filter { !$0.isEmpty }
         guard !words.isEmpty else { return nil }
-        return words.map { "\"\($0.replacingOccurrences(of: "\"", with: "\"\""))\"*" }.joined(separator: " ")
+        let filter = columns.map { "{\($0.joined(separator: " "))} : " } ?? ""
+        return words.map { "\(filter)\"\($0.replacingOccurrences(of: "\"", with: "\"\""))\"*" }
+            .joined(separator: " ")
     }
 
     /// `shelf(rule)`: a Listen shelf. Always `recommendAnd`.

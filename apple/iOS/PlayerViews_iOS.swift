@@ -50,6 +50,7 @@ struct PlayerSheet_iOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @State private var transcriptOpen = false
 
     var body: some View {
         NavigationStack {
@@ -116,6 +117,19 @@ struct PlayerSheet_iOS: View {
                     }
                     .accessibilityLabel("Close player")
                 }
+                if player.item?.episode.transcriptURL != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            transcriptOpen = true
+                        } label: {
+                            Image(systemName: "text.quote")
+                        }
+                        .accessibilityLabel(Transcript.label)
+                    }
+                }
+            }
+            .sheet(isPresented: $transcriptOpen) {
+                if let url = player.item?.episode.transcriptURL { TranscriptSheet_iOS(url: url) }
             }
         }
     }
