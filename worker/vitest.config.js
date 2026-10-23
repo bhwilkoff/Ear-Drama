@@ -11,6 +11,9 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.toml" },
         miniflare: {
+          // A local stand-in for the TAKES bucket, which wrangler.toml leaves
+          // commented out until the owner turns R2 on.
+          r2Buckets: ["TAKES"],
           bindings: {
             TEST_MIGRATIONS: migrations,
             SESSION_SECRET: "test-only-session-secret-0123456789abcdef",

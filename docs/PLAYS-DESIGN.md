@@ -524,3 +524,110 @@ an effects library; teleplays; any model-written text in a play; any score,
 like, or ranking of a performance.
 
 Bring back the owner's answers to C5, C6, C7, C9, and C10.
+
+---
+
+## §11. Phase 2 as built: the Worker (2026-10-23)
+
+Phase 2 makes one production recordable across several devices, by people a
+director invites (LOOP-PLAN M8, Decisions 057 and 059). This section is the
+server side only. No client calls it yet, nothing is deployed, and every rule
+below is proven by `worker/test/plays.test.js` and `account.test.js`, with a
+deliberate break for each in `worker/test/mutations.mjs`. The endpoints, the
+record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
+
+### §11.1 What a production is on the Worker
+
+- **An account is required** for every call (Decision 057).
+- **Castable only** (§8 rule 1). A production names a script id, its
+  revision, and its cast sheet: every line id with its part, in script order,
+  exactly as `linePart` gives it. The Worker holds a manifest of each castable
+  script's revision, title, and the SHA-256 of its cast sheet, rebuilt from
+  `catalog/plays/castable-scripts.json` by `worker/tools/castable-manifest.mjs`;
+  a test fails when the two disagree. So a client cannot invent a castable
+  script, and the Worker never holds the text of one.
+- **The record is production.json**, merged line by line from every member's
+  takes, with the field names the apps already decode (§6). Room tone and
+  listening through stay on the device.
+- **Invite only.** The director makes invite links: 256 random bits, shown
+  once, stored as a hash, revocable, expiring after 1 to 30 days (7 by
+  default). Whoever holds one, signed in, sees the cast sheet and claims one
+  part. At most 64 members.
+
+### §11.2 The relay across devices
+
+The pending defaults of §9 hold on the server, word for word:
+
+- **C7.** Only the next part may be claimed, largest speaking part first, then
+  sound, then directions; nothing is claimed while a part records; a finished
+  part reopens only while nothing records, for its performer or the director.
+  A claim lapses after **7 days** (the figure §9 names), the part is open
+  again, and its takes stay.
+- **C6.** A speaking part is done only when every line has a take; only
+  sound and directions may be left silent.
+- A take is uploaded only by the part's claimant, only for a line of that
+  part, and is immutable (§8 rule 5). The newest take becomes the line's
+  chosen one; the claimant can choose an older one back.
+
+### §11.3 Takes on the server
+
+- **Where.** Each take is an object in an R2 bucket (free egress), its fields
+  a row in D1. D1's 500 MB free database holds under an hour of 24-bit mono
+  takes (144 KB a second), so audio never goes in it. R2 asks for a payment method
+  on file even on its free tier (research 08c Q8), so the bucket is a
+  commented placeholder and uploads answer `503` until the owner decides.
+- **Limits, read from the file's own header**: mono WAV or FLAC only; at most
+  300 seconds (the longest castable speech, 644 words, is about 258 seconds at
+  150 words a minute, measured over the 7,345 speeches in the castable file on
+  2026-10-23) and 45 MB; a declared length more than 50 ms off, or a header
+  claiming more audio than was sent, is refused; at most 10 takes a line.
+- **The stand-in rule (§5) holds on the server.** A take whose bleed check
+  fired is refused, so the device voice is never stored there either.
+
+### §11.4 Safety (App Store guideline 1.2)
+
+- **Report** a take or a member, from inside the production, with a reason
+  and an optional note. A reported take is hidden from its reporter at once,
+  and a production with a reported chosen take cannot be published.
+- **Block** a person: their takes are hidden from the blocker, and an invite
+  made by either of the two does not work for the other.
+- **Filter** display names and class names through a deny list, folded for
+  accents, case, and look-alike characters, with links and the service's own
+  name refused. Whole-word terms let "Cassandra" through.
+
+### §11.5 Consent, publishing, and classes
+
+- **CC0 consent** (Decision 059) is recorded per person per production with
+  the consent text's version id, before that person's first upload. The words
+  are the owner's: until approved the text is a placeholder that begins
+  "OWNER:". New words take a new version id, and everyone consents again
+  before their next upload or before the play is published.
+- **Publishing** queues a job and calls nothing. It needs a complete
+  production, no open report on a chosen take, and every performer's consent
+  at the current version. The job's status is `pending_owner_account` until
+  the Ear Drama archive.org account exists.
+- **Classes.** A teacher makes a class and students join by an eight-character
+  code. A class marked under 13 (fixed when made) takes no student until its
+  teacher records the school's consent, and that record is refused until the
+  owner names the privacy policy's version that covers school consent.
+- **Deletion** (Decision 063) removes every row, the person's take audio in
+  the bucket, and their classes; a production with others in it passes to the
+  member who joined first, with their takes.
+
+### §11.6 Open owner items
+
+| # | Question | What the Worker does until it is answered |
+|---|---|---|
+| P1 | R2 needs a payment method on file. Turn it on, or keep phase 2 waiting? | The `TAKES` binding is commented out; uploads answer `503` |
+| P2 | The CC0 consent words (Decision 059) | Text is an "OWNER:" placeholder at version `cc0-placeholder-1` |
+| P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
+| P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
+| P5 | The privacy policy that covers school consent for students under 13 | `SCHOOL_CONSENT_POLICY` unset: no school consent can be recorded, so no under-13 class takes a student |
+| P6 | The Ear Drama archive.org account and its keys | Jobs queue at `pending_owner_account`; nothing uploads |
+| P7 | C6 and C7 (§9), including the 7-day claim lapse | Applied as their pending defaults |
+| P8 | Do classes own productions (a class member joins without an invite)? | No: classes are a roster only; every production is invite-only |
+
+Not built yet: the apps' side of phase 2 on every platform, the job that
+uploads to archive.org, a moderator's view of reports, and a test that the
+Worker's part order matches `js/plays-core.js` and Apple's on every castable
+script (each is checked here against its own suite, not against the others).

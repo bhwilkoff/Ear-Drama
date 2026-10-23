@@ -9,19 +9,16 @@
  * the contract.
  *
  * Every route lives under /v1. Listen Together rooms (M6, rooms.js over the
- * pure room-protocol.js) need no account. Shared plays (M8) will be a sibling
- * module on this Worker and this D1; their path is reserved below and answers
- * 501 until then.
+ * pure room-protocol.js) need no account. Shared plays (M8, plays.js over the
+ * pure plays-relay.js) need one for every route.
  */
 
 import { authenticate, handleRefresh, handleSignIn, handleSignOut, sweepSessions } from "./auth.js";
 import { handleRead, handleUpload } from "./sync.js";
 import { handleAccount, handleDelete } from "./account.js";
 import { handleRooms, sweepRooms } from "./rooms.js";
+import { handlePlays, sweepPlays } from "./plays.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
-
-/** The routes for later milestones. Each becomes `handleX(url, request, env, auth)`. */
-const RESERVED = [["/v1/plays", "M8 shared plays"]];
 
 async function route(request, env, url) {
   const { pathname } = url;
@@ -41,8 +38,12 @@ async function route(request, env, url) {
     return handleRooms(url, request, env, ip);
   }
 
-  for (const [prefix, what] of RESERVED) {
-    if (pathname === prefix || pathname.startsWith(prefix + "/")) return problem(501, "not_yet", what);
+  // Shared plays (M8): an account is required for every route (Decision 057).
+  if (pathname === "/v1/plays" || pathname.startsWith("/v1/plays/")) {
+    const auth = await authenticate(request, env);
+    if (auth.error) return auth.error;
+    if (await limited(env.USER_LIMITER, auth.userId)) return problem(429, "rate_limited");
+    return handlePlays(url, request, env, auth);
   }
 
   const authed = {
@@ -63,7 +64,7 @@ async function route(request, env, url) {
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env)]));
+    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env)]));
   },
 
   async fetch(request, env) {

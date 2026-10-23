@@ -5,7 +5,9 @@
  * Each table is named here and deleted from in one batch, and the schema's
  * ON DELETE CASCADE is the second lock. When a table that holds a person's
  * rows is added, it is added to USER_TABLES; test/account.test.js counts the
- * rows in EVERY table after a deletion, so a table left out fails it.
+ * rows in EVERY table after a deletion, so a table left out fails it. A
+ * shared play's take audio lives in the TAKES bucket, and playsBeforeDeletion
+ * deletes it (or queues it for the sweep) before the rows go.
  *
  * Sign in with Apple also asks that the app revoke the person's Apple tokens
  * when the account goes. The Worker never keeps an Apple token, so the client
@@ -17,9 +19,39 @@
 import { json, problem, readJson } from "./http.js";
 import { audiences } from "./auth.js";
 import { signES256 } from "./jwt.js";
+import { playsBeforeDeletion } from "./plays.js";
 
-/** Children first; `users` last. */
-export const USER_TABLES = ["history", "follows", "queue", "queue_meta", "sessions", "identities"];
+/** Children first; `users` last. Each is deleted from by its `user_id`. */
+export const USER_TABLES = [
+  "play_takes",
+  "play_parts",
+  "play_consents",
+  "play_reports",
+  "play_blocks",
+  "play_invites",
+  "play_archive_jobs",
+  "play_members",
+  "play_productions",
+  "play_school_consents",
+  "play_class_members",
+  "play_classes",
+  "history",
+  "follows",
+  "queue",
+  "queue_meta",
+  "sessions",
+  "identities",
+];
+
+/**
+ * A person's id in a column other than `user_id`, and what deletion does to it.
+ * The deletion test reads every column that references users(id) from D1.
+ */
+export const OTHER_PERSON_COLUMNS = [
+  ["play_blocks", "blocked_id", "delete"],
+  // A report about the person outlives them, anonymous (zero-cost-hosted-backend: audit rows SET NULL).
+  ["play_reports", "target_user_id", "clear"],
+];
 
 export async function handleAccount(auth, env) {
   const { userId } = auth;
@@ -52,7 +84,12 @@ export async function handleDelete(auth, request, env) {
     appleRevoked = await revokeApple(env, body.apple_authorization_code, body.apple_client_id);
   }
 
+  const orphans = await playsBeforeDeletion(env, userId);
   await env.DB.batch([
+    ...orphans,
+    ...OTHER_PERSON_COLUMNS.map(([t, col, how]) =>
+      env.DB.prepare(how === "clear" ? `UPDATE ${t} SET ${col} = NULL WHERE ${col} = ?1` : `DELETE FROM ${t} WHERE ${col} = ?1`).bind(userId),
+    ),
     ...USER_TABLES.map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE user_id = ?1`).bind(userId)),
     env.DB.prepare("DELETE FROM users WHERE id = ?1").bind(userId),
   ]);
