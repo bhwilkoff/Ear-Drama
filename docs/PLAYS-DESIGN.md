@@ -225,9 +225,10 @@ transcriber notes are set aside with their words and never become a part. A
 text is refused, never split, when it holds several plays (cast lists or first
 acts counted over the whole text) or sets aside over 40% of its words (the
 plays measured set aside at most 28%).
-None of the four Carlton radio
-plays ships yet, because each parses with more than 5% of its blocks
-unclassified. The file moves beside the catalog once the library outgrows a
+The four Carlton radio plays ship
+since 2026-10-23 (cast lists, labels with directions, multi-paragraph
+speeches, and spoken italics read on the radio path; 0% unclassified each),
+so the file holds 15 scripts; no Generic Radio Workshop text ships (C8). The file moves beside the catalog once the library outgrows a
 bundle.
 
 Rights is not the only gate. A rights-castable text also has to parse into

@@ -20,6 +20,12 @@
    "cast": "2f9bb4c4e39501bf4bac4dd06b588589d99964fb81b373b25cb2be8305d1c88a",
    "lines": 657
   },
+  "gut-28051": {
+   "revision": "cf7f3741c7c9",
+   "title": "Caesar Rodney's Ride",
+   "cast": "d84e8973eceaba4ef3e2c4d55302988d9552f5751a9e91e39c49ca4c2bbe4672",
+   "lines": 350
+  },
   "gut-2265": {
    "revision": "e3cf30fcf0cc",
    "title": "Hamlet",
@@ -50,17 +56,35 @@
    "cast": "2bd97270e9f2de5eadc73cf388f2eb3e80217c9c2a882d10363b8e73e0e7e391",
    "lines": 992
   },
+  "gut-27357": {
+   "revision": "a2c815221279",
+   "title": "The Landing of the Pilgrims",
+   "cast": "bfa1c6e412043f1d9a6dc4842c18a0fe16781f14be3301a5705ce011f38981ac",
+   "lines": 294
+  },
   "gut-5071": {
    "revision": "6ec7307c62e9",
    "title": "The Philanderer",
    "cast": "a7bc6050a0115c77d6f3257a39663f2b3a3d1e06250b4fc1047744a42b8b4595",
    "lines": 492
   },
+  "gut-28527": {
+   "revision": "ac9a5a4ec189",
+   "title": "The Story of Nathan Hale",
+   "cast": "c2cb499bfed088f6a3f49adb97183c21153995bf0a158bc133b62da187c4a244",
+   "lines": 408
+  },
   "gut-49916": {
    "revision": "627e3ee71a25",
    "title": "The Tenth Man",
    "cast": "2c9855adf8b73ab933142d4dbbd94748bbe7ad157f90818d2debf7c8c3f4ff35",
    "lines": 1720
+  },
+  "gut-28511": {
+   "revision": "24fe31f4a4ff",
+   "title": "The Tree That Saved Connecticut",
+   "cast": "cb7d60268a9d393a9ce72dc528c7fdf46dbd610ed4419abe3d8202295deb7eea",
+   "lines": 355
   },
   "gut-76327": {
    "revision": "6edbad4e73ae",

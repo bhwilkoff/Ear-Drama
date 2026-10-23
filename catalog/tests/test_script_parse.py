@@ -11,6 +11,13 @@ Broken controls, 2026-10-23 (where the play begins and ends): no play bounds 11/
     no cast sub-lists 16/17, no honorific labels 16/17. The cached-text check first PASSED
     with no bounds: it took a "* * *" separator for the play's first heading. Plays counted
     only inside the play window 16/17 (two plays refused); no set-aside gate 16/17.
+Broken controls, 2026-10-23 (radio shapes), each failing its own case: no direction on a bare
+    label, no multi-paragraph speech, radio italics as directions, no front/back, no note
+    kind, no separator heading, no cast-entry rule, no unglue, no bare cues, mixed labels need
+    not recur, no quoted or numbered labels: 24-26/27. An unmerged bare label continuing a
+    speech failed only the cached-text check. No Gutenberg strip for radio first PASSED
+    27/27 (the license after the play was set aside as back matter); the fixture now carries
+    a Gutenberg header ("Author: ...") and fails 25/27.
 """
 import os
 import sys
@@ -338,6 +345,205 @@ def a_text_that_is_mostly_set_aside_is_refused():
                 + _small_play("ALDO", "BORIS") + "\n", "stage")
     assert r["set_aside_share"] > P.CLEAN_SET_ASIDE and not r["clean"], (r["set_aside_share"], r["issues"])
     assert "mostly_set_aside" in r["issues"], r["issues"]
+
+
+# ---- radio shapes (measured 2026-10-23 over every cached radio text: 1,028 GRW + 4 Gutenberg) ----
+
+BOOK_RADIO = """The Project Gutenberg EBook of Pilots
+
+Title: Pilots
+
+Author: A. Writer
+
+Release Date: May 1, 2009
+
+*** START OF THE PROJECT GUTENBERG EBOOK PILOTS ***
+
+_HOW TO READ THIS PLAY_
+
+The play in this book has been produced on the radio. The word [_off_] means
+the speaker stands away from the microphone.
+
+_CAST_
+
+ALDER
+BRISK
+NARRATOR
+
+NARRATOR
+
+It was a long winter in the valley, and the river froze early.
+
+That is where our story begins, aboard the _Swallow_.
+
+""" + "\n\n".join(f"ALDER\n\nA line of the scene, said plainly, {i}.\n\nBRISK [_off_]\n\nAn answer from afar, {i}."
+                  for i in range(40)) + """
+
+BRISK
+
+The last word,
+wrapped over two lines.
+
+       *       *       *       *       *
+
+Transcriber's Note:
+
+Page 9: Corrected a typo.
+
+End of Project Gutenberg's Pilots
+
+*** END OF THE PROJECT GUTENBERG EBOOK PILOTS ***
+"""
+
+
+@case
+def radio_label_on_its_own_line_with_a_direction():
+    r = P.parse(BOOK_RADIO, "radio")
+    assert r["status"] == "parsed" and r["clean"], (r.get("status"), r.get("issues"), r.get("unclassified"))
+    assert {x["name"] for x in r["roles"]} == {"NARRATOR", "ALDER", "BRISK"}, r["roles"]
+    brisk = next(l for l in r["lines"] if l["role"] == "BRISK")
+    assert brisk["parts"][0] == {"mic": "off"} and brisk["parts"][1]["say"].startswith("An answer"), brisk["parts"]
+
+
+@case
+def radio_speech_over_several_paragraphs_is_one_line():
+    r = P.parse(BOOK_RADIO, "radio")
+    nar = [l for l in r["lines"] if l["role"] == "NARRATOR"]
+    assert len(nar) == 1 and "where our story begins" in nar[0]["parts"][-1]["say"], nar
+    # a radio script brackets its directions: an italic name is spoken
+    assert "_Swallow_" in nar[0]["parts"][-1]["say"], nar[0]["parts"]
+
+
+@case
+def radio_preface_notes_and_separators_are_never_lines():
+    r = P.parse(BOOK_RADIO, "radio")
+    src = " ".join(l["source"] for l in r["lines"])
+    for w in ("HOW TO READ", "microphone", "Transcriber", "Corrected", "End of Project", "*", "A. Writer"):
+        assert w not in src, w
+    assert not {"PAGE 9", "AUTHOR"} & {x["name"] for x in r["roles"]}, r["roles"]
+    assert r["lines"][-1]["source"].endswith("wrapped over two lines."), r["lines"][-1]
+
+
+CAST_RADIO = """Some Series
+
+An Episode
+
+Date: May 18 1951
+
+CAST:
+
+1ST ANNOUNCER
+
+RICK, private detective
+HELEN, Rick's girlfriend
+
+CLERK (2 lines)
+
+NBC ANNCR (1 line)1ST ANNCR: The makers present the program.
+
+NOTE:
+
+This is the text of a published version, bookended with the broadcast's announcements.
+
+MUSIC: THEME
+
+Applause
+
+""" + "\n\n".join(f"RICK: A line of the scene, said plainly, {i}.\n\nHELEN: And an answer said back, {i}.\n\n"
+                  f"1ST ANNCR: A word from the sponsor, {i}." for i in range(20)) + """
+
+I know not; this sentence is prose, and not a role at all.
+
+"I": (NARRATES) I dreamt I went to the house again.
+
+MAN #1: Up in the sky!
+
+G O N G
+
+Transcribed by A. Volunteer
+"""
+
+
+@case
+def radio_cast_list_entries_with_qualifiers_stay_in_the_cast():
+    r = P.parse(CAST_RADIO, "radio")
+    assert r["status"] == "parsed" and r["clean"], (r.get("status"), r.get("issues"), r.get("unclassified"))
+    for l in r["lines"]:
+        assert "private detective" not in l["source"] and "(2 lines)" not in l["source"], l
+    assert not any("," in x["name"] for x in r["roles"]), r["roles"]
+
+
+@case
+def radio_glued_label_is_split():
+    r = P.parse(CAST_RADIO, "radio")
+    first = next(l for l in r["lines"] if l["kind"] == "speech")
+    assert first["role"] == "1ST ANNCR" and first["parts"] == [{"say": "The makers present the program."}], first
+
+
+@case
+def radio_notes_and_credits_are_set_aside():
+    r = P.parse(CAST_RADIO, "radio")
+    src = " ".join(l["source"] for l in r["lines"]) + " ".join(r["unclassified"])
+    assert "bookended" not in src and "Volunteer" not in src, src[-300:]
+
+
+@case
+def radio_bare_cues_in_any_case():
+    r = P.parse(CAST_RADIO, "radio")
+    cues = {l["source"]: l["kind"] for l in r["lines"] if l["kind"] in ("sound", "music")}
+    assert cues.get("Applause") == "sound" and cues.get("G O N G") == "sound", cues
+
+
+@case
+def radio_label_shapes_quoted_numbered_and_not_prose():
+    r = P.parse(CAST_RADIO, "radio")
+    names = {x["name"] for x in r["roles"]}
+    assert {"I", "MAN #1"} <= names, names
+    assert not [n for n in names if n.startswith("I KNOW")], names
+
+
+@case
+def radio_every_word_is_accounted_for():
+    for raw in (BOOK_RADIO, CAST_RADIO, RADIO):
+        text = P.clean_html(P.gutenberg_body(raw) if P.GUT_START.search(raw) else raw)
+        items = P._radio_items(text)
+        # whitespace aside: a glued label is split by a line break, and nothing else changes
+        assert "".join("".join(i["source"] for i in items).split()) == "".join(text.split()), "a word was lost"
+
+
+GRW_TEXTS = os.path.join(os.path.dirname(__file__), "..", ".cache", "grw", "text")
+
+
+@case
+def cached_radio_texts_never_fold_a_label_or_note_into_a_speech():
+    """Shape only, over every cached radio text: no speech carries another speaker's label
+    on a line of its own, no role is a cast-list entry ("RICK, detective") or a note."""
+    import glob
+    import json
+    files = sorted(glob.glob(os.path.join(GRW_TEXTS, "*.txt")))
+    plays = os.path.join(GUTENBERG_TEXTS, "..", "plays.json")
+    if os.path.exists(plays):
+        files += [os.path.join(GUTENBERG_TEXTS, p["id"][4:] + ".txt") for p in json.load(open(plays))["plays"]
+                  if any("Radio plays" in s for s in p.get("subjects") or [])]
+    files = [f for f in files if os.path.exists(f)]
+    if not files:
+        print("SKIP cached_radio_texts_never_fold_a_label_or_note_into_a_speech: no cache")
+        return
+    bad = []
+    for f in files:
+        raw = open(f, encoding="utf-8", errors="replace").read()
+        text = P.clean_html(P.gutenberg_body(raw) if P.GUT_START.search(raw) else raw)
+        if P.stub_check(text):
+            continue
+        for it in P._radio_items(text):
+            if it["kind"] != "speech":
+                continue
+            if "," in it["role"] or P.R_NOTE.match(it["role"]):
+                bad.append((os.path.basename(f), it["role"]))
+            for para in it["source"].split("\n\n")[1:]:
+                if P._bare(para.strip()):
+                    bad.append((os.path.basename(f), para[:40]))
+    assert not bad, bad[:10]
 
 
 GUTENBERG_TEXTS = os.path.join(os.path.dirname(__file__), "..", ".cache", "gutenberg", "text")
