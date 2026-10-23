@@ -308,25 +308,35 @@ FULL_DATE = re.compile(r"19\d\d-\d\d-\d\d")
 # Words an uploader puts around a series' name ("SUSPENSE Radio Digitally Restored").
 FOLD_NOISE = re.compile(r"\b(?:otrr?|old[ -]?time[ -]?radio|radio|digitally|restored|remastered|collection|complete|"
                         r"series|shows?|programs?|presents|episodes?|the|mp3s?|vol(?:ume)?|set|singles?|doubles?|"
-                        r"numbers?)\b")
+                        r"numbers?|eps|afrts?|\d+)\b")
 # A re-creation re-stages a broadcast on its date; it is a modern performance, not a copy
-# of the broadcast, and never joins the original's versions.
-RECREATION = re.compile(r"\b(?:re-?creat\w*|project|tribute)\b", re.I)
+# of the broadcast, and never joins the original's versions. MEASURED 2026-10-22 over 879
+# candidates: the name says so for "The Suspense Project" (17 series) and "The Shadow
+# Recreations"; "project" in item metadata named digitizing projects (AFRS-V-Discs, aporee,
+# calisphere) on 25 items, so in metadata only the re-creation words count.
+RECREATION = re.compile(r"\b(?:re-?creations?|re-?created|re-?enact\w*)\b", re.I)
+RECREATION_NAME = re.compile(r"\b(?:re-?creations?|re-?created|re-?enact\w*|project|tribute)\b", re.I)
 FOLD_RUN_SHARE = 0.8        # of the candidate's dates inside the target's run
 FOLD_SHARED_SHARE = 0.5     # of the candidate's dates the target already has
 FOLD_KEY_MIN = 5
+# A name that only begins or ends with the series' name ("Charlie McCarthy guest Fred Allen")
+# needs this many dates; one shared date is a coincidence in a weekly series (MEASURED
+# 2026-10-22: 1-date begin/end folds included "Afrs117-CharlieMccarthy-guestFredAllen" -> Fred
+# Allen and "The Beatles January 13 Lecture").
+FOLD_PARTIAL_MIN_DATES = 3
 
 
 def fold_target(raw, reg):
-    """The known key a noisy name is built around: noise words stripped, the longest known key
-    the remaining words equal, begin with or end with (whole words only)."""
+    """The known key a noisy name is built around, and whether the name IS that key once noise
+    words are stripped (exact) or only begins or ends with it (whole words, longest first)."""
     words = [P.norm_series(w) for w in FOLD_NOISE.sub(" ", P._fold(raw)).split()]
     words = [w for w in words if w]
     for n in range(len(words), 0, -1):
         for k in ("".join(words[:n]), "".join(words[-n:])):
-            if len(k) >= FOLD_KEY_MIN and k in reg.k2c:
-                return k
-    return None
+            for k2 in (k, k[len("adventuresof"):] if k.startswith("adventuresof") else ""):
+                if len(k2) >= FOLD_KEY_MIN and k2 in reg.k2c:
+                    return k2, n == len(words)
+    return None, False
 
 
 def learn_folds(files, reg, target_dates, rejected):
@@ -334,8 +344,9 @@ def learn_folds(files, reg, target_dates, rejected):
     ("Suspense page 2", "The Shadow Season 03 (9-17-39 to 4-7-40)"). A candidate folds into
     the target only on its dates: FOLD_RUN_SHARE of its dated files inside the target's run,
     and FOLD_SHARED_SHARE of its dates already the target's (the spine, OTRR's log, or the
-    target's own files). Never undated, never LibriVox, never a re-creation by the evidence its
-    name, item titles or item metadata carry."""
+    target's own files); a name that only begins or ends with the target's needs
+    FOLD_PARTIAL_MIN_DATES. Never undated, never LibriVox, never a re-creation by the evidence
+    its name or item metadata carry."""
     tdates = collections.defaultdict(set, {k: set(v) for k, v in target_dates.items()})
     groups = collections.defaultdict(lambda: {"dates": set(), "files": 0, "items": set(), "names": collections.Counter(),
                                               "text": []})
@@ -363,7 +374,7 @@ def learn_folds(files, reg, target_dates, rejected):
     out = {}
     for fk, g in groups.items():
         names = [n for n, _ in g["names"].most_common()]
-        tk = next((t for t in (fold_target(n, reg) for n in names) if t), None)
+        tk, exact = next((t for t in (fold_target(n, reg) for n in names) if t[0]), (None, False))
         if not tk:
             continue
         target = reg.k2c[tk]
@@ -375,13 +386,16 @@ def learn_folds(files, reg, target_dates, rejected):
         shared = len(dates & td)
         e = {"series": reg.display(target, target), "target": target, "names": names[:3], "files": g["files"],
              "items": len(g["items"]), "evidence": sorted(g["items"])[:5], "dates": len(dates),
-             "dates_shared": shared, "share_inside_run": round(inside / len(dates), 2) if dates else None}
-        rec = next((f"{m.group(0)!r} in {where}" for where, txt in [("its name", n) for n in names] +
-                    [(f"item {i}", t) for i, t in g["text"]] for m in [RECREATION.search(txt or "")] if m), None)
+             "dates_shared": shared, "share_inside_run": round(inside / len(dates), 2) if dates else None,
+             "match": "exact" if exact else "begins_or_ends"}
+        rec = next((f"{m.group(0)!r} in {where}" for where, rx, txt in [("its name", RECREATION_NAME, n) for n in names] +
+                    [(f"item {i}", RECREATION, t) for i, t in g["text"]] for m in [rx.search(txt or "")] if m), None)
         if rec:
             why = "re-creation: " + rec
         elif not dates:
             why = "undated: a name alone never folds"
+        elif not exact and len(dates) < FOLD_PARTIAL_MIN_DATES:
+            why = f"name only begins or ends with {e['series']}'s and {len(dates)} date(s) cannot show it"
         elif inside / len(dates) < FOLD_RUN_SHARE:
             why = f"only {inside} of {len(dates)} dates inside {e['series']}'s run"
         elif shared < 1 or shared / len(dates) < FOLD_SHARED_SHARE:
@@ -832,13 +846,17 @@ def main():
     stats["learned_folds_applied"] = sum(1 for e in folds.values() if e["applied"])
     stats["learned_folds_files"] = sum(e["files"] for e in folds.values() if e["applied"])
     if "--write-aliases" in args:
-        aliases["_learned_folds"] = dict(sorted(folds.items()))
+        # Applied folds, and the near misses a reader should audit (a shared date, refused on
+        # the re-creation or date rules); undated and one-off name matches are counted only.
+        aliases["_learned_folds"] = {k: e for k, e in sorted(folds.items()) if e["applied"] or (
+            e["dates_shared"] and not e["why"].startswith(("undated", "name only")))}
         aliases["_learned_folds_doc"] = (
             "Learned by build_db.learn_folds: a series name no source knows that is a known series' name with "
             "noise around it (set words stripped, then equal to, or beginning or ending with, a known key). Applied "
             "when 80% of its dated files fall inside the target's run and at least half its dates are dates the "
-            "spine, OTRR's log or the target's own files already have; never when undated, from LibriVox, or a "
-            "re-creation. Move a wrong one to _rejected.")
+            "spine, OTRR's log or the target's own files already have, and a name that only begins or ends with "
+            "the series' has 3+ dates; never when undated, from LibriVox, or a re-creation. Move a wrong one to "
+            "_rejected.")
         ia.write_json(os.path.join(ia.EDITORIAL, "series_aliases.json"), aliases)
 
     # Pass 2: resolve each file's series against the registry.

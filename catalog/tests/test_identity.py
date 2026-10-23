@@ -13,6 +13,17 @@ Broken controls, 2026-10-19, each run against a mutated copy (RADIO_TOOLS=<copy>
     podcast rule ignores a known series             58/59
     no abbreviation-plausibility check              57/59
     short learned prefixes always applied           58/59
+Folds (learn_folds), 2026-10-22, 74 cases:
+    no run check                                    73/74 (first PASSED: the outside-run case shared
+                                                     no dates, so the shared check hid it; it now
+                                                     shares two of three)
+    no shared-date check                            73/74
+    no date check at all                            72/74
+    no undated rule                                 crashes (dividing by zero dates)
+    no re-creation rule                             72/74
+    no LibriVox collection rule                     73/74
+    no date floor for a begins/ends name            73/74
+    "project" in item metadata counts               73/74
 """
 import collections
 import os
@@ -107,7 +118,8 @@ regf, _ = B.build_registry([{"series": "Suspense", "episodes": []}, {"series": "
                            {}, [], {}, [])
 sus = ["1942-06-17", "1942-06-24", "1942-07-01", "1942-07-08", "1942-07-15", "1962-09-30"]
 shd = ["1937-10-03", "1937-10-10", "1937-10-17", "1954-11-07"]
-tdates = {"suspense": set(sus), "shadow": set(shd), "romance": {"1943-05-01", "1957-01-06"}}
+tdates = {"suspense": set(sus), "shadow": set(shd), "romance": {"1943-05-01", "1957-01-06"},
+          "blondie": {"1939-12-25", "1943-05-01", "1948-12-15"}}
 
 
 def ff(ident, item_series, dates, colls=(), text="", file_series=None):
@@ -117,14 +129,18 @@ def ff(ident, item_series, dates, colls=(), text="", file_series=None):
 
 
 fold_files = (ff("SUSPENSE_Radio_Digitally_Restored", "SUSPENSE Radio Digitally Restored", sus[:5] + ["1942-08-05"]) +
-              ff("TheShadowSeason1", "The Shadow Season 1", shd[1:3]) +
+              ff("TheShadowSeason1", "The Shadow Season 1", shd[:3]) +
               ff("TheShadowRadioShowRecreations", "The Shadow Recreations Updated 1 27", shd) +
               ff("shadowtheater", "The Shadow Theater Players", shd[:3], text="The Shadow Theater Players: "
                  "modern re-creations of the broadcasts, performed live") +
               ff("romance_librivox", "Romance of the Rose", ["1943-05-01"], colls=["librivoxaudio"]) +
               ff("OtrBlondie", "Blondie 42 Eps", [None, None, None]) +
-              ff("SuspenseFinalShows", "Suspense Final Shows", ["1972-01-02", "1972-01-09"]) +
-              ff("ShadowStrikes", "The Shadow Strikes Again", ["1940-01-01", "1940-01-02", "1940-01-03"]))
+              ff("SuspenseFinalShows", "Suspense Final Shows", ["1942-06-17", "1942-06-24", "1972-01-02"]) +
+              ff("ShadowStrikes", "The Shadow Strikes Again", ["1940-01-01", "1940-01-02", "1940-01-03"]) +
+              ff("Afrs117", "Afrs117-CharlieMccarthy-guestSuspense", sus[:1]) +
+              ff("Bd42", "Blondie Show 42 Eps", ["1943-05-01"]) +
+              ff("SuspenseDigitized", "Suspense Digitized Shows", sus[:3],
+                 text="Suspense Digitized Shows, part of the Smith Library digitization project"))
 folds = B.learn_folds(fold_files, regf, tdates, set())
 fs = lambda k: folds.get(k, {})
 check("a noisy re-upload folds into the series", (fs("suspenseradiodigitallyrestored").get("target"),
@@ -137,6 +153,10 @@ check("control: an undated candidate never folds", (fs("blondie42eps").get("appl
       (False, "undated: a name alone never folds"))
 check("control: dates outside the target's run do not fold", fs("suspensefinalshows").get("applied"), False)
 check("control: dates inside the run the target never had do not fold", fs("shadowstrikesagain").get("applied"), False)
+check("an exact name past its noise folds on one shared date", fs("blondieshow42eps").get("applied"), True)
+check("control: a name that only ends with the series' and one date does not fold",
+      fs("afrs117charliemccarthyguestsuspense").get("applied"), False)
+check("'project' in item metadata alone is not a re-creation", fs("suspensedigitizedshows").get("applied"), True)
 check("control: a vetoed fold is not learned",
       "shadowseason1" in B.learn_folds(fold_files, regf, tdates, {"shadowseason1"}), False)
 before = B.resolve_file(fold_files[0], regf)[0]
