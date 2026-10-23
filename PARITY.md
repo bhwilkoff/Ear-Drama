@@ -92,7 +92,7 @@ When shipping any user-facing feature:
 
 | Verb | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, This Day, shelves; Tonight is on the Radio tab | 🚧 no Tonight | 🚧 no Tonight | 🚧 no Tonight | 🚧 This Day, genre shelves; no Tonight | Decision 058; R13 lists from data |
+| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, then `listenShelves`; Tonight is on the Radio tab | 🚧 `listenShelves`; no Tonight | 🚧 `listenShelves`; no Tonight | 🚧 `listenShelves`; no Tonight | 🚧 `listenShelves`; no Tonight | Decision 058; R13 lists from data. Every client draws the published `listenShelves` in order (contract §5.1): This day in radio, then each genre's ids; an older catalog falls back to its own rules. No Most episodes (HUMAN-SHAPED B). Roku still reads `index/listen.json` |
 | Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | 🚧 | 🚧 | 🚧 | 🚧 seasons, oldest first; genre, decade and network facets, three sorts, Follow | Broadcast seasons (058); oldest first (R1) |
 | Radio (evenings and genre channels on one clock) | 🚧 Tonight in 19xx from `tonight.json`; no genre channels | 🚧 Tonight; Listen live | 🚧 Tonight; ⌘3 | 🚧 Tonight; Listen live focused | 🚧 Tonight; Listen live; TV focus stops | Gaps stated, never filled (R9); floor 0.25 provisional (owner, SCRATCHPAD 4) |
 | Search (titles, people, transcript text, dates) | 🚧 word-prefix titles and people; no transcripts yet | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | |

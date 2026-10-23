@@ -60,6 +60,10 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         /** §5 `recommendAnd`: every surface that chooses for the listener applies it. */
         const val RECOMMEND_AND = " AND e.no_recommend IS NULL"
 
+        /** §5.1's shelf limit, and the full-date pattern onThisDay matches. */
+        const val SHELF_LIMIT = 20
+        private const val FULL_DATE = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+
         private const val EPISODE_COLUMNS =
             "e.id, e.series_key, s.name, e.air_date, e.season, e.num, e.title, e.length_s"
         private const val EPISODE_FROM = " FROM episodes e JOIN series s ON s.key = e.series_key"
@@ -362,13 +366,43 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     // --- Shelves ---
 
+    /** `meta.listenShelves` (contract §5.1), or null for a catalog that predates it. */
+    val publishedShelves: List<PublishedShelf>? by lazy {
+        queryRaw("SELECT value FROM meta WHERE key = 'listenShelves'") { it.getText(0) }.firstOrNull()
+            ?.let(PublishedShelf::parse)
+    }
+
+    /**
+     * The Listen tab's shelves (§5.1): `meta.listenShelves` in its order, This day
+     * in radio on the person's own [monthDay] (`MM-dd`), each genre from its
+     * published ids. A catalog without the key falls back to the rules run here.
+     * Empty shelves are dropped.
+     */
+    suspend fun listenShelves(monthDay: String): List<ListenShelf> {
+        val published = read { publishedShelves }
+        val shelves = if (published != null) {
+            published.map {
+                when (it) {
+                    PublishedShelf.OnThisDay -> ListenShelf("thisday", null, shelf(ShelfRule.ThisDay(monthDay)))
+                    is PublishedShelf.GenreFirsts -> ListenShelf("genre:${it.genre}", it.genre, episodes(it.episodes))
+                }
+            }
+        } else {
+            listOf(ListenShelf("thisday", null, shelf(ShelfRule.ThisDay(monthDay)))) +
+                genres().filter { DisplayVocabulary.genreName(it) != null }
+                    .map { ListenShelf("genre:$it", it, shelf(ShelfRule.Genre(it))) }
+        }
+        return shelves.filter { it.rows.isNotEmpty() }
+    }
+
     /** §5 `shelf`: a Listen shelf, always with `recommendAnd`. */
     suspend fun shelf(rule: ShelfRule, limit: Int = 30): List<EpisodeRow> = read {
         when (rule) {
+            // §5.1: a full YYYY-MM-DD only, oldest first, ties by id, at most 20.
             is ShelfRule.ThisDay -> queryRaw(
-                "SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE substr(e.air_date, 6, 5) = ?$RECOMMEND_AND " +
-                    "ORDER BY $OLDEST_FIRST LIMIT ?",
-                listOf(rule.monthDay, limit),
+                "SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE e.air_date GLOB '$FULL_DATE' " +
+                    "AND substr(e.air_date, 6, 5) = ?$RECOMMEND_AND ORDER BY e.air_date, e.id LIMIT ?",
+                listOf(rule.monthDay, minOf(limit, SHELF_LIMIT)),
                 ::episodeRow,
             )
             is ShelfRule.Genre -> queryRaw(

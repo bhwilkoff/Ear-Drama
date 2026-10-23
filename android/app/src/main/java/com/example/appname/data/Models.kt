@@ -1,5 +1,11 @@
 package com.example.appname.data
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
 /** A row of `series` (docs/CATALOG-CONTRACT.md §3.3). */
 data class SeriesRow(
     val key: String,
@@ -100,6 +106,39 @@ sealed interface ShelfRule {
     /** Broadcasts that aired on this month and day, any year: `MM-DD`. */
     data class ThisDay(val monthDay: String) : ShelfRule
 
-    /** Dated broadcasts of series in one genre, oldest first. */
+    /** Dated broadcasts of series in one genre, oldest first: the fallback for a catalog without `listenShelves`. */
     data class Genre(val genre: String) : ShelfRule
 }
+
+/**
+ * One entry of `meta.listenShelves` (contract §5.1), drawn in order: [OnThisDay]
+ * is a query by rule on the person's date; [GenreFirsts] carries its episode ids.
+ */
+sealed interface PublishedShelf {
+    data object OnThisDay : PublishedShelf
+
+    data class GenreFirsts(val genre: String, val episodes: List<String>) : PublishedShelf
+
+    companion object {
+        /** The published list, or null when the value is not a JSON array (an older catalog). Unknown rules are skipped. */
+        fun parse(json: String): List<PublishedShelf>? {
+            val list = runCatching { Json.parseToJsonElement(json) }.getOrNull() as? JsonArray ?: return null
+            return list.mapNotNull { item ->
+                val s = item as? JsonObject ?: return@mapNotNull null
+                when ((s["rule"] as? JsonPrimitive)?.contentOrNull) {
+                    "onThisDay" -> OnThisDay
+                    "genreFirsts" -> {
+                        val genre = (s["genre"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+                        val ids = (s["episodes"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                            ?: return@mapNotNull null
+                        GenreFirsts(genre, ids)
+                    }
+                    else -> null
+                }
+            }
+        }
+    }
+}
+
+/** A Listen shelf ready to draw: [genre] null is This day in radio. */
+data class ListenShelf(val key: String, val genre: String?, val rows: List<EpisodeRow>)

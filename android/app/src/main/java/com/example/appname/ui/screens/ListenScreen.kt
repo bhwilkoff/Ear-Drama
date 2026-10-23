@@ -23,7 +23,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
-import com.example.appname.data.ShelfRule
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
@@ -55,13 +54,11 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit) {
             db.episodes(container.user.inProgress().map { it.episodeId }).distinctBy { it.id },
         )
     }
+    // The catalog's listenShelves, in its order (contract §5.1).
     val ruled by rememberCatalogQuery(today) { db ->
-        buildList {
-            add(Shelf("thisday", "This day in radio", db.shelf(ShelfRule.ThisDay(today))))
-            db.genres().forEach { genre ->
-                val name = DisplayVocabulary.genreName(genre) ?: return@forEach
-                add(Shelf("genre:$genre", name, db.shelf(ShelfRule.Genre(genre))))
-            }
+        db.listenShelves(today).map { s ->
+            val title = s.genre?.let { DisplayVocabulary.genreName(it) ?: it } ?: "This day in radio"
+            Shelf(s.key, title, s.rows)
         }
     }
     Scaffold(topBar = { TopAppBar(title = { Text("Listen") }) }) { padding ->
