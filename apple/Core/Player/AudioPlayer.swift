@@ -13,7 +13,7 @@ final class AudioPlayer {
         static let forward: Double = 30
     }
 
-    static let speeds: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0]
+    static let speeds = PlayerNumbers.speeds
 
     struct Item: Equatable {
         let episode: EpisodeRow
@@ -211,7 +211,7 @@ final class AudioPlayer {
                 saveProgress()
             }
         }
-        if isPlaying, now.timeIntervalSince(lastSaved) >= 5 { saveProgress() }
+        if isPlaying, PlayerNumbers.isSaveDue(lastSaved: lastSaved, now: now) { saveProgress() }
     }
 
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
@@ -337,7 +337,7 @@ final class AudioPlayer {
             MainActor.assumeIsolated {
                 guard let self, type == .ended, options.contains(.shouldResume), self.item != nil else { return }
                 // Spoken word: hear the last line again before going on.
-                self.skip(by: -3)
+                self.skip(by: -PlayerNumbers.interruptionRewindSeconds)
                 self.resume()
             }
         })

@@ -75,6 +75,23 @@ final class AppStore {
         paths[selectedTab] = path
     }
 
+    /// The Mac's Back (⌘[): pops the active section's stack; nothing at its root.
+    var canGoBack: Bool { !(paths[selectedTab]?.isEmpty ?? true) }
+
+    func goBack() {
+        guard canGoBack else { return }
+        paths[selectedTab]?.removeLast()
+    }
+
+    /// The Mac's Search (⌘F): opens Search and asks its field for focus; the
+    /// Search screen clears the request once it has taken focus.
+    var wantsSearchFocus = false
+
+    func openSearch() {
+        selectedTab = .search
+        wantsSearchFocus = true
+    }
+
     /// Leaving a tab from the TV sidebar resets the stack it leaves behind
     /// (tvOS rule: stale push-state must not greet the next visit).
     func selectResettingPrevious(_ tab: AppTab) {

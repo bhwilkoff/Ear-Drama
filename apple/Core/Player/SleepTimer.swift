@@ -44,7 +44,7 @@ nonisolated struct SleepTimer: Equatable, Sendable {
         var shouldPause: Bool
     }
 
-    var fadeSeconds: TimeInterval = 10
+    var fadeSeconds: TimeInterval = PlayerNumbers.sleepFadeSeconds
     private(set) var mode: Mode = .off
 
     var isActive: Bool { mode != .off && mode != .fired }

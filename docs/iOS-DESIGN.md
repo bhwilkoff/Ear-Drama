@@ -125,7 +125,12 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   credits grouped by role, Versions when there is more than one copy,
   and the rights line. A part with no data is absent, never a
   placeholder. Play starts the audio in place; it never opens the
-  player (§11.1).
+  player (§11.1). The toolbar carries Share: the system share sheet
+  (`ShareLink`) with the episode's https twin,
+  `https://eardrama.org/episode/{id}` (`SiteLinks.episode`,
+  `apple/Core/Store/SiteLinks.swift`; DEEP_LINKS.md), so a person
+  without the app lands on the web page. A link is shared, never the
+  file (§4.8).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
   people", debounced, series first and then episodes. A row found only
   by its transcript says "In the transcript" (`Transcript.searchNote`).
@@ -163,11 +168,20 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   intervals, never next and previous track, because setting both makes
   CarPlay and the lock screen pick one arbitrarily.
 - **§5.5 Interruptions are spoken word.** When an interruption ends with
-  "should resume", the player backs up 3 s and resumes; unplugged
+  "should resume", the player backs up 3 s
+  (`PlayerNumbers.interruptionRewindSeconds`) and resumes; unplugged
   headphones pause.
-- **§5.6 Progress** saves every 5 s while playing and on pause; resume
-  starts 3 s early, only past 30 s, and an episode within 45 s of its
-  end counts as played (`ListeningHistory`).
+- **§5.6 Progress** saves every 5 s while playing
+  (`PlayerNumbers.saveEverySeconds`) and on pause; resume starts 3 s
+  early, only past 30 s, and an episode within 45 s of its end counts as
+  played (`ListeningHistory`).
+- **§5.7 The player's numbers are Decision 062's, named once.**
+  `PlayerNumbers` (`apple/Core/Player/PlayerNumbers.swift`) holds the
+  sleep fade (`sleepFadeSeconds`, 10), the speeds (`speeds`, 0.75, 1,
+  1.25, 1.5, 2), the save cadence (`saveEverySeconds`, 5), and the
+  interruption rewind (`interruptionRewindSeconds`, 3). Every Apple
+  platform reads them from there, and `PlayerNumbersTests` holds them
+  to the decision; a literal of one of them anywhere else is a bug.
 
 ## §6 Look
 
@@ -180,9 +194,14 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `.borderless`. This inverts tvOS (§11.2).
 - **§6.4 Icons are SF Symbols** (R-ICON-1). Emoji are never chrome.
 - **§6.5 Haptics use the one taxonomy** (`selection`, `light`, `medium`,
-  `heavy`, `success`, `warning`, `error`) mapped in one place, `error`
-  with an error banner and `selection` with a segment change. None are
-  wired yet (§12).
+  `heavy`, `success`, `warning`, `error`), mapped to the system's
+  `SensoryFeedback` in one place, `Haptic` (`apple/Core/Haptics.swift`).
+  A view names a `Haptic`, never a `SensoryFeedback` or a feedback
+  generator. Wired on the phone (`HapticFeedback_iOS`,
+  `apple/iOS/ContentView_iOS.swift`): `selection` when the tab changes,
+  `success` when a download finishes, `error` when the player's error
+  line or "Download failed" appears. `tools/test_apple_design_rules.py`
+  fails on a feedback call that skips the mapping.
 
 ## §7 States and accessibility
 
@@ -264,13 +283,10 @@ Listed, not fixed. Each item names where it is.
   the series, up to 50; Android plays on through the rest of the
   season; the web plays the next one only when the person queued it
   (`docs/WEB-DESIGN.md` §5.4). R14 needs one rule; the owner picks it.
-- **The sleep fade is 10 s** (`SleepTimer.fadeSeconds`); the web fades
-  over 20 s.
-- **Speeds are 0.75, 1, 1.25, 1.5, and 2** (`AudioPlayer.speeds`); the web
-  offers 0.8, 1, 1.2, 1.5, and 2.
-- **Progress and resume differ from the web**: every 5 s, past 30 s,
-  played within 45 s of the end, against the web's 10 s and its 10 s to
-  95% window (§5.6).
+- **Resume and "played" differ from the web**: past 30 s and played
+  within 45 s of the end, against the web's 10 s to 95% window (§5.6).
+  Decision 062 settles the fade, speeds, save cadence, and rewind
+  (§5.7), not these two.
 - **An untitled episode falls back to its date, then the series name**
   (`EpisodeRow.displayTitle`); the web says "Untitled".
 - **Series browse facets are not counted against one another**
@@ -281,11 +297,14 @@ Listed, not fixed. Each item names where it is.
   Android show one season at a time.
 - **The series link on Detail is a push**, so Listen, Episode, Series
   is a third level (§1.5), and from there another episode is a fourth.
-- **No Queue, Following, or Share verbs** on Detail or in Library, which
-  the web has (`WEB-DESIGN` §4.5, §4.7).
+- **No Queue or Following verbs** on Detail or in Library, which the web
+  has (`WEB-DESIGN` §4.5, §4.7). A person-built queue changes what plays
+  after an episode, which is the open queue rule above, so it waits on
+  the owner; Following has no native rule yet (where the button sits,
+  the Listen shelf, the Library section), so it needs one before it is
+  built.
 - **R20's "one step from the lock screen"** is not built: the timer is
   only on the player sheet.
-- **No haptics** are wired anywhere (§6.5).
 - **Two empty states explain** ("Browse Series to start." on Listen,
   "Episodes you start are kept here." on Library), which §1.6 asks to
   cut or justify.
@@ -295,5 +314,8 @@ Listed, not fixed. Each item names where it is.
 - **The watch stub would show raw episode ids** (`Text(id)` in
   `ContinueView_watchOS`) once history arrives; an id never reaches the
   screen.
+
+Closed 2026-10-23: the player's numbers are named once (§5.7), haptics
+go through one mapping (§6.5), and Detail shares the https twin (§4.4).
 
 Bring the next change back to a rule here, or bring a new rule first.

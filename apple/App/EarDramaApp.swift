@@ -64,8 +64,10 @@ struct EarDramaApp: App {
         }
         #if os(macOS)
         .commands {
+            GoCommands_macOS(store: store)
             PlaybackCommands_macOS(player: player, store: store, downloads: downloads)
             RecordingCommands_macOS()
+            HelpCommands_macOS()
         }
         #endif
         #if os(iOS)

@@ -34,7 +34,40 @@ struct ContentView_tvOS: View {
 
     private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
         NavigationStack(path: store.path(for: tab)) {
-            root().routeDestinations_tvOS()
+            root()
+                .safeAreaInset(edge: .top, spacing: 0) { NowPlayingEntry_tvOS() }
+                .routeDestinations_tvOS()
+        }
+    }
+}
+
+/// The way back to Now Playing (tvOS-DESIGN §5.4): heads every tab's root
+/// while an episode is loaded and opens the player on it as it is.
+private struct NowPlayingEntry_tvOS: View {
+    @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        if let item = player.item {
+            HStack {
+                Button {
+                    store.isPlayerPresented = true
+                } label: {
+                    Label {
+                        Text(verbatim: "Now Playing · \(item.episode.displayTitle) · \(item.episode.seriesName)")
+                            .lineLimit(1)
+                    } icon: {
+                        Image(systemName: player.isPlaying ? "waveform" : "pause.fill")
+                    }
+                    .font(TypeRamp.bodyStrong)
+                }
+                .accessibilityLabel("Now playing: \(item.episode.displayTitle), \(item.episode.seriesName)")
+                .accessibilityHint("Opens the player")
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 90)
+            .padding(.vertical, Spacing.s4)
+            .focusSection()
         }
     }
 }
@@ -273,7 +306,12 @@ private struct EpisodeScreen_tvOS: View {
                     // tvOS auto-focuses Play on Detail (an inversion of the
                     // iOS rule, which never steals focus).
                     Button {
-                        play(episode.id, presentPlayer: true)
+                        // The episode already loaded opens where it is (§4.4).
+                        if player.item?.episode.id == episode.id {
+                            store.isPlayerPresented = true
+                        } else {
+                            play(episode.id, presentPlayer: true)
+                        }
                     } label: {
                         Label("Play", systemImage: "play.fill")
                     }
@@ -303,6 +341,10 @@ private struct EpisodeScreen_tvOS: View {
                     }
                 }
 
+                if detail.recordings.count > 1 {
+                    VersionsSection_tvOS(detail: detail)
+                }
+
                 if let rightsLine = detail.rightsLine {
                     Text(rightsLine)
                         .font(TypeRamp.caption)
@@ -319,6 +361,45 @@ private struct EpisodeScreen_tvOS: View {
                 TranscriptScreen_tvOS(title: episode.displayTitle, url: url)
             }
         }
+    }
+}
+
+/// R5 on the TV (§4.4): every copy of the broadcast, the default first; each
+/// plays that copy in Now Playing.
+private struct VersionsSection_tvOS: View {
+    let detail: EpisodeDetail
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
+        VStack(alignment: .leading, spacing: Spacing.s4) {
+            Text("Versions").font(TypeRamp.sectionHeader)
+            ForEach(detail.recordings.sorted { $0.rank < $1.rank }) { recording in
+                Button {
+                    play(detail.episode.id, recording: recording, presentPlayer: true)
+                } label: {
+                    VStack(alignment: .leading, spacing: Spacing.s1) {
+                        Text(verbatim: recording.archiveID)
+                            .font(TypeRamp.body)
+                        Text(verbatim: Self.facts(recording))
+                            .font(TypeRamp.caption)
+                            .foregroundStyle(Color.brandTextMuted)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .accessibilityHint("Plays this copy")
+            }
+        }
+        .focusSection()
+    }
+
+    private static func facts(_ recording: Recording) -> String {
+        var parts = recording.notes
+        if let length = recording.lengthSeconds { parts.append(EpisodeRow.clock(length)) }
+        if let kbps = recording.kbps { parts.append("\(kbps) kbps") }
+        return parts.joined(separator: " · ")
     }
 }
 

@@ -63,6 +63,14 @@ Mac uses the same Core, so the same code holds them:
   while the episode plays, which is why it is a window.
 - **§2.3 No Settings scene.** Nothing in 1.0 is a preference: speed and
   the sleep timer live on the player (R18).
+- **§2.4 Closing the main window keeps playing**, as Music does. The
+  episode belongs to the app's one `AudioPlayer`, not to the window, so
+  the red button closes the browse window and the sound goes on, driven
+  from the Controls menu, the media keys, and the system's Now Playing
+  item, all of which work with no window open. Reopening from the Dock
+  shows the transport bar on the episode still playing, never a second
+  copy. Stop is the person's: Pause, or quitting the app. This inverts
+  template §B13 on purpose (§11.6).
 
 ## §3 Navigation shell
 
@@ -105,11 +113,12 @@ only here:
   their labels never truncate (template §B11).
 - **§5.3 Every playback command is in the menu bar** (template §B10), in
   a Controls menu (`PlaybackCommands_macOS`), disabled rather than hidden
-  when nothing is loaded:
+  when nothing is loaded. No item takes a bare key, because a bare key
+  in the menu bar is taken from every text field:
 
   | Command | Key |
   |---|---|
-  | Play / Pause | Space |
+  | Play / Pause | Space, from the main window (not a menu key) |
   | Back 15 Seconds | ⌘← |
   | Forward 30 Seconds | ⌘→ |
   | Speed (submenu) | |
@@ -117,9 +126,26 @@ only here:
   | Download Episode, or Remove Download | |
   | Automatic transcript | ⌥⌘T |
 
-  The sections are in the View menu after the sidebar item, ⌘1 to ⌘4.
+  Space plays and pauses through the main window's `.onKeyPress`, which
+  a focused text field receives first, so typing a space in Search never
+  pauses. Play / Pause is disabled while a production window records a
+  part (PLAYS-DESIGN), so the microphone never hears the episode.
+- **§5.5 The Go menu** (`GoCommands_macOS`, template §B10) comes before
+  Controls and carries the sidebar sections in `AppTab` order, ⌘1
+  onward; Search ⌘F, which opens the Search section and focuses its
+  field; and Back ⌘[, which pops the section's stack and is disabled at
+  its root (`AppStore.goBack`).
+- **§5.6 The Help menu** (`HelpCommands_macOS`) replaces the system
+  placeholder with the website's own pages: Ear Drama Website, Credits,
+  Privacy, and Take-Down Requests (`SiteLinks`,
+  `apple/Core/Store/SiteLinks.swift`).
+- **§5.7 Share** is in Detail's toolbar: the system share sheet with the
+  episode's https twin (`SiteLinks.episode`, DEEP_LINKS.md), as on iOS
+  (`docs/iOS-DESIGN.md` §4.4).
 - **§5.4 Progress** saves every 5 s and on pause (template §B3c); resume
-  and "played" follow `docs/iOS-DESIGN.md` §5.6.
+  and "played" follow `docs/iOS-DESIGN.md` §5.6. The numbers are
+  Decision 062's, named once in `PlayerNumbers` (`docs/iOS-DESIGN.md`
+  §5.7).
 
 ## §6 Look
 
@@ -146,7 +172,7 @@ only here:
 The rights line, the transcript label, and loudness by cutting are
 §1.5's and are not reworded. No analytics, no third-party packages. The
 credits, privacy, and take-down pages are the website's; the Help menu
-links to them when that row lands (PARITY §2).
+links to them (§5.6).
 
 ## §9 Parity
 
@@ -179,29 +205,28 @@ the Mac target.
   sidebar on iPad; tvOS a focus sidebar.
 - **§11.5 Play never steals focus or opens a surface**, like iOS and
   unlike tvOS (`docs/tvOS-DESIGN.md` §6.2).
+- **§11.6 Closing the main window keeps playing** (§2.4). Template §B13
+  stops a window's playback because a video window IS its player; here
+  the player is the app's and the window only browses, so the
+  longer-lived owner wins, as `macos-platform-patterns` Rule 15 asks.
+  Do not "fix" this toward the template.
 
 ## §12 Open (what the code does not yet meet)
 
-- **Play / Pause takes the bare Space key** in the menu bar
-  (`.keyboardShortcut(.space, modifiers: [])`), which template §B10
-  forbids because a letter or Space in the menu bar is taken from every
-  text field, the toolbar search field included.
-- **No Go menu**: the sections sit under View, and there is no Search
-  ⌘F or Back ⌘[ (template §B10). No Help menu item points at a real
-  page.
-- **Closing the main window does not stop playback** or clear Now
-  Playing (template §B13): `AudioPlayer` belongs to the app, and nothing
-  observes the window closing.
 - **No minimum size on the main window**; the template sets one so the
   transport bar never crushes the split view.
 - **Every iOS §12 item that lives in shared code holds here too**: the
-  queue rule, the 10 s fade, the speed list, the save and resume
-  numbers, the untitled fallback, uncounted facets, seasons as
-  sections, the Detail series link as a third push, no Queue,
-  Following, or Share, no haptics (n/a on the Mac except trackpad
-  feedback), and the two explaining empty states.
+  queue rule, the resume and "played" windows, the untitled fallback,
+  uncounted facets, seasons as sections, the Detail series link as a
+  third push, no Queue or Following, and the two explaining empty
+  states. Haptics are n/a on the Mac (the trackpad's feedback is the
+  system's).
 - **The Controls menu offers "Remove Download" for a failed download**,
   because it tests only that a record exists
   (`downloads.records[item.episode.id] != nil`).
+
+Closed 2026-10-23: Play / Pause takes no bare key (§5.3), the Go and
+Help menus (§5.5, §5.6), the closing rule (§2.4), Share (§5.7), and the
+player's numbers named once (§5.4).
 
 Bring the next change back to a rule here, or bring a new rule first.

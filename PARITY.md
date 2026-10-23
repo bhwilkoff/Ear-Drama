@@ -107,11 +107,11 @@ When shipping any user-facing feature:
 |---|---|---|---|---|---|---|
 | Episode detail (date, network, sponsor, cast, versions, rights line) | 🚧 no sponsor yet | 🚧 | 🚧 | 🚧 | 🚧 no sponsor | Unclaimed reads "no claim known; removed on request", never public domain |
 | Player: background play, system controls, speed, skip | 🚧 Media Session | 🚧 Now Playing, remote commands | 🚧 Controls menu, keyboard | 🚧 full-screen Now Playing | 🚧 Media3 session | iPhone web cannot be relied on for background audio |
-| Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | Decision 062: 10 s fade, speeds 0.75 to 2, save every 5 s, 3 s rewind after an interruption; web and Android done, Apple in progress |
+| Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | Decision 062: 10 s fade, speeds 0.75 to 2, save every 5 s, 3 s rewind after an interruption; on every core platform |
 | Serials stop at the end of an arc (R3) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Commercials chaptered, never skipped (R8) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Loudness gain applied at playback | 🚧 -21 LUFS by cutting; unmeasured at unity | 🚧 AVPlayer volume | 🚧 | 🚧 | 🚧 ExoPlayer volume, per queued item | Gain from the pipeline; never re-encoded |
-| Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | catalog Decision 007 |
+| Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 Versions section on Detail | 🚧 | catalog Decision 007 |
 | Transcripts, labeled automatic | 🚧 closed section, fetched on open | 🚧 sheet, from Detail and the player | 🚧 window, ⌥⌘T | 🚧 focus-scrolling reader | 🚧 route from Detail and the player | Shown only above the measured quality gate (058) |
 | Downloads | ⏳ | 🚧 background session; remove, remove all | 🚧 same, Library section | n/a | 🚧 WorkManager, same store | tvOS has no durable storage for media |
 | Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
@@ -140,7 +140,7 @@ a future session doesn't "harmonize" a rejection into a port (see
 | Surface | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
 | EmptyState (productive next action) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Required everywhere from the first list/grid |
-| ErrorBanner / OfflinePill | ⏳ | ⏳ | ⏳ | ⏳ | 🚧 offline line; error haptic with "Download failed" and the player's problem line | Required everywhere |
+| ErrorBanner / OfflinePill | ⏳ | 🚧 error haptic with the player's line and "Download failed" | ⏳ | ⏳ | 🚧 offline line; error haptic with "Download failed" and the player's problem line | Required everywhere |
 | HintBanner (one-shot tip) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Persisted dismissals + a global reset in Settings |
 | Multi-step anchored walkthroughs | 🚫 | ⏳ | 🚫 | 🚫 | 🚫 | iOS-only where its idioms are novel; other platforms use EmptyState + hints + a `?` explainer. Record the rejection in each platform's design doc |
 
@@ -185,7 +185,7 @@ history, queue, and follows, and it is required to make a play with others.
 | Routes for series, episode, search | 🚧 + 404 forwarder | ⏳ | ⏳ | ⏳ | ⏳ | DEEP_LINKS.md |
 | Universal Links / App Links | n/a | ⏳ | ⏳ | n/a | ⏳ | Wait on the App Store record and Play's signing fingerprint |
 | `eardrama://` scheme | n/a | ⏳ | ⏳ | ⏳ | ⏳ | OAuth callbacks and Top Shelf |
-| Share an episode | 🚧 Web Share | ⏳ | ⏳ | ⏳ QR code | ⏳ | The web page is every share's landing twin |
+| Share an episode | 🚧 Web Share | 🚧 share sheet, https link | 🚧 share menu, https link | ⏳ QR code | ⏳ | The web page is every share's landing twin |
 | Archive Watch film cross-links | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Out of 1.0 (Decision 058) |
 
 ---
