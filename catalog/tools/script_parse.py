@@ -14,6 +14,15 @@ A line is
 Stage directions are kept apart from speech (their own parts or lines) so the
 people casting a stage play can decide how to read them for radio (Decision 059).
 
+A stage text's play is found before it is parsed (measured 2026-10-23 over every cached
+Gutenberg text): it begins at the earliest cast list, act or scene heading, or first
+entrance shortly before the first sustained run of speech, and ends at the last speech by
+a recurring speaker (through its closing directions and END/CURTAIN). Title pages,
+publishers, catalogs, prefaces, and notes outside it are `front`/`back` items: kept with
+their words, never lines, never a role. A full name that expands a frequent label
+("Barnardo." beside "Barn.", "_Clapboard._" beside "_Clap._") is that label's role when the
+text prints the name as a name.
+
 A text is a STUB, and not a script, when it is under 500 words or is a page of
 links with no dialogue (measured 2026-10-22 on all 1,028 cached GRW texts: 39 too
 short, such as "Information Coming Soon...", and 25 link pages, such as "PDF
@@ -37,6 +46,10 @@ MIN_WORDS = 500
 MIN_SPEECHES = 20
 CASTABLE_LINES = 5
 CLEAN_UNCLASSIFIED = 0.05
+# Measured 2026-10-23 over the 24 cached Gutenberg texts: a play set aside at most 28% of
+# its words (a farce with publishers' catalogs at both ends, a translation whose notes
+# follow it); a text that sets aside more holds something besides one play.
+CLEAN_SET_ASIDE = 0.40
 
 # ---- radio conventions (08b §2.1) ----------------------------------------------------------------
 CUE_TAGS = {
@@ -63,16 +76,38 @@ S_ROLE_OWN = re.compile(r"^_?(?P<role>%s)_?\.?\s*(?P<d>\[[^\]]*\]|\(_[^)]*_\)|\(
 S_ROLE_COLON = re.compile(r"^_?(?P<role>%s)_?\s*:\s*(?P<text>.+)$" % CAP, re.S)
 S_ROLE_INLINE = re.compile(r"^_?(?P<role>%s)_?\.\s+(?P<text>\S.+)$" % CAP, re.S)
 CASTHEAD = re.compile(r"^_?(CAST|CAST OF CHARACTERS|PERSONS|CHARACTERS|DRAMATIS PERSON(?:AE|Æ)|THE PERSONS OF THE PLAY|"
-                      r"PERSONS IN THE PLAY|PERSONS REPRESENTED|CHARACTERS IN THE PLAY)_?\.?:?\s*$", re.I)
-HEADING = re.compile(r"^_?(ACT|SCENE|CURTAIN|END|THE END|PERSONS|CHARACTERS|DRAMATIS|FIRST ACT|SECOND ACT|THIRD ACT|"
-                     r"FOURTH ACT|FIFTH ACT|PROLOGUE|EPILOGUE|PLAYS|CONTENTS|PREFACE|INTRODUCTION|NOTE|FOOTNOTES?|"
+                      r"PERSONS IN THE PLAY|PERSONS REPRESENTED(?: IN THE PLAY)?|CHARACTERS IN THE PLAY)_?\.?:?\s*$", re.I)
+# A play's first act, counted over the whole text: two of them are two plays.
+FIRST_ACT = re.compile(r"^_?\[?(?:ACT\.?\s+(?:I|1|ONE|FIRST)\b(?![IVX])|ACTUS\s+PRIMUS|(?:THE\s+)?FIRST\s+ACT)", re.I)
+HEADING = re.compile(r"^_?(ACT|SCENE|CURTAIN|END|THE END|PERSONS|CHARACTERS|DRAMATIS|(?:THE )?FIRST ACT|"
+                     r"(?:THE )?SECOND ACT|(?:THE )?THIRD ACT|(?:THE )?FOURTH ACT|(?:THE )?FIFTH ACT|PROLOGUE|EPILOGUE|"
+                     r"PLAYS|CONTENTS|PREFACE|INTRODUCTION|NOTE|FOOTNOTES?|"
                      r"TRANSCRIBER|ILLUSTRATIONS?|CHAPTER|BOOK|PART|APPENDIX|INDEX|FINIS)\b", re.I)
-# Mixed-case labels ("Ham.", "_Clap._", "Roberts:"), accepted only when the same label
-# opens 3 or more lines of the text, so a prose sentence starting "Then." is not a role.
-LABEL_MIXED = re.compile(r"^\s*_?(?P<role>[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]{0,20}(?:\s+[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]{0,20}){0,2})_?"
-                         r"\s*[.:;]_?\s+(?P<text>\S.*)$", re.S)
-NOT_LABEL = {"Enter", "Exit", "Exeunt", "Re-enter", "Manet", "Flourish", "Sennet", "Alarum", "Mr", "Mrs", "Dr",
-             "St", "Mme", "Mlle", "Scene", "Act", "Note", "The", "A", "I", "O", "Oh", "Yes", "No", "Well", "Then"}
+# Lists that belong to the cast list without starting another one ("COSTUMES.").
+CASTSUB = re.compile(r"^_?(COSTUMES?|PROPERTIES|SCENERY|TIME OF (?:PLAYING|PERFORMANCE|REPRESENTATION))_?\.?:?\s*$",
+                     re.I)
+CAST_ENTRY = re.compile(r"^\s*_?(?:MRS?\.\s+|MISS\s+|DR\.\s+)?[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+(?:\s+[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+){0,3}_?[,.]")
+# Where the play itself begins: a cast list, an act or scene heading, a first entrance.
+PLAY_MARK = re.compile(r"^_?\[?(?:(?:ACT|ACTUS|SCENE|SCENA|SCOENA|SC[ÆE]NA|PROLOGUE|INDUCTION|"
+                       r"(?:THE\s+)?(?:FIRST|SECOND|THIRD|FOURTH|FIFTH)\s+ACT)\b|[IVX]+\.\s+_?[A-Z])", re.I)
+ENTER_LINE = re.compile(r"^\s*[\[(]?_?(?:Enter|Re-?enter)(?:_|\b)")
+END_HEAD = re.compile(r"^_?(THE END|END|FINIS|CURTAIN)\b[^a-z]*$")
+SEPARATOR = re.compile(r"^[\s*.\-=_~]{3,}$")
+BACK_START = re.compile(r"Transcriber|Project Gutenberg|Typographical errors|Produced by|Etext", re.I)
+ROMAN = re.compile(r"^[IVXL]+$")
+LATIN_HEAD = re.compile(r"^_?(Actus|Scena|Scoena|Sc[æe]na)\b[\w .]{0,40}\.?_?$")
+# Mixed-case labels ("Ham.", "_Clap._", "Roberts:", "Mrs. Roberts:", "L. Kin."), accepted only
+# when the same label opens 3 or more lines of the text, so a prose sentence starting
+# "Then." is not a role.
+HONORIFIC = r"(?:(?:Mrs?|Ms|Miss|Dr|St|Sir|Lady|Lord|Mme|Mlle|Col|Capt|Gen|Prof|Rev|[B-HJ-NP-Z])\.?\s+)"
+LABEL_MIXED = re.compile(r"^\s*_?(?P<role>%s?[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]{0,20}(?:\s+[A-ZÀ-Þ][A-Za-zÀ-ÿ'’\-]{0,20}){0,2})_?"
+                         r"\s*[.:;]_?\s+(?P<text>\S.*)$" % HONORIFIC, re.S)
+NOT_LABEL = {"Enter", "Exit", "Exeunt", "Re-enter", "Manet", "Flourish", "Sennet", "Alarum", "Alarums", "March",
+             "Mr", "Mrs", "Dr", "St", "Mme", "Mlle", "Scene", "Act", "Note", "The", "A", "I", "O", "Oh", "Yes", "No",
+             "Well", "Then"}
+# Capitals labels that are stage business, never a role ("AT RISE:", "ENTER MRS.").
+NOT_STAGE_ROLE = re.compile(r"^(AT RISE|TIME|PLACE|SCENE|SYNOPSIS|ENTER|RE-?ENTER|EXIT|EXEUNT|ALARUMS?|FLOURISH|"
+                            r"SENNET|S O N G|CURTAIN)\b|^(?:THE|A|AN|OR|BY)$|^(?:[RLC]\.?\s*)+$")
 ENTRANCE = re.compile(r"^\s*_?(Enter|Re-?enter|Exit|Exeunt|Manet|Flourish|Sennet|Alarums?|A march|Sound|Trumpets|"
                       r"Thunder|Curtain|Scene|Act)\b", re.I)
 DIR_SPAN = re.compile(r"\[[^\]]*\]|\([^)]*\)|(?<![A-Za-z0-9])_[^_\n]+_(?![A-Za-z0-9])")
@@ -204,16 +239,44 @@ def _radio_items(text):
 
 # ---- stage ---------------------------------------------------------------------------------------
 
+def _not_label(role):
+    return role in NOT_LABEL or role.split()[0] in NOT_LABEL or bool(HEADING.match(role)) \
+        or bool(ENTRANCE.match(role)) or bool(NOT_STAGE_ROLE.match(role.upper()))
+
+
 def frequent_labels(text):
     counts = collections.Counter()
     for line in text.split("\n"):
         m = LABEL_MIXED.match(line)
-        if m and m.group("role") not in NOT_LABEL and not HEADING.match(m.group("role")):
+        if m and not _not_label(m.group("role")):
             counts[m.group("role")] += 1
     return {k for k, n in counts.items() if n >= 3}
 
 
-def _stage_paras(text, labels):
+def known_names(text):
+    """Names the text prints as names: words in capitals, and the capitalized words of an
+    entrance line ("Enter Barnardo and Francisco"); with each one's leading 4+ letters, so
+    a fuller form of a label ("_Arnol_." beside "Arn." and "Enter Arnoldo") is known too."""
+    names = {w.upper() for w in re.findall(r"\b[A-ZÀ-Þ][A-ZÀ-Þ'’]{2,}\b", text)}
+    for line in text.split("\n"):
+        if re.search(r"\b(Enter|Re-?enter|Exit|Exeunt)\b", line):
+            names.update(w.upper() for w in re.findall(r"\b[A-ZÀ-Þ][a-zà-ÿ'’]{2,}\b", line))
+    return {n[:k] for n in names for k in range(4, len(n) + 1)} | names
+
+
+def _label(name, labels, names=None):
+    """The label a line opens with, or None. A full name that expands a frequent abbreviated
+    label ("Barnardo." for "Bar."/"Barn.", "_Clapboard._" for "_Clap._") is that label's role
+    when the text also prints the name as a name (capitals, or an entrance)."""
+    if name in labels:
+        return name
+    if not names or " " in name or _not_label(name) or name.upper() not in names:
+        return None
+    grown = [f for f in labels if 2 <= len(f) < len(name) and name.startswith(f)]
+    return max(grown, key=len) if grown else None
+
+
+def _stage_paras(text, labels, names=None):
     """Blank-line paragraphs, split again where a line opens with a known label or an
     entrance. An entrance inside a speech stands alone, and the verse after it is marked
     as that speech continuing (Folio-style texts print them so)."""
@@ -222,7 +285,7 @@ def _stage_paras(text, labels):
         cur, cont = [], False
         for line in p.split("\n"):
             m = LABEL_MIXED.match(line)
-            if cur and m and m.group("role") in labels:
+            if cur and m and _label(m.group("role"), labels, names):
                 out.append(("\n".join(cur), cont))
                 cur, cont = [], False
             elif cur and ENTRANCE.match(line):
@@ -235,10 +298,80 @@ def _stage_paras(text, labels):
     return [(x.strip(), c) for x, c in out if x.strip()]
 
 
+def _caps_role(role):
+    r = role.strip(" ._")
+    return len(role.split()) <= 4 and not HEADING.match(role) and r.upper() == r and bool(re.search(r"[A-ZÀ-Þ]{2}", r)) \
+        and not NOT_STAGE_ROLE.match(r) and not ROMAN.match(r)
+
+
+def _speaker(line, labels, names):
+    m = LABEL_MIXED.match(line)
+    if m and _label(m.group("role"), labels, names):
+        return _role(_label(m.group("role"), labels, names))
+    for rx in (S_ROLE_OWN, S_ROLE_COLON, S_ROLE_INLINE):
+        m = rx.match(line)
+        if m and _caps_role(m.group("role")):
+            return _role(m.group("role"))
+    return None
+
+
+RUN_WINDOW, RUN_SPEECHES, START_REACH = 8, 4, 60
+
+
+def play_bounds(paras, labels, names):
+    """[start, end) of the play among blank-line paragraphs. The play is where speech is
+    sustained: a window of 8 paragraphs with 4+ speeches by 2+ speakers who each speak
+    twice (a publisher's catalog or a title page names each title once). It begins at the
+    earliest cast list, act or scene heading, or first entrance within 60 paragraphs before
+    that first run, and ends at the last speech by a recurring speaker, carried through the
+    directions and verse after it up to an END/CURTAIN heading or a non-play break."""
+    firsts = [p.split("\n")[0].strip() for p in paras]
+    sp = [_speaker(f, labels, names) for f in firsts]
+
+    def run_at(i):
+        if not sp[i]:
+            return False
+        w = [s for s in sp[i:i + RUN_WINDOW] if s]
+        c = collections.Counter(w)
+        return len(w) >= RUN_SPEECHES and sum(1 for v in c.values() if v >= 2) >= 2
+
+    first = next((i for i in range(len(paras)) if run_at(i)), None)
+    if first is None:
+        return 0, len(paras)
+
+    def marks(i):
+        f, n = firsts[i], len(paras[i].split("\n"))
+        if CASTHEAD.match(f) or ENTER_LINE.match(f):
+            return True
+        if re.match(r"^_?SCENE\s*(?:[:.]|[.—–-]{1,2})", f):
+            return True
+        return bool(PLAY_MARK.match(f)) and n <= 3 and (f.upper() == f or re.match(
+            r"^_?(Act|Actus|Scene|Scena|Scoena|Prologue|Induction)\b[ .]+\w", f))
+
+    start = next((i for i in range(max(0, first - START_REACH), first) if marks(i)), first)
+    counts = collections.Counter(s for s in sp[start:] if s)
+    last = max((i for i in range(start, len(paras)) if sp[i] and counts[sp[i]] >= 3), default=first)
+    end = last + 1
+    while end < len(paras):
+        f = firsts[end]
+        if END_HEAD.match(f):
+            end += 1
+            break
+        if SEPARATOR.match(f) or BACK_START.search(f) or (f.upper() == f and re.search(r"[A-ZÀ-Þ]{2}", f)):
+            break
+        end += 1
+    return start, end
+
+
 def _stage_items(text):
-    labels = frequent_labels(text)
-    paras = _stage_paras(text, labels)
-    items, pending, pending_src, incast, casts, last_role = [], None, None, False, 0, None
+    raw = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    names = known_names(text)
+    start, end = play_bounds(raw, frequent_labels(text), names)
+    body = "\n\n".join(raw[start:end])
+    labels = frequent_labels(body)
+    paras = _stage_paras(body, labels, names)
+    items = [{"kind": "front", "source": p} for p in raw[:start]]
+    pending, pending_src, incast, casts, last_role = None, None, False, 0, None
     for p, cont in paras:
         if items and items[-1]["kind"] in ("speech", "heading", "cast"):
             last_role = items[-1].get("role")
@@ -250,18 +383,21 @@ def _stage_items(text):
             continue
         if incast:
             lab = LABEL_MIXED.match(first)
-            speaks = (lab and lab.group("role") in labels) or S_ROLE_COLON.match(first) or ENTRANCE.match(first) \
-                or re.match(r"^_?SCENE\b", first, re.I)
-            if all(len(l.strip()) < 70 for l in lines) and not speaks:
+            speaks = (lab and _label(lab.group("role"), labels, names)) or S_ROLE_COLON.match(first) \
+                or ENTRANCE.match(first) or re.match(r"^_?SCENE\b", first, re.I)
+            if not speaks and (CASTSUB.match(first) or CAST_ENTRY.match(first)
+                               or all(len(l.strip()) < 70 for l in lines)):
                 items.append({"kind": "cast", "source": p})
                 continue
             incast = False
-        if HEADING.match(first) and len(lines) <= 3 and first.upper() == first:
+        if SEPARATOR.match(p) or (HEADING.match(first) and len(lines) <= 3 and first.upper() == first) \
+                or (LATIN_HEAD.match(first) and len(lines) <= 2):
             items.append({"kind": "heading", "source": p})
             pending = None
             continue
         m = S_ROLE_OWN.match(first)
-        if m and len(m.group("role").split()) <= 4 and not HEADING.match(m.group("role")):
+        if m and len(m.group("role").split()) <= 4 and not HEADING.match(m.group("role")) \
+                and not NOT_STAGE_ROLE.match(m.group("role").strip(" ._")):
             rest = "\n".join(l.strip() for l in lines[1:]).strip()
             lead = [{"direction": m.group("d").strip("[]() _")}] if m.group("d") else []
             if rest:
@@ -272,13 +408,17 @@ def _stage_items(text):
             continue
         joined = " ".join(l.strip() for l in lines)
         m = LABEL_MIXED.match(joined)
-        if m and m.group("role") in labels:
-            items.append({"kind": "speech", "role": _role(m.group("role")), "source": p, "text": m.group("text")})
+        if m and _label(m.group("role"), labels, names):
+            items.append({"kind": "speech", "role": _role(_label(m.group("role"), labels, names)), "source": p,
+                          "text": m.group("text")})
             pending = None
             continue
         m = S_ROLE_COLON.match(joined) or S_ROLE_INLINE.match(joined)
-        if m and len(m.group("role").split()) <= 4 and not HEADING.match(m.group("role")) \
-                and m.group("role").strip(" ._").upper() == m.group("role").strip(" ._"):
+        if m and ROMAN.match(m.group("role").strip(" ._")):
+            items.append({"kind": "heading", "source": p})
+            pending = None
+            continue
+        if m and _caps_role(m.group("role")):
             items.append({"kind": "speech", "role": _role(m.group("role")), "source": p, "text": m.group("text")})
             pending = None
             continue
@@ -289,7 +429,7 @@ def _stage_items(text):
                           "lead": pending[1]})
             pending = None
             continue
-        if re.match(r"^[\[(_]", joined) or ENTRANCE.match(joined):
+        if re.match(r"^[\[(_]", joined) or ENTRANCE.match(joined) or (m and NOT_STAGE_ROLE.match(m.group("role"))):
             items.append({"kind": "direction", "source": p})
             continue
         if cont and last_role:
@@ -301,7 +441,13 @@ def _stage_items(text):
             items[-1]["continued"] = items[-1].get("continued", 0) + 1
             continue
         items.append({"kind": "other", "source": p})
-    return items, casts
+    items += [{"kind": "back", "source": p} for p in raw[end:]]
+    # plays are counted over the WHOLE text, so a play window never hides the others
+    whole = [(p.split("\n")[0].strip(), len(p.split("\n"))) for p in raw]
+    plays = max(sum(1 for f, _ in whole if CASTHEAD.match(f)),
+                sum(1 for f, n in whole if n <= 3 and FIRST_ACT.match(f) and len(f.split()) <= 6
+                    and not re.search(r"[—:–]", f)))
+    return items, max(casts, plays)
 
 
 # ---- the shared model ----------------------------------------------------------------------------
@@ -336,7 +482,7 @@ def parse(raw, kind):
         return {"status": "stub", "stub_kind": stub, "words": len(text.split())}
     lines, roles, unclassified = [], collections.OrderedDict(), []
     for it in items:
-        if it["kind"] in ("cast", "heading"):
+        if it["kind"] in ("cast", "heading", "front", "back"):
             continue
         if it["kind"] == "other":
             unclassified.append(it["source"])
@@ -363,13 +509,19 @@ def parse(raw, kind):
         issues.append("fewer_than_two_castable_roles")
     if casts > 1:
         issues.append("several_plays_in_one_text")
+    aside = sum(len(i["source"].split()) for i in items if i["kind"] in ("front", "back"))
+    aside_share = aside / max(1, sum(len(i["source"].split()) for i in items))
+    if aside_share > CLEAN_SET_ASIDE:
+        issues.append("mostly_set_aside")
     if aliases:
         issues.append("possible_aliases")
     clean = not any(i in issues for i in ("unclassified_over_5pct", "fewer_than_two_castable_roles",
-                                          "several_plays_in_one_text"))
+                                          "several_plays_in_one_text", "mostly_set_aside"))
     return {"status": "parsed", "clean": clean, "issues": issues, "roles": list(roles.values()),
             "castable_roles": len(castable), "lines": lines, "unclassified": unclassified,
-            "unclassified_share": round(share, 3), "aliases": aliases, "words": len(text.split())}
+            "unclassified_share": round(share, 3), "aliases": aliases, "words": len(text.split()),
+            "set_aside": {k: sum(1 for i in items if i["kind"] == k) for k in ("front", "back")},
+            "set_aside_share": round(aside_share, 3)}
 
 
 # ---- the measurement -----------------------------------------------------------------------------

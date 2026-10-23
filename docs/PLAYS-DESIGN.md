@@ -189,8 +189,14 @@ is small. `catalog/tools/build_castable_scripts.py` writes
 only when `script_rights.judge` says `castable` and `script_parse` says clean
 (§8 rule 1), with each line as the parser's exact slices, the rights evidence,
 and a revision hash. Both the Apple and the Android apps bundle that one file.
-Measured on 2026-10-22: 24 cached texts read, **9 plays written, all stage
-plays**, 1,436,506 bytes (419,483 gzipped). None of the four Carlton radio
+Measured on 2026-10-23: 24 cached texts read, **11 plays written, all stage
+plays**, 1,645,122 bytes (477,111 gzipped). The stage parser first finds where
+the play begins and ends, so title pages, publishers' catalogs, prefaces, and
+transcriber notes are set aside with their words and never become a part. A
+text is refused, never split, when it holds several plays (cast lists or first
+acts counted over the whole text) or sets aside over 40% of its words (the
+plays measured set aside at most 28%).
+None of the four Carlton radio
 plays ships yet, because each parses with more than 5% of its blocks
 unclassified. The file moves beside the catalog once the library outgrows a
 bundle.

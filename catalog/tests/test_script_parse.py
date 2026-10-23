@@ -6,6 +6,11 @@ Broken controls, 2026-10-22, against mutated copies of script_parse.py:
     labels need not recur 6/7, no stub check 6/7, cast block runs on 5/7,
     parentheses read as speech 6/7. "Labels need not recur" first PASSED 7/7: its
     prose word ("Then") was on the never-a-label list, so the fixture now uses "Truly".
+Broken controls, 2026-10-23 (where the play begins and ends): no play bounds 11/17 (the
+    cached-text shape check among them), no back matter 15/17, no full-name expansion 15/17,
+    no cast sub-lists 16/17, no honorific labels 16/17. The cached-text check first PASSED
+    with no bounds: it took a "* * *" separator for the play's first heading. Plays counted
+    only inside the play window 16/17 (two plays refused); no set-aside gate 16/17.
 """
 import os
 import sys
@@ -137,6 +142,230 @@ def link_page_is_a_stub():
 def long_text_without_dialogue_is_a_failure_not_a_stub():
     r = P.parse("Some Series\n\nTitle\n\nDate: Dec 09 1938\n\n" + FILLER, "radio")
     assert (r["status"], r["issues"]) == ("failed", ["format_unrecognized"]), r
+
+
+# ---- where the play begins and ends (measured 2026-10-23 over every cached Gutenberg text) ----
+
+FARCE = """*** START OF THE PROJECT GUTENBERG EBOOK FARCE ***
+
+THE
+GLOBE STAGE
+
+BOSTON:
+WALTER PUBLISHER & CO.
+
+1. =Lost Things.= A Drama in Three Acts. By J. M.
+Morton. 3 Male, 3 Female characters.
+
+2. =Old Honesty.= A Comic Drama in Two Acts. By J. M.
+Morton. 5 Male, 2 Female characters.
+
+3. =A Fix.= A Farce in One Act. By W. E.
+Morton. 2 Male characters.
+
+4. =Two Heads.= A Farce in One Act. By T. J.
+Morton. 4 Male characters.
+
+A KIND ATTACHMENT.
+A Farce.
+
+CHARACTERS.
+
+MR. CLAPBOARD, a landlord.
+EBENEZER CROTCHET, a father.
+
+COSTUMES.
+
+CLAPBOARD, gray wig, brown coat, dark pants, and a very long scarf to the knee.
+
+EBENEZER, gray wig, blue coat with brass buttons, dark pants, hat, and a long cane.
+
+SCENE.--_A room._
+
+_Enter MR. CLAPBOARD, followed by EBENEZER._
+
+_Clapboard._ This is the room, sir.
+
+_Ebenezer._ O, it is! The abode of my son.
+
+""" + "\n\n".join(f"_Clap._ Come, come, sir, line {i}.\n\n_Eben._ Pooh, pooh, answer {i}." for i in range(30)) \
+    + """
+
+_Disposition at the fall of the Curtain._
+
+GLOBE STAGE.
+
+5. =Brother Ben.= A Farce in One Act. By J. M.
+Morton. 3 Male characters.
+
+6. =Mary Moo.= A Farce in One Act. By J. M.
+Morton. 2 Male characters.
+
+7. =Blue.= A Comedy in One Act. By J. M.
+Morton. 2 Male characters.
+
+*** END OF THE PROJECT GUTENBERG EBOOK FARCE ***
+"""
+
+FOLIO_NOTE = """*** START OF THE PROJECT GUTENBERG EBOOK HAMLET ***
+
+Director's Notes:
+
+Here are the first few lines, as they are presented herein:
+
+  Barnardo. Who's there?
+  Fran. Nay answer me: Stand & vnfold
+your selfe
+
+   Bar. Long liue the King
+
+       *       *       *       *       *
+
+As I understand it, the printers often ran out of certain letters.
+
+The Tragedie of Hamlet
+
+Actus Primus. Scoena Prima.
+
+Enter Barnardo and Francisco two Centinels.
+
+  Barnardo. Who's there?
+  Fran. Nay answer me: Stand & vnfold
+your selfe
+
+""" + "\n\n".join(f"   Bar. Long liue the King, {i}\n\n   Fran. You come most carefully, {i}\n\n"
+                  f"   Barn. Haue you had quiet Guard, {i}" for i in range(40)) + """
+
+Exeunt.
+
+FINIS.
+
+*** END OF THE PROJECT GUTENBERG EBOOK HAMLET ***
+"""
+
+
+def _words(raw):
+    return " ".join(raw.split())
+
+
+@case
+def front_matter_never_becomes_a_role():
+    r = P.parse(FARCE, "stage")
+    assert r["status"] == "parsed" and r["clean"], (r.get("status"), r.get("issues"), r.get("unclassified"))
+    names = {x["name"] for x in r["roles"]}
+    assert names == {"CLAP", "EBEN"}, names
+    assert r["set_aside"]["front"] > 0, r["set_aside"]
+    for l in r["lines"]:
+        assert "Morton" not in l["source"] and "GLOBE" not in l["source"] and "BOSTON" not in l["source"], l
+
+
+@case
+def a_full_name_that_expands_a_label_is_that_role():
+    r = P.parse(FARCE, "stage")
+    sp = [l for l in r["lines"] if l["kind"] == "speech"]
+    assert (sp[0]["role"], sp[0]["parts"]) == ("CLAP", [{"say": "This is the room, sir."}]), sp[0]
+    assert sp[1]["role"] == "EBEN" and sp[1]["source"].startswith("_Ebenezer._"), sp[1]
+    r = P.parse(FOLIO_NOTE, "stage")
+    sp = [l for l in r["lines"] if l["kind"] == "speech"]
+    assert sp[0]["source"] == "Barnardo. Who's there?" and sp[0]["role"] in ("BAR", "BARN"), sp[0]
+    assert not [u for u in r["unclassified"] if "Barnardo" in u], r["unclassified"]
+
+
+@case
+def a_note_that_quotes_the_play_stays_out_of_its_lines():
+    r = P.parse(FOLIO_NOTE, "stage")
+    assert r["status"] == "parsed" and r["clean"], (r.get("status"), r.get("issues"))
+    src = [l["source"] for l in r["lines"]]
+    assert sum("Who's there?" in s for s in src) == 1, [s for s in src if "Who's there?" in s]
+    assert not [s for s in src if "printers" in s or "Director" in s], src[:5]
+
+
+@case
+def the_costume_list_belongs_to_the_cast_list():
+    r = P.parse(FARCE, "stage")
+    assert not [u for u in r["unclassified"] if "wig" in u], r["unclassified"]
+    assert not [l for l in r["lines"] if "wig" in l["source"]]
+
+
+@case
+def back_matter_after_the_play_is_set_aside():
+    r = P.parse(FARCE, "stage")
+    assert r["set_aside"]["back"] >= 3, r["set_aside"]
+    assert "Brother Ben" not in " ".join(l["source"] for l in r["lines"])
+    r = P.parse(FOLIO_NOTE, "stage")
+    assert r["lines"][-1]["source"] == "Exeunt.", r["lines"][-1]
+
+
+@case
+def a_label_may_carry_an_honorific():
+    body = "\n\n".join(f"Mrs. Roberts: “Line {i} of the scene, said plainly.”\n\nRoberts: “Answer {i}, said back to her.”" for i in range(40))
+    r = P.parse("*** START OF THE PROJECT GUTENBERG EBOOK X ***\n\n_Enter Mrs._ Roberts.\n\n" + body
+                + "\n\n_Enter Mrs._ Roberts.\n\n_Enter Mrs._ Roberts.\n\nTHE END\n", "stage")
+    assert {x["name"] for x in r["roles"]} == {"MRS. ROBERTS", "ROBERTS"}, r["roles"]
+
+
+@case
+def every_word_set_aside_is_still_accounted_for():
+    for raw in (FARCE, FOLIO_NOTE):
+        items, _ = P._stage_items(P.gutenberg_body(raw))
+        assert _words("\n\n".join(i["source"] for i in items)) == _words(P.gutenberg_body(raw)), "a word was lost"
+
+
+def _small_play(a, b, n=40):
+    return "ACT I.\n\n" + "\n\n".join(f"{a}. A line of the scene, said plainly, {i}.\n\n{b}. And an answer said back, {i}."
+                                      for i in range(n)) + "\n\nTHE END."
+
+
+@case
+def two_plays_in_one_text_are_refused():
+    # one cast list, so only the whole-text count of first acts finds the second play
+    two = ("*** START OF THE PROJECT GUTENBERG EBOOK WORKS ***\n\nTHE FIRST PLAY\n\nCHARACTERS\n\nALDO\nBORIS\n\n"
+           + _small_play("ALDO", "BORIS") + "\n\nTHE SECOND PLAY\n\n" + _small_play("CYRIL", "DORA")
+           + "\n\n*** END OF THE PROJECT GUTENBERG EBOOK WORKS ***\n")
+    r = P.parse(two, "stage")
+    assert r["status"] == "parsed" and not r["clean"] and "several_plays_in_one_text" in r["issues"], r.get("issues")
+    one = ("*** START OF THE PROJECT GUTENBERG EBOOK ONE ***\n\nTHE FIRST PLAY\n\nCHARACTERS\n\nALDO\nBORIS\n\n"
+           + _small_play("ALDO", "BORIS") + "\n\n*** END OF THE PROJECT GUTENBERG EBOOK ONE ***\n")
+    r = P.parse(one, "stage")
+    assert r["clean"], r["issues"]
+
+
+@case
+def a_text_that_is_mostly_set_aside_is_refused():
+    essay = "\n\n".join("An essay on the drama and its history, which is not a play at all, part %d." % i
+                        for i in range(120))
+    r = P.parse("*** START OF THE PROJECT GUTENBERG EBOOK ESSAY ***\n\n" + essay + "\n\nCHARACTERS\n\nALDO\nBORIS\n\n"
+                + _small_play("ALDO", "BORIS") + "\n", "stage")
+    assert r["set_aside_share"] > P.CLEAN_SET_ASIDE and not r["clean"], (r["set_aside_share"], r["issues"])
+    assert "mostly_set_aside" in r["issues"], r["issues"]
+
+
+GUTENBERG_TEXTS = os.path.join(os.path.dirname(__file__), "..", ".cache", "gutenberg", "text")
+
+
+@case
+def cached_texts_no_castable_role_lives_only_before_the_play():
+    """Shape only, over every cached text: a castable role (5+ lines) never has all its
+    lines before the play's first cast list or act/scene heading."""
+    import glob
+    files = sorted(glob.glob(os.path.join(GUTENBERG_TEXTS, "*.txt")))
+    if not files:
+        print("SKIP cached_texts_no_castable_role_lives_only_before_the_play: no cache")
+        return
+    bad = []
+    for f in files:
+        items, _ = P._stage_items(P.gutenberg_body(open(f, encoding="utf-8", errors="replace").read()))
+        mark = next((k for k, it in enumerate(items) if it["kind"] == "cast" or (it["kind"] == "heading" and (
+            P.PLAY_MARK.match(it["source"]) or P.LATIN_HEAD.match(it["source"])))), None)
+        if mark is None:
+            continue
+        at = {}
+        for k, it in enumerate(items):
+            if it["kind"] == "speech":
+                at.setdefault(it["role"], []).append(k)
+        bad += [(os.path.basename(f), role) for role, ks in at.items() if len(ks) >= P.CASTABLE_LINES
+                and max(ks) < mark]
+    assert not bad, bad
 
 
 def main():
