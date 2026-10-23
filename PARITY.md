@@ -170,11 +170,11 @@ history, queue, and follows, and it is required to make a play with others.
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Sign in with Apple | 🚧 Apple JS, nonce; placeholders until the Worker is deployed | 🚧 placeholders; entitlement off until the App ID capability (WORKER.md 4) | 🚧 placeholders; entitlement off until the App ID capability (WORKER.md 4) | 🚧 placeholders; entitlement off until the App ID capability (WORKER.md 4) | ⏳ | M5; verified at the Worker |
-| Sign in with Google | 🚧 Google's own button; placeholders | 🚧 ASWebAuthenticationSession + PKCE, no SDK | 🚧 same as iOS | ⏳ no web auth session on tvOS | ⏳ | M5; tvOS by a phone hand-off |
+| Sign in with Apple | 🚧 Apple JS, nonce; placeholders until the Worker is deployed | 🚧 placeholders; entitlement off until the App ID capability (WORKER.md 4) | 🚧 placeholders; entitlement off until the App ID capability (WORKER.md 4) | 🚧 placeholders; entitlement off until the App ID capability (WORKER.md 4) | 🚧 Custom Tab, auth/apple/ return page; placeholders | M5; verified at the Worker |
+| Sign in with Google | 🚧 Google's own button; placeholders | 🚧 ASWebAuthenticationSession + PKCE, no SDK | 🚧 same as iOS | ⏳ no web auth session on tvOS | 🚧 Credential Manager; needs Android OAuth clients | M5; tvOS by a phone hand-off |
 | Email and password | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Decision 057 names Apple and Google only |
-| Sync of history, queue, follows | 🚧 LWW per row, markers, ?since=; tested against a stubbed Worker | 🚧 stubbed-Worker tests; no Follow/Queue controls yet | 🚧 stubbed-Worker tests; no Follow/Queue controls yet | 🚧 stubbed-Worker tests; no Follow/Queue controls yet | ⏳ | One store on the Worker + D1, never two |
-| Account deletion | 🚧 in the account sheet, and the public page delete-account/ | 🚧 Account screen, fresh Apple code | 🚧 Account screen, fresh Apple code | 🚧 Account screen, fresh Apple code | ⏳ | Ships with sign-in (Decision 035) |
+| Sync of history, queue, follows | 🚧 LWW per row, markers, ?since=; tested against a stubbed Worker | 🚧 stubbed-Worker tests; no Follow/Queue controls yet | 🚧 stubbed-Worker tests; no Follow/Queue controls yet | 🚧 stubbed-Worker tests; no Follow/Queue controls yet | 🚧 stubbed-Worker tests; queue and follows stored, not shown | One store on the Worker + D1, never two |
+| Account deletion | 🚧 in the account sheet, and the public page delete-account/ | 🚧 Account screen, fresh Apple code | 🚧 Account screen, fresh Apple code | 🚧 Account screen, fresh Apple code | 🚧 account sheet; web path delete-account/ | Ships with sign-in (Decision 035) |
 
 ---
 

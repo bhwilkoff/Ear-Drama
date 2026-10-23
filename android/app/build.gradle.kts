@@ -103,13 +103,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
 
-        // FILL IN: Google sign-in client ID (Web OAuth client created in GCP).
-        // Keep secrets out of git — read from gradle.properties.
-        buildConfigField(
+        // The Worker (docs/WORKER.md) and the sign-in client ids. None is a
+        // secret, but each is the owner's to create (WORKER.md, Needs Ben), so
+        // each comes from a gradle property (~/.gradle/gradle.properties or -P)
+        // and stays a REPLACE_WITH placeholder in git. While one is a
+        // placeholder, that sign-in shows as not set up (WorkerConfig).
+        fun account(name: String, placeholder: String) = buildConfigField(
             "String",
-            "GOOGLE_WEB_CLIENT_ID",
-            "\"${providers.gradleProperty("GOOGLE_WEB_CLIENT_ID").orNull ?: ""}\"",
+            name,
+            "\"${providers.gradleProperty("EARDRAMA_$name").orNull ?: placeholder}\"",
         )
+        account("WORKER_BASE_URL", "REPLACE_WITH_WORKER_BASE_URL")
+        // The Web OAuth client id: Credential Manager asks for a token addressed to it.
+        account("GOOGLE_WEB_CLIENT_ID", "REPLACE_WITH_GOOGLE_WEB_CLIENT_ID")
+        // The Sign in with Apple Services ID, and the https return URL registered for it.
+        account("APPLE_SERVICES_ID", "REPLACE_WITH_APPLE_SERVICES_ID")
+        account("APPLE_RETURN_URL", "https://eardrama.org/auth/apple/")
     }
 
     signingConfigs {
@@ -248,6 +257,7 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)
+    implementation(libs.browser)
 
     // Supabase (uncomment if your project uses it)
     // implementation(platform(libs.supabase.bom))
@@ -266,6 +276,7 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
+    testImplementation(libs.ktor.client.mock)
     testImplementation(libs.sqlite.bundled.jvm)
 
     androidTestImplementation(libs.junit.ext)

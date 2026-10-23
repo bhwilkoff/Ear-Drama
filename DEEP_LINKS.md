@@ -17,6 +17,7 @@ prefix lists, and a flat structure makes the lists short.
 | Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
 | Search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
 | OAuth callback | `eardrama://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |
+| Sign in with Apple return (Android) | `eardrama://oauth/apple#state=&code=&id_token=` | Android. Apple returns to the Services ID's https return URL, `https://eardrama.org/auth/apple/` (fragment response, no scope); that static page (`auth/apple/index.html`) forwards its fragment unchanged to this link and clears it from the address bar; the link opens no screen (ANDROID-DESIGN §4.11). No HTTPS twin: it is a callback, not a share |
 
 **Add a row to this table BEFORE adding a deep link in code.** New
 routes that aren't documented here become orphans the next time a

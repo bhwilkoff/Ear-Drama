@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Signing in · Ear Drama</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+</head>
+<body class="site-page">
+  <main id="main-content" class="site-article">
+    <p class="body">Returning to Ear Drama.</p>
+    <p class="body" id="manual" hidden><a id="open">Open Ear Drama</a></p>
+  </main>
+  <script>
+    // Sign in with Apple on Android returns here (DEEP_LINKS.md); the fragment is
+    // handed to the app unchanged and never sent to a server or stored.
+    (function () {
+      var target = 'eardrama://oauth/apple' + (location.hash || '');
+      history.replaceState(null, '', location.pathname);
+      document.getElementById('open').href = target;
+      document.getElementById('manual').hidden = false;
+      location.replace(target);
+    })();
+  </script>
+</body>
+</html>

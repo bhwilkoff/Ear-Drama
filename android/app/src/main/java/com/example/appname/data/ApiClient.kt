@@ -28,11 +28,9 @@ import okhttp3.Request
  *
  * Same architectural rule as iOS APIClient.shared and web js/api.js.
  *
- * When the project uses Supabase + Cloudflare Workers:
- *  - Add SupabaseAuthInterceptor to the OkHttpClient builder so
- *    every Worker call refreshes the JWT first (the cross-platform
- *    "refresh-before-call" rule — see AGENTS.md).
- *  - Share the OkHttpClient with Coil 3 via Application#sharedOkHttp.
+ * The Worker (accounts and sync, docs/WORKER.md) rides [client] through
+ * [com.example.appname.account.WorkerApi], which refreshes the session
+ * before every call (the cross-platform "refresh-before-call" rule, AGENTS.md).
  */
 @Singleton
 class ApiClient @Inject constructor() {
@@ -103,7 +101,6 @@ class ApiClient @Inject constructor() {
                 },
             )
         }
-        // FILL IN: defaultRequest { url(BASE_URL); header("Authorization", ...) }
     }
 
     suspend inline fun <reified T> get(url: String): T = client.get(url).body()

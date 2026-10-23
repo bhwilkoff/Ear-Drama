@@ -60,7 +60,7 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory, Configur
 
     override fun onCreate() {
         super.onCreate()
-        container = AppContainer(this)
+        container = AppContainer(this, appScope)
         appScope.launch { container.downloads.reconnect() }
         appScope.launch {
             container.catalog.initialize()
