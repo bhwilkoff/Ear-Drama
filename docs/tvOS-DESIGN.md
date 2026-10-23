@@ -92,7 +92,12 @@ The only shapes; a new one needs a new rule.
   title at page-title size, the facts line (date, network, sponsor,
   length), then an action row in one focus section: Play, Series, and
   "Automatic transcript" when the gate passed. Then the offline warning,
-  the credits by role, and the rights line.
+  the credits by role, Versions when there is more than one copy (R5),
+  and the rights line. Versions is its own focus section of buttons, the
+  rank 0 copy first and the default; each names its archive.org
+  identifier, notes, length, and bit rate, and plays that copy in Now
+  Playing. Play on the episode already loaded opens Now Playing where
+  it is, never from the start (§5.4).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
   people", series first, then episodes, with "In the transcript" on a
   row found only by its transcript.
@@ -117,8 +122,15 @@ The only shapes; a new one needs a new rule.
   screen (`onPlayPauseCommand`). Menu dismisses it.
 - **§5.3 Seeking is by skip.** tvOS has no `Slider`, so the progress bar
   is a readout and the skip buttons move the position.
-- **§5.4 No mini player.** The TV is one thing at a time; the shell
-  shows the content and Now Playing is the player.
+- **§5.4 No mini player; one way back.** The TV is one thing at a time;
+  the shell shows the content and Now Playing is the player. While an
+  episode is loaded, every tab's root screen is headed by one Now
+  Playing button (`NowPlayingEntry_tvOS`: the word, the title, and the
+  series), its own focus section, one press up from the first row. It
+  opens Now Playing on the episode as it is, never replaying it. Pushed
+  screens do not carry it: Menu returns to the root, where it is. (A
+  sidebar footer would hold it in one place, but
+  `tabViewSidebarFooter` starts at tvOS 27, above the tvOS 26 floor.)
 
 ## §6 Focus contract
 
@@ -138,7 +150,12 @@ The only shapes; a new one needs a new rule.
 ## §7 Type, color, and accessibility
 
 - **§7.1 Six levels** (`TypeRamp`, tvOS branch of
-  `apple/Core/Design.swift`) over the system's ten-foot text styles.
+  `apple/Core/Design.swift`) over the system's ten-foot text styles,
+  none below the 29 pt body floor: the caption level (L5) maps to the
+  tvOS body style there and is set apart by its muted color, so the
+  rights line, meta lines, time labels, and the transcript's caption
+  are at least 29 pt. `tools/test_design_tokens.mjs` fails on a tvOS
+  style under 29 pt.
 - **§7.2 Tokens only**, the same generated colors as every Apple
   platform; only the focused element is bright.
 - **§7.3 States.** Loading is a `ProgressView`; empty is a
@@ -187,27 +204,24 @@ The rights line, the transcript label, and loudness by cutting are as in
 
 ## §12 Open (what the code does not yet meet)
 
-- **Once Now Playing is dismissed there is no way back to it.** There is
-  no mini player or Now Playing entry, and `isPlayerPresented` is set
-  only by Play on Detail, which plays the episode again
-  (`PlayEpisodeAction`). A person who pressed Menu has to find the
-  episode to see the player.
 - **Now Playing shows no cast**, though its own comment and research
   §6 say the people are the picture (`NowPlaying_tvOS`).
 - **Focus is claimed by `defaultFocus` alone**, which the template's §6.2
   calls unreliable on tvOS; Now Playing declares no default focus and no
   restoration target on dismiss.
-- **Detail has no Versions** (R5), though PARITY marks the versions
-  picker in progress on tvOS (`EpisodeScreen_tvOS`).
 - **Series browse has only a Genre facet**, no network or decade
   (`SeriesBrowseScreen_tvOS` passes `network: nil, decade: nil`).
 - **Library has no Played section**, and Remove from History does not
   ask first, so focus is left to the engine afterward (§6.4).
 - **Search has no loading state** (`SearchScreen_tvOS`).
-- **The caption level is `Font.caption`**, below the 29 pt body floor;
-  the rights line and meta lines use it.
 - **Every shared-Core item in `docs/iOS-DESIGN.md` §12** holds here too:
-  the queue rule, the 10 s fade, the speed list, the save and resume
-  numbers, the untitled fallback, and seasons as sections.
+  the queue rule, the resume and "played" windows, the untitled
+  fallback, and seasons as sections. The player's numbers are Decision
+  062's, named once in `PlayerNumbers` (`docs/iOS-DESIGN.md` §5.7).
+- **Share is not built**: §8's QR code of the https twin
+  (`SiteLinks.episode`) waits on its PARITY row.
+
+Closed 2026-10-23: a way back to Now Playing (§5.4), Versions on Detail
+(§4.4), and the 29 pt caption floor (§7.1).
 
 Bring the next change back to a rule here, or bring a new rule first.
