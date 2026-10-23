@@ -237,3 +237,6 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 ### Tick 43, 2026-10-22, upkeep: tick 40's deferred comments; the plan's checkboxes
 - Android's `strings.xml` loses the template's FILL IN comment (the name is set); the manifest's commented App Links block now names eardrama.org and why it stays off (Play's signing fingerprint for assetlinks.json). Comments only.
 - LOOP-PLAN: eight more items checked as built, each saying what is still open (evenings, the web player, transcripts, states, the Apple verbs and player, the Android verbs, the M9 stubs). Plays on Android waits for the Apple build so it can mirror its script format and words.
+
+### Tick 44, 2026-10-22, docs: the four missing binding design docs
+- Only WEB-DESIGN.md and PLAYS-DESIGN.md existed, though iOS, macOS, tvOS, and Android are far past AGENTS.md's ~5-view line. Launched a docs-only agent to write iOS-, macOS-, tvOS-, and ANDROID-DESIGN.md from the templates and the code as built, naming the deliberate inversions and listing what its reading finds inconsistent with R1-R21. Running alongside: plays on Apple, evenings and the Radio tab. Machine: load 3.4, no simulator.
