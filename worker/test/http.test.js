@@ -85,8 +85,8 @@ describe("rate limits", () => {
 });
 
 describe("routing", () => {
-  it("rooms (M6) and plays (M8) are reserved, not built", async () => {
-    for (const p of ["/v1/rooms", "/v1/rooms/ABCD", "/v1/plays/123"]) {
+  it("plays (M8) are reserved, not built", async () => {
+    for (const p of ["/v1/plays", "/v1/plays/123"]) {
       const r = await call("GET", p);
       expect(r.status, p).toBe(501);
     }

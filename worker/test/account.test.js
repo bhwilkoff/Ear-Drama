@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { call, env, installProviderKeys, signIn } from "./helpers.js";
 import { USER_TABLES } from "../src/account.js";
+import { ANONYMOUS_TABLES } from "../src/rooms.js";
 
 let appleCalls;
 beforeEach(() => {
@@ -32,6 +33,7 @@ async function allTables() {
 async function rowsFor(userId) {
   const out = {};
   for (const t of await allTables()) {
+    if (ANONYMOUS_TABLES.includes(t)) continue;
     const cols = (await env.DB.prepare(`PRAGMA table_info(${t})`).all()).results.map((c) => c.name);
     const col = cols.includes("user_id") ? "user_id" : t === "users" ? "id" : null;
     if (!col) {
@@ -59,8 +61,16 @@ async function fill(s) {
 describe("account deletion (App Store 5.1.1(v))", () => {
   it("every table that holds a person's rows is in USER_TABLES", async () => {
     const tables = await allTables();
-    const missing = tables.filter((t) => t !== "users" && !USER_TABLES.includes(t));
+    const missing = tables.filter((t) => t !== "users" && !USER_TABLES.includes(t) && !ANONYMOUS_TABLES.includes(t));
     expect(missing).toEqual([]);
+  });
+
+  it("a table outside USER_TABLES holds no person: it has no user_id column", async () => {
+    for (const t of ANONYMOUS_TABLES) {
+      const cols = (await env.DB.prepare(`PRAGMA table_info(${t})`).all()).results.map((c) => c.name);
+      expect(cols.length, t).toBeGreaterThan(0);
+      expect(cols, t).not.toContain("user_id");
+    }
   });
 
   it("CONTROL: before deletion, the account has rows in every table", async () => {

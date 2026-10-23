@@ -26,9 +26,10 @@ database_name = "eardrama"
 database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
 migrations_dir = "migrations"
 
-# Daily sweep: expired and revoked sessions are deleted, not just ignored.
+# Hourly sweep: expired sessions, idle rooms, and quiet room members are
+# deleted, not just ignored (Archive Watch's rooms sweep hourly too).
 [triggers]
-crons = ["23 4 * * *"]
+crons = ["23 * * * *"]
 
 # Rate limits (Archive Watch together.js `limited()`): counted per key for the
 # window only, nothing stored. EVERY_IP is the floor on every route; AUTH
@@ -53,4 +54,37 @@ name = "USER_LIMITER"
 namespace_id = "8303"
   [ratelimits.simple]
   limit = 120
+  period = 60
+
+# Listen Together rooms (rooms.js; Archive Watch together.js). ROOM counts
+# every room call per address (a member polls about 30 times a minute, so 300
+# is a household). CREATE and JOIN are per address; JOIN is the floor under
+# code guessing. MEMBER counts one member key, so one device cannot use up a
+# household's share.
+[[ratelimits]]
+name = "ROOM_LIMITER"
+namespace_id = "8304"
+  [ratelimits.simple]
+  limit = 300
+  period = 60
+
+[[ratelimits]]
+name = "ROOM_CREATE_LIMITER"
+namespace_id = "8305"
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[[ratelimits]]
+name = "ROOM_JOIN_LIMITER"
+namespace_id = "8306"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "ROOM_MEMBER_LIMITER"
+namespace_id = "8307"
+  [ratelimits.simple]
+  limit = 60
   period = 60

@@ -8,21 +8,20 @@
  * each person's own cloud and its Worker has no accounts. docs/WORKER.md is
  * the contract.
  *
- * Every route lives under /v1. Listen Together rooms (M6) and shared plays
- * (M8) will be sibling modules on this Worker and this D1; their paths are
- * reserved below and answer 501 until then.
+ * Every route lives under /v1. Listen Together rooms (M6, rooms.js over the
+ * pure room-protocol.js) need no account. Shared plays (M8) will be a sibling
+ * module on this Worker and this D1; their path is reserved below and answers
+ * 501 until then.
  */
 
 import { authenticate, handleRefresh, handleSignIn, handleSignOut, sweepSessions } from "./auth.js";
 import { handleRead, handleUpload } from "./sync.js";
 import { handleAccount, handleDelete } from "./account.js";
+import { handleRooms, sweepRooms } from "./rooms.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
 
 /** The routes for later milestones. Each becomes `handleX(url, request, env, auth)`. */
-const RESERVED = [
-  ["/v1/rooms", "M6 Listen Together"],
-  ["/v1/plays", "M8 shared plays"],
-];
+const RESERVED = [["/v1/plays", "M8 shared plays"]];
 
 async function route(request, env, url) {
   const { pathname } = url;
@@ -35,6 +34,11 @@ async function route(request, env, url) {
   if ((signIn || pathname === "/v1/auth/refresh") && method === "POST") {
     if (await limited(env.AUTH_LIMITER, ip)) return problem(429, "rate_limited");
     return signIn ? handleSignIn(signIn[1], request, env) : handleRefresh(request, env);
+  }
+
+  if (pathname === "/v1/rooms" || pathname.startsWith("/v1/rooms/")) {
+    if (await limited(env.ROOM_LIMITER, ip)) return problem(429, "rate_limited");
+    return handleRooms(url, request, env, ip);
   }
 
   for (const [prefix, what] of RESERVED) {
@@ -59,7 +63,7 @@ async function route(request, env, url) {
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(sweepSessions(env));
+    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env)]));
   },
 
   async fetch(request, env) {

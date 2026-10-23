@@ -82,6 +82,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 062: One set of player numbers on every platform
 - 063: Sign-in is verified at the Worker, which issues its own session; sync is last-write-wins per row
 - 064: The palette is On Air
+- 065: Listen Together rooms need no account; the host is a member and hands off
 
 ---
 
@@ -606,3 +607,29 @@ Air's red was the studio light that meant the microphone was live (an agent's
 reading, kept on 2026-10-23; the owner may overrule). Genre hues are the
 `color.genre` group, checked at 3:1 on every ground in both modes. The icon (the white ring microphone on tally red) waits on the
 CC0 photo download (SCRATCHPAD item 2).
+
+---
+
+## 065: Listen Together rooms need no account; the host is a member and hands off
+
+*Date: 2026-10-23*
+
+Web and Android rooms are Archive Watch's D1-polled rooms, ported: the host
+writes state on change, members poll every 2 to 10 seconds against the server's
+clock, drift is corrected by speed before seeking, and every guest plays the
+host's `archive_id`/`file` (Archive Watch Decision 143). Rooms need no sign-in.
+
+**Why**: Decision 057 requires an account "to record, cast, or publish a shared
+play"; listening together is none of those, and SharePlay asks for no account on
+Apple. D1 polling, not Durable Objects, because Durable Objects are not on the
+free plan (the zero-cost rule).
+
+**How to apply**: a code lets someone join and listen, never drive. Each member
+gets a random key, stored only as a hash, and only the current host's key writes
+state; when the host leaves or is silent for 2 minutes, the member present
+longest becomes host, and an empty room ends. Limits: 20 members; deleted after 6
+idle hours by the hourly sweep; six-character Crockford codes (more than two
+years to guess one of 1,000 live rooms at 20 joins a minute per address); rate
+limits per address for create and join and per member. Every rule lives in
+`worker/src/room-protocol.js`, which has no imports (a test fails if it gains
+one); clients and SharePlay port it rather than re-derive it.

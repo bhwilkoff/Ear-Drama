@@ -1,10 +1,11 @@
-# The Worker: accounts and sync
+# The Worker: accounts, sync, and Listen Together rooms
 
 `worker/` is Ear Drama's one backend: a Cloudflare Worker with a D1 database
 that verifies Sign in with Apple and Sign in with Google, issues its own
 session, and syncs listening history, the queue, and followed series
-(Decision 057, LOOP-PLAN M5). Signing in is optional; nothing here runs for a
-listener who never signs in.
+(Decision 057, LOOP-PLAN M5). Signing in is optional; nothing but Listen
+Together runs for a listener who never signs in. It also holds the Listen
+Together rooms for the web and Android (M6), which need no account.
 
 It is ported from Archive Watch's `worker/`: one free Worker, routes as
 sibling modules called from one `fetch()`, Cloudflare rate-limit bindings
@@ -20,13 +21,16 @@ the owner's, listed under [Needs Ben](#needs-ben).
 
 | Path | What it holds |
 |---|---|
-| `worker/src/index.js` | the router, CORS gate, per-address limit, cron entry; reserved paths for rooms and plays |
+| `worker/src/index.js` | the router, CORS gate, per-address limit, cron entry; the reserved path for plays |
 | `worker/src/auth.js` | sign-in, refresh, sign-out, `authenticate()`, the session sweep |
 | `worker/src/jwt.js` | RS256 identity tokens against a JWKS, the Worker's HS256 tokens, ES256 for Apple revocation |
 | `worker/src/sync.js` | upload (last write wins), the anonymous merge, read since |
 | `worker/src/account.js` | the status row, deletion, Apple token revocation |
 | `worker/src/http.js` | JSON responses, CORS, `limited()`, body parsing |
-| `worker/migrations/0001_accounts.sql` | the D1 schema |
+| `worker/src/room-protocol.js` | Listen Together's protocol and arbiter, pure: state, handoff, expiry, codes, clock, drift |
+| `worker/src/rooms.js` | the rooms' HTTP and D1 adapter, and the room sweep |
+| `worker/migrations/0001_accounts.sql` | the D1 schema for accounts and sync |
+| `worker/migrations/0002_rooms.sql` | the D1 schema for rooms |
 | `worker/test/*.test.js` | the suite (vitest inside workerd, a throwaway local D1) |
 | `worker/test/mutations.mjs` | negative controls: breaks each guarantee and expects the suite to fail |
 
@@ -48,7 +52,7 @@ All JSON. A browser may call only from an allowed origin; native apps send no
 | `GET /v1/sync?since=<server_time>` | bearer | | `{ server_time, history: [...], follows: [...], queue }` |
 | `PUT /v1/sync` | bearer | upload (below) | `{ server_time, applied: { history, follows, queue } }` |
 | `POST /v1/sync/merge` | bearer | upload | the same; see [the anonymous merge](#the-anonymous-merge) |
-| `/v1/rooms/*` | | | `501`, reserved for Listen Together (M6) |
+| `/v1/rooms/*` | room key | | Listen Together; see [rooms](#listen-together-rooms) |
 | `/v1/plays/*` | | | `501`, reserved for shared plays (M8) |
 
 **Session**: `{ access_token, access_expires_at, refresh_token,
@@ -121,9 +125,138 @@ revokes it. The rows are deleted whether or not Apple answers;
 `apple_token_revoked` says what happened (`null` when the Apple key is not
 configured, or for a Google account).
 
+## Listen Together rooms
+
+Rooms (LOOP-PLAN M6, Decision 058) let the web and Android listen together;
+Apple devices use SharePlay and are meant to carry the same state shape. The
+rooms are ported from Archive Watch's Watch Together (`worker/src/together.js`,
+`docs/SHAREPLAY.md` §11, Decision 143 there): a host publishes the state, not
+the playhead; the server is the clock; members poll and extrapolate; the room
+carries the host's exact copy and every guest plays that file.
+
+**No account.** Decision 057 requires an account "to record, cast, or publish
+a shared play". Listening together is none of those, and SharePlay asks for no
+account, so a room asks for none. Rooms take no bearer token.
+
+**Polling on D1, not a socket.** Durable Objects are not on the free plan;
+Workers KV can take a minute to show a pause; D1 is strongly consistent and
+already bound. The host writes when the state changes; members read every
+2 seconds, slowing to 10 when nothing has changed for a minute, and
+extrapolate between reads.
+
+**The protocol is pure.** `worker/src/room-protocol.js` imports nothing and
+touches no network, store, or clock: the arbiter (`applyHostState`), host
+handoff (`nextHost`), expiry, the code rules, the clock estimate, and drift
+correction all take `now` and return values. `worker/src/rooms.js` is the HTTP
+and D1 adapter and holds no rule. A test fails if the protocol file gains an
+import, `fetch`, `WebSocket`, `env.`, `Date.now`, or `crypto.`. Each client
+ports the protocol's rules beside its own transport.
+
+### Endpoints
+
+Every call but create and join sends the member key as `x-room-key`. The key
+is returned once, by create or join, and stored only as its SHA-256.
+
+| Method and path | Who | Body | Answer |
+|---|---|---|---|
+| `POST /v1/rooms` | anyone | `{ state: { episode_id, archive_id, file, position?, playing?, rate? } }` | the room, with `member_key`; the creator is host |
+| `POST /v1/rooms/{code}/join` | anyone with the code | | the room, with `member_key`; `404 no_such_room`, `409 room_full`, `410 room_ended` |
+| `GET /v1/rooms/{code}` | a member | | the room |
+| `PUT /v1/rooms/{code}/state` | the host | any of `episode_id, archive_id, file, position, playing, rate` | the room; `403 host_only` for a guest |
+| `POST /v1/rooms/{code}/leave` | a member | | `{ left: true, room_ended }` |
+| `DELETE /v1/rooms/{code}` | the host | | `{ ended: true }` |
+
+A key that is not a member of this room is `403 not_a_member`, including a
+member who went quiet and was dropped: they join again with the code.
+
+### The room message
+
+What every read answers, and the shape SharePlay is meant to carry:
+
+```json
+{
+  "v": 1,
+  "code": "7KQ2MX",
+  "role": "guest",
+  "members": 3,
+  "generation": 14,
+  "state": {
+    "episode_id": "suspense|1948-03-11",
+    "archive_id": "OTRR_Suspense_Singles",
+    "file": "Suspense 48-03-11 The Lodger.mp3",
+    "position": 612.5,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 1761200000000
+  },
+  "server_time": 1761200004000
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `v` | protocol version; a client ignores fields it does not know |
+| `code` | six Crockford Base32 characters, the only thing a person says aloud |
+| `role` | `host` or `guest` for the key that asked; it changes to `host` on handoff, and the client then gives that person the controls |
+| `members` | members present now, the host included |
+| `generation` | bumped by the server on every state write; a client uses it only to notice change |
+| `state.episode_id` | the catalog's episode id |
+| `state.archive_id`, `state.file` | the host's copy. Every guest plays `https://archive.org/download/<archive_id>/<file>`, built by the client, over its own saved choice or a download of another copy |
+| `state.position` | seconds, true at `updated_at` |
+| `state.playing` | `true` playing, `false` paused |
+| `state.rate` | the host's speed, one of 0.75, 1, 1.25, 1.5, 2 (Decision 062) |
+| `state.updated_at` | the server's clock (ms) when `position` was true, set by the server |
+| `server_time` | the server's clock (ms) when it answered: every read is a clock sample |
+
+### Rules the clients rely on
+
+- **The code is public; control is not.** Knowing the code lets you join and
+  listen. Every state write needs the key of the current host; a guest's
+  write is refused and the room is unchanged.
+- **The host's copy, always.** A new `episode_id` must come with its
+  `archive_id` and `file`, or the write is refused. A write that leaves out the
+  copy keeps it. The copy is an archive.org identifier and a file name, never a
+  URL; `..`, `.`, empty segments, a leading `/`, a backslash, and control
+  characters are refused.
+- **Where the host is now**: `position + (server_now - updated_at) / 1000 * rate`
+  while `playing`, else `position`. A write that leaves out `position` keeps the
+  playhead where that formula puts it.
+- **The clock**: around each read, `offset = server_time - (t0 + t1) / 2`;
+  keep the sample with the smallest round trip, never an average
+  (`clockOffset`). `server_now` is the local clock plus that offset.
+- **Drift correction** (`correction`), applied silently; nobody is asked to
+  do anything:
+
+  | Guest vs host | The player |
+  |---|---|
+  | host paused or playing | follows at once, never nudged |
+  | under 150 ms | plays at the host's rate |
+  | 150 ms to 2 s | host's rate x 0.97 if ahead, x 1.03 if behind, until inside 150 ms |
+  | over 2 s | seeks |
+
+- **The host is authoritative; a stalled guest catches up.** The room never
+  waits for a straggler.
+- **Presence.** A member's read counts as presence; the server writes it at
+  most every 20 seconds. A member not heard from for 2 minutes has left. So
+  every member, the host too, reads at least every 30 seconds.
+- **Host handoff.** When the host leaves, or goes quiet for 2 minutes, the
+  member present longest becomes host. When nobody is left, the room ends.
+- **Size and expiry.** At most 20 members. A room whose state has not changed
+  and that nobody has joined for 6 hours is ended on the next read (`410`) and
+  deleted by the hourly sweep, with its members.
+- **Codes.** `normalizeCode` drops spaces, `-` and `_`, uppercases, reads I and
+  L as 1 and O as 0, and refuses U and anything outside the alphabet; every
+  client must normalize the same way. 32^6 is 1,073,741,824 codes, drawn from a
+  CSPRNG and checked against live rooms when issued. With 1,000 live rooms a
+  guess lands 1 time in 1,073,741; at 20 joins a minute from one address that
+  is more than two years of guessing.
+- **What is stored.** A room row says what an episode is doing. A member row is
+  a random id, the hash of a random key, and two times. No account, name, or
+  address. Both go when the member leaves or the room ends.
+
 ## Schema
 
-`worker/migrations/0001_accounts.sql`. Times are milliseconds.
+`worker/migrations/0001_accounts.sql` and `0002_rooms.sql`. Times are milliseconds.
 
 | Table | Key | Columns |
 |---|---|---|
@@ -134,9 +267,14 @@ configured, or for a Google account).
 | `follows` | `(user_id, series_id)` | `following`, `updated_at`, `device`, `changed_at` |
 | `queue_meta` | `user_id` | `updated_at`, `device`, `changed_at` |
 | `queue` | `(user_id, ord)` | `episode_id` |
+| `rooms` | `code` | `episode_id`, `archive_id`, `file`, `position`, `playing`, `rate`, `updated_at`, `generation`, `host_member`, `created_at`, `touched_at` |
+| `room_members` | `id` | `code`, `key_hash` (SHA-256 of the member key), `joined_at`, `seen_at` |
 
 No email, name, or address is stored, and no provider token. A person is a
-provider and that provider's opaque `sub`. The same person signing in with
+provider and that provider's opaque `sub`. The two room tables hold no
+person at all and have no `user_id`; `ANONYMOUS_TABLES` in `rooms.js` names
+them, and the deletion test fails on a table that is in neither list or that
+gains a `user_id`. The same person signing in with
 Apple and then Google gets two accounts; linking them is a later decision.
 
 A new migration is a new numbered file; never edit one that has been applied.
@@ -172,8 +310,13 @@ for the window only):
 | `EVERY_IP_LIMITER` | client address | 600 a minute, every route |
 | `AUTH_LIMITER` | client address | 30 a minute, sign-in and refresh |
 | `USER_LIMITER` | user id | 120 a minute, signed-in routes; per person so a classroom behind one school address is not one person |
+| `ROOM_LIMITER` | client address | 300 a minute, every room route; a member polls about 30 times a minute, so this is a household |
+| `ROOM_CREATE_LIMITER` | client address | 10 a minute, opening a room |
+| `ROOM_JOIN_LIMITER` | client address | 20 a minute, joining; the floor under code guessing |
+| `ROOM_MEMBER_LIMITER` | member id | 60 a minute, each member's own calls, so one device cannot use up a household's share |
 
-The cron (`23 4 * * *`, daily) deletes expired sessions. A revoked session is
+The cron (`23 * * * *`, hourly) deletes expired sessions, idle rooms, quiet
+room members, and rooms left with no member. A revoked session is
 kept until it would have expired, because it is what recognizes a replayed
 refresh token.
 
@@ -186,8 +329,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 66 tests in workerd with a local D1
-npm run test:mutations   # 11 deliberate breaks; every one must turn the suite red
+npm test                 # 108 tests in workerd with a local D1
+npm run test:mutations   # 35 deliberate breaks; every one must turn the suite red
 ```
 
 The suite mints its own RSA keys and serves them in place of Apple's and
@@ -195,7 +338,12 @@ Google's key sets, so it needs no network and no real client id. It covers
 forged, altered, expired, wrong-audience, wrong-issuer, `alg: none`, HS256
 confusion, unknown-key, and wrong-nonce tokens; refresh rotation and replay;
 last write wins, tombstones, clock clamping, `since`; the merge; deletion
-leaving no row in any table; CORS; rate limits; and the sweep.
+leaving no row in any table; CORS; rate limits; and the sweep. For rooms:
+create and join, a guest refused a state write, guests receiving the host's
+copy, handoff when the host leaves or goes quiet, the last one out ending the
+room, the size limit, idle expiry, the sweep, code randomness and
+normalization, every room rate limit, the drift and clock rules, and that the
+protocol file stays pure.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/`. It has no Cloudflare credential and no deploy step.
 
@@ -207,7 +355,8 @@ Each of these is the owner's, in this order. None has been done.
    a new one. `cd worker && npx wrangler login`.
 2. **Create the database**: `npx wrangler d1 create eardrama`, then put the
    printed `database_id` in `worker/wrangler.toml` (an id is not a secret).
-3. **Apply the schema**: `npx wrangler d1 migrations apply eardrama --remote`.
+3. **Apply the schema**: `npx wrangler d1 migrations apply eardrama --remote`
+   (both migrations, accounts and rooms).
 4. **Sign in with Apple**: in the Apple Developer account, enable Sign in with
    Apple on `app.eardrama`; create a Services ID for the web and Android, with
    `eardrama.org` as its domain and return URL. Put the Services ID in
@@ -231,4 +380,6 @@ Each of these is the owner's, in this order. None has been done.
    the Worker answers on).
 9. **Privacy policy**: the page must say what is stored: a provider and its
    opaque id, listening positions, the queue, follows, the device name the app
-   sends, and nothing else; deleted at once on request.
+   sends, and nothing else; deleted at once on request. Listen Together rooms
+   store what an episode is doing and an anonymous member key's hash, no
+   account or address, deleted when the room ends or after six idle hours.
