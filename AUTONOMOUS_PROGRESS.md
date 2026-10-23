@@ -150,3 +150,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged c592e22 (1.0.32 build 33): Android sign-in and sync (Credential Manager for Google; a Custom Tab for Apple; Keystore-encrypted session). Added on merge: auth/apple/index.html, the https page Apple returns to on Android, forwarding the fragment to eardrama://oauth/apple and clearing it from the address bar; sw.js bypasses /auth/ (v12). Verified on main: 131 tests 0 failed 0 skipped, assembleDebug, 0 `w:`; test_web.
 - LOOP-PLAN M5's three items checked as BUILT (not verified: nothing deployed, no real sign-in); the Needs Ben OAuth row now names Android's two clients and the entitlement switch.
 - Running: On Air roles and genre hues (web, Apple). Next: the same on Android; M6 Listen Together.
+
+### Tick 63, 2026-10-23, agent: Android parity round two
+- Launched: Android's ANDROID-DESIGN §12 items with known answers (Detail's sponsor and order, the network facet and sort, route de-duplication, Following and Share verbs, TV focus on pushed screens; the Play deletion line closed since delete-account/ exists). No Queue verb (owner, item 9), no color or icon changes (the On Air agent owns those).
+- CI: Android Build on push green twice since the last merge; Design Tokens green. Running: On Air roles (web, Apple), Listen Together rooms (Worker), Android round two.
