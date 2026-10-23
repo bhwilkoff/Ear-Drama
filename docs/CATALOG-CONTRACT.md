@@ -241,8 +241,8 @@ the unclaimed one.
 
 ## 7. Refresh protocol
 
-`.github/workflows/catalog-publish.yml`, daily at 09:41 UTC and on dispatch
-(push events do not start workflows in this repo). Two jobs:
+`.github/workflows/catalog-publish.yml`, daily at 09:41 UTC and on dispatch.
+Two jobs:
 
 - **build**, no lock: restores `radio-catalog.sqlite.xz` and
   `harvest-cache.tar.xz` from the newest `catalog-YYYY-MM-DD` Release (checked

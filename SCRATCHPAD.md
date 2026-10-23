@@ -57,27 +57,21 @@
      iPhone's tab bar fits five, so it shows four and More (iOS 26 sets Search
      apart). Which one gives way on iOS 18, and does the web's bar (five today,
      six once its Plays lands) follow the same order? (iOS-DESIGN §3.1, §12)
-- **Status (2026-10-23, 7:10 AM MT, tick 53)**: the 1.0 loop runs from
-  `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
-  cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.23:
-  the listening apps on all five core platforms (M2 to M4); the catalog with the
-  owner's rights rulings, transcripts and loudness; Tonight in 19xx in the data
-  plane and on the web's Radio tab; plays phase 1 on iPhone, iPad and Mac with
-  11 stage plays (M7); the binding design docs for every platform and their
-  parity fixes (Decision 062's player numbers everywhere); the stubs (M9). None
-  of it is verified until you play it. Running in agents: Android plays, the web
-  plays, Radio on Apple, the M5 Worker (local only, nothing deployed).
-  Decisions 056-062 and catalog 004-008 hold this session's rulings.
+- **Status (2026-10-23, 7:25 AM MT, tick 56)**: the 1.0 loop runs from
+  `LOOP-PLAN.md` (a 5-minute cooldown; tick log `AUTONOMOUS_PROGRESS.md`).
+  Built on main at 1.0.25: listening on all five core platforms (M2 to M4);
+  Tonight in 19xx published by CI and on the Radio tab (web, iOS, macOS, tvOS);
+  plays phase 1 on iPhone, iPad, Mac and Android with 11 stage plays (M7); the
+  design-doc parity fixes (Decision 062 everywhere); the stubs (M9). None of it
+  is verified until you play it. Running: Radio on Android, the web plays, the
+  M5 Worker (local only). Rulings: Decisions 056-062, catalog 004-008.
 - **Catalog now** (rebuilt on main, tick 22-23): 155,608 episodes in 15,695
   series; served 108,005 (25.7 MB compressed); clean 7,716 (LibriVox projects
   still being recorded are not served). Research database and caches: the
   `catalog-2026-10-21` Release (`catalog/README.md`).
-- **Open infrastructure**: push events start no Actions workflow in this repo
-  (measured 2026-10-22: the workflow is active, Actions enabled, not a fork,
-  GitHub status fine, no PushEvent in the feed); dispatch by hand meanwhile
-  (`gh workflow run android-build.yml --ref main`). `https://www.eardrama.org`
-  failed its certificate after the DNS change; if Settings > Pages still lists
-  only the apex, remove and re-add the custom domain.
+- **Open infrastructure**: `https://www.eardrama.org` fails its certificate
+  (re-measured 2026-10-23; the apex serves). If Settings > Pages lists only the
+  apex, remove and re-add the custom domain.
 - **Owner steps**: the "Needs Ben" table in `LOOP-PLAN.md` (Pages source to
   GitHub Actions, the DMCA agent and `DMCA_AGENT_REGISTERED`, the take-down
   email, store records and signing secrets, OAuth clients, the Worker, the
