@@ -70,6 +70,8 @@ from harvest_ext_commons import template_class  # noqa: E402
 
 DIR = os.path.join(CACHE, "people_wd")
 DB = os.path.join(OUT, "radio-catalog.sqlite")
+if "--db" in sys.argv:   # the other build steps take --db too
+    DB = sys.argv[sys.argv.index("--db") + 1]
 
 RELEVANT_OCC = re.compile(
     r"\b(act(or|ress)|voice|radio|announcer|broadcast|disc jockey|presenter|host|"

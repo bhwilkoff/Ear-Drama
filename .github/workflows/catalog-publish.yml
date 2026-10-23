@@ -101,12 +101,18 @@ jobs:
           echo "cache files: $(find catalog/.cache -type f | wc -l)"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Rebuild (build_db, enrich_db)
+      - name: Rebuild (build_db, then every enrich step)
         working-directory: catalog
         run: |
           set -euo pipefail
           python3 tools/build_db.py 2>&1 | tee out/build.log
           python3 tools/enrich_db.py 2>&1 | tail -5
+          # Each adds its own tables (Wikidata, witnesses, external facts, art, portraits,
+          # archive photos, magazine rights); without them the published database silently
+          # lacks what the restored snapshot had (found 2026-10-22, loop tick 36).
+          python3 tools/enrich_external.py 2>&1 | tail -5
+          python3 tools/enrich_people_art.py 2>&1 | tail -5
+          python3 tools/enrich_photo_archives.py 2>&1 | tail -5
 
       - name: Every catalog suite (a red test blocks publish)
         run: bash catalog/tests/run_all.sh

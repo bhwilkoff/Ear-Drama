@@ -38,6 +38,8 @@ import ia_lib as L
 import photo_match as M
 
 DB = os.path.join(L.OUT, "radio-catalog.sqlite")
+if "--db" in sys.argv:   # the other build steps take --db too
+    DB = sys.argv[sys.argv.index("--db") + 1]
 REPORT = os.path.join(L.OUT, "enrich_photo_archives_report.json")
 LOC = os.path.join(L.CACHE, "loc", "records.json.gz")
 SI = os.path.join(L.CACHE, "smithsonian")

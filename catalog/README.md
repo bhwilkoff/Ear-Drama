@@ -24,6 +24,7 @@ dispatch, restores the newest `catalog-YYYY-MM-DD` Release the way the block
 above does, rebuilds, tests, and publishes (contract §7):
 
     python3 tools/build_db.py && python3 tools/enrich_db.py
+    python3 tools/enrich_external.py && python3 tools/enrich_people_art.py && python3 tools/enrich_photo_archives.py
     bash tests/run_all.sh                                       # every suite; a red one blocks publish
     python3 tools/build_projection.py --out out/publish         # apps: clean + unclaimed
     python3 tools/build_projection.py --clean-only --out out/publish-clean
