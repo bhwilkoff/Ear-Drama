@@ -58,6 +58,42 @@ The full catalog comes from `CatalogRepository.CATALOG_URL`, the rolling
 `catalog-latest` release. Until that asset is published the request fails and
 the seed stays in place.
 
+## The 1.0 stubs: Android Auto, Android TV / Fire TV, Wear OS
+
+Decision 056: each builds and opens to its first screen, and grows from the
+core's shared code only after the core five are done.
+
+- **Android Auto** is `:app` itself. `PlaybackService` is a Media3
+  `MediaLibraryService`; `CarLibrary` is its browse tree, whose root has the
+  four car tabs (R17): Continue (this device's in-progress episodes, played
+  through the same engine and queue as the phone), and Radio, Series and
+  Downloads, empty for now. Nothing plays at start (MA-1).
+  `res/xml/automotive_app_desc.xml` declares the media app. **Every release
+  that carries the car declaration waits on Google's manual car review, and
+  updates are held until it passes**, so a car-enabled build goes to the
+  internal or a closed track first, never straight to production.
+- **Android TV / Fire TV** is also `:app`: a `LEANBACK_LAUNCHER` entry, the
+  320×180 banner `res/drawable-xhdpi/tv_banner.png`, touchscreen and leanback
+  not required, and a runtime branch (`ui/Television.kt`), never a flavor.
+  Listen opens with the D-pad on the first row's first card. The media
+  session stays on, so audio playing behind the home screen shows the
+  system's Now Playing card (TV-NP). **The banner is placeholder art** (the
+  name in white on the brand blue): the owner replaces it.
+- **Wear OS** is `:wear`, its own app under the phone's id, built with
+  `./gradlew :wear:assembleDebug`. Its first screen is Continue, "Waiting on
+  the phone"; it shares no code with `:app` yet. It is not standalone.
+
+### Wear OS floor: minSdk 30
+
+`minSdk = 30` is Wear OS 3, the first release on the platform Google rebuilt
+with Samsung; Wear OS 2 watches (API 25 to 28) are left out on purpose,
+since the phone's media session already gives them playback controls and a
+watch player on them would be built for a platform no new watch runs. Compose for Wear OS
+Material 3 1.7.1 itself allows 25 (its AAR manifest), so the floor is the
+platform's, not the library's. `targetSdk = 36`; Google Play asks Wear OS
+apps for API 35 from 2026-08-31. Before the first upload, give `:wear` a
+`versionCode` the phone's never uses: both go to the one Play listing.
+
 ## Versioning
 
 `app/build.gradle.kts` defines `versionCode` + `versionName`. Bump
