@@ -1,0 +1,104 @@
+# Site deploy: put a push's website code on eardrama.org with the last
+# published catalog, without rebuilding the catalog.
+#
+# catalog-publish.yml builds the web projection daily and uploads it to the
+# catalog-latest Release as web.tar.xz; this workflow downloads that, assembles
+# the site with tools/assemble_site.sh (the same script the publish uses), and
+# deploys it. Pages must be served from Actions (Settings > Pages > Source);
+# otherwise it skips with a warning. No web.tar.xz yet (a publish older than
+# this workflow) is a skip with a warning too, never a red run.
+name: Site deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '*.html'
+      - 'manifest.json'
+      - 'sw.js'
+      - 'css/**'
+      - 'js/**'
+      - 'assets/**'
+      - 'branding/**'
+      - 'credits/**'
+      - 'privacy/**'
+      - 'takedown/**'
+      - 'delete-account/**'
+      - 'auth/**'
+      - 'tv/**'
+      - 'tv.js'
+      - 'tv.css'
+      - 'cast/**'
+      - 'pulse/**'
+      - 'catalog/plays/castable-scripts.json'
+      - 'tools/assemble_site.sh'
+      - '.github/workflows/site-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pages from Actions, and the last web projection
+        id: ready
+        run: |
+          bt=$(gh api "repos/$REPO/pages" --jq .build_type)
+          if [ "$bt" != "workflow" ]; then
+            echo "::warning::Pages build_type is '$bt', not 'workflow'; nothing deployed."
+            echo "go=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if ! gh release download catalog-latest -R "$REPO" -p web.tar.xz -D built 2>/dev/null; then
+            echo "::warning::catalog-latest has no web.tar.xz yet (the next catalog publish adds it); nothing deployed."
+            echo "go=no" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          tar -xJf built/web.tar.xz -C built
+          test -s built/web/manifest.json
+          echo "go=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble the site
+        if: steps.ready.outputs.go == 'yes'
+        run: bash tools/assemble_site.sh built/web _site
+
+      - uses: actions/configure-pages@v5
+        if: steps.ready.outputs.go == 'yes'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.ready.outputs.go == 'yes'
+        with:
+          path: _site
+
+      - id: deployment
+        if: steps.ready.outputs.go == 'yes'
+        uses: actions/deploy-pages@v4
+
+      - name: The live site serves this push's shell
+        if: steps.ready.outputs.go == 'yes'
+        run: |
+          site=$(cat CNAME)
+          want=$(grep -o "SHELL_VERSION = '[^']*'" sw.js)
+          for i in 1 2 3 4 5 6; do
+            got=$(curl -sS "https://$site/sw.js?run=${{ github.run_id }}" | grep -o "SHELL_VERSION = '[^']*'" || true)
+            if [ "$got" = "$want" ]; then echo "[site-deploy] live: $got"; exit 0; fi
+            sleep $((i * 10))
+          done
+          echo "::warning::deployed, but https://$site/sw.js says '${got}' (want $want) after ~3.5 minutes; the CDN may lag"

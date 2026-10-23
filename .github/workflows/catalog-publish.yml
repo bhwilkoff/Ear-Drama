@@ -383,7 +383,11 @@ jobs:
           # --clobber deletes before it uploads, so the database goes first and
           # the manifest that vouches for it (sha256) goes last.
           bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/ear-drama.sqlite.zz
-          assets=(ear-drama.sqlite.zz manifest.json)
+          # The web projection too, so site-deploy.yml can redeploy the site's
+          # code on a push without rebuilding the catalog.
+          tar -cJf built/publish/web.tar.xz -C built web
+          bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/web.tar.xz
+          assets=(ear-drama.sqlite.zz web.tar.xz manifest.json)
           if [ -s built/publish/tonight.json ]; then
             bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/tonight.json
             assets+=(tonight.json)
@@ -444,23 +448,7 @@ jobs:
 
       - name: Assemble the site with the web projection under /data/
         if: steps.pages.outputs.go == 'yes'
-        run: |
-          # Everything the repo root served when Pages read main, minus the
-          # app sources and pipeline (not the website), plus /data/.
-          mkdir _site
-          rsync -a --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='/.agents' \
-            --exclude='/.devcontainer' --exclude='/apple' --exclude='/android' --exclude='/windows' \
-            --exclude='/catalog' --exclude='/tools' --exclude='/ci_scripts' --exclude='/docs' \
-            --exclude='/built' --exclude='/live' --exclude='/_site' ./ _site/
-          cp -R built/web _site/data
-          # The castable plays (PLAYS-DESIGN §3) ride beside the projection.
-          mkdir -p _site/data/plays
-          cp catalog/plays/castable-scripts.json _site/data/plays/
-          for f in index.html 404.html CNAME .nojekyll manifest.json css/styles.css js/app.js \
-                   data/manifest.json data/index/series.json data/plays/castable-scripts.json; do
-            test -s "_site/$f" || { echo "::error::_site/$f is missing or empty; not deploying"; exit 1; }
-          done
-          echo "site files: $(find _site -type f | wc -l); data files: $(find _site/data -type f | wc -l); $(du -sh _site | cut -f1)"
+        run: bash tools/assemble_site.sh built/web _site
 
       - uses: actions/configure-pages@v5
         if: steps.pages.outputs.go == 'yes'
