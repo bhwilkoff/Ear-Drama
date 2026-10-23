@@ -1,0 +1,25 @@
+{
+  "about": "onThisDay (docs/CATALOG-CONTRACT.md §5): every client's query is held to these cases. Rows are [id, series_key, air_date, num, no_recommend].",
+  "episodes": [
+    ["b|1950-05-25", "b", "1950-05-25", 1, null],
+    ["a|1943-05-25", "a", "1943-05-25", 46, null],
+    ["c|1943-05-25", "c", "1943-05-25", 2, null],
+    ["n|1939-05-25", "n", "1939-05-25", 1, "Nazi-state speech or broadcast"],
+    ["m|1949-05", "m", "1949-05", 3, null],
+    ["y|1949", "y", "1949", 4, null],
+    ["u|undated", "u", null, null, null],
+    ["x|1949-05-250", "x", "1949-05-250", 5, null],
+    ["l|1948-02-29", "l", "1948-02-29", 6, null],
+    ["d|1948-12-05", "d", "1948-12-05", 7, null],
+    ["e|1948-05-12", "e", "1948-05-12", 8, null]
+  ],
+  "cases": [
+    {"month": 5, "day": 25, "want": ["a|1943-05-25", "c|1943-05-25", "b|1950-05-25"]},
+    {"month": 5, "day": 25, "limit": 2, "want": ["a|1943-05-25", "c|1943-05-25"]},
+    {"month": 2, "day": 29, "want": ["l|1948-02-29"]},
+    {"month": 2, "day": 28, "want": []},
+    {"month": 12, "day": 5, "want": ["d|1948-12-05"]},
+    {"month": 5, "day": 12, "want": ["e|1948-05-12"]},
+    {"month": 1, "day": 1, "want": []}
+  ]
+}

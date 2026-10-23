@@ -25,8 +25,8 @@ field here; it never computes one.
 | Asset | Host | For | Notes |
 |---|---|---|---|
 | `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` (`https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/ear-drama.sqlite.zz`) | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`), built by `catalog/tools/build_projection.py`; MEASURED 2026-10-22 on a rebuild from the 2026-10-21 caches: 26.2 MB compressed, 127 MB on disk, 116,380 episodes (clean-only: 1.0 MB, 5.4 MB, 14,670) |
-| `manifest.json` | the same Release | every native client, tooling | the served projection's: `schemaVersion`, `generatedAt`, `cleanOnly`, row counts, `rightsLines`, bytes, sha256 of the `.zz`; uploaded after the `.zz` it vouches for |
-| `data/manifest.json` | GitHub Pages | web, smart-TV web, Roku | the web projection's own manifest (counts, field names, shard math, rights lines, bytes); not the site's `/manifest.json`, which is the web app manifest |
+| `manifest.json` | the same Release | every native client, tooling | the served projection's: `schemaVersion`, `generatedAt`, `cleanOnly`, row counts, `rightsLines`, `listenShelves` (§5.1), bytes, sha256 of the `.zz`; uploaded after the `.zz` it vouches for |
+| `data/manifest.json` | GitHub Pages | web, smart-TV web, Roku | the web projection's own manifest (counts, field names, shard math, rights lines, `listenShelves` cut to the web's own served rows (§5.1), bytes); not the site's `/manifest.json`, which is the web app manifest |
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
 | `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw |
 | `tonight.json` | `catalog-latest` beside the database, and `data/tonight.json` on Pages | every client's Radio tab | §8; the web's copy withholds what the web projection does not serve |
@@ -198,7 +198,7 @@ Every client reproduces these natively; each says which filter clauses it applie
 | `seriesPage(key)` | runs, seasons, episodes, oldest first (R1) | none |
 | `episodeDetail(id)` | the row plus `detail_json`; resolves aliases | none |
 | `search(q)` | episodes and series, word-prefix | none |
-| `shelf(rule)` | episodes for a Listen shelf | `recommendAnd` |
+| `shelf(rule)` | episodes for a Listen shelf, by a rule from `listenShelves` (§5.1) | `recommendAnd` |
 | `tonight(localDate)` | the evening for the person's own date | `recommendAnd` |
 | `withPerson(id)` | episodes crediting a person | none |
 
@@ -208,6 +208,44 @@ Every client reproduces these natively; each says which filter clauses it applie
   listener (shelves, Tonight, channels, widgets, Top Shelf, autoplay after a
   serial's arc) applies it; every surface the listener drives (search, browse,
   series pages, Detail) does not.
+
+### 5.1 Listen shelves
+
+The Listen tab's shelves are pipeline outputs, not client logic (Decision 058;
+HUMAN-SHAPED.md finding 6). Every client draws the list it is handed, in order:
+`meta.listenShelves` in the served projection (a JSON array) and
+`listenShelves` in the web manifest, each computed over that output's own
+served rows by `catalog/tools/shelves.py`, which both builders import. A
+shelf is a rule over data, never a written list (R13): it carries only its
+rule's keys, no title or blurb; its heading is the client's word for the rule
+and, for a genre, the published genre name (§5.5). A client drops a shelf that
+comes back empty, and ignores a rule it does not know.
+
+```json
+[{"rule": "onThisDay"},
+ {"rule": "genreFirsts", "genre": "drama", "episodes": ["<id>", "..."]}, ...]
+```
+
+| Rule | Keys | Definition |
+|---|---|---|
+| `onThisDay` | `rule` | episodes whose `air_date` is a full `YYYY-MM-DD` on the person's own calendar month and day, any year (a month or year alone never matches; 29 February shows only on 29 February), `recommendAnd`, ordered by `air_date` ascending, ties by `id`, limit 20. It depends on the person's date, so it is a query by rule, never precomputed; `catalog/tests/golden/on_this_day.json` holds the cases every client's query must return. |
+| `genreFirsts` | `rule`, `genre`, `episodes` | for each served series in the genre, its earliest recommendable episode (oldest first: dated before undated, then `air_date`, then `num` with nulls last, then `id`), series with the most served episodes first, ties by key, limit 20. Precomputed: `episodes` is the ordered id list, so a client reads ids and never re-derives the query. |
+
+- **Order**: `onThisDay` first, then one `genreFirsts` per genre in
+  `genres.GENRES` order that has at least `MIN_SERIES` (5) served series with
+  a recommendable episode. MEASURED 2026-10-23 on the 2026-10-22 projection:
+  natively drama 986, comedy 469, mystery 227, documentary 154, serial 128,
+  news 53, scifi 47, western 39, so all eight publish; the clean-only web set
+  has drama 608, comedy 2, the rest 0, so the web publishes drama only. Any
+  floor from 3 to 39 gives the same lists today; 5 is one ten-foot row.
+- **Guarantees** (`catalog/tests/test_listen_shelves.py`, each broken once):
+  the key exists in both outputs; every rule is from the known set and carries
+  only its keys; every published id is served by that output and recommendable;
+  a genre shelf names one of the eight and is never empty.
+- **Excluded pending the owner**: "Most episodes" (the web's series shelf,
+  `index/listen.json` `most`) is not a rule here; whether a size ranking belongs
+  on Listen is the owner's call (HUMAN-SHAPED.md B). `index/listen.json` stays
+  until the web reads `listenShelves`.
 
 ### 5.5 Display vocabulary
 
@@ -289,7 +327,9 @@ native projection serves clean and unclaimed rows either way.
 Small JSON the pipeline computes, so a widget or Top Shelf never opens the
 database: `tonight.json` keyed by calendar date (starting yesterday, so every
 time zone finds its own today, and a day once published keeps its value), and
-`channels.json`, the genre channels' schedules on the one clock (R10).
+`channels.json`, the genre channels' schedules on the one clock (R10). The
+Listen shelves are not a file: they ride in the manifests as `listenShelves`
+(§5.1), so a widget reads them without opening the database.
 
 `tonight.json` (built by `catalog/tools/build_evenings.py tonight`):
 

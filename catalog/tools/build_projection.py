@@ -25,6 +25,7 @@ import zlib
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import genre_of
+import shelves as SH
 from titles import display_title
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
@@ -179,7 +180,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
     counts["transcripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE has_transcript = 1").fetchone()[0]
     counts["transcriptsSearchable"] = searchable
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES}
+            "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES,
+            "listenShelves": SH.listen_shelves(
+                d.execute("SELECT id, series_key, air_date, num, no_recommend FROM episodes"),
+                {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")})}
     for k, v in meta.items():
         d.execute("INSERT INTO meta VALUES (?,?)", (k, json.dumps(v)))
     d.execute("INSERT INTO episodes_fts (episodes_fts) VALUES ('optimize')")   # one b-tree, before VACUUM
