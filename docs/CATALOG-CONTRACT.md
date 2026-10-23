@@ -28,7 +28,9 @@ field here; it never computes one.
 | `manifest.json` | the same Release | every native client, tooling | the served projection's: `schemaVersion`, `generatedAt`, `cleanOnly`, row counts, `rightsLines`, bytes, sha256 of the `.zz`; uploaded after the `.zz` it vouches for |
 | `data/manifest.json` | GitHub Pages | web, smart-TV web, Roku | the web projection's own manifest (counts, field names, shard math, rights lines, bytes); not the site's `/manifest.json`, which is the web app manifest |
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
-| `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw; `data/evenings/` is not built yet |
+| `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw |
+| `tonight.json` | `catalog-latest` beside the database, and `data/tonight.json` on Pages | every client's Radio tab | §8; the web's copy withholds what the web projection does not serve |
+| `radiologs.tar.xz` | rolling Release `radiologs-latest` | the pipeline only | the measured evenings (`evenings.jsonl`: station, time, program as printed, matched episode) and the log links (`log-urls.json`); facts only, never the newspaper pages, which stay JJ's (docs/research/evenings.md §1) |
 | `loudness.json.gz` (and `loudness.prev.json.gz`, the one before) | rolling Release `loudness-latest` | the pipeline only | the loudness measurements by episode id, with errors and `suspect` rows kept as evidence; written by `.github/workflows/catalog-loudness.yml`, read by the publish step into §3.1's `loudness_i` and `loudness_tp`; never read by a client |
 | `transcripts.json.gz` (and `transcripts.prev.json.gz`, the one before) | rolling Release `transcripts-latest` | the pipeline only | archive.org's automatic transcript of each served episode's default copy, by episode id, with the URL it was read from and the on-screen gate's verdict and features (`catalog/tools/fetch_transcripts.py`); misses and errors kept as evidence; written by `.github/workflows/catalog-transcripts.yml`, read by the publish step into §3.1's `has_transcript` and `transcript_url` and §3.4's search index; never read by a client. MEASURED 2026-10-22: 8,999 candidates; 233 fetched made 1.77 MB, so the full cache is about 68 MB gzipped (about 181 MB of text, median 21 KB a transcript) |
 | `radio-catalog.sqlite.xz`, `harvest-cache.tar.xz`, `SHA256SUMS` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included, and every harvest cache; never read by a client. The publish step restores from the newest one and does not write it; a dated Release is cut by whoever refreshes the harvests |
@@ -170,7 +172,7 @@ the starting shape, Archive Watch's:
 - `data/series/{key}.json`: one series page, its runs, seasons, and episode rows.
 - `data/episodes/{shard}.json`: Detail fields, sharded by a stable hash of the
   episode id (FNV-1a, positions append-only), one shard per Detail view.
-- `data/evenings/{YYYY-MM-DD}.json` and `data/channels.json`: the Radio tab (§8).
+- `data/tonight.json` and `data/channels.json`: the Radio tab (§8).
 
 A Detail row's last field, `transcript`, is §3.1's `transcript_url` (null
 unless the gate passed). Web search does not index transcript words yet: the
@@ -288,6 +290,31 @@ Small JSON the pipeline computes, so a widget or Top Shelf never opens the
 database: `tonight.json` keyed by calendar date (starting yesterday, so every
 time zone finds its own today, and a day once published keeps its value), and
 `channels.json`, the genre channels' schedules on the one clock (R10).
+
+`tonight.json` (built by `catalog/tools/build_evenings.py tonight`):
+
+- **Window**: from yesterday through 13 days ahead of the build's UTC date,
+  keyed `YYYY-MM-DD`; a client reads the key for the person's own date.
+- **Never changes**: each build merges onto the file published now; a day
+  already in it keeps its evening, network, and slots. The one change a
+  kept day can take is a withdrawal: an episode the served projection no
+  longer serves becomes a gap with `withheld: true`. `build_evenings.py
+  kept` refuses any other change under the publish lock.
+- **Served only**: a slot is filled only by an episode the served projection
+  holds and recommends (`recommendAnd`); the pick's coverage counts only
+  those. The web's copy is the same evenings with each episode the web
+  projection does not serve withheld, so every platform plays the same
+  evening on the same date.
+- **Shape**: `zone`, `floor` and `floor_provisional` (the coverage floor of
+  DECISIONS 058, one constant, provisional until the owner fixes it),
+  `days.{date}`: `evening`, `picked` (`anniversary` or `weekday`),
+  `network`, `station`, `coverage`, `witness` (paper, station, page URL),
+  and `slots[]`: `et_start`, `et_end`, `length_min`, `utc_start`,
+  `utc_end`, then `episode` (`id`, `series`, `title`, `rights`, `length_s`)
+  or `gap: true` with `known_series` (a catalog series name, only when the
+  printed text reads clearly as one), `withheld`, or `refused`. `printed`
+  is the paper's OCR text, kept as witness; clients do not draw it until
+  the owner rules on it.
 
 ## 9. Contract tests (to write with the publish step)
 

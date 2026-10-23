@@ -214,6 +214,91 @@ check("contract §8: a published day keeps its value", kept["days"]["2026-10-22"
 check("contract §8: days before the window drop off", "2026-10-21" in kept["days"], False)
 check("control: a new day is added", kept["days"]["2026-10-23"]["evening"], "1947-10-23")
 
+# --- the published file: window, never-change, served only -------------------------
+check("window: starts yesterday (the build's UTC date minus one)", B.window(dt.date(2026, 10, 22))[0],
+      dt.date(2026, 10, 21))
+check("window: runs through 13 days ahead of today", B.window(dt.date(2026, 10, 22))[1], 15)
+pool = {(f"{y}-{md}", "CBS"): rec(f"{y}-{md}", 0.4) for y in (1947, 1948)
+        for md in ("10-20", "10-21", "10-22", "10-23", "11-04", "11-05")}
+w0, wn = B.window(dt.date(2026, 10, 22))
+every = lambda eid: True  # noqa: E731  (the pool's episodes are not in the fixture catalog)
+doc = B.tonight(w0, wn, pool, served=every)
+check("window: the file's first day is yesterday, its last today + 13", (min(doc["days"]), max(doc["days"])),
+      ("2026-10-21", "2026-11-04"))
+check("control: a build a day later starts a day later", min(B.tonight(*B.window(dt.date(2026, 10, 23)), pool)["days"]),
+      "2026-10-22")
+check("floor: one named constant, stated in the file and marked provisional",
+      (doc["floor"], doc["floor_provisional"], B.tonight.__defaults__[0]), (B.FLOOR, True, B.FLOOR))
+check("R10: each slot carries the instant it ends", doc["days"]["2026-10-22"]["slots"][0]["utc_end"],
+      "2026-10-23T00:30:00Z")
+
+# a hidden episode never fills a slot: the fixture serves suspense|1947-10-16, not suspense|1948-10-16
+hid = {("1947-10-16", "CBS"): rec("1947-10-16", 0.3), ("1948-10-16", "CBS"): rec("1948-10-16", 0.9)}
+got = B.tonight(dt.date(2026, 10, 16), 1, hid, served=cat.served)["days"]["2026-10-16"]
+check("served: an episode the projection does not serve never fills a slot; the pick sees served coverage",
+      (got["evening"], got["slots"][0]["episode"]["id"]), ("1947-10-16", "suspense|1947-10-16"))
+two = dict(rec("1947-10-16", 0.5), slots=[dict(rec("1947-10-16", 0)["slots"][0], et_end="21:00", length_min=60),
+    {"et_start": "21:00", "et_end": "21:30", "length_min": 30, "printed": "Mr. Keen",
+     "episode": {"id": "mrkeentraceroflostpersons|1947-10-16", "series": "Mr. Keen, Tracer of Lost Persons"}}])
+gone = B.tonight(dt.date(2026, 10, 16), 1, {("1947-10-16", "CBS"): two}, served=cat.served)["days"]["2026-10-16"]
+check("served: the unserved episode's slot is a withheld gap that names its series; coverage counts what plays",
+      (gone["slots"][1].get("episode"), gone["slots"][1].get("gap"), gone["slots"][1].get("withheld"),
+       gone["slots"][1].get("known_series"), gone["coverage"]),
+      (None, True, True, "Mr. Keen, Tracer of Lost Persons", 0.25))
+check("control: with no served check the same episode would have filled it",
+      B.tonight(dt.date(2026, 10, 16), 1, {("1947-10-16", "CBS"): two})["days"]["2026-10-16"]
+      ["slots"][1].get("episode", {}).get("id"), "mrkeentraceroflostpersons|1947-10-16")
+check("served: an evening whose every episode is unserved is not offered",
+      B.tonight(dt.date(2026, 10, 16), 1, {("1948-10-16", "CBS"): rec("1948-10-16", 0.9)}, served=cat.served)["days"],
+      {})
+nr = {("1947-10-16", "CBS"): dict(rec("1947-10-16", 0.9), slots=[two["slots"][0],
+    {"et_start": "22:30", "et_end": "23:00", "length_min": 30, "printed": "Man Called X",
+     "episode": {"id": "mancalledx|1947-10-16", "series": "The Man Called X"}}])}
+check("served: a never-recommended episode never fills a slot (contract §9.4)",
+      B.tonight(dt.date(2026, 10, 16), 1, nr, served=cat.served)["days"]["2026-10-16"]["slots"][1].get("episode"), None)
+
+# a day once published never changes
+pub = B.tonight(*B.window(dt.date(2026, 10, 22)), pool, served=every)
+import copy  # noqa: E402
+richer = dict(pool)
+richer[("1950-10-22", "CBS")] = rec("1950-10-22", 0.9)
+again = B.keep_published(B.tonight(*B.window(dt.date(2026, 10, 23)), richer, served=every), copy.deepcopy(pub),
+                         "2026-10-22", served=every)
+check("never-change: a richer evening found later does not replace a published day",
+      again["days"]["2026-10-22"], pub["days"]["2026-10-22"])
+check("never-change: the guard finds nothing changed", B.changed_days(pub, again, "2026-10-22"), [])
+check("never-change: yesterday's yesterday drops off the window", "2026-10-21" in again["days"], False)
+check("control: a day never published takes the new value", again["days"]["2026-11-05"]["evening"], "1948-11-05")
+fresh = B.tonight(*B.window(dt.date(2026, 10, 23)), richer, served=every)
+check("control: without the merge the day would have changed, and the guard says so",
+      (fresh["days"]["2026-10-22"]["evening"], B.changed_days(pub, fresh, "2026-10-22")), ("1950-10-22", ["2026-10-22"]))
+swapped = copy.deepcopy(pub)
+swapped["days"]["2026-10-23"]["slots"][0]["episode"]["id"] = "suspense|1947-10-09"
+check("control: the guard refuses a published slot given another episode",
+      B.changed_days(pub, swapped, "2026-10-22"), ["2026-10-23"])
+taken = B.keep_published(B.tonight(*B.window(dt.date(2026, 10, 23)), pool), copy.deepcopy(pub), "2026-10-22",
+                         served=lambda eid: eid != "suspense|1948-10-23")
+check("withdrawal: an episode taken down after publishing leaves its published day as a withheld gap",
+      (taken["days"]["2026-10-23"]["evening"], taken["days"]["2026-10-23"]["slots"][0].get("withheld")),
+      ("1948-10-23", True))
+check("withdrawal: the guard accepts a withdrawal as the one allowed change", B.changed_days(pub, taken, "2026-10-22"), [])
+
+# the web's file: the same evenings, the web projection's own shards decide
+web = os.path.join(tmp, "web")
+os.makedirs(os.path.join(web, "episodes"))
+import json  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
+from build_web_projection import shard_of  # noqa: E402
+with open(os.path.join(web, "episodes", f"{shard_of('suspense|1948-10-22')}.json"), "w") as f:
+    json.dump({"suspense|1948-10-22": []}, f)
+wdoc = B.for_web(pub, web)
+check("web: the same evening on the same date as the apps (one clock)",
+      {d: v["evening"] for d, v in wdoc["days"].items()}, {d: v["evening"] for d, v in pub["days"].items()})
+check("web: an episode the web projection does not serve is withheld",
+      wdoc["days"]["2026-10-23"]["slots"][0].get("withheld"), True)
+check("control: one it serves still plays", wdoc["days"]["2026-10-22"]["slots"][0]["episode"]["id"],
+      "suspense|1948-10-22")
+
 # --- the real page, when cached --------------------------------------------------
 pdf = os.path.join(B.CACHE, "radiologs", "pdf", "w1947-10-16.pdf")
 if os.path.exists(pdf) and os.path.exists(B.PROJECTION):

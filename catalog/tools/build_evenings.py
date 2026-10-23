@@ -11,7 +11,10 @@ and the witness names the paper, the station and the page.
     python3 tools/build_evenings.py index                      # month pages -> PDF list
     python3 tools/build_evenings.py evening 1947-10-16 CBS     # one evening, printed
     python3 tools/build_evenings.py measure --sample N         # coverage over many evenings
-    python3 tools/build_evenings.py tonight --start 2026-10-21 --days 14 --floor 0.5
+    python3 tools/build_evenings.py measure --window --max-fetch 120   # the window's logs, politely
+    python3 tools/build_evenings.py tonight --previous live/tonight.json --out tonight.json
+    python3 tools/build_evenings.py web --src tonight.json --web out/web --out out/web/tonight.json
+    python3 tools/build_evenings.py kept --old live/tonight.json --new tonight.json
 
 stdlib only, plus poppler's `pdftotext` for the PDF's own OCR text layer.
 Caches: <cache>/radiologs/{index,pdf}; never committed.
@@ -45,6 +48,15 @@ PAPERS = {"w": "Washington Post", "n": "New York Times", "c": "Chicago Daily Tri
 
 PRIME = (19 * 60, 23 * 60)  # 7-11 PM Eastern, the measured window
 ZONE = "America/New_York"   # the printed times are Eastern; tonight replays on the same Eastern clock
+# The coverage floor of DECISIONS 058. PROVISIONAL: proposed in docs/research/evenings.md §5
+# from 586 measured evenings and awaiting the owner. This is the one place the number
+# lives; the published file states it and says it is provisional.
+FLOOR = 0.25
+FLOOR_PROVISIONAL = True
+# The published window, by calendar date: yesterday through 13 days ahead of the build's
+# UTC date, so every time zone finds its own today (contract §8).
+WINDOW_BACK, WINDOW_AHEAD = 1, 13
+YEARS = (1935, 1955)        # the anniversary years read for each calendar date
 
 # Washington stations and their networks, by date. A grid header that prints the
 # network ("WRC (NBC)") wins over this table; the table is the fallback and its
@@ -109,33 +121,68 @@ def index_path(year, month):
     return os.path.join(CACHE, "radiologs", "index", f"{year}_{month:02d}{MON[month - 1]}.htm")
 
 
+def fetch_month(y, m, pause=2.0):
+    """One month page from JJ's into the cache; False when JJ's has none."""
+    path = index_path(y, m)
+    if os.path.exists(path):
+        return True
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    name = f"{y}_{m:02d}{MON[m - 1]}"
+    body = None
+    for variant in (name, f"{y} _{m:02d}{MON[m - 1]}"):
+        body = _get(f"{JJ}logs_pages_months/{y // 10 * 10}s/{y}/{urllib.request.quote(variant)}.htm")
+        time.sleep(pause)
+        if body:
+            break
+    if body is None:
+        return False
+    with open(path, "wb") as f:
+        f.write(body)
+    return True
+
+
 def fetch_index(y0, y1, pause=2.0):
-    os.makedirs(os.path.join(CACHE, "radiologs", "index"), exist_ok=True)
     missing = []
     for y in range(y0, y1 + 1):
         for m in range(1, 13):
-            path = index_path(y, m)
-            if os.path.exists(path):
-                continue
-            name = f"{y}_{m:02d}{MON[m - 1]}"
-            body = None
-            for variant in (name, f"{y} _{m:02d}{MON[m - 1]}"):
-                body = _get(f"{JJ}logs_pages_months/{y // 10 * 10}s/{y}/{urllib.request.quote(variant)}.htm")
-                time.sleep(pause)
-                if body:
-                    break
-            if body is None:
-                missing.append(name)
-                continue
-            with open(path, "wb") as f:
-                f.write(body)
+            if not fetch_month(y, m, pause):
+                missing.append(f"{y}_{m:02d}{MON[m - 1]}")
     return missing
 
 
-def log_urls(year, month):
-    """{(paper, 'YYYY-MM-DD'): absolute PDF url} from a cached month page."""
+def url_map_path():
+    return os.path.join(CACHE, "radiologs", "log-urls.json")
+
+
+_URLS = None
+
+
+def url_map():
+    """{'YYYY-MM': {'pYYYY-MM-DD': pdf url}}: the month pages reduced to their links, the
+    form the publish run keeps between runs (a link is a fact; the page is JJ's)."""
+    global _URLS
+    if _URLS is None:
+        p = url_map_path()
+        _URLS = json.load(open(p)) if os.path.exists(p) else {}
+    return _URLS
+
+
+def save_url_map():
+    if _URLS is not None:
+        os.makedirs(os.path.dirname(url_map_path()), exist_ok=True)
+        with open(url_map_path(), "w") as f:
+            json.dump(_URLS, f, sort_keys=True)
+
+
+def log_urls(year, month, fetch=False):
+    """{(paper, 'YYYY-MM-DD'): absolute PDF url}, from the kept link map, else a cached month
+    page, else (fetch=True) the month page fetched once."""
+    key = f"{year}-{month:02d}"
+    kept = url_map().get(key)
+    if kept is not None:
+        return {(k[0], k[1:]): v for k, v in kept.items()}
     path = index_path(year, month)
-    if not os.path.exists(path):
+    if not os.path.exists(path) and not (fetch and fetch_month(year, month)):
         return {}
     html = open(path, encoding="latin-1").read()
     out = {}
@@ -148,18 +195,27 @@ def log_urls(year, month):
         date = f"{year // 100}{yy}-{mm}-{dd}"
         url = urllib.request.urljoin(base, href)
         out[(paper, date)] = url
+    url_map()[key] = {p + d: u for (p, d), u in out.items()}
     return out
 
 
+# PDFs a run may still download (None = no limit): a publish run reads only what its window
+# needs, and at most this many, so a first run without the kept cache spreads over days.
+FETCH_BUDGET = None
+
+
 def pdf_for(paper, date, fetch=True):
+    global FETCH_BUDGET
     y, m, _ = (int(x) for x in date.split("-"))
-    url = log_urls(y, m).get((paper, date))
+    url = log_urls(y, m, fetch=fetch).get((paper, date))
     if not url:
         return None, None
     path = os.path.join(CACHE, "radiologs", "pdf", f"{paper}{date}.pdf")
     if not os.path.exists(path):
-        if not fetch:
+        if not fetch or FETCH_BUDGET == 0:
             return None, url
+        if FETCH_BUDGET is not None:
+            FETCH_BUDGET -= 1
         body = _get(url.replace("[", "%5B").replace("]", "%5D"))
         if body is None:
             return None, url
@@ -648,6 +704,12 @@ class Catalog:
         r = self.db.execute("SELECT name FROM series WHERE key = ?", (key,)).fetchone()
         return r[0] if r else key
 
+    def served(self, eid):
+        """May this episode fill a slot tonight? Only a row the served projection holds, and
+        never a never-recommended one (contract §9.4). A row hidden by rights is not here."""
+        r = self.db.execute("SELECT no_recommend FROM episodes WHERE id = ?", (eid,)).fetchone()
+        return bool(r) and not r[0]
+
 
 def net_family(n):
     n = (n or "").lower()
@@ -776,7 +838,11 @@ def build_evening(date, network, cat, fetch=True, paper="w"):
     pdf, url = pdf_for(paper, date, fetch=fetch)
     if not pdf:
         return None, "no log" if not url else "log not fetched"
-    grid, err = parse_grid(words_of(pdf), date)
+    try:
+        words = words_of(pdf)
+    except subprocess.CalledProcessError:  # a page JJ's serves that poppler cannot open: a finding
+        return None, "pdf unreadable"
+    grid, err = parse_grid(words, date)
     if err:
         return None, err
     st = [s for s in grid["stations"] if net_family(s["network"]) == net_family(network)]
@@ -886,10 +952,51 @@ def to_utc(day, et):
     return local.astimezone(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def tonight(start, days, measured, floor):
-    out = {"schemaVersion": 1, "zone": ZONE, "floor": floor, "window_et": [hhmm(PRIME[0]), hhmm(PRIME[1])],
+def window(today):
+    """The published window for a build on `today` (its UTC date): (first day, number of days)."""
+    return today - dt.timedelta(days=WINDOW_BACK), WINDOW_BACK + 1 + WINDOW_AHEAD
+
+
+def slot_coverage(slots, window=PRIME):
+    lo, hi = window
+    have = 0
+    for s in slots:
+        if s.get("episode"):
+            a, b = max(lo, _mins(s["et_start"])), min(hi, _mins(s["et_start"]) + s["length_min"])
+            have += max(0, b - a)
+    return round(have / (hi - lo), 3)
+
+
+def withhold(slots, served):
+    """Each slot whose episode `served` refuses becomes a gap marked `withheld` (a recording
+    that exists but this projection does not serve: hidden by rights, taken down, never
+    recommended), so no unserved episode ever fills a slot. Returns (slots, changed)."""
+    out, changed = [], False
+    for s in slots:
+        ep = s.get("episode")
+        if ep and not served(ep["id"]):
+            s = {k: v for k, v in s.items() if k != "episode"}
+            s.update(gap=True, withheld=True, **({"known_series": ep["series"]} if ep.get("series") else {}))
+            changed = True
+        out.append(s)
+    return out, changed
+
+
+def served_evening(rec, served):
+    """A measured evening as the served projection can play it now: coverage counts only
+    served episodes, so the floor and the pick see what a listener would hear."""
+    if not served or "slots" not in rec:
+        return rec
+    slots, changed = withhold(rec["slots"], served)
+    return dict(rec, slots=slots, coverage=slot_coverage(slots)) if changed else rec
+
+
+def tonight(start, days, measured, floor=FLOOR, served=None):
+    out = {"schemaVersion": 1, "zone": ZONE, "floor": floor, "floor_provisional": FLOOR_PROVISIONAL,
+           "window_et": [hhmm(PRIME[0]), hhmm(PRIME[1])],
            "rule": "Decision 058: anniversary in best-surviving year above the floor, else best evening for the weekday; "
                    "gaps are gaps (R9)", "days": {}}
+    measured = {k: served_evening(r, served) for k, r in measured.items()}
     for i in range(days):
         day = start + dt.timedelta(days=i)
         ev, why = pick_tonight(day, measured, floor)
@@ -898,10 +1005,16 @@ def tonight(start, days, measured, floor):
         out["days"][day.isoformat()] = {
             "evening": ev["date"], "picked": why, "network": ev["network"], "station": ev["station"],
             "coverage": ev["coverage"], "witness": ev["witness"],
-            "slots": [dict(s, utc_start=to_utc(day, s["et_start"])) for s in ev["slots"]
+            "slots": [dict(json.loads(json.dumps(s)), utc_start=to_utc(day, s["et_start"]), utc_end=to_utc_end(day, s))
+                      for s in ev["slots"]
                       if _mins(s["et_end"]) > PRIME[0] and _mins(s["et_start"]) < PRIME[1]],
         }
     return out
+
+
+def to_utc_end(day, s):
+    start = dt.datetime.strptime(to_utc(day, s["et_start"]), "%Y-%m-%dT%H:%M:%SZ")
+    return (start + dt.timedelta(minutes=s["length_min"])).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 DAYCODE = {"M": 0, "Tu": 1, "W": 2, "Th": 3, "F": 4, "Sa": 5, "Su": 6}
@@ -993,16 +1106,69 @@ def report(measured, floors=(0.1, 0.15, 0.2, 0.25, 1 / 3, 0.4, 0.5, 0.6)):
     return "\n".join(lines)
 
 
-def keep_published(new, old, start):
-    """Contract §8: a day once published keeps its value; days before the window drop off."""
+def keep_published(new, old, start, served=None):
+    """Contract §8: a day once published keeps its value; days before the window drop off.
+    The one change a kept day can take is a withdrawal: an episode the served projection no
+    longer serves becomes a withheld gap (unclaimed recordings are removed on request)."""
     days = dict(new["days"])
     for d, v in old.get("days", {}).items():
         if d >= start:
             days[d] = v
+    if served:
+        for d, v in days.items():
+            slots, changed = withhold(v["slots"], served)
+            if changed:
+                days[d] = dict(v, slots=slots, coverage=slot_coverage(slots))
     return dict(new, days=dict(sorted(days.items())))
 
 
+def changed_days(old, new, start):
+    """The published days (on or after `start`) the new file would change, beyond a
+    withdrawal. Empty is the never-change rule holding."""
+    def plain(day):
+        return [(s["et_start"], s["et_end"], (s.get("episode") or {}).get("id"))
+                for s in day["slots"]]
+    bad = []
+    for d, v in old.get("days", {}).items():
+        if d < start:
+            continue
+        w = new.get("days", {}).get(d)
+        if w is None or w["evening"] != v["evening"] or w["network"] != v["network"]:
+            bad.append(d)
+            continue
+        a, b = plain(v), plain(w)
+        if len(a) != len(b) or any(x[:2] != y[:2] or (y[2] and y[2] != x[2]) for x, y in zip(a, b)):
+            bad.append(d)
+    return bad
+
+
+def for_web(doc, web_dir):
+    """The web's tonight.json: the same evenings (one clock on every platform), each slot
+    whose episode the web projection does not serve withheld. The web projection's own
+    episode shards decide, so the public-web gate is applied once, upstream."""
+    sys.path.insert(0, os.path.dirname(__file__))
+    from build_web_projection import shard_of
+    shards = {}
+
+    def served(eid):
+        k = shard_of(eid)
+        if k not in shards:
+            p = os.path.join(web_dir, "episodes", f"{k}.json")
+            shards[k] = json.load(open(p)) if os.path.exists(p) else {}
+        return eid in shards[k]
+    days = {}
+    for d, v in doc["days"].items():
+        slots, changed = withhold(v["slots"], served)
+        days[d] = dict(v, slots=slots, coverage=slot_coverage(slots)) if changed else v
+    return dict(doc, days=days)
+
+
+def _today(s):
+    return dt.date.fromisoformat(s) if s else dt.datetime.now(dt.timezone.utc).date()
+
+
 def main():
+    global FETCH_BUDGET
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("index")
@@ -1016,23 +1182,47 @@ def main():
     a.add_argument("--days", type=int, default=14)
     a.add_argument("--networks", default="CBS,NBC")
     a.add_argument("--offline", action="store_true")
+    a.add_argument("--window", action="store_true", help="the anniversaries of the published window (--today)")
+    a.add_argument("--today", default="")
+    a.add_argument("--max-fetch", type=int, default=None, help="PDFs this run may download")
     a = sub.add_parser("fetch")
     a.add_argument("--sample", type=int, default=0)
     a.add_argument("--anniversaries", default="")
     a.add_argument("--days", type=int, default=14)
     a = sub.add_parser("report")
     a = sub.add_parser("tonight")
-    a.add_argument("--start", required=True)
-    a.add_argument("--days", type=int, default=14)
-    a.add_argument("--floor", type=float, required=True)
+    a.add_argument("--today", default="", help="the build's UTC date (default: now)")
+    a.add_argument("--previous", default="", help="the tonight.json published now (missing = first publish)")
     a.add_argument("--out", required=True)
+    a = sub.add_parser("web")
+    a.add_argument("--src", required=True, help="the native tonight.json")
+    a.add_argument("--web", required=True, help="the web projection's directory")
+    a.add_argument("--out", required=True)
+    a = sub.add_parser("kept")
+    a.add_argument("--old", required=True)
+    a.add_argument("--new", required=True)
+    a.add_argument("--today", default="")
     args = ap.parse_args()
     if args.cmd == "index":
         y0, y1 = (int(x) for x in args.years.split("-"))
         missing = fetch_index(y0, y1)
         print("missing month pages:", missing)
         return 0
-    if args.cmd != "fetch":
+    if args.cmd == "web":
+        doc = for_web(json.load(open(args.src)), args.web)
+        with open(args.out, "w") as f:
+            json.dump(doc, f, indent=1)
+        filled = sum(1 for v in doc["days"].values() for s in v["slots"] if s.get("episode"))
+        print("wrote", args.out, len(doc["days"]), "days,", filled, "slots the web serves")
+        return 0
+    if args.cmd == "kept":
+        start, _ = window(_today(args.today))
+        old = json.load(open(args.old)) if os.path.exists(args.old) else {}
+        bad = changed_days(old, json.load(open(args.new)), start.isoformat())
+        kept = sum(1 for d in old.get("days", {}) if d >= start.isoformat())
+        print(f"published days kept: {kept - len(bad)} of {kept}" + (f"; changed: {bad}" if bad else ""))
+        return 1 if bad else 0
+    if args.cmd not in ("fetch",):
         cat = Catalog()
     if args.cmd == "evening":
         ev, err = build_evening(args.date, args.network, cat)
@@ -1062,23 +1252,34 @@ def main():
         print("fetched", got, "missing", miss)
         return 0 if got else 1
     if args.cmd == "measure":
+        FETCH_BUDGET = args.max_fetch
         nets = args.networks.split(",")
         dates = sample_dates(args.sample) if args.sample else []
         if args.anniversaries:
             dates += anniversary_dates(dt.date.fromisoformat(args.anniversaries), args.days)
-        done = measure(sorted(set(dates)), nets, cat, fetch=not args.offline)
-        print("measured", len(done))
+        if args.window:  # nearest day first, so a capped run fills the days listeners reach soonest
+            dates += anniversary_dates(*window(_today(args.today)), *YEARS)
+        before = len(load_measured())
+        done = measure(list(dict.fromkeys(dates)), nets, cat, fetch=not args.offline)
+        save_url_map()
+        left = "" if FETCH_BUDGET is None else f"; fetch budget left {FETCH_BUDGET} of {args.max_fetch}"
+        print(f"measured {len(done)} (+{len(done) - before}){left}")
         return 0
     if args.cmd == "report":
         print(report(load_measured()))
         return 0
     if args.cmd == "tonight":
-        doc = tonight(dt.date.fromisoformat(args.start), args.days, load_measured(), args.floor)
-        if os.path.exists(args.out):
-            doc = keep_published(doc, json.load(open(args.out)), args.start)
+        start, days = window(_today(args.today))
+        doc = tonight(start, days, load_measured(), served=cat.served)
+        new_days = set(doc["days"])
+        old = json.load(open(args.previous)) if args.previous and os.path.exists(args.previous) else {}
+        doc = keep_published(doc, old, start.isoformat(), served=cat.served)
         with open(args.out, "w") as f:
             json.dump(doc, f, indent=1)
-        print("wrote", args.out, len(doc["days"]), "days")
+        kept = [d for d in doc["days"] if d in old.get("days", {})]
+        print(f"wrote {args.out}: {len(doc['days'])} days ({len(kept)} kept as published, "
+              f"{len(new_days - set(kept))} new) for {start} + {days} days; floor {FLOOR}"
+              f"{' (provisional)' if FLOOR_PROVISIONAL else ''}")
         return 0 if doc["days"] else 1
     return 0
 
