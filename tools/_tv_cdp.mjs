@@ -108,6 +108,9 @@ export async function openTv(tool, { defaultPort = 9230 } = {}) {
     "--window-size=1920,1080",
     "--force-device-scale-factor=1",
     "--hide-scrollbars",
+    // Never audible: a walk that presses OK on a play button must not play an
+    // episode aloud at the owner (the app's ?mute=1 door is the second guard).
+    "--mute-audio",
     "--no-first-run", "--no-default-browser-check",
     // A FRESH profile every run, under the output dir (never /tmp). A reused one
     // serves a cached stylesheet, and a stale stylesheet does not fail — it
@@ -162,6 +165,10 @@ export async function openTv(tool, { defaultPort = 9230 } = {}) {
 
   await cdp("Page.enable");
   await cdp("Runtime.enable");
+  // A headless page has no window focus until its first input event, so :focus
+  // does not match and the boot screenshot shows no ring even though
+  // document.activeElement is the right card. A TV's page always has focus.
+  await cdp("Emulation.setFocusEmulationEnabled", { enabled: true });
   await cdp("Emulation.setDeviceMetricsOverride",
             { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
 

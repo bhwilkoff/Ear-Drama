@@ -96,3 +96,11 @@ tools/bench.json
 
 # The web data plane for local development: a symlink to catalog/out/web (never committed)
 /data
+
+# Smart-TV packages: staged from the shared web app and built by
+# tv/build-tv-packages.sh; never edited or committed.
+tv/webos/app/
+tv/tizen/app/
+tv/dist/
+# The Roku sideload zip (roku/build.sh)
+roku/dist/

@@ -1,13 +1,11 @@
-// PORTED FROM ARCHIVE WATCH — the additive smart-TV layer. Adapt the
-// DOM selectors/observers to YOUR viewer markup; the spatial-nav engine,
-// platform shims, and html.tv scoping are app-neutral. See the
-// smarttv-web-app skill and docs/templates/TV-DESIGN-template.md.
-/* Archive Watch — smart-TV layer (Samsung Tizen · LG webOS · VIDAA · aggregators).
+/* Ear Drama — smart-TV layer (Samsung Tizen · LG webOS · VIDAA · aggregators).
  *
- * Binding rules: docs/TV-DESIGN.md §7. Strategy: Decision 047.
+ * Ported from Archive Watch (the smarttv-web-app skill); the section numbers
+ * cite docs/templates/TV-DESIGN-template.md. Strategy: DECISIONS 028 (two
+ * builds, never six apps) and 056 (a 1.0 stub that grows from shared code).
  *
- * This is an ADDITIVE layer over the existing vanilla viewer — same watch.js,
- * same watch.css, same service worker, no build step, no framework. It is NOT a
+ * This is an ADDITIVE layer over the existing vanilla web app — same app.js,
+ * same styles.css, no build step, no framework. It is NOT a
  * fork of the web app (§7.1), and it is deliberately dependency-free: every
  * mature spatial-navigation library (Norigin and friends) is React-based, which
  * this codebase is not.
@@ -80,9 +78,13 @@
     return style.visibility !== 'hidden' && style.display !== 'none';
   }
 
+  /** An open modal <dialog> (Now Playing, the exit question) makes the page
+   *  behind it inert: focus() on an inert element silently fails, so a pool
+   *  that reached behind the dialog stranded the D-pad. */
   function candidates() {
+    const modal = document.querySelector('dialog[open]');
     return Array.prototype.filter.call(
-      document.querySelectorAll(FOCUSABLE), isReachable);
+      (modal || document).querySelectorAll(FOCUSABLE), isReachable);
   }
 
   function centreOf(r) {
@@ -144,6 +146,10 @@
     return true;
   }
 
+  function sidebarOf(el) {
+    return typeof el.closest === 'function' && el.closest('.sidebar') != null;
+  }
+
   function move(dir) {
     const pool = candidates();
     if (!pool.length) return false;
@@ -152,7 +158,14 @@
     if (!active || active === document.body || !isReachable(active)) {
       return focusEl(pool[0]);
     }
-    const next = bestInDirection(active.getBoundingClientRect(), dir, pool);
+    // Up and Down stay in their column: the sidebar is a column, the content
+    // another. Down from a series page's Follow button landed on the sidebar's
+    // Search, which was nearer than the first episode row only because that
+    // row's center sits far to the right. Left and Right cross between them.
+    const vertical = dir === 'up' || dir === 'down';
+    const region = sidebarOf(active);
+    const lane = vertical ? pool.filter(function (el) { return sidebarOf(el) === region; }) : pool;
+    const next = bestInDirection(active.getBoundingClientRect(), dir, lane);
     // §3.4 — no dead ends. If nothing lies that way we simply stay put, which
     // is a deliberate stop, not a strand: Back always still works.
     return next ? focusEl(next) : false;
@@ -160,10 +173,11 @@
 
   /**
    * Chrome that is NOT a destination. Landing initial focus here is technically
-   * "something is focused" while being useless to a viewer — the brand logo and
-   * the footer links are not what anyone came for.
+   * "something is focused" while being useless to a listener — the skip link,
+   * the sidebar and the footer are not what anyone came for. The sidebar stays
+   * reachable (Left from the first card); it is only never the landing spot.
    */
-  const CHROME_SEL = '.brand, .sitefoot a, footer a, .install-prompt *';
+  const CHROME_SEL = '.skip-link, .sidebar, .tabbar, .site-footer';
 
   function isChrome(el) {
     return typeof el.closest === 'function' && el.closest(CHROME_SEL) != null;
@@ -171,26 +185,36 @@
 
   /**
    * §3.1 — something is ALWAYS focused. Called on every view change, and
-   * retried because views render asynchronously after the hash changes.
+   * retried because views render asynchronously after the route changes.
    *
    * Prefers real CONTENT over page chrome: focus landing on the logo was the
    * first thing a real browser showed (the shim has no notion of "useful"),
    * and it reads as broken because the first Right/Down goes somewhere
    * unrelated to what the viewer is looking at.
    */
+  /** The active element is a real D-pad stop. A view heading the app focuses
+   *  after a route change (tabindex="-1", for screen readers) is not: from it
+   *  the first press would have to guess, so focus moves on to content. */
+  function holdsFocus(el) {
+    if (!el || el === document.body || !isReachable(el)) return false;
+    return typeof el.matches === 'function' ? el.matches(FOCUSABLE) : true;
+  }
+
+  // Content renders after its catalog fetch; wait up to this long for it before
+  // settling for the sidebar, so the first screen opens on its first row.
+  const CLAIM_TRIES = 50;
+
   let claimTimer = null;
   function claimFocus() {
     clearTimeout(claimTimer);
     let tries = 0;
     (function attempt() {
-      const active = document.activeElement;
-      if (active && active !== document.body && isReachable(active)) return;
+      if (holdsFocus(document.activeElement)) return;
       const pool = candidates();
-      if (pool.length) {
-        focusEl(pool.find(function (el) { return !isChrome(el); }) || pool[0]);
-        return;
-      }
-      if (++tries < 20) claimTimer = setTimeout(attempt, 100);
+      const content = pool.find(function (el) { return !isChrome(el); });
+      if (content) { focusEl(content); return; }
+      if (++tries < CLAIM_TRIES) { claimTimer = setTimeout(attempt, 100); return; }
+      if (pool.length) focusEl(pool[0]);
     })();
   }
 
@@ -201,6 +225,13 @@
   function activeVideo() {
     const v = document.querySelector('video');
     return v && isReachable(v) ? v : null;
+  }
+
+  /** Ear Drama plays audio through js/player.js (one <audio>, never drawn), so
+   *  the remote's media keys drive that module. Arrows and OK stay navigation:
+   *  the player bar's own buttons are reachable with the D-pad. */
+  function appPlayer() {
+    return (typeof Player !== 'undefined' && Player && Player.current) ? Player : null;
   }
 
   function togglePlay(v) { if (v.paused) v.play(); else v.pause(); }
@@ -231,6 +262,18 @@
     // open and the video PLAYING — a film over the home page with no way out,
     // and an automatic fail on LG's and Samsung's Back-behaviour tests.
     // Verified in Chrome; close the overlay and stop playback first.
+    // A popover menu (the sleep timer) sits above the dialog that opened it.
+    // :popover-open is an invalid selector before Chromium 114, hence the try.
+    let openPopover = null;
+    try { openPopover = document.querySelector(':popover-open'); } catch (e) { /* no Popover API */ }
+    if (openPopover && typeof openPopover.hidePopover === 'function') {
+      openPopover.hidePopover();
+      claimFocus();
+      return;
+    }
+
+    // Closing Now Playing leaves the audio playing in the player bar, as it
+    // does on every other platform; only a video overlay stops its playback.
     const openDialog = document.querySelector('dialog[open]');
     if (openDialog) {
       const vid = openDialog.querySelector('video');
@@ -243,11 +286,24 @@
 
     // Otherwise navigate back, and exit from the root. Never swallowed.
     // Samsung's Terminating Applications policy requires the app to ask first.
-    if ((location.hash || '#/').replace(/^#\/?/, '') === '') {
+    if (atRoot()) {
       if (PLATFORM === 'tizen') askToExit(); else exitApp();
-    } else {
+    } else if (history.length > 1) {
       history.back();
+    } else {
+      // Launched straight onto an inner screen: there is no history to go back
+      // through, so Back goes to Listen rather than leaving the app.
+      const home = document.querySelector('a[data-nav="listen"]');
+      if (home) home.click();
     }
+  }
+
+  /** The root is Listen, the screen the app opens on (js/app.js parseRoute:
+   *  no item, no series, and no view other than listen). */
+  function atRoot() {
+    const p = new URLSearchParams(location.search || '');
+    const view = p.get('view');
+    return !p.get('item') && !p.get('series') && (!view || view === 'listen');
   }
 
   function askToExit() {
@@ -298,6 +354,18 @@
       return;                       // let the browser change the value
     }
 
+    const player = activeVideo() ? null : appPlayer();
+    if (player) {
+      switch (code) {
+        case KEY.PLAY_PAUSE: ev.preventDefault(); player.toggle(); return;
+        case KEY.PLAY: ev.preventDefault(); player.play(); return;
+        case KEY.PAUSE: case KEY.STOP: ev.preventDefault(); player.pause(); return;
+        case KEY.REWIND: ev.preventDefault(); player.back(); return;
+        case KEY.FF: ev.preventDefault(); player.forward(); return;
+        default: break;
+      }
+    }
+
     const video = activeVideo();
     if (video) {
       switch (code) {
@@ -345,7 +413,7 @@
   let pausedByHide = null;
 
   function onHidden() {
-    const v = document.querySelector('video');
+    const v = document.querySelector('video') || document.querySelector('audio');
     if (v && !v.paused) { v.pause(); pausedByHide = v; }
   }
 
@@ -409,21 +477,27 @@
     // Activates the TV breakpoint in tv.css. Additive: the mobile-first
     // stylesheet is untouched (§7.5).
     document.documentElement.classList.add('tv', 'tv-' + PLATFORM);
+    // §4.4 dark-first: the web app's own dark palette, whatever the TV's
+    // browser reports for prefers-color-scheme.
+    if (typeof document.documentElement.setAttribute === 'function') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
 
     registerTizenKeys();
     installLifecycle();
     installPointerBridge();
     window.addEventListener('keydown', onKeyDown, true);
 
-    // Re-claim focus whenever the viewer swaps views. Hash routing means we do
-    // not need to hook showView() at all — no view code changes (§7.1).
-    window.addEventListener('hashchange', claimFocus);
+    // Re-claim focus whenever the app swaps views. Its router pushes query
+    // URLs (no event) and then focuses the new view's heading; the observer
+    // below sees that render, and popstate covers Back (§7.1: no view code
+    // changes).
+    window.addEventListener('popstate', claimFocus);
 
     // The first render is asynchronous (catalog index fetch), so watch for the
     // DOM filling in rather than guessing a delay.
     const mo = new MutationObserver(function () {
-      const active = document.activeElement;
-      if (!active || active === document.body) claimFocus();
+      if (!holdsFocus(document.activeElement)) claimFocus();
     });
     mo.observe(document.body, { childList: true, subtree: true });
 

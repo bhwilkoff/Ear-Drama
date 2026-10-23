@@ -266,12 +266,12 @@ select {
 .rail {
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 72%);
   gap: var(--space-3); overflow-x: auto; scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--space-4); margin-inline: calc(-1 * var(--space-4)); padding: 0 var(--space-4) var(--space-2);
+  scroll-padding-inline: var(--space-4); margin-left: calc(-1 * var(--space-4)); margin-right: calc(-1 * var(--space-4)); padding: 0 var(--space-4) var(--space-2);
   scrollbar-width: thin;
 }
 .rail > li { scroll-snap-align: start; min-width: 0; }
 @media (min-width: 768px) {
-  .rail { grid-auto-columns: 220px; margin-inline: 0; padding-inline: 0; scroll-padding-inline: 0; }
+  .rail { grid-auto-columns: 220px; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; scroll-padding-inline: 0; }
 }
 
 /* Series cards are typographic (R11): the name, one meta line, the genre edge. */
@@ -406,7 +406,7 @@ select {
 .site-footer a { display: inline-flex; align-items: center; min-height: var(--tap); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
 .site-footer a[aria-current="page"] { color: var(--color-text); }
-@media (min-width: 768px) { .site-footer { padding-inline: var(--space-8); } }
+@media (min-width: 768px) { .site-footer { padding-left: var(--space-8); padding-right: var(--space-8); } }
 
 /* ---- Site pages (credits, privacy, take-down requests) ---- */
 .site-bar {
@@ -429,4 +429,4 @@ select {
   padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
 .credit-list > div { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
 .credit-list dd { margin-top: 2px; }
-@media (min-width: 768px) { .site-bar { padding-inline: var(--space-8); } }
+@media (min-width: 768px) { .site-bar { padding-left: var(--space-8); padding-right: var(--space-8); } }

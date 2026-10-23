@@ -6,7 +6,7 @@
  * to a local path that isn't in the package — the app would have launched to an
  * empty catalog on every LG and Samsung TV.
  *
- * These assertions run the REAL expression out of js/app.js (not a copy) so they
+ * These assertions run the REAL expression out of js/api.js (not a copy) so they
  * follow the source if it is edited. Every check that does not apply to this app
  * yet prints a SKIP saying why — never silence, never a pass.
  *
@@ -18,7 +18,9 @@ import { fileURLToPath } from 'url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const appSrc = read('js/app.js');
+// The data client owns the data base (js/api.js); app.js is read too so a
+// block moved between them is still found.
+const appSrc = read('js/api.js') + '\n' + read('js/app.js');
 
 let pass = 0, fail = 0, skip = 0;
 const ok = (name, got, want) => {
@@ -36,7 +38,7 @@ const skipped = (msg) => { console.log(`SKIP  ${msg}`); skip++; };
 
 const m = appSrc.match(/const CANONICAL_ROOT = [\s\S]*?const PAGES_ROOT = [\s\S]*?;\n/);
 if (!m) {
-  skipped('js/app.js has no CANONICAL_ROOT / PAGES_ROOT block — this app fetches no '
+  skipped('js/api.js and js/app.js have no CANONICAL_ROOT / PAGES_ROOT block — this app fetches no '
         + 'remote data plane yet. When it does, resolve data URLs through '
         + '`const CANONICAL_ROOT = new URL("https://<your-site>/"); const PAGES_ROOT = '
         + '/^https?:$/.test(location.protocol) ? new URL(".", location.href) : CANONICAL_ROOT;` '

@@ -47,6 +47,9 @@ class El {
   closest(sel) { return sel === '[hidden]' ? null : (matches(this, sel) ? this : null); }
   click() { this.clicked = true; }
   addEventListener() {}
+  append(...c) { this.children.push(...c); }
+  showModal() { this.open = true; doc._modal = this; }
+  querySelector() { return this.children[this.children.length - 1] || null; }
 }
 
 /* The shim used to compare whole selector strings, so the day the engine added a
@@ -64,6 +67,7 @@ function notClause(el, c) {
 function matches(el, sel) {
   return sel.split(',').some(s => {
     s = s.trim();
+    if (s === '.sidebar') return !!el.inSidebar;
     const nots = [...s.matchAll(/:not\(([^)]*)\)/g)].map(m => m[1]);
     const base = s.replace(/:not\([^)]*\)/g, '');
     let hit;
@@ -86,7 +90,7 @@ const doc = {
   hidden: false,
   readyState: 'complete',
   documentElement: { classList: { add: (...c) => { doc._cls = (doc._cls||[]).concat(c); } } },
-  body: { },
+  body: { appendChild() {} },
   querySelectorAll: (sel) => nodes.filter(n => matches(n, sel)),
   // A shim that omits a universal DOM method does not simplify the test, it just
   // moves the failure: the first engine code to call getElementById would throw
@@ -107,8 +111,8 @@ global.window = {
   close: () => {},
 };
 Object.defineProperty(global, 'navigator', { value: { userAgent: 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 7.0) AppleWebKit' }, configurable: true });
-global.location = { search: '', hash: '#/home' };
-global.history = { back: () => { global._wentBack = true; } };
+global.location = { search: '', hash: '' };
+global.history = { length: 2, back: () => { global._wentBack = true; } };
 global.getComputedStyle = () => ({ visibility: 'visible', display: 'block' });
 global.MutationObserver = class { observe() {} };
 global.setTimeout = setTimeout;
@@ -182,15 +186,94 @@ doc.activeElement = rowA[0];
 press(K.LEFT);
 check('left at edge stays put', doc.activeElement.attrs.name, 'A0');
 
-// §1.7 — Back navigates back on both platforms' key codes.
+// §1.7 — Back navigates back on both platforms' key codes. The app routes by
+// QUERY (?view=, ?series=, ?item=), not by hash: an engine that read the hash
+// thought every screen was the root and answered Back with the exit question.
 global._wentBack = false;
-global.location.hash = '#/browse';
+global.location.search = '?view=series';
 press(K.BACK_WEBOS);
 check('webOS back (461) navigates', global._wentBack, true);
 
 global._wentBack = false;
+await new Promise(r => setTimeout(r, 350));   // past the Tizen double-delivery guard
 press(K.BACK_TIZEN);
 check('Tizen back (10009) navigates', global._wentBack, true);
+
+global._wentBack = false;
+global.location.search = '?series=suspense&season=1948-49';
+await new Promise(r => setTimeout(r, 350));
+press(K.BACK_TIZEN);
+check('Back from a series page navigates', global._wentBack, true);
+
+// At the root (Listen, the bare page or ?view=listen) Tizen asks before exiting
+// and never runs history.back(), which would leave the app's own page.
+for (const search of ['', '?view=listen']) {
+  global._wentBack = false;
+  doc._modal = null;
+  global.location.search = search;
+  await new Promise(r => setTimeout(r, 350));
+  press(K.BACK_TIZEN);
+  check(`Back at the root (${search || 'bare'}) asks to exit`, doc._modal?.open === true, true);
+  check(`...and does not navigate back (${search || 'bare'})`, global._wentBack, false);
+}
+
+// Launched straight onto an inner screen there is no history: Back goes to
+// Listen through the app's own link instead of leaving the app.
+{
+  const home = new El('a', { left: 0, top: 0, width: 10, height: 10 }, { href: '?view=listen', 'data-nav': 'listen' });
+  const realQS = doc.querySelector;
+  doc.querySelector = (sel) => (sel === 'a[data-nav="listen"]' ? home : realQS(sel));
+  global.history.length = 1;
+  global._wentBack = false;
+  global.location.search = '?item=abc';
+  await new Promise(r => setTimeout(r, 350));
+  press(K.BACK_TIZEN);
+  check('Back with no history goes to Listen', home.clicked === true && global._wentBack === false, true);
+  global.history.length = 2;
+  doc.querySelector = realQS;
+}
+
+// The remote's media keys drive js/player.js's audio; arrows stay navigation.
+{
+  const calls = [];
+  global.Player = { current: { id: 'x' }, toggle: () => calls.push('toggle'), play: () => calls.push('play'),
+                    pause: () => calls.push('pause'), back: () => calls.push('back'), forward: () => calls.push('forward') };
+  press(10252); press(415); press(19); press(412); press(417);
+  check('media keys reach the audio player', calls.join(','), 'toggle,play,pause,back,forward');
+  doc.activeElement = rowA[0];
+  press(K.RIGHT);
+  check('...while RIGHT still moves focus, never seeks', doc.activeElement.attrs.name + ':' + calls.length, 'A1:5');
+  global.Player = { current: null, toggle: () => calls.push('idle') };
+  press(10252);
+  check('...and nothing is sent with no episode loaded', calls.includes('idle'), false);
+  delete global.Player;
+}
+
+/* UP AND DOWN STAY IN THEIR COLUMN. A button at the top of a page whose rows'
+   centers sit far to the right scored the sidebar's nav item as "nearest below";
+   Down left the page. Left must still cross into the sidebar. */
+{
+  const side = [0, 1, 2].map(i => {
+    const e = new El('a', { left: 0, top: 900 + i * 60, width: 80, height: 40 },
+                     { href: '#', name: `side-${i}` });
+    e.inSidebar = true; nodes.push(e); return e;
+  });
+  const btn = new El('button', { left: 100, top: 880, width: 80, height: 40 }, { name: 'follow' });
+  const row = new El('a', { left: 400, top: 1100, width: 1400, height: 60 }, { href: '#', name: 'episode-row' });
+  nodes.push(btn, row);
+  btn.focus();
+  press(K.DOWN);
+  check('DOWN from content stays in content', doc.activeElement.attrs.name, 'episode-row');
+  side[0].focus();
+  press(K.DOWN);
+  check('DOWN in the sidebar stays in the sidebar', doc.activeElement.attrs.name, 'side-1');
+  press(K.DOWN); press(K.DOWN);
+  check('...and stops at its end rather than jumping to content', doc.activeElement.attrs.name, 'side-2');
+  btn.focus();
+  press(K.LEFT);
+  check('LEFT still crosses into the sidebar', doc.activeElement.inSidebar === true, true);
+  nodes.splice(nodes.indexOf(side[0]), 5);
+}
 
 /* A FOCUSED <select> MUST OWN UP/DOWN. An engine that runs spatial navigation on
    every arrow without checking what has focus walks off the control, and its value

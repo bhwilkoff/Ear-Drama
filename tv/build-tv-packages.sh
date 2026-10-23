@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Assemble the LG webOS (.ipk) and Samsung Tizen (.wgt) packages from the ONE
-# shared web app at the repo root (docs/TV-DESIGN.md §7.1, Decision 047).
+# shared web app at the repo root (DECISIONS 028: two builds, never six apps;
+# DECISIONS 056: a 1.0 stub that grows from the shared code).
 #
-# There is no separate TV codebase: this copies the same index.html / watch.js /
-# watch.css / tv.js / tv.css the browser serves, drops in the per-platform
+# There is no separate TV codebase: this copies the same index.html / js/ /
+# css/styles.css / tv.js / tv.css the browser serves, drops in the per-platform
 # manifest + icons, and hands off to the vendor CLI. If you ever find yourself
 # editing a file inside tv/webos/app or tv/tizen/app, stop — the change belongs
 # upstream in the shared app.
 #
-# Prerequisites (owner, one-time — see docs/TV-PLATFORM-BACKLOG.md §OWNER):
+# The icons are PLACEHOLDERS from tools/make_tv_stub_art.py; replace them (same
+# names, same sizes) before any store submission.
+#
+# Prerequisites (owner, one-time — see docs/TV-PLATFORMS.md):
 #   webOS : the webOS TV CLI (ares-package) — webostv.developer.lge.com
 #   Tizen : Tizen Studio CLI (tizen build-web / tizen package) + a signing
 #           certificate. KEEP THAT CERTIFICATE — Samsung requires every update
@@ -25,11 +29,12 @@ TARGET="${1:-all}"
 # The shared app payload. Keep this list in sync with sw.js SHELL_URLS — both
 # describe "what the app is made of".
 APP_FILES=(index.html tv.css tv.js manifest.json)
-APP_DIRS=(assets)
-# From js/ the viewer needs ONLY api.js. app.js and whats-new.js belong to the
-# curator dashboard at /curate/ — dead weight in a TV package, and webOS's
-# packager aborts trying to minify them.
-APP_JS=(js/compat.js js/api.js js/app.js js/cast-sender.js)
+APP_DIRS=()
+# Every script the page loads, read from index.html itself: a hand-kept list
+# went stale the day store.js and player.js were added, and a package missing
+# them launches to a page whose views never render.
+APP_JS=()
+while IFS= read -r f; do APP_JS+=("$f"); done < <(sed -n 's/.*<script src="\(js\/[^"]*\)".*/\1/p' "$ROOT/index.html")
 APP_CSS=(css/styles.css)
 
 # One source of truth for the version, the same file the Apple targets read
@@ -55,12 +60,13 @@ stage() {
   for f in "${APP_FILES[@]}"; do
     [ -f "$ROOT/$f" ] && cp "$ROOT/$f" "$dest/" || echo "  (skip missing $f)"
   done
-  for d in "${APP_DIRS[@]}"; do
+  for d in ${APP_DIRS[@]+"${APP_DIRS[@]}"}; do
     [ -d "$ROOT/$d" ] && cp -R "$ROOT/$d" "$dest/" || true
   done
   for f in "${APP_JS[@]}"; do
     mkdir -p "$dest/$(dirname "$f")"
-    [ -f "$ROOT/$f" ] && cp "$ROOT/$f" "$dest/$f" || echo "  (skip missing $f)"
+    [ -f "$ROOT/$f" ] || { echo "  !! index.html loads $f, which does not exist" >&2; exit 1; }
+    cp "$ROOT/$f" "$dest/$f"
   done
   mkdir -p "$dest/css"
   for f in "${APP_CSS[@]}"; do cp "$ROOT/$f" "$dest/css/"; done
@@ -69,8 +75,8 @@ stage() {
   find "$dest" -name '.DS_Store' -delete
   # The service worker is deliberately NOT packaged: a packaged TV app already
   # stores its resources locally, and a stale SW inside the package would shadow
-  # the packaged files. Network data still comes from archivewatch.org, which
-  # watch.js reaches because PAGES_ROOT falls back to the canonical origin under
+  # the packaged files. The catalog still comes from eardrama.org, which
+  # js/api.js reaches because PAGES_ROOT falls back to the canonical origin under
   # file:// — do not "simplify" that back to a relative URL.
   rm -f "$dest/sw.js"
   # If the app registers a service worker, it must guard registration by
@@ -99,7 +105,7 @@ build_webos() {
     # nullish coalescing) and aborts the whole package. This app is deliberately
     # no-build-step vanilla (Decision 001), so minification is neither expected
     # nor wanted — and letting an old minifier rewrite working code is a risk,
-    # not an optimisation.
+    # not an optimization.
     ares-package -n -e ".DS_Store" "$app" -o "$OUT"
     echo "    .ipk -> $OUT"
   else
@@ -126,15 +132,23 @@ build_tizen() {
   echo "==> Tizen"
   local app="$ROOT/tv/tizen/app"
   stage "$app"
-  sed "s/version=\"[0-9][^\"]*\"/version=\"$VERSION\"/" \
+  # Only the widget's own version attribute: the XML declaration's version and
+  # tizen:application's required_version also match a bare version="…", and
+  # stamping them produced XML version="1.0.14", which the packager refuses.
+  sed "/^<?xml/!s/\([[:space:]]\)version=\"[0-9][^\"]*\"/\1version=\"$VERSION\"/" \
     "$ROOT/tv/tizen/config.xml" > "$app/config.xml"
   cp "$ROOT/tv/tizen/icon.png" "$app/"
   debug_hooks "$app"
   mkdir -p "$OUT"
-  if command -v tizen >/dev/null 2>&1; then
-    tizen build-web -- "$app"
-    # tizen build-web emits into <app>/.buildResult
-    tizen package -t wgt -o "$OUT" -- "$app/.buildResult"
+  # Tizen Studio installs its CLI off PATH by default.
+  local tizen_cli
+  tizen_cli="$(command -v tizen 2>/dev/null || true)"
+  [ -n "$tizen_cli" ] || [ ! -x "$HOME/tizen-studio/tools/ide/bin/tizen" ] || tizen_cli="$HOME/tizen-studio/tools/ide/bin/tizen"
+  if [ -n "$tizen_cli" ]; then
+    "$tizen_cli" build-web -- "$app"
+    # tizen build-web emits into <app>/.buildResult; package signs with the
+    # ACTIVE security profile (tizen security-profiles list).
+    "$tizen_cli" package -t wgt -o "$OUT" -- "$app/.buildResult"
     if [ -n "${APP_TV_INSPECT:-}" ]; then
       for w in "$OUT"/*.wgt; do
         case "$w" in *-debug.wgt) ;; *) mv "$w" "${w%.wgt}-debug.wgt" ;; esac
