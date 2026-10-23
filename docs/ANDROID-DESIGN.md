@@ -83,7 +83,22 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   and loudness numbers arrive in the served database; the client adds no
   filter beyond the contract's `recommendAnd` on shelves and the queue.
 - **§2.3 A person's listening stays on the device** (`UserStore`,
-  `DownloadStore`) until sign-in (Decision 057, M5).
+  `DownloadStore`) unless they sign in (Decision 057). Signed in, history,
+  follows, and the queue sync through the Worker (Decision 063,
+  `account/SyncEngine.kt`): the first pass sends the signed-out history
+  to `/v1/sync/merge` once, later passes `PUT` only rows changed here, and
+  every pass then reads `?since=` and applies last write wins per row. A
+  removal is a marker (`deleted`, `following = 0`), never a missing row.
+  Downloads never sync.
+- **§2.4 The Worker rides the one Ktor client** (`ApiClient.client`)
+  through `account/WorkerApi.kt`, which refreshes the session before every
+  call when under five minutes remain, one refresh at a time, and gives a
+  401 one refresh and one retry before it surfaces. The session and the
+  account's state are one record, AES-GCM encrypted under an Android
+  Keystore key (`KeystoreSessionStore`, `noBackupFilesDir`), never
+  SharedPreferences. The Worker's URL and the Google and Apple client ids
+  are gradle properties (`EARDRAMA_*`), `REPLACE_WITH` placeholders in
+  git; while one is a placeholder its sign-in is not offered.
 
 ## §3 Navigation shell
 
@@ -115,6 +130,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `https://eardrama.org` twin alike: `series/{key}`, `episode/{id}`,
   `search?q=`, `library`; anything else opens nothing. Both manifest
   filters stay off until the store records and Play's fingerprint exist.
+  The one filter on is `eardrama://oauth/apple`, Sign in with Apple's
+  return, which `MainActivity` hands to the account (§4.11) before the
+  inbox and which opens no screen.
 
 ## §4 Surfaces
 
@@ -137,7 +155,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
   debounced, with Clear, series first and then episodes; "In the
   transcript" marks a transcript-only match.
-- **§4.6 Library** is In progress (with "position of length"), Downloads
+- **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
   (with storage held and Remove All, which asks first), and Played
   (Apple's word).
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
@@ -199,6 +217,27 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   are offline." with Try again when the device has no network. The
   listing's credit is one caption link, "Schedule: {paper}, via
   {source}", opened in the browser (text only on a TV).
+- **§4.11 The account is Library's first row** (`ui/AccountRow.kt`).
+  Android has no Settings screen and gets none for this: an account is a
+  rare job, and Library is where the records it syncs already live
+  (`learner-experience-design`: account pages for rare jobs). One
+  `ListItem` with the account icon: signed out, "Sign in to sync"; signed
+  in, "Signed in with Google" (or Apple) over "Synced 5 minutes ago",
+  "Syncing", or "Not synced yet", or the last error in the error color
+  with the `error` haptic. A build whose ids are placeholders shows the
+  row unclickable with "Sign-in is not set up in this build." and no
+  error. The row opens a `ModalBottomSheet`: signed out, "Sign in with
+  Google" (Credential Manager, a Google ID token with a raw nonce) and
+  "Sign in with Apple" (Apple's web authorization in a Custom Tab, no
+  scope, returning through `eardrama.org/auth/apple/` to
+  `eardrama://oauth/apple`, DEEP_LINKS.md), each only when configured;
+  signed in, the sync line, the last error, Sync now, Sign out, and
+  Delete account, which asks first in an `AlertDialog` ("Delete your
+  account?") and, for an Apple account, goes back through Apple for the
+  code the Worker revokes. Sign-in is never asked for at launch or by any
+  other screen (Decision 057). A signed-in app syncs when it comes
+  forward and when it leaves (`MainActivity.onStart`/`onStop`); signed
+  out, nothing reaches the Worker.
 
 ## §5 The player
 
@@ -285,7 +324,11 @@ file (`StandInNeverStoredTest`). No analytics.
   Search its field, Library its first row. On Radio every slot is a
   D-pad focus stop with the ring, gaps included, and a surviving slot is
   one stop that opens Detail, where Play lives (tvOS-DESIGN §4.8). The session stays on so the home screen can show a
-  Now Playing card (TV-NP). The banner is a placeholder.
+  Now Playing card (TV-NP). The banner is a placeholder. A TV omits
+  sign-in: Credential Manager's sheet and a Custom Tab are phone surfaces,
+  and a remote is no way to type an Apple ID. The account row is absent on
+  a TV signed out; an account signed in on that device still syncs, as
+  `android-tv`, with Sync now, Sign out, and Delete account (§4.11).
 - **§9.3 Wear OS** (`android/wear/`) is Continue, saying "Waiting on the
   phone" until the phone hands its history over; minSdk 30.
 - **§9.4** Update `PARITY.md` in the same change set.
@@ -351,7 +394,21 @@ file (`StandInNeverStoredTest`). No analytics.
   transcript are the phone's layouts**; only the four tabs claim focus.
 - **The `eardrama://` and App Link filters are off** in the manifest
   (§3.4); `DeepLink.parse` routes both once they are on.
-- **No Queue, Following, or Share verbs**, which the web has.
+- **No Queue, Following, or Share verbs**, which the web has. Sync
+  stores the queue and follows other devices send (`UserStore.queue`,
+  `followed`) and sends them back unchanged; nothing on Android shows
+  them yet, and no Android verb removes an episode from history.
+- **Sign-in has not run.** The Worker is not deployed and the ids are
+  placeholders (docs/WORKER.md, Needs Ben). Apple on Android also needs
+  the return page at `https://eardrama.org/auth/apple/`, which forwards
+  its fragment to `eardrama://oauth/apple`; it is not built. Google needs
+  an Android OAuth client for `app.eardrama` with the Play signing SHA-1
+  (and `app.eardrama.debug` with the debug key) in the project that owns
+  the Web client id.
+- **Google Play's account-deletion rule** asks for deletion in the app
+  (§4.11, built) and a web path for people without the app. The web path
+  is the web client's Delete account (another surface's work), and its URL
+  goes in Play Console's Data safety form; neither exists yet.
 - **Tab icons differ from Apple's** (Headphones and Radio against
   `play.circle` and `square.stack`).
 

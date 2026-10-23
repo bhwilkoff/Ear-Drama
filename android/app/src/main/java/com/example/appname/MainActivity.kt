@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 CompositionLocalProvider(LocalIsTelevision provides television) {
-                    AppRoot(container = (application as AppNameApplication).container, inbox = inbox, muted = playerMuted)
+                    AppRoot(container = container, inbox = inbox, muted = playerMuted)
                 }
             }
         }
@@ -90,10 +90,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** `eardrama://` and its `https://eardrama.org` twins (DEEP_LINKS.md) land in the inbox. */
+    /**
+     * `eardrama://` and its `https://eardrama.org` twins (DEEP_LINKS.md) land in
+     * the inbox; Sign in with Apple's return (`eardrama://oauth/apple`) goes to
+     * the account instead and opens nothing.
+     */
     private fun handleDeepLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val url = intent.dataString ?: return
+        if (container.accounts.handleCallback(url)) return
         DeepLink.parse(url)?.let { inbox += it }
+    }
+
+    private val container get() = (application as AppNameApplication).container
+
+    /** A signed-in app syncs when it comes forward and when it leaves (DECISIONS 063); signed out, nothing runs. */
+    override fun onStart() {
+        super.onStart()
+        if (container.accounts.account.value != null) container.accounts.syncNow()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (container.accounts.account.value != null) container.accounts.syncNow()
     }
 }

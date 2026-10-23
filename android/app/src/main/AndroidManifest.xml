@@ -60,6 +60,16 @@
             </intent-filter>
             -->
 
+            <!-- Sign in with Apple's return, forwarded by eardrama.org/auth/apple/
+                 (DEEP_LINKS.md, OAuth callback). Only the oauth host: it opens no
+                 screen, so it needs no store record and is on now. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="eardrama" android:host="oauth" android:pathPrefix="/apple"/>
+            </intent-filter>
+
             <!-- The eardrama:// scheme (DeepLink.parse routes it). Off, as the HTTPS
                  filter is, until the store records exist (LOOP-PLAN, deep links). -->
             <!--

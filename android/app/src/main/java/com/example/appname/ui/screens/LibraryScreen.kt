@@ -1,5 +1,6 @@
 package com.example.appname.ui.screens
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,6 +19,7 @@ import com.example.appname.ui.ClaimTvFocus
 import androidx.compose.ui.Modifier
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Progress
+import com.example.appname.ui.AccountRow
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.LoadableContent
@@ -51,13 +53,18 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
             if (library.inProgress.isEmpty() && library.finished.isEmpty() && downloadRecords.isEmpty()) {
-                EmptyMessage("Episodes you play appear here.", Modifier.padding(padding))
+                Column(Modifier.padding(padding)) {
+                    AccountRow()
+                    EmptyMessage("Episodes you play appear here.")
+                }
                 return@LoadableContent
             }
             // On a TV the D-pad starts on the first row (§9.2).
             val firstRow = remember { FocusRequester() }
             ClaimTvFocus(firstRow, Unit)
             LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
+                // §4.11: the account is the first row, above what this device holds.
+                item(key = "account") { AccountRow() }
                 if (library.inProgress.isNotEmpty()) {
                     item(key = "progress-h") { SectionHeader("In progress") }
                     items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->
