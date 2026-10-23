@@ -1,0 +1,72 @@
+{
+ "format": 1,
+ "source_format": 1,
+ "scripts": {
+  "gut-47826": {
+   "revision": "d1bcacfd08c1",
+   "title": "A Tender Attachment",
+   "cast": "1123a568e6f11febe2bb3b47ca412cef2254500af7c6446c6c7bf8cdbfc1afb3",
+   "lines": 297
+  },
+  "gut-54702": {
+   "revision": "9dc5ae479fe1",
+   "title": "A Translation of Octavia, a Latin Tragedy, with Notes and Introduction",
+   "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
+   "lines": 148
+  },
+  "gut-49295": {
+   "revision": "34e6f3dbbcb9",
+   "title": "After Taps",
+   "cast": "2f9bb4c4e39501bf4bac4dd06b588589d99964fb81b373b25cb2be8305d1c88a",
+   "lines": 657
+  },
+  "gut-2265": {
+   "revision": "e3cf30fcf0cc",
+   "title": "Hamlet",
+   "cast": "e63124d9e9fcffe1732185338813a9961aa0cfb5033365f38c595d67634c5bdc",
+   "lines": 1201
+  },
+  "gut-1502": {
+   "revision": "95f4398b7008",
+   "title": "King Henry VI, Part 3",
+   "cast": "6968e055678602cb447b3f3aa426fd82ba9623f93b7b07b01130083b31def721",
+   "lines": 986
+  },
+  "gut-7364": {
+   "revision": "63209a9057fa",
+   "title": "The Albany Depot ",
+   "cast": "dccf767c0778c6237b441aea4f257e9da8b58b8b5aad09b8cd7f0aabdd279d80",
+   "lines": 166
+  },
+  "gut-12039": {
+   "revision": "c963c907912a",
+   "title": "The Custom of the Country",
+   "cast": "40103fada44070ab299f31588bed05a8c778d73776e1ca0659c7873517f34c78",
+   "lines": 977
+  },
+  "gut-67583": {
+   "revision": "3acb1ae02adb",
+   "title": "The Jazz Singer",
+   "cast": "2bd97270e9f2de5eadc73cf388f2eb3e80217c9c2a882d10363b8e73e0e7e391",
+   "lines": 992
+  },
+  "gut-5071": {
+   "revision": "6ec7307c62e9",
+   "title": "The Philanderer",
+   "cast": "a7bc6050a0115c77d6f3257a39663f2b3a3d1e06250b4fc1047744a42b8b4595",
+   "lines": 492
+  },
+  "gut-49916": {
+   "revision": "627e3ee71a25",
+   "title": "The Tenth Man",
+   "cast": "2c9855adf8b73ab933142d4dbbd94748bbe7ad157f90818d2debf7c8c3f4ff35",
+   "lines": 1720
+  },
+  "gut-76327": {
+   "revision": "6edbad4e73ae",
+   "title": "The true-born Irishman",
+   "cast": "5342877e894bcbfa6b6d478f08e683c7827457a0fe8af50c535288505f19a42b",
+   "lines": 548
+  }
+ }
+}

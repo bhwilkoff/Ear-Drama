@@ -14,7 +14,7 @@ const M = [
   ["alg not pinned", "src/jwt.js", 'if (header.alg !== "RS256") throw new TokenError("bad_alg");', ""],
   ["no issuer check", "src/jwt.js", 'if (!rules.issuers.includes(payload.iss)) throw new TokenError("bad_issuer");', ""],
   ["deletion skips users", "src/account.js", '    env.DB.prepare("DELETE FROM users WHERE id = ?1").bind(userId),\n', ""],
-  ["deletion skips history", "src/account.js", '"history", "follows"', '"follows"'],
+  ["deletion skips history", "src/account.js", '  "history",\n', ""],
   ["CORS allows all", "src/http.js", "if (!origin) return true; // native", "return true; // native"],
   [
     "LWW ignores stamps",
@@ -38,7 +38,7 @@ const M = [
   ["client sets the clock", "src/room-protocol.js", "  next.updated_at = now;\n", "  next.updated_at = input.updated_at ?? now;\n"],
   ["no idle expiry", "src/room-protocol.js", "return now - room.touched_at > ROOM_IDLE_MS;", "return false;"],
   ["no size limit", "src/rooms.js", 'if (settled.live.length >= MAX_MEMBERS) return problem(409, "room_full");', ""],
-  ["cron skips rooms", "src/index.js", "Promise.all([sweepSessions(env), sweepRooms(env)])", "Promise.all([sweepSessions(env)])"],
+  ["cron skips rooms", "src/index.js", "Promise.all([sweepSessions(env), sweepRooms(env), ", "Promise.all([sweepSessions(env), "],
   ["sweep keeps empty rooms", "src/rooms.js", "touched_at < ?1 OR code NOT IN (SELECT code FROM room_members)", "touched_at < ?1"],
   ["four-character codes", "src/room-protocol.js", "export const CODE_LENGTH = 6;", "export const CODE_LENGTH = 4;"],
   ["predictable codes", "src/rooms.js", "  crypto.getRandomValues(bytes);\n  return codeFromBytes(bytes);", "  return codeFromBytes(bytes);"],
@@ -49,10 +49,87 @@ const M = [
   ["drift seeks small offsets", "src/room-protocol.js", "seekAbove: 2,", "seekAbove: 0.5,"],
   ["drift ignores pause", "src/room-protocol.js", 'if (player.playing) return { action: "pause", position: target };', ""],
   ["clock averages samples", "src/room-protocol.js", "if (!best || rtt < best.rtt)", "if (!best || rtt > best.rtt)"],
+  // Shared plays (M8)
+  ["plays need no account", "src/index.js", "    const auth = await authenticate(request, env);\n    if (auth.error) return auth.error;\n    if (await limited(env.USER_LIMITER, auth.userId)) return problem(429, \"rate_limited\");\n    return handlePlays", "    const auth = { userId: \"anon\" };\n    return handlePlays"],
+  ["deletion skips play_takes", "src/account.js", '  "play_takes",\n', ""],
+  ["deletion skips classes", "src/account.js", '  "play_classes",\n', ""],
+  ["deletion skips the blocked side", "src/account.js", '  ["play_blocks", "blocked_id", "delete"],\n', ""],
+  ["deletion keeps take audio", "src/account.js", "  const orphans = await playsBeforeDeletion(env, userId);", "  const orphans = [];"],
+  ["failed object deletion forgotten", "src/plays.js", "    } catch {\n      failed.push(...chunk);\n    }", "    } catch {}"],
+  ["sweep skips orphans", "src/plays.js", "  const failed = new Set(await deleteObjects(env, keys));", "  const failed = new Set(keys);"],
+  ["director deletion drops the cast", "src/plays.js", "WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1)", "WHERE 0"],
+  ["any script is castable", "src/plays.js", '  if (!entry) return problem(422, "not_castable");\n', ""],
+  ["any revision is castable", "src/plays.js", '  if (body.script_revision !== entry.revision) return problem(409, "revision_mismatch", entry.revision);\n', ""],
+  ["cast sheet trusted", "src/plays.js", '  if ((await castHash(cast)) !== entry.cast) return problem(422, "cast_mismatch");\n', ""],
+  ["manifest drifts", "src/castable-manifest.json", '"format": 1,', '"format": 2,'],
+  ["non-members read productions", "src/plays.js", "if (!p || !(await member(env, p.id, auth.userId))) return problem(404, \"not_found\");", "if (!p) return problem(404, \"not_found\");"],
+  ["invite tokens stored raw", "src/plays.js", "    .bind(id, p.id, auth.userId, await sha256Hex(token), now, expires)", "    .bind(id, p.id, auth.userId, token, now, expires)"],
+  ["short invite tokens", "src/plays.js", "  const token = randomToken(32);", "  const token = randomToken(16);"],
+  ["invites never expire", "src/plays.js", "if (!inv || inv.revoked || inv.expires_at <= now) return null;", "if (!inv || inv.revoked) return null;"],
+  ["revoked invites work", "src/plays.js", "if (!inv || inv.revoked || inv.expires_at <= now) return null;", "if (!inv || inv.expires_at <= now) return null;"],
+  ["anyone makes invites", "src/plays.js", "async function createInvite(auth, request, env, p, now) {\n  if (p.user_id !== auth.userId) return problem(403, \"director_only\");", "async function createInvite(auth, request, env, p, now) {"],
+  ["invites last forever", "src/plays.js", "days < 1 || days > INVITE_MAX_DAYS", "days < 1"],
+  ["claims out of order", "src/plays-relay.js", '  if (nx !== part) return { error: "not_next", detail: nx };\n', ""],
+  ["two parts record at once", "src/plays-relay.js", '  if (cur) return { error: "another_part_is_recording", detail: cur };\n  const nx = next(cast, rows, now);', "  const nx = castParts(cast).map((p) => p.id).find((id) => statusOf(rows, id, now) === \"open\") || null;"],
+  ["claims never lapse", "src/plays-relay.js", '  if (r.status === "recording" && now - r.claimed_at > CLAIM_TTL_MS) return "open";\n', ""],
+  ["cron skips plays", "src/index.js", "sweepRooms(env), sweepPlays(env)]", "sweepRooms(env)]"],
+  ["done with lines missing", "src/plays-relay.js", '    if (missing.length) return { error: "lines_missing", detail: missing.slice(0, 50) };\n', ""],
+  ["speaking part left silent", "src/plays-relay.js", '  if (isSpeaking(part)) return { error: "speaking_part_needs_a_voice" };\n', ""],
+  ["reopen while recording", "src/plays-relay.js", 'export function reopenRefusal(cast, rows, part, userId, directorId, now) {\n  const cur = current(cast, rows, now);\n  if (cur) return { error: "another_part_is_recording", detail: cur };', "export function reopenRefusal(cast, rows, part, userId, directorId, now) {"],
+  ["anyone reopens", "src/plays-relay.js", '  if (rows[part].user_id !== userId && directorId !== userId) return { error: "not_your_part" };\n', ""],
+  ["anyone releases", "src/plays.js", 'refusal = isClaimant(rows, part, auth.userId, now) ? null : { error: "not_your_claim" };', "refusal = null;"],
+  ["non-claimant uploads", "src/plays.js", '  if (!isClaimant(await partRows(env, p.id), part, auth.userId, now)) return problem(403, "not_your_claim");\n  const consent', "  const consent"],
+  ["take on a line of its own choosing", "src/plays.js", '  if (meta.part !== undefined && meta.part !== part) return problem(422, "line_is_another_part", part);\n', ""],
+  ["upload without consent", "src/plays.js", '  if (!consent) return problem(403, "consent_required", CONSENT_VERSION);\n', ""],
+  ["stale consent accepted", "src/plays.js", '  if (body.version !== CONSENT_VERSION) return problem(409, "consent_version_mismatch", CONSENT_VERSION);\n', ""],
+  ["bleed take stored", "src/plays.js", '  if (meta.bleed === true) return problem(422, "bleed_flagged");\n', ""],
+  ["no take size limit", "src/plays.js", '  if (bytes.length > MAX_TAKE_BYTES) return problem(413, "too_large");\n', ""],
+  ["no take duration limit", "src/plays.js", '  if (audio.frames / audio.sampleRate > MAX_TAKE_SECONDS) return problem(413, "take_too_long", `${MAX_TAKE_SECONDS} s`);\n', ""],
+  ["declared length trusted", "src/plays.js", '    return problem(422, "audio_mismatch", "frames");', '    meta.frames = audio.frames;'],
+  ["header length trusted", "src/plays-audio.js", "      if (body + size > b.length) return null; // the header claims more audio than was sent\n", ""],
+  ["stereo accepted", "src/plays-audio.js", "fmt.channels !== 1 || ", ""],
+  ["takes overwritten", "src/plays.js", "  if (!ins.meta.changes) {\n    await env.TAKES.delete(key);\n    return problem(409, \"take_exists\");\n  }\n", ""],
+  ["unbounded takes a line", "src/plays.js", '  if (count.n >= MAX_TAKES_PER_LINE) return problem(409, "too_many_takes");\n', ""],
+  ["new take not chosen", "src/plays.js", "  await env.DB.batch([...chooseStatements(env, p.id, meta.lineID, takeId), touch(env, p.id, now)]);", "  await env.DB.batch([touch(env, p.id, now)]);"],
+  ["no upload limit", "src/plays.js", 'if (await limited(env.PLAY_UPLOAD_LIMITER, auth.userId)) return problem(429, "rate_limited");', ""],
+  ["no join limit on claims", "src/plays.js", 'async function claimByInvite(auth, request, env, now) {\n  if (await limited(env.PLAY_JOIN_LIMITER, auth.userId)) return problem(429, "rate_limited");', "async function claimByInvite(auth, request, env, now) {"],
+  ["blocked takes shown", "src/plays.js", "  return (t) => blocked.has(t.user_id) || reported.has(t.id);", "  return (t) => reported.has(t.id);"],
+  ["reported takes shown", "src/plays.js", "  return (t) => blocked.has(t.user_id) || reported.has(t.id);", "  return (t) => blocked.has(t.user_id);"],
+  ["blocked person invited", "src/plays.js", "  if (blocked.has(inv.user_id) || blockedBy.has(inv.user_id)) return null;\n", ""],
+  ["blocker invites blocked", "src/plays.js", "blocked.has(inv.user_id) || blockedBy.has(inv.user_id)", "blocked.has(inv.user_id)"],
+  ["outsiders report", "src/plays.js", 'if (typeof body.production_id !== "string" || !(await member(env, body.production_id, auth.userId))) {', 'if (typeof body.production_id !== "string") {'],
+  ["name filter off", "src/plays-names.js", '  if (STRONG.some((t) => squashed.includes(t))) return "name_not_allowed";\n', ""],
+  ["look-alikes pass", "src/plays-names.js", "  return [...plain].map((c) => LOOK_ALIKE[c] || c).join(\"\");", "  return plain;"],
+  ["filter skips claims", "src/plays.js", "  const p = await redeem(env, body.token, auth.userId, now);\n  if (!p) return problem(404, \"invite_not_found\");\n  const refusal = nameRefusal(body.display_name);\n  if (refusal) return problem(422, refusal);", "  const p = await redeem(env, body.token, auth.userId, now);\n  if (!p) return problem(404, \"invite_not_found\");"],
+  ["publish incomplete", "src/plays.js", '  if (left) return problem(409, "incomplete", left);\n', ""],
+  ["publish with a reported take", "src/plays.js", '  if (held.length) return problem(409, "reported_take", held);\n', ""],
+  ["publish without consent", "src/plays.js", '  if (missing.length) return problem(409, "consent_missing", missing);\n', ""],
+  ["anyone publishes", "src/plays.js", "async function publish(auth, env, p, now) {\n  if (p.user_id !== auth.userId) return problem(403, \"director_only\");", "async function publish(auth, env, p, now) {"],
+  ["job claims to have run", "src/plays.js", "VALUES (?1, ?2, 'pending_owner_account', ?3, ?4, ?4)", "VALUES (?1, ?2, 'queued', ?3, ?4, ?4)"],
+  ["under-13 join without consent", "src/plays.js", '  if (c.under13 && !c.consent) return problem(403, "school_consent_required");\n', ""],
+  ["consent without the policy", "src/plays.js", '  if (!env.SCHOOL_CONSENT_POLICY) return problem(503, "pending_owner_policy");\n', ""],
+  ["students record school consent", "src/plays.js", '  if (c.user_id !== auth.userId) return problem(403, "teacher_only");\n', ""],
+  ["students see the roster", "src/plays.js", "  if (c.user_id === auth.userId) {\n    const { results }", "  if (true) {\n    const { results }"],
+  ["short class codes", "src/plays.js", "export const CLASS_CODE_LENGTH = 8;", "export const CLASS_CODE_LENGTH = 4;"],
 ];
 
+// --check: confirm every mutation still matches its file exactly once, and run nothing.
+if (process.argv.includes("--check")) {
+  for (const [name, file, from] of M) {
+    const n = readFileSync(root + file, "utf8").split(from).length - 1;
+    if (n !== 1) throw new Error(`mutation "${name}" matches ${file} ${n} times`);
+  }
+  console.log(`all ${M.length} mutations match`);
+  process.exit(0);
+}
+
+// --only "name,name": run just those (after fixing a survivor); the full run is the gate.
+const at = process.argv.indexOf("--only");
+const only = at > 0 ? process.argv[at + 1].split(",") : null;
+const run = only ? M.filter(([name]) => only.includes(name)) : M;
+
 let survivors = 0;
-for (const [name, file, from, to] of M) {
+for (const [name, file, from, to] of run) {
   const path = root + file;
   const src = readFileSync(path, "utf8");
   if (src.split(from).length !== 2) throw new Error(`mutation "${name}" no longer matches ${file} exactly once`);
@@ -68,5 +145,5 @@ for (const [name, file, from, to] of M) {
   console.log(`${red ? "CAUGHT  " : "SURVIVED"} ${name}`);
   if (!red) survivors++;
 }
-console.log(survivors ? `${survivors} mutation(s) survived` : `all ${M.length} mutations caught`);
+console.log(survivors ? `${survivors} mutation(s) survived` : `all ${run.length} mutations caught`);
 process.exit(survivors ? 1 : 0);

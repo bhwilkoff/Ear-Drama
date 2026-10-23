@@ -85,10 +85,10 @@ describe("rate limits", () => {
 });
 
 describe("routing", () => {
-  it("plays (M8) are reserved, not built", async () => {
-    for (const p of ["/v1/plays", "/v1/plays/123"]) {
-      const r = await call("GET", p);
-      expect(r.status, p).toBe(501);
+  it("plays (M8) need an account on every route (Decision 057)", async () => {
+    for (const [m, p] of [["GET", "/v1/plays/consent"], ["POST", "/v1/plays/productions"], ["POST", "/v1/plays/invites/claim"], ["POST", "/v1/plays/classes/join"]]) {
+      const r = await call(m, p, { body: m === "GET" ? undefined : {} });
+      expect(r.status, p).toBe(401);
     }
   });
 

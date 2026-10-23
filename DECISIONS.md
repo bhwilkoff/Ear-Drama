@@ -83,6 +83,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 063: Sign-in is verified at the Worker, which issues its own session; sync is last-write-wins per row
 - 064: The palette is On Air
 - 065: Listen Together rooms need no account; the host is a member and hands off
+- 066: Shared plays live on the Worker, invite-only, with take audio in R2 behind the owner's switch
 
 ---
 
@@ -633,3 +634,30 @@ years to guess one of 1,000 live rooms at 20 joins a minute per address); rate
 limits per address for create and join and per member. Every rule lives in
 `worker/src/room-protocol.js`, which has no imports (a test fails if it gains
 one); clients and SharePlay port it rather than re-derive it.
+
+---
+
+## 066: Shared plays live on the Worker, invite-only, with take audio in R2 behind the owner's switch
+
+*Date: 2026-10-23*
+
+A production is checked against a castable manifest (each castable cast
+sheet's SHA-256) and seen only by its members, who join by an invite token
+(256-bit, stored as a hash, revocable, expiring in 1 to 30 days). Takes are
+immutable R2 objects checked from their own WAV or FLAC headers (mono, at most
+300 s and 45 MB; a bleed-flagged take is refused). Reports, blocks, and a
+server-side name filter answer App Store guideline 1.2. CC0 consent is recorded
+by version id; publishing only queues a `pending_owner_account` job.
+
+**Why**: Decision 057 requires an account to cast a shared play. D1's 500 MB
+holds under an hour of 24-bit audio, while R2 has free egress but asks for a
+payment method (research 08c Q8), so the take store waits on the owner. The
+Worker never takes a client's word for what is castable.
+
+**How to apply**: run `node worker/tools/castable-manifest.mjs` after every
+castable rebuild (a test fails when the two drift). New consent words need a new
+`CONSENT_VERSION`; the words themselves are the owner's (a placeholder starting
+"OWNER:" until then). Every person table goes in USER_TABLES, and any person
+column that is not `user_id` in OTHER_PERSON_COLUMNS. Owner items P1 to P8
+(R2, consent words, a vetted deny list, report handling, school consent, the
+archive.org account, C6/C7, class ownership) are in PLAYS-DESIGN §11.6.

@@ -1,11 +1,12 @@
-# The Worker: accounts, sync, and Listen Together rooms
+# The Worker: accounts, sync, Listen Together rooms, and shared plays
 
 `worker/` is Ear Drama's one backend: a Cloudflare Worker with a D1 database
 that verifies Sign in with Apple and Sign in with Google, issues its own
 session, and syncs listening history, the queue, and followed series
 (Decision 057, LOOP-PLAN M5). Signing in is optional; nothing but Listen
 Together runs for a listener who never signs in. It also holds the Listen
-Together rooms for the web and Android (M6), which need no account.
+Together rooms for the web and Android (M6), which need no account, and the
+invite-only shared plays (M8), which need one for every call.
 
 It is ported from Archive Watch's `worker/`: one free Worker, routes as
 sibling modules called from one `fetch()`, Cloudflare rate-limit bindings
@@ -21,7 +22,7 @@ the owner's, listed under [Needs Ben](#needs-ben).
 
 | Path | What it holds |
 |---|---|
-| `worker/src/index.js` | the router, CORS gate, per-address limit, cron entry; the reserved path for plays |
+| `worker/src/index.js` | the router, CORS gate, per-address limit, cron entry |
 | `worker/src/auth.js` | sign-in, refresh, sign-out, `authenticate()`, the session sweep |
 | `worker/src/jwt.js` | RS256 identity tokens against a JWKS, the Worker's HS256 tokens, ES256 for Apple revocation |
 | `worker/src/sync.js` | upload (last write wins), the anonymous merge, read since |
@@ -29,8 +30,15 @@ the owner's, listed under [Needs Ben](#needs-ben).
 | `worker/src/http.js` | JSON responses, CORS, `limited()`, body parsing |
 | `worker/src/room-protocol.js` | Listen Together's protocol and arbiter, pure: state, handoff, expiry, codes, clock, drift |
 | `worker/src/rooms.js` | the rooms' HTTP and D1 adapter, and the room sweep |
+| `worker/src/plays.js` | shared plays' HTTP, D1, and bucket adapter; deletion's plays step; the plays sweep |
+| `worker/src/plays-relay.js` | the cast sheet and the relay (C7), pure: part order, claims and their lapse, done, silent, reopen, completeness |
+| `worker/src/plays-names.js` | the display-name deny list (the server's layer of the two-layer gate) |
+| `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header |
+| `worker/src/plays-manifest.js`, `worker/src/castable-manifest.json` | the castable manifest: script id, revision, title, and the SHA-256 of each cast sheet |
+| `worker/tools/castable-manifest.mjs` | rebuilds the manifest from `catalog/plays/castable-scripts.json` |
 | `worker/migrations/0001_accounts.sql` | the D1 schema for accounts and sync |
 | `worker/migrations/0002_rooms.sql` | the D1 schema for rooms |
+| `worker/migrations/0003_plays.sql` | the D1 schema for shared plays and classes |
 | `worker/test/*.test.js` | the suite (vitest inside workerd, a throwaway local D1) |
 | `worker/test/mutations.mjs` | negative controls: breaks each guarantee and expects the suite to fail |
 
@@ -53,7 +61,7 @@ All JSON. A browser may call only from an allowed origin; native apps send no
 | `PUT /v1/sync` | bearer | upload (below) | `{ server_time, applied: { history, follows, queue } }` |
 | `POST /v1/sync/merge` | bearer | upload | the same; see [the anonymous merge](#the-anonymous-merge) |
 | `/v1/rooms/*` | room key | | Listen Together; see [rooms](#listen-together-rooms) |
-| `/v1/plays/*` | | | `501`, reserved for shared plays (M8) |
+| `/v1/plays/*` | bearer | | shared plays and classes; see [shared plays](#shared-plays) |
 
 **Session**: `{ access_token, access_expires_at, refresh_token,
 refresh_expires_at, user_id, provider?, created? }`. Times are milliseconds.
@@ -114,7 +122,18 @@ built on another device.
 from every table, and the schema's `ON DELETE CASCADE` is the second lock. The
 account's tokens stop working at once (each call reads the session row), so
 nothing can write rows back. The test counts rows in every table D1 holds,
-not a list we keep, so a new table left out of deletion fails it.
+not a list we keep, so a new table left out of deletion fails it. It finds a
+person's columns from D1's own foreign keys (`user_id`, and any other column
+that references `users`), so `OTHER_PERSON_COLUMNS` in `account.js` must name
+each column that is not `user_id`.
+
+For shared plays, deletion first hands each production with anyone else in it
+to the member who joined first (their takes stay), then deletes the audio of
+every take that is losing its row from the TAKES bucket. An object the bucket
+fails to delete is queued in `play_orphan_objects` (a key names a production
+and a take, never a person) and the hourly sweep retries it; the rows go
+either way. A report about the deleted person keeps its trail with
+`target_user_id` cleared.
 
 Sign in with Apple also asks that the app revoke the person's Apple tokens.
 The Worker never keeps an Apple token, so the Apple client asks Apple for a
@@ -254,9 +273,142 @@ What every read answers, and the shape SharePlay is meant to carry:
   a random id, the hash of a random key, and two times. No account, name, or
   address. Both go when the member leaves or the room ends.
 
+## Shared plays
+
+Phase 2 of the plays (LOOP-PLAN M8, Decisions 057 and 059,
+`docs/PLAYS-DESIGN.md` §11): a production made on one device is recorded
+across several, by people who came in with an invite link. Every route takes a
+bearer token (Decision 057) and counts against `USER_LIMITER`. No route calls
+archive.org or any other host.
+
+**Castable only.** A production is made from a script id, its revision, and
+its cast sheet (`[{ id, part }]`, every line in script order, `part` being
+`role:NAME`, `sound`, or `directions` exactly as `js/plays-core.js`
+`linePart` gives it). The Worker checks all three against
+`src/castable-manifest.json`, which holds the SHA-256 of each castable
+script's cast sheet; the title comes from the manifest, never from the client.
+`node tools/castable-manifest.mjs` rebuilds the manifest whenever
+`catalog/plays/castable-scripts.json` changes, and a test fails while the two
+disagree. A revision the Worker does not have is `409 revision_mismatch` with
+the current one.
+
+**Takes are objects.** Audio goes to the `TAKES` R2 bucket (free egress, 10 GB
+a month free); its D1 row holds the fields and the object key. D1's 500 MB a
+database holds under an hour of 24-bit mono at 48 kHz (144 KB a second), so audio never
+goes in it. R2 asks for a payment method on file even on its free tier
+(research 08c Q8), so the binding is commented out in `wrangler.toml` until the
+owner decides, and an upload answers `503 storage_not_configured` without it.
+The tests bind a local stand-in.
+
+### Endpoints
+
+All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
+(URL-encoded, so `role%3AHAMLET`).
+
+| Method and path | Who | Body | Answer |
+|---|---|---|---|
+| `GET /consent` | anyone | | `{ version, text }`: the CC0 consent's version id, and the owner's words (a marked placeholder until approved) |
+| `POST /productions` | anyone | `{ script_id, script_revision, cast, display_name? }` | `201` the record; the caller directs |
+| `GET /productions` | anyone | | `{ productions: [{ id, title, script_id, director, updated_at }] }`, the caller's |
+| `GET /productions/:pid` | a member | | the record (below) |
+| `POST /productions/:pid/invites` | the director | `{ expires_in_days? }` 1 to 30, default 7 | `201 { id, token, expires_at }`; the token is shown once |
+| `DELETE /productions/:pid/invites/:id` | the director | | `204` |
+| `POST /invites/view` | anyone with a token | `{ token }` | the cast sheet: `{ id, title, parts: [{ id, lineCount, status }], next, member }` |
+| `POST /invites/claim` | anyone with a token | `{ token, part, display_name? }` | joins and claims `part`; the record |
+| `POST /productions/:pid/claim` | a member | `{ part }` | claims `part` (a member may double parts); the record |
+| `POST /productions/:pid/parts/:part/done` | the claimant | | the record |
+| `POST /productions/:pid/parts/:part/silent` | the claimant, or anyone when it is next | | sound and directions only; the record |
+| `POST /productions/:pid/parts/:part/reopen` | the part's performer or the director | | the record |
+| `POST /productions/:pid/parts/:part/release` | the claimant | | the part is open again; the record |
+| `POST /productions/:pid/consent` | a member | `{ version }` | `204`; `409 consent_version_mismatch` with the current version |
+| `PUT /productions/:pid/takes/:takeId` | the claimant | the audio; `x-take: <the take's fields as JSON>` | `201` the take |
+| `GET /productions/:pid/takes/:takeId/audio` | a member who may see it | | the audio |
+| `POST /productions/:pid/chosen` | the claimant | `{ take_id }` | the record |
+| `POST /productions/:pid/publish` | the director | | `201 { status: "pending_owner_account", take_ids, created_at }`; again, `200` and the same job |
+| `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
+| `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
+| `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent }` |
+| `GET /classes` | anyone | | `{ teaching, member_of }` |
+| `POST /classes/join` | anyone with the code | `{ code, display_name? }` | `{ id, name, under13 }` |
+| `GET /classes/:id` | the teacher or a member | | the teacher sees the code and the roster; a student, the name |
+| `POST /classes/:id/school-consent` | the teacher | `{ reference? }` | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set |
+| `DELETE /classes/:id/members/:userId` | the teacher, or that student | | `204` |
+
+A production the caller is not in, an unknown one, an invite that is unknown,
+revoked, expired, or blocked, and a hidden take all answer `404`, so none can
+be told apart.
+
+**The record** is production.json, merged line by line from every member's
+takes, with the field names Apple's `Production` and `js/plays-core.js`
+already use: `id`, `scriptID`, `scriptRevision`, `title`, `created`
+(Foundation seconds since 2001), `parts` (`{ status, performer? }` per part,
+`performer` being the member's display name), `takes`, `chosen`, `roomTone`
+(always empty: room tone stays on the device), and `listenedThrough` (always
+false: listening through is the device's). A take carries `id`, `lineID`,
+`part`, `file`, `created`, `frames`, `sampleRate`, `capture`, `heard`,
+`loudness`, `peak`, and `bleed`. The Worker adds fields a phase 1 decoder
+ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
+`server_time`, `invites` (the director's view), and per take `user_id` and
+`audio` (its path), per part `user_id` and `claim_expires_at`.
+
+### Rules the clients rely on
+
+- **The relay (C7, pending owner).** Only the next part may be claimed, in
+  the order of `castParts`: speaking parts largest first, then sound, then
+  directions. Nothing can be claimed while a part records. A claim lapses
+  seven days after it is made and the part is open again; its takes stay. The
+  hourly sweep deletes lapsed claims.
+- **Done and silent (C6, pending owner).** A speaking part is done only when
+  every one of its lines has a chosen take. Only sound and directions may be
+  left silent. A finished part reopens only while nothing records, for its
+  performer or the director.
+- **Invites.** 32 random bytes, base64url (43 characters), returned once and
+  stored as SHA-256. Revocable; expire after 1 to 30 days (7 by default).
+  Clients should carry the token in a link's fragment so it never reaches a
+  server log. A production holds at most 64 members.
+- **Takes.** Only the part's claimant uploads, only on a line of that part,
+  and only after consenting at the current version. A take is mono WAV or FLAC
+  and is read from its own header: at most 300 seconds (the longest castable
+  speech, 644 words, is about 258 seconds at 150 words a minute) and 45 MB. A
+  declared `frames` more than 50 ms from the audio, a `sampleRate` that
+  differs, or a header that claims more audio than was sent is refused. A
+  take whose bleed check fired (`bleed: true`) is refused, because it holds
+  the device voice (PLAYS-DESIGN §5). A take id is used once: takes are
+  immutable. A new take becomes its line's chosen take and the older ones
+  stay; at most 10 takes a line. `PLAY_UPLOAD_LIMITER` counts uploads per
+  person.
+- **Blocks.** A person who blocks someone stops seeing that person's takes
+  (the record drops them and counts them in `hidden_takes`; their audio is
+  `404`). An invite made by either of two people with a block between them
+  does not work for the other. Blocking answers `204` whether or not the
+  account exists.
+- **Reports.** A member reports a take or another member, with a reason
+  (`offensive`, `harassment`, `personal_information`, `not_a_performance`,
+  `other`) and an optional note of up to 500 characters. A reported take is
+  hidden from its reporter at once. Reports wait in `play_reports` for the
+  owner; nothing is sent anywhere yet.
+- **Names.** Display names (on a production, an invite claim, or a class
+  join) and class names pass `plays-names.js`: at most 40 characters, no
+  links, nothing that reads as the service, and no denied word after folding
+  accents, case, and look-alike characters. The list is a seed.
+- **Consent.** One row per person per production per version. Publishing
+  needs every performer's consent at the current version, so new words mean
+  consenting again.
+- **Publishing.** Only a complete production (every part done or silent,
+  every speaking line chosen), with no open report on a chosen take, queues a
+  job. The job's status is `pending_owner_account` until the Ear Drama
+  archive.org account exists; nothing runs it yet.
+- **Classes.** A class code is eight Crockford Base32 characters, normalized
+  like room codes. A class marked `under13` (fixed when it is made) takes no
+  student until its teacher records the school's consent, and that record can
+  be made only once the owner sets `SCHOOL_CONSENT_POLICY` to the privacy
+  policy's version. `PLAY_JOIN_LIMITER` counts invite views, invite claims,
+  and class joins per person.
+
 ## Schema
 
-`worker/migrations/0001_accounts.sql` and `0002_rooms.sql`. Times are milliseconds.
+`worker/migrations/0001_accounts.sql`, `0002_rooms.sql`, and `0003_plays.sql`.
+Times are milliseconds.
 
 | Table | Key | Columns |
 |---|---|---|
@@ -269,12 +421,28 @@ What every read answers, and the shape SharePlay is meant to carry:
 | `queue` | `(user_id, ord)` | `episode_id` |
 | `rooms` | `code` | `episode_id`, `archive_id`, `file`, `position`, `playing`, `rate`, `updated_at`, `generation`, `host_member`, `created_at`, `touched_at` |
 | `room_members` | `id` | `code`, `key_hash` (SHA-256 of the member key), `joined_at`, `seen_at` |
+| `play_productions` | `id` | `user_id` (the director), `script_id`, `script_revision`, `title`, `cast_sheet` (JSON `[[line id, part]]`), `created_at`, `updated_at` |
+| `play_members` | `(production_id, user_id)` | `display_name`, `joined_at` |
+| `play_invites` | `id` | `production_id`, `user_id` (its maker), `token_hash` (SHA-256), `created_at`, `expires_at`, `revoked` |
+| `play_parts` | `(production_id, part)` | `status` (`recording`, `done`, `silent`; no row is open), `user_id`, `claimed_at` |
+| `play_takes` | `(production_id, id)` | `user_id`, `line_id`, `part`, `file`, `object_key`, `content_type`, `bytes`, `frames`, `sample_rate`, `capture`, `heard`, `loudness`, `peak`, `created`, `uploaded_at`, `chosen` (one per line) |
+| `play_consents` | `(user_id, production_id, version)` | `consented_at` |
+| `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` |
+| `play_blocks` | `(user_id, blocked_id)` | `created_at` |
+| `play_archive_jobs` | `production_id` | `user_id`, `status`, `take_ids`, `created_at`, `updated_at` |
+| `play_classes` | `id` | `user_id` (the teacher), `name`, `code`, `under13`, `created_at` |
+| `play_class_members` | `(class_id, user_id)` | `display_name`, `joined_at` |
+| `play_school_consents` | `class_id` | `user_id` (the teacher who recorded it), `policy_version`, `reference`, `recorded_at` |
+| `play_orphan_objects` | `object_key` | `queued_at` |
 
 No email, name, or address is stored, and no provider token. A person is a
-provider and that provider's opaque `sub`. The two room tables hold no
-person at all and have no `user_id`; `ANONYMOUS_TABLES` in `rooms.js` names
-them, and the deletion test fails on a table that is in neither list or that
-gains a `user_id`. The same person signing in with
+provider and that provider's opaque `sub`. The two room tables and
+`play_orphan_objects` hold no person at all: no `user_id` and no column that
+references `users`. `ANONYMOUS_TABLES` in `rooms.js` and
+`PLAYS_ANONYMOUS_TABLES` in `plays.js` name them, and the deletion test fails
+on a table that is in neither list nor `USER_TABLES`, or that gains a person
+column. The display names on plays are the one name a person chooses to show,
+and they are deleted with the account. The same person signing in with
 Apple and then Google gets two accounts; linking them is a later decision.
 
 A new migration is a new numbered file; never edit one that has been applied.
@@ -290,6 +458,11 @@ fills them):
 | `GOOGLE_AUDIENCES` | comma-separated Google OAuth client ids: web, iOS, and the web id Android requests |
 | `ALLOWED_ORIGINS` | browser origins; `http://localhost` and `http://127.0.0.1` on any port are always allowed |
 | `APPLE_TEAM_ID`, `APPLE_KEY_ID` | only for Apple token revocation |
+| `SCHOOL_CONSENT_POLICY` | not set: the version of the privacy policy that covers school consent for students under 13. Until the owner sets it, no school consent can be recorded and no under-13 class takes a student |
+
+Bindings: `DB` (D1), and `TAKES` (R2, take audio), which stays commented out in
+`wrangler.toml` until the owner turns R2 on; without it take uploads answer
+`503`.
 
 A value starting `REPLACE_WITH` is never accepted as an audience, and a
 provider with no real audience answers `503 not_configured` rather than
@@ -314,9 +487,12 @@ for the window only):
 | `ROOM_CREATE_LIMITER` | client address | 10 a minute, opening a room |
 | `ROOM_JOIN_LIMITER` | client address | 20 a minute, joining; the floor under code guessing |
 | `ROOM_MEMBER_LIMITER` | member id | 60 a minute, each member's own calls, so one device cannot use up a household's share |
+| `PLAY_UPLOAD_LIMITER` | user id | 30 a minute, take uploads |
+| `PLAY_JOIN_LIMITER` | user id | 20 a minute, invite views and claims and class joins |
 
 The cron (`23 * * * *`, hourly) deletes expired sessions, idle rooms, quiet
-room members, and rooms left with no member. A revoked session is
+room members, rooms left with no member, lapsed play claims, and expired
+invites, and retries take objects a deletion could not remove. A revoked session is
 kept until it would have expired, because it is what recognizes a replayed
 refresh token.
 
@@ -329,8 +505,11 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 108 tests in workerd with a local D1
-npm run test:mutations   # 35 deliberate breaks; every one must turn the suite red
+npm test                 # 171 tests in workerd with a local D1 and a local R2 stand-in
+npm run test:mutations   # 96 deliberate breaks; every one must turn the suite red
+node test/mutations.mjs --check              # every break still matches its source, nothing run
+node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
+node tools/castable-manifest.mjs             # after every rebuild of the castable scripts
 ```
 
 The suite mints its own RSA keys and serves them in place of Apple's and
@@ -343,7 +522,21 @@ create and join, a guest refused a state write, guests receiving the host's
 copy, handoff when the host leaves or goes quiet, the last one out ending the
 room, the size limit, idle expiry, the sweep, code randomness and
 normalization, every room rate limit, the drift and clock rules, and that the
-protocol file stays pure.
+protocol file stays pure. For shared plays: the manifest matching the
+catalog's castable file, and a production refused for an unknown script, an
+old revision, or a cast sheet that is not the script's; the record's
+production.json fields and its merge of every member's takes; members-only
+reads; invites hashed, revoked, expiring, director-only, and blocked either
+way; the relay order, claims while another records, the seven-day lapse and
+its sweep, done, silent, reopen, and release; takes refused for a
+non-claimant, another part's line, missing or stale consent, bleed, length,
+size, a lying header, stereo, an unknown format, a reused id, and the eleventh
+take of a line; the chosen take; reports and blocks hiding takes; the name
+filter and its controls; publishing queued only, with no network call; under-13
+classes refused until a school consent exists, and that refused until the
+policy is set; the rate limits; deletion's director handoff, bucket cleanup,
+and orphan retry. The scripts come from the castable file by their data,
+never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/`. It has no Cloudflare credential and no deploy step.
 
@@ -356,7 +549,7 @@ Each of these is the owner's, in this order. None has been done.
 2. **Create the database**: `npx wrangler d1 create eardrama`, then put the
    printed `database_id` in `worker/wrangler.toml` (an id is not a secret).
 3. **Apply the schema**: `npx wrangler d1 migrations apply eardrama --remote`
-   (both migrations, accounts and rooms).
+   (the three migrations: accounts, rooms, and plays).
 4. **Sign in with Apple**: in the Apple Developer account, enable Sign in with
    Apple on `app.eardrama`; create a Services ID for the web and Android, with
    `eardrama.org` as its domain and return URL. Put the Services ID in
@@ -383,3 +576,14 @@ Each of these is the owner's, in this order. None has been done.
    sends, and nothing else; deleted at once on request. Listen Together rooms
    store what an episode is doing and an anonymous member key's hash, no
    account or address, deleted when the room ends or after six idle hours.
+   Shared plays store the recordings a person uploads, the display name they
+   choose, their consent, reports and blocks they make, and class membership;
+   all deleted with the account.
+10. **Shared plays (M8)**, each listed with its default in
+    `docs/PLAYS-DESIGN.md` §11.6: decide on R2 (it asks for a payment method on
+    file), then create the bucket and uncomment `TAKES` in `wrangler.toml`;
+    approve the CC0 consent words and give them a new `CONSENT_VERSION`; replace
+    the seed deny list in `plays-names.js` with a vetted one; decide how
+    reports reach you and how fast they are answered (guideline 1.2); set
+    `SCHOOL_CONSENT_POLICY` once the privacy policy covers school consent; and
+    create the Ear Drama archive.org account before any queued job can run.

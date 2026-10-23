@@ -88,3 +88,29 @@ namespace_id = "8307"
   [ratelimits.simple]
   limit = 60
   period = 60
+
+# Shared plays (M8, plays.js). UPLOAD counts one person's take uploads; JOIN
+# counts one person's invite views and claims and class joins.
+[[ratelimits]]
+name = "PLAY_UPLOAD_LIMITER"
+namespace_id = "8308"
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[ratelimits]]
+name = "PLAY_JOIN_LIMITER"
+namespace_id = "8309"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+# PLACEHOLDER, owner: take audio for shared plays (plays.js). R2 asks for a
+# payment method on file even on its free tier (research 08c Q8), so the
+# binding stays commented out until the owner decides; without it, take
+# uploads answer 503 storage_not_configured. To turn it on, create the bucket
+# (npx wrangler r2 bucket create eardrama-takes) and uncomment these lines.
+# The tests bind a local stand-in (vitest.config.js).
+# [[r2_buckets]]
+# binding = "TAKES"
+# bucket_name = "eardrama-takes"

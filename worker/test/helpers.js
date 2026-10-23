@@ -61,13 +61,14 @@ let ipCounter = 1;
 /** One request through the real Worker entry point. */
 export async function call(method, path, { body, token, origin, ip, envOverride, headers: extra } = {}) {
   const headers = { "cf-connecting-ip": ip || `10.0.${Math.floor(ipCounter / 250)}.${ipCounter++ % 250}`, ...extra };
-  if (body !== undefined) headers["content-type"] = "application/json";
+  const raw = body instanceof Uint8Array;
+  if (body !== undefined && !raw) headers["content-type"] = "application/json";
   if (token) headers.authorization = `Bearer ${token}`;
   if (origin) headers.origin = origin;
   const request = new Request(`https://api.eardrama.test${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body),
+    body: body === undefined ? undefined : raw || typeof body === "string" ? body : JSON.stringify(body),
   });
   const ctx = createExecutionContext();
   const response = await worker.fetch(request, envOverride ? { ...env, ...envOverride } : env, ctx);
