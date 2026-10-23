@@ -55,6 +55,17 @@ actor APIClient {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// The published evenings (contract §8), or nil when no file is published.
+    /// A static file beside the catalog, not a Worker: no token.
+    func tonight(from url: URL = CatalogSource.tonightURL) async throws -> TonightFile? {
+        let request = URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 20)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 404 { return nil }
+        guard 200...299 ~= http.statusCode else { throw URLError(.badServerResponse) }
+        return try TonightFile.decode(data)
+    }
+
     func post<T: Decodable>(_ endpoint: String, body: Encodable) async throws -> T {
         try await refreshIfNeeded()
         var request = URLRequest(url: URL(string: baseURL + endpoint)!)

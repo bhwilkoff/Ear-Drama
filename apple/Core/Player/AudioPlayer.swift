@@ -51,6 +51,8 @@ final class AudioPlayer {
     /// A downloaded file for this episode's recording, played instead of the
     /// network copy (iOS and Mac; the TV never downloads).
     @ObservationIgnored var localFile: (String, Recording) -> URL? = { _, _ in nil }
+    /// Told of each load, pause, end, sleep, and stop; the live radio listens.
+    @ObservationIgnored var onTransport: (TransportEvent) -> Void = { _ in }
 
     @ObservationIgnored let history: ListeningHistory
     @ObservationIgnored private let player = AVPlayer()
@@ -92,8 +94,9 @@ final class AudioPlayer {
     // MARK: - Transport
 
     /// Plays an episode's default recording, resuming where the listener left
-    /// it, with the rest of its series queued behind it.
-    func play(_ detail: EpisodeDetail, recording: Recording? = nil) {
+    /// it, with the rest of its series queued behind it. `offset` starts it
+    /// there instead (a Radio slot); `queue: false` queues nothing behind it.
+    func play(_ detail: EpisodeDetail, recording: Recording? = nil, from offset: Double? = nil, queue: Bool = true) {
         guard let recording = recording ?? detail.defaultRecording else {
             errorMessage = "No recording survives for this episode."
             return
@@ -125,14 +128,16 @@ final class AudioPlayer {
         player.isMuted = isMuted
         baseVolume = LoudnessLevel.volume(for: detail.episode, recording: recording)
         player.volume = baseVolume
-        if let resume = history.resumePosition(for: detail.episode.id) {
-            elapsed = resume
-            player.seek(to: CMTime(seconds: resume, preferredTimescale: 600))
+        if let start = offset ?? history.resumePosition(for: detail.episode.id) {
+            elapsed = start
+            player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
         }
         player.defaultRate = speed
         player.playImmediately(atRate: speed)
         publishNowPlaying()
+        onTransport(.loaded(detail.episode.id))
 
+        guard queue else { return }
         let episodeID = detail.episode.id
         let seriesKey = detail.episode.seriesKey
         Task { [weak self] in
@@ -154,6 +159,7 @@ final class AudioPlayer {
     func pause() {
         player.pause()
         saveProgress()
+        onTransport(.paused)
     }
 
     func togglePlayPause() { isPlaying ? pause() : resume() }
@@ -179,6 +185,7 @@ final class AudioPlayer {
         upNext = []
         sleep.cancel()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        onTransport(.stopped)
     }
 
     // MARK: - Sleep timer
@@ -209,6 +216,7 @@ final class AudioPlayer {
             if output.shouldPause {
                 player.pause()
                 saveProgress()
+                onTransport(.sleepFired)
             }
         }
         if isPlaying, PlayerNumbers.isSaveDue(lastSaved: lastSaved, now: now) { saveProgress() }
@@ -226,7 +234,9 @@ final class AudioPlayer {
         history.markFinished(current.episode.id, duration: duration)
         // R20: once the timer fires (or it was set for this episode), nothing
         // starts the next one. R3: the queue holds only this series.
-        guard sleep.episodeDidEnd(), let next = upNext.first else {
+        let mayContinue = sleep.episodeDidEnd()
+        onTransport(mayContinue ? .ended : .sleepFired)
+        guard mayContinue, let next = upNext.first else {
             isPlaying = false
             publishNowPlaying()
             return

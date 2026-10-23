@@ -74,9 +74,11 @@ Mac uses the same Core, so the same code holds them:
 
 ## §3 Navigation shell
 
-- **§3.1 Four sidebar sections, hard set**: Listen, Series, Search,
-  Library, in `AppTab` order (`apple/Core/Store/AppStore.swift`). Radio
-  joins with the evenings. A new section amends this rule first.
+- **§3.1 Six sidebar sections, hard set**: Listen, Series, Radio,
+  Plays, Search, Library, in `AppTab` order
+  (`apple/Core/Store/AppStore.swift`), so Radio follows Series as on the
+  web and is ⌘3 in the Go menu (§5.5). A new section amends this rule
+  first.
 - **§3.2 One `NavigationSplitView`.** The sidebar is a selectable `List`
   of the sections (180 to 210 pt); the detail column is one
   `NavigationStack` bound to the selected section's path and re-created
@@ -98,6 +100,12 @@ only here:
   or the Controls menu (§2.2), never a sheet.
 - **§4.2 Downloads** are the same background `URLSession` and the same
   Library section as iOS; a download is played, never exported.
+- **§4.3 Radio** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
+  the detail column: the same slots, times, gaps, and Listen live on the
+  one `LiveRadio`. A slot's Play is a borderless button the pointer
+  reaches without opening the episode; the listing's credit is a link
+  the default browser opens. Space pauses as anywhere (§5.3), and a
+  pause ends listening live.
 
 ## §5 The player
 

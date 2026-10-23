@@ -53,6 +53,10 @@
      iPhone and on the Pixel (Android since 1.0.24), with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
      Through out of order. Eleven stage plays ship; no radio play parses clean yet.
+  12. **Six sections** (Listen, Series, Radio, Plays, Library, Search): an iOS 18
+     iPhone's tab bar fits five, so it shows four and More (iOS 26 sets Search
+     apart). Which one gives way on iOS 18, and does the web's bar (five today,
+     six once its Plays lands) follow the same order? (iOS-DESIGN §3.1, §12)
 - **Status (2026-10-23, 7:10 AM MT, tick 53)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
   cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.23:

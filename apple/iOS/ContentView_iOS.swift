@@ -16,6 +16,9 @@ struct ContentView_iOS: View {
             Tab(AppTab.series.title, systemImage: AppTab.series.symbol, value: AppTab.series) {
                 stack(.series) { SeriesBrowseScreen() }
             }
+            Tab(AppTab.radio.title, systemImage: AppTab.radio.symbol, value: AppTab.radio) {
+                stack(.radio) { RadioScreen() }
+            }
             Tab(AppTab.plays.title, systemImage: AppTab.plays.symbol, value: AppTab.plays) {
                 stack(.plays) { PlaysScreen() }
             }

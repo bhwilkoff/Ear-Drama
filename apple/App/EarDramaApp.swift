@@ -8,6 +8,7 @@ struct EarDramaApp: App {
     @State private var catalog: CatalogStore
     @State private var history: ListeningHistory
     @State private var player: AudioPlayer
+    @State private var live: LiveRadio
     #if os(iOS) || os(macOS)
     @State private var downloads: DownloadStore
     @State private var plays = PlaysLibrary()
@@ -24,6 +25,8 @@ struct EarDramaApp: App {
         let player = AudioPlayer(history: history)
         player.resolveDetail = { [weak catalog] id in await catalog?.episodeDetail(id) }
         player.resolveSeriesPage = { [weak catalog] key in await catalog?.seriesPage(key) }
+        let live = LiveRadio(player: player)
+        player.onTransport = { [weak live] event in live?.handle(event) }
         #if os(iOS) || os(macOS)
         let downloads = DownloadStore.live()
         player.localFile = { [weak downloads] id, recording in
@@ -41,6 +44,7 @@ struct EarDramaApp: App {
         _catalog = State(initialValue: catalog)
         _history = State(initialValue: history)
         _player = State(initialValue: player)
+        _live = State(initialValue: live)
     }
 
     var body: some Scene {
@@ -50,6 +54,7 @@ struct EarDramaApp: App {
                 .environment(catalog)
                 .environment(history)
                 .environment(player)
+                .environment(live)
                 #if os(iOS) || os(macOS)
                 .environment(downloads)
                 .environment(plays)

@@ -71,9 +71,13 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   falling back to `RightsDisplay.contract`). An unclaimed recording
   reads "No rights claim known. Removed on request." and is never
   called public domain; a basis with no published words shows no line.
+- **R9, R10, R14 on the Radio tab** (§4.9): a gap is drawn as a gap,
+  the slot on the air is read from the file's UTC instants on the one
+  clock (`RadioClock.onAir`, `apple/Core/Radio/Tonight.swift`, golden
+  against `js/api.test.js`), and nothing plays after the evening.
 - Not built anywhere yet, because the data plane does not carry them:
   R2 runs, R3 arc ends, R4 gaps, R6 other performances, R7 auditions,
-  R8 commercial chapters, R9 and R10 the Radio tab.
+  R8 commercial chapters.
 
 ## §2 Data plane
 
@@ -89,11 +93,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 ## §3 Navigation shell
 
-- **§3.1 Four tabs, hard set**: Listen, Series, Library, Search
-  (`AppTab`, `apple/Core/Store/AppStore.swift`). Search uses
-  `Tab(role: .search)`, so the system places it last. Radio joins when
-  the evenings are published, and adding any other tab amends this
-  rule first. There is no Settings tab or gear.
+- **§3.1 Six tabs, hard set**: Listen, Series, Radio, Plays, Library,
+  Search (`AppTab`, `apple/Core/Store/AppStore.swift`). Radio follows
+  Series, as on the web (`docs/WEB-DESIGN.md` §3). Search uses
+  `Tab(role: .search)`, so the system places it last. Adding any other
+  tab amends this rule first. There is no Settings tab or gear.
 - **§3.2 One shell for both form factors.** `TabView(selection:)` with
   `.tabViewStyle(.sidebarAdaptable)` (`apple/iOS/ContentView_iOS.swift`):
   a tab bar on iPhone, a sidebar on iPad. No parallel split-view path.
@@ -146,6 +150,33 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   (`.backgroundTask(.urlSession)`). A downloaded file is played, never
   exported: no Share or Files action.
 
+- **§4.9 Radio** is Tonight in 19xx (`RadioScreen`,
+  `apple/Shared/RadioScreen.swift`), the web's §4.9 in a `List`: the
+  evening `tonight.json` publishes for the device's own calendar date
+  (`RadioClock.localDate`, never the UTC date), fetched through
+  `APIClient.tonight()` from the catalog's Release (contract §2, §8).
+  A header of "Tonight in 1942", the evening's date, and the network
+  and station; then one row a slot. Each row shows its local time with
+  the paper's Eastern time beside it as a caption ("7:00 PM ET" alone
+  where the two agree). The slot on the air says "Now" and takes the
+  surface-alt row background, repainted every 15 seconds from the
+  file's instants. A surviving slot is a link to its episode with a
+  borderless Play that plays it from its start; a gap is muted text:
+  `known_series` where the file sets it, then "Not surviving" (or "Not
+  in the catalog" for a withheld slot or one the open catalog lacks),
+  and its length. The paper's printed text is never drawn. Before the
+  evening the header says "Starts at", after it "Ended at"; during it,
+  "Listen live" (`LiveRadio`, `apple/Core/Radio/LiveListening.swift`)
+  joins the slot on the air at the clock's offset, and each later
+  surviving slot starts at its own time. A pause, another episode, the
+  sleep timer, or the last slot's end stops it, and a live slot queues
+  nothing behind it, so nothing autoplays after the evening (R14).
+  While live the button reads "Listening live"; pressing it pauses.
+  No file, or no evening for today, is the empty state "No evening is
+  published for today"; an unreachable file is "Tonight could not
+  load" with Try Again. The listing's credit is one caption link,
+  "Schedule: {paper}, via {source}".
+
 ## §5 The player
 
 - **§5.1 One engine.** `AudioPlayer` (`apple/Core/Player/AudioPlayer.swift`)
@@ -172,9 +203,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   (`PlayerNumbers.interruptionRewindSeconds`) and resumes; unplugged
   headphones pause.
 - **§5.6 Progress** saves every 5 s while playing
-  (`PlayerNumbers.saveEverySeconds`) and on pause; resume starts 3 s
-  early, only past 30 s, and an episode within 45 s of its end counts as
-  played (`ListeningHistory`).
+  (`PlayerNumbers.saveEverySeconds`) and on pause; a saved position
+  resumes exactly where it was saved, as on Android and the web (only an
+  interruption rewinds, §5.5), only past 30 s, and an episode within
+  45 s of its end counts as played (`ListeningHistory`).
 - **§5.7 The player's numbers are Decision 062's, named once.**
   `PlayerNumbers` (`apple/Core/Player/PlayerNumbers.swift`) holds the
   sleep fade (`sleepFadeSeconds`, 10), the speeds (`speeds`, 0.75, 1,
@@ -277,6 +309,12 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 ## §12 Open (what the code does not yet meet)
 
 Listed, not fixed. Each item names where it is.
+
+- **Six tabs overflow the iPhone tab bar on iOS 18**, which shows four
+  and More; iOS 26 sets Search apart. Which tab gives way on an
+  iOS 18 phone is the owner's call (§3.1).
+- **Listening live drifts at a speed other than 1x**: the offset is
+  taken at join, and the player's speed is the listener's.
 
 - **The queue disagrees across platforms.** `PlaybackQueue.following`
   (`apple/Core/Player/PlaybackQueue.swift`) plays on through the rest of
