@@ -243,3 +243,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Read the 375 px screenshot: the Drama shelf opened on three "Dramatis Personae" cast lists. 1f8b670 (main thread): genreFirsts skips front matter by title (start-anchored, plus a collection's closing "Introduction"), never a section that also carries an act or chapter; 219 skipped on the real projection; the clean Drama shelf opens on "001 - Inferno I". Each guard broken once, red. run_all 22/22.
 - Verification slip caught: my macOS runs after the shelves merge said 107 tests; the merge added ListenShelvesTests, which a stale generated project left out. After xcodegen: 111 pass. Memory saved.
 - Running: radio parser. CI green; loudness run in progress since 15:13 UTC.
+
+### Tick 84, 2026-10-23, merge: radio plays ship
+- Merged b947614 (1.0.42 build 43): the radio parser reads the forms radio scripts use; all four Carlton radio plays parse clean (0% unclassified) and ship, so the bundle holds 15 scripts; GRW clean 827 -> 950 but never shipped (C8). Checked the radio plays' parts and the clients' decoders (mic and sound parts already handled). Verified on main against every reader of the bundle: catalog 22/22, worker 171, web 194, macOS 111 (after xcodegen), Android 167.
+- LOOP-PLAN M7's corpus item checked. No agent running.

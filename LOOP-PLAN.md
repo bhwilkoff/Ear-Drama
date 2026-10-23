@@ -288,8 +288,8 @@ continue on the other.
 
 ### M7. Plays, phase 1: pass the phone
 
-- [~] (stage plays built: 11 castable after the parser fix; no radio script parses
-      clean yet) The script corpus: radio scripts and public-domain stage plays, each
+- [x] (built 2026-10-23: 11 stage plays and 4 radio plays, Carlton; no GRW text
+      ships, owner item C8) The script corpus: radio scripts and public-domain stage plays, each
       castable only when its own record carries the evidence (059), with roles
       parsed by the prototypes in `catalog/prototypes/scripts/`.
 - [x] (built on iPhone, iPad, Mac, Android, and the web by tick 58; not recorded
