@@ -219,7 +219,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   the network and station; then one row a slot. Each row leads with its
   local time (`bodySmall`, tabular) and the paper's Eastern time beneath
   it ("7:00 PM ET" alone where the two agree). The slot on the air says
-  "Now", takes the `surfaceVariant` container, and is marked selected
+  "Now", takes the `surfaceVariant` container and the red edge (§6.1a), and is marked selected
   for TalkBack, repainted every 15 seconds from the file's instants. A
   surviving slot opens its episode ("Open episode") and has a trailing
   Play that plays it from its start (§4.8); a gap is muted, not
@@ -299,6 +299,25 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§6.1 Brand first; dynamic color is not the default**
   (`ui/theme/Theme.kt`, `dynamicColor = false`). Light and dark come from
   the generated tokens.
+- **§6.1a Color roles (Decision 064, On Air).** Material components take
+  `colorScheme.primary` by default, so `Theme.kt` puts the brand's blue
+  `secondary` in M3's `primary` and `secondary` slots (and a sixth of it
+  over the ground in the two container slots): the selected
+  `NavigationBar` item, chips, every filled button that is not live,
+  spinners, and the download bar follow it with no override. Links and
+  the TV focus ring take `OnAir.colors.link`. Red (the brand `primary`)
+  is only for what is live, set by hand through `OnAir.colors.live`
+  (`liveButtonColors()` on a filled button): Play and Pause on the player
+  and the mini player, Play on Detail, the progress line and the
+  scrubber (the player's and a play's mix), the slot on the air (a 4 dp
+  leading edge), Listen live and Listening live, Start recording, the
+  record control, and "Your line" while the microphone is live. M3's
+  `tertiary` holds the red too, so no default component reaches it, and
+  dynamic color never changes `OnAir`. Genre hues are content: a series
+  row's 4 dp leading mark (`OnAir.genre(key)`, the border color for a key
+  the palette does not name), never a button, a tab, or a link. Tab icons
+  are unchanged. `ColorRolesTest` fails on the red reached any other way,
+  on a red M3 `primary`, and on a token genre with no mark.
 - **§6.2 Six type levels** (`AppTypography`, `ui/theme/Type.kt`):
   `displaySmall`, `headlineSmall`, `titleMedium`, `bodyMedium`,
   `labelMedium`, `bodySmall` with tabular figures, over the system face.

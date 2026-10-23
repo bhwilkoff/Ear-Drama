@@ -18,6 +18,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.dp
+import com.example.appname.ui.theme.OnAir
 import kotlinx.coroutines.delay
 
 /**
@@ -43,7 +44,7 @@ val LocalIsTelevision = staticCompositionLocalOf { false }
 fun Modifier.tvFocusMark(): Modifier {
     if (!LocalIsTelevision.current) return this
     var focused by remember { mutableStateOf(false) }
-    val ring = MaterialTheme.colorScheme.primary
+    val ring = OnAir.colors.link
     return this
         .onFocusChanged { focused = it.isFocused }
         .scale(if (focused) 1.06f else 1f)

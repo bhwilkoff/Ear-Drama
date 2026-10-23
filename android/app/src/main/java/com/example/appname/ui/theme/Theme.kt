@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -29,6 +31,15 @@ import androidx.compose.ui.platform.LocalContext
  *
  * The colors come from Color.kt, which tools/design_tokens.mjs writes
  * from design-tokens.json. Change the look there, not here.
+ *
+ * ON AIR'S ROLES (DECISIONS 064, ANDROID-DESIGN §6.1a). Material components
+ * take `colorScheme.primary` by default, so M3's `primary` slot holds the
+ * brand's blue `secondary`: the selected tab, chips, filled buttons, the
+ * spinner, and every other control follow it with no override. The brand's
+ * red `primary` is only for what is live, read through [OnAir.colors]
+ * (`live`, `onLive`) and set by hand on Play, the progress line, the slot on
+ * the air, Listen live, and Start recording. It is M3's `tertiary` too, which
+ * no default component uses. Dynamic color never changes [OnAir.colors].
  */
 @Composable
 fun AppTheme(
@@ -47,6 +58,7 @@ fun AppTheme(
 
     CompositionLocalProvider(
         LocalSemanticColors provides if (darkTheme) DarkSemanticColors else LightSemanticColors,
+        LocalOnAirColors provides if (darkTheme) DarkOnAirColors else LightOnAirColors,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
@@ -64,9 +76,43 @@ object AppSemantics {
         @Composable @ReadOnlyComposable get() = LocalSemanticColors.current
 }
 
+/** On Air's chrome roles beyond M3's slots: red for what is live, and the link blue. */
+data class OnAirColors(
+    val live: Color,
+    val onLive: Color,
+    /** Links and the focus ring; a lighter blue than `secondary` in dark mode. */
+    val link: Color,
+    val dark: Boolean,
+)
+
+private val LightOnAirColors = OnAirColors(BrandPrimaryLight, BrandOnPrimaryLight, BrandLinkLight, dark = false)
+private val DarkOnAirColors = OnAirColors(BrandPrimaryDark, BrandOnPrimaryDark, BrandLinkDark, dark = true)
+private val LocalOnAirColors = staticCompositionLocalOf { LightOnAirColors }
+
+/** On Air's roles (`OnAir.colors.live`, `OnAir.colors.link`, `OnAir.genre(key)`), light or dark. */
+object OnAir {
+    val colors: OnAirColors
+        @Composable @ReadOnlyComposable get() = LocalOnAirColors.current
+
+    /** The series' genre mark in this mode, or null for a key the palette does not name. */
+    @Composable @ReadOnlyComposable
+    fun genre(key: String?): Color? = genreColor(key, LocalOnAirColors.current.dark)
+}
+
+/** The selected tab's indicator and a selected chip: the blue at a sixth over the ground. */
+private fun selectedContainer(blue: Color, ground: Color): Color = blue.copy(alpha = 0.16f).compositeOver(ground)
+
 private val BrandLightColors = lightColorScheme(
-    primary = BrandPrimaryLight,
-    onPrimary = BrandOnPrimaryLight,
+    primary = BrandSecondaryLight,
+    onPrimary = BrandOnSecondaryLight,
+    primaryContainer = selectedContainer(BrandSecondaryLight, BrandBackgroundLight),
+    onPrimaryContainer = BrandTextLight,
+    secondary = BrandSecondaryLight,
+    onSecondary = BrandOnSecondaryLight,
+    secondaryContainer = selectedContainer(BrandSecondaryLight, BrandBackgroundLight),
+    onSecondaryContainer = BrandSecondaryLight,
+    tertiary = BrandPrimaryLight,
+    onTertiary = BrandOnPrimaryLight,
     background = BrandBackgroundLight,
     onBackground = BrandTextLight,
     surface = BrandBackgroundLight,
@@ -80,8 +126,16 @@ private val BrandLightColors = lightColorScheme(
 )
 
 private val BrandDarkColors = darkColorScheme(
-    primary = BrandPrimaryDark,
-    onPrimary = BrandOnPrimaryDark,
+    primary = BrandSecondaryDark,
+    onPrimary = BrandOnSecondaryDark,
+    primaryContainer = selectedContainer(BrandSecondaryDark, BrandBackgroundDark),
+    onPrimaryContainer = BrandTextDark,
+    secondary = BrandSecondaryDark,
+    onSecondary = BrandOnSecondaryDark,
+    secondaryContainer = selectedContainer(BrandSecondaryDark, BrandBackgroundDark),
+    onSecondaryContainer = BrandSecondaryDark,
+    tertiary = BrandPrimaryDark,
+    onTertiary = BrandOnPrimaryDark,
     background = BrandBackgroundDark,
     onBackground = BrandTextDark,
     surface = BrandBackgroundDark,
@@ -93,3 +147,16 @@ private val BrandDarkColors = darkColorScheme(
     outline = BrandBorderDark,
     outlineVariant = BrandBorderDark,
 )
+
+/** A genre key's mark (`color.genre`, content only): null for a key the palette does not name. */
+fun genreColor(key: String?, dark: Boolean): Color? = when (key) {
+    "drama" -> if (dark) GenreDramaDark else GenreDramaLight
+    "mystery" -> if (dark) GenreMysteryDark else GenreMysteryLight
+    "scifi" -> if (dark) GenreScifiDark else GenreScifiLight
+    "western" -> if (dark) GenreWesternDark else GenreWesternLight
+    "comedy" -> if (dark) GenreComedyDark else GenreComedyLight
+    "news" -> if (dark) GenreNewsDark else GenreNewsLight
+    "documentary" -> if (dark) GenreDocumentaryDark else GenreDocumentaryLight
+    "serial" -> if (dark) GenreSerialDark else GenreSerialLight
+    else -> null
+}

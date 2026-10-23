@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +29,9 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -38,6 +43,7 @@ import com.example.appname.data.CatalogDatabase
 import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
+import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -113,6 +119,11 @@ private fun RetryMessage(text: String, modifier: Modifier) {
         }
     }
 }
+
+/** A filled button for what is live (Play, Listen live, Start recording): On Air's red (§6.1a). */
+@Composable
+fun liveButtonColors(): ButtonColors =
+    ButtonDefaults.buttonColors(containerColor = OnAir.colors.live, contentColor = OnAir.colors.onLive)
 
 @Composable
 fun EmptyMessage(text: String, modifier: Modifier = Modifier) {
@@ -226,13 +237,34 @@ fun EpisodeListItem(
     )
 }
 
+/**
+ * A series row: the name and one line of years and count, behind the genre's
+ * 4 dp leading mark (ANDROID-DESIGN §6.1a, the web's genre edge and Apple's
+ * mark). The mark is content, never chrome; a genre the palette does not name
+ * takes the border color.
+ */
 @Composable
 fun SeriesListItem(row: SeriesRow, onOpen: () -> Unit) {
     val second = listOfNotNull(seriesYears(row), "${row.episodes} episodes").joinToString(" · ")
+    val mark = OnAir.genre(row.genre) ?: MaterialTheme.colorScheme.outline
     ListItem(
         modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open series", onClick = onOpen),
-        headlineContent = { Text(row.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        supportingContent = { Text(second) },
+        headlineContent = {
+            Column(
+                Modifier
+                    .drawBehind {
+                        drawRoundRect(mark, size = Size(4.dp.toPx(), size.height), cornerRadius = CornerRadius(2.dp.toPx()))
+                    }
+                    .padding(start = Spacing.S3.dp),
+            ) {
+                Text(row.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    second,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
     )
 }
 

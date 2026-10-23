@@ -21,10 +21,12 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +60,7 @@ import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
+import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 
 /** The bar above the tabs while an episode is loaded; tapping it opens the player sheet. */
@@ -73,6 +76,7 @@ fun MiniPlayer(onExpand: () -> Unit) {
                 LinearProgressIndicator(
                     progress = { (now.positionMs.toFloat() / now.durationMs).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),
+                    color = OnAir.colors.live,
                 )
             }
             Row(
@@ -103,11 +107,18 @@ private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boo
     val icon = if (now.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow
     val label = if (now.isPlaying) "Pause" else "Play"
     if (filled) {
-        FilledIconButton(onClick = engine::togglePlay, modifier = modifier.size(72.dp)) {
+        FilledIconButton(
+            onClick = engine::togglePlay,
+            modifier = modifier.size(72.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = OnAir.colors.live,
+                contentColor = OnAir.colors.onLive,
+            ),
+        ) {
             Icon(icon, contentDescription = label, modifier = Modifier.size(40.dp))
         }
     } else {
-        IconButton(onClick = engine::togglePlay) { Icon(icon, contentDescription = label) }
+        IconButton(onClick = engine::togglePlay) { Icon(icon, contentDescription = label, tint = OnAir.colors.live) }
     }
 }
 
@@ -218,6 +229,7 @@ private fun PositionSlider(now: NowPlaying, engine: PlaybackEngine) {
             onValueChangeFinished = { engine.seekTo(dragValue.toLong()); dragging = false },
             valueRange = 0f..duration.toFloat(),
             enabled = now.durationMs > 0,
+            colors = SliderDefaults.colors(thumbColor = OnAir.colors.live, activeTrackColor = OnAir.colors.live),
             modifier = Modifier.semantics {
                 contentDescription = "Position"
                 stateDescription = "${formatClock(shown.toLong())} of ${formatClock(now.durationMs)}"
