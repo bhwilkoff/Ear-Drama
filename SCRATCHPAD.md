@@ -16,6 +16,17 @@
 
 ## Current state
 
+- **Ready for you to play (2026-10-22, built, not yet played)**: the listening
+  apps on all five (web M2, Apple M3, Android M4; 1.0.6). Each play gate waits on
+  one setup step of yours: the web's data needs Settings > Pages > Source:
+  GitHub Actions; TestFlight needs the App Store Connect record and signing
+  secrets; Play internal needs the Play Console app. Meanwhile, locally: web,
+  `ln -s catalog/out/web data && python3 -m http.server 8080`; Mac, open
+  EarDrama.xcodeproj and run (the seed bundles from catalog/out/publish-clean);
+  Android, `./gradlew :app:installDebug` with the Pixel awake. Try: the sleep
+  timer's "End of this episode", a Suspense season, search "sorry wrong", an
+  episode's rights line. Broken would be: playback that never starts, a timer
+  that starts the next episode, "public domain" anywhere.
 - **Ready for you (2026-10-22)**: pick a palette. Open
   `docs/research/palette/index.html` (or the PNGs in `shots/`); the method and
   every number are in its README. Three directions: On Air, Tuning Eye,
