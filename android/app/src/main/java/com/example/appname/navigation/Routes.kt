@@ -13,12 +13,23 @@ sealed interface Route : NavKey {
     @Serializable data class Series(val key: String) : Route
     @Serializable data class Episode(val id: String) : Route
     @Serializable data class Transcript(val id: String) : Route
+    @Serializable data object Plays : Route
+    /** A castable script: its rights line, its parts, and "Cast this play". */
+    @Serializable data class Script(val id: String) : Route
+    /** A production's cast sheet. */
+    @Serializable data class Production(val id: String) : Route
+    /** One part being recorded, line by line; [part] is the raw `PartID`. */
+    @Serializable data class Recording(val production: String, val part: String) : Route
 }
 
-/** The four tabs, in order; [name] is what the `appname_start_tab` door names. */
-enum class Tab(val label: String, val root: Route) {
+/**
+ * The tabs, in order; [name] is what the `appname_start_tab` door names. Plays
+ * records, so it is not offered on a TV (ANDROID-DESIGN §3.1).
+ */
+enum class Tab(val label: String, val root: Route, val onTelevision: Boolean = true) {
     Listen("Listen", Route.Listen),
     Series("Series", Route.SeriesBrowse),
+    Plays("Plays", Route.Plays, onTelevision = false),
     Search("Search", Route.Search),
     Library("Library", Route.Library),
     ;

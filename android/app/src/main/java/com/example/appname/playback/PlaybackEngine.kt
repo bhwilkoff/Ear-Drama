@@ -225,8 +225,7 @@ class PlaybackEngine(
 
     private suspend fun startPositionFor(id: String): Long {
         val saved = user.progress(id) ?: return 0
-        if (saved.finished) return 0
-        return PlayerNumbers.rewound(saved.positionMs)
+        return PlayerNumbers.fromSaved(saved.positionMs, saved.finished)
     }
 
     private fun resumeAt(id: String) {

@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.TheaterComedy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -33,10 +34,15 @@ import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LocalPlayerMuted
 import com.example.appname.navigation.Route
 import com.example.appname.navigation.Tab
+import com.example.appname.plays.PartID
 import com.example.appname.ui.screens.EpisodeScreen
 import com.example.appname.ui.screens.LibraryScreen
 import com.example.appname.ui.screens.ListenScreen
 import com.example.appname.ui.screens.MiniPlayer
+import com.example.appname.ui.screens.PlaysScreen
+import com.example.appname.ui.screens.ProductionScreen
+import com.example.appname.ui.screens.RecordingScreen
+import com.example.appname.ui.screens.ScriptScreen
 import com.example.appname.ui.screens.PlayerSheet
 import com.example.appname.ui.screens.SearchScreen
 import com.example.appname.ui.screens.SeriesBrowseScreen
@@ -46,6 +52,7 @@ import com.example.appname.ui.screens.TranscriptScreen
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.Listen -> Icons.Filled.Headphones
     Tab.Series -> Icons.Filled.Radio
+    Tab.Plays -> Icons.Filled.TheaterComedy
     Tab.Search -> Icons.Filled.Search
     Tab.Library -> Icons.Filled.Bookmarks
 }
@@ -97,6 +104,7 @@ fun AppRoot(
     val openSeries: (String) -> Unit = { key -> stack.add(Route.Series(key)) }
     val openTranscript: (String) -> Unit = { id -> stack.add(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
+    val television = LocalIsTelevision.current
 
     CompositionLocalProvider(
         LocalPlayerMuted provides muted,
@@ -106,7 +114,7 @@ fun AppRoot(
         HapticEvents()
         NavigationSuiteScaffold(
             navigationSuiteItems = {
-                Tab.entries.forEach { tab ->
+                Tab.entries.filter { it.onTelevision || !television }.forEach { tab ->
                     item(
                         selected = tab == selected,
                         onClick = {
@@ -153,6 +161,27 @@ fun AppRoot(
                                 )
                             }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
+                            entry<Route.Plays> {
+                                PlaysScreen(
+                                    onOpenScript = { id -> stack.add(Route.Script(id)) },
+                                    onOpenProduction = { id -> stack.add(Route.Production(id)) },
+                                )
+                            }
+                            entry<Route.Script> { route ->
+                                ScriptScreen(route.id, onBack = back, onOpenProduction = { id ->
+                                    // Casting replaces the script with its cast sheet: depth stays two (§1.4).
+                                    if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
+                                    stack.add(Route.Production(id))
+                                })
+                            }
+                            entry<Route.Production> { route ->
+                                ProductionScreen(route.id, onBack = back, onRecord = { part ->
+                                    stack.add(Route.Recording(route.id, part.raw))
+                                })
+                            }
+                            entry<Route.Recording> { route ->
+                                RecordingScreen(route.production, PartID(route.part), onBack = back)
+                            }
                         },
                     )
                 }

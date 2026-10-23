@@ -45,9 +45,32 @@ val copyCatalogSeed = tasks.register<CopyCatalogSeed>("copyCatalogSeed") {
     seed.from(listOf(file(catalogSeedPath)).filter { it.isFile })
 }
 
+// The castable scripts (docs/PLAYS-DESIGN.md §3), `catalog/plays/castable-scripts.json`,
+// bundled as an asset the same way: copied at build time, never committed twice.
+abstract class CopyCastableScripts : DefaultTask() {
+    @get:InputFiles
+    abstract val scripts: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outDir: DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        val dir = outDir.get().asFile
+        dir.deleteRecursively()
+        dir.mkdirs()
+        scripts.files.firstOrNull { it.isFile }?.copyTo(File(dir, "castable-scripts.json"), overwrite = true)
+    }
+}
+
+val copyCastableScripts = tasks.register<CopyCastableScripts>("copyCastableScripts") {
+    scripts.from(listOf(rootProject.file("../catalog/plays/castable-scripts.json")).filter { it.isFile })
+}
+
 androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(copyCatalogSeed, CopyCatalogSeed::outDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(copyCastableScripts, CopyCastableScripts::outDir)
     }
 }
 

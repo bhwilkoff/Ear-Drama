@@ -320,6 +320,28 @@ evidence (08a §8); phase 1 ships no effects library.
   skipping ahead finishes the play.
 - Gaps are 0.4 s; overlaps, room-tone fill, and per-role pan are not built.
 
+### §4.5 As built on Android (2026-10-23)
+
+- `AudioRecord` at 48 kHz mono float from `VOICE_PERFORMANCE` with
+  headphones; without them `VOICE_COMMUNICATION` with
+  `AcousticEchoCanceler`, the cue played as voice-call audio, and the takes
+  marked `capture: "aec"`. The built-in or wired microphone is preferred
+  over a Bluetooth one. The cue plays through an `AudioTrack`.
+- The stand-in is collected from `onAudioAvailable` into memory. On API 30
+  and later `synthesizeToFile` writes to a pipe, which is drained and
+  dropped; on API 29, which has no pipe overload, the engine speaks at zero
+  volume while the same callback hands over the samples (UNVERIFIED on a
+  device). No cache file is ever made, stricter than §5 rule 1 allows.
+- Takes are 24-bit PCM WAV, not FLAC: MediaMuxer has no FLAC container, so
+  FLAC would mean hand-writing the stream around MediaCodec's frames on a
+  path no JVM test can read back. The file names and `production.json`
+  keys are Apple's.
+- The timeline, gain, detector, and bleed check are Apple's, line for line
+  (`plays/`). The mix is rendered a chunk at a time and encoded by
+  `MediaCodec` (AAC-LC, 96 kbps mono) into `MediaMuxer` as `mix.m4a`, not
+  Media3 Transformer. The listen-through plays it with `MediaPlayer`.
+- Export is the share sheet through a `FileProvider` scoped to `Plays/`.
+
 Recording quality varies on Android by manufacturer (echo cancellation,
 `UNPROCESSED` support, and engine voices all differ), so the bench needs the
 Pixel 8a and one Samsung before Android is called done.
@@ -377,8 +399,8 @@ the finished play.
 
 | What | Apple (iPhone, iPad, Mac) | Android | Web |
 |---|---|---|---|
-| The script as cast (the parsed model, with its line ids and revision) | Application Support, `Plays/<production>/script.json` | `filesDir/plays/<production>/` | The origin private file system (OPFS) |
-| Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | The same folder, FLAC through `MediaCodec` | OPFS, WAV |
+| The script as cast (the parsed model, with its line ids and revision) | Application Support, `Plays/<production>/script.json` | `filesDir/Plays/<production>/script.json` | The origin private file system (OPFS) |
+| Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | OPFS, WAV |
 | Room tone, per session | `Plays/<production>/roomtone/` | the same | OPFS |
 | The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | OPFS |
 | The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | OPFS, after `navigator.storage.persist()` is asked |

@@ -29,7 +29,8 @@ production lessons this doc does not restate live in
   and the network through `ApiClient`; a screen never opens SQLite or
   OkHttp itself.
 - **§1.4 Depth is at most two from a tab**: tab, series, episode. A
-  season is a scope; the player is a sheet.
+  season is a scope; the player is a sheet. In Plays it is tab, cast
+  sheet, part: casting a play replaces the script page with its cast sheet.
 - **§1.5 Only essential words on screen** (AGENTS.md); no list or blurb
   written by the app (R13).
 
@@ -82,13 +83,15 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §3 Navigation shell
 
-- **§3.1 Four tabs, hard set**: Listen, Series, Search, Library (`Tab`,
-  `navigation/Routes.kt`), with Material icons Headphones, Radio, Search,
-  and Bookmarks. `NavigationSuiteScaffold` draws a bar, a rail, or a
+- **§3.1 Five tabs, hard set**: Listen, Series, Plays, Search, Library
+  (`Tab`, `navigation/Routes.kt`), with Material icons Headphones, Radio,
+  TheaterComedy, Search, and Bookmarks. Plays records, so a TV shows the
+  other four (`Tab.onTelevision`; PLAYS-DESIGN §2: TVs play back only). `NavigationSuiteScaffold` draws a bar, a rail, or a
   drawer by window size. Radio joins with the evenings.
 - **§3.2 One route registry.** Every destination is a case of the sealed
-  `Route` (Navigation 3 `NavKey`): the four roots, `Series`, `Episode`,
-  and `Transcript`, resolved in one `entryProvider` in `ui/AppRoot.kt`.
+  `Route` (Navigation 3 `NavKey`): the five roots, `Series`, `Episode`,
+  `Transcript`, and the plays' `Script`, `Production`, and `Recording`,
+  resolved in one `entryProvider` in `ui/AppRoot.kt`.
 - **§3.3 One back stack per tab** (`rememberNavBackStack`). System back
   and predictive back pop within the tab
   (`android:enableOnBackInvokedCallback="true"`); tapping the selected
@@ -130,6 +133,28 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   opened.
 - **§4.8 Episode rows carry two targets**: the row opens Detail ("Open
   episode") and the trailing button plays ("Play" and the title).
+- **§4.9 Plays** (`docs/PLAYS-DESIGN.md` binds what it does;
+  `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). The tab
+  is "Your plays" (each with "n of m lines recorded" or "Finished" and a
+  Delete that asks first) over "Plays you can cast", each row the
+  title, author and part count, and the rights line: the evidence claims
+  verbatim, each linked to its source, then the source by name. The
+  script page adds "Cast this play" and the parts with line counts. The
+  cast sheet is a `ListItem` per part, largest first, with its one verb
+  in the trailing slot: Take part (an `AlertDialog` with an optional
+  name), Leave silent (sound and directions only), Record, or a `⋮` menu
+  with Open part; then Listen, then Discard unused takes and Delete
+  production. Recording asks for the microphone at Start recording,
+  checks the route (headphones, or a refusal line with "Record without
+  headphones", which turns on echo cancellation and marks the takes
+  `aec`), counts five seconds of room tone, then shows the cue (labeled
+  "Device voice" when the device reads it), "Your line", the line in
+  `headlineSmall`, the next line dim, the takes, one 72 dp record
+  control, Run-up, Hear it read, the device voice's speed, Keep, and
+  Done with this part. Space or the headset key records or stops, Enter
+  keeps, and the arrows move by line. Takes are 24-bit WAV (not FLAC:
+  MediaMuxer has no FLAC container), the mix is AAC in `mix.m4a`, and
+  only a finished play offers Export, through the share sheet.
 
 ## §5 The player
 
@@ -149,9 +174,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   transcript, and the sleep timer as `DropdownMenu`s, and "Up next".
 - **§5.4 The player's numbers are DECISIONS 062's** (`PlayerNumbers`):
   the sleep fade is 10 s, speeds are 0.75, 1, 1.25, 1.5, and 2, progress
-  saves every 5 s and on pause, and resuming after an interruption (a
-  saved position, or audio focus handed back after a call) starts 3 s
-  back. A finished episode starts over. `PlayerNumbersTest` checks the
+  saves every 5 s and on pause, and resuming after an interruption (audio
+  focus handed back after a call) starts 3 s back. A saved position
+  resumes exactly where it was saved (`PlayerNumbers.fromSaved`), as on
+  the web. A finished episode starts over. `PlayerNumbersTest` checks the
   web player carries the same numbers.
 
 ## §6 Theme
@@ -167,8 +193,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   Media3's own.
 - **§6.4 Haptics use the one taxonomy**, mapped in one place
   (`ui/Haptics.kt`, `Haptic`): `selection` on a tab, season, or filter
-  change; `success` when a download finishes; `error` when "Download
-  failed" or the player's problem line appears.
+  change, when "Your line" begins, and on the mix's Play and Pause;
+  `success` when a download finishes; `error` when "Download failed",
+  the player's problem line, or a plays refusal line appears.
 
 ## §7 States and accessibility
 
@@ -191,7 +218,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 The rights line, the transcript label, and loudness by cutting are as in
 §1.6 and are not reworded. A downloaded file is played, never exported:
-no share or open-with action (`ui/Downloads.kt`). No analytics.
+no share or open-with action (`ui/Downloads.kt`). A finished play's mix
+is the one file the app shares, and only when the person presses Export
+(`FileProvider`, `Plays/` only). A device voice is never written to a
+file (`StandInNeverStoredTest`). No analytics.
 
 ## §9 Stubs that live in the Android build, and parity
 
@@ -239,6 +269,12 @@ no share or open-with action (`ui/Downloads.kt`). No analytics.
   `role: .search` lets the system place it last.
 
 ## §12 Open (what the code does not yet meet)
+
+- **Plays has not run on a device.** The microphone, the route check,
+  echo cancellation, the engine voices (and API 29's zero-volume
+  collection), the AAC mix, and the share sheet are built from the
+  documentation and wait on the Pixel 8a and one Samsung (PLAYS-DESIGN
+  §4.4). The bleed threshold is Apple's unmeasured 0.5.
 
 - **The queue is the rest of the season** (`followingInSeason`), where
   Apple plays on through the series and the web only what the person
