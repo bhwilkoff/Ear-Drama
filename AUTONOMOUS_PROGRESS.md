@@ -72,3 +72,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Decision 062 (eb8159c): 10 s sleep fade; speeds 0.75, 1, 1.25, 1.5, 2; save every 5 s and on pause; 3 s rewind on resume. Each is the value most platforms already used. The queue rule stays the owner's (scratchpad item 9).
 - Launched an agent in a worktree to fix Android's §12 items (062 numbers, the `eardrama` deep-link scheme, published rights words, ISO dates, the transcript type level, "Played", offline states, TV focus on entry, decade filters from data, haptics) and 062 on the web (player.js, store.js, SHELL_VERSION). Apple's half waits for the plays agent, which edits the same code.
 - Still running: plays phase 1 on Apple (verifying), evenings + web Radio (verifying). Machine: load 7.7, no simulators.
+
+### Tick 48, 2026-10-23, merge + agents: plays phase 1 on Apple is on main; Apple parity round and the parser fix launched
+- Merged 45bf90d (1.0.18 build 19): plays phase 1 on iPhone, iPad and Mac (cast sheet, relay, headphone check, room tone, line-by-line takes as FLAC, Listen Through, Export); 9 stage plays bundled. Verified on main: macOS `xcodebuild test` (unsigned) 60 tests in 16 suites pass; test_castable_scripts 4/4; US English passes. Each play's rights line quotes its source's own words with a link. Merely built, not verified: nothing has been recorded on a device (SCRATCHPAD item 11).
+- PARITY: the plays rows now say 🚧 on iOS and macOS with what is missing.
+- Found by reading the bundled file: all 9 plays carry front matter as speech (BOSTON, PRINTED BY, a publisher catalog making MORTON a castable part), Hamlet's first line is unclassified, and A Tender Attachment's opening dialogue is parsed as directions. A parser agent has the evidence; the bundle is replaced when it lands.
+- Launched: Apple's half of the design-doc fixes (062 constants, tvOS Now Playing / versions / 29 pt captions, Mac menu commands and window close, haptics, Queue/Follow/Share). Android plays waits for the Android parity agent.
+- Note: the macOS test needs CODE_SIGNING_ALLOWED=NO locally (no team set); the scheme is `EarDrama`, not `EarDrama_macOS`.
