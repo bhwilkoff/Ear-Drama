@@ -133,6 +133,37 @@ class CatalogQueriesTest {
         assertEquals("No rights claim known. Removed on request.", DisplayVocabulary.rightsLine(d.rights, d.rightsBasis))
     }
 
+    @Test fun `a catalog without meta rightsLines shows the contract's words`() = runBlocking {
+        assertEquals(DisplayVocabulary.CONTRACT_RIGHTS_LINES, db.rightsLines)
+        assertEquals("No rights claim known. Removed on request.", db.episodeDetail("sus|1943-03-11")!!.rightsLine)
+        assertEquals("Government recording", db.episodeDetail("sus|1943-05-25")!!.rightsLine)
+    }
+
+    @Test fun `the rights words come from the published meta rightsLines`() = runBlocking {
+        val json = """{"unclaimed": "Published words for unclaimed.", "rec_gov_work": "Published gov words"}"""
+        val published = CatalogDatabase.open(CatalogFixture.build(tmp.newFolder(), rightsLines = json).path)!!
+        try {
+            assertEquals("Published words for unclaimed.", published.episodeDetail("sus|1943-03-11")!!.rightsLine)
+            assertEquals("Published gov words", published.episodeDetail("sus|1943-05-25")!!.rightsLine)
+        } finally {
+            published.close()
+        }
+        // A basis the published table has no words for shows no line, never the unclaimed one.
+        assertNull(DisplayVocabulary.rightsLine("clean", "rec_librivox", mapOf("unclaimed" to "x")))
+    }
+
+    @Test fun `seriesDecades are the decades the series span, against the genre picked`() = runBlocking {
+        // Suspense 1942-43, Command Performance 1942-44: only the 1940s, whatever the genre.
+        assertEquals(listOf(1940), db.seriesDecades())
+        assertEquals(listOf(1940), db.seriesDecades(genre = "mystery"))
+        assertTrue(db.seriesDecades(genre = "western").isEmpty())
+        assertEquals(listOf("comedy", "mystery"), db.genres(decade = 1940))
+        assertTrue(db.genres(decade = 1950).isEmpty())
+        assertEquals(listOf(1930, 1940, 1950), CatalogDatabase.decadesSpanning(1938, 1951))
+        assertEquals(listOf(1940), CatalogDatabase.decadesSpanning(1942, null))
+        assertTrue(CatalogDatabase.decadesSpanning(null, 1950).isEmpty())
+    }
+
     @Test fun `episodeDetail carries the transcript only past the gate`() = runBlocking {
         assertEquals(CatalogFixture.TRANSCRIPT_URL, db.episodeDetail("sus|1943-01-07")!!.transcriptUrl)
         // The control: a URL on a row that failed the gate is never shown.

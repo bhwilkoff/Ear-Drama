@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 
 /**
  * The query verbs of docs/CATALOG-CONTRACT.md §5 over the served projection,
@@ -27,6 +28,16 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     /** §3.1's transcript columns; an older catalog shows no transcript. */
     private val hasTranscript: Boolean by lazy {
         queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }.containsAll(listOf("has_transcript", "transcript_url"))
+    }
+
+    /**
+     * Contract §5.5: the rights words the catalog publishes in `meta.rightsLines`,
+     * or the contract's own strings for a catalog that predates the key.
+     */
+    val rightsLines: Map<String, String> by lazy {
+        queryRaw("SELECT value FROM meta WHERE key = 'rightsLines'") { it.getText(0) }.firstOrNull()
+            ?.let { runCatching { Json.decodeFromString<Map<String, String>>(it) }.getOrNull() }
+            ?: DisplayVocabulary.CONTRACT_RIGHTS_LINES
     }
 
     /** §3.4: the index carries transcript words, so a match can be told apart as transcript-only. */
@@ -88,6 +99,13 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             false
         }
 
+        /** The first year of every decade from [firstYear] through [lastYear]: 1938 to 1951 is 1930, 1940, 1950. */
+        fun decadesSpanning(firstYear: Int?, lastYear: Int?): List<Int> {
+            val first = firstYear ?: return emptyList()
+            val last = (lastYear ?: first).coerceAtLeast(first)
+            return (first / 10 * 10..last / 10 * 10 step 10).toList()
+        }
+
         /**
          * §3.4: word-prefix matching, never substring. Each word of the query
          * becomes a quoted prefix term, so "sorr" finds "Sorry, Wrong Number"
@@ -115,11 +133,33 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     // --- Series ---
 
-    suspend fun genres(): List<String> = read {
-        queryRaw("SELECT DISTINCT genre FROM series WHERE genre IS NOT NULL AND genre <> '' ORDER BY genre") {
-            it.getText(0)
-        }
+    /** The genres the catalog names; with [decade], only those with a series on the air then (web §10.5). */
+    suspend fun genres(decade: Int? = null): List<String> = read {
+        val (clause, binds) = decadeClause(decade)
+        queryRaw(
+            "SELECT DISTINCT s.genre FROM series s WHERE s.genre IS NOT NULL AND s.genre <> ''$clause ORDER BY s.genre",
+            binds,
+        ) { it.getText(0) }
     }
+
+    /**
+     * The decades the catalog's series were on the air, from the data, never
+     * a fixed list; with [genre], only that genre's (each facet counted
+     * against the other, so no chip offered yields zero rows).
+     */
+    suspend fun seriesDecades(genre: String? = null): List<Int> = read {
+        val where = if (genre == null) "" else " AND s.genre = ?"
+        queryRaw(
+            "SELECT DISTINCT substr(s.first_date, 1, 4), substr(COALESCE(s.last_date, s.first_date), 1, 4) " +
+                "FROM series s WHERE s.first_date IS NOT NULL$where",
+            listOfNotNull(genre),
+        ) { decadesSpanning(it.getText(0).toIntOrNull(), it.getText(1).toIntOrNull()) }
+            .flatten().distinct().sorted()
+    }
+
+    private fun decadeClause(decade: Int?): Pair<String, List<Any?>> =
+        if (decade == null) "" to emptyList()
+        else " AND s.first_date <= ? AND COALESCE(s.last_date, s.first_date) >= ?" to listOf("${decade + 9}-12-31", "$decade-01-01")
 
     /** §5 `seriesBrowse`: the listener drives it, so no `recommendAnd`. */
     suspend fun seriesBrowse(filter: BrowseFilter, limit: Int = 200, offset: Int = 0): List<SeriesRow> = read {
@@ -127,10 +167,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val binds = mutableListOf<Any?>()
         filter.genre?.let { where.append(" AND s.genre = ?"); binds += it }
         filter.network?.let { where.append(" AND s.networks LIKE ?"); binds += "%\"$it\"%" }
-        filter.decade?.let {
-            where.append(" AND s.first_date <= ? AND s.last_date >= ?")
-            binds += "${it + 9}-12-31"
-            binds += "$it-01-01"
+        decadeClause(filter.decade).let { (clause, values) ->
+            where.append(clause)
+            binds.addAll(values)
         }
         binds += limit
         binds += offset
@@ -238,7 +277,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 partial = it.getLong(7) != 0L,
             )
         }
-        head.copy(credits = credits, recordings = recordings)
+        head.copy(
+            credits = credits,
+            recordings = recordings,
+            rightsLine = DisplayVocabulary.rightsLine(head.rights, head.rightsBasis, rightsLines),
+        )
     }
 
     /** The rows for ids the listener already holds (Continue, Library); order follows [ids]. */

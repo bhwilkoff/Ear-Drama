@@ -9,6 +9,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 sealed interface InboxRequest {
     data class Tab(val tab: String) : InboxRequest
     data class Item(val id: String) : InboxRequest
+    data class Series(val key: String) : InboxRequest
+    data class Search(val query: String) : InboxRequest
 
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest

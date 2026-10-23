@@ -46,7 +46,7 @@ interface SleepPolicy {
 class SleepTimer(private val fadeMs: Long = FADE_MS) : SleepPolicy {
 
     companion object {
-        const val FADE_MS = 10_000L
+        const val FADE_MS = PlayerNumbers.SLEEP_FADE_MS
         val OPTIONS: List<SleepMode> = listOf(
             SleepMode.EndOfEpisode,
             SleepMode.Minutes(15),

@@ -39,7 +39,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 `docs/research/05-design-research.md` §9. On Android:
 
 - **R1** the date leads every episode row (the `ListItem` overline in
-  `EpisodeListItem`) and every card; episodes run oldest first.
+  `EpisodeListItem`) and every card, as the catalog stores it
+  (`1943-02-24`, `formatAirDate`) in the tabular `bodySmall`; episodes
+  run oldest first.
 - **R5** copies are Versions on Detail, each with its own Play, the rank
   0 copy the default.
 - **R11** cards are typographic `OutlinedCard`s (date, title, series);
@@ -59,9 +61,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   45, and 60 minutes (`SleepTimer`); it fades, and once fired the queue
   stops.
 - **R21** every icon button has a `contentDescription`; §7.3.
-- **The rights line** reads "No rights claim known. Removed on
-  request." for an unclaimed recording, never public domain; a clean
-  basis with no words shows no line (`DisplayVocabulary.rightsLine`).
+- **The rights line** is the published `meta.rightsLines` words
+  (contract §5.5, `CatalogDatabase.rightsLines`), the contract's own
+  strings for a catalog that predates the key: "No rights claim known.
+  Removed on request." for an unclaimed recording, never public domain;
+  a clean basis with no words shows no line (`DisplayVocabulary.rightsLine`).
 - Not built anywhere yet (data plane first): R2, R3 arc ends, R4, R6,
   R7, R8, R9, R10.
 
@@ -90,7 +94,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   (`android:enableOnBackInvokedCallback="true"`); tapping the selected
   tab returns it to its root; another tab keeps its stack.
 - **§3.4 Deep links and doors land in the inbox** that `MainActivity`
-  posts to and `AppRoot` drains in one `LaunchedEffect`.
+  posts to and `AppRoot` drains in one `LaunchedEffect`. `DeepLink.parse`
+  reads DEEP_LINKS.md's shapes, `eardrama://` and its
+  `https://eardrama.org` twin alike: `series/{key}`, `episode/{id}`,
+  `search?q=`, `library`; anything else opens nothing. Both manifest
+  filters stay off until the store records and Play's fingerprint exist.
 
 ## §4 Surfaces
 
@@ -98,7 +106,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `LazyRow` of 220 dp cards: Continue listening, This day in radio, then
   the genre shelves. A shelf with no rows is not drawn.
 - **§4.2 Series browse** is decade and genre `FilterChip`s over a paged
-  list of series (200 at a time), each one line of years and count.
+  list of series (200 at a time), each one line of years and count. The
+  decades come from the series' own dates (`seriesDecades`), and each
+  facet is counted against the other's selection, so no chip yields zero
+  rows (web §10.5).
 - **§4.3 A series page** shows years and count, then its broadcast
   seasons as `FilterChip`s, a segmented scope and never a push, the oldest
   selected first; the episodes of that season run oldest first.
@@ -111,10 +122,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   debounced, with Clear, series first and then episodes; "In the
   transcript" marks a transcript-only match.
 - **§4.6 Library** is In progress (with "position of length"), Downloads
-  (with storage held and Remove All, which asks first), and Finished.
+  (with storage held and Remove All, which asks first), and Played
+  (Apple's word).
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
-  the episode title, then plain selectable text, a sentence a line, at
-  most 680 dp wide, fetched from archive.org when opened.
+  the episode title, then plain selectable text in `bodyMedium`, a
+  sentence a line, at most 680 dp wide, fetched from archive.org when
+  opened.
 - **§4.8 Episode rows carry two targets**: the row opens Detail ("Open
   episode") and the trailing button plays ("Play" and the title).
 
@@ -134,8 +147,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   Detail), date, any problem, the position slider with elapsed and
   remaining, back 15, a 72 dp Play, forward 30, then speed, the
   transcript, and the sleep timer as `DropdownMenu`s, and "Up next".
-- **§5.4 Progress** saves every 5 s while playing; resume starts 5 s
-  early; a finished episode starts over.
+- **§5.4 The player's numbers are DECISIONS 062's** (`PlayerNumbers`):
+  the sleep fade is 10 s, speeds are 0.75, 1, 1.25, 1.5, and 2, progress
+  saves every 5 s and on pause, and resuming after an interruption (a
+  saved position, or audio focus handed back after a call) starts 3 s
+  back. A finished episode starts over. `PlayerNumbersTest` checks the
+  web player carries the same numbers.
 
 ## §6 Theme
 
@@ -145,19 +162,24 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§6.2 Six type levels** (`AppTypography`, `ui/theme/Type.kt`):
   `displaySmall`, `headlineSmall`, `titleMedium`, `bodyMedium`,
   `labelMedium`, `bodySmall` with tabular figures, over the system face.
-  Refuse a seventh.
+  Refuse a seventh; `TypeLevelsTest` fails on any other style named.
 - **§6.3 Icons are Material Symbols** (R-ICON-1); the skip icons are
   Media3's own.
-- **§6.4 Haptics use the one taxonomy**, mapped in one place. None are
-  wired yet (§12).
+- **§6.4 Haptics use the one taxonomy**, mapped in one place
+  (`ui/Haptics.kt`, `Haptic`): `selection` on a tab, season, or filter
+  change; `success` when a download finishes; `error` when "Download
+  failed" or the player's problem line appears.
 
 ## §7 States and accessibility
 
 - **§7.1 Every query has four states** (`Loadable`): Loading (a labeled
-  spinner), Ready, NoCatalog ("No catalog on this device yet.", Try
-  again), and Failed ("The catalog could not be read.", Try again). An
-  empty result is an `EmptyMessage` sentence; "This episode is not in
-  the catalog." has no retry.
+  spinner), Ready, NoCatalog ("No catalog on this device yet.", or "You
+  are offline." when the device has no network, Try again), and Failed
+  ("The catalog could not be read.", Try again). An empty result is an
+  `EmptyMessage` sentence; "This episode is not in the catalog." has no
+  retry. Offline is a degraded mode, not a failure (web §7.3): while the
+  device reports no network, "You are offline." sits in the flow above
+  the mini player, in the neutral color (`OfflineLine`).
 - **§7.2 The transcript has its own states**: loading, "You are
   offline." or "The transcript did not load." with Try again.
 - **§7.3 TalkBack.** Section headers and the Detail title are
@@ -182,8 +204,9 @@ no share or open-with action (`ui/Downloads.kt`). No analytics.
 - **§9.2 Android TV and Fire TV** are a runtime branch of the one app
   (`ui/Television.kt`, `isTelevision()`), never a flavor. On a TV the
   focused card wears a ring and a 1.06 scale (`tvFocusMark`), never
-  color alone, and Listen claims focus on its first card
-  (`ClaimTvFocus`). The session stays on so the home screen can show a
+  color alone, and each tab's screen claims focus on entry
+  (`ClaimTvFocus`): Listen its first card, Series its first filter chip,
+  Search its field, Library its first row. The session stays on so the home screen can show a
   Now Playing card (TV-NP). The banner is a placeholder.
 - **§9.3 Wear OS** (`android/wear/`) is Continue, saying "Waiting on the
   phone" until the phone hands its history over; minSdk 30.
@@ -219,36 +242,21 @@ no share or open-with action (`ui/Downloads.kt`). No analytics.
 
 - **The queue is the rest of the season** (`followingInSeason`), where
   Apple plays on through the series and the web only what the person
-  queued (`docs/WEB-DESIGN.md` §5.4). R14 needs one rule.
-- **The sleep fade is 10 s** (`SleepTimer.FADE_MS`); the web fades over
-  20 s. **Speeds are 0.75 to 2** (`PlaybackEngine.SPEEDS`); the web's
-  are 0.8 to 2. **Saves every 5 s and rewinds 5 s**; Apple rewinds 3 s,
-  and the web saves every 10 s.
-- **Dates read "Feb 24, 1943"** (`formatAirDate`) and sit in a
-  proportional overline; Apple shows the stored `1943-02-24` in tabular
-  figures, as R1 and the web's tabular rule ask.
+  queued (`docs/WEB-DESIGN.md` §5.4). R14 needs one rule, and it is the
+  owner's to set (DECISIONS 062).
 - **Detail has no sponsor**, and its order (date, title, series) differs
   from the web's (series, title, date).
-- **The rights words are hard-coded** (`DisplayVocabulary.UNCLAIMED`);
-  Apple reads the published `meta.rightsLines` first (contract §5.5).
-- **Decades are a client constant** (`DECADES`, 1930 to 1970), not data,
-  and no facet is counted against the others, so a chip can yield zero
-  rows; there is no network facet or sort.
+- **There is no network facet or sort** in Series browse, which the web
+  has (§4.2).
 - **Detail, the series link, and the transcript route stack up**: from
   the Series tab, series, episode, and transcript is a third push
   (§1.4).
-- **The transcript text uses `bodyLarge`**, a seventh style outside
-  `AppTypography` (§6.2).
-- **Library says "Finished"** where Apple says "Played".
-- **No offline state** on the catalog screens or Detail; only the player
-  reports a problem.
-- **Deep links are not routed**: `routeUniversalLink` and
-  `routeCustomScheme` are template stubs, and the scheme matched is
-  `appname`, not `eardrama` (`MainActivity.kt`).
-- **On a TV only Listen claims focus**; the other screens, the player
-  bottom sheet, and the transcript are the phone's layouts.
+- **On a TV the pushed screens, the player bottom sheet, and the
+  transcript are the phone's layouts**; only the four tabs claim focus.
+- **The `eardrama://` and App Link filters are off** in the manifest
+  (§3.4); `DeepLink.parse` routes both once they are on.
 - **No Queue, Following, or Share verbs**, which the web has.
-- **No haptics** (§6.4). Tab icons differ from Apple's (Headphones and
-  Radio against `play.circle` and `square.stack`).
+- **Tab icons differ from Apple's** (Headphones and Radio against
+  `play.circle` and `square.stack`).
 
 Bring the next change back to a rule here, or bring a new rule first.

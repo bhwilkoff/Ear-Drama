@@ -22,26 +22,37 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.BrowseFilter
 import com.example.appname.data.DisplayVocabulary
+import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
+import com.example.appname.ui.Haptic
+import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.Spacing
 
 private const val PAGE = 200
-private val DECADES = listOf(1930, 1940, 1950, 1960, 1970)
 
-/** Series: browse by genre and decade (§5 `seriesBrowse`; the listener drives it, so no `recommendAnd`). */
+/**
+ * Series: browse by decade and genre (§5 `seriesBrowse`; the listener drives
+ * it, so no `recommendAnd`). Both facets come from the data, each counted
+ * against the other's selection, so no chip offered yields zero rows.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
     var genre by rememberSaveable { mutableStateOf<String?>(null) }
     var decade by rememberSaveable { mutableStateOf<Int?>(null) }
     var pages by rememberSaveable(genre, decade) { mutableIntStateOf(1) }
-    val genres by rememberCatalogQuery { db -> db.genres() }
+    val haptics = rememberHaptics()
+    val genres by rememberCatalogQuery(decade) { db -> db.genres(decade) }
+    val decades by rememberCatalogQuery(genre) { db -> db.seriesDecades(genre) }
     val series by rememberCatalogQuery(genre, decade, pages) { db ->
         db.seriesBrowse(BrowseFilter(genre = genre, decade = decade), limit = PAGE * pages)
     }
@@ -57,25 +68,30 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
             LaunchedEffect(nearEnd, rows.size) {
                 if (nearEnd && rows.size >= PAGE * pages) pages += 1
             }
+            // On a TV the D-pad starts on the first filter chip (§9.2).
+            val chips = remember { FocusRequester() }
+            ClaimTvFocus(chips, Unit)
             LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = padding) {
                 item(key = "filters") {
                     LazyRow(
+                        modifier = Modifier.focusRequester(chips),
                         contentPadding = PaddingValues(horizontal = Spacing.S4.dp),
                         horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(Spacing.S2.dp),
                     ) {
-                        items(DECADES, key = { "d$it" }) { d ->
+                        val decadeList = (decades as? Loadable.Ready)?.value.orEmpty()
+                        items(decadeList, key = { "d$it" }) { d ->
                             FilterChip(
                                 selected = decade == d,
-                                onClick = { decade = if (decade == d) null else d },
+                                onClick = { decade = if (decade == d) null else d; haptics(Haptic.Selection) },
                                 label = { Text("${d}s") },
                             )
                         }
-                        val genreList = (genres as? com.example.appname.ui.Loadable.Ready)?.value.orEmpty()
+                        val genreList = (genres as? Loadable.Ready)?.value.orEmpty()
                             .mapNotNull { g -> DisplayVocabulary.genreName(g)?.let { g to it } }
                         items(genreList, key = { "g${it.first}" }) { (g, name) ->
                             FilterChip(
                                 selected = genre == g,
-                                onClick = { genre = if (genre == g) null else g },
+                                onClick = { genre = if (genre == g) null else g; haptics(Haptic.Selection) },
                                 label = { Text(name) },
                             )
                         }

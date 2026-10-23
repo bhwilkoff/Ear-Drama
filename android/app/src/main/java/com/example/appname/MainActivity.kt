@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.example.appname.app.AppNameApplication
+import com.example.appname.navigation.DeepLink
 import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LaunchDoors
 import com.example.appname.ui.AppRoot
@@ -47,11 +48,8 @@ class MainActivity : ComponentActivity() {
         // Scaffold + WindowInsets do the right thing from here.
         enableEdgeToEdge()
 
-        // Deep link dispatch — supabase OAuth callbacks + app-internal
-        // routes. Switch by scheme, never by URL shape (see iOS lesson:
-        // .onOpenURL fires for both Universal Links and custom schemes,
-        // and the equivalent confusion existed across deep-link surfaces).
-        handleDeepLink(intent)
+        // A recreated Activity keeps its back stacks; only a fresh launch routes the link.
+        if (savedInstanceState == null) handleDeepLink(intent)
         // A recreated Activity (rotation) must not re-open the launch doors.
         if (savedInstanceState == null) openDoors(intent)
 
@@ -92,20 +90,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** `eardrama://` and its `https://eardrama.org` twins (DEEP_LINKS.md) land in the inbox. */
     private fun handleDeepLink(intent: Intent?) {
-        val uri = intent?.data ?: return
-        // supabase.handleDeeplinks(intent) — wire when Supabase ships
-        when (uri.scheme) {
-            "https" -> routeUniversalLink(uri)
-            "appname" -> routeCustomScheme(uri)
-        }
-    }
-
-    private fun routeUniversalLink(uri: android.net.Uri) {
-        // FILL IN: route by uri.pathSegments
-    }
-
-    private fun routeCustomScheme(uri: android.net.Uri) {
-        // FILL IN: route by uri.host / uri.pathSegments
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val url = intent.dataString ?: return
+        DeepLink.parse(url)?.let { inbox += it }
     }
 }

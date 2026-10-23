@@ -45,7 +45,8 @@
 
             <!-- App Links (HTTPS, autoVerify against .well-known/assetlinks.json).
                  Off until Play's signing fingerprint exists for eardrama.org's
-                 assetlinks.json; then host eardrama.org, paths /series/ and /episode/. -->
+                 assetlinks.json; then host eardrama.org, paths /series/, /episode/,
+                 /search, and /library (DEEP_LINKS.md). DeepLink.parse already routes them. -->
             <!--
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
@@ -55,13 +56,14 @@
             </intent-filter>
             -->
 
-            <!-- Custom scheme deep links (OAuth callbacks, same-app deep links). -->
+            <!-- The eardrama:// scheme (DeepLink.parse routes it). Off, as the HTTPS
+                 filter is, until the store records exist (LOOP-PLAN, deep links). -->
             <!--
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="appname"/>
+                <data android:scheme="eardrama"/>
             </intent-filter>
             -->
         </activity>

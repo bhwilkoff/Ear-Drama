@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.ui.EmptyMessage
+import com.example.appname.ui.Haptic
+import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.Loadable
@@ -40,6 +42,7 @@ import com.example.appname.ui.theme.Spacing
 @Composable
 fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit) {
     val container = LocalAppContainer.current
+    val haptics = rememberHaptics()
     val page by rememberCatalogQuery(key) { db -> db.seriesPage(key) }
     // A season is chosen by the listener; until then the oldest is shown.
     var picked by rememberSaveable(key) { mutableStateOf<String?>(null) }
@@ -83,7 +86,11 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                             items(seriesPage.seasons, key = { it.season ?: "\u0000undated" }) { s ->
                                 FilterChip(
                                     selected = s.season == season,
-                                    onClick = { picked = s.season; pickedAny = true },
+                                    onClick = {
+                                        if (s.season != season) haptics(Haptic.Selection)
+                                        picked = s.season
+                                        pickedAny = true
+                                    },
                                     label = { Text(seasonLabel(s.season)) },
                                 )
                             }

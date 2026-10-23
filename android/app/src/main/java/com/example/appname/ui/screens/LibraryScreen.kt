@@ -11,6 +11,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.example.appname.ui.ClaimTvFocus
 import androidx.compose.ui.Modifier
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Progress
@@ -28,7 +32,7 @@ private data class LibraryLists(
     val finished: List<EpisodeRow>,
 )
 
-/** Library: what the listener started, downloaded, and finished on this device. */
+/** Library: what the listener started, downloaded, and played to the end on this device. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
@@ -50,7 +54,10 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
                 EmptyMessage("Episodes you play appear here.", Modifier.padding(padding))
                 return@LoadableContent
             }
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+            // On a TV the D-pad starts on the first row (§9.2).
+            val firstRow = remember { FocusRequester() }
+            ClaimTvFocus(firstRow, Unit)
+            LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
                 if (library.inProgress.isNotEmpty()) {
                     item(key = "progress-h") { SectionHeader("In progress") }
                     items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->
@@ -71,7 +78,7 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
                     onRemoveAll = container.downloads::removeAll,
                 )
                 if (library.finished.isNotEmpty()) {
-                    item(key = "finished-h") { SectionHeader("Finished") }
+                    item(key = "finished-h") { SectionHeader("Played") }
                     items(library.finished, key = { "f:" + it.id }) { row ->
                         EpisodeListItem(
                             row,

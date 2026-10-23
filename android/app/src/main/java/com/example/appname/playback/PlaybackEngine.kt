@@ -75,10 +75,8 @@ class PlaybackEngine(
     companion object {
         const val SKIP_BACK_MS = 15_000L
         const val SKIP_FORWARD_MS = 30_000L
-        val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
-        /** Resuming starts a little before where the listener stopped. */
-        private const val RESUME_REWIND_MS = 5_000L
-        private const val SAVE_EVERY_MS = 5_000L
+        val SPEEDS = PlayerNumbers.SPEEDS
+        private const val SAVE_EVERY_MS = PlayerNumbers.SAVE_EVERY_MS
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -89,6 +87,7 @@ class PlaybackEngine(
     private var lastFactor = 1f
     private var ticker: Job? = null
     private var lastSaveAt = 0L
+    private var interrupted = false
     private var controllerFuture: ListenableFuture<MediaController>? = null
 
     /** The test doors' mute: silent whatever the fade says. */
@@ -143,6 +142,20 @@ class PlaybackEngine(
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                 saveNow()
                 applySleep(sleep.onItemEnded())
+            }
+            publish()
+        }
+
+        // A call or another app's sound takes audio focus for a moment; when it
+        // hands focus back, the last line is heard again (DECISIONS 062).
+        override fun onPlaybackSuppressionReasonChanged(playbackSuppressionReason: Int) {
+            val p = playerOrNull ?: return
+            if (playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS) {
+                interrupted = true
+                saveNow()
+            } else if (interrupted && playbackSuppressionReason == Player.PLAYBACK_SUPPRESSION_REASON_NONE) {
+                interrupted = false
+                p.seekTo(PlayerNumbers.rewound(p.currentPosition))
             }
             publish()
         }
@@ -213,7 +226,7 @@ class PlaybackEngine(
     private suspend fun startPositionFor(id: String): Long {
         val saved = user.progress(id) ?: return 0
         if (saved.finished) return 0
-        return (saved.positionMs - RESUME_REWIND_MS).coerceAtLeast(0)
+        return PlayerNumbers.rewound(saved.positionMs)
     }
 
     private fun resumeAt(id: String) {
