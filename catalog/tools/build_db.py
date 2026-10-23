@@ -285,6 +285,115 @@ def learn_abbreviations(files, reg, rejected):
     return learned
 
 
+def resolve_file(fr, reg):
+    """A file's series: the first of its names (file, folder, item, item title, then the ID3
+    album and artist) the registry knows; else the first usable name as a series of its own."""
+    f, p, it = fr["f"], fr["p"], fr["it"]
+    cands = [("file", p["series"])] + [("dir", x) for x in item_dirs(f["name"])] + \
+            [("item", fr["item_series"]), ("item_title", it.get("title"))]
+    tags = [("id3_album", f.get("album")), ("id3_artist", f.get("artist"))]
+    for origin, raw in cands + tags:
+        if raw and isinstance(raw, str):
+            c, m = reg.resolve(raw, prefix=not origin.startswith("id3"))
+            if c:
+                return c, raw, f"{origin}:{m}"
+    for origin, raw in cands:
+        k = P.norm_series(raw) if raw and isinstance(raw, str) else ""
+        if k and (origin != "file" or len(k) >= 5) and k not in P.GENERIC_FILE_SERIES:
+            return k, raw, origin
+    return None, None, "none"
+
+
+FULL_DATE = re.compile(r"19\d\d-\d\d-\d\d")
+# Words an uploader puts around a series' name ("SUSPENSE Radio Digitally Restored").
+FOLD_NOISE = re.compile(r"\b(?:otrr?|old[ -]?time[ -]?radio|radio|digitally|restored|remastered|collection|complete|"
+                        r"series|shows?|programs?|presents|episodes?|the|mp3s?|vol(?:ume)?|set|singles?|doubles?|"
+                        r"numbers?)\b")
+# A re-creation re-stages a broadcast on its date; it is a modern performance, not a copy
+# of the broadcast, and never joins the original's versions.
+RECREATION = re.compile(r"\b(?:re-?creat\w*|project|tribute)\b", re.I)
+FOLD_RUN_SHARE = 0.8        # of the candidate's dates inside the target's run
+FOLD_SHARED_SHARE = 0.5     # of the candidate's dates the target already has
+FOLD_KEY_MIN = 5
+
+
+def fold_target(raw, reg):
+    """The known key a noisy name is built around: noise words stripped, the longest known key
+    the remaining words equal, begin with or end with (whole words only)."""
+    words = [P.norm_series(w) for w in FOLD_NOISE.sub(" ", P._fold(raw)).split()]
+    words = [w for w in words if w]
+    for n in range(len(words), 0, -1):
+        for k in ("".join(words[:n]), "".join(words[-n:])):
+            if len(k) >= FOLD_KEY_MIN and k in reg.k2c:
+                return k
+    return None
+
+
+def learn_folds(files, reg, target_dates, rejected):
+    """Series names no source knows that are a known series' name with noise around it
+    ("Suspense page 2", "The Shadow Season 03 (9-17-39 to 4-7-40)"). A candidate folds into
+    the target only on its dates: FOLD_RUN_SHARE of its dated files inside the target's run,
+    and FOLD_SHARED_SHARE of its dates already the target's (the spine, OTRR's log, or the
+    target's own files). Never undated, never LibriVox, never a re-creation by the evidence its
+    name, item titles or item metadata carry."""
+    tdates = collections.defaultdict(set, {k: set(v) for k, v in target_dates.items()})
+    groups = collections.defaultdict(lambda: {"dates": set(), "files": 0, "items": set(), "names": collections.Counter(),
+                                              "text": []})
+    for fr in files:
+        key, raw, how = resolve_file(fr, reg)
+        date = fr["p"]["date"] or (P.parse_album_tag(fr["f"].get("album")) or {}).get("date")
+        date = date if date and FULL_DATE.fullmatch(date) else None
+        if fr.get("orow"):
+            continue
+        if ":" in how:
+            if date:
+                tdates[key].add(date)
+            continue
+        if not key or key in rejected or key.startswith("librivox") or \
+                any(str(c).startswith("librivox") for c in fr["colls"]) or fr["ident"].lower().startswith("librivox"):
+            continue
+        g = groups[key]
+        g["files"] += 1
+        g["names"][raw] += 1
+        if date:
+            g["dates"].add(date)
+        if fr["ident"] not in g["items"]:
+            g["items"].add(fr["ident"])
+            g["text"].append((fr["ident"], fr["text"]))
+    out = {}
+    for fk, g in groups.items():
+        names = [n for n, _ in g["names"].most_common()]
+        tk = next((t for t in (fold_target(n, reg) for n in names) if t), None)
+        if not tk:
+            continue
+        target = reg.k2c[tk]
+        if target == fk or target.startswith("librivox"):
+            continue
+        td = tdates.get(target) or set()
+        dates = g["dates"]
+        inside = sum(1 for d in dates if td and min(td) <= d <= max(td))
+        shared = len(dates & td)
+        e = {"series": reg.display(target, target), "target": target, "names": names[:3], "files": g["files"],
+             "items": len(g["items"]), "evidence": sorted(g["items"])[:5], "dates": len(dates),
+             "dates_shared": shared, "share_inside_run": round(inside / len(dates), 2) if dates else None}
+        rec = next((f"{m.group(0)!r} in {where}" for where, txt in [("its name", n) for n in names] +
+                    [(f"item {i}", t) for i, t in g["text"]] for m in [RECREATION.search(txt or "")] if m), None)
+        if rec:
+            why = "re-creation: " + rec
+        elif not dates:
+            why = "undated: a name alone never folds"
+        elif inside / len(dates) < FOLD_RUN_SHARE:
+            why = f"only {inside} of {len(dates)} dates inside {e['series']}'s run"
+        elif shared < 1 or shared / len(dates) < FOLD_SHARED_SHARE:
+            why = f"only {shared} of {len(dates)} dates are {e['series']}'s"
+        else:
+            why = "noisy name of a known series; its dates are the series' dates"
+        e["applied"] = why.startswith("noisy")
+        e["why"] = why
+        out[fk] = e
+    return out
+
+
 def item_dirs(name):
     parts = name.split("/")[:-1]
     out = []
@@ -702,6 +811,36 @@ def main():
                                    "to _rejected.")
         ia.write_json(os.path.join(ia.EDITORIAL, "series_aliases.json"), aliases)
 
+    # Noisy re-uploads of a known series ("SUSPENSE Radio Digitally Restored", "The Shadow
+    # Season 03") fold into it when their dates prove it, before anything resolves.
+    target_dates = collections.defaultdict(set)
+    for k, ss in re_by_key.items():
+        for s in ss:
+            for e in s.get("episodes") or []:
+                dt = (e.get("date") or "").replace(".", "-")
+                if FULL_DATE.fullmatch(dt) and P.valid_date(*dt.split("-")):
+                    target_dates[k].add(dt)
+    for row in otrr_rows:
+        c = reg.idp2c.get(row["idp"])
+        if c and row["date"] and FULL_DATE.fullmatch(row["date"]):
+            target_dates[c].add(row["date"])
+    folds = learn_folds(files, reg, target_dates, set(aliases.get("_rejected") or [])) if "folds" not in SKIP else {}
+    for fk, e in folds.items():
+        if e["applied"]:
+            reg.add(fk, e["target"], e["names"][0], "learned fold")
+    stats["learned_folds"] = len(folds)
+    stats["learned_folds_applied"] = sum(1 for e in folds.values() if e["applied"])
+    stats["learned_folds_files"] = sum(e["files"] for e in folds.values() if e["applied"])
+    if "--write-aliases" in args:
+        aliases["_learned_folds"] = dict(sorted(folds.items()))
+        aliases["_learned_folds_doc"] = (
+            "Learned by build_db.learn_folds: a series name no source knows that is a known series' name with "
+            "noise around it (set words stripped, then equal to, or beginning or ending with, a known key). Applied "
+            "when 80% of its dated files fall inside the target's run and at least half its dates are dates the "
+            "spine, OTRR's log or the target's own files already have; never when undated, from LibriVox, or a "
+            "re-creation. Move a wrong one to _rejected.")
+        ia.write_json(os.path.join(ia.EDITORIAL, "series_aliases.json"), aliases)
+
     # Pass 2: resolve each file's series against the registry.
     recs_out = []
     known_canon = set(reg.k2c.values())
@@ -709,24 +848,7 @@ def main():
     for fr in files:
         f, p, it, ident = fr["f"], fr["p"], fr["it"], fr["ident"]
         idt = dict(fr["idt"])
-        cands = [("file", p["series"])] + [("dir", x) for x in item_dirs(f["name"])] + \
-                [("item", fr["item_series"]), ("item_title", it.get("title"))]
-        tags = [("id3_album", f.get("album")), ("id3_artist", f.get("artist"))]
-        key = sname = how = None
-        for origin, raw in cands + tags:
-            if raw and isinstance(raw, str):
-                c, m = reg.resolve(raw, prefix=not origin.startswith("id3"))
-                if c:
-                    key, sname, how = c, raw, f"{origin}:{m}"
-                    break
-        if not key:
-            for origin, raw in cands:
-                k = P.norm_series(raw) if raw else ""
-                if k and (origin != "file" or len(k) >= 5) and k not in P.GENERIC_FILE_SERIES:
-                    key, sname, how = k, raw, origin
-                    break
-        if not key:
-            how = "none"
+        key, sname, how = resolve_file(fr, reg)
         date, date_source = p["date"], fr["date_source"]
         tag = P.parse_album_tag(f.get("album"))
         if not date and tag and tag.get("date"):

@@ -101,6 +101,51 @@ check("control: two letters that are not initials are not learned", "sh" in lear
 check("control: fewer than 3 files is not learned", "esco" in learned, False)
 check("control: a vetoed abbreviation is not learned", "esca" in B.learn_abbreviations(files, reg, {"esca"}), False)
 
+# --- folds: a known series' name with noise around it ------------------------------
+regf, _ = B.build_registry([{"series": "Suspense", "episodes": []}, {"series": "The Shadow", "episodes": []},
+                            {"series": "Romance", "episodes": []}, {"series": "Blondie", "episodes": []}],
+                           {}, [], {}, [])
+sus = ["1942-06-17", "1942-06-24", "1942-07-01", "1942-07-08", "1942-07-15", "1962-09-30"]
+shd = ["1937-10-03", "1937-10-10", "1937-10-17", "1954-11-07"]
+tdates = {"suspense": set(sus), "shadow": set(shd), "romance": {"1943-05-01", "1957-01-06"}}
+
+
+def ff(ident, item_series, dates, colls=(), text="", file_series=None):
+    return [{"f": {"name": f"{d or 'x' + str(i)}.mp3"}, "p": {"series": file_series, "date": d},
+             "it": {"title": item_series}, "item_series": item_series, "ident": ident, "orow": None,
+             "colls": list(colls), "text": text or item_series} for i, d in enumerate(dates)]
+
+
+fold_files = (ff("SUSPENSE_Radio_Digitally_Restored", "SUSPENSE Radio Digitally Restored", sus[:5] + ["1942-08-05"]) +
+              ff("TheShadowSeason1", "The Shadow Season 1", shd[1:3]) +
+              ff("TheShadowRadioShowRecreations", "The Shadow Recreations Updated 1 27", shd) +
+              ff("shadowtheater", "The Shadow Theater Players", shd[:3], text="The Shadow Theater Players: "
+                 "modern re-creations of the broadcasts, performed live") +
+              ff("romance_librivox", "Romance of the Rose", ["1943-05-01"], colls=["librivoxaudio"]) +
+              ff("OtrBlondie", "Blondie 42 Eps", [None, None, None]) +
+              ff("SuspenseFinalShows", "Suspense Final Shows", ["1972-01-02", "1972-01-09"]) +
+              ff("ShadowStrikes", "The Shadow Strikes Again", ["1940-01-01", "1940-01-02", "1940-01-03"]))
+folds = B.learn_folds(fold_files, regf, tdates, set())
+fs = lambda k: folds.get(k, {})
+check("a noisy re-upload folds into the series", (fs("suspenseradiodigitallyrestored").get("target"),
+      fs("suspenseradiodigitallyrestored").get("applied")), ("suspense", True))
+check("a season upload folds", fs("shadowseason1").get("applied"), True)
+check("control: a re-creation named so does not fold", fs("shadowrecreationsupdated127").get("applied"), False)
+check("control: a re-creation its item metadata names does not fold", fs("shadowtheaterplayers").get("applied"), False)
+check("control: a LibriVox work never folds", any(k.startswith("romance") for k in folds), False)
+check("control: an undated candidate never folds", (fs("blondie42eps").get("applied"), fs("blondie42eps").get("why")),
+      (False, "undated: a name alone never folds"))
+check("control: dates outside the target's run do not fold", fs("suspensefinalshows").get("applied"), False)
+check("control: dates inside the run the target never had do not fold", fs("shadowstrikesagain").get("applied"), False)
+check("control: a vetoed fold is not learned",
+      "shadowseason1" in B.learn_folds(fold_files, regf, tdates, {"shadowseason1"}), False)
+before = B.resolve_file(fold_files[0], regf)[0]
+for k, e in folds.items():
+    if e["applied"]:
+        regf.add(k, e["target"], e["names"][0], "learned fold")
+check("an applied fold resolves through the registry",
+      (before, B.resolve_file(fold_files[0], regf)[:1]), ("suspenseradiodigitallyrestored", ("suspense",)))
+
 # --- OTRR log matching -------------------------------------------------------------
 reg2, _ = B.build_registry([{"series": "Suspense", "episodes": []}, {"series": "Escape", "episodes": []}],
                            {"10": "Suspense", "11": "Escape"}, [], {}, [])
