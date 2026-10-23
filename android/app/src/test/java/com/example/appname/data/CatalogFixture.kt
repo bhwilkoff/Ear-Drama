@@ -18,7 +18,7 @@ object CatalogFixture {
         "CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT, " +
             "season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT, " +
             "no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0, " +
-            "gain_db REAL, detail_json TEXT)",
+            "gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL)",
         "CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL, " +
             "url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT, " +
             "partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank))",
@@ -56,7 +56,8 @@ object CatalogFixture {
         Ep("cp|1945-02-04", "commandperformance", "1945-02-04", "1944-45", "Frank Sinatra"),
     )
 
-    fun build(dir: File): File {
+    /** [withLoudness] false drops §3.1's loudness columns, as a catalog published before them. */
+    fun build(dir: File, withLoudness: Boolean = true): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
         val c = BundledSQLiteDriver().open(file.path)
@@ -115,6 +116,12 @@ object CatalogFixture {
             c.execSQL("INSERT INTO credits VALUES ('sus|1943-05-25', 'p1', 'cast', 'Mrs. Stevenson')")
             c.execSQL("INSERT INTO credits VALUES ('sus|1943-05-25', 'p2', 'host', NULL)")
             c.execSQL("INSERT INTO episode_aliases VALUES ('suspense|sorry-wrong-number', 'sus|1943-05-25')")
+            // One measured episode; every other row is NULL, as unmeasured.
+            c.execSQL("UPDATE episodes SET loudness_i = -15.0, loudness_tp = -6.0 WHERE id = 'sus|1943-05-25'")
+            if (!withLoudness) {
+                c.execSQL("ALTER TABLE episodes DROP COLUMN loudness_i")
+                c.execSQL("ALTER TABLE episodes DROP COLUMN loudness_tp")
+            }
         } finally {
             c.close()
         }

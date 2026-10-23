@@ -84,6 +84,9 @@ class PlaybackEngine(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val sleep = SleepTimer()
     private var episodes: List<EpisodeRow> = emptyList()
+    /** Each queued item's loudness level (DECISIONS 061); the sleep fade scales from it. */
+    private var levels: List<Float> = emptyList()
+    private var lastFactor = 1f
     private var ticker: Job? = null
     private var lastSaveAt = 0L
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -149,6 +152,7 @@ class PlaybackEngine(
                 player.pause()
             }
             mediaItem?.mediaId?.let { id -> resumeAt(id) }
+            applyVolume(lastFactor)
             publish()
         }
 
@@ -171,15 +175,18 @@ class PlaybackEngine(
             val detail = db.episodeDetail(episode.id) ?: return@launch
             val startUrl = url ?: detail.recordings.firstOrNull()?.url ?: return@launch
             val following = db.followingInSeason(detail.episode.id)
-            val followingUrls = following.mapNotNull { row ->
-                db.episodeDetail(row.id)?.recordings?.firstOrNull()?.url?.let { row to it }
+            val followingItems = following.mapNotNull { row ->
+                val next = db.episodeDetail(row.id) ?: return@mapNotNull null
+                next.recordings.firstOrNull()?.url?.let { Triple(row, it, LoudnessLevel.volume(next, it)) }
             }
-            val queue = listOf(detail.episode to startUrl) + followingUrls
+            val queue = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
             episodes = queue.map { it.first }
+            levels = queue.map { it.third }
             saveNow()
             sleep.onUserPlay()
             val p = player
-            p.setMediaItems(queue.map { (row, u) -> mediaItem(row, u) }, 0, startPositionFor(detail.episode.id))
+            p.setMediaItems(queue.map { (row, u, _) -> mediaItem(row, u) }, 0, startPositionFor(detail.episode.id))
+            applyVolume(1f)
             p.prepare()
             p.play()
             syncPauseAtEnd()
@@ -262,8 +269,11 @@ class PlaybackEngine(
         }
     }
 
-    private fun applyVolume(volume: Float) {
-        playerOrNull?.volume = if (muted) 0f else volume
+    /** [factor] is the sleep fade's, applied over the current item's loudness level. */
+    private fun applyVolume(factor: Float) {
+        lastFactor = factor
+        val p = playerOrNull ?: return
+        p.volume = if (muted) 0f else (levels.getOrNull(p.currentMediaItemIndex) ?: 1f) * factor
     }
 
     private fun remainingMediaMs(p: Player): Long? =

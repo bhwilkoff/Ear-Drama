@@ -19,6 +19,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     private val mutex = Mutex()
     @Volatile private var closed = false
 
+    /** A catalog published before §3.1's loudness columns reads them as NULL. */
+    private val hasLoudness: Boolean by lazy {
+        queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }.containsAll(listOf("loudness_i", "loudness_tp"))
+    }
+
     companion object {
         /** The lowest `meta.schemaVersion` this build reads. */
         const val MIN_SCHEMA_VERSION = 1
@@ -177,9 +182,10 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     /** §5 `episodeDetail`: the row, its credits, and its recordings in rank order. */
     suspend fun episodeDetail(id: String): EpisodeDetail? = read {
         val resolved = resolve(id)
+        val loudness = if (hasLoudness) "e.loudness_i, e.loudness_tp" else "NULL, NULL"
         val head = queryRaw(
-            "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json" +
-                "$EPISODE_FROM WHERE e.id = ?",
+            "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json, " +
+                "$loudness$EPISODE_FROM WHERE e.id = ?",
             listOf(resolved),
         ) { st ->
             EpisodeDetail(
@@ -191,6 +197,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 credits = emptyList(),
                 recordings = emptyList(),
                 detailJson = st.textOrNull(12),
+                loudnessI = if (st.isNull(13)) null else st.getDouble(13),
+                loudnessTp = if (st.isNull(14)) null else st.getDouble(14),
             )
         }.firstOrNull() ?: return@read null
         val credits = queryRaw(
