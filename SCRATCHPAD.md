@@ -42,7 +42,12 @@
      `archivewatchSamsung` author profile; Samsung requires every later update to
      use the first upload's certificate, so give Ear Drama its own before a store
      upload? (The Tizen package id `EarDramaTV` is a placeholder.)
-  9. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
+  9. **What plays next** (R3/R14): the three apps disagree. Apple plays on
+     through the rest of the series (up to 50), Android through the rest of the
+     season, the web only what you queued. Which one rule? (The research's R3:
+     a serial plays to its arc's end and stops; the next arc is offered, not
+     started. Arcs need a runs table the catalog does not have yet.)
+  10. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
      take-down email, store records, OAuth clients, Worker, archive.org account).
 - **Status (2026-10-22, 10:10 PM MT, tick 25)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
