@@ -219,6 +219,7 @@ struct EpisodeScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
+    @Environment(DownloadStore.self) private var downloads
     @State private var detail: EpisodeDetail??
 
     var body: some View {
@@ -267,7 +268,8 @@ struct EpisodeScreen: View {
                         .font(TypeRamp.bodyStrong)
                 }
                 .disabled(detail.recordings.isEmpty)
-                if !catalog.isOnline { OfflineNotice() }
+                DownloadControl(detail: detail)
+                if !catalog.isOnline && downloads.record(for: episode.id)?.state != .downloaded { OfflineNotice() }
                 if isCurrent, let message = player.errorMessage {
                     Label(message, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(Color.semanticError)
@@ -396,13 +398,14 @@ struct LibraryScreen: View {
     private struct LibraryKey: Equatable { let entries: [String: ListeningHistory.Entry]; let load: Int }
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
+    @Environment(DownloadStore.self) private var downloads
     @State private var inProgress: [EpisodeRow]?
     @State private var played: [EpisodeRow] = []
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && played.isEmpty {
+                if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty {
                     ContentUnavailableView("Nothing played yet", systemImage: "books.vertical",
                                            description: Text("Episodes you start are kept here."))
                 } else {
@@ -418,6 +421,7 @@ struct LibraryScreen: View {
                                 }
                             }
                         }
+                        DownloadsSection()
                         if !played.isEmpty {
                             Section("Played") {
                                 ForEach(played) { episode in

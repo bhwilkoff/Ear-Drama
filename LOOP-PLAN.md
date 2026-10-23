@@ -235,8 +235,8 @@ One target, four destinations, the shared `Core/`. Seed `iOS-DESIGN.md`,
 - [ ] AVPlayer with the audio session, Now Playing and remote commands, lock
       screen artwork from the brand square when an episode has none (B17), the
       sleep timer reachable from the lock screen's app surface in one step.
-- [ ] Downloads on iOS and macOS (never tvOS, Archive Watch Decision 099's reasoning).
-- [ ] A privacy manifest, VoiceOver on every control.
+- [x] (built, tick 26; device check pending) Downloads on iOS and macOS (never tvOS, Archive Watch Decision 099's reasoning).
+- [x] (privacy manifest tick 26; VoiceOver labels tick 16, unchecked on a device) A privacy manifest, VoiceOver on every control.
 - [ ] The cloud build with `submit=false` first, then TestFlight.
 
 **Play gate:** TestFlight on iPhone, iPad, Mac, and Apple TV.
