@@ -78,6 +78,30 @@ until phase 2.
    The fancier options (a neural voice, live multi-device sessions, automatic
    mixing choices) are left out of phase 1 on purpose.
 
+
+### The learning test, as built (2026-10-23, M7)
+
+The four answers above were written before the code. Checked against what
+shipped on iPhone, iPad, Mac, Android, and the web:
+
+1. **Understanding**: holds. The cast sheet is the play's own parts, largest
+   first, with directions and sound as parts of their own; since the parser fix
+   (df0db3b) no title page or publisher's list becomes a part, and Hamlet opens
+   on Barnardo's line.
+2. **Participation**: holds. The relay (C7) and "a part nobody takes leaves the
+   play unfinished" (C6) are tested on every platform (`Relay.isComplete`,
+   its Android and web ports).
+3. **Agency**: holds in what the app does not do: no line is judged or
+   rejected, and "hear it read" is a button, never a default. **One defect,
+   against rule 3 of §8:** a take the bleed check flags is kept with a warning
+   and can still be chosen and mixed, so some of the device voice can reach a
+   finished play. Fix: a flagged take does not count toward completion, and
+   the mix refuses it; the performer re-takes with headphones, as §5 rule 2
+   says. Sent for repair the same day.
+4. **Clarity**: holds. One device, plain line-by-line takes, a timeline that is
+   data; no neural voice, no automatic mixing choices.
+
+The owner's play is the remaining check (SCRATCHPAD item 11).
 ---
 
 ## §2. The flow
