@@ -238,7 +238,7 @@ private fun StartPanel(
             }
             Preflight.NeedsHeadphones -> {
                 Text(
-                    "Plug in headphones so the device voice stays out of your recording.",
+                    "Plug in headphones.",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium,
                 )

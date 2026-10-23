@@ -84,8 +84,7 @@ struct ListenScreen: View {
                     }
                 }
                 if shelves.isEmpty && continuing.isEmpty {
-                    ContentUnavailableView("Nothing to list yet", systemImage: "radio",
-                                           description: Text("Browse Series to start."))
+                    ContentUnavailableView("Nothing to list yet", systemImage: "radio")
                 }
             } else {
                 SkeletonRows()
@@ -448,8 +447,6 @@ struct LibraryScreen: View {
                 if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
-                    } description: {
-                        Text("Episodes you start are kept here.")
                     } actions: {
                         AccountRow().fixedSize()
                     }
