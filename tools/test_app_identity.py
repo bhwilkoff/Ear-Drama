@@ -60,6 +60,8 @@ with tempfile.TemporaryDirectory() as tmp:
     yml = read("project.yml")
     check("PRODUCT_BUNDLE_IDENTIFIER: org.someone.birdlog\n" in yml, "Apple bundle identifier")
     check("PRODUCT_BUNDLE_IDENTIFIER: org.someone.birdlog.CoreTests" in yml, "Apple test bundle follows it")
+    check("PRODUCT_BUNDLE_IDENTIFIER: org.someone.birdlog.watchkitapp" in yml, "Apple Watch bundle follows it")
+    check("INFOPLIST_KEY_WKCompanionAppBundleIdentifier: org.someone.birdlog\n" in yml, "the watch names its phone app")
     check("bundleIdPrefix: org.someone" in yml, "Apple bundleIdPrefix")
     check('INFOPLIST_KEY_CFBundleDisplayName: "Bird & Log"' in yml, "Apple display name")
     check('"name": "Bird & Log"' in read("manifest.json"), "web manifest name")

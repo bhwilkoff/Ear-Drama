@@ -193,6 +193,82 @@ Read the `macos-platform-patterns` skill before writing any Mac view;
 - **Deep links to companion apps**: `NSWorkspace`, not
   `UIApplication`; no `LSApplicationQueriesSchemes` entry on macOS.
 
+## CarPlay and Apple Watch: stubs until the core five are done
+
+Decision 056 makes both of these stubs for 1.0: a target that builds in
+CI and launches, with its PARITY.md column marked ⏳. Each grows out of
+the core's shared code. Neither one is a second feature set.
+
+### CarPlay (in the iOS slice, `iOS/CarPlay_iOS.swift`)
+
+**What is there.** `AppDelegate_iOS` (connected with
+`@UIApplicationDelegateAdaptor`) sends a CarPlay scene session to
+`CarPlaySceneDelegate`. Every other scene gets back the configuration
+the system already gave it. The car's first screen is a
+`CPTabBarTemplate` with the four car tabs (R17): **Continue**,
+**Radio**, **Series**, and **Downloads**. Continue lists up to 12
+in-progress episodes from the phone's own `ListeningHistory`, most
+recent first, with the listened fraction shown on each row. Picking
+one plays it through the shared `AudioPlayer` and pushes
+`CPNowPlayingTemplate.shared`, which reads the Now Playing info and
+remote commands the player already publishes. The other three tabs are
+empty lists that say "Not in the car yet". There are no transcripts on
+the car screen. CarPlay forbids lyrics, and a transcript counts as
+lyrics.
+
+**Why it is dormant.** iOS connects a CarPlay scene only for an app
+signed with `com.apple.developer.carplay-audio`. Apple has not granted
+that entitlement yet. Until it does, nothing calls this code: the
+phone app builds, signs, and runs exactly as before. The scene also
+cannot be tried in the CarPlay Simulator or in a car until the
+entitlement is granted.
+
+**What the owner does to switch it on** (research 04 §2.6):
+
+1. Request the CarPlay **audio** entitlement for `app.eardrama` at
+   developer.apple.com/contact/carplay and agree to the CarPlay
+   Entitlement Addendum. Apple grants it per bundle ID. It is a
+   calendar item, not code, and only one CarPlay category is allowed
+   per app.
+2. When Apple grants it, enable "CarPlay Audio App (CarPlay framework)"
+   under the App ID's Additional Capabilities, then make a new App
+   Store provisioning profile for `app.eardrama`.
+3. The agent then adds the entitlement, and only then:
+   `apple/Resources/EarDrama_iOS.entitlements` holding
+   `com.apple.developer.carplay-audio` = `true`, set in `project.yml`
+   as `"CODE_SIGN_ENTITLEMENTS[sdk=iphone*]"` so that tvOS and macOS
+   never carry it. The cloud archive signs manually
+   (`apple-app-store-cli-submission`), so the new profile has to go
+   into that pipeline's secrets. Adding the key before the grant would
+   break every signed build: no profile could carry it.
+4. Once it is signed, the scene shows up in the CarPlay Simulator and
+   in a car. Building out the car screen comes after that: Radio,
+   Series paged to stay within 12 rows and 5 screens, Downloads, and
+   the sleep timer (R20) as a Now Playing button.
+
+### Apple Watch (target `EarDramaWatch`, `watchOS/`)
+
+**What is there.** A watchOS app whose first screen is a **Continue**
+list. It shares Core's `ListeningHistory` and nothing else. The
+generated `Design.swift` does not compile on watchOS
+(`UIColor(dynamicProvider:)` is unavailable there), so the watch takes
+the system tint until `tools/design_tokens.mjs` writes a watchOS branch. There is no catalog, no seed, and no download on the
+watch. On the watch, history starts empty, so the list says "Waiting
+on the phone" until the build-out hands the phone's history over
+(research 04 §2.7: Continue and downloads only). It is not embedded in
+the phone app yet. Embedding comes with the build-out, once the watch
+has something to show. Build it with
+`-scheme EarDramaWatch -destination 'generic/platform=watchOS Simulator'`.
+
+**Floor: watchOS 11.0.** A watch on watchOS 11 pairs with an iPhone on
+iOS 18, and iOS 18 is this app's iOS floor. So every phone the app
+serves can have a watch the app serves. watchOS 11 and watchOS 26 run
+on the same hardware (Series 6 and later, SE 2nd generation, every
+Ultra). A higher floor would add no capability the stub uses, and it
+would drop watches that have not updated. Below 11 there is no gain
+either: watchOS 10 needs an iPhone on iOS 17, which is below the phone
+floor. `@Observable` needs watchOS 10, so 11 clears that too.
+
 ## What to bring back
 
 Three green builds and a passing test run, from one command line.
