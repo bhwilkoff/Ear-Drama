@@ -75,7 +75,7 @@ enum TypeRamp {
     nonisolated static let body = Font.body.weight(.regular)  // L4
     #endif
     #if os(tvOS)
-    nonisolated static let caption = Font.caption.weight(.regular)  // L5
+    nonisolated static let caption = Font.body.weight(.regular)  // L5
     #else
     nonisolated static let caption = Font.caption.weight(.regular)  // L5
     #endif

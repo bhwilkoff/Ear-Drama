@@ -33,7 +33,7 @@
     { "id": "sectionHeader", "level": "L2", "size": 20, "weight": 700, "web": "section-header", "apple": "title2",     "tvos": "title3",   "android": "headlineSmall", "windows": "section-header" },
     { "id": "bodyStrong",    "level": "L3", "size": 16, "weight": 600, "web": "body-strong",    "apple": "headline",   "tvos": "headline", "android": "titleMedium",   "windows": "body-strong" },
     { "id": "body",          "level": "L4", "size": 16, "weight": 400, "web": "body",           "apple": "body",       "tvos": "body",     "android": "bodyMedium",    "windows": "body" },
-    { "id": "caption",       "level": "L5", "size": 13, "weight": 400, "web": "caption",        "apple": "caption",    "tvos": "caption",  "android": "labelMedium",   "windows": "caption" },
+    { "id": "caption",       "level": "L5", "size": 13, "weight": 400, "web": "caption",        "apple": "caption",    "tvos": "body",     "android": "labelMedium",   "windows": "caption" },
     { "id": "tabular",       "level": "L6", "size": 14, "weight": 400, "web": "tabular",        "apple": "body",       "tvos": "body",     "android": "bodySmall",     "windows": "tabular", "mono": true }
   ],
   "space": { "1": 4, "2": 8, "3": 12, "4": 16, "6": 24, "8": 32 },

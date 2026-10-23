@@ -41,16 +41,31 @@ struct ContentView_macOS: View {
             if player.item != nil { TransportBar_macOS() }
         }
         .navigationTitle(player.item?.episode.displayTitle ?? "Ear Drama")
+        // Space plays and pauses here, never as a menu key (macOS-DESIGN §5.3):
+        // a focused text field takes the key first, so typing never pauses.
+        .onKeyPress(.space) {
+            guard player.item != nil else { return .ignored }
+            player.togglePlayPause()
+            return .handled
+        }
     }
 }
 
 private struct SearchScreen_macOS: View {
+    @Environment(AppStore.self) private var store
     @State private var query = ""
+    @FocusState private var fieldFocused: Bool
 
     var body: some View {
         SearchResultsList(query: query)
             .navigationTitle("Search")
             .searchable(text: $query, placement: .toolbar, prompt: "Titles, series, people")
+            .searchFocused($fieldFocused)
+            .onChange(of: store.wantsSearchFocus, initial: true) { _, wants in
+                guard wants else { return }
+                fieldFocused = true
+                store.wantsSearchFocus = false
+            }
     }
 }
 
@@ -114,8 +129,43 @@ struct TransportBar_macOS: View {
     }
 }
 
-/// The menu bar: every playback command, with its key equivalent, disabled
-/// (never hidden) when nothing is loaded.
+/// The Go menu (macOS-DESIGN §5.5): the sidebar sections, Search, and Back.
+struct GoCommands_macOS: Commands {
+    let store: AppStore
+
+    var body: some Commands {
+        CommandMenu("Go") {
+            ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
+                Button(tab.title) { store.selectedTab = tab }
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+            }
+            Divider()
+            Button("Search") { store.openSearch() }
+                .keyboardShortcut("f", modifiers: .command)
+            Button("Back") { store.goBack() }
+                .keyboardShortcut("[", modifiers: .command)
+                .disabled(!store.canGoBack)
+        }
+    }
+}
+
+/// The Help menu (macOS-DESIGN §5.6): the website's own pages.
+struct HelpCommands_macOS: Commands {
+    @Environment(\.openURL) private var openURL
+
+    var body: some Commands {
+        CommandGroup(replacing: .help) {
+            Button("Ear Drama Website") { openURL(SiteLinks.root) }
+            Divider()
+            Button("Credits") { openURL(SiteLinks.credits) }
+            Button("Privacy") { openURL(SiteLinks.privacy) }
+            Button("Take-Down Requests") { openURL(SiteLinks.takedown) }
+        }
+    }
+}
+
+/// The menu bar: every playback command, disabled (never hidden) when nothing
+/// is loaded. No item takes a bare key (§5.3); Space is the main window's.
 struct PlaybackCommands_macOS: Commands {
     let player: AudioPlayer
     let store: AppStore
@@ -125,9 +175,8 @@ struct PlaybackCommands_macOS: Commands {
 
     var body: some Commands {
         CommandMenu("Controls") {
-            // A focused production window gives Space to Record (the Recording menu).
+            // Disabled while a part records, so the microphone never hears the episode.
             Button(player.isPlaying ? "Pause" : "Play") { player.togglePlayPause() }
-                .keyboardShortcut(.space, modifiers: [])
                 .disabled(player.item == nil || recording != nil)
             Button("Back 15 Seconds") { player.skip(by: -AudioPlayer.Skip.back) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
@@ -170,12 +219,6 @@ struct PlaybackCommands_macOS: Commands {
             }
             .keyboardShortcut("t", modifiers: [.command, .option])
             .disabled(player.item?.episode.transcriptURL == nil)
-        }
-        CommandGroup(after: .sidebar) {
-            ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
-                Button(tab.title) { store.selectedTab = tab }
-                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
-            }
         }
     }
 }

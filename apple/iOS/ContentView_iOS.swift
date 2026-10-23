@@ -27,6 +27,7 @@ struct ContentView_iOS: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        .modifier(HapticFeedback_iOS())
         .sheet(isPresented: $store.isPlayerPresented) {
             PlayerSheet_iOS()
                 .presentationDragIndicator(.visible)
@@ -55,6 +56,26 @@ private struct MiniPlayerInset: ViewModifier {
                     .background(.regularMaterial)
             }
         }
+    }
+}
+
+/// The phone's haptics (iOS-DESIGN §6.5), named through `Haptic` only:
+/// selection on a tab change, success on a finished download, error with the
+/// player's error line or "Download failed".
+private struct HapticFeedback_iOS: ViewModifier {
+    @Environment(AppStore.self) private var store
+    @Environment(AudioPlayer.self) private var player
+    @Environment(DownloadStore.self) private var downloads
+
+    func body(content: Content) -> some View {
+        content
+            .sensoryFeedback(Haptic.selection.feedback, trigger: store.selectedTab)
+            .sensoryFeedback(trigger: downloads.records.mapValues(\.state)) { old, new in
+                Haptic.forDownloads(from: old, to: new)?.feedback
+            }
+            .sensoryFeedback(trigger: player.errorMessage) { old, new in
+                Haptic.forError(from: old, to: new)?.feedback
+            }
     }
 }
 

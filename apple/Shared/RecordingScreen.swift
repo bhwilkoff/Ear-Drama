@@ -157,7 +157,7 @@ struct RecordingScreen: View {
             .frame(maxWidth: 720, maxHeight: .infinity, alignment: .top)
             .frame(maxWidth: .infinity)
             #if os(iOS)
-            .sensoryFeedback(.selection, trigger: session.phase == .listening(lineID: current.id))
+            .sensoryFeedback(Haptic.selection.feedback, trigger: session.phase == .listening(lineID: current.id))
             #endif
         }
     }

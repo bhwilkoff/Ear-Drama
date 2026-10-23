@@ -5,7 +5,9 @@
 //      (someone edited a generated file by hand, or forgot to run it);
 //   2. a text pair in either mode falls below WCAG 2.2 AA contrast;
 //   3. a target stops depending on the JSON (the negative control: change
-//      every color in memory and every target must change with it).
+//      every color in memory and every target must change with it);
+//   4. a tvOS type level maps to a system style under the 29 pt body floor
+//      (AGENTS.md; tvOS-DESIGN §7.1), with its own negative control.
 //
 //   node tools/test_design_tokens.mjs
 
@@ -54,6 +56,15 @@ for (const k of Object.keys(altered.radius)) altered.radius[k] += 1;
 const after = plan(ROOT, altered);
 for (const r of after) ok(r.expected !== r.current, `${r.path} changes when the tokens change`);
 ok(colors(tokens).length > 0, 'the palette is not empty');
+
+// 4. The tvOS floor. Point sizes of tvOS's text styles (HIG, Typography).
+const TVOS_POINTS = { title: 76, title2: 57, title3: 48, headline: 38, callout: 31, body: 29,
+  caption: 25, caption2: 23, footnote: 23 };
+const underFloor = (levels) => levels.filter((l) => !((TVOS_POINTS[l.tvos] ?? 0) >= 29)).map((l) => l.id);
+ok(underFloor(tokens.type).length === 0, `every tvOS type level is at least 29 pt (under: ${underFloor(tokens.type).join(', ') || 'none'})`);
+const shrunk = structuredClone(tokens);
+shrunk.type.find((l) => l.id === 'caption').tvos = 'caption';
+ok(underFloor(shrunk.type).includes('caption'), 'the floor check catches a tvOS caption at 25 pt');
 
 console.log(failed ? `${failed} design-token check(s) FAILED` : `all ${results.length} token files match; contrast holds in light and dark`);
 process.exit(failed ? 1 : 0);

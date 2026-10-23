@@ -512,7 +512,7 @@ struct ListenThrough: View {
                     Label(mix.isPlaying ? "Pause" : "Play", systemImage: mix.isPlaying ? "pause.fill" : "play.fill")
                 }
                 #if os(iOS)
-                .sensoryFeedback(.selection, trigger: mix.isPlaying)
+                .sensoryFeedback(Haptic.selection.feedback, trigger: mix.isPlaying)
                 #endif
                 if production.isFinished {
                     ShareLink(item: plays.store.mixURL(production.id)) {

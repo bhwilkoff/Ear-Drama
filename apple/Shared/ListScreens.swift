@@ -330,6 +330,15 @@ struct EpisodeScreen: View {
             }
         }
         .navigationTitle(episode.displayTitle)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                // The https twin, never the file (iOS-DESIGN §4.4, DEEP_LINKS.md).
+                ShareLink(item: SiteLinks.episode(episode.id), subject: Text(episode.displayTitle)) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .help("Share")
+            }
+        }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $transcriptOpen) {
