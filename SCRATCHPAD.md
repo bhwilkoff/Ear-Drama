@@ -49,10 +49,10 @@
      started. Arcs need a runs table the catalog does not have yet.)
   10. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
      take-down email, store records, OAuth clients, Worker, archive.org account).
-  11. **Record a play on a device** (M7 phase 1, merged at 1.0.18): Plays tab on
-     the iPhone or Mac, take a part, record with headphones. Broken would be a
+  11. **Record a play on a device** (M7's play gate): a two-role scene on the
+     iPhone and on the Pixel (Android since 1.0.24), with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
-     Through out of order. Nine stage plays ship; no radio play parses clean yet.
+     Through out of order. Eleven stage plays ship; no radio play parses clean yet.
 - **Status (2026-10-23, 7:10 AM MT, tick 53)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
   cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.23:
