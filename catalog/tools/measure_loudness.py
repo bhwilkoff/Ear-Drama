@@ -68,7 +68,10 @@ def measure(item):
     cmd = ffmpeg_cmd() + ["-nostats", "-hide_banner", "-user_agent", UA, "-i", item["url"],
                           "-map", "0:a:0", "-af", "ebur128=peak=true", "-f", "null", "-"]
     t0 = time.time()
-    p = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"id": item["id"], "url": item["url"], "stratum": item["stratum"], "error": "timeout after 600 s"}
     tail = p.stderr[p.stderr.rfind("Summary:"):] if "Summary:" in p.stderr else ""
     out = {"id": item["id"], "url": item["url"], "stratum": item["stratum"], "seconds": round(time.time() - t0, 1),
            "tool": "ffmpeg ebur128=peak=true", "measuredAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}

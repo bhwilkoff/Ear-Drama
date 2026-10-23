@@ -97,6 +97,12 @@ folder, so no tick has to re-derive them.
   any command; never sleep a test device; never kill the owner's running app;
   stop every test you start and verify that it stopped; clicks on the owner's
   Mac only when they are away, aimed from the element's accessibility frame.
+- **The machine is the owner's.** Each tick starts with `uptime` and `pgrep
+  launchd_sim`; a stray simulator or a load far above the core count is
+  surfaced at once. Agents never boot a simulator unless they shut it down in
+  the same step, run builds in the background with short foreground commands,
+  and prove no simulator or Gradle daemon is left before they report (2026-10-22:
+  an agent's simulator drove the load to 852 for three hours).
 - **Ask before an audible run.** Every test door is muted, and playback is
   proven by tap metering under mute wherever the harness can read it. A run
   that must play sound aloud on the owner's machine or a device in their room
