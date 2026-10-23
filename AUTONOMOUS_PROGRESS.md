@@ -154,3 +154,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 63, 2026-10-23, agent: Android parity round two
 - Launched: Android's ANDROID-DESIGN §12 items with known answers (Detail's sponsor and order, the network facet and sort, route de-duplication, Following and Share verbs, TV focus on pushed screens; the Play deletion line closed since delete-account/ exists). No Queue verb (owner, item 9), no color or icon changes (the On Air agent owns those).
 - CI: Android Build on push green twice since the last merge; Design Tokens green. Running: On Air roles (web, Apple), Listen Together rooms (Worker), Android round two.
+
+### Tick 64, 2026-10-23, merge: On Air's roles and genre hues on the web and Apple
+- Merged 6ca4f64 (1.0.33 build 34): color.genre tokens for every platform (checked against catalog GENRES and at 3:1 on every ground, lowest 3.19:1); red for what is live, blue for wayfinding, a genre mark on series rows; docs first. On merge: SHELL_VERSION v13 (both sides had made v12 independently, which would have shipped the merge without a cache bump); Decision 064 now counts Start recording as live (owner may overrule).
+- Verified: tokens and contrast; test_web; Apple design rules; screenshots read at 375 in light and dark. The agent's blank Listen at 375 measured as a timing artifact (the view renders in the frame under three entry URLs). Not looked at: the Apple screens (no simulator; the branch's macOS 94 tests and iOS/tvOS/watch builds passed, and main's Apple code had not changed since its base).
+- Android's roles wait for the Android round-two agent. Running: Android round two, Listen Together rooms.
