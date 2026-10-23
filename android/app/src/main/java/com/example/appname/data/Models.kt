@@ -53,6 +53,9 @@ data class EpisodeDetail(
     val recordings: List<Recording>,
     /** Decoded only on Detail, and only when a field here needs it. */
     val detailJson: String?,
+    /** The default copy's integrated loudness (LUFS) and true peak (dBTP), §3.1; null until measured. */
+    val loudnessI: Double? = null,
+    val loudnessTp: Double? = null,
 )
 
 data class SearchResults(val series: List<SeriesRow>, val episodes: List<EpisodeRow>) {

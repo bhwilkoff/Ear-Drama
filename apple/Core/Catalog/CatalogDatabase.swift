@@ -21,6 +21,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let handle: OpaquePointer
     private let hasSponsor: Bool
     private let hasNoRecommend: Bool
+    private let hasLoudness: Bool
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
     let rightsLines: [String: String]
     private let sawCorruption = Mutex(false)
@@ -43,6 +44,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         self.onCorruption = onCorruption
         hasSponsor = Self.columnExists(h, table: "episodes", column: "sponsor")
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
+        hasLoudness = Self.columnExists(h, table: "episodes", column: "loudness_i")
+            && Self.columnExists(h, table: "episodes", column: "loudness_tp")
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
             sqlite3_close(h)
@@ -219,10 +222,16 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     func episodeDetail(id rawID: String) -> EpisodeDetail? {
         let id = resolve(rawID)
         let sponsorColumn = hasSponsor ? "e.sponsor" : "NULL"
+        let loudnessColumns = hasLoudness ? "e.loudness_i, e.loudness_tp" : "NULL, NULL"
         let found = rows("""
-            SELECT \(Self.episodeColumns), \(sponsorColumn) FROM episodes e JOIN series s ON s.key = e.series_key
-            WHERE e.id = ?
-            """, [.text(id)]) { row in (Self.episode(row), row.text(11)) }.first
+            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns) FROM episodes e
+            JOIN series s ON s.key = e.series_key WHERE e.id = ?
+            """, [.text(id)]) { row -> (EpisodeRow, String?) in
+            var episode = Self.episode(row)
+            episode.loudnessI = row.double(12)
+            episode.loudnessTP = row.double(13)
+            return (episode, row.text(11))
+        }.first
         guard let (episode, sponsor) = found else { return nil }
         let credits = rows("""
             SELECT c.person_id, p.name, c.role, c.character FROM credits c JOIN people p ON p.id = c.person_id

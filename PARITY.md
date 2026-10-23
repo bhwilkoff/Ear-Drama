@@ -110,7 +110,7 @@ When shipping any user-facing feature:
 | Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | |
 | Serials stop at the end of an arc (R3) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Commercials chaptered, never skipped (R8) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
-| Loudness gain applied at playback | 🚧 -21 LUFS by cutting; unmeasured at unity | ⏳ | ⏳ | ⏳ | ⏳ | Gain from the pipeline; never re-encoded |
+| Loudness gain applied at playback | 🚧 -21 LUFS by cutting; unmeasured at unity | 🚧 AVPlayer volume | 🚧 | 🚧 | 🚧 ExoPlayer volume, per queued item | Gain from the pipeline; never re-encoded |
 | Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | catalog Decision 007 |
 | Transcripts, labeled automatic | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Shown only above the measured quality gate (058) |
 | Downloads | ⏳ | 🚧 background session; remove, remove all | 🚧 same, Library section | n/a | 🚧 WorkManager, same store | tvOS has no durable storage for media |

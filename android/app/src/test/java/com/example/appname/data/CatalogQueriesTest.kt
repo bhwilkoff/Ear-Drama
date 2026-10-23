@@ -59,6 +59,23 @@ class CatalogQueriesTest {
         assertEquals("AFRS", d.recordings[1].variant)
     }
 
+    @Test fun `episodeDetail carries loudness and tolerates its absence`() = runBlocking {
+        val measured = db.episodeDetail("sus|1943-05-25")!!
+        assertEquals(-15.0, measured.loudnessI!!, 0.0)
+        assertEquals(-6.0, measured.loudnessTp!!, 0.0)
+        assertNull(db.episodeDetail("sus|1943-01-07")!!.loudnessI)
+        assertNull(db.episodeDetail("sus|1943-01-07")!!.loudnessTp)
+        val dir = tmp.newFolder("older")
+        val older = CatalogDatabase.open(CatalogFixture.build(dir, withLoudness = false).path)!!
+        try {
+            val d = older.episodeDetail("sus|1943-05-25")!!
+            assertNull(d.loudnessI)
+            assertEquals(2, d.credits.size)
+        } finally {
+            older.close()
+        }
+    }
+
     @Test fun `episodeDetail forwards an alias`() = runBlocking {
         assertEquals("sus|1943-05-25", db.episodeDetail("suspense|sorry-wrong-number")?.episode?.id)
     }
