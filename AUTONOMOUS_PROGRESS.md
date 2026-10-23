@@ -102,3 +102,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - a5a66e1 (1.0.23 build 24): a collected-works record (Works / Volume / Vol. / Collection) shows the play its own text prints before the first speech, cased for a list and never reworded, with the volume kept as `collection`. gut-12039 now reads "The Custom of the Country". Two cases; three broken controls each failed (5/6); catalog run_all 21/21; US English. Apple's Codable decoding ignores the new key.
 - Launched: the Radio tab (Tonight in 19xx) on iOS, macOS and tvOS, mirroring the web; plays phase 1 on the web, headphones only. Running: Android plays. M5 (Worker + sign-in) is next once an agent slot frees.
 - Publish rerun 39956803564 still building at 7:00 AM MT (the first run failed at minute 5; this one is past it).
+
+### Tick 53, 2026-10-23, agent + main thread: M5's Worker launched; the scratchpad brought current
+- Launched M5's backend: a Worker + D1 ported from Archive Watch's worker/ (Apple and Google tokens verified at the Worker, sync with last-write-wins, account deletion, rate limits), local tests only; nothing deployed, no Cloudflare resource created, no secret copied.
+- SCRATCHPAD's Current State said tick 25 at 1.0.8; rewritten to tick 53 at 1.0.23 with what is built and running.
+- Running: Android plays, web plays, Radio on Apple, the Worker. Publish rerun 39956803564 still in the evenings step (it measures newspaper logs 3 s apart).
