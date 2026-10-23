@@ -59,10 +59,12 @@ def shoot(url, w, h, path, budget=9000):
     # not leave the first one standing in for it.
     Path(path).unlink(missing_ok=True)
     # A fresh profile per shot, so no route inherits another's service worker or
-    # storage. KNOWN DEFECT (2026-10-23): the sweep is still not deterministic.
-    # `item` and `search` sometimes match the previous route's screen even with this
-    # profile; a real-time --timeout made it worse. Instrument the stages (fetch
-    # timing under virtual time, the shard requests) before trusting a red or a green.
+    # storage. KNOWN DEFECT (2026-10-23): the shot is taken at a fixed virtual
+    # time, not when the screen is ready. Measured: five --dump-dom loads of
+    # ?item= with fresh profiles gave the episode 3 times, an empty episode view
+    # once, and no view at all once (its data fetch still pending when virtual
+    # time ran out). Fix: wait for the expected text over the DevTools protocol,
+    # then capture; never retry until green.
     with tempfile.TemporaryDirectory(prefix="web_run-") as profile:
         sh([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars",
             f"--user-data-dir={profile}", "--mute-audio",
