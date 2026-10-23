@@ -51,6 +51,11 @@ targets:
           - "Tests/**"
           # The folder READMEs are notes for people, not app resources.
           - "**/*.md"
+          - "Resources/PrivacyInfo.xcprivacy"
+      # The privacy manifest (App Store requirement): named here so it is
+      # always a bundle resource, never left to file-type inference.
+      - path: apple/Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
     scheme:
       testTargets:
         - EarDramaTests
