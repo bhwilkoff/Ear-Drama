@@ -145,3 +145,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 61, 2026-10-23, merge + agent: sign-in on Apple; On Air's roles and genre hues launched
 - Merged dd6a4e1 (1.0.31 build 32): sign-in and sync on iOS, macOS, tvOS (Library's last row; Apple everywhere; Google on iOS/macOS via ASWebAuthenticationSession + PKCE; tvOS Google ⏳). Changed on merge: the Sign in with Apple entitlement stays OFF in project.yml until the owner enables the capability, since a signed build naming it fails first (would have broken the cloud archive); WORKER.md step 4 says when to switch it on. Verified on main: macOS 94 tests / 22 suites; tvOS and iOS builds, 0 compiler warnings (two CoreData runtime log lines in xctest, not compiler output); design rules 7/7.
 - Launched: On Air's genre hues as a `color.genre` token group with a 3:1 check, and red-for-live / blue-for-wayfinding on web and Apple. Running: Android sign-in.
+
+### Tick 62, 2026-10-23, merge + main thread: sign-in on Android; M5 built on all five
+- Merged c592e22 (1.0.32 build 33): Android sign-in and sync (Credential Manager for Google; a Custom Tab for Apple; Keystore-encrypted session). Added on merge: auth/apple/index.html, the https page Apple returns to on Android, forwarding the fragment to eardrama://oauth/apple and clearing it from the address bar; sw.js bypasses /auth/ (v12). Verified on main: 131 tests 0 failed 0 skipped, assembleDebug, 0 `w:`; test_web.
+- LOOP-PLAN M5's three items checked as BUILT (not verified: nothing deployed, no real sign-in); the Needs Ben OAuth row now names Android's two clients and the entitlement switch.
+- Running: On Air roles and genre hues (web, Apple). Next: the same on Android; M6 Listen Together.

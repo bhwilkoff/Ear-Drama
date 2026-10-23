@@ -253,14 +253,16 @@ One target, four destinations, the shared `Core/`. Seed `iOS-DESIGN.md`,
 
 ### M5. Accounts and sync
 
-- [ ] The Worker and D1 (057): Sign in with Apple and Google verified at the
+- [x] (built 2026-10-23, tick 57; Decision 063; local tests only, not deployed)
+      The Worker and D1 (057): Sign in with Apple and Google verified at the
       Worker, ported from Archive Watch rather than rewritten
       (`authentication`, `zero-cost-hosted-backend`), the token refreshed before
       every call, all of it through each platform's one API client.
-- [ ] Sign-in on all five platforms, optional, never at first launch; history,
+- [x] (built on all five by tick 62; stubbed-Worker tests; no real sign-in yet;
+      tvOS has Apple only) Sign-in on all five platforms, optional, never at first launch; history,
       queue, and follows sync through the Worker, with a status row showing the
       account, the last sync, the last error, and Sync now.
-- [ ] Account deletion on every platform, and the anonymous history kept when
+- [x] (built with sign-in; web path `delete-account/`) Account deletion on every platform, and the anonymous history kept when
       someone signs in.
 
 **Play gate:** sign in on two devices from different ecosystems; pause on one,
@@ -335,7 +337,7 @@ works elsewhere, and checks again.
 | Request the CarPlay audio entitlement (developer.apple.com/contact/carplay) | the CarPlay stub, later the car | now; Apple is slow |
 | Create the App Store Connect record for `app.eardrama` and the seven signing secrets (`docs/CLOUD-SUBMISSION.md`) | TestFlight | before M3's gate |
 | Create the Play Console app and the upload key | Play internal | before M4's gate |
-| Apple Services ID and Google OAuth clients for Ear Drama (`docs/runbooks/google-oauth-setup.md`) | sign-in | before M5 |
+| Apple Services ID and Google OAuth clients for Ear Drama (`docs/runbooks/google-oauth-setup.md`; Android needs clients for `app.eardrama` with Play's signing SHA-1 and the debug id; then the Worker steps in `docs/WORKER.md`, which include switching on the Sign in with Apple entitlement) | sign-in | before M5's play gate |
 | A Cloudflare Worker and D1 for Ear Drama, or approval for the loop to create them | M5 to M8 | before M5 |
 | An Ear Drama archive.org account and its S3 keys, stored as Worker secrets | play uploads | before M8 |
 | The take-down email address, and the DMCA agent's details once registered (`js/site.js` TAKEDOWN_EMAIL; takedown/index.html) | the take-down page | before the public launch |
