@@ -2,7 +2,9 @@ package com.example.appname.playback
 
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** DECISIONS 062: one set of player numbers, here and in the web player. */
@@ -18,6 +20,20 @@ class PlayerNumbersTest {
     @Test fun `resuming rewinds 3 s and never before the start`() {
         assertEquals(597_000L, PlayerNumbers.rewound(600_000L))
         assertEquals(0L, PlayerNumbers.rewound(2_000L))
+    }
+
+    /**
+     * A saved position resumes exactly; only an interruption rewinds (062). The
+     * control: the old Android behavior, a rewind from a saved position, is caught.
+     */
+    @Test fun `a saved position resumes exactly, only an interruption rewinds`() {
+        assertEquals(600_000L, PlayerNumbers.fromSaved(600_000L, finished = false))
+        assertEquals("a finished episode starts over", 0L, PlayerNumbers.fromSaved(600_000L, finished = true))
+        assertNotEquals(PlayerNumbers.rewound(600_000L), PlayerNumbers.fromSaved(600_000L, finished = false))
+        val engine = File("src/main/java/com/example/appname/playback/PlaybackEngine.kt").readText()
+        val start = engine.substringAfter("private suspend fun startPositionFor").substringBefore("\n    }")
+        assertTrue("the saved start goes through fromSaved", "fromSaved" in start)
+        assertFalse("the saved start never rewinds", "rewound" in start)
     }
 
     private fun webNumbers(source: String): List<String> = listOf(

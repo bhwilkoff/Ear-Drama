@@ -124,10 +124,10 @@ When shipping any user-facing feature:
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Pass the phone: record role by role on one device | ⏳ | 🚧 built, tested; not yet recorded on a device | 🚧 own window, Recording menu; not yet recorded | n/a | ⏳ | Web with headphones only; live stand-in voices never stored; 9 stage plays bundled (`catalog/plays/castable-scripts.json`), no radio play parses clean yet |
+| Pass the phone: record role by role on one device | ⏳ | 🚧 built, tested; not yet recorded on a device | 🚧 own window, Recording menu; not yet recorded | n/a | 🚧 Plays tab (hidden on TV), takes as 24-bit WAV; not yet recorded | Web with headphones only; live stand-in voices never stored; 9 stage plays bundled (`catalog/plays/castable-scripts.json`), no radio play parses clean yet |
 | Invite-link productions | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Sign-in required; report, block, filter |
 | Teacher classes (consent for under-13s) | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Behind the privacy policy that covers school consent |
-| Play back a finished play | ⏳ | 🚧 Listen Through, Export | 🚧 Listen Through, Export | ⏳ AirPlay from a phone meanwhile | ⏳ | |
+| Play back a finished play | ⏳ | 🚧 Listen Through, Export | 🚧 Listen Through, Export | ⏳ AirPlay from a phone meanwhile | 🚧 Listen through, Export via share sheet | |
 
 ---
 

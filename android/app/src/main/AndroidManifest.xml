@@ -7,12 +7,16 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Plays (PLAYS-DESIGN §2.3): asked when a performer presses Start recording, never at launch. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
     <!-- Android TV / Fire TV (TV-MT): the same app, so nothing a TV lacks is required. -->
     <uses-feature android:name="android.software.leanback" android:required="false"/>
     <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
     <!-- The biometric library's USE_FINGERPRINT must not make a fingerprint reader required. -->
     <uses-feature android:name="android.hardware.fingerprint" android:required="false"/>
+    <!-- Recording a play needs a microphone; listening does not, so a TV without one still installs. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false"/>
 
     <application
         android:name=".app.AppNameApplication"
@@ -94,6 +98,17 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove"/>
+        </provider>
+
+        <!-- A finished play's mix.m4a, shared through the share sheet only when the person exports it. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.plays"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/plays_paths"/>
         </provider>
 
         <!-- Firebase Messaging service goes here when push ships -->

@@ -17,6 +17,12 @@ object PlayerNumbers {
     /** Resuming after an interruption starts this far back, so the last line is heard again. */
     const val RESUME_REWIND_MS = 3_000L
 
-    /** Where playback resumes after an interruption at [positionMs]. */
+    /** Where playback resumes after an interruption (audio focus handed back) at [positionMs]. */
     fun rewound(positionMs: Long): Long = (positionMs - RESUME_REWIND_MS).coerceAtLeast(0)
+
+    /**
+     * Where a saved position resumes: exactly where it was saved, as on the web.
+     * Only an interruption rewinds ([rewound]); a finished episode starts over.
+     */
+    fun fromSaved(positionMs: Long, finished: Boolean): Long = if (finished) 0 else positionMs.coerceAtLeast(0)
 }
