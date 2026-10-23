@@ -131,3 +131,8 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 
 ### Tick 20, 2026-10-22, opt: DEEP_LINKS.md is Ear Drama's
 - Removed the template's three example routes (public profile, generic item, settings) that no Ear Drama client has; the table now holds the three real routes (series, episode, search) and the OAuth callback under `eardrama://`; the share-link and OAuth reference sections use eardrama.org and app.eardrama. Net -1 line, 0 placeholders left. Checked along the way: `js/api.test.html` is live (the browser runner api.test.js documents), and Android's App Links and custom-scheme filters are commented-out template blocks, not a live defect; they wait for the Play signing fingerprint and the App Store record (noted in the doc).
+
+### Tick 21, 2026-10-22, Apple: the seed phase keeps the build's script sandbox
+- `project.yml`: the "Bundle catalog seed" phase declares the seed as its input and the bundled copy as its output, so `ENABLE_USER_SCRIPT_SANDBOXING: NO` is gone (the M3 review's follow-up). Verified on macOS (Xcode 27.1): with the seed, BUILD SUCCEEDED and "Bundled catalog seed: .../publish-clean/ear-drama.sqlite"; with `CATALOG_SEED_PATH=/nonexistent/...`, BUILD SUCCEEDED and "No catalog seed ... the app opens empty", the bundled copy removed. Sandboxed either way.
+- `tools/app_config.py`: `HOOK_SLEEP_MENU` joins the launch doors (Apple has it; Android and web to follow); `QA_ITEM_ID` is a real item at last, `librivox19977|s1` (Ivanhoe, Chapter One: clean, in every seed, an id from LibriVox's own project number), `QA_ITEM_RX` "Chapter One". Command Performance was avoided because its rights hang on the owner's open question. 1.0.7 (8).
+- Loudness sample at 120/131.

@@ -94,11 +94,14 @@ targets:
         # app at build time. Override on the command line, e.g.
         # xcodebuild ... CATALOG_SEED_PATH=/path/to/ear-drama.sqlite
         CATALOG_SEED_PATH: $(SRCROOT)/catalog/out/publish-clean/ear-drama.sqlite
-        # The seed phase reads a file outside the project's declared inputs.
-        ENABLE_USER_SCRIPT_SANDBOXING: NO
     postCompileScripts:
       - name: Bundle catalog seed
-        basedOnDependencyAnalysis: false
+        # Declared, so the build keeps its user-script sandbox: the phase may read
+        # only the seed and write only the bundled copy.
+        inputFiles:
+          - $(CATALOG_SEED_PATH)
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ear-drama-seed.sqlite
         script: |
           DST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ear-drama-seed.sqlite"
           if [ -f "${CATALOG_SEED_PATH}" ]; then

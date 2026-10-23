@@ -95,6 +95,8 @@ HOOK_SKIP_ONBOARD = "APP_SKIP_ONBOARD"
 HOOK_START_TAB = "APP_START_TAB"
 HOOK_START_ITEM = "APP_START_ITEM"
 HOOK_AUTOPLAY = "APP_AUTOPLAY"
+# Opens the player's sleep-timer choices, for a screenshot of R20's menu (Apple so far).
+HOOK_SLEEP_MENU = "APP_SLEEP_MENU"
 # Labels the device's glass with what it is testing (tools/devreset.py label()).
 HOOK_QA_LABEL = "APP_QA_LABEL"
 # The whole app at one Dynamic Type size (xxxLarge | accessibility2 | ...), so a sweep
@@ -107,8 +109,10 @@ HOOK_FORCE_OFFLINE = "APP_FORCE_OFFLINE"
 # The item every runner's "item" scenario opens with HOOK_START_ITEM (the web's
 # ?item=), and text its detail screen renders. FILL IN both with a real id from your
 # catalog and a phrase calibrated against a real capture of that item's screen.
-QA_ITEM_ID = "example-item"                       # FILL IN
-QA_ITEM_RX = r"example-item"                      # FILL IN
+# Ivanhoe, chapter one: a LibriVox recording, clean, in every seed, and its id is
+# LibriVox's own project number and section, so it does not move when parsing improves.
+QA_ITEM_ID = "librivox19977|s1"
+QA_ITEM_RX = r"Chapter One"
 
 # --- Doors are muted and time-bounded by default ------------------------------
 # A harness that plays media on someone's television is in their living room. A
