@@ -277,7 +277,8 @@ continue on the other.
 
 ### M6. Listen Together
 
-- [ ] SharePlay on iOS, macOS, and tvOS (`shareplay-activities`); Worker rooms
+- [x] (built 2026-10-23 on all five, ticks 65-73; Decision 065; nothing deployed,
+      not run on devices) SharePlay on iOS, macOS, and tvOS (`shareplay-activities`); Worker rooms
       for web and Android, ported from Archive Watch's rooms; the guest plays
       the host's copy (Archive Watch Decision 143).
 

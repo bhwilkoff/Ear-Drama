@@ -196,3 +196,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged c413fb4 (1.0.37 build 38): web Listen Together (Worker rooms; ?room= link that still needs a tap; client drift math checked against room-protocol.js on 1,000+ cases; guests follow, never drive). Verified on main: together.test 19, player 7, api 10, account 11; test_web; read the host sheet at 375. Listen Together now built on web, iOS, macOS, tvOS; Android in progress.
 - Launched M8's server side (invite-link productions, part claims by relay order, per-line takes, report/block/filter, CC0 consent recorded by version id with the words left OWNER, the archive.org upload as a queued record only, classes with an under-13 consent gate). Worker only, light, local.
 - Running: Android (On Air + rooms), M8 Worker.
+
+### Tick 73, 2026-10-23, merge: On Air and Listen Together on Android; M6 built on all five
+- Merged 98ab771 (1.0.38 build 39): Android's color roles (the theme's primary is blue so Material defaults follow; red only via OnAir.colors.live; the record button off the error color, per 012; genre marks; ColorRolesTest) and Listen Together (RoomProtocol.kt golden-checked against room-protocol.js, pinned by its SHA-256). DEEP_LINKS conflict combined into one row. Verified on main: 162 tests 0 failed; assembleDebug; 0 `w:`.
+- On Air (064) now applied on all five platforms; Listen Together (M6) built on all five; LOOP-PLAN M6 checked as built. Told the M8 agent not to touch room-protocol.js (both native goldens pin it).
+- Running: M8 Worker.
