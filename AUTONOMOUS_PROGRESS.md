@@ -112,3 +112,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged plays phase 1 on Android (1.0.24 build 25): ported from Apple's Core with the same files and keys; takes as 24-bit WAV; the device voice never written (a whole-play test with a leaky-microphone control); AAC mix; share-sheet Export; Plays tab hidden on TV; a saved position resumes exactly (062). Verified on main: 98 tests 0 failed, assembleDebug, 0 `w:`, the APK carries the 11-play bundle. Not verified: nothing recorded on a device.
 - Publish rerun 39956803564 succeeded: catalog-latest/tonight.json (48,808 bytes, 15 days), radiologs-latest/radiologs.tar.xz (254 measured evenings), the web copy with 0 servable slots while the web gate is closed. Externally observed, so the evenings pipeline is verified in CI; the Radio tab itself is still unplayed.
 - Apple has the same saved-position rewind drift; sent to the Radio-on-Apple agent, the only one in apple/.
+
+### Tick 55, 2026-10-23, merge + agent: Radio on Apple; Radio on Android launched
+- Merged 225ce6e (1.0.25 build 26): Tonight in 19xx on iOS, macOS and tvOS, docs first (e6d7ad1); RadioClock golden-checked against the web's onAir cases; the printed newspaper text never decoded; Listen live stops on pause, another episode, the sleep timer or the evening's end with nothing after; Apple now resumes a saved position exactly (062), test seen to fail against the old rewind. Verified on main: macOS 82 tests in 21 suites; tvOS and iOS builds; 0 warnings; design rules 7/7; tonight.json answers 200. Not verified: no screen seen.
+- New owner item 12: six sections overflow an iOS 18 iPhone's tab bar (four and More).
+- Launched Radio on Android (phone and TV). Running: web plays, the Worker.
+- Opt tick note: tick 55 is an opt tick by cadence but carried a merge; the next quiet tick takes the cleanup (net-negative lines).
