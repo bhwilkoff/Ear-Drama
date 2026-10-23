@@ -35,6 +35,26 @@
       <p>The browser also keeps copies of the site's pages and the catalog pages you have opened, so the app opens without a connection. It keeps no audio.</p>
       <p>Clear history in Library removes your history and the places you stopped. Clearing this site's data in your browser removes everything.</p>
 
+      <!-- OWNER: review before sign-in or rooms go live -->
+      <h2 class="section-header">In the iPhone, iPad, Mac, Apple TV, and Android apps</h2>
+      <p>The apps keep these on the device. They are never sent to Ear Drama unless you sign in.</p>
+      <ul>
+        <li>Where you stopped in each episode, and the episodes you played</li>
+        <li>Your queue</li>
+        <li>The series you follow</li>
+        <li>Episodes you download, in the app's own storage</li>
+        <li>Plays you record: every take and the finished mix, never uploaded</li>
+      </ul>
+      <p>The apps ask for the microphone only when you press Start recording. A take is kept on the device. A finished play leaves it only when you export it yourself.</p>
+      <p>Signing in in an app works as it does on the web. The app keeps your sign-in encrypted on the device: in the Keychain on Apple devices, and with a key held by Android Keystore on Android.</p>
+
+      <!-- OWNER: review before sign-in or rooms go live -->
+      <h2 class="section-header">Listen Together</h2>
+      <p>A room needs no account. On the web and Android, the room is kept on Ear Drama's server: the episode, the file, where it is, whether it is playing, and its speed. Each person in the room is a random number, the hash of a random key, and when they joined and were last heard from. No name and no address are kept.</p>
+      <p>The server sees your IP address and counts the requests from it, a minute at a time, to limit how many one address can make. The count is not kept after that minute.</p>
+      <p>A person not heard from for 2 minutes has left, and what the room kept for them is deleted within the hour. A room with no one left, or with no change and no one joining for 6 hours, is deleted within the hour.</p>
+      <p>On iPhone, iPad, Mac, and Apple TV, Listen Together uses SharePlay in a FaceTime call; Ear Drama's server is not involved.</p>
+
       <!-- OWNER: review this section's words before sign-in goes live (Decision 063). -->
       <h2 class="section-header">If you sign in</h2>
       <p>Signing in with Apple or Google sends Ear Drama an account number from them; it does not keep your name or email address. While you are signed in, the places you stopped, your history, your queue, and the series you follow are copied to Ear Drama's server so your other devices can use them. Recorded plays stay on the device.</p>

@@ -411,9 +411,6 @@ Listed, not fixed. Each item names where it is.
   built.
 - **R20's "one step from the lock screen"** is not built: the timer is
   only on the player sheet.
-- **Two empty states explain** ("Browse Series to start." on Listen,
-  "Episodes you start are kept here." on Library), which §1.6 asks to
-  cut or justify.
 - **Deep links take only the URL's last path component**
   (`.onOpenURL` in `EarDramaApp.swift`), so `/search?q=` and `/library`
   are read as a series key. The twins in `DEEP_LINKS.md` are not routed.
@@ -422,6 +419,7 @@ Listed, not fixed. Each item names where it is.
   screen.
 
 Closed 2026-10-23: the player's numbers are named once (§5.7), haptics
-go through one mapping (§6.5), and Detail shares the https twin (§4.4).
+go through one mapping (§6.5), and Detail shares the https twin (§4.4). The two empty states that
+explained (Listen, Library) lost their descriptions (§1.6).
 
 Bring the next change back to a rule here, or bring a new rule first.

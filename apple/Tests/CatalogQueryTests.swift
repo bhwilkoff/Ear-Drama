@@ -409,9 +409,13 @@ struct RightsDisplayTests {
     @Test func fallbackMatchesThePipeline() throws {
         let text = try String(contentsOf: repoRoot.appendingPathComponent("catalog/tools/build_projection.py"),
                               encoding: .utf8)
-        for (key, line) in RightsDisplay.contract {
+        for (key, line) in RightsDisplay.contract where key != "rec_pd_published_age" {
             #expect(text.contains("\"\(key)\": \"\(line)\""), "build_projection.py has no \(key): \(line)")
         }
+        // The published-age year moves every January (rights_lines(today)); the
+        // fallback keeps the same words, and the pipeline builds them from the rule.
+        #expect(text.contains("\"rec_pd_published_age\": f\"Published before {"))
+        #expect(RightsDisplay.contract["rec_pd_published_age"]?.hasPrefix("Published before ") == true)
     }
 }
 

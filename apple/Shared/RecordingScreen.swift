@@ -63,7 +63,7 @@ struct RecordingScreen: View {
                 Text("Ear Drama needs the microphone to record your part.")
                 Button("Open Settings") { openSettings() }
             case .needsHeadphones:
-                Text("Plug in headphones so the device voice stays out of your recording.")
+                Text("Plug in headphones.")
                 Button("Check Again") { Task { await begin(echoCancelled: false) } }
                     .buttonStyle(.borderedProminent)
                 Button("Record Without Headphones") { Task { await begin(echoCancelled: true) } }

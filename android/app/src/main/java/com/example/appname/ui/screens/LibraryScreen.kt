@@ -64,7 +64,7 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Uni
                 Column(Modifier.padding(padding)) {
                     AccountRow()
                     ListenTogetherRow(onListenTogether)
-                    EmptyMessage("Episodes you play appear here.")
+                    EmptyMessage("Nothing played yet.")
                 }
                 return@LoadableContent
             }
