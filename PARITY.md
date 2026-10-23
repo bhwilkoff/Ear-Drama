@@ -112,7 +112,7 @@ When shipping any user-facing feature:
 | Commercials chaptered, never skipped (R8) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Loudness gain applied at playback | 🚧 -21 LUFS by cutting; unmeasured at unity | 🚧 AVPlayer volume | 🚧 | 🚧 | 🚧 ExoPlayer volume, per queued item | Gain from the pipeline; never re-encoded |
 | Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | catalog Decision 007 |
-| Transcripts, labeled automatic | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Shown only above the measured quality gate (058) |
+| Transcripts, labeled automatic | 🚧 closed section, fetched on open | 🚧 sheet, from Detail and the player | 🚧 window, ⌥⌘T | 🚧 focus-scrolling reader | 🚧 route from Detail and the player | Shown only above the measured quality gate (058) |
 | Downloads | ⏳ | 🚧 background session; remove, remove all | 🚧 same, Library section | n/a | 🚧 WorkManager, same store | tvOS has no durable storage for media |
 | Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
 | Credits, privacy, and take-down pages | 🚧 /credits/, /privacy/, /takedown/; owner placeholders | ⏳ link to the web pages | ⏳ | ⏳ | ⏳ | One set of pages; apps link to them |
