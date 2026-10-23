@@ -13,25 +13,24 @@ prefix lists, and a flat structure makes the lists short.
 
 | Resource | URL shape | Owner |
 |---|---|---|
-| Public profile | `https://app.example.com/u/{username}` | Web renders; iOS + Android open the in-app view |
-| Single item detail | `https://app.example.com/item/{id}` | All platforms render in-app; web is the landing twin |
-| Settings deep entry | `https://app.example.com/settings/{section}` | All; web routes via `?view=settings&section=...` |
-| Ear Drama series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
-| Ear Drama episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
-| Ear Drama search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
-| OAuth callback | `appname://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |
+| Series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
+| Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
+| Search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
+| OAuth callback | `eardrama://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |
 
 **Add a row to this table BEFORE adding a deep link in code.** New
 routes that aren't documented here become orphans the next time a
 platform adds support. Discovery cost compounds.
 
 **The canonical-twin rule**: every custom-scheme link a native app
-emits (`appname://item/x`) has an HTTPS twin
-(`https://app.example.com/item/x`) that the WEB app renders, so a
+emits (`eardrama://episode/x`) has an HTTPS twin
+(`https://eardrama.org/episode/x`) that the WEB app renders, so a
 share always lands somewhere meaningful, even for recipients
 without the app. On a static host, a `404.html` forwarder that maps
 `/item/{id}` into the web app's router makes the twins real before
-server-side routes exist.
+server-side routes exist. The Android and Apple link filters stay off
+until Play's signing fingerprint (`assetlinks.json`) and the App Store
+record (`apple-app-site-association`) exist.
 
 ## Per-platform wiring
 
@@ -78,7 +77,7 @@ what that took (source: Archive Watch `docs/PLAYLIST-SHARING.md`).
    which one it is reading. Roku's BrightScript has no deflate, and
    its links run about 2.5 times longer.
 3. **Put the route in the path and the payload in the fragment:**
-   `https://app.example.com/list/#<blob>`. A browser never sends a
+   `https://eardrama.org/list/#<blob>`. A browser never sends a
    fragment to the server, so the list stays on the device. And an
    Android intent filter matches the path and cannot see a fragment
    at all, so `/#/list/<blob>` could never open the Android app.
@@ -175,17 +174,17 @@ OAuth providers require a redirect URI. On mobile, that's ALWAYS a
 custom scheme. HTTPS redirects go through the system browser and
 break the back-to-app hop:
 
-- Android: `appname://oauth/callback` in the manifest; Custom Tabs
+- Android: `eardrama://oauth/callback` in the manifest; Custom Tabs
   handles the round trip.
 - iOS: same shape in `Info.plist` `CFBundleURLTypes`.
-- Web: `https://app.example.com/oauth/callback`, no special
+- Web: `https://eardrama.org/oauth/callback`, no special
   handling.
 - tvOS: avoid OAuth-in-browser entirely (there is no browser).
   Use Sign in with Apple natively, or a device-code flow if a
   third-party provider is unavoidable.
 
 When a provider lets you choose, use the bundle identifier as the
-redirect scheme (`com.example.appname://oauth/callback`). Prefer PKCE
+redirect scheme (`app.eardrama://oauth/callback`). Prefer PKCE
 where the provider offers it and a Device Code flow where it does not,
 which also covers the TV. The `authentication` skill carries the rest
 ("Installed-app OAuth to third-party providers").
