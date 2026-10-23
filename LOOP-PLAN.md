@@ -186,7 +186,7 @@ The clients read one published plane and re-derive nothing
 - [x] (gate fixed, Decision 058, tick 18) Transcripts: measure the quality of archive.org's speech-to-text on a
       sample across series and decades, set the on-screen gate from the
       measurement, and record the number in Decision 058.
-- [ ] Evenings: build Tonight in 19xx from the newspaper listings (05 §4),
+- [x] (built and measured, tick 33; floor 0.25 awaits the owner; publishing in progress) Evenings: build Tonight in 19xx from the newspaper listings (05 §4),
       measure coverage over real evenings, set the floor from the numbers, and
       publish the evenings and the genre channels on the one clock.
 - [x] (genres.py, tick 14; 69% of served episodes) Genres mapped from data (archive.org subjects, log genres, Wikidata) to
@@ -208,14 +208,14 @@ and bind to it.
       oldest first, R1), Episode detail (date, network, sponsor, cast, writer,
       versions, other performances, rights line), Search (titles, people,
       transcript text, dates), Library (on the device until M5).
-- [ ] The player: background play where the browser allows it, Media Session,
+- [x] (built, ticks 16 and 27; device play pending) The player: background play where the browser allows it, Media Session,
       speed, skip, the sleep timer that offers "end of this episode" first and
       fades (R20), serials that stop at the end of an arc (R3), commercials
       chaptered and never skipped (R8), loudness gain applied at playback.
 - [ ] The Radio tab on the one clock, local time drawn, the Eastern air time
       shown as a fact, and gaps stated (R9, R10).
-- [ ] Transcripts beside the audio where they pass the gate, labeled automatic.
-- [ ] Every surface with its loading, empty, error, and offline states; every
+- [x] (built, tick 36) Transcripts beside the audio where they pass the gate, labeled automatic.
+- [x] (built, ticks 16 and 22) Every surface with its loading, empty, error, and offline states; every
       control labeled, and the first screen usable without sight (R21).
 - [x] (built, tick 22; owner placeholders) Site pages: the take-down request route, the DMCA notice, credits to
       OTRR, RadioEchoes, Goldin, and the archives, and the privacy policy.
@@ -228,11 +228,11 @@ and bind to it.
 One target, four destinations, the shared `Core/`. Seed `iOS-DESIGN.md`,
 `macOS-DESIGN.md`, and `tvOS-DESIGN.md` as each passes five views.
 
-- [ ] The M2 verbs, in each platform's own idiom: tabs on iPhone, a split view
+- [x] (built, tick 18; device play pending) The M2 verbs, in each platform's own idiom: tabs on iPhone, a split view
       with menus and keyboard on the Mac (`macos-platform-patterns`), the
       focus-driven ten-foot layout on tvOS (`tvos-platform-patterns`,
       `ten-foot-detail-design`).
-- [ ] AVPlayer with the audio session, Now Playing and remote commands, lock
+- [x] (built, tick 18; lock-screen artwork B17 waits on the icon) AVPlayer with the audio session, Now Playing and remote commands, lock
       screen artwork from the brand square when an episode has none (B17), the
       sleep timer reachable from the lock screen's app surface in one step.
 - [x] (built, tick 26; device check pending) Downloads on iOS and macOS (never tvOS, Archive Watch Decision 099's reasoning).
@@ -243,7 +243,7 @@ One target, four destinations, the shared `Core/`. Seed `iOS-DESIGN.md`,
 
 ### M4. Android listening
 
-- [ ] The M2 verbs in Compose and Material 3 (`android-production-gotchas`),
+- [x] (built, tick 16, downloads tick 28; ANDROID-DESIGN.md not yet) The M2 verbs in Compose and Material 3 (`android-production-gotchas`),
       a Media3 session service, notification and lock-screen controls,
       downloads, TalkBack on every control. Seed `ANDROID-DESIGN.md` at five
       views.
@@ -301,7 +301,7 @@ continue on the other.
 
 ### M9. The stubs
 
-- [ ] CarPlay, Android Auto, Android TV and Fire TV, Roku, webOS and Tizen,
+- [x] (all built, ticks 39 and 42; none run on a device) CarPlay, Android Auto, Android TV and Fire TV, Roku, webOS and Tizen,
       watchOS, and Wear OS: each a target that builds in CI and launches to
       its first screen, its PARITY column ⏳ with Decision 056 as the reason.
       Use each one's platform skill; the car stubs keep to four tabs (R17).
