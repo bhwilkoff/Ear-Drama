@@ -30,6 +30,13 @@ starts here too, because this file and the progress log are the loop's memory.
 
 ## Every tick
 
+0. **Check GitHub Actions first** (owner, 2026-10-23: *"I do occasionally get
+   alerts that the github builds are failing. Can you check on that as a part
+   of this loop?"*): `gh run list -L 40` for anything not green since the last
+   tick. A failure is diagnosed from `gh run view <id> --log-failed` and fixed
+   before new work, or logged with its cause when it is not ours to fix. A
+   `pages-build-deployment` cancelled by a newer push is superseded, not
+   broken: say so in the log rather than chase it.
 1. **Take the next unblocked item** from the earliest open milestone in
    "Milestones" below, or from "Owner feedback" first when there is any.
    Feedback from a play session always goes to the top of the queue.
