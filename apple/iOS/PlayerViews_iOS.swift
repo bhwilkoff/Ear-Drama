@@ -88,12 +88,17 @@ struct PlayerSheet_iOS: View {
                     Spacer()
                     SleepButton()
                     Spacer()
+                    ListenTogetherButton()
+                        .labelStyle(.iconOnly)
+                        .frame(width: 44, height: 44)
+                    Spacer()
                     RoutePicker_iOS()
                         .frame(width: 44, height: 44)
                         .accessibilityLabel("Play on another device")
                 }
                 .font(TypeRamp.body)
 
+                FollowingHostNotice()
                 if let message = player.errorMessage {
                     Label(message, systemImage: "exclamationmark.triangle")
                         .font(TypeRamp.caption)

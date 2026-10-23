@@ -155,6 +155,13 @@ only here:
 - **§5.7 Share** is in Detail's toolbar: the system share sheet with the
   episode's https twin (`SiteLinks.episode`, DEEP_LINKS.md), as on iOS
   (`docs/iOS-DESIGN.md` §4.4).
+- **§5.8 Listen Together is SharePlay**, as `docs/iOS-DESIGN.md` §5.8:
+  the `shareplay` control in the transport bar after the sleep timer,
+  and SharePlay (or Leave SharePlay) in the Controls menu. Outside a call
+  the system's sharing sheet opens on the window
+  (`GroupActivitySharingController`, `presentAsSheet`). A following
+  member's Play, skip, and speed are disabled in the bar and the menu,
+  with "The host has the controls." under the bar.
 - **§5.4 Progress** saves every 5 s and on pause (template §B3c); resume
   and "played" follow `docs/iOS-DESIGN.md` §5.6. The numbers are
   Decision 062's, named once in `PlayerNumbers` (`docs/iOS-DESIGN.md`

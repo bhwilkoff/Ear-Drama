@@ -114,7 +114,7 @@ When shipping any user-facing feature:
 | Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 Versions section on Detail | 🚧 | catalog Decision 007 |
 | Transcripts, labeled automatic | 🚧 closed section, fetched on open | 🚧 sheet, from Detail and the player | 🚧 window, ⌥⌘T | 🚧 focus-scrolling reader | 🚧 route from Detail and the player | Shown only above the measured quality gate (058) |
 | Downloads | ⏳ | 🚧 background session; remove, remove all | 🚧 same, Library section | n/a | 🚧 WorkManager, same store | tvOS has no durable storage for media |
-| Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
+| Listen Together | ⏳ | 🚧 SharePlay; capability off until the App ID has it | 🚧 SharePlay | 🚧 SharePlay during a call | ⏳ | Worker rooms on web and Android (Decision 065); Apple ports room-protocol.js, golden-checked; not run on devices |
 | Credits, privacy, and take-down pages | 🚧 /credits/, /privacy/, /takedown/; owner placeholders | ⏳ link to the web pages | ⏳ | ⏳ | ⏳ | One set of pages; apps link to them |
 | Works offline (what was already loaded) | 🚧 service worker; network-first data, cached shell | ⏳ | ⏳ | n/a | 🚧 says "You are offline." above the mini player and on the no-catalog state | Audio downloads are their own row |
 
