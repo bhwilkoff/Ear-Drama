@@ -54,10 +54,10 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 
 ## §2 Information architecture
 
-- **§2.1 Four tabs, hard set**: Listen, Series, Library, Search, in a
-  `TabView` with `.sidebarAdaptable`; Search uses `Tab(role: .search)`.
-  Radio joins with the evenings, and is the TV's most natural tab ("Tonight
-  in 1947") when it does.
+- **§2.1 Five tabs, hard set**: Listen, Series, Radio, Library, Search,
+  in a `TabView` with `.sidebarAdaptable`; Search uses
+  `Tab(role: .search)`. Radio follows Series, as on the web, and is the
+  TV's most natural tab ("Tonight in 1942", §4.8). No Plays tab (PLAYS-DESIGN §6).
 - **§2.2 Leaving a tab resets its stack** (`AppStore.selectResettingPrevious`):
   stale push state must not greet the next visit (§11.4).
 - **§2.3 Its own destination registry.** `RouteDestinations_tvOS`
@@ -108,6 +108,25 @@ The only shapes; a new one needs a new rule.
   the text in paragraphs of four sentences, each a focus stop, so the
   remote scrolls the text a few sentences at a time and only the
   focused paragraph is bright. Menu closes it.
+
+- **§4.8 Radio** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
+  is the web's §4.9 at ten feet: "Tonight in 1942" at page-title size,
+  the evening's date, the network and station; then, during the
+  evening, an action row in its own focus section with "Listen live"
+  (or "Listening live", which pauses), focused by default; before it
+  "Starts at", after it "Ended at". Then every slot in one focus
+  section, each a focus stop so the remote scrolls the whole evening
+  and only the focused row is bright: a surviving slot opens its
+  episode's Detail (Play lives there, §4.4); a gap is a focusable row
+  that reads its time, `known_series` where set, "Not surviving" or
+  "Not in the catalog", and its length, never the paper's printed
+  text. Each row's time is local, with the Eastern time beside it where
+  the two differ. Listen live opens Now Playing full screen (§11.1) and
+  plays through the shared `LiveRadio`: a pause, another episode, the
+  sleep timer, or the evening's end stops it, and nothing plays after
+  (R14). The listing's credit is a caption, not a link: the TV opens no
+  web page. The empty and error states are iOS's words
+  (`docs/iOS-DESIGN.md` §4.9).
 
 ## §5 The player
 
@@ -191,8 +210,9 @@ The rights line, the transcript label, and loudness by cutting are as in
 
 ## §11 Deliberate inversions
 
-- **§11.1 Detail focuses Play and Play opens Now Playing** (§6.2). iOS,
-  the Mac, and Android leave the person where they are.
+- **§11.1 Detail focuses Play and Play opens Now Playing** (§6.2), and
+  Radio focuses Listen live, which opens Now Playing (§4.8). iOS, the
+  Mac, and Android leave the person where they are.
 - **§11.2 `.card`, never `.plain`.** On iOS `.plain` is correct.
 - **§11.3 Now Playing fills the screen.** The phone uses a sheet, the
   Mac a transport bar, Android a bottom sheet.
