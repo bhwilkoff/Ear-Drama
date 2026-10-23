@@ -32,8 +32,11 @@ const Player = (() => {
   function emit(kind) { listeners.forEach(fn => fn(kind || 'state')); }
   function onChange(fn) { listeners.add(fn); }
 
-  /** Load an episode card ({ id, title, series, seriesName, date, url, length }) and, by default, play it. */
-  function load(ep, { autoplay = true } = {}) {
+  /**
+   * Load an episode card ({ id, title, series, seriesName, date, url, length }) and, by default, play it.
+   * `at` starts it at a given second instead of its resume point (the Radio tab's one clock, R10).
+   */
+  function load(ep, { autoplay = true, at: startAt = null } = {}) {
     current = Store.card(ep);
     fired = false;
     lastError = null;
@@ -41,7 +44,7 @@ const Player = (() => {
     baseVolume = API.playbackVolume(current.li, current.ltp);
     audio.volume = baseVolume;
     audio.defaultPlaybackRate = Store.rate();
-    const at = Store.resumeAt(ep.id);
+    const at = startAt !== null ? startAt : Store.resumeAt(ep.id);
     audio.addEventListener('loadedmetadata', () => {
       if (at) audio.currentTime = at;
       audio.playbackRate = Store.rate();

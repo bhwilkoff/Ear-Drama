@@ -92,9 +92,9 @@ When shipping any user-facing feature:
 
 | Verb | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, This Day, shelves; no Tonight yet | 🚧 no Tonight | 🚧 no Tonight | 🚧 no Tonight | 🚧 This Day, genre shelves; no Tonight | Decision 058; R13 lists from data |
+| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, This Day, shelves; Tonight is on the Radio tab | 🚧 no Tonight | 🚧 no Tonight | 🚧 no Tonight | 🚧 This Day, genre shelves; no Tonight | Decision 058; R13 lists from data |
 | Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | 🚧 | 🚧 | 🚧 | 🚧 seasons, oldest first | Broadcast seasons (058); oldest first (R1) |
-| Radio (evenings and genre channels on one clock) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Gaps stated, never filled (R9) |
+| Radio (evenings and genre channels on one clock) | 🚧 Tonight in 19xx from `tonight.json`; no genre channels; publish run not yet executed | ⏳ | ⏳ | ⏳ | ⏳ | Gaps stated, never filled (R9); floor 0.25 provisional (owner, SCRATCHPAD 4) |
 | Search (titles, people, transcript text, dates) | 🚧 word-prefix titles and people; no transcripts yet | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | |
 | Library (followed series, queue, downloads, history) | 🚧 device-local; no downloads | 🚧 no downloads | 🚧 no downloads | 🚧 | 🚧 no downloads | Device-local until sync (M5) |
 | Plays (record a radio or stage play together) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Decision 059; TVs play back only |

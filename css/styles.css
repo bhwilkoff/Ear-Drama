@@ -159,7 +159,7 @@ h1:focus, main:focus { outline: none; }
 .view > .view-heading, .page-head .view-heading { margin-bottom: var(--space-3); }
 
 .tabbar {
-  flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr);
+  flex-shrink: 0; display: grid; grid-template-columns: repeat(5, 1fr);
   border-top: 1px solid var(--color-border); background: var(--color-surface);
 }
 .tab {
@@ -305,6 +305,24 @@ select {
 .ep-progress { grid-column: 2; display: block; height: 3px; margin-top: var(--space-1); border-radius: 2px; background: var(--color-surface-alt); }
 .ep-progress > span { display: block; height: 100%; border-radius: 2px; background: var(--color-primary); }
 .row-tools { display: flex; }
+
+/* ---- Radio: an evening's schedule on the one clock (R9, R10) ---- */
+.radio-head { margin-bottom: var(--space-4); }
+.radio-head > * + * { margin-top: var(--space-1); }
+.slots { margin-bottom: var(--space-3); border-top: 1px solid var(--color-border); }
+.slot {
+  display: grid; grid-template-columns: var(--date-col) minmax(0, 1fr) var(--tap); align-items: center;
+  column-gap: var(--space-3); min-height: var(--tap); padding: var(--space-2) 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--color-border); border-left: 3px solid transparent;
+}
+.slot-now { border-left-color: var(--color-primary); background: var(--color-surface); }
+.slot-time { display: flex; flex-direction: column; align-self: start; padding-top: 1px; }
+.slot-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: var(--space-1) 0; text-decoration: none; }
+a.slot-main:hover .body-strong { text-decoration: underline; }
+.slot-title { overflow-wrap: anywhere; }
+.slot-gap .slot-time > .tabular, .slot-gap .slot-main > .body { color: var(--color-text-muted); }
+.witness { padding-bottom: var(--space-6); }
+.witness a { color: var(--color-primary); }
 
 /* ---- Filters ---- */
 .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }

@@ -8,12 +8,25 @@
 #            catalog-transcripts.yml; missing = none searchable or shown),
 #            build the served and clean-only projections
 #            and the web projection, run the contract tests over the real
-#            artifacts, and print what this publish would change.
+#            artifacts, build tonight.json (Tonight in 19xx, contract §8:
+#            restore the measured evenings from radiologs-latest, fetch only
+#            the window's missing newspaper logs, politely and capped, and
+#            merge onto the published file), and print what this publish
+#            would change.
 #   publish  holds `catalog-writers`, the one lock every catalog writer shares,
 #            for a few minutes. Re-reads what is published NOW, refuses a
-#            shrink past the floor, uploads ear-drama.sqlite.zz + manifest.json
-#            to the rolling Release `catalog-latest`, and deploys the site with
-#            the web projection under /data/ to Pages.
+#            shrink past the floor or a change to a published evening, uploads
+#            ear-drama.sqlite.zz + tonight.json + manifest.json to the rolling
+#            Release `catalog-latest` and the grown evening cache to
+#            `radiologs-latest`, and deploys the site with the web projection
+#            (and its tonight.json) under /data/ to Pages.
+#
+# radiologs-latest holds facts only (evenings.jsonl, log-urls.json), never the
+# newspaper PDFs. Without it a run measures the window from scratch, at most
+# 120 PDFs a run, so the first runs fill the nearest days first. To seed it from
+# a machine that already measured: tar -cJf radiologs.tar.xz -C catalog/.cache
+# radiologs/evenings.jsonl radiologs/log-urls.json, then upload it to a
+# radiologs-latest Release.
 #
 # A run that read nothing goes red: no dated Release, a checksum mismatch, an
 # empty build, a red suite, or a projection under its floor each fail the run
@@ -190,6 +203,64 @@ jobs:
           PROJECTION=out/publish-clean/ear-drama.sqlite python3 tests/test_projection.py
           WEB_PROJECTION=out/web python3 tests/test_web_projection.py
 
+      - name: Restore the measured evenings (radiologs-latest)
+        id: radiologs
+        run: |
+          # This workflow writes it (publish job). No Release or no asset means the
+          # window is measured from scratch, capped; a cache that exists and cannot
+          # be fetched is an error (never swallow a restore).
+          mkdir -p catalog/.cache/radiologs live
+          if out=$(gh release view radiologs-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            case " $out " in
+              *" radiologs.tar.xz "*)
+                bash tools/gh_retry.sh gh release download radiologs-latest -R "$REPO" -D live --clobber -p radiologs.tar.xz
+                tar -xJf live/radiologs.tar.xz -C catalog/.cache ;;
+              *) echo "::warning::radiologs-latest has no radiologs.tar.xz (assets: $out); measuring the window from scratch" ;;
+            esac
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "::notice::no radiologs-latest Release yet: measuring the window from scratch"
+          else
+            echo "::error::could not read radiologs-latest: $out"
+            exit 1
+          fi
+          n=0; [ -s catalog/.cache/radiologs/evenings.jsonl ] && n=$(wc -l < catalog/.cache/radiologs/evenings.jsonl)
+          echo "measured evenings restored: $n"
+
+      - name: Tonight in 19xx (the window's logs, politely; tonight.json)
+        working-directory: catalog
+        env:
+          EARDRAMA_PROJECTION: out/publish/ear-drama.sqlite
+          EARDRAMA_REGISTRY: out/radio-catalog.sqlite
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq poppler-utils > /dev/null
+          # Only the window's anniversaries not yet measured, nearest day first, 3 s
+          # apart; a day that enters the window costs about 21 PDFs (~1.3 MB).
+          python3 tools/build_evenings.py measure --window --max-fetch 120 | tail -4
+          mkdir -p out/live
+          if out=$(gh release view catalog-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            case " $out " in
+              *" tonight.json "*) bash ../tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D out/live --clobber -p tonight.json ;;
+              *) echo "no tonight.json published yet: every day is new" ;;
+            esac
+          elif ! printf '%s' "$out" | grep -q "release not found"; then
+            echo "::error::could not read catalog-latest: $out"
+            exit 1
+          fi
+          if python3 tools/build_evenings.py tonight --previous out/live/tonight.json --out out/publish/tonight.json; then
+            python3 tools/build_evenings.py web --src out/publish/tonight.json --web out/web --out out/web/tonight.json
+            python3 tools/build_evenings.py kept --old out/live/tonight.json --new out/publish/tonight.json
+          else
+            echo "::warning::no evening could be published for the window; tonight.json is left as it is"
+            rm -f out/publish/tonight.json out/web/tonight.json
+          fi
+          files=(radiologs/evenings.jsonl)
+          [ -s .cache/radiologs/log-urls.json ] && files+=(radiologs/log-urls.json)
+          if [ -s .cache/radiologs/evenings.jsonl ]; then
+            tar -cJf out/radiologs.tar.xz -C .cache "${files[@]}"
+            echo "measured evenings kept: $(wc -l < .cache/radiologs/evenings.jsonl)"
+          fi
+
       - name: What this publish changes (against what is live; read-only)
         run: |
           mkdir -p live
@@ -216,6 +287,8 @@ jobs:
           path: |
             catalog/out/publish/ear-drama.sqlite.zz
             catalog/out/publish/manifest.json
+            catalog/out/publish/tonight.json
+            catalog/out/radiologs.tar.xz
             catalog/out/web/
           if-no-files-found: error
           retention-days: 7
@@ -288,6 +361,17 @@ jobs:
             --old-manifest live/web-manifest.json --new-manifest built/web/manifest.json \
             --max-shrink "$MAX_SHRINK" --reason "$SHRINK_REASON" --summary "$GITHUB_STEP_SUMMARY"
 
+      - name: A published evening never changes (contract §8)
+        if: hashFiles('built/publish/tonight.json') != ''
+        run: |
+          # Re-read under the lock: every day already in the live tonight.json keeps
+          # its evening and slots; only a withdrawal (a withheld episode) may differ.
+          if [ "${{ steps.live.outputs.release }}" = "yes" ] && \
+             gh release view catalog-latest -R "$REPO" --json assets --jq '.assets[].name' | grep -qx tonight.json; then
+            bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber -p tonight.json
+          fi
+          python3 catalog/tools/build_evenings.py kept --old live/tonight.json --new built/publish/tonight.json
+
       - name: Upload to the rolling Release catalog-latest
         run: |
           if [ "${{ steps.live.outputs.release }}" = "no" ]; then
@@ -298,9 +382,14 @@ jobs:
           # --clobber deletes before it uploads, so the database goes first and
           # the manifest that vouches for it (sha256) goes last.
           bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/ear-drama.sqlite.zz
+          assets=(ear-drama.sqlite.zz manifest.json)
+          if [ -s built/publish/tonight.json ]; then
+            bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/tonight.json
+            assets+=(tonight.json)
+          fi
           bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/manifest.json
           # Evidence, not a claim: the hosted sizes match what was built.
-          for f in ear-drama.sqlite.zz manifest.json; do
+          for f in "${assets[@]}"; do
             want=$(stat -c %s "built/publish/$f")
             got=$(gh release view catalog-latest -R "$REPO" --json assets --jq ".assets[] | select(.name == \"$f\") | .size")
             if [ "$got" != "$want" ]; then
@@ -311,6 +400,30 @@ jobs:
           done
           # The yield line tools/audit_workflow_health.py judges a green run by.
           echo "[catalog-publish] published $(python3 -c "import json;m=json.load(open('built/publish/manifest.json'));print(m['counts']['episodes'], 'episodes,', m['bytes']['zz'], 'bytes')") to catalog-latest"
+
+      - name: Keep the measured evenings (radiologs-latest)
+        if: hashFiles('built/radiologs.tar.xz') != ''
+        run: |
+          # Never destroy work: the cache only grows, so a smaller one is refused.
+          new=$(tar -xJOf built/radiologs.tar.xz radiologs/evenings.jsonl | wc -l)
+          if gh release view radiologs-latest -R "$REPO" > /dev/null 2>&1; then
+            old=0
+            if gh release view radiologs-latest -R "$REPO" --json assets --jq '.assets[].name' | grep -qx radiologs.tar.xz; then
+              mkdir -p live/radiologs
+              bash tools/gh_retry.sh gh release download radiologs-latest -R "$REPO" -D live/radiologs --clobber -p radiologs.tar.xz
+              old=$(tar -xJOf live/radiologs/radiologs.tar.xz radiologs/evenings.jsonl | wc -l)
+            fi
+            if [ "$new" -lt "$old" ]; then
+              echo "::error::radiologs.tar.xz would shrink from $old to $new measured evenings; not uploading"
+              exit 1
+            fi
+          else
+            bash tools/gh_retry.sh gh release create radiologs-latest -R "$REPO" --latest=false \
+              --title "Evening logs (rolling)" \
+              --notes "Measured network evenings for Tonight in 19xx (docs/research/evenings.md): station, time, program as printed, and the matched episode, plus the newspaper log links. Facts only; the pages stay at JJ's Newspaper Radio Logs. Written by .github/workflows/catalog-publish.yml."
+          fi
+          bash tools/gh_retry.sh gh release upload radiologs-latest -R "$REPO" --clobber built/radiologs.tar.xz
+          echo "radiologs-latest: $new measured evenings"
 
       - name: Is Pages served from Actions?
         id: pages

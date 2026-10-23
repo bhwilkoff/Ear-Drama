@@ -79,7 +79,7 @@ grid records what WTOP aired, which is what we claim.
     python3 tools/build_evenings.py evening 1947-10-16 CBS
     python3 tools/build_evenings.py measure --sample 320 --anniversaries 2026-10-21 --days 14
     python3 tools/build_evenings.py report
-    python3 tools/build_evenings.py tonight --start 2026-10-21 --days 14 --floor F --out tonight.json
+    python3 tools/build_evenings.py tonight --today 2026-10-22 --previous live/tonight.json --out tonight.json
 
 `EARDRAMA_CACHE`, `EARDRAMA_PROJECTION` and `EARDRAMA_REGISTRY` point a
 worktree at the main checkout's cache and databases.
@@ -197,7 +197,7 @@ fallback pool is six evenings in 586. Revisit when the postwar grids are read
 ## 6. The prototype `tonight.json`
 
 `catalog/prototypes/tonight.json`, from
-`tonight --start 2026-10-21 --days 14 --floor 0.25`: 14 days, 13
+`tonight` (then `--start 2026-10-21 --days 14 --floor 0.25`): 14 days, 13
 anniversaries (coverage 0.25-0.44) and one weekday fallback (2026-10-25, a
 Sunday: CBS 1949-02-20, 0.56: Jack Benny, Amos 'n' Andy, Our Miss Brooks).
 Shape:
@@ -222,6 +222,24 @@ recording of this night is known", else "a program aired here". A gap that
 `refuse_bleed` emptied carries `refused`. Replay: `utc_start` is the printed
 Eastern wall clock on the replay date in `America/New_York` (R10); a slot
 after midnight belongs to the same night.
+
+## 6a. Publishing (2026-10-22)
+
+`catalog-publish.yml` builds `tonight.json` every run: it restores
+`radiologs.tar.xz` from `radiologs-latest`, measures only the window's
+anniversaries it has not measured (`measure --window --max-fetch 120`,
+nearest day first, 3 s between PDFs), writes `tonight.json` merged onto the
+published file, and keeps the grown cache. MEASURED on a copy of this
+session's cache: a run whose window adds one new calendar date fetched 20
+PDFs (one of 21 years had no log) of about 66 KB each, about 1.3 MB, in 87
+s, and measured 40 network-evenings; a new month adds up to 21 month pages
+the first time (kept as links in `log-urls.json`, not as pages). One JJ PDF
+(1951-11-04) crashes poppler; it is recorded as `pdf unreadable`, not
+retried. The floor is `FLOOR` in the tool, provisional. On the clean-only
+web projection (gate closed) the 15-day window has 0 playable slots: every
+surviving recording in it is unclaimed, so the web draws them as "Not in
+the catalog" until the gate opens; with unclaimed rows the same window
+plays 36.
 
 ## 7. Verified and unverified
 
