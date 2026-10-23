@@ -23,7 +23,7 @@ APPLE_KEY_ID = ""
 [[d1_databases]]
 binding = "DB"
 database_name = "eardrama"
-database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+database_id = "ce7adf80-6059-41c3-b20a-8df2b5457569"
 migrations_dir = "migrations"
 
 # Hourly sweep: expired sessions, idle rooms, and quiet room members are
