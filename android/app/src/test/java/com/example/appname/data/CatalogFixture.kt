@@ -71,14 +71,24 @@ object CatalogFixture {
     /**
      * [withLoudness] false drops §3.1's loudness columns, and [withTranscript]
      * false its transcript URL, as a catalog published before them.
+     * [rightsLines], when set, is published as `meta.rightsLines` (contract §5.5).
      */
-    fun build(dir: File, withLoudness: Boolean = true, withTranscript: Boolean = true): File {
+    fun build(
+        dir: File,
+        withLoudness: Boolean = true,
+        withTranscript: Boolean = true,
+        rightsLines: String? = null,
+    ): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
         val c = BundledSQLiteDriver().open(file.path)
         try {
             SCHEMA.forEach { c.execSQL(it) }
             c.execSQL("INSERT INTO meta VALUES ('schemaVersion', '1')")
+            rightsLines?.let { json ->
+                val st = c.prepare("INSERT INTO meta VALUES ('rightsLines', ?)")
+                try { st.bindText(1, json); st.step() } finally { st.close() }
+            }
             c.execSQL(
                 "INSERT INTO series VALUES ('suspense', 'Suspense', 'mystery', 'otrrpedia', '1942-06-17', '1943-05-25', " +
                     "'[\"CBS\"]', 7)",

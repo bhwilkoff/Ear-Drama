@@ -78,7 +78,14 @@ fun EpisodeScreen(
             val pad = Modifier.padding(horizontal = Spacing.S4.dp)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 item(key = "head") {
-                    formatAirDate(row.airDate)?.let { Meta(it, pad) }
+                    formatAirDate(row.airDate)?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = pad,
+                        )
+                    }
                     Text(
                         episodeTitle(row),
                         style = MaterialTheme.typography.displaySmall,
@@ -142,7 +149,7 @@ fun EpisodeScreen(
                         if (notes.isNotEmpty()) item(key = "only-copy") { Meta(notes.joinToString(" · "), pad) }
                     }
                 }
-                DisplayVocabulary.rightsLine(d.rights, d.rightsBasis)?.let { line ->
+                d.rightsLine?.let { line ->
                     item(key = "rights") {
                         Meta(line, Modifier.padding(Spacing.S4.dp))
                     }

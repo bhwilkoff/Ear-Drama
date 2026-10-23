@@ -38,8 +38,6 @@ import com.example.appname.data.CatalogDatabase
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
 import com.example.appname.ui.theme.Spacing
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
 
@@ -87,10 +85,19 @@ fun <T> LoadableContent(state: Loadable<T>, modifier: Modifier = Modifier, conte
         Loadable.Loading -> CenteredBox(modifier) {
             CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
         }
-        Loadable.NoCatalog -> RetryMessage("No catalog on this device yet.", modifier)
-        Loadable.Failed -> RetryMessage("The catalog could not be read.", modifier)
+        Loadable.NoCatalog, Loadable.Failed -> RetryMessage(catalogProblem(state, LocalOnline.current)!!, modifier)
         is Loadable.Ready -> content(state.value)
     }
+}
+
+/**
+ * The words a catalog screen shows instead of its rows. With no catalog and no
+ * network the cause is the network: a neutral offline sentence (web §7.3).
+ */
+fun catalogProblem(state: Loadable<*>, online: Boolean): String? = when (state) {
+    Loadable.NoCatalog -> if (online) "No catalog on this device yet." else OFFLINE_LINE
+    Loadable.Failed -> "The catalog could not be read."
+    else -> null
 }
 
 @Composable
@@ -138,12 +145,11 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-private val LONG_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
-
-/** "Feb 24, 1943" from the catalog's `YYYY-MM-DD`; the raw text when it does not parse. */
-fun formatAirDate(date: String?): String? = date?.let {
-    runCatching { LocalDate.parse(it).format(LONG_DATE) }.getOrDefault(it)
-}
+/**
+ * R1: the date is the identity, shown as the catalog stores it (`1943-02-24`),
+ * as Apple and the web do, in the tabular style so a column of dates aligns.
+ */
+fun formatAirDate(date: String?): String? = date?.takeIf { it.isNotBlank() }
 
 /** "30 min", or null when the length is unknown (LibriVox chapters are stored as 0). */
 fun formatLength(seconds: Double?): String? =
@@ -192,7 +198,7 @@ fun EpisodeListItem(
     ).joinToString(" · ").ifEmpty { null }
     ListItem(
         modifier = Modifier.clickable(onClickLabel = "Open episode", onClick = onOpen),
-        overlineContent = date?.takeIf { title != it }?.let { { Text(it) } },
+        overlineContent = date?.takeIf { title != it }?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
         headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         supportingContent = second?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
         trailingContent = {

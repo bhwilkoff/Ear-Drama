@@ -122,7 +122,7 @@ fun TranscriptScreen(id: String, onBack: () -> Unit) {
                     SelectionContainer {
                         Text(
                             Transcript.lines(state.text).joinToString("\n"),
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.widthIn(max = 680.dp),
                         )
                     }

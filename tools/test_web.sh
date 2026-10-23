@@ -10,6 +10,7 @@ cd "$(dirname "$0")/.."
 
 fail=0
 for t in js/api.test.js \
+         js/player.test.js \
          tools/test_tv_focus.mjs \
          tools/test_tv_ua.mjs \
          tools/test_packaged_origin.mjs \

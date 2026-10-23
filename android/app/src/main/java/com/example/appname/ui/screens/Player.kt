@@ -139,7 +139,7 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
                 modifier = Modifier.clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
             )
             formatAirDate(episode.airDate)?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             now.problem?.let { problem ->
                 Text(

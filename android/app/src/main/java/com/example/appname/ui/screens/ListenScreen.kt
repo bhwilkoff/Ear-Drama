@@ -107,7 +107,7 @@ private fun EpisodeCard(row: EpisodeRow, onOpen: () -> Unit, modifier: Modifier 
     ) {
         Column(Modifier.padding(Spacing.S3.dp)) {
             formatAirDate(row.airDate)?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Text(
                 episodeTitle(row),

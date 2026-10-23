@@ -61,6 +61,8 @@ data class EpisodeDetail(
      * gate passed (`has_transcript = 1`); fetched when opened, never bundled.
      */
     val transcriptUrl: String? = null,
+    /** Contract §5.5: the published words for this row's rights, or null for none. */
+    val rightsLine: String? = null,
 )
 
 /** [transcriptOnly]: the episodes found only by words in their transcript (§3.4). */

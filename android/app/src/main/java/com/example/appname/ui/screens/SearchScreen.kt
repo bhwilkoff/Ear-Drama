@@ -19,6 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.example.appname.ui.ClaimTvFocus
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -39,10 +43,26 @@ import kotlinx.coroutines.delay
 /** Search: episodes and series, word-prefix (§3.4), never filtered by `recommendAnd`. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchScreen(onOpenSeries: (String) -> Unit, onOpenEpisode: (String) -> Unit) {
+fun SearchScreen(
+    onOpenSeries: (String) -> Unit,
+    onOpenEpisode: (String) -> Unit,
+    incoming: String? = null,
+    onIncomingTaken: () -> Unit = {},
+) {
     val container = LocalAppContainer.current
     var query by rememberSaveable { mutableStateOf("") }
     var settled by rememberSaveable { mutableStateOf("") }
+    // A search link (DEEP_LINKS.md `search?q=`) arrives through the inbox.
+    LaunchedEffect(incoming) {
+        if (incoming != null) {
+            query = incoming
+            settled = incoming.trim()
+            onIncomingTaken()
+        }
+    }
+    // On a TV the D-pad starts in the search field (§9.2).
+    val field = remember { FocusRequester() }
+    ClaimTvFocus(field, Unit)
     LaunchedEffect(query) {
         delay(250)
         settled = query.trim()
@@ -72,7 +92,10 @@ fun SearchScreen(onOpenSeries: (String) -> Unit, onOpenEpisode: (String) -> Unit
             },
             expanded = false,
             onExpandedChange = {},
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)
+                .focusRequester(field),
         ) {}
         LoadableContent(results) { found ->
             when {

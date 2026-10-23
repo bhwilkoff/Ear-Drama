@@ -64,6 +64,9 @@ fun AppRoot(
 ) {
     var selected by rememberSaveable { mutableStateOf(Tab.Listen) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
+    var incomingSearch by remember { mutableStateOf<String?>(null) }
+    val haptics = rememberHaptics()
+    val online by rememberOnline()
     val stacks: Map<Tab, NavBackStack<NavKey>> = Tab.entries.associateWith { tab ->
         rememberNavBackStack(tab.root)
     }
@@ -77,6 +80,11 @@ fun AppRoot(
             when (val request = inbox.removeAt(0)) {
                 is InboxRequest.Tab -> Tab.named(request.tab)?.let { selected = it }
                 is InboxRequest.Item -> stacks.getValue(selected).add(Route.Episode(request.id))
+                is InboxRequest.Series -> stacks.getValue(selected).add(Route.Series(request.key))
+                is InboxRequest.Search -> {
+                    selected = Tab.Search
+                    incomingSearch = request.query
+                }
                 InboxRequest.EndDoor -> {
                     container.playback.stop()
                     playerOpen = false
@@ -90,7 +98,12 @@ fun AppRoot(
     val openTranscript: (String) -> Unit = { id -> stack.add(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
 
-    CompositionLocalProvider(LocalPlayerMuted provides muted, LocalAppContainer provides container) {
+    CompositionLocalProvider(
+        LocalPlayerMuted provides muted,
+        LocalAppContainer provides container,
+        LocalOnline provides online,
+    ) {
+        HapticEvents()
         NavigationSuiteScaffold(
             navigationSuiteItems = {
                 Tab.entries.forEach { tab ->
@@ -100,6 +113,8 @@ fun AppRoot(
                             if (tab == selected) {
                                 val s = stacks.getValue(tab)
                                 while (s.size > 1) s.removeAt(s.lastIndex)
+                            } else {
+                                haptics(Haptic.Selection)
                             }
                             selected = tab
                         },
@@ -118,7 +133,12 @@ fun AppRoot(
                             entry<Route.Listen> { ListenScreen(onOpenEpisode = openEpisode) }
                             entry<Route.SeriesBrowse> { SeriesBrowseScreen(onOpenSeries = openSeries) }
                             entry<Route.Search> {
-                                SearchScreen(onOpenSeries = openSeries, onOpenEpisode = openEpisode)
+                                SearchScreen(
+                                    onOpenSeries = openSeries,
+                                    onOpenEpisode = openEpisode,
+                                    incoming = incomingSearch,
+                                    onIncomingTaken = { incomingSearch = null },
+                                )
                             }
                             entry<Route.Library> { LibraryScreen(onOpenEpisode = openEpisode) }
                             entry<Route.Series> { route ->
@@ -136,6 +156,8 @@ fun AppRoot(
                         },
                     )
                 }
+                // Below the screens, so it never sits under the status bar (edge to edge).
+                if (!online) OfflineLine()
                 MiniPlayer(onExpand = { playerOpen = true })
             }
         }

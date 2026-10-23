@@ -107,7 +107,7 @@ When shipping any user-facing feature:
 |---|---|---|---|---|---|---|
 | Episode detail (date, network, sponsor, cast, versions, rights line) | 🚧 no sponsor yet | 🚧 | 🚧 | 🚧 | 🚧 no sponsor | Unclaimed reads "no claim known; removed on request", never public domain |
 | Player: background play, system controls, speed, skip | 🚧 Media Session | 🚧 Now Playing, remote commands | 🚧 Controls menu, keyboard | 🚧 full-screen Now Playing | 🚧 Media3 session | iPhone web cannot be relied on for background audio |
-| Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | |
+| Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | Decision 062: 10 s fade, speeds 0.75 to 2, save every 5 s, 3 s rewind after an interruption; web and Android done, Apple in progress |
 | Serials stop at the end of an arc (R3) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Commercials chaptered, never skipped (R8) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Loudness gain applied at playback | 🚧 -21 LUFS by cutting; unmeasured at unity | 🚧 AVPlayer volume | 🚧 | 🚧 | 🚧 ExoPlayer volume, per queued item | Gain from the pipeline; never re-encoded |
@@ -116,7 +116,7 @@ When shipping any user-facing feature:
 | Downloads | ⏳ | 🚧 background session; remove, remove all | 🚧 same, Library section | n/a | 🚧 WorkManager, same store | tvOS has no durable storage for media |
 | Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
 | Credits, privacy, and take-down pages | 🚧 /credits/, /privacy/, /takedown/; owner placeholders | ⏳ link to the web pages | ⏳ | ⏳ | ⏳ | One set of pages; apps link to them |
-| Works offline (what was already loaded) | 🚧 service worker; network-first data, cached shell | ⏳ | ⏳ | n/a | ⏳ | Audio downloads are their own row |
+| Works offline (what was already loaded) | 🚧 service worker; network-first data, cached shell | ⏳ | ⏳ | n/a | 🚧 says "You are offline." above the mini player and on the no-catalog state | Audio downloads are their own row |
 
 ---
 
@@ -140,7 +140,7 @@ a future session doesn't "harmonize" a rejection into a port (see
 | Surface | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
 | EmptyState (productive next action) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Required everywhere from the first list/grid |
-| ErrorBanner / OfflinePill | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Required everywhere |
+| ErrorBanner / OfflinePill | ⏳ | ⏳ | ⏳ | ⏳ | 🚧 offline line; error haptic with "Download failed" and the player's problem line | Required everywhere |
 | HintBanner (one-shot tip) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Persisted dismissals + a global reset in Settings |
 | Multi-step anchored walkthroughs | 🚫 | ⏳ | 🚫 | 🚫 | 🚫 | iOS-only where its idioms are novel; other platforms use EmptyState + hints + a `?` explainer. Record the rejection in each platform's design doc |
 

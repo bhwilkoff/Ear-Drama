@@ -9,7 +9,7 @@
  *    (/pulse/, /cast/) and other origins' pages pass through untouched.
  *  - Caches are named by version; activate deletes every older Ear Drama cache.
  */
-const SHELL_VERSION = 'ed-shell-v6';
+const SHELL_VERSION = 'ed-shell-v7';
 const DATA_VERSION = 'ed-data-v1';
 const KEEP = [SHELL_VERSION, DATA_VERSION];
 
