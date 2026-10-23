@@ -2,7 +2,9 @@
 #
 #   build    NO lock. Restore the research database and harvest caches from the
 #            newest dated catalog Release, rebuild (build_db, enrich_db), run
-#            every catalog suite, build the served and clean-only projections
+#            every catalog suite, restore the loudness cache (loudness-latest,
+#            written by catalog-loudness.yml; missing = columns left NULL),
+#            build the served and clean-only projections
 #            and the web projection, run the contract tests over the real
 #            artifacts, and print what this publish would change.
 #   publish  holds `catalog-writers`, the one lock every catalog writer shares,
@@ -107,12 +109,36 @@ jobs:
       - name: Every catalog suite (a red test blocks publish)
         run: bash catalog/tests/run_all.sh
 
+      - name: Restore the loudness measurements (loudness-latest)
+        run: |
+          # catalog-loudness.yml writes it. No Release or no cache asset means
+          # no loudness columns are filled this publish, not a failure; a cache
+          # that exists and cannot be fetched is an error (never swallow a restore).
+          if out=$(gh release view loudness-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            case " $out " in
+              *" loudness.json.gz "*) asset=loudness.json.gz ;;
+              *" loudness.prev.json.gz "*) asset=loudness.prev.json.gz; echo "::warning::loudness-latest has only loudness.prev.json.gz" ;;
+              *) echo "::warning::loudness-latest has no cache (assets: $out); publishing without loudness"; exit 0 ;;
+            esac
+            bash tools/gh_retry.sh gh release download loudness-latest -R "$REPO" -D catalog/out --clobber -p "$asset"
+            if [ "$asset" != loudness.json.gz ]; then mv "catalog/out/$asset" catalog/out/loudness.json.gz; fi
+            echo "loudness: $(python3 -c "import sys;sys.path.insert(0,'catalog/tools');import measure_loudness as L;print(L.tally(L.load('catalog/out/loudness.json.gz')))")"
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "::notice::no loudness-latest Release yet: publishing without loudness"
+          else
+            echo "::error::could not read loudness-latest: $out"
+            exit 1
+          fi
+
       - name: Build the served, clean-only, and web projections
         working-directory: catalog
         run: |
           set -euo pipefail
-          python3 tools/build_projection.py --out out/publish | tail -3
-          python3 tools/build_projection.py --clean-only --out out/publish-clean | tail -3
+          loud=()
+          if [ -s out/loudness.json.gz ]; then loud=(--loudness out/loudness.json.gz); fi
+          python3 tools/build_projection.py --out out/publish "${loud[@]}" | tail -3
+          python3 tools/build_projection.py --clean-only --out out/publish-clean "${loud[@]}" | tail -3
+          echo "loudness rows: $(python3 -c "import json;print(json.load(open('out/publish/manifest.json'))['counts']['loudness'])")"
           # The public-web gate: one flag, opened only by the repository variable.
           gate=""
           if [ "${DMCA_AGENT_REGISTERED:-}" = "true" ]; then gate="--include-unclaimed"; fi

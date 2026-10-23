@@ -3,6 +3,7 @@
     python3 tools/build_projection.py                 # out/radio-catalog.sqlite -> out/publish/
     python3 tools/build_projection.py --clean-only    # the public-web gate: keep_clean rows only
     python3 tools/build_projection.py --db PATH --out DIR
+    python3 tools/build_projection.py --loudness .cache/loudness.json.gz   # fill loudness_i, loudness_tp
 
 Reads the full research database (build_db.py, then enrich_db.py) and writes
 `ear-drama.sqlite`, its raw-DEFLATE `ear-drama.sqlite.zz`, and `manifest.json`.
@@ -23,6 +24,7 @@ import zlib
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import genre_of
+from measure_loudness import load as load_loudness, usable as loudness_usable
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
@@ -44,7 +46,7 @@ CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
-    gain_db REAL, detail_json TEXT);
+    gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
@@ -78,7 +80,10 @@ def download_url(archive_id, file):
                                                        urllib.parse.quote(file, safe="/"))
 
 
-def build(src, dst, clean_only=False):
+def build(src, dst, clean_only=False, loudness=None):
+    """`loudness` is the measurement cache (measure_loudness.py), id -> result; only
+    a usable measurement of the episode's default copy URL is published."""
+    loudness = loudness or {}
     if os.path.exists(dst):
         os.remove(dst)
     s = sqlite3.connect(f"file:{src}?mode=ro", uri=True)
@@ -112,16 +117,19 @@ def build(src, dst, clean_only=False):
         recs = recs_by_ep.get(eid) or []
         if not recs:
             continue
+        lr = loudness.get(eid)
+        if not loudness_usable(lr, download_url(recs[0][2], recs[0][3])):
+            lr = None
         for i, (_, _rank, aid, file, fmt, kbps, length, variant, partial) in enumerate(recs):
             d.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?)",
                       (eid, i, aid, download_url(aid, file), fmt, kbps, length, variant, int(bool(partial))))
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
-        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             eid, sk, air, dsrc, season(air), num, title, aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(bool(has_tr)), None,
-            None))
+            None, lr and lr["I"], lr and lr["TP"]))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people) VALUES (?,?,?,?)",
                   (cur.lastrowid, " ".join(x for x in (title, aka) if x), names.get(sk, ""),
                    " ".join(n for _, n, _, _ in credits)))
@@ -141,6 +149,7 @@ def build(src, dst, clean_only=False):
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
               for t in ("episodes", "recordings", "series", "people", "credits")}
     counts["clean"] = d.execute("SELECT COUNT(*) FROM episodes WHERE rights = 'clean'").fetchone()[0]
+    counts["loudness"] = d.execute("SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL").fetchone()[0]
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES}
     for k, v in meta.items():
@@ -172,10 +181,13 @@ def main():
     ap.add_argument("--db", default=os.path.join(ia.OUT, "radio-catalog.sqlite"))
     ap.add_argument("--out", default=os.path.join(ia.OUT, "publish"))
     ap.add_argument("--clean-only", action="store_true")
+    ap.add_argument("--loudness", help="measure_loudness.py cache (.json or .json.gz); absent = columns NULL")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     db = os.path.join(a.out, "ear-drama.sqlite")
-    meta = build(a.db, db, a.clean_only)
+    if a.loudness and not os.path.exists(a.loudness):
+        raise SystemExit(f"--loudness {a.loudness} does not exist (omit the flag to build without loudness)")
+    meta = build(a.db, db, a.clean_only, load_loudness(a.loudness) if a.loudness else None)
     floor = 1_000 if a.clean_only else MIN_EPISODES
     if meta["counts"]["episodes"] < floor:
         raise SystemExit(f"refusing to publish: {meta['counts']['episodes']} episodes is below the floor of {floor}")

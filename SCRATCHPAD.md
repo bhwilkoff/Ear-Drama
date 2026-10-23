@@ -34,6 +34,11 @@
   C7 relay order, C9 "author died by 1955", C10 commercials and Personal Voice,
   and whether Decision 057's "sign-in required to record" covers a local
   recording that is never shared.
+- **Loudness pace**: `catalog-loudness.yml` measures the whole catalog by
+  streaming each episode from archive.org (Decision 061), about 25 GB a run.
+  Merged at once a day (~108 days to cover 108,005 episodes); four a day (~27
+  days, ~100 GB a day) is ready by changing one cron line. Faster, slower, or
+  tell archive.org first? (It runs once Actions can run on schedule.)
 - **Ready for you (2026-10-22)**: pick a palette. Open
   `docs/research/palette/index.html` (or the PNGs in `shots/`); the method and
   every number are in its README. Three directions: On Air, Tuning Eye,
