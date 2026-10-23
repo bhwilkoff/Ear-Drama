@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.example.appname.data.EpisodeRow
@@ -18,6 +19,7 @@ import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.SectionHeader
+import com.example.appname.ui.downloadsSection
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberCatalogQuery
 
@@ -26,7 +28,7 @@ private data class LibraryLists(
     val finished: List<EpisodeRow>,
 )
 
-/** Library: what the listener started and finished on this device. */
+/** Library: what the listener started, downloaded, and finished on this device. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
@@ -41,9 +43,10 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
             finished = db.episodes(container.user.finished().map { it.episodeId }).distinctBy { it.id },
         )
     }
+    val downloadRecords by container.downloads.records.collectAsState()
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
-            if (library.inProgress.isEmpty() && library.finished.isEmpty()) {
+            if (library.inProgress.isEmpty() && library.finished.isEmpty() && downloadRecords.isEmpty()) {
                 EmptyMessage("Episodes you play appear here.", Modifier.padding(padding))
                 return@LoadableContent
             }
@@ -60,6 +63,13 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
                         )
                     }
                 }
+                downloadsSection(
+                    records = downloadRecords.values.sortedByDescending { it.addedAtMs },
+                    totalBytes = container.downloads.totalBytes,
+                    onOpen = onOpenEpisode,
+                    onRemove = container.downloads::remove,
+                    onRemoveAll = container.downloads::removeAll,
+                )
                 if (library.finished.isNotEmpty()) {
                     item(key = "finished-h") { SectionHeader("Finished") }
                     items(library.finished, key = { "f:" + it.id }) { row ->

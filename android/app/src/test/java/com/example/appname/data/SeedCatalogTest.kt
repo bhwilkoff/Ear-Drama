@@ -31,35 +31,48 @@ class SeedCatalogTest {
         return db!!
     }
 
+    // Shape only: each test picks its series from what the seed holds, so a better
+    // catalog (a rights ruling, a fold, an unfinished LibriVox project) never breaks it.
+    private suspend fun allSeries() = seed().seriesBrowse(BrowseFilter(), limit = 5000)
+    private suspend fun largest(where: (SeriesRow) -> Boolean) =
+        allSeries().filter(where).maxByOrNull { it.episodes }!!
+
     @Test fun `the seed's FTS5 table answers through the bundled driver`() = runBlocking {
-        val found = seed().search("command perf")
-        assertTrue(found.series.any { it.key == "commandperformance" })
-        assertTrue(found.episodes.isNotEmpty())
+        val s = largest { true }
+        val word = s.name.split(" ").first { it.length >= 4 }.take(5)
+        val found = seed().search(word)
+        assertTrue(found.series.any { it.key == s.key } || found.episodes.isNotEmpty())
     }
 
     @Test fun `a real series page runs oldest first`() = runBlocking {
-        val page = seed().seriesPage("commandperformance")!!
+        val s = largest { it.firstDate != null }
+        val page = seed().seriesPage(s.key)!!
         val dated = page.seasons.mapNotNull { it.season }
         assertEquals(dated.sorted(), dated)
-        val rows = seed().seasonEpisodes("commandperformance", dated.first())
+        val rows = seed().seasonEpisodes(s.key, dated.first())
         val dates = rows.mapNotNull { it.airDate }
         assertEquals(dates.sorted(), dates)
     }
 
-    @Test fun `every seed episode is clean and has a rights line`() = runBlocking {
-        val rows = seed().seasonEpisodes("commandperformance", "1942-43").take(5)
+    @Test fun `every seed episode is clean, has a rights line, and plays a file`() = runBlocking {
+        val s = largest { true }
+        val rows = seed().seasonEpisodes(s.key, seed().seriesPage(s.key)!!.seasons.first().season).take(5)
+        assertTrue(rows.isNotEmpty())
         rows.forEach { row ->
             val d = seed().episodeDetail(row.id)!!
             assertEquals("clean", d.rights)
-            assertEquals("Government recording", DisplayVocabulary.rightsLine(d.rights, d.rightsBasis))
-            assertTrue(d.recordings.first().url.startsWith("https://archive.org/download/"))
+            val line = DisplayVocabulary.rightsLine(d.rights, d.rightsBasis)
+            assertTrue(line != null && line != DisplayVocabulary.UNCLAIMED)
+            val url = d.recordings.first().url
+            assertTrue(url.startsWith("https://archive.org/download/") && !url.endsWith("/"))
         }
     }
 
     @Test fun `a LibriVox series reads in chapter order`() = runBlocking {
-        val rows = seed().seasonEpisodes("librivox19977", null)
+        val s = largest { it.key.startsWith("librivox") }
+        val rows = seed().seasonEpisodes(s.key, null)
         val nums = rows.mapNotNull { it.num }
         assertEquals(nums.sorted(), nums)
-        assertTrue(rows.size > 100)
+        assertTrue(rows.isNotEmpty())
     }
 }

@@ -109,10 +109,12 @@ HOOK_FORCE_OFFLINE = "APP_FORCE_OFFLINE"
 # The item every runner's "item" scenario opens with HOOK_START_ITEM (the web's
 # ?item=), and text its detail screen renders. FILL IN both with a real id from your
 # catalog and a phrase calibrated against a real capture of that item's screen.
-# Ivanhoe, chapter one: a LibriVox recording, clean, in every seed, and its id is
-# LibriVox's own project number and section, so it does not move when parsing improves.
-QA_ITEM_ID = "librivox19977|s1"
-QA_ITEM_RX = r"Chapter One"
+# The Divine Comedy, Inferno I: a finished LibriVox recording (its project has an
+# archive.org item), clean, in every seed, and its id is LibriVox's own project number
+# and section, so it does not move when parsing improves. (Ivanhoe, chosen first, is
+# a project still being recorded and has no audio yet.)
+QA_ITEM_ID = "librivox8944|s1"
+QA_ITEM_RX = r"Inferno I"
 
 # --- Doors are muted and time-bounded by default ------------------------------
 # A harness that plays media on someone's television is in their living room. A

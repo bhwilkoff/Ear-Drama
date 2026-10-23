@@ -206,6 +206,9 @@ dependencies {
     // Playback: Media3 session service + ExoPlayer
     implementation(libs.bundles.media3)
 
+    // Episode downloads: a persisted job per download, across process death and reboot
+    implementation(libs.work.runtime)
+
     // Image loading
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
