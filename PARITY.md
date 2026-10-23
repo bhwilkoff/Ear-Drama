@@ -218,7 +218,7 @@ contract is `docs/CATALOG-CONTRACT.md`.
 | `ear-drama-seed.sqlite` | first launch offline (clean only) | bundled at build time from `catalog/out/publish-clean` | iOS, macOS, tvOS, Android |
 | `/data/` (index, series, shards, days) | the web projection | GitHub Pages, deployed by `catalog-publish.yml` | web |
 | `loudness-latest` | loudness measurements | Release asset, `catalog-loudness.yml` | the projection build only |
-| Worker + D1 | accounts, sync, shared plays | ⏳ M5 | every client |
+| Worker + D1 | accounts, sync, shared plays | 🚧 built and tested locally (Decision 063); not deployed; no client signs in yet | every client |
 
 ---
 

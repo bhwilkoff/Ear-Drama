@@ -1,0 +1,56 @@
+# Ear Drama's Worker: optional accounts and sync (Decision 057), ported from
+# Archive Watch's worker/ (one free Worker, D1, rate-limit bindings, a cron
+# sweep). Nothing here is a secret. Secrets go in with `wrangler secret put`
+# (docs/WORKER.md), and the placeholders below are replaced by the owner.
+name = "eardrama-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# Comma-separated `aud` values an identity token may carry. Apple: the bundle
+# id (iOS, iPadOS, macOS, tvOS) and the Services ID (web, Android). Google:
+# the OAuth client ids (web, iOS, and the web id Android asks for).
+APPLE_AUDIENCES = "app.eardrama,REPLACE_WITH_APPLE_SERVICES_ID"
+GOOGLE_AUDIENCES = "REPLACE_WITH_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com"
+# Browsers that may call this Worker. Native apps send no Origin header.
+# http://localhost and http://127.0.0.1 on any port are always allowed.
+ALLOWED_ORIGINS = "https://eardrama.org,https://www.eardrama.org"
+# Only needed to revoke Sign in with Apple tokens when an account is deleted.
+# The private key itself is a secret (APPLE_PRIVATE_KEY).
+APPLE_TEAM_ID = ""
+APPLE_KEY_ID = ""
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eardrama"
+database_id = "REPLACE_WITH_ID_FROM_wrangler_d1_create"
+migrations_dir = "migrations"
+
+# Daily sweep: expired and revoked sessions are deleted, not just ignored.
+[triggers]
+crons = ["23 4 * * *"]
+
+# Rate limits (Archive Watch together.js `limited()`): counted per key for the
+# window only, nothing stored. EVERY_IP is the floor on every route; AUTH
+# counts sign-in and refresh per address; USER counts a signed-in person, so a
+# classroom behind one school address is not one person.
+[[ratelimits]]
+name = "EVERY_IP_LIMITER"
+namespace_id = "8301"
+  [ratelimits.simple]
+  limit = 600
+  period = 60
+
+[[ratelimits]]
+name = "AUTH_LIMITER"
+namespace_id = "8302"
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[ratelimits]]
+name = "USER_LIMITER"
+namespace_id = "8303"
+  [ratelimits.simple]
+  limit = 120
+  period = 60

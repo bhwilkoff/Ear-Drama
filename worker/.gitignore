@@ -1,0 +1,5 @@
+node_modules/
+.wrangler/
+# Local secrets for `wrangler dev` (SESSION_SECRET and the Apple key). Never in git.
+.dev.vars
+.dev.vars.*

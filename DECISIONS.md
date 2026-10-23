@@ -80,6 +80,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 060: The look: the ring microphone, Big Shoulders and Public Sans, new genre hues
 - 061: Playback loudness targets -21 LUFS, reached by cutting
 - 062: One set of player numbers on every platform
+- 063: Sign-in is verified at the Worker, which issues its own session; sync is last-write-wins per row
 
 ---
 
@@ -547,3 +548,31 @@ already used.
 **How to apply**: one named constant per value in each client, the same names
 everywhere, mirrored in each platform's design doc. What plays after an episode
 ends (the queue rule) is not settled here: it is the owner's (SCRATCHPAD item 9).
+
+---
+
+## 063: Sign-in is verified at the Worker, which issues its own session; sync is last-write-wins per row
+
+*Date: 2026-10-23*
+
+Clients send the provider's identity token (Apple or Google) with a raw nonce to
+`/v1/auth/{apple|google}`; the Worker checks signature (RS256 only), issuer,
+audience, expiry and nonce against the provider's published keys, then issues its
+own pair: a 1-hour access token and a 60-day refresh token replaced on every
+refresh. Sync is last-write-wins per row by `updated_at`, clamped to the server's
+clock; removals are markers.
+
+**Why**: Archive Watch's sign-in never reached a server (CloudKit and Drive App
+Data), so there was nothing to port and the Worker cannot trust a client's word
+for who it is. Shared plays (M8) need one identity every platform can prove. A
+replayed refresh token ends every session of that sign-in, and each call reads
+the session row, so sign-out and deletion take effect at once.
+
+**How to apply**: every call goes through each platform's one API client,
+refreshed when under 5 minutes remain, one refresh at a time. After sign-in the
+client sends its signed-out history to `/v1/sync/merge` once. Account deletion
+sends a fresh Apple authorization code so the Apple token is revoked. Any new
+table that holds a person's rows goes in `USER_TABLES`; the deletion test reads
+the tables from D1 and fails otherwise. Apple and Google sign-ins for the same
+person stay separate accounts until a linking decision is made. Setup steps:
+`docs/WORKER.md` (owner: LOOP-PLAN Needs Ben).

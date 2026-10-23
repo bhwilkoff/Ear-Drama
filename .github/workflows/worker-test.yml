@@ -1,0 +1,40 @@
+# The accounts-and-sync Worker's tests (docs/WORKER.md), run locally inside
+# workerd with a throwaway D1 built from worker/migrations. TEST ONLY: this
+# job holds no Cloudflare credential and never deploys; deploying is the
+# owner's step. Red means a sign-in, sync, deletion, or CORS guarantee broke.
+
+name: Worker Tests
+
+on:
+  pull_request:
+    paths:
+      - 'worker/**'
+      - '.github/workflows/worker-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/worker-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: worker/package-lock.json
+      - name: Install from the lockfile
+        run: npm ci
+      - name: Sign-in, sync, deletion, CORS, and rate limits
+        run: npm test
