@@ -23,6 +23,16 @@ their words, never lines, never a role. A full name that expands a frequent labe
 ("Barnardo." beside "Barn.", "_Clapboard._" beside "_Clap._") is that label's role when the
 text prints the name as a name.
 
+A radio text is read the same way (measured 2026-10-23 over every cached radio text: 1,028
+GRW and the 4 Gutenberg radio plays): a cast list runs from its heading over its entries
+("RICK, private detective", "CLERK (2 lines)") until the play's first label; a label may
+stand on its own line with a direction ("CARVER [_off_]"); a speech may run over several
+paragraphs; notes and credits ("NOTE:", "Transcribed by", a Gutenberg transcriber's note)
+and everything before the first cast list, speech, or cue are set aside, never lines. A
+mixed-case label ("Announcer:") is a role when it recurs or is one or two words, so a
+sentence ending in a semicolon is not. Only bracketed spans are radio directions: an
+italic ship's name is spoken.
+
 A text is a STUB, and not a script, when it is under 500 words or is a page of
 links with no dialogue (measured 2026-10-22 on all 1,028 cached GRW texts: 39 too
 short, such as "Information Coming Soon...", and 25 link pages, such as "PDF
@@ -56,12 +66,12 @@ CUE_TAGS = {
     "music": r"MUSIC|THEME|ORCH(?:ESTRA)?|ORGAN|BAND|QUARTET|SONG|BRIDGE|STING",
     "sound": r"SOUND(?:\s*(?:EFFECTS?|FX))?|SFX|F/?X|EFFECTS?|SOUND\s*EFFECT|SOUND\s*PATTERN|BIZ|BUSINESS|APPLAUSE|NOISE",
 }
-CUE = re.compile(r"^\(?\s*(%s)\s*[:;.\-]\s*(.*)$" % "|".join(f"(?P<{k}>{v})" for k, v in CUE_TAGS.items()), re.I)
-R_ROLE = re.compile(r"^\[?(?P<role>(?:\d+(?:ST|ND|RD|TH|st|nd|rd|th)\.?\s+)?[A-ZÀ-Þ][A-Za-zÀ-ÿ0-9.'&/\- ]{0,38}?)\]?"
+CUE = re.compile(r"^\(?\s*(%s)\s*(?:[:;.\-]|(?=\())\s*(.*)$" % "|".join(f"(?P<{k}>{v})" for k, v in CUE_TAGS.items()), re.I)
+R_ROLE = re.compile(r"^[\[\"]?(?P<role>(?:\d+(?:ST|ND|RD|TH|st|nd|rd|th)\.?\s+)?[A-ZÀ-Þ][A-Za-zÀ-ÿ0-9.'&/#\- ]{0,38}?)[\]\"]?"
                     r"\s*(?:\((?P<paren>[^)]{0,60})\))?\s*[:;]\s*(?P<text>.*)$")
 R_ROLE_SPACED = re.compile(r"^(?P<role>[A-ZÀ-Þ][A-ZÀ-Þ0-9.'&\- ]{1,30}?)(?:\s*\((?P<paren>[^)]{0,60})\))?\s{3,}(?P<text>\S.*)$")
 NOTROLE = re.compile(r"^(DATE|CAST|NOTE|PRODUCTION|SCENE|ACT|PAGE|PROGRAM|WRITER|DIRECTOR|SPONSOR|TITLE|SERIES|"
-                     r"SOURCE|TRANSCRIBED|THANKS|https?)$", re.I)
+                     r"SOURCE|TRANSCRIBED|THANKS|https?)(?:\s+\d+)?$", re.I)
 SOUNDROLE = re.compile(r"\b(DOOR|KNOCK|PHONE|TELEPHONE|CROWD|APPLAUSE|LAUGH\w*|SCENE \d+|COMMERCIAL|BACKGROUND|"
                        r"VIBRAPHONE|GONG|BELL|SIREN|GUN\w*|SHOTS?|WIND|RAIN|THUNDER|FOOTSTEPS|CREDITS|AD LIBS?|"
                        r"SIGNOFF|ECHO|FILTER|CLOCK|CAR|TRAIN|PLANE|ENGINE|HORN|WHISTLE)\b")
@@ -111,6 +121,7 @@ NOT_STAGE_ROLE = re.compile(r"^(AT RISE|TIME|PLACE|SCENE|SYNOPSIS|ENTER|RE-?ENTE
 ENTRANCE = re.compile(r"^\s*_?(Enter|Re-?enter|Exit|Exeunt|Manet|Flourish|Sennet|Alarums?|A march|Sound|Trumpets|"
                       r"Thunder|Curtain|Scene|Act)\b", re.I)
 DIR_SPAN = re.compile(r"\[[^\]]*\]|\([^)]*\)|(?<![A-Za-z0-9])_[^_\n]+_(?![A-Za-z0-9])")
+DIR_SPAN_BRACKETS = re.compile(r"\[[^\]]*\]|\([^)]*\)")
 
 
 def clean_html(raw):
@@ -122,6 +133,9 @@ def clean_html(raw):
     return html.unescape(t)
 
 
+GUT_START = re.compile(r"\*\*\* ?START OF TH(?:E|IS) PROJECT GUTENBERG")
+
+
 def gutenberg_body(raw):
     t = raw.replace("\r", "")
     a = re.search(r"\*\*\* ?START OF TH(?:E|IS) PROJECT GUTENBERG[^\n]*\n", t)
@@ -129,11 +143,13 @@ def gutenberg_body(raw):
     return t[a.end() if a else 0: b.start() if b else len(t)]
 
 
-def split_parts(text):
+def split_parts(text, italic=True):
     """Speech text -> parts, each an exact slice of `text`. Bracketed or italic spans are
-    directions (mic words become `mic`, effect words `sound`); everything else is `say`."""
+    directions (mic words become `mic`, effect words `sound`); everything else is `say`.
+    A radio script brackets its directions, so there an italic word ("the _Mayflower_")
+    is spoken (italic=False)."""
     parts, pos = [], 0
-    for m in DIR_SPAN.finditer(text):
+    for m in (DIR_SPAN if italic else DIR_SPAN_BRACKETS).finditer(text):
         say = text[pos:m.start()].strip()
         if say:
             parts.append({"say": say})
@@ -150,12 +166,31 @@ def split_parts(text):
 
 
 def _role(r):
-    return re.sub(r"\s+", " ", r.replace("’", "'").strip(" ._[]")).upper()
+    return re.sub(r"\s+", " ", r.replace("’", "'").strip(" ._[]\"")).upper()
 
 
 # ---- radio ---------------------------------------------------------------------------------------
 
+# A label glued to the line before it by a lost line break ("(1 line)WILCOX: The ...",
+# "Generic Radio WorkshopANNCR: ..."); split only for a label that opens 3+ other lines.
+R_LINE_LABEL = re.compile(r"^\s*([A-ZÀ-Þ0-9][A-ZÀ-Þ0-9.'#\- ]{1,30}):", re.M)
+# A cue printed as a bare word or two, in any case ("Applause", "Theme music", "G O N G").
+R_BARE_CUE = re.compile(r"^(?:(?P<music>(?:theme\s+)?(?:music|theme|orchestra|organ|fanfare)(?:\s+(?:up|in|out|under))?)|"
+                        r"(?P<sound>applause|laughter|laughs?|gong|chimes|cheers?|knock(?:ing|s)?|(?:tele)?phone\s+rings?))"
+                        r"[\s.!]*$", re.I)
+
+
+def _unglue(text):
+    labels = {k for k, n in collections.Counter(m.group(1).strip() for m in R_LINE_LABEL.finditer(text)).items()
+              if n >= 3 and len(k) >= 3}
+    if not labels:
+        return text
+    alt = "|".join(re.escape(x) for x in sorted(labels, key=len, reverse=True))
+    return re.sub(r"(?<=[a-z)\]])(?=(?:%s):\s)" % alt, "\n", text)
+
+
 def _radio_blocks(text):
+    text = _unglue(text)
     out = []
     for para in re.split(r"\n\s*\n", text):
         cur = None
@@ -173,6 +208,46 @@ def _radio_blocks(text):
     return out
 
 
+RADIO_CASTHEAD = re.compile(r"^_?(?:THE\s+)?(CAST|CAST OF CHARACTERS|CHARACTERS|DRAMATIS PERSONAE)_?(?:\s*\([^)]{0,40}\))?"
+                            r"\s*:?\s*$", re.I)
+# A label printed on its own line, with an optional direction after it ("CARVER [_off_]").
+R_BARE = re.compile(r"^(?P<name>[A-ZÀ-Þ][A-ZÀ-Þ.'\- ]{1,24}?)\s*(?P<d>\[[^\]\n]{0,60}\]|\([^)\n]{0,60}\))?$")
+# Notes about the text, never a line: "NOTE: ...", "Transcribed by ...", "Script courtesy ...".
+R_NOTE = re.compile(r"^(?:\**\s*(?:TRANSCRIBER'?S?\s+|EDITOR'?S?\s+|PRODUCTION\s+)?NOTES?\s*:|\*+\s*NOTE\b|"
+                    r"(?:This\s+(?:script|transcript)\s+(?:has\s+been|was)\s+)?(?:transcribed|transcription)\s+(?:by|from)\b|"
+                    r"Script\s+(?:courtesy|provided|transcribed)\b|Transcription\s+by\b|End\s+of\s+(?:the\s+)?Project\s+Gutenberg)",
+                    re.I)
+
+
+def _bare(b):
+    m = R_BARE.match(b)
+    if not m or len(m.group("name").split()) > 3 or SOUNDROLE.search(m.group("name")) \
+            or NOTROLE.match(m.group("name").strip()):
+        return None
+    return m
+
+
+def _speaks(b):
+    m = R_ROLE.match(b)
+    return bool(m and m.group("text").strip() and not NOTROLE.match(m.group("role").strip()))
+
+
+def _caps_label(b):
+    m = R_ROLE.match(b)
+    return bool(m and not re.search(r"[a-z]", m.group("role")))
+
+
+def _cast_entry(b, nxt):
+    """A block of a cast list: short, or names only; not a cue or a labeled speech, and
+    not a label whose next block is prose (that label opens the play)."""
+    if CUE.match(b) or _speaks(b) or R_NOTE.match(b):
+        return False
+    if not (len(b) <= 80 or not re.search(r"[a-z]", b)):
+        return False
+    return not (_bare(b) and nxt is not None and re.search(r"[a-z]", nxt)
+                and (len(nxt) > 80 or re.search(r"[.!?…\-—]['\"”’]?$", nxt)))
+
+
 def _radio_items(text):
     bs = _radio_blocks(text)
     start = 0
@@ -182,39 +257,65 @@ def _radio_items(text):
             m = re.match(r"Date:\s*(?:[A-Z][a-z]{2} \d{1,2} \d{4}|Date Unknown|circa \d{4}s|\d{4})(.+)$", b)
             if m:
                 bs.insert(i + 1, m.group(1).strip())
-    seq, merged, k = bs[start:], [], 0
-    bare = re.compile(r"^[A-ZÀ-Þ][A-ZÀ-Þ.'\- ]{1,24}$")
-    # a label printed on its own line is a role when it recurs (3+ times) or follows a speech
-    recurring = {b for b, n in collections.Counter(seq).items() if n >= 3 and bare.match(b)}
+    head = bs[:start]
+    seq, k = bs[start:], 0
+    # a cast list runs from its heading over short blocks until the play starts
+    cast = set()
     while k < len(seq):
-        b = seq[k]
-        if (bare.match(b) and len(b.split()) <= 3 and k + 1 < len(seq) and not R_ROLE.match(seq[k + 1])
-                and not CUE.match(seq[k + 1]) and not SOUNDROLE.search(b) and not bare.match(seq[k + 1])
-                and (b in recurring or any(R_ROLE.match(x) for x in seq[max(0, k - 6):k]))):
-            merged.append((b, seq[k + 1]))
+        if RADIO_CASTHEAD.match(seq[k]):
+            cast.add(k)
+            k += 1
+            while k < len(seq) and _cast_entry(seq[k], seq[k + 1] if k + 1 < len(seq) else None):
+                cast.add(k)
+                k += 1
+            continue
+        k += 1
+    # a label printed on its own line is a role when it recurs (3+ times) or follows a speech
+    names = collections.Counter(m.group("name") for m in map(_bare, seq) if m)
+    # a mixed-case label ("Fibber:") is a role only when it recurs, so "I know not; ..." is not
+    mixed = collections.Counter(m.group("role") for m in map(R_ROLE.match, seq) if m and re.search(r"[a-z]", m.group("role")))
+    merged, k = [], 0
+    while k < len(seq):
+        b, m = seq[k], _bare(seq[k])
+        if (m and k not in cast and k + 1 < len(seq) and k + 1 not in cast and not _caps_label(seq[k + 1])
+                and not CUE.match(seq[k + 1]) and not _bare(seq[k + 1])
+                and (names[m.group("name")] >= 3 or any(R_ROLE.match(x) for x in seq[max(0, k - 6):k])
+                     or any(x[0] for x in merged[-6:]) or k - 1 in cast)):
+            merged.append((m, b, seq[k + 1]))
             k += 2
             continue
-        merged.append((None, b))
+        merged.append((None, b, k in cast))
         k += 1
-    items, incast = [], False
-    for label, b in merged:
-        if re.match(r"^(CAST|CAST OF CHARACTERS|CHARACTERS|DRAMATIS PERSONAE)\s*:?\s*$", b, re.I):
-            incast = True
-            items.append({"kind": "cast", "source": b})
-            continue
-        if incast and not label and len(b) <= 80 and not (CUE.match(b) or R_ROLE.match(b)):
-            items.append({"kind": "cast", "source": b})
-            continue
-        incast = False
+    items = [{"kind": "front", "source": b} for b in head]
+    note = False
+    for label, b, extra in merged:
         if label:
-            items.append({"kind": "speech", "role": _role(label), "source": label + "\n" + b, "text": b})
+            d = label.group("d")
+            lead = [{"direction": d[1:-1].strip(" _")}] if d and d[1:-1].strip(" _") else []
+            if lead and MIC.match(lead[0]["direction"]):
+                lead = [{"mic": lead[0]["direction"]}]
+            items.append({"kind": "speech", "role": _role(label.group("name")), "source": b + "\n" + extra,
+                          "text": extra, "lead": lead})
+            note = False
+            continue
+        if extra:
+            items.append({"kind": "cast", "source": b})
+            continue
+        if R_NOTE.match(b):
+            items.append({"kind": "note", "source": b})
+            note = True
             continue
         m = CUE.match(b)
         if m:
             items.append({"kind": next(k for k in CUE_TAGS if m.group(k)), "source": b})
+            note = False
             continue
         m = R_ROLE.match(b) or R_ROLE_SPACED.match(b)
+        if m and re.search(r"[a-z]", m.group("role")) and mixed[m.group("role")] < 3 and (
+                note or len(m.group("role").split()) > 2 or m.group("role").split()[0] in NOT_LABEL):
+            m = None
         if m and not NOTROLE.match(m.group("role").strip()) and len(m.group("role").split()) <= 5:
+            note = False
             role = _role(m.group("role"))
             if SOUNDROLE.search(role):
                 items.append({"kind": "sound", "source": b})
@@ -225,7 +326,17 @@ def _radio_items(text):
                 lead = [{"mic": lead[0]["direction"]}]
             items.append({"kind": "speech", "role": role, "source": b, "text": text, "lead": lead})
             continue
-        if re.match(r"^\(.*\)$", b, re.S):
+        if note:
+            items.append({"kind": "note", "source": b})
+            continue
+        if R_BARE_CUE.match(re.sub(r"(?<=\b\w) (?=\w\b)", "", b)):
+            items.append({"kind": "music" if R_BARE_CUE.match(re.sub(r"(?<=\b\w) (?=\w\b)", "", b)).group("music")
+                          else "sound", "source": b})
+            continue
+        if SEPARATOR.match(b):
+            items.append({"kind": "heading", "source": b})
+            continue
+        if re.match(r"^\(.*\)$", b, re.S) or _bare(b):
             items.append({"kind": "direction", "source": b})
             continue
         if re.search(r"[A-Z]{2}", b) and not re.search(r"[a-z]", b):
@@ -233,7 +344,20 @@ def _radio_items(text):
             items.append({"kind": "sound" if SOUNDROLE.search(b) or SOUNDWORD.search(b) else "direction",
                           "source": b})
             continue
+        if items and items[-1]["kind"] == "speech":
+            # a speech printed over several paragraphs
+            items[-1]["source"] += "\n\n" + b
+            items[-1]["text"] += "\n" + b
+            items[-1]["continued"] = items[-1].get("continued", 0) + 1
+            continue
         items.append({"kind": "other", "source": b})
+    # before the play's first cast list, speech, or cue, and after its last speech or cue:
+    # title pages, prefaces, and closing notes, kept with their words, never lines
+    play = [i for i, it in enumerate(items) if it["kind"] in ("cast", "speech", "music", "sound")]
+    if play:
+        for i, it in enumerate(items):
+            if (i < play[0] and it["kind"] not in ("cast", "note")) or (i > play[-1] and it["kind"] == "other"):
+                it["kind"] = "front" if i < play[0] else "back"
     return items
 
 
@@ -466,7 +590,9 @@ def stub_check(text, items=None):
 
 def parse(raw, kind):
     """kind: "radio" (a broadcast script) or "stage" (a Gutenberg play text)."""
-    text = clean_html(raw) if kind == "radio" else gutenberg_body(raw)
+    text = gutenberg_body(raw) if kind == "stage" or GUT_START.search(raw) else raw
+    if kind == "radio":
+        text = clean_html(text)
     stub = stub_check(text)
     casts = 0
     if stub:
@@ -482,14 +608,14 @@ def parse(raw, kind):
         return {"status": "stub", "stub_kind": stub, "words": len(text.split())}
     lines, roles, unclassified = [], collections.OrderedDict(), []
     for it in items:
-        if it["kind"] in ("cast", "heading", "front", "back"):
+        if it["kind"] in ("cast", "heading", "note", "front", "back"):
             continue
         if it["kind"] == "other":
             unclassified.append(it["source"])
             continue
         lid = f"L{len(lines) + 1:04d}"
         if it["kind"] == "speech":
-            parts = (it.get("lead") or []) + split_parts(it["text"])
+            parts = (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
             r = roles.setdefault(it["role"], {"name": it["role"], "lines": 0, "words": 0})
             r["lines"] += 1
             r["words"] += sum(len(p["say"].split()) for p in parts if "say" in p)
