@@ -29,17 +29,24 @@ from titles import display_title
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
+from audit_audio_rights import pd_published_year
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
 # The rights line every client shows (contract §5.5), published so no client types it.
-RIGHTS_LINES = {
-    "unclaimed": "No rights claim known. Removed on request.",
-    "rec_gov_work": "Government recording",
-    "rec_librivox": "LibriVox recording",
-    "rec_pd_published_age": "Published before 1926",
-    "rec_cc_corroborated": "Creative Commons recording",
-}
+def rights_lines(today=None):
+    """The published lines; the published-age year moves every January with the
+    rule that frees it (audit_audio_rights.pd_published_year)."""
+    return {
+        "unclaimed": "No rights claim known. Removed on request.",
+        "rec_gov_work": "Government recording",
+        "rec_librivox": "LibriVox recording",
+        "rec_pd_published_age": f"Published before {pd_published_year(today) + 1}",
+        "rec_cc_corroborated": "Creative Commons recording",
+    }
+
+
+RIGHTS_LINES = rights_lines()
 # A refused projection is better than a shrunken one (Archive Watch Decision 020).
 MIN_EPISODES = 10_000
 

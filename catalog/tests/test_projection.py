@@ -68,6 +68,12 @@ check("season: September is the first month", B.season("1949-09-01"), "1949-50")
 check("season: summer belongs to the season before", B.season("1950-08-31"), "1949-50")
 check("season: century turn", B.season("1999-12-01"), "1999-00")
 check("control: an undated episode has no season", B.season(None), None)
+import datetime as _dt
+from audit_audio_rights import pd_published_year as _pd
+check("the published-age line names the year the rule frees through",
+      B.rights_lines(_dt.date(2027, 1, 1))["rec_pd_published_age"], "Published before 1927")
+check("control: the rule frees through 1925 in 2026", _pd(_dt.date(2026, 6, 1)), 1925)
+check("control: and through 1926 in 2027", _pd(_dt.date(2027, 1, 1)), 1926)
 check("url: spaces, commas, and the path survive",
       B.download_url("OTRR_Suspense_Singles", "Suspense 43-05-25 Sorry, Wrong Number.mp3"),
       "https://archive.org/download/OTRR_Suspense_Singles/Suspense%2043-05-25%20Sorry%2C%20Wrong%20Number.mp3")
