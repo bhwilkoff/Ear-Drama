@@ -18,11 +18,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.ShelfRule
 import com.example.appname.data.DisplayVocabulary
+import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
@@ -31,6 +34,7 @@ import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -67,12 +71,24 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit) {
             if (list.isEmpty()) {
                 EmptyMessage("Nothing to list yet.", Modifier.padding(padding))
             } else {
+                // On a TV the D-pad starts on the first row's first card.
+                val firstCard = remember { FocusRequester() }
+                val firstKey = list.first().let { it.key to it.rows.first().id }
+                ClaimTvFocus(firstCard, firstKey)
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                     items(list, key = { it.key }) { shelf ->
                         SectionHeader(shelf.title)
                         LazyRow(contentPadding = PaddingValues(horizontal = Spacing.S4.dp)) {
                             items(shelf.rows, key = { it.id }) { row ->
-                                EpisodeCard(row, onOpen = { onOpenEpisode(row.id) })
+                                EpisodeCard(
+                                    row,
+                                    onOpen = { onOpenEpisode(row.id) },
+                                    modifier = if (shelf.key to row.id == firstKey) {
+                                        Modifier.focusRequester(firstCard)
+                                    } else {
+                                        Modifier
+                                    },
+                                )
                             }
                         }
                     }
@@ -84,10 +100,10 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit) {
 
 /** A typographic card (R11): date, title, series. No art is invented. */
 @Composable
-private fun EpisodeCard(row: EpisodeRow, onOpen: () -> Unit) {
+private fun EpisodeCard(row: EpisodeRow, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     OutlinedCard(
         onClick = onOpen,
-        modifier = Modifier.padding(end = Spacing.S3.dp).width(220.dp),
+        modifier = Modifier.padding(end = Spacing.S3.dp).width(220.dp).tvFocusMark().then(modifier),
     ) {
         Column(Modifier.padding(Spacing.S3.dp)) {
             formatAirDate(row.airDate)?.let {

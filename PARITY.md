@@ -155,9 +155,9 @@ shared code only after the core five are complete.
 |---|---|---|---|
 | CarPlay | 🚧 builds | Continue, Radio, Series, Downloads tabs (R17); Continue plays | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
 | watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
-| Android Auto | ⏳ | | M9 |
-| Android TV / Fire TV | ⏳ | | M9 |
-| Wear OS | ⏳ | | M9 |
+| Android Auto | 🚧 builds | Continue, Radio, Series, Downloads (R17); Continue plays through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
+| Android TV / Fire TV | 🚧 builds | Listen, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
+| Wear OS | 🚧 builds | Continue, "Waiting on the phone" | minSdk 30 (Wear OS 3); needs its own versionCode before upload |
 | webOS / Tizen | ⏳ | | M9, in progress |
 | Roku | ⏳ | | M9, in progress |
 

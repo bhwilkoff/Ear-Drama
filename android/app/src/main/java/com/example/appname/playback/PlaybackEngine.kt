@@ -171,28 +171,43 @@ class PlaybackEngine(
     fun play(episode: EpisodeRow, url: String? = null) {
         ensureSession()
         scope.launch {
-            val db = catalog.awaitDb() ?: return@launch
-            val detail = db.episodeDetail(episode.id) ?: return@launch
-            val startUrl = url ?: detail.recordings.firstOrNull()?.url ?: return@launch
-            val following = db.followingInSeason(detail.episode.id)
-            val followingItems = following.mapNotNull { row ->
-                val next = db.episodeDetail(row.id) ?: return@mapNotNull null
-                next.recordings.firstOrNull()?.url?.let { Triple(row, it, LoudnessLevel.volume(next, it)) }
-            }
-            val queue = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
-            episodes = queue.map { it.first }
-            levels = queue.map { it.third }
-            saveNow()
-            sleep.onUserPlay()
+            val queue = takeQueue(episode.id, url) ?: return@launch
             val p = player
-            p.setMediaItems(queue.map { (row, u, _) -> mediaItem(row, u) }, 0, startPositionFor(detail.episode.id))
+            p.setMediaItems(queue.items, 0, queue.startPositionMs)
             applyVolume(1f)
             p.prepare()
             p.play()
             syncPauseAtEnd()
-            _state.value = _state.value.copy(failed = false, offline = false)
             publish()
         }
+    }
+
+    /** A queue for the player: its items, and where the first one starts. */
+    class Queue(val items: List<MediaItem>, val startPositionMs: Long)
+
+    /**
+     * Builds [episodeId]'s queue and makes it the engine's own. [play] sets it
+     * on the player; a car's play request hands it back to the media session,
+     * which sets it there.
+     */
+    suspend fun takeQueue(episodeId: String, url: String? = null): Queue? {
+        val db = catalog.awaitDb() ?: return null
+        val detail = db.episodeDetail(episodeId) ?: return null
+        val startUrl = url ?: detail.recordings.firstOrNull()?.url ?: return null
+        val following = db.followingInSeason(detail.episode.id)
+        val followingItems = following.mapNotNull { row ->
+            val next = db.episodeDetail(row.id) ?: return@mapNotNull null
+            next.recordings.firstOrNull()?.url?.let { Triple(row, it, LoudnessLevel.volume(next, it)) }
+        }
+        val queue = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
+        saveNow()
+        episodes = queue.map { it.first }
+        levels = queue.map { it.third }
+        lastFactor = 1f
+        sleep.onUserPlay()
+        syncPauseAtEnd()
+        _state.value = _state.value.copy(failed = false, offline = false)
+        return Queue(queue.map { (row, u, _) -> mediaItem(row, u) }, startPositionFor(detail.episode.id))
     }
 
     private suspend fun startPositionFor(id: String): Long {
