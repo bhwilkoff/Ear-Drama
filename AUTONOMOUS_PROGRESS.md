@@ -206,3 +206,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - CI green (Android Build, Design Tokens; the catalog publish from 14:25 UTC succeeded). Owner still on a call: light work only.
 - UniversalAppTemplate 7abb441f (pushed): web_run.py's DevTools-wait capture with a true 375 px viewport, `ready` and `loads_complete` grading, routes kept as FILL IN placeholders with a ready field; devserve.py's backlog 128; DEVICE-HARNESSES Web rules; a PROVENANCE row. The template had both defects. test_web clean, US English.
 - Running: M8 Worker.
+
+### Tick 75, 2026-10-23, main thread: M7's learning test, as built
+- Ran learning-orientation-design against plays phase 1 as shipped (efb0807, PLAYS-DESIGN §1). Understanding, participation, clarity hold. Agency holds, with one defect read from the code: a bleed-flagged take (RecordingSession keeps it, RecordingScreen warns) still counts in Relay.isComplete and can be mixed, against §8 rule 3 (a synthetic voice is never part of a mix) and §5 rule 2.
+- Launched the repair on Apple, Android and the web (a flagged take never completes a line; the mix refuses it; the take stays on disk), builds one at a time while the owner is on a call. CI green. Running: M8 Worker, the bleed fix.
