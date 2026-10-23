@@ -10,5 +10,5 @@
 // The owner fills these once the Worker is deployed and the Google iOS OAuth
 // client exists (docs/WORKER.md "Needs Ben", steps 6 and 8).
 
-EARDRAMA_WORKER_URL = REPLACE_WITH_WORKER_URL
+EARDRAMA_WORKER_URL = https:/$()/eardrama-api.benwilkoff.workers.dev
 EARDRAMA_GOOGLE_IOS_CLIENT_ID = REPLACE_WITH_GOOGLE_IOS_CLIENT_ID

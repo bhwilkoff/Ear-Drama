@@ -104,3 +104,4 @@ tv/tizen/app/
 tv/dist/
 # The Roku sideload zip (roku/build.sh)
 roku/dist/
+.claude/settings.local.json

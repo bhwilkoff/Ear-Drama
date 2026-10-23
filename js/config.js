@@ -8,7 +8,7 @@
  */
 const CONFIG = Object.freeze({
   // The deployed Worker, e.g. https://api.eardrama.org (no trailing slash).
-  worker: 'REPLACE_WITH_WORKER_BASE_URL',
+  worker: 'https://eardrama-api.benwilkoff.workers.dev',
   apple: {
     // The Services ID made for the web (it is also in the Worker's APPLE_AUDIENCES).
     servicesId: 'REPLACE_WITH_APPLE_SERVICES_ID',
