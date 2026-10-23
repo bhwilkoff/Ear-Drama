@@ -232,3 +232,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged 8e9c1cd: plays phase 2 on the Worker (Decision 066): invite-only productions checked against a castable manifest, relay rules in a pure module, immutable R2 takes behind the owner's switch, report/block/name filter, consent by version id, a queued archive.org job, classes with an under-13 gate. Verified on main: 171/171, "all 96 mutations caught". Owner items P1-P8 in PLAYS-DESIGN §11.6.
 - Merged a238f8b: listenShelves published by both builders (onThisDay by rule with golden cases; genreFirsts with ids; "Most episodes" excluded pending the owner). Changed on merge: real-artifact checks skip a local build made before the key, strict when named. Following the new rule, ran the macOS suite after the pipeline change: 107 pass. Catalog 22/22.
 - Launched: the three clients read the published shelves (one platform at a time). CI green; a loudness run in progress.
+
+### Tick 81, 2026-10-23, plan + agent: M7/M8 marked honestly; the radio-script parser
+- LOOP-PLAN: a `[~]` mark for built-in-part items with what is missing; M7's corpus (no radio script clean yet) and learning test (owner's play open) and M8's Worker-side items marked so; M7's recording item checked as built.
+- Launched: the radio path of script_parse.py measured over every cached radio text and fixed by general rules, never loosening the 5% gate or a rights rule; GRW scripts never shipped (owner item C8); the Worker's castable manifest regenerated if the bundle changes.
+- CI green; a loudness run in progress. Running: shelves on the clients, radio parser.
