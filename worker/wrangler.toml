@@ -11,7 +11,7 @@ compatibility_date = "2026-01-01"
 # id (iOS, iPadOS, macOS, tvOS) and the Services ID (web, Android). Google:
 # the OAuth client ids (web, iOS, and the web id Android asks for).
 APPLE_AUDIENCES = "app.eardrama,app.eardrama.signin"
-GOOGLE_AUDIENCES = "REPLACE_WITH_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com"
+GOOGLE_AUDIENCES = "1083349339355-hmed22o33qemdc3dfhbqhkt0vho782ak.apps.googleusercontent.com,1083349339355-rlirbmc6c6c32h503vm120ig3kdopavp.apps.googleusercontent.com"
 # Browsers that may call this Worker. Native apps send no Origin header.
 # http://localhost and http://127.0.0.1 on any port are always allowed.
 ALLOWED_ORIGINS = "https://eardrama.org,https://www.eardrama.org"

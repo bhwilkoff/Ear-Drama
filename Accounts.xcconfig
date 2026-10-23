@@ -11,4 +11,4 @@
 // client exists (docs/WORKER.md "Needs Ben", steps 6 and 8).
 
 EARDRAMA_WORKER_URL = https:/$()/eardrama-api.benwilkoff.workers.dev
-EARDRAMA_GOOGLE_IOS_CLIENT_ID = REPLACE_WITH_GOOGLE_IOS_CLIENT_ID
+EARDRAMA_GOOGLE_IOS_CLIENT_ID = 1083349339355-rlirbmc6c6c32h503vm120ig3kdopavp.apps.googleusercontent.com

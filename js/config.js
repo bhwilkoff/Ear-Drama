@@ -17,6 +17,6 @@ const CONFIG = Object.freeze({
   },
   google: {
     // The Web OAuth client id (it is also in the Worker's GOOGLE_AUDIENCES).
-    clientId: 'REPLACE_WITH_GOOGLE_WEB_CLIENT_ID',
+    clientId: '1083349339355-hmed22o33qemdc3dfhbqhkt0vho782ak.apps.googleusercontent.com',
   },
 });
