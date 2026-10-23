@@ -364,7 +364,7 @@ works elsewhere, and checks again.
 |---|---|---|
 | Pick a palette direction | M0 tokens and icon | end of M0 |
 | Settings > Pages > Source: GitHub Actions (CATALOG-CONTRACT §4) | the web's data on Pages | before M1's publish |
-| Register a DMCA agent at copyright.gov ($6) | unclaimed episodes on the public web | before M2's public launch |
+| ~~Register a DMCA agent at copyright.gov ($6)~~ DONE 2026-10-23: DMCA-1083942; `DMCA_AGENT_REGISTERED` true; the take-down page still wants the agent's details as registered | unclaimed episodes on the public web | done |
 | Request the CarPlay audio entitlement (developer.apple.com/contact/carplay) | the CarPlay stub, later the car | now; Apple is slow |
 | Enable Sign in with Apple and Group Activities on the `app.eardrama` App ID, remake the profiles, then uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml` (the file `apple/Resources/EarDrama.entitlements` holds both keys) | Apple sign-in (M5), SharePlay (M6) | before either play gate |
 | Create the App Store Connect record for `app.eardrama` and the seven signing secrets (`docs/CLOUD-SUBMISSION.md`) | TestFlight | before M3's gate |
