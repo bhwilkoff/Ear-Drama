@@ -63,6 +63,8 @@ data class EpisodeDetail(
     val transcriptUrl: String? = null,
     /** Contract §5.5: the published words for this row's rights, or null for none. */
     val rightsLine: String? = null,
+    /** §3.1's dated sponsor, when a log gives one; a catalog without the column reads null. */
+    val sponsor: String? = null,
 )
 
 /** [transcriptOnly]: the episodes found only by words in their transcript (§3.4). */
@@ -80,7 +82,18 @@ data class BrowseFilter(
     val network: String? = null,
     /** The first year of a decade, 1940 for the 1940s. */
     val decade: Int? = null,
+    val sort: SeriesSort = SeriesSort.Name,
 )
+
+/** Series browse's orders, the web's three (WEB-DESIGN §4.3) with its labels. */
+enum class SeriesSort(val label: String) {
+    Name("A to Z"),
+    Episodes("Most episodes"),
+    FirstAired("Oldest first"),
+}
+
+/** A facet choice and how many series it would list against the other facets' selection. */
+data class FacetCount<T>(val value: T, val series: Int)
 
 /** A Listen shelf's rule; every shelf applies `recommendAnd`. */
 sealed interface ShelfRule {

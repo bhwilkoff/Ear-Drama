@@ -133,31 +133,54 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   The one filter on is `eardrama://oauth/apple`, Sign in with Apple's
   return, which `MainActivity` hands to the account (§4.11) before the
   inbox and which opens no screen.
+- **§3.5 A push never stacks a duplicate** (`navigateTo`,
+  `navigation/BackStack.kt`; every push in `AppRoot`, the inbox's
+  included). A route already on the tab's stack is popped back to
+  (popUpTo, singleTop when it is the top): Detail's series link from a
+  series page returns to that page, and the player's Open episode from a
+  transcript returns to its Detail. A transcript is Detail read, not a
+  level of §1.4, and one opened over another replaces it, so a stack
+  ends in at most one.
 
 ## §4 Surfaces
 
 - **§4.1 Listen** is a `LazyColumn` of shelves, each a header over a
   `LazyRow` of 220 dp cards: Continue listening, This day in radio, then
   the genre shelves. A shelf with no rows is not drawn.
-- **§4.2 Series browse** is decade and genre `FilterChip`s over a paged
-  list of series (200 at a time), each one line of years and count. The
-  decades come from the series' own dates (`seriesDecades`), and each
-  facet is counted against the other's selection, so no chip yields zero
-  rows (web §10.5).
-- **§4.3 A series page** shows years and count, then its broadcast
-  seasons as `FilterChip`s, a segmented scope and never a push, the oldest
-  selected first; the episodes of that season run oldest first.
-- **§4.4 Episode detail**: the date, the title as a heading, the series
-  as a link, one facts line (network, length), Play (or "Resume at"
-  the saved position), the download control, "Automatic transcript"
-  when the gate passed, Cast and credits, Versions (or the one copy's
-  notes), and the rights line. A part with no data is absent.
+- **§4.2 Series browse** is one row of `FilterChip`s over a paged list
+  of series (200 at a time), each one line of years and count: the sort
+  and the network as dropdown chips (a `DropdownMenu`), then the decades,
+  then the genres. The sort is the web's three, "A to Z", "Most
+  episodes", and "Oldest first" (`SeriesSort`, undated last). The
+  networks are those `series.networks` names, each with the series it
+  would list ("CBS (2,781)"), most first, at most 40, after "All
+  networks". The decades come from the series' own dates
+  (`seriesDecades`). Every facet is counted against the others'
+  selection through the one clause the list uses (`facetClause`), so no
+  choice offered yields zero rows (web §4.3, §10.5).
+- **§4.3 A series page** shows years and count, then Follow (Following
+  once followed, a tonal button), then its broadcast seasons as
+  `FilterChip`s, a segmented scope and never a push, the oldest selected
+  first; the episodes of that season run oldest first. Follow writes the
+  store sync carries (`UserStore.setFollowing`, §2.3); an unfollow is a
+  marker. Share is the top bar's action (§4.12).
+- **§4.4 Episode detail**, the web's order (web §4.5): the series as a
+  link, the title as a heading, the date, one facts line ("Undated" when
+  there is no date, then network, sponsor, length: `detailFacts`), Play
+  (or "Resume at" the saved position), the download control, "Automatic
+  transcript" when the gate passed, Cast and credits, Versions (or the
+  one copy's notes), and the rights line. A part with no data is absent;
+  the sponsor shows only where the catalog carries the contract's
+  `sponsor` column (probed, as Apple does). Share is the top bar's action
+  (§4.12).
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
   debounced, with Clear, series first and then episodes; "In the
   transcript" marks a transcript-only match.
 - **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
-  (with storage held and Remove All, which asks first), and Played
-  (Apple's word).
+  (with storage held and Remove All, which asks first), Played
+  (Apple's word), and Following (the web's last Library scope, §4.7): the
+  followed series, newest follow first, each opening its page. A follow
+  the open catalog does not serve is kept for sync and not listed.
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
   the episode title, then plain selectable text in `bodyMedium`, a
   sentence a line, at most 680 dp wide, fetched from archive.org when
@@ -238,6 +261,14 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   other screen (Decision 057). A signed-in app syncs when it comes
   forward and when it leaves (`MainActivity.onStart`/`onStop`); signed
   out, nothing reaches the Worker.
+- **§4.12 Share** is a Share icon in the top bar of Detail and a series
+  page ("Share" and the title for TalkBack). It sends the https twin
+  (`navigation/SiteLinks.kt`, DEEP_LINKS.md, as Apple's `SiteLinks`):
+  `https://eardrama.org/episode/{id}` or `/series/{key}`, the id encoded
+  exactly as the web's `encodeURIComponent`, through the system share
+  sheet (`ACTION_SEND`, text), titled as the web titles it ("Sorry, Wrong
+  Number (1943-05-25)", or "(undated)"). A TV has no share sheet to
+  another person, so it draws no Share (§9.2).
 
 ## §5 The player
 
@@ -304,7 +335,7 @@ The rights line, the transcript label, and loudness by cutting are as in
 §1.6 and are not reworded. A downloaded file is played, never exported:
 no share or open-with action (`ui/Downloads.kt`). A finished play's mix
 is the one file the app shares, and only when the person presses Export
-(`FileProvider`, `Plays/` only). A device voice is never written to a
+(`FileProvider`, `Plays/` only). Share (§4.12) sends a link, never a file. A device voice is never written to a
 file (`StandInNeverStoredTest`). No analytics.
 
 ## §9 Stubs that live in the Android build, and parity
@@ -321,7 +352,14 @@ file (`StandInNeverStoredTest`). No analytics.
   color alone, and each tab's screen claims focus on entry
   (`ClaimTvFocus`): Listen its first card, Series its first filter chip,
   Radio its Listen live button during the evening (else its first slot),
-  Search its field, Library its first row. On Radio every slot is a
+  Search its field, Library its first row. The pushed screens and the
+  player sheet claim it too: Detail its Play (tvOS-DESIGN §6.2), a series
+  page its first episode (Follow and the seasons are above it), the
+  transcript its first sentence (each sentence a stop, since a remote has
+  no scroll gesture), and the player sheet its Play or Pause. Every
+  control on them wears the ring: episode and series rows, chips,
+  buttons, the series link, and the player's controls. Share is absent on
+  a TV (DEEP_LINKS.md: a TV shares by QR code, not built). On Radio every slot is a
   D-pad focus stop with the ring, gaps included, and a surviving slot is
   one stop that opens Detail, where Play lives (tvOS-DESIGN §4.8). The session stays on so the home screen can show a
   Now Playing card (TV-NP). The banner is a placeholder. A TV omits
@@ -383,21 +421,23 @@ file (`StandInNeverStoredTest`). No analytics.
   Apple plays on through the series and the web only what the person
   queued (`docs/WEB-DESIGN.md` §5.4). R14 needs one rule, and it is the
   owner's to set (DECISIONS 062).
-- **Detail has no sponsor**, and its order (date, title, series) differs
-  from the web's (series, title, date).
-- **There is no network facet or sort** in Series browse, which the web
-  has (§4.2).
-- **Detail, the series link, and the transcript route stack up**: from
-  the Series tab, series, episode, and transcript is a third push
-  (§1.4).
-- **On a TV the pushed screens, the player bottom sheet, and the
-  transcript are the phone's layouts**; only the four tabs claim focus.
+- **No sponsor reaches Detail yet**: the contract names `sponsor`
+  (§3.1), but the projection does not publish the column, so §4.4 probes
+  for it and shows none (Apple likewise).
+- **On a TV the pushed screens and the player sheet are the phone's
+  layouts**, with focus claimed and the ring (§9.2), not a ten-foot
+  design; none has run on a TV. The player is still the sheet (§11.6).
+- **A TV cannot share**: DEEP_LINKS.md's QR code of the https twin is
+  not built.
+- **Listen has no Following shelf**, which the web draws after Continue
+  listening (web §4.2); Android's follows are in Library (§4.6).
 - **The `eardrama://` and App Link filters are off** in the manifest
   (§3.4); `DeepLink.parse` routes both once they are on.
-- **No Queue, Following, or Share verbs**, which the web has. Sync
-  stores the queue and follows other devices send (`UserStore.queue`,
-  `followed`) and sends them back unchanged; nothing on Android shows
-  them yet, and no Android verb removes an episode from history.
+- **No Queue verb**, which the web has: what plays next is the owner's
+  call (SCRATCHPAD item 9, and the queue item above). Sync stores the
+  queue other devices send (`UserStore.queue`) and sends it back
+  unchanged; nothing on Android shows it, and no Android verb removes an
+  episode from history.
 - **Sign-in has not run.** The Worker is not deployed and the ids are
   placeholders (docs/WORKER.md, Needs Ben). Apple on Android also needs
   the return page at `https://eardrama.org/auth/apple/`, which forwards
@@ -405,10 +445,6 @@ file (`StandInNeverStoredTest`). No analytics.
   an Android OAuth client for `app.eardrama` with the Play signing SHA-1
   (and `app.eardrama.debug` with the debug key) in the project that owns
   the Web client id.
-- **Google Play's account-deletion rule** asks for deletion in the app
-  (§4.11, built) and a web path for people without the app. The web path
-  is the web client's Delete account (another surface's work), and its URL
-  goes in Play Console's Data safety form; neither exists yet.
 - **Tab icons differ from Apple's** (Headphones and Radio against
   `play.circle` and `square.stack`).
 

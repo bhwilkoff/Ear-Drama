@@ -40,6 +40,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             ?: DisplayVocabulary.CONTRACT_RIGHTS_LINES
     }
 
+    /** §3.1's `sponsor`; the served projection does not publish it yet, so it is probed (as Apple does). */
+    private val hasSponsor: Boolean by lazy {
+        "sponsor" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
+    }
+
     /** §3.4: the index carries transcript words, so a match can be told apart as transcript-only. */
     private val ftsHasTranscript: Boolean by lazy {
         "transcript" in queryRaw("PRAGMA table_info(episodes_fts)") { it.getText(1) }
@@ -59,6 +64,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             "e.id, e.series_key, s.name, e.air_date, e.season, e.num, e.title, e.length_s"
         private const val EPISODE_FROM = " FROM episodes e JOIN series s ON s.key = e.series_key"
         private const val SERIES_COLUMNS = "s.key, s.name, s.genre, s.first_date, s.last_date, s.episodes"
+
+        /** `series.networks` as JSON SQLite can walk; a NULL or malformed value is no network. */
+        private const val NETWORKS_JSON = "CASE WHEN json_valid(s.networks) THEN s.networks ELSE '[]' END"
 
         /** R1: oldest first, undated last, then the log number, then the title. */
         private const val OLDEST_FIRST = "e.air_date IS NULL, COALESCE(e.air_date, ''), " +
@@ -133,9 +141,12 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     // --- Series ---
 
-    /** The genres the catalog names; with [decade], only those with a series on the air then (web §10.5). */
-    suspend fun genres(decade: Int? = null): List<String> = read {
-        val (clause, binds) = decadeClause(decade)
+    /**
+     * The genres the catalog names; with [decade] or [network], only those
+     * with a series under that selection (web §10.5).
+     */
+    suspend fun genres(decade: Int? = null, network: String? = null): List<String> = read {
+        val (clause, binds) = facetClause(BrowseFilter(decade = decade, network = network))
         queryRaw(
             "SELECT DISTINCT s.genre FROM series s WHERE s.genre IS NOT NULL AND s.genre <> ''$clause ORDER BY s.genre",
             binds,
@@ -144,38 +155,62 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     /**
      * The decades the catalog's series were on the air, from the data, never
-     * a fixed list; with [genre], only that genre's (each facet counted
-     * against the other, so no chip offered yields zero rows).
+     * a fixed list; with [genre] or [network], only that selection's (each
+     * facet counted against the others, so no chip offered yields zero rows).
      */
-    suspend fun seriesDecades(genre: String? = null): List<Int> = read {
-        val where = if (genre == null) "" else " AND s.genre = ?"
+    suspend fun seriesDecades(genre: String? = null, network: String? = null): List<Int> = read {
+        val (clause, binds) = facetClause(BrowseFilter(genre = genre, network = network))
         queryRaw(
             "SELECT DISTINCT substr(s.first_date, 1, 4), substr(COALESCE(s.last_date, s.first_date), 1, 4) " +
-                "FROM series s WHERE s.first_date IS NOT NULL$where",
-            listOfNotNull(genre),
+                "FROM series s WHERE s.first_date IS NOT NULL$clause",
+            binds,
         ) { decadesSpanning(it.getText(0).toIntOrNull(), it.getText(1).toIntOrNull()) }
             .flatten().distinct().sorted()
     }
 
-    private fun decadeClause(decade: Int?): Pair<String, List<Any?>> =
-        if (decade == null) "" to emptyList()
-        else " AND s.first_date <= ? AND COALESCE(s.last_date, s.first_date) >= ?" to listOf("${decade + 9}-12-31", "$decade-01-01")
+    /**
+     * The networks the series name (`series.networks`, a JSON array), each
+     * with the series it would list against the genre and decade picked,
+     * most first, at most [limit] (the web's 40).
+     */
+    suspend fun networks(genre: String? = null, decade: Int? = null, limit: Int = 40): List<FacetCount<String>> = read {
+        val (clause, binds) = facetClause(BrowseFilter(genre = genre, decade = decade))
+        queryRaw(
+            "SELECT j.value, COUNT(DISTINCT s.key) FROM series s, json_each($NETWORKS_JSON) j " +
+                "WHERE j.type = 'text' AND j.value <> ''$clause " +
+                "GROUP BY j.value ORDER BY COUNT(DISTINCT s.key) DESC, j.value LIMIT ?",
+            binds + limit,
+        ) { FacetCount(it.getText(0), it.getLong(1).toInt()) }
+    }
+
+    /** The WHERE tail every facet and the browse list share, so a count and its list never disagree. */
+    private fun facetClause(filter: BrowseFilter): Pair<String, List<Any?>> {
+        val where = StringBuilder()
+        val binds = mutableListOf<Any?>()
+        filter.genre?.let { where.append(" AND s.genre = ?"); binds += it }
+        filter.network?.let {
+            where.append(" AND EXISTS (SELECT 1 FROM json_each($NETWORKS_JSON) n WHERE n.value = ?)")
+            binds += it
+        }
+        filter.decade?.let {
+            where.append(" AND s.first_date <= ? AND COALESCE(s.last_date, s.first_date) >= ?")
+            binds += "${it + 9}-12-31"
+            binds += "$it-01-01"
+        }
+        return where.toString() to binds
+    }
 
     /** §5 `seriesBrowse`: the listener drives it, so no `recommendAnd`. */
     suspend fun seriesBrowse(filter: BrowseFilter, limit: Int = 200, offset: Int = 0): List<SeriesRow> = read {
-        val where = StringBuilder(" WHERE 1 = 1")
-        val binds = mutableListOf<Any?>()
-        filter.genre?.let { where.append(" AND s.genre = ?"); binds += it }
-        filter.network?.let { where.append(" AND s.networks LIKE ?"); binds += "%\"$it\"%" }
-        decadeClause(filter.decade).let { (clause, values) ->
-            where.append(clause)
-            binds.addAll(values)
+        val (clause, binds) = facetClause(filter)
+        val order = when (filter.sort) {
+            SeriesSort.Name -> "s.name COLLATE NOCASE, s.key"
+            SeriesSort.Episodes -> "s.episodes DESC, s.name COLLATE NOCASE, s.key"
+            SeriesSort.FirstAired -> "s.first_date IS NULL, s.first_date, s.name COLLATE NOCASE, s.key"
         }
-        binds += limit
-        binds += offset
         queryRaw(
-            "SELECT $SERIES_COLUMNS FROM series s$where ORDER BY s.name COLLATE NOCASE, s.key LIMIT ? OFFSET ?",
-            binds,
+            "SELECT $SERIES_COLUMNS FROM series s WHERE 1 = 1$clause ORDER BY $order LIMIT ? OFFSET ?",
+            binds + limit + offset,
             ::seriesRow,
         )
     }
@@ -237,9 +272,10 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val loudness = if (hasLoudness) "e.loudness_i, e.loudness_tp" else "NULL, NULL"
         // Shown only where the gate passed, whatever else the row carries.
         val transcript = if (hasTranscript) "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" else "NULL"
+        val sponsor = if (hasSponsor) "e.sponsor" else "NULL"
         val head = queryRaw(
             "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json, " +
-                "$loudness, $transcript$EPISODE_FROM WHERE e.id = ?",
+                "$loudness, $transcript, $sponsor$EPISODE_FROM WHERE e.id = ?",
             listOf(resolved),
         ) { st ->
             EpisodeDetail(
@@ -254,6 +290,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 loudnessI = if (st.isNull(13)) null else st.getDouble(13),
                 loudnessTp = if (st.isNull(14)) null else st.getDouble(14),
                 transcriptUrl = st.textOrNull(15),
+                sponsor = st.textOrNull(16)?.takeIf { it.isNotBlank() },
             )
         }.firstOrNull() ?: return@read null
         val credits = queryRaw(

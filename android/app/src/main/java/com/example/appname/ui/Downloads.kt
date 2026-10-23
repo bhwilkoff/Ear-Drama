@@ -63,13 +63,13 @@ fun DownloadControl(detail: EpisodeDetail, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
     ) {
         when (record?.state) {
-            null -> OutlinedButton(onClick = start, enabled = detail.recordings.isNotEmpty()) {
+            null -> OutlinedButton(onClick = start, enabled = detail.recordings.isNotEmpty(), modifier = Modifier.tvFocusMark()) {
                 Icon(Icons.Outlined.Download, contentDescription = null)
                 Text("Download", Modifier.padding(start = Spacing.S2.dp))
             }
             DownloadRecord.State.Queued, DownloadRecord.State.Downloading -> {
                 DownloadProgress(record, Modifier.weight(1f))
-                IconButton(onClick = { downloads.cancel(id) }) {
+                IconButton(onClick = { downloads.cancel(id) }, modifier = Modifier.tvFocusMark()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Cancel Download")
                 }
             }
@@ -81,7 +81,7 @@ fun DownloadControl(detail: EpisodeDetail, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = { downloads.remove(id) }) {
+                IconButton(onClick = { downloads.remove(id) }, modifier = Modifier.tvFocusMark()) {
                     Icon(Icons.Outlined.Delete, contentDescription = "Remove Download")
                 }
             }
@@ -93,7 +93,7 @@ fun DownloadControl(detail: EpisodeDetail, modifier: Modifier = Modifier) {
                     color = AppSemantics.colors.error,
                     modifier = Modifier.weight(1f),
                 )
-                TextButton(onClick = start) {
+                TextButton(onClick = start, modifier = Modifier.tvFocusMark()) {
                     Icon(Icons.Outlined.Refresh, contentDescription = null)
                     Text("Try Again", Modifier.padding(start = Spacing.S2.dp))
                 }

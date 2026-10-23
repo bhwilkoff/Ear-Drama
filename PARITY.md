@@ -93,7 +93,7 @@ When shipping any user-facing feature:
 | Verb | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
 | Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, This Day, shelves; Tonight is on the Radio tab | 🚧 no Tonight | 🚧 no Tonight | 🚧 no Tonight | 🚧 This Day, genre shelves; no Tonight | Decision 058; R13 lists from data |
-| Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | 🚧 | 🚧 | 🚧 | 🚧 seasons, oldest first | Broadcast seasons (058); oldest first (R1) |
+| Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | 🚧 | 🚧 | 🚧 | 🚧 seasons, oldest first; genre, decade and network facets, three sorts, Follow | Broadcast seasons (058); oldest first (R1) |
 | Radio (evenings and genre channels on one clock) | 🚧 Tonight in 19xx from `tonight.json`; no genre channels | 🚧 Tonight; Listen live | 🚧 Tonight; ⌘3 | 🚧 Tonight; Listen live focused | 🚧 Tonight; Listen live; TV focus stops | Gaps stated, never filled (R9); floor 0.25 provisional (owner, SCRATCHPAD 4) |
 | Search (titles, people, transcript text, dates) | 🚧 word-prefix titles and people; no transcripts yet | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | |
 | Library (followed series, queue, downloads, history) | 🚧 device-local; no downloads | 🚧 no downloads | 🚧 no downloads | 🚧 | 🚧 no downloads | Device-local until sync (M5) |
@@ -185,7 +185,7 @@ history, queue, and follows, and it is required to make a play with others.
 | Routes for series, episode, search | 🚧 + 404 forwarder | ⏳ | ⏳ | ⏳ | ⏳ | DEEP_LINKS.md |
 | Universal Links / App Links | n/a | ⏳ | ⏳ | n/a | ⏳ | Wait on the App Store record and Play's signing fingerprint |
 | `eardrama://` scheme | n/a | ⏳ | ⏳ | ⏳ | ⏳ | OAuth callbacks and Top Shelf |
-| Share an episode | 🚧 Web Share | 🚧 share sheet, https link | 🚧 share menu, https link | ⏳ QR code | ⏳ | The web page is every share's landing twin |
+| Share an episode | 🚧 Web Share | 🚧 share sheet, https link | 🚧 share menu, https link | ⏳ QR code | 🚧 share sheet, https link (not on TV) | The web page is every share's landing twin |
 | Archive Watch film cross-links | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Out of 1.0 (Decision 058) |
 
 ---

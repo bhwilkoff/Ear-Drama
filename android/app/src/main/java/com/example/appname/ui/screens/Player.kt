@@ -48,8 +48,12 @@ import com.example.appname.playback.PlaybackEngine
 import com.example.appname.playback.SleepMode
 import com.example.appname.playback.SleepState
 import com.example.appname.data.Transcript
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
@@ -95,11 +99,11 @@ fun MiniPlayer(onExpand: () -> Unit) {
 }
 
 @Composable
-private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boolean) {
+private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boolean, modifier: Modifier = Modifier) {
     val icon = if (now.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow
     val label = if (now.isPlaying) "Pause" else "Play"
     if (filled) {
-        FilledIconButton(onClick = engine::togglePlay, modifier = Modifier.size(72.dp)) {
+        FilledIconButton(onClick = engine::togglePlay, modifier = modifier.size(72.dp)) {
             Icon(icon, contentDescription = label, modifier = Modifier.size(40.dp))
         }
     } else {
@@ -136,7 +140,7 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
                 style = MaterialTheme.typography.headlineSmall,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
+                modifier = Modifier.tvFocusMark().clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
             )
             formatAirDate(episode.airDate)?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -150,19 +154,22 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
                 )
             }
             PositionSlider(now, engine)
+            // On a TV the sheet takes the D-pad on Play or Pause (§9.2); every control wears the ring.
+            val playPause = remember { FocusRequester() }
+            ClaimTvFocus(playPause, episode.id)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.S6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = engine::skipBack, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = engine::skipBack, modifier = Modifier.size(56.dp).tvFocusMark()) {
                     Icon(
                         painterResource(androidx.media3.session.R.drawable.media3_icon_skip_back_15),
                         contentDescription = "Back 15 seconds",
                         modifier = Modifier.size(32.dp),
                     )
                 }
-                PlayPauseButton(now, engine, filled = true)
-                IconButton(onClick = engine::skipForward, modifier = Modifier.size(56.dp)) {
+                PlayPauseButton(now, engine, filled = true, modifier = Modifier.focusRequester(playPause).tvFocusMark())
+                IconButton(onClick = engine::skipForward, modifier = Modifier.size(56.dp).tvFocusMark()) {
                     Icon(
                         painterResource(androidx.media3.session.R.drawable.media3_icon_skip_forward_30),
                         contentDescription = "Forward 30 seconds",
@@ -177,7 +184,7 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
             ) {
                 SpeedMenu(now.speed, engine)
                 if ((hasTranscript as? Loadable.Ready)?.value == true) {
-                    IconButton(onClick = { onOpenTranscript(episode.id) }) {
+                    IconButton(onClick = { onOpenTranscript(episode.id) }, modifier = Modifier.tvFocusMark()) {
                         Icon(Icons.Filled.FormatQuote, contentDescription = Transcript.LABEL)
                     }
                 }
@@ -235,7 +242,7 @@ private fun SpeedMenu(speed: Float, engine: PlaybackEngine) {
     Box {
         TextButton(
             onClick = { open = true },
-            modifier = Modifier.semantics { contentDescription = "Playback speed, ${speedLabel(speed)}" },
+            modifier = Modifier.tvFocusMark().semantics { contentDescription = "Playback speed, ${speedLabel(speed)}" },
         ) { Text(speedLabel(speed)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             PlaybackEngine.SPEEDS.forEach { s ->
@@ -265,7 +272,7 @@ private fun SleepMenu(now: NowPlaying, engine: PlaybackEngine) {
     Box {
         TextButton(
             onClick = { open = true },
-            modifier = Modifier.semantics {
+            modifier = Modifier.tvFocusMark().semantics {
                 contentDescription = if (armed == null) "Sleep timer, off" else "Sleep timer, ${sleepLabel(armed.mode)}"
             },
         ) {
