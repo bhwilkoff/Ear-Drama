@@ -421,7 +421,14 @@ percentile of 0.891, and a 10th of 0.782; recall of the script is 0.752 at the
 median, capped by what a performance changes. The handful near zero are a
 script matched to the wrong broadcast, not a bad transcript. So the transcripts
 are good enough to show; the gate, which must work for episodes with no script,
-is calibrated against these 184 before it is fixed here.
+is calibrated against these 184 before it is fixed here. **The gate, fixed the same night**
+(`catalog/tools/transcript_gate.py`): a transcript is shown when it runs 50-220
+words per minute of audio and no more than 10% of its four-word runs repeat
+three or more times. On the 184 it shows 183 and hides the one real failure (a
+1955 Dragnet that looped on 45% of its runs at 70 words a minute); an 80 word
+floor would also have hidden two good, music-heavy transcripts (Baby Snooks
+0.90, Mercury Theatre 0.87), so the floor is 50. Every transcript stays
+searchable; only the text on screen is gated.
 
 ---
 
