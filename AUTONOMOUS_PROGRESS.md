@@ -168,3 +168,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 66, 2026-10-23, merge + agent: Android parity round two; Android On Air and Listen Together launched
 - Merged 0403a33 (1.0.35 build 36): no duplicate screens on a tab's stack; the web's sorts and a network facet sharing one filter clause; Follow / Following on the synced store; Detail in the web's order; Share as the https twin (golden-checked against node's encodeURIComponent); TV focus on pushed screens. Verified on main: 145 tests 0 failed 0 skipped; assembleDebug; 0 `w:`. PARITY's Series and Share rows updated.
 - Launched one Android agent for two commits: On Air's roles (red live, blue wayfinding, genre marks), then Listen Together rooms. Running: web rooms, Apple SharePlay.
+
+### Tick 67, 2026-10-23, main thread + agent: the web harness defect measured
+- Instrumented the stage instead of rerunning: five --dump-dom loads of ?item= with fresh profiles gave the episode 3 times, an empty episode view once, no view once. The capture fires at a fixed virtual time, sometimes before the shard fetch completes. Recorded in web_run.py.
+- Launched a tools-only agent: drive Chrome over the DevTools protocol (no new dependencies), set a real 375 px viewport, wait for the route's text, then capture; prove with five green sweeps and a negative control.
+- Running: Android (On Air + rooms), web rooms, Apple SharePlay.
