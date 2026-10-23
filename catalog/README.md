@@ -167,6 +167,7 @@ flagged (`tests/test_no_recommend.py` holds that control).
     python3 tools/harvest_gutenberg_plays.py --texts 20   # Gutenberg's offline catalogs + 20 texts from a mirror
     python3 tools/script_rights.py                        # bucket counts for Gutenberg and GRW
     python3 tools/script_parse.py measure                 # the 50 GRW + 20 play parse sample
+    python3 tools/build_castable_scripts.py               # plays/castable-scripts.json, which the apps bundle
 
 A script may be cast only when its own record carries rights evidence: ordered
 buckets, hides before rescues, like the audio audit. Measured 2026-10-22: 1,722
@@ -184,7 +185,8 @@ C8). "Author died by 1955" (C9) is recorded and not applied.
 
 `tests/test_audio_rights.py` (21 cases), `tests/test_otr_parse.py` (15) and
 `tests/test_cce_drama_renewals.py` (13; its broken controls are in its docstring),
-`tests/test_script_rights.py` (22) and `tests/test_script_parse.py` (7), whose
+`tests/test_script_rights.py` (22), `tests/test_script_parse.py` (7), and
+`tests/test_castable_scripts.py` (4), whose
 broken controls are in their docstrings.
 Broken controls, 2026-10-17, each run against a mutated copy:
 

@@ -10,6 +10,7 @@ struct EarDramaApp: App {
     @State private var player: AudioPlayer
     #if os(iOS) || os(macOS)
     @State private var downloads: DownloadStore
+    @State private var plays = PlaysLibrary()
     #endif
     #if os(iOS)
     @UIApplicationDelegateAdaptor(AppDelegate_iOS.self) private var appDelegate
@@ -51,6 +52,7 @@ struct EarDramaApp: App {
                 .environment(player)
                 #if os(iOS) || os(macOS)
                 .environment(downloads)
+                .environment(plays)
                 .task { await downloads.reconnect() }
                 #endif
                 // .onOpenURL fires for Universal Links AND custom schemes. It
@@ -61,7 +63,10 @@ struct EarDramaApp: App {
                 }
         }
         #if os(macOS)
-        .commands { PlaybackCommands_macOS(player: player, store: store, downloads: downloads) }
+        .commands {
+            PlaybackCommands_macOS(player: player, store: store, downloads: downloads)
+            RecordingCommands_macOS()
+        }
         #endif
         #if os(iOS)
         // The system relaunches the app in the background when a download
@@ -80,6 +85,16 @@ struct EarDramaApp: App {
             }
         }
         .defaultSize(width: 560, height: 680)
+        WindowGroup("Production", id: ProductionWindow_macOS.id, for: String.self) { $id in
+            if let id {
+                ProductionWindow_macOS(productionID: id)
+                    .environment(plays)
+                    .environment(player)
+                    .environment(store)
+                    .tint(Color.brandPrimary)
+            }
+        }
+        .defaultSize(width: 960, height: 720)
         #endif
     }
 }

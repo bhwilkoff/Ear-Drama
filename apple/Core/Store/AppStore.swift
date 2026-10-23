@@ -1,14 +1,16 @@
 import SwiftUI
 
 /// The top-level verbs: the iPhone tab bar, the Mac sidebar, the TV sidebar.
-/// Radio waits on the published evenings (contract §8).
+/// Radio waits on the published evenings (contract §8). Plays is on iPhone,
+/// iPad, and Mac; the TV records nothing and shows no Plays tab (PLAYS-DESIGN §6).
 enum AppTab: String, CaseIterable, Identifiable, Hashable {
-    case listen, series, search, library
+    case listen, series, plays, search, library
     var id: String { rawValue }
     var title: String {
         switch self {
         case .listen: "Listen"
         case .series: "Series"
+        case .plays: "Plays"
         case .search: "Search"
         case .library: "Library"
         }
@@ -17,6 +19,7 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .listen: "play.circle"
         case .series: "square.stack"
+        case .plays: "theatermasks"
         case .search: "magnifyingglass"
         case .library: "books.vertical"
         }
@@ -66,7 +69,7 @@ final class AppStore {
         Binding(get: { self.paths[tab] ?? NavigationPath() }, set: { self.paths[tab] = $0 })
     }
 
-    func push(_ route: Route) {
+    func push(_ route: some Hashable) {
         var path = paths[selectedTab] ?? NavigationPath()
         path.append(route)
         paths[selectedTab] = path

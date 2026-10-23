@@ -107,10 +107,14 @@ Every platform does the same seven things, in its own idiom.
 5. **Pass the phone.** "Done with this part" returns to the cast sheet, which
    now shows that part as recorded. The next person takes another part and
    hears the first performer's takes where the device voice used to be.
-6. **Listen through.** At any time, the play can be heard from the top with
-   every human take in script order and the open parts voiced live on this
-   device, each labeled on screen as a device voice. Whether this preview is
-   offered to everyone or only to the cast is an owner question (C5, §9).
+6. **Listen through.** The play can be heard from the top with every human
+   take in script order. Whether a half-recorded play may be previewed with
+   its open parts voiced live (each labeled as a device voice) is an owner
+   question (C5, §9). Pending owner, the apps take the conservative reading:
+   no preview of a half-voiced play outside the recording flow, so the
+   listen-through is offered only once every speaking line has a human take.
+   Inside the recording flow the cue before a line, and a run-up, still play
+   the device voice live where no take exists.
 7. **Finish and keep it.** When every speaking line has a human take and
    someone has listened all the way through, the device renders the mix and
    the play joins the person's library. They can play it back on this device,
@@ -175,6 +179,21 @@ book and cleared by Gutenberg, two of which GRW also lists. So the castable radi
 stage library is large. Research 08b's other free radio class, the USDA
 typescripts on archive.org, waits on OCR repair and per-script authorship
 (08b §2.3), and it is the next radio harvest to build.
+
+### The file the apps read
+
+Phase 1 bundles the castable scripts in the apps rather than publishing them
+beside the catalog: casting then needs no network and no fetch, and the file
+is small. `catalog/tools/build_castable_scripts.py` writes
+`catalog/plays/castable-scripts.json` from the cached texts, keeping a script
+only when `script_rights.judge` says `castable` and `script_parse` says clean
+(§8 rule 1), with each line as the parser's exact slices, the rights evidence,
+and a revision hash. Both the Apple and the Android apps bundle that one file.
+Measured on 2026-10-22: 24 cached texts read, **9 plays written, all stage
+plays**, 1,436,506 bytes (419,483 gzipped). None of the four Carlton radio
+plays ships yet, because each parses with more than 5% of its blocks
+unclassified. The file moves beside the catalog once the library outgrows a
+bundle.
 
 Rights is not the only gate. A rights-castable text also has to parse into
 parts a person can perform, and some of Gutenberg's drama shelf is not a play
@@ -279,6 +298,27 @@ timeline on every platform (`cross-platform-determinism`), and the finished
 mix is normalized to -16 LUFS integrated and -1 dBTP. Sound and music cues
 show as text and are silent until someone records them or picks a sound with
 evidence (08a §8); phase 1 ships no effects library.
+
+### §4.4 As built on Apple (2026-10-22)
+
+- One `AVAudioEngine` per recording session (`Core/Plays/LiveAudio.swift`): one
+  player node for takes and stand-in buffers, a tap on the input converted to
+  mono 48 kHz in memory. The microphone permission is asked when the performer
+  presses Start Recording, never at launch.
+- Takes are FLAC from a 24-bit source, which writes on macOS 27 (measured); the
+  iOS 18 floor is still to measure on a device.
+- The end of a line is an energy detector on 20 ms frames with its floor from
+  the session's room tone, ending after one second of silence; the one record
+  control also stops it. `SpeechDetector` and the line check are not built yet.
+- The bleed check correlates each kept take against the stand-ins that cued it
+  and flags a match (`BleedCheck.threshold` is 0.5, to measure on devices).
+- The finished mix is rendered offline by `Core/Plays/MixRenderer.swift` into
+  `mix.m4a` (AAC, 96 kbps mono). Each take's gain targets -16 LUFS and is held
+  so its sample peak stays at or below -1 dBFS; sample peak stands in for true
+  peak until a true-peak meter is written. The listen-through plays that
+  rendered mix, which holds only human takes, and reaching its end without
+  skipping ahead finishes the play.
+- Gaps are 0.4 s; overlaps, room-tone fill, and per-role pan are not built.
 
 Recording quality varies on Android by manufacturer (echo cancellation,
 `UNPROCESSED` support, and engine voices all differ), so the bench needs the
@@ -403,12 +443,12 @@ These are still open from research 08, plus three this design raised.
 
 | # | Question | What phase 1 does until it is answered |
 |---|---|---|
-| C5 | May anyone hear a half-recorded play with live stand-ins, or only its cast? On one device the cast and the listeners are usually the same people | The listen-through is offered on the recording device, with every stand-in line labeled |
-| C6 | A part nobody takes: leave the play unfinished, let someone double it, or allow a stored openly licensed voice (Kokoro, Apache-2.0; Piper's LibriTTS-R voices, CC BY 4.0)? | The play stays unfinished, and doubling is encouraged on the cast sheet |
-| C7 | Relay order: strictly one part at a time, or any order with "largest part first" as the suggestion? Claim expiry (7 days) matters in phase 2 | Any order, largest first suggested; one device makes it one at a time anyway |
-| C9 | Accept "individual author died by 1955" as evidence for an unregistered script? | Recorded as `script_author_died_unapplied`, not castable |
-| C10 | Sponsors' commercials inside free scripts: keep, make optional, or drop? Personal Voice: not offered (recommended)? | No castable script today carries commercials; Personal Voice is not offered |
-| New | Decision 057 says signing in is "required to record, cast, or publish a shared play." Does a local, never-shared recording need an account? | No account (08c's v1 needs none) |
+| C5 | May anyone hear a half-recorded play with live stand-ins, or only its cast? On one device the cast and the listeners are usually the same people | Pending owner: no preview of a half-voiced play outside the recording flow; the listen-through opens once every speaking line has a human take |
+| C6 | A part nobody takes: leave the play unfinished, let someone double it, or allow a stored openly licensed voice (Kokoro, Apache-2.0; Piper's LibriTTS-R voices, CC BY 4.0)? | Pending owner: the play stays unfinished and never gets a stored synthetic voice; one person may double parts; only sound effects and stage directions may be left silent |
+| C7 | Relay order: strictly one part at a time, or any order with "largest part first" as the suggestion? Claim expiry (7 days) matters in phase 2 | Pending owner: strictly one part at a time, in a fixed order, largest first; a finished part can be reopened for a re-take only while no other part records |
+| C9 | Accept "individual author died by 1955" as evidence for an unregistered script? | Pending owner: recorded as `script_author_died_unapplied`, not castable |
+| C10 | Sponsors' commercials inside free scripts: keep, make optional, or drop? Personal Voice: not offered (recommended)? | Pending owner: scripts are performed as published, commercials included; Personal Voice is never offered or asked for |
+| New | Decision 057 says signing in is "required to record, cast, or publish a shared play." Does a local, never-shared recording need an account? | Pending owner: phase 1 is local only and needs no sign-in; Decision 057's sign-in covers sharing |
 | New | A text that is rights-castable but parses unclean (11 of the 20 sampled plays): who fixes its parts, and is that an editing role phase 1 needs? | Not offered until someone fixes it |
 | New | GRW (C8): ask before reusing its transcriptions? It decides whether the GRW radio scripts with other evidence can ever be cast from GRW's text | All 1,371 hidden on GRW's own terms |
 

@@ -14,6 +14,13 @@ struct RouteDestinations: ViewModifier {
             case let .episode(id): EpisodeScreen(id: id)
             }
         }
+        .navigationDestination(for: PlayRoute.self) { route in
+            switch route {
+            case let .script(id): PlayScriptScreen(id: id)
+            case let .production(id): ProductionScreen(id: id)
+            case let .recording(production, part): PartScreen(productionID: production, part: part)
+            }
+        }
     }
 }
 
