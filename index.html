@@ -108,6 +108,7 @@
 
       <section id="view-library" class="view" aria-labelledby="library-h" hidden>
         <h1 id="library-h" class="view-heading" tabindex="-1">Library</h1>
+        <div id="account-row" class="account-row" role="group" aria-label="Account"></div>
         <div class="segmented" role="group" aria-label="Library section" id="library-tabs">
           <button type="button" data-lib="queue" aria-pressed="true">Queue</button>
           <button type="button" data-lib="history" aria-pressed="false">History</button>
@@ -120,6 +121,7 @@
         <a href="credits/">Credits</a>
         <a href="privacy/">Privacy</a>
         <a href="takedown/">Take-down requests</a>
+        <a href="delete-account/">Delete an account</a>
       </footer>
     </main>
   </div>
@@ -224,8 +226,11 @@
   <audio id="audio" preload="metadata"></audio>
 
   <script src="js/compat.js"></script>
+  <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/sync.js"></script>
+  <script src="js/account.js"></script>
   <script src="js/player.js"></script>
   <script src="js/plays-core.js"></script>
   <script src="js/plays-store.js"></script>

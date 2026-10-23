@@ -170,11 +170,11 @@ history, queue, and follows, and it is required to make a play with others.
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Sign in with Apple | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | M5; verified at the Worker |
-| Sign in with Google | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | M5; tvOS by a phone hand-off |
+| Sign in with Apple | 🚧 Apple JS, nonce; placeholders until the Worker is deployed | ⏳ | ⏳ | ⏳ | ⏳ | M5; verified at the Worker |
+| Sign in with Google | 🚧 Google's own button; placeholders | ⏳ | ⏳ | ⏳ | ⏳ | M5; tvOS by a phone hand-off |
 | Email and password | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Decision 057 names Apple and Google only |
-| Sync of history, queue, follows | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | One store on the Worker + D1, never two |
-| Account deletion | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Ships with sign-in (Decision 035) |
+| Sync of history, queue, follows | 🚧 LWW per row, markers, ?since=; tested against a stubbed Worker | ⏳ | ⏳ | ⏳ | ⏳ | One store on the Worker + D1, never two |
+| Account deletion | 🚧 in the account sheet, and the public page delete-account/ | ⏳ | ⏳ | ⏳ | ⏳ | Ships with sign-in (Decision 035) |
 
 ---
 

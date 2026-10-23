@@ -317,12 +317,286 @@ const API = (() => {
     return m.rightsLines[basis] || null;
   }
 
+  /* ---- The Worker: optional sign-in and sync (Decisions 057, 063; docs/WORKER.md) ---- */
+
+  /**
+   * Every Worker call goes through `account`. The access token lives only in this
+   * closure's memory. The refresh token is kept in IndexedDB encrypted with an
+   * AES-GCM key made non-extractable by WebCrypto: script on this page can use the
+   * key but never read it, so a copy of the browser's storage taken off the machine
+   * (a backup, a synced profile, a disk image) cannot be decrypted. It is not
+   * protection from script running on the page itself; nothing a page holds is.
+   * An HttpOnly cookie would be, but the Worker answers tokens in JSON to every
+   * platform alike (docs/WORKER.md). Without IndexedDB the token stays in memory
+   * and the sign-in lasts as long as the page. Never in a URL or localStorage.
+   */
+  const account = (() => {
+    const STATE_KEY = 'ed.account';
+    const REFRESH_EARLY_MS = 5 * 60 * 1000;
+    const TIMEOUT_MS = 20000;
+    const DEVICE = 'web';
+    const listeners = new Set();
+    let config = typeof CONFIG !== 'undefined' ? CONFIG : {};
+    let now = () => Date.now();
+    let vault = null;
+    let access = null;          // { token, exp }
+    let refreshing = null;
+
+    const real = (v) => typeof v === 'string' && v.length > 0 && !v.startsWith('REPLACE_WITH');
+    function base() {
+      const w = config.worker;
+      if (!real(w)) return null;
+      try {
+        const u = new URL(w);
+        const local = ['localhost', '127.0.0.1'].includes(u.hostname);
+        return u.protocol === 'https:' || (local && u.protocol === 'http:') ? w.replace(/\/+$/, '') : null;
+      } catch { return null; }
+    }
+    /** Which sign-ins this build can offer; a placeholder means not available, never an error. */
+    function available() {
+      const b = !!base();
+      return {
+        apple: b && real(config.apple && config.apple.servicesId) && real(config.apple.redirectURI),
+        google: b && real(config.google && config.google.clientId),
+      };
+    }
+
+    function readState() {
+      try { return JSON.parse(localStorage.getItem(STATE_KEY)) || null; } catch { return null; }
+    }
+    function writeState(s) {
+      try {
+        if (s) localStorage.setItem(STATE_KEY, JSON.stringify(s)); else localStorage.removeItem(STATE_KEY);
+      } catch { /* storage unavailable: the sign-in lasts as long as the page */ }
+      memState = s;
+      listeners.forEach(fn => { try { fn(s); } catch (e) { console.error(e); } });
+    }
+    let memState;
+    function state() {
+      if (memState === undefined) memState = readState();
+      return memState;
+    }
+    function update(patch) {
+      const s = state();
+      if (s) writeState({ ...s, ...patch });
+    }
+
+    function memoryVault() {
+      let t = null;
+      return { async get() { return t; }, async set(v) { t = v; }, async clear() { t = null; } };
+    }
+    function idbVault() {
+      let dbP = null;
+      let keyP = null;
+      const open = () => dbP || (dbP = new Promise((res, rej) => {
+        const r = indexedDB.open('ed-auth', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      }));
+      const tx = async (mode, fn) => {
+        const db = await open();
+        return new Promise((res, rej) => {
+          const t = db.transaction('kv', mode);
+          const req = fn(t.objectStore('kv'));
+          t.oncomplete = () => res(req && req.result);
+          t.onerror = t.onabort = () => rej(t.error);
+        });
+      };
+      const key = () => keyP || (keyP = (async () => {
+        const k = await tx('readonly', s => s.get('key'));
+        if (k) return k;
+        const made = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        await tx('readwrite', s => s.put(made, 'key'));
+        return made;
+      })());
+      return {
+        async get() {
+          const rec = await tx('readonly', s => s.get('refresh'));
+          if (!rec) return null;
+          try {
+            const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: rec.iv }, await key(), rec.ct);
+            return new TextDecoder().decode(pt);
+          } catch { return null; }
+        },
+        async set(token) {
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await key(), new TextEncoder().encode(token));
+          await tx('readwrite', s => s.put({ iv, ct }, 'refresh'));
+        },
+        async clear() { await tx('readwrite', s => s.delete('refresh')); },
+      };
+    }
+    function theVault() {
+      if (!vault) {
+        vault = typeof indexedDB !== 'undefined' && typeof crypto !== 'undefined' && crypto.subtle ? idbVault() : memoryVault();
+        const v = vault;
+        const fallback = memoryVault();
+        let broken = false;
+        // A browser that refuses IndexedDB (some private windows) keeps the token in memory.
+        vault = {
+          get: () => broken ? fallback.get() : v.get().catch(() => { broken = true; return fallback.get(); }),
+          set: (t) => broken ? fallback.set(t) : v.set(t).catch(() => { broken = true; return fallback.set(t); }),
+          clear: () => Promise.all([fallback.clear(), v.clear().catch(() => {})]),
+        };
+      }
+      return vault;
+    }
+
+    /** One refresh at a time in this page, and across this browser's tabs where Web Locks exist. */
+    function withLock(fn) {
+      if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
+        return navigator.locks.request('ed-auth-refresh', fn);
+      }
+      return fn();
+    }
+
+    function netError(e, path) {
+      const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+      return new DataError(off ? 'offline' : 'error', `${e.message} ${path}`);
+    }
+    async function problemOf(resp, path) {
+      let code = '';
+      try { code = (await resp.json()).error || ''; } catch { /* not JSON */ }
+      const kind = resp.status === 401 ? 'unauthorized' : resp.status === 429 ? 'rate_limited'
+        : resp.status === 503 ? 'not_configured' : 'error';
+      const err = new DataError(kind, `${resp.status} ${code} ${path}`);
+      err.status = resp.status;
+      return err;
+    }
+    async function post(path, body, headers = {}) {
+      const b = base();
+      if (!b) throw new DataError('not_configured', path);
+      try {
+        return await fetch(b + path, {
+          method: 'POST', headers: { 'content-type': 'application/json', ...headers },
+          body: JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS),
+        });
+      } catch (e) { throw netError(e, path); }
+    }
+
+    async function keepSession(s, extra) {
+      access = { token: s.access_token, exp: s.access_expires_at };
+      await theVault().set(s.refresh_token);
+      return { refresh_expires_at: s.refresh_expires_at, ...extra };
+    }
+
+    /** The session ended at the Worker (signed out elsewhere, deleted, replayed): forget it here. */
+    async function ended(notice) {
+      access = null;
+      await theVault().clear();
+      writeState(notice ? { ended: notice } : null);
+    }
+
+    async function doRefresh() {
+      const rt = await theVault().get();
+      if (!rt) { await ended('session_ended'); throw new DataError('unauthorized', 'no refresh token'); }
+      const resp = await post('/v1/auth/refresh', { refresh_token: rt });
+      if (resp.status === 401) {
+        await ended('session_ended');
+        throw await problemOf(resp, '/v1/auth/refresh');
+      }
+      if (!resp.ok) throw await problemOf(resp, '/v1/auth/refresh');
+      update(await keepSession(await resp.json()));
+    }
+    function refresh() {
+      if (!refreshing) refreshing = withLock(doRefresh).finally(() => { refreshing = null; });
+      return refreshing;
+    }
+
+    /** The bearer for the next call, refreshed first when under five minutes remain. */
+    async function accessToken() {
+      if (!signedIn()) throw new DataError('unauthorized', 'signed out');
+      if (!access || access.exp - now() < REFRESH_EARLY_MS) await refresh();
+      return access.token;
+    }
+
+    /** Every signed-in call. A 401 refreshes once and retries; a second 401 is surfaced. */
+    async function call(method, path, body) {
+      const b = base();
+      if (!b) throw new DataError('not_configured', path);
+      for (let attempt = 0; ; attempt++) {
+        const token = await accessToken();
+        let resp;
+        try {
+          resp = await fetch(b + path, {
+            method,
+            headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+            body: body ? JSON.stringify(body) : undefined,
+            signal: AbortSignal.timeout(TIMEOUT_MS),
+          });
+        } catch (e) { throw netError(e, path); }
+        if (resp.status === 401 && attempt === 0) { access = null; continue; }
+        if (!resp.ok) throw await problemOf(resp, path);
+        return resp.status === 204 ? null : resp.json();
+      }
+    }
+
+    function signedIn() { const s = state(); return !!(s && s.user_id); }
+
+    /** A fresh raw nonce for one sign-in; the provider puts it (or its SHA-256) in the identity token. */
+    function newNonce() {
+      const b = crypto.getRandomValues(new Uint8Array(32));
+      return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    /** Trade a provider's identity token for the Worker's session. The signed-out history merges once next. */
+    async function signIn(provider, idToken, nonce) {
+      if (!['apple', 'google'].includes(provider)) throw new DataError('error', provider);
+      const path = `/v1/auth/${provider}`;
+      const resp = await post(path, { id_token: idToken, nonce, device: DEVICE });
+      if (!resp.ok) throw await problemOf(resp, path);
+      const s = await resp.json();
+      access = null;
+      const kept = await keepSession(s, {
+        user_id: s.user_id, provider: s.provider || provider, signed_in_at: now(),
+        merge_pending: true, since: 0, last_sync_at: null, last_error: null,
+      });
+      writeState(kept);
+      return state();
+    }
+
+    async function signOut() {
+      try { if (signedIn()) await call('POST', '/v1/auth/signout'); } catch { /* signed out here regardless */ }
+      await ended(null);
+    }
+
+    /** Deletes the account at the Worker; only then are the tokens and account state forgotten here. */
+    async function deleteAccount(opts = {}) {
+      const body = {};
+      if (opts.appleAuthorizationCode) {
+        body.apple_authorization_code = opts.appleAuthorizationCode;
+        if (opts.appleClientId) body.apple_client_id = opts.appleClientId;
+      }
+      const r = await call('DELETE', '/v1/account', body);
+      await ended(null);
+      return r;
+    }
+
+    return {
+      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE,
+      onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
+      info: () => call('GET', '/v1/account'),
+      syncRead: (since) => call('GET', `/v1/sync?since=${encodeURIComponent(Math.max(0, Math.floor(since || 0)))}`),
+      syncPut: (upload) => call('PUT', '/v1/sync', upload),
+      syncMerge: (upload) => call('POST', '/v1/sync/merge', upload),
+      /** Tests only: a config, a clock, and a vault in place of IndexedDB. */
+      _test: {
+        configure(c) { config = c; },
+        clock(fn) { now = fn; },
+        vault(v) { vault = v; },
+        reset() { access = null; refreshing = null; memState = undefined; },
+        access: () => access,
+      },
+    };
+  })();
+
   return {
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
     manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
     transcript, transcriptLines, transcriptLabel,
-    localDate, tonight, onAir, castableScripts,
+    localDate, tonight, onAir, castableScripts, account,
   };
 })();
 

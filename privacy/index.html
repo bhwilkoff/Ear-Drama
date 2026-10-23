@@ -20,7 +20,7 @@
       <h1 id="page-h" class="view-heading">Privacy</h1>
       <!-- OWNER: update this page in the same change that adds sign-in (Decision 057). -->
 
-      <p>The website has no accounts. Listening needs no sign-in, no email address, and no name.</p>
+      <p>Listening needs no sign-in, no email address, and no name. Signing in is optional; it only keeps your listening the same on your devices.</p>
 
       <h2 class="section-header">What stays on this device</h2>
       <p>The web app keeps these in this browser's local storage. They are never sent to Ear Drama.</p>
@@ -30,12 +30,19 @@
         <li>Your queue</li>
         <li>The series you follow</li>
         <li>Your playback speed</li>
+        <li>Plays you record: every take and the finished mix, in this browser's IndexedDB storage, never uploaded</li>
       </ul>
       <p>The browser also keeps copies of the site's pages and the catalog pages you have opened, so the app opens without a connection. It keeps no audio.</p>
       <p>Clear history in Library removes your history and the places you stopped. Clearing this site's data in your browser removes everything.</p>
 
+      <!-- OWNER: review this section's words before sign-in goes live (Decision 063). -->
+      <h2 class="section-header">If you sign in</h2>
+      <p>Signing in with Apple or Google sends Ear Drama an account number from them; it does not keep your name or email address. While you are signed in, the places you stopped, your history, your queue, and the series you follow are copied to Ear Drama's server so your other devices can use them. Recorded plays stay on the device.</p>
+      <p>This browser keeps your sign-in in local storage (<code>ed.account</code>, <code>ed.stamps</code>) and IndexedDB (<code>ed-auth</code>), encrypted with a key the browser keeps.</p>
+      <p><a href="../delete-account/">Delete an account</a> removes everything the server holds.</p>
+
       <h2 class="section-header">What Ear Drama does not collect</h2>
-      <p>No analytics, no cookies, no advertising, and no scripts from other companies.</p>
+      <p>No analytics, no cookies, and no advertising. The only scripts from other companies are Apple's and Google's sign-in scripts, loaded only when you open sign-in.</p>
 
       <h2 class="section-header">Who receives your requests</h2>
       <p>The site is served by <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Pages</a>, which receives each page request, including your IP address, as any web host does.</p>
@@ -49,6 +56,7 @@
       <a href="../credits/">Credits</a>
       <a href="./" aria-current="page">Privacy</a>
       <a href="../takedown/">Take-down requests</a>
+      <a href="../delete-account/">Delete an account</a>
     </footer>
   </main>
 

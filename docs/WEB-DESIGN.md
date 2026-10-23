@@ -21,8 +21,9 @@ web app follows today.
   raw by GitHub Pages at eardrama.org.
 - **§1.3 No backend for listening.** Static hosting and the catalog's
   published projection. A person's own listening stays in this browser
-  until accounts (Decision 057: signing in is optional, never at first
-  launch, and the first launch plays with zero taps).
+  unless they sign in (Decision 057: signing in is optional, never at
+  first launch, and the first launch plays with zero taps); signed in, it
+  also syncs through the Worker (§4.11).
 - **§1.4 Mobile-first.** Every media query is `min-width`. Look at 375 px
   before 1440 px.
 - **§1.5 Only essential words on screen** (AGENTS.md). A caption is a
@@ -35,6 +36,9 @@ web app follows today.
 - **§2.1 One data client.** Every read goes through `js/api.js`; views
   never call `fetch`. The data base is `<meta name="ed-data">` in
   `index.html`, resolved against the page.
+- **§2.1a The Worker is reached through the same client.** Sign-in,
+  refresh, sync, and deletion are `API.account` in `js/api.js` (§4.11);
+  `js/sync.js` and `js/account.js` never call `fetch` for the Worker.
 - **§2.2 The projection decides; the client draws.** Rights, copy
   ranking, identity, and the public-web gate are settled by
   `catalog/tools/build_web_projection.py` (contract §4). The client adds
@@ -60,7 +64,8 @@ web app follows today.
   `<section hidden>`; focus moves to the view's `<h1>` on every
   navigation after the first.
 - **§3.4 Site pages are real paths**: `/credits/`, `/privacy/`,
-  `/takedown/`, each its own static page sharing `css/styles.css`.
+  `/takedown/`, `/delete-account/`, each its own static page sharing
+  `css/styles.css`.
 
 ## §4 Surfaces
 
@@ -118,7 +123,7 @@ web app follows today.
     from fetched transcripts: it would search only what this browser
     happened to open. Until the projection carries transcript terms,
     transcript search is native only (PARITY).
-- **§4.7 Library** = Queue, History, Following, on this device. Clear
+- **§4.7 Library** = the account row (§4.11), then Queue, History, Following, on this device. Clear
   history asks first.
 - **§4.9 Radio** = Tonight in 19xx: the evening `tonight.json` publishes
   for the listener's own calendar date (contract §8), as the night's
@@ -211,8 +216,66 @@ web app follows today.
     seeking forward finishes the play; Export downloads the WAV.
   - `?mute=1` silences the device voice, the cues, and the mix.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
-  scroll and on each site page: Credits, Privacy, Take-down requests.
+  scroll and on each site page: Credits, Privacy, Take-down requests,
+  Delete an account (§4.11).
   They are never featured in the main UI (AGENTS.md "side doors").
+
+- **§4.11 The account lives in one row of Library** (Decision 057, 063;
+  LOOP-PLAN M5). The web has no Settings page, and an account is a rare
+  job, so it gets no tab, no route, and no header chrome: one row under
+  Library's heading, above the Queue, History, Following scope, and a
+  `<dialog showModal>` it opens (full screen on a phone, a 440 px sheet
+  from 768 px, like Now Playing, §5.1). Nothing about it appears at first
+  launch or anywhere else in the app.
+  - **The row, signed out**: "Sign in". While `js/config.js` holds
+    `REPLACE_WITH` placeholders the button is disabled and the caption
+    reads "Not available yet" (a refusal, §1.5); no error is drawn. After
+    the Worker ended the session: "Your sign-in ended." in the error color.
+  - **The row, signed in**: "{Apple|Google} account" (opens the sheet),
+    the status caption ("Synced 3:42 PM", "Syncing", "Offline", or "Sync
+    failed 3:42 PM" in the error color), and a Sync now icon button.
+  - **The sheet, signed out**: Sign in with Apple, then Google's own
+    button, and one caption: what this device has played is kept and
+    added to the account (the merge, below). **The sheet, signed in**:
+    Signed in with, Last sync, Last error (only when there is one), Sync
+    now, Sign out, and Delete account, which asks first with `confirm()`.
+  - **Sign-in**: Sign in with Apple JS (popup) and Google Identity
+    Services (its rendered button), each the provider's own first-party
+    script, loaded only when the sheet opens (§8.3). Each attempt sends a
+    fresh raw nonce; Apple's `state` is checked. No PKCE redirect: Google
+    requires a client secret to redeem a web client's code, and both
+    providers' scripts return the identity token the Worker verifies.
+  - **Tokens** (`API.account`): the access token is held in memory only;
+    the refresh token is kept in IndexedDB (`ed-auth`) encrypted with a
+    non-extractable AES-GCM key, so a copy of the browser profile taken
+    off the machine cannot be read. That is the most the web allows
+    without an HttpOnly cookie, which the Worker does not issue; it does
+    not protect against script on the page. Never in localStorage or a
+    URL. A refresh happens before any call with under 5 minutes left, one
+    at a time per tab and across tabs (Web Locks), because a refresh token
+    sent twice ends the sign-in. A 401 refreshes once and retries; a
+    second is surfaced. A refused refresh signs out here.
+  - **Sync** (`js/sync.js`): history (positions, finished, removal
+    markers), the queue (whole), and follows (`following: false` as the
+    marker), last write wins per row by `updated_at` (`Store.applyRemote`;
+    a tie keeps this device's), read with `?since=` the last
+    `server_time`. The first run after sign-in sends everything this
+    browser kept signed out to `/v1/sync/merge`, once. It runs on load,
+    on visibility change, back online, Sync now, and 10 s after the
+    listening changes (at most 2 min while playback keeps changing it).
+    Rows from the Worker carry no card, so the client fills them from the
+    catalog. Clearing history sends a marker for every row.
+  - **Sign out and deletion** leave this browser's listening in place.
+    Deletion forgets the tokens and the account state only after the
+    Worker answers; for an Apple account it first asks Apple for a fresh
+    authorization code so the Worker can revoke Apple's token.
+  - **`/delete-account/`** is the public path Google Play requires for
+    someone without the app: what is deleted, then sign in and Delete. It
+    is linked from the site footer only. Ear Drama keeps no email, so the
+    account is found by signing in with it.
+  - **Not on a TV** (`html.tv`): a packaged TV app runs from `file://`,
+    which the Worker refuses (docs/WORKER.md).
+  - Tests: `js/account.test.js` against a stubbed Worker.
 
 ## §5 The player
 
@@ -291,9 +354,14 @@ web app follows today.
   follows a claim a reader can open; the address is one constant in
   `js/site.js`. The designated agent's details are the owner's to fill
   after registration.
-- **§8.3 No analytics, no cookies, no third-party scripts.** The privacy
-  page states exactly what this browser keeps; change it in the same
-  change that changes what is kept.
+- **§8.3 No analytics, no cookies, no third-party scripts**, with one
+  exception: Apple's and Google's sign-in scripts (§4.11), loaded only
+  after the person opens the sign-in sheet, never on page load, and only
+  when that provider is configured. The privacy page states exactly what
+  this browser keeps; change it in the same change that changes what is
+  kept (signed in: the account state in `ed.account`, the encrypted
+  refresh token in IndexedDB `ed-auth`, per-row sync stamps in
+  `ed.stamps`).
 - **§8.4 The public-web gate is upstream.** Until the DMCA agent is
   registered, eardrama.org is built without `--include-unclaimed`; the
   client never filters.
@@ -304,8 +372,8 @@ web app follows today.
   feature; quote these rule numbers in proposals.
 - **§9.2 Not on the web yet**, each arriving with its milestone: the
   Radio tab's genre channels, transcript search (§4.6; reading a transcript
-  is on Detail, §4.5), downloads, sign-in and sync (M5), Listen Together
-  (M6).
+  is on Detail, §4.5), downloads, Listen Together (M6). Sign-in and sync
+  (M5) are built (§4.11) and wait on the owner's Worker and client ids.
 
 ## §10 Traps this codebase has already paid for
 
