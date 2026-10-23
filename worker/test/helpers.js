@@ -59,8 +59,8 @@ export function googleClaims(sub, over = {}) {
 let ipCounter = 1;
 
 /** One request through the real Worker entry point. */
-export async function call(method, path, { body, token, origin, ip, envOverride } = {}) {
-  const headers = { "cf-connecting-ip": ip || `10.0.${Math.floor(ipCounter / 250)}.${ipCounter++ % 250}` };
+export async function call(method, path, { body, token, origin, ip, envOverride, headers: extra } = {}) {
+  const headers = { "cf-connecting-ip": ip || `10.0.${Math.floor(ipCounter / 250)}.${ipCounter++ % 250}`, ...extra };
   if (body !== undefined) headers["content-type"] = "application/json";
   if (token) headers.authorization = `Bearer ${token}`;
   if (origin) headers.origin = origin;
