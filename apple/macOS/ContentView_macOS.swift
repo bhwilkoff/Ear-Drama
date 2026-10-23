@@ -104,6 +104,10 @@ struct TransportBar_macOS: View {
                 .frame(minWidth: 200)
                 SpeedMenu().fixedSize()
                 SleepButton().fixedSize()
+                ListenTogetherButton()
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .fixedSize()
                 if let item = player.item, let url = item.episode.transcriptURL {
                     Button {
                         openWindow(id: TranscriptRef.windowID,
@@ -116,6 +120,7 @@ struct TransportBar_macOS: View {
                     .accessibilityLabel(Transcript.label)
                 }
             }
+            FollowingHostNotice()
             if let message = player.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(TypeRamp.caption)
@@ -171,6 +176,7 @@ struct PlaybackCommands_macOS: Commands {
     let player: AudioPlayer
     let store: AppStore
     let downloads: DownloadStore
+    let room: SharePlayRoom
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.recordingControls) private var recording
 
@@ -178,20 +184,20 @@ struct PlaybackCommands_macOS: Commands {
         CommandMenu("Controls") {
             // Disabled while a part records, so the microphone never hears the episode.
             Button(player.isPlaying ? "Pause" : "Play") { player.togglePlayPause() }
-                .disabled(player.item == nil || recording != nil)
+                .disabled(player.item == nil || recording != nil || player.isFollowing)
             Button("Back 15 Seconds") { player.skip(by: -AudioPlayer.Skip.back) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
-                .disabled(player.item == nil)
+                .disabled(player.item == nil || player.isFollowing)
             Button("Forward 30 Seconds") { player.skip(by: AudioPlayer.Skip.forward) }
                 .keyboardShortcut(.rightArrow, modifiers: .command)
-                .disabled(player.item == nil)
+                .disabled(player.item == nil || player.isFollowing)
             Divider()
             Menu("Speed") {
                 ForEach(AudioPlayer.speeds, id: \.self) { rate in
                     Button(SpeedMenu.label(rate)) { player.speed = rate }
                 }
             }
-            .disabled(player.item == nil)
+            .disabled(player.item == nil || player.isFollowing)
             Menu("Sleep Timer") {
                 ForEach(SleepTimer.options) { option in
                     Button(option.title) { player.setSleep(option) }
@@ -201,6 +207,12 @@ struct PlaybackCommands_macOS: Commands {
                     .disabled(!player.sleep.isActive)
             }
             .disabled(player.item == nil)
+            if room.isActive {
+                Button("Leave SharePlay") { room.leave() }
+            } else {
+                Button("SharePlay") { Task { await ListenTogetherStarter.start(room) } }
+                    .disabled(player.item == nil)
+            }
             Divider()
             // Acts on the episode now playing, as the other commands do.
             if let item = player.item, downloads.records[item.episode.id] != nil {

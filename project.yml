@@ -89,9 +89,10 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         # Only the Accounts.xcconfig keys; Xcode merges the generated keys in.
         INFOPLIST_FILE: apple/Resources/EarDrama-Info.plist
-        # Sign in with Apple is OFF until the owner enables the capability on
-        # the App ID and the profiles are remade (docs/WORKER.md step 4); a
-        # signed build that names it before then fails. Then add:
+        # Sign in with Apple and Group Activities (SharePlay) are OFF until the
+        # owner enables both capabilities on the App ID and the profiles are
+        # remade (docs/WORKER.md step 4, docs/iOS-DESIGN.md §5.8); a signed
+        # build that names one before then fails. Then add:
         #   CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every
@@ -112,7 +113,7 @@ targets:
         "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvsimulator*]": ""
         # The Mac App Store requires the sandbox. Xcode derives these
         # entitlements from the settings and merges them with the file above,
-        # which holds only Sign in with Apple. Add only the scopes used.
+        # which holds Sign in with Apple and SharePlay. Add only the scopes used.
         "ENABLE_APP_SANDBOX[sdk=macosx*]": YES
         "ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]": YES
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
@@ -158,6 +159,9 @@ targets:
     supportedDestinations: [macOS]
     sources:
       - path: apple/Tests
+        excludes:
+          # Read by RoomProtocolTests from the source tree, never bundled.
+          - "Fixtures/**"
       - path: apple/Core
         excludes:
           - "**/*.md"

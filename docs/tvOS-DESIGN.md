@@ -159,6 +159,14 @@ The only shapes; a new one needs a new rule.
   sidebar footer would hold it in one place, but
   `tabViewSidebarFooter` starts at tvOS 27, above the tvOS 26 floor.)
 
+- **§5.5 Listen Together is SharePlay**, as `docs/iOS-DESIGN.md` §5.8,
+  with one difference: tvOS has no `GroupActivitySharingController`, so
+  the TV cannot place a call. The SharePlay control appears in Now
+  Playing's focus section only while a FaceTime call is live
+  (`GroupStateObserver`); outside one there is no control that cannot
+  work. A following member's transport and speed are disabled, with "The
+  host has the controls." under them.
+
 ## §6 Focus contract
 
 - **§6.1 The unbreakable rules**: dark-first, the 29 pt body floor, the
@@ -209,7 +217,7 @@ The rights line, the transcript label, and loudness by cutting are as in
   Mac after any Core change.
 - **§9.2 Planned for the TV**: Top Shelf (the person's Continue items),
   the layered parallax icon (waits on the palette and the icon, M0),
-  the Radio tab's guide, and SharePlay.
+  and the Radio tab's guide. SharePlay landed (§5.5).
 
 ## §10 Traps this codebase has already paid for
 

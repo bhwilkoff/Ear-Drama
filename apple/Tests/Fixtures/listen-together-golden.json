@@ -1,0 +1,931 @@
+{
+ "note": "Generated from worker/src/room-protocol.js by make-listen-together-golden.mjs. Do not edit by hand.",
+ "drift": {
+  "ignore_below": 0.15,
+  "seek_above": 2,
+  "nudge": 0.03
+ },
+ "member_gone_ms": 120000,
+ "max_members": 20,
+ "speeds": [
+  0.75,
+  1,
+  1.25,
+  1.5,
+  2
+ ],
+ "correction": [
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 100.1,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 1
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 100.149,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 1
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 100.151,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 0.97
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 101,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 0.97
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 99,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 1.03
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 101.99,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 0.97
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 102.01,
+    "playing": true
+   },
+   "expect": {
+    "action": "seek",
+    "position": 100,
+    "play": true
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 103,
+    "playing": true
+   },
+   "expect": {
+    "action": "seek",
+    "position": 100,
+    "play": true
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 90,
+    "playing": true
+   },
+   "expect": {
+    "action": "seek",
+    "position": 100,
+    "play": true
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 100.5,
+    "playing": false
+   },
+   "expect": {
+    "action": "play",
+    "position": 100,
+    "rate": 1
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 50,
+    "playing": false
+   },
+   "expect": {
+    "action": "seek",
+    "position": 100,
+    "play": true
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": false,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 100,
+    "playing": true
+   },
+   "expect": {
+    "action": "pause",
+    "position": 100
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": false,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 100.1,
+    "playing": false
+   },
+   "expect": {
+    "action": "none"
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": false,
+    "rate": 1,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 101,
+    "playing": false
+   },
+   "expect": {
+    "action": "seek",
+    "position": 100
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 2,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 101,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 1.94
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 0.75,
+    "updated_at": 0
+   },
+   "server_now": 0,
+   "player": {
+    "position": 99.5,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 0.7725
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1.5,
+    "updated_at": 0
+   },
+   "server_now": 4000,
+   "player": {
+    "position": 106.5,
+    "playing": true
+   },
+   "expect": {
+    "action": "rate",
+    "rate": 1.455
+   }
+  },
+  {
+   "state": {
+    "position": 100,
+    "playing": true,
+    "rate": 1.25,
+    "updated_at": 0
+   },
+   "server_now": 10000,
+   "player": {
+    "position": 100,
+    "playing": true
+   },
+   "expect": {
+    "action": "seek",
+    "position": 112.5,
+    "play": true
+   }
+  }
+ ],
+ "handoff": [
+  {
+   "members": [
+    {
+     "id": "host",
+     "joined_at": 1,
+     "seen_at": 1000000
+    },
+    {
+     "id": "b",
+     "joined_at": 3,
+     "seen_at": 1000000
+    },
+    {
+     "id": "a",
+     "joined_at": 2,
+     "seen_at": 879999
+    },
+    {
+     "id": "c",
+     "joined_at": 3,
+     "seen_at": 1000000
+    }
+   ],
+   "leaving": "host",
+   "now": 1000000,
+   "expect": "b"
+  },
+  {
+   "members": [
+    {
+     "id": "host",
+     "joined_at": 1,
+     "seen_at": 1000000
+    }
+   ],
+   "leaving": "host",
+   "now": 1000000,
+   "expect": null
+  },
+  {
+   "members": [
+    {
+     "id": "host",
+     "joined_at": 5,
+     "seen_at": 1000000
+    },
+    {
+     "id": "z",
+     "joined_at": 2,
+     "seen_at": 1000000
+    },
+    {
+     "id": "y",
+     "joined_at": 2,
+     "seen_at": 1000000
+    },
+    {
+     "id": "x",
+     "joined_at": 1,
+     "seen_at": 879999
+    }
+   ],
+   "leaving": "host",
+   "now": 1000000,
+   "expect": "y"
+  },
+  {
+   "members": [
+    {
+     "id": "B",
+     "joined_at": 1,
+     "seen_at": 1000000
+    },
+    {
+     "id": "a",
+     "joined_at": 1,
+     "seen_at": 1000000
+    }
+   ],
+   "leaving": null,
+   "now": 1000000,
+   "expect": "B"
+  },
+  {
+   "members": [
+    {
+     "id": "host",
+     "joined_at": 1,
+     "seen_at": 1000000
+    },
+    {
+     "id": "edge",
+     "joined_at": 9,
+     "seen_at": 880000
+    }
+   ],
+   "leaving": "host",
+   "now": 1000000,
+   "expect": "edge"
+  },
+  {
+   "members": [],
+   "leaving": "host",
+   "now": 1000000,
+   "expect": null
+  }
+ ],
+ "arbiter": [
+  {
+   "current": null,
+   "input": {
+    "episode_id": "suspense|1948-03-11",
+    "archive_id": "OTRR_Suspense",
+    "file": "Suspense 48-03-11.mp3"
+   },
+   "now": 7,
+   "expect": {
+    "state": {
+     "episode_id": "suspense|1948-03-11",
+     "archive_id": "OTRR_Suspense",
+     "file": "Suspense 48-03-11.mp3",
+     "position": 0,
+     "playing": false,
+     "rate": 1,
+     "generation": 1,
+     "updated_at": 7
+    }
+   }
+  },
+  {
+   "current": null,
+   "input": {
+    "episode_id": "suspense|1948-03-11"
+   },
+   "now": 7,
+   "expect": {
+    "error": "a new episode needs its archive_id and file"
+   }
+  },
+  {
+   "current": null,
+   "input": {
+    "archive_id": "x",
+    "file": "y"
+   },
+   "now": 7,
+   "expect": {
+    "error": "episode_id, archive_id and file are required"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "playing": false
+   },
+   "now": 5000,
+   "expect": {
+    "state": {
+     "episode_id": "e",
+     "archive_id": "i",
+     "file": "f",
+     "position": 15,
+     "playing": false,
+     "rate": 1,
+     "updated_at": 5000,
+     "generation": 4
+    }
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "position": 42
+   },
+   "now": 5000,
+   "expect": {
+    "state": {
+     "episode_id": "e",
+     "archive_id": "i",
+     "file": "f",
+     "position": 42,
+     "playing": true,
+     "rate": 1,
+     "updated_at": 5000,
+     "generation": 4
+    }
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "rate": 1.5
+   },
+   "now": 2000,
+   "expect": {
+    "state": {
+     "episode_id": "e",
+     "archive_id": "i",
+     "file": "f",
+     "position": 12,
+     "playing": true,
+     "rate": 1.5,
+     "updated_at": 2000,
+     "generation": 4
+    }
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "rate": 1.1
+   },
+   "now": 2000,
+   "expect": {
+    "error": "rate must be one of 0.75, 1, 1.25, 1.5, 2"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "episode_id": "e2"
+   },
+   "now": 2000,
+   "expect": {
+    "error": "a new episode needs its archive_id and file"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "episode_id": "e2",
+    "archive_id": "i2",
+    "file": "dir/f2.mp3"
+   },
+   "now": 2000,
+   "expect": {
+    "state": {
+     "episode_id": "e2",
+     "archive_id": "i2",
+     "file": "dir/f2.mp3",
+     "position": 12,
+     "playing": true,
+     "rate": 1,
+     "updated_at": 2000,
+     "generation": 4
+    }
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "episode_id": "e"
+   },
+   "now": 2000,
+   "expect": {
+    "state": {
+     "episode_id": "e",
+     "archive_id": "i",
+     "file": "f",
+     "position": 12,
+     "playing": true,
+     "rate": 1,
+     "updated_at": 2000,
+     "generation": 4
+    }
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "archive_id": "i3"
+   },
+   "now": 2000,
+   "expect": {
+    "error": "bad copy"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "archive_id": "i",
+    "file": "../x.mp3"
+   },
+   "now": 2000,
+   "expect": {
+    "error": "bad copy"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "position": -1
+   },
+   "now": 2000,
+   "expect": {
+    "error": "bad position"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "position": 604801
+   },
+   "now": 2000,
+   "expect": {
+    "error": "bad position"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "episode_id": ""
+   },
+   "now": 2000,
+   "expect": {
+    "error": "bad episode_id"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": true,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "episode_id": "a\nb",
+    "archive_id": "i",
+    "file": "f"
+   },
+   "now": 2000,
+   "expect": {
+    "error": "bad episode_id"
+   }
+  },
+  {
+   "current": {
+    "episode_id": "e",
+    "archive_id": "i",
+    "file": "f",
+    "position": 10,
+    "playing": false,
+    "rate": 1,
+    "updated_at": 0,
+    "generation": 3
+   },
+   "input": {
+    "playing": true
+   },
+   "now": 9000,
+   "expect": {
+    "state": {
+     "episode_id": "e",
+     "archive_id": "i",
+     "file": "f",
+     "position": 10,
+     "playing": true,
+     "rate": 1,
+     "updated_at": 9000,
+     "generation": 4
+    }
+   }
+  }
+ ],
+ "copies": [
+  {
+   "archive_id": "item",
+   "file": "dir/file.mp3",
+   "expect": {
+    "archive_id": "item",
+    "file": "dir/file.mp3"
+   }
+  },
+  {
+   "archive_id": "item",
+   "file": "../x.mp3",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "a/../../x",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "./x",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "a//b",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "/x",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "a\\b",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "a\nb",
+   "expect": null
+  },
+  {
+   "archive_id": "item",
+   "file": "",
+   "expect": null
+  },
+  {
+   "archive_id": "a/b",
+   "file": "x.mp3",
+   "expect": null
+  },
+  {
+   "archive_id": "",
+   "file": "x.mp3",
+   "expect": null
+  },
+  {
+   "archive_id": "OTRR_Certified-1.0",
+   "file": "Command Performance 1943-02-24 (54) Bob Hope, Bing Crosby.mp3",
+   "expect": {
+    "archive_id": "OTRR_Certified-1.0",
+    "file": "Command Performance 1943-02-24 (54) Bob Hope, Bing Crosby.mp3"
+   }
+  },
+  {
+   "archive_id": "item",
+   "file": "dir/",
+   "expect": null
+  }
+ ],
+ "clocks": [
+  {
+   "samples": [
+    {
+     "t0": 0,
+     "server_time": 5000,
+     "t1": 800
+    },
+    {
+     "t0": 1000,
+     "server_time": 5550,
+     "t1": 1100
+    },
+    {
+     "t0": 2000,
+     "server_time": 7000,
+     "t1": 2900
+    }
+   ],
+   "expect": 4500
+  },
+  {
+   "samples": [],
+   "expect": null
+  },
+  {
+   "samples": [
+    {
+     "t0": 10,
+     "server_time": 0,
+     "t1": 5
+    }
+   ],
+   "expect": null
+  },
+  {
+   "samples": [
+    {
+     "t0": 0,
+     "server_time": 100,
+     "t1": 40
+    },
+    {
+     "t0": 50,
+     "server_time": 200,
+     "t1": 90
+    }
+   ],
+   "expect": 80
+  }
+ ]
+}

@@ -37,7 +37,7 @@ struct TransportControls: View {
             .help("Forward 30 seconds")
         }
         .font(.title)
-        .disabled(player.item == nil)
+        .disabled(player.item == nil || player.isFollowing)
     }
 }
 
@@ -57,6 +57,7 @@ struct SpeedMenu: View {
         }
         .accessibilityLabel("Playback speed")
         .accessibilityValue(Self.label(player.speed))
+        .disabled(player.isFollowing)
     }
 
     static func label(_ rate: Float) -> String {
@@ -131,7 +132,7 @@ struct Scrubber: View {
         .tint(Color.brandPrimary)
         .accessibilityLabel("Position")
         .accessibilityValue(EpisodeRow.clock(player.elapsed))
-        .disabled(player.duration == nil)
+        .disabled(player.duration == nil || player.isFollowing)
     }
 }
 #endif

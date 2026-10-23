@@ -37,8 +37,12 @@ final class AudioPlayer {
             player.defaultRate = speed
             if isPlaying { player.rate = speed }
             publishNowPlaying()
+            onRoomChange()
         }
     }
+    /// Listen Together: this device follows a host, so its own transport is
+    /// refused and the room drives it (iOS-DESIGN §5.8).
+    private(set) var isFollowing = false
     var isMuted = false {
         didSet { player.isMuted = isMuted }
     }
@@ -53,6 +57,12 @@ final class AudioPlayer {
     @ObservationIgnored var localFile: (String, Recording) -> URL? = { _, _ in nil }
     /// Told of each load, pause, end, sleep, and stop; the live radio listens.
     @ObservationIgnored var onTransport: (TransportEvent) -> Void = { _ in }
+    /// Told when this player's episode, play state, position, or speed changes
+    /// by its own hand, so a SharePlay host can publish it.
+    @ObservationIgnored var onRoomChange: () -> Void = {}
+    /// A follower started something of its own (another episode, or the
+    /// headphones came out): it leaves the room rather than fight the host.
+    @ObservationIgnored var onLeaveRoom: () -> Void = {}
 
     @ObservationIgnored let history: ListeningHistory
     @ObservationIgnored private let player = AVPlayer()
@@ -97,6 +107,11 @@ final class AudioPlayer {
     /// it, with the rest of its series queued behind it. `offset` starts it
     /// there instead (a Radio slot); `queue: false` queues nothing behind it.
     func play(_ detail: EpisodeDetail, recording: Recording? = nil, from offset: Double? = nil, queue: Bool = true) {
+        if isFollowing { onLeaveRoom() }
+        load(detail, recording: recording, from: offset, queue: queue, rate: speed)
+    }
+
+    private func load(_ detail: EpisodeDetail, recording: Recording?, from offset: Double?, queue: Bool, rate: Float?) {
         guard let recording = recording ?? detail.defaultRecording else {
             errorMessage = "No recording survives for this episode."
             return
@@ -133,9 +148,10 @@ final class AudioPlayer {
             player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
         }
         player.defaultRate = speed
-        player.playImmediately(atRate: speed)
+        if let rate { player.playImmediately(atRate: rate) } else { player.pause() }
         publishNowPlaying()
         onTransport(.loaded(detail.episode.id))
+        onRoomChange()
 
         guard queue else { return }
         let episodeID = detail.episode.id
@@ -148,7 +164,7 @@ final class AudioPlayer {
     }
 
     func resume() {
-        guard item != nil else { return }
+        guard item != nil, !isFollowing else { return }
         // A listener pressing Play after the timer stopped them is awake.
         if sleep.mode == .fired { sleep.cancel() }
         player.volume = baseVolume
@@ -157,6 +173,7 @@ final class AudioPlayer {
     }
 
     func pause() {
+        guard !isFollowing else { return }
         player.pause()
         saveProgress()
         onTransport(.paused)
@@ -165,14 +182,63 @@ final class AudioPlayer {
     func togglePlayPause() { isPlaying ? pause() : resume() }
 
     func skip(by seconds: Double) {
+        guard !isFollowing else { return }
         let target = max(0, elapsed + seconds)
         seek(to: duration.map { min(target, max(0, $0 - 1)) } ?? target)
     }
 
     func seek(to seconds: Double) {
+        guard !isFollowing else { return }
+        seekExactly(to: seconds)
+        onRoomChange()
+    }
+
+    private func seekExactly(to seconds: Double) {
         elapsed = seconds
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
         publishNowPlaying()
+    }
+
+    // MARK: - Listen Together (the SharePlay room drives these; nothing else does)
+
+    /// Where this player is now, read from AVPlayer rather than the half-second tick.
+    var roomReading: PlayerReading {
+        let seconds = player.currentTime().seconds
+        return PlayerReading(position: seconds.isFinite ? seconds : elapsed, playing: player.rate != 0)
+    }
+
+    func setFollowing(_ following: Bool) {
+        guard following != isFollowing else { return }
+        isFollowing = following
+        // A drift nudge never outlives the room.
+        if !following, player.rate != 0 { player.rate = speed }
+    }
+
+    /// Loads the host's copy at the host's place, playing or paused.
+    func follow(_ detail: EpisodeDetail, recording: Recording, at position: Double, playing: Bool, rate: Float) {
+        if speed != rate { speed = rate }
+        load(detail, recording: recording, from: position, queue: false, rate: playing ? rate : nil)
+    }
+
+    /// Applies the protocol's drift correction silently.
+    func apply(_ correction: Correction, hostRate: Double) {
+        let rate = Float(hostRate)
+        if speed != rate, PlayerNumbers.speeds.contains(rate) { speed = rate }
+        switch correction {
+        case .none:
+            break
+        case .pause(let position):
+            player.pause()
+            seekExactly(to: position)
+        case .seek(let position, let play):
+            seekExactly(to: position)
+            if play { player.playImmediately(atRate: rate) }
+        case .play(let position, let playRate):
+            seekExactly(to: position)
+            player.playImmediately(atRate: Float(playRate))
+        case .rate(let nudged):
+            if player.rate != 0 { player.rate = Float(nudged) }
+        }
     }
 
     /// Stops and forgets the current item (the end of a door, or Close).
@@ -227,6 +293,7 @@ final class AudioPlayer {
         isBuffering = status == .waitingToPlayAtSpecifiedRate
         if status == .paused { saveProgress() }
         publishNowPlaying()
+        onRoomChange()
     }
 
     private func itemDidEnd() {
@@ -244,7 +311,7 @@ final class AudioPlayer {
         upNext.removeFirst()
         Task { [weak self] in
             guard let self, let detail = await self.resolveDetail(next.id) else { return }
-            self.play(detail)
+            self.load(detail, recording: nil, from: nil, queue: true, rate: self.speed)
         }
     }
 
@@ -358,7 +425,9 @@ final class AudioPlayer {
                 .flatMap(AVAudioSession.RouteChangeReason.init)
             MainActor.assumeIsolated {
                 // Headphones unplugged: pause, as every audio app is expected to.
-                if reason == .oldDeviceUnavailable { self?.pause() }
+                guard reason == .oldDeviceUnavailable, let self else { return }
+                if self.isFollowing { self.onLeaveRoom() }
+                self.pause()
             }
         })
         #endif

@@ -239,6 +239,39 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   interruption rewind (`interruptionRewindSeconds`, 3). Every Apple
   platform reads them from there, and `PlayerNumbersTests` holds them
   to the decision; a literal of one of them anywhere else is a bug.
+- **§5.8 Listen Together is SharePlay** (LOOP-PLAN M6, Decisions 065,
+  064). One control on the player, after the sleep timer: the
+  `shareplay` symbol (`ListenTogetherButton`,
+  `apple/Shared/ListenTogetherViews.swift`). In a FaceTime call it
+  starts at once; outside one it opens the system's own
+  `GroupActivitySharingController`, which picks people and places the
+  call. It never plays alone in place of starting. Once a room is live
+  the same control is a menu with Leave SharePlay; the system's SharePlay
+  UI carries who is there. A following member's transport, speed, and
+  scrubber are disabled, and the one caption is the refusal "The host has
+  the controls." The control is chrome, so it takes the tint, never the
+  live red.
+  - **The rules are the Worker's, ported, not re-derived.**
+    `RoomProtocol` (`apple/Core/ListenTogether/RoomProtocol.swift`, no
+    import) ports `worker/src/room-protocol.js`: the arbiter, the host's
+    exact copy, the clock, drift corrected by speed before seeking, and
+    handoff to the member present longest. `RoomProtocolTests` reads
+    golden cases written by the JS itself
+    (`apple/Tests/Fixtures/make-listen-together-golden.mjs`; `--check`
+    fails when stale). `SharePlayRoom` is the thin transport: the room
+    message in the Worker's field names, the host's roster, and clock
+    samples over one reliable `GroupSessionMessenger`; the host's device
+    is the room's clock. It listens for sessions from launch.
+  - **Not AVPlayer's playback coordinator**, on purpose: it lets every
+    participant drive, suspends the group for one stalled member, and
+    syncs whatever item each player holds. The protocol says the
+    opposite on all three.
+  - **Owner step**: enable Group Activities (and Sign in with Apple, §4.10)
+    on the `app.eardrama` App ID, remake the profiles, then turn on
+    `CODE_SIGN_ENTITLEMENTS` in `project.yml`. The key is already in
+    `apple/Resources/EarDrama.entitlements`; a signed build naming a
+    capability the App ID lacks fails, so it stays off until then.
+    Verifying needs two devices on two Apple IDs in a FaceTime call.
 
 ## §6 Look
 

@@ -10,6 +10,7 @@ struct EarDramaApp: App {
     @State private var player: AudioPlayer
     @State private var live: LiveRadio
     @State private var account: AccountStore
+    @State private var room: SharePlayRoom
     #if os(iOS) || os(macOS)
     @State private var downloads: DownloadStore
     @State private var plays = PlaysLibrary()
@@ -29,6 +30,12 @@ struct EarDramaApp: App {
         let live = LiveRadio(player: player)
         let account = AccountStore(history: history, follows: FollowedSeries(), queue: ListeningQueue())
         player.onTransport = { [weak live] event in live?.handle(event) }
+        let room = SharePlayRoom(player: player) { [weak catalog] id in
+            await catalog?.whenReady()
+            return await catalog?.episodeDetail(id)
+        }
+        // From launch, not from data-ready: a SharePlay hand-over cold-launches the app.
+        room.start()
         #if os(iOS) || os(macOS)
         let downloads = DownloadStore.live()
         player.localFile = { [weak downloads] id, recording in
@@ -48,6 +55,7 @@ struct EarDramaApp: App {
         _player = State(initialValue: player)
         _live = State(initialValue: live)
         _account = State(initialValue: account)
+        _room = State(initialValue: room)
     }
 
     var body: some Scene {
@@ -59,6 +67,7 @@ struct EarDramaApp: App {
                 .environment(player)
                 .environment(live)
                 .environment(account)
+                .environment(room)
                 #if os(iOS) || os(macOS)
                 .environment(downloads)
                 .environment(plays)
@@ -74,7 +83,7 @@ struct EarDramaApp: App {
         #if os(macOS)
         .commands {
             GoCommands_macOS(store: store)
-            PlaybackCommands_macOS(player: player, store: store, downloads: downloads)
+            PlaybackCommands_macOS(player: player, store: store, downloads: downloads, room: room)
             RecordingCommands_macOS()
             HelpCommands_macOS()
         }

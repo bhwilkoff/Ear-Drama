@@ -528,6 +528,7 @@ private struct NowPlaying_tvOS: View {
                 Spacer()
                 SpeedMenu()
                 SleepButton()
+                ListenTogetherButton()
                 if player.item?.episode.transcriptURL != nil {
                     Button {
                         transcriptOpen = true
@@ -537,6 +538,7 @@ private struct NowPlaying_tvOS: View {
                 }
             }
             .focusSection()
+            FollowingHostNotice()
             if let message = player.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(Color.semanticError)
