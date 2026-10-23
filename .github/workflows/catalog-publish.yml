@@ -4,6 +4,8 @@
 #            newest dated catalog Release, rebuild (build_db, enrich_db), run
 #            every catalog suite, restore the loudness cache (loudness-latest,
 #            written by catalog-loudness.yml; missing = columns left NULL),
+#            restore the transcript cache (transcripts-latest, written by
+#            catalog-transcripts.yml; missing = none searchable or shown),
 #            build the served and clean-only projections
 #            and the web projection, run the contract tests over the real
 #            artifacts, and print what this publish would change.
@@ -130,15 +132,38 @@ jobs:
             exit 1
           fi
 
+      - name: Restore the transcripts (transcripts-latest)
+        run: |
+          # catalog-transcripts.yml writes it. No Release or no cache asset means
+          # no transcript is searchable or shown this publish, not a failure; a
+          # cache that exists and cannot be fetched is an error.
+          if out=$(gh release view transcripts-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            case " $out " in
+              *" transcripts.json.gz "*) asset=transcripts.json.gz ;;
+              *" transcripts.prev.json.gz "*) asset=transcripts.prev.json.gz; echo "::warning::transcripts-latest has only transcripts.prev.json.gz" ;;
+              *) echo "::warning::transcripts-latest has no cache (assets: $out); publishing without transcripts"; exit 0 ;;
+            esac
+            bash tools/gh_retry.sh gh release download transcripts-latest -R "$REPO" -D catalog/out --clobber -p "$asset"
+            if [ "$asset" != transcripts.json.gz ]; then mv "catalog/out/$asset" catalog/out/transcripts.json.gz; fi
+            echo "transcripts: $(python3 -c "import sys;sys.path.insert(0,'catalog/tools');import fetch_transcripts as T;print(T.tally(T.load('catalog/out/transcripts.json.gz')))")"
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "::notice::no transcripts-latest Release yet: publishing without transcripts"
+          else
+            echo "::error::could not read transcripts-latest: $out"
+            exit 1
+          fi
+
       - name: Build the served, clean-only, and web projections
         working-directory: catalog
         run: |
           set -euo pipefail
           loud=()
           if [ -s out/loudness.json.gz ]; then loud=(--loudness out/loudness.json.gz); fi
+          if [ -s out/transcripts.json.gz ]; then loud+=(--transcripts out/transcripts.json.gz); fi
           python3 tools/build_projection.py --out out/publish "${loud[@]}" | tail -3
           python3 tools/build_projection.py --clean-only --out out/publish-clean "${loud[@]}" | tail -3
           echo "loudness rows: $(python3 -c "import json;print(json.load(open('out/publish/manifest.json'))['counts']['loudness'])")"
+          echo "transcripts shown / searchable: $(python3 -c "import json;c=json.load(open('out/publish/manifest.json'))['counts'];print(c['transcripts'], '/', c['transcriptsSearchable'])")"
           # The public-web gate: one flag, opened only by the repository variable.
           gate=""
           if [ "${DMCA_AGENT_REGISTERED:-}" = "true" ]; then gate="--include-unclaimed"; fi
