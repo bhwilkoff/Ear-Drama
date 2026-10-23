@@ -169,27 +169,27 @@ The clients read one published plane and re-derive nothing
 - [x] Add the stricter music bucket and the AFRS credits rule (006), and the
       version ranking (007), each with a paired test and a control seen to fail
       (ticks 6-8).
-- [ ] Write `docs/CATALOG-CONTRACT.md` (DRAFT v1 written, tick 9; settled with the publish step): series, runs and their kinds, broadcast
+- [x] Write `docs/CATALOG-CONTRACT.md` (v1 tick 9; updated with the publish step, tick 22): series, runs and their kinds, broadcast
       seasons, episodes, recordings and versions, people and credits, images
       with their evidence, transcripts, evenings, the rights line, and the
       `keep_unclaimed` publication flag. Test the documented shape against the
       real published artifact.
-- [ ] The publish step: the catalog source and SQLite to a GitHub Release
+- [x] (built, tick 22; first GitHub run waits on the Pages switch) The publish step: the catalog source and SQLite to a GitHub Release
       (`catalog_release.py`, `sqlite_publish_guard.py`, `catalog_delta.py`),
       and the web's static index and shards on Pages. Every writer additive and
       merge-guarded; a run that read nothing goes red.
-- [ ] Broadcast seasons computed in the pipeline (058), with summer
+- [x] (seasons in the projection, tick 11; summer replacements as their own run wait on a runs table) Broadcast seasons computed in the pipeline (058), with summer
       replacements as their own run.
-- [ ] Loudness: measure a 200-file sample with ffmpeg `ebur128` and confirm the
+- [x] (sample done; target -21 LUFS, Decision 061; the whole catalog still to measure in CI) Loudness: measure a 200-file sample with ffmpeg `ebur128` and confirm the
       playback target near -18 LUFS, then measure the playable catalog in CI and
       store the gain. Never re-encode or re-host.
-- [ ] Transcripts: measure the quality of archive.org's speech-to-text on a
+- [x] (gate fixed, Decision 058, tick 18) Transcripts: measure the quality of archive.org's speech-to-text on a
       sample across series and decades, set the on-screen gate from the
       measurement, and record the number in Decision 058.
 - [ ] Evenings: build Tonight in 19xx from the newspaper listings (05 §4),
       measure coverage over real evenings, set the floor from the numbers, and
       publish the evenings and the genre channels on the one clock.
-- [ ] Genres mapped from data (archive.org subjects, log genres, Wikidata) to
+- [x] (genres.py, tick 14; 69% of served episodes) Genres mapped from data (archive.org subjects, log genres, Wikidata) to
       the new hue set; never from a reading of the title.
 - [ ] The catalog workflows on a schedule, with `workflow-health.yml` and
       `retry-infra-failures.yml` on (`ci-fleet-engineering`).
@@ -217,9 +217,9 @@ and bind to it.
 - [ ] Transcripts beside the audio where they pass the gate, labeled automatic.
 - [ ] Every surface with its loading, empty, error, and offline states; every
       control labeled, and the first screen usable without sight (R21).
-- [ ] Site pages: the take-down request route, the DMCA notice, credits to
+- [x] (built, tick 22; owner placeholders) Site pages: the take-down request route, the DMCA notice, credits to
       OTRR, RadioEchoes, Goldin, and the archives, and the privacy policy.
-- [ ] Deep links: every `eardrama://` path has its `https://eardrama.org` twin.
+- [x] (web routes and 404 forwarder, tick 16; native filters wait on store records) Deep links: every `eardrama://` path has its `https://eardrama.org` twin.
 
 **Play gate:** eardrama.org, clean pools only until the DMCA agent is registered.
 
