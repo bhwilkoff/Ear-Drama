@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TheaterComedy
@@ -41,6 +42,7 @@ import com.example.appname.ui.screens.ListenScreen
 import com.example.appname.ui.screens.MiniPlayer
 import com.example.appname.ui.screens.PlaysScreen
 import com.example.appname.ui.screens.ProductionScreen
+import com.example.appname.ui.screens.RadioScreen
 import com.example.appname.ui.screens.RecordingScreen
 import com.example.appname.ui.screens.ScriptScreen
 import com.example.appname.ui.screens.PlayerSheet
@@ -51,7 +53,8 @@ import com.example.appname.ui.screens.TranscriptScreen
 
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.Listen -> Icons.Filled.Headphones
-    Tab.Series -> Icons.Filled.Radio
+    Tab.Series -> Icons.Filled.Layers
+    Tab.Radio -> Icons.Filled.Radio
     Tab.Plays -> Icons.Filled.TheaterComedy
     Tab.Search -> Icons.Filled.Search
     Tab.Library -> Icons.Filled.Bookmarks
@@ -140,6 +143,7 @@ fun AppRoot(
                         entryProvider = entryProvider {
                             entry<Route.Listen> { ListenScreen(onOpenEpisode = openEpisode) }
                             entry<Route.SeriesBrowse> { SeriesBrowseScreen(onOpenSeries = openSeries) }
+                            entry<Route.Radio> { RadioScreen(onOpenEpisode = openEpisode) }
                             entry<Route.Search> {
                                 SearchScreen(
                                     onOpenSeries = openSeries,

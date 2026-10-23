@@ -67,8 +67,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   strings for a catalog that predates the key: "No rights claim known.
   Removed on request." for an unclaimed recording, never public domain;
   a clean basis with no words shows no line (`DisplayVocabulary.rightsLine`).
+- **R9, R10, R14 on the Radio tab** (§4.10): a gap is drawn as a gap,
+  the slot on the air is read from the file's UTC instants on the one
+  clock (`RadioClock.onAir`, `radio/Tonight.kt`, golden against
+  `js/api.test.js`), and nothing plays after the evening.
 - Not built anywhere yet (data plane first): R2, R3 arc ends, R4, R6,
-  R7, R8, R9, R10.
+  R7, R8.
 
 ## §2 Data plane
 
@@ -83,15 +87,24 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §3 Navigation shell
 
-- **§3.1 Five tabs, hard set**: Listen, Series, Plays, Search, Library
-  (`Tab`, `navigation/Routes.kt`), with Material icons Headphones, Radio,
-  TheaterComedy, Search, and Bookmarks. Plays records, so a TV shows the
-  other four (`Tab.onTelevision`; PLAYS-DESIGN §2: TVs play back only). `NavigationSuiteScaffold` draws a bar, a rail, or a
-  drawer by window size. Radio joins with the evenings.
+- **§3.1 Six tabs, hard set**: Listen, Series, Radio, Plays, Search,
+  Library (`Tab`, `navigation/Routes.kt`), with Material icons
+  Headphones, Layers, Radio, TheaterComedy, Search, and Bookmarks (Radio
+  takes the radio, as on Apple; Series takes Layers, the nearest to
+  Apple's `square.stack`). Radio follows Series, as on the web and Apple.
+  Plays records, so a TV shows the other five (`Tab.onTelevision`;
+  PLAYS-DESIGN §2: TVs play back only). `NavigationSuiteScaffold` draws a
+  bar, a rail, or a drawer by window size; on a phone that is one
+  `NavigationBar` of six items, about 57 dp each at 360 dp ("Library",
+  the longest label, is about 42 dp in `labelMedium`), every label whole
+  at the default font size (measured from the type, not yet on a device). Material's guidance is three to five; the
+  six-section question is the owner's (§12, SCRATCHPAD item 12), and no
+  destination is dropped meanwhile.
 - **§3.2 One route registry.** Every destination is a case of the sealed
   `Route` (Navigation 3 `NavKey`): the five roots, `Series`, `Episode`,
   `Transcript`, and the plays' `Script`, `Production`, and `Recording`,
-  resolved in one `entryProvider` in `ui/AppRoot.kt`.
+  resolved in one `entryProvider` in `ui/AppRoot.kt`. Radio's root is
+  `Route.Radio`; a slot opens the same `Episode` route.
 - **§3.3 One back stack per tab** (`rememberNavBackStack`). System back
   and predictive back pop within the tab
   (`android:enableOnBackInvokedCallback="true"`); tapping the selected
@@ -155,6 +168,37 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   keeps, and the arrows move by line. Takes are 24-bit WAV (not FLAC:
   MediaMuxer has no FLAC container), the mix is AAC in `mix.m4a`, and
   only a finished play offers Export, through the share sheet.
+- **§4.10 Radio** is Tonight in 19xx (`RadioScreen`,
+  `ui/screens/RadioScreen.kt`), the web's §4.9 in a `LazyColumn` of
+  `ListItem`s: the evening `tonight.json` publishes for the device's own
+  calendar date (`RadioClock.localDate`, never the UTC date), fetched
+  through `ApiClient.tonight()` from the catalog's Release (contract §2,
+  §8) and resolved against the open catalog (`RadioLoad`). A header of
+  "Tonight in 1942" (`headlineSmall`, a heading), the evening's date, and
+  the network and station; then one row a slot. Each row leads with its
+  local time (`bodySmall`, tabular) and the paper's Eastern time beneath
+  it ("7:00 PM ET" alone where the two agree). The slot on the air says
+  "Now", takes the `surfaceVariant` container, and is marked selected
+  for TalkBack, repainted every 15 seconds from the file's instants. A
+  surviving slot opens its episode ("Open episode") and has a trailing
+  Play that plays it from its start (§4.8); a gap is muted, not
+  clickable: `known_series` where the file sets it, then "Not surviving"
+  (or "Not in the catalog" for a withheld slot or one the open catalog
+  lacks), and its length. The paper's printed text is never decoded, so
+  no screen can draw it. Before the evening the header says "Starts at",
+  after it "Ended at"; during it, "Listen live" (`LiveRadio`,
+  `radio/LiveListening.kt`) joins the slot on the air at the clock's
+  offset through the one `PlaybackEngine`, with nothing queued behind
+  it, and each later surviving slot starts at its own time. A pause (by
+  the person, the notification, a headset, or audio focus), another
+  episode, the sleep timer, a stop, or the last slot's end stops it, and
+  nothing autoplays after the evening (R14). While live the button reads
+  "Listening live"; pressing it pauses. No file, or no evening for
+  today, is the `EmptyMessage` "No evening is published for today."; an
+  unreachable file is "Tonight could not load." with Try again, or "You
+  are offline." with Try again when the device has no network. The
+  listing's credit is one caption link, "Schedule: {paper}, via
+  {source}", opened in the browser (text only on a TV).
 
 ## §5 The player
 
@@ -195,7 +239,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   (`ui/Haptics.kt`, `Haptic`): `selection` on a tab, season, or filter
   change, when "Your line" begins, and on the mix's Play and Pause;
   `success` when a download finishes; `error` when "Download failed",
-  the player's problem line, or a plays refusal line appears.
+  the player's problem line, a plays refusal line, or "Tonight could not
+  load." appears.
 
 ## §7 States and accessibility
 
@@ -236,7 +281,10 @@ file (`StandInNeverStoredTest`). No analytics.
   focused card wears a ring and a 1.06 scale (`tvFocusMark`), never
   color alone, and each tab's screen claims focus on entry
   (`ClaimTvFocus`): Listen its first card, Series its first filter chip,
-  Search its field, Library its first row. The session stays on so the home screen can show a
+  Radio its Listen live button during the evening (else its first slot),
+  Search its field, Library its first row. On Radio every slot is a
+  D-pad focus stop with the ring, gaps included, and a surviving slot is
+  one stop that opens Detail, where Play lives (tvOS-DESIGN §4.8). The session stays on so the home screen can show a
   Now Playing card (TV-NP). The banner is a placeholder.
 - **§9.3 Wear OS** (`android/wear/`) is Continue, saying "Waiting on the
   phone" until the phone hands its history over; minSdk 30.
@@ -265,10 +313,22 @@ file (`StandInNeverStoredTest`). No analytics.
   animation.
 - **§11.4 The media session stays on on a TV**, the inverse of Archive
   Watch, a video app that turns its session off there.
-- **§11.5 Search is the third tab**, as on the web, where Apple's
+- **§11.5 Search is the fifth tab**, after Plays, where Apple's
   `role: .search` lets the system place it last.
+- **§11.6 Listen live on a TV starts in place**, as Play does (§11.1);
+  tvOS opens Now Playing full screen (tvOS-DESIGN §4.8). Android TV's
+  player is still the phone's sheet (§12).
 
 ## §12 Open (what the code does not yet meet)
+
+- **Six destinations on the phone's bar** (§3.1): they fit at 360 dp
+  at the default font size, but Material's bar guidance is three to five
+  and the largest font scales will ellipsize the labels. The owner is
+  deciding the six-section question for every platform (SCRATCHPAD item
+  12); until then nothing is dropped.
+- **Radio has not run on a device.** Listening live, a slot starting at
+  its own time, and each event that stops it are proven in
+  `RadioTests` on the JVM, not yet heard on the Pixel or a TV.
 
 - **Plays has not run on a device.** The microphone, the route check,
   echo cancellation, the engine voices (and API 29's zero-volume

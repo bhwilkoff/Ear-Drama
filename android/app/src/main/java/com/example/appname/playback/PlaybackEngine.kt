@@ -23,6 +23,7 @@ import com.example.appname.data.CatalogRepository
 import com.example.appname.data.DownloadStore
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.UserStore
+import com.example.appname.radio.TransportEvent
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +98,9 @@ class PlaybackEngine(
             if (playerOrNull != null) applyVolume(1f)
         }
 
+    /** Every load, pause, end, sleep and stop, for listening live (radio/LiveRadio). */
+    var onTransport: (TransportEvent) -> Unit = {}
+
     private val _state = MutableStateFlow(NowPlaying())
     val state: StateFlow<NowPlaying> = _state
 
@@ -133,7 +137,7 @@ class PlaybackEngine(
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
                 saveNow()
-                applySleep(sleep.onItemEnded())
+                itemEnded(sleep.onItemEnded())
             }
             publish()
         }
@@ -141,7 +145,10 @@ class PlaybackEngine(
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                 saveNow()
-                applySleep(sleep.onItemEnded())
+                itemEnded(sleep.onItemEnded())
+            } else if (!playWhenReady) {
+                // The person, the notification, a headset, or audio focus: any pause.
+                onTransport(TransportEvent.Paused)
             }
             publish()
         }
@@ -180,13 +187,15 @@ class PlaybackEngine(
      * Plays [episode] and queues the rest of its season of the same series,
      * oldest first (R3: never past it, never into another series). [url]
      * overrides the default copy with a version the listener picked.
+     * [startMs] starts it there instead of the saved position (a Radio slot);
+     * [queue] false queues nothing behind it.
      */
-    fun play(episode: EpisodeRow, url: String? = null) {
+    fun play(episode: EpisodeRow, url: String? = null, startMs: Long? = null, queue: Boolean = true) {
         ensureSession()
         scope.launch {
-            val queue = takeQueue(episode.id, url) ?: return@launch
+            val taken = takeQueue(episode.id, url, startMs, queue) ?: return@launch
             val p = player
-            p.setMediaItems(queue.items, 0, queue.startPositionMs)
+            p.setMediaItems(taken.items, 0, taken.startPositionMs)
             applyVolume(1f)
             p.prepare()
             p.play()
@@ -203,24 +212,31 @@ class PlaybackEngine(
      * on the player; a car's play request hands it back to the media session,
      * which sets it there.
      */
-    suspend fun takeQueue(episodeId: String, url: String? = null): Queue? {
+    suspend fun takeQueue(
+        episodeId: String,
+        url: String? = null,
+        startMs: Long? = null,
+        queue: Boolean = true,
+    ): Queue? {
         val db = catalog.awaitDb() ?: return null
         val detail = db.episodeDetail(episodeId) ?: return null
         val startUrl = url ?: detail.recordings.firstOrNull()?.url ?: return null
-        val following = db.followingInSeason(detail.episode.id)
+        val following = if (queue) db.followingInSeason(detail.episode.id) else emptyList()
         val followingItems = following.mapNotNull { row ->
             val next = db.episodeDetail(row.id) ?: return@mapNotNull null
             next.recordings.firstOrNull()?.url?.let { Triple(row, it, LoudnessLevel.volume(next, it)) }
         }
-        val queue = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
+        val items = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
         saveNow()
-        episodes = queue.map { it.first }
-        levels = queue.map { it.third }
+        episodes = items.map { it.first }
+        levels = items.map { it.third }
         lastFactor = 1f
         sleep.onUserPlay()
         syncPauseAtEnd()
         _state.value = _state.value.copy(failed = false, offline = false)
-        return Queue(queue.map { (row, u, _) -> mediaItem(row, u) }, startPositionFor(detail.episode.id))
+        // The phone's Play and the car's alike, so another episode ends listening live.
+        onTransport(TransportEvent.Loaded(detail.episode.id))
+        return Queue(items.map { (row, u, _) -> mediaItem(row, u) }, startMs ?: startPositionFor(detail.episode.id))
     }
 
     private suspend fun startPositionFor(id: String): Long {
@@ -286,6 +302,12 @@ class PlaybackEngine(
         playerOrNull?.pauseAtEndOfMediaItems = sleep.pausesAtEndOfItem || !sleep.allowsAutoAdvance()
     }
 
+    /** The recording reached its end: the sleep timer's, or a plain end. */
+    private fun itemEnded(decision: SleepDecision) {
+        onTransport(if (decision.pause) TransportEvent.SleepFired else TransportEvent.Ended)
+        applySleep(decision)
+    }
+
     private fun applySleep(decision: SleepDecision) {
         if (decision.pause) {
             playerOrNull?.pause()
@@ -312,7 +334,9 @@ class PlaybackEngine(
             while (isActive) {
                 val p = playerOrNull ?: break
                 if (p.isPlaying) {
-                    applySleep(sleep.tick(SystemClock.elapsedRealtime(), remainingMediaMs(p), p.playbackParameters.speed))
+                    val decision = sleep.tick(SystemClock.elapsedRealtime(), remainingMediaMs(p), p.playbackParameters.speed)
+                    if (decision.pause) onTransport(TransportEvent.SleepFired)
+                    applySleep(decision)
                     val now = SystemClock.elapsedRealtime()
                     if (now - lastSaveAt >= SAVE_EVERY_MS) saveNow()
                 }
@@ -363,6 +387,13 @@ class PlaybackEngine(
     fun stop() {
         saveNow()
         playerOrNull?.stop()
+        publish()
+        onTransport(TransportEvent.Stopped)
+    }
+
+    /** Pauses, as the person's own pause does (Listening live's button). */
+    fun pause() {
+        playerOrNull?.pause()
         publish()
     }
 }
