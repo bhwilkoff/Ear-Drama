@@ -342,6 +342,7 @@ works elsewhere, and checks again.
 | Settings > Pages > Source: GitHub Actions (CATALOG-CONTRACT §4) | the web's data on Pages | before M1's publish |
 | Register a DMCA agent at copyright.gov ($6) | unclaimed episodes on the public web | before M2's public launch |
 | Request the CarPlay audio entitlement (developer.apple.com/contact/carplay) | the CarPlay stub, later the car | now; Apple is slow |
+| Enable Sign in with Apple and Group Activities on the `app.eardrama` App ID, remake the profiles, then uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml` (the file `apple/Resources/EarDrama.entitlements` holds both keys) | Apple sign-in (M5), SharePlay (M6) | before either play gate |
 | Create the App Store Connect record for `app.eardrama` and the seven signing secrets (`docs/CLOUD-SUBMISSION.md`) | TestFlight | before M3's gate |
 | Create the Play Console app and the upload key | Play internal | before M4's gate |
 | Apple Services ID and Google OAuth clients for Ear Drama (`docs/runbooks/google-oauth-setup.md`; Android needs clients for `app.eardrama` with Play's signing SHA-1 and the debug id; then the Worker steps in `docs/WORKER.md`, which include switching on the Sign in with Apple entitlement) | sign-in | before M5's play gate |

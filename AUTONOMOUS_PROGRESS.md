@@ -181,3 +181,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Tick 69, 2026-10-23, quiet: the owner is still on a call
 - CI green; catalog publish 39969504195 in progress. Load 12 with zoom.us running: no new build agent. SharePlay sent back for a deterministic host tie-break (two simultaneous starters both believed they were host); merge after it returns. Running: SharePlay fix, Android (On Air + rooms), web rooms, web harness fix.
+
+### Tick 70, 2026-10-23, merge: Listen Together over SharePlay
+- Merged 94565c8 (1.0.36 build 37): SharePlay on iOS, macOS, tvOS porting room-protocol.js (golden-checked; --check matches main's). Sent back once for a real bug: two simultaneous starters both became host; now the lower participant id wins on every device (test seen to fail inverted). Not rebuilt on main while the owner is on a call: main's Apple code had not changed since the branch's base (checked with git log), so the branch's macOS 106 tests and iOS/tvOS/watch builds stand. Not run on devices.
+- The first merge attempt silently did not happen (no MERGE_HEAD; a momentary git lock, as at tick 67's commit); caught because the golden check could not find its file. Lesson: confirm MERGE_HEAD after every merge command before checking the tree.
+- Needs Ben: one row for both Apple capabilities (Sign in with Apple, Group Activities) and the entitlement switch.
