@@ -82,6 +82,7 @@ CONTRACT = {
     "every episode has exactly one rank-0 copy": "SELECT COUNT(*) FROM episodes e WHERE (SELECT COUNT(*) FROM "
         "recordings r WHERE r.episode_id = e.id AND r.rank = 0) != 1",
     "no URL holds a raw space": "SELECT COUNT(*) FROM recordings WHERE url LIKE '% %'",
+    "every URL names a file, never an item folder": "SELECT COUNT(*) FROM recordings WHERE url LIKE '%/'",
     "every series row is served and counted right": "SELECT COUNT(*) FROM series s WHERE episodes != "
         "(SELECT COUNT(*) FROM episodes e WHERE e.series_key = s.key)",
     "no recording without its episode": "SELECT COUNT(*) FROM recordings r WHERE NOT EXISTS "

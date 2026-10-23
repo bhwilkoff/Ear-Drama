@@ -860,13 +860,22 @@ def main():
         key = "librivox" + str(b["id"])
         name = b.get("title")
         reg.name[key] = name
+        aid = (b.get("url_iarchive") or "").rstrip("/").rsplit("/", 1)[-1]
         for sec in sorted(b.get("sections") or [], key=lambda s: int(s.get("section_number") or 0)):
             ek = f"{key}|s{sec.get('section_number')}"
+            # MEASURED 2026-10-22: 9,249 of 14,500 sections had no file_name. 2,295 name their
+            # file in listen_url (same item); 6,954 belong to projects with no archive.org item
+            # at all. A section with no file gets no recording, so it is never served: before
+            # this, its URL was the item folder, an HTML page no player can open.
+            lu = sec.get("listen_url") or ""
+            file = sec.get("file_name") or (lu.split(f"/download/{aid}/", 1)[1] if aid and f"/download/{aid}/" in lu else "")
+            if not (aid and file):
+                stats["librivox_sections_unplayable"] += 1
             episodes[ek] = {"id": ek, "series_key": key, "series_name": name, "date": None, "date_source": None,
                             "num": int(sec.get("section_number") or 0), "title": sec.get("title"), "aka": None,
                             "decade": None, "librivox": True,
-                            "recordings": [{"archive_id": (b.get("url_iarchive") or "").rstrip("/").rsplit("/", 1)[-1],
-                                            "file": sec.get("file_name") or "", "format": "64Kbps MP3",
+                            "recordings": [] if not (aid and file) else [{"archive_id": aid,
+                                            "file": file, "format": "64Kbps MP3",
                                             "source": "librivox", "size": None,
                                             "length_s": seconds(sec.get("playtime")), "kbps": 64, "md5": None,
                                             "variant": None, "collections": ["librivoxaudio"], "is_dark": False,

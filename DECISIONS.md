@@ -78,6 +78,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 058: Listening features in 1.0: Radio evenings, Listen Together, transcripts
 - 059: Shared plays in 1.0: pass the phone and invite links, radio and stage scripts, CC0
 - 060: The look: the ring microphone, Big Shoulders and Public Sans, new genre hues
+- 061: Playback loudness targets -21 LUFS, reached by cutting
 
 ---
 
@@ -493,3 +494,33 @@ polite.
 rendered directions in light and dark on real screens, and the owner picks;
 then `design-tokens.json`, the generator, and every platform. Brand colors stay
 chrome, genre hues stay content (Decision 012).
+
+---
+
+## 061: Playback loudness targets -21 LUFS, reached by cutting
+
+*Date: 2026-10-22*
+
+Every client plays an episode at `gain = -21 - I` dB, clamped so the true peak
+stays at or below -1 dBTP (`I` and `TP` measured per default copy by
+`catalog/tools/measure_loudness.py`, EBU R128). The pipeline publishes the
+measurement; the target lives in the clients and can change without measuring
+again.
+
+**Why**: the research proposed about -18 LUFS (04 §8.2) and asked for a
+measured sample before fixing it. Measured 2026-10-22 over 183 usable episodes
+streamed from archive.org, stratified by decade and rights: median -19.0 LUFS
+(10th percentile -23.9, 90th -14.3), and every decade between -18.2 and -20.3.
+But the transfers peak near full scale (median true peak -1.3 dBTP, 90th
+percentile +1.1), so a boost almost always hits the clamp: at -18 only 54% of
+episodes can reach the target, at -20 79%, at -21 90%, at -22 95%. The web can
+only cut (Web Audio gain above 1 would clip), so a target reached by cutting
+serves every platform alike. -21 levels nine episodes in ten while staying near
+spoken-word practice.
+
+**How to apply**: one constant per client, named the same everywhere; never
+re-encode, trim silence, or limit. A boost beyond the clamp is not applied.
+Sample failures to follow up: 11 of 15 measurement errors were LibriVox
+sections whose URL was an item folder (fixed in `build_db`, tick 22), and two
+episodes measured absurdly (+9.1 and -70 LUFS), which the measurement should
+flag rather than publish.
