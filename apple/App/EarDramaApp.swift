@@ -50,7 +50,7 @@ struct EarDramaApp: App {
                 }
         }
         #if os(macOS)
-        .commands { PlaybackCommands_macOS(player: player, store: store) }
+        .commands { PlaybackCommands_macOS(player: player, store: store, downloads: downloads) }
         #endif
         #if os(iOS)
         // The system relaunches the app in the background when a download

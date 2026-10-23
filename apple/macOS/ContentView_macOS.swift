@@ -106,6 +106,7 @@ struct TransportBar_macOS: View {
 struct PlaybackCommands_macOS: Commands {
     let player: AudioPlayer
     let store: AppStore
+    let downloads: DownloadStore
 
     var body: some Commands {
         CommandMenu("Controls") {
@@ -134,6 +135,18 @@ struct PlaybackCommands_macOS: Commands {
                     .disabled(!player.sleep.isActive)
             }
             .disabled(player.item == nil)
+            Divider()
+            // Acts on the episode now playing, as the other commands do.
+            if let item = player.item, downloads.records[item.episode.id] != nil {
+                Button("Remove Download") { downloads.remove(item.episode.id) }
+            } else {
+                Button("Download Episode") {
+                    guard let item = player.item else { return }
+                    downloads.download(episodeID: item.episode.id, title: item.episode.displayTitle,
+                                       seriesName: item.episode.seriesName, url: item.recording.url)
+                }
+                .disabled(player.item == nil)
+            }
         }
         CommandGroup(after: .sidebar) {
             ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
