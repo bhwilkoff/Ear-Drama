@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete an account · Ear Drama</title>
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141619" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body class="site-page">
+  <a href="#main-content" class="skip-link">Skip to content</a>
+  <header class="site-bar">
+    <a class="site-home section-header" href="../">Ear Drama</a>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <article class="view prose" aria-labelledby="page-h">
+      <h1 id="page-h" class="view-heading">Delete an account</h1>
+
+      <p>Signing in to Ear Drama is optional. If you signed in, in the app or on eardrama.org, you can delete that account here, with or without the app.</p>
+
+      <h2 class="section-header">What is deleted</h2>
+      <ul>
+        <li>The sign-in itself: which provider you used (Apple or Google) and the opaque id it gave Ear Drama.</li>
+        <li>Your synced listening: positions, history, the queue, and the series you follow.</li>
+        <li>The name each device sent when it signed in, such as "web" or "iphone".</li>
+      </ul>
+      <p>Everything is erased from Ear Drama's server at once, and every device signed in to the account is signed out. Nothing is kept afterward. For an Apple account, Ear Drama also asks Apple to revoke its access.</p>
+      <p>Listening kept on a device stays on that device. Clear it in the app's Library, or remove the app.</p>
+
+      <h2 class="section-header">Delete it</h2>
+      <p>Ear Drama keeps no name or email address, so the account is found by signing in with it.</p>
+      <div id="delete-account"></div>
+      <noscript><p>This page needs JavaScript to sign in.</p></noscript>
+    </article>
+    <footer class="site-footer caption">
+      <a href="../">Ear Drama</a>
+      <a href="../credits/">Credits</a>
+      <a href="../privacy/">Privacy</a>
+      <a href="../takedown/">Take-down requests</a>
+      <a href="./" aria-current="page">Delete an account</a>
+    </footer>
+  </main>
+
+  <script src="../js/site.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/account.js"></script>
+</body>
+</html>

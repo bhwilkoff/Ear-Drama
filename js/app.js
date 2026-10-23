@@ -846,7 +846,8 @@
 
   function renderLibrary(r) {
     setTitle('Library');
-    const tab = ['queue', 'history', 'following'].includes(r.p.get('tab')) ? r.p.get('tab') : 'queue';
+    AccountUI.paintRow($('account-row'));
+    const tab =['queue', 'history', 'following'].includes(r.p.get('tab')) ? r.p.get('tab') : 'queue';
     document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
     const body = $('library-body');
@@ -994,6 +995,17 @@
   });
 
   Store.onChange(() => { if (np.open) paintPlayer('tick'); });
+
+  /* Sync (M5, WEB-DESIGN §4.11): rows from the Worker arrive as ids, and become the same cards
+     the Detail page queues. A Library on screen redraws when they land. */
+  Sync.start({ card: (d, seriesName) => ({ id: d.id, title: epTitle(d), series: d.series, seriesName, date: d.date,
+                                          url: d.recordings[0].url, length: d.recordings[0].length || d.length,
+                                          li: d.li, ltp: d.ltp }) });
+  Sync.onChange((kind) => {
+    if (kind !== 'changed' && kind !== 'signed-out') return;
+    const r = parseRoute();
+    if (r.view === 'library') renderLibrary(r);
+  });
 
   /* ================================================================
      BOOT
