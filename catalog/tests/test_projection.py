@@ -87,6 +87,10 @@ CONTRACT = {
         "(SELECT COUNT(*) FROM episodes e WHERE e.series_key = s.key)",
     "no recording without its episode": "SELECT COUNT(*) FROM recordings r WHERE NOT EXISTS "
         "(SELECT 1 FROM episodes e WHERE e.id = r.episode_id)",
+    "loudness comes as a pair": "SELECT COUNT(*) FROM episodes WHERE (loudness_i IS NULL) != (loudness_tp IS NULL)",
+    "no implausible loudness is published": "SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL AND "
+        "(loudness_i > -5 OR loudness_i < -45 OR loudness_tp > 6)",
+    "gain_db stays empty (the target lives in clients)": "SELECT COUNT(*) FROM episodes WHERE gain_db IS NOT NULL",
 }
 
 check("genre: OTRR's first mappable label", G.genre_of(["Horror", "Mystery", "Science Fiction"]), ("mystery", "otrrpedia"))
@@ -153,6 +157,43 @@ with tempfile.TemporaryDirectory() as tmp:
     bad.close()
     check("control: the contract catches a leaked hidden row and a raw space", sorted(violations(dst)),
           ["every episode is clean or unclaimed", "no URL holds a raw space"])
+
+# --- loudness: only a usable measurement of the default copy is published --------
+A = "https://archive.org/download/OTRR_Suspense_Singles/Suspense%2043-05-25%20Sorry%2C%20Wrong%20Number.mp3"
+GOOD = {"suspense|1943-05-25": {"url": A, "I": -19.2, "TP": -1.3, "LRA": 9.0, "measuredAt": "2026-10-22T00:00:00Z"}}
+with tempfile.TemporaryDirectory() as tmp:
+    src, dst = os.path.join(tmp, "src.sqlite"), os.path.join(tmp, "out.sqlite")
+    fixture(src)
+
+    def loud(cache):
+        m = B.build(src, dst, loudness=cache)
+        c = sqlite3.connect(dst)
+        got = {r[0]: (r[1], r[2]) for r in c.execute("SELECT id, loudness_i, loudness_tp FROM episodes")}
+        c.close()
+        return got, m["counts"]["loudness"]
+
+    got, n = loud(GOOD)
+    check("loudness: a good row fills both columns", got["suspense|1943-05-25"], (-19.2, -1.3))
+    check("loudness: an unmeasured episode stays NULL", got["suspense|1949-09-15"], (None, None))
+    check("loudness: the manifest counts filled rows", n, 1)
+    check("loudness: the contract holds with loudness filled", violations(dst), {})
+    got, n = loud({k: {**v, "suspect": "I -70 LUFS below -45", "I": -70.0} for k, v in GOOD.items()})
+    check("control: a suspect row never publishes", (got["suspense|1943-05-25"], n), ((None, None), 0))
+    got, _ = loud({k: {**v, "I": 9.1, "TP": 54.0} for k, v in GOOD.items()})
+    check("control: implausible values never publish, flagged or not", got["suspense|1943-05-25"], (None, None))
+    got, _ = loud({k: {**v, "url": A.replace("Singles", "Other")} for k, v in GOOD.items()})
+    check("control: a measurement of another copy never publishes", got["suspense|1943-05-25"], (None, None))
+    got, _ = loud({k: {"url": A, "error": "Server returned 404 Not Found", "measuredAt": "x"} for k in GOOD})
+    check("control: an error row never publishes", got["suspense|1943-05-25"], (None, None))
+    got, n = loud(None)
+    check("control: no cache, no loudness", (set(got.values()), n), ({(None, None)}, 0))
+    bad = sqlite3.connect(dst)
+    bad.execute("UPDATE episodes SET loudness_i = 9.1, loudness_tp = 54 WHERE id = 'suspense|1943-05-25'")
+    bad.execute("UPDATE episodes SET loudness_i = -20 WHERE id = 'suspense|1949-09-15'")
+    bad.commit()
+    bad.close()
+    check("control: the contract catches implausible and unpaired loudness", sorted(violations(dst)),
+          ["loudness comes as a pair", "no implausible loudness is published"])
 
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):

@@ -29,6 +29,7 @@ field here; it never computes one.
 | `data/manifest.json` | GitHub Pages | web, smart-TV web, Roku | the web projection's own manifest (counts, field names, shard math, rights lines, bytes); not the site's `/manifest.json`, which is the web app manifest |
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
 | `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw; `data/evenings/` is not built yet |
+| `loudness.json.gz` (and `loudness.prev.json.gz`, the one before) | rolling Release `loudness-latest` | the pipeline only | the loudness measurements by episode id, with errors and `suspect` rows kept as evidence; written by `.github/workflows/catalog-loudness.yml`, read by the publish step into §3.1's `loudness_i` and `loudness_tp`; never read by a client |
 | `radio-catalog.sqlite.xz`, `harvest-cache.tar.xz`, `SHA256SUMS` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included, and every harvest cache; never read by a client. The publish step restores from the newest one and does not write it; a dated Release is cut by whoever refreshes the harvests |
 
 Audio is never re-hosted. Every client plays `https://archive.org/download/{id}/{file}`
@@ -74,9 +75,23 @@ many copies survive.
 | `network`, `network_source` | TEXT | the network that aired it, and which witness says so |
 | `sponsor` | TEXT | dated sponsor, when a log gives one |
 | `has_transcript` | INTEGER | 1 when a transcript passes the gate (Decision 058) |
-| `gain_db` | REAL | playback gain toward the loudness target; NULL until measured |
+| `gain_db` | REAL | retired, always NULL: the target lives in the clients (Decision 061), so the pipeline publishes the measurement below, never a gain |
 | `added_at` | TEXT | when the episode first appeared in a published catalog |
 | `detail_json` | TEXT | Detail-only fields (credits, versions, other performances, witnesses), decoded only on Detail |
+| `loudness_i` | REAL | the default copy's integrated loudness, LUFS (EBU R128, `ffmpeg ebur128=peak=true` over the whole file); NULL until measured |
+| `loudness_tp` | REAL | the default copy's true peak, dBTP; NULL exactly when `loudness_i` is |
+
+**Playback loudness** (Decision 061). Each client holds one constant, the
+target, -21 LUFS, and plays an episode at `gain = target - loudness_i` dB,
+clamped so `loudness_tp + gain <= -1`; a boost beyond the clamp is not applied,
+and the web only cuts (a Web Audio gain above 1 would clip). NULL means
+unmeasured: play at unity gain, never a guessed value. The two columns describe
+the rank-0 copy only; a measurement of another copy is never published, so a
+new default copy reads NULL until it is measured. A measurement outside -45 to
+-5 LUFS, or with a true peak above +6 dBTP, is kept in the pipeline as
+`suspect` and never published. Coverage grows by batches
+(`.github/workflows/catalog-loudness.yml`); `manifest.json` counts the filled
+rows as `counts.loudness`.
 
 ### 3.2 `recordings`, the copies
 
