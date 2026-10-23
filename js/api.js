@@ -115,29 +115,83 @@ const API = (() => {
     return indexP;
   }
 
-  async function listen() {
+  /** The pre-listenShelves Listen index: genre shelves of series. Read only for an older catalog. */
+  async function listen(get = getJSON) {
     // A missing index means the data plane is not there (not yet published, or
     // a packaged TV app before the site is live), never "not in the catalog":
     // reported as an error, so Listen offers Try again.
-    const d = await getJSON('index/listen.json').catch(e => {
+    const d = await get('index/listen.json').catch(e => {
       throw e.kind === 'missing' ? new DataError('error', e.message) : e;
     });
-    return {
-      most: rowsOf(d.fields, d.most),
-      shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series) })),
-    };
+    return { shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series) })) };
   }
 
-  /** This Day in Radio: episodes that aired on this month and day, oldest first. */
-  async function thisDay(date = new Date()) {
-    const md = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const SHELF_LIMIT = 20;
+  const FULL_DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+  /** Contract §5.1 `onThisDay`: a full date on this month and day, any year, recommendAnd,
+      oldest first, ties by id. Held to catalog/tests/golden/on_this_day.json. */
+  function onThisDay(rows, month, day, limit = SHELF_LIMIT) {
+    const md = `-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return rows.filter(e => !e.noRecommend && typeof e.date === 'string' && FULL_DATE.test(e.date) && e.date.endsWith(md))
+      .sort((a, b) => byCodePoint(a.date, b.date) || byCodePoint(a.id, b.id))
+      .slice(0, limit);
+  }
+
+  /** This Day in Radio: the day file for the person's own month and day, through the contract's query. */
+  async function thisDay(date = new Date(), get = getJSON) {
+    const month = date.getMonth() + 1, day = date.getDate();
+    const md = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     try {
-      const d = await getJSON(`index/days/${md}.json`);
-      return rowsOf(d.fields, d.rows);
+      const d = await get(`index/days/${md}.json`);
+      return onThisDay(rowsOf(d.fields, d.rows), month, day);
     } catch (e) {
       if (e.kind === 'missing') return [];
       throw e;
     }
+  }
+
+  /** Episode rows for published ids, in the given order; an id not served is dropped. */
+  async function episodesByIds(ids, get = getJSON) {
+    const [m, index] = await Promise.all([get('manifest.json'), get('index/series.json')]);
+    const names = new Map(rowsOf(index.fields, index.rows).map(r => [r.key, r.name]));
+    const recs = await Promise.all(ids.map(async id => {
+      const shard = await get(`episodes/${shardOf(id, m.shard.mask)}.json`).catch(e => {
+        if (e.kind === 'missing') return {};
+        throw e;
+      });
+      const rec = shard[id];
+      if (!rec) return null;
+      const d = rowsOf(m.fields.detail, [rec])[0];
+      const first = rowsOf(m.fields.recording, d.recordings || [])[0];
+      return { id, date: d.date, title: d.title, series: d.series, seriesName: names.get(d.series) || null,
+        length: d.length, url: first ? first.url : null, li: d.li, ltp: d.ltp };
+    }));
+    return recs.filter(Boolean);
+  }
+
+  /**
+   * Listen's shelves (contract §5.1): the manifest's `listenShelves`, in order. onThisDay runs
+   * on the person's own date; genreFirsts draws its published ids. An unknown rule is ignored and
+   * an empty shelf dropped. A catalog without the key falls back to index/listen.json's genre
+   * shelves of series (`rule: 'genre'`).
+   */
+  async function listenShelves(date = new Date(), get = getJSON) {
+    const m = await get('manifest.json');
+    if (!Array.isArray(m.listenShelves)) {
+      const [day, legacy] = await Promise.all([thisDay(date, get), listen(get)]);
+      return [{ rule: 'onThisDay', rows: day }, ...legacy.shelves.map(s => ({ rule: 'genre', genre: s.genre, series: s.series }))]
+        .filter(s => (s.rows || s.series).length);
+    }
+    const out = await Promise.all(m.listenShelves.map(async s => {
+      if (s && s.rule === 'onThisDay') return { rule: 'onThisDay', rows: await thisDay(date, get) };
+      if (s && s.rule === 'genreFirsts' && Array.isArray(s.episodes)) {
+        return { rule: 'genreFirsts', genre: s.genre, rows: await episodesByIds(s.episodes, get) };
+      }
+      return null;
+    }));
+    return out.filter(s => s && s.rows.length);
   }
 
   async function seriesPage(key) {
@@ -662,7 +716,7 @@ const API = (() => {
   return {
     rooms,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
-    manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
+    manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
     transcript, transcriptLines, transcriptLabel,
     localDate, tonight, onAir, castableScripts, account,
