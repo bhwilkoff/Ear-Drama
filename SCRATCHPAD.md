@@ -24,7 +24,8 @@
   3. **Play the listening apps locally** (1.0.13; built, not yet played): web
      `ln -s catalog/out/web data && python3 -m http.server 8080`; Mac, run
      EarDrama.xcodeproj; Android `./gradlew :app:installDebug` with the Pixel
-     awake. Broken would be: playback that never starts, a sleep timer that
+     awake. First check the iPhone app still opens normally (the CarPlay stub
+     changed how its scenes start). Broken would be: playback that never starts, a sleep timer that
      starts the next episode, "public domain" anywhere.
   4. **Tonight in 19xx** (`docs/research/evenings.md`): the floor, a quarter of
      prime time surviving (61% of evenings have nothing)? May a gap show the

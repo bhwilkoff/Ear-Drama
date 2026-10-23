@@ -146,6 +146,23 @@ a future session doesn't "harmonize" a rejection into a port (see
 
 ---
 
+## 3c. Stubs (Decision 056)
+
+A stub builds in CI and opens to its first screen; it grows from the core's
+shared code only after the core five are complete.
+
+| Platform | State | First screen | Notes |
+|---|---|---|---|
+| CarPlay | 🚧 builds | Continue, Radio, Series, Downloads tabs (R17); Continue plays | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
+| watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
+| Android Auto | ⏳ | | M9 |
+| Android TV / Fire TV | ⏳ | | M9 |
+| Wear OS | ⏳ | | M9 |
+| webOS / Tizen | ⏳ | | M9, in progress |
+| Roku | ⏳ | | M9, in progress |
+
+---
+
 ## 4. Accounts (Decision 057)
 
 Signing in is optional: every listening verb works signed out. It syncs

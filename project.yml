@@ -17,6 +17,10 @@ options:
     iOS: "18.0"
     tvOS: "26.0"
     macOS: "26.0"
+    # watchOS 11 is the release an iPhone on iOS 18 (the iOS floor) pairs
+    # with, and it runs on the same watches watchOS 26 does (Series 6 and
+    # later, SE 2nd generation, every Ultra). See apple/README.md.
+    watchOS: "11.0"
   groupSortPosition: top
 # MARKETING_VERSION / CURRENT_PROJECT_VERSION come ONLY from this file
 # (Decision 003). Never set them on the target; a target copy shadows it.
@@ -49,6 +53,8 @@ targets:
       - path: apple
         excludes:
           - "Tests/**"
+          # The Apple Watch app is its own target (EarDramaWatch, below).
+          - "watchOS/**"
           # The folder READMEs are notes for people, not app resources.
           - "**/*.md"
           - "Resources/PrivacyInfo.xcprivacy"
@@ -136,3 +142,28 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.CoreTests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
+
+  # The Apple Watch stub (Decision 056): builds and launches, PARITY column
+  # marked pending, grown out only after the core five. Core joins the watch
+  # file by file, only where it compiles on watchOS, and nothing that fetches
+  # the catalog (no CatalogRefreshService, no seed). Not yet embedded in the
+  # phone app: that comes with the build-out, when it has something to show.
+  EarDramaWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: apple/watchOS
+        excludes:
+          - "**/*.md"
+      # Design.swift is left out: UIColor(dynamicProvider:) does not exist on
+      # watchOS, and the file is generated (tools/design_tokens.mjs).
+      - path: apple/Core/Player/ListeningHistory.swift
+    scheme: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.watchkitapp
+        PRODUCT_NAME: EarDramaWatch
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: app.eardrama
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO

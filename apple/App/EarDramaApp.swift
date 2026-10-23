@@ -4,16 +4,20 @@ import SwiftUI
 struct EarDramaApp: App {
     // Owned here (not created inline in `body`) so a re-evaluated Scene body
     // never swaps in fresh stores and drops navigation or playback state.
-    @State private var store = AppStore()
+    @State private var store: AppStore
     @State private var catalog: CatalogStore
     @State private var history: ListeningHistory
     @State private var player: AudioPlayer
     #if os(iOS) || os(macOS)
     @State private var downloads: DownloadStore
     #endif
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate_iOS.self) private var appDelegate
+    #endif
 
     init() {
         URLCache.shared = URLCache(memoryCapacity: 20_000_000, diskCapacity: 100_000_000)
+        let store = AppStore()
         let catalog = CatalogStore()
         let history = ListeningHistory()
         let player = AudioPlayer(history: history)
@@ -26,6 +30,13 @@ struct EarDramaApp: App {
         }
         _downloads = State(initialValue: downloads)
         #endif
+        #if os(iOS)
+        CarPlayServices.catalog = catalog
+        CarPlayServices.player = player
+        CarPlayServices.history = history
+        CarPlayServices.store = store
+        #endif
+        _store = State(initialValue: store)
         _catalog = State(initialValue: catalog)
         _history = State(initialValue: history)
         _player = State(initialValue: player)
