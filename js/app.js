@@ -285,44 +285,50 @@
     const follows = Store.follows();
     if (follows.length) body.append(shelf('Following', follows, 'follow'));
 
+    // The catalog's listenShelves, in its order (contract §5.1).
     const today = new Date();
-    const dayBox = el('div');
-    body.append(el('section', { class: 'block', 'aria-labelledby': 'day-h' },
-      el('div', { class: 'block-head' },
-        el('h2', { class: 'section-header', id: 'day-h' }, 'This day in radio'),
-        el('span', { class: 'caption' }, monthDay.format(today))),
-      dayBox));
-    load(dayBox, () => API.thisDay(today), (rows) => {
-      if (!rows.length) { dayBox.append(stateBox('empty', { text: 'Nothing in the catalog aired on this date.' })); return; }
-      const first = 6;
-      const list = episodeList(rows.slice(0, first), { showSeries: true });
-      dayBox.append(list);
-      if (rows.length > first) {
-        const more = el('button', { type: 'button', class: 'btn btn-ghost' }, `Show all ${num.format(rows.length)}`);
-        more.addEventListener('click', () => {
-          rows.slice(first).forEach(e => list.append(episodeRow(e, { showSeries: true })));
-          paintProgress(list);
-          more.remove();
-        });
-        dayBox.append(more);
-      }
-    });
-
     const shelvesBox = el('div');
     body.append(shelvesBox);
     load(shelvesBox, async () => {
-      const [d] = await Promise.all([API.listen(), API.manifest().then(m => { manifest = m; })]);
+      const [d] = await Promise.all([API.listenShelves(today), API.manifest().then(m => { manifest = m; })]);
       return d;
-    }, (d) => {
-      if (!d.shelves.length && !d.most.length) {
+    }, (shelves) => {
+      if (!shelves.length) {
         shelvesBox.append(stateBox('empty', { text: 'Nothing in the catalog yet.' }));
         return;
       }
-      if (d.most.length) shelvesBox.append(shelf('Most episodes', d.most, 'most'));
-      d.shelves.forEach((s, i) => {
-        shelvesBox.append(shelf(manifest.genreNames[s.genre] || s.genre, s.series, `genre-${i}`));
+      shelves.forEach((s, i) => {
+        if (s.rule === 'onThisDay') {
+          shelvesBox.append(episodeShelf('This day in radio', s.rows, 'day', monthDay.format(today)));
+        } else if (s.rule === 'genreFirsts') {
+          shelvesBox.append(episodeShelf(genreLabel(s.genre), s.rows, `genre-${i}`));
+        } else {
+          shelvesBox.append(shelf(genreLabel(s.genre), s.series, `genre-${i}`));
+        }
       });
     });
+  }
+
+  function genreLabel(g) { return (manifest && manifest.genreNames && manifest.genreNames[g]) || g; }
+
+  /** An episode shelf: the first six rows, then the rest on request. */
+  function episodeShelf(title, rows, idBase, aside) {
+    const box = el('div');
+    const first = 6;
+    const list = episodeList(rows.slice(0, first), { showSeries: true });
+    box.append(list);
+    if (rows.length > first) {
+      const more = el('button', { type: 'button', class: 'btn btn-ghost' }, `Show all ${num.format(rows.length)}`);
+      more.addEventListener('click', () => {
+        rows.slice(first).forEach(e => list.append(episodeRow(e, { showSeries: true })));
+        paintProgress(list);
+        more.remove();
+      });
+      box.append(more);
+    }
+    const h = el('h2', { class: 'section-header', id: `${idBase}-h` }, title);
+    return el('section', { class: 'block', 'aria-labelledby': `${idBase}-h` },
+      aside ? el('div', { class: 'block-head' }, h, el('span', { class: 'caption' }, aside)) : h, box);
   }
 
   /* ================================================================

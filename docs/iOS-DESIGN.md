@@ -53,7 +53,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **R11** rows and cards are typographic; no art is drawn or invented.
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
-- **R13** shelves come from `catalog.listenShelves()`, rules over data.
+- **R13** shelves come from `catalog.listenShelves()`, which draws the
+  catalog's `meta.listenShelves` in its order (contract §5.1; the same
+  list and titles on every platform): "This day in radio", then each
+  genre by its `GenreDisplay` name, ids as published. An older catalog
+  without the key falls back to the rules run on the device.
 - **R15 and Decision 061: loudness by cutting.** `LoudnessLevel.volume`
   (`apple/Core/Player/LoudnessLevel.swift`) sets AVPlayer's volume to
   `-21 - I` dB, clamped so the true peak stays at or below -1 dBTP and
@@ -119,7 +123,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 ## §4 Surfaces
 
 - **§4.1 Listen** is a `List`: Continue listening (the ten most recent
-  in progress), then the catalog's shelves by rule. A section draws only
+  in progress), then the catalog's published shelves in order (R13). A section draws only
   with rows. Each episode row's context menu offers Play.
 - **§4.2 Series browse** is a `List` of series with a toolbar Filter
   `Menu` of three pickers, Genre, Network, and Decade, plus Clear

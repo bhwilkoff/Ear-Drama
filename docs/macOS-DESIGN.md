@@ -37,7 +37,8 @@ Mac uses the same Core, so the same code holds them:
 
 - **R1** the date leads every episode row, oldest first; **R5** Versions
   on Detail; **R11** typographic rows; **R12** brand is chrome only;
-  **R13** shelves by rule from the catalog.
+  **R13** shelves are the catalog's `meta.listenShelves`, in order
+  (`docs/iOS-DESIGN.md` R13).
 - **R15 and Decision 061**: `LoudnessLevel.volume` cuts to -21 LUFS,
   peak-clamped, never boosted, default copy only.
 - **R16**: "Automatic transcript" is the label on the menu item, the

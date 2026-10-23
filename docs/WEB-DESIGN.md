@@ -77,9 +77,14 @@ web app follows today.
   (Continue, Radio, Series, Downloads) without a new one (R17). Depth is
   at most two from a tab: tab, series, episode; Plays, cast sheet, part;
   a season or a Library section is a segmented scope, never a push.
-- **§4.2 Listen** = Continue listening (this device), Following, This day
-  in radio, then shelves by rule from `index/listen.json`. Each section
-  draws only when it has rows.
+- **§4.2 Listen** = Continue listening (this device), Following, then the
+  manifest's `listenShelves` in its order (contract §5.1; the same list on
+  every platform): `onThisDay` is "This day in radio", the contract's query
+  on the person's own date; each `genreFirsts` is an episode list headed
+  by the published genre name, its ids drawn in order. Each section draws
+  only when it has rows. A catalog without the key falls back to
+  `index/listen.json`'s genre shelves of series. No "Most episodes" shelf
+  (HUMAN-SHAPED.md B, pending the owner).
 - **§4.3 Series browse** = genre, decade, and network selects plus sort.
   Each facet's counts are computed against the other facets' selection,
   so no offered choice yields zero rows (§10.5). The real count is shown.

@@ -79,6 +79,7 @@ object CatalogFixture {
         withTranscript: Boolean = true,
         rightsLines: String? = null,
         withSponsor: Boolean = false,
+        listenShelves: String? = null,
     ): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
@@ -88,6 +89,10 @@ object CatalogFixture {
             c.execSQL("INSERT INTO meta VALUES ('schemaVersion', '1')")
             rightsLines?.let { json ->
                 val st = c.prepare("INSERT INTO meta VALUES ('rightsLines', ?)")
+                try { st.bindText(1, json); st.step() } finally { st.close() }
+            }
+            listenShelves?.let { json ->
+                val st = c.prepare("INSERT INTO meta VALUES ('listenShelves', ?)")
                 try { st.bindText(1, json); st.step() } finally { st.close() }
             }
             c.execSQL(
@@ -163,6 +168,36 @@ object CatalogFixture {
             if (!withLoudness) {
                 c.execSQL("ALTER TABLE episodes DROP COLUMN loudness_i")
                 c.execSQL("ALTER TABLE episodes DROP COLUMN loudness_tp")
+            }
+        } finally {
+            c.close()
+        }
+        return file
+    }
+
+    /** A catalog of bare [rows] (`id, series_key, air_date, no_recommend`), one series per key, for golden cases. */
+    fun buildRows(dir: File, rows: List<List<String?>>): File {
+        val file = File(dir, "rows.sqlite")
+        file.delete()
+        val c = BundledSQLiteDriver().open(file.path)
+        try {
+            SCHEMA.forEach { c.execSQL(it) }
+            c.execSQL("INSERT INTO meta VALUES ('schemaVersion', '1')")
+            rows.map { it[1]!! }.distinct().forEach { key ->
+                c.execSQL("INSERT INTO series (key, name, episodes) VALUES ('$key', '$key', 1)")
+            }
+            rows.forEach { r ->
+                val st = c.prepare(
+                    "INSERT INTO episodes (id, series_key, air_date, rights, no_recommend) VALUES (?, ?, ?, 'clean', ?)",
+                )
+                try {
+                    st.bindText(1, r[0]!!); st.bindText(2, r[1]!!)
+                    r[2]?.let { st.bindText(3, it) } ?: st.bindNull(3)
+                    r[3]?.let { st.bindText(4, it) } ?: st.bindNull(4)
+                    st.step()
+                } finally {
+                    st.close()
+                }
             }
         } finally {
             c.close()

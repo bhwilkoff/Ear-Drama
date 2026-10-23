@@ -98,6 +98,88 @@ test('API exposes the data verbs', () => {
   }
 });
 
+// --- Listen shelves (contract §5.1) ---
+
+test('onThisDay returns catalog/tests/golden/on_this_day.json (Feb 29, partial dates, recommendAnd)', () => {
+  if (typeof require === 'undefined') return;
+  const g = JSON.parse(require('node:fs').readFileSync(__dirname + '/../catalog/tests/golden/on_this_day.json', 'utf-8'));
+  const rows = g.episodes.map(([id, , date, , noRecommend]) => ({ id, date, noRecommend }));
+  for (const c of g.cases) {
+    const got = API.onThisDay(rows, c.month, c.day, c.limit).map(e => e.id);
+    assertEq(JSON.stringify(got), JSON.stringify(c.want), `${c.month}/${c.day} limit ${c.limit}`);
+  }
+  // Control: the flagged 1939 row is on May 25, so the case above drops it by recommendAnd, not by date.
+  const cleared = rows.map(r => ({ ...r, noRecommend: null }));
+  assertEq(API.onThisDay(cleared, 5, 25)[0].id, 'n|1939-05-25');
+});
+
+/** A data plane in memory: `get` answers paths like getJSON, and records what was read. */
+function plane(manifestExtra, files = {}) {
+  const DETAIL = ['series', 'title', 'date', 'length', 'recordings', 'li', 'ltp'];
+  const detail = (series, title, date) => [series, title, date, 1770, [[`https://archive.org/download/x/${title}.mp3`]], null, null];
+  const eps = {
+    'comedy1|1950-01-01': detail('comedy1', 'C1', '1950-01-01'),
+    'comedy2|1948-01-01': detail('comedy2', 'C2', '1948-01-01'),
+    'drama1|1940-01-01': detail('drama1', 'D1', '1940-01-01'),
+  };
+  const data = {
+    'manifest.json': { shard: { mask: 0xfff }, fields: { detail: DETAIL, recording: ['url'] }, genreNames: {}, ...manifestExtra },
+    'index/series.json': { fields: ['key', 'name'], rows: [['comedy1', 'Comedy One'], ['comedy2', 'Comedy Two'], ['drama1', 'Drama One']] },
+    'index/days/05-25.json': { fields: ['id', 'date', 'title', 'series', 'length', 'url', 'seriesName'], rows: [
+      ['b|1950-05-25', '1950-05-25', 'B', 'b', 1, 'u', 'Bee'], ['a|1943-05-25', '1943-05-25', 'A', 'a', 1, 'u', 'Ay']] },
+    ...files,
+  };
+  for (const [id, rec] of Object.entries(eps)) {
+    const p = `episodes/${API.shardOf(id)}.json`;
+    data[p] = { ...(data[p] || {}), [id]: rec };
+  }
+  const read = [];
+  const get = async (p) => {
+    read.push(p);
+    if (!(p in data)) throw new API.DataError('missing', p);
+    return data[p];
+  };
+  return { get, read };
+}
+
+test('listenShelves follows the published order and draws each id in order', async () => {
+  const { get, read } = plane({ listenShelves: [
+    { rule: 'genreFirsts', genre: 'comedy', episodes: ['comedy2|1948-01-01', 'comedy1|1950-01-01'] },
+    { rule: 'onThisDay' },
+    { rule: 'genreFirsts', genre: 'drama', episodes: ['drama1|1940-01-01', 'gone|1900-01-01'] },
+    { rule: 'mostEpisodes' },
+    { rule: 'genreFirsts', genre: 'western', episodes: [] },
+  ] });
+  const got = await API.listenShelves(new Date(2026, 4, 25), get);
+  assertEq(got.map(s => s.genre ? `${s.rule}:${s.genre}` : s.rule).join(','), 'genreFirsts:comedy,onThisDay,genreFirsts:drama',
+    'published order; an unknown rule ignored; an empty shelf dropped');
+  assertEq(got[0].rows.map(e => e.id).join(','), 'comedy2|1948-01-01,comedy1|1950-01-01', 'ids in published order, not date order');
+  assertEq(got[0].rows[0].seriesName, 'Comedy Two');
+  assertEq(got[0].rows[0].url, 'https://archive.org/download/x/C2.mp3', 'playable from its first recording');
+  assertEq(got[1].rows.map(e => e.id).join(','), 'a|1943-05-25,b|1950-05-25', "the person's own date, oldest first");
+  assertEq(got[2].rows.map(e => e.id).join(','), 'drama1|1940-01-01', 'an id not served is dropped');
+  assert(!read.includes('index/listen.json'), 'the old index is not read when the key is published');
+});
+
+test('listenShelves runs onThisDay on 29 February only on 29 February', async () => {
+  const leap = { 'index/days/02-29.json': { fields: ['id', 'date'], rows: [['l|1948-02-29', '1948-02-29']] } };
+  const { get } = plane({ listenShelves: [{ rule: 'onThisDay' }] }, leap);
+  assertEq((await API.listenShelves(new Date(2028, 1, 29), get))[0].rows[0].id, 'l|1948-02-29');
+  assertEq((await API.listenShelves(new Date(2027, 1, 28), get)).length, 0, 'control: the 28th draws nothing');
+});
+
+test('listenShelves falls back to index/listen.json when the catalog predates the key', async () => {
+  const legacy = { 'index/listen.json': { fields: ['key', 'name', 'genre'],
+    most: [['drama1', 'Drama One', 'drama']],
+    shelves: [{ rule: 'genre', genre: 'drama', series: [['drama1', 'Drama One', 'drama']] },
+              { rule: 'genre', genre: 'news', series: [] }] } };
+  const { get, read } = plane({}, legacy);
+  const got = await API.listenShelves(new Date(2026, 4, 25), get);
+  assertEq(got.map(s => `${s.rule}:${s.genre || ''}`).join(','), 'onThisDay:,genre:drama', 'nothing goes blank; no Most episodes');
+  assertEq(got[1].series[0].name, 'Drama One');
+  assert(read.includes('index/listen.json'), 'control: the fallback read the old index');
+});
+
 test('shareTarget is exposed as an async function', () => {
   assert(typeof shareTarget === 'function', 'shareTarget should be a function');
   assert(shareTarget.constructor.name === 'AsyncFunction', 'shareTarget should be async');

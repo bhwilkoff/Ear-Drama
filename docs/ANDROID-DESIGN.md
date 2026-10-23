@@ -48,8 +48,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **R11** cards are typographic `OutlinedCard`s (date, title, series);
   no node, card, or notification carries invented art.
 - **R12** brand colors are chrome; dynamic color is off by default.
-- **R13** shelves are rules over data: This day in radio and one shelf
-  per genre the catalog names.
+- **R13** shelves are the catalog's `meta.listenShelves`, in order
+  (contract §5.1; the same list and titles on every platform): This day
+  in radio on the person's own date, then each published genre's ids as
+  given. An older catalog without the key falls back to the rules run on
+  the device (This day in radio, one shelf per genre the catalog names).
 - **R15 and Decision 061: loudness by cutting.** `LoudnessLevel.volume`
   (`playback/LoudnessLevel.kt`) gives each queued item `-21 - I` dB,
   peak-clamped at -1 dBTP and never above unity, for the default copy
@@ -145,8 +148,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 ## §4 Surfaces
 
 - **§4.1 Listen** is a `LazyColumn` of shelves, each a header over a
-  `LazyRow` of 220 dp cards: Continue listening, This day in radio, then
-  the genre shelves. A shelf with no rows is not drawn.
+  `LazyRow` of 220 dp cards: Continue listening, then the published
+  shelves in order (R13). A shelf with no rows is not drawn.
 - **§4.2 Series browse** is one row of `FilterChip`s over a paged list
   of series (200 at a time), each one line of years and count: the sort
   and the network as dropdown chips (a `DropdownMenu`), then the decades,

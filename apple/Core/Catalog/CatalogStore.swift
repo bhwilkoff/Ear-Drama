@@ -124,15 +124,11 @@ final class CatalogStore {
         await run { $0.episodes(ids: ids) } ?? []
     }
 
-    /// The Listen tab: "On this day", then a shelf per genre. Empty shelves
-    /// are dropped, never shown as a heading over nothing.
+    /// The Listen tab: the catalog's published shelves on the person's own
+    /// calendar date (`CatalogDatabase.listenShelves`).
     func listenShelves(today: Date = Date(), calendar: Calendar = .current) async -> [Shelf] {
         let parts = calendar.dateComponents([.month, .day], from: today)
         let month = parts.month ?? 1, day = parts.day ?? 1
-        return await run { db in
-            var rules: [ShelfRule] = [.onThisDay(month: month, day: day)]
-            rules += db.genres().map { ShelfRule.genreFirsts($0) }
-            return rules.map { Shelf(rule: $0, episodes: db.shelf($0)) }.filter { !$0.episodes.isEmpty }
-        } ?? []
+        return await run { $0.listenShelves(month: month, day: day) } ?? []
     }
 }
