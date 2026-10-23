@@ -16,6 +16,7 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -37,14 +38,31 @@ def compact_line(line):
     return out
 
 
+COLLECTION = re.compile(r"\b(Works|Volume|Vol\.|Collection)\b", re.I)
+SMALL = {"a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or", "the", "to"}
+
+
+def display_title(record, parsed):
+    """The record's title, unless the record names a collected volume and the text prints
+    the play's own title: then that title, cased for a list, and the volume kept beside it."""
+    printed = parsed.get("printed_title")
+    if not (COLLECTION.search(record["title"]) and printed):
+        return record["title"], None
+    words = printed.lower().split()
+    cased = " ".join(w if i and w in SMALL else w[:1].upper() + w[1:] for i, w in enumerate(words))
+    return cased, record["title"]
+
+
 def script_entry(record, rights, parsed):
     lines = [compact_line(l) for l in parsed["lines"]]
     body = json.dumps(lines, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    title, collection = display_title(record, parsed)
     return {
         "id": record["id"],
         "revision": hashlib.sha256(body.encode()).hexdigest()[:12],
         "kind": record["kind"],
-        "title": record["title"],
+        "title": title,
+        **({"collection": collection} if collection else {}),
         "authors": [{"name": a.get("name"), "born": a.get("born"), "died": a.get("died")}
                     for a in record.get("authors") or []],
         "source": {"name": record["source"]["name"], "url": record["source"]["url"]},

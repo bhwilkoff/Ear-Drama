@@ -6,6 +6,8 @@ keeps the parser's exact slices.
 Broken controls, 2026-10-22, each run against a mutated copy of build_castable_scripts.py:
     offered() ignores the parse   3/4     offered() ignores the rights   3/4
     speech keeps no parts         3/4
+2026-10-23: display_title ignores the volume 5/6; printed_title returns None 5/6;
+    any printed title replaces the record's 5/6
 """
 import json
 import os
@@ -72,6 +74,21 @@ def lines_keep_the_exact_slices_and_the_evidence():
     again = B.script_entry(RECORD, CASTABLE, parsed)
     assert again["revision"] == entry["revision"], "the revision is a hash of the lines"
     json.dumps(entry)
+
+
+@case
+def a_collected_volume_shows_the_play_it_prints():
+    parsed = P.parse(STAGE, "stage")
+    assert parsed["printed_title"] == "TRIFLES", parsed["printed_title"]
+    volume = dict(RECORD, title="The Works of Susan Glaspell, Vol. 2")
+    entry = B.script_entry(volume, CASTABLE, parsed)
+    assert entry["title"] == "Trifles" and entry["collection"] == volume["title"], entry["title"]
+
+
+@case
+def a_play_record_keeps_its_own_title():
+    entry = B.script_entry(dict(RECORD, title="Trifles: A Play"), CASTABLE, P.parse(STAGE, "stage"))
+    assert entry["title"] == "Trifles: A Play" and "collection" not in entry, entry["title"]
 
 
 def main():

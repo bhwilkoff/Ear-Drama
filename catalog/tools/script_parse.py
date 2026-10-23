@@ -521,7 +521,24 @@ def parse(raw, kind):
             "castable_roles": len(castable), "lines": lines, "unclassified": unclassified,
             "unclassified_share": round(share, 3), "aliases": aliases, "words": len(text.split()),
             "set_aside": {k: sum(1 for i in items if i["kind"] == k) for k in ("front", "back")},
-            "set_aside_share": round(aside_share, 3)}
+            "set_aside_share": round(aside_share, 3), "printed_title": printed_title(text, lines)}
+
+
+def printed_title(text, lines):
+    """The play's own title as its text prints it: the first short capitals paragraph
+    before the first speech. A collected-works record names the volume, not the play."""
+    first = next((l["source"] for l in lines if l["kind"] == "speech"), None)
+    for p in re.split(r"\n\s*\n", text):
+        p = p.strip()
+        if not p:
+            continue
+        if first is not None and first.startswith(p[:40]):
+            break
+        head = p.split("\n")[0].strip(" _.")
+        if head and len(head.split()) <= 10 and re.search(r"[A-Z]", head) and head.upper() == head \
+                and not HEADING.match(head) and not CASTHEAD.match(head):
+            return head
+    return None
 
 
 # ---- the measurement -----------------------------------------------------------------------------
