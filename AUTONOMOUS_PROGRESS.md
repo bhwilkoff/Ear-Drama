@@ -191,3 +191,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged 8c4c14e: web_run.py drives Chrome over the DevTools protocol (fresh profile, true 375x812 viewport, wait for each route's own ready text, then capture; a timeout grades `ready` FAIL rather than shooting blind). A second cause found by the agent: http.server's backlog of 5 dropped connections when the app loads ~16 scripts at once; `loads_complete` now catches it, and tools/devserve.py's backlog is 128. Verified: five agent sweeps OK plus a red negative control; two more sweeps OK on main.
 - Conflict with my tick-67 defect note taken from the branch. A headless Chrome on port 9333 in this session's scratchpad belongs to another agent; left running.
 - To upstream to UniversalAppTemplate (PROVENANCE): the DevTools-wait capture, the devserve backlog, and the 375 px window-floor lesson. Queued for the next opt tick.
+
+### Tick 72, 2026-10-23, merge + agent: Listen Together on the web; M8's Worker side launched
+- Merged c413fb4 (1.0.37 build 38): web Listen Together (Worker rooms; ?room= link that still needs a tap; client drift math checked against room-protocol.js on 1,000+ cases; guests follow, never drive). Verified on main: together.test 19, player 7, api 10, account 11; test_web; read the host sheet at 375. Listen Together now built on web, iOS, macOS, tvOS; Android in progress.
+- Launched M8's server side (invite-link productions, part claims by relay order, per-line takes, report/block/filter, CC0 consent recorded by version id with the words left OWNER, the archive.org upload as a queued record only, classes with an under-13 consent gate). Worker only, light, local.
+- Running: Android (On Air + rooms), M8 Worker.
