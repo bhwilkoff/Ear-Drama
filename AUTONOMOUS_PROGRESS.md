@@ -227,3 +227,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged 0751b16 (1.0.40 build 41): privacy covers the apps and rooms (owner review marked), explaining captions cut on Apple and Android, credits name the tools and Claude Code (the OWNER note left open).
 - My b003138 (tick 77) broke Apple's RightsDisplayTests.fallbackMatchesThePipeline, which reads build_projection.py for literal strings; I had run only catalog run_all. Repaired in the same commit (the published-age key checks the pattern and the fallback's words); macOS 107 tests in 24 suites pass on main. Memory saved: grep client tests for a pipeline file before committing.
 - Review fix-now items left: Listen shelves (data plane in progress). Running: M8 Worker, shelves.
+
+### Tick 80, 2026-10-23, merges: plays phase 2 on the Worker; Listen shelves in the data plane
+- Merged 8e9c1cd: plays phase 2 on the Worker (Decision 066): invite-only productions checked against a castable manifest, relay rules in a pure module, immutable R2 takes behind the owner's switch, report/block/name filter, consent by version id, a queued archive.org job, classes with an under-13 gate. Verified on main: 171/171, "all 96 mutations caught". Owner items P1-P8 in PLAYS-DESIGN §11.6.
+- Merged a238f8b: listenShelves published by both builders (onThisDay by rule with golden cases; genreFirsts with ids; "Most episodes" excluded pending the owner). Changed on merge: real-artifact checks skip a local build made before the key, strict when named. Following the new rule, ran the macOS suite after the pipeline change: 107 pass. Catalog 22/22.
+- Launched: the three clients read the published shelves (one platform at a time). CI green; a loudness run in progress.
