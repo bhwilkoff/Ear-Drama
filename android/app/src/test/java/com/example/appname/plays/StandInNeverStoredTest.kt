@@ -9,6 +9,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 /**
@@ -84,12 +85,25 @@ class StandInNeverStoredTest {
                 session.begin(echoCancelled = false)
                 for (l in session.lines) session.record(l.id)
                 session.end()
+                if (leaky) {
+                    try {
+                        Relay.finish(part, store.production(production.id)!!, script)
+                        fail("a part whose takes are flagged is not done")
+                    } catch (_: Relay.Refusal.LinesMissing) {
+                    }
+                    production = store.production(production.id)!!
+                    break
+                }
                 production = Relay.finish(part, store.production(production.id)!!, script)
                 store.save(production)
             }
-            assertTrue(Relay.isComplete(production, script))
-            store.renderMix(production.id) { WavSink(it, 48_000) }
-            assertTrue(store.mixFile(production.id).isFile)
+            if (leaky) {
+                assertFalse("flagged takes leave the play unfinished", Relay.isComplete(production, script))
+            } else {
+                assertTrue(Relay.isComplete(production, script))
+                store.renderMix(production.id) { WavSink(it, 48_000) }
+                assertTrue(store.mixFile(production.id).isFile)
+            }
             return Run(standInFindings(store.folder(production.id), voice.rendered), voice.rendered.size, store.production(production.id)!!.takes)
         } finally {
             store.root.deleteRecursively()

@@ -475,9 +475,13 @@ struct ListenThrough: View {
 
     var body: some View {
         let missing = Relay.missingSpeech(production, script).count
+        let retake = Relay.needsRetake(production, script).count
         Group {
             if missing > 0 {
                 Text(missing == 1 ? "1 line still needs a voice." : "\(missing) lines still need a voice.")
+                    .foregroundStyle(Color.brandTextMuted)
+            } else if retake > 0 {
+                Text(retake == 1 ? "1 line needs a re-take with headphones." : "\(retake) lines need a re-take with headphones.")
                     .foregroundStyle(Color.brandTextMuted)
             } else if mixing {
                 ProgressView()

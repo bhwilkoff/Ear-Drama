@@ -10,6 +10,8 @@ import Testing
 //   Relay.take without the "another part is recording" guard: relay test fails.
 //   Production.add appending without moving `chosen`: take-replacement test fails.
 //   MixTimeline.build without the gap: timeline test fails.
+// Broken control, 2026-10-23: Production.usableTake ignoring `bleed` fails the
+//   flagged-take test (the play reads complete and mixes the device voice).
 //   RecordingSession keeping the whole capture as the take (no window): the
 //   stand-in test fails on the take length.
 //   RecordingSession writing the cue's stand-in as the take: the stand-in test
@@ -61,9 +63,9 @@ private func tone(_ hz: [Double], seconds: Double, amplitude: Float = 0.3, rate:
 }
 
 private func take(_ id: String, line: String, part: PartID, frames: Int, loudness: Double? = -16,
-                  peak: Float = 0.5) -> Take {
+                  peak: Float = 0.5, bleed: Bool = false) -> Take {
     Take(id: id, lineID: line, part: part, file: "\(id).flac", created: .now, frames: frames, sampleRate: 48_000,
-         capture: .direct, heard: [:], loudness: loudness, peak: peak, bleed: false)
+         capture: .direct, heard: [:], loudness: loudness, peak: peak, bleed: bleed)
 }
 
 /// Every speaking line of the fixture given one take of `frames`.
@@ -268,6 +270,58 @@ struct MixTimelineTests {
     }
 }
 
+// MARK: - A flagged take never reaches the mix
+
+/// §5 rule 2 and §8 rule 3: a take the bleed check flags is kept on disk, but the
+/// line still needs a re-take, and the mix refuses it.
+struct FlaggedTakeTests {
+    @Test func aFlaggedTakeLeavesItsLineToReTakeAndTheMixRefusesIt() throws {
+        let script = fixtureScript()
+        var p = completeProduction(script)
+        p.takes.removeAll { $0.lineID == "L0005" }
+        p.chosen["L0005"] = nil
+        p.add(take("leaky", line: "L0005", part: .role("DOC"), frames: 4_800, bleed: true))
+        #expect(p.chosen["L0005"] == "leaky", "the flagged take is kept and chosen")
+        #expect(!Relay.isComplete(p, script), "a flagged take does not complete its line")
+        #expect(Relay.missingSpeech(p, script) == ["L0005"])
+        #expect(Relay.needsRetake(p, script) == ["L0005"])
+        #expect(Relay.missingLines(.role("DOC"), in: p, script: script) == ["L0005"])
+        #expect(throws: MixTimeline.Failure.incomplete(missing: ["L0005"])) {
+            try MixTimeline.build(script: script, production: p)
+        }
+
+        let good = try MixTimeline.build(script: script, production: completeProduction(script))
+        var placements = good.placements
+        let first = placements[0]
+        placements[0] = MixTimeline.Placement(lineID: first.lineID, takeID: "leaky", file: first.file,
+                                              start: first.start, inFrame: first.inFrame,
+                                              outFrame: first.outFrame, gain: first.gain, bleed: true)
+        let leaky = MixTimeline(sampleRate: good.sampleRate, placements: placements, totalFrames: good.totalFrames)
+        let folder = temporaryRoot()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appending(path: "mix.m4a")
+        #expect(throws: MixRenderer.Failure.self) {
+            try MixRenderer.render(leaky, takesFolder: folder, to: url)
+        }
+        #expect(!FileManager.default.fileExists(atPath: url.path), "nothing is written")
+
+        p.add(take("clean", line: "L0005", part: .role("DOC"), frames: 4_800))
+        #expect(Relay.isComplete(p, script), "a later unflagged take completes the line")
+        #expect(p.takes(for: "L0005").map(\.id) == ["leaky", "clean"], "the flagged take stays on disk")
+        let timeline = try MixTimeline.build(script: script, production: p)
+        #expect(timeline.placements.first { $0.lineID == "L0005" }?.takeID == "clean")
+        let flaggedPlaced = timeline.placements.filter(\.bleed)
+        #expect(flaggedPlaced.isEmpty)
+
+        p.add(take("door", line: "L0004", part: .sound, frames: 1_000, bleed: true))
+        #expect(!Relay.isComplete(p, script), "a flagged sound cue is not mixed either")
+        #expect(throws: MixTimeline.Failure.bleed(lines: ["L0004"])) {
+            try MixTimeline.build(script: script, production: p)
+        }
+    }
+}
+
 // MARK: - No synthesized audio reaches a file
 
 /// A stand-in whose every line is a chirp, so its signal can be looked for.
@@ -367,12 +421,24 @@ struct StandInNeverStoredTests {
             await session.begin(echoCancelled: false)
             for l in session.lines { await session.record(l.id) }
             session.end()
+            if leaky {
+                let recorded = try #require(store.production(production.id))
+                #expect(throws: Relay.Refusal.self, "a part whose takes are flagged is not done") {
+                    try Relay.finish(part, in: recorded, script: script)
+                }
+                production = recorded
+                break
+            }
             production = try Relay.finish(part, in: try #require(store.production(production.id)), script: script)
             try store.save(production)
         }
-        #expect(Relay.isComplete(production, script))
-        _ = try await store.renderMix(production.id)
-        #expect(FileManager.default.fileExists(atPath: store.mixURL(production.id).path))
+        if leaky {
+            #expect(!Relay.isComplete(production, script), "flagged takes leave the play unfinished")
+        } else {
+            #expect(Relay.isComplete(production, script))
+            _ = try await store.renderMix(production.id)
+            #expect(FileManager.default.fileExists(atPath: store.mixURL(production.id).path))
+        }
         let findings = try standInFindings(in: store.folder(production.id), signatures: voice.rendered)
         return (findings, voice.rendered.count, try #require(store.production(production.id)).takes)
     }

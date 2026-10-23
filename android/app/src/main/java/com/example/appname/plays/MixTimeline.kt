@@ -21,11 +21,13 @@ data class MixTimeline(val sampleRate: Double, val placements: List<Placement>, 
         val inFrame: Int,
         val outFrame: Int,
         val gain: Float,
+        val bleed: Boolean = false,
     ) {
         val frames: Int get() = outFrame - inFrame
     }
 
     data class Incomplete(val missing: List<String>) : Exception("${missing.size} lines still need a voice")
+    data class Bleed(val lines: List<String>) : Exception("${lines.size} lines need a re-take with headphones")
     data class WrongSampleRate(val takeID: String) : Exception("take $takeID is not at the mix rate")
 
     companion object {
@@ -41,6 +43,8 @@ data class MixTimeline(val sampleRate: Double, val placements: List<Placement>, 
         ): MixTimeline {
             val missing = Relay.missingSpeech(production, script)
             if (missing.isNotEmpty()) throw Incomplete(missing)
+            val flagged = Relay.needsRetake(production, script)
+            if (flagged.isNotEmpty()) throw Bleed(flagged)
             val placements = ArrayList<Placement>()
             var cursor = 0
             val gapFrames = (gap * sampleRate).toInt()
@@ -48,7 +52,7 @@ data class MixTimeline(val sampleRate: Double, val placements: List<Placement>, 
                 val take = production.chosenTake(line.id) ?: continue
                 if (take.sampleRate != sampleRate) throw WrongSampleRate(take.id)
                 val start = if (placements.isEmpty()) 0 else cursor + gapFrames
-                placements += Placement(line.id, take.id, take.file, start, 0, take.frames, gain(take.loudness, take.peak))
+                placements += Placement(line.id, take.id, take.file, start, 0, take.frames, gain(take.loudness, take.peak), take.bleed)
                 cursor = start + take.frames
             }
             return MixTimeline(sampleRate, placements, cursor)
@@ -73,12 +77,14 @@ data class MixTimeline(val sampleRate: Double, val placements: List<Placement>, 
  * Renders a finished play's timeline a chunk at a time into a [MixSink] (a
  * three-hour play never sits in memory whole). It reads only the take files
  * the timeline names, and a timeline holds only human takes, so a stand-in
- * cannot reach the mix (§5 rule 3).
+ * cannot reach the mix (§5 rule 3). A take the bleed check flagged is
+ * refused, never mixed (§8 rule 3).
  */
 object MixRenderer {
     const val CHUNK = 4_096
 
     fun render(timeline: MixTimeline, takesFolder: File, sink: MixSink) {
+        timeline.placements.firstOrNull { it.bleed }?.let { throw MixTimeline.Bleed(listOf(it.lineID)) }
         val buffer = FloatArray(CHUNK)
         var loadedIndex = -1
         var loaded = FloatArray(0)

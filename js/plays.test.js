@@ -13,6 +13,7 @@
  *   buildTimeline() without the gap: the timeline test fails.
  *   The session keeping the whole capture (no lineWindow): the stand-in test fails on take length.
  *   The store writing takes with put() instead of add(): the never-overwritten check fails.
+ *   usableTake() ignoring `bleed`: the flagged-take test fails (the play reads complete and mixes the device voice).
  * The stand-in scan carries its own control (leaky): when the microphone hears
  * the device voice, the scan must find it in a take and the meter must flag it.
  * The source scan carries its own controls (a writer in the voice file, an
@@ -297,6 +298,49 @@ test('a partial play has no timeline, no mix file, and no export (§5 rules 3 an
   eq(kind, 'unfinished', 'an unfinished play cannot be exported');
 });
 
+test('a flagged take leaves its line to re-take, and the mix refuses it (§5 rule 2, §8 rule 3)', async () => {
+  const script = fixtureScript();
+  const p0 = complete(script);
+  let p = { ...p0, takes: p0.takes.filter(t => t.lineID !== 'L0005'), chosen: { ...p0.chosen } };
+  delete p.chosen.L0005;
+  p = C.addTake(p, { ...take('leaky', 'L0005', C.role('DOC'), 4800), bleed: true });
+  eq(p.chosen.L0005, 'leaky', 'the flagged take is kept and chosen');
+  ok(!C.isComplete(p, script), 'a flagged take does not complete its line');
+  eq(C.missingSpeech(p, script), ['L0005'], 'the line still needs a voice');
+  eq(C.needsRetake(p, script), ['L0005'], 'the line needs a re-take');
+  eq(C.missingLines(p, script, C.role('DOC')), ['L0005'], 'the part is not done');
+  throwsKind(() => C.buildTimeline(script, p), 'incomplete', ['L0005'], 'no timeline');
+
+  const backend = PlayStore.memoryBackend();
+  const store = PlayStore.open(backend);
+  await store.load();
+  const made = await store.create(script);
+  await store.save({ ...p, id: made.id });
+  let kind = null;
+  try { await store.renderMix(made.id, fakeOffline); } catch (e) { kind = e.kind; }
+  eq(kind, 'incomplete', 'the store refuses to mix it');
+  eq(await backend.get(`${made.id}/mix.wav`), null, 'and writes nothing');
+
+  const good = C.buildTimeline(script, complete(script));
+  const leaky = { ...good, placements: good.placements.map((x, i) => (i === 0 ? { ...x, bleed: true } : x)) };
+  let loaded = false;
+  kind = null;
+  try { await C.renderMix(leaky, async () => { loaded = true; return tone([440], 0.1); }, fakeOffline); } catch (e) { kind = e.kind; }
+  eq(kind, 'bleed', 'the renderer refuses a flagged take');
+  ok(!loaded, 'no take is read');
+
+  p = C.addTake(p, take('clean', 'L0005', C.role('DOC'), 4800));
+  ok(C.isComplete(p, script), 'a later unflagged take completes the line');
+  eq(C.takesFor(p, 'L0005').map(t => t.id), ['leaky', 'clean'], 'the flagged take stays');
+  const t = C.buildTimeline(script, p);
+  eq(t.placements.find(x => x.lineID === 'L0005').takeID, 'clean', 'the clean take is placed');
+  ok(t.placements.every(x => !x.bleed), 'nothing flagged is placed');
+
+  p = C.addTake(p, { ...take('door', 'L0004', C.SOUND, 1000), bleed: true });
+  ok(!C.isComplete(p, script), 'a flagged sound cue is not mixed either');
+  throwsKind(() => C.buildTimeline(script, p), 'bleed', ['L0004'], 'the flagged cue is named');
+});
+
 /* ---- The mix ---- */
 
 test('the mix puts each take where the timeline says', async () => {
@@ -425,11 +469,22 @@ async function recordWholePlay(leaky) {
     await s.begin();
     for (const l of s.lines) await s.record(l.id);
     s.end();
+    if (leaky) {
+      let refused = null;
+      try { C.finish(store.production(p.id), script, part); } catch (e) { refused = e.kind; }
+      eq(refused, 'linesMissing', 'a part whose takes are flagged is not done');
+      p = store.production(p.id);
+      break;
+    }
     p = C.finish(store.production(p.id), script, part);
     await store.save(p);
   }
-  ok(C.isComplete(p, script), 'every speaking line was recorded');
-  await store.renderMix(p.id, fakeOffline);
+  if (leaky) {
+    ok(!C.isComplete(p, script), 'flagged takes leave the play unfinished');
+  } else {
+    ok(C.isComplete(p, script), 'every speaking line was recorded');
+    await store.renderMix(p.id, fakeOffline);
+  }
   const findings = [];
   for (const key of await backend.keys(`${p.id}/`)) {
     if (key.endsWith('.json')) continue;

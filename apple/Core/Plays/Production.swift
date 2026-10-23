@@ -76,6 +76,11 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
 
     func chosenTake(for lineID: String) -> Take? { chosen[lineID].flatMap(take) }
 
+    /// The chosen take when it counts toward the play: a take the bleed check
+    /// flagged holds the device voice, so it is kept on disk but never counts
+    /// or reaches the mix (§5 rule 2, §8 rule 3).
+    func usableTake(for lineID: String) -> Take? { chosenTake(for: lineID).flatMap { $0.bleed ? nil : $0 } }
+
     func takes(for lineID: String) -> [Take] { takes.filter { $0.lineID == lineID } }
 
     /// A new take becomes the line's chosen one; the older takes stay.

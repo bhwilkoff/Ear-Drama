@@ -91,6 +91,13 @@ data class Production(
 
     fun chosenTake(lineID: String): Take? = chosen[lineID]?.let(::take)
 
+    /**
+     * The chosen take when it counts toward the play: a take the bleed check
+     * flagged holds the device voice, so it is kept on disk but never counts or
+     * reaches the mix (§5 rule 2, §8 rule 3).
+     */
+    fun usableTake(lineID: String): Take? = chosenTake(lineID)?.takeIf { !it.bleed }
+
     fun takes(lineID: String): List<Take> = takes.filter { it.lineID == lineID }
 
     fun withPart(part: PartID, state: PartState) = copy(parts = parts + (part to state))

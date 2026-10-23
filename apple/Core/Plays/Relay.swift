@@ -40,9 +40,10 @@ nonisolated enum Relay {
         return p
     }
 
-    /// Lines of the part with no chosen take.
+    /// Lines of the part with no chosen take, or whose chosen take the bleed
+    /// check flagged: that line needs a re-take with headphones.
     static func missingLines(_ part: PartID, in production: Production, script: PlayScript) -> [String] {
-        script.lines(for: part).map(\.id).filter { production.chosen[$0] == nil }
+        script.lines(for: part).map(\.id).filter { production.usableTake(for: $0) == nil }
     }
 
     /// "Done with this part" (§2.5). A speaking part is done only when every one
@@ -84,13 +85,20 @@ nonisolated enum Relay {
         return p
     }
 
-    /// Speaking lines with no human take. Empty means the play can be mixed.
+    /// Speaking lines with no unflagged human take.
     static func missingSpeech(_ production: Production, _ script: PlayScript) -> [String] {
-        script.speechLineIDs.filter { production.chosen[$0] == nil }
+        script.speechLineIDs.filter { production.usableTake(for: $0) == nil }
     }
 
+    /// Lines of any kind whose chosen take the bleed check flagged.
+    static func needsRetake(_ production: Production, _ script: PlayScript) -> [String] {
+        script.lines.map(\.id).filter { production.chosenTake(for: $0)?.bleed == true }
+    }
+
+    /// Every speaking line has an unflagged human take and no chosen take is
+    /// flagged: only then can the play be mixed.
     static func isComplete(_ production: Production, _ script: PlayScript) -> Bool {
-        missingSpeech(production, script).isEmpty
+        missingSpeech(production, script).isEmpty && needsRetake(production, script).isEmpty
     }
 
     /// The lines that cue a performer's line (§2.4): the previous line where

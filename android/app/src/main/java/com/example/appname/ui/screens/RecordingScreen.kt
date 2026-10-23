@@ -151,7 +151,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
             },
         )
         session = s
-        index = s.lines.indexOfFirst { it.id !in production.chosen }.coerceAtLeast(0)
+        index = s.lines.indexOfFirst { production.usableTake(it.id) == null }.coerceAtLeast(0)
         scope.launch { s.begin(echoCancelled) }
     }
 
@@ -321,7 +321,7 @@ private fun Prompter(
             LineText(current, large = true)
             lines.getOrNull(index + 1)?.let { LineText(it, Modifier.alpha(0.45f)) }
         }
-        Takes(session, production, phase, current)
+        Takes(session, production, current)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { onMove(-1) }, enabled = index > 0 && !busy) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous line")
@@ -388,12 +388,12 @@ private fun Cue(session: RecordingSession, phase: Phase, line: ScriptLine, annou
 }
 
 @Composable
-private fun Takes(session: RecordingSession, production: Production, phase: Phase, line: ScriptLine) {
+private fun Takes(session: RecordingSession, production: Production, line: ScriptLine) {
     val scope = rememberCoroutineScope()
     val takes = production.takes(line.id)
     if (takes.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-        if (session.lastTakeBleed && phase == Phase.Review(line.id)) {
+        if (production.chosenTake(line.id)?.bleed == true) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = AppSemantics.colors.warning)
                 Text(

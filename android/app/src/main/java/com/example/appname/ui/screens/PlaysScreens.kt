@@ -446,6 +446,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
     var error by remember { mutableStateOf<String?>(null) }
     var listenedFrom by remember { mutableStateOf<String?>(null) }
     val missing = Relay.missingSpeech(production, script).size
+    val retake = Relay.needsRetake(production, script).size
 
     DisposableEffect(production.chosenFingerprint) {
         onDispose {
@@ -466,6 +467,11 @@ private fun ListenThrough(production: Production, script: PlayScript) {
         when {
             missing > 0 -> Text(
                 if (missing == 1) "1 line still needs a voice." else "$missing lines still need a voice.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            retake > 0 -> Text(
+                if (retake == 1) "1 line needs a re-take with headphones." else "$retake lines need a re-take with headphones.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

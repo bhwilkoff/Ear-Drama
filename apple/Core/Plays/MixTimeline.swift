@@ -14,11 +14,13 @@ nonisolated struct MixTimeline: Equatable, Sendable {
         let inFrame: Int
         let outFrame: Int
         let gain: Float
+        var bleed = false
         var frames: Int { outFrame - inFrame }
     }
 
     enum Failure: Error, Equatable {
         case incomplete(missing: [String])
+        case bleed(lines: [String])
         case sampleRate(String)
     }
 
@@ -34,6 +36,8 @@ nonisolated struct MixTimeline: Equatable, Sendable {
                       gap: Double = defaultGap) throws(Failure) -> MixTimeline {
         let missing = Relay.missingSpeech(production, script)
         guard missing.isEmpty else { throw .incomplete(missing: missing) }
+        let flagged = Relay.needsRetake(production, script)
+        guard flagged.isEmpty else { throw .bleed(lines: flagged) }
         var placements: [Placement] = []
         var cursor = 0
         let gapFrames = Int(gap * sampleRate)
@@ -43,7 +47,7 @@ nonisolated struct MixTimeline: Equatable, Sendable {
             let start = placements.isEmpty ? 0 : cursor + gapFrames
             placements.append(Placement(lineID: line.id, takeID: take.id, file: take.file, start: start,
                                         inFrame: 0, outFrame: take.frames,
-                                        gain: gain(loudness: take.loudness, peak: take.peak)))
+                                        gain: gain(loudness: take.loudness, peak: take.peak), bleed: take.bleed))
             cursor = start + take.frames
         }
         return MixTimeline(sampleRate: sampleRate, placements: placements, totalFrames: cursor)
