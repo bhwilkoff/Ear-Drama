@@ -126,6 +126,8 @@ folder, so no tick has to re-derive them.
 
 ## Milestones
 
+`[~]` marks an item built in part, with what is missing in the parentheses.
+
 Each milestone ends at a **play gate**: a build on TestFlight or Play internal
 (or a page on the live site), and a "Ready for you to play" entry at the top of
 `SCRATCHPAD.md` that says what to try, on which device, and what would count as
@@ -286,25 +288,31 @@ continue on the other.
 
 ### M7. Plays, phase 1: pass the phone
 
-- [ ] The script corpus: radio scripts and public-domain stage plays, each
+- [~] (stage plays built: 11 castable after the parser fix; no radio script parses
+      clean yet) The script corpus: radio scripts and public-domain stage plays, each
       castable only when its own record carries the evidence (059), with roles
       parsed by the prototypes in `catalog/prototypes/scripts/`.
-- [ ] Record role after role on one device against live system-voice stand-ins
+- [x] (built on iPhone, iPad, Mac, Android, and the web by tick 58; not recorded
+      on a device) Record role after role on one device against live system-voice stand-ins
       that are never stored; mix locally; play the finished play back. Full
       recording on iPhone, iPad, Mac, and Android; the web with headphones
       only; TVs play back only (research 08 §5).
-- [ ] The learning test before it ships, with the owner's play as the check.
+- [~] (run on the build 2026-10-23, PLAYS-DESIGN §1; its one defect fixed in
+      f045f77; the owner's play is the check still open) The learning test before
+      it ships, with the owner's play as the check.
 
 **Play gate:** record a two-role scene on the iPhone and on the Pixel.
 
 ### M8. Plays, phase 2: invite links and classes
 
-- [ ] Invite-only productions by link through the Worker; roles claimed and
+- [~] (Worker side built, Decision 066, 171 tests; no client yet) Invite-only
+      productions by link through the Worker; roles claimed and
       recorded across devices; report, block, and filter (guideline 1.2).
 - [ ] The consent screen with the CC0 warning (059); the words go to the owner
       before the screen ships.
 - [ ] Uploads to archive.org through the Ear Drama account, credits from data.
-- [ ] Teacher classes with school consent for students under 13, behind the
+- [~] (Worker side built; the gate waits on the policy, PLAYS-DESIGN §11.6) Teacher
+      classes with school consent for students under 13, behind the
       privacy policy that covers it.
 
 **Play gate:** a production finished by two accounts on two platforms.
