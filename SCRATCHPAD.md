@@ -27,6 +27,13 @@
   timer's "End of this episode", a Suspense season, search "sorry wrong", an
   episode's rights line. Broken would be: playback that never starts, a timer
   that starts the next episode, "public domain" anywhere.
+- **Plays questions (docs/PLAYS-DESIGN.md)**: 1,722 Gutenberg plays are castable
+  today; all 1,371 Generic Radio Workshop scripts are closed by GRW's own terms
+  ("TLDR: Assume Copyright") unless we ask (C8, which meets your "no outreach for
+  now"). Also open: C5 previews of a half-voiced play, C6 a role nobody takes,
+  C7 relay order, C9 "author died by 1955", C10 commercials and Personal Voice,
+  and whether Decision 057's "sign-in required to record" covers a local
+  recording that is never shared.
 - **Ready for you (2026-10-22)**: pick a palette. Open
   `docs/research/palette/index.html` (or the PNGs in `shots/`); the method and
   every number are in its README. Three directions: On Air, Tuning Eye,

@@ -161,15 +161,30 @@ official with a speech word, "Reichstagsrede", "Reichsparteitag". Track A found 
 such items entering through a RadioEchoes series. A program ABOUT Hitler is not
 flagged (`tests/test_no_recommend.py` holds that control).
 
+## Castable scripts (`tools/script_rights.py`, Decision 059; docs/PLAYS-DESIGN.md)
+
+    python3 tools/harvest_gutenberg_plays.py --texts 20   # Gutenberg's offline catalogs + 20 texts from a mirror
+    python3 tools/script_rights.py                        # bucket counts for Gutenberg and GRW
+    python3 tools/script_parse.py measure                 # the 50 GRW + 20 play parse sample
+
+A script may be cast only when its own record carries rights evidence: ordered
+buckets, hides before rescues, like the audio audit. Measured 2026-10-22: 1,722
+of Gutenberg's 1,740 English drama records are castable (4 of them radio plays),
+and 0 of GRW's 1,371, all hidden on GRW's own terms until we ask (research 08
+C8). "Author died by 1955" (C9) is recorded and not applied.
+
 ## Editorial (each entry needs a source a reader can open)
 
 `audio_claims.json` (claimants), `takedowns.json`, `gov_series.json`,
-`series_aliases.json`, `licence_evidence.json`, `published_records.json`.
+`series_aliases.json`, `licence_evidence.json`, `published_records.json`,
+`script_evidence.json` (text-source terms, script registrations, government series).
 
 ## Tests
 
 `tests/test_audio_rights.py` (21 cases), `tests/test_otr_parse.py` (15) and
-`tests/test_cce_drama_renewals.py` (13; its broken controls are in its docstring).
+`tests/test_cce_drama_renewals.py` (13; its broken controls are in its docstring),
+`tests/test_script_rights.py` (22) and `tests/test_script_parse.py` (7), whose
+broken controls are in their docstrings.
 Broken controls, 2026-10-17, each run against a mutated copy:
 
     orphan reads as clean              15/17     no post-1972 rule             16/17

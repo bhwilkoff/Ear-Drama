@@ -1,0 +1,27 @@
+{
+  "_doc": "Evidence the castable-script test (tools/script_rights.py) reads. Every entry needs a source a reader can open. A registration here is never enough on its own: a script registered 1931-1963 also needs a recorded renewal search (renewal_search) before it can be cast, because the printed renewal file loses a quarter to a third of its entries to OCR (research 08b §1.3).",
+  "source_terms": {
+    "Generic Radio Workshop": {
+      "reuse": "ask",
+      "quote": "TLDR: Assume Copyright",
+      "src": "https://www.genericradio.com/copyright",
+      "note": "GRW's texts are volunteer transcriptions with added notes; reuse waits on asking GRW (research 08 C8). The work may still be free: the same play from another source is judged on that source's record."
+    }
+  },
+  "gov_series": {
+    "Uncle Sam's Forest Rangers": {
+      "agency": "USDA Forest Service",
+      "src": "https://archive.org/details/usda-unclesamsforrang",
+      "note": "Series-level only. Research 08b §1.2: each script needs its author and employer on record before it is classed government work (collection is not authorship)."
+    }
+  },
+  "registrations": {
+    "H7KLDDX8PBH": {
+      "reg": "D unp. 10032",
+      "year": 1947,
+      "src": "https://archive.org/details/catalogofcopyrig3134libr",
+      "claim": "FIBBER MC GEE AND MOLLY. (Radio program) ... May 6, 1947 ... D unp. 10030-10032"
+    }
+  },
+  "takedowns": {}
+}
