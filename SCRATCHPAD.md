@@ -59,6 +59,13 @@
      six now that Plays has landed) follow the same order? (iOS-DESIGN §3.1, §12)
   13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
      Store and Play text, and pick the category (Entertainment or Education).
+  14. **The human-shaped review** (`HUMAN-SHAPED.md`): your answers are blank on
+     purpose. Its owner's calls: what a child or teacher meets among the 11
+     castable plays (chosen only by rights, nothing about content or age);
+     whether a Listen Together guest may pause their own sound; whether a
+     listener may pick another year for Tonight; Export only after one full
+     listen-through; sign-in merging this device's history without asking; a
+     data export on every platform. (What plays next is item 9.)
 - **Status (2026-10-23, 8:35 AM MT, tick 68)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (a 5-minute cooldown; each tick starts with the GitHub Actions
   check). Built on main at 1.0.35: listening (M2 to M4); Tonight in 19xx in CI

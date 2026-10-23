@@ -213,3 +213,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Tick 76, 2026-10-23, quiet + agent: the human-shaped review (M10) launched
 - CI green; the owner still on a call. Launched a read-only human-shaped-review pass (words on screen, AI copy, side doors, automation that takes a judgment away, what a child or teacher meets in plays, pushed sign-in, autoplay), findings into HUMAN-SHAPED.md only, fix-now vs owner's call. Running: M8 Worker, bleed fix, review.
+
+### Tick 77, 2026-10-23, merges + main thread: the human-shaped review; the bleed fix; the rights line's year
+- Merged 43891cb: HUMAN-SHAPED.md, the owner's answers left blank (the skill forbids drafting them), the agent's notes marked as AI-written. Six fix-now findings, seven owner's calls (SCRATCHPAD item 14).
+- b003138 (main thread): "Published before 1926" was a literal that goes false on January 1, 2027 (the rule frees through year - 101). rights_lines(today) builds it from the same function. My first test could not fail in 2026 (the literal equals this year's value); rewritten to ask for 2027's line, then seen to fail with the literal (44/45). run_all 21/21.
+- Merged f045f77 (1.0.39 build 40): a bleed-flagged take never completes a line or reaches a mix, on Apple, Android, and the web (each rule break seen red). Not rebuilt on main during the call: the branch was based after every native merge (checked with merge-base).
+- Launched: privacy page for the apps and rooms, explaining captions cut, credits for the tools and the agent. Remaining fix-now: Listen shelves following three rules (Decision 058 wants them from published data). Running: M8 Worker, the review fixes.
