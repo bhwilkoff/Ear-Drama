@@ -156,3 +156,6 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 - LOOP-PLAN M1/M2 checkboxes brought in line with the log, each stating built versus run (contract v1, publish built but not yet run on GitHub, seasons without summer runs, loudness sample and Decision 061, the transcript gate, genres, site pages with placeholders, web deep links).
 - Launched an agent for loudness across the whole catalog: a batched, additive, polite CI measurement job on a rolling `loudness-latest` asset, implausible readings flagged `suspect`, and `loudness_i`/`loudness_tp` published in the projection for the clients' -21 LUFS target.
 - Merged plays groundwork earlier this tick (see tick 23). Running: evenings, Apple downloads, loudness at scale. Machine: load 4.1, no simulator.
+
+### Tick 25, 2026-10-22, opt: the scratchpad's Current State is current
+- Rewrote the stale half of Current State, which loads into every session: "nothing built yet" and "Next actions: M0" replaced by what is built at 1.0.8 and what is running; old catalog counts by tick 23's (155,608 / 108,005 served / 7,716 clean); the DNS and CI histories cut to the two facts still open; the owner's steps pointed at Needs Ben. The ready-to-play note, the plays questions, and the palette and rights questions kept. 80 lines to 65.

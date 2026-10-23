@@ -17,7 +17,7 @@
 ## Current state
 
 - **Ready for you to play (2026-10-22, built, not yet played)**: the listening
-  apps on all five (web M2, Apple M3, Android M4; 1.0.6). Each play gate waits on
+  apps on all five (web M2, Apple M3, Android M4; 1.0.8). Each play gate waits on
   one setup step of yours: the web's data needs Settings > Pages > Source:
   GitHub Actions; TestFlight needs the App Store Connect record and signing
   secrets; Play internal needs the Play Console app. Meanwhile, locally: web,
@@ -43,53 +43,29 @@
   photo (Wikimedia Commons)? And a rights call: 112 Command Performance
   episodes credit nobody, so they stay government work under the AFRS rule;
   presume network stars for the whole series instead (tick 7)?
-- **Status**: research done, owner questions answered, the 1.0 loop drafted
-  (2026-10-22); nothing built yet. The web app and the native apps are still
-  the template's starters, renamed to Ear Drama. **The build runs from
-  `LOOP-PLAN.md`**: `/loop Read LOOP-PLAN.md and run the next tick`.
-- **1.0** (Decisions 056-060, catalog 004-007): the core five at parity,
-  every other platform a stub; done when the web is live with the full audited
-  catalog and the natives are on TestFlight and Play internal. Optional
-  Apple/Google sign-in on a Worker + D1; Radio evenings, Listen Together,
-  transcripts; shared plays phases 1-2 (radio and stage scripts, CC0, archive.org,
-  teacher classes). Palette and genre hues wait on design research (M0).
-- **Identity**: `app.eardrama` on every platform; home eardrama.org
-  (DECISIONS 054). **eardrama.org is live on GitHub Pages over HTTPS**
-  (2026-10-22): DNS at WordPress.com (my.wordpress.com/domains/eardrama.org)
-  holds GitHub's four A and four AAAA records at the apex and `www` as a
-  CNAME to `bhwilkoff.github.io`; the `_github-pages-challenge` TXT record
-  verifies the domain. Pages serves `main` from the root, with `CNAME` and
-  `.nojekyll` committed. `http://` and `http://www` redirect to
-  `https://eardrama.org`. **Open**: the certificate covered only the apex
-  at first, so `https://www.eardrama.org` fails its certificate check (as
-  `https://www.archivewatch.org` does today). `www` moved from a CNAME to the
-  apex to one to `bhwilkoff.github.io` (GitHub's documented form) at 13:21 MT,
-  but the old record's TTL is 4 hours. After that, if Settings > Pages still
-  lists only eardrama.org, remove and re-add the custom domain there.
-- **CI**: **push events do not start Actions workflows in this repo**
-  (measured 2026-10-22). e798457 changed `AppVersion.xcconfig` and 9cffd08
-  `android-build.yml`, both inside Android Build's push paths, and neither
-  started a run; Pages deploys do run on every push. The workflow is active,
-  Actions is enabled with all actions allowed, the repo is not a fork, GitHub
-  status is operational, and the repo's event feed holds no PushEvent at all.
-  Until it is solved, dispatch: `gh workflow run android-build.yml --ref main`
-  (run 39862707734 for e798457). Next to try: the owner looks at Settings >
-  Actions > General, or asks GitHub Support.
-- **The research** starts at `docs/research/RESEARCH.md` (§7 owner
-  questions, §8 the first build session in order). The catalog pipeline is
-  `catalog/` with its own `DECISIONS.md`; its database and caches are on the
-  `catalog-2026-10-21` Release (`catalog/README.md`, "Start from the
-  published snapshot"). 157,503 episodes, 16,113 series; all ten catalog
-  test suites pass against a restore from that Release.
-- **Next actions**: M0 in `LOOP-PLAN.md`; the owner's open items are its
-  "Needs Ben" table (DMCA agent, CarPlay entitlement, store records, OAuth
-  clients, Worker, archive.org account). Outreach and trademark are off for now
-  (Decision 060).
-- **Not set up yet, and why**: App Store Connect and Play records, and the
-  signing secrets `appstore-build.yml` and `play-release.yml` need
-  (`docs/CLOUD-SUBMISSION.md`). They wait for the first build worth
-  uploading. The Tizen package id `EarDramaTV` is a placeholder until a
-  Samsung submission.
+- **Status (2026-10-22, 10:10 PM MT, tick 25)**: the 1.0 loop runs from
+  `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
+  cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.8:
+  the listening apps on all five core platforms (M2 to M4), the catalog with the
+  owner's rights rulings, genres, folds, the transcript gate, the publish
+  workflow, the web's site pages and offline, and the plays groundwork (M7).
+  Running in agents: evenings (Tonight in 19xx), Apple downloads, loudness at
+  catalog scale. Decisions 056-061 and catalog 004-007 hold this session's rulings.
+- **Catalog now** (rebuilt on main, tick 22-23): 155,608 episodes in 15,695
+  series; served 108,005 (25.7 MB compressed); clean 7,716 (LibriVox projects
+  still being recorded are not served). Research database and caches: the
+  `catalog-2026-10-21` Release (`catalog/README.md`).
+- **Open infrastructure**: push events start no Actions workflow in this repo
+  (measured 2026-10-22: the workflow is active, Actions enabled, not a fork,
+  GitHub status fine, no PushEvent in the feed); dispatch by hand meanwhile
+  (`gh workflow run android-build.yml --ref main`). `https://www.eardrama.org`
+  failed its certificate after the DNS change; if Settings > Pages still lists
+  only the apex, remove and re-add the custom domain.
+- **Owner steps**: the "Needs Ben" table in `LOOP-PLAN.md` (Pages source to
+  GitHub Actions, the DMCA agent and `DMCA_AGENT_REGISTERED`, the take-down
+  email, store records and signing secrets, OAuth clients, the Worker, the
+  archive.org account, the CarPlay entitlement). Outreach and trademark are off
+  for now (Decision 060).
 
 ---
 
