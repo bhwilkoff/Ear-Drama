@@ -19,6 +19,8 @@ import com.example.appname.ui.ClaimTvFocus
 import androidx.compose.ui.Modifier
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Progress
+import com.example.appname.data.SeriesRow
+import com.example.appname.ui.SeriesListItem
 import com.example.appname.ui.AccountRow
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
@@ -32,12 +34,13 @@ import com.example.appname.ui.rememberCatalogQuery
 private data class LibraryLists(
     val inProgress: List<Pair<EpisodeRow, Progress>>,
     val finished: List<EpisodeRow>,
+    val following: List<SeriesRow>,
 )
 
-/** Library: what the listener started, downloaded, and played to the end on this device. */
+/** Library: what the listener started, downloaded, played to the end, and follows (§4.6). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
+fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit) {
     val container = LocalAppContainer.current
     val lists by rememberCatalogQuery(watchUser = true) { db ->
         val progress = container.user.inProgress(limit = 100)
@@ -47,12 +50,16 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
                 byId[row.id]?.let { row to it }
             }.distinctBy { it.first.id },
             finished = db.episodes(container.user.finished().map { it.episodeId }).distinctBy { it.id },
+            // A followed series this catalog does not serve is kept for sync and not listed.
+            following = container.user.followed().mapNotNull { db.series(it) },
         )
     }
     val downloadRecords by container.downloads.records.collectAsState()
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
-            if (library.inProgress.isEmpty() && library.finished.isEmpty() && downloadRecords.isEmpty()) {
+            if (library.inProgress.isEmpty() && library.finished.isEmpty() && library.following.isEmpty() &&
+                downloadRecords.isEmpty()
+            ) {
                 Column(Modifier.padding(padding)) {
                     AccountRow()
                     EmptyMessage("Episodes you play appear here.")
@@ -93,6 +100,12 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit) {
                             onOpen = { onOpenEpisode(row.id) },
                             onPlay = { container.playback.play(row) },
                         )
+                    }
+                }
+                if (library.following.isNotEmpty()) {
+                    item(key = "following-h") { SectionHeader("Following") }
+                    items(library.following, key = { "s:" + it.key }) { row ->
+                        SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
                     }
                 }
             }

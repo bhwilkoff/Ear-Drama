@@ -23,27 +23,37 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.Recording
 import com.example.appname.data.Transcript
+import com.example.appname.navigation.SiteLinks
+import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.DownloadControl
 import com.example.appname.ui.EmptyMessage
+import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.Meta
 import com.example.appname.ui.SectionHeader
+import com.example.appname.ui.ShareAction
+import com.example.appname.ui.detailFacts
+import com.example.appname.ui.episodeShareTitle
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.formatLength
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.theme.Spacing
 
-/** Episode Detail: date, network, credits, play, versions in rank order, and the rights line (§5.5). */
+/** Episode Detail (§4.4): series, title, date, facts, Play, Share, credits, versions in rank order, the rights line. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeScreen(
@@ -56,6 +66,7 @@ fun EpisodeScreen(
     val detail by rememberCatalogQuery(id, watchUser = true) { db ->
         db.episodeDetail(id)?.let { it to container.user.progress(it.episode.id) }
     }
+    val shown = (detail as? Loadable.Ready)?.value?.first?.episode
     Scaffold(
         topBar = {
             TopAppBar(
@@ -64,6 +75,9 @@ fun EpisodeScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
+                },
+                actions = {
+                    shown?.let { ShareAction(episodeShareTitle(it), SiteLinks.episode(it.id)) }
                 },
             )
         },
@@ -76,8 +90,26 @@ fun EpisodeScreen(
             val (d, progress) = loaded
             val row = d.episode
             val pad = Modifier.padding(horizontal = Spacing.S4.dp)
+            // On a TV the D-pad starts on Play (§9.2, tvOS-DESIGN §6.2).
+            val play = remember { FocusRequester() }
+            ClaimTvFocus(play, row.id)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+                // §4.4, the web's order: the series, the title, the date, then the facts.
                 item(key = "head") {
+                    Text(
+                        row.seriesName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .tvFocusMark()
+                            .clickable(onClickLabel = "Open series") { onOpenSeries(row.seriesKey) }
+                            .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+                    )
+                    Text(
+                        episodeTitle(row),
+                        style = MaterialTheme.typography.displaySmall,
+                        modifier = pad.semantics { heading() },
+                    )
                     formatAirDate(row.airDate)?.let {
                         Text(
                             it,
@@ -86,28 +118,14 @@ fun EpisodeScreen(
                             modifier = pad,
                         )
                     }
-                    Text(
-                        episodeTitle(row),
-                        style = MaterialTheme.typography.displaySmall,
-                        modifier = pad.semantics { heading() },
-                    )
-                    Text(
-                        row.seriesName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clickable(onClickLabel = "Open series") { onOpenSeries(row.seriesKey) }
-                            .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
-                    )
-                    val facts = listOfNotNull(d.network, formatLength(row.lengthSeconds)).joinToString(" · ")
-                    if (facts.isNotEmpty()) Meta(facts, pad)
+                    detailFacts(d)?.let { Meta(it, pad) }
                 }
                 item(key = "play") {
                     val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
                     Button(
                         onClick = { container.playback.play(row) },
                         enabled = d.recordings.isNotEmpty(),
-                        modifier = Modifier.padding(Spacing.S4.dp),
+                        modifier = Modifier.padding(Spacing.S4.dp).focusRequester(play).tvFocusMark(),
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
@@ -119,7 +137,7 @@ fun EpisodeScreen(
                     item(key = "transcript") {
                         OutlinedButton(
                             onClick = { onOpenTranscript(row.id) },
-                            modifier = Modifier.padding(horizontal = Spacing.S4.dp),
+                            modifier = Modifier.padding(horizontal = Spacing.S4.dp).tvFocusMark(),
                             contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                         ) {
                             Icon(Icons.Filled.FormatQuote, contentDescription = null)
@@ -172,7 +190,7 @@ private fun VersionItem(rec: Recording, onPlay: () -> Unit) {
         supportingContent = listOf(technical, notes).filter { it.isNotEmpty() }.joinToString("\n")
             .ifEmpty { null }?.let { { Text(it) } },
         trailingContent = {
-            IconButton(onClick = onPlay) {
+            IconButton(onClick = onPlay, modifier = Modifier.tvFocusMark()) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = "Play the copy from ${rec.archiveId}")
             }
         },

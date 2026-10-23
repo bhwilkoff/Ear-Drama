@@ -80,9 +80,16 @@ class UserStore private constructor(private val connection: SQLiteConnection, pr
         putProgress(episodeId, 0, 0, finished = false, deleted = true, at = now(), dirty = true)
     }
 
-    /** Follows or unfollows a series; an unfollow is a marker. No Android verb calls it yet (ANDROID-DESIGN §12). */
+    /** Follow and Following on a series page (ANDROID-DESIGN §4.3); an unfollow is a marker, so it syncs. */
     suspend fun setFollowing(seriesId: String, following: Boolean) = write {
         putFollow(seriesId, following, now(), dirty = true)
+    }
+
+    suspend fun isFollowing(seriesId: String): Boolean = read {
+        connection.prepare("SELECT following FROM follows WHERE series_id = ?").use { stmt ->
+            stmt.bindText(1, seriesId)
+            stmt.step() && stmt.getLong(0) != 0L
+        }
     }
 
     suspend fun followed(): List<String> = read {

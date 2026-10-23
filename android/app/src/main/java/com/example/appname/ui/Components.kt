@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.app.AppContainer
 import com.example.appname.data.CatalogDatabase
+import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
 import com.example.appname.ui.theme.Spacing
@@ -170,6 +171,21 @@ fun seasonLabel(season: String?): String = season?.replace('-', '–') ?: "Undat
 fun episodeTitle(row: EpisodeRow): String =
     row.title?.takeIf { it.isNotBlank() } ?: row.num?.let { "No. $it" } ?: formatAirDate(row.airDate) ?: row.seriesName
 
+/**
+ * Detail's one facts line (ANDROID-DESIGN §4.4, WEB-DESIGN §4.5): "Undated"
+ * opens it when no date is known, then the network, the sponsor, and the
+ * length; a part with no data is absent.
+ */
+fun detailFacts(d: EpisodeDetail): String? = listOfNotNull(
+    "Undated".takeIf { formatAirDate(d.episode.airDate) == null },
+    d.network,
+    d.sponsor,
+    formatLength(d.episode.lengthSeconds),
+).joinToString(" · ").ifEmpty { null }
+
+/** The share sheet's title for an episode, the web's: "Sorry, Wrong Number (1943-05-25)". */
+fun episodeShareTitle(row: EpisodeRow): String = "${episodeTitle(row)} (${formatAirDate(row.airDate) ?: "undated"})"
+
 fun seriesYears(row: SeriesRow): String? {
     val first = row.firstDate?.take(4) ?: return null
     val last = row.lastDate?.take(4)
@@ -188,6 +204,7 @@ fun EpisodeListItem(
     onOpen: () -> Unit,
     onPlay: () -> Unit,
     supporting: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     val date = formatAirDate(row.airDate)
     val title = episodeTitle(row)
@@ -197,7 +214,7 @@ fun EpisodeListItem(
         supporting,
     ).joinToString(" · ").ifEmpty { null }
     ListItem(
-        modifier = Modifier.clickable(onClickLabel = "Open episode", onClick = onOpen),
+        modifier = modifier.tvFocusMark().clickable(onClickLabel = "Open episode", onClick = onOpen),
         overlineContent = date?.takeIf { title != it }?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
         headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         supportingContent = second?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
@@ -213,7 +230,7 @@ fun EpisodeListItem(
 fun SeriesListItem(row: SeriesRow, onOpen: () -> Unit) {
     val second = listOfNotNull(seriesYears(row), "${row.episodes} episodes").joinToString(" · ")
     ListItem(
-        modifier = Modifier.fillMaxWidth().clickable(onClickLabel = "Open series", onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open series", onClick = onOpen),
         headlineContent = { Text(row.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         supportingContent = { Text(second) },
     )

@@ -3,8 +3,18 @@ package com.example.appname.ui.screens
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.example.appname.ui.ClaimTvFocus
+import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.tvFocusMark
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -106,7 +116,9 @@ fun TranscriptScreen(id: String, onBack: () -> Unit) {
                         Button(onClick = { attempt++ }) { Text("Try again") }
                     }
                 }
-                is TranscriptLoad.Loaded -> Column(
+                is TranscriptLoad.Loaded -> if (LocalIsTelevision.current) {
+                    TvTranscript(episodeTitle(d.episode), Transcript.lines(state.text), Modifier.padding(padding))
+                } else Column(
                     Modifier
                         .fillMaxSize()
                         .padding(padding)
@@ -128,6 +140,42 @@ fun TranscriptScreen(id: String, onBack: () -> Unit) {
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * On a TV (§9.2) the remote has no scroll gesture and no selection, so each
+ * sentence is a D-pad stop with the focus ring and the list scrolls to it;
+ * the first claims focus on entry.
+ */
+@Composable
+private fun TvTranscript(title: String, lines: List<String>, modifier: Modifier) {
+    val first = remember { FocusRequester() }
+    ClaimTvFocus(first, lines.size)
+    LazyColumn(
+        modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+    ) {
+        item(key = "title") {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Spacing.S3.dp),
+            )
+        }
+        itemsIndexed(lines, key = { i, _ -> i }) { i, line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .widthIn(max = 680.dp)
+                    .then(if (i == 0) Modifier.focusRequester(first) else Modifier)
+                    .tvFocusMark()
+                    .focusable()
+                    .padding(Spacing.S1.dp),
+            )
         }
     }
 }

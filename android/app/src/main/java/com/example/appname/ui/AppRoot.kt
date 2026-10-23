@@ -35,6 +35,7 @@ import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LocalPlayerMuted
 import com.example.appname.navigation.Route
 import com.example.appname.navigation.Tab
+import com.example.appname.navigation.navigateTo
 import com.example.appname.plays.PartID
 import com.example.appname.ui.screens.EpisodeScreen
 import com.example.appname.ui.screens.LibraryScreen
@@ -89,8 +90,8 @@ fun AppRoot(
         while (inbox.isNotEmpty()) {
             when (val request = inbox.removeAt(0)) {
                 is InboxRequest.Tab -> Tab.named(request.tab)?.let { selected = it }
-                is InboxRequest.Item -> stacks.getValue(selected).add(Route.Episode(request.id))
-                is InboxRequest.Series -> stacks.getValue(selected).add(Route.Series(request.key))
+                is InboxRequest.Item -> stacks.getValue(selected).navigateTo(Route.Episode(request.id))
+                is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
                 is InboxRequest.Search -> {
                     selected = Tab.Search
                     incomingSearch = request.query
@@ -103,9 +104,9 @@ fun AppRoot(
         }
     }
 
-    val openEpisode: (String) -> Unit = { id -> stack.add(Route.Episode(id)) }
-    val openSeries: (String) -> Unit = { key -> stack.add(Route.Series(key)) }
-    val openTranscript: (String) -> Unit = { id -> stack.add(Route.Transcript(id)) }
+    val openEpisode: (String) -> Unit = { id -> stack.navigateTo(Route.Episode(id)) }
+    val openSeries: (String) -> Unit = { key -> stack.navigateTo(Route.Series(key)) }
+    val openTranscript: (String) -> Unit = { id -> stack.navigateTo(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
     val television = LocalIsTelevision.current
 
@@ -152,7 +153,7 @@ fun AppRoot(
                                     onIncomingTaken = { incomingSearch = null },
                                 )
                             }
-                            entry<Route.Library> { LibraryScreen(onOpenEpisode = openEpisode) }
+                            entry<Route.Library> { LibraryScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries) }
                             entry<Route.Series> { route ->
                                 SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode)
                             }
