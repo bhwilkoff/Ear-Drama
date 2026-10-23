@@ -201,3 +201,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged 98ab771 (1.0.38 build 39): Android's color roles (the theme's primary is blue so Material defaults follow; red only via OnAir.colors.live; the record button off the error color, per 012; genre marks; ColorRolesTest) and Listen Together (RoomProtocol.kt golden-checked against room-protocol.js, pinned by its SHA-256). DEEP_LINKS conflict combined into one row. Verified on main: 162 tests 0 failed; assembleDebug; 0 `w:`.
 - On Air (064) now applied on all five platforms; Listen Together (M6) built on all five; LOOP-PLAN M6 checked as built. Told the M8 agent not to touch room-protocol.js (both native goldens pin it).
 - Running: M8 Worker.
+
+### Tick 74, 2026-10-23, CI check + upstream: the web capture fix reaches the template
+- CI green (Android Build, Design Tokens; the catalog publish from 14:25 UTC succeeded). Owner still on a call: light work only.
+- UniversalAppTemplate 7abb441f (pushed): web_run.py's DevTools-wait capture with a true 375 px viewport, `ready` and `loads_complete` grading, routes kept as FILL IN placeholders with a ready field; devserve.py's backlog 128; DEVICE-HARNESSES Web rules; a PROVENANCE row. The template had both defects. test_web clean, US English.
+- Running: M8 Worker.
