@@ -101,4 +101,4 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 52, 2026-10-23, main thread + agents: the volume title fixed; Radio on Apple and plays on the web launched
 - a5a66e1 (1.0.23 build 24): a collected-works record (Works / Volume / Vol. / Collection) shows the play its own text prints before the first speech, cased for a list and never reworded, with the volume kept as `collection`. gut-12039 now reads "The Custom of the Country". Two cases; three broken controls each failed (5/6); catalog run_all 21/21; US English. Apple's Codable decoding ignores the new key.
 - Launched: the Radio tab (Tonight in 19xx) on iOS, macOS and tvOS, mirroring the web; plays phase 1 on the web, headphones only. Running: Android plays. M5 (Worker + sign-in) is next once an agent slot frees.
-- Publish rerun 39956803564 still building at 7:10 AM MT (the first run failed at minute 5; this one is past it).
+- Publish rerun 39956803564 still building at 7:00 AM MT (the first run failed at minute 5; this one is past it).
