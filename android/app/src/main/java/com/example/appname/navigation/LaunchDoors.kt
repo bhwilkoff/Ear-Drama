@@ -12,6 +12,9 @@ sealed interface InboxRequest {
     data class Series(val key: String) : InboxRequest
     data class Search(val query: String) : InboxRequest
 
+    /** A Listen Together invitation: the sheet opens with [code] filled in; joining waits for Join. */
+    data class Room(val code: String) : InboxRequest
+
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
 }

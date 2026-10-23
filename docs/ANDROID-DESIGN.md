@@ -128,7 +128,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   posts to and `AppRoot` drains in one `LaunchedEffect`. `DeepLink.parse`
   reads DEEP_LINKS.md's shapes, `eardrama://` and its
   `https://eardrama.org` twin alike: `series/{key}`, `episode/{id}`,
-  `search?q=`, `library`; anything else opens nothing. Both manifest
+  `search?q=`, `library`, and `/?room=` (§4.13); anything else opens nothing. Both manifest
   filters stay off until the store records and Play's fingerprint exist.
   The one filter on is `eardrama://oauth/apple`, Sign in with Apple's
   return, which `MainActivity` hands to the account (§4.11) before the
@@ -219,7 +219,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   the network and station; then one row a slot. Each row leads with its
   local time (`bodySmall`, tabular) and the paper's Eastern time beneath
   it ("7:00 PM ET" alone where the two agree). The slot on the air says
-  "Now", takes the `surfaceVariant` container, and is marked selected
+  "Now", takes the `surfaceVariant` container and the red edge (§6.1a), and is marked selected
   for TalkBack, repainted every 15 seconds from the file's instants. A
   surviving slot opens its episode ("Open episode") and has a trailing
   Play that plays it from its start (§4.8); a gap is muted, not
@@ -269,6 +269,38 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   sheet (`ACTION_SEND`, text), titled as the web titles it ("Sorry, Wrong
   Number (1943-05-25)", or "(undated)"). A TV has no share sheet to
   another person, so it draws no Share (§9.2).
+- **§4.13 Listen together** (LOOP-PLAN M6, Decision 065, docs/WORKER.md
+  "Listen Together rooms") is one `ModalBottomSheet`, opened from a
+  Listen together icon (Groups) on the player sheet's row of speed,
+  transcript, and sleep, and from a "Listen together" row in Library
+  under the account row, so a code can be typed with nothing playing.
+  Least chrome, no sign-in. Out of a room the sheet shows "Start a
+  room" while an episode is loaded (the room carries the host's exact
+  copy, the `archive_id` and file of the recording playing, Archive
+  Watch Decision 143), then a "Room code" field and Join. In a room it
+  shows the code in `displaySmall`, "n listening", then Share (the
+  https link, phone only), Leave, and, for the host, End room. A guest
+  hears the host: play, pause, seek, and speed follow through the one
+  `PlaybackEngine`, and the player sheet's transport is disabled for a
+  guest (a code lets someone listen, never drive). When the host leaves
+  or goes quiet, the member present longest becomes host and gets the
+  controls. One plain line, never the error color, for "No room has
+  that code.", "This room has ended.", "This room is full.", "Too many
+  tries. Wait a minute.", or "Could not reach the room."; a build whose
+  Worker URL is a placeholder shows "Listen together is not available in
+  this build." and offers nothing else. The rules are the Worker's,
+  ported, not re-derived: `together/RoomProtocol.kt` (pure, no imports)
+  carries the code normalization, the clock estimate, drift correction
+  by speed before seeking, the poll cadence, and handoff from
+  `worker/src/room-protocol.js`, golden-checked against it
+  (`android/scripts/room-golden.mjs`, `RoomProtocolTest`);
+  `together/RoomsApi.kt` is the thin HTTP adapter on the one Ktor
+  client; `together/ListenTogether.kt` runs the room. A link
+  `https://eardrama.org/?room=CODE` (DEEP_LINKS.md) opens the sheet with
+  the code filled in and joins only when Join is pressed (§5.1: nothing
+  plays without a request). On a TV the Library row and the sheet are
+  D-pad stops with the ring, the code field takes focus, and Share is
+  absent.
 
 ## §5 The player
 
@@ -299,6 +331,25 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§6.1 Brand first; dynamic color is not the default**
   (`ui/theme/Theme.kt`, `dynamicColor = false`). Light and dark come from
   the generated tokens.
+- **§6.1a Color roles (Decision 064, On Air).** Material components take
+  `colorScheme.primary` by default, so `Theme.kt` puts the brand's blue
+  `secondary` in M3's `primary` and `secondary` slots (and a sixth of it
+  over the ground in the two container slots): the selected
+  `NavigationBar` item, chips, every filled button that is not live,
+  spinners, and the download bar follow it with no override. Links and
+  the TV focus ring take `OnAir.colors.link`. Red (the brand `primary`)
+  is only for what is live, set by hand through `OnAir.colors.live`
+  (`liveButtonColors()` on a filled button): Play and Pause on the player
+  and the mini player, Play on Detail, the progress line and the
+  scrubber (the player's and a play's mix), the slot on the air (a 4 dp
+  leading edge), Listen live and Listening live, Start recording, the
+  record control, and "Your line" while the microphone is live. M3's
+  `tertiary` holds the red too, so no default component reaches it, and
+  dynamic color never changes `OnAir`. Genre hues are content: a series
+  row's 4 dp leading mark (`OnAir.genre(key)`, the border color for a key
+  the palette does not name), never a button, a tab, or a link. Tab icons
+  are unchanged. `ColorRolesTest` fails on the red reached any other way,
+  on a red M3 `primary`, and on a token genre with no mark.
 - **§6.2 Six type levels** (`AppTypography`, `ui/theme/Type.kt`):
   `displaySmall`, `headlineSmall`, `titleMedium`, `bodyMedium`,
   `labelMedium`, `bodySmall` with tabular figures, over the system face.
@@ -445,6 +496,13 @@ file (`StandInNeverStoredTest`). No analytics.
   an Android OAuth client for `app.eardrama` with the Play signing SHA-1
   (and `app.eardrama.debug` with the debug key) in the project that owns
   the Web client id.
+- **Listen together has not run** (§4.13). The Worker is not deployed,
+  so every build says it is not available; the room, drift correction,
+  and handoff are proven in `ListenTogetherTest` and `RoomProtocolTest`
+  on the JVM against a Worker built from `room-protocol.js`, not yet
+  heard across the Pixel, an iPhone, and the web (LOOP-PLAN M6's play
+  gate). A guest's notification and headset buttons still pause; the
+  next read puts the guest back with the host.
 - **Tab icons differ from Apple's** (Headphones and Radio against
   `play.circle` and `square.stack`).
 

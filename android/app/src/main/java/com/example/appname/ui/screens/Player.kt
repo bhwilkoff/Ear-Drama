@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
@@ -21,10 +22,13 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +51,7 @@ import com.example.appname.playback.NowPlaying
 import com.example.appname.playback.PlaybackEngine
 import com.example.appname.playback.SleepMode
 import com.example.appname.playback.SleepState
+import com.example.appname.together.RoomStatus
 import com.example.appname.data.Transcript
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -58,13 +63,22 @@ import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
+import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
+
+/** §4.13: true while this device is a guest in a room, which listens and never drives. */
+@Composable
+private fun rememberIsRoomGuest(): Boolean {
+    val room by LocalAppContainer.current.together.status.collectAsState()
+    return (room as? RoomStatus.In)?.isHost == false
+}
 
 /** The bar above the tabs while an episode is loaded; tapping it opens the player sheet. */
 @Composable
 fun MiniPlayer(onExpand: () -> Unit) {
     val engine = LocalAppContainer.current.playback
     val now by engine.state.collectAsState()
+    val guest = rememberIsRoomGuest()
     val episode = now.episode ?: return
     val title = episodeTitle(episode)
     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, tonalElevation = 2.dp) {
@@ -73,6 +87,7 @@ fun MiniPlayer(onExpand: () -> Unit) {
                 LinearProgressIndicator(
                     progress = { (now.positionMs.toFloat() / now.durationMs).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),
+                    color = OnAir.colors.live,
                 )
             }
             Row(
@@ -92,31 +107,49 @@ fun MiniPlayer(onExpand: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                PlayPauseButton(now, engine, filled = false)
+                PlayPauseButton(now, engine, filled = false, enabled = !guest)
             }
         }
     }
 }
 
 @Composable
-private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boolean, modifier: Modifier = Modifier) {
+private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boolean, enabled: Boolean, modifier: Modifier = Modifier) {
     val icon = if (now.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow
     val label = if (now.isPlaying) "Pause" else "Play"
     if (filled) {
-        FilledIconButton(onClick = engine::togglePlay, modifier = modifier.size(72.dp)) {
+        FilledIconButton(
+            onClick = engine::togglePlay,
+            enabled = enabled,
+            modifier = modifier.size(72.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = OnAir.colors.live,
+                contentColor = OnAir.colors.onLive,
+            ),
+        ) {
             Icon(icon, contentDescription = label, modifier = Modifier.size(40.dp))
         }
     } else {
-        IconButton(onClick = engine::togglePlay) { Icon(icon, contentDescription = label) }
+        IconButton(onClick = engine::togglePlay, enabled = enabled) {
+            Icon(icon, contentDescription = label, tint = if (enabled) OnAir.colors.live else LocalContentColor.current)
+        }
     }
 }
 
 /** The player (R18): position, skip back 15 and forward 30, speed, and the sleep timer, all here. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTranscript: (String) -> Unit) {
+fun PlayerSheet(
+    onDismiss: () -> Unit,
+    onOpenEpisode: (String) -> Unit,
+    onOpenTranscript: (String) -> Unit,
+    onListenTogether: () -> Unit,
+) {
     val engine = LocalAppContainer.current.playback
     val now by engine.state.collectAsState()
+    val room by LocalAppContainer.current.together.status.collectAsState()
+    // The controls come back on handoff.
+    val guest = rememberIsRoomGuest()
     val episode = now.episode
     val hasTranscript by rememberCatalogQuery(episode?.id) { db ->
         episode?.let { db.episodeDetail(it.id)?.transcriptUrl } != null
@@ -153,7 +186,7 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
                     modifier = Modifier.padding(top = Spacing.S2.dp),
                 )
             }
-            PositionSlider(now, engine)
+            PositionSlider(now, engine, enabled = !guest)
             // On a TV the sheet takes the D-pad on Play or Pause (§9.2); every control wears the ring.
             val playPause = remember { FocusRequester() }
             ClaimTvFocus(playPause, episode.id)
@@ -161,15 +194,15 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
                 horizontalArrangement = Arrangement.spacedBy(Spacing.S6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = engine::skipBack, modifier = Modifier.size(56.dp).tvFocusMark()) {
+                IconButton(onClick = engine::skipBack, enabled = !guest, modifier = Modifier.size(56.dp).tvFocusMark()) {
                     Icon(
                         painterResource(androidx.media3.session.R.drawable.media3_icon_skip_back_15),
                         contentDescription = "Back 15 seconds",
                         modifier = Modifier.size(32.dp),
                     )
                 }
-                PlayPauseButton(now, engine, filled = true, modifier = Modifier.focusRequester(playPause).tvFocusMark())
-                IconButton(onClick = engine::skipForward, modifier = Modifier.size(56.dp).tvFocusMark()) {
+                PlayPauseButton(now, engine, filled = true, enabled = !guest, modifier = Modifier.focusRequester(playPause).tvFocusMark())
+                IconButton(onClick = engine::skipForward, enabled = !guest, modifier = Modifier.size(56.dp).tvFocusMark()) {
                     Icon(
                         painterResource(androidx.media3.session.R.drawable.media3_icon_skip_forward_30),
                         contentDescription = "Forward 30 seconds",
@@ -182,11 +215,18 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SpeedMenu(now.speed, engine)
+                SpeedMenu(now.speed, engine, enabled = !guest)
                 if ((hasTranscript as? Loadable.Ready)?.value == true) {
                     IconButton(onClick = { onOpenTranscript(episode.id) }, modifier = Modifier.tvFocusMark()) {
                         Icon(Icons.Filled.FormatQuote, contentDescription = Transcript.LABEL)
                     }
+                }
+                IconButton(onClick = onListenTogether, modifier = Modifier.tvFocusMark()) {
+                    Icon(
+                        Icons.Filled.Groups,
+                        contentDescription = "Listen together",
+                        tint = if (room is RoomStatus.In) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                    )
                 }
                 SleepMenu(now, engine)
             }
@@ -206,7 +246,7 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTr
 }
 
 @Composable
-private fun PositionSlider(now: NowPlaying, engine: PlaybackEngine) {
+private fun PositionSlider(now: NowPlaying, engine: PlaybackEngine, enabled: Boolean) {
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
     val duration = now.durationMs.coerceAtLeast(1)
@@ -217,7 +257,8 @@ private fun PositionSlider(now: NowPlaying, engine: PlaybackEngine) {
             onValueChange = { dragging = true; dragValue = it },
             onValueChangeFinished = { engine.seekTo(dragValue.toLong()); dragging = false },
             valueRange = 0f..duration.toFloat(),
-            enabled = now.durationMs > 0,
+            enabled = enabled && now.durationMs > 0,
+            colors = SliderDefaults.colors(thumbColor = OnAir.colors.live, activeTrackColor = OnAir.colors.live),
             modifier = Modifier.semantics {
                 contentDescription = "Position"
                 stateDescription = "${formatClock(shown.toLong())} of ${formatClock(now.durationMs)}"
@@ -237,13 +278,16 @@ private fun speedLabel(speed: Float): String =
     java.math.BigDecimal(speed.toString()).stripTrailingZeros().toPlainString() + "×"
 
 @Composable
-private fun SpeedMenu(speed: Float, engine: PlaybackEngine) {
+private fun SpeedMenu(speed: Float, engine: PlaybackEngine, enabled: Boolean) {
     var open by remember { mutableStateOf(false) }
+    // A room's drift nudge (0.97, 1.03) is not a speed anyone chose; the label shows the chosen one.
+    val shown = PlaybackEngine.SPEEDS.minBy { kotlin.math.abs(it - speed) }
     Box {
         TextButton(
             onClick = { open = true },
-            modifier = Modifier.tvFocusMark().semantics { contentDescription = "Playback speed, ${speedLabel(speed)}" },
-        ) { Text(speedLabel(speed)) }
+            enabled = enabled,
+            modifier = Modifier.tvFocusMark().semantics { contentDescription = "Playback speed, ${speedLabel(shown)}" },
+        ) { Text(speedLabel(shown)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             PlaybackEngine.SPEEDS.forEach { s ->
                 DropdownMenuItem(

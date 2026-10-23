@@ -34,6 +34,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -78,6 +79,8 @@ import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.AppSemantics
+import com.example.appname.ui.theme.OnAir
+import com.example.appname.ui.liveButtonColors
 import com.example.appname.ui.theme.Spacing
 import java.io.File
 import kotlinx.coroutines.delay
@@ -173,7 +176,7 @@ fun rememberCastScript(productionId: String): PlayScript? {
 /** The record's own evidence, verbatim and linked so a reader can check it (§2.1), then the source. */
 @Composable
 private fun RightsLine(script: PlayScript) {
-    val link = TextLinkStyles(SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline))
+    val link = TextLinkStyles(SpanStyle(color = OnAir.colors.link, textDecoration = TextDecoration.Underline))
     val text = buildAnnotatedString {
         val claims = script.rights.evidence.filter { it.claim != null }
         claims.forEachIndexed { i, evidence ->
@@ -478,6 +481,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                         Icon(
                             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (playing) "Pause" else "Play",
+                            tint = OnAir.colors.live,
                         )
                     }
                     if (production.isFinished) {
@@ -495,11 +499,13 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                         onValueChange = { position = it; mix.seek(it.toInt()) },
                         valueRange = 0f..duration,
                         modifier = Modifier.semantics { contentDescription = "Position"; stateDescription = clock },
+                        colors = SliderDefaults.colors(thumbColor = OnAir.colors.live, activeTrackColor = OnAir.colors.live),
                     )
                 } else {
                     LinearProgressIndicator(
                         progress = { (position / duration).coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth().semantics { stateDescription = clock },
+                        color = OnAir.colors.live,
                     )
                 }
             }
@@ -526,7 +532,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                         mixing = false
                     }
                 }
-            }) {
+            }, colors = liveButtonColors()) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Text(if (production.isFinished) "Play" else "Listen through", Modifier.padding(start = Spacing.S2.dp))
             }

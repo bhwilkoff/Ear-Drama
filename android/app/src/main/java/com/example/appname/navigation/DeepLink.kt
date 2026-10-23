@@ -23,6 +23,10 @@ object DeepLink {
             "https" -> parts.takeIf { it.first().lowercase() in HOSTS }?.drop(1) ?: return null
             else -> return null
         }.filter { it.isNotEmpty() }.map(::percentDecode)
+        // `/?room=CODE`, the web's room link (DEEP_LINKS.md); the sheet normalizes the code.
+        if (segments.isEmpty()) {
+            return queryParam(query, "room")?.trim()?.takeIf { it.isNotEmpty() && it.length <= 32 }?.let(InboxRequest::Room)
+        }
         return when (segments.firstOrNull()) {
             "series" -> segments.getOrNull(1)?.let(InboxRequest::Series)
             "episode" -> segments.getOrNull(1)?.let(InboxRequest::Item)

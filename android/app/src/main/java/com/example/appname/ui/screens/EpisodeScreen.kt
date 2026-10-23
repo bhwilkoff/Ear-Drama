@@ -50,7 +50,9 @@ import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.formatLength
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.liveButtonColors
 import com.example.appname.ui.tvFocusMark
+import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 
 /** Episode Detail (§4.4): series, title, date, facts, Play, Share, credits, versions in rank order, the rights line. */
@@ -99,7 +101,7 @@ fun EpisodeScreen(
                     Text(
                         row.seriesName,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = OnAir.colors.link,
                         modifier = Modifier
                             .tvFocusMark()
                             .clickable(onClickLabel = "Open series") { onOpenSeries(row.seriesKey) }
@@ -126,6 +128,7 @@ fun EpisodeScreen(
                         onClick = { container.playback.play(row) },
                         enabled = d.recordings.isNotEmpty(),
                         modifier = Modifier.padding(Spacing.S4.dp).focusRequester(play).tvFocusMark(),
+                        colors = liveButtonColors(),
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)

@@ -1,0 +1,782 @@
+{
+  "protocol_sha256": "f19a053d03ed49f62abd1dad4e81b3e52ae61ea9d3c1bc30ff725437ffae3726",
+  "constants": {
+    "code_alphabet": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
+    "code_length": 6,
+    "max_members": 20,
+    "member_gone_ms": 120000,
+    "speeds": [
+      0.75,
+      1,
+      1.25,
+      1.5,
+      2
+    ],
+    "drift": {
+      "ignoreBelow": 0.15,
+      "seekAbove": 2,
+      "nudge": 0.03,
+      "pollFastMs": 2000,
+      "pollSlowMs": 10000,
+      "slowAfterStillMs": 60000
+    }
+  },
+  "drift": [
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 100,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 1
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 100.1,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 1
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 99.86,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 1
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 100.2,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 0.97
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 99.8,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 1.03
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 101.9,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 0.97
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 98.1,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "rate",
+        "rate": 1.03
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 102.5,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "seek",
+        "position": 100,
+        "play": true
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 97,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "seek",
+        "position": 100,
+        "play": true
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200004000,
+      "player": {
+        "position": 104.05,
+        "playing": true
+      },
+      "expected_position": 104,
+      "correction": {
+        "action": "rate",
+        "rate": 1
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200004000,
+      "player": {
+        "position": 103,
+        "playing": true
+      },
+      "expected_position": 104,
+      "correction": {
+        "action": "rate",
+        "rate": 1.03
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1.5,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200004000,
+      "player": {
+        "position": 106,
+        "playing": true
+      },
+      "expected_position": 106,
+      "correction": {
+        "action": "rate",
+        "rate": 1.5
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1.5,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200004000,
+      "player": {
+        "position": 105.5,
+        "playing": true
+      },
+      "expected_position": 106,
+      "correction": {
+        "action": "rate",
+        "rate": 1.545
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 0.75,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200002000,
+      "player": {
+        "position": 101.5,
+        "playing": true
+      },
+      "expected_position": 101.5,
+      "correction": {
+        "action": "rate",
+        "rate": 0.75
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 2,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200010000,
+      "player": {
+        "position": 0,
+        "playing": false
+      },
+      "expected_position": 120,
+      "correction": {
+        "action": "seek",
+        "position": 120,
+        "play": true
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 100.5,
+        "playing": false
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "play",
+        "position": 100,
+        "rate": 1
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 100,
+        "playing": false
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "play",
+        "position": 100,
+        "rate": 1
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": false,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200009000,
+      "player": {
+        "position": 100,
+        "playing": true
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "pause",
+        "position": 100
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": false,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200009000,
+      "player": {
+        "position": 100.1,
+        "playing": false
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "none"
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": false,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 100.2,
+        "playing": false
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "seek",
+        "position": 100
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 100,
+        "playing": false,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200000000,
+      "player": {
+        "position": 40,
+        "playing": false
+      },
+      "expected_position": 100,
+      "correction": {
+        "action": "seek",
+        "position": 100
+      }
+    },
+    {
+      "state": {
+        "episode_id": "suspense|1948-03-11",
+        "archive_id": "OTRR_Suspense_Singles",
+        "file": "Suspense 48-03-11 The Lodger.mp3",
+        "position": 604799,
+        "playing": true,
+        "rate": 1,
+        "updated_at": 1761200000000,
+        "generation": 3
+      },
+      "server_now": 1761200060000,
+      "player": {
+        "position": 604800,
+        "playing": true
+      },
+      "expected_position": 604800,
+      "correction": {
+        "action": "rate",
+        "rate": 1
+      }
+    }
+  ],
+  "codes": [
+    {
+      "typed": "7KQ2MX",
+      "code": "7KQ2MX"
+    },
+    {
+      "typed": "7kq2mx",
+      "code": "7KQ2MX"
+    },
+    {
+      "typed": "7KQ-2MX",
+      "code": "7KQ2MX"
+    },
+    {
+      "typed": " 7kq 2mx ",
+      "code": "7KQ2MX"
+    },
+    {
+      "typed": "o1lI0O",
+      "code": "011100"
+    },
+    {
+      "typed": "7KQ2M",
+      "code": null
+    },
+    {
+      "typed": "7KQ2MXX",
+      "code": null
+    },
+    {
+      "typed": "7KQ2MU",
+      "code": null
+    },
+    {
+      "typed": "7KQ2M!",
+      "code": null
+    },
+    {
+      "typed": "",
+      "code": null
+    },
+    {
+      "typed": "abc_def",
+      "code": "ABCDEF"
+    }
+  ],
+  "clock": [
+    {
+      "samples": [],
+      "offset": null
+    },
+    {
+      "samples": [
+        {
+          "t0": 1000,
+          "server_time": 5000,
+          "t1": 1200
+        }
+      ],
+      "offset": 3900
+    },
+    {
+      "samples": [
+        {
+          "t0": 1000,
+          "server_time": 5000,
+          "t1": 1400
+        },
+        {
+          "t0": 2000,
+          "server_time": 6050,
+          "t1": 2100
+        },
+        {
+          "t0": 3000,
+          "server_time": 7000,
+          "t1": 3300
+        }
+      ],
+      "offset": 4000
+    },
+    {
+      "samples": [
+        {
+          "t0": 1000,
+          "server_time": 900,
+          "t1": 1010
+        }
+      ],
+      "offset": -105
+    },
+    {
+      "samples": [
+        {
+          "t0": 1000,
+          "server_time": 5000,
+          "t1": 900
+        },
+        {
+          "t0": 2000,
+          "server_time": 6000,
+          "t1": 2040
+        }
+      ],
+      "offset": 3980
+    }
+  ],
+  "poll": [
+    {
+      "last_change_at": 1761200000000,
+      "now": 1761200000000,
+      "interval": 2000
+    },
+    {
+      "last_change_at": 1761200000000,
+      "now": 1761200059999,
+      "interval": 2000
+    },
+    {
+      "last_change_at": 1761200000000,
+      "now": 1761200060000,
+      "interval": 2000
+    },
+    {
+      "last_change_at": 1761200000000,
+      "now": 1761200060001,
+      "interval": 10000
+    },
+    {
+      "last_change_at": 1761200000000,
+      "now": 1761200600000,
+      "interval": 10000
+    }
+  ],
+  "handoff": [
+    {
+      "members": [
+        {
+          "id": "host",
+          "joined_at": 1761200000000,
+          "seen_at": 1761200000000
+        },
+        {
+          "id": "b",
+          "joined_at": 1761200000010,
+          "seen_at": 1761200000000
+        },
+        {
+          "id": "a",
+          "joined_at": 1761200000005,
+          "seen_at": 1761200000000
+        }
+      ],
+      "leaving": "host",
+      "now": 1761200001000,
+      "next": "a"
+    },
+    {
+      "members": [
+        {
+          "id": "host",
+          "joined_at": 1761200000000,
+          "seen_at": 1761200000000
+        },
+        {
+          "id": "b",
+          "joined_at": 1761200000005,
+          "seen_at": 1761200000000
+        },
+        {
+          "id": "a",
+          "joined_at": 1761200000005,
+          "seen_at": 1761200000000
+        }
+      ],
+      "leaving": "host",
+      "now": 1761200001000,
+      "next": "a"
+    },
+    {
+      "members": [
+        {
+          "id": "host",
+          "joined_at": 1761200000000,
+          "seen_at": 1761200000000
+        },
+        {
+          "id": "a",
+          "joined_at": 1761200000005,
+          "seen_at": 1761199800000
+        },
+        {
+          "id": "b",
+          "joined_at": 1761200000009,
+          "seen_at": 1761200000000
+        }
+      ],
+      "leaving": "host",
+      "now": 1761200001000,
+      "next": "b"
+    },
+    {
+      "members": [
+        {
+          "id": "host",
+          "joined_at": 1761200000000,
+          "seen_at": 1761200000000
+        }
+      ],
+      "leaving": "host",
+      "now": 1761200001000,
+      "next": null
+    },
+    {
+      "members": [
+        {
+          "id": "host",
+          "joined_at": 1761200000000,
+          "seen_at": 1761199870000
+        },
+        {
+          "id": "a",
+          "joined_at": 1761200000005,
+          "seen_at": 1761200000000
+        }
+      ],
+      "leaving": null,
+      "now": 1761200000000,
+      "next": "a"
+    }
+  ],
+  "copies": [
+    {
+      "archive_id": "OTRR_Suspense_Singles",
+      "file": "Suspense 48-03-11 The Lodger.mp3",
+      "clean": true
+    },
+    {
+      "archive_id": "a.b-c_d",
+      "file": "disc 1/part 2.mp3",
+      "clean": true
+    },
+    {
+      "archive_id": "x",
+      "file": "../evil.mp3",
+      "clean": false
+    },
+    {
+      "archive_id": "x",
+      "file": "/abs.mp3",
+      "clean": false
+    },
+    {
+      "archive_id": "x",
+      "file": "a//b.mp3",
+      "clean": false
+    },
+    {
+      "archive_id": "bad id",
+      "file": "a.mp3",
+      "clean": false
+    },
+    {
+      "archive_id": "x",
+      "file": "a\\b.mp3",
+      "clean": false
+    }
+  ]
+}

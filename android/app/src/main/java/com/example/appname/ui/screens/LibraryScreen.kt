@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Progress
 import com.example.appname.data.SeriesRow
+import com.example.appname.ui.ListenTogetherRow
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.ui.AccountRow
 import com.example.appname.ui.EmptyMessage
@@ -40,7 +41,7 @@ private data class LibraryLists(
 /** Library: what the listener started, downloaded, played to the end, and follows (§4.6). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit) {
+fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit, onListenTogether: () -> Unit) {
     val container = LocalAppContainer.current
     val lists by rememberCatalogQuery(watchUser = true) { db ->
         val progress = container.user.inProgress(limit = 100)
@@ -62,6 +63,7 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Uni
             ) {
                 Column(Modifier.padding(padding)) {
                     AccountRow()
+                    ListenTogetherRow(onListenTogether)
                     EmptyMessage("Episodes you play appear here.")
                 }
                 return@LoadableContent
@@ -72,6 +74,7 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Uni
             LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
                 // §4.11: the account is the first row, above what this device holds.
                 item(key = "account") { AccountRow() }
+                item(key = "together") { ListenTogetherRow(onListenTogether) }
                 if (library.inProgress.isNotEmpty()) {
                     item(key = "progress-h") { SectionHeader("In progress") }
                     items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->

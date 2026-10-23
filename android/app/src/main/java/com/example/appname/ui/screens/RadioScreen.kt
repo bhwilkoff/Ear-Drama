@@ -1,5 +1,6 @@
 package com.example.appname.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalUriHandler
@@ -65,6 +68,8 @@ import com.example.appname.ui.LocalOnline
 import com.example.appname.ui.OFFLINE_LINE
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.rememberHaptics
+import com.example.appname.ui.liveButtonColors
+import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.tvFocusMark
 import java.time.Instant
@@ -166,6 +171,8 @@ private fun Evening(evening: RadioEvening, now: Instant, modifier: Modifier, onO
                         OutlinedButton(
                             onClick = { container.live.pauseAndStop() },
                             modifier = Modifier.focusRequester(liveButton).semantics { stateDescription = "On" },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.live),
+                            border = BorderStroke(1.dp, OnAir.colors.live),
                         ) {
                             Icon(Icons.Filled.Sensors, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -175,6 +182,7 @@ private fun Evening(evening: RadioEvening, now: Instant, modifier: Modifier, onO
                         Button(
                             onClick = { container.live.tuneIn(evening) },
                             modifier = Modifier.focusRequester(liveButton),
+                            colors = liveButtonColors(),
                         ) {
                             Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -209,7 +217,7 @@ private fun Evening(evening: RadioEvening, now: Instant, modifier: Modifier, onO
                 Text(
                     "Schedule: $line",
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (link) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (link) OnAir.colors.link else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .then(if (link) Modifier.clickable { uri.openUri(url) } else Modifier)
                         .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp),
@@ -254,8 +262,23 @@ private fun SlotRow(
         television -> Modifier.focusable()
         else -> Modifier
     }
+    val liveEdge = OnAir.colors.live
     ListItem(
-        modifier = modifier.tvFocusMark().then(action).semantics { selected = isNow },
+        modifier = modifier
+            .tvFocusMark()
+            .then(action)
+            .semantics { selected = isNow }
+            // The slot on the air wears the live red as its leading edge (§6.1a, the web's slot-now).
+            .then(
+                if (isNow) {
+                    Modifier.drawWithContent {
+                        drawContent()
+                        drawRect(liveEdge, size = Size(4.dp.toPx(), size.height))
+                    }
+                } else {
+                    Modifier
+                },
+            ),
         colors = if (isNow) {
             ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         } else {
