@@ -65,6 +65,17 @@
             </intent-filter>
         </service>
 
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove"/>
+        </provider>
+
         <!-- Firebase Messaging service goes here when push ships -->
         <!--
         <service

@@ -1,6 +1,7 @@
 package com.example.appname.app
 
 import android.app.Application
+import androidx.work.Configuration
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -28,7 +29,7 @@ import okhttp3.OkHttpClient
  * when push ships — they MUST exist before the first FCM message.
  */
 @HiltAndroidApp
-class AppNameApplication : Application(), SingletonImageLoader.Factory {
+class AppNameApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
 
     /**
      * Shared OkHttp instance — inject into Ktor + Supabase + Coil so
@@ -49,9 +50,18 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    /**
+     * WorkManager starts on demand (its startup initializer is removed in the
+     * manifest), so a download job the system wakes the process for never runs
+     * before [container] exists.
+     */
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().build()
+
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        appScope.launch { container.downloads.reconnect() }
         appScope.launch {
             container.catalog.initialize()
             container.catalog.refreshIfStale()

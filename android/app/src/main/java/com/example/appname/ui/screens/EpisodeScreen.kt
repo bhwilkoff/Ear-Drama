@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.Recording
+import com.example.appname.ui.DownloadControl
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
@@ -98,6 +99,7 @@ fun EpisodeScreen(id: String, onBack: () -> Unit, onOpenSeries: (String) -> Unit
                         Text(if (resume != null) "Resume at ${formatClock(resume.positionMs)}" else "Play")
                     }
                 }
+                item(key = "download") { DownloadControl(d) }
                 if (d.credits.isNotEmpty()) {
                     item(key = "credits-h") { SectionHeader("Cast and credits") }
                     // A person can hold two roles on one broadcast; the credit's position is its identity here.

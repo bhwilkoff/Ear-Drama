@@ -2,6 +2,7 @@ package com.example.appname.playback
 
 import android.content.ComponentName
 import android.content.Context
+import android.net.Uri
 import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -19,6 +20,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.example.appname.data.ApiClient
 import com.example.appname.data.CatalogRepository
+import com.example.appname.data.DownloadStore
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.UserStore
 import com.google.common.util.concurrent.ListenableFuture
@@ -68,6 +70,7 @@ class PlaybackEngine(
     private val api: ApiClient,
     private val catalog: CatalogRepository,
     private val user: UserStore,
+    private val downloads: DownloadStore,
 ) {
     companion object {
         const val SKIP_BACK_MS = 15_000L
@@ -200,9 +203,10 @@ class PlaybackEngine(
         }
     }
 
+    /** The downloaded copy of [url] when it is on this device, so it plays with no network. */
     private fun mediaItem(row: EpisodeRow, url: String): MediaItem = MediaItem.Builder()
         .setMediaId(row.id)
-        .setUri(url)
+        .setUri(downloads.localFile(row.id, url)?.let { Uri.fromFile(it) } ?: Uri.parse(url))
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(row.title ?: row.airDate ?: row.seriesName)
