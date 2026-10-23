@@ -39,6 +39,13 @@
   Merged at once a day (~108 days to cover 108,005 episodes); four a day (~27
   days, ~100 GB a day) is ready by changing one cron line. Faster, slower, or
   tell archive.org first? (It runs once Actions can run on schedule.)
+- **Tonight in 19xx floor (docs/research/evenings.md)**: measured over 1,180
+  CBS and NBC evenings 1935-55 from the Washington Post radio grid, 61% of
+  evenings have nothing surviving (median 0, p90 a quarter, best 0.56). Proposed
+  floor: a quarter of prime time (one hour in four) plays a recording of that
+  night; every well-sampled anniversary date has a year above it. Agree, or a
+  higher floor with fewer evenings offered? And may a gap show the newspaper's
+  printed listing (OCR text) as a fact, or only its time and "not surviving"?
 - **Ready for you (2026-10-22)**: pick a palette. Open
   `docs/research/palette/index.html` (or the PNGs in `shots/`); the method and
   every number are in its README. Three directions: On Air, Tuning Eye,
