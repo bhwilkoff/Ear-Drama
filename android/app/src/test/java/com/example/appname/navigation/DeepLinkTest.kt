@@ -25,6 +25,14 @@ class DeepLinkTest {
         assertEquals(InboxRequest.Tab("Library"), DeepLink.parse("https://eardrama.org/library"))
     }
 
+    @Test fun `a room link fills in its code and the bare root opens nothing`() {
+        assertEquals(InboxRequest.Room("7KQ2MX"), DeepLink.parse("https://eardrama.org/?room=7KQ2MX"))
+        assertEquals(InboxRequest.Room("7kq-2mx"), DeepLink.parse("https://www.eardrama.org/?room=7kq-2mx"))
+        assertEquals(InboxRequest.Room("7KQ2MX"), DeepLink.parse("eardrama://?room=7KQ2MX"))
+        assertNull(DeepLink.parse("https://eardrama.org/"))
+        assertNull(DeepLink.parse("https://eardrama.org/?room="))
+    }
+
     @Test fun `the template's scheme, other hosts, and unknown paths open nothing`() {
         assertNull(DeepLink.parse("appname://episode/x"))
         assertNull(DeepLink.parse("https://example.com/episode/x"))

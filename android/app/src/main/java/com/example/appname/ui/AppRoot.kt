@@ -76,6 +76,8 @@ fun AppRoot(
     var selected by rememberSaveable { mutableStateOf(Tab.Listen) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var incomingSearch by remember { mutableStateOf<String?>(null) }
+    var roomSheet by rememberSaveable { mutableStateOf(false) }
+    var roomCode by rememberSaveable { mutableStateOf("") }
     val haptics = rememberHaptics()
     val online by rememberOnline()
     val stacks: Map<Tab, NavBackStack<NavKey>> = Tab.entries.associateWith { tab ->
@@ -95,6 +97,10 @@ fun AppRoot(
                 is InboxRequest.Search -> {
                     selected = Tab.Search
                     incomingSearch = request.query
+                }
+                is InboxRequest.Room -> {
+                    roomCode = request.code
+                    roomSheet = true
                 }
                 InboxRequest.EndDoor -> {
                     container.playback.stop()
@@ -153,7 +159,13 @@ fun AppRoot(
                                     onIncomingTaken = { incomingSearch = null },
                                 )
                             }
-                            entry<Route.Library> { LibraryScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries) }
+                            entry<Route.Library> {
+                                LibraryScreen(
+                                    onOpenEpisode = openEpisode,
+                                    onOpenSeries = openSeries,
+                                    onListenTogether = { roomSheet = true },
+                                )
+                            }
                             entry<Route.Series> { route ->
                                 SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode)
                             }
@@ -200,7 +212,11 @@ fun AppRoot(
                 onDismiss = { playerOpen = false },
                 onOpenEpisode = { id -> playerOpen = false; openEpisode(id) },
                 onOpenTranscript = { id -> playerOpen = false; openTranscript(id) },
+                onListenTogether = { playerOpen = false; roomSheet = true },
             )
+        }
+        if (roomSheet) {
+            ListenTogetherSheet(initialCode = roomCode, onDismiss = { roomSheet = false; roomCode = "" })
         }
     }
 }

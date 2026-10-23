@@ -16,6 +16,7 @@ prefix lists, and a flat structure makes the lists short.
 | Series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
 | Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
 | Search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
+| Listen Together room | `https://eardrama.org/?room={CODE}` | Web and Android (Worker rooms, Decision 065); `eardrama://?room={CODE}` is its twin. The code is normalized as `normalizeCode` does (`worker/src/room-protocol.js`). Opening it fills in the code and joins only when Join is pressed. Android parses it now (`DeepLink.parse`); its manifest filters stay off until Play's fingerprint, as for every https link |
 | OAuth callback | `eardrama://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |
 | Sign in with Apple return (Android) | `eardrama://oauth/apple#state=&code=&id_token=` | Android. Apple returns to the Services ID's https return URL, `https://eardrama.org/auth/apple/` (fragment response, no scope); that static page (`auth/apple/index.html`) forwards its fragment unchanged to this link and clears it from the address bar; the link opens no screen (ANDROID-DESIGN §4.11). No HTTPS twin: it is a callback, not a share |
 

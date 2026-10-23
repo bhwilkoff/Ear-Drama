@@ -10,6 +10,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
@@ -83,6 +84,10 @@ class PlaybackEngine(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val sleep = SleepTimer()
     private var episodes: List<EpisodeRow> = emptyList()
+    /** Each queued item's copy as the catalog names it, never a local file: a room shares this (§4.13). */
+    private var urls: List<String> = emptyList()
+    /** False for a room's copy, whose start is the host's, not this device's saved place. */
+    private var resumeSaved = true
     /** Each queued item's loudness level (DECISIONS 061); the sleep fade scales from it. */
     private var levels: List<Float> = emptyList()
     private var lastFactor = 1f
@@ -100,6 +105,9 @@ class PlaybackEngine(
 
     /** Every load, pause, end, sleep and stop, for listening live (radio/LiveRadio). */
     var onTransport: (TransportEvent) -> Unit = {}
+
+    /** Every play, pause, seek, speed, and episode change, for a Listen Together room (together/ListenTogether). */
+    var onRoomChange: (() -> Unit)? = null
 
     private val _state = MutableStateFlow(NowPlaying())
     val state: StateFlow<NowPlaying> = _state
@@ -150,7 +158,20 @@ class PlaybackEngine(
                 // The person, the notification, a headset, or audio focus: any pause.
                 onTransport(TransportEvent.Paused)
             }
+            onRoomChange?.invoke()
             publish()
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK) onRoomChange?.invoke()
+        }
+
+        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+            onRoomChange?.invoke()
         }
 
         // A call or another app's sound takes audio focus for a moment; when it
@@ -171,8 +192,9 @@ class PlaybackEngine(
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && !sleep.allowsAutoAdvance()) {
                 player.pause()
             }
-            mediaItem?.mediaId?.let { id -> resumeAt(id) }
+            if (resumeSaved) mediaItem?.mediaId?.let { id -> resumeAt(id) }
             applyVolume(lastFactor)
+            onRoomChange?.invoke()
             publish()
         }
 
@@ -229,6 +251,8 @@ class PlaybackEngine(
         val items = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
         saveNow()
         episodes = items.map { it.first }
+        urls = items.map { it.second }
+        resumeSaved = true
         levels = items.map { it.third }
         lastFactor = 1f
         sleep.onUserPlay()
@@ -394,6 +418,49 @@ class PlaybackEngine(
     /** Pauses, as the person's own pause does (Listening live's button). */
     fun pause() {
         playerOrNull?.pause()
+        publish()
+    }
+
+    /** Plays on from here, for a room's correction. */
+    fun resume() {
+        playerOrNull?.play()
+        publish()
+    }
+
+    /** What a Listen Together room reads from this player: the item playing, its catalog copy, and where it is. */
+    data class RoomView(val episodeId: String, val copyUrl: String, val positionMs: Long, val playing: Boolean, val speed: Float)
+
+    fun roomView(): RoomView? {
+        val p = playerOrNull ?: return null
+        val index = p.currentMediaItemIndex
+        val id = episodes.getOrNull(index)?.id ?: return null
+        val url = urls.getOrNull(index) ?: return null
+        val playing = p.playWhenReady && p.playbackState != Player.STATE_ENDED && p.playbackState != Player.STATE_IDLE
+        return RoomView(id, url, p.currentPosition.coerceAtLeast(0), playing, p.playbackParameters.speed)
+    }
+
+    /**
+     * A guest plays the host's exact copy (Archive Watch Decision 143): this
+     * one item, nothing queued, at the host's place and speed, never this
+     * device's saved position.
+     */
+    fun playRoomCopy(row: EpisodeRow, url: String, startMs: Long, playing: Boolean, speed: Float, level: Float) {
+        ensureSession()
+        saveNow()
+        episodes = listOf(row)
+        urls = listOf(url)
+        resumeSaved = false
+        levels = listOf(level)
+        lastFactor = 1f
+        _state.value = _state.value.copy(failed = false, offline = false)
+        onTransport(TransportEvent.Loaded(row.id))
+        val p = player
+        p.setMediaItems(listOf(mediaItem(row, url)), 0, startMs.coerceAtLeast(0))
+        applyVolume(1f)
+        p.setPlaybackSpeed(speed)
+        p.prepare()
+        p.playWhenReady = playing
+        syncPauseAtEnd()
         publish()
     }
 }
