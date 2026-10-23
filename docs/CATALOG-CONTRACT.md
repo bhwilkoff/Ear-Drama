@@ -103,7 +103,9 @@ copy, then measured bitrate. The versions picker lists the rest in rank order.
 `episodes_fts` (FTS5, contentless; a match's `rowid` is the episode's `rowid`):
 title and aka, series name, credited names, and later transcript text where it
 passes the gate. Matching is word-prefix, never substring, on every
-platform: "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful".
+platform: each typed word must begin a word in the row ("sorr wrong" finds
+"Sorry, Wrong Number"; "sorr" also finds "Mr. Sorrowful", correctly), and a
+match never starts inside a word ("orry" finds nothing).
 
 ### 3.5 Forwarding ids
 
@@ -152,9 +154,15 @@ Every client reproduces these natively; each says which filter clauses it applie
 
 ### 5.5 Display vocabulary
 
+The words are published, not typed into each client: `meta.rightsLines` in the
+served projection (a JSON object keyed by `unclaimed` and each clean basis) and
+`rightsLines` in the web manifest carry exactly the strings below. A client
+shows the published string; a basis it has no string for shows no line, never
+the unclaimed one.
+
 | Field value | Shown as |
 |---|---|
-| `rights = clean` | the basis: "Government recording", "LibriVox recording", "Published before 1926" |
+| `rights = clean` | by `rights_basis`: `rec_gov_work` "Government recording", `rec_librivox` "LibriVox recording", `rec_pd_published_age` "Published before 1926", `rec_cc_corroborated` "Creative Commons recording" |
 | `rights = unclaimed` | "No rights claim known. Removed on request." Never "public domain" |
 | `variant = AFRS` / `AFRTS` | "Armed Forces Radio rebroadcast" |
 | `partial = 1` | "Incomplete copy" |

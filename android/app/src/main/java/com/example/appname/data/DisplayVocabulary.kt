@@ -13,6 +13,7 @@ object DisplayVocabulary {
         "rec_gov_work" to "Government recording",
         "rec_librivox" to "LibriVox recording",
         "rec_pd_published_age" to "Published before 1926",
+        "rec_cc_corroborated" to "Creative Commons recording",
     )
 
     fun rightsLine(rights: String, basis: String?): String? = when (rights) {

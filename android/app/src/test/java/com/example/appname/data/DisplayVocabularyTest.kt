@@ -30,7 +30,8 @@ class DisplayVocabularyTest {
         assertEquals("Government recording", DisplayVocabulary.rightsLine("clean", "rec_gov_work"))
         assertEquals("LibriVox recording", DisplayVocabulary.rightsLine("clean", "rec_librivox"))
         assertEquals("Published before 1926", DisplayVocabulary.rightsLine("clean", "rec_pd_published_age"))
-        assertNull(DisplayVocabulary.rightsLine("clean", "rec_cc_corroborated"))
+        assertEquals("Creative Commons recording", DisplayVocabulary.rightsLine("clean", "rec_cc_corroborated"))
+        assertNull(DisplayVocabulary.rightsLine("clean", "rec_unknown_basis"))
     }
 
     @Test fun `the eight genre codes have names and nothing else does`() {
