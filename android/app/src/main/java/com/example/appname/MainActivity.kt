@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
+import com.example.appname.app.AppNameApplication
 import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LaunchDoors
 import com.example.appname.ui.AppRoot
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                AppRoot(inbox = inbox, muted = playerMuted)
+                AppRoot(container = (application as AppNameApplication).container, inbox = inbox, muted = playerMuted)
             }
         }
     }

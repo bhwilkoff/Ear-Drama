@@ -36,6 +36,28 @@ After cloning, point Android Studio at the `android/` folder
 (File → Open → `android/`). Android Studio handles the wrapper
 generation automatically the first time you sync.
 
+## The bundled catalog seed
+
+The app opens a catalog on first launch with no network from a bundled
+`ear-drama-seed.sqlite` (docs/CATALOG-CONTRACT.md §2). The database is never
+committed. `copyCatalogSeed` (app/build.gradle.kts) copies it into a generated
+assets directory under `app/build/` on every build, from the first of:
+
+1. `./gradlew -PearDramaSeed=/path/to/ear-drama.sqlite ...`
+2. `ear.drama.seed=/path/to/ear-drama.sqlite` in `android/local.properties`
+3. the `EAR_DRAMA_SEED` environment variable
+4. `../catalog/out/publish-clean/ear-drama.sqlite` (the clean-only projection
+   that `catalog/tools/build_projection.py` writes)
+
+With none present the build still succeeds; the app then has no catalog until
+it downloads the full one. The same path is handed to the unit tests, where
+`SeedCatalogTest` runs the query verbs against it (skipped when absent; the
+fixture tests in `CatalogQueriesTest` run everywhere).
+
+The full catalog comes from `CatalogRepository.CATALOG_URL`, the rolling
+`catalog-latest` release. Until that asset is published the request fails and
+the seed stays in place.
+
 ## Versioning
 
 `app/build.gradle.kts` defines `versionCode` + `versionName`. Bump

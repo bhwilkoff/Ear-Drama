@@ -26,6 +26,14 @@ from genres import genre_of
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
+# The rights line every client shows (contract §5.5), published so no client types it.
+RIGHTS_LINES = {
+    "unclaimed": "No rights claim known. Removed on request.",
+    "rec_gov_work": "Government recording",
+    "rec_librivox": "LibriVox recording",
+    "rec_pd_published_age": "Published before 1926",
+    "rec_cc_corroborated": "Creative Commons recording",
+}
 # A refused projection is better than a shrunken one (Archive Watch Decision 020).
 MIN_EPISODES = 10_000
 
@@ -134,7 +142,7 @@ def build(src, dst, clean_only=False):
               for t in ("episodes", "recordings", "series", "people", "credits")}
     counts["clean"] = d.execute("SELECT COUNT(*) FROM episodes WHERE rights = 'clean'").fetchone()[0]
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "cleanOnly": clean_only, "counts": counts}
+            "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES}
     for k, v in meta.items():
         d.execute("INSERT INTO meta VALUES (?,?)", (k, json.dumps(v)))
     d.commit()

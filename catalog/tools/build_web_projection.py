@@ -39,6 +39,7 @@ import unicodedata
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import NAMES as GENRE_NAMES
+import build_projection as P
 
 SCHEMA_VERSION = 1
 SHARD_MASK = 0xFFF
@@ -53,13 +54,7 @@ CREDIT_FIELDS = ["name", "role", "character", "person"]
 DAY_FIELDS = ["id", "date", "title", "series", "length", "url", "seriesName"]
 DOC_FIELDS = ["id", "title", "date", "series"]
 # The rights line, contract §5.5. Published so no client words it for itself.
-RIGHTS_LINES = {
-    "unclaimed": "No rights claim known. Removed on request.",
-    "rec_gov_work": "Government recording",
-    "rec_librivox": "LibriVox recording",
-    "rec_pd_published_age": "Published before 1926",
-    "rec_cc_corroborated": "Creative Commons recording",
-}
+RIGHTS_LINES = P.RIGHTS_LINES
 VARIANT_LINES = {"AFRS": "Armed Forces Radio rebroadcast", "AFRTS": "Armed Forces Radio rebroadcast"}
 PARTIAL_LINE = "Incomplete copy"
 

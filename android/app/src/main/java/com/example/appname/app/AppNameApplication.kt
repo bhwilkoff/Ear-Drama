@@ -8,6 +8,10 @@ import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 import okhttp3.OkHttpClient
 
@@ -40,10 +44,18 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory {
             .build()
     }
 
+    lateinit var container: AppContainer
+        private set
+
+    private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     override fun onCreate() {
         super.onCreate()
-        // Create notification channels here when FCM ships.
-        // createNotificationChannels()
+        container = AppContainer(this)
+        appScope.launch {
+            container.catalog.initialize()
+            container.catalog.refreshIfStale()
+        }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

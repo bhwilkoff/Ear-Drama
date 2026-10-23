@@ -1,98 +1,141 @@
 package com.example.appname.ui
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmarks
+import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
+import com.example.appname.app.AppContainer
 import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LocalPlayerMuted
+import com.example.appname.navigation.Route
+import com.example.appname.navigation.Tab
+import com.example.appname.ui.screens.EpisodeScreen
+import com.example.appname.ui.screens.LibraryScreen
+import com.example.appname.ui.screens.ListenScreen
+import com.example.appname.ui.screens.MiniPlayer
+import com.example.appname.ui.screens.PlayerSheet
+import com.example.appname.ui.screens.SearchScreen
+import com.example.appname.ui.screens.SeriesBrowseScreen
+import com.example.appname.ui.screens.SeriesScreen
+
+private fun Tab.icon(): ImageVector = when (this) {
+    Tab.Listen -> Icons.Filled.Headphones
+    Tab.Series -> Icons.Filled.Radio
+    Tab.Search -> Icons.Filled.Search
+    Tab.Library -> Icons.Filled.Bookmarks
+}
 
 /**
- * Root scaffold. Hosts the size-class-adaptive nav surface
- * (NavigationBar on compact, NavigationRail on medium+, drawer on
- * expanded) via [NavigationSuiteScaffold]. One Composable hierarchy;
- * never fork per form factor.
- *
- * Per ANDROID-DESIGN §6.6, every screen MUST work on compact /
- * medium / expanded. Adaptive concerns belong here at the root, not
- * inside per-feature screens.
+ * Root: the size-class-adaptive tab surface (bar, rail, or drawer) over one
+ * Navigation 3 back stack per tab, so system back and predictive back pop
+ * within a tab and a tab tap returns to its root. The mini player sits above
+ * the tabs whenever an episode is loaded.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRoot(
+    container: AppContainer,
     inbox: SnapshotStateList<InboxRequest> = remember { mutableStateListOf() },
     muted: Boolean = false,
 ) {
-    // FILL IN: replace with your destination enum. Survives process death
-    // via rememberSaveable; the actual ViewModel state survives via
-    // SavedStateHandle (Hilt-injected).
-    var selectedTab by rememberSaveable { mutableStateOf("home") }
-    var openItem by rememberSaveable { mutableStateOf<String?>(null) }
+    var selected by rememberSaveable { mutableStateOf(Tab.Listen) }
+    var playerOpen by rememberSaveable { mutableStateOf(false) }
+    val stacks: Map<Tab, NavBackStack<NavKey>> = Tab.entries.associateWith { tab ->
+        rememberNavBackStack(tab.root)
+    }
+    val stack = stacks.getValue(selected)
+
+    LaunchedEffect(muted) { container.playback.muted = muted }
 
     // The ONE place the inbox is drained: deep links and test doors alike.
     LaunchedEffect(inbox.size) {
         while (inbox.isNotEmpty()) {
             when (val request = inbox.removeAt(0)) {
-                is InboxRequest.Tab -> { selectedTab = request.tab; openItem = null }
-                is InboxRequest.Item -> openItem = request.id  // FILL IN: push the detail route
-                InboxRequest.EndDoor -> openItem = null        // FILL IN: also stop playback
+                is InboxRequest.Tab -> Tab.named(request.tab)?.let { selected = it }
+                is InboxRequest.Item -> stacks.getValue(selected).add(Route.Episode(request.id))
+                InboxRequest.EndDoor -> {
+                    container.playback.stop()
+                    playerOpen = false
+                }
             }
         }
     }
 
-    CompositionLocalProvider(LocalPlayerMuted provides muted) {
+    val openEpisode: (String) -> Unit = { id -> stack.add(Route.Episode(id)) }
+    val openSeries: (String) -> Unit = { key -> stack.add(Route.Series(key)) }
+    val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
+
+    CompositionLocalProvider(LocalPlayerMuted provides muted, LocalAppContainer provides container) {
         NavigationSuiteScaffold(
             navigationSuiteItems = {
-                // FILL IN: navigation destinations
-                // item(
-                //     selected = selectedTab == "home",
-                //     onClick = { selectedTab = "home" },
-                //     icon = { Icon(Icons.Default.Home, null) },
-                //     label = { Text("Home") },
-                // )
-            },
-        ) {
-            Scaffold(
-                topBar = {
-                    CenterAlignedTopAppBar(
-                        title = { Text("Ear Drama") },
-                        colors = TopAppBarDefaults.topAppBarColors(),
-                    )
-                },
-            ) { padding ->
-                // FILL IN: route to per-destination Composable
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text("Welcome — selected: $selectedTab")
-                    openItem?.let { Text("Item: $it") }
-                    Text(
-                        "Size class: ${currentWindowAdaptiveInfo().windowSizeClass}",
+                Tab.entries.forEach { tab ->
+                    item(
+                        selected = tab == selected,
+                        onClick = {
+                            if (tab == selected) {
+                                val s = stacks.getValue(tab)
+                                while (s.size > 1) s.removeAt(s.lastIndex)
+                            }
+                            selected = tab
+                        },
+                        icon = { Icon(tab.icon(), contentDescription = null) },
+                        label = { Text(tab.label) },
                     )
                 }
+            },
+        ) {
+            Column(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(1f)) {
+                    NavDisplay(
+                        backStack = stack,
+                        onBack = back,
+                        entryProvider = entryProvider {
+                            entry<Route.Listen> { ListenScreen(onOpenEpisode = openEpisode) }
+                            entry<Route.SeriesBrowse> { SeriesBrowseScreen(onOpenSeries = openSeries) }
+                            entry<Route.Search> {
+                                SearchScreen(onOpenSeries = openSeries, onOpenEpisode = openEpisode)
+                            }
+                            entry<Route.Library> { LibraryScreen(onOpenEpisode = openEpisode) }
+                            entry<Route.Series> { route ->
+                                SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode)
+                            }
+                            entry<Route.Episode> { route ->
+                                EpisodeScreen(route.id, onBack = back, onOpenSeries = openSeries)
+                            }
+                        },
+                    )
+                }
+                MiniPlayer(onExpand = { playerOpen = true })
             }
+        }
+        if (playerOpen) {
+            PlayerSheet(
+                onDismiss = { playerOpen = false },
+                onOpenEpisode = { id -> playerOpen = false; openEpisode(id) },
+            )
         }
     }
 }

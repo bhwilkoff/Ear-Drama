@@ -1,0 +1,151 @@
+package com.example.appname.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import com.example.appname.data.DisplayVocabulary
+import com.example.appname.data.Recording
+import com.example.appname.ui.EmptyMessage
+import com.example.appname.ui.LoadableContent
+import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.Meta
+import com.example.appname.ui.SectionHeader
+import com.example.appname.ui.episodeTitle
+import com.example.appname.ui.formatAirDate
+import com.example.appname.ui.formatClock
+import com.example.appname.ui.formatLength
+import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.theme.Spacing
+
+/** Episode Detail: date, network, credits, play, versions in rank order, and the rights line (§5.5). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EpisodeScreen(id: String, onBack: () -> Unit, onOpenSeries: (String) -> Unit) {
+    val container = LocalAppContainer.current
+    val detail by rememberCatalogQuery(id, watchUser = true) { db ->
+        db.episodeDetail(id)?.let { it to container.user.progress(it.episode.id) }
+    }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        LoadableContent(detail, Modifier.padding(padding)) { loaded ->
+            if (loaded == null) {
+                EmptyMessage("This episode is not in the catalog.", Modifier.padding(padding))
+                return@LoadableContent
+            }
+            val (d, progress) = loaded
+            val row = d.episode
+            val pad = Modifier.padding(horizontal = Spacing.S4.dp)
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+                item(key = "head") {
+                    formatAirDate(row.airDate)?.let { Meta(it, pad) }
+                    Text(
+                        episodeTitle(row),
+                        style = MaterialTheme.typography.displaySmall,
+                        modifier = pad.semantics { heading() },
+                    )
+                    Text(
+                        row.seriesName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable(onClickLabel = "Open series") { onOpenSeries(row.seriesKey) }
+                            .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+                    )
+                    val facts = listOfNotNull(d.network, formatLength(row.lengthSeconds)).joinToString(" · ")
+                    if (facts.isNotEmpty()) Meta(facts, pad)
+                }
+                item(key = "play") {
+                    val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
+                    Button(
+                        onClick = { container.playback.play(row) },
+                        enabled = d.recordings.isNotEmpty(),
+                        modifier = Modifier.padding(Spacing.S4.dp),
+                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Text(if (resume != null) "Resume at ${formatClock(resume.positionMs)}" else "Play")
+                    }
+                }
+                if (d.credits.isNotEmpty()) {
+                    item(key = "credits-h") { SectionHeader("Cast and credits") }
+                    // A person can hold two roles on one broadcast; the credit's position is its identity here.
+                    itemsIndexed(d.credits, key = { i, _ -> "c$i" }) { _, c ->
+                        ListItem(
+                            headlineContent = { Text(c.name) },
+                            supportingContent = listOfNotNull(c.character, c.role).joinToString(" · ")
+                                .ifEmpty { null }?.let { { Text(it) } },
+                        )
+                    }
+                }
+                if (d.recordings.size > 1) {
+                    item(key = "versions-h") { SectionHeader("Versions") }
+                    items(d.recordings, key = { "r${it.rank}" }) { rec ->
+                        VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
+                    }
+                } else {
+                    d.recordings.firstOrNull()?.let { rec ->
+                        val notes = recordingNotes(rec)
+                        if (notes.isNotEmpty()) item(key = "only-copy") { Meta(notes.joinToString(" · "), pad) }
+                    }
+                }
+                DisplayVocabulary.rightsLine(d.rights, d.rightsBasis)?.let { line ->
+                    item(key = "rights") {
+                        Meta(line, Modifier.padding(Spacing.S4.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun recordingNotes(rec: Recording): List<String> =
+    listOfNotNull(DisplayVocabulary.variantLine(rec.variant), DisplayVocabulary.PARTIAL.takeIf { rec.partial })
+
+@Composable
+private fun VersionItem(rec: Recording, onPlay: () -> Unit) {
+    val technical = listOfNotNull(rec.format, rec.kbps?.let { "$it kbps" }, formatLength(rec.lengthSeconds))
+        .joinToString(" · ")
+    val notes = recordingNotes(rec).joinToString(" · ")
+    ListItem(
+        headlineContent = { Text(rec.archiveId) },
+        supportingContent = listOf(technical, notes).filter { it.isNotEmpty() }.joinToString("\n")
+            .ifEmpty { null }?.let { { Text(it) } },
+        trailingContent = {
+            IconButton(onClick = onPlay) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = "Play the copy from ${rec.archiveId}")
+            }
+        },
+    )
+}
