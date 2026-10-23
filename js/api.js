@@ -300,6 +300,16 @@ const API = (() => {
     return { phase: 'during', index };
   }
 
+  /**
+   * The castable plays (PLAYS-DESIGN §3): catalog/plays/castable-scripts.json,
+   * served at data/plays/. Only scripts the rights test calls castable and
+   * whose parse is clean are in it; the client adds no filter of its own.
+   */
+  async function castableScripts() {
+    const d = await getJSON('plays/castable-scripts.json', 30000);
+    return Array.isArray(d.scripts) ? d.scripts : [];
+  }
+
   /** The rights line, worded by the projection (contract §5.5); never "public domain". */
   async function rightsLine(rights, basis) {
     const m = await manifest();
@@ -312,7 +322,7 @@ const API = (() => {
     manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
     transcript, transcriptLines, transcriptLabel,
-    localDate, tonight, onAir,
+    localDate, tonight, onAir, castableScripts,
   };
 })();
 

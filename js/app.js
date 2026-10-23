@@ -9,6 +9,8 @@
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
  *   ?view=library&tab=queue|history|following    Library (this device)
+ *   ?view=plays                       Plays (js/plays-ui.js); ?play={script id},
+ *   ?production={id}, ?production={id}&part={part id}  (this browser only)
  * Path twins (/series/{key}, /episode/{id}, /search?q=) are forwarded into
  * these by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
  *
@@ -26,9 +28,9 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'radio', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'radio', 'plays', 'search', 'library'];
   const TAB_OF = { listen: 'listen', series: 'series', show: 'series', episode: 'series', radio: 'radio',
-                   search: 'search', library: 'library' };
+                   plays: 'plays', search: 'search', library: 'library' };
   const PAGE = 60;
 
   /* ================================================================
@@ -211,8 +213,9 @@
     const p = new URLSearchParams(location.search);
     if (p.get('item')) return { view: 'episode', id: p.get('item'), p };
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
+    if (p.get('production') || p.get('play')) return { view: 'plays', p };
     const v = p.get('view');
-    if (['series', 'radio', 'search', 'library', 'listen'].includes(v)) return { view: v, p };
+    if (['series', 'radio', 'plays', 'search', 'library', 'listen'].includes(v)) return { view: v, p };
     return { view: 'listen', p };
   }
 
@@ -225,8 +228,9 @@
       a.classList.toggle('active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
+    if (r.view !== 'plays') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode,
-       radio: renderRadio, search: renderSearch, library: renderLibrary })[r.view](r);
+       radio: renderRadio, plays: renderPlays, search: renderSearch, library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
       const h = $(`view-${r.view}`).querySelector('h1');
@@ -827,6 +831,14 @@
     }, 180);
   });
   $('search-form').addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(searchTimer); runSearch($('search-q').value); });
+
+  /* ================================================================
+     PLAYS (js/plays-ui.js draws them with these helpers)
+  ================================================================ */
+
+  function renderPlays(r) {
+    PlaysUI.render(r, { el, icon, stateBox, problem, setTitle, navigate, announce });
+  }
 
   /* ================================================================
      LIBRARY (this device)

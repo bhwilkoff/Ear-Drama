@@ -45,10 +45,13 @@ web app follows today.
 
 ## §3 Routing and URL state
 
-- **§3.1 Query routes, not hash routes.** `?view=listen|series|radio|search|library`,
+- **§3.1 Query routes, not hash routes.** `?view=listen|series|radio|plays|search|library`,
   `?series={key}&season=`, `?item={episode id}`, `?view=search&q=`,
-  `?view=library&tab=`. This inverts the template's hash routes on
-  purpose: query routes are what the path twins forward into.
+  `?view=library&tab=`, and for plays (§4.10) `?play={script id}`,
+  `?production={id}`, `?production={id}&part={part id}`. This inverts the
+  template's hash routes on purpose: query routes are what the path twins
+  forward into. A production lives only in the browser that made it
+  (PLAYS-DESIGN §6), so its routes have no path twin and no app link.
 - **§3.2 Every `eardrama://` link has an `https://eardrama.org` path
   twin** (`/series/{key}`, `/episode/{id}`, `/search?q=`, `/library`),
   forwarded by `404.html`. Never change these shapes; shipped apps share
@@ -61,12 +64,13 @@ web app follows today.
 
 ## §4 Surfaces
 
-- **§4.1 Navigation.** Five destinations, Listen, Series, Radio,
-  Search, Library (05-design-research §8): a bottom tab bar on a phone, a
-  sidebar from 768 px. The phone's five reduce to the car's four
+- **§4.1 Navigation.** Six destinations, Listen, Series, Radio, Plays,
+  Search, Library (05-design-research §8, plus Plays on 2026-10-23, as the
+  Apple apps carry a Plays tab, Decision 059): a bottom tab bar on a phone,
+  six columns at 375 px, and a sidebar from 768 px. The phone's six reduce to the car's four
   (Continue, Radio, Series, Downloads) without a new one (R17). Depth is
-  at most two from a tab: tab, series, episode; a season or a Library
-  section is a segmented scope, never a push.
+  at most two from a tab: tab, series, episode; Plays, cast sheet, part;
+  a season or a Library section is a segmented scope, never a push.
 - **§4.2 Listen** = Continue listening (this device), Following, This day
   in radio, then shelves by rule from `index/listen.json`. Each section
   draws only when it has rows.
@@ -132,6 +136,78 @@ web app follows today.
   (`printed`) stays in the file as witness and is **not drawn** until the
   owner rules on it. The listing is credited in one caption line linking
   the page it was read from. No evening for today is the empty state.
+- **§4.10 Plays: pass the phone** (`docs/PLAYS-DESIGN.md` is binding on
+  what the feature does; this rule is how it looks on the web). Code:
+  `js/plays-core.js` (the script, production, relay, timeline, and audio
+  math, mirroring `apple/Core/Plays`), `js/plays-store.js`,
+  `js/plays-voice.js`, `js/plays-audio.js`, `js/plays-worklet.js`,
+  `js/plays-session.js`, `js/plays-ui.js`; tests `js/plays.test.js`.
+  - **The list** (`?view=plays`): "Your plays" (this browser's
+    productions, newest first, each with "N of M lines recorded" or
+    "Finished"), then "Plays you can cast" from
+    `data/plays/castable-scripts.json`, read generically through
+    `API.castableScripts`. Each play shows its title, author, part count,
+    and its rights evidence claims verbatim, each linked to its source,
+    and the source's name linked. Nothing on it is written by the app.
+    The Pages deploy copies the file into `data/plays/`
+    (`catalog-publish.yml`); locally, copy it into the `data` link's
+    `plays/` folder.
+  - **A play** (`?play=`): the same lines, "Cast this play", and its parts
+    largest first with line counts (directions and sound are parts too).
+    Casting replaces this page in the history with the cast sheet, so the
+    depth stays two.
+  - **The cast sheet** (`?production=`): every part with its state. Only
+    the relay's next part offers "Take part", with an optional name field;
+    sound and directions may "Leave silent"; a finished part offers "Open
+    part" only while no part records (C7). A refusal is one line in the
+    error color. Below: Listen through (§2.6, C5: offered only when every
+    speaking line has a human take), Export once finished, Discard unused
+    takes, Delete production (asks first).
+  - **Recording** (`?production=&part=`): before anything, the
+    headphones refusal. The web cannot see the audio route (Safari lists no
+    outputs, and Chrome's labels name devices, not the route in use), so
+    the page says "Headphones only. This browser cannot tell whether they
+    are on." and Start recording stays disabled until the person checks
+    "My headphones are on", every session (PLAYS-DESIGN §4.3). Start
+    recording asks for the microphone then, never earlier
+    (`getUserMedia`, `echoCancellation: true`, `autoGainControl` and
+    `noiseSuppression` off). Then five seconds of room tone with a
+    countdown, then the teleprompter: the cue line (labeled "Device voice"
+    when the device voice reads it), "Your line" while listening, the line
+    large, the next line dim, the line's takes, one record control,
+    previous and next, Run-up, Hear it read, the device voice's speed,
+    Keep, and Done with this part (enabled when every line of a speaking
+    part has a take). Keys: Space records or stops, Return keeps, the
+    arrow keys move by line. Leaving the page ends the session and stops
+    the microphone.
+  - **Capture is an AudioWorklet writing PCM**, not MediaRecorder: the
+    line-end detector reads 20 ms frames as they arrive, the kept window
+    (onset less 250 ms to end plus 250 ms) is cut from samples, and every
+    browser yields the same PCM, where MediaRecorder gives Opus in WebM
+    or AAC in MP4 by browser, lossy and needing a decode to trim. Takes
+    are resampled to 48 kHz with an `OfflineAudioContext` and kept as
+    24-bit mono WAV.
+  - **The device voice is `speechSynthesis`, local voices only**
+    (`localService`, English), and is never captured: its sound goes to the
+    system output, which a page cannot read. With no local voice the cue is
+    shown, not spoken. The bleed check is the microphone's level while
+    the device voice speaks (PLAYS-DESIGN §4.1), held only as a number.
+  - **Storage is IndexedDB** (`ed-plays`, one `files` store keyed by
+    path), laid out like Apple's folder: `{id}/script.json`,
+    `{id}/production.json` (the same record and field names),
+    `{id}/takes/{line}-{8 hex}.wav`, `{id}/roomtone/`, `{id}/mix.wav`. A
+    take is written with `add`, which refuses an existing key, so a take is
+    never overwritten. Not OPFS: writing a file from the page needs
+    `createWritable`, which older Safari lacks.
+  - **The mix** is rendered in 30 s `OfflineAudioContext` chunks from the
+    timeline and written as 16-bit mono WAV at 48 kHz: the browser has no
+    AAC or Opus file encoder short of real-time MediaRecorder, and WAV
+    plays everywhere. The listen-through plays it in its own
+    `<audio controls>` in the cast sheet, deliberately not the one player
+    of §5.1: a mix has no history, queue, resume, or Media Session, and
+    the episode player pauses when it starts. Reaching its end without
+    seeking forward finishes the play; Export downloads the WAV.
+  - `?mute=1` silences the device voice, the cues, and the mix.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll and on each site page: Credits, Privacy, Take-down requests.
   They are never featured in the main UI (AGENTS.md "side doors").
@@ -139,7 +215,8 @@ web app follows today.
 ## §5 The player
 
 - **§5.1 One `<audio>` element** owned by `js/player.js`; the views draw
-  it. The bar is a flex child above the tab bar, never `position: fixed`
+  it. The one exception is a play's listen-through (§4.10), which is not an
+  episode. The bar is a flex child above the tab bar, never `position: fixed`
   (§6.3). Now Playing is a `<dialog showModal>`, full screen on a phone.
 - **§5.2 Speed, the sleep timer, and skip live on the player** (R18):
   back 15 s, forward 30 s, speeds 0.75, 1, 1.25, 1.5, and 2 (`SPEEDS`,

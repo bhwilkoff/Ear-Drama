@@ -45,6 +45,9 @@
       <a class="nav-item" href="?view=radio" data-nav="radio">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6H8.3l8.3-3.4L15.9 1 3.2 6.2C2.5 6.4 2 7.2 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 2v3h-2V9h-2v2H4V8zM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
         <span>Radio</span></a>
+      <a class="nav-item" href="?view=plays" data-nav="plays">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 3h16v7a8 8 0 0 1-16 0zm4 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM8.5 13a3.5 3.5 0 0 0 7 0z"/></svg>
+        <span>Plays</span></a>
       <a class="nav-item" href="?view=search" data-nav="search">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
         <span>Search</span></a>
@@ -86,6 +89,11 @@
       <section id="view-radio" class="view" aria-labelledby="radio-h" hidden>
         <h1 id="radio-h" class="view-heading" tabindex="-1">Radio</h1>
         <div id="radio-body"></div>
+      </section>
+
+      <section id="view-plays" class="view" aria-labelledby="plays-h" hidden>
+        <h1 id="plays-h" class="view-heading" tabindex="-1">Plays</h1>
+        <div id="plays-body"></div>
       </section>
 
       <section id="view-search" class="view" aria-labelledby="search-h" hidden>
@@ -150,6 +158,9 @@
     <a class="tab" href="?view=radio" data-nav="radio">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6H8.3l8.3-3.4L15.9 1 3.2 6.2C2.5 6.4 2 7.2 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 2v3h-2V9h-2v2H4V8zM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
       <span>Radio</span></a>
+    <a class="tab" href="?view=plays" data-nav="plays">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 3h16v7a8 8 0 0 1-16 0zm4 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM8.5 13a3.5 3.5 0 0 0 7 0z"/></svg>
+      <span>Plays</span></a>
     <a class="tab" href="?view=search" data-nav="search">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
       <span>Search</span></a>
@@ -216,6 +227,12 @@
   <script src="js/api.js"></script>
   <script src="js/store.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/plays-core.js"></script>
+  <script src="js/plays-store.js"></script>
+  <script src="js/plays-voice.js"></script>
+  <script src="js/plays-audio.js"></script>
+  <script src="js/plays-session.js"></script>
+  <script src="js/plays-ui.js"></script>
   <script src="js/app.js"></script>
   <!-- Additive smart-TV layer + Cast sender: both self-disable off-TV
        (tv.js adds html.tv only on a TV runtime; cast-sender no-ops when the
