@@ -135,3 +135,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 59, 2026-10-23, main thread: store listing words drafted (M10)
 - c4ff609: docs/store/LISTING-DRAFT.md, the App Store and Play text with each claim tied to a decision or PARITY row, lengths measured (subtitle 27/30, promotional 151/170, keywords 97/100, Play short 80/80). Caught while drafting: "eighty years ago" was wrong for 1944 (82), and "1940s radio" was wrong for 5 of the 15 published evenings (tonight.json: ten 1940s, three 1950s, two 1930s); the line now names neither. Owner item 13.
 - Running: sign-in on Apple, Android and the web.
+
+### Tick 60, 2026-10-23, owner ruling + merge: the palette is On Air; sign-in on the web
+- Owner, mid-tick: "I really like the On Air colors and I think we should be building with those in mind." 04c2578 (1.0.29 build 30): Decision 064; design-tokens.json to On Air plus `secondary`, `onSecondary`, `link`; all 14 token files regenerated; test_design_tokens.mjs checks the new pairs (seen to fail on a light link at 1.72:1). Verified: web read at a true 375 px, light and dark; macOS and Android builds, 0 warnings. Memory saved; SCRATCHPAD item 1 closed.
+- Instrument lesson: headless Chrome's --window-size=375 crops a wider layout; I almost fixed a tab bar that fit. Measured in a 375 px iframe (scrollWidth 375). Memory saved.
+- Merged 875c8bf (1.0.30 build 31): web sign-in and sync, delete-account/ page. Added on merge: the privacy page's false lines (no accounts, no third-party scripts) corrected and the new storage listed, owner review marked; Delete links in every footer; SHELL_VERSION v11, because 04c2578 changed styles.css without a bump. Verified: account 11, api 10, player 6, plays 161, test_web clean.
+- Next: genre hues (`color.genre`) and moving links/focus/selected tab to blue on every client, after Apple and Android sign-in merge. Running: sign-in on Apple and Android.
