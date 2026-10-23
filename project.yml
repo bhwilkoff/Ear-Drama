@@ -62,6 +62,12 @@ targets:
       # always a bundle resource, never left to file-type inference.
       - path: apple/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
+      # The castable scripts plays phase 1 bundles (PLAYS-DESIGN §3), built by
+      # catalog/tools/build_castable_scripts.py; Android bundles the same file.
+      - path: catalog/plays/castable-scripts.json
+        buildPhase: resources
+        # The TV records nothing and keeps no plays in phase 1 (§6).
+        destinationFilters: [iOS, macOS]
     scheme:
       testTargets:
         - EarDramaTests
@@ -96,6 +102,10 @@ targets:
         "ENABLE_APP_SANDBOX[sdk=macosx*]": YES
         "ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]": YES
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+        # Plays: the microphone records a performer's part (PLAYS-DESIGN §4).
+        # Asked at the moment of recording, never at launch.
+        "ENABLE_RESOURCE_ACCESS_AUDIO_INPUT[sdk=macosx*]": YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Ear Drama records your part in a play. The recording stays on this device."
         # Audio keeps playing with the screen locked or the app in the
         # background (research 04 §2.2). macOS needs no background mode.
         "INFOPLIST_KEY_UIBackgroundModes[sdk=iphone*]": audio

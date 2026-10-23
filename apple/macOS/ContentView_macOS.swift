@@ -28,6 +28,7 @@ struct ContentView_macOS: View {
                     switch store.selectedTab {
                     case .listen: ListenScreen()
                     case .series: SeriesBrowseScreen()
+                    case .plays: PlaysScreen()
                     case .search: SearchScreen_macOS()
                     case .library: LibraryScreen()
                     }
@@ -120,12 +121,14 @@ struct PlaybackCommands_macOS: Commands {
     let store: AppStore
     let downloads: DownloadStore
     @Environment(\.openWindow) private var openWindow
+    @FocusedValue(\.recordingControls) private var recording
 
     var body: some Commands {
         CommandMenu("Controls") {
+            // A focused production window gives Space to Record (the Recording menu).
             Button(player.isPlaying ? "Pause" : "Play") { player.togglePlayPause() }
                 .keyboardShortcut(.space, modifiers: [])
-                .disabled(player.item == nil)
+                .disabled(player.item == nil || recording != nil)
             Button("Back 15 Seconds") { player.skip(by: -AudioPlayer.Skip.back) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
                 .disabled(player.item == nil)
@@ -173,6 +176,60 @@ struct PlaybackCommands_macOS: Commands {
                 Button(tab.title) { store.selectedTab = tab }
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
             }
+        }
+    }
+}
+
+/// A production is a window (PLAYS-DESIGN §2.2): the cast sheet in the sidebar,
+/// the part being recorded in the detail, the keyboard driving it through the
+/// Recording menu.
+struct ProductionWindow_macOS: View {
+    static let id = "production"
+    let productionID: String
+    @Environment(PlaysLibrary.self) private var plays
+    @State private var selected: PartID?
+
+    var body: some View {
+        if let production = plays.store.production(productionID), let script = plays.castScript(for: production) {
+            NavigationSplitView {
+                CastSheet(production: production, script: script) { selected = $0 }
+                    .navigationSplitViewColumnWidth(min: 280, ideal: 320)
+            } detail: {
+                PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script))
+            }
+            .navigationTitle(production.title)
+        } else {
+            ContentUnavailableView("Production not found", systemImage: "questionmark.square.dashed")
+        }
+    }
+}
+
+/// The recording commands, for the focused production window; disabled, never
+/// hidden, when no part is being recorded.
+struct RecordingCommands_macOS: Commands {
+    @FocusedValue(\.recordingControls) private var recording
+
+    var body: some Commands {
+        CommandMenu("Recording") {
+            Button(recording?.isListening == true ? "Stop" : "Record") { recording?.recordOrStop() }
+                .keyboardShortcut(.space, modifiers: [])
+                .disabled(recording == nil || (recording!.session.isBusy && recording?.isListening != true))
+            Button("Keep and Go to Next Line") { recording?.move(1) }
+                .keyboardShortcut(.return, modifiers: [])
+                .disabled(recording == nil || recording!.session.isBusy)
+            Divider()
+            Button("Previous Line") { recording?.move(-1) }
+                .keyboardShortcut(.upArrow, modifiers: [])
+                .disabled(recording == nil || recording!.session.isBusy)
+            Button("Next Line") { recording?.move(1) }
+                .keyboardShortcut(.downArrow, modifiers: [])
+                .disabled(recording == nil || recording!.session.isBusy)
+            Divider()
+            Button("Run-Up") {
+                if let recording, let line = recording.line { Task { await recording.session.record(line.id, runUp: true) } }
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+            .disabled(recording == nil || recording!.session.isBusy)
         }
     }
 }
