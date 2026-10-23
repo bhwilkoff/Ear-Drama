@@ -97,3 +97,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged df0db3b (1.0.22 build 23): the parser finds where the play begins and ends; front matter never becomes a part; full names expand frequent labels (Hamlet opens on BARN "Who's there?"); several plays or a mostly set-aside text is not clean. 11 plays bundled (Octavia and The Custom of the Country added). Verified: run_all 21/21, macOS tests with the new bundle. I sent back the B&F volume as a suspected multi-play text; the agent measured it as one play (one cast list, one Actus primus), which I confirmed in the cache. Open: it ships under the catalog title "Beaumont and Fletcher's Works, Vol. 01 of 10".
 - Publish run 39955509726 failed at the new evenings step: `apt-get install poppler-utils` without `apt-get update` (mirror 404). Fixed in 869c7aa; redispatched as 39956803564.
 - Running: Android plays phase 1.
+
+### Tick 52, 2026-10-23, main thread + agents: the volume title fixed; Radio on Apple and plays on the web launched
+- a5a66e1 (1.0.23 build 24): a collected-works record (Works / Volume / Vol. / Collection) shows the play its own text prints before the first speech, cased for a list and never reworded, with the volume kept as `collection`. gut-12039 now reads "The Custom of the Country". Two cases; three broken controls each failed (5/6); catalog run_all 21/21; US English. Apple's Codable decoding ignores the new key.
+- Launched: the Radio tab (Tonight in 19xx) on iOS, macOS and tvOS, mirroring the web; plays phase 1 on the web, headphones only. Running: Android plays. M5 (Worker + sign-in) is next once an agent slot frees.
+- Publish rerun 39956803564 still building at 7:10 AM MT (the first run failed at minute 5; this one is past it).
