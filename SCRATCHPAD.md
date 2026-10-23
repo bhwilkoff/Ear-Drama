@@ -16,45 +16,29 @@
 
 ## Current state
 
-- **Ready for you to play (2026-10-22, built, not yet played)**: the listening
-  apps on all five (web M2, Apple M3, Android M4; 1.0.8). Each play gate waits on
-  one setup step of yours: the web's data needs Settings > Pages > Source:
-  GitHub Actions; TestFlight needs the App Store Connect record and signing
-  secrets; Play internal needs the Play Console app. Meanwhile, locally: web,
-  `ln -s catalog/out/web data && python3 -m http.server 8080`; Mac, open
-  EarDrama.xcodeproj and run (the seed bundles from catalog/out/publish-clean);
-  Android, `./gradlew :app:installDebug` with the Pixel awake. Try: the sleep
-  timer's "End of this episode", a Suspense season, search "sorry wrong", an
-  episode's rights line. Broken would be: playback that never starts, a timer
-  that starts the next episode, "public domain" anywhere.
-- **Plays questions (docs/PLAYS-DESIGN.md)**: 1,722 Gutenberg plays are castable
-  today; all 1,371 Generic Radio Workshop scripts are closed by GRW's own terms
-  ("TLDR: Assume Copyright") unless we ask (C8, which meets your "no outreach for
-  now"). Also open: C5 previews of a half-voiced play, C6 a role nobody takes,
-  C7 relay order, C9 "author died by 1955", C10 commercials and Personal Voice,
-  and whether Decision 057's "sign-in required to record" covers a local
-  recording that is never shared.
-- **Loudness pace**: `catalog-loudness.yml` measures the whole catalog by
-  streaming each episode from archive.org (Decision 061), about 25 GB a run.
-  Merged at once a day (~108 days to cover 108,005 episodes); four a day (~27
-  days, ~100 GB a day) is ready by changing one cron line. Faster, slower, or
-  tell archive.org first? (It runs once Actions can run on schedule.)
-- **Tonight in 19xx floor (docs/research/evenings.md)**: measured over 1,180
-  CBS and NBC evenings 1935-55 from the Washington Post radio grid, 61% of
-  evenings have nothing surviving (median 0, p90 a quarter, best 0.56). Proposed
-  floor: a quarter of prime time (one hour in four) plays a recording of that
-  night; every well-sampled anniversary date has a year above it. Agree, or a
-  higher floor with fewer evenings offered? And may a gap show the newspaper's
-  printed listing (OCR text) as a fact, or only its time and "not surviving"?
-- **Ready for you (2026-10-22)**: pick a palette. Open
-  `docs/research/palette/index.html` (or the PNGs in `shots/`); the method and
-  every number are in its README. Three directions: On Air, Tuning Eye,
-  Catalin (the research recommends Catalin; it advises against On Air, whose
-  red is iHeartRadio's). Your pick unblocks the tokens and the icon (M0). **Also**: may the loop
-  download the two fonts (google/fonts on GitHub) and the CC0 microphone
-  photo (Wikimedia Commons)? And a rights call: 112 Command Performance
-  episodes credit nobody, so they stay government work under the AFRS rule;
-  presume network stars for the whole series instead (tick 7)?
+- **Waiting on you** (most valuable first; detail in each pointer):
+  1. **Pick a palette**: `docs/research/palette/index.html` (On Air, Tuning Eye,
+     Catalin; the research favors Catalin). Unblocks the tokens and the icon.
+  2. **May the loop download** the two fonts (google/fonts) and the CC0
+     microphone photo (Wikimedia Commons)?
+  3. **Play the listening apps locally** (1.0.13; built, not yet played): web
+     `ln -s catalog/out/web data && python3 -m http.server 8080`; Mac, run
+     EarDrama.xcodeproj; Android `./gradlew :app:installDebug` with the Pixel
+     awake. Broken would be: playback that never starts, a sleep timer that
+     starts the next episode, "public domain" anywhere.
+  4. **Tonight in 19xx** (`docs/research/evenings.md`): the floor, a quarter of
+     prime time surviving (61% of evenings have nothing)? May a gap show the
+     newspaper's printed listing, or only its time?
+  5. **Command Performance**: 112 uncredited episodes stay government work under
+     the AFRS rule; presume network stars for the whole series instead?
+  6. **Loudness pace**: once a day (~25 GB, ~108 days) or four (~100 GB/day,
+     ~27 days), or tell archive.org first?
+  7. **Plays** (`docs/PLAYS-DESIGN.md`): ask the Generic Radio Workshop (C8)?
+     C5 previews, C6 unfilled roles, C7 relay order, C9 "author died by 1955",
+     C10 commercials and Personal Voice; does "sign-in required to record"
+     cover a local recording never shared?
+  8. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
+     take-down email, store records, OAuth clients, Worker, archive.org account).
 - **Status (2026-10-22, 10:10 PM MT, tick 25)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
   cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.8:

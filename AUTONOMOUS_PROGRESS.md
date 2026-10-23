@@ -200,3 +200,6 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 
 ### Tick 34, 2026-10-22, data + web: evenings published, the Radio tab
 - Launched one agent for both halves: `tonight.json` as a pipeline output (served episodes only, a rolling window from yesterday through 13 days ahead, a published day never rewritten, the floor one provisional constant, wired into catalog-publish for /data/ and the Release) and the web Radio tab (the listener's own date, the one clock, Eastern air time as a fact, gaps as gaps, the evening ends). Pending the owner, a gap shows its time and a catalog-confirmed series name only, never the newspaper's OCR text. The transcripts-in-clients agent is still running. Machine: load 9.8 (the transcripts agent's build), no simulator.
+
+### Tick 35, 2026-10-22, opt: the owner's questions in one list
+- The scratchpad's six separate "for you" bullets (play, plays, loudness, evenings, palette with two questions folded in) became one numbered "Waiting on you" list, ordered by what each unblocks, every item pointing at its detail. 135 lines to 116.
