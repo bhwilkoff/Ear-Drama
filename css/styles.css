@@ -585,3 +585,17 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 }
 /* A smart-TV package runs from file:// (Origin: null), which the Worker refuses until a TV sign-in is decided (docs/WORKER.md). */
 html.tv .account-row { display: none; }
+
+/* ---- Listen Together (WEB-DESIGN §4.12): a button on the player, a row in Library, one sheet ---- */
+.np-together { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); }
+.np-together .btn-ghost { padding: 0 var(--space-2); }
+.np-together .btn-ghost:disabled { color: var(--color-text-muted); opacity: 1; }
+.room-code { margin: var(--space-2) 0 var(--space-1); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.together-sheet .actions + .actions { padding-top: var(--space-2); }
+.together-start { margin-bottom: var(--space-4); }
+.together-form { display: flex; flex-direction: column; gap: var(--space-1); }
+.together-sheet .together-form .caption { margin-bottom: 0; }
+.together-field { display: flex; gap: var(--space-2); }
+.together-field .field-input { flex: 1 1 auto; min-width: 0; font-variant-numeric: tabular-nums; letter-spacing: 0.08em; text-transform: uppercase; }
+.seek:disabled, #np-speed:disabled { opacity: 0.5; }
+html.tv .np-together { display: none; }

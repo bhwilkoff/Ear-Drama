@@ -52,7 +52,8 @@ web app follows today.
 - **§3.1 Query routes, not hash routes.** `?view=listen|series|radio|plays|search|library`,
   `?series={key}&season=`, `?item={episode id}`, `?view=search&q=`,
   `?view=library&tab=`, and for plays (§4.10) `?play={script id}`,
-  `?production={id}`, `?production={id}&part={part id}`. This inverts the
+  `?production={id}`, `?production={id}&part={part id}`, and `?room={CODE}`
+  (§4.12), which opens the Listen Together sheet over the Listen view. This inverts the
   template's hash routes on purpose: query routes are what the path twins
   forward into. A production lives only in the browser that made it
   (PLAYS-DESIGN §6), so its routes have no path twin and no app link.
@@ -277,6 +278,60 @@ web app follows today.
     which the Worker refuses (docs/WORKER.md).
   - Tests: `js/account.test.js` against a stubbed Worker.
 
+- **§4.12 Listen Together lives on the player** (LOOP-PLAN M6, Decisions
+  058, 065; docs/WORKER.md "Listen Together rooms"). No tab, no view, no
+  header chrome: a room is something the person does with what is playing.
+  - **Where**: a "Listen together" button in Now Playing's options row
+    (beside Speed and the sleep timer), and a "Join a room" row in Library
+    under the account row (§4.11) for someone with nothing playing. Both
+    open one `<dialog showModal>` sheet (full screen on a phone, 440 px
+    from 768 px, like the account sheet). While `js/config.js` holds the
+    Worker placeholder, both buttons are disabled with the caption "Not
+    available yet" (a refusal, §1.5); nothing is an error.
+  - **The link**: `?room={CODE}` (DEEP_LINKS.md) opens the sheet with the
+    code filled in, then drops the parameter from the address. Joining
+    takes the person's tap on Join, never the link alone: a room plays
+    sound, and the tap is what lets the browser start it.
+  - **Out of a room**: "Start a room" (only while an episode from
+    archive.org is loaded; the room carries that exact copy), then the
+    code field and Join. Codes are normalized as the protocol says (spaces,
+    `-` and `_` dropped, I and L read as 1, O as 0). The one line under
+    it is a refusal: "That is not a room code.", "No room has that code.",
+    "This room has ended.", "This room is full.", "You are no longer in
+    this room.", "Too many tries. Try again in a minute.", "You are
+    offline.", "Ear Drama could not be reached."
+  - **In a room**: the code, large, in tabular figures, split 3 + 3 for
+    reading aloud; "{n} listening"; for a guest, "Following the host";
+    Share link (the `?room=` link through `shareTarget`), Leave, and for the
+    host End room. Everyone, the host included, is one of the n.
+  - **The guest's player**: the transport is the host's. Skip, seek, and
+    speed are disabled, and the person's own verbs (keys, Media Session,
+    `Player.toggle`) do nothing (`Player.setFollowing`); the room's
+    corrections go through `Player.follow`. A drift nudge sets the
+    element's rate only and is never kept as the person's speed (§5.2).
+    Play is enabled only when the browser refused to start the sound,
+    and that one tap starts it. The mini player's caption reads
+    "Listening together · {n}". Picking another episode, or the sleep
+    timer ending, leaves the room, as it ends listening live (§4.9).
+  - **The rules are the protocol's**, ported in `js/together-core.js` and
+    golden-checked against `worker/src/room-protocol.js`
+    (`js/together.test.js`): the host writes state when it changes; every
+    member reads every 2 s, every 10 s after a still minute; the clock is
+    the smallest-round-trip sample; drift under 150 ms is left, 150 ms to
+    2 s is closed by 3% of speed, over 2 s is a seek, and a guest that is
+    seeking or buffering is left to catch up. A guest plays
+    `https://archive.org/download/{archive_id}/{file}` built here,
+    percent-encoded as the pipeline does, never a URL from the room.
+    When the host leaves or goes quiet, the next read's `role: "host"`
+    hands that member the controls.
+  - **A reload keeps the room**: the code and member key are in this tab's
+    `sessionStorage` (`ed.room`), never localStorage or a URL. Closing the
+    tab sends nothing; the Worker drops a quiet member after 2 minutes.
+  - **Not on a TV** (`html.tv`): a packaged TV app's `file://` origin is
+    refused by the Worker, as for the account (§4.11).
+  - Code: `js/together-core.js`, `js/together.js` (the session, no DOM),
+    `js/together-ui.js`; every call is `API.rooms` (§2.1a).
+
 ## §5 The player
 
 - **§5.1 One `<audio>` element** owned by `js/player.js`; the views draw
@@ -381,8 +436,9 @@ web app follows today.
   feature; quote these rule numbers in proposals.
 - **§9.2 Not on the web yet**, each arriving with its milestone: the
   Radio tab's genre channels, transcript search (§4.6; reading a transcript
-  is on Detail, §4.5), downloads, Listen Together (M6). Sign-in and sync
-  (M5) are built (§4.11) and wait on the owner's Worker and client ids.
+  is on Detail, §4.5), downloads. Sign-in and sync (M5, §4.11) and Listen
+  Together (M6, §4.12) are built and wait on the owner's Worker URL and
+  client ids.
 
 ## §10 Traps this codebase has already paid for
 

@@ -34,6 +34,7 @@ const Player = (() => {
   let lastError = null;
   let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
+  let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
 
   function emit(kind) { listeners.forEach(fn => fn(kind || 'state')); }
   function onChange(fn) { listeners.add(fn); }
@@ -71,7 +72,14 @@ const Player = (() => {
       audio.currentTime = Math.max(0, audio.currentTime - REWIND_S);
     }
     const p = audio.play();
-    if (p && p.catch) p.catch(err => { if (err.name !== 'AbortError') { lastError = err; emit('error'); } });
+    // NotAllowedError is the browser's autoplay rule, not a broken recording: a tap starts it.
+    if (p && p.catch) {
+      p.catch(err => {
+        if (err.name === 'NotAllowedError') emit('blocked');
+        else if (err.name !== 'AbortError') { lastError = err; emit('error'); }
+      });
+    }
+    return p;
   }
   function pause() {
     if (audio.paused) return;
@@ -209,6 +217,22 @@ const Player = (() => {
     } catch { /* an engine without position state */ }
   }
 
+  /* ---- Listen Together (WEB-DESIGN §4.12): a guest's player follows the host ---- */
+
+  /** The person's verbs, refused while following; the room's own corrections go through `follow`. */
+  const person = (fn) => (...args) => (following ? undefined : fn(...args));
+  function setFollowing(on) {
+    following = !!on;
+    if (!following) audio.playbackRate = nearestSpeed(Store.rate());
+    emit('following');
+  }
+  /** Applied by js/together.js only. A drift nudge sets the element's rate and is never kept as the person's speed. */
+  const follow = {
+    play, pause,
+    seek(t) { if (current && isFinite(t)) { audio.currentTime = Math.max(0, t); savePosition(); } },
+    rate(r) { if (Math.abs(audio.playbackRate - r) > 1e-9) audio.playbackRate = r; },
+  };
+
   if (ms) {
     const handlers = {
       play: () => play(),
@@ -221,15 +245,18 @@ const Player = (() => {
       nexttrack: () => { const n = nextInQueue(); if (n) load(n); },
     };
     for (const [action, fn] of Object.entries(handlers)) {
-      try { ms.setActionHandler(action, fn); } catch { /* unsupported action */ }
+      try { ms.setActionHandler(action, person(fn)); } catch { /* unsupported action */ }
     }
   }
 
   function setMuted(m) { audio.muted = !!m; }
 
   return {
-    audio, load, play, pause, toggle, seek, back, forward, setRate, setSleep, setMuted, nextInQueue,
-    sleepRemaining, onChange,
+    audio, load, setSleep, setMuted, nextInQueue, sleepRemaining, onChange,
+    play: person(play), pause: person(pause), toggle: person(toggle), seek: person(seek),
+    back: person(back), forward: person(forward), setRate: person(setRate),
+    setFollowing, follow,
+    get following() { return following; },
     get current() { return current; },
     get sleep() { return sleep; },
     get fired() { return fired; },

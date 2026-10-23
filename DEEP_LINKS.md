@@ -16,6 +16,7 @@ prefix lists, and a flat structure makes the lists short.
 | Series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
 | Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
 | Search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
+| Listen Together room | `https://eardrama.org/?room={CODE}` | Web (WEB-DESIGN §4.12): opens the join sheet with the code filled in; joining takes a tap. The code is six Crockford Base32 characters, normalized as `normalizeCode` in `worker/src/room-protocol.js`. The query form is the twin because the site root is a real page (no `404.html` forwarding needed). The apps' `eardrama://room/{CODE}` and their link filters wait on their own Listen Together (M6) |
 | OAuth callback | `eardrama://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |
 | Sign in with Apple return (Android) | `eardrama://oauth/apple#state=&code=&id_token=` | Android. Apple returns to the Services ID's https return URL, `https://eardrama.org/auth/apple/` (fragment response, no scope); that static page (`auth/apple/index.html`) forwards its fragment unchanged to this link and clears it from the address bar; the link opens no screen (ANDROID-DESIGN §4.11). No HTTPS twin: it is a callback, not a share |
 

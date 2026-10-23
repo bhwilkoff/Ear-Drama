@@ -125,6 +125,29 @@ test('the sleep fade starts 10 s before the end, not before', () => {
   Player.setSleep('off');
 });
 
+test('a Listen Together guest cannot drive: the person\'s verbs do nothing; the room\'s nudge is never kept', () => {
+  const { audio, Player, Store } = boot();
+  Player.load(ep);
+  audio.duration = 1800;
+  audio.currentTime = 100;
+  Player.setFollowing(true);
+  Player.toggle();
+  assertEq(audio.paused, false, 'toggle refused (still playing)');
+  Player.seek(500); Player.back(); Player.forward();
+  assertEq(audio.currentTime, 100, 'seek and skip refused');
+  Player.setRate(2);
+  assertEq(Store.rate(), 1, 'speed refused');
+  Player.follow.rate(1.03);
+  assertEq(audio.playbackRate, 1.03, 'the room nudges');
+  assertEq(Store.rate(), 1, 'a nudge is never the person\'s speed');
+  Player.follow.seek(612.5);
+  assertEq(audio.currentTime, 612.5, 'the room seeks');
+  Player.setFollowing(false);
+  assertEq(audio.playbackRate, 1, 'leaving restores the person\'s own speed');
+  Player.seek(50);
+  assertEq(audio.currentTime, 50, 'controls back');
+});
+
 (async () => {
   let passed = 0, failed = 0;
   for (const { name, fn } of tests) {
