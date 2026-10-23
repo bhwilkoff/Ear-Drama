@@ -154,8 +154,33 @@ nonisolated enum ShelfRule: Hashable, Sendable, Identifiable {
 
     var title: String {
         switch self {
-        case .onThisDay: "On this day"
+        case .onThisDay: "This day in radio"
         case let .genreFirsts(g): GenreDisplay.name(g)
+        }
+    }
+}
+
+/// One entry of `meta.listenShelves` (contract §5.1): the pipeline's list,
+/// drawn in order. `onThisDay` is a query by rule on the person's date;
+/// `genreFirsts` carries its episode ids, drawn as published.
+nonisolated enum PublishedShelf: Hashable, Sendable {
+    case onThisDay
+    case genreFirsts(genre: String, episodes: [String])
+
+    /// The published list, or nil when the value is not a JSON array (an
+    /// older catalog). A rule this build does not know is skipped.
+    static func parse(_ json: String) -> [PublishedShelf]? {
+        guard let data = json.data(using: .utf8),
+              let list = try? JSONSerialization.jsonObject(with: data) as? [Any] else { return nil }
+        return list.compactMap { item in
+            guard let s = item as? [String: Any] else { return nil }
+            switch s["rule"] as? String {
+            case "onThisDay": return .onThisDay
+            case "genreFirsts":
+                guard let g = s["genre"] as? String, let ids = s["episodes"] as? [String] else { return nil }
+                return .genreFirsts(genre: g, episodes: ids)
+            default: return nil
+            }
         }
     }
 }

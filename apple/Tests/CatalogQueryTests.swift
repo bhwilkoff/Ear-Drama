@@ -85,7 +85,12 @@ enum Fixture {
     /// Builds a fixture database; `rightsLines` nil leaves the meta key out.
     static func make(rightsLines: [String: String]? = RightsDisplay.contract,
                      clearNoRecommend: Bool = false, dropLoudness: Bool = false,
-                     dropTranscript: Bool = false) throws -> URL {
+                     dropTranscript: Bool = false, listenShelves: String? = nil,
+                     episodeRows: [Ep]? = nil,
+                     seriesRows: [(key: String, name: String, genre: String?, first: String?, last: String?, networks: String?)]? = nil
+    ) throws -> URL {
+        let episodes = episodeRows ?? Self.episodes
+        let series = seriesRows ?? Self.series
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("fixture-\(UUID().uuidString).sqlite")
         var h: OpaquePointer?
         try #require(sqlite3_open(url.path, &h) == SQLITE_OK)
@@ -115,6 +120,9 @@ enum Fixture {
         if let rightsLines {
             let json = String(data: try JSONEncoder().encode(rightsLines), encoding: .utf8)
             try insert("INSERT INTO meta VALUES (?, ?)", ["rightsLines", json])
+        }
+        if let listenShelves {
+            try insert("INSERT INTO meta VALUES (?, ?)", ["listenShelves", listenShelves])
         }
         let counts = Dictionary(grouping: episodes, by: \.series).mapValues(\.count)
         for s in series {
@@ -165,9 +173,9 @@ enum Fixture {
 
     static func open(rightsLines: [String: String]? = RightsDisplay.contract,
                      clearNoRecommend: Bool = false, dropLoudness: Bool = false,
-                     dropTranscript: Bool = false) throws -> CatalogDatabase {
+                     dropTranscript: Bool = false, listenShelves: String? = nil) throws -> CatalogDatabase {
         let url = try make(rightsLines: rightsLines, clearNoRecommend: clearNoRecommend, dropLoudness: dropLoudness,
-                           dropTranscript: dropTranscript)
+                           dropTranscript: dropTranscript, listenShelves: listenShelves)
         return try #require(CatalogDatabase(path: url.path))
     }
 }

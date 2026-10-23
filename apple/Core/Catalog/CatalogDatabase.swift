@@ -28,6 +28,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let ftsHasTranscript: Bool
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
     let rightsLines: [String: String]
+    /// `meta.listenShelves` (contract §5.1), or nil for a catalog that predates it.
+    let publishedShelves: [PublishedShelf]?
     private let sawCorruption = Mutex(false)
     /// Called once when a read proves the FILE is bad (not merely busy), so the
     /// owner can discard a torn download and its ETag.
@@ -54,6 +56,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             && Self.columnExists(h, table: "episodes", column: "has_transcript")
         ftsHasTranscript = Self.columnExists(h, table: "episodes_fts", column: "transcript")
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
+        publishedShelves = Self.metaText(h, key: "listenShelves").flatMap(PublishedShelf.parse)
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
             sqlite3_close(h)
             return nil
@@ -109,6 +112,16 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         guard sqlite3_step(stmt) == SQLITE_ROW, let c = sqlite3_column_text(stmt, 0),
               let data = String(cString: c).data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode([String: String].self, from: data)
+    }
+
+    private static func metaText(_ h: OpaquePointer, key: String) -> String? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(h, "SELECT value FROM meta WHERE key = ?;", -1, &stmt, nil) == SQLITE_OK
+        else { return nil }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, key, -1, SQLITE_TRANSIENT)
+        guard sqlite3_step(stmt) == SQLITE_ROW, let c = sqlite3_column_text(stmt, 0) else { return nil }
+        return String(cString: c)
     }
 
     private static func columnExists(_ h: OpaquePointer, table: String, column: String) -> Bool {
@@ -324,10 +337,12 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     func shelf(_ rule: ShelfRule, limit: Int = 20) -> [EpisodeRow] {
         switch rule {
         case let .onThisDay(month, day):
+            // §5.1: a full YYYY-MM-DD only, oldest first, ties by id.
             let suffix = String(format: "-%02d-%02d", month, day)
             return rows("""
                 SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
-                WHERE e.air_date LIKE ? \(recommendAnd) ORDER BY e.air_date, e.rowid LIMIT \(limit)
+                WHERE e.air_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND e.air_date LIKE ?
+                \(recommendAnd) ORDER BY e.air_date, e.id LIMIT \(limit)
                 """, [.text("%\(suffix)")], Self.episode)
         case let .genreFirsts(genre):
             return rows("""
@@ -338,6 +353,30 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                 WHERE s.genre = ? ORDER BY s.episodes DESC, s.key LIMIT \(limit)
                 """, [.text(genre)], Self.episode)
         }
+    }
+
+    /// The Listen tab's shelves (contract §5.1): `meta.listenShelves` in its
+    /// order, onThisDay on the person's own month and day, each genreFirsts
+    /// from its published ids. A catalog without the key falls back to the
+    /// rules run here (onThisDay, then each genre's firsts). Empty shelves
+    /// are dropped, never shown as a heading over nothing.
+    func listenShelves(month: Int, day: Int) -> [Shelf] {
+        let shelves: [Shelf]
+        if let published = publishedShelves {
+            shelves = published.map { entry in
+                switch entry {
+                case .onThisDay:
+                    let rule = ShelfRule.onThisDay(month: month, day: day)
+                    return Shelf(rule: rule, episodes: shelf(rule))
+                case let .genreFirsts(genre, ids):
+                    return Shelf(rule: .genreFirsts(genre), episodes: episodes(ids: ids))
+                }
+            }
+        } else {
+            let rules = [ShelfRule.onThisDay(month: month, day: day)] + genres().map { ShelfRule.genreFirsts($0) }
+            shelves = rules.map { Shelf(rule: $0, episodes: shelf($0)) }
+        }
+        return shelves.filter { !$0.episodes.isEmpty }
     }
 
     /// `withPerson(id)`: every episode crediting a person, oldest first.

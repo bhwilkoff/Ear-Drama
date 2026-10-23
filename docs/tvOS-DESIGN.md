@@ -83,7 +83,9 @@ The only shapes; a new one needs a new rule.
 ## §4 Surfaces
 
 - **§4.1 Listen** is Continue listening as the first shelf (up to ten),
-  then the catalog's shelves by rule.
+  then the catalog's `meta.listenShelves` in order (contract §5.1;
+  `docs/iOS-DESIGN.md` R13): "This day in radio", then a shelf per
+  published genre.
 - **§4.2 Series browse** is a `List` led by a Genre picker.
 - **§4.3 A series page** is the series name and meta line (not
   focusable), then episodes oldest first in sections by broadcast
