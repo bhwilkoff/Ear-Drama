@@ -1,15 +1,17 @@
 import SwiftUI
 
 /// The top-level verbs: the iPhone tab bar, the Mac sidebar, the TV sidebar.
-/// Radio waits on the published evenings (contract §8). Plays is on iPhone,
-/// iPad, and Mac; the TV records nothing and shows no Plays tab (PLAYS-DESIGN §6).
+/// Radio follows Series, as on the web (Tonight in 19xx, contract §8). Plays is
+/// on iPhone, iPad, and Mac; the TV records nothing and shows no Plays tab
+/// (PLAYS-DESIGN §6).
 enum AppTab: String, CaseIterable, Identifiable, Hashable {
-    case listen, series, plays, search, library
+    case listen, series, radio, plays, search, library
     var id: String { rawValue }
     var title: String {
         switch self {
         case .listen: "Listen"
         case .series: "Series"
+        case .radio: "Radio"
         case .plays: "Plays"
         case .search: "Search"
         case .library: "Library"
@@ -19,6 +21,7 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .listen: "play.circle"
         case .series: "square.stack"
+        case .radio: "radio"
         case .plays: "theatermasks"
         case .search: "magnifyingglass"
         case .library: "books.vertical"

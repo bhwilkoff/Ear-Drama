@@ -19,6 +19,9 @@ struct ContentView_tvOS: View {
             Tab(AppTab.series.title, systemImage: AppTab.series.symbol, value: AppTab.series) {
                 stack(.series) { SeriesBrowseScreen_tvOS() }
             }
+            Tab(AppTab.radio.title, systemImage: AppTab.radio.symbol, value: AppTab.radio) {
+                stack(.radio) { RadioScreen_tvOS() }
+            }
             Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
                 stack(.library) { LibraryScreen_tvOS() }
             }

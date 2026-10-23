@@ -14,6 +14,9 @@ nonisolated enum CatalogSource {
     /// `catalog-latest` Release). Not live yet; an unreachable URL leaves the
     /// app on its seed.
     static let releaseURL = URL(string: "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/ear-drama.sqlite.zz")!
+    /// Tonight in 19xx (contract §8), published beside the database. Absent
+    /// until the first evening is published; absence is not an error.
+    static let tonightURL = URL(string: "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/tonight.json")!
     /// The bundled seed's resource name (copied in by the project's
     /// "Bundle catalog seed" build phase; see apple/README.md).
     static let seedResource = "ear-drama-seed"

@@ -28,6 +28,7 @@ struct ContentView_macOS: View {
                     switch store.selectedTab {
                     case .listen: ListenScreen()
                     case .series: SeriesBrowseScreen()
+                    case .radio: RadioScreen()
                     case .plays: PlaysScreen()
                     case .search: SearchScreen_macOS()
                     case .library: LibraryScreen()
