@@ -12,6 +12,7 @@ import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_projection as B
+import genres as G
 
 ran = failed = 0
 
@@ -27,16 +28,16 @@ def check(name, got, want):
 def fixture(path):
     d = sqlite3.connect(path)
     d.executescript("""
-    CREATE TABLE series (key, name, genre, first_date, last_date, networks);
+    CREATE TABLE series (key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks);
     CREATE TABLE episodes (id, series_key, air_date, date_source, num, title, aka, state, rec_bucket, work_bucket,
         no_recommend, network, network_source, has_transcript);
     CREATE TABLE recordings (episode_id, rank, archive_id, file, format, kbps, length_s, variant, partial);
     CREATE TABLE episode_credits (episode_id, person_id, name, role, character);
     CREATE TABLE people (id, name, birth, death);
     """)
-    d.executemany("INSERT INTO series VALUES (?,?,?,?,?,?)", [
-        ("suspense", "Suspense", "OTR-Thriller", "1942-06-17", "1962-09-30", None),
-        ("shadow", "The Shadow", "OTR-Detective", "1937-09-26", "1954-12-26", None)])
+    d.executemany("INSERT INTO series VALUES (?,?,?,?,?,?,?,?)", [
+        ("suspense", "Suspense", "OTR-Thriller", '["Mystery", "Suspense", "Anthology"]', 0, "1942-06-17", "1962-09-30", None),
+        ("shadow", "The Shadow", "OTR-Detective", None, 0, "1937-09-26", "1954-12-26", None)])
     d.executemany("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("suspense|1943-05-25", "suspense", "1943-05-25", "filename", 46, "Sorry, Wrong Number", None,
          "keep_unclaimed", "rec_orphan_unclaimed", "work_none_found", None, "CBS", "otrr", 0),
@@ -86,6 +87,16 @@ CONTRACT = {
         "(SELECT 1 FROM episodes e WHERE e.id = r.episode_id)",
 }
 
+check("genre: OTRR's first mappable label", G.genre_of(["Horror", "Mystery", "Science Fiction"]), ("mystery", "otrrpedia"))
+check("genre: a serial queues by arc", G.genre_of(["Action", "Super Hero", "Youth", "Adventure", "Serial"]),
+      ("serial", "otrrpedia"))
+check("genre: a comedy in serial form stays comedy", G.genre_of(["Serial", "Sitcom", "Comedy"]), ("comedy", "otrrpedia"))
+check("genre: RadioEchoes when OTRR is silent", G.genre_of(None, "OTR-Western"), ("western", "radioechoes"))
+check("genre: a LibriVox work is drama", G.genre_of(None, None, librivox=True), ("drama", "librivox"))
+check("control: an unmapped label is no genre", G.genre_of(["Music", "Other"], "OTR-Miscellaneous"), (None, None))
+check("control: every mapped value is one of the eight",
+      set(G.OTRR.values()) | set(G.RADIOECHOES.values()) <= set(G.GENRES), True)
+
 
 def violations(db):
     """The contract's checks over every row of a built projection: name -> offending rows."""
@@ -116,6 +127,8 @@ with tempfile.TemporaryDirectory() as tmp:
           c.execute("SELECT COUNT(*) FROM episodes_fts WHERE episodes_fts MATCH 'orry'").fetchone()[0], 0)
     check("search finds credited people",
           c.execute("SELECT COUNT(*) FROM episodes_fts WHERE episodes_fts MATCH 'people:moorehead'").fetchone()[0], 1)
+    check("series genre stored with its source", c.execute("SELECT genre, genre_source FROM series WHERE key = 'suspense'").fetchone(),
+          ("mystery", "otrrpedia"))
     check("seasons stored", c.execute("SELECT season FROM episodes WHERE id = 'suspense|1949-09-15'").fetchone()[0],
           "1949-50")
     c.close()
@@ -134,7 +147,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: the contract catches a leaked hidden row and a raw space", sorted(violations(dst)),
           ["every episode is clean or unclaimed", "no URL holds a raw space"])
 
-real = os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
+real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):
     check("contract holds on the real artifact", violations(real), {})
 else:

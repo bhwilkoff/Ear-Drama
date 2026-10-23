@@ -83,25 +83,6 @@ notes go at the top of this file's Current State.
 
 ---
 
-## When to add a binding design doc
-
-When a platform crosses ~5 views OR you find yourself making
-inconsistent UI choices, create that platform's binding doc
-(`tvOS-DESIGN.md`, `iOS-DESIGN.md`, `macOS-DESIGN.md`, `WEB-DESIGN.md`,
-`ANDROID-DESIGN.md`), seeded from the matching per-platform template
-in `docs/templates/` (start from `PLATFORM-DESIGN-template.md`, the
-index). Invoke
-`binding-design-doc-discipline` for the workflow. Treat as binding
-from the moment it exists.
-
-The sibling docs share a shape: the **principles** are identical;
-the **idioms** they reference diverge per platform. Deliberate
-rule inversions between platforms (tvOS auto-focuses Play; iOS
-never steals focus) are stated explicitly so they don't get
-"harmonized" away.
-
----
-
 ## Open questions
 
 <!-- Add questions as they arise; remove when resolved. Don't
@@ -121,7 +102,12 @@ the entry retire when circumstances change).
 
 | Idea | Why declined | Revisit when |
 |---|---|---|
-| <!-- e.g. Web push notifications | Too-inconsistent UX across browsers; APNs/FCM cover the need on mobile | iOS + Android push ship and a real cross-platform request appears --> | | |
+| SoundExchange statutory license for Radio channels | No paid license (owner 2026-10-17; catalog 001) | never, unless the owner reopens it |
+| Noncommercial-use notices ($50 each) | Declined with the remaining buckets (catalog 006) | a series the take-down model cannot keep |
+| A license restricting AI use of contributed plays | Owner chose CC0 with a clear warning (059) | the owner reopens it |
+| Trademark clearance or filing for "Ear Drama" | Owner: neither for now (060) | before a public store release |
+| Outreach to RadioEchoes, Goldin/UMKC, OTRR, archive.org | Owner: skip for now (060); harvests stay polite | a harvest needs an export or a contact |
+| Archive Watch film cross-links in 1.0 | Owner left them out of 1.0 (058) | 1.x |
 
 ---
 
