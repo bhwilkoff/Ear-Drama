@@ -56,7 +56,9 @@
   12. **Six sections** (Listen, Series, Radio, Plays, Library, Search): an iOS 18
      iPhone's tab bar fits five, so it shows four and More (iOS 26 sets Search
      apart). Which one gives way on iOS 18, and does the web's bar (five today,
-     six once its Plays lands) follow the same order? (iOS-DESIGN §3.1, §12)
+     six now that Plays has landed) follow the same order? (iOS-DESIGN §3.1, §12)
+  13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
+     Store and Play text, and pick the category (Entertainment or Education).
 - **Status (2026-10-23, 7:25 AM MT, tick 56)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (a 5-minute cooldown; tick log `AUTONOMOUS_PROGRESS.md`).
   Built on main at 1.0.25: listening on all five core platforms (M2 to M4);

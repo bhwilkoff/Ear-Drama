@@ -131,3 +131,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged 9fa674d (1.0.27 build 28): plays phase 1 on the web, headphones only (the person confirms them; a page cannot see the route); AudioWorklet capture, 24-bit WAV takes in IndexedDB via add(); OfflineAudioContext mix to WAV; the device voice never captured. PLAYS-DESIGN conflict kept both platforms (Android §4.5, web §4.6, the storage table per column). I added: smart-TV web hides the Plays tab (html.tv), WEB-DESIGN §4.10 says so; SHELL_VERSION v9. Verified on main: plays.test 161 checks, api 10, player 6, test_web no FAIL, US English. Not verified: a real microphone, iOS Safari.
 - Merged 990fc8c (1.0.28 build 29): Radio on Android, phone and TV. Verified on main: 116 tests 0 failed (RadioTests 18), assembleDebug, 0 `w:`. Radio is now on all five core platforms (PARITY).
 - Launched sign-in and sync on Android and on the web (with a public deletion page for Play). Running: Apple sign-in.
+
+### Tick 59, 2026-10-23, main thread: store listing words drafted (M10)
+- c4ff609: docs/store/LISTING-DRAFT.md, the App Store and Play text with each claim tied to a decision or PARITY row, lengths measured (subtitle 27/30, promotional 151/170, keywords 97/100, Play short 80/80). Caught while drafting: "eighty years ago" was wrong for 1944 (82), and "1940s radio" was wrong for 5 of the 15 published evenings (tonight.json: ten 1940s, three 1950s, two 1930s); the line now names neither. Owner item 13.
+- Running: sign-in on Apple, Android and the web.
