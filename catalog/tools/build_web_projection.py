@@ -40,6 +40,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import NAMES as GENRE_NAMES
 import build_projection as P
+import shelves as SH
 
 SCHEMA_VERSION = 1
 SHARD_MASK = 0xFFF
@@ -227,6 +228,8 @@ def build(src, out, include_unclaimed=False):
         "fields": {"series": SERIES_FIELDS, "episode": EPISODE_FIELDS, "detail": DETAIL_FIELDS,
                    "recording": RECORDING_FIELDS, "credit": CREDIT_FIELDS, "day": DAY_FIELDS, "doc": DOC_FIELDS},
         "genreNames": GENRE_NAMES,
+        "listenShelves": SH.listen_shelves([(e[0], e[1], e[2], e[4], e[10]) for e in eps.values()],
+                                           {k: (r[2], r[5]) for k, r in series.items()}),
         "rightsLines": RIGHTS_LINES, "variantLines": VARIANT_LINES, "partialLine": PARTIAL_LINE,
     }
     manifest["bytes"] = measure(out)
