@@ -47,14 +47,14 @@ struct CatalogQueryTests {
 
     @Test func browseFiltersByGenreNetworkAndDecade() throws {
         let db = try Seed.open()
-        let variety = db.seriesBrowse(genre: "OTR-Variety")
+        let variety = db.seriesBrowse(genre: "comedy")
         #expect(Set(variety.map(\.key)) == ["jubilee", "commandperformance", "countryexpress"])
         let afrs = db.seriesBrowse(network: "AFRS")
         #expect(!afrs.isEmpty && afrs.allSatisfy { $0.networks.contains("AFRS") })
         let forties = db.seriesBrowse(decade: 1940)
         #expect(forties.contains { $0.key == "jubilee" })
         #expect(db.seriesBrowse(decade: 1990).allSatisfy { ($0.lastDate ?? "") >= "1990" })
-        #expect(db.genres().contains("OTR-Variety"))
+        #expect(db.genres().contains("comedy"))
     }
 
     /// R1: oldest first in every series and season; undated rows last.
@@ -135,14 +135,14 @@ struct CatalogQueryTests {
         try Seed.exec(url, "UPDATE episodes SET no_recommend = 'test' WHERE id = '\(target)';")
         let db = try #require(CatalogDatabase(path: url.path))
         #expect(db.shelf(.onThisDay(month: 7, day: 4)).contains { $0.id == target } == false)
-        #expect(db.shelf(.genreFirsts("OTR-Variety")).contains { $0.id == target } == false)
+        #expect(db.shelf(.genreFirsts("comedy")).contains { $0.id == target } == false)
         #expect(db.seriesPage(key: "jubilee")?.episodes.contains { $0.id == target } == true)
         #expect(db.episodeDetail(id: target) != nil)
     }
 
     @Test func genreShelfIsEachSeriesFirstEpisode() throws {
         let db = try Seed.open()
-        let shelf = db.shelf(.genreFirsts("OTR-Variety"))
+        let shelf = db.shelf(.genreFirsts("comedy"))
         #expect(Set(shelf.map(\.seriesKey)).count == shelf.count)
         for episode in shelf {
             let first = try #require(db.seriesPage(key: episode.seriesKey)?.episodes.first)

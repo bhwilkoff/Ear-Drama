@@ -172,11 +172,18 @@ nonisolated enum RightsDisplay {
     }
 }
 
-/// Genres arrive as archive.org subjects (`OTR-Comedy`). The display name drops
-/// the collection prefix; the value itself is never re-derived.
+/// The eight genres' names (contract §5.5). The pipeline decides the genre
+/// (catalog/tools/genres.py, NAMES); a client only spells it. An older catalog
+/// carried archive.org subjects (`OTR-Comedy`), shown without the prefix.
 nonisolated enum GenreDisplay {
+    static let names: [String: String] = [
+        "drama": "Drama", "mystery": "Mystery", "scifi": "Science fiction", "western": "Western",
+        "comedy": "Comedy", "news": "News", "documentary": "Documentary", "serial": "Serials",
+    ]
+
     static func name(_ genre: String) -> String {
-        genre.hasPrefix("OTR-") ? String(genre.dropFirst(4)) : genre
+        if let name = names[genre] { return name }
+        return genre.hasPrefix("OTR-") ? String(genre.dropFirst(4)) : genre
     }
 }
 

@@ -15,6 +15,7 @@ struct TransportControls: View {
                 Image(systemName: "gobackward.15")
             }
             .accessibilityLabel("Back 15 seconds")
+            .help("Back 15 seconds")
 
             Button {
                 player.togglePlayPause()
@@ -24,6 +25,7 @@ struct TransportControls: View {
                     .imageScale(large ? .large : .medium)
             }
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
+            .help(player.isPlaying ? "Pause" : "Play")
 
             Button {
                 player.skip(by: AudioPlayer.Skip.forward)
@@ -31,6 +33,7 @@ struct TransportControls: View {
                 Image(systemName: "goforward.30")
             }
             .accessibilityLabel("Forward 30 seconds")
+            .help("Forward 30 seconds")
         }
         .font(.title)
         .disabled(player.item == nil)
