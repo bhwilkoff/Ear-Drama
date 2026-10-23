@@ -210,3 +210,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 75, 2026-10-23, main thread: M7's learning test, as built
 - Ran learning-orientation-design against plays phase 1 as shipped (efb0807, PLAYS-DESIGN §1). Understanding, participation, clarity hold. Agency holds, with one defect read from the code: a bleed-flagged take (RecordingSession keeps it, RecordingScreen warns) still counts in Relay.isComplete and can be mixed, against §8 rule 3 (a synthetic voice is never part of a mix) and §5 rule 2.
 - Launched the repair on Apple, Android and the web (a flagged take never completes a line; the mix refuses it; the take stays on disk), builds one at a time while the owner is on a call. CI green. Running: M8 Worker, the bleed fix.
+
+### Tick 76, 2026-10-23, quiet + agent: the human-shaped review (M10) launched
+- CI green; the owner still on a call. Launched a read-only human-shaped-review pass (words on screen, AI copy, side doors, automation that takes a judgment away, what a child or teacher meets in plays, pushed sign-in, autoplay), findings into HUMAN-SHAPED.md only, fix-now vs owner's call. Running: M8 Worker, bleed fix, review.
