@@ -59,14 +59,15 @@
      six now that Plays has landed) follow the same order? (iOS-DESIGN §3.1, §12)
   13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
      Store and Play text, and pick the category (Entertainment or Education).
-- **Status (2026-10-23, 7:25 AM MT, tick 56)**: the 1.0 loop runs from
-  `LOOP-PLAN.md` (a 5-minute cooldown; tick log `AUTONOMOUS_PROGRESS.md`).
-  Built on main at 1.0.25: listening on all five core platforms (M2 to M4);
-  Tonight in 19xx published by CI and on the Radio tab (web, iOS, macOS, tvOS);
-  plays phase 1 on iPhone, iPad, Mac and Android with 11 stage plays (M7); the
-  design-doc parity fixes (Decision 062 everywhere); the stubs (M9). None of it
-  is verified until you play it. Running: Radio on Android, the web plays, the
-  M5 Worker (local only). Rulings: Decisions 056-062, catalog 004-008.
+- **Status (2026-10-23, 8:35 AM MT, tick 68)**: the 1.0 loop runs from
+  `LOOP-PLAN.md` (a 5-minute cooldown; each tick starts with the GitHub Actions
+  check). Built on main at 1.0.35: listening (M2 to M4); Tonight in 19xx in CI
+  and on Radio everywhere; plays phase 1 on iPhone, iPad, Mac, Android, and the
+  web (M7); sign-in and sync on all five plus the Worker (M5, nothing deployed);
+  Listen Together rooms on the Worker (M6, Decision 065); the On Air palette
+  (Decision 064) on the web and Apple; the stubs (M9). None of it is verified
+  until you play it. Running: Android (On Air + rooms), web rooms, SharePlay,
+  the web harness fix. Rulings: Decisions 056-065, catalog 004-008.
 - **Catalog now** (rebuilt on main, tick 22-23): 155,608 episodes in 15,695
   series; served 108,005 (25.7 MB compressed); clean 7,716 (LibriVox projects
   still being recorded are not served). Research database and caches: the
