@@ -107,3 +107,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Launched M5's backend: a Worker + D1 ported from Archive Watch's worker/ (Apple and Google tokens verified at the Worker, sync with last-write-wins, account deletion, rate limits), local tests only; nothing deployed, no Cloudflare resource created, no secret copied.
 - SCRATCHPAD's Current State said tick 25 at 1.0.8; rewritten to tick 53 at 1.0.23 with what is built and running.
 - Running: Android plays, web plays, Radio on Apple, the Worker. Publish rerun 39956803564 still in the evenings step (it measures newspaper logs 3 s apart).
+
+### Tick 54, 2026-10-23, merge + external check: Android plays on main; Tonight in 19xx published by CI
+- Merged plays phase 1 on Android (1.0.24 build 25): ported from Apple's Core with the same files and keys; takes as 24-bit WAV; the device voice never written (a whole-play test with a leaky-microphone control); AAC mix; share-sheet Export; Plays tab hidden on TV; a saved position resumes exactly (062). Verified on main: 98 tests 0 failed, assembleDebug, 0 `w:`, the APK carries the 11-play bundle. Not verified: nothing recorded on a device.
+- Publish rerun 39956803564 succeeded: catalog-latest/tonight.json (48,808 bytes, 15 days), radiologs-latest/radiologs.tar.xz (254 measured evenings), the web copy with 0 servable slots while the web gate is closed. Externally observed, so the evenings pipeline is verified in CI; the Radio tab itself is still unplayed.
+- Apple has the same saved-position rewind drift; sent to the Radio-on-Apple agent, the only one in apple/.
