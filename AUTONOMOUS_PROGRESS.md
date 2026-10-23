@@ -122,3 +122,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 56, 2026-10-23, opt: stale infrastructure notes removed (net -6 lines)
 - Measured: push events start workflows again (Android Build on push at 13:10 and 13:14 UTC, both green); removed the scratchpad paragraph and the contract's parenthesis that said otherwise. www.eardrama.org still fails its certificate (curl 60); the apex answers 200. Scratchpad status now 1.0.25. 1f369cc: 13 insertions, 19 deletions.
 - Running: Radio on Android, web plays, the Worker.
+
+### Tick 57, 2026-10-23, merge + agent: M5's Worker on main; Apple sign-in launched
+- Merged f3129d8 (1.0.26 build 27): the Worker + D1, Decision 063 written. Archive Watch's sign-in never reached its Worker, so the auth is new code under the same rules; ported only the shape, rate limits and deletion sweep. Verified on main: npm ci; 66/66 tests in workerd with a local D1; "all 11 mutations caught"; no secret in the diff (placeholders; test keys generated at run time). Worker Tests CI started on push (39960467550). Nothing deployed: the owner's eight setup steps are in docs/WORKER.md.
+- Launched: sign-in and sync on Apple (Sign in with Apple everywhere, Google via ASWebAuthenticationSession with PKCE, no SDK; Keychain; single-flight refresh). Running: Radio on Android, web plays.
