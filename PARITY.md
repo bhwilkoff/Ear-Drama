@@ -27,12 +27,12 @@ not its TV form factor gets ⏳ with a reason, never silence. The
 recurring audit finding is parity that lands on new platforms without
 returning to the platform it started on.
 
-> **Last audit: YYYY-MM-DD**: <what was walked + which false cells it
-> caught, e.g. "walked every shipped feature; found 3 cells claiming ✅
-> that were actually stubs">. Run the periodic audit from the
-> `cross-platform-parity-discipline` skill and record the date + findings
-> here every time. Day-to-day updates miss silently-false cells; only a
-> deliberate sweep catches them.
+> **Last audit: 2026-10-22 (loop tick 30)**: sections 4 to 13 still held
+> the template's sample rows, and 38 cells claimed ✅ for things Ear Drama
+> never built (sign-in, account deletion, share links, Liquid Glass, an
+> installable PWA, Mac player-as-window). Rewritten from the code: nothing
+> has shipped to a store or the live site with data yet, so no cell reads ✅;
+> built-but-unplayed work reads 🚧.
 
 ---
 
@@ -146,138 +146,72 @@ a future session doesn't "harmonize" a rejection into a port (see
 
 ---
 
-## 4. Authentication + profile
+## 4. Accounts (Decision 057)
+
+Signing in is optional: every listening verb works signed out. It syncs
+history, queue, and follows, and it is required to make a play with others.
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Sign in with Apple | ✅ | ✅ | ✅ | ✅ | 🚫 | Apple ecosystem; Android uses Sign in with Google instead |
-| Sign in with Google | 🔮 | 🔮 | 🔮 | 🚫 | ✅ | Android Credential Manager one-tap; web/desktop GIS when sync ships |
-| Email/password | ✅ | ✅ | ✅ | 🚫 | ✅ | Typing a password with a Siri Remote is hostile, so tvOS uses SiwA only |
-| Biometric gate for sensitive actions | n/a | ✅ Face ID | ✅ Touch ID | n/a | ✅ BiometricPrompt | macOS uses LocalAuthentication (Touch ID / password) |
-| Account deletion | ✅ | ✅ | ✅ | ✅ | ✅ | App Store + Play review requirement when sign-in exists |
-
-Sign-in is **optional and gates only sync**. Every browse/use verb
-works signed-out on every platform (see `per-ecosystem-sync-islands`).
-macOS joins the **Apple CloudKit sync island** for free (same iCloud
-container as iOS/tvOS), with no new sync backend.
+| Sign in with Apple | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | M5; verified at the Worker |
+| Sign in with Google | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | M5; tvOS by a phone hand-off |
+| Email and password | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Decision 057 names Apple and Google only |
+| Sync of history, queue, follows | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | One store on the Worker + D1, never two |
+| Account deletion | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Ships with sign-in (Decision 035) |
 
 ---
 
-## 5. Universal Links / App Links / deep linking
+## 5. Links
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Universal Links / App Links (HTTPS) | n/a | ⏳ | ⏳ | n/a | ⏳ | `/.well-known/` files; tvOS has no Safari hand-off (custom scheme only) |
-| Custom scheme | n/a | ⏳ | ⏳ | ⏳ | ⏳ | `appname://`; tvOS needs it for Top Shelf + Siri deep links |
-| URL params reflect filter state | ✅ | n/a | n/a | n/a | n/a | Web-specific affordance |
-| Canonical share URLs (`https://…/item/{id}`) | ✅ renders | ✅ emits | ✅ emits | ✅ emits (QR code, since a TV can't "send" a link) | ✅ emits | Web is the landing twin for every native share (DEEP_LINKS.md) |
-| Companion-app deep link | n/a | ✅ `canOpenURL`/`open` | ✅ `NSWorkspace` | n/a | ✅ `Intent` | macOS probes install via `NSWorkspace.urlForApplication(toOpen:)`; NO `LSApplicationQueriesSchemes` entry needed |
+| Routes for series, episode, search | 🚧 + 404 forwarder | ⏳ | ⏳ | ⏳ | ⏳ | DEEP_LINKS.md |
+| Universal Links / App Links | n/a | ⏳ | ⏳ | n/a | ⏳ | Wait on the App Store record and Play's signing fingerprint |
+| `eardrama://` scheme | n/a | ⏳ | ⏳ | ⏳ | ⏳ | OAuth callbacks and Top Shelf |
+| Share an episode | 🚧 Web Share | ⏳ | ⏳ | ⏳ QR code | ⏳ | The web page is every share's landing twin |
+| Archive Watch film cross-links | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Out of 1.0 (Decision 058) |
 
 ---
 
-## 6. Notifications
+## 6. Not in 1.0
 
-| Feature | Web | iOS | macOS | tvOS | Android | Notes |
-|---|---|---|---|---|---|---|
-| Push notifications | 🚫 | 🔮 APNs | 🔮 APNs | 🚫 | 🔮 FCM | Web push too inconsistent; TV notifications are hostile in a living room |
-| Cross-platform dispatcher | n/a | 🔮 | 🔮 | n/a | 🔮 | One Worker, two transports (APNs + FCM), symmetric payload |
-| Notification permission request | n/a | 🔮 | 🔮 | n/a | 🔮 | At opt-in moment, NOT app launch |
-
----
-
-## 7. Payments / subscription
-
-| Feature | Web | iOS | macOS | tvOS | Android | Notes |
-|---|---|---|---|---|---|---|
-| In-app purchase | n/a | 🔮 IAP | 🔮 IAP (same StoreKit) | 🔮 IAP (same StoreKit) | 🔮 Play Billing | |
-| Web subscription | 🔮 | n/a | n/a | n/a | n/a | Stripe / Paddle when scoped |
-| Cross-platform subscription state sync | 🔮 | 🔮 | 🔮 | 🔮 | 🔮 | Webhooks → `user_subscriptions` table |
+| Feature | Why |
+|---|---|
+| Push notifications | Nothing in 1.0 needs to reach a listener outside the app |
+| Payments, subscriptions, in-app purchase | Free, no ads (AGENTS.md); no paid tier |
 
 ---
 
-## 7b. Platform reach
+## 7. Oldest hardware served
 
-I want the oldest device someone still owns to be served, not
-abandoned. This row says how far back each platform reaches, so a floor
-change is a visible decision rather than a side effect of a new API.
-Choose floors with `multiplatform-expansion-method`.
-
-| Feature | Web | iOS | macOS | tvOS | Android | Notes |
-|---|---|---|---|---|---|---|
-| Oldest hardware served | <!-- e.g. any evergreen browser --> | <!-- iOS NN floor = oldest iPhone it runs on --> | <!-- macOS NN floor --> | <!-- tvOS NN floor = e.g. Apple TV HD (2015) --> | <!-- minSdk NN = Android N --> | Name the test or CI step that holds each floor, and the DECISIONS entry that chose it |
-
----
-
-## 7c. Capability definitions
-
-<!-- Add one table per feature whose name covers several modes, where
-     which modes a device gets is decided by hardware or OS, not by how
-     much we have built. Delete this section if no feature needs it. -->
-
-One name can mean different things on different devices. This table is
-the canonical answer to "what does [FEATURE] mean here". The rows
-elsewhere in this file carry the engineering detail.
-
-A capability a device can never have (no camera, no API on that OS) is
-🚫 here with the reason, and the app omits the entry. A capability a
-device could have and currently lacks (not signed in, permission not
-granted) stays visible in the app with one sentence saying why.
-
-| Platform | [Mode A] | [Mode B] | Host | Join | Reason for each 🚫 |
+| Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|
-| iOS / iPadOS | | | | | |
-| macOS | | | | | |
-| tvOS | | | | | |
-| Android phone | | | | | |
-| Android TV / Fire TV | | | | | |
-| Web | | | | | |
-
-Keep Host and Join as separate columns when they differ: a television
-with no camera may be unable to host and still be the best device to
-join from.
+| Evergreen browsers | iOS 18 (iPhone XS / XR) | macOS 26 | tvOS 26 (Apple TV HD) | minSdk 29 (Android 10) | project.yml and android/app/build.gradle.kts; tools/test_ios_floor.py and test_tvos_floor.py hold the Apple floors |
 
 ---
 
-## 7d. Ported platforms (one row each)
+## 8. The shared data plane
 
-When a platform is a port with its own ledger
-(`docs/templates/PORT-PARITY-LEDGER-template.md`), this file holds ONE
-summary row for it. The per-surface detail lives in the ledger, and
-only there, so the two cannot disagree.
+Every client is a consumer only (`shared-data-plane-contract`); the
+contract is `docs/CATALOG-CONTRACT.md`.
 
-| Port | Reference platform | Ledger | Feature ledger | Owner feedback ledger | Status in one sentence |
-|---|---|---|---|---|---|
-| <!-- e.g. Roku --> | <!-- tvOS --> | `docs/<PLATFORM>-PARITY.md` | `docs/<PLATFORM>-FEATURE-PARITY.md` | `docs/<PLATFORM>-FEEDBACK-LEDGER.md` | |
-
----
-
-## 8. Backend services / shared data plane
-
-All clients consume the same backend / published data. List the
-canonical services and assets here so references stay aligned.
-If the app has a content data plane, the full contract lives in
-`docs/DATA-CONTRACT.md`. This table just indexes it. All five
-clients are **consumers only**: none re-implements or re-hosts the
-pipeline (see `shared-data-plane-contract`).
-
-| Service / asset | Purpose | Where | Consumed by |
+| Asset | Purpose | Where | Consumed by |
 |---|---|---|---|
-| <!-- e.g. catalog.sqlite.zz | full content DB, query-on-disk | GitHub Release (rolling) | iOS, macOS, tvOS, Android download+inflate; web via index --> | | | |
+| `ear-drama.sqlite.zz` + `manifest.json` | the served projection, queried on disk | Release `catalog-latest` | iOS, macOS, tvOS, Android (validate, then swap) |
+| `ear-drama-seed.sqlite` | first launch offline (clean only) | bundled at build time from `catalog/out/publish-clean` | iOS, macOS, tvOS, Android |
+| `/data/` (index, series, shards, days) | the web projection | GitHub Pages, deployed by `catalog-publish.yml` | web |
+| `loudness-latest` | loudness measurements | Release asset, `catalog-loudness.yml` | the projection build only |
+| Worker + D1 | accounts, sync, shared plays | ⏳ M5 | every client |
 
 ---
 
 ## 9. Web-specific affordances
 
-These are web-only by design; other platforms handle the same
-need natively.
-
 | Feature | Web | Why |
 |---|---|---|
-| URL params reflect filter state | ✅ | Shareable deep links; native apps use in-memory state |
-| Web Share API + clipboard fallback | ✅ | iOS/macOS/Android use the system share sheet; tvOS shows a QR code |
-| View Transitions API (cross-view) | ✅ | iOS uses `.navigationTransition(.zoom)`; Android `sharedBounds` |
-| Container queries on components | ✅ | Native platforms use size-class branching |
-| Installable PWA + offline shell | ✅ | The zero-install reach play; stores cover the rest |
+| URL reflects the view | 🚧 | Shareable links; native apps keep state in memory |
+| Web Share with a copy fallback | 🚧 | Native apps use the system share sheet |
+| Offline shell (service worker) | 🚧 | Network-first data, cached shell; audio downloads are the apps' |
 
 ---
 
@@ -285,43 +219,33 @@ need natively.
 
 | Feature | iOS | Why |
 |---|---|---|
-| Liquid Glass tab bar / toolbar | ✅ | Web uses `backdrop-filter`; Android M3 tonal elevation |
-| Live Activities / Dynamic Island | 🔮 | No equivalent elsewhere; accept the asymmetry |
-| WidgetKit home-screen widgets | 🔮 | tvOS analog is Top Shelf; Android analog is Glance widgets |
-| Hardware-keyboard shortcuts | ✅ | Web n/a (browser conflicts); macOS uses menu-bar `.commands`; Android Ctrl+1..5 on tablets |
-| Picture-in-Picture + background audio | 🔮 | macOS PiP + background audio native; tvOS apps suspend in background |
+| System tab bar (Liquid Glass on iOS 26) | 🚧 | The floor is iOS 18, so the system draws what each version has |
+| Lock Screen and Control Center controls | 🚧 | Now Playing and remote commands; device check pending |
+| Live Activities, widgets | 🔮 | After 1.0 |
 
 ---
 
 ## 11. macOS-specific affordances
 
-macOS is a pointer + keyboard + menu-bar + resizable-multi-window app.
-It is NOT the iOS app resized. See `macos-platform-patterns`.
+macOS is a pointer, keyboard, menu bar, resizable-window app, never the
+iOS app resized (`macos-platform-patterns`).
 
 | Feature | macOS | Why |
 |---|---|---|
-| Menu-bar commands + full keyboard scheme | ✅ | `.commands { }`; iOS uses hardware-shortcut chords, tvOS/web have none |
-| `NavigationSplitView` sidebar + detail | ✅ | iOS uses a tab bar, tvOS a focus sidebar: same verbs, Mac idiom |
-| Multi-window / document scenes | 🔮 | `WindowGroup` + optional `DocumentGroup`; a heavy pro/creation surface belongs ONLY here (filesystem + subprocess + long compute) |
-| Player replaces window root while playing | ✅ | Not an overlay. The split view's toolbar/sidebar/prev-title would bleed through |
-| Title via window title bar (no `externalMetadata`) | ✅ | macOS `AVPlayerItem` has no `externalMetadata`; iOS/tvOS set it, web/Android use their own player chrome |
+| Controls menu with keyboard equivalents | 🚧 | Play/Pause, skip, speed, sleep timer, Download Episode |
+| `NavigationSplitView` sidebar and detail | 🚧 | iOS uses tabs, tvOS a focus sidebar |
+| A transport bar along the window's bottom | 🚧 | Audio has no picture, so the player never replaces the window |
 
 ---
 
 ## 12. tvOS-specific affordances
 
-These are ten-foot / lean-back idioms by design. The general rule:
-**idle/ambient surfaces belong to lean-back devices** (TV first,
-iPad/tablet/desktop second, phones rarely).
-
 | Feature | tvOS | Why |
 |---|---|---|
-| Top Shelf extension | ⏳ | The marquee surface when your icon is focused on the TV home screen; reads an App Group snapshot the app refreshes via `BGAppRefreshTask` |
-| Siri "Up Next" via NSUserActivity | ⏳ | System watchlist integration; tiny code surface |
-| App Intents voice launches ("surprise me") | ⏳ | Pairs with any random/serendipity verb |
-| Focus-driven UI (no pointer, no touch) | ✅ | The defining constraint (see `tvos-platform-patterns`) |
-| Idle screensaver / ambient mode | 🔮 | Lean-back idiom; opt-in, never over playback |
-| Layered parallax app icon (imagestack) | ⏳ | tvOS icons are layered; see `branding/README.md` |
+| Focus-driven layout, Play focused on Detail | 🚧 | The ten-foot constraint (`tvos-platform-patterns`) |
+| Full-screen Now Playing | 🚧 | Typographic, no artwork required |
+| Top Shelf | ⏳ | The listener's Continue items |
+| Layered parallax icon | ⏳ | Waits on the palette pick and the icon (M0) |
 
 ---
 
@@ -329,12 +253,10 @@ iPad/tablet/desktop second, phones rarely).
 
 | Feature | Android | Why |
 |---|---|---|
-| Predictive back gesture | ⏳ | iOS swipe-back is fixed-animation; Android is user-driven (`enableOnBackInvokedCallback`) |
-| Adaptive icon (foreground / background / monochrome) | ⏳ | iOS uses static; tvOS uses layered imagestack |
-| App Shortcuts (long-press app icon) | ⏳ | iOS has AppIntents; tvOS has Top Shelf |
-| Material You dynamic color (opt-in) | ⏳ | Other platforms have brand-only theming |
-| Google Cast sender | 🔮 | AirPlay analog; needs Cast SDK + device-tested receiver |
-| 16 KB page size support | ⏳ | Mandatory for new releases targeting Android 15+ |
+| Predictive back | 🚧 enabled in the manifest | iOS swipe-back is fixed-animation |
+| Media3 notification and lock-screen controls | 🚧 | The MediaSession service |
+| Adaptive icon with a monochrome layer | ⏳ | Waits on the icon (M0) |
+| Android Auto library tree | ⏳ | M9 stub |
 
 ---
 
