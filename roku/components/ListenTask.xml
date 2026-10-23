@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Fetches Listen's shelves off the render thread: index/listen.json for the
+     rows, manifest.json for the genre names. Ends in exactly one state:
+     ready | empty | error | offline. -->
+<component name="ListenTask" extends="Task">
+  <interface>
+    <field id="dataBase" type="string" />
+    <field id="rows" type="node" />
+    <field id="state" type="string" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/ListenTask.brs" />
+</component>

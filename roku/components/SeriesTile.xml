@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A typographic series tile (the web's series card, R11): the name, one meta
+     line, the genre edge. No plate behind it: density comes from removing
+     chrome, and the RowList's light ring is the one lit thing. The edge stays
+     neutral until the owner picks the genre hues (DECISIONS 060). -->
+<component name="SeriesTile" extends="Group">
+  <interface>
+    <field id="itemContent" type="node" onChange="onContent" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/SeriesTile.brs" />
+  <script type="text/brightscript" uri="pkg:/components/Theme.brs" />
+  <children>
+    <Rectangle id="edge" width="4" height="200" />
+    <Label id="name" translation="[28,22]" width="352" wrap="true" maxLines="3" />
+    <Label id="meta" translation="[28,150]" width="352" height="34" />
+  </children>
+</component>

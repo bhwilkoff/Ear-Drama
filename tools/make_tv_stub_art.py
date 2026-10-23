@@ -9,7 +9,8 @@ the word PLACEHOLDER on it. Nothing here is store art: replace each file (same
 name, same size) before any submission.
 
 It also draws the two Roku 9-patches the channel's design uses (the light focus
-ring and the button pill). Those are design, not placeholders.
+ring and the button pill) and its loading spinner. Those are design, not
+placeholders.
 
     python3 tools/make_tv_stub_art.py
 """
@@ -95,11 +96,21 @@ def pill(d, size, radius):
     d.rounded_rectangle([0, 0, size - 1, size - 1], radius=radius, fill=TEXT)
 
 
+def spinner(path, size=96):
+    """The loading spinner's image: a light three-quarter arc the BusySpinner turns."""
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    ImageDraw.Draw(img).arc([4, 4, size - 5, size - 5], start=0, end=270, fill=TEXT, width=8)
+    out = ROOT / path
+    img.save(out)
+    return out
+
+
 def main():
     for path, w, h in PLACEHOLDERS:
         print("placeholder", placeholder(path, w, h).relative_to(ROOT), f"{w}x{h}")
     print("9-patch", nine_patch("roku/images/ring.9.png", 48, 16, ring).relative_to(ROOT))
     print("9-patch", nine_patch("roku/images/pill.9.png", 64, 30, pill).relative_to(ROOT))
+    print("spinner", spinner("roku/images/spinner.png").relative_to(ROOT))
 
 
 if __name__ == "__main__":
