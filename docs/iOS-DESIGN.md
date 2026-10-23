@@ -89,7 +89,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   shelves, the transcript gate, and loudness numbers arrive in the
   served database. The phone adds no filter of its own.
 - **§2.3 A person's listening stays on the device** until sign-in
-  (Decision 057, M5): `ListeningHistory` and `DownloadStore`.
+  (Decision 057, M5): `ListeningHistory` and `DownloadStore`. Signed in,
+  history, the queue, and follows sync through the Worker (Decision 063)
+  by `AccountStore` (`apple/Core/Account/AccountStore.swift`), every call
+  through `APIClient`; downloads never sync.
 
 ## §3 Navigation shell
 
@@ -104,8 +107,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§3.3 One destination registry.** Every tab's `NavigationStack`
   applies `routeDestinations()` (`RouteDestinations`,
   `apple/Shared/ListScreens.swift`), which resolves `Route.series` and
-  `Route.episode`. A new pushable screen is a case of `Route`, never a
-  per-view `navigationDestination`.
+  `Route.episode`, and `Route.account` (§4.10). A new pushable screen is
+  a case of `Route`, never a per-view `navigationDestination`.
 - **§3.4 The store owns navigation.** `AppStore` keeps the selected tab
   and one `NavigationPath` per tab; `push(_:)` appends to the active
   tab. Each tab keeps its stack when the person leaves it (§11.4).
@@ -176,6 +179,28 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   published for today"; an unreachable file is "Tonight could not
   load" with Try Again. The listing's credit is one caption link,
   "Schedule: {paper}, via {source}".
+
+- **§4.10 The account lives at the foot of Library**, never a tab, a
+  gear, or a sheet at launch (§3.1; Decision 057: optional, never at
+  first launch). Library's last section is one row, "Account", whose
+  value is the state: "Not signed in", "Synced {time}", "Sync failed",
+  or, while the build carries placeholder ids (`Accounts.xcconfig`),
+  "Not available" with the row disabled and no error. An empty Library
+  offers the same row as its empty state's action. The row pushes
+  `Route.account` (`AccountScreen`, `apple/Shared/AccountScreen.swift`):
+  signed out, the system `SignInWithAppleButton` first and "Sign in with
+  Google" under it (App Review 4.8: Apple wherever Google is); signed
+  in, the provider, Last sync, the last error in the error color when
+  there is one, Sync Now, then Sign Out and Delete Account. Delete
+  Account asks first in a confirmation dialog that says what goes
+  (5.1.1(v)); an Apple account then asks Apple once more for a fresh
+  authorization code, sent with the deletion so the Worker revokes the
+  Apple token. Signing in keeps the device's history: it is sent to the
+  account once (`/v1/sync/merge`). Signing out and deleting keep the
+  device's listening and forget the account: its tokens leave the
+  Keychain and the sync cursor, last sync, and last error leave the
+  device. Sync runs on sign-in, on Sync Now, and when the app comes to
+  the front or leaves it.
 
 ## §5 The player
 

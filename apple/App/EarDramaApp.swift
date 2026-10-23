@@ -9,6 +9,7 @@ struct EarDramaApp: App {
     @State private var history: ListeningHistory
     @State private var player: AudioPlayer
     @State private var live: LiveRadio
+    @State private var account: AccountStore
     #if os(iOS) || os(macOS)
     @State private var downloads: DownloadStore
     @State private var plays = PlaysLibrary()
@@ -26,6 +27,7 @@ struct EarDramaApp: App {
         player.resolveDetail = { [weak catalog] id in await catalog?.episodeDetail(id) }
         player.resolveSeriesPage = { [weak catalog] key in await catalog?.seriesPage(key) }
         let live = LiveRadio(player: player)
+        let account = AccountStore(history: history, follows: FollowedSeries(), queue: ListeningQueue())
         player.onTransport = { [weak live] event in live?.handle(event) }
         #if os(iOS) || os(macOS)
         let downloads = DownloadStore.live()
@@ -45,6 +47,7 @@ struct EarDramaApp: App {
         _history = State(initialValue: history)
         _player = State(initialValue: player)
         _live = State(initialValue: live)
+        _account = State(initialValue: account)
     }
 
     var body: some Scene {
@@ -55,6 +58,7 @@ struct EarDramaApp: App {
                 .environment(history)
                 .environment(player)
                 .environment(live)
+                .environment(account)
                 #if os(iOS) || os(macOS)
                 .environment(downloads)
                 .environment(plays)
@@ -113,14 +117,19 @@ struct RootView: View {
     @Environment(AppStore.self) private var store
     @Environment(CatalogStore.self) private var catalog
     @Environment(AudioPlayer.self) private var player
+    @Environment(AccountStore.self) private var account
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         platformRoot
             .tint(Color.brandPrimary)
             .task { await catalog.start() }
+            .task { await account.start() }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await catalog.refresh() } }
+                // Signed in, the app syncs when it comes to the front and when
+                // it leaves (iOS-DESIGN §4.10); signed out, this does nothing.
+                if phase != .inactive { Task { await account.sync() } }
             }
             // The ONE place the inbox is consumed: deep links and test doors.
             .onChange(of: store.inbox, initial: true) { _, pending in

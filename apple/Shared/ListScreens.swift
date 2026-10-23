@@ -12,6 +12,7 @@ struct RouteDestinations: ViewModifier {
             switch route {
             case let .series(key): SeriesScreen(key: key)
             case let .episode(id): EpisodeScreen(id: id)
+            case .account: AccountScreen()
             }
         }
         .navigationDestination(for: PlayRoute.self) { route in
@@ -444,8 +445,13 @@ struct LibraryScreen: View {
         Group {
             if let inProgress {
                 if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty {
-                    ContentUnavailableView("Nothing played yet", systemImage: "books.vertical",
-                                           description: Text("Episodes you start are kept here."))
+                    ContentUnavailableView {
+                        Label("Nothing played yet", systemImage: "books.vertical")
+                    } description: {
+                        Text("Episodes you start are kept here.")
+                    } actions: {
+                        AccountRow().fixedSize()
+                    }
                 } else {
                     List {
                         if !inProgress.isEmpty {
@@ -471,6 +477,7 @@ struct LibraryScreen: View {
                                 }
                             }
                         }
+                        Section { AccountRow() }
                     }
                 }
             } else {

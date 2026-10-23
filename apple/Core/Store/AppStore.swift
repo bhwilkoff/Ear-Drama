@@ -34,6 +34,8 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
 enum Route: Hashable {
     case series(String)
     case episode(String)
+    /// Library's account row (iOS-DESIGN §4.10). Never a deep link.
+    case account
 
     /// Episode ids carry the series key and a `|`; series keys never do.
     init(id: String) {
