@@ -10,7 +10,7 @@ import Testing
 /// see `all-ios-skills:swift-testing`.
 struct APIClientTests {
     @Test func clientResolves() async {
-        let client = await APIClient.shared
+        let client = APIClient.shared
         // Touching the singleton inside an async context confirms the
         // actor is reachable. Real tests assert decoded shape from a
         // mocked URLSession (see swift-testing skill).

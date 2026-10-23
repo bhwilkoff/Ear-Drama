@@ -76,6 +76,34 @@ A few things the spec already carries, so nobody has to set them:
   (`ENABLE_APP_SANDBOX`, outgoing network only). Add a scope only
   when a feature needs it.
 
+## The catalog: a bundled seed, then the full download
+
+The apps read the served SQLite projection (`docs/CATALOG-CONTRACT.md`
+§3) on disk, read-only, through `Core/Catalog/CatalogDatabase.swift`.
+A database is **never committed**. Two files are involved:
+
+- **The seed**, bundled in the app so the first launch works offline.
+  The target's "Bundle catalog seed" build phase copies
+  `$(CATALOG_SEED_PATH)` into the app as `ear-drama-seed.sqlite`. It
+  defaults to `catalog/out/publish-clean/ear-drama.sqlite` (gitignored
+  pipeline output, 6.2 MB, the clean pools only). Build it with
+  `cd catalog && python3 tools/build_projection.py --clean-only --out
+  out/publish-clean`, or point the setting at another copy:
+  `xcodebuild ... CATALOG_SEED_PATH=/path/to/ear-drama.sqlite`. With no
+  file there the build still succeeds, says so in its log, and the app
+  shows "Catalog unavailable" until the download lands. CI must
+  provide the file before an archive.
+- **The full catalog**, `ear-drama.sqlite.zz` from the `catalog-latest`
+  Release. Its address is the one constant `CatalogSource.releaseURL`.
+  `CatalogRefreshService` (ported from Archive Watch) fetches it with
+  an ETag, inflates raw DEFLATE in 64 KB chunks into Caches (tvOS may
+  write nowhere else), refuses anything under a size floor or failing
+  `PRAGMA integrity_check` or the schema check, and renames it into
+  place as a new generation. While the URL does not answer, the app
+  stays on the seed.
+
+The Core tests read the same seed path (or `TEST_RUNNER_CATALOG_SEED_PATH`).
+
 ## Layout
 
 ```

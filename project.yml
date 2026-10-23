@@ -85,6 +85,30 @@ targets:
         "ENABLE_APP_SANDBOX[sdk=macosx*]": YES
         "ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]": YES
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+        # Audio keeps playing with the screen locked or the app in the
+        # background (research 04 §2.2). macOS needs no background mode.
+        "INFOPLIST_KEY_UIBackgroundModes[sdk=iphone*]": audio
+        "INFOPLIST_KEY_UIBackgroundModes[sdk=appletv*]": audio
+        # The bundled seed catalog (contract §2). The database is NEVER
+        # committed: the "Bundle catalog seed" phase copies this file into the
+        # app at build time. Override on the command line, e.g.
+        # xcodebuild ... CATALOG_SEED_PATH=/path/to/ear-drama.sqlite
+        CATALOG_SEED_PATH: $(SRCROOT)/catalog/out/publish-clean/ear-drama.sqlite
+        # The seed phase reads a file outside the project's declared inputs.
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    postCompileScripts:
+      - name: Bundle catalog seed
+        basedOnDependencyAnalysis: false
+        script: |
+          DST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ear-drama-seed.sqlite"
+          if [ -f "${CATALOG_SEED_PATH}" ]; then
+            mkdir -p "$(dirname "$DST")"
+            cp -f "${CATALOG_SEED_PATH}" "$DST"
+            echo "Bundled catalog seed: ${CATALOG_SEED_PATH}"
+          else
+            rm -f "$DST"
+            echo "No catalog seed at ${CATALOG_SEED_PATH}; the app opens empty until the download lands."
+          fi
 
   # Core unit tests. NOT hosted in the app: hosting the universal app built the
   # app module twice ("Multiple commands produce EarDrama.swiftmodule") in

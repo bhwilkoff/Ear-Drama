@@ -92,11 +92,11 @@ When shipping any user-facing feature:
 
 | Verb | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, This Day, shelves; no Tonight yet | ⏳ | ⏳ | ⏳ | 🚧 This Day, genre shelves; no Tonight | Decision 058; R13 lists from data |
-| Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | ⏳ | ⏳ | ⏳ | 🚧 seasons, oldest first | Broadcast seasons (058); oldest first (R1) |
+| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, This Day, shelves; no Tonight yet | 🚧 no Tonight | 🚧 no Tonight | 🚧 no Tonight | 🚧 This Day, genre shelves; no Tonight | Decision 058; R13 lists from data |
+| Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | 🚧 | 🚧 | 🚧 | 🚧 seasons, oldest first | Broadcast seasons (058); oldest first (R1) |
 | Radio (evenings and genre channels on one clock) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Gaps stated, never filled (R9) |
-| Search (titles, people, transcript text, dates) | 🚧 word-prefix titles and people; no transcripts yet | ⏳ | ⏳ | ⏳ | 🚧 FTS5 word-prefix | |
-| Library (followed series, queue, downloads, history) | 🚧 device-local; no downloads | ⏳ | ⏳ | ⏳ | 🚧 no downloads | Device-local until sync (M5) |
+| Search (titles, people, transcript text, dates) | 🚧 word-prefix titles and people; no transcripts yet | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | |
+| Library (followed series, queue, downloads, history) | 🚧 device-local; no downloads | 🚧 no downloads | 🚧 no downloads | 🚧 | 🚧 no downloads | Device-local until sync (M5) |
 | Plays (record a radio or stage play together) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Decision 059; TVs play back only |
 
 ---
@@ -105,13 +105,13 @@ When shipping any user-facing feature:
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Episode detail (date, network, sponsor, cast, versions, rights line) | 🚧 no sponsor yet | ⏳ | ⏳ | ⏳ | 🚧 no sponsor | Unclaimed reads "no claim known; removed on request", never public domain |
-| Player: background play, system controls, speed, skip | 🚧 Media Session | ⏳ | ⏳ | ⏳ | 🚧 Media3 session | iPhone web cannot be relied on for background audio |
-| Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | ⏳ | ⏳ | ⏳ | 🚧 | |
+| Episode detail (date, network, sponsor, cast, versions, rights line) | 🚧 no sponsor yet | 🚧 | 🚧 | 🚧 | 🚧 no sponsor | Unclaimed reads "no claim known; removed on request", never public domain |
+| Player: background play, system controls, speed, skip | 🚧 Media Session | 🚧 Now Playing, remote commands | 🚧 Controls menu, keyboard | 🚧 full-screen Now Playing | 🚧 Media3 session | iPhone web cannot be relied on for background audio |
+| Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | |
 | Serials stop at the end of an arc (R3) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Commercials chaptered, never skipped (R8) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | |
 | Loudness gain applied at playback | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Gain from the pipeline; never re-encoded |
-| Versions picker; domestic copy by default | 🚧 | ⏳ | ⏳ | ⏳ | 🚧 | catalog Decision 007 |
+| Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 | 🚧 | catalog Decision 007 |
 | Transcripts, labeled automatic | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Shown only above the measured quality gate (058) |
 | Downloads | ⏳ | ⏳ | ⏳ | n/a | ⏳ | tvOS has no durable storage for media |
 | Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
