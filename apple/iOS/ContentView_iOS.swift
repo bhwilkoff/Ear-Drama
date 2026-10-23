@@ -1,59 +1,67 @@
 #if os(iOS)
 import SwiftUI
 
-// MARK: - Root View (iPhone + iPad)
-
-/// iOS 26 baseline — use native APIs directly. The shape below maps to
-/// Android `NavigationSuiteScaffold` (size-class-adaptive nav surface)
-/// and web's nav. Same verbs, native idioms.
+/// iPhone and iPad: one TabView whose style adapts (a tab bar on iPhone, a
+/// sidebar on iPad), one NavigationStack per tab, and the shared destination
+/// registry on every stack.
 struct ContentView_iOS: View {
     @Environment(AppStore.self) private var store
 
     var body: some View {
-        // For multi-tab apps, prefer TabView(.sidebarAdaptable) at
-        // iOS 26+ — bottom tab bar on iPhone, sidebar on iPad, from ONE
-        // hierarchy. Use Tab(role: .search) for the explore/find tab so
-        // the search bar gets full-screen morph for free. Adapt to
-        // regular width via @Environment(\.horizontalSizeClass), never
-        // UIDevice checks.
-        //
-        // Navigation rules that survived four shipped apps:
-        // - One NavigationPath per tab, owned by the @Observable store.
-        // - ONE shared destination registry (a single ViewModifier that
-        //   declares every navigationDestination), applied to every
-        //   tab's NavigationStack — never per-view destinations. This is
-        //   what lets any surface push any screen from any tab.
-        // - Settings is a sheet behind a toolbar gear, not a tab — the
-        //   tab bar is reserved for content verbs.
-        @Bindable var bindableStore = store
-        NavigationStack(path: $bindableStore.navigationPath) {
-            DetailView()
-                .navigationDestination(for: String.self) { destination in
-                    // FILL IN: your navigation destinations
-                    Text(destination)
-                }
+        @Bindable var store = store
+        TabView(selection: $store.selectedTab) {
+            Tab(AppTab.listen.title, systemImage: AppTab.listen.symbol, value: AppTab.listen) {
+                stack(.listen) { ListenScreen() }
+            }
+            Tab(AppTab.series.title, systemImage: AppTab.series.symbol, value: AppTab.series) {
+                stack(.series) { SeriesBrowseScreen() }
+            }
+            Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
+                stack(.library) { LibraryScreen() }
+            }
+            Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
+                stack(.search) { SearchScreen_iOS() }
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .sheet(isPresented: $store.isPlayerPresented) {
+            PlayerSheet_iOS()
+                .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
+        NavigationStack(path: store.path(for: tab)) {
+            root().routeDestinations()
+        }
+        .modifier(MiniPlayerInset())
+    }
+}
+
+/// The mini player sits inside each tab's stack, above the tab bar, on every
+/// supported iOS. (The iOS 26 tab accessory would change the TabView's identity
+/// when playback starts and reset every tab's stack.)
+private struct MiniPlayerInset: ViewModifier {
+    @Environment(AudioPlayer.self) private var player
+
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) {
+            if player.item != nil {
+                MiniPlayer_iOS()
+                    .padding(.vertical, Spacing.s2)
+                    .background(.regularMaterial)
+            }
         }
     }
 }
 
-// MARK: - Detail View (main content area)
-
-struct DetailView: View {
-    @Environment(AppStore.self) private var store
+private struct SearchScreen_iOS: View {
+    @State private var query = ""
 
     var body: some View {
-        Group {
-            // FILL IN: switch on store.selectedTab to show different views
-            Text("Home View")
-        }
-        // iOS 26 resolves .regularMaterial to Liquid Glass automatically.
-        // Don't override with custom .background — let the system apply
-        // navigation chrome materials (DESIGN.md "navigation chrome only").
-        .toolbarBackground(.regularMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        // iOS 26 native scroll-edge effect — use .hard for dense grids,
-        // .soft for reading content.
-        // .scrollEdgeEffectStyle(.hard, for: .top)
+        SearchResultsList(query: query)
+            .navigationTitle("Search")
+            .searchable(text: $query, prompt: "Titles, series, people")
     }
 }
 #endif

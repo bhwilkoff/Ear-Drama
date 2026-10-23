@@ -1,66 +1,127 @@
 import SwiftUI
 
-/// Global app state — injected via @Environment(AppStore.self).
-/// Uses @Observable (iOS 17+) for automatic SwiftUI updates.
+/// The top-level verbs: the iPhone tab bar, the Mac sidebar, the TV sidebar.
+/// Radio waits on the published evenings (contract §8).
+enum AppTab: String, CaseIterable, Identifiable, Hashable {
+    case listen, series, search, library
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .listen: "Listen"
+        case .series: "Series"
+        case .search: "Search"
+        case .library: "Library"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .listen: "play.circle"
+        case .series: "square.stack"
+        case .search: "magnifyingglass"
+        case .library: "books.vertical"
+        }
+    }
+}
+
+/// Every pushable screen. ONE destination registry resolves these on every
+/// platform, so any surface can push any screen from any tab.
+enum Route: Hashable {
+    case series(String)
+    case episode(String)
+
+    /// Episode ids carry the series key and a `|`; series keys never do.
+    init(id: String) {
+        self = id.contains("|") ? .episode(id) : .series(id)
+    }
+}
+
+/// Global app state, injected via @Environment(AppStore.self).
 @Observable
 final class AppStore {
-    var navigationPath = NavigationPath()
-    var selectedTab: String? = "home"
+    var selectedTab: AppTab = .listen
+    /// One NavigationPath per tab.
+    var paths: [AppTab: NavigationPath] = [:]
+    /// The full player is showing (iPhone sheet, TV full screen).
+    var isPlayerPresented = false
+    /// The sleep timer's choices are showing (a door can open them).
+    var isSleepMenuPresented = false
 
-    /// Player-level mute. A door launch sets it (APP_MUTE); every player reads
-    /// it, so a harness run on someone's TV is silent unless it opts in.
+    /// Player-level mute. A door launch sets it (APP_MUTE); the player reads
+    /// it, so a harness run is silent unless it opts in.
     var isMuted = false
 
-    /// The intent inbox: deep links, widget/Top Shelf URLs, intents, and test
-    /// doors are POSTED here and consumed by RootView once foregrounded —
-    /// external entry points never mutate the router directly.
+    /// The intent inbox: deep links and test doors are POSTED here and
+    /// consumed by RootView once foregrounded.
     private(set) var inbox: [InboxRequest] = []
 
     enum InboxRequest: Hashable, Sendable {
         case tab(String)
         case item(String)
+        case play(String)
     }
 
     func post(_ request: InboxRequest) { inbox.append(request) }
 
-    /// Called by the root view only.
-    func drainInbox() {
+    func path(for tab: AppTab) -> Binding<NavigationPath> {
+        Binding(get: { self.paths[tab] ?? NavigationPath() }, set: { self.paths[tab] = $0 })
+    }
+
+    func push(_ route: Route) {
+        var path = paths[selectedTab] ?? NavigationPath()
+        path.append(route)
+        paths[selectedTab] = path
+    }
+
+    /// Leaving a tab from the TV sidebar resets the stack it leaves behind
+    /// (tvOS rule: stale push-state must not greet the next visit).
+    func selectResettingPrevious(_ tab: AppTab) {
+        if tab != selectedTab { paths[selectedTab] = NavigationPath() }
+        selectedTab = tab
+    }
+
+    /// Called by the root view only. Returns the episode ids to play.
+    func drainInbox() -> [String] {
         let pending = inbox
         inbox.removeAll()
+        var toPlay: [String] = []
         for request in pending {
             switch request {
-            case .tab(let tab):
-                selectedTab = tab
-                navigationPath = NavigationPath()
+            case .tab(let raw):
+                if let tab = AppTab(rawValue: raw) {
+                    selectedTab = tab
+                    paths[tab] = NavigationPath()
+                }
             case .item(let id):
-                // FILL IN: map the id to your item route type.
-                navigationPath.append(id)
+                push(Route(id: id))
+            case .play(let id):
+                toPlay.append(id)
             }
         }
+        return toPlay
     }
 
     @ObservationIgnored private var doorsOpened = false
 
-    /// Posts the launch doors once per process (a second macOS window must not
-    /// re-open them). Returns false when they were already opened.
+    /// Posts the launch doors once per process. Returns false when they were
+    /// already opened.
     func openDoorsOnce(_ doors: LaunchDoors) -> Bool {
         guard !doorsOpened else { return false }
         doorsOpened = true
         if doors.mute { isMuted = true }
         if let tab = doors.startTab { post(.tab(tab)) }
-        if let item = doors.startItem { post(.item(item)) }
+        if let item = doors.startItem {
+            post(.item(item))
+            if doors.autoplay { post(.play(item)) }
+        }
+        if doors.autoplay { isPlayerPresented = true }
+        if doors.sleepMenu { isSleepMenuPresented = true }
         return true
     }
 
-    /// APP_DOOR_SECONDS elapsed: end the door's activity on the app's own
-    /// clock (stop playback, leave the room) so a crashed harness cannot leave
-    /// it running. FILL IN: stop your player / leave any session here too.
+    /// APP_DOOR_SECONDS elapsed: end the door's activity on the app's own clock.
     func endDoor() {
-        navigationPath = NavigationPath()
+        paths = [:]
+        isPlayerPresented = false
+        isSleepMenuPresented = false
     }
-
-    // FILL IN: Add app-wide state here
-    // Examples:
-    // var unreadCount = 0
-    // var currentUserAvatar: String?
 }
