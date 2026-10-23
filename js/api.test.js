@@ -44,10 +44,30 @@ test('playbackVolume reaches -21 LUFS by cutting, clamped at -1 dBTP (DECISIONS 
   assertEq(API.playbackVolume(undefined, -3), 1, 'no loudness, no change');
 });
 
+test('onAir reads the one clock from the published instants (R10, R14)', () => {
+  const slots = [
+    { utc_start: '2026-10-22T23:00:00Z', utc_end: '2026-10-22T23:30:00Z' },
+    { utc_start: '2026-10-22T23:30:00Z', utc_end: '2026-10-23T00:00:00Z' },
+    { utc_start: '2026-10-23T00:00:00Z', utc_end: '2026-10-23T00:30:00Z' },
+  ];
+  const at = (iso) => API.onAir(slots, Date.parse(iso));
+  assertEq(at('2026-10-22T22:59:59Z').phase, 'before', 'before the first slot');
+  assertEq(at('2026-10-22T23:00:00Z').index, 0, 'the first slot starts on its instant');
+  assertEq(at('2026-10-22T23:45:00Z').index, 1, 'the slot whose instants hold now');
+  assertEq(at('2026-10-23T00:29:59Z').index, 2, 'the last slot until its end');
+  assertEq(at('2026-10-23T00:30:00Z').phase, 'after', 'the evening ends when its last slot does (R14)');
+  assertEq(API.onAir([], Date.now()).phase, 'after', 'no slots: nothing on the air');
+});
+
+test('localDate is the person\'s own calendar date, not UTC', () => {
+  assertEq(API.localDate(new Date(2026, 9, 22, 23, 30)), '2026-10-22', '11:30 PM local stays on its own date');
+  assertEq(API.localDate(new Date(2026, 0, 5, 0, 5)), '2026-01-05', 'control: padding');
+});
+
 test('API exposes the data verbs', () => {
   assert(typeof API === 'object', 'API should be an object');
   for (const f of ['getJSON', 'manifest', 'seriesIndex', 'listen', 'thisDay', 'seriesPage', 'episodeDetail',
-                   'searchSeries', 'searchEpisodeNumbers', 'searchDocs', 'rightsLine']) {
+                   'searchSeries', 'searchEpisodeNumbers', 'searchDocs', 'rightsLine', 'tonight', 'onAir']) {
     assert(typeof API[f] === 'function', `API.${f} should be a function`);
   }
 });

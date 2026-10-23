@@ -45,7 +45,7 @@ web app follows today.
 
 ## §3 Routing and URL state
 
-- **§3.1 Query routes, not hash routes.** `?view=listen|series|search|library`,
+- **§3.1 Query routes, not hash routes.** `?view=listen|series|radio|search|library`,
   `?series={key}&season=`, `?item={episode id}`, `?view=search&q=`,
   `?view=library&tab=`. This inverts the template's hash routes on
   purpose: query routes are what the path twins forward into.
@@ -61,11 +61,12 @@ web app follows today.
 
 ## §4 Surfaces
 
-- **§4.1 Navigation.** Four destinations, Listen, Series, Search,
-  Library: a bottom tab bar on a phone, a sidebar from 768 px. The car
-  reduces to four tabs, so the phone has four (R17). Depth is at most
-  two from a tab: tab, series, episode; a season or a Library section is
-  a segmented scope, never a push.
+- **§4.1 Navigation.** Five destinations, Listen, Series, Radio,
+  Search, Library (05-design-research §8): a bottom tab bar on a phone, a
+  sidebar from 768 px. The phone's five reduce to the car's four
+  (Continue, Radio, Series, Downloads) without a new one (R17). Depth is
+  at most two from a tab: tab, series, episode; a season or a Library
+  section is a segmented scope, never a push.
 - **§4.2 Listen** = Continue listening (this device), Following, This day
   in radio, then shelves by rule from `index/listen.json`. Each section
   draws only when it has rows.
@@ -93,6 +94,22 @@ web app follows today.
   query mirrored to the URL.
 - **§4.7 Library** = Queue, History, Following, on this device. Clear
   history asks first.
+- **§4.9 Radio** = Tonight in 19xx: the evening `tonight.json` publishes
+  for the listener's own calendar date (contract §8), as the night's
+  schedule. Each slot shows its local time with the original Eastern time
+  beside it as a fact ("7:00 PM ET" alone where the two agree), and the
+  slot on the air is marked on the one clock, read from the file's UTC
+  instants (R10). A surviving slot links to its episode and plays from
+  its start; "Listen live" joins the slot on the air where the clock
+  stands, and each later surviving slot starts at its own time. A pause,
+  another episode, or the sleep timer ends listening live, and so does
+  the last slot: nothing plays after the evening (R14). A gap is drawn as
+  a gap (R9): its time, its length, the catalog series name only where the
+  file sets `known_series`, and "Not surviving" (or "Not in the catalog"
+  for a recording this projection does not serve). The paper's OCR text
+  (`printed`) stays in the file as witness and is **not drawn** until the
+  owner rules on it. The listing is credited in one caption line linking
+  the page it was read from. No evening for today is the empty state.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll and on each site page: Credits, Privacy, Take-down requests.
   They are never featured in the main UI (AGENTS.md "side doors").
@@ -180,8 +197,8 @@ web app follows today.
 - **§9.1** Update `PARITY.md` in the same change set as any user-facing
   feature; quote these rule numbers in proposals.
 - **§9.2 Not on the web yet**, each arriving with its milestone: the
-  Radio tab (R9, R10), transcripts (R16), downloads, sign-in and sync
-  (M5), Listen Together (M6).
+  Radio tab's genre channels, transcripts (R16), downloads, sign-in and
+  sync (M5), Listen Together (M6).
 
 ## §10 Traps this codebase has already paid for
 

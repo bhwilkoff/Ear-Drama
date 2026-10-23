@@ -220,6 +220,40 @@ const API = (() => {
     return Math.pow(10, g / 20);
   }
 
+  /* ---- Tonight in 19xx (contract §8): the evenings are published; the client only reads the clock ---- */
+
+  /** The person's own calendar date, YYYY-MM-DD, in this device's time zone. */
+  function localDate(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  /** The evening published for `date` (the person's own), or null when none is. */
+  async function tonight(date = localDate()) {
+    let d;
+    try {
+      d = await getJSON('tonight.json');
+    } catch (e) {
+      if (e.kind === 'missing') return null;
+      throw e;
+    }
+    const day = d.days && d.days[date];
+    return day ? { ...day, zone: d.zone } : null;
+  }
+
+  /**
+   * Where the one clock stands in an evening at `now` (ms): the index of the slot on the air,
+   * and whether the evening is before, during, or after. Every instant is the file's own
+   * (utc_start, utc_end); nothing is computed from a time zone here.
+   */
+  function onAir(slots, now) {
+    if (!slots || !slots.length) return { phase: 'after', index: -1 };
+    if (now < Date.parse(slots[0].utc_start)) return { phase: 'before', index: -1 };
+    const end = Math.max(...slots.map(s => Date.parse(s.utc_end)));
+    if (now >= end) return { phase: 'after', index: -1 };
+    const index = slots.findIndex(s => Date.parse(s.utc_start) <= now && now < Date.parse(s.utc_end));
+    return { phase: 'during', index };
+  }
+
   /** The rights line, worded by the projection (contract §5.5); never "public domain". */
   async function rightsLine(rights, basis) {
     const m = await manifest();
@@ -231,6 +265,7 @@ const API = (() => {
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
     manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
+    localDate, tonight, onAir,
   };
 })();
 

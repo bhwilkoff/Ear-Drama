@@ -4,6 +4,7 @@
  * Routes (every view has a URL; the https twins of the apps' links):
  *   ?view=listen                      Listen (also the bare site)
  *   ?view=series&genre=&decade=&network=&sort=   Series browse
+ *   ?view=radio                       Radio: Tonight in 19xx on the one clock
  *   ?series={key}&season={1948-49|undated}       a series page
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
@@ -25,9 +26,9 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'search', 'library'];
-  const TAB_OF = { listen: 'listen', series: 'series', show: 'series', episode: 'series', search: 'search',
-                   library: 'library' };
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'radio', 'search', 'library'];
+  const TAB_OF = { listen: 'listen', series: 'series', show: 'series', episode: 'series', radio: 'radio',
+                   search: 'search', library: 'library' };
   const PAGE = 60;
 
   /* ================================================================
@@ -212,7 +213,7 @@
     if (p.get('item')) return { view: 'episode', id: p.get('item'), p };
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
     const v = p.get('view');
-    if (['series', 'search', 'library', 'listen'].includes(v)) return { view: v, p };
+    if (['series', 'radio', 'search', 'library', 'listen'].includes(v)) return { view: v, p };
     return { view: 'listen', p };
   }
 
@@ -226,7 +227,7 @@
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode,
-       search: renderSearch, library: renderLibrary })[r.view](r);
+       radio: renderRadio, search: renderSearch, library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
       const h = $(`view-${r.view}`).querySelector('h1');
@@ -306,6 +307,179 @@
         shelvesBox.append(shelf(manifest.genreNames[s.genre] || s.genre, s.series, `genre-${i}`));
       });
     });
+  }
+
+  /* ================================================================
+     RADIO: Tonight in 19xx on the one clock (R9, R10, R14; contract §8)
+  ================================================================ */
+
+  /* Harness door, local servers only: ?now=ISO runs the clock from that instant, so a
+     screenshot can show an evening on the air whatever the hour. */
+  const NOW_DOOR = (() => {
+    const v = new URLSearchParams(location.search).get('now');
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    const t = v && local ? Date.parse(v) : NaN;
+    return isFinite(t) ? { at: t, set: Date.now() } : null;
+  })();
+  const clockNow = () => (NOW_DOOR ? NOW_DOOR.at + (Date.now() - NOW_DOOR.set) : Date.now());
+
+  const localClock = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
+  /** "19:30" as printed in the paper's Eastern clock, drawn "7:30 PM". */
+  function fmtEt(hhmm) {
+    const [h, m] = hhmm.split(':').map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+  }
+  /** True when this device's clock reads the same as the evening's zone at that instant. */
+  function sameAsZone(iso, zone) {
+    const z = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: zone });
+    return z.format(new Date(iso)) === localClock.format(new Date(iso));
+  }
+
+  /* Listening live: the slot on the air plays from where the clock stands; when its recording
+     ends, the next surviving slot plays when its own time comes. A pause, another episode, or
+     the sleep timer ends it, and so does the evening's last slot: nothing plays after (R14). */
+  let live = null;            // { day, details, playing: utc_start of the slot loaded, waiting }
+  let liveTimer = null;
+
+  function cardOf(d, seriesName) {
+    return { id: d.id, title: epTitle(d), series: d.series, seriesName, date: d.date,
+             url: d.recordings[0].url, length: d.recordings[0].length || d.length, li: d.li, ltp: d.ltp };
+  }
+
+  function stopLive() {
+    live = null;
+    clearInterval(liveTimer);
+    liveTimer = null;
+    if (!$('view-radio').hidden) paintRadio();
+  }
+
+  function liveTick() {
+    if (!live) return;
+    const where = API.onAir(live.day.slots, clockNow());
+    if (where.phase === 'after') { stopLive(); return; }
+    const s = where.index >= 0 ? live.day.slots[where.index] : null;
+    const d = s && s.episode && live.details.get(s.episode.id);
+    if (!d || live.playing === s.utc_start) return;
+    if (live.playing && !live.waiting) return;   // the listener took the player elsewhere
+    const at = (clockNow() - Date.parse(s.utc_start)) / 1000;
+    const length = d.recordings[0].length || d.length || s.length_min * 60;
+    if (at >= length - 5) return;                 // its recording ended inside its slot
+    live.playing = s.utc_start;
+    live.waiting = false;
+    live.id = d.id;
+    Player.load(cardOf(d, s.episode.series), { at: Math.max(0, at) });
+    if (!$('view-radio').hidden) paintRadio();
+  }
+
+  function tuneIn(day, details) {
+    live = { day, details, playing: null, waiting: true, id: null };
+    clearInterval(liveTimer);
+    liveTimer = setInterval(liveTick, 1000);
+    liveTick();
+    announce('Listening live');
+  }
+
+  Player.onChange((kind) => {
+    if (!live || !live.playing) return;
+    const cur = Player.current;
+    if (!cur || cur.id !== live.id || Player.fired) { stopLive(); return; }
+    if (kind === 'ended') live.waiting = true;
+    else if (kind === 'pause' && !Player.audio.ended) stopLive();
+  });
+
+  let radioState = null;      // { day, details } for the view's repaint
+  let radioTimer = null;
+
+  function renderRadio() {
+    setTitle('Radio');
+    const body = $('radio-body');
+    clearInterval(radioTimer);
+    load(body, async () => {
+      const day = await API.tonight(API.localDate(new Date(clockNow())));
+      if (!day) return { day: null };
+      const ids = day.slots.filter(s => s.episode).map(s => s.episode.id);
+      const got = await Promise.all(ids.map(id => API.episodeDetail(id)));
+      return { day, details: new Map(got.filter(Boolean).map(d => [d.id, d])) };
+    }, (data) => {
+      radioState = data;
+      if (!data.day) {
+        body.append(stateBox('empty', { text: 'No evening is published for today.' }));
+        return;
+      }
+      paintRadio();
+      radioTimer = setInterval(() => {
+        if ($('view-radio').hidden) { clearInterval(radioTimer); return; }
+        paintRadio();
+      }, 15000);
+    });
+  }
+
+  function paintRadio() {
+    if (!radioState || !radioState.day) return;
+    const { day, details } = radioState;
+    const body = $('radio-body');
+    const where = API.onAir(day.slots, clockNow());
+    const zone = day.zone;
+    const isLive = live && live.day === day;
+    const last = day.slots[day.slots.length - 1];
+
+    let status = null;
+    const onSlot = where.index >= 0 ? day.slots[where.index] : null;
+    const onDetail = onSlot && onSlot.episode && details.get(onSlot.episode.id);
+    if (where.phase === 'before') {
+      status = el('p', { class: 'caption' }, `Starts at ${localClock.format(new Date(day.slots[0].utc_start))}`);
+    } else if (where.phase === 'after') {
+      status = el('p', { class: 'caption' }, `Ended at ${localClock.format(new Date(last.utc_end))}`);
+    } else if (isLive) {
+      status = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'true',
+                              onclick: () => { Player.pause(); stopLive(); } }, 'Listening live');
+    } else if (onDetail) {
+      status = el('button', { type: 'button', class: 'btn btn-primary', onclick: () => tuneIn(day, details) },
+        icon('play'), 'Listen live');
+    }
+
+    const list = el('ol', { class: 'slots' });
+    day.slots.forEach((s, i) => {
+      const d = s.episode && details.get(s.episode.id);
+      const now = i === where.index;
+      const local = localClock.format(new Date(s.utc_start));
+      const same = sameAsZone(s.utc_start, zone);
+      const time = el('div', { class: 'slot-time' },
+        el('span', { class: 'tabular' }, same ? `${local} ET` : local),
+        same ? null : el('span', { class: 'caption tabular' }, `${fmtEt(s.et_start)} ET`));
+      let main;
+      if (d) {
+        main = el('a', { class: 'slot-main', href: `?item=${encodeURIComponent(d.id)}` },
+          el('span', { class: 'body-strong' }, s.episode.series),
+          el('span', { class: 'body slot-title' }, epTitle(d)),
+          el('span', { class: 'caption' }, [now ? 'Now' : null, `${s.length_min} min`].filter(Boolean).join(' · ')));
+      } else {
+        // A gap is stated, never filled (R9). The paper's printed text stays in the file as
+        // witness and is not drawn until the owner rules on it (WEB-DESIGN §4.9).
+        const why = s.withheld || s.episode ? 'Not in the catalog' : 'Not surviving';
+        main = el('div', { class: 'slot-main' },
+          s.known_series ? el('span', { class: 'body' }, s.known_series) : null,
+          el('span', { class: 'caption' }, [now ? 'Now' : null, why, `${s.length_min} min`].filter(Boolean).join(' · ')));
+      }
+      const play = d ? el('button', {
+        type: 'button', class: 'icon-btn', 'aria-label': `Play ${epTitle(d)}, ${s.episode.series}`,
+        onclick: () => { if (live) stopLive(); Player.load(cardOf(d, s.episode.series)); },
+      }, icon('play')) : null;
+      list.append(el('li', { class: `slot${d ? '' : ' slot-gap'}${now ? ' slot-now' : ''}`,
+                             'aria-current': now ? 'time' : null }, time, main, play));
+    });
+
+    const w = day.witness || {};
+    body.replaceChildren(
+      el('header', { class: 'radio-head' },
+        el('h2', { class: 'section-header', id: 'tonight-h' }, `Tonight in ${day.evening.slice(0, 4)}`),
+        el('p', { class: 'body' }, fmtLongDate(day.evening)),
+        el('p', { class: 'caption' }, [day.network, day.station].filter(Boolean).join(' · ')),
+        status ? el('div', { class: 'actions' }, status) : null),
+      el('section', { 'aria-labelledby': 'tonight-h' }, list),
+      w.url ? el('p', { class: 'caption witness' }, 'Schedule: ',
+        el('a', { href: w.url, rel: 'noopener', target: '_blank' }, w.paper || 'newspaper listing'),
+        w.via ? `, via ${w.via.replace(/\s*\(.*\)$/, '')}` : '') : null);
   }
 
   /* ================================================================
