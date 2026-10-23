@@ -10,7 +10,7 @@ compatibility_date = "2026-01-01"
 # Comma-separated `aud` values an identity token may carry. Apple: the bundle
 # id (iOS, iPadOS, macOS, tvOS) and the Services ID (web, Android). Google:
 # the OAuth client ids (web, iOS, and the web id Android asks for).
-APPLE_AUDIENCES = "app.eardrama,REPLACE_WITH_APPLE_SERVICES_ID"
+APPLE_AUDIENCES = "app.eardrama,app.eardrama.signin"
 GOOGLE_AUDIENCES = "REPLACE_WITH_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com"
 # Browsers that may call this Worker. Native apps send no Origin header.
 # http://localhost and http://127.0.0.1 on any port are always allowed.

@@ -11,7 +11,7 @@ const CONFIG = Object.freeze({
   worker: 'https://eardrama-api.benwilkoff.workers.dev',
   apple: {
     // The Services ID made for the web (it is also in the Worker's APPLE_AUDIENCES).
-    servicesId: 'REPLACE_WITH_APPLE_SERVICES_ID',
+    servicesId: 'app.eardrama.signin',
     // A return URL registered on that Services ID. The popup flow never navigates to it.
     redirectURI: 'https://eardrama.org/',
   },
