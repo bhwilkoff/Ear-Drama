@@ -53,15 +53,13 @@ APP_ANCHOR_RX = APP_ANCHOR_RX  # see tools/app_config.py
 # and teaches the loop to be ignored. (Other keys devharness.Grader.grade_glass
 # reads: expect_end, forbid.)
 #
-# FILL IN: EXAMPLES matching what the template's starter honours (APP_START_TAB
-# home|search, APP_START_ITEM, APP_MUTE, APP_DOOR_SECONDS — see
-# apple/Core/Store/LaunchDoors.swift). Tab titles are on every screen, so replace
-# each regex with content unique to that surface, then add your app's surfaces.
+# Ear Drama's tabs (LaunchDoors.swift: listen|series|radio|plays|search|library);
+# the regexes are not yet calibrated against a device capture (SCRATCHPAD item 3).
 SCENARIOS = {
-    "home":        {"env": {HOOK_START_TAB: "home"},   "minutes": 0.6,
-                    "expect_any": r"Home"},                              # FILL IN
+    "listen":      {"env": {HOOK_START_TAB: "listen"}, "minutes": 0.6,
+                    "expect_any": r"Listen"},
     "search":      {"env": {HOOK_START_TAB: "search"}, "minutes": 0.6,
-                    "expect_any": r"Search"},                            # FILL IN
+                    "expect_any": r"Search"},
     # Mute is in every launch already (DOOR_DEFAULTS); spelled out on the
     # scenario most likely to start playback.
     "item":        {"env": {HOOK_START_ITEM: QA_ITEM_ID, HOOK_MUTE: "1"}, "minutes": 0.6,
@@ -69,7 +67,7 @@ SCENARIOS = {
     # The door bounds itself: the app leaves the item on its own clock.
     "door-return": {"env": {HOOK_START_ITEM: QA_ITEM_ID, HOOK_DOOR_SECONDS: "10"},
                     "minutes": 0.6, "expect_any": QA_ITEM_RX,
-                    "expect_end": r"Home"},                              # FILL IN
+                    "expect_end": r"Listen"},
 }
 
 

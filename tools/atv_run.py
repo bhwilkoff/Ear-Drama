@@ -62,21 +62,17 @@ FORBID_DEFAULT = FORBIDDEN
 #              multi-press navigation is better served by a launch door.
 # drop_env:    BASE_ENV keys this scenario must NOT send.
 #
-# FILL IN: these are EXAMPLES matching what the template's starter honours
-# (APP_START_TAB home|search, APP_START_ITEM, APP_MUTE, APP_DOOR_SECONDS — see
-# apple/Core/Store/LaunchDoors.swift). Replace each regex with words calibrated
-# against a real capture of YOUR screen, and add one scenario per surface your app
-# has. A regex written from imagination fails on correct pixels, or passes on the
-# wrong screen: tab titles are on every screen, so a signature must be content
-# unique to the surface.
+# Ear Drama's tabs (LaunchDoors.swift: listen|series|radio|plays|search|library);
+# not yet calibrated against an Apple TV capture (SCRATCHPAD item 3). Tab titles are
+# on every screen, so a calibrated signature should be content unique to the surface.
 SCENARIOS = {
-    "home": dict(
-        env={HOOK_START_TAB: "home"}, minutes=0.4,
-        expect_any=r"Home", expect_end=r"Home",                          # FILL IN
-        note="Home tab renders."),
+    "listen": dict(
+        env={HOOK_START_TAB: "listen"}, minutes=0.4,
+        expect_any=r"Listen", expect_end=r"Listen",
+        note="Listen tab renders."),
     "search": dict(
         env={HOOK_START_TAB: "search"}, minutes=0.4,
-        expect_any=r"Search",                                            # FILL IN
+        expect_any=r"Search",
         note="Search tab renders."),
     "item": dict(
         # Mute is already in every launch (DOOR_DEFAULTS); it is spelled out here
@@ -87,8 +83,8 @@ SCENARIOS = {
     "door-return": dict(
         # The door bound itself: the app must leave the item on its own clock.
         env={HOOK_START_ITEM: QA_ITEM_ID, HOOK_DOOR_SECONDS: "15"}, minutes=0.8,
-        expect_seq=[QA_ITEM_RX, r"Home"], expect_end=r"Home",            # FILL IN
-        note="APP_DOOR_SECONDS ends the door and returns to Home by itself."),
+        expect_seq=[QA_ITEM_RX, r"Listen"], expect_end=r"Listen",
+        note="APP_DOOR_SECONDS ends the door and returns to Listen by itself."),
 }
 
 

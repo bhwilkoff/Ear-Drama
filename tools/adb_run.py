@@ -73,12 +73,10 @@ APP_ANCHOR_RX = APP_ANCHOR_RX  # see tools/app_config.py
 
 TV_PLATFORMS = ("androidtv", "firetv")
 
-# FILL IN: EXAMPLES matching what the template's starter honours — the extras
-# android/app/.../navigation/LaunchDoors.kt reads: appname_start_tab (home|search),
-# appname_start_item, appname_mute, appname_door_seconds, each derived from the
-# Apple hook name by android_extra(). Add your app's surfaces the same way; an
-# unknown tab value should be ignored by AppRoot rather than crash a sweep, so a
-# typo here shows up as "wrong screen", not a crash.
+# The extras android/app/.../navigation/LaunchDoors.kt reads (appname_start_tab
+# naming one of Ear Drama's tabs, _start_item, _mute, _door_seconds), derived from
+# the Apple hook names by android_extra(). AppRoot ignores an unknown tab, so a typo
+# shows up as "wrong screen", not a crash. Not yet calibrated on a device.
 # expect_any is calibrated against a real capture, never guessed, and tolerates
 # the legitimate EMPTY state where one exists: a fresh debug install has no
 # history, and an assertion that only knows the populated shape fails on a
@@ -87,10 +85,10 @@ TV_PLATFORMS = ("androidtv", "firetv")
 # whose known debug-build failure is not a regression (e.g. Play Billing returns
 # no products for a debug package that is not Play-registered).
 SCENARIOS = {
-    "home":        {"extras": {android_extra(HOOK_START_TAB): ("es", "home")},   "minutes": 0.6,
-                    "expect_any": r"Home"},                              # FILL IN
+    "listen":      {"extras": {android_extra(HOOK_START_TAB): ("es", "listen")}, "minutes": 0.6,
+                    "expect_any": r"Listen"},
     "search":      {"extras": {android_extra(HOOK_START_TAB): ("es", "search")}, "minutes": 0.6,
-                    "expect_any": r"Search"},                            # FILL IN
+                    "expect_any": r"Search"},
     # Mute is in every launch already (ANDROID_DOOR_EXTRAS); spelled out on the
     # scenario most likely to start playback.
     "item":        {"extras": {android_extra(HOOK_START_ITEM): ("es", QA_ITEM_ID),
@@ -100,7 +98,7 @@ SCENARIOS = {
     "door-return": {"extras": {android_extra(HOOK_START_ITEM): ("es", QA_ITEM_ID),
                                android_extra(HOOK_DOOR_SECONDS): ("ei", "10")},
                     "minutes": 0.6, "expect_any": QA_ITEM_RX,
-                    "expect_end": r"Home"},                              # FILL IN
+                    "expect_end": r"Listen"},
 }
 
 _ENTRY = {}

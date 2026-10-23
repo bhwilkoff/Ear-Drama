@@ -6,7 +6,7 @@ that rule exists to prevent: a layout that is fine wide and clipped narrow. The
 clip detector reads the narrow frame, which is where clipping actually happens.
 
     python3 tools/web_run.py --list
-    python3 tools/web_run.py --only home,item
+    python3 tools/web_run.py --only listen,item
     python3 tools/web_run.py --base https://example.com       # a deployed site
 
 No device lease: the browser is a private headless instance with its own profile,
@@ -16,6 +16,7 @@ from app_config import *  # app identity + calibrated thresholds
 
 import argparse
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -37,31 +38,36 @@ VIEWPORTS = [("narrow", 375, 812), ("wide", 1440, 900)]
 # site header is on every page and would match everywhere, which is how a sweep
 # reports 15/15 while showing one screen fifteen times.
 #
-# FILL IN: EXAMPLES that drive the web starter's real doors — the query params
-# js/app.js reads in init(): ?view=<tab>, ?item=<id>, ?mute=1, ?door_seconds=<n>
-# (the twins of APP_START_TAB / _START_ITEM / _MUTE / _DOOR_SECONDS). These are
-# real, shareable URLs, not hash routes. Replace each regex with content
-# calibrated against a real capture, and add a route per view your app has.
+# The query params js/app.js reads in init(): ?view=<tab>, ?item=<id>, ?mute=1,
+# ?door_seconds=<n> (the twins of APP_START_TAB / _START_ITEM / _MUTE /
+# _DOOR_SECONDS): real, shareable URLs, not hash routes.
 ROUTES = {
-    "home":        ("/", r"Home"),                                        # FILL IN
-    "search":      ("/?view=search", r"Search"),                          # FILL IN
+    "listen":      ("/", r"Listen"),
+    "search":      ("/?view=search", r"Search"),
     "item":        (f"/?item={QA_ITEM_ID}&mute=1", QA_ITEM_RX),
     # The door ends itself inside the capture's virtual-time budget (9 s), so the
-    # frame must show Home, not the item.
-    "door-return": (f"/?item={QA_ITEM_ID}&mute=1&door_seconds=2", r"Home"),  # FILL IN
+    # frame must show Listen, not the item.
+    "door-return": (f"/?item={QA_ITEM_ID}&mute=1&door_seconds=2", r"Listen"),
 }
 # Routes that are EXPECTED to land on another route's screen, so the distinct-
 # screen check below must not call them duplicates.
-SAME_SCREEN_AS = {"door-return": "home"}
+SAME_SCREEN_AS = {"door-return": "listen"}
 
 
 def shoot(url, w, h, path, budget=9000):
     # Delete first: the retry below reuses the path, and a failed second shot must
     # not leave the first one standing in for it.
     Path(path).unlink(missing_ok=True)
-    sh([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars",
-        f"--window-size={w},{h}", f"--virtual-time-budget={budget}",
-        f"--screenshot={path}", url], timeout=90)
+    # A fresh profile per shot, so no route inherits another's service worker or
+    # storage. KNOWN DEFECT (2026-10-23): the sweep is still not deterministic.
+    # `item` and `search` sometimes match the previous route's screen even with this
+    # profile; a real-time --timeout made it worse. Instrument the stages (fetch
+    # timing under virtual time, the shard requests) before trusting a red or a green.
+    with tempfile.TemporaryDirectory(prefix="web_run-") as profile:
+        sh([CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars",
+            f"--user-data-dir={profile}", "--mute-audio",
+            f"--window-size={w},{h}", f"--virtual-time-budget={budget}",
+            f"--screenshot={path}", url], timeout=90)
     return Path(path).exists() and Path(path).stat().st_size > 3000
 
 

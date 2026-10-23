@@ -107,8 +107,7 @@ HOOK_TYPE_SIZE = "APP_TYPE_SIZE"
 HOOK_FORCE_OFFLINE = "APP_FORCE_OFFLINE"
 
 # The item every runner's "item" scenario opens with HOOK_START_ITEM (the web's
-# ?item=), and text its detail screen renders. FILL IN both with a real id from your
-# catalog and a phrase calibrated against a real capture of that item's screen.
+# ?item=), and text its detail screen renders.
 # The Divine Comedy, Inferno I: a finished LibriVox recording (its project has an
 # archive.org item), clean, in every seed, and its id is LibriVox's own project number
 # and section, so it does not move when parsing improves. (Ivanhoe, chosen first, is
@@ -174,7 +173,7 @@ MIN_OCR_LINES = 4              # fewer than this = the frame is unreadable
 # real screen. The harness grades "is my app on the glass" by matching this, so it
 # must be words your UI actually renders (tab titles, primary actions), not the app's
 # name. Getting this wrong makes every scenario fail with "wrong app/screen".
-APP_ANCHOR_RX = r"Home|Settings|Search"          # FILL IN
+APP_ANCHOR_RX = r"Listen|Series|Radio|Library"
 
 # Text that means the app is broken, whatever else is on screen.
 FORBIDDEN = (r"No results|Couldn.t load|Something went wrong|"

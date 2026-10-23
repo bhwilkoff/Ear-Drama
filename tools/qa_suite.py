@@ -48,10 +48,8 @@ TOOLS = Path(__file__).resolve().parent
 
 # The smoke set is the surfaces every platform shares, so a red cell means the
 # SAME feature broke somewhere — that is what makes the matrix readable.
-# FILL IN: these are the template starters' doors (a tab, the search tab, an item
-# via APP_START_ITEM with the mute door). Grow the set as your app's shared
-# surfaces land; every name must be a scenario its runner lists (--list).
-SMOKE = ["home", "search", "item"]
+# Every name must be a scenario its runner lists (--list).
+SMOKE = ["listen", "search", "item"]
 
 # platform -> how to run it. "only" runners batch their own scenarios (--only);
 # device runners take one --scenario at a time and a --device bench name.
