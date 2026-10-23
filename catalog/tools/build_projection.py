@@ -22,6 +22,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
+from genres import genre_of
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
@@ -30,7 +31,7 @@ MIN_EPISODES = 10_000
 
 SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
-CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, first_date TEXT, last_date TEXT,
+CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
     networks TEXT, episodes INTEGER NOT NULL);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
@@ -118,10 +119,12 @@ def build(src, dst, clean_only=False):
                    " ".join(n for _, n, _, _ in credits)))
         per_series[sk] = per_series.get(sk, 0) + 1
 
-    for key, name, genre, first, last, nets in s.execute(
-            "SELECT key, name, genre, first_date, last_date, networks FROM series"):
+    for key, name, re_genre, otrr_genres, lv, first, last, nets in s.execute(
+            "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?)", (key, name, genre, first, last, nets, per_series[key]))
+            genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?)",
+                      (key, name, genre, gsrc, first, last, nets, per_series[key]))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?)", (pid, name, birth, death))

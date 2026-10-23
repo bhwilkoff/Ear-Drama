@@ -33,6 +33,25 @@ GitHub Pages static hosting, branch `main`, root `/`.
 http://localhost:8080. Deploy: push to `main`; GitHub Pages serves
 automatically.
 
+**Local data**: the app reads the catalog's web projection
+(`docs/CATALOG-CONTRACT.md` §4) from the base in
+`<meta name="ed-data" content="data/">` in `index.html`, resolved
+against the page. Build it and link it in, never commit it:
+
+    python3 catalog/tools/build_web_projection.py --src catalog/out/publish/ear-drama.sqlite
+    ln -sfn catalog/out/web data          # /data is gitignored
+
+Without `--include-unclaimed` the build is clean rows only (the
+public-web gate). Add the flag for local work that needs the unclaimed
+pools (Suspense, most of the catalog); never for a public deploy until
+the DMCA agent is registered. To read data from another host, change
+the meta tag's `content` to that base URL.
+
+**Routes**: `?view=listen|series|search|library`, `?series={key}`
+(`&season=1948-49|undated`), `?item={episode id}`, `?view=search&q=`,
+`?view=library&tab=queue|history|following`. `404.html` forwards the
+path twins `/series/{key}`, `/episode/{id}`, `/search?q=`, `/library`.
+
 **Conventions** (the load-bearing ones; see skills for the rest):
 - All API calls through `js/api.js`, never `fetch` directly
   elsewhere

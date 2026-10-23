@@ -58,6 +58,16 @@ platform gets two ticks in five, and every fifth tick is an opt tick that must
 net-remove lines. The first opt tick rolls `DECISIONS.md` (72 KB, past its
 50 KB roll point) into `docs/decisions/`, verbatim, with an index.
 
+**Scope per tick** (owner, 2026-10-22, after twelve small ticks: *"Are you
+doing enough substantial work on each tick? It seems like every tick is such a
+tiny scope of work."*). A tick is not one small item. Every tick (1) reads the
+reports of the milestone agents running in their own worktrees, reviews each
+finished branch's diff and evidence, and merges what is verified (bumping the
+version and updating PARITY.md in the merge commit); (2) relaunches or redirects
+an agent wherever one is idle, so the core platforms are always being built at
+once; and (3) does a substantial unit on the main thread itself, normally the
+data plane. A tick that only edits a doc is the exception, not the rule.
+
 **Parallel work.** Two or three milestones may run at once, as the Human
 Shaped site's loop did, through background agents in their own worktrees, each
 merged only when verified. Data work (M1) and the web client (M2) overlap;
@@ -87,6 +97,12 @@ folder, so no tick has to re-derive them.
   any command; never sleep a test device; never kill the owner's running app;
   stop every test you start and verify that it stopped; clicks on the owner's
   Mac only when they are away, aimed from the element's accessibility frame.
+- **The machine is the owner's.** Each tick starts with `uptime` and `pgrep
+  launchd_sim`; a stray simulator or a load far above the core count is
+  surfaced at once. Agents never boot a simulator unless they shut it down in
+  the same step, run builds in the background with short foreground commands,
+  and prove no simulator or Gradle daemon is left before they report (2026-10-22:
+  an agent's simulator drove the load to 852 for three hours).
 - **Ask before an audible run.** Every test door is muted, and playback is
   proven by tap metering under mute wherever the harness can read it. A run
   that must play sound aloud on the owner's machine or a device in their room
