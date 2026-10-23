@@ -295,10 +295,12 @@ struct EpisodeScreen: View {
                 }
             }
 
-            Section {
-                Text(detail.rightsLine)
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+            if let rightsLine = detail.rightsLine {
+                Section {
+                    Text(rightsLine)
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                }
             }
         }
         .navigationTitle(episode.displayTitle)

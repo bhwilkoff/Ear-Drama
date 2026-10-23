@@ -21,6 +21,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let handle: OpaquePointer
     private let hasSponsor: Bool
     private let hasNoRecommend: Bool
+    /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
+    let rightsLines: [String: String]
     private let sawCorruption = Mutex(false)
     /// Called once when a read proves the FILE is bad (not merely busy), so the
     /// owner can discard a torn download and its ETag.
@@ -41,6 +43,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         self.onCorruption = onCorruption
         hasSponsor = Self.columnExists(h, table: "episodes", column: "sponsor")
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
+        rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
             sqlite3_close(h)
             return nil
@@ -86,6 +89,16 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         defer { sqlite3_finalize(stmt) }
         guard sqlite3_step(stmt) == SQLITE_ROW, let c = sqlite3_column_text(stmt, 0) else { return nil }
         return Int(String(cString: c).trimmingCharacters(in: CharacterSet(charactersIn: "\" ")))
+    }
+
+    private static func publishedRightsLines(_ h: OpaquePointer) -> [String: String]? {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(h, "SELECT value FROM meta WHERE key = 'rightsLines';", -1, &stmt, nil) == SQLITE_OK
+        else { return nil }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW, let c = sqlite3_column_text(stmt, 0),
+              let data = String(cString: c).data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([String: String].self, from: data)
     }
 
     private static func columnExists(_ h: OpaquePointer, table: String, column: String) -> Bool {
@@ -226,7 +239,9 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                              kbps: row.int(4), lengthSeconds: row.double(5), variant: row.text(6),
                              partial: (row.int(7) ?? 0) != 0)
         }.compactMap { $0 }
-        return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings)
+        let rightsLine = RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
+        return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings,
+                             rightsLine: rightsLine)
     }
 
     /// Episodes by id, in the order asked (the person's own history).

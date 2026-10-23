@@ -295,9 +295,11 @@ private struct EpisodeScreen_tvOS: View {
                     }
                 }
 
-                Text(detail.rightsLine)
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+                if let rightsLine = detail.rightsLine {
+                    Text(rightsLine)
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                }
             }
             .padding(.horizontal, 90)
             .padding(.vertical, 60)

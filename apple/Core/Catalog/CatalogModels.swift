@@ -102,8 +102,8 @@ nonisolated struct EpisodeDetail: Hashable, Sendable {
     let sponsor: String?
     let credits: [Credit]
     let recordings: [Recording]
-
-    var rightsLine: String { RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis) }
+    /// The published rights words (contract §5.5); nil shows no line.
+    let rightsLine: String?
     var defaultRecording: Recording? { recordings.first }
 }
 
@@ -155,19 +155,23 @@ nonisolated struct Shelf: Hashable, Sendable, Identifiable {
     var id: String { rule.id }
 }
 
-/// Contract §5.5. The one place a rights value becomes words.
+/// Contract §5.5. The words are published in `meta.rightsLines`; this table is
+/// the contract's same strings for a catalog that predates the key. A basis
+/// with no published words shows NO line, never the unclaimed one.
 nonisolated enum RightsDisplay {
-    static let unclaimed = "No rights claim known. Removed on request."
+    static let contract: [String: String] = [
+        "unclaimed": "No rights claim known. Removed on request.",
+        "rec_gov_work": "Government recording",
+        "rec_librivox": "LibriVox recording",
+        "rec_pd_published_age": "Published before 1926",
+        "rec_cc_corroborated": "Creative Commons recording",
+    ]
 
-    static func line(rights: String, basis: String?) -> String {
-        guard rights == "clean" else { return unclaimed }
-        switch basis {
-        case "rec_gov_work": return "Government recording"
-        case "rec_librivox": return "LibriVox recording"
-        case "rec_pd_published_age": return "Published before 1926"
-        // A clean basis the contract has no words for yet (rec_cc_corroborated)
-        // takes the line that claims least, never one that claims more.
-        default: return unclaimed
+    static func line(rights: String, basis: String?, lines: [String: String] = contract) -> String? {
+        switch rights {
+        case "unclaimed": return lines["unclaimed"]
+        case "clean": return basis.flatMap { lines[$0] }
+        default: return nil
         }
     }
 }

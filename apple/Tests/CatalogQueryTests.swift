@@ -3,173 +3,301 @@ import Foundation
 import SQLite3
 import Testing
 
-/// The contract's query verbs (docs/CATALOG-CONTRACT.md §5) against the real
-/// clean-only seed. The seed is gitignored pipeline output: build it with
-/// `catalog/tools/build_projection.py --clean-only`, or point
-/// TEST_RUNNER_CATALOG_SEED_PATH at a copy.
-enum Seed {
-    static var path: String {
-        if let override = ProcessInfo.processInfo.environment["CATALOG_SEED_PATH"] { return override }
-        return URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("catalog/out/publish-clean/ear-drama.sqlite").path
+// The contract's query verbs (docs/CATALOG-CONTRACT.md §5) over a small
+// fixture built in the test, in the served schema read straight from
+// catalog/tools/build_projection.py. Catalog improvements (a series hidden, a
+// genre remapped) never break these; a schema change that breaks a verb does.
+// `RealSeedSmokeTests` at the bottom checks only the SHAPE of the real seed.
+
+nonisolated private let repoRoot = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+nonisolated(unsafe) private let SQLITE_TRANSIENT_TEST = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+
+nonisolated struct FixtureError: Error { let message: String; init(_ m: String) { message = m } }
+
+enum Fixture {
+    struct Ep {
+        var id: String, series: String, date: String?, season: String?, num: Int?, title: String?
+        var rights = "unclaimed", basis: String? = "rec_orphan_unclaimed", noRecommend: String? = nil
+        var network: String? = nil
     }
 
-    static func open() throws -> CatalogDatabase {
-        try #require(FileManager.default.fileExists(atPath: path), "No seed at \(path)")
-        return try #require(CatalogDatabase(path: path))
+    static let series: [(key: String, name: String, genre: String?, first: String?, last: String?, networks: String?)] = [
+        ("suspense", "Suspense", "mystery", "1942-06-17", "1962-09-30", #"["CBS"]"#),
+        ("mrsorrowful", "Mr. Sorrowful Says", "comedy", "1950-05-25", "1950-05-25", #"["NBC"]"#),
+        ("speeches", "Wartime Speeches", "news", "1944-05-25", "1944-06-01", #"["Shortwave"]"#),
+        ("librivox1", "The Great Quest", "drama", nil, nil, nil),
+        ("ghost", "A Series With Nothing Served", "drama", "1950-01-01", "1950-12-31", nil),
+    ]
+
+    /// Inserted OUT of broadcast order on purpose: the verbs must sort.
+    static let episodes: [Ep] = [
+        Ep(id: "suspense|1943-05-25", series: "suspense", date: "1943-05-25", season: "1942-43", num: 40,
+           title: "Sorry, Wrong Number", network: "CBS"),
+        Ep(id: "suspense|lost", series: "suspense", date: nil, season: nil, num: nil, title: "Lost Episode"),
+        Ep(id: "suspense|1942-06-17", series: "suspense", date: "1942-06-17", season: "1941-42", num: 1,
+           title: "The Burning Court", network: "CBS"),
+        Ep(id: "suspense|1942-10-20", series: "suspense", date: "1942-10-20", season: "1942-43", num: 18,
+           title: "The Hitch-Hiker", network: "CBS"),
+        Ep(id: "mrsorrowful|1950-05-25", series: "mrsorrowful", date: "1950-05-25", season: "1949-50", num: nil,
+           title: "Mr. Sorrowful", rights: "clean", basis: "rec_gov_work"),
+        Ep(id: "speeches|1944-05-25", series: "speeches", date: "1944-05-25", season: "1943-44", num: nil,
+           title: "Rede", rights: "clean", basis: "rec_gov_work", noRecommend: "Nazi-state speech or broadcast"),
+        Ep(id: "speeches|1944-06-01", series: "speeches", date: "1944-06-01", season: "1943-44", num: nil,
+           title: "Invasion Bulletin", rights: "clean", basis: "rec_cc_corroborated"),
+        Ep(id: "librivox1|s2", series: "librivox1", date: nil, season: nil, num: 2, title: "Chapter 2",
+           rights: "clean", basis: "rec_librivox"),
+        Ep(id: "librivox1|s1", series: "librivox1", date: nil, season: nil, num: 1, title: "Chapter 1",
+           rights: "clean", basis: "rec_librivox"),
+        Ep(id: "librivox1|s3", series: "librivox1", date: nil, season: nil, num: 3, title: nil,
+           rights: "clean", basis: "rec_some_future_basis"),
+    ]
+
+    static let people = [("p1", "Agnes Moorehead"), ("p2", "Lucille Fletcher"), ("p3", "Orson Welles")]
+    static let credits = [
+        ("suspense|1943-05-25", "p1", "cast", "Mrs. Stevenson"),
+        ("suspense|1943-05-25", "p2", "writer", nil),
+        ("suspense|1942-10-20", "p3", "cast", nil),
+        ("suspense|1942-10-20", "p2", "writer", nil),
+    ]
+
+    /// The served schema, from the builder itself, so the fixture cannot drift.
+    static func servedDDL() throws -> String {
+        let text = try String(contentsOf: repoRoot.appendingPathComponent("catalog/tools/build_projection.py"),
+                              encoding: .utf8)
+        func block(_ name: String) throws -> String {
+            let start = try #require(text.range(of: "\(name) = \"\"\"")).upperBound
+            let end = try #require(text.range(of: "\"\"\"", range: start..<text.endIndex)).lowerBound
+            return String(text[start..<end])
+        }
+        return try block("SCHEMA") + block("INDEXES")
     }
 
-    /// A writable copy, for fixtures that need a row the seed lacks.
-    static func copy() throws -> URL {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("seed-\(UUID().uuidString).sqlite")
-        try FileManager.default.copyItem(atPath: path, toPath: url.path)
-        return url
-    }
-
-    static func exec(_ url: URL, _ sql: String) throws {
+    /// Builds a fixture database; `rightsLines` nil leaves the meta key out.
+    static func make(rightsLines: [String: String]? = RightsDisplay.contract,
+                     clearNoRecommend: Bool = false) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("fixture-\(UUID().uuidString).sqlite")
         var h: OpaquePointer?
         try #require(sqlite3_open(url.path, &h) == SQLITE_OK)
         defer { sqlite3_close(h) }
-        try #require(sqlite3_exec(h, sql, nil, nil, nil) == SQLITE_OK)
+        func exec(_ sql: String) throws {
+            var err: UnsafeMutablePointer<CChar>?
+            let rc = sqlite3_exec(h, sql, nil, nil, &err)
+            guard rc == SQLITE_OK else { throw FixtureError("\(err.map { String(cString: $0) } ?? "") in \(sql)") }
+        }
+        func insert(_ sql: String, _ values: [Any?]) throws {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(h, sql, -1, &stmt, nil) == SQLITE_OK else { throw FixtureError(sql) }
+            defer { sqlite3_finalize(stmt) }
+            for (i, v) in values.enumerated() {
+                let n = Int32(i + 1)
+                switch v {
+                case let s as String: sqlite3_bind_text(stmt, n, s, -1, SQLITE_TRANSIENT_TEST)
+                case let x as Int: sqlite3_bind_int64(stmt, n, Int64(x))
+                case let d as Double: sqlite3_bind_double(stmt, n, d)
+                default: sqlite3_bind_null(stmt, n)
+                }
+            }
+            guard sqlite3_step(stmt) == SQLITE_DONE else { throw FixtureError(sql) }
+        }
+        try exec(servedDDL())
+        try insert("INSERT INTO meta VALUES (?, ?)", ["schemaVersion", "1"])
+        if let rightsLines {
+            let json = String(data: try JSONEncoder().encode(rightsLines), encoding: .utf8)
+            try insert("INSERT INTO meta VALUES (?, ?)", ["rightsLines", json])
+        }
+        let counts = Dictionary(grouping: episodes, by: \.series).mapValues(\.count)
+        for s in series {
+            try insert("INSERT INTO series (key, name, genre, first_date, last_date, networks, episodes) VALUES (?,?,?,?,?,?,?)",
+                       [s.key, s.name, s.genre, s.first, s.last, s.networks, counts[s.key] ?? 0])
+        }
+        for (pid, name) in people { try insert("INSERT INTO people (id, name) VALUES (?, ?)", [pid, name]) }
+        for c in credits { try insert("INSERT INTO credits VALUES (?,?,?,?)", [c.0, c.1, c.2, c.3]) }
+        for (rowid, e) in episodes.enumerated() {
+            try insert("""
+                INSERT INTO episodes (rowid, id, series_key, air_date, season, num, title, length_s, rights,
+                    rights_basis, no_recommend, network) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                """, [rowid + 1, e.id, e.series, e.date, e.season, e.num, e.title, 1770.0, e.rights, e.basis,
+                      clearNoRecommend ? nil : e.noRecommend, e.network])
+            let file = "https://archive.org/download/\(e.series)_box/\(e.id.replacingOccurrences(of: "|", with: "_")).mp3"
+            try insert("INSERT INTO recordings (episode_id, rank, archive_id, url, kbps, length_s) VALUES (?,?,?,?,?,?)",
+                       [e.id, 0, "\(e.series)_box", file, 64, 1770.0])
+            let seriesName = series.first { $0.key == e.series }?.name ?? ""
+            let names = credits.filter { $0.0 == e.id }.compactMap { c in people.first { $0.0 == c.1 }?.1 }
+            try insert("INSERT INTO episodes_fts (rowid, title, series, people) VALUES (?,?,?,?)",
+                       [rowid + 1, e.title ?? "", seriesName, names.joined(separator: " ")])
+        }
+        // A second, lesser copy: an Armed Forces rebroadcast, incomplete.
+        try insert("""
+            INSERT INTO recordings (episode_id, rank, archive_id, url, kbps, length_s, variant, partial)
+            VALUES (?,?,?,?,?,?,?,?)
+            """, ["suspense|1943-05-25", 1, "afrs_box", "https://archive.org/download/afrs_box/sorry%20afrs.mp3",
+                  32, 1500.0, "AFRS", 1])
+        try insert("INSERT INTO episode_aliases VALUES (?, ?)", ["suspense|old-slug", "suspense|1943-05-25"])
+        return url
+    }
+
+    static func open(rightsLines: [String: String]? = RightsDisplay.contract,
+                     clearNoRecommend: Bool = false) throws -> CatalogDatabase {
+        let url = try make(rightsLines: rightsLines, clearNoRecommend: clearNoRecommend)
+        return try #require(CatalogDatabase(path: url.path))
     }
 }
 
 struct CatalogQueryTests {
-    @Test func browseListsEverySeriesByName() throws {
-        let db = try Seed.open()
-        let all = db.seriesBrowse()
-        #expect(all.count > 600)
-        #expect(all.allSatisfy { $0.episodeCount > 0 })
-        let names = all.map { $0.name.lowercased() }
-        #expect(names == names.sorted())
+    @Test func browseListsServedSeriesByName() throws {
+        let db = try Fixture.open()
+        let names = db.seriesBrowse().map(\.name)
+        #expect(names == ["Mr. Sorrowful Says", "Suspense", "The Great Quest", "Wartime Speeches"])
+        #expect(!names.contains("A Series With Nothing Served"))
+        #expect(db.seriesBrowse().first { $0.key == "suspense" }?.episodeCount == 4)
     }
 
     @Test func browseFiltersByGenreNetworkAndDecade() throws {
-        let db = try Seed.open()
-        let variety = db.seriesBrowse(genre: "comedy")
-        #expect(Set(variety.map(\.key)) == ["jubilee", "commandperformance", "countryexpress"])
-        let afrs = db.seriesBrowse(network: "AFRS")
-        #expect(!afrs.isEmpty && afrs.allSatisfy { $0.networks.contains("AFRS") })
-        let forties = db.seriesBrowse(decade: 1940)
-        #expect(forties.contains { $0.key == "jubilee" })
-        #expect(db.seriesBrowse(decade: 1990).allSatisfy { ($0.lastDate ?? "") >= "1990" })
-        #expect(db.genres().contains("comedy"))
+        let db = try Fixture.open()
+        #expect(db.seriesBrowse(genre: "mystery").map(\.key) == ["suspense"])
+        #expect(db.seriesBrowse(network: "NBC").map(\.key) == ["mrsorrowful"])
+        #expect(Set(db.seriesBrowse(decade: 1940).map(\.key)) == ["suspense", "speeches"])
+        #expect(Set(db.seriesBrowse(decade: 1960).map(\.key)) == ["suspense"])
+        #expect(db.seriesBrowse(decade: 1990).isEmpty)
+        #expect(Set(db.genres()) == ["mystery", "comedy", "news", "drama"])
+        #expect(db.decades() == [1940, 1950, 1960])
     }
 
     /// R1: oldest first in every series and season; undated rows last.
     @Test func seriesPageIsOldestFirstBySeason() throws {
-        let db = try Seed.open()
-        let page = try #require(db.seriesPage(key: "jubilee"))
-        let dates = page.episodes.compactMap(\.airDate)
-        #expect(dates.count > 100)
-        #expect(dates == dates.sorted())
-        let seasons = page.seasons.compactMap(\.season)
-        #expect(seasons == seasons.sorted())
-        #expect(page.seasons.allSatisfy { group in group.episodes.allSatisfy { $0.season == group.season } })
-        if let undated = page.seasons.firstIndex(where: { $0.season == nil }) {
-            #expect(undated == page.seasons.count - 1)
-        }
+        let db = try Fixture.open()
+        let page = try #require(db.seriesPage(key: "suspense"))
+        #expect(page.episodes.map(\.id) == ["suspense|1942-06-17", "suspense|1942-10-20", "suspense|1943-05-25", "suspense|lost"])
+        #expect(page.seasons.map(\.season) == ["1941-42", "1942-43", nil])
+        #expect(page.seasons[1].episodes.count == 2)
+        #expect(page.series.metaLine == "CBS · 1942–1962 · 4 episodes")
+        #expect(db.seriesPage(key: "nope") == nil)
     }
 
     @Test func undatedSeriesFollowsItsLogNumbers() throws {
-        let db = try Seed.open()
-        let page = try #require(db.seriesPage(key: "librivox16504"))
-        let numbers = page.episodes.compactMap(\.number)
-        #expect(numbers.count == page.episodes.count)
-        #expect(numbers == numbers.sorted())
+        let db = try Fixture.open()
+        let page = try #require(db.seriesPage(key: "librivox1"))
+        #expect(page.episodes.map(\.number) == [1, 2, 3])
         #expect(page.seasons.count == 1 && page.seasons[0].season == nil)
+        #expect(page.episodes.last?.displayTitle == "No. 3")
     }
 
     @Test func episodeDetailJoinsCreditsAndRanksRecordings() throws {
-        let db = try Seed.open()
-        let detail = try #require(db.episodeDetail(id: "jubilee|1946-01-07"))
-        #expect(detail.episode.seriesName == "Jubilee")
+        let db = try Fixture.open()
+        let detail = try #require(db.episodeDetail(id: "suspense|1943-05-25"))
+        #expect(detail.episode.seriesName == "Suspense")
+        #expect(detail.credits.map(\.name) == ["Agnes Moorehead", "Lucille Fletcher"])
+        #expect(detail.credits.map(\.role) == ["cast", "writer"])
+        #expect(detail.credits.map(\.character) == ["Mrs. Stevenson", nil])
         #expect(detail.recordings.map(\.rank) == [0, 1])
-        #expect(detail.defaultRecording?.archiveID == "jubilee_202008")
-        #expect(detail.defaultRecording?.url.absoluteString.hasPrefix("https://archive.org/download/") == true)
-        #expect(!detail.credits.isEmpty && detail.credits.allSatisfy { !$0.name.isEmpty })
-        #expect(detail.rightsLine == "Government recording")
+        #expect(detail.defaultRecording?.archiveID == "suspense_box")
+        #expect(detail.recordings[1].notes == ["Armed Forces Radio rebroadcast", "Incomplete copy"])
+        #expect(detail.recordings[0].notes.isEmpty)
         #expect(db.episodeDetail(id: "no-such|episode") == nil)
     }
 
     @Test func aliasesForwardOldIDs() throws {
-        let url = try Seed.copy()
-        defer { try? FileManager.default.removeItem(at: url) }
-        try Seed.exec(url, "INSERT INTO episode_aliases VALUES ('jubilee|old', 'jubilee|1946-01-07');")
-        let db = try #require(CatalogDatabase(path: url.path))
-        #expect(db.episodeDetail(id: "jubilee|old")?.episode.id == "jubilee|1946-01-07")
-        #expect(db.episodes(ids: ["jubilee|old"]).map(\.id) == ["jubilee|1946-01-07"])
+        let db = try Fixture.open()
+        #expect(db.episodeDetail(id: "suspense|old-slug")?.episode.id == "suspense|1943-05-25")
+        #expect(db.episodes(ids: ["suspense|old-slug", "librivox1|s1"]).map(\.id)
+                == ["suspense|1943-05-25", "librivox1|s1"])
     }
 
     /// §3.4: word-prefix, never substring.
     @Test func searchIsWordPrefixNotSubstring() throws {
-        let db = try Seed.open()
-        let hits = db.search("sorr").episodes
-        #expect(hits.contains { $0.id == "librivox16504|s13" })   // "The Sorrows of Acadia"
-        // Control: "orrow" is inside "Sorrows" but starts no word, so a
+        let db = try Fixture.open()
+        #expect(db.search("sorr").episodes.contains { $0.id == "suspense|1943-05-25" })
+        #expect(db.search("sorry").episodes.map(\.id) == ["suspense|1943-05-25"])
+        // Control: "orrow" sits inside "Sorrowful" but starts no word, so a
         // substring match would find it and a word-prefix match must not.
-        #expect(db.search("orrow").episodes.contains { $0.id == "librivox16504|s13" } == false)
-        #expect(db.search("Jubil").series.contains { $0.key == "jubilee" })
-        #expect(db.search("ubilee").series.isEmpty)
+        #expect(db.search("orrow").isEmpty)
+        #expect(db.search("hitch").episodes.map(\.id) == ["suspense|1942-10-20"])
+        #expect(db.search("Susp").series.map(\.key) == ["suspense"])
+        #expect(db.search("uspense").series.isEmpty)
+        #expect(db.search("Sorrowful").series.map(\.key) == ["mrsorrowful"])
+    }
+
+    @Test func searchFindsPeopleAndSeriesNames() throws {
+        let db = try Fixture.open()
+        #expect(Set(db.search("moore").episodes.map(\.id)) == ["suspense|1943-05-25"])
+        #expect(Set(db.search("fletcher").episodes.map(\.id)) == ["suspense|1943-05-25", "suspense|1942-10-20"])
+        #expect(db.search("great quest").episodes.count == 3)
     }
 
     @Test func searchNeverInterpretsTypedSyntax() throws {
         #expect(CatalogDatabase.ftsQuery("sorr") == "\"sorr\"*")
         #expect(CatalogDatabase.ftsQuery("Lone \"Ranger\" OR NEAR(") == "\"Lone\"* \"Ranger\"* \"OR\"* \"NEAR\"*")
         #expect(CatalogDatabase.ftsQuery("  ** ") == nil)
-        // An unbalanced quote is dropped, not handed to FTS5 as syntax.
-        let db = try Seed.open()
-        #expect(db.search("\"sorr").episodes.contains { $0.id == "librivox16504|s13" })
+        let db = try Fixture.open()
+        #expect(db.search("\"sorry").episodes.map(\.id) == ["suspense|1943-05-25"])
+        #expect(db.search("NOT").isEmpty)
     }
 
     /// recommendAnd: shelves drop a never-recommended episode; the surfaces
     /// the listener drives (series page, search, Detail) keep it.
     @Test func shelvesApplyRecommendAndOnly() throws {
-        let url = try Seed.copy()
-        defer { try? FileManager.default.removeItem(at: url) }
-        let target = "jubilee|1943-05-24"
-        try Seed.exec(url, "UPDATE episodes SET air_date = '1943-07-04' WHERE id = 'jubilee|1943-05-24';")
-        let before = try #require(CatalogDatabase(path: url.path))
-        #expect(before.shelf(.onThisDay(month: 7, day: 4)).contains { $0.id == target })   // control
-        try Seed.exec(url, "UPDATE episodes SET no_recommend = 'test' WHERE id = '\(target)';")
-        let db = try #require(CatalogDatabase(path: url.path))
-        #expect(db.shelf(.onThisDay(month: 7, day: 4)).contains { $0.id == target } == false)
-        #expect(db.shelf(.genreFirsts("comedy")).contains { $0.id == target } == false)
-        #expect(db.seriesPage(key: "jubilee")?.episodes.contains { $0.id == target } == true)
-        #expect(db.episodeDetail(id: target) != nil)
+        let flagged = "speeches|1944-05-25"
+        // Control: with the flag cleared the same shelf DOES carry it, so the
+        // absence below is the clause at work, not a fixture that never matched.
+        let cleared = try Fixture.open(clearNoRecommend: true)
+        #expect(cleared.shelf(.onThisDay(month: 5, day: 25)).contains { $0.id == flagged })
+        #expect(cleared.shelf(.genreFirsts("news")).map(\.id) == [flagged])
+
+        let db = try Fixture.open()
+        let may25 = db.shelf(.onThisDay(month: 5, day: 25)).map(\.id)
+        #expect(may25 == ["suspense|1943-05-25", "mrsorrowful|1950-05-25"])
+        #expect(db.shelf(.genreFirsts("news")).map(\.id) == ["speeches|1944-06-01"])
+        #expect(db.seriesPage(key: "speeches")?.episodes.contains { $0.id == flagged } == true)
+        #expect(db.search("rede").episodes.map(\.id) == [flagged])
+        #expect(db.episodeDetail(id: flagged) != nil)
     }
 
     @Test func genreShelfIsEachSeriesFirstEpisode() throws {
-        let db = try Seed.open()
-        let shelf = db.shelf(.genreFirsts("comedy"))
-        #expect(Set(shelf.map(\.seriesKey)).count == shelf.count)
-        for episode in shelf {
-            let first = try #require(db.seriesPage(key: episode.seriesKey)?.episodes.first)
-            #expect(first.id == episode.id)
-        }
+        let db = try Fixture.open()
+        #expect(db.shelf(.genreFirsts("mystery")).map(\.id) == ["suspense|1942-06-17"])
+        #expect(db.shelf(.genreFirsts("drama")).map(\.id) == ["librivox1|s1"])
+        #expect(db.shelf(.genreFirsts("western")).isEmpty)
     }
 
-    @Test func withPersonListsCreditedEpisodes() throws {
-        let db = try Seed.open()
-        let detail = try #require(db.episodeDetail(id: "jubilee|1946-01-07"))
-        let person = try #require(detail.credits.first)
-        #expect(db.withPerson(person.personID).contains { $0.id == "jubilee|1946-01-07" })
+    @Test func withPersonListsCreditedEpisodesOldestFirst() throws {
+        let db = try Fixture.open()
+        #expect(db.withPerson("p2").map(\.id) == ["suspense|1942-10-20", "suspense|1943-05-25"])
+        #expect(db.withPerson("nobody").isEmpty)
     }
 
     @Test func queueStaysInsideTheSeries() throws {
-        let db = try Seed.open()
-        let page = try #require(db.seriesPage(key: "jubilee"))
-        let first = try #require(page.episodes.first)
-        let queue = PlaybackQueue.following(first.id, in: page)
-        #expect(queue.first?.id == page.episodes[1].id)
-        #expect(queue.allSatisfy { $0.seriesKey == "jubilee" })
-        #expect(queue.count <= PlaybackQueue.maximum)
-        #expect(PlaybackQueue.following(try #require(page.episodes.last).id, in: page).isEmpty)
+        let db = try Fixture.open()
+        let page = try #require(db.seriesPage(key: "suspense"))
+        #expect(PlaybackQueue.following("suspense|1942-06-17", in: page).map(\.id)
+                == ["suspense|1942-10-20", "suspense|1943-05-25", "suspense|lost"])
+        #expect(PlaybackQueue.following("suspense|lost", in: page).isEmpty)
+        #expect(PlaybackQueue.following("mrsorrowful|1950-05-25", in: page).isEmpty)
+    }
+
+    /// Contract §5.5: the published words, read from `meta.rightsLines`.
+    @Test func rightsLinesComeFromTheCatalog() throws {
+        let db = try Fixture.open()
+        #expect(db.episodeDetail(id: "suspense|1943-05-25")?.rightsLine == "No rights claim known. Removed on request.")
+        #expect(db.episodeDetail(id: "mrsorrowful|1950-05-25")?.rightsLine == "Government recording")
+        #expect(db.episodeDetail(id: "librivox1|s1")?.rightsLine == "LibriVox recording")
+        #expect(db.episodeDetail(id: "speeches|1944-06-01")?.rightsLine == "Creative Commons recording")
+        // A basis with no published words shows NO line, never the unclaimed one.
+        #expect(db.episodeDetail(id: "librivox1|s3")?.rightsLine == nil)
+
+        // Control: the words really are read from the database, not typed in.
+        var custom = RightsDisplay.contract
+        custom["rec_gov_work"] = "Fixture words"
+        let published = try Fixture.open(rightsLines: custom)
+        #expect(published.episodeDetail(id: "mrsorrowful|1950-05-25")?.rightsLine == "Fixture words")
+        // A catalog that predates the key falls back to the contract's strings.
+        let older = try Fixture.open(rightsLines: nil)
+        #expect(older.rightsLines == RightsDisplay.contract)
     }
 }
 
-/// Contract §5.5: the rights line. Unclaimed is never called public domain.
+/// Contract §5.5 as a pure function. Unclaimed is never called public domain.
 struct RightsDisplayTests {
     @Test func linesFollowTheContract() {
         #expect(RightsDisplay.line(rights: "unclaimed", basis: "rec_orphan_unclaimed")
@@ -177,10 +305,21 @@ struct RightsDisplayTests {
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_gov_work") == "Government recording")
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_librivox") == "LibriVox recording")
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_pd_published_age") == "Published before 1926")
-        for basis in [nil, "rec_cc_corroborated", "rec_orphan_unclaimed", "anything"] {
-            for rights in ["clean", "unclaimed", "other"] {
-                #expect(!RightsDisplay.line(rights: rights, basis: basis).lowercased().contains("public domain"))
-            }
+        #expect(RightsDisplay.line(rights: "clean", basis: "rec_cc_corroborated") == "Creative Commons recording")
+        #expect(RightsDisplay.line(rights: "clean", basis: "rec_unknown") == nil)
+        #expect(RightsDisplay.line(rights: "clean", basis: nil) == nil)
+        #expect(RightsDisplay.line(rights: "hide_claim", basis: "rec_gov_work") == nil)
+        for line in RightsDisplay.contract.values {
+            #expect(!line.lowercased().contains("public domain"))
+        }
+    }
+
+    /// The fallback table is the pipeline's, word for word.
+    @Test func fallbackMatchesThePipeline() throws {
+        let text = try String(contentsOf: repoRoot.appendingPathComponent("catalog/tools/build_projection.py"),
+                              encoding: .utf8)
+        for (key, line) in RightsDisplay.contract {
+            #expect(text.contains("\"\(key)\": \"\(line)\""), "build_projection.py has no \(key): \(line)")
         }
     }
 }
@@ -202,7 +341,7 @@ struct CatalogInstallTests {
     }
 
     @Test func inflatesValidatesAndInstalls() throws {
-        let raw = try Data(contentsOf: URL(fileURLWithPath: Seed.path))
+        let raw = try Data(contentsOf: try Fixture.make())
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -211,10 +350,9 @@ struct CatalogInstallTests {
         try compressed.write(to: zz)
 
         let good = dir.appendingPathComponent("good.sqlite")
-        let installed = try CatalogRefreshService.install(compressed: zz, to: good, minimumBytes: 1_000_000)
-        #expect(installed == good.path)
+        #expect(try CatalogRefreshService.install(compressed: zz, to: good, minimumBytes: 1) == good.path)
         #expect(try Data(contentsOf: good) == raw)
-        #expect(CatalogDatabase(path: good.path) != nil)
+        #expect(CatalogDatabase(path: good.path)?.seriesBrowse().count == 4)
 
         // The size floor refuses a catalog smaller than the full one must be.
         let small = dir.appendingPathComponent("small.sqlite")
@@ -225,8 +363,55 @@ struct CatalogInstallTests {
         let torn = dir.appendingPathComponent("torn.sqlite.zz")
         try compressed.prefix(compressed.count / 2).write(to: torn)
         let tornDestination = dir.appendingPathComponent("torn.sqlite")
-        let result = try? CatalogRefreshService.install(compressed: torn, to: tornDestination, minimumBytes: 1)
-        #expect(result == nil)
+        #expect((try? CatalogRefreshService.install(compressed: torn, to: tornDestination, minimumBytes: 1)) ?? nil == nil)
         #expect(!FileManager.default.fileExists(atPath: tornDestination.path))
+    }
+}
+
+/// Loose checks on the real clean seed: its SHAPE only, never which series it
+/// holds (the catalog changes; DECISIONS 006 hid Jubilee). Skipped when the
+/// gitignored seed has not been built.
+nonisolated enum RealSeed {
+    static var path: String {
+        ProcessInfo.processInfo.environment["CATALOG_SEED_PATH"]
+            ?? repoRoot.appendingPathComponent("catalog/out/publish-clean/ear-drama.sqlite").path
+    }
+    static var exists: Bool { FileManager.default.fileExists(atPath: path) }
+}
+
+@Suite(.enabled(if: RealSeed.exists, "the clean seed is not built"))
+struct RealSeedSmokeTests {
+    @Test func seedHasTheServedShape() throws {
+        let db = try #require(CatalogDatabase(path: RealSeed.path))
+        let series = db.seriesBrowse()
+        #expect(series.count > 50)
+        #expect(series.allSatisfy { $0.episodeCount > 0 && !$0.name.isEmpty })
+
+        var checked = 0
+        for row in series.prefix(25) {
+            let page = try #require(db.seriesPage(key: row.key))
+            let dates = page.episodes.compactMap(\.airDate)
+            #expect(dates == dates.sorted())
+            #expect(page.episodes.count == row.episodeCount)
+            guard let first = page.episodes.first, let detail = db.episodeDetail(id: first.id) else { continue }
+            #expect(detail.recordings.first?.rank == 0)
+            #expect(detail.defaultRecording?.url.absoluteString.hasPrefix("https://archive.org/download/") == true)
+            #expect(!(detail.rightsLine ?? "").lowercased().contains("public domain"))
+            checked += 1
+        }
+        #expect(checked > 10)
+        // The clean seed carries only clean rows, each with published words.
+        #expect(db.rightsLines["unclaimed"] == RightsDisplay.contract["unclaimed"])
+    }
+
+    @Test func seedSearchFindsATitleByItsFirstWord() throws {
+        let db = try #require(CatalogDatabase(path: RealSeed.path))
+        var word: String?
+        for row in db.seriesBrowse().prefix(50) where word == nil {
+            let title = db.seriesPage(key: row.key)?.episodes.compactMap(\.title).first { $0.count > 4 }
+            word = title?.split(whereSeparator: { !$0.isLetter }).first { $0.count > 2 }.map(String.init)
+        }
+        let found = try #require(word)
+        #expect(!db.search(found).episodes.isEmpty)
     }
 }
