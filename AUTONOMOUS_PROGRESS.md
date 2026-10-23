@@ -247,3 +247,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 84, 2026-10-23, merge: radio plays ship
 - Merged b947614 (1.0.42 build 43): the radio parser reads the forms radio scripts use; all four Carlton radio plays parse clean (0% unclassified) and ship, so the bundle holds 15 scripts; GRW clean 827 -> 950 but never shipped (C8). Checked the radio plays' parts and the clients' decoders (mic and sound parts already handled). Verified on main against every reader of the bundle: catalog 22/22, worker 171, web 194, macOS 111 (after xcodegen), Android 167.
 - LOOP-PLAN M7's corpus item checked. No agent running.
+
+### Tick 85, 2026-10-23, agents: M8's clients on the web and Apple
+- CI green (Worker Tests and Android Build at 15:45 UTC); the loudness run is long by design (in progress since 15:13). Launched M8's Apple client alongside the web one (invite links through the deep-link inbox, relay claims, uploads with every refusal path shown as one plain line, report/block, the consent step showing the Worker's OWNER placeholder, classes with the under-13 refusal). Android follows. The owner is still on a call: builds one at a time.
