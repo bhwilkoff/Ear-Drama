@@ -36,11 +36,11 @@ final class ListeningHistory {
 
     func entry(for id: String) -> Entry? { entries[id] }
 
-    /// The position to resume from, with a small rewind so the last line of
-    /// dialogue is heard again; nil when there is nothing to resume.
-    func resumePosition(for id: String, rewind: Double = 3) -> Double? {
+    /// The saved position, exactly (Decision 062: only an interruption
+    /// rewinds); nil when there is nothing to resume.
+    func resumePosition(for id: String) -> Double? {
         guard let e = entries[id], !e.finished, e.position >= Self.startedThreshold else { return nil }
-        return max(0, e.position - rewind)
+        return e.position
     }
 
     func record(_ id: String, position: Double, duration: Double?, now: Date = Date()) {

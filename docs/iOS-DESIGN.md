@@ -203,9 +203,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   (`PlayerNumbers.interruptionRewindSeconds`) and resumes; unplugged
   headphones pause.
 - **§5.6 Progress** saves every 5 s while playing
-  (`PlayerNumbers.saveEverySeconds`) and on pause; resume starts 3 s
-  early, only past 30 s, and an episode within 45 s of its end counts as
-  played (`ListeningHistory`).
+  (`PlayerNumbers.saveEverySeconds`) and on pause; a saved position
+  resumes exactly where it was saved, as on Android and the web (only an
+  interruption rewinds, §5.5), only past 30 s, and an episode within
+  45 s of its end counts as played (`ListeningHistory`).
 - **§5.7 The player's numbers are Decision 062's, named once.**
   `PlayerNumbers` (`apple/Core/Player/PlayerNumbers.swift`) holds the
   sleep fade (`sleepFadeSeconds`, 10), the speeds (`speeds`, 0.75, 1,

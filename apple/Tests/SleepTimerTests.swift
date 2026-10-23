@@ -112,13 +112,15 @@ struct ListeningHistoryTests {
         return UserDefaults(suiteName: name)!
     }
 
-    @Test func resumesWithARewindAndForgetsFinished() {
+    /// Decision 062: a saved position resumes exactly; only an interruption
+    /// rewinds (`PlayerNumbers.interruptionRewindSeconds`).
+    @Test func resumesASavedPositionExactlyAndForgetsFinished() {
         let defaults = makeDefaults()
         let history = ListeningHistory(defaults: defaults)
         history.record("a|1", position: 10, duration: 1800)
         #expect(history.resumePosition(for: "a|1") == nil)          // under the threshold
         history.record("a|1", position: 600, duration: 1800)
-        #expect(history.resumePosition(for: "a|1") == 597)
+        #expect(history.resumePosition(for: "a|1") == 600)
         #expect(history.inProgressIDs == ["a|1"])
         history.record("a|1", position: 1790, duration: 1800)
         #expect(history.entry(for: "a|1")?.finished == true)
@@ -126,6 +128,6 @@ struct ListeningHistoryTests {
         #expect(history.inProgressIDs.isEmpty)
         // Persisted across launches.
         history.record("b|2", position: 300, duration: 1800)
-        #expect(ListeningHistory(defaults: defaults).resumePosition(for: "b|2") == 297)
+        #expect(ListeningHistory(defaults: defaults).resumePosition(for: "b|2") == 300)
     }
 }
