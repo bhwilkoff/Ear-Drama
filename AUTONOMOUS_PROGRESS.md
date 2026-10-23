@@ -237,3 +237,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - LOOP-PLAN: a `[~]` mark for built-in-part items with what is missing; M7's corpus (no radio script clean yet) and learning test (owner's play open) and M8's Worker-side items marked so; M7's recording item checked as built.
 - Launched: the radio path of script_parse.py measured over every cached radio text and fixed by general rules, never loosening the 5% gate or a rights rule; GRW scripts never shipped (owner item C8); the Worker's castable manifest regenerated if the bundle changes.
 - CI green; a loudness run in progress. Running: shelves on the clients, radio parser.
+
+### Tick 82-83, 2026-10-23, merge + main thread: shelves on every client; front matter kept off them
+- Merged d7b32b1 (1.0.41 build 42): web, Apple, Android draw the published listenShelves (same order and titles; "Most episodes" removed from the web; Android's date query had matched malformed dates, fixed).
+- Read the 375 px screenshot: the Drama shelf opened on three "Dramatis Personae" cast lists. 1f8b670 (main thread): genreFirsts skips front matter by title (start-anchored, plus a collection's closing "Introduction"), never a section that also carries an act or chapter; 219 skipped on the real projection; the clean Drama shelf opens on "001 - Inferno I". Each guard broken once, red. run_all 22/22.
+- Verification slip caught: my macOS runs after the shelves merge said 107 tests; the merge added ListenShelvesTests, which a stale generated project left out. After xcodegen: 111 pass. Memory saved.
+- Running: radio parser. CI green; loudness run in progress since 15:13 UTC.
