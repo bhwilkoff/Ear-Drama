@@ -60,6 +60,9 @@ final class AudioPlayer {
     @ObservationIgnored private var notificationTokens: [NSObjectProtocol] = []
     @ObservationIgnored private var lastSaved = Date.distantPast
     @ObservationIgnored private var commandsInstalled = false
+    /// The episode's loudness level (DECISIONS 061); the sleep fade scales
+    /// from it, and the device's volume stays the listener's.
+    @ObservationIgnored private var baseVolume: Float = 1
 
     init(history: ListeningHistory) {
         self.history = history
@@ -120,7 +123,8 @@ final class AudioPlayer {
         }
         player.replaceCurrentItem(with: playerItem)
         player.isMuted = isMuted
-        player.volume = 1
+        baseVolume = LoudnessLevel.volume(for: detail.episode, recording: recording)
+        player.volume = baseVolume
         if let resume = history.resumePosition(for: detail.episode.id) {
             elapsed = resume
             player.seek(to: CMTime(seconds: resume, preferredTimescale: 600))
@@ -142,7 +146,7 @@ final class AudioPlayer {
         guard item != nil else { return }
         // A listener pressing Play after the timer stopped them is awake.
         if sleep.mode == .fired { sleep.cancel() }
-        player.volume = 1
+        player.volume = baseVolume
         activateSession()
         player.playImmediately(atRate: speed)
     }
@@ -186,7 +190,7 @@ final class AudioPlayer {
 
     func cancelSleep() {
         sleep.cancel()
-        player.volume = 1
+        player.volume = baseVolume
     }
 
     // MARK: - Ticks
@@ -201,7 +205,7 @@ final class AudioPlayer {
             clock = now
             let remaining = duration.map { max(0, $0 - elapsed) / Double(max(speed, 0.01)) }
             let output = sleep.tick(now: now, remainingInEpisode: remaining)
-            player.volume = output.volume
+            player.volume = baseVolume * output.volume
             if output.shouldPause {
                 player.pause()
                 saveProgress()

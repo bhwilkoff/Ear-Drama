@@ -48,6 +48,10 @@ nonisolated struct EpisodeRow: Hashable, Sendable, Identifiable {
     let rights: String
     let rightsBasis: String?
     let network: String?
+    /// The default copy's integrated loudness (LUFS) and true peak (dBTP),
+    /// contract §3.1; nil until measured. Read only by `episodeDetail`.
+    var loudnessI: Double? = nil
+    var loudnessTP: Double? = nil
 
     /// The episode's display title. A row the pipeline left untitled shows its
     /// log number, then its date, and only then the series name.

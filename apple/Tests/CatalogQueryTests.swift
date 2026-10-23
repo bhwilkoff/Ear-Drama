@@ -76,7 +76,7 @@ enum Fixture {
 
     /// Builds a fixture database; `rightsLines` nil leaves the meta key out.
     static func make(rightsLines: [String: String]? = RightsDisplay.contract,
-                     clearNoRecommend: Bool = false) throws -> URL {
+                     clearNoRecommend: Bool = false, dropLoudness: Bool = false) throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("fixture-\(UUID().uuidString).sqlite")
         var h: OpaquePointer?
         try #require(sqlite3_open(url.path, &h) == SQLITE_OK)
@@ -135,12 +135,18 @@ enum Fixture {
             """, ["suspense|1943-05-25", 1, "afrs_box", "https://archive.org/download/afrs_box/sorry%20afrs.mp3",
                   32, 1500.0, "AFRS", 1])
         try insert("INSERT INTO episode_aliases VALUES (?, ?)", ["suspense|old-slug", "suspense|1943-05-25"])
+        // One measured episode (contract §3.1); every other row is NULL, as unmeasured.
+        try insert("UPDATE episodes SET loudness_i = ?, loudness_tp = ? WHERE id = ?",
+                   [-15.0, -6.0, "suspense|1943-05-25"])
+        if dropLoudness {
+            try exec("ALTER TABLE episodes DROP COLUMN loudness_i; ALTER TABLE episodes DROP COLUMN loudness_tp;")
+        }
         return url
     }
 
     static func open(rightsLines: [String: String]? = RightsDisplay.contract,
-                     clearNoRecommend: Bool = false) throws -> CatalogDatabase {
-        let url = try make(rightsLines: rightsLines, clearNoRecommend: clearNoRecommend)
+                     clearNoRecommend: Bool = false, dropLoudness: Bool = false) throws -> CatalogDatabase {
+        let url = try make(rightsLines: rightsLines, clearNoRecommend: clearNoRecommend, dropLoudness: dropLoudness)
         return try #require(CatalogDatabase(path: url.path))
     }
 }
@@ -196,6 +202,21 @@ struct CatalogQueryTests {
         #expect(detail.recordings[1].notes == ["Armed Forces Radio rebroadcast", "Incomplete copy"])
         #expect(detail.recordings[0].notes.isEmpty)
         #expect(db.episodeDetail(id: "no-such|episode") == nil)
+    }
+
+    @Test func episodeDetailCarriesLoudnessAndToleratesItsAbsence() throws {
+        let db = try Fixture.open()
+        let measured = try #require(db.episodeDetail(id: "suspense|1943-05-25"))
+        #expect(measured.episode.loudnessI == -15.0)
+        #expect(measured.episode.loudnessTP == -6.0)
+        let unmeasured = try #require(db.episodeDetail(id: "suspense|1942-10-20"))
+        #expect(unmeasured.episode.loudnessI == nil)
+        #expect(unmeasured.episode.loudnessTP == nil)
+        // A catalog published before the columns existed still opens and reads.
+        let older = try Fixture.open(dropLoudness: true)
+        let detail = try #require(older.episodeDetail(id: "suspense|1943-05-25"))
+        #expect(detail.episode.loudnessI == nil)
+        #expect(detail.credits.count == 2)
     }
 
     @Test func aliasesForwardOldIDs() throws {
