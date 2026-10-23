@@ -318,6 +318,11 @@ const PlaysUI = (() => {
       box.append(h.el('p', { class: 'caption' }, missing === 1 ? '1 line still needs a voice.' : `${num.format(missing)} lines still need a voice.`));
       return box;
     }
+    const retake = C.needsRetake(p, script).length;
+    if (retake) {
+      box.append(h.el('p', { class: 'caption' }, retake === 1 ? '1 line needs a re-take with headphones.' : `${num.format(retake)} lines need a re-take with headphones.`));
+      return box;
+    }
     const from = C.fingerprint(p);
     const status = h.el('p', { class: 'caption', role: 'status' });
     const slot = h.el('div', { class: 'listen-slot' });
@@ -412,7 +417,7 @@ const PlaysUI = (() => {
       onChange: () => { if (rec === r) paintRecording(); },
     });
     rec.s = s;
-    rec.index = Math.max(0, s.lines.findIndex(l => !p.chosen[l.id]));
+    rec.index = Math.max(0, s.lines.findIndex(l => !C.usableTake(p, l.id)));
     s.begin();
     paintRecording();
   }
@@ -488,7 +493,7 @@ const PlaysUI = (() => {
 
     const takes = C.takesFor(s.production, line.id);
     const takeList = h.el('ul', { class: 'takes', 'aria-label': 'Takes' });
-    if (s.lastTakeBleed && s.phase.kind === 'review' && s.phase.lineID === line.id) {
+    if (C.chosenTake(s.production, line.id)?.bleed) {
       takeList.append(h.el('li', { class: 'caption bleed' }, svg('warn', 'i-inline'),
         'The microphone heard the device voice. Re-take this line with headphones.'));
     }

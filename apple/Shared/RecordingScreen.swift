@@ -120,7 +120,7 @@ struct RecordingScreen: View {
     }
 
     private func firstUnrecorded(_ session: RecordingSession) -> Int {
-        session.lines.firstIndex { session.production.chosen[$0.id] == nil } ?? 0
+        session.lines.firstIndex { session.production.usableTake(for: $0.id) == nil } ?? 0
     }
 
     private func openSettings() {
@@ -192,7 +192,7 @@ struct RecordingScreen: View {
         let takes = session.production.takes(for: line.id)
         if !takes.isEmpty {
             VStack(alignment: .leading, spacing: Spacing.s2) {
-                if session.lastTakeBleed, session.phase == .review(lineID: line.id) {
+                if session.production.chosenTake(for: line.id)?.bleed == true {
                     Label("The device voice is in this take. Re-take it with headphones.",
                           systemImage: "exclamationmark.triangle")
                         .font(TypeRamp.caption)

@@ -45,8 +45,8 @@ fun tone(hz: List<Double>, seconds: Double, amplitude: Float = 0.3f, rate: Doubl
         amplitude * (hz.sumOf { sin(2 * PI * it * t) } / hz.size).toFloat()
     }
 
-fun take(id: String, line: String, part: PartID, frames: Int, loudness: Double? = -16.0, peak: Float = 0.5f) =
-    Take(id, line, part, "$id.wav", 0.0, frames, 48_000.0, Take.Capture.Direct, emptyMap(), loudness, peak, false)
+fun take(id: String, line: String, part: PartID, frames: Int, loudness: Double? = -16.0, peak: Float = 0.5f, bleed: Boolean = false) =
+    Take(id, line, part, "$id.wav", 0.0, frames, 48_000.0, Take.Capture.Direct, emptyMap(), loudness, peak, bleed)
 
 /** Every speaking line of the fixture given one take of [frames]. */
 fun completeProduction(script: PlayScript, frames: Int = 4_800): Production {

@@ -108,6 +108,9 @@ const PlaysCore = (() => {
   const takeById = (p, id) => p.takes.find(t => t.id === id) || null;
   const chosenTake = (p, lineID) => (p.chosen[lineID] ? takeById(p, p.chosen[lineID]) : null);
   const takesFor = (p, lineID) => p.takes.filter(t => t.lineID === lineID);
+  /** The chosen take when it counts: a take the bleed check flagged is kept on disk but never
+   *  counts or reaches the mix (§5 rule 2, §8 rule 3). */
+  const usableTake = (p, lineID) => { const t = chosenTake(p, lineID); return t && !t.bleed ? t : null; };
 
   /** A new take becomes the line's chosen one; the older takes stay (§8 rule 5). */
   function addTake(p, take) {
@@ -187,7 +190,8 @@ const PlaysCore = (() => {
     return withState(p, part, name ? { status: 'recording', performer: name } : { status: 'recording' });
   }
 
-  const missingLines = (p, script, part) => linesFor(script, part).map(l => l.id).filter(id => !p.chosen[id]);
+  /** Lines of the part with no chosen take, or whose chosen take the bleed check flagged. */
+  const missingLines = (p, script, part) => linesFor(script, part).map(l => l.id).filter(id => !usableTake(p, id));
 
   /** "Done with this part": a speaking part is done only when every one of its lines has a take (§5 rule 4). */
   function finish(p, script, part) {
@@ -213,9 +217,12 @@ const PlaysCore = (() => {
     return withState(p, part, { ...stateOf(p, part), status: 'recording' });
   }
 
-  /** Speaking lines with no human take. Empty means the play can be mixed. */
-  const missingSpeech = (p, script) => speechLineIDs(script).filter(id => !p.chosen[id]);
-  const isComplete = (p, script) => missingSpeech(p, script).length === 0;
+  /** Speaking lines with no unflagged human take. */
+  const missingSpeech = (p, script) => speechLineIDs(script).filter(id => !usableTake(p, id));
+  /** Lines of any kind whose chosen take the bleed check flagged. */
+  const needsRetake = (p, script) => script.lines.map(l => l.id).filter(id => chosenTake(p, id)?.bleed === true);
+  /** Only when every speaking line has an unflagged take and no chosen take is flagged can the play be mixed. */
+  const isComplete = (p, script) => missingSpeech(p, script).length === 0 && needsRetake(p, script).length === 0;
 
   /** The cue before a line: the previous speech when another part speaks it, or the two before it for a run-up. */
   function cueLines(script, lineID, runUp = false) {
@@ -259,6 +266,8 @@ const PlaysCore = (() => {
   function buildTimeline(script, p, { sampleRate = TAKE_RATE, gap = DEFAULT_GAP } = {}) {
     const missing = missingSpeech(p, script);
     if (missing.length) throw new MixFailure('incomplete', missing);
+    const flagged = needsRetake(p, script);
+    if (flagged.length) throw new MixFailure('bleed', flagged);
     const placements = [];
     let cursor = 0;
     const gapFrames = Math.floor(gap * sampleRate);
@@ -268,7 +277,7 @@ const PlaysCore = (() => {
       if (t.sampleRate !== sampleRate) throw new MixFailure('sampleRate', t.id);
       const start = placements.length ? cursor + gapFrames : 0;
       placements.push({ lineID: line.id, takeID: t.id, file: t.file, start, inFrame: 0, outFrame: t.frames,
-                        frames: t.frames, gain: gain(t.loudness, t.peak) });
+                        frames: t.frames, gain: gain(t.loudness, t.peak), bleed: !!t.bleed });
       cursor = start + t.frames;
     }
     return { sampleRate, placements, totalFrames: cursor };
@@ -279,9 +288,12 @@ const PlaysCore = (() => {
    * so a long play never holds its whole mix in memory. `makeContext(channels,
    * frames, rate)` is an OfflineAudioContext in the browser; `loadTake(placement)`
    * returns the take's samples. It reads only takes the timeline names, and a
-   * timeline holds only human takes, so a device voice cannot reach the mix.
+   * timeline holds only human takes, so a device voice cannot reach the mix. A take
+   * the bleed check flagged is refused, never mixed (§8 rule 3).
    */
   async function renderMix(timeline, loadTake, makeContext, { chunkSeconds = 30 } = {}) {
+    const flagged = timeline.placements.find(x => x.bleed);
+    if (flagged) throw new MixFailure('bleed', [flagged.lineID]);
     const rate = timeline.sampleRate;
     const chunk = Math.max(1, Math.round(chunkSeconds * rate));
     const parts = [wavHeader(timeline.totalFrames, rate, 16)];
@@ -536,9 +548,9 @@ const PlaysCore = (() => {
     BLEED_LOUD_FRACTION, now, uuid, clone,
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorLine,
     linesFor, speechLineIDs, castParts,
-    newProduction, stateOf, takeById, chosenTake, takesFor, addTake, choose, unusedTakes, discardUnused,
+    newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused,
     fingerprint, isFinished, stableStringify,
-    Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, isComplete,
+    Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
     cueLines, refusalText,
     MixFailure, gain, buildTimeline, renderMix,
     integratedLoudness, samplePeak, rms, thresholdFor, LineEndDetector, lineWindow, CueMeter,

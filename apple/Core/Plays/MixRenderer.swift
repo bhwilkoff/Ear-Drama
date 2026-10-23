@@ -7,14 +7,16 @@ import Foundation
 /// `AVAudioEngine` in offline manual rendering, a player node scheduled at each
 /// placement's sample time with the take's stored gain applied in memory. It
 /// reads only take files named by the timeline, and a timeline holds only human
-/// takes, so a stand-in cannot reach the mix (§5 rule 3).
+/// takes, so a stand-in cannot reach the mix (§5 rule 3). A take the bleed
+/// check flagged is refused, never mixed (§8 rule 3).
 nonisolated enum MixRenderer {
-    enum Failure: Error { case engine(String) }
+    enum Failure: Error { case engine(String), bleed(lineID: String) }
 
     static let chunk: AVAudioFrameCount = 4096
     static let lookahead = 2.0
 
     static func render(_ timeline: MixTimeline, takesFolder: URL, to destination: URL) throws {
+        if let flagged = timeline.placements.first(where: \.bleed) { throw Failure.bleed(lineID: flagged.lineID) }
         let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: timeline.sampleRate, channels: 1,
                                    interleaved: false)!
         let engine = AVAudioEngine()

@@ -49,9 +49,9 @@ object Relay {
         return production.withPart(part, PartState(PartState.Status.Recording, name))
     }
 
-    /** Lines of the part with no chosen take. */
+    /** Lines of the part with no chosen take, or whose chosen take the bleed check flagged. */
     fun missingLines(part: PartID, production: Production, script: PlayScript): List<String> =
-        script.lines(part).map { it.id }.filter { it !in production.chosen }
+        script.lines(part).map { it.id }.filter { production.usableTake(it) == null }
 
     /**
      * "Done with this part" (§2.5). A speaking part is done only when every one
@@ -91,11 +91,17 @@ object Relay {
         return production.withPart(part, production.state(part).copy(status = PartState.Status.Recording))
     }
 
-    /** Speaking lines with no human take. Empty means the play can be mixed. */
+    /** Speaking lines with no unflagged human take. */
     fun missingSpeech(production: Production, script: PlayScript): List<String> =
-        script.speechLineIDs.filter { it !in production.chosen }
+        script.speechLineIDs.filter { production.usableTake(it) == null }
 
-    fun isComplete(production: Production, script: PlayScript): Boolean = missingSpeech(production, script).isEmpty()
+    /** Lines of any kind whose chosen take the bleed check flagged. */
+    fun needsRetake(production: Production, script: PlayScript): List<String> =
+        script.lines.map { it.id }.filter { production.chosenTake(it)?.bleed == true }
+
+    /** Every speaking line has an unflagged human take and no chosen take is flagged: only then can the play be mixed. */
+    fun isComplete(production: Production, script: PlayScript): Boolean =
+        missingSpeech(production, script).isEmpty() && needsRetake(production, script).isEmpty()
 
     /**
      * The lines that cue a performer's line (§2.4): the previous speech where

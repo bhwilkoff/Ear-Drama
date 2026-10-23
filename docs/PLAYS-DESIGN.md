@@ -93,11 +93,16 @@ shipped on iPhone, iPad, Mac, Android, and the web:
    its Android and web ports).
 3. **Agency**: holds in what the app does not do: no line is judged or
    rejected, and "hear it read" is a button, never a default. **One defect,
-   against rule 3 of §8:** a take the bleed check flags is kept with a warning
-   and can still be chosen and mixed, so some of the device voice can reach a
-   finished play. Fix: a flagged take does not count toward completion, and
-   the mix refuses it; the performer re-takes with headphones, as §5 rule 2
-   says. Sent for repair the same day.
+   against rule 3 of §8, fixed 2026-10-23:** a take the bleed check flagged was
+   kept with a warning and could still be chosen and mixed, so some of the
+   device voice could reach a finished play. Now a flagged take stays on disk
+   and keeps its warning, but its line counts as missing (`Production.usableTake`,
+   `Relay.missingSpeech`, `Relay.needsRetake`, `Relay.isComplete`), the timeline
+   and the mix renderer refuse it, and the performer re-takes with headphones,
+   as §5 rule 2 says. Same rule on Apple (`apple/Core/Plays/Relay.swift`,
+   `MixTimeline.swift`, `MixRenderer.swift`), Android (`plays/Relay.kt`,
+   `MixTimeline.kt`), and the web (`js/plays-core.js`); tested by
+   `FlaggedTakeTests`, `FlaggedTakeTest.kt`, and `js/plays.test.js`.
 4. **Clarity**: holds. One device, plain line-by-line takes, a timeline that is
    data; no neural voice, no automatic mixing choices.
 
