@@ -102,7 +102,15 @@ The only shapes; a new one needs a new rule.
   people", series first, then episodes, with "In the transcript" on a
   row found only by its transcript.
 - **§4.6 Library** is In progress. A held Select on a row offers Remove
-  from History.
+  from History. Its last row is "Account" (§4.9).
+- **§4.9 The account** is the foot of Library, as on iOS
+  (`docs/iOS-DESIGN.md` §4.10), never a tab and never at first launch.
+  The row pushes `AccountScreen_tvOS`: signed out, Sign in with Apple
+  only; signed in, the provider, Last sync, the last error, Sync Now,
+  Sign Out, and Delete Account behind a confirmation. Sign in with
+  Google is not on the TV yet: `ASWebAuthenticationSession` does not
+  exist on tvOS, and the TV's Google path is a phone hand-off (a code on
+  screen, approved on the phone) that waits on its own rule.
 - **§4.7 The transcript reader** (`TranscriptScreen_tvOS`) is full
   screen: the episode title, the caption "Automatic transcript", then
   the text in paragraphs of four sentences, each a focus stop, so the

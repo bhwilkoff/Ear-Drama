@@ -1,0 +1,14 @@
+// Sign-in and sync (Decisions 057, 063; docs/WORKER.md). Read at build time
+// into the app's Info.plist (apple/Resources/EarDrama-Info.plist) and read at
+// run time by AccountConfig. None of these is a secret: a client id names the
+// app and the Worker's address is public. While a value starts REPLACE_WITH,
+// the app shows sign-in as not available in this build, with no error.
+//
+// An xcconfig reads `//` as a comment, so write a URL's slashes as
+// https:/$()/api.eardrama.org
+//
+// The owner fills these once the Worker is deployed and the Google iOS OAuth
+// client exists (docs/WORKER.md "Needs Ben", steps 6 and 8).
+
+EARDRAMA_WORKER_URL = REPLACE_WITH_WORKER_URL
+EARDRAMA_GOOGLE_IOS_CLIENT_ID = REPLACE_WITH_GOOGLE_IOS_CLIENT_ID

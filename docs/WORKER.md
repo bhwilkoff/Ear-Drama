@@ -211,7 +211,9 @@ Each of these is the owner's, in this order. None has been done.
 4. **Sign in with Apple**: in the Apple Developer account, enable Sign in with
    Apple on `app.eardrama`; create a Services ID for the web and Android, with
    `eardrama.org` as its domain and return URL. Put the Services ID in
-   `APPLE_AUDIENCES` beside `app.eardrama`.
+   `APPLE_AUDIENCES` beside `app.eardrama`. Then remake the provisioning
+   profiles and uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml` (the
+   entitlement stays off until then: a signed build naming it fails).
 5. **Apple revocation key** (for deletion): create a Sign in with Apple key;
    put the Team ID and Key ID in `APPLE_TEAM_ID` / `APPLE_KEY_ID`, then
    `npx wrangler secret put APPLE_PRIVATE_KEY` and paste the `.p8` contents.

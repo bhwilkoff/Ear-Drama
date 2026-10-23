@@ -81,6 +81,7 @@ private struct RouteDestinations_tvOS: ViewModifier {
             switch route {
             case let .series(key): SeriesScreen_tvOS(key: key)
             case let .episode(id): EpisodeScreen_tvOS(id: id)
+            case .account: AccountScreen_tvOS()
             }
         }
     }
@@ -457,17 +458,24 @@ private struct LibraryScreen_tvOS: View {
         Group {
             if let inProgress {
                 if inProgress.isEmpty {
-                    ContentUnavailableView("Nothing played yet", systemImage: "books.vertical")
+                    ContentUnavailableView {
+                        Label("Nothing played yet", systemImage: "books.vertical")
+                    } actions: {
+                        AccountRow().fixedSize()
+                    }
                 } else {
-                    List(inProgress) { episode in
-                        NavigationLink(value: Route.episode(episode.id)) {
-                            EpisodeRowLabel(episode: episode, showSeries: true)
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) { history.remove(episode.id) } label: {
-                                Label("Remove from History", systemImage: "trash")
+                    List {
+                        ForEach(inProgress) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode, showSeries: true)
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) { history.remove(episode.id) } label: {
+                                    Label("Remove from History", systemImage: "trash")
+                                }
                             }
                         }
+                        Section { AccountRow() }
                     }
                 }
             } else {

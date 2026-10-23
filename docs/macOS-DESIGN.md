@@ -106,6 +106,11 @@ only here:
   reaches without opening the episode; the listing's credit is a link
   the default browser opens. Space pauses as anywhere (§5.3), and a
   pause ends listening live.
+- **§4.4 The account is Library's last row**, as on iOS
+  (`docs/iOS-DESIGN.md` §4.10), pushed in the detail column: not a
+  Settings scene (§2.3 holds; an account is not a preference) and not a
+  menu item. Sign in with Google opens the system's web authentication
+  sheet (`ASWebAuthenticationSession`, PKCE, no third-party package).
 
 ## §5 The player
 

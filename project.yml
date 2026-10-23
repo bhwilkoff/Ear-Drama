@@ -58,6 +58,9 @@ targets:
           # The folder READMEs are notes for people, not app resources.
           - "**/*.md"
           - "Resources/PrivacyInfo.xcprivacy"
+          # Read by the build settings below, never bundled as resources.
+          - "Resources/EarDrama-Info.plist"
+          - "Resources/EarDrama.entitlements"
       # The privacy manifest (App Store requirement): named here so it is
       # always a bundle resource, never left to file-type inference.
       - path: apple/Resources/PrivacyInfo.xcprivacy
@@ -71,6 +74,11 @@ targets:
     scheme:
       testTargets:
         - EarDramaTests
+    # The Worker's address and the Google client id (placeholders until the
+    # owner fills them; sign-in shows as not available until then).
+    configFiles:
+      Debug: Accounts.xcconfig
+      Release: Accounts.xcconfig
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.eardrama
@@ -79,6 +87,12 @@ targets:
         # is no plist file to drift. CFBundleVersion and the short version are
         # filled from AppVersion.xcconfig automatically.
         GENERATE_INFOPLIST_FILE: YES
+        # Only the Accounts.xcconfig keys; Xcode merges the generated keys in.
+        INFOPLIST_FILE: apple/Resources/EarDrama-Info.plist
+        # Sign in with Apple is OFF until the owner enables the capability on
+        # the App ID and the profiles are remade (docs/WORKER.md step 4); a
+        # signed build that names it before then fails. Then add:
+        #   CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every
         # TestFlight / App Store build.
@@ -96,9 +110,9 @@ targets:
         # exists the tvOS slice names no icon; point these at it when it lands.
         "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvos*]": ""
         "ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvsimulator*]": ""
-        # The Mac App Store requires the sandbox. Xcode derives the
-        # entitlements from these settings, so there is no .entitlements file
-        # to maintain. Add only the scopes the app actually uses.
+        # The Mac App Store requires the sandbox. Xcode derives these
+        # entitlements from the settings and merges them with the file above,
+        # which holds only Sign in with Apple. Add only the scopes used.
         "ENABLE_APP_SANDBOX[sdk=macosx*]": YES
         "ENABLE_OUTGOING_NETWORK_CONNECTIONS[sdk=macosx*]": YES
         "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
