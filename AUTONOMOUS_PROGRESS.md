@@ -222,3 +222,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Tick 78, 2026-10-23, agent: Listen shelves into the data plane
 - CI green (Android Build 15:07 UTC). Launched the data-plane half of review finding 6: a published `listenShelves` rule list (onThisDay, then genreFirsts per genre) plus precomputed ids where the date does not matter; "Most episodes" excluded pending the owner (HUMAN-SHAPED.md B). Clients switch once the review-fixes agent leaves apple/ and android/. Running: M8 Worker, review fixes, shelves.
+
+### Tick 79, 2026-10-23, merge + a break I caused: review fixes on main; Apple's rights test repaired
+- Merged 0751b16 (1.0.40 build 41): privacy covers the apps and rooms (owner review marked), explaining captions cut on Apple and Android, credits name the tools and Claude Code (the OWNER note left open).
+- My b003138 (tick 77) broke Apple's RightsDisplayTests.fallbackMatchesThePipeline, which reads build_projection.py for literal strings; I had run only catalog run_all. Repaired in the same commit (the published-age key checks the pattern and the fallback's words); macOS 107 tests in 24 suites pass on main. Memory saved: grep client tests for a pipeline file before committing.
+- Review fix-now items left: Listen shelves (data plane in progress). Running: M8 Worker, shelves.
