@@ -164,6 +164,12 @@ only here:
 
 - **§6.1 Tokens only**, through the generated `apple/Core/Design.swift`,
   in light and dark (`NSColor` appearance-matched pairs).
+- **§6.1a Color roles** are iOS-DESIGN §6.1a's (Decision 064): the
+  windows' tint and `AccentColor` are the blue `brandSecondary`, so the
+  sidebar selection is blue wherever the person's system accent is
+  Multicolor (a chosen system accent wins, as the Mac intends); red
+  only on Play, Listen live, Start recording, the scrubber, and the
+  progress line; genre hues only as the series row's genre mark.
 - **§6.2 Six type levels** (`TypeRamp`) over the system text styles.
 - **§6.3 Icons are SF Symbols**; every icon-only button has a `.help`
   tooltip and an accessibility label.

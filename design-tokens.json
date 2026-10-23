@@ -2,7 +2,7 @@
   "$about": "The one source of the app's look. Change a value here, run `node tools/design_tokens.mjs`, and every platform's token file is rewritten to match; `node tools/test_design_tokens.mjs` fails if any of them drifts. These values are Ear Drama's On Air palette (Decision 064; docs/research/palette/README.md): tally red for the one thing that is live, mirrored-glass blue for links, focus, and the selected tab.",
   "color": {
     "brand": {
-      "primary":      { "light": "#B0152F", "dark": "#E3384B", "use": "the main action, the selected item, the accent" },
+      "primary":      { "light": "#B0152F", "dark": "#E3384B", "use": "what is live: Play, the progress line, the playing episode, Listen live" },
       "onPrimary":    { "light": "#FFFFFF", "dark": "#120708", "use": "text and icons on primary" },
       "background":   { "light": "#FFFFFF", "dark": "#0F0F11", "use": "the page" },
       "surface":      { "light": "#F4F4F5", "dark": "#19191C", "use": "cards, panels, the sidebar" },
@@ -10,7 +10,7 @@
       "text":         { "light": "#131316", "dark": "#F2F2F4", "use": "body text" },
       "textMuted":    { "light": "#5C5C66", "dark": "#C4C4CC", "use": "secondary text, captions" },
       "border":       { "light": "#D8D8DD", "dark": "#34343A", "use": "hairlines and outlines" },
-      "secondary":    { "light": "#0B6E99", "dark": "#5AB4D6", "use": "the second accent: selected tab, secondary buttons" },
+      "secondary":    { "light": "#0B6E99", "dark": "#5AB4D6", "use": "wayfinding: the selected tab or sidebar item, buttons that are not Play" },
       "onSecondary":  { "light": "#FFFFFF", "dark": "#06141B", "use": "text and icons on secondary" },
       "link":         { "light": "#0B6E99", "dark": "#6CC0E0", "use": "links and the focus ring" }
     },
@@ -19,6 +19,17 @@
       "warning":      { "light": "#8A5300", "dark": "#E8B04B", "use": "something needs attention" },
       "error":        { "light": "#C2410C", "dark": "#FF9466", "use": "something failed" },
       "errorSurface": { "light": "#FDEEE8", "dark": "#3A1F16", "use": "the error banner's fill" }
+    },
+    "genre": {
+      "$about": "Content only, never chrome (Decision 012): a series' genre mark and nothing else. Keys are the catalog's genre keys (catalog/tools/genres.py GENRES). Each mark holds 3:1 on background, surface and surfaceAlt in both modes.",
+      "drama":        { "light": "#B42575", "dark": "#FF91C3" },
+      "mystery":      { "light": "#3753A2", "dark": "#8DACFA" },
+      "scifi":        { "light": "#03838C", "dark": "#16E3F2" },
+      "western":      { "light": "#A06841", "dark": "#D97E37" },
+      "comedy":       { "light": "#8D8300", "dark": "#E2D32B" },
+      "news":         { "light": "#44420E", "dark": "#CECEC0" },
+      "documentary":  { "light": "#217500", "dark": "#81CB70" },
+      "serial":       { "light": "#5D0087", "dark": "#AE6DDC" }
     }
   },
   "font": {

@@ -262,7 +262,7 @@ struct EpisodeScreen: View {
                     NavigationLink(value: Route.series(episode.seriesKey)) {
                         Text(episode.seriesName)
                             .font(TypeRamp.body)
-                            .foregroundStyle(Color.brandPrimary)
+                            .foregroundStyle(Color.brandLink)
                     }
                     Text(episode.displayTitle)
                         .font(TypeRamp.sectionHeader)
@@ -280,6 +280,7 @@ struct EpisodeScreen: View {
                           systemImage: isCurrent && player.isPlaying ? "pause.fill" : "play.fill")
                         .font(TypeRamp.bodyStrong)
                 }
+                .tint(Color.brandPrimary)
                 .disabled(detail.recordings.isEmpty)
                 DownloadControl(detail: detail)
                 if let url = episode.transcriptURL {

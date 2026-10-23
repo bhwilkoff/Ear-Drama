@@ -601,8 +601,8 @@ button takes near-black type (4.66:1, APCA Lc 36).
 three new brand keys (`secondary`, `onSecondary`, `link`);
 `tools/test_design_tokens.mjs` now checks their contrast. Red stays for what is
 live and never decorates; blue does the wayfinding (Decision 012: brand is
-chrome, genre hues are content). The genre hues need a `color.genre` group the
-generator does not yet write, and each client must move its links, focus and
-selected tab onto `link`/`secondary`; both follow once the sign-in work on every
-client is merged. The icon (the white ring microphone on tally red) waits on the
+chrome, genre hues are content). "Live" includes Start recording, because On
+Air's red was the studio light that meant the microphone was live (an agent's
+reading, kept on 2026-10-23; the owner may overrule). Genre hues are the
+`color.genre` group, checked at 3:1 on every ground in both modes. The icon (the white ring microphone on tally red) waits on the
 CC0 photo download (SCRATCHPAD item 2).

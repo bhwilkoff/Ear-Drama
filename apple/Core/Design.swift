@@ -29,6 +29,31 @@ extension Color {
     nonisolated static let semanticError = Color.tokenPair(light: 0xC2410C, dark: 0xFF9466)
     nonisolated static let semanticErrorSurface = Color.tokenPair(light: 0xFDEEE8, dark: 0x3A1F16)
 
+    // Genre: content only, never chrome. Keyed by the catalog's genre key.
+    nonisolated static let genreDrama = Color.tokenPair(light: 0xB42575, dark: 0xFF91C3)
+    nonisolated static let genreMystery = Color.tokenPair(light: 0x3753A2, dark: 0x8DACFA)
+    nonisolated static let genreScifi = Color.tokenPair(light: 0x03838C, dark: 0x16E3F2)
+    nonisolated static let genreWestern = Color.tokenPair(light: 0xA06841, dark: 0xD97E37)
+    nonisolated static let genreComedy = Color.tokenPair(light: 0x8D8300, dark: 0xE2D32B)
+    nonisolated static let genreNews = Color.tokenPair(light: 0x44420E, dark: 0xCECEC0)
+    nonisolated static let genreDocumentary = Color.tokenPair(light: 0x217500, dark: 0x81CB70)
+    nonisolated static let genreSerial = Color.tokenPair(light: 0x5D0087, dark: 0xAE6DDC)
+
+    /// The mark for a catalog genre key; nil for a key the palette does not name.
+    nonisolated static func genre(_ key: String?) -> Color? {
+        switch key {
+        case "drama": genreDrama
+        case "mystery": genreMystery
+        case "scifi": genreScifi
+        case "western": genreWestern
+        case "comedy": genreComedy
+        case "news": genreNews
+        case "documentary": genreDocumentary
+        case "serial": genreSerial
+        default: nil
+        }
+    }
+
     nonisolated private static func tokenPair(light: UInt32, dark: UInt32) -> Color {
         #if canImport(UIKit)
         Color(uiColor: UIColor { traits in

@@ -112,6 +112,7 @@ private struct EveningList: View {
                     Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
                 }
                 .buttonStyle(.bordered)
+                .tint(Color.brandPrimary)
                 .accessibilityValue("On")
                 .accessibilityHint("Stops listening live")
             } else if let index = onAir.index, evening.detail(for: slots[index]) != nil {
@@ -122,6 +123,7 @@ private struct EveningList: View {
                     Label("Listen live", systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(Color.brandPrimary)
             }
         }
     }
@@ -154,6 +156,7 @@ private struct SlotRow: View {
                     Image(systemName: "play.fill")
                 }
                 .buttonStyle(.borderless)
+                .tint(Color.brandPrimary)
                 .accessibilityLabel("Play \(detail.episode.displayTitle), \(slot.playableEpisode?.series ?? detail.episode.seriesName)")
             } else {
                 // A gap is stated, never filled (R9). The paper's printed text

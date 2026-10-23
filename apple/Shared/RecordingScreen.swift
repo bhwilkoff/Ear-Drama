@@ -50,13 +50,14 @@ struct RecordingScreen: View {
         VStack(spacing: Spacing.s4) {
             switch preflight {
             case .ready:
-                Image(systemName: "headphones").font(.largeTitle).foregroundStyle(Color.brandPrimary)
+                Image(systemName: "headphones").font(.largeTitle).foregroundStyle(Color.brandSecondary)
                 Button {
                     Task { await begin(echoCancelled: false) }
                 } label: {
                     Label("Start Recording", systemImage: "mic")
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(Color.brandPrimary)
                 .keyboardShortcut(.defaultAction)
             case .microphoneDenied:
                 Text("Ear Drama needs the microphone to record your part.")
@@ -171,7 +172,7 @@ struct RecordingScreen: View {
                 VStack(alignment: .leading, spacing: Spacing.s1) {
                     if deviceVoice {
                         Label("Device voice", systemImage: "waveform").font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandPrimary)
+                            .foregroundStyle(Color.brandSecondary)
                     }
                     ScriptLineText(line: cueLine)
                 }
@@ -211,7 +212,7 @@ struct RecordingScreen: View {
                         Spacer()
                         if session.production.chosen[line.id] == take.id {
                             Label("Chosen", systemImage: "checkmark.circle.fill").labelStyle(.iconOnly)
-                                .foregroundStyle(Color.brandPrimary)
+                                .foregroundStyle(Color.brandSecondary)
                         } else {
                             Button("Use This Take") { session.choose(take) }
                                 .disabled(session.isBusy)

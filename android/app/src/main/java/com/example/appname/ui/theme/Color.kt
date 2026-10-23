@@ -28,6 +28,24 @@ val BrandOnSecondaryDark = Color(0xFF06141B)
 val BrandLinkLight = Color(0xFF0B6E99)
 val BrandLinkDark = Color(0xFF6CC0E0)
 
+// --- GENRE tokens (content only, never chrome), keyed by the catalog genre key ---
+val GenreDramaLight = Color(0xFFB42575)
+val GenreDramaDark = Color(0xFFFF91C3)
+val GenreMysteryLight = Color(0xFF3753A2)
+val GenreMysteryDark = Color(0xFF8DACFA)
+val GenreScifiLight = Color(0xFF03838C)
+val GenreScifiDark = Color(0xFF16E3F2)
+val GenreWesternLight = Color(0xFFA06841)
+val GenreWesternDark = Color(0xFFD97E37)
+val GenreComedyLight = Color(0xFF8D8300)
+val GenreComedyDark = Color(0xFFE2D32B)
+val GenreNewsLight = Color(0xFF44420E)
+val GenreNewsDark = Color(0xFFCECEC0)
+val GenreDocumentaryLight = Color(0xFF217500)
+val GenreDocumentaryDark = Color(0xFF81CB70)
+val GenreSerialLight = Color(0xFF5D0087)
+val GenreSerialDark = Color(0xFFAE6DDC)
+
 // --- SEMANTIC tokens (content only, never chrome) ---
 // Read them through AppSemantics (Theme.kt), never through colorScheme, so
 // Material You dynamic color can never change what they mean.

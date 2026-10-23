@@ -5,4 +5,12 @@
     <color name="brand_primary">#FFB0152F</color>
     <color name="brand_background">#FFFFFFFF</color>
     <color name="brand_surface">#FFF4F4F5</color>
+    <color name="genre_drama">#FFB42575</color>
+    <color name="genre_mystery">#FF3753A2</color>
+    <color name="genre_scifi">#FF03838C</color>
+    <color name="genre_western">#FFA06841</color>
+    <color name="genre_comedy">#FF8D8300</color>
+    <color name="genre_news">#FF44420E</color>
+    <color name="genre_documentary">#FF217500</color>
+    <color name="genre_serial">#FF5D0087</color>
 </resources>

@@ -319,6 +319,7 @@ private struct EpisodeScreen_tvOS: View {
                     } label: {
                         Label("Play", systemImage: "play.fill")
                     }
+                    .tint(Color.brandPrimary)
                     .focused($playFocused)
                     .disabled(detail.recordings.isEmpty)
                     NavigationLink(value: Route.series(episode.seriesKey)) {
@@ -518,6 +519,7 @@ private struct NowPlaying_tvOS: View {
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: Spacing.s3) {
                 ProgressView(value: min(player.elapsed, player.duration ?? 1), total: max(player.duration ?? 1, 1))
+                    .tint(Color.brandPrimary)
                     .accessibilityLabel("Position")
                 TimeLabels()
             }

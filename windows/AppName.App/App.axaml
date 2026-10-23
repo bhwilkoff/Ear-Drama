@@ -48,6 +48,22 @@
                     <SolidColorBrush x:Key="SemanticErrorBrush" Color="#C2410C"/>
                     <Color x:Key="SemanticErrorSurface">#FDEEE8</Color>
                     <SolidColorBrush x:Key="SemanticErrorSurfaceBrush" Color="#FDEEE8"/>
+                    <Color x:Key="GenreDrama">#B42575</Color>
+                    <SolidColorBrush x:Key="GenreDramaBrush" Color="#B42575"/>
+                    <Color x:Key="GenreMystery">#3753A2</Color>
+                    <SolidColorBrush x:Key="GenreMysteryBrush" Color="#3753A2"/>
+                    <Color x:Key="GenreScifi">#03838C</Color>
+                    <SolidColorBrush x:Key="GenreScifiBrush" Color="#03838C"/>
+                    <Color x:Key="GenreWestern">#A06841</Color>
+                    <SolidColorBrush x:Key="GenreWesternBrush" Color="#A06841"/>
+                    <Color x:Key="GenreComedy">#8D8300</Color>
+                    <SolidColorBrush x:Key="GenreComedyBrush" Color="#8D8300"/>
+                    <Color x:Key="GenreNews">#44420E</Color>
+                    <SolidColorBrush x:Key="GenreNewsBrush" Color="#44420E"/>
+                    <Color x:Key="GenreDocumentary">#217500</Color>
+                    <SolidColorBrush x:Key="GenreDocumentaryBrush" Color="#217500"/>
+                    <Color x:Key="GenreSerial">#5D0087</Color>
+                    <SolidColorBrush x:Key="GenreSerialBrush" Color="#5D0087"/>
                     <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#9E132A"/>
                     <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#8D1126"/>
                     <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66B0152F"/>
@@ -83,6 +99,22 @@
                     <SolidColorBrush x:Key="SemanticErrorBrush" Color="#FF9466"/>
                     <Color x:Key="SemanticErrorSurface">#3A1F16</Color>
                     <SolidColorBrush x:Key="SemanticErrorSurfaceBrush" Color="#3A1F16"/>
+                    <Color x:Key="GenreDrama">#FF91C3</Color>
+                    <SolidColorBrush x:Key="GenreDramaBrush" Color="#FF91C3"/>
+                    <Color x:Key="GenreMystery">#8DACFA</Color>
+                    <SolidColorBrush x:Key="GenreMysteryBrush" Color="#8DACFA"/>
+                    <Color x:Key="GenreScifi">#16E3F2</Color>
+                    <SolidColorBrush x:Key="GenreScifiBrush" Color="#16E3F2"/>
+                    <Color x:Key="GenreWestern">#D97E37</Color>
+                    <SolidColorBrush x:Key="GenreWesternBrush" Color="#D97E37"/>
+                    <Color x:Key="GenreComedy">#E2D32B</Color>
+                    <SolidColorBrush x:Key="GenreComedyBrush" Color="#E2D32B"/>
+                    <Color x:Key="GenreNews">#CECEC0</Color>
+                    <SolidColorBrush x:Key="GenreNewsBrush" Color="#CECEC0"/>
+                    <Color x:Key="GenreDocumentary">#81CB70</Color>
+                    <SolidColorBrush x:Key="GenreDocumentaryBrush" Color="#81CB70"/>
+                    <Color x:Key="GenreSerial">#AE6DDC</Color>
+                    <SolidColorBrush x:Key="GenreSerialBrush" Color="#AE6DDC"/>
                     <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#CC3244"/>
                     <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#B62D3C"/>
                     <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66E3384B"/>

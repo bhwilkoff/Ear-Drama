@@ -92,7 +92,7 @@ struct EarDramaApp: App {
             if let ref {
                 TranscriptWindow_macOS(ref: ref)
                     .environment(catalog)
-                    .tint(Color.brandPrimary)
+                    .tint(Color.brandSecondary)
             }
         }
         .defaultSize(width: 560, height: 680)
@@ -102,7 +102,7 @@ struct EarDramaApp: App {
                     .environment(plays)
                     .environment(player)
                     .environment(store)
-                    .tint(Color.brandPrimary)
+                    .tint(Color.brandSecondary)
             }
         }
         .defaultSize(width: 960, height: 720)
@@ -122,7 +122,7 @@ struct RootView: View {
 
     var body: some View {
         platformRoot
-            .tint(Color.brandPrimary)
+            .tint(Color.brandSecondary)
             .task { await catalog.start() }
             .task { await account.start() }
             .onChange(of: scenePhase) { _, phase in

@@ -184,7 +184,11 @@ The only shapes; a new one needs a new rule.
   are at least 29 pt. `tools/test_design_tokens.mjs` fails on a tvOS
   style under 29 pt.
 - **§7.2 Tokens only**, the same generated colors as every Apple
-  platform; only the focused element is bright.
+  platform; only the focused element is bright. Roles are
+  iOS-DESIGN §6.1a's (Decision 064): the tint is blue, red only on
+  Play, Listen live, and the progress line, and a genre hue only as the
+  series row's mark. Focus itself stays the system's lift and
+  highlight (§6.1); the tint does not repaint it.
 - **§7.3 States.** Loading is a `ProgressView`; empty is a
   `ContentUnavailableView` ("Nothing to list yet", "Nothing played
   yet"); a catalog that cannot open is `CatalogUnavailableView` with
