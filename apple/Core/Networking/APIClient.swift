@@ -43,6 +43,18 @@ actor APIClient {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
+    /// A plain-text file served by a host we do not run (archive.org's
+    /// automatic transcripts, contract §3.1). No token: it is not a Worker.
+    func text(from url: URL) async throws -> String {
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.setValue("text/plain", forHTTPHeaderField: "Accept")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, 200...299 ~= http.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        return String(decoding: data, as: UTF8.self)
+    }
+
     func post<T: Decodable>(_ endpoint: String, body: Encodable) async throws -> T {
         try await refreshIfNeeded()
         var request = URLRequest(url: URL(string: baseURL + endpoint)!)

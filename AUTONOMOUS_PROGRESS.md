@@ -203,3 +203,7 @@ One entry per tick, newest last. The plan is `LOOP-PLAN.md`.
 
 ### Tick 35, 2026-10-22, opt: the owner's questions in one list
 - The scratchpad's six separate "for you" bullets (play, plays, loudness, evenings, palette with two questions folded in) became one numbered "Waiting on you" list, ordered by what each unblocks, every item pointing at its detail. 135 lines to 119.
+
+### Tick 36, 2026-10-22, data: the rebuild had skipped three enrich steps
+- Found while looking for Wikidata genres: the rebuild (mine and catalog-publish.yml) ran build_db and enrich_db only, so 13 tables the restored snapshot carries were silently absent (series_wikidata, episode_witnesses, episode_external, external_disagreements, art, external_meta, people_wikidata, people_art, people_art_meta, archive_photos, archive_photo_links, magazine_rights, magazine_scans). The publish workflow now runs enrich_external, enrich_people_art, and enrich_photo_archives after enrich_db (58f8fd9); the two art steps take `--db`. Verified on out/next: 28 tables, none missing; series_wikidata 573, art 2,281, people_art 3,876, archive_photos 34,141 (all equal to the snapshot), episode_external 39,028 (snapshot 38,993; the folds joined more episodes). No client reads these yet; images and Wikidata genres will.
+- Transcripts in all three clients merged locally (fae3e48 Apple, 1f1d6b2 Android, a188ada web); verification on every client running.

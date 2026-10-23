@@ -10,9 +10,12 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import java.io.IOException
 import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -58,6 +61,17 @@ class ApiClient @Inject constructor() {
         val ok = response.isSuccessful && response.code != 304
         return Conditional(response.code, response.header("ETag"), if (ok) response.body.byteStream() else null) {
             response.close()
+        }
+    }
+
+    /**
+     * A plain-text file from a host we do not run: archive.org's automatic
+     * transcripts (§3.1). Throws on a failed status or no network.
+     */
+    suspend fun text(url: String): String = withContext(Dispatchers.IO) {
+        okHttp.newCall(Request.Builder().url(url).header("Accept", "text/plain").build()).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
+            response.body.string()
         }
     }
 

@@ -24,7 +24,20 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }.containsAll(listOf("loudness_i", "loudness_tp"))
     }
 
+    /** §3.1's transcript columns; an older catalog shows no transcript. */
+    private val hasTranscript: Boolean by lazy {
+        queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }.containsAll(listOf("has_transcript", "transcript_url"))
+    }
+
+    /** §3.4: the index carries transcript words, so a match can be told apart as transcript-only. */
+    private val ftsHasTranscript: Boolean by lazy {
+        "transcript" in queryRaw("PRAGMA table_info(episodes_fts)") { it.getText(1) }
+    }
+
     companion object {
+        /** Every FTS column but `transcript` (§3.4), as an FTS5 column filter. */
+        const val NON_TRANSCRIPT_COLUMNS = "{title series people}"
+
         /** The lowest `meta.schemaVersion` this build reads. */
         const val MIN_SCHEMA_VERSION = 1
 
@@ -183,9 +196,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     suspend fun episodeDetail(id: String): EpisodeDetail? = read {
         val resolved = resolve(id)
         val loudness = if (hasLoudness) "e.loudness_i, e.loudness_tp" else "NULL, NULL"
+        // Shown only where the gate passed, whatever else the row carries.
+        val transcript = if (hasTranscript) "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" else "NULL"
         val head = queryRaw(
             "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json, " +
-                "$loudness$EPISODE_FROM WHERE e.id = ?",
+                "$loudness, $transcript$EPISODE_FROM WHERE e.id = ?",
             listOf(resolved),
         ) { st ->
             EpisodeDetail(
@@ -199,6 +214,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 detailJson = st.textOrNull(12),
                 loudnessI = if (st.isNull(13)) null else st.getDouble(13),
                 loudnessTp = if (st.isNull(14)) null else st.getDouble(14),
+                transcriptUrl = st.textOrNull(15),
             )
         }.firstOrNull() ?: return@read null
         val credits = queryRaw(
@@ -235,10 +251,19 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     // --- Search ---
 
-    /** §5 `search`: episodes and series, word-prefix, through the contentless FTS5 table. */
+    /**
+     * §5 `search`: episodes and series, word-prefix, through the contentless
+     * FTS5 table. Series match on the `series` column alone, so a word spoken
+     * in a transcript never lists a series.
+     */
     suspend fun search(query: String, limit: Int = 100): SearchResults = read {
         val all = matchExpression(query) ?: return@read SearchResults(emptyList(), emptyList())
         val seriesOnly = matchExpression(query, column = "series")!!
+        // The same terms without the transcript column: a row the full match
+        // finds and this one does not was found by its transcript alone.
+        val elsewhere = if (ftsHasTranscript) matchExpression(query, column = NON_TRANSCRIPT_COLUMNS) else null
+        val flag = if (elsewhere == null) "0"
+        else "e.rowid NOT IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
         val series = queryRaw(
             "SELECT $SERIES_COLUMNS FROM series s WHERE s.key IN (" +
                 "SELECT e.series_key FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
@@ -246,14 +271,13 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             listOf(seriesOnly),
             ::seriesRow,
         )
-        val episodes = queryRaw(
-            "SELECT $EPISODE_COLUMNS FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
+        val found = queryRaw(
+            "SELECT $EPISODE_COLUMNS, $flag FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
                 "JOIN series s ON s.key = e.series_key WHERE episodes_fts MATCH ? " +
                 "ORDER BY f.rank, $OLDEST_FIRST LIMIT ?",
-            listOf(all, limit),
-            ::episodeRow,
-        )
-        SearchResults(series, episodes)
+            listOfNotNull(elsewhere) + listOf(all, limit),
+        ) { episodeRow(it) to (it.getLong(8) != 0L) }
+        SearchResults(series, found.map { it.first }, found.filter { it.second }.map { it.first.id }.toSet())
     }
 
     // --- Shelves ---

@@ -220,6 +220,41 @@ const API = (() => {
     return Math.pow(10, g / 20);
   }
 
+  /* ---- Transcripts (DECISIONS 058, contract §3.1) ---- */
+
+  /** The one label on every platform: what it is, and that no person wrote it. */
+  const transcriptLabel = 'Automatic transcript';
+  const transcripts = new Map();
+
+  /**
+   * archive.org's automatic transcript, fetched from its own URL (the Detail
+   * row's `transcript`) when opened, never bundled. archive.org answers it with
+   * `access-control-allow-origin: *`, so the browser reads it directly.
+   */
+  function transcript(url, timeout = 20000) {
+    if (transcripts.has(url)) return transcripts.get(url);
+    const p = (async () => {
+      let resp;
+      try {
+        resp = await fetch(url, { signal: AbortSignal.timeout(timeout) });
+      } catch (e) {
+        const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+        throw new DataError(off ? 'offline' : 'error', `${e.message} ${url}`);
+      }
+      if (resp.status === 404) throw new DataError('missing', url);
+      if (!resp.ok) throw new DataError('error', `${resp.status} ${url}`);
+      return resp.text();
+    })();
+    transcripts.set(url, p);
+    p.catch(() => transcripts.delete(url));   // a failure is never cached; Try again refetches
+    return p;
+  }
+
+  /** The text as archive.org serves it (a sentence a line), blank lines and stray spaces dropped. */
+  function transcriptLines(text) {
+    return (text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  }
+
   /** The rights line, worded by the projection (contract §5.5); never "public domain". */
   async function rightsLine(rights, basis) {
     const m = await manifest();
@@ -231,6 +266,7 @@ const API = (() => {
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
     manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
+    transcript, transcriptLines, transcriptLabel,
   };
 })();
 

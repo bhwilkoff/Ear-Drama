@@ -56,9 +56,19 @@ data class EpisodeDetail(
     /** The default copy's integrated loudness (LUFS) and true peak (dBTP), §3.1; null until measured. */
     val loudnessI: Double? = null,
     val loudnessTp: Double? = null,
+    /**
+     * archive.org's automatic transcript (§3.1), set only where the quality
+     * gate passed (`has_transcript = 1`); fetched when opened, never bundled.
+     */
+    val transcriptUrl: String? = null,
 )
 
-data class SearchResults(val series: List<SeriesRow>, val episodes: List<EpisodeRow>) {
+/** [transcriptOnly]: the episodes found only by words in their transcript (§3.4). */
+data class SearchResults(
+    val series: List<SeriesRow>,
+    val episodes: List<EpisodeRow>,
+    val transcriptOnly: Set<String> = emptySet(),
+) {
     val isEmpty: Boolean get() = series.isEmpty() && episodes.isEmpty()
 }
 

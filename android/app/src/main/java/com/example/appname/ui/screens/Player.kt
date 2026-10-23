@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.DropdownMenu
@@ -46,7 +47,10 @@ import com.example.appname.playback.NowPlaying
 import com.example.appname.playback.PlaybackEngine
 import com.example.appname.playback.SleepMode
 import com.example.appname.playback.SleepState
+import com.example.appname.data.Transcript
+import com.example.appname.ui.Loadable
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
@@ -106,10 +110,13 @@ private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boo
 /** The player (R18): position, skip back 15 and forward 30, speed, and the sleep timer, all here. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit) {
+fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenTranscript: (String) -> Unit) {
     val engine = LocalAppContainer.current.playback
     val now by engine.state.collectAsState()
     val episode = now.episode
+    val hasTranscript by rememberCatalogQuery(episode?.id) { db ->
+        episode?.let { db.episodeDetail(it.id)?.transcriptUrl } != null
+    }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         if (episode == null) {
             Box(Modifier.padding(Spacing.S6.dp)) { Text("Nothing is playing.") }
@@ -169,6 +176,11 @@ fun PlayerSheet(onDismiss: () -> Unit, onOpenEpisode: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SpeedMenu(now.speed, engine)
+                if ((hasTranscript as? Loadable.Ready)?.value == true) {
+                    IconButton(onClick = { onOpenTranscript(episode.id) }) {
+                        Icon(Icons.Filled.FormatQuote, contentDescription = Transcript.LABEL)
+                    }
+                }
                 SleepMenu(now, engine)
             }
             if (now.upNext.isNotEmpty()) {

@@ -58,8 +58,7 @@
     share: 'M18 16a3 3 0 0 0-2.4 1.2l-7-3.5a3 3 0 0 0 0-1.4l7-3.5A3 3 0 1 0 15 7l-7 3.5a3 3 0 1 0 0 3l7 3.5A3 3 0 1 0 18 16z',
     up: 'M12 8l-6 6 1.4 1.4 4.6-4.6 4.6 4.6L18 14z',
     down: 'M12 16l6-6-1.4-1.4-4.6 4.6-4.6-4.6L6 10z',
-    remove: 'M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6z',
-  };
+    remove: 'M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6z',  };
   function icon(name) {
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
@@ -499,6 +498,10 @@
         d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null,
         el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn)));
 
+      // R16: the automatic transcript, only where the gate passed (the row's `transcript`
+      // is null otherwise), fetched from archive.org the first time it is opened.
+      if (d.transcript) body.append(transcriptBlock(d.transcript));
+
       if (d.credits.length) {
         const groups = new Map();
         d.credits.forEach(c => {
@@ -538,6 +541,26 @@
       body.append(fs);
       if (rightsLine) body.append(el('p', { class: 'caption rights' }, rightsLine));
     });
+  }
+
+  /** A disclosure that loads the text on first open; `#transcript` in the URL opens it. */
+  function transcriptBlock(url) {
+    const box = el('div', { class: 'transcript-body' });
+    const details = el('details', { class: 'block transcript', id: 'transcript' },
+      el('summary', { class: 'section-header' }, API.transcriptLabel), box);
+    let loaded = false;
+    details.addEventListener('toggle', () => {
+      if (!details.open || loaded) return;
+      loaded = true;
+      load(box, () => API.transcript(url), (text) => {
+        box.append(el('div', { class: 'transcript-text body' }, API.transcriptLines(text).join('\n')));
+      });
+    });
+    if (location.hash === '#transcript') {
+      details.open = true;
+      requestAnimationFrame(() => details.scrollIntoView({ block: 'start' }));
+    }
+    return details;
   }
 
   async function share(title, query) {
@@ -718,6 +741,7 @@
       $('mini-meta').classList.toggle('is-error', !!err);
       if (err) announce(errText);
     }
+    if (kind === 'load') paintTranscriptLink(cur);
     if (!seeking) {
       seekEl.max = String(Math.floor(d));
       seekEl.value = String(Math.floor(t));
@@ -740,6 +764,17 @@
     if (kind === 'sleep-fired') announce('Sleep timer ended.');
   }
   Player.onChange(paintPlayer);
+
+  /** The player's way to the transcript (R16): Detail with the transcript open. */
+  function paintTranscriptLink(cur) {
+    const a = $('np-transcript');
+    a.hidden = true;
+    API.episodeDetail(cur.id).then(d => {
+      if (!d || !d.transcript || !Player.current || Player.current.id !== cur.id) return;
+      a.setAttribute('href', `?item=${encodeURIComponent(d.id)}#transcript`);
+      a.hidden = false;
+    }).catch(() => {});
+  }
 
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');

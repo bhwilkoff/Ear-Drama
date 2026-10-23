@@ -88,9 +88,31 @@ web app follows today.
     Source link.
   - Copies of one broadcast are versions under Recording(s), the first
     being the default (R5).
+  - **The transcript (R16, DECISIONS 058)** is a closed `<details>`,
+    "Automatic transcript" (the label on every platform), under the
+    actions, drawn only when the Detail row's `transcript` is set (the
+    gate passed, contract §4). Opening it fetches the text from that
+    archive.org URL through `API.transcript`, never a copy of ours; its
+    states are `stateBox`'s (§7.1). The text is plain, selectable, one
+    sentence a line, at the body size in a 68ch measure. `#transcript` in
+    the URL opens it: the player's "Automatic transcript" link, shown
+    only for an episode whose Detail carries one, lands there (§3.1's
+    route, plus a fragment, never a new route shape). Measured
+    2026-10-22 in headless Chrome from `http://127.0.0.1`: the fetch
+    followed archive.org's 302 to the storage node, which answered 200,
+    `access-control-allow-origin: *`, `text/plain; charset=utf-8`.
 - **§4.6 Search** is word-prefix over the projection's term files,
   debounced 180 ms, series first, then episodes paged 30 at a time, the
   query mirrored to the URL.
+  - **Gap: web search does not find transcript words.** The apps match
+    them through the served projection's `episodes_fts` (contract §3.4),
+    but that index is contentless, so the web builder has no text to cut
+    term files from, and adding about 9,000 transcripts' vocabulary to
+    the two-character term files is a size to measure before it is
+    built (contract §4). The client never builds an index of its own
+    from fetched transcripts: it would search only what this browser
+    happened to open. Until the projection carries transcript terms,
+    transcript search is native only (PARITY).
 - **§4.7 Library** = Queue, History, Following, on this device. Clear
   history asks first.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
@@ -180,8 +202,9 @@ web app follows today.
 - **§9.1** Update `PARITY.md` in the same change set as any user-facing
   feature; quote these rule numbers in proposals.
 - **§9.2 Not on the web yet**, each arriving with its milestone: the
-  Radio tab (R9, R10), transcripts (R16), downloads, sign-in and sync
-  (M5), Listen Together (M6).
+  Radio tab (R9, R10), transcript search (§4.6; reading a transcript is
+  on Detail, §4.5), downloads, sign-in and sync (M5), Listen Together
+  (M6).
 
 ## §10 Traps this codebase has already paid for
 
