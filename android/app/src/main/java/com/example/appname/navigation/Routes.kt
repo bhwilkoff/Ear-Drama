@@ -12,6 +12,7 @@ sealed interface Route : NavKey {
     @Serializable data object Library : Route
     @Serializable data class Series(val key: String) : Route
     @Serializable data class Episode(val id: String) : Route
+    @Serializable data class Transcript(val id: String) : Route
 }
 
 /** The four tabs, in order; [name] is what the `appname_start_tab` door names. */

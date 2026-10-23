@@ -41,6 +41,7 @@ import com.example.appname.ui.screens.PlayerSheet
 import com.example.appname.ui.screens.SearchScreen
 import com.example.appname.ui.screens.SeriesBrowseScreen
 import com.example.appname.ui.screens.SeriesScreen
+import com.example.appname.ui.screens.TranscriptScreen
 
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.Listen -> Icons.Filled.Headphones
@@ -86,6 +87,7 @@ fun AppRoot(
 
     val openEpisode: (String) -> Unit = { id -> stack.add(Route.Episode(id)) }
     val openSeries: (String) -> Unit = { key -> stack.add(Route.Series(key)) }
+    val openTranscript: (String) -> Unit = { id -> stack.add(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
 
     CompositionLocalProvider(LocalPlayerMuted provides muted, LocalAppContainer provides container) {
@@ -123,8 +125,14 @@ fun AppRoot(
                                 SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode)
                             }
                             entry<Route.Episode> { route ->
-                                EpisodeScreen(route.id, onBack = back, onOpenSeries = openSeries)
+                                EpisodeScreen(
+                                    route.id,
+                                    onBack = back,
+                                    onOpenSeries = openSeries,
+                                    onOpenTranscript = openTranscript,
+                                )
                             }
+                            entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                         },
                     )
                 }
@@ -135,6 +143,7 @@ fun AppRoot(
             PlayerSheet(
                 onDismiss = { playerOpen = false },
                 onOpenEpisode = { id -> playerOpen = false; openEpisode(id) },
+                onOpenTranscript = { id -> playerOpen = false; openTranscript(id) },
             )
         }
     }

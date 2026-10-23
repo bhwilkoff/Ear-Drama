@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -16,6 +17,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -27,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.Recording
+import com.example.appname.data.Transcript
 import com.example.appname.ui.DownloadControl
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.LoadableContent
@@ -43,7 +46,12 @@ import com.example.appname.ui.theme.Spacing
 /** Episode Detail: date, network, credits, play, versions in rank order, and the rights line (§5.5). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EpisodeScreen(id: String, onBack: () -> Unit, onOpenSeries: (String) -> Unit) {
+fun EpisodeScreen(
+    id: String,
+    onBack: () -> Unit,
+    onOpenSeries: (String) -> Unit,
+    onOpenTranscript: (String) -> Unit,
+) {
     val container = LocalAppContainer.current
     val detail by rememberCatalogQuery(id, watchUser = true) { db ->
         db.episodeDetail(id)?.let { it to container.user.progress(it.episode.id) }
@@ -100,6 +108,18 @@ fun EpisodeScreen(id: String, onBack: () -> Unit, onOpenSeries: (String) -> Unit
                     }
                 }
                 item(key = "download") { DownloadControl(d) }
+                if (d.transcriptUrl != null) {
+                    item(key = "transcript") {
+                        OutlinedButton(
+                            onClick = { onOpenTranscript(row.id) },
+                            modifier = Modifier.padding(horizontal = Spacing.S4.dp),
+                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+                        ) {
+                            Icon(Icons.Filled.FormatQuote, contentDescription = null)
+                            Text(Transcript.LABEL)
+                        }
+                    }
+                }
                 if (d.credits.isNotEmpty()) {
                     item(key = "credits-h") { SectionHeader("Cast and credits") }
                     // A person can hold two roles on one broadcast; the credit's position is its identity here.

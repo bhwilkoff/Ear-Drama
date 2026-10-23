@@ -133,9 +133,59 @@ class CatalogQueriesTest {
         assertEquals("No rights claim known. Removed on request.", DisplayVocabulary.rightsLine(d.rights, d.rightsBasis))
     }
 
+    @Test fun `episodeDetail carries the transcript only past the gate`() = runBlocking {
+        assertEquals(CatalogFixture.TRANSCRIPT_URL, db.episodeDetail("sus|1943-01-07")!!.transcriptUrl)
+        // The control: a URL on a row that failed the gate is never shown.
+        assertNull(db.episodeDetail("sus|1943-05-25")!!.transcriptUrl)
+        assertNull(db.episodeDetail("sus|1942-06-17")!!.transcriptUrl)
+        val older = CatalogDatabase.open(CatalogFixture.build(tmp.newFolder("pre-transcript"), withTranscript = false).path)!!
+        try {
+            assertNull(older.episodeDetail("sus|1943-01-07")!!.transcriptUrl)
+            assertEquals(listOf("sus|1943-01-07"), older.search("lighthouse").episodes.map { it.id })
+        } finally {
+            older.close()
+        }
+    }
+
+    @Test fun `search says when only the transcript matched`() = runBlocking {
+        val keeper = db.search("lighthouse")
+        assertEquals(listOf("sus|1943-01-07"), keeper.episodes.map { it.id })
+        assertEquals(setOf("sus|1943-01-07"), keeper.transcriptOnly)
+        // A transcript that failed the gate is still searchable.
+        assertEquals(setOf("sus|1943-05-25"), db.search("zeppelin").transcriptOnly)
+        // The control: "hitchhiker" is in the title AND the transcript, so it is not flagged.
+        val title = db.search("hitchhiker")
+        assertEquals(listOf("sus|1943-01-07"), title.episodes.map { it.id })
+        assertTrue(title.transcriptOnly.isEmpty())
+        assertTrue(db.search("moore").transcriptOnly.isEmpty())
+        // One word in the title, one only spoken: the transcript was needed.
+        assertEquals(setOf("sus|1943-01-07"), db.search("hitchhiker tuned").transcriptOnly)
+    }
+
+    @Test fun `series search never matches a word spoken in a transcript`() = runBlocking {
+        // "Command Performance" is spoken in a Suspense episode's transcript, and
+        // that episode IS found by it, so the words are in the index...
+        val found = db.search("command perf")
+        assertTrue(found.episodes.any { it.id == "sus|1943-01-07" })
+        assertTrue("sus|1943-01-07" in found.transcriptOnly)
+        // ...yet the series list holds only the series that bears the name.
+        assertEquals(listOf("commandperformance"), found.series.map { it.key })
+        // A word only spoken lists no series at all.
+        assertTrue(db.search("lighthouse").series.isEmpty())
+    }
+
+    @Test fun `transcript lines drop blanks and stray spaces`() {
+        assertEquals(listOf("One.", "Two.", "Three."), Transcript.lines("One.\n\n  Two.  \r\nThree.\n"))
+        assertEquals("Automatic transcript", Transcript.LABEL)
+    }
+
     @Test fun `matchExpression quotes every word as a prefix`() {
         assertEquals("\"Sorry\"* \"wrong\"*", CatalogDatabase.matchExpression("Sorry, wrong"))
         assertEquals("series : \"a\"*", CatalogDatabase.matchExpression("a", column = "series"))
+        assertEquals(
+            "{title series people} : \"a\"*",
+            CatalogDatabase.matchExpression("a", column = CatalogDatabase.NON_TRANSCRIPT_COLUMNS),
+        )
         assertNull(CatalogDatabase.matchExpression("  ,. "))
     }
 }

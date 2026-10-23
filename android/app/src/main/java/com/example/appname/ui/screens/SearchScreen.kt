@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.SearchResults
+import com.example.appname.data.Transcript
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.LoadableContent
@@ -92,6 +93,7 @@ fun SearchScreen(onOpenSeries: (String) -> Unit, onOpenEpisode: (String) -> Unit
                                 showSeries = true,
                                 onOpen = { onOpenEpisode(row.id) },
                                 onPlay = { container.playback.play(row) },
+                                supporting = Transcript.SEARCH_NOTE.takeIf { row.id in found.transcriptOnly },
                             )
                         }
                     }
