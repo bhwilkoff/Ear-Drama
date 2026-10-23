@@ -11,6 +11,7 @@
  *   ?view=library&tab=queue|history|following    Library (this device)
  *   ?view=plays                       Plays (js/plays-ui.js); ?play={script id},
  *   ?production={id}, ?production={id}&part={part id}  (this browser only)
+ *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
  * Path twins (/series/{key}, /episode/{id}, /search?q=) are forwarded into
  * these by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
  *
@@ -221,6 +222,7 @@
 
   let firstRoute = true;
   function route() {
+    takeRoomLink();
     const r = parseRoute();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
     document.querySelectorAll('[data-nav]').forEach(a => {
@@ -238,6 +240,17 @@
     }
     firstRoute = false;
   }
+  /** `?room=CODE` (DEEP_LINKS.md): opens the join sheet with the code filled in, then leaves the address. */
+  function takeRoomLink() {
+    const p = new URLSearchParams(location.search);
+    const code = p.get('room');
+    if (code === null) return;
+    p.delete('room');
+    const q = p.toString();
+    history.replaceState(null, '', q ? `?${q}` : location.pathname);
+    TogetherUI.open(code);
+  }
+
   function setTitle(...parts) { document.title = [...parts.filter(Boolean), 'Ear Drama'].join(' · '); }
 
   function navigate(href, replace = false) {
@@ -847,6 +860,7 @@
   function renderLibrary(r) {
     setTitle('Library');
     AccountUI.paintRow($('account-row'));
+    TogetherUI.paintRow($('together-row'));
     const tab =['queue', 'history', 'following'].includes(r.p.get('tab')) ? r.p.get('tab') : 'queue';
     document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
@@ -896,6 +910,31 @@
   const seekEl = $('np-seek');
   let seeking = false;
 
+  /* Listen Together (§4.12): the session, its card for a room's episode (the host's copy), and its face. */
+  const together = Together.make({
+    api: API.rooms, core: TogetherCore, player: Player,
+    storage: (() => { try { return sessionStorage; } catch { return null; } })(),
+    cardFor: async (st) => {
+      const url = TogetherCore.urlOfCopy(st);
+      const d = await API.episodeDetail(st.episode_id).catch(() => null);
+      if (!d) return { id: st.episode_id, url };
+      const s = await API.seriesPage(d.series).catch(() => null);
+      const first = d.recordings[0];
+      const same = !!first && first.url === url;
+      // The loudness measurement belongs to the default copy only (as on Detail).
+      return { id: d.id, title: epTitle(d), series: d.series, seriesName: s ? s.name : d.series, date: d.date, url,
+               length: same ? (first.length || d.length) : null, li: same ? d.li : null, ltp: same ? d.ltp : null };
+    },
+  });
+  TogetherUI.mount(together, {
+    share: (code) => share(Player.current ? epTitle(Player.current) : 'Ear Drama', `?room=${code}`),
+  });
+  together.onChange(() => paintPlayer('state'));
+  /** A guest's Play is the host's; it is offered only when the browser would not start the sound by itself. */
+  function togglePressed() {
+    if (Player.following) together.tap(); else Player.toggle();
+  }
+
   function sleepText() {
     const s = Player.sleep;
     if (!s) return 'Sleep timer';
@@ -909,10 +948,16 @@
     $('player').hidden = !cur;
     if (!cur) return;
     const playing = !a.paused;
+    const room = together.info();
+    const guest = Player.following;
     document.querySelectorAll('[data-act="toggle"]').forEach(b => {
       b.setAttribute('aria-label', playing ? 'Pause' : 'Play');
       b.classList.toggle('is-playing', playing);
+      b.disabled = guest && !room.blocked;
     });
+    document.querySelectorAll('[data-act="back"], [data-act="fwd"]').forEach(b => { b.disabled = guest; });
+    seekEl.disabled = guest;
+    $('np-speed').disabled = guest;
     const d = isFinite(a.duration) ? a.duration : (cur.length || 0);
     const t = a.currentTime || 0;
     $('mini-progress').style.width = d ? `${Math.min(100, (t / d) * 100)}%` : '0';
@@ -924,7 +969,8 @@
       $('np-meta').textContent = [cur.date ? fmtLongDate(cur.date) : 'Undated'].join('');
       const err = kind === 'error' && Player.error;
       const errText = navigator.onLine === false ? 'You are offline.' : 'This recording did not load.';
-      $('mini-meta').textContent = err ? errText : [cur.seriesName, cur.date].filter(Boolean).join(' · ');
+      $('mini-meta').textContent = err ? errText
+        : room.inRoom ? `Listening together · ${room.members}` : [cur.seriesName, cur.date].filter(Boolean).join(' · ');
       $('mini-meta').classList.toggle('is-error', !!err);
       if (err) announce(errText);
     }
@@ -936,7 +982,7 @@
     seekEl.setAttribute('aria-valuetext', `${fmtClock(t)} of ${fmtClock(d)}`);
     $('np-pos').textContent = fmtClock(seeking ? Number(seekEl.value) : t);
     $('np-left').textContent = `-${fmtClock(Math.max(0, d - t))}`;
-    $('np-speed').value = String(a.playbackRate || 1);
+    $('np-speed').value = String(Player.nearestSpeed(a.playbackRate || 1));
     const st = sleepText();
     document.querySelectorAll('.sleep-label').forEach(x => { x.textContent = st; });
     document.querySelectorAll('[data-act="sleep"]').forEach(b => b.setAttribute('aria-label', st));
@@ -967,7 +1013,7 @@
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const act = b.dataset.act;
-    if (act === 'toggle') Player.toggle();
+    if (act === 'toggle') togglePressed();
     else if (act === 'back') Player.back();
     else if (act === 'fwd') Player.forward();
     else if (act === 'sleep') { if (!np.open) np.showModal(); $('sleep-menu').showPopover(); }
@@ -989,7 +1035,7 @@
     if (e.metaKey || e.ctrlKey || e.altKey || !Player.current) return;
     const t = e.target;
     if (t.closest('input, select, textarea, [contenteditable="true"]')) return;
-    if (e.key === 'k' || (e.key === ' ' && !t.closest('button, a'))) { e.preventDefault(); Player.toggle(); }
+    if (e.key === 'k' || (e.key === ' ' && !t.closest('button, a'))) { e.preventDefault(); togglePressed(); }
     else if (e.key === 'j') Player.back();
     else if (e.key === 'l') Player.forward();
   });
@@ -1022,6 +1068,7 @@
   window.addEventListener('offline', paintOnline);
   window.addEventListener('online', () => { paintOnline(); if (document.querySelector('.state-problem')) route(); });
   paintOnline();
+  together.restore();
 
   /* The service worker runs on the real site. On a local server it runs only with ?sw=1 and is
      removed otherwise, so a cache-first shell never hides an edit during development. */

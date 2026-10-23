@@ -109,6 +109,7 @@
       <section id="view-library" class="view" aria-labelledby="library-h" hidden>
         <h1 id="library-h" class="view-heading" tabindex="-1">Library</h1>
         <div id="account-row" class="account-row" role="group" aria-label="Account"></div>
+        <div id="together-row" class="account-row" role="group" aria-label="Listen together"></div>
         <div class="segmented" role="group" aria-label="Library section" id="library-tabs">
           <button type="button" data-lib="queue" aria-pressed="true">Queue</button>
           <button type="button" data-lib="history" aria-pressed="false">History</button>
@@ -208,6 +209,12 @@
         <a class="btn btn-ghost" id="np-transcript" href="#" hidden>
           <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
           Automatic transcript</a>
+        <span class="np-together">
+          <button type="button" class="btn btn-ghost" id="np-together" aria-pressed="false">
+            <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline"><path d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 1.9 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z"/></svg>
+            <span class="together-label">Listen together</span></button>
+          <span id="np-together-note" class="caption" hidden>Not available yet</span>
+        </span>
       </div>
       <p id="np-next" class="caption"></p>
     </div>
@@ -238,6 +245,9 @@
   <script src="js/plays-audio.js"></script>
   <script src="js/plays-session.js"></script>
   <script src="js/plays-ui.js"></script>
+  <script src="js/together-core.js"></script>
+  <script src="js/together.js"></script>
+  <script src="js/together-ui.js"></script>
   <script src="js/app.js"></script>
   <!-- Additive smart-TV layer + Cast sender: both self-disable off-TV
        (tv.js adds html.tv only on a TV runtime; cast-sender no-ops when the

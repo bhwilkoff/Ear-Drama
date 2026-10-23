@@ -319,6 +319,18 @@ const API = (() => {
 
   /* ---- The Worker: optional sign-in and sync (Decisions 057, 063; docs/WORKER.md) ---- */
 
+  const realValue = (v) => typeof v === 'string' && v.length > 0 && !v.startsWith('REPLACE_WITH');
+  /** The Worker's base URL from a config, or null while it is a placeholder (not available, never an error). */
+  function workerBase(cfg) {
+    const w = cfg && cfg.worker;
+    if (!realValue(w)) return null;
+    try {
+      const u = new URL(w);
+      const local = ['localhost', '127.0.0.1'].includes(u.hostname);
+      return u.protocol === 'https:' || (local && u.protocol === 'http:') ? w.replace(/\/+$/, '') : null;
+    } catch { return null; }
+  }
+
   /**
    * Every Worker call goes through `account`. The access token lives only in this
    * closure's memory. The refresh token is kept in IndexedDB encrypted with an
@@ -342,16 +354,8 @@ const API = (() => {
     let access = null;          // { token, exp }
     let refreshing = null;
 
-    const real = (v) => typeof v === 'string' && v.length > 0 && !v.startsWith('REPLACE_WITH');
-    function base() {
-      const w = config.worker;
-      if (!real(w)) return null;
-      try {
-        const u = new URL(w);
-        const local = ['localhost', '127.0.0.1'].includes(u.hostname);
-        return u.protocol === 'https:' || (local && u.protocol === 'http:') ? w.replace(/\/+$/, '') : null;
-      } catch { return null; }
-    }
+    const real = realValue;
+    const base = () => workerBase(config);
     /** Which sign-ins this build can offer; a placeholder means not available, never an error. */
     function available() {
       const b = !!base();
@@ -591,7 +595,72 @@ const API = (() => {
     };
   })();
 
+  /* ---- Listen Together rooms (M6, Decision 065; docs/WORKER.md "Listen Together rooms") ---- */
+
+  /**
+   * No account: a room takes no bearer token. The member key comes back once,
+   * from create or join, and goes out only as `x-room-key`. Every answer
+   * carries `server_time`, so every call is a clock sample (t0, server_time, t1)
+   * kept here for TogetherCore.clockOffset. A refusal's kind is the Worker's
+   * own code: no_such_room, room_ended, room_full, host_only, not_a_member,
+   * bad_code, rate_limited.
+   */
+  const rooms = (() => {
+    const KEY_HEADER = 'x-room-key';
+    const TIMEOUT_MS = 15000;
+    const KEEP_SAMPLES = 8;
+    let config = typeof CONFIG !== 'undefined' ? CONFIG : {};
+    let now = () => Date.now();
+    let samples = [];
+
+    async function call(method, path, { key, body } = {}) {
+      const b = workerBase(config);
+      if (!b) throw new DataError('not_configured', path);
+      const headers = {};
+      if (key) headers[KEY_HEADER] = key;
+      if (body !== undefined) headers['content-type'] = 'application/json';
+      const t0 = now();
+      let resp;
+      try {
+        resp = await fetch(b + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined,
+                                       signal: AbortSignal.timeout(TIMEOUT_MS) });
+      } catch (e) {
+        const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+        throw new DataError(off ? 'offline' : 'error', `${e.message} ${path}`);
+      }
+      const t1 = now();
+      let data = null;
+      try { data = await resp.json(); } catch { /* not JSON */ }
+      if (!resp.ok) {
+        const err = new DataError((data && data.error) || 'error', `${resp.status} ${path}`);
+        err.status = resp.status;
+        throw err;
+      }
+      if (data && typeof data.server_time === 'number') {
+        samples.push({ t0, server_time: data.server_time, t1 });
+        if (samples.length > KEEP_SAMPLES) samples.shift();
+      }
+      return data;
+    }
+    const at = (code) => `/v1/rooms/${encodeURIComponent(code)}`;
+
+    return {
+      available: () => !!workerBase(config),
+      create: (state) => call('POST', '/v1/rooms', { body: { state } }),
+      join: (code) => call('POST', `${at(code)}/join`),
+      read: (code, key) => call('GET', at(code), { key }),
+      setState: (code, key, state) => call('PUT', `${at(code)}/state`, { key, body: state }),
+      leave: (code, key) => call('POST', `${at(code)}/leave`, { key }),
+      end: (code, key) => call('DELETE', at(code), { key }),
+      /** The clock samples of recent answers, newest last. */
+      samples: () => samples.slice(),
+      resetClock() { samples = []; },
+      _test: { configure(c) { config = c; }, clock(fn) { now = fn; } },
+    };
+  })();
+
   return {
+    rooms,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
     manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
