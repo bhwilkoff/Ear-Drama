@@ -8,6 +8,9 @@ struct EarDramaApp: App {
     @State private var catalog: CatalogStore
     @State private var history: ListeningHistory
     @State private var player: AudioPlayer
+    #if os(iOS) || os(macOS)
+    @State private var downloads: DownloadStore
+    #endif
 
     init() {
         URLCache.shared = URLCache(memoryCapacity: 20_000_000, diskCapacity: 100_000_000)
@@ -16,6 +19,13 @@ struct EarDramaApp: App {
         let player = AudioPlayer(history: history)
         player.resolveDetail = { [weak catalog] id in await catalog?.episodeDetail(id) }
         player.resolveSeriesPage = { [weak catalog] key in await catalog?.seriesPage(key) }
+        #if os(iOS) || os(macOS)
+        let downloads = DownloadStore.live()
+        player.localFile = { [weak downloads] id, recording in
+            downloads?.localFile(for: id, recording: recording.url)
+        }
+        _downloads = State(initialValue: downloads)
+        #endif
         _catalog = State(initialValue: catalog)
         _history = State(initialValue: history)
         _player = State(initialValue: player)
@@ -28,6 +38,10 @@ struct EarDramaApp: App {
                 .environment(catalog)
                 .environment(history)
                 .environment(player)
+                #if os(iOS) || os(macOS)
+                .environment(downloads)
+                .task { await downloads.reconnect() }
+                #endif
                 // .onOpenURL fires for Universal Links AND custom schemes. It
                 // never routes directly: the request lands in the inbox.
                 .onOpenURL { url in
@@ -37,6 +51,14 @@ struct EarDramaApp: App {
         }
         #if os(macOS)
         .commands { PlaybackCommands_macOS(player: player, store: store) }
+        #endif
+        #if os(iOS)
+        // The system relaunches the app in the background when a download
+        // finishes; recreating the session here replays the delegate
+        // callbacks, so the file is in place before the listener returns.
+        .backgroundTask(.urlSession(DownloadStore.sessionIdentifier)) { [downloads] in
+            await downloads.handleBackgroundEvents()
+        }
         #endif
     }
 }

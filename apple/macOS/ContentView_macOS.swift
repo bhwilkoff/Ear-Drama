@@ -91,7 +91,7 @@ struct TransportBar_macOS: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(TypeRamp.caption)
                     .foregroundStyle(Color.semanticError)
-            } else if !catalog.isOnline {
+            } else if !catalog.isOnline && !player.isLocal {
                 OfflineNotice()
             }
         }

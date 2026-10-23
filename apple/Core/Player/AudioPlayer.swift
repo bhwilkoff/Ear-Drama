@@ -26,6 +26,8 @@ final class AudioPlayer {
     private(set) var elapsed: Double = 0
     private(set) var duration: Double?
     private(set) var errorMessage: String?
+    /// The current item plays from a downloaded file, not the network.
+    private(set) var isLocal = false
     private(set) var upNext: [EpisodeRow] = []
     private(set) var sleep = SleepTimer()
     /// Bumps once a second while a sleep countdown runs, so its label redraws.
@@ -46,6 +48,9 @@ final class AudioPlayer {
     @ObservationIgnored var resolveDetail: (String) async -> EpisodeDetail? = { _ in nil }
     /// The series page an episode belongs to, for the queue.
     @ObservationIgnored var resolveSeriesPage: (String) async -> SeriesPage? = { _ in nil }
+    /// A downloaded file for this episode's recording, played instead of the
+    /// network copy (iOS and Mac; the TV never downloads).
+    @ObservationIgnored var localFile: (String, Recording) -> URL? = { _, _ in nil }
 
     @ObservationIgnored let history: ListeningHistory
     @ObservationIgnored private let player = AVPlayer()
@@ -99,7 +104,9 @@ final class AudioPlayer {
         duration = recording.lengthSeconds ?? detail.episode.lengthSeconds
         upNext = []
 
-        let playerItem = AVPlayerItem(url: recording.url)
+        let local = localFile(detail.episode.id, recording)
+        isLocal = local != nil
+        let playerItem = AVPlayerItem(url: local ?? recording.url)
         playerItem.audioTimePitchAlgorithm = .timeDomain
         itemStatusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] observed, _ in
             let failed = observed.status == .failed
@@ -164,6 +171,7 @@ final class AudioPlayer {
         player.pause()
         player.replaceCurrentItem(with: nil)
         item = nil
+        isLocal = false
         upNext = []
         sleep.cancel()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil

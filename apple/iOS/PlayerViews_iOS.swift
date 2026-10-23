@@ -97,7 +97,7 @@ struct PlayerSheet_iOS: View {
                         .font(TypeRamp.caption)
                         .foregroundStyle(Color.semanticError)
                 }
-                if !catalog.isOnline { OfflineNotice() }
+                if !catalog.isOnline && !player.isLocal { OfflineNotice() }
                 if let next = player.upNext.first {
                     Text("Next: \(next.displayTitle)")
                         .font(TypeRamp.caption)
