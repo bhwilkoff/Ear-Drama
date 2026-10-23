@@ -1,0 +1,12 @@
+title=Ear Drama
+major_version=1
+minor_version=0
+build_version=0
+mm_icon_focus_fhd=pkg:/images/poster_fhd.png
+mm_icon_focus_hd=pkg:/images/poster_hd.png
+splash_screen_fhd=pkg:/images/splash_fhd.png
+splash_screen_hd=pkg:/images/splash_hd.png
+splash_color=#141619
+splash_min_time=1000
+ui_resolutions=fhd
+ed_data_base=https://eardrama.org/data/

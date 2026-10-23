@@ -10,8 +10,10 @@
                      required_version="6.5"/>
 
   <name>Ear Drama</name>
-  <description>FILL IN: one-sentence store description.</description>
-  <author href="https://eardrama.org" email="you@example.com">FILL IN author</author>
+  <!-- The package id (EarDramaTV) is a placeholder of the right shape (ten
+       alphanumerics). Samsung Seller Office may assign one at registration;
+       if it does, change both ids here before the first signed build. -->
+  <author href="https://eardrama.org">Ear Drama</author>
 
   <content src="index.html"/>
   <icon src="icon.png"/>

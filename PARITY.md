@@ -158,8 +158,8 @@ shared code only after the core five are complete.
 | Android Auto | 🚧 builds | Continue, Radio, Series, Downloads (R17); Continue plays through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
 | Android TV / Fire TV | 🚧 builds | Listen, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
 | Wear OS | 🚧 builds | Continue, "Waiting on the phone" | minSdk 30 (Wear OS 3); needs its own versionCode before upload |
-| webOS / Tizen | ⏳ | | M9, in progress |
-| Roku | ⏳ | | M9, in progress |
+| webOS / Tizen | 🚧 builds (.ipk, .wgt) | Listen, D-pad focus on the first card; remote media keys; Back that walks history | Placeholder art; the .wgt was signed with the Archive Watch Samsung profile until Ear Drama has its own |
+| Roku | 🚧 builds (sideload zip) | Listen rows of series tiles from the web projection; loading, empty, error, offline | No Series screen yet; placeholder art |
 
 ---
 

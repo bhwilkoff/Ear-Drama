@@ -15,10 +15,16 @@
 const API = (() => {
   'use strict';
 
+  // A packaged TV app (webOS .ipk, Tizen .wgt) runs its page from file://,
+  // where a relative base names a folder that is not in the package; it reads
+  // the site's projection instead (tools/test_packaged_origin.mjs).
+  const CANONICAL_ROOT = new URL('https://eardrama.org/');
+  const PAGES_ROOT = typeof location === 'undefined' ? new URL('http://localhost/')
+    : /^https?:$/.test(location.protocol) ? new URL('.', location.href) : CANONICAL_ROOT;
+
   function dataBase() {
     const meta = typeof document !== 'undefined' && document.querySelector('meta[name="ed-data"]');
-    const href = (typeof location !== 'undefined' && location.href) || 'http://localhost/';
-    return new URL((meta && meta.content) || 'data/', href);
+    return new URL((meta && meta.content) || 'data/', PAGES_ROOT);
   }
 
   const cache = new Map();
@@ -110,7 +116,12 @@ const API = (() => {
   }
 
   async function listen() {
-    const d = await getJSON('index/listen.json');
+    // A missing index means the data plane is not there (not yet published, or
+    // a packaged TV app before the site is live), never "not in the catalog":
+    // reported as an error, so Listen offers Try again.
+    const d = await getJSON('index/listen.json').catch(e => {
+      throw e.kind === 'missing' ? new DataError('error', e.message) : e;
+    });
     return {
       most: rowsOf(d.fields, d.most),
       shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series) })),

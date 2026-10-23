@@ -38,7 +38,11 @@
      C5 previews, C6 unfilled roles, C7 relay order, C9 "author died by 1955",
      C10 commercials and Personal Voice; does "sign-in required to record"
      cover a local recording never shared?
-  8. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
+  8. **Samsung TV certificate**: the stub's `.wgt` was signed with your active
+     `archivewatchSamsung` author profile; Samsung requires every later update to
+     use the first upload's certificate, so give Ear Drama its own before a store
+     upload? (The Tizen package id `EarDramaTV` is a placeholder.)
+  9. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
      take-down email, store records, OAuth clients, Worker, archive.org account).
 - **Status (2026-10-22, 10:10 PM MT, tick 25)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute

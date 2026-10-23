@@ -1,6 +1,7 @@
-/* Archive Watch — smart-TV stylesheet (Tizen · webOS · VIDAA · aggregators).
+/* Ear Drama — smart-TV stylesheet (Tizen · webOS · VIDAA · aggregators).
  *
- * Binding rules: docs/TV-DESIGN.md §4 (layout/type/colour) and §3.2 (focus).
+ * Ported from Archive Watch; section numbers cite
+ * docs/templates/TV-DESIGN-template.md §4 (layout/type/colour) and §3.2 (focus).
  *
  * ADDITIVE ONLY. Every rule is scoped under `html.tv`, which tv.js adds solely
  * on a TV runtime, so the mobile-first stylesheet is untouched and the phone /
@@ -74,137 +75,148 @@ html.tv :focus {
 
 html.tv a:focus,
 html.tv button:focus,
-html.tv [tabindex]:focus {
+html.tv select:focus,
+html.tv input:focus,
+html.tv [tabindex]:not([tabindex="-1"]):focus {
   outline: 3px solid var(--tv-focus-ring);
   outline-offset: 3px;
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
 }
 
-html.tv .card {
+/* A series card lifts as well as rings: the focused card is the one bright
+   thing in its row (§3.2). */
+html.tv .series-card {
   transition: transform 120ms ease-out;
   transform-origin: center center;
+  /* scrollIntoView clears the unscaled box; the margin also clears the lift
+     and the ring, which otherwise sat a few pixels under the panel's edge. */
+  scroll-margin: 32px;
 }
 
-html.tv .card:focus {
-  transform: scale(1.08);
-  z-index: 5;   /* the lifted card must sit above its neighbours */
-}
+html.tv .ep-link,
+html.tv .btn,
+html.tv .nav-item { scroll-margin: 32px; }
 
-/* ------------------------------------------------------------------ *
- * Layout — overscan-safe insets
- * ------------------------------------------------------------------ */
-
-html.tv main {
-  padding-left: var(--tv-overscan-x);
-  padding-right: var(--tv-overscan-x);
-  padding-bottom: var(--tv-overscan-y);
-  height: 100vh;
-  overflow-y: auto;
-}
-
-html.tv .topnav {
-  padding: var(--tv-overscan-y) var(--tv-overscan-x) 16px;
-  font-size: var(--tv-title);
-  gap: 28px;
-}
-
-html.tv .topnav a {
-  padding: 10px 18px;
-  font-size: var(--tv-title);
-}
-
-/* §4.6 — rows at the root. Shelves get room to breathe and the focused tile
-   needs trailing space so it can scroll clear of the screen edge (§3.3). */
-html.tv .shelf-row {
-  gap: 20px;
-  padding-bottom: 28px;
-  /* The last tile must be able to reach the centre when focused. */
-  scroll-padding-inline: var(--tv-overscan-x);
-}
-
-html.tv .card {
-  width: 200px;
-}
-
-html.tv .card .t {
-  font-size: var(--tv-body);
-  line-height: 1.25;
-}
-
-html.tv .card .y {
-  font-size: 20px;
-}
-
-html.tv h1 { font-size: var(--tv-hero); }
-html.tv h2 { font-size: var(--tv-title-lg); }
-html.tv h3 { font-size: var(--tv-title); }
-html.tv p,
-html.tv li { font-size: var(--tv-body); line-height: 1.5; }
-
-/* Grids get bigger cells: at ten feet a phone-density grid is unreadable and
-   takes far too many D-pad presses to cross. */
-html.tv .grid {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 28px;
+html.tv .series-card:focus {
+  transform: scale(1.05);
+  background: var(--color-surface-alt);
+  z-index: 5;   /* the lifted card must sit above its neighbors */
 }
 
 /* ------------------------------------------------------------------ *
- * Player — the video fills the panel; the native controls stay native
- * (§5.1: never build a custom transport over a platform player).
+ * Layout — overscan-safe insets (§4.2). The sidebar holds the left inset;
+ * the views use the full width a phone-first max-width would waste.
  * ------------------------------------------------------------------ */
 
-/* Selectors verified against the LIVE DOM (dialog#player > .player-stage >
-   video#video) — an earlier guess at `dialog.player` silently matched nothing,
-   so the player never went full-screen. Read the markup; do not assume it. */
-html.tv dialog#player {
-  width: 100vw;
-  height: 100vh;
+html.tv .sidebar {
+  width: 360px;
+  padding: var(--tv-overscan-y) 24px var(--tv-overscan-y) var(--tv-overscan-x);
+  gap: 8px;
+}
+
+html.tv .sidebar-title {
+  font-size: var(--tv-title-lg);
+  padding: 0 16px 24px;
+}
+
+html.tv .nav-item {
+  min-height: 64px;
+  padding: 0 16px;
+  gap: 16px;
+  font-size: var(--tv-title);
+}
+
+html.tv .nav-item svg { width: 32px; height: 32px; }
+
+html.tv .view {
   max-width: none;
-  max-height: none;
   margin: 0;
-  padding: 0;
-  border: 0;
-  background: #000;
+  padding: var(--tv-overscan-y) var(--tv-overscan-x) var(--tv-overscan-y) 48px;
 }
 
-html.tv .player-stage {
-  width: 100vw;
-  height: 100vh;
-  max-width: none;
-  max-height: none;
-  padding: 0;
-  margin: 0;
-}
-
-html.tv #video,
-html.tv .player-stage video {
-  width: 100vw;
-  height: 100vh;
-  max-width: none;
-  max-height: none;
-  object-fit: contain;
-  background: #000;
-}
-
-/* The title/description overlay rides inside the safe area and must never
-   swallow a press meant for the controls (Decision 037). */
-html.tv .player-overlay {
-  padding: var(--tv-overscan-y) var(--tv-overscan-x);
-  font-size: var(--tv-title);
-  pointer-events: none;
-}
-
-/* ------------------------------------------------------------------ *
- * Touch-only affordances have no meaning on a remote — hide rather than
- * leave dead controls the D-pad can land on (§3.4, no dead ends).
- * ------------------------------------------------------------------ */
-
-html.tv .install-prompt,
-html.tv .smart-banner,
-html.tv .share-menu-trigger {
+/* §1.7 no dead ends: the skip link, the phone tab bar and the site footer's
+   web pages (not in a packaged app) have no meaning on a remote. Share needs
+   a share sheet the TV does not have. */
+html.tv .skip-link,
+html.tv .tabbar,
+html.tv .site-footer,
+html.tv button[aria-label^="Share "] {
   display: none !important;
 }
+
+/* ------------------------------------------------------------------ *
+ * Type — six levels (§4.3), set per element because rem must not move.
+ * ------------------------------------------------------------------ */
+
+html.tv .view-heading { font-size: var(--tv-hero); }
+html.tv .section-header { font-size: var(--tv-title-lg); }
+html.tv .body-strong { font-size: var(--tv-body-lg); }
+html.tv .body,
+html.tv .caption,
+html.tv .tabular,
+html.tv .btn { font-size: var(--tv-body); }
+
+html.tv .block,
+html.tv .shelf { margin-bottom: 48px; }
+html.tv .shelf > .section-header,
+html.tv .block-head { margin-bottom: 16px; }
+
+/* §4.6 — rows at the root. Shelves get room to breathe, and the row is padded
+   by the focus lift so a focused card's ring is never clipped (skill bug 5). */
+html.tv .rail {
+  grid-auto-columns: 340px;
+  gap: 24px;
+  padding: 16px 16px 24px;
+  margin-left: -16px;
+  margin-right: -16px;
+  scroll-padding-inline: var(--tv-overscan-x);
+  scrollbar-width: none;
+}
+
+html.tv .series-card {
+  min-height: 168px;
+  padding: 20px 24px;
+}
+
+html.tv .ep-link {
+  grid-template-columns: 200px minmax(0, 1fr);
+  padding: 16px 12px;
+}
+
+html.tv .btn,
+html.tv .icon-btn { min-height: 56px; }
+html.tv .icon-btn { min-width: 56px; }
+html.tv .icon-btn svg { width: 32px; height: 32px; }
+
+/* ------------------------------------------------------------------ *
+ * Player — the bar spans the panel inside the safe area; Now Playing is a
+ * centered panel sized for the room.
+ * ------------------------------------------------------------------ */
+
+html.tv .player-row {
+  padding: 12px var(--tv-overscan-x) 12px calc(360px + 48px);
+  gap: 12px;
+}
+
+html.tv .now-playing {
+  width: 960px;
+  max-height: 90vh;
+  padding: 0;
+}
+
+html.tv .np-inner {
+  max-width: none;
+  padding: 48px 64px;
+  gap: 16px;
+}
+
+/* The web's backdrop is the text color at 40%, which in the dark palette
+   lightens the room behind the panel; a TV dims it. */
+html.tv .now-playing::backdrop { background: rgba(0, 0, 0, 0.7); opacity: 1; }
+
+html.tv .np-controls { gap: 48px; }
+html.tv .icon-btn-lg svg { width: 48px; height: 48px; }
 
 /* The exit question Samsung's Return policy requires at the root (tv.js
    askToExit). Buttons take the shared focus ring above. */
