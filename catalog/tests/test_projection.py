@@ -91,6 +91,8 @@ CONTRACT = {
     "no implausible loudness is published": "SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL AND "
         "(loudness_i > -5 OR loudness_i < -45 OR loudness_tp > 6)",
     "gain_db stays empty (the target lives in clients)": "SELECT COUNT(*) FROM episodes WHERE gain_db IS NOT NULL",
+    "a shown transcript has its URL, and only a shown one": "SELECT COUNT(*) FROM episodes WHERE "
+        "(has_transcript = 1) != (transcript_url IS NOT NULL)",
 }
 
 check("genre: OTRR's first mappable label", G.genre_of(["Horror", "Mystery", "Science Fiction"]), ("mystery", "otrrpedia"))
