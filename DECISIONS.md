@@ -79,6 +79,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 059: Shared plays in 1.0: pass the phone and invite links, radio and stage scripts, CC0
 - 060: The look: the ring microphone, Big Shoulders and Public Sans, new genre hues
 - 061: Playback loudness targets -21 LUFS, reached by cutting
+- 062: One set of player numbers on every platform
 
 ---
 
@@ -524,3 +525,25 @@ Sample failures to follow up: 11 of 15 measurement errors were LibriVox
 sections whose URL was an item folder (fixed in `build_db`, tick 22), and two
 episodes measured absurdly (+9.1 and -70 LUFS), which the measurement should
 flag rather than publish.
+
+---
+
+## 062: One set of player numbers on every platform
+
+*Date: 2026-10-22*
+
+Every player uses the same numbers: the sleep timer fades over its last 10
+seconds; speeds are 0.75, 1, 1.25, 1.5, and 2; the listening position saves
+every 5 seconds and on pause; resuming after an interruption rewinds 3 seconds.
+
+**Why**: the binding design docs, written from the code on 2026-10-22, found
+three platforms disagreeing (a 10 s fade on Apple and Android against 20 s on
+the web; a 0.8 speed floor on the web against 0.75; saves every 5 s against 10 s;
+a 3 s rewind on Apple against 5 s on Android). Feature parity means the same
+verb with the same feel; a listener who falls asleep on the phone and wakes to
+the web should meet the same timer. Each value is the one most platforms
+already used.
+
+**How to apply**: one named constant per value in each client, the same names
+everywhere, mirrored in each platform's design doc. What plays after an episode
+ends (the queue rule) is not settled here: it is the owner's (SCRATCHPAD item 9).
