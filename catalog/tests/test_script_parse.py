@@ -6,10 +6,11 @@ Broken controls, 2026-10-22, against mutated copies of script_parse.py:
     labels need not recur 6/7, no stub check 6/7, cast block runs on 5/7,
     parentheses read as speech 6/7. "Labels need not recur" first PASSED 7/7: its
     prose word ("Then") was on the never-a-label list, so the fixture now uses "Truly".
-Broken controls, 2026-10-23 (where the play begins and ends): no play bounds 10/15 (the
-    cached-text shape check among them), no back matter 13/15, no full-name expansion 13/15,
-    no cast sub-lists 14/15, no honorific labels 14/15. The cached-text check first PASSED
-    with no bounds: it took a "* * *" separator for the play's first heading.
+Broken controls, 2026-10-23 (where the play begins and ends): no play bounds 11/17 (the
+    cached-text shape check among them), no back matter 15/17, no full-name expansion 15/17,
+    no cast sub-lists 16/17, no honorific labels 16/17. The cached-text check first PASSED
+    with no bounds: it took a "* * *" separator for the play's first heading. Plays counted
+    only inside the play window 16/17 (two plays refused); no set-aside gate 16/17.
 """
 import os
 import sys
@@ -308,6 +309,35 @@ def every_word_set_aside_is_still_accounted_for():
     for raw in (FARCE, FOLIO_NOTE):
         items, _ = P._stage_items(P.gutenberg_body(raw))
         assert _words("\n\n".join(i["source"] for i in items)) == _words(P.gutenberg_body(raw)), "a word was lost"
+
+
+def _small_play(a, b, n=40):
+    return "ACT I.\n\n" + "\n\n".join(f"{a}. A line of the scene, said plainly, {i}.\n\n{b}. And an answer said back, {i}."
+                                      for i in range(n)) + "\n\nTHE END."
+
+
+@case
+def two_plays_in_one_text_are_refused():
+    # one cast list, so only the whole-text count of first acts finds the second play
+    two = ("*** START OF THE PROJECT GUTENBERG EBOOK WORKS ***\n\nTHE FIRST PLAY\n\nCHARACTERS\n\nALDO\nBORIS\n\n"
+           + _small_play("ALDO", "BORIS") + "\n\nTHE SECOND PLAY\n\n" + _small_play("CYRIL", "DORA")
+           + "\n\n*** END OF THE PROJECT GUTENBERG EBOOK WORKS ***\n")
+    r = P.parse(two, "stage")
+    assert r["status"] == "parsed" and not r["clean"] and "several_plays_in_one_text" in r["issues"], r.get("issues")
+    one = ("*** START OF THE PROJECT GUTENBERG EBOOK ONE ***\n\nTHE FIRST PLAY\n\nCHARACTERS\n\nALDO\nBORIS\n\n"
+           + _small_play("ALDO", "BORIS") + "\n\n*** END OF THE PROJECT GUTENBERG EBOOK ONE ***\n")
+    r = P.parse(one, "stage")
+    assert r["clean"], r["issues"]
+
+
+@case
+def a_text_that_is_mostly_set_aside_is_refused():
+    essay = "\n\n".join("An essay on the drama and its history, which is not a play at all, part %d." % i
+                        for i in range(120))
+    r = P.parse("*** START OF THE PROJECT GUTENBERG EBOOK ESSAY ***\n\n" + essay + "\n\nCHARACTERS\n\nALDO\nBORIS\n\n"
+                + _small_play("ALDO", "BORIS") + "\n", "stage")
+    assert r["set_aside_share"] > P.CLEAN_SET_ASIDE and not r["clean"], (r["set_aside_share"], r["issues"])
+    assert "mostly_set_aside" in r["issues"], r["issues"]
 
 
 GUTENBERG_TEXTS = os.path.join(os.path.dirname(__file__), "..", ".cache", "gutenberg", "text")

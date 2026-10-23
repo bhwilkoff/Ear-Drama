@@ -46,6 +46,10 @@ MIN_WORDS = 500
 MIN_SPEECHES = 20
 CASTABLE_LINES = 5
 CLEAN_UNCLASSIFIED = 0.05
+# Measured 2026-10-23 over the 24 cached Gutenberg texts: a play set aside at most 28% of
+# its words (a farce with publishers' catalogs at both ends, a translation whose notes
+# follow it); a text that sets aside more holds something besides one play.
+CLEAN_SET_ASIDE = 0.40
 
 # ---- radio conventions (08b §2.1) ----------------------------------------------------------------
 CUE_TAGS = {
@@ -72,7 +76,9 @@ S_ROLE_OWN = re.compile(r"^_?(?P<role>%s)_?\.?\s*(?P<d>\[[^\]]*\]|\(_[^)]*_\)|\(
 S_ROLE_COLON = re.compile(r"^_?(?P<role>%s)_?\s*:\s*(?P<text>.+)$" % CAP, re.S)
 S_ROLE_INLINE = re.compile(r"^_?(?P<role>%s)_?\.\s+(?P<text>\S.+)$" % CAP, re.S)
 CASTHEAD = re.compile(r"^_?(CAST|CAST OF CHARACTERS|PERSONS|CHARACTERS|DRAMATIS PERSON(?:AE|Æ)|THE PERSONS OF THE PLAY|"
-                      r"PERSONS IN THE PLAY|PERSONS REPRESENTED|CHARACTERS IN THE PLAY)_?\.?:?\s*$", re.I)
+                      r"PERSONS IN THE PLAY|PERSONS REPRESENTED(?: IN THE PLAY)?|CHARACTERS IN THE PLAY)_?\.?:?\s*$", re.I)
+# A play's first act, counted over the whole text: two of them are two plays.
+FIRST_ACT = re.compile(r"^_?\[?(?:ACT\.?\s+(?:I|1|ONE|FIRST)\b(?![IVX])|ACTUS\s+PRIMUS|(?:THE\s+)?FIRST\s+ACT)", re.I)
 HEADING = re.compile(r"^_?(ACT|SCENE|CURTAIN|END|THE END|PERSONS|CHARACTERS|DRAMATIS|(?:THE )?FIRST ACT|"
                      r"(?:THE )?SECOND ACT|(?:THE )?THIRD ACT|(?:THE )?FOURTH ACT|(?:THE )?FIFTH ACT|PROLOGUE|EPILOGUE|"
                      r"PLAYS|CONTENTS|PREFACE|INTRODUCTION|NOTE|FOOTNOTES?|"
@@ -436,7 +442,12 @@ def _stage_items(text):
             continue
         items.append({"kind": "other", "source": p})
     items += [{"kind": "back", "source": p} for p in raw[end:]]
-    return items, casts
+    # plays are counted over the WHOLE text, so a play window never hides the others
+    whole = [(p.split("\n")[0].strip(), len(p.split("\n"))) for p in raw]
+    plays = max(sum(1 for f, _ in whole if CASTHEAD.match(f)),
+                sum(1 for f, n in whole if n <= 3 and FIRST_ACT.match(f) and len(f.split()) <= 6
+                    and not re.search(r"[—:–]", f)))
+    return items, max(casts, plays)
 
 
 # ---- the shared model ----------------------------------------------------------------------------
@@ -498,14 +509,19 @@ def parse(raw, kind):
         issues.append("fewer_than_two_castable_roles")
     if casts > 1:
         issues.append("several_plays_in_one_text")
+    aside = sum(len(i["source"].split()) for i in items if i["kind"] in ("front", "back"))
+    aside_share = aside / max(1, sum(len(i["source"].split()) for i in items))
+    if aside_share > CLEAN_SET_ASIDE:
+        issues.append("mostly_set_aside")
     if aliases:
         issues.append("possible_aliases")
     clean = not any(i in issues for i in ("unclassified_over_5pct", "fewer_than_two_castable_roles",
-                                          "several_plays_in_one_text"))
+                                          "several_plays_in_one_text", "mostly_set_aside"))
     return {"status": "parsed", "clean": clean, "issues": issues, "roles": list(roles.values()),
             "castable_roles": len(castable), "lines": lines, "unclassified": unclassified,
             "unclassified_share": round(share, 3), "aliases": aliases, "words": len(text.split()),
-            "set_aside": {k: sum(1 for i in items if i["kind"] == k) for k in ("front", "back")}}
+            "set_aside": {k: sum(1 for i in items if i["kind"] == k) for k in ("front", "back")},
+            "set_aside_share": round(aside_share, 3)}
 
 
 # ---- the measurement -----------------------------------------------------------------------------
