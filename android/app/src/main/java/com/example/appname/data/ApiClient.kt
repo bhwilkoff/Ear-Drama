@@ -10,9 +10,12 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
+import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /**
  * Shared API client — ALL network calls go through this Hilt
@@ -30,7 +33,40 @@ import kotlinx.serialization.json.Json
 @Singleton
 class ApiClient @Inject constructor() {
 
+    /**
+     * The one OkHttp client: Ktor, the catalog refresh, and ExoPlayer's audio
+     * all ride it, so the User-Agent archive.org expects is set in one place.
+     */
+    val okHttp: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain ->
+            chain.proceed(chain.request().newBuilder().header("User-Agent", USER_AGENT).build())
+        }
+        .build()
+
+    /** A conditional GET's result: [body] is null on 304 or a failed status. */
+    class Conditional(val code: Int, val etag: String?, val body: InputStream?, private val onClose: () -> Unit) :
+        AutoCloseable {
+        override fun close() = onClose()
+    }
+
+    /** An ETag-conditional GET whose body the caller streams, then closes. Blocking. */
+    fun conditionalGet(url: String, etag: String?): Conditional {
+        val request = Request.Builder().url(url).apply {
+            if (!etag.isNullOrEmpty()) header("If-None-Match", etag)
+        }.build()
+        val response = okHttp.newCall(request).execute()
+        val ok = response.isSuccessful && response.code != 304
+        return Conditional(response.code, response.header("ETag"), if (ok) response.body.byteStream() else null) {
+            response.close()
+        }
+    }
+
+    companion object {
+        const val USER_AGENT = "EarDrama-Android (https://eardrama.org)"
+    }
+
     @PublishedApi internal val client = HttpClient(OkHttp) {
+        engine { preconfigured = okHttp }
         install(ContentNegotiation) {
             json(
                 Json {
