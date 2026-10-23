@@ -53,14 +53,17 @@
      the iPhone or Mac, take a part, record with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
      Through out of order. Nine stage plays ship; no radio play parses clean yet.
-- **Status (2026-10-22, 10:10 PM MT, tick 25)**: the 1.0 loop runs from
+- **Status (2026-10-23, 7:10 AM MT, tick 53)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (`/loop Read LOOP-PLAN.md and run the next tick`, a 5-minute
-  cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.8:
-  the listening apps on all five core platforms (M2 to M4), the catalog with the
-  owner's rights rulings, genres, folds, the transcript gate, the publish
-  workflow, the web's site pages and offline, and the plays groundwork (M7).
-  Running in agents: evenings (Tonight in 19xx), Apple downloads, loudness at
-  catalog scale. Decisions 056-061 and catalog 004-007 hold this session's rulings.
+  cooldown); its tick log is `AUTONOMOUS_PROGRESS.md`. Built on main at 1.0.23:
+  the listening apps on all five core platforms (M2 to M4); the catalog with the
+  owner's rights rulings, transcripts and loudness; Tonight in 19xx in the data
+  plane and on the web's Radio tab; plays phase 1 on iPhone, iPad and Mac with
+  11 stage plays (M7); the binding design docs for every platform and their
+  parity fixes (Decision 062's player numbers everywhere); the stubs (M9). None
+  of it is verified until you play it. Running in agents: Android plays, the web
+  plays, Radio on Apple, the M5 Worker (local only, nothing deployed).
+  Decisions 056-062 and catalog 004-008 hold this session's rulings.
 - **Catalog now** (rebuilt on main, tick 22-23): 155,608 episodes in 15,695
   series; served 108,005 (25.7 MB compressed); clean 7,716 (LibriVox projects
   still being recorded are not served). Research database and caches: the
