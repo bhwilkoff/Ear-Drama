@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +16,8 @@ import com.example.appname.app.AppNameApplication
 import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LaunchDoors
 import com.example.appname.ui.AppRoot
+import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.isTelevision
 import com.example.appname.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -52,9 +55,12 @@ class MainActivity : ComponentActivity() {
         // A recreated Activity (rotation) must not re-open the launch doors.
         if (savedInstanceState == null) openDoors(intent)
 
+        val television = isTelevision()
         setContent {
             AppTheme {
-                AppRoot(container = (application as AppNameApplication).container, inbox = inbox, muted = playerMuted)
+                CompositionLocalProvider(LocalIsTelevision provides television) {
+                    AppRoot(container = (application as AppNameApplication).container, inbox = inbox, muted = playerMuted)
+                }
             }
         }
     }
