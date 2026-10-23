@@ -1,0 +1,317 @@
+# The catalog publish step (LOOP-PLAN M1; docs/CATALOG-CONTRACT.md §2, §7).
+#
+#   build    NO lock. Restore the research database and harvest caches from the
+#            newest dated catalog Release, rebuild (build_db, enrich_db), run
+#            every catalog suite, build the served and clean-only projections
+#            and the web projection, run the contract tests over the real
+#            artifacts, and print what this publish would change.
+#   publish  holds `catalog-writers`, the one lock every catalog writer shares,
+#            for a few minutes. Re-reads what is published NOW, refuses a
+#            shrink past the floor, uploads ear-drama.sqlite.zz + manifest.json
+#            to the rolling Release `catalog-latest`, and deploys the site with
+#            the web projection under /data/ to Pages.
+#
+# A run that read nothing goes red: no dated Release, a checksum mismatch, an
+# empty build, a red suite, or a projection under its floor each fail the run
+# before anything is published. A red X is reserved for broken (docs/CI-FLEET.md
+# section 5): Pages not yet served from Actions is a warning, not a failure.
+#
+# The public-web gate (contract §6): the web projection serves `clean` rows only
+# unless the repository variable DMCA_AGENT_REGISTERED is exactly 'true'
+# (Settings > Secrets and variables > Actions > Variables). The native apps'
+# projection serves clean and unclaimed rows either way.
+#
+# Pages: this deploys through Actions, so it needs Settings > Pages > Source set
+# to "GitHub Actions". Until then (build_type 'legacy', main served from the
+# repo root) the Pages steps are skipped with a warning and the Release still
+# publishes. Once switched, THIS workflow is what puts the site on Pages: a
+# push to main no longer changes eardrama.org until the next run or a dispatch.
+#
+# Push events do not start workflows in this repo (measured), so it runs on a
+# schedule and on dispatch.
+
+name: Catalog publish
+
+on:
+  schedule:
+    - cron: '41 9 * * *'          # daily, off the hour; crons land hours late
+  workflow_dispatch:
+    inputs:
+      shrink_reason:
+        description: 'Recorded reason that lets a catalog shrink past the floor publish (blank = refuse)'
+        default: ''
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash                   # explicit shell = bash -eo pipefail: `tool | tee` cannot hide a crash
+
+env:
+  REPO: ${{ github.repository }}
+  # The merge guard's floor: a publish that serves more than this fraction
+  # fewer episodes than the one live now is refused without a recorded reason
+  # (Archive Watch Decision 020). Takedowns and single-rule changes sit well
+  # inside it; a broken parse or a half-read cache does not.
+  MAX_SHRINK: '0.02'
+  # Plumbing, not policy: the rebuild against the snapshot it was restored
+  # from. Looser, because a dated snapshot can predate rights rulings the
+  # current audit applies (the 2026-10-21 snapshot serves 121,907; the
+  # 2026-10-22 audit 116,380, -4.5%).
+  RESEARCH_FLOOR: '0.10'
+  SHRINK_REASON: ${{ inputs.shrink_reason }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DMCA_AGENT_REGISTERED: ${{ vars.DMCA_AGENT_REGISTERED }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Restore the research database and caches (newest dated catalog Release)
+        id: restore
+        run: |
+          # Never `|| true` a restore: with nothing restored, build_db builds
+          # from nothing (docs/CI-FLEET.md section 3).
+          tag=$(gh release list -R "$REPO" --limit 100 --json tagName \
+            --jq '[.[].tagName | select(test("^catalog-[0-9]{4}-[0-9]{2}-[0-9]{2}$"))] | sort | last // empty')
+          if [ -z "$tag" ]; then
+            echo "::error::no dated catalog Release (catalog-YYYY-MM-DD) to restore from"
+            exit 1
+          fi
+          echo "restoring from $tag"
+          mkdir -p catalog/dist catalog/out catalog/.cache
+          bash tools/gh_retry.sh gh release download "$tag" -R "$REPO" -D catalog/dist --clobber \
+            -p radio-catalog.sqlite.xz -p harvest-cache.tar.xz -p SHA256SUMS
+          (cd catalog/dist && sha256sum -c --ignore-missing SHA256SUMS)
+          xz -dc catalog/dist/radio-catalog.sqlite.xz > catalog/out/restored.sqlite
+          xz -dc catalog/dist/harvest-cache.tar.xz | tar -x -C catalog/.cache
+          rm -f catalog/dist/*.xz
+          echo "cache files: $(find catalog/.cache -type f | wc -l)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild (build_db, enrich_db)
+        working-directory: catalog
+        run: |
+          set -euo pipefail
+          python3 tools/build_db.py 2>&1 | tee out/build.log
+          python3 tools/enrich_db.py 2>&1 | tail -5
+
+      - name: Every catalog suite (a red test blocks publish)
+        run: bash catalog/tests/run_all.sh
+
+      - name: Build the served, clean-only, and web projections
+        working-directory: catalog
+        run: |
+          set -euo pipefail
+          python3 tools/build_projection.py --out out/publish | tail -3
+          python3 tools/build_projection.py --clean-only --out out/publish-clean | tail -3
+          # The public-web gate: one flag, opened only by the repository variable.
+          gate=""
+          if [ "${DMCA_AGENT_REGISTERED:-}" = "true" ]; then gate="--include-unclaimed"; fi
+          python3 tools/build_web_projection.py --src out/publish/ear-drama.sqlite --out out/web $gate > out/web.log
+          head -12 out/web.log
+          want=$([ -n "$gate" ] && echo False || echo True)
+          got=$(python3 -c "import json;print(json.load(open('out/web/manifest.json'))['cleanOnly'])")
+          if [ "$got" != "$want" ]; then
+            echo "::error::web projection cleanOnly=$got, but the gate says $want"
+            exit 1
+          fi
+          echo "web projection: cleanOnly=$got"
+
+      - name: Contract tests over the real artifacts
+        working-directory: catalog
+        run: |
+          PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_projection.py
+          PROJECTION=out/publish-clean/ear-drama.sqlite python3 tests/test_projection.py
+          WEB_PROJECTION=out/web python3 tests/test_web_projection.py
+
+      - name: What this publish changes (against what is live; read-only)
+        run: |
+          mkdir -p live
+          if out=$(gh release view catalog-latest -R "$REPO" --json tagName 2>&1); then
+            bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber \
+              -p manifest.json -p ear-drama.sqlite.zz
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "no catalog-latest Release yet: first publish"
+          else
+            echo "::error::could not read catalog-latest: $out"
+            exit 1
+          fi
+          python3 catalog/tools/publish_diff.py --label "Served catalog" \
+            --old-manifest live/manifest.json --new-manifest catalog/out/publish/manifest.json \
+            --old-db live/ear-drama.sqlite.zz --new-db catalog/out/publish/ear-drama.sqlite \
+            --old-research catalog/out/restored.sqlite --research catalog/out/radio-catalog.sqlite \
+            --research-floor "$RESEARCH_FLOOR" --reason "$SHRINK_REASON" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the publishable artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-publish
+          path: |
+            catalog/out/publish/ear-drama.sqlite.zz
+            catalog/out/publish/manifest.json
+            catalog/out/web/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The ONLY job holding the catalog writers' lock. GitHub keeps one pending
+    # job per group (a newer arrival destroys the older pending one), so the
+    # hold stays short: no build happens under it (docs/CI-FLEET.md section 1).
+    concurrency:
+      group: catalog-writers
+      cancel-in-progress: false
+    permissions:
+      contents: write             # the catalog-latest Release
+      pages: write                # deploy-pages
+      id-token: write             # deploy-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: catalog-publish
+          path: built
+
+      - name: Fetch what is published now (fresh, under the lock)
+        id: live
+        run: |
+          mkdir -p live
+          if out=$(gh release view catalog-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            echo "release=yes" >> "$GITHUB_OUTPUT"
+            case " $out " in
+              *" manifest.json "*)
+                bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber -p manifest.json ;;
+              *)
+                # Only a NON-EXISTENT release is a first run. One that exists
+                # without its manifest is an emergency, not a fresh start.
+                if [ -z "$SHRINK_REASON" ]; then
+                  echo "::error::catalog-latest exists but has no manifest.json (assets: $out); dispatch with a shrink_reason to republish over it"
+                  exit 1
+                fi
+                echo "::warning::catalog-latest has no manifest.json; publishing over it for the recorded reason: $SHRINK_REASON" ;;
+            esac
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "release=no" >> "$GITHUB_OUTPUT"
+            echo "no catalog-latest Release yet: first publish"
+          else
+            echo "::error::could not read catalog-latest: $out"
+            exit 1
+          fi
+          site=$(cat CNAME)
+          code=$(curl -sS -o live/web-manifest.json -w '%{http_code}' "https://$site/data/manifest.json")
+          case "$code" in
+            200) echo "live web projection: $(python3 -c "import json;m=json.load(open('live/web-manifest.json'));print(m['generatedAt'], m['counts']['episodes'])")" ;;
+            404) rm -f live/web-manifest.json; echo "no web projection live yet: first publish" ;;
+            *) echo "::error::https://$site/data/manifest.json answered $code"; exit 1 ;;
+          esac
+
+      - name: Refuse a shrunken publish (the merge guard)
+        run: |
+          python3 catalog/tools/publish_diff.py --label "Served catalog" \
+            --old-manifest live/manifest.json --new-manifest built/publish/manifest.json \
+            --max-shrink "$MAX_SHRINK" --reason "$SHRINK_REASON" --summary "$GITHUB_STEP_SUMMARY"
+          python3 catalog/tools/publish_diff.py --label "Web projection" \
+            --old-manifest live/web-manifest.json --new-manifest built/web/manifest.json \
+            --max-shrink "$MAX_SHRINK" --reason "$SHRINK_REASON" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload to the rolling Release catalog-latest
+        run: |
+          if [ "${{ steps.live.outputs.release }}" = "no" ]; then
+            bash tools/gh_retry.sh gh release create catalog-latest -R "$REPO" --latest=false \
+              --title "Catalog (rolling)" \
+              --notes "The served catalog every Ear Drama app reads (docs/CATALOG-CONTRACT.md §2): ear-drama.sqlite.zz (raw DEFLATE) and manifest.json. Replaced by .github/workflows/catalog-publish.yml; the research database lives on the dated catalog-YYYY-MM-DD Releases."
+          fi
+          # --clobber deletes before it uploads, so the database goes first and
+          # the manifest that vouches for it (sha256) goes last.
+          bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/ear-drama.sqlite.zz
+          bash tools/gh_retry.sh gh release upload catalog-latest -R "$REPO" --clobber built/publish/manifest.json
+          # Evidence, not a claim: the hosted sizes match what was built.
+          for f in ear-drama.sqlite.zz manifest.json; do
+            want=$(stat -c %s "built/publish/$f")
+            got=$(gh release view catalog-latest -R "$REPO" --json assets --jq ".assets[] | select(.name == \"$f\") | .size")
+            if [ "$got" != "$want" ]; then
+              echo "::error::catalog-latest/$f is ${got:-missing} bytes; built $want"
+              exit 1
+            fi
+            echo "catalog-latest/$f: $got bytes"
+          done
+          # The yield line tools/audit_workflow_health.py judges a green run by.
+          echo "[catalog-publish] published $(python3 -c "import json;m=json.load(open('built/publish/manifest.json'));print(m['counts']['episodes'], 'episodes,', m['bytes']['zz'], 'bytes')") to catalog-latest"
+
+      - name: Is Pages served from Actions?
+        id: pages
+        run: |
+          if bt=$(gh api "repos/$REPO/pages" --jq .build_type 2>&1); then :; else
+            if printf '%s' "$bt" | grep -q "HTTP 404"; then bt=none; else
+              echo "::error::could not read the Pages configuration: $bt"
+              exit 1
+            fi
+          fi
+          if [ "$bt" = "workflow" ]; then
+            echo "go=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::Pages build_type is '$bt', not 'workflow': the web projection was built and tested but not deployed. Owner: Settings > Pages > Source > GitHub Actions."
+          fi
+
+      - name: Assemble the site with the web projection under /data/
+        if: steps.pages.outputs.go == 'yes'
+        run: |
+          # Everything the repo root served when Pages read main, minus the
+          # app sources and pipeline (not the website), plus /data/.
+          mkdir _site
+          rsync -a --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='/.agents' \
+            --exclude='/.devcontainer' --exclude='/apple' --exclude='/android' --exclude='/windows' \
+            --exclude='/catalog' --exclude='/tools' --exclude='/ci_scripts' --exclude='/docs' \
+            --exclude='/built' --exclude='/live' --exclude='/_site' ./ _site/
+          cp -R built/web _site/data
+          for f in index.html 404.html CNAME .nojekyll manifest.json css/styles.css js/app.js \
+                   data/manifest.json data/index/series.json; do
+            test -s "_site/$f" || { echo "::error::_site/$f is missing or empty; not deploying"; exit 1; }
+          done
+          echo "site files: $(find _site -type f | wc -l); data files: $(find _site/data -type f | wc -l); $(du -sh _site | cut -f1)"
+
+      - uses: actions/configure-pages@v5
+        if: steps.pages.outputs.go == 'yes'
+
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.go == 'yes'
+        with:
+          path: _site
+
+      - id: deployment
+        if: steps.pages.outputs.go == 'yes'
+        uses: actions/deploy-pages@v4
+
+      - name: The live site serves this run's web projection
+        if: steps.pages.outputs.go == 'yes'
+        run: |
+          site=$(cat CNAME)
+          want=$(python3 -c "import json;print(json.load(open('built/web/manifest.json'))['generatedAt'])")
+          for i in 1 2 3 4 5 6; do
+            got=$(curl -sS "https://$site/data/manifest.json?run=${{ github.run_id }}" \
+              | python3 -c "import json,sys;print(json.load(sys.stdin)['generatedAt'])" 2>/dev/null || true)
+            if [ "$got" = "$want" ]; then
+              echo "[catalog-publish] published $(python3 -c "import json;print(json.load(open('built/web/manifest.json'))['counts']['episodes'])") web episodes; live data/manifest.json generatedAt $got"
+              exit 0
+            fi
+            sleep $((i * 10))
+          done
+          echo "::warning::deployed, but https://$site/data/manifest.json still says '${got}' (want $want) after ~3.5 minutes; the CDN may lag"
