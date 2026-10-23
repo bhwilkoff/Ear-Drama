@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ear Drama</title>
   <!-- PWA / iOS Safari standalone support.
        NO viewport-fit=cover — Safari auto-clips to safe area without it.
@@ -16,77 +16,184 @@
   <meta name="theme-color" content="#141619" media="(prefers-color-scheme: dark)">
   <!-- END design-tokens -->
 
-  <!-- Open Graph — read by Discord / iMessage / Slack / Bluesky / Mastodon
-       / Threads (and every other major link-preview consumer). Mirror in
-       per-view <title> updates from js/app.js. -->
-  <meta property="og:title" content="Ear Drama">
-  <meta property="og:description" content="Your tagline here">
-  <meta property="og:type" content="website">
-  <!-- <meta property="og:image" content="https://example.com/og-image.png"> -->
+  <!-- Where the catalog's web projection lives (docs/CATALOG-CONTRACT.md §4),
+       relative to this page. Local development: a `data` symlink to
+       catalog/out/web (see docs/platforms/web.md, "Local data"). -->
+  <meta name="ed-data" content="data/">
 
-  <!-- Smart App Banner — uncomment after App Store / Play Store ship.
-       iOS uses meta tag; Android uses Digital Asset Links + Chrome
-       install prompt (handled via /.well-known/assetlinks.json). -->
-  <!-- <meta name="apple-itunes-app" content="app-id=YOUR_APP_ID"> -->
+  <meta property="og:title" content="Ear Drama">
+  <meta property="og:type" content="website">
 
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
-  <!-- Skip link for keyboard navigation (WCAG AA) -->
   <a href="#main-content" class="skip-link">Skip to content</a>
 
-  <!-- AUTH SCREEN — shown when no session -->
-  <div id="auth-screen" class="screen" aria-label="Sign in">
-    <div class="auth-card">
-      <h1 class="auth-title">Ear Drama</h1>
-      <p class="auth-subtitle">Your tagline here</p>
-      <form id="auth-form" novalidate>
-        <div class="field-group">
-          <label for="auth-handle" class="field-label">Handle</label>
-          <input type="text" id="auth-handle" class="field-input" placeholder="you@example.com" required>
-        </div>
-        <div class="field-group">
-          <label for="auth-password" class="field-label">Password</label>
-          <input type="password" id="auth-password" class="field-input" required>
-        </div>
-        <div id="auth-error" class="error-banner" hidden role="alert"></div>
-        <button type="submit" class="btn btn-primary btn-full" id="auth-submit">Sign in</button>
-      </form>
-    </div>
-  </div>
+  <div class="shell">
+    <nav class="sidebar" aria-label="Main">
+      <p class="sidebar-title">Ear Drama</p>
+      <a class="nav-item" href="?view=listen" data-nav="listen">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9z"/></svg>
+        <span>Listen</span></a>
+      <a class="nav-item" href="?view=series" data-nav="series">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/></svg>
+        <span>Series</span></a>
+      <a class="nav-item" href="?view=search" data-nav="search">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
+        <span>Search</span></a>
+      <a class="nav-item" href="?view=library" data-nav="library">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h3v16H4zm5 0h3v16H9zm5.2.6 2.9-.8 4.2 15.5-2.9.8z"/></svg>
+        <span>Library</span></a>
+    </nav>
 
-  <!-- MAIN APP — shown when authenticated -->
-  <div id="app-screen" class="screen" hidden>
+    <main id="main-content" tabindex="-1">
+      <section id="view-listen" class="view" aria-labelledby="listen-h" hidden>
+        <h1 id="listen-h" class="view-heading" tabindex="-1">Listen</h1>
+        <div id="listen-body"></div>
+      </section>
 
-    <!-- SIDEBAR -->
-    <aside id="channels-sidebar" class="channels-sidebar" aria-label="Navigation">
-      <div class="sidebar-header">
-        <h2 class="sidebar-title">Ear Drama</h2>
-      </div>
-      <nav class="sidebar-nav" aria-label="Main navigation">
-        <!-- Add nav items here. Pattern: -->
-        <!-- <button class="sidebar-nav-item active" id="nav-home-btn" data-view="home">
-          <svg>...</svg><span>Home</span>
-        </button> -->
-      </nav>
-    </aside>
+      <section id="view-series" class="view" aria-labelledby="series-h" hidden>
+        <h1 id="series-h" class="view-heading" tabindex="-1">Series</h1>
+        <form id="browse-filters" class="filters" aria-label="Filter series">
+          <label class="filter"><span class="caption">Genre</span><select id="f-genre" name="genre"></select></label>
+          <label class="filter"><span class="caption">Decade</span><select id="f-decade" name="decade"></select></label>
+          <label class="filter"><span class="caption">Network</span><select id="f-network" name="network"></select></label>
+          <label class="filter"><span class="caption">Sort</span><select id="f-sort" name="sort">
+            <option value="name">A to Z</option>
+            <option value="count">Most episodes</option>
+            <option value="first">Oldest first</option>
+          </select></label>
+        </form>
+        <p id="browse-count" class="caption" aria-live="polite"></p>
+        <div id="browse-body"></div>
+      </section>
 
-    <!-- VIEWS — one section per view, toggled by showView() -->
-    <main id="main-content">
-      <section id="view-home" class="view" aria-label="Home">
-        <div class="view-inner">
-          <h2 class="view-heading">Home</h2>
-          <p>Your first view goes here.</p>
+      <section id="view-show" class="view" aria-labelledby="show-h" hidden>
+        <div id="show-body"></div>
+      </section>
+
+      <section id="view-episode" class="view" aria-labelledby="episode-h" hidden>
+        <div id="episode-body"></div>
+      </section>
+
+      <section id="view-search" class="view" aria-labelledby="search-h" hidden>
+        <h1 id="search-h" class="view-heading" tabindex="-1">Search</h1>
+        <form id="search-form" role="search" class="search-form">
+          <label for="search-q" class="sr-only">Search titles, series, and people</label>
+          <input id="search-q" class="field-input" type="search" name="q" autocomplete="off"
+                 placeholder="Titles, series, people" enterkeyhint="search">
+        </form>
+        <div id="search-body" aria-live="polite"></div>
+      </section>
+
+      <section id="view-library" class="view" aria-labelledby="library-h" hidden>
+        <h1 id="library-h" class="view-heading" tabindex="-1">Library</h1>
+        <div class="segmented" role="group" aria-label="Library section" id="library-tabs">
+          <button type="button" data-lib="queue" aria-pressed="true">Queue</button>
+          <button type="button" data-lib="history" aria-pressed="false">History</button>
+          <button type="button" data-lib="following" aria-pressed="false">Following</button>
         </div>
+        <div id="library-body"></div>
       </section>
     </main>
-
   </div>
+
+  <!-- The player bar: in the document flow above the tab bar, never position:fixed. -->
+  <section id="player" class="player" aria-label="Player" hidden>
+    <div class="player-progress" aria-hidden="true"><div id="mini-progress"></div></div>
+    <div class="player-row">
+      <button type="button" id="mini-open" class="player-title" aria-label="Open player">
+        <span id="mini-title" class="body-strong"></span>
+        <span id="mini-meta" class="caption"></span>
+      </button>
+      <button type="button" class="icon-btn" data-act="back" aria-label="Back 15 seconds">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/><text x="12" y="16.5" text-anchor="middle" font-size="7" font-weight="700">15</text></svg>
+      </button>
+      <button type="button" class="icon-btn icon-btn-primary" data-act="toggle" aria-label="Play">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="i-play"><path d="M8 5v14l11-7z"/></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="i-pause"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>
+      </button>
+      <button type="button" class="icon-btn" data-act="fwd" aria-label="Forward 30 seconds">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/><text x="12" y="16.5" text-anchor="middle" font-size="7" font-weight="700">30</text></svg>
+      </button>
+      <button type="button" class="icon-btn wide-only" data-act="sleep" aria-label="Sleep timer">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12.3 3a9 9 0 1 0 8.7 11.3A7 7 0 0 1 12.3 3z"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <nav class="tabbar" aria-label="Main">
+    <a class="tab" href="?view=listen" data-nav="listen">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9z"/></svg>
+      <span>Listen</span></a>
+    <a class="tab" href="?view=series" data-nav="series">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/></svg>
+      <span>Series</span></a>
+    <a class="tab" href="?view=search" data-nav="search">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
+      <span>Search</span></a>
+    <a class="tab" href="?view=library" data-nav="library">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h3v16H4zm5 0h3v16H9zm5.2.6 2.9-.8 4.2 15.5-2.9.8z"/></svg>
+      <span>Library</span></a>
+  </nav>
+
+  <dialog id="now-playing" class="now-playing" aria-labelledby="np-title">
+    <div class="np-inner">
+      <div class="np-top">
+        <button type="button" class="icon-btn" id="np-close" aria-label="Close player">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6-1.4-1.4L12 12.2 7.4 7.6z"/></svg>
+        </button>
+      </div>
+      <a id="np-series" class="np-series section-header" href="#"></a>
+      <h2 id="np-title" class="view-heading"></h2>
+      <p id="np-meta" class="caption tabular"></p>
+      <label for="np-seek" class="sr-only">Position</label>
+      <input id="np-seek" class="seek" type="range" min="0" max="0" step="1" value="0">
+      <div class="np-times tabular caption"><span id="np-pos">0:00</span><span id="np-left">0:00</span></div>
+      <div class="np-controls">
+        <button type="button" class="icon-btn icon-btn-lg" data-act="back" aria-label="Back 15 seconds">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/><text x="12" y="16.5" text-anchor="middle" font-size="7" font-weight="700">15</text></svg>
+        </button>
+        <button type="button" class="icon-btn icon-btn-lg icon-btn-primary" data-act="toggle" aria-label="Play">
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="i-play"><path d="M8 5v14l11-7z"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="i-pause"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg>
+        </button>
+        <button type="button" class="icon-btn icon-btn-lg" data-act="fwd" aria-label="Forward 30 seconds">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/><text x="12" y="16.5" text-anchor="middle" font-size="7" font-weight="700">30</text></svg>
+        </button>
+      </div>
+      <div class="np-options">
+        <label class="filter"><span class="caption">Speed</span>
+          <select id="np-speed">
+            <option value="0.8">0.8×</option><option value="1" selected>1×</option>
+            <option value="1.2">1.2×</option><option value="1.5">1.5×</option><option value="2">2×</option>
+          </select></label>
+        <button type="button" class="btn sleep-btn" id="np-sleep" popovertarget="sleep-menu">
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline"><path d="M12.3 3a9 9 0 1 0 8.7 11.3A7 7 0 0 1 12.3 3z"/></svg>
+          <span class="sleep-label">Sleep timer</span></button>
+      </div>
+      <p id="np-next" class="caption"></p>
+    </div>
+    <div id="sleep-menu" class="menu" popover aria-label="Sleep timer">
+      <p class="menu-title caption">Sleep timer</p>
+      <button type="button" data-sleep="end">End of this episode</button>
+      <button type="button" data-sleep="15">15 minutes</button>
+      <button type="button" data-sleep="30">30 minutes</button>
+      <button type="button" data-sleep="45">45 minutes</button>
+      <button type="button" data-sleep="60">1 hour</button>
+      <button type="button" data-sleep="off" id="sleep-off" hidden>Turn off</button>
+    </div>
+  </dialog>
+
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+  <audio id="audio" preload="metadata"></audio>
 
   <script src="js/compat.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/player.js"></script>
   <script src="js/app.js"></script>
   <!-- Additive smart-TV layer + Cast sender: both self-disable off-TV
        (tv.js adds html.tv only on a TV runtime; cast-sender no-ops when the

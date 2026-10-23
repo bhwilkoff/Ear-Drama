@@ -33,16 +33,51 @@ function assertEq(a, b, msg) {
 
 // --- TESTS -----------------------------------------------------------
 
-test('API exposes the core surface', () => {
+test('API exposes the data verbs', () => {
   assert(typeof API === 'object', 'API should be an object');
-  assert(typeof API.get === 'function', 'API.get should be a function');
-  assert(typeof API.post === 'function', 'API.post should be a function');
-  assert(typeof API.refreshIfNeeded === 'function', 'API.refreshIfNeeded should be a function');
+  for (const f of ['getJSON', 'manifest', 'seriesIndex', 'listen', 'thisDay', 'seriesPage', 'episodeDetail',
+                   'searchSeries', 'searchEpisodeNumbers', 'searchDocs', 'rightsLine']) {
+    assert(typeof API[f] === 'function', `API.${f} should be a function`);
+  }
 });
 
 test('shareTarget is exposed as an async function', () => {
   assert(typeof shareTarget === 'function', 'shareTarget should be a function');
   assert(shareTarget.constructor.name === 'AsyncFunction', 'shareTarget should be async');
+});
+
+// Golden vectors printed by catalog/tools/build_web_projection.py: the browser
+// must find the same shard and the same words as the builder that wrote them.
+test('fnv1a and shardOf match the builder', () => {
+  assertEq(API.fnv1a(''), 2166136261);
+  assertEq(API.fnv1a('suspense|1948-11-18'), 2877880940);
+  assertEq(API.shardOf('suspense|1948-11-18'), 'a6c');
+  assertEq(API.shardOf('familytheater|1948-09-30'), '000');
+  assertEq(API.shardOf('Caf\u00e9 No\u00ebl|x'), '3da');
+});
+
+test('control: a different id lands in a different shard', () => {
+  assert(API.shardOf('suspense|1948-11-19') !== 'a6c', 'one day later should not collide here');
+});
+
+test('tokens fold like unicode61 and match the builder', () => {
+  assertEq(JSON.stringify(API.tokens('Sorry, Wrong Number (Agnes Moorehead) \u2014 Caf\u00e9 \u00d1and\u00fa 1948')),
+    JSON.stringify(['sorry', 'wrong', 'number', 'agnes', 'moorehead', 'cafe', 'nandu', '1948']));
+  assertEq(API.termFile('\u00f1andu'), 'xf161');
+  assertEq(API.termFile('1948'), '19');
+});
+
+// Plain JS has no compiler: every API.x a script calls must be exported.
+test('every API.x called in js/*.js is exported', () => {
+  if (typeof require === 'undefined') return;
+  const fs = require('node:fs');
+  const called = new Set();
+  for (const f of fs.readdirSync(__dirname).filter(f => f.endsWith('.js') && !f.endsWith('.test.js'))) {
+    for (const m of fs.readFileSync(__dirname + '/' + f, 'utf-8').matchAll(/\bAPI\.([A-Za-z]+)/g)) called.add(m[1]);
+  }
+  const missing = [...called].filter(n => !(n in API));
+  assertEq(missing.join(','), '');
+  assert(!('notAVerb' in API), 'control: the check can fail');
 });
 
 // --- RUNNER ----------------------------------------------------------
