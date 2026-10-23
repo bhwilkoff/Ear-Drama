@@ -36,6 +36,14 @@ const pairs = [
   ['error', s.error, 'background', c.background, 4.5],
   ['success', s.success, 'background', c.background, 4.5],
   ['warning', s.warning, 'background', c.background, 4.5],
+  ...(c.secondary ? [
+    ['onSecondary', c.onSecondary, 'secondary', c.secondary, 4.5],
+    ['secondary', c.secondary, 'background', c.background, 3],
+  ] : []),
+  ...(c.link ? [
+    ['link', c.link, 'background', c.background, 4.5],
+    ['link', c.link, 'surface', c.surface, 4.5],
+  ] : []),
 ];
 for (const mode of ['light', 'dark']) {
   for (const [fa, a, fb, b, min] of pairs) {

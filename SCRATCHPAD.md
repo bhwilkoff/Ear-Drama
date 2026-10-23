@@ -16,11 +16,11 @@
 
 ## Current state
 
-- **Waiting on you** (most valuable first; detail in each pointer):
-  1. **Pick a palette**: `docs/research/palette/index.html` (On Air, Tuning Eye,
-     Catalin; the research favors Catalin). Unblocks the tokens and the icon.
+- **Waiting on you** (most valuable first; numbers stay stable as items close;
+  item 1, the palette, closed 2026-10-23: On Air, Decision 064):
   2. **May the loop download** the two fonts (google/fonts) and the CC0
-     microphone photo (Wikimedia Commons)?
+     microphone photo (Wikimedia Commons)? The icon (the white ring microphone
+     on On Air's tally red) waits on the photo.
   3. **Play the listening apps locally** (1.0.13; built, not yet played): web
      `ln -s catalog/out/web data && python3 -m http.server 8080`; Mac, run
      EarDrama.xcodeproj; Android `./gradlew :app:installDebug` with the Pixel

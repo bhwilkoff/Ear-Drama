@@ -81,6 +81,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 061: Playback loudness targets -21 LUFS, reached by cutting
 - 062: One set of player numbers on every platform
 - 063: Sign-in is verified at the Worker, which issues its own session; sync is last-write-wins per row
+- 064: The palette is On Air
 
 ---
 
@@ -576,3 +577,32 @@ table that holds a person's rows goes in `USER_TABLES`; the deletion test reads
 the tables from D1 and fails otherwise. Apple and Google sign-ins for the same
 person stay separate accounts until a linking decision is made. Setup steps:
 `docs/WORKER.md` (owner: LOOP-PLAN Needs Ben).
+
+---
+
+## 064: The palette is On Air
+
+*Date: 2026-10-23*
+
+Ear Drama's colors are the On Air direction (`docs/research/palette/README.md`):
+tally red (`#B0152F` light, `#E3384B` dark) for the one thing that is live (Play,
+the progress line, the playing episode), and the blue of 1930s mirrored-glass
+sets (`#0B6E99` / `#5AB4D6`, links `#6CC0E0` in dark) for links, the focus ring,
+and the selected tab, on neutral grounds. Genres take On Air's eight hues.
+
+**Why**: the owner, 2026-10-23: *"I really like the On Air colors and I think we
+should be building with those in mind."* The research recommended Catalin and
+named On Air's costs, which the owner accepted knowingly: red is already
+iHeartRadio's and Pocket Casts' color (brand distance 4.5 and 7.8), and a
+dark-mode red bright enough to read cannot carry white text, so the dark Play
+button takes near-black type (4.66:1, APCA Lc 36).
+
+**How to apply**: `design-tokens.json` holds the brand and semantic values plus
+three new brand keys (`secondary`, `onSecondary`, `link`);
+`tools/test_design_tokens.mjs` now checks their contrast. Red stays for what is
+live and never decorates; blue does the wayfinding (Decision 012: brand is
+chrome, genre hues are content). The genre hues need a `color.genre` group the
+generator does not yet write, and each client must move its links, focus and
+selected tab onto `link`/`secondary`; both follow once the sign-in work on every
+client is merged. The icon (the white ring microphone on tally red) waits on the
+CC0 photo download (SCRATCHPAD item 2).

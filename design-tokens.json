@@ -1,21 +1,24 @@
 {
-  "$about": "The one source of the app's look. Change a value here, run `node tools/design_tokens.mjs`, and every platform's token file is rewritten to match; `node tools/test_design_tokens.mjs` fails if any of them drifts. These values are the template's PLACEHOLDER look (a quiet slate on neutral gray), there to be replaced through the make-it-look-like-itself skill.",
+  "$about": "The one source of the app's look. Change a value here, run `node tools/design_tokens.mjs`, and every platform's token file is rewritten to match; `node tools/test_design_tokens.mjs` fails if any of them drifts. These values are Ear Drama's On Air palette (Decision 064; docs/research/palette/README.md): tally red for the one thing that is live, mirrored-glass blue for links, focus, and the selected tab.",
   "color": {
     "brand": {
-      "primary":      { "light": "#3F5E78", "dark": "#A7BFD6", "use": "the main action, the selected item, the accent" },
-      "onPrimary":    { "light": "#FFFFFF", "dark": "#0F1720", "use": "text and icons on primary" },
-      "background":   { "light": "#FFFFFF", "dark": "#141619", "use": "the page" },
-      "surface":      { "light": "#F5F6F8", "dark": "#1D2024", "use": "cards, panels, the sidebar" },
-      "surfaceAlt":   { "light": "#EBEDF0", "dark": "#272B30", "use": "hover, a quieter second surface" },
-      "text":         { "light": "#1A1C1F", "dark": "#ECEEF1", "use": "body text" },
-      "textMuted":    { "light": "#5B6270", "dark": "#A2A9B4", "use": "secondary text, captions" },
-      "border":       { "light": "#D3D7DE", "dark": "#3A3F47", "use": "hairlines and outlines" }
+      "primary":      { "light": "#B0152F", "dark": "#E3384B", "use": "the main action, the selected item, the accent" },
+      "onPrimary":    { "light": "#FFFFFF", "dark": "#120708", "use": "text and icons on primary" },
+      "background":   { "light": "#FFFFFF", "dark": "#0F0F11", "use": "the page" },
+      "surface":      { "light": "#F4F4F5", "dark": "#19191C", "use": "cards, panels, the sidebar" },
+      "surfaceAlt":   { "light": "#E8E8EB", "dark": "#232327", "use": "hover, a quieter second surface" },
+      "text":         { "light": "#131316", "dark": "#F2F2F4", "use": "body text" },
+      "textMuted":    { "light": "#5C5C66", "dark": "#C4C4CC", "use": "secondary text, captions" },
+      "border":       { "light": "#D8D8DD", "dark": "#34343A", "use": "hairlines and outlines" },
+      "secondary":    { "light": "#0B6E99", "dark": "#5AB4D6", "use": "the second accent: selected tab, secondary buttons" },
+      "onSecondary":  { "light": "#FFFFFF", "dark": "#06141B", "use": "text and icons on secondary" },
+      "link":         { "light": "#0B6E99", "dark": "#6CC0E0", "use": "links and the focus ring" }
     },
     "semantic": {
-      "success":      { "light": "#1E7A4F", "dark": "#5CC593", "use": "an operation that worked" },
-      "warning":      { "light": "#8A5A00", "dark": "#E8B04B", "use": "something needs attention" },
-      "error":        { "light": "#B42318", "dark": "#FF8A80", "use": "something failed" },
-      "errorSurface": { "light": "#FDECEA", "dark": "#3A1D1B", "use": "the error banner's fill" }
+      "success":      { "light": "#1D7A4A", "dark": "#5CC593", "use": "an operation that worked" },
+      "warning":      { "light": "#8A5300", "dark": "#E8B04B", "use": "something needs attention" },
+      "error":        { "light": "#C2410C", "dark": "#FF9466", "use": "something failed" },
+      "errorSurface": { "light": "#FDEEE8", "dark": "#3A1F16", "use": "the error banner's fill" }
     }
   },
   "font": {
