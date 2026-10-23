@@ -28,7 +28,8 @@ const Store = (() => {
 
   function card(ep) {
     return { id: ep.id, title: ep.title || null, series: ep.series || null, seriesName: ep.seriesName || null,
-             date: ep.date || null, url: ep.url || null, length: ep.length || null };
+             date: ep.date || null, url: ep.url || null, length: ep.length || null,
+             li: ep.li ?? null, ltp: ep.ltp ?? null };
   }
 
   /* ---- Resume positions ---- */

@@ -206,6 +206,20 @@ const API = (() => {
     return numbers.map(n => rowsOf(m.fields.doc, [byChunk.get(Math.floor(n / chunk))[n % chunk]])[0]);
   }
 
+  /**
+   * DECISIONS 061: play at -21 LUFS, reached by cutting. A volume factor in (0, 1]:
+   * the gain is -21 - I, clamped so the true peak stays at or below -1 dBTP, and
+   * never above 0 dB (a media element cannot boost). Unmeasured plays at 1.
+   */
+  const LOUDNESS_TARGET = -21;
+  function playbackVolume(li, ltp) {
+    if (li == null || !isFinite(li)) return 1;
+    let g = LOUDNESS_TARGET - li;
+    if (ltp != null && isFinite(ltp)) g = Math.min(g, -1 - ltp);
+    g = Math.min(g, 0);
+    return Math.pow(10, g / 20);
+  }
+
   /** The rights line, worded by the projection (contract §5.5); never "public domain". */
   async function rightsLine(rights, basis) {
     const m = await manifest();
@@ -216,7 +230,7 @@ const API = (() => {
   return {
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
     manifest, seriesIndex, listen, thisDay, seriesPage, episodeDetail,
-    searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
+    searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
   };
 })();
 

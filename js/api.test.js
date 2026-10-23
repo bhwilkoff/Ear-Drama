@@ -33,6 +33,17 @@ function assertEq(a, b, msg) {
 
 // --- TESTS -----------------------------------------------------------
 
+test('playbackVolume reaches -21 LUFS by cutting, clamped at -1 dBTP (DECISIONS 061)', () => {
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  assert(near(API.playbackVolume(-15, -6), Math.pow(10, -6 / 20)), 'a loud episode is cut 6 dB');
+  assert(near(API.playbackVolume(-18, -1.3), Math.pow(10, -3 / 20)), '-18 LUFS is cut 3 dB');
+  assertEq(API.playbackVolume(-25, -10), 1, 'a quiet episode is never boosted');
+  assert(near(API.playbackVolume(-20, 1.0), Math.pow(10, -2 / 20)),
+    'control: a hot peak pulls the gain below the loudness target (clamp)');
+  assertEq(API.playbackVolume(null, null), 1, 'unmeasured plays at unity');
+  assertEq(API.playbackVolume(undefined, -3), 1, 'no loudness, no change');
+});
+
 test('API exposes the data verbs', () => {
   assert(typeof API === 'object', 'API should be an object');
   for (const f of ['getJSON', 'manifest', 'seriesIndex', 'listen', 'thisDay', 'seriesPage', 'episodeDetail',

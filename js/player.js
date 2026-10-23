@@ -24,7 +24,7 @@ const Player = (() => {
   let current = null;
   let sleep = null;         // null | { kind: 'end' } | { kind: 'time', endsAt, minutes }
   let fired = false;        // the sleep timer has ended playback; nothing may start on its own
-  const baseVolume = 1;     // the app has no volume of its own; the device's volume is the person's
+  let baseVolume = 1;       // the episode's loudness level (DECISIONS 061); the device's volume stays the person's
   let lastSave = 0;
   let sleepTimer = null;
   let lastError = null;
@@ -38,6 +38,8 @@ const Player = (() => {
     fired = false;
     lastError = null;
     audio.src = ep.url;
+    baseVolume = API.playbackVolume(current.li, current.ltp);
+    audio.volume = baseVolume;
     audio.defaultPlaybackRate = Store.rate();
     const at = Store.resumeAt(ep.id);
     audio.addEventListener('loadedmetadata', () => {

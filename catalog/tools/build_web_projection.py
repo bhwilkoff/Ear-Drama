@@ -46,12 +46,13 @@ SHARD_MASK = 0xFFF
 DOC_CHUNK = 500
 SHELF_SERIES = 12
 SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks"]
-EPISODE_FIELDS = ["id", "date", "season", "num", "title", "rights", "length", "url"]
+# li, ltp: the default copy's loudness (LUFS) and true peak (dBTP), DECISIONS 061; null when unmeasured.
+EPISODE_FIELDS = ["id", "date", "season", "num", "title", "rights", "length", "url", "li", "ltp"]
 DETAIL_FIELDS = ["series", "title", "date", "season", "num", "network", "networkSource", "rights", "rightsBasis",
-                 "length", "dateSource", "aka", "recordings", "credits"]
+                 "length", "dateSource", "aka", "recordings", "credits", "li", "ltp"]
 RECORDING_FIELDS = ["url", "archiveId", "format", "kbps", "length", "variant", "partial"]
 CREDIT_FIELDS = ["name", "role", "character", "person"]
-DAY_FIELDS = ["id", "date", "title", "series", "length", "url", "seriesName"]
+DAY_FIELDS = ["id", "date", "title", "series", "length", "url", "seriesName", "li", "ltp"]
 DOC_FIELDS = ["id", "title", "date", "series"]
 # The rights line, contract §5.5. Published so no client words it for itself.
 RIGHTS_LINES = P.RIGHTS_LINES
@@ -105,6 +106,10 @@ def build(src, out, include_unclaimed=False):
                          f"no_recommend, network, network_source, date_source FROM episodes WHERE rights IN ({q})",
                          rights):
         eps[row[0]] = row
+    cols = {r[1] for r in s.execute("PRAGMA table_info(episodes)")}
+    loud = ({eid: (li, tp) for eid, li, tp in s.execute("SELECT id, loudness_i, loudness_tp FROM episodes")}
+            if {"loudness_i", "loudness_tp"} <= cols else {})
+    lt = lambda eid: list(loud.get(eid, (None, None)))
     recs = {}
     for eid, rank, aid, url, fmt, kbps, length, variant, partial in s.execute(
             "SELECT episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings "
@@ -149,14 +154,14 @@ def build(src, out, include_unclaimed=False):
         dump(os.path.join(out, "series", f"{key}.json"), {
             "key": key, "name": meta[1], "genre": meta[2], "first": meta[3], "last": meta[4],
             "networks": meta[6], "seasons": seasons, "fields": EPISODE_FIELDS,
-            "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] for e in rows]})
+            "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] + lt(e[0]) for e in rows]})
 
     # Detail shards.
     shards = {}
     for eid, e in eps.items():
         shards.setdefault(shard_of(eid), {})[eid] = [
             e[1], e[5], e[2], e[3], e[4], e[11], e[12], e[8], e[9], e[7], e[13], e[6], recs[eid],
-            credits.get(eid, [])]
+            credits.get(eid, [])] + lt(eid)
     for sh, rows in shards.items():
         dump(os.path.join(out, "episodes", f"{sh}.json"), rows)
 
@@ -185,7 +190,7 @@ def build(src, out, include_unclaimed=False):
     for md, rows in days.items():
         rows.sort(key=oldest_first)
         dump(os.path.join(out, "index", "days", f"{md}.json"), {"fields": DAY_FIELDS, "rows": [
-            [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0], series[e[1]][1]] for e in rows]})
+            [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0], series[e[1]][1]] + lt(e[0]) for e in rows]})
     dump(os.path.join(out, "index", "aliases.json"), aliases)
 
     # Search: doc numbers in series order (most episodes first), then oldest first.

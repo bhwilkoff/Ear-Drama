@@ -465,7 +465,9 @@
       setTitle(title, d.date, seriesName);
       let chosen = 0;
       const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date,
-                            url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length });
+                            url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length,
+                            // The measurement belongs to the default copy only.
+                            li: chosen === 0 ? d.li : null, ltp: chosen === 0 ? d.ltp : null });
 
       const resume = Store.resumeAt(d.id);
       const playBtn = el('button', { type: 'button', class: 'btn btn-primary' }, icon('play'),
