@@ -333,8 +333,16 @@ final class SharePlayRoom {
         let sender = source.id.uuidString
         // A host no longer here cannot hold the room against its successor.
         if let host = ledger.host, participant(host) == nil { ledger.host = nil }
-        guard roster.v == RoomProtocol.version,
-              ledger.receive(roster: roster.members, host: roster.host, from: sender) else { return }
+        guard roster.v == RoomProtocol.version else { return }
+        guard ledger.receive(roster: roster.members, host: roster.host, from: sender) else {
+            // A rival claim lost: say again who hosts, so the loser converges
+            // even if its streams deliver this snapshot before the roster.
+            if isHost {
+                sendRoster()
+                sendSnapshot()
+            }
+            return
+        }
         refreshRoles()
         if samples.isEmpty { askTheClock() }
     }

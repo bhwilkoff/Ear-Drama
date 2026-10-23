@@ -11,6 +11,7 @@ import Testing
 ///   the nudge's sign flipped: the golden correction cases fail.
 ///   nextHost sorting by id before joined_at: the handoff ledger test fails.
 ///   RoomLedger.propose without the host check: participantCannotDrive fails.
+///   claimWins choosing the higher id: simultaneousClaimsConvergeOnOneHost fails.
 ///   applyHostState keeping the old copy for a new episode: the golden arbiter cases fail.
 ///   an `import Foundation` added to RoomProtocol.swift: protocolFileImportsNothing fails.
 struct RoomProtocolTests {
@@ -161,6 +162,37 @@ struct RoomProtocolTests {
         #expect(fromHost)
         #expect(!takeover)
         #expect(guest.host == "host")
+    }
+
+    /// Two devices start the activity at once; each holds itself host and
+    /// sends its claim. Every ledger, a bystander's too in either order,
+    /// settles on the lower participant id after one round.
+    @Test func simultaneousClaimsConvergeOnOneHost() {
+        let low = "1F0C7E2A-0000-4000-8000-000000000001", high = "9B3D4C10-0000-4000-8000-000000000002"
+        let roster = [RoomMember(id: low, joinedAt: 0, seenAt: 0), RoomMember(id: high, joinedAt: 0, seenAt: 0)]
+        let start = StateInput(episodeID: "e", archiveID: "i", file: "f", position: 0, playing: true, rate: 1)
+        var a = RoomLedger(host: low), b = RoomLedger(host: high)
+        _ = a.propose(start, from: low, now: 0)
+        _ = b.propose(start, from: high, now: 0)
+        let aTakesB = a.receive(roster: roster, host: high, from: high)
+        let bTakesA = b.receive(roster: roster, host: low, from: low)
+        #expect(!aTakesB)
+        #expect(bTakesA)
+        #expect(a.host == low && b.host == low)
+        #expect(b.state == nil, "the loser drops its own state")
+        // The winner's snapshot is then the loser's room, and the loser cannot drive.
+        let snap = RoomSnapshot(code: "", role: "guest", members: 2, state: a.state!, serverTime: 0)
+        let adopted = b.receive(snap, from: low)
+        #expect(adopted)
+        #expect(b.state == a.state)
+        let loserWrite = b.propose(StateInput(playing: false), from: high, now: 1)
+        #expect(loserWrite == .failure(RoomRefusal("host_only")))
+
+        for order in [[low, high], [high, low]] {
+            var bystander = RoomLedger()
+            for claimant in order { _ = bystander.receive(roster: roster, host: claimant, from: claimant) }
+            #expect(bystander.host == low, "\(order)")
+        }
     }
 
     @Test func hostLeavingHandsOffToTheLongestPresent() {

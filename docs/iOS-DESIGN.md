@@ -261,7 +261,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
     fails when stale). `SharePlayRoom` is the thin transport: the room
     message in the Worker's field names, the host's roster, and clock
     samples over one reliable `GroupSessionMessenger`; the host's device
-    is the room's clock. It listens for sessions from launch.
+    is the room's clock. It listens for sessions from launch. Two
+    devices that start at once both claim the room; every device keeps
+    the claim with the lower participant id (`RoomProtocol.claimWins`,
+    no clock in it), and the loser drops its state and follows.
   - **Not AVPlayer's playback coordinator**, on purpose: it lets every
     participant drive, suspends the group for one stalled member, and
     syncs whatever item each player holds. The protocol says the

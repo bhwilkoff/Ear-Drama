@@ -126,6 +126,15 @@ nonisolated enum RoomProtocol {
             .first?.id
     }
 
+    /// TWO HOSTS. Two devices that each started the activity both claim the
+    /// room. Every device applies this one rule, with no clock in it: the
+    /// lower participant id (code-unit order) wins, so all of them settle on
+    /// one host within one round of claims. The Worker has no equivalent; its
+    /// server is the one arbiter, so these cases are Swift-only.
+    static func claimWins(_ claimant: String, over current: String) -> Bool {
+        Array(claimant.utf16).lexicographicallyPrecedes(current.utf16)
+    }
+
     // MARK: - Clock and drift
 
     /// Cristian's algorithm: the sample with the smallest round trip wins; an
@@ -309,10 +318,16 @@ nonisolated struct RoomLedger: Equatable, Sendable {
         return true
     }
 
-    /// The host's roster, taken only from the host it names (the first one a
-    /// new member hears sets the host).
+    /// The host's roster, a host claim: taken only from the host it names. The
+    /// first one a new member hears sets the host; a rival claim wins only by
+    /// `claimWins`, and then a deposed host drops its own state so the
+    /// winner's next snapshot, whatever its generation, is the room.
     mutating func receive(roster: [RoomMember], host named: String, from sender: String) -> Bool {
-        guard sender == named, host == nil || host == sender else { return false }
+        guard sender == named else { return false }
+        if let current = host, current != sender {
+            guard RoomProtocol.claimWins(sender, over: current) else { return false }
+            state = nil
+        }
         host = named
         members = Array(roster.prefix(RoomProtocol.maxMembers))
         return true
