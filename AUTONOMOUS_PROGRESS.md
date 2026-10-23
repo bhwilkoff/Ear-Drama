@@ -173,3 +173,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Instrumented the stage instead of rerunning: five --dump-dom loads of ?item= with fresh profiles gave the episode 3 times, an empty episode view once, no view once. The capture fires at a fixed virtual time, sometimes before the shard fetch completes. Recorded in web_run.py.
 - Launched a tools-only agent: drive Chrome over the DevTools protocol (no new dependencies), set a real 375 px viewport, wait for the route's text, then capture; prove with five green sweeps and a negative control.
 - Running: Android (On Air + rooms), web rooms, Apple SharePlay.
+
+### Tick 68, 2026-10-23, CI check + quiet tick: the owner is on a call
+- Step 0 (new, owner's request): CI green since the last tick (Android Build, Worker Tests, Design Tokens); a catalog publish in progress. Last 300 runs: two failures, both understood (10/22 Pages: Jekyll on "YYYY-MM-DD", fixed by .nojekyll; this morning's publish, fixed in 869c7aa); 22 Pages runs cancelled by newer pushes, likely the alerts. Step 0 is in LOOP-PLAN; memory saved.
+- Load 19 with zoom.us and coreaudiod near the top: the owner is on a call, so no new build agent this tick. Scratchpad status brought to tick 68 at 1.0.35.
+- Running: Android (On Air + rooms), web rooms, SharePlay, web harness fix.
