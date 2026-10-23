@@ -18,54 +18,23 @@
 
 - **Waiting on you** (most valuable first; numbers stay stable as items close;
   item 1, the palette, closed 2026-10-23: On Air, Decision 064):
-  2. **May the loop download** the two fonts (google/fonts) and the CC0
-     microphone photo (Wikimedia Commons)? The icon (the white ring microphone
-     on On Air's tally red) waits on the photo.
+  (Items 2, 4-9, 12, 14 and the store category answered 2026-10-23: Decision 067.)
   3. **Play the listening apps locally** (1.0.13; built, not yet played): web
      `ln -s catalog/out/web data && python3 -m http.server 8080`; Mac, run
      EarDrama.xcodeproj; Android `./gradlew :app:installDebug` with the Pixel
      awake. First check the iPhone app still opens normally (the CarPlay stub
      changed how its scenes start). Broken would be: playback that never starts, a sleep timer that
      starts the next episode, "public domain" anywhere.
-  4. **Tonight in 19xx** (`docs/research/evenings.md`): the floor, a quarter of
-     prime time surviving (61% of evenings have nothing)? May a gap show the
-     newspaper's printed listing, or only its time?
-  5. **Command Performance**: 112 uncredited episodes stay government work under
-     the AFRS rule; presume network stars for the whole series instead?
-  6. **Loudness pace**: once a day (~25 GB, ~108 days) or four (~100 GB/day,
-     ~27 days), or tell archive.org first?
-  7. **Plays** (`docs/PLAYS-DESIGN.md`): ask the Generic Radio Workshop (C8)?
-     C5 previews, C6 unfilled roles, C7 relay order, C9 "author died by 1955",
-     C10 commercials and Personal Voice; does "sign-in required to record"
-     cover a local recording never shared?
-  8. **Samsung TV certificate**: the stub's `.wgt` was signed with your active
-     `archivewatchSamsung` author profile; Samsung requires every later update to
-     use the first upload's certificate, so give Ear Drama its own before a store
-     upload? (The Tizen package id `EarDramaTV` is a placeholder.)
-  9. **What plays next** (R3/R14): the three apps disagree. Apple plays on
-     through the rest of the series (up to 50), Android through the rest of the
-     season, the web only what you queued. Which one rule? (The research's R3:
-     a serial plays to its arc's end and stops; the next arc is offered, not
-     started. Arcs need a runs table the catalog does not have yet.)
   10. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
      take-down email, store records, OAuth clients, Worker, archive.org account).
   11. **Record a play on a device** (M7's play gate): a two-role scene on the
      iPhone and on the Pixel (Android since 1.0.24), with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
      Through out of order. Eleven stage plays ship; no radio play parses clean yet.
-  12. **Six sections** (Listen, Series, Radio, Plays, Library, Search): an iOS 18
-     iPhone's tab bar fits five, so it shows four and More (iOS 26 sets Search
-     apart). Which one gives way on iOS 18, and does the web's bar (five today,
-     six now that Plays has landed) follow the same order? (iOS-DESIGN §3.1, §12)
   13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
-     Store and Play text, and pick the category (Entertainment or Education).
-  14. **The human-shaped review** (`HUMAN-SHAPED.md`): your answers are blank on
-     purpose. Its owner's calls: what a child or teacher meets among the 11
-     castable plays (chosen only by rights, nothing about content or age);
-     whether a Listen Together guest may pause their own sound; whether a
-     listener may pick another year for Tonight; Export only after one full
-     listen-through; sign-in merging this device's history without asking; a
-     data export on every platform. (What plays next is item 9.)
+     Store and Play text (category: Entertainment, decided).
+  15. **Ask the Generic Radio Workshop** before any GRW script is used (the
+     owner sends it; a draft is in `docs/outreach/grw-request.md`).
 - **Status (2026-10-23, 8:35 AM MT, tick 68)**: the 1.0 loop runs from
   `LOOP-PLAN.md` (a 5-minute cooldown; each tick starts with the GitHub Actions
   check). Built on main at 1.0.35: listening (M2 to M4); Tonight in 19xx in CI

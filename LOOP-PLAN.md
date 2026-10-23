@@ -78,6 +78,19 @@ what exists now, the evidence, what is not verified. Lessons go to memory.
 ## Feature batches (in order; each is one agent, every platform)
 
 Owner, 2026-10-23: build significant features before asking them to test.
+0a. **The owner's rulings, listening side** (Decision 067): on-device volume
+   leveling in every player (no per-file loudness; the measuring workflow is
+   off); a serial plays to its arc's end, then one episode plus the queue until
+   arcs exist; a Listen Together guest may pause and catch up; Tonight shows any
+   evening with a surviving program, gaps name the matched series, and a
+   listener may pick another year for the date; a popularity shelf from
+   archive.org's download counts; Search in More on an iOS 18 iPhone.
+0b. **The owner's rulings, plays side** (Decision 067): listen-through with
+   live device or on-device openly licensed voices for unrecorded parts (never
+   stored); parts in any order, largest suggested; Export whenever complete;
+   recording requires sign-in; Personal Voice offered live; commercials as their
+   own parts; "author died by 1955" accepted in script_rights (C9), then the
+   bundle rebuilt; plays marked only by facts from their records.
 1. **Plays phase 2 in the apps** (M8): resume the stopped web and Apple agents
    (their work is saved in their worktrees), then Android on Sonnet as a port
    of Apple's. Invite links, relay claims, uploads, report/block, consent

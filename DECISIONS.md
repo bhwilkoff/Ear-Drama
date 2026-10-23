@@ -84,6 +84,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 064: The palette is On Air
 - 065: Listen Together rooms need no account; the host is a member and hands off
 - 066: Shared plays live on the Worker, invite-only, with take audio in R2 behind the owner's switch
+- 067: The owner's rulings of 2026-10-23 on plays, Radio, playback, and the shell
 
 ---
 
@@ -661,3 +662,51 @@ castable rebuild (a test fails when the two drift). New consent words need a new
 column that is not `user_id` in OTHER_PERSON_COLUMNS. Owner items P1 to P8
 (R2, consent words, a vetted deny list, report handling, school consent, the
 archive.org account, C6/C7, class ownership) are in PLAYS-DESIGN §11.6.
+
+---
+
+## 067: The owner's rulings of 2026-10-23 on plays, Radio, playback, and the shell
+
+*Date: 2026-10-23*
+
+Answered in one sitting, replacing the defaults that stood in for them:
+
+- **What plays next**: a serial plays to its arc's end and stops; the next arc
+  is offered, never started (research R3). Until arcs exist: one episode, then
+  anything queued.
+- **Loudness**: no per-file measurement. The owner: *"There has to be a way to do
+  this in software rather than as a metric for each recording ... Evening out
+  volume on an app shouldn't be about knowing how loud an audio file is."* Each
+  player levels volume on the device as it plays; the measuring workflow stops.
+  Supersedes Decision 061's per-file gain.
+- **Plays listen-through**: parts with human takes play those takes; parts
+  without one are read live by the listening device's own voice (or an openly
+  licensed voice generated on that device), so anyone can hear the whole play
+  and choose to add their voice. Never stored or exported (the catalog rule
+  holds); Export needs every speaking line human and is available any time
+  then. C5 and C6 resolved so.
+- **C7**: parts in any order, largest first suggested. **C9**: "the individual
+  author died by 1955" is accepted as evidence. **C10**: commercials stay, each
+  its own part. **Personal Voice**: offered, live only, never stored.
+- **Recording needs an account**, always, even a play never shared.
+- **Children and teachers**: plays are marked only by facts from their records
+  (year, author, length); no invented age ratings.
+- **Listen Together**: a guest may pause their own sound and catches up on resume.
+- **Tonight in 19xx**: an evening shows when any program survives (the 0.25 floor
+  goes); a gap shows its time and the program's name when the listing matched a
+  series, never the newspaper's printed text; a listener may pick another
+  published year for the same date.
+- **Command Performance**: the AFRS rule stands.
+- **Shell**: six sections; on an iOS 18 iPhone Search goes in More.
+- **Listen**: a popularity shelf from data (archive.org's own download counts),
+  not "Most episodes".
+- **Sign-in** merges the device's history automatically. **No data export** for 1.0.
+- **Fonts and the CC0 microphone photo** may be downloaded. **GRW**: ask before
+  using any transcription (the owner sends the request). **Samsung**: not for
+  1.0. **Store category**: Entertainment.
+
+**Why**: these were the owner's calls (SCRATCHPAD "Waiting on you" 2, 4-9, 12-14
+and PLAYS-DESIGN §9), each blocking a feature batch.
+
+**How to apply**: each binding design doc gets the rule before its feature
+changes; LOOP-PLAN "Feature batches" carries the work.
