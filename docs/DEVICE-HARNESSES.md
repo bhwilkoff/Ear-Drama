@@ -723,7 +723,7 @@ re-issuing it. Store and SDK details are in `docs/TV-PLATFORMS.md` and
 ## Web
 
 ```bash
-python3 tools/web_run.py --only home,search
+python3 tools/web_run.py --only listen,search
 python3 tools/web_run.py --base https://example.com     # a deployed site, on purpose
 ```
 
@@ -733,6 +733,29 @@ exists to catch. It defaults to `WEB_URL` (your local server) and deletes
 each target file before the shot. It takes no lease: the browser is a
 private headless instance. `tools/webdrive.py` is a stdlib-only CDP
 driver for typing and clicking when a flow needs input.
+
+- **It waits for the page, not a clock.** Chrome is driven over CDP: a
+  fresh profile, `--remote-debugging-port=0`, the viewport set with
+  `Emulation.setDeviceMetricsOverride` (headless Chrome floors its window
+  near 500 px, so `--window-size=375` was never 375), then a poll of
+  `document.body.innerText` until the route's `ready` regex matches, then
+  `Page.captureScreenshot`. The old `--virtual-time-budget --screenshot`
+  shot when virtual time ran out; five loads of the item route gave the
+  episode three times out of five (2026-10-23).
+- **`ready` is text only the rendered route has.** The tab bar says
+  "Listen" and "Search" on every page, so waiting for those shoots the
+  empty shell.
+- **Blind is red, not silent.** A route that never shows its `ready` text
+  is shot anyway at 20 s and graded `<route>.ready` FAIL, "timed out
+  waiting". `report.json` records `ready_ms` per route and viewport under
+  `timing`.
+- **A server that drops requests is graded too.** `<route>.loads_complete`
+  fails when a same-origin request dies in the network layer. Measured:
+  `python3 -m http.server` (listen backlog 5) resets connections when the
+  page opens its ~16 scripts at once, and the app then boots without
+  `PlaysUI` or `app.js`, which is the "no view at all" capture. Serve with
+  a larger backlog (`ThreadingHTTPServer` with `request_queue_size = 128`)
+  when sweeping.
 
 ---
 

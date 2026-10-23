@@ -34,7 +34,13 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
         pass
 
 
+class Server(ThreadingHTTPServer):
+    # The default backlog of 5 drops connections when the app requests its ~16
+    # scripts at once, and the app then starts half-loaded (measured 2026-10-23).
+    request_queue_size = 128
+
+
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8099
     print(f"no-cache dev server on http://localhost:{port}  (sw.js withheld)")
-    ThreadingHTTPServer(("", port), NoCacheHandler).serve_forever()
+    Server(("", port), NoCacheHandler).serve_forever()
