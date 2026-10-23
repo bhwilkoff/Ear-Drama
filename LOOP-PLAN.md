@@ -338,6 +338,7 @@ works elsewhere, and checks again.
 | Apple Services ID and Google OAuth clients for Ear Drama (`docs/runbooks/google-oauth-setup.md`) | sign-in | before M5 |
 | A Cloudflare Worker and D1 for Ear Drama, or approval for the loop to create them | M5 to M8 | before M5 |
 | An Ear Drama archive.org account and its S3 keys, stored as Worker secrets | play uploads | before M8 |
+| The take-down email address, and the DMCA agent's details once registered (`js/site.js` TAKEDOWN_EMAIL; takedown/index.html) | the take-down page | before the public launch |
 | Approve the consent screen and store words | M8, M10 | as drafted |
 | Free API keys for NARA, NYPL, and DPLA (V6) | more photos | any time; optional |
 

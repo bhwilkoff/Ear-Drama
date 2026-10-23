@@ -98,6 +98,11 @@
     if (!a) return null;
     return !b || a === b ? a : `${a}–${b}`;
   }
+  /** An episode's name: its title, else its number in the series, else "Untitled"; never its id. */
+  function epTitle(ep) {
+    if (ep.title) return ep.title;
+    return ep.num !== null && ep.num !== undefined ? `No. ${ep.num}` : 'Untitled';
+  }
   function plural(n, one, many) { return `${num.format(n)} ${n === 1 ? one : many}`; }
   function seriesMeta(s) {
     return [s.networks, years(s.first, s.last), s.episodes ? plural(s.episodes, 'episode', 'episodes') : null]
@@ -126,7 +131,7 @@
     if (kind === 'empty') return el('p', { class: 'state caption' }, opts.text);
     const text = kind === 'offline' ? 'You are offline.' : kind === 'missing' ? 'Not in the catalog.'
       : 'This did not load.';
-    return el('div', { class: 'state state-problem', role: 'alert' },
+    return el('div', { class: kind === 'offline' ? 'state state-problem state-offline' : 'state state-problem', role: 'alert' },
       el('p', { class: 'body' }, text),
       opts.retry && kind !== 'missing' ? el('button', { type: 'button', class: 'btn', onclick: opts.retry }, 'Try again')
         : null);
@@ -157,14 +162,14 @@
     const sub = [showSeries ? ep.seriesName : null, fmtLength(ep.length)].filter(Boolean).join(' · ');
     const link = el('a', { class: 'ep-link', href: `?item=${encodeURIComponent(ep.id)}` },
       el('span', { class: 'ep-date tabular' }, ep.date || 'Undated'),
-      el('span', { class: 'ep-title body-strong' }, ep.title || ep.id),
+      el('span', { class: 'ep-title body-strong' }, epTitle(ep)),
       sub ? el('span', { class: 'ep-sub caption' }, sub) : null,
       progress > 0 ? el('span', { class: 'ep-progress', 'aria-hidden': 'true' },
         el('span', { style: null, dataset: { p: String(Math.round(progress * 100)) } })) : null);
     const row = el('li', { class: 'ep-row' }, link,
       ep.url ? el('button', {
-        type: 'button', class: 'icon-btn', 'aria-label': `Play ${ep.title || 'episode'}, ${ep.date || 'undated'}`,
-        onclick: () => Player.load(ep),
+        type: 'button', class: 'icon-btn', 'aria-label': `Play ${epTitle(ep)}, ${ep.date || 'undated'}`,
+        onclick: () => Player.load({ ...ep, title: epTitle(ep) }),
       }, icon('play')) : null);
     return row;
   }
@@ -456,9 +461,10 @@
     }, ({ d, s, rightsLine, m }) => {
       if (d.id !== r.id) history.replaceState(null, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
-      setTitle(d.title, d.date, seriesName);
+      const title = epTitle(d);
+      setTitle(title, d.date, seriesName);
       let chosen = 0;
-      const card = () => ({ id: d.id, title: d.title, series: d.series, seriesName, date: d.date,
+      const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date,
                             url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length });
 
       const resume = Store.resumeAt(d.id);
@@ -475,16 +481,18 @@
         queueBtn.setAttribute('aria-pressed', String(on));
         announce(on ? 'Added to queue' : 'Removed from queue');
       });
-      const shareBtn = el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${d.title}` },
+      const shareBtn = el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${title}` },
         icon('share'), 'Share');
-      shareBtn.addEventListener('click', () => share(`${d.title} (${d.date || 'undated'})`, `?item=${encodeURIComponent(d.id)}`));
+      shareBtn.addEventListener('click', () => share(`${title} (${d.date || 'undated'})`, `?item=${encodeURIComponent(d.id)}`));
 
-      const facts = [d.network, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
-                     d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
+      // An undated episode with no network or credits is most of the catalog: its one line of
+      // facts carries "Undated", and the number is not repeated when it already names the episode.
+      const facts = [d.date ? null : 'Undated', d.network, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
+                     d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
       body.append(el('header', { class: 'page-head', dataset: { genre: (s && s.genre) || '' } },
         el('a', { class: 'section-header eyebrow-link', href: `?series=${encodeURIComponent(d.series)}` }, seriesName),
-        el('h1', { class: 'view-heading', id: 'episode-h', tabindex: '-1' }, d.title || d.id),
-        el('p', { class: 'body' }, d.date ? fmtLongDate(d.date) : 'Undated'),
+        el('h1', { class: 'view-heading', id: 'episode-h', tabindex: '-1' }, title),
+        d.date ? el('p', { class: 'body' }, fmtLongDate(d.date)) : null,
         facts ? el('p', { class: 'caption' }, facts) : null,
         d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null,
         el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn)));
@@ -511,18 +519,19 @@
       const fs = el('fieldset', { class: 'versions' },
         el('legend', { class: 'section-header' }, d.recordings.length > 1 ? 'Recordings' : 'Recording'));
       d.recordings.forEach((rec, i) => {
-        const facts2 = [rec.format, rec.kbps ? `${rec.kbps} kbps` : null, fmtLength(rec.length),
+        const label = rec.archiveId || rec.format || `Recording ${i + 1}`;
+        const facts2 = [rec.archiveId ? rec.format : null, rec.kbps ? `${rec.kbps} kbps` : null, fmtLength(rec.length),
                         m.variantLines[rec.variant] || rec.variant || null, rec.partial ? m.partialLine : null]
           .filter(Boolean).join(' · ');
         const input = el('input', { type: 'radio', name: 'version', value: String(i), checked: i === 0,
                                     id: `ver-${i}` });
         input.addEventListener('change', () => { chosen = i; });
         fs.append(el('div', { class: 'version' }, input,
-          el('label', { for: `ver-${i}` }, el('span', { class: 'body-strong' }, rec.archiveId),
-            el('span', { class: 'caption' }, facts2)),
-          el('a', { class: 'caption', href: `https://archive.org/details/${encodeURIComponent(rec.archiveId)}`,
+          el('label', { for: `ver-${i}` }, el('span', { class: 'body-strong' }, label),
+            facts2 ? el('span', { class: 'caption' }, facts2) : null),
+          rec.archiveId ? el('a', { class: 'caption', href: `https://archive.org/details/${encodeURIComponent(rec.archiveId)}`,
                     rel: 'noopener', target: '_blank', 'aria-label': `${rec.archiveId} on the Internet Archive` },
-          'Source')));
+          'Source') : null));
       });
       body.append(fs);
       if (rightsLine) body.append(el('p', { class: 'caption rights' }, rightsLine));
@@ -638,11 +647,11 @@
       q.forEach((ep, i) => {
         const row = episodeRow(ep, { showSeries: true });
         const tools = el('div', { class: 'row-tools' },
-          el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${ep.title} up`, disabled: i === 0,
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${epTitle(ep)} up`, disabled: i === 0,
                          onclick: () => { Store.moveInQueue(ep.id, -1); route(); } }, icon('up')),
-          el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${ep.title} down`,
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Move ${epTitle(ep)} down`,
                          disabled: i === q.length - 1, onclick: () => { Store.moveInQueue(ep.id, 1); route(); } }, icon('down')),
-          el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Remove ${ep.title} from queue`,
+          el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Remove ${epTitle(ep)} from queue`,
                          onclick: () => { Store.dequeue(ep.id); announce('Removed from queue'); route(); } }, icon('remove')));
         row.append(tools);
         ul.append(row);
@@ -696,15 +705,16 @@
     const t = a.currentTime || 0;
     $('mini-progress').style.width = d ? `${Math.min(100, (t / d) * 100)}%` : '0';
     if (kind === 'load' || kind === 'error' || kind === 'state' || kind === 'sleep-fired') {
-      $('mini-title').textContent = cur.title || '';
-      $('np-title').textContent = cur.title || '';
+      $('mini-title').textContent = epTitle(cur);
+      $('np-title').textContent = epTitle(cur);
       $('np-series').textContent = cur.seriesName || '';
       $('np-series').setAttribute('href', `?series=${encodeURIComponent(cur.series || '')}`);
       $('np-meta').textContent = [cur.date ? fmtLongDate(cur.date) : 'Undated'].join('');
       const err = kind === 'error' && Player.error;
-      $('mini-meta').textContent = err ? 'This recording did not load.' : [cur.seriesName, cur.date].filter(Boolean).join(' · ');
+      const errText = navigator.onLine === false ? 'You are offline.' : 'This recording did not load.';
+      $('mini-meta').textContent = err ? errText : [cur.seriesName, cur.date].filter(Boolean).join(' · ');
       $('mini-meta').classList.toggle('is-error', !!err);
-      if (err) announce('This recording did not load.');
+      if (err) announce(errText);
     }
     if (!seeking) {
       seekEl.max = String(Math.floor(d));
@@ -724,7 +734,7 @@
       b.setAttribute('aria-current', on ? 'true' : 'false');
     });
     const next = Player.nextInQueue();
-    $('np-next').textContent = next ? `Next in queue: ${next.title}` : '';
+    $('np-next').textContent = next ? `Next in queue: ${epTitle(next)}` : '';
     if (kind === 'sleep-fired') announce('Sleep timer ended.');
   }
   Player.onChange(paintPlayer);
@@ -771,6 +781,22 @@
   Player.setRate(Store.rate());
   const doorSeconds = Number(params.get('door_seconds'));
   if (doorSeconds > 0) setTimeout(() => navigate('?view=listen'), doorSeconds * 1000);
-  window.addEventListener('online', () => { if (document.querySelector('.state-problem')) route(); });
+  /* Offline (WEB-DESIGN §7.3): a status line while the browser reports no network; what was
+     opened before still opens from the service worker's copies. */
+  const paintOnline = () => { $('offline-note').hidden = navigator.onLine !== false; };
+  window.addEventListener('offline', paintOnline);
+  window.addEventListener('online', () => { paintOnline(); if (document.querySelector('.state-problem')) route(); });
+  paintOnline();
+
+  /* The service worker runs on the real site. On a local server it runs only with ?sw=1 and is
+     removed otherwise, so a cache-first shell never hides an edit during development. */
+  if ('serviceWorker' in navigator && window.isSecureContext && /^https?:$/.test(location.protocol)) {
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    if (!local || params.get('sw') === '1') {
+      navigator.serviceWorker.register('sw.js').catch(err => console.error('service worker', err));
+    } else {
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+    }
+  }
   route();
 })();

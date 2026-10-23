@@ -115,6 +115,8 @@ When shipping any user-facing feature:
 | Transcripts, labeled automatic | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Shown only above the measured quality gate (058) |
 | Downloads | ⏳ | ⏳ | ⏳ | n/a | ⏳ | tvOS has no durable storage for media |
 | Listen Together | ⏳ | ⏳ SharePlay | ⏳ SharePlay | ⏳ SharePlay | ⏳ | Worker rooms on web and Android |
+| Credits, privacy, and take-down pages | 🚧 /credits/, /privacy/, /takedown/; owner placeholders | ⏳ link to the web pages | ⏳ | ⏳ | ⏳ | One set of pages; apps link to them |
+| Works offline (what was already loaded) | 🚧 service worker; network-first data, cached shell | ⏳ | ⏳ | n/a | ⏳ | Audio downloads are their own row |
 
 ---
 

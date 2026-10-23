@@ -247,6 +247,9 @@ select {
 .state[role="status"] { align-items: center; }
 .state-problem { padding: var(--space-4); border: 1px solid var(--color-error); border-radius: var(--radius-card); background: var(--color-error-surface); }
 .state-problem .body { color: var(--color-error); }
+/* Offline is a degraded mode, not a failure: neutral, never the error color. */
+.state-offline { border-color: var(--color-border); background: var(--color-surface); }
+.state-offline .body { color: var(--color-text); }
 .spinner {
   width: 24px; height: 24px; border: 3px solid var(--color-border);
   border-top-color: var(--color-primary); border-radius: 50%;
@@ -385,3 +388,43 @@ select {
 .menu button:hover { background: var(--color-surface-alt); }
 .menu button[aria-current="true"] { font-weight: var(--type-body-strong-weight); color: var(--color-primary); }
 .menu button[hidden] { display: none; }
+
+/* ---- Offline: a status line in the document flow, never an overlay ---- */
+.offline-note:not([hidden]) {
+  flex-shrink: 0; display: block; padding: var(--space-1) var(--space-4);
+  border-bottom: 1px solid var(--color-border); background: var(--color-surface-alt);
+  color: var(--color-text); text-align: center;
+}
+
+/* ---- The quiet footer: the site pages, never featured in the main UI ---- */
+.site-footer {
+  display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4);
+  max-width: 960px; margin: 0 auto; padding: var(--space-4) var(--space-4) var(--space-6);
+}
+.site-footer a { display: inline-flex; align-items: center; min-height: var(--tap); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.site-footer a[aria-current="page"] { color: var(--color-text); }
+@media (min-width: 768px) { .site-footer { padding-inline: var(--space-8); } }
+
+/* ---- Site pages (credits, privacy, take-down requests) ---- */
+.site-bar {
+  flex-shrink: 0; display: flex; align-items: center; min-height: 52px; padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--color-border); background: var(--color-surface);
+}
+.site-home { text-decoration: none; }
+.site-home:hover { text-decoration: underline; }
+.site-page #main-content { flex: 1; min-height: 0; overflow-y: auto; }
+.prose, .site-page .site-footer { max-width: 42rem; }
+.prose > .view-heading { margin-bottom: var(--space-4); }
+.prose > .section-header { margin: var(--space-6) 0 var(--space-2); }
+.prose > p, .prose > ol, .prose > ul { margin-bottom: var(--space-3); }
+.prose ol, .prose ul { padding-left: var(--space-6); }
+.prose ol { list-style: decimal; }
+.prose ul { list-style: disc; }
+.prose li { margin-bottom: var(--space-2); }
+.prose a { color: var(--color-primary); }
+.facts > div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: var(--space-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.credit-list > div { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+.credit-list dd { margin-top: 2px; }
+@media (min-width: 768px) { .site-bar { padding-inline: var(--space-8); } }
