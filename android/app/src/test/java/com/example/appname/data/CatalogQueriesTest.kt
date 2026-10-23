@@ -91,7 +91,7 @@ class CatalogQueriesTest {
         // The control: the never-recommended broadcast is in the catalog and findable.
         assertEquals(listOf("sus|1943-02-04"), db.search("banquo").episodes.map { it.id })
         assertNotNull(db.episodeDetail("sus|1943-02-04")?.noRecommend)
-        val genre = db.shelf(ShelfRule.Genre("OTR-Thriller"))
+        val genre = db.shelf(ShelfRule.Genre("mystery"))
         assertFalse(genre.any { it.id == "sus|1943-02-04" })
         assertEquals("sus|1942-06-17", genre.first().id)
     }
@@ -105,7 +105,7 @@ class CatalogQueriesTest {
 
     @Test fun `seriesBrowse filters by genre and decade`() = runBlocking {
         assertEquals(listOf("commandperformance", "suspense"), db.seriesBrowse(BrowseFilter()).map { it.key })
-        assertEquals(listOf("suspense"), db.seriesBrowse(BrowseFilter(genre = "OTR-Thriller")).map { it.key })
+        assertEquals(listOf("suspense"), db.seriesBrowse(BrowseFilter(genre = "mystery")).map { it.key })
         assertEquals(2, db.seriesBrowse(BrowseFilter(decade = 1940)).size)
         assertTrue(db.seriesBrowse(BrowseFilter(decade = 1950)).isEmpty())
         assertEquals(listOf("commandperformance"), db.seriesBrowse(BrowseFilter(network = "AFRS")).map { it.key })

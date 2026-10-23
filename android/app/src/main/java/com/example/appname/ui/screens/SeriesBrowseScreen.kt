@@ -71,11 +71,12 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
                             )
                         }
                         val genreList = (genres as? com.example.appname.ui.Loadable.Ready)?.value.orEmpty()
-                        items(genreList, key = { "g$it" }) { g ->
+                            .mapNotNull { g -> DisplayVocabulary.genreName(g)?.let { g to it } }
+                        items(genreList, key = { "g${it.first}" }) { (g, name) ->
                             FilterChip(
                                 selected = genre == g,
                                 onClick = { genre = if (genre == g) null else g },
-                                label = { Text(DisplayVocabulary.genreName(g)) },
+                                label = { Text(name) },
                             )
                         }
                     }

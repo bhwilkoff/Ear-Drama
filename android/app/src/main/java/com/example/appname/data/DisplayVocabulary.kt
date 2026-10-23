@@ -28,6 +28,18 @@ object DisplayVocabulary {
 
     const val PARTIAL = "Incomplete copy"
 
-    /** The served genres carry the archive.org collection prefix; the name is what follows it. */
-    fun genreName(genre: String): String = genre.removePrefix("OTR-")
+    /** The eight genre codes and their names, as catalog/tools/genres.py `NAMES` gives them. */
+    private val GENRES = linkedMapOf(
+        "drama" to "Drama",
+        "mystery" to "Mystery",
+        "scifi" to "Science fiction",
+        "western" to "Western",
+        "comedy" to "Comedy",
+        "news" to "News",
+        "documentary" to "Documentary",
+        "serial" to "Serials",
+    )
+
+    /** A genre's name, or null for a value that is not one of the eight (an older catalog's label). */
+    fun genreName(genre: String): String? = GENRES[genre]
 }

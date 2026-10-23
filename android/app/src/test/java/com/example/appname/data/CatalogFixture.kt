@@ -13,7 +13,7 @@ import java.io.File
 object CatalogFixture {
     private val SCHEMA = listOf(
         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)",
-        "CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, first_date TEXT, " +
+        "CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, " +
             "last_date TEXT, networks TEXT, episodes INTEGER NOT NULL)",
         "CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT, " +
             "season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT, " +
@@ -64,11 +64,11 @@ object CatalogFixture {
             SCHEMA.forEach { c.execSQL(it) }
             c.execSQL("INSERT INTO meta VALUES ('schemaVersion', '1')")
             c.execSQL(
-                "INSERT INTO series VALUES ('suspense', 'Suspense', 'OTR-Thriller', '1942-06-17', '1943-05-25', " +
+                "INSERT INTO series VALUES ('suspense', 'Suspense', 'mystery', 'otrrpedia', '1942-06-17', '1943-05-25', " +
                     "'[\"CBS\"]', 7)",
             )
             c.execSQL(
-                "INSERT INTO series VALUES ('commandperformance', 'Command Performance', 'OTR-Variety', " +
+                "INSERT INTO series VALUES ('commandperformance', 'Command Performance', 'comedy', 'otrrpedia', " +
                     "'1942-03-01', '1944-01-07', '[\"AFRS\"]', 2)",
             )
             c.execSQL("INSERT INTO people VALUES ('p1', 'Agnes Moorehead', NULL, NULL)")

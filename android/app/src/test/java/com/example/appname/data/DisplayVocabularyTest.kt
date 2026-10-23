@@ -33,6 +33,12 @@ class DisplayVocabularyTest {
         assertNull(DisplayVocabulary.rightsLine("clean", "rec_cc_corroborated"))
     }
 
+    @Test fun `the eight genre codes have names and nothing else does`() {
+        assertEquals("Science fiction", DisplayVocabulary.genreName("scifi"))
+        assertEquals("Serials", DisplayVocabulary.genreName("serial"))
+        assertNull(DisplayVocabulary.genreName("OTR-Variety"))
+    }
+
     @Test fun `versions use the contract's words`() {
         assertEquals("Armed Forces Radio rebroadcast", DisplayVocabulary.variantLine("AFRS"))
         assertEquals("Armed Forces Radio rebroadcast", DisplayVocabulary.variantLine("AFRTS"))

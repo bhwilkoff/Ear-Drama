@@ -55,7 +55,8 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit) {
         buildList {
             add(Shelf("thisday", "This day in radio", db.shelf(ShelfRule.ThisDay(today))))
             db.genres().forEach { genre ->
-                add(Shelf("genre:$genre", DisplayVocabulary.genreName(genre), db.shelf(ShelfRule.Genre(genre))))
+                val name = DisplayVocabulary.genreName(genre) ?: return@forEach
+                add(Shelf("genre:$genre", name, db.shelf(ShelfRule.Genre(genre))))
             }
         }
     }
