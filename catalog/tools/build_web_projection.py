@@ -49,7 +49,7 @@ DETAIL_FIELDS = ["series", "title", "date", "season", "num", "network", "network
                  "length", "dateSource", "aka", "recordings", "credits"]
 RECORDING_FIELDS = ["url", "archiveId", "format", "kbps", "length", "variant", "partial"]
 CREDIT_FIELDS = ["name", "role", "character", "person"]
-DAY_FIELDS = ["id", "date", "title", "series", "length", "url"]
+DAY_FIELDS = ["id", "date", "title", "series", "length", "url", "seriesName"]
 DOC_FIELDS = ["id", "title", "date", "series"]
 # The rights line, contract §5.5. Published so no client words it for itself.
 RIGHTS_LINES = {
@@ -79,7 +79,7 @@ def tokens(text):
     """unicode61's words: case and diacritics folded, split on non-alphanumerics."""
     if not text:
         return []
-    folded = "".join(c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c)).lower()
+    folded = "".join(c for c in unicodedata.normalize("NFD", text) if unicodedata.category(c)[0] != "M").lower()
     spaced = "".join(c if unicodedata.category(c)[0] in "LN" else " " for c in folded)
     return spaced.split()
 
@@ -189,7 +189,7 @@ def build(src, out, include_unclaimed=False):
     for md, rows in days.items():
         rows.sort(key=oldest_first)
         dump(os.path.join(out, "index", "days", f"{md}.json"), {"fields": DAY_FIELDS, "rows": [
-            [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0]] for e in rows]})
+            [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0], series[e[1]][1]] for e in rows]})
     dump(os.path.join(out, "index", "aliases.json"), aliases)
 
     # Search: doc numbers in series order (most episodes first), then oldest first.
@@ -222,6 +222,8 @@ def build(src, out, include_unclaimed=False):
         "search": {"docChunk": DOC_CHUNK, "minWord": 2, "prefix": 2},
         "fields": {"series": SERIES_FIELDS, "episode": EPISODE_FIELDS, "detail": DETAIL_FIELDS,
                    "recording": RECORDING_FIELDS, "credit": CREDIT_FIELDS, "day": DAY_FIELDS, "doc": DOC_FIELDS},
+        # The genre field's display names until the eight-genre set lands (contract §5.5).
+        "genreNames": {g: g[4:] if g.startswith("OTR-") else g for g in sorted({r[2] for r in series.values() if r[2]})},
         "rightsLines": RIGHTS_LINES, "variantLines": VARIANT_LINES, "partialLine": PARTIAL_LINE,
     }
     manifest["bytes"] = measure(out)
