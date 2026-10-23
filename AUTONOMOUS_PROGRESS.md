@@ -118,3 +118,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - New owner item 12: six sections overflow an iOS 18 iPhone's tab bar (four and More).
 - Launched Radio on Android (phone and TV). Running: web plays, the Worker.
 - Opt tick note: tick 55 is an opt tick by cadence but carried a merge; the next quiet tick takes the cleanup (net-negative lines).
+
+### Tick 56, 2026-10-23, opt: stale infrastructure notes removed (net -6 lines)
+- Measured: push events start workflows again (Android Build on push at 13:10 and 13:14 UTC, both green); removed the scratchpad paragraph and the contract's parenthesis that said otherwise. www.eardrama.org still fails its certificate (curl 60); the apex answers 200. Scratchpad status now 1.0.25. 1f369cc: 13 insertions, 19 deletions.
+- Running: Radio on Android, web plays, the Worker.
