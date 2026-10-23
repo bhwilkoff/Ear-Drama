@@ -25,6 +25,7 @@ import zlib
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import genre_of
+from titles import display_title
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
@@ -144,11 +145,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
         cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
-            eid, sk, air, dsrc, season(air), num, title, aka, recs[0][6],
+            eid, sk, air, dsrc, season(air), num, display_title(title), aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
-                  (cur.lastrowid, " ".join(x for x in (title, aka) if x), names.get(sk, ""),
+                  (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
+                   names.get(sk, ""),
                    " ".join(n for _, n, _, _ in credits), text or ""))
         per_series[sk] = per_series.get(sk, 0) + 1
 
