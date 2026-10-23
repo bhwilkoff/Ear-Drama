@@ -79,3 +79,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Found by reading the bundled file: all 9 plays carry front matter as speech (BOSTON, PRINTED BY, a publisher catalog making MORTON a castable part), Hamlet's first line is unclassified, and A Tender Attachment's opening dialogue is parsed as directions. A parser agent has the evidence; the bundle is replaced when it lands.
 - Launched: Apple's half of the design-doc fixes (062 constants, tvOS Now Playing / versions / 29 pt captions, Mac menu commands and window close, haptics, Queue/Follow/Share). Android plays waits for the Android parity agent.
 - Note: the macOS test needs CODE_SIGNING_ALLOWED=NO locally (no team set); the scheme is `EarDrama`, not `EarDrama_macOS`.
+
+### Tick 49, 2026-10-23, merge: Tonight in 19xx in the data plane and on the web's Radio tab
+- Three agents (Android/web parity, Apple parity, parser) stopped on the session limit overnight; resumed at 6:42 AM MT with their work intact.
+- Merged 5fd3ffc (1.0.19 build 20): build_evenings publishes `tonight.json` (15-day window, a published day never rewritten except to withhold), the publish workflow restores and grows a facts-only `radiologs-latest` cache, and the web gains a fifth tab, Radio. Conflicts with the transcript work (api.js, api.test.js, sw.js, WEB-DESIGN) kept both sides; SHELL_VERSION ed-shell-v6.
+- Verified on main: catalog run_all 21/21; js/api.test.js 10/10 with transcript, onAir and localDate; test_web ok; node --check on every js; workflow YAML parses; read the 375 px on-air screenshot (local and ET times, the slot on air marked, gaps as "Not surviving").
+- Not verified: the publish run's new steps (dispatched: run 39955509726); Listen live switching between slots in a browser. With the web gate closed, the current window has 0 playable slots on the web (every surviving recording in it is unclaimed).
