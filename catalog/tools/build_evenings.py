@@ -173,7 +173,7 @@ def pdf_for(paper, date, fetch=True):
 # ---------------------------------------------------------------- the grid parser
 
 WORD = re.compile(r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)</word>')
-LABEL_BARE = re.compile(r"^[|!'\"`.,\-=]*(00|15|30|45)[1lI|!/]([A-Z\"'(].*)$")
+LABEL_BARE = re.compile(r"^[|!'\"`.,\-=]*(00|15|30|45|13|43)(?:[1lI|!/]?$|[1lI|!/]?([A-Z\"'(].*)$)")
 LABEL = re.compile(r"^[|!'\"`.,\-=]*(\d{1,2}|[IlZz]\d?|\d[IlZz])?\s*[:;]\s*([0-9OoDIl(][0-9OoDIl()\]]?)[1lI|!'.,:;)\]]?(.*)$")
 HOURLAB = re.compile(r"^(\d{1,2}|[IlZ][0-9IlZ]?)$")
 
@@ -336,7 +336,7 @@ def _labels(words, panel, y_head):
         if not m and in_gutter:
             b = LABEL_BARE.match(w[4])  # "45IGunnar": the colon lost, the rule bar read as I
             if b:
-                m = LABEL.match(":" + b.group(1) + "|" + b.group(2))
+                m = LABEL.match(":" + b.group(1) + "|" + (b.group(2) or ""))
         if m and in_gutter:
             minute = _minute(m.group(2))
             if minute is not None:
@@ -364,7 +364,10 @@ def _labels(words, panel, y_head):
     labels.sort()
     rows = []
     for lab in labels:  # one row per band; a time printed on both sides of the grid is one row
-        if rows and abs(lab[0] - rows[-1][0]) < 3.5 and lab[1] == rows[-1][1]:
+        if rows and abs(lab[0] - rows[-1][0]) < 3.5 and (lab[1] == rows[-1][1] or lab[0] - rows[-1][0] < 1.5):
+            if lab[2] is not None and rows[-1][2] is None:  # two labels on one line: keep the one with its hour
+                rows[-1] = lab
+                continue
             if rows[-1][2] is None:
                 rows[-1][2] = lab[2]
             continue
@@ -457,7 +460,12 @@ def parse_grid(words, date):
             print("ROW", r[0], round(r[1]), r[2], r[3], hhmm(r[4]), file=sys.stderr)
     times = [r[4] for r in rows]
     # anomalies: a printed hour that disagrees with its row means the sequence slipped
-    disagree = sum(1 for r in rows if r[3] is not None and (r[4] // 60) % 12 != r[3] % 12)
+    def wrong(r):  # a printed "1" may be 10, 11 or 12 with a digit lost
+        h = (r[4] // 60) % 12 or 12
+        return r[3] is not None and h != r[3] and not (r[3] == 1 and h in (10, 11, 12))
+    disagree = sum(1 for r in rows if wrong(r))
+    # the evening is what is offered: its own rows (5 PM to 1 AM) must agree with their printed hours
+    disagree_evening = sum(1 for r in rows if wrong(r) and 17 * 60 <= r[4] < 25 * 60)
     grid = {}  # (row index, call) -> printed text
     for pi, p in enumerate(panels):
         mine = [i for i, r in enumerate(rows) if r[0] == pi]
@@ -512,9 +520,15 @@ def parse_grid(words, date):
         zone = "EDT"
     elif "standard" in full:
         zone = "EST"
-    prime_rows = len({t for t in times if PRIME[0] <= t < PRIME[1]})
-    readable = prime_rows >= 13 and disagree <= 3 and 22 * 60 + 45 <= max(times) <= 26 * 60
-    return {"stations": stations, "rows": len(rows), "hour_disagreements": disagree, "printed_zone": zone,
+    # prime-time quarters the grid's blocks span (a dropped label inside a block is still
+    # placed by its neighbors; a quarter outside every block is unknown)
+    covered = set()
+    for (pi, run, q, s12), st in zip(placed, starts):
+        covered |= set(range(st, st + q[-1] * 15 + 15, 15))
+    prime_rows = len({t for t in covered if PRIME[0] <= t < PRIME[1]})
+    readable = prime_rows >= 13 and disagree_evening <= 1 and 22 * 60 + 45 <= max(times) <= 26 * 60
+    return {"stations": stations, "rows": len(rows), "hour_disagreements": disagree,
+            "evening_disagreements": disagree_evening, "printed_zone": zone,
             "prime_rows": prime_rows, "last_row": hhmm(max(times)), "readable": readable,
             "panels": len(panels)}, None
 
@@ -620,7 +634,8 @@ class Catalog:
             first, last, name = self._span[key]
             if not (first[:4] <= date[:4] <= last[:4]):
                 continue
-            sc = max(name_score(n, text) for n in self.names.get(key, {name}))
+            # a one-word name ("Edward", "Beulah") inside a cell names nothing for certain
+            sc = max((name_score(n, text) for n in self.names.get(key, {name}) if len(_norm(n)) >= 9), default=0.0)
             if sc > best:
                 best, who = sc, name
         return who if best >= 0.92 else None
@@ -776,6 +791,7 @@ def build_evening(date, network, cat, fetch=True, paper="w"):
         "date": date, "weekday": dt.date.fromisoformat(date).strftime("%A"), "network": network,
         "station": station["call"], "zone": "ET", "witness": witness,
         "grid_rows": grid["rows"], "hour_disagreements": grid["hour_disagreements"],
+        "evening_disagreements": grid["evening_disagreements"],
         "prime_rows": grid["prime_rows"], "last_row": grid["last_row"], "readable": grid["readable"],
         "coverage": round(coverage(slots), 3),
         "slots": [{"et_start": hhmm(s["start"]), "et_end": hhmm(s["end"]), "length_min": s["end"] - s["start"],
@@ -908,7 +924,7 @@ def otrr_times(registry=REGISTRY):
     return out
 
 
-def report(measured, floors=(0.25, 1 / 3, 0.4, 0.5, 0.6, 2 / 3)):
+def report(measured, floors=(0.1, 0.15, 0.2, 0.25, 1 / 3, 0.4, 0.5, 0.6)):
     """The numbers the floor is chosen from (printed; the caller writes them into the docs)."""
     recs = list(measured.values())
     ok = [r for r in recs if "coverage" in r]
@@ -936,6 +952,18 @@ def report(measured, floors=(0.25, 1 / 3, 0.4, 0.5, 0.6, 2 / 3)):
     for wd in range(7):
         lines.append(dist([r for r in readable if dt.date.fromisoformat(r["date"]).weekday() == wd],
                           dt.date(2024, 1, 1 + wd).strftime("%A")))
+    # anniversaries: for each calendar date measured in many years, its best evening
+    by_md = collections.defaultdict(list)
+    for r in readable:
+        by_md[r["date"][5:]].append(r)
+    full = {md: rs for md, rs in by_md.items() if len({r["date"] for r in rs}) >= 10}
+    if full:
+        best = {md: max(rs, key=lambda r: r["coverage"]) for md, rs in sorted(full.items())}
+        lines.append("best anniversary evening per calendar date (dates measured in 10+ years): " +
+                     ", ".join(f"{md} {b['date'][:4]} {b['network']} {b['coverage']:.2f}" for md, b in best.items()))
+        lines.append("calendar dates whose best anniversary clears the floor: " +
+                     " ".join(f">={f:.2f}:{sum(1 for b in best.values() if b['coverage'] >= f - 1e-9)}/{len(best)}"
+                              for f in floors))
     hist = collections.Counter(min(9, int(r["coverage"] * 10)) for r in readable)
     lines.append("histogram (tenths): " + " ".join(f"{k / 10:.1f}-:{hist.get(k, 0)}" for k in range(10)))
     # time check: each matched slot against OTRR's logged regular time for that series
