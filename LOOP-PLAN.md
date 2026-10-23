@@ -17,9 +17,8 @@ keeps building the next one while I play the last.
 ## Starting and resuming the loop
 
 Type `/loop Read LOOP-PLAN.md and run the next tick`. The first tick runs at
-once, and each tick ends by scheduling the next one five minutes after it
-finishes: a cooldown, never a wall-clock cron (owner, 2026-10-22: *"Make sure
-that loops run on a 5 minute cool down"*).
+once; after that a tick runs when a batch agent reports, with a 30-minute
+fallback (owner, 2026-10-23, replacing the 5-minute cooldown of 2026-10-22).
 
 Each tick reads, in order: this file; the Current State in `SCRATCHPAD.md`;
 the last three entries of `AUTONOMOUS_PROGRESS.md` (create it on tick 1);
@@ -28,58 +27,74 @@ tick of a session; then the platform page in `docs/platforms/` and any binding
 design doc for the platform it is about to touch. A tick after a compaction
 starts here too, because this file and the progress log are the loop's memory.
 
-## Every tick
+## How the loop runs (rewritten 2026-10-23)
 
-0. **Check GitHub Actions first** (owner, 2026-10-23: *"I do occasionally get
-   alerts that the github builds are failing. Can you check on that as a part
-   of this loop?"*): `gh run list -L 40` for anything not green since the last
-   tick. A failure is diagnosed from `gh run view <id> --log-failed` and fixed
-   before new work, or logged with its cause when it is not ours to fix. A
-   `pages-build-deployment` cancelled by a newer push is superseded, not
-   broken: say so in the log rather than chase it.
-1. **Take the next unblocked item** from the earliest open milestone in
-   "Milestones" below, or from "Owner feedback" first when there is any.
-   Feedback from a play session always goes to the top of the queue.
-2. **Read the runbook before acting.** Grep `docs/`, `tools/`, and the memory
-   folder for the task. Invoke the skill the AGENTS.md table names; before any
-   new feature, run `learning-orientation-design`.
-3. **Diagnose, build, verify, log.** One verified unit per tick, never an
-   unverified fix stacked on another. Verification is external observation:
-   the glass (window-only screenshots on the Mac), the published artifact
-   downloaded again, the store's own API, tap-audio metering.
-4. **Mirror the verb on every core platform** in the same milestone, update
-   `PARITY.md` in the same commit, and mark a platform not yet reached ⏳ with a
-   note, never silence.
-5. **Commit and push** the verified unit with `git commit -F` and a quoted
-   heredoc. App-source commits bump PATCH and build in `AppVersion.xcconfig`;
-   MINOR goes up only for a release carrying something new. Docs, data, and CI
-   commits do not bump.
-6. **Log the tick** in `AUTONOMOUS_PROGRESS.md` (Context, Implementation,
-   Verification, Lessons, Next) with the words *verified*, *fixed*, and
-   *shipped* kept apart. A lesson that cost a CI cycle becomes a memory file.
-7. **Announce, then schedule.** The last line is `Next tick: <time>` in
-   Mountain time, written before the scheduling call.
+The owner, after two session limits in one day: *"We have hit our session
+limits multiple times, but it doesn't seem as though we are very far at all
+... we need to be tackling significant work and not just running the same
+checks each loop tick ... How can we rewrite the loop so that we are
+optimizing token usage and also committing significant work with each
+tick?"* Then: wake on results with a 30-minute fallback; Sonnet for ports,
+Opus for design; and *"I want you to work on significant features before I
+start testing them."*
 
-**Rotation.** Inside a milestone that spans platforms, the least mature core
-platform gets two ticks in five, and every fifth tick is an opt tick that must
-net-remove lines. The first opt tick rolls `DECISIONS.md` (72 KB, past its
-50 KB roll point) into `docs/decisions/`, verbatim, with an index.
+**Wake on results.** A tick runs when a batch agent reports, or after 30
+minutes (`ScheduleWakeup` 1800 as the fallback heartbeat). An agent's interim
+"waiting on its own work" notice is not a tick: answer it in one line or not
+at all. A session-limit stop schedules the resume for the reset time and does
+nothing else.
 
-**Scope per tick** (owner, 2026-10-22, after twelve small ticks: *"Are you
-doing enough substantial work on each tick? It seems like every tick is such a
-tiny scope of work."*). A tick is not one small item. Every tick (1) reads the
-reports of the milestone agents running in their own worktrees, reviews each
-finished branch's diff and evidence, and merges what is verified (bumping the
-version and updating PARITY.md in the merge commit); (2) relaunches or redirects
-an agent wherever one is idle, so the core platforms are always being built at
-once; and (3) does a substantial unit on the main thread itself, normally the
-data plane. A tick that only edits a doc is the exception, not the rule.
+**A tick is a batch merge, not a check.** When an agent reports:
+1. CI: `gh run list -L 20`, anything red since the last tick fixed or
+   explained first (owner, 2026-10-23).
+2. Read the diff and the evidence; merge; confirm `MERGE_HEAD`; run each
+   affected suite ONCE (`xcodegen generate` first on Apple, then compare the
+   test count to the agent's); bump; PARITY in the merge commit; push.
+3. Launch the next batch from "Feature batches" below, so one or two batch
+   agents are always building.
+4. One short report to the owner: what now exists that did not, what is not
+   verified, what needs them. No per-merge narration, no holding-tick reports.
+The main thread does not re-derive what an agent verified unless main moved
+under it (`git log <base>..main -- <paths>`).
 
-**Parallel work.** Two or three milestones may run at once, as the Human
-Shaped site's loop did, through background agents in their own worktrees, each
-merged only when verified. Data work (M1) and the web client (M2) overlap;
-Apple (M3) and Android (M4) run side by side. An agent's summary is a claim:
-read its diff and its evidence before merging.
+**A batch is a feature, everywhere.** One agent builds one significant feature
+on every platform it belongs on (web, Apple, Android, and the data plane or
+Worker it needs), or a backlog of three to five items, in one worktree and one
+run. Never one agent per platform for the same feature: the shared reading is
+paid once.
+
+**Models.** Design, review, the data plane, the Worker, and hard bugs: Opus.
+Porting a feature that already exists on one platform to another, mirroring a
+rule, mechanical refactors: Sonnet (`model: "sonnet"` on the Agent call).
+
+**Briefs are short.** Every brief points at `docs/AGENT-BRIEF.md` for the
+standing rules (worktree, commits, verification, no simulators, US English,
+On Air roles, the owner's calls not to make) and adds only the feature's goal,
+its decisions, and its acceptance tests.
+
+**Logs are short.** `AUTONOMOUS_PROGRESS.md` gets one entry per batch merged:
+what exists now, the evidence, what is not verified. Lessons go to memory.
+
+## Feature batches (in order; each is one agent, every platform)
+
+Owner, 2026-10-23: build significant features before asking them to test.
+1. **Plays phase 2 in the apps** (M8): resume the stopped web and Apple agents
+   (their work is saved in their worktrees), then Android on Sonnet as a port
+   of Apple's. Invite links, relay claims, uploads, report/block, consent
+   step, classes.
+2. **Downloads and offline listening** (R17, the car and bedtime): download an
+   episode or a whole series run, play with no network, storage shown and
+   cleared, on Apple and Android; the web's offline shell already exists.
+   Opus on Apple first, Sonnet port to Android.
+3. **Radio's genre channels** (R10, Decision 058): `channels.json` from the
+   pipeline on the one clock, and a channel row on every Radio tab; the
+   evenings already ship.
+4. **People and casts** (`withPerson`): a person's page with every episode
+   crediting them, cast lines on Detail as links, people in search.
+5. **Serial arcs and commercials** (R3, R8): a runs table in the data plane so
+   a serial plays to its arc's end and stops; commercials as chapters, never
+   skipped. Needs the owner's queue rule (SCRATCHPAD item 9) before the
+   play-on part ships; the data work does not wait.
 
 ## Standing rules for this app
 
