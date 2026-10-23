@@ -16,6 +16,9 @@ prefix lists, and a flat structure makes the lists short.
 | Public profile | `https://app.example.com/u/{username}` | Web renders; iOS + Android open the in-app view |
 | Single item detail | `https://app.example.com/item/{id}` | All platforms render in-app; web is the landing twin |
 | Settings deep entry | `https://app.example.com/settings/{section}` | All; web routes via `?view=settings&section=...` |
+| Ear Drama series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
+| Ear Drama episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
+| Ear Drama search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
 | OAuth callback | `appname://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |
 
 **Add a row to this table BEFORE adding a deep link in code.** New

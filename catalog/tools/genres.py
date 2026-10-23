@@ -6,6 +6,8 @@ human tag, else none. "Serial" decides over the rest unless the show is a comedy
 because a serial queues by arc (R3). A label no row here names is not a genre.
 """
 GENRES = ("drama", "mystery", "scifi", "western", "comedy", "news", "documentary", "serial")
+NAMES = {"drama": "Drama", "mystery": "Mystery", "scifi": "Science fiction", "western": "Western",
+         "comedy": "Comedy", "news": "News", "documentary": "Documentary", "serial": "Serials"}
 
 OTRR = {
     "Anthology Drama": "drama", "Drama": "drama", "Anthology": "drama", "Episodic Drama": "drama",
