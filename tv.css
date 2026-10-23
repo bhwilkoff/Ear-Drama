@@ -238,3 +238,5 @@ html.tv dialog.tv-exit button {
   margin: 0 12px;
   padding: 16px 32px;
 }
+
+html.tv [data-nav="plays"] { display: none; }

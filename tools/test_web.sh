@@ -2,7 +2,8 @@
 # Every web test in one command: the API layer, the TV focus engine, the
 # packaged-TV origin rules, Pulse's charts and page, the design tokens (every
 # platform's token file matches design-tokens.json), the service worker's
-# routing and shell, and two checks a browser
+# routing and shell, plays phase 1 (relay, takes, timeline, mix, no stored
+# device voice), and two checks a browser
 # will not show you. Each suite runs the SHIPPED files, so a test can never
 # drift from what actually runs.
 set -uo pipefail
@@ -11,6 +12,7 @@ cd "$(dirname "$0")/.."
 fail=0
 for t in js/api.test.js \
          js/player.test.js \
+         js/plays.test.js \
          tools/test_tv_focus.mjs \
          tools/test_tv_ua.mjs \
          tools/test_packaged_origin.mjs \

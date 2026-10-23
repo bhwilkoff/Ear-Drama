@@ -453,8 +453,11 @@ jobs:
             --exclude='/catalog' --exclude='/tools' --exclude='/ci_scripts' --exclude='/docs' \
             --exclude='/built' --exclude='/live' --exclude='/_site' ./ _site/
           cp -R built/web _site/data
+          # The castable plays (PLAYS-DESIGN §3) ride beside the projection.
+          mkdir -p _site/data/plays
+          cp catalog/plays/castable-scripts.json _site/data/plays/
           for f in index.html 404.html CNAME .nojekyll manifest.json css/styles.css js/app.js \
-                   data/manifest.json data/index/series.json; do
+                   data/manifest.json data/index/series.json data/plays/castable-scripts.json; do
             test -s "_site/$f" || { echo "::error::_site/$f is missing or empty; not deploying"; exit 1; }
           done
           echo "site files: $(find _site -type f | wc -l); data files: $(find _site/data -type f | wc -l); $(du -sh _site | cut -f1)"

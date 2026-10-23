@@ -348,6 +348,34 @@ evidence (08a §8); phase 1 ships no effects library.
   Media3 Transformer. The listen-through plays it with `MediaPlayer`.
 - Export is the share sheet through a `FileProvider` scoped to `Plays/`.
 
+### §4.6 As built on the web (2026-10-23)
+
+- `js/plays-*.js` (WEB-DESIGN §4.10). The microphone is asked for when the
+  performer presses Start recording (`getUserMedia`, `echoCancellation: true`,
+  `autoGainControl` and `noiseSuppression` off); a take records `capture: "aec"`
+  when the browser reports its echo canceller on.
+- Headphones: the page cannot see the output route (Safari enumerates no
+  outputs; Chrome's device labels do not say which route is in use), so it
+  states the refusal and Start recording stays disabled until the person
+  checks "My headphones are on", every session.
+- Capture is an `AudioWorklet` tap posting PCM to the page, so the same
+  line-end detector as Apple's reads 20 ms frames live; takes are resampled
+  to 48 kHz in an `OfflineAudioContext` and stored as 24-bit WAV.
+- The device voice is `speechSynthesis` with local English voices only; its
+  sound never reaches the page. The bleed check is level only: the share of
+  20 ms microphone frames above the room's floor while the device voice reads
+  (0.3 flags the take; UNVERIFIED, to measure on devices).
+- The mix is rendered in 30 s `OfflineAudioContext` chunks into a 16-bit WAV at
+  48 kHz (no AAC or Opus file encoder short of real-time MediaRecorder),
+  played in its own `<audio controls>`, and exported as a download. Gains
+  follow §4.4.
+- Measured in headless Chrome on 2026-10-23 with a fake microphone: room tone
+  and a take written to IndexedDB, a second `add()` of a take path refused
+  (`ConstraintError`), a three-take timeline rendered in 0.5 s chunks to its
+  exact length with each take where placed and silent gaps, and a finished
+  fixture play heard to the end and offered for export. Not yet run with a
+  real microphone, real headphones, or on iOS Safari.
+
 Recording quality varies on Android by manufacturer (echo cancellation,
 `UNPROCESSED` support, and engine voices all differ), so the bench needs the
 Pixel 8a and one Samsung before Android is called done.
@@ -405,13 +433,19 @@ the finished play.
 
 | What | Apple (iPhone, iPad, Mac) | Android | Web |
 |---|---|---|---|
-| The script as cast (the parsed model, with its line ids and revision) | Application Support, `Plays/<production>/script.json` | `filesDir/Plays/<production>/script.json` | The origin private file system (OPFS) |
-| Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | OPFS, WAV |
-| Room tone, per session | `Plays/<production>/roomtone/` | the same | OPFS |
-| The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | OPFS |
-| The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | OPFS, after `navigator.storage.persist()` is asked |
+| The script as cast (the parsed model, with its line ids and revision) | Application Support, `Plays/<production>/script.json` | `filesDir/Plays/<production>/script.json` | IndexedDB `ed-plays`, key `<production>/script.json` |
+| Takes, one file per kept take, never overwritten | `Plays/<production>/takes/` as FLAC (if the floor OS cannot write FLAC, ALAC in CAF; to measure) | `filesDir/Plays/<production>/takes/` as 24-bit WAV (§4.5) | IndexedDB, `<production>/takes/`, 24-bit WAV, written with `add()` |
+| Room tone, per session | `Plays/<production>/roomtone/` | the same | IndexedDB, `<production>/roomtone/` |
+| The production record (parts, who took which part by the name they typed, what each take heard, the timeline) | `Plays/<production>/production.json` | the same | IndexedDB, `<production>/production.json`, the same fields |
+| The rendered mix of a finished play | `Plays/<production>/mix.m4a`, rebuilt from the takes whenever they change | the same | IndexedDB, `<production>/mix.wav`; `navigator.storage.persist()` is asked when a play is cast |
 | Stand-in audio, transcripts of takes, analytics | Never stored | Never stored | Never stored |
 | Apple TV | Nothing: it records nothing and stores no plays in phase 1 (tvOS writes only to Caches) | | |
+
+The web keeps IndexedDB rather than OPFS (decided 2026-10-23): writing a file
+into OPFS from the page needs `createWritable`, which older Safari lacks (it
+offers only a worker's synchronous handle), while IndexedDB holds an
+ArrayBuffer in every browser the web app serves, and its `add()` refuses an
+existing key, which is the never-overwritten rule in one call.
 
 Takes are in Application Support rather than Caches because they are the
 person's own work and the system may purge Caches; they go into the device
