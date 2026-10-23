@@ -1,0 +1,281 @@
+# Loudness for the whole catalog (Decision 061; research 04 §8.2; docs/CATALOG-CONTRACT.md §3.1).
+#
+#   measure  NO catalog lock. Restore the served projection (catalog-latest) and
+#            the loudness cache (rolling Release `loudness-latest`,
+#            loudness.json.gz), measure the next batch of default copies
+#            (catalog/tools/measure_loudness.py --batch: stable-hash order,
+#            two streams, a contact User-Agent, a budget that stops starting
+#            new copies), and refuse a cache smaller than the one restored.
+#   publish  holds `catalog-writers` for a minute: fetch loudness-latest FRESH,
+#            merge this run's cache into it (additive: a measurement is never
+#            replaced by an error), refuse a shrink, upload. The previous cache
+#            goes up first as loudness.prev.json.gz, so a failed --clobber
+#            never leaves the Release empty.
+#
+# Bandwidth (research 04 §8.2): every copy is streamed once, about 25 MB, and
+# never saved. BATCH copies per run, four runs a day.
+#
+# Verdicts (docs/CI-FLEET.md §5): nothing due (every copy measured or waiting
+# its retry window) is green with a notice; copies were due and none measured
+# (every request failed, or the breaker stopped the batch first) is red, after
+# any permanent errors are recorded so the next run moves on. A transient
+# failure (429, 5xx) is never recorded: the next run tries it again.
+#
+# The publish workflow (catalog-publish.yml) restores loudness-latest and fills
+# episodes.loudness_i / loudness_tp from it; this workflow never touches the
+# catalog Releases.
+
+name: Catalog loudness
+
+on:
+  schedule:
+    - cron: '23 */6 * * *'        # four a day, off the hour
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Copies to measure this run (blank = the default)'
+        default: ''
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  REPO: ${{ github.repository }}
+  # Measured on the 2026-10-22 sample: 11.6 s per copy median, 16.5 s mean, one
+  # stream each; two streams make about 8 s a copy, so 1,000 is about 140 minutes.
+  BATCH: ${{ inputs.batch || '1000' }}
+  MAX_MINUTES: '200'
+
+jobs:
+  measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 260
+    # Two measure runs never overlap (they would plan the same copies). The
+    # schedule's 6 hours sits above the 260-minute wall, so this rarely waits.
+    concurrency:
+      group: catalog-loudness-measure
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    outputs:
+      changed: ${{ steps.verdict.outputs.changed }}
+      verdict: ${{ steps.verdict.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg >/dev/null
+          fi
+          ffmpeg -hide_banner -filters | grep -q ebur128
+          ffmpeg -version | head -1
+
+      - name: Restore the served projection (catalog-latest)
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          # No projection, nothing to measure against: red, never a guess.
+          bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D work --clobber -p ear-drama.sqlite.zz
+          python3 -c "
+          import zlib, sys
+          d = zlib.decompressobj(-15)
+          with open('work/ear-drama.sqlite.zz', 'rb') as f, open('work/ear-drama.sqlite', 'wb') as o:
+              for chunk in iter(lambda: f.read(1 << 20), b''):
+                  o.write(d.decompress(chunk))
+              o.write(d.flush())
+          "
+          rm work/ear-drama.sqlite.zz
+          echo "projection: $(python3 -c "import sqlite3;print(sqlite3.connect('work/ear-drama.sqlite').execute('SELECT COUNT(*) FROM episodes').fetchone()[0])") episodes"
+
+      - name: Restore the loudness cache (loudness-latest)
+        id: restore
+        run: |
+          set -euo pipefail
+          # Only a NON-EXISTENT release is a first run (docs/CI-FLEET.md §3).
+          if out=$(gh release view loudness-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            case " $out " in
+              *" loudness.json.gz "*) asset=loudness.json.gz ;;
+              *" loudness.prev.json.gz "*)
+                asset=loudness.prev.json.gz
+                echo "::warning::loudness-latest has no loudness.json.gz (a publish failed mid-upload); restoring loudness.prev.json.gz" ;;
+              *) echo "::error::loudness-latest exists with no cache (assets: $out)"; exit 1 ;;
+            esac
+            bash tools/gh_retry.sh gh release download loudness-latest -R "$REPO" -D work --clobber -p "$asset"
+            mv "work/$asset" work/restored.json.gz
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "no loudness-latest Release yet: first run"
+            python3 -c "import gzip,json;json.dump({}, gzip.open('work/restored.json.gz','wt'))"
+          else
+            echo "::error::could not read loudness-latest: $out"
+            exit 1
+          fi
+          cp work/restored.json.gz work/loudness.json.gz
+          python3 catalog/tools/measure_loudness.py --guard work/restored.json.gz work/loudness.json.gz
+
+      - name: Measure one batch
+        id: measure
+        timeout-minutes: 230        # backstop above the tool's own budget; the verdict decides
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python3 catalog/tools/measure_loudness.py --batch "$BATCH" --workers 2 \
+            --db work/ear-drama.sqlite --cache work/loudness.json.gz \
+            --max-minutes "$MAX_MINUTES" --summary work/summary.json
+
+      - name: Refuse a cache smaller than the one restored
+        id: guard
+        if: always() && steps.restore.outcome == 'success'
+        run: python3 catalog/tools/measure_loudness.py --guard work/restored.json.gz work/loudness.json.gz
+
+      - name: Verdict
+        id: verdict
+        if: always() && steps.guard.outcome == 'success'
+        run: |
+          set -euo pipefail
+          # Growth is read from the caches themselves, so a backstop that killed
+          # the tool before its summary still publishes what it saved.
+          changed=$(python3 -c "
+          import sys; sys.path.insert(0, 'catalog/tools')
+          import measure_loudness as L
+          a, b = L.load('work/restored.json.gz'), L.load('work/loudness.json.gz')
+          print('yes' if L.merge(a, b) != a else 'no')")
+          verdict=$(python3 -c "import json;print(json.load(open('work/summary.json'))['verdict'])" 2>/dev/null || echo killed)
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          if [ -f work/summary.json ]; then
+            python3 -c "import json;s=json.load(open('work/summary.json'));print(json.dumps(s, indent=1))" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          case "$verdict/$changed/${{ steps.measure.outcome }}" in
+            idle/*) echo "::notice::nothing due: every default copy is measured or waiting its retry window" ;;
+            measured/*/success) ;;
+            all_failed/*) echo "::error::copies were due and none measured (every request failed, or the breaker stopped the batch)" ;;
+            killed/yes/*) echo "::warning::the measure step was stopped by its backstop; publishing what it saved" ;;
+            killed/no/*) echo "::error::the measure step failed before measuring anything" ;;
+            *) echo "::error::measure step outcome ${{ steps.measure.outcome }} with verdict $verdict" ;;
+          esac
+
+      - name: Keep this run's cache for the publish job
+        if: always() && steps.verdict.outputs.changed == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: loudness-run
+          path: work/loudness.json.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: measure
+    if: always() && needs.measure.outputs.changed == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The catalog writers' lock, held only for fetch-merge-upload (docs/CI-FLEET.md §1).
+    concurrency:
+      group: catalog-writers
+      cancel-in-progress: false
+    permissions:
+      contents: write             # the loudness-latest Release
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: loudness-run
+          path: run
+
+      - name: Fetch what is published now (fresh, under the lock)
+        id: live
+        run: |
+          set -euo pipefail
+          mkdir -p live
+          if out=$(gh release view loudness-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            echo "release=yes" >> "$GITHUB_OUTPUT"
+            case " $out " in
+              *" loudness.json.gz "*) asset=loudness.json.gz ;;
+              *" loudness.prev.json.gz "*) asset=loudness.prev.json.gz; echo "::warning::merging over loudness.prev.json.gz" ;;
+              *) echo "::error::loudness-latest exists with no cache (assets: $out)"; exit 1 ;;
+            esac
+            bash tools/gh_retry.sh gh release download loudness-latest -R "$REPO" -D live --clobber -p "$asset"
+            mv "live/$asset" live/fresh.json.gz
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "release=no" >> "$GITHUB_OUTPUT"
+            python3 -c "import gzip,json;json.dump({}, gzip.open('live/fresh.json.gz','wt'))"
+          else
+            echo "::error::could not read loudness-latest: $out"
+            exit 1
+          fi
+
+      - name: Merge, and refuse a shrink
+        run: |
+          set -euo pipefail
+          python3 catalog/tools/measure_loudness.py --merge live/fresh.json.gz run/loudness.json.gz --out live/loudness.json.gz
+          python3 catalog/tools/measure_loudness.py --guard live/fresh.json.gz live/loudness.json.gz
+          python3 catalog/tools/measure_loudness.py --guard run/loudness.json.gz live/loudness.json.gz
+
+      - name: Upload to the rolling Release loudness-latest
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.live.outputs.release }}" = "no" ]; then
+            bash tools/gh_retry.sh gh release create loudness-latest -R "$REPO" --latest=false \
+              --title "Loudness (rolling)" \
+              --notes "EBU R128 measurements of each served episode's default copy (catalog/tools/measure_loudness.py): loudness.json.gz, and loudness.prev.json.gz, the one before. Written by .github/workflows/catalog-loudness.yml; read by catalog-publish.yml into episodes.loudness_i / loudness_tp. Never read by a client."
+          else
+            # --clobber deletes before it uploads: the old cache goes up under
+            # its own name first, so the Release is never left empty.
+            cp live/fresh.json.gz live/loudness.prev.json.gz
+            bash tools/gh_retry.sh gh release upload loudness-latest -R "$REPO" --clobber live/loudness.prev.json.gz
+          fi
+          bash tools/gh_retry.sh gh release upload loudness-latest -R "$REPO" --clobber live/loudness.json.gz
+          want=$(stat -c %s live/loudness.json.gz)
+          got=$(gh release view loudness-latest -R "$REPO" --json assets --jq '.assets[] | select(.name == "loudness.json.gz") | .size')
+          if [ "$got" != "$want" ]; then
+            echo "::error::loudness-latest/loudness.json.gz is ${got:-missing} bytes; built $want"
+            exit 1
+          fi
+          # The yield line tools/audit_workflow_health.py judges a green run by.
+          echo "[catalog-loudness] published $(python3 -c "
+          import sys; sys.path.insert(0, 'catalog/tools')
+          import measure_loudness as L
+          t = L.tally(L.load('live/loudness.json.gz'))
+          print(t['usable'], 'usable,', t['suspect'], 'suspect,', t['errors'], 'errors of', t['entries'], 'ids')") to loudness-latest ($got bytes)"
+
+  verdict:
+    needs: [measure, publish]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: A red X only for broken
+        env:
+          MEASURE: ${{ needs.measure.result }}
+          VERDICT: ${{ needs.measure.outputs.verdict }}
+          CHANGED: ${{ needs.measure.outputs.changed }}
+          PUBLISH: ${{ needs.publish.result }}
+        run: |
+          echo "measure=$MEASURE verdict=$VERDICT changed=$CHANGED publish=$PUBLISH"
+          if [ "$CHANGED" = "yes" ] && [ "$PUBLISH" != "success" ]; then
+            echo "::error::measured, but the publish job did not succeed ($PUBLISH)"
+            exit 1
+          fi
+          case "$VERDICT" in
+            idle|measured) ;;
+            killed) [ "$CHANGED" = "yes" ] || { echo "::error::nothing measured before the backstop"; exit 1; } ;;
+            all_failed) echo "::error::copies were due and none measured"; exit 1 ;;
+            *) echo "::error::the measure job did not reach a verdict ($MEASURE)"; exit 1 ;;
+          esac
+          if [ "$MEASURE" = "failure" ] && [ "$VERDICT" != "killed" ]; then
+            echo "::error::the measure job failed"
+            exit 1
+          fi
