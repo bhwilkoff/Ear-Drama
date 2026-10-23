@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 sealed interface Route : NavKey {
     @Serializable data object Listen : Route
     @Serializable data object SeriesBrowse : Route
+    /** Tonight in 19xx (ANDROID-DESIGN §4.10). */
+    @Serializable data object Radio : Route
     @Serializable data object Search : Route
     @Serializable data object Library : Route
     @Serializable data class Series(val key: String) : Route
@@ -29,6 +31,7 @@ sealed interface Route : NavKey {
 enum class Tab(val label: String, val root: Route, val onTelevision: Boolean = true) {
     Listen("Listen", Route.Listen),
     Series("Series", Route.SeriesBrowse),
+    Radio("Radio", Route.Radio),
     Plays("Plays", Route.Plays, onTelevision = false),
     Search("Search", Route.Search),
     Library("Library", Route.Library),

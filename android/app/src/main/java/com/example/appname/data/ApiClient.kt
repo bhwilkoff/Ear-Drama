@@ -1,5 +1,6 @@
 package com.example.appname.data
 
+import com.example.appname.radio.TonightFile
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -75,7 +76,20 @@ class ApiClient @Inject constructor() {
         }
     }
 
+    /**
+     * Tonight in 19xx (contract §8) from the catalog's Release, or null when
+     * none is published (404). Throws on any other failed status or no network.
+     */
+    suspend fun tonight(url: String = TONIGHT_URL): TonightFile? = withContext(Dispatchers.IO) {
+        okHttp.newCall(Request.Builder().url(url).header("Accept", "application/json").build()).execute().use { response ->
+            if (response.code == 404) return@use null
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
+            TonightFile.decode(response.body.string())
+        }
+    }
+
     companion object {
+        const val TONIGHT_URL = "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/tonight.json"
         const val USER_AGENT = "EarDrama-Android (https://eardrama.org)"
     }
 
