@@ -58,6 +58,14 @@ export function colors(t) {
   return out;
 }
 
+// The genre marks: [{ name, light, dark }], content only (Decision 012). Keys
+// are the catalog's genre keys; a key starting with "$" is a note.
+export function genres(t) {
+  return Object.entries((t.color && t.color.genre) || {})
+    .filter(([name]) => !name.startsWith('$'))
+    .map(([name, v]) => ({ name, light: v.light, dark: v.dark }));
+}
+
 const WEIGHT = {
   css: (w) => String(w),
   swift: (w) => ({ 400: 'regular', 500: 'medium', 600: 'semibold', 700: 'bold', 800: 'heavy', 900: 'black' })[w],
@@ -99,7 +107,10 @@ function setPattern(text, file, re, value) {
 // ---- web -----------------------------------------------------------------
 
 function webVars(t, mode) {
-  return colors(t).map((c) => `--color-${kebab(c.name)}: ${c[mode].toUpperCase()};`);
+  return [
+    ...colors(t).map((c) => `--color-${kebab(c.name)}: ${c[mode].toUpperCase()};`),
+    ...genres(t).map((g) => `--color-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
+  ];
 }
 
 function webStyles(t) {
@@ -114,6 +125,7 @@ function webStyles(t) {
   const dark = ['  color-scheme: dark;', ...webVars(t, 'dark').map((l) => '  ' + l)];
   out.push('html[data-theme="dark"] {', ...dark, '}');
   out.push('@media (prefers-color-scheme: dark) {', '  html:not([data-theme="light"]) {', ...dark.map((l) => '  ' + l), '  }', '}');
+  for (const g of genres(t)) out.push(`[data-genre="${g.name}"] { --genre-accent: var(--color-genre-${kebab(g.name)}); }`);
   return out;
 }
 
@@ -179,6 +191,20 @@ function appleDesign(t) {
     }
     L.push(`    nonisolated static let ${c.kind}${pascal(c.name)} = Color.tokenPair(light: 0x${hex6(c.light)}, dark: 0x${hex6(c.dark)})`);
   }
+  const gs = genres(t);
+  if (gs.length) {
+    L.push('');
+    L.push("    // Genre: content only, never chrome. Keyed by the catalog's genre key.");
+    for (const g of gs) L.push(`    nonisolated static let genre${pascal(g.name)} = Color.tokenPair(light: 0x${hex6(g.light)}, dark: 0x${hex6(g.dark)})`);
+    L.push('');
+    L.push('    /// The mark for a catalog genre key; nil for a key the palette does not name.');
+    L.push('    nonisolated static func genre(_ key: String?) -> Color? {');
+    L.push('        switch key {');
+    for (const g of gs) L.push(`        case "${g.name}": genre${pascal(g.name)}`);
+    L.push('        default: nil');
+    L.push('        }');
+    L.push('    }');
+  }
   L.push('');
   L.push('    nonisolated private static func tokenPair(light: UInt32, dark: UInt32) -> Color {');
   L.push('        #if canImport(UIKit)');
@@ -233,7 +259,9 @@ function appleAccent(t) {
     const [r, g, b] = rgb(h).map((v) => (v / 255).toFixed(3));
     return { 'color-space': 'srgb', components: { alpha: '1.000', blue: b, green: g, red: r } };
   };
-  const p = t.color.brand.primary;
+  // The system accent (the iOS tint default, the macOS sidebar selection) is
+  // wayfinding, so it takes secondary; primary stays for what is live.
+  const p = t.color.brand.secondary || t.color.brand.primary;
   const j = {
     colors: [
       { color: comp(p.light), idiom: 'universal' },
@@ -254,6 +282,15 @@ function androidColor(t, pkg) {
   for (const c of colors(t).filter((c) => c.kind === 'brand')) {
     L.push(`val Brand${pascal(c.name)}Light = Color(${argb(c.light)})`);
     L.push(`val Brand${pascal(c.name)}Dark = Color(${argb(c.dark)})`);
+  }
+  const gs = genres(t);
+  if (gs.length) {
+    L.push('');
+    L.push('// --- GENRE tokens (content only, never chrome), keyed by the catalog genre key ---');
+    for (const g of gs) {
+      L.push(`val Genre${pascal(g.name)}Light = Color(${argb(g.light)})`);
+      L.push(`val Genre${pascal(g.name)}Dark = Color(${argb(g.dark)})`);
+    }
   }
   L.push('');
   L.push('// --- SEMANTIC tokens (content only, never chrome) ---');
@@ -312,6 +349,7 @@ function androidColorsXml(t, mode) {
     `    <color name="brand_primary">#FF${hex6(b.primary[mode])}</color>`,
     `    <color name="brand_background">#FF${hex6(b.background[mode])}</color>`,
     `    <color name="brand_surface">#FF${hex6(b.surface[mode])}</color>`,
+    ...genres(t).map((g) => `    <color name="genre_${g.name}">#FF${hex6(g[mode])}</color>`),
     '</resources>',
     '',
   ].join('\n');
@@ -327,6 +365,10 @@ function windowsResources(t) {
       const n = (c.kind === 'brand' ? 'Brand' : 'Semantic') + pascal(c.name);
       L.push(`        <Color x:Key="${n}">#${hex6(c[mode])}</Color>`);
       L.push(`        <SolidColorBrush x:Key="${n}Brush" Color="#${hex6(c[mode])}"/>`);
+    }
+    for (const g of genres(t)) {
+      L.push(`        <Color x:Key="Genre${pascal(g.name)}">#${hex6(g[mode])}</Color>`);
+      L.push(`        <SolidColorBrush x:Key="Genre${pascal(g.name)}Brush" Color="#${hex6(g[mode])}"/>`);
     }
     const p = t.color.brand.primary[mode];
     L.push(`        <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="${mixBlack(p, 0.1)}"/>`);

@@ -434,7 +434,7 @@
     } else if (where.phase === 'after') {
       status = el('p', { class: 'caption' }, `Ended at ${localClock.format(new Date(last.utc_end))}`);
     } else if (isLive) {
-      status = el('button', { type: 'button', class: 'btn', 'aria-pressed': 'true',
+      status = el('button', { type: 'button', class: 'btn btn-live', 'aria-pressed': 'true',
                               onclick: () => { Player.pause(); stopLive(); } }, 'Listening live');
     } else if (onDetail) {
       status = el('button', { type: 'button', class: 'btn btn-primary', onclick: () => tuneIn(day, details) },

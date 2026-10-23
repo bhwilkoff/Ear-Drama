@@ -37,6 +37,7 @@ struct MiniPlayer_iOS: View {
                         .font(.title3)
                         .frame(minWidth: 44, minHeight: 44)
                 }
+                .tint(Color.brandPrimary)
                 .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
             }
             .padding(.horizontal, Spacing.s4)

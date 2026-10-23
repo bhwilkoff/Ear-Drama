@@ -489,6 +489,7 @@ struct ListenThrough: View {
                 } label: {
                     Label(production.isFinished ? "Play" : "Listen Through", systemImage: "play.fill")
                 }
+                .tint(Color.brandPrimary)
             }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
@@ -511,6 +512,7 @@ struct ListenThrough: View {
                 } label: {
                     Label(mix.isPlaying ? "Pause" : "Play", systemImage: mix.isPlaying ? "pause.fill" : "play.fill")
                 }
+                .tint(Color.brandPrimary)
                 #if os(iOS)
                 .sensoryFeedback(Haptic.selection.feedback, trigger: mix.isPlaying)
                 #endif
@@ -528,6 +530,7 @@ struct ListenThrough: View {
                     ProgressView(value: min(mix.currentTime, mix.duration), total: max(mix.duration, 1))
                 }
             }
+            .tint(Color.brandPrimary)
         }
     }
 

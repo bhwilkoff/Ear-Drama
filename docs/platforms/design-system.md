@@ -37,6 +37,18 @@ brand color for content meaning or a semantic color for chrome. Add a
 domain-specific semantic color to `color.semantic` in the JSON, and the
 generator carries it to every platform.
 
+**Genre hues** (`color.genre`, Decision 064) are a third group, content
+only: one mark per catalog genre key (`catalog/tools/genres.py`), each
+held at 3:1 on background, surface, and surfaceAlt in both modes by the
+token test. The generator writes them as `--color-genre-<key>` plus a
+`[data-genre]` rule on the web, `Color.genreDrama` and
+`Color.genre(_:)` on Apple, `GenreDramaLight`/`Dark` and
+`genre_drama` on Android, and `GenreDramaBrush` on Windows. On Air's
+roles: red `primary` only for what is live (Play, the progress line,
+the playing or on-air marker); blue `secondary`/`link` for links, the
+focus ring, the selected tab, and every other control. `AccentColor`
+on Apple is the blue.
+
 **Typography hierarchy**: three weights × two sizes = six levels.
 Refuse a seventh; refactor instead. See `mobile-first-density-design`
 for the discipline.

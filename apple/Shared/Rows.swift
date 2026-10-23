@@ -49,6 +49,7 @@ struct EpisodeRowLabel: View {
                     .accessibilityHidden(true)
             } else if p > 0 {
                 ProgressView(value: p)
+                    .tint(Color.brandPrimary)
                     .frame(maxWidth: 60)
                     .accessibilityHidden(true)
             }
@@ -73,6 +74,13 @@ struct SeriesRowLabel: View {
             Text(verbatim: series.metaLine)
                 .font(TypeRamp.caption)
                 .foregroundStyle(Color.brandTextMuted)
+        }
+        .padding(.leading, Spacing.s3)
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.genre(series.genre) ?? Color.brandBorder)
+                .frame(width: 4)
+                .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
     }

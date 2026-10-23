@@ -215,7 +215,7 @@ const AccountUI = (() => {
       el('h2', { id: 'account-h', class: 'section-header' }, 'Account'),
       facts,
       el('div', { class: 'actions' },
-        el('button', { type: 'button', class: 'btn btn-primary', disabled: busy || !hasSync, onclick: syncNow },
+        el('button', { type: 'button', class: 'btn btn-accent', disabled: busy || !hasSync, onclick: syncNow },
           svg(SYNC), 'Sync now'),
         el('button', { type: 'button', class: 'btn', onclick: async () => {
           await (hasSync ? Sync.signOut() : acct.signOut());
@@ -277,7 +277,7 @@ const AccountUI = (() => {
       box.append(
         el('p', {}, `Signed in with ${PROVIDER[s.provider] || s.provider}.`),
         el('div', { class: 'actions' },
-          el('button', { type: 'button', class: 'btn btn-primary', onclick: () => deleteFlow(msg, paint) }, 'Delete account'),
+          el('button', { type: 'button', class: 'btn btn-accent', onclick: () => deleteFlow(msg, paint) }, 'Delete account'),
           el('button', { type: 'button', class: 'btn', onclick: async () => { await acct.signOut(); paint(); } }, 'Sign out')),
         msg);
     };

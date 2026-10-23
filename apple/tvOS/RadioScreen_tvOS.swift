@@ -126,6 +126,7 @@ private struct Evening_tvOS: View {
                     } label: {
                         Label("Listen live", systemImage: "play.fill")
                     }
+                    .tint(Color.brandPrimary)
                     .focused($liveFocused)
                 }
             }

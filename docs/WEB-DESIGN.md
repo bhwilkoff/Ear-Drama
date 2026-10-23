@@ -309,7 +309,16 @@ web app follows today.
 - **§6.1 Every value is a token** from `design-tokens.json`; nothing in
   `styles.css` names a color. Brand chrome and genre accents never mix
   (R12): genres reach the page only through `data-genre` and
-  `--genre-accent`, neutral until the owner picks the hues (Decision 060).
+  `--genre-accent`, which the generator sets per catalog genre key.
+- **§6.1a Color roles (Decision 064, On Air).** Red (`--color-primary`)
+  is only for what is live: Play, the progress line, the slot on the air
+  now, Listen live, and Start recording (the microphone is live). Blue
+  does the wayfinding: `--color-link` for links and the focus ring;
+  `--color-secondary` for the selected tab and sidebar item, a pressed
+  toggle, a checked control, the loading spinner, and every filled
+  button that is not Play. Genre hues (`--color-genre-*`) are content:
+  the series card's and row's genre edge and the series page head, never
+  a button, a tab, or a link.
 - **§6.2 Density from removing chrome.** Six type levels (page title,
   section header, body strong, body, caption, tabular), system fonts.
 - **§6.3 Safari layout.** `body { height: 100dvh; display: flex;

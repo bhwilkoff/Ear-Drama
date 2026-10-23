@@ -223,7 +223,7 @@ the unclaimed one.
 | `rights = unclaimed` | "No rights claim known. Removed on request." Never "public domain" |
 | `variant = AFRS` / `AFRTS` | "Armed Forces Radio rebroadcast" |
 | `partial = 1` | "Incomplete copy" |
-| the eight genres | their names; hues per the owner's palette pick (Decision 060) |
+| the eight genres | their names; hues from `color.genre` in `design-tokens.json` (Decision 064) |
 
 ## 6. Policy flags
 

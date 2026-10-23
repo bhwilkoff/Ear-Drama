@@ -7,11 +7,16 @@
 //   3. a target stops depending on the JSON (the negative control: change
 //      every color in memory and every target must change with it);
 //   4. a tvOS type level maps to a system style under the 29 pt body floor
-//      (AGENTS.md; tvOS-DESIGN §7.1), with its own negative control.
+//      (AGENTS.md; tvOS-DESIGN §7.1), with its own negative control;
+//   5. color.genre stops naming exactly the catalog's genre keys, or a genre
+//      mark drops below 3:1 on background, surface, or surfaceAlt in either
+//      mode (Decision 064), with its own negative control.
 //
 //   node tools/test_design_tokens.mjs
 
-import { plan, loadTokens, colors, contrast, ROOT } from './design_tokens.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { plan, loadTokens, colors, genres, contrast, ROOT } from './design_tokens.mjs';
 
 let failed = 0;
 const ok = (cond, msg) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${msg}`); if (!cond) failed++; };
@@ -73,6 +78,33 @@ ok(underFloor(tokens.type).length === 0, `every tvOS type level is at least 29 p
 const shrunk = structuredClone(tokens);
 shrunk.type.find((l) => l.id === 'caption').tvos = 'caption';
 ok(underFloor(shrunk.type).includes('caption'), 'the floor check catches a tvOS caption at 25 pt');
+
+// 5. Genre marks (Decision 064): one per catalog genre key, each a 3:1 mark on
+//    every ground it sits on, in both modes, with a negative control.
+const catalogGenres = (() => {
+  const m = /^GENRES = \(([^)]*)\)/m.exec(readFileSync(join(ROOT, 'catalog/tools/genres.py'), 'utf8'));
+  return m ? [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : [];
+})();
+const gs = genres(tokens);
+ok(catalogGenres.length > 0 && JSON.stringify(gs.map((g) => g.name).sort()) === JSON.stringify([...catalogGenres].sort()),
+  `color.genre names exactly the catalog's genres (${catalogGenres.join(', ')})`);
+const GROUNDS = ['background', 'surface', 'surfaceAlt'];
+const weakMarks = (t) => {
+  const out = [];
+  for (const g of genres(t)) for (const mode of ['light', 'dark']) for (const ground of GROUNDS) {
+    const r = contrast(g[mode], t.color.brand[ground][mode]);
+    if (r < 3) out.push(`${mode} ${g.name} on ${ground} ${r.toFixed(2)}:1`);
+  }
+  return out;
+};
+let lowest = Infinity;
+for (const g of gs) for (const mode of ['light', 'dark']) for (const ground of GROUNDS) {
+  lowest = Math.min(lowest, contrast(g[mode], tokens.color.brand[ground][mode]));
+}
+ok(weakMarks(tokens).length === 0, `every genre mark holds 3:1 on background, surface, surfaceAlt (lowest ${lowest.toFixed(2)}:1; under: ${weakMarks(tokens).join('; ') || 'none'})`);
+const faded = structuredClone(tokens);
+faded.color.genre.drama.light = '#E0E0E4';
+ok(weakMarks(faded).some((w) => w.startsWith('light drama')), 'the genre check catches a pale light-mode drama mark');
 
 console.log(failed ? `${failed} design-token check(s) FAILED` : `all ${results.length} token files match; contrast holds in light and dark`);
 process.exit(failed ? 1 : 0);

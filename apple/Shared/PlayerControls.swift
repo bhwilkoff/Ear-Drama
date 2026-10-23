@@ -24,6 +24,7 @@ struct TransportControls: View {
                     .font(.largeTitle)
                     .imageScale(large ? .large : .medium)
             }
+            .tint(Color.brandPrimary)
             .accessibilityLabel(player.isPlaying ? "Pause" : "Play")
             .help(player.isPlaying ? "Pause" : "Play")
 
@@ -127,6 +128,7 @@ struct Scrubber: View {
                 dragging = nil
             }
         }
+        .tint(Color.brandPrimary)
         .accessibilityLabel("Position")
         .accessibilityValue(EpisodeRow.clock(player.elapsed))
         .disabled(player.duration == nil)

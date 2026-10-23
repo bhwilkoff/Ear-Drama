@@ -184,7 +184,7 @@ const PlaysUI = (() => {
     h.setTitle(script.title, 'Plays');
     $('plays-h').textContent = script.title;
     const error = h.el('p', { class: 'caption refusal', role: 'alert' });
-    const cast = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: async () => {
+    const cast = h.el('button', { type: 'button', class: 'btn btn-accent', onclick: async () => {
       cast.disabled = true;
       try {
         await openStore();
@@ -256,14 +256,14 @@ const PlaysUI = (() => {
       const st = C.stateOf(p, part.id);
       const actions = h.el('div', { class: 'cast-actions' });
       if (st.status === 'recording') {
-        actions.append(h.el('a', { class: 'btn btn-primary', href: partHref(part.id) }, 'Record'));
+        actions.append(h.el('a', { class: 'btn btn-accent', href: partHref(part.id) }, 'Record'));
       } else if (st.status === 'open' && part.id === next) {
         const name = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name',
                                      placeholder: 'Your name', 'aria-label': `Your name, optional, for ${part.title}` });
         const form = h.el('form', { class: 'take-form', onsubmit: (e) => {
           e.preventDefault();
           if (apply(cur => C.take(cur, script, part.id, name.value))) h.navigate(partHref(part.id));
-        } }, name, h.el('button', { type: 'submit', class: 'btn btn-primary' }, 'Take part'));
+        } }, name, h.el('button', { type: 'submit', class: 'btn btn-accent' }, 'Take part'));
         if (!C.isSpeaking(part.id)) {
           form.append(h.el('button', { type: 'button', class: 'btn', onclick: () => {
             if (apply(cur => C.leaveSilent(cur, script, part.id))) rerender();
