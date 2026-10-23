@@ -6,8 +6,8 @@ selects from served rows; nothing here writes a title, a blurb, or a pick (R13).
 since it depends on the person's date), then one `genreFirsts` per genre in
 GENRES order with its episode ids precomputed.
 
-Episode rows are (id, series_key, air_date, num, no_recommend); series is
-key -> (genre, served episode count).
+Episode rows are (id, series_key, air_date, num, no_recommend[, title]); series
+is key -> (genre, served episode count).
 """
 import re
 
@@ -24,11 +24,33 @@ SHELF_LIMIT = 20
 # shelves; 5 is one ten-foot row, fewer reads as a heading over nothing.
 MIN_SERIES = 5
 FULL_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+# A book's front matter is not a place to start listening: a LibriVox dramatic
+# reading's first section is often its cast list or preface (measured 2026-10-23:
+# 108 "Dramatis Personae" sections, 74 numbered 0 and 33 numbered 1, so the number
+# cannot tell). A prologue is performed, so it stays.
+FRONT_MATTER = re.compile(
+    # At the title's start (after a section number), or a collection's closing
+    # "... Introduction". A word met mid-title is a program ("Cartoon Characters",
+    # "First Show-Introduction Of Bergen And McCarthy"), never front matter.
+    r"^\W*(?:\d+\s*[-–.:]?\s*)?(?:dramatis person\w*|cast of characters|cast list|characters\b|"
+    r"preface|foreword|introduction|introductory|costumes|vorrede|widmung|avertissement|"
+    r"personen|dedication)\b|\bintroduction\s*$", re.I)
 
 
 def recommendable(e):
     """recommendAnd: `no_recommend IS NULL`."""
     return e[4] is None
+
+
+# A section that also carries the play ("Personen - 1. Aufzug", "Preface and Act
+# 1") is where the performance starts, so it is never skipped.
+PERFORMED = re.compile(r"\b(act|acts|akt|aufzug|auftritt|scene|szene|chapter|kapitel|prolog\w*)\b", re.I)
+
+
+def front_matter(e):
+    """A section that only introduces the work (cast list, preface), by its title."""
+    title = e[5] if len(e) > 5 else None
+    return bool(title) and bool(FRONT_MATTER.search(title)) and not PERFORMED.search(title)
 
 
 def oldest_first(e):
@@ -45,13 +67,13 @@ def on_this_day(episodes, month, day, limit=SHELF_LIMIT):
 
 
 def genre_firsts(episodes, series, genre, limit=SHELF_LIMIT):
-    """The earliest surviving recommendable episode of each series in the genre
-    (oldest first: dated before undated, then number, then id), series with the
-    most served episodes first, ties by key."""
+    """The earliest surviving recommendable episode of each series in the genre,
+    front matter skipped (oldest first: dated before undated, then number, then
+    id), series with the most served episodes first, ties by key."""
     first = {}
     for e in episodes:
         g = series.get(e[1])
-        if g and g[0] == genre and recommendable(e):
+        if g and g[0] == genre and recommendable(e) and not front_matter(e):
             if e[1] not in first or oldest_first(e) < oldest_first(first[e[1]]):
                 first[e[1]] = e
     keys = sorted(first, key=lambda k: (-series[k][1], k))

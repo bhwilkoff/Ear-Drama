@@ -189,6 +189,24 @@ with tempfile.TemporaryDirectory() as tmp:
           ["a genre shelf is never empty"])
 
 
+# --- front matter is not where a shelf starts (2026-10-23, the web's Drama shelf) ---
+fm_series = {"rd": ("drama", 3), "otr": ("drama", 2), "act": ("drama", 2)}
+fm_eps = [
+    ("rd|s0", "rd", None, 0, None, "Dramatis Personae"),
+    ("rd|s1", "rd", None, 1, None, "Chapter 1"),
+    ("otr|1", "otr", "1950-01-01", 1, None, "Cartoon Characters"),
+    ("act|s0", "act", None, 0, None, "Personen - 1. Aufzug"),
+    ("act|s1", "act", None, 1, None, "Zweiter Aufzug"),
+]
+firsts = SH.genre_firsts(fm_eps, fm_series, "drama")
+check("a cast list is skipped for the series' first real section", "rd|s1" in firsts and "rd|s0" not in firsts, True)
+check("a program titled with the word mid-title is kept", "otr|1" in firsts, True)
+check("a section that also carries the first act is kept", "act|s0" in firsts, True)
+check("control: a collection's closing Introduction is front matter",
+      SH.front_matter(("x", "x", None, 0, None, "Frontier Gentleman Introduction")), True)
+check("control: a row without a title is never front matter", SH.front_matter(("x", "x", None, 0, None)), False)
+
+
 # --- the real projections: shape only, never contents ---------------------------
 def real_shape(name, shelves, served, rec):
     check(f"{name}: listenShelves published", isinstance(shelves, list), True)

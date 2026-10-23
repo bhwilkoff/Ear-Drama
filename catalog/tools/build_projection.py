@@ -182,7 +182,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES,
             "listenShelves": SH.listen_shelves(
-                d.execute("SELECT id, series_key, air_date, num, no_recommend FROM episodes"),
+                d.execute("SELECT id, series_key, air_date, num, no_recommend, title FROM episodes"),
                 {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")})}
     for k, v in meta.items():
         d.execute("INSERT INTO meta VALUES (?,?)", (k, json.dumps(v)))
