@@ -10,6 +10,8 @@
  *    the person presses play.
  * Commercials are part of the broadcast and are never skipped (R8): skip is a
  * fixed 15 s back / 30 s forward, never a jump past a segment.
+ * DECISIONS 062: FADE_S, SPEEDS, SAVE_EVERY_MS, and REWIND_S are the numbers
+ * every platform's player uses (Android PlayerNumbers, Apple AudioPlayer).
  */
 const Player = (() => {
   'use strict';
@@ -17,8 +19,10 @@ const Player = (() => {
   const audio = document.getElementById('audio');
   const BACK_S = 15;
   const FWD_S = 30;
-  const FADE_S = 20;
-  const SAVE_EVERY_MS = 10000;
+  const FADE_S = 10;
+  const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
+  const SAVE_EVERY_MS = 5000;
+  const REWIND_S = 3;
   const listeners = new Set();
 
   let current = null;
@@ -28,6 +32,8 @@ const Player = (() => {
   let lastSave = 0;
   let sleepTimer = null;
   let lastError = null;
+  let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
+  let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
 
   function emit(kind) { listeners.forEach(fn => fn(kind || 'state')); }
   function onChange(fn) { listeners.add(fn); }
@@ -36,15 +42,17 @@ const Player = (() => {
   function load(ep, { autoplay = true } = {}) {
     current = Store.card(ep);
     fired = false;
+    interrupted = false;
     lastError = null;
+    if (!audio.paused) pausing = true;
     audio.src = ep.url;
     baseVolume = API.playbackVolume(current.li, current.ltp);
     audio.volume = baseVolume;
-    audio.defaultPlaybackRate = Store.rate();
+    audio.defaultPlaybackRate = nearestSpeed(Store.rate());
     const at = Store.resumeAt(ep.id);
     audio.addEventListener('loadedmetadata', () => {
       if (at) audio.currentTime = at;
-      audio.playbackRate = Store.rate();
+      audio.playbackRate = nearestSpeed(Store.rate());
     }, { once: true });
     Store.addHistory(current);
     Store.dequeue(ep.id);
@@ -55,10 +63,18 @@ const Player = (() => {
 
   function play() {
     fired = false;
+    if (interrupted) {
+      interrupted = false;
+      audio.currentTime = Math.max(0, audio.currentTime - REWIND_S);
+    }
     const p = audio.play();
     if (p && p.catch) p.catch(err => { if (err.name !== 'AbortError') { lastError = err; emit('error'); } });
   }
-  function pause() { audio.pause(); }
+  function pause() {
+    if (audio.paused) return;
+    pausing = true;
+    audio.pause();
+  }
   function toggle() { if (!current) return; if (audio.paused) play(); else pause(); }
 
   function seek(t) {
@@ -71,8 +87,14 @@ const Player = (() => {
   function back() { skip(-BACK_S); }
   function forward() { skip(FWD_S); }
 
+  /** The offered speed closest to [r]: a rate kept from an older build still lands on a choice. */
+  function nearestSpeed(r) {
+    const n = Number(r) || 1;
+    return SPEEDS.reduce((best, s) => (Math.abs(s - n) < Math.abs(best - n) ? s : best), 1);
+  }
+
   function setRate(r) {
-    const rate = Number(r) || 1;
+    const rate = nearestSpeed(r);
     audio.playbackRate = rate;
     audio.defaultPlaybackRate = rate;
     Store.setRate(rate);
@@ -128,7 +150,7 @@ const Player = (() => {
   }
 
   function fireSleep() {
-    audio.pause();
+    pause();
     savePosition();
     fired = true;
     sleep = null;
@@ -146,7 +168,12 @@ const Player = (() => {
     updatePositionState();
     emit('time');
   });
-  audio.addEventListener('pause', () => { savePosition(); emit('pause'); });
+  audio.addEventListener('pause', () => {
+    if (!pausing && !audio.ended) interrupted = true;
+    pausing = false;
+    savePosition();
+    emit('pause');
+  });
   audio.addEventListener('play', () => emit('play'));
   audio.addEventListener('durationchange', () => emit('time'));
   audio.addEventListener('error', () => { lastError = audio.error; emit('error'); });
@@ -204,6 +231,6 @@ const Player = (() => {
     get sleep() { return sleep; },
     get fired() { return fired; },
     get error() { return lastError; },
-    BACK_S, FWD_S, FADE_S,
+    BACK_S, FWD_S, FADE_S, SPEEDS, SAVE_EVERY_MS, REWIND_S, nearestSpeed,
   };
 })();

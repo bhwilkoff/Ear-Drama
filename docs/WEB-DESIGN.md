@@ -125,10 +125,12 @@ web app follows today.
   it. The bar is a flex child above the tab bar, never `position: fixed`
   (§6.3). Now Playing is a `<dialog showModal>`, full screen on a phone.
 - **§5.2 Speed, the sleep timer, and skip live on the player** (R18):
-  back 15 s, forward 30 s, speed 0.8× to 2×, kept on the device.
+  back 15 s, forward 30 s, speeds 0.75, 1, 1.25, 1.5, and 2 (`SPEEDS`,
+  DECISIONS 062), kept on the device; a rate kept from an older build
+  lands on the nearest choice.
 - **§5.3 Bedtime is a mode** (R20). The sleep timer offers "End of this
-  episode" first, fades the volume over its last 20 s, and nothing
-  starts again until the person presses play.
+  episode" first, fades the volume over its last 10 s (`FADE_S`), and
+  nothing starts again until the person presses play.
 - **§5.4 Lean-back is bounded** (R3, R14). At an episode's end the next
   one plays only when the person queued it and it is from the same
   series.
@@ -136,8 +138,11 @@ web app follows today.
   never a jump past a segment.
 - **§5.6 Media Session** carries the title, series, and date, with play,
   pause, and seek handlers. Keyboard: k or space toggles, j and l skip.
-- **§5.7 Progress persists** every 10 s and on pause; resume only inside
-  the 10 s to 95% window.
+- **§5.7 Progress persists** every 5 s (`SAVE_EVERY_MS`) and on pause;
+  resume only inside the 10 s to 95% window. A pause the browser made (a
+  call, another tab's sound), not the person, is an interruption: the
+  next play starts 3 s back (`REWIND_S`). DECISIONS 062 holds all four
+  numbers; `js/player.test.js` checks them.
 - **§5.8 Audio is never cached** by the service worker (§7.2).
 
 ## §6 Look
