@@ -17,6 +17,37 @@ never in git. From this folder:
     mkdir -p out .cache && xz -dc dist/radio-catalog.sqlite.xz > out/radio-catalog.sqlite
     xz -dc dist/harvest-cache.tar.xz | tar -x -C .cache    # rebuild without re-harvesting
 
+## Publishing (`.github/workflows/catalog-publish.yml`)
+
+The apps never read this folder's outputs from git. A workflow, daily and on
+dispatch, restores the newest `catalog-YYYY-MM-DD` Release the way the block
+above does, rebuilds, tests, and publishes (contract §7):
+
+    python3 tools/build_db.py && python3 tools/enrich_db.py
+    bash tests/run_all.sh                                       # every suite; a red one blocks publish
+    python3 tools/build_projection.py --out out/publish         # apps: clean + unclaimed
+    python3 tools/build_projection.py --clean-only --out out/publish-clean
+    python3 tools/build_web_projection.py --src out/publish/ear-drama.sqlite --out out/web   # web: clean only
+    PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_projection.py
+    WEB_PROJECTION=out/web python3 tests/test_web_projection.py
+    python3 tools/publish_diff.py --old-manifest live/manifest.json --new-manifest out/publish/manifest.json
+
+`ear-drama.sqlite.zz` and `manifest.json` go to the rolling Release
+`catalog-latest`; the site goes to Pages with the web projection under `/data/`.
+The publish refuses a catalog that serves more than 2% fewer episodes than the
+live one unless it is dispatched with a `shrink_reason`, which the run summary
+records. Every run's summary says what changed: counts and bytes, episodes per
+rights state, and which ids left and why.
+
+Two settings are the owner's. **Pages**: Settings > Pages > Source > GitHub
+Actions; until then the deploy is skipped with a warning. **The public-web
+gate**: the web serves unclaimed rows only when the repository variable
+`DMCA_AGENT_REGISTERED` is `true`, set once the DMCA agent is registered.
+
+The publish step reads caches; it does not harvest. New harvests reach the apps
+when someone cuts a new dated Release (database, `harvest-cache.tar.xz`,
+`SHA256SUMS`), which the next run picks up.
+
 ## Run
 
     python3 tools/harvest_ia.py --workers 4      # archive.org: ~12,171 items, ~3-4 h

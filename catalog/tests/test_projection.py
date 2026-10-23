@@ -156,6 +156,8 @@ with tempfile.TemporaryDirectory() as tmp:
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):
     check("contract holds on the real artifact", violations(real), {})
+elif os.environ.get("PROJECTION"):
+    check("the projection named by PROJECTION exists", False, True)   # asked for, so never a skip
 else:
     print("  SKIP  real artifact: out/publish/ear-drama.sqlite not built")
 

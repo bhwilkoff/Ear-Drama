@@ -1,9 +1,9 @@
 # Ear Drama catalog contract
 
-> **DRAFT v1, 2026-10-22 (loop tick 9).** Nothing is published to this shape yet.
-> Sizes and the web projection's file layout are marked *to measure*, and are
-> settled by the publish step (LOOP-PLAN M1). When this doc and the code
-> disagree, the code wins, and the doc is fixed in the same change.
+> **DRAFT v1, 2026-10-22 (loop tick 9).** The publish step exists
+> (`.github/workflows/catalog-publish.yml`, §7); its first real run is pending.
+> Sizes still marked *to measure* are settled by that run. When this doc and the
+> code disagree, the code wins, and the doc is fixed in the same change.
 
 I want every Ear Drama app, on every platform, to show the same episode with
 the same date, the same cast, the same rights line, and the same default copy,
@@ -24,11 +24,12 @@ field here; it never computes one.
 
 | Asset | Host | For | Notes |
 |---|---|---|---|
-| `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`), built by `catalog/tools/build_projection.py`; MEASURED 2026-10-22: 27.4 MB compressed, 133 MB on disk, 121,907 episodes (clean-only: 1.2 MB, 6.2 MB, 15,125) |
-| `manifest.json` | the same Release, and Pages | every client, tooling | `schemaVersion`, `generatedAt`, row counts, bytes, sha256 |
+| `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` (`https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/ear-drama.sqlite.zz`) | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`), built by `catalog/tools/build_projection.py`; MEASURED 2026-10-22 on a rebuild from the 2026-10-21 caches: 26.2 MB compressed, 127 MB on disk, 116,380 episodes (clean-only: 1.0 MB, 5.4 MB, 14,670) |
+| `manifest.json` | the same Release | every native client, tooling | the served projection's: `schemaVersion`, `generatedAt`, `cleanOnly`, row counts, `rightsLines`, bytes, sha256 of the `.zz`; uploaded after the `.zz` it vouches for |
+| `data/manifest.json` | GitHub Pages | web, smart-TV web, Roku | the web projection's own manifest (counts, field names, shard math, rights lines, bytes); not the site's `/manifest.json`, which is the web app manifest |
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
-| `data/index/*.json`, `data/series/*.json`, `data/episodes/{shard}.json`, `data/evenings/*.json` | GitHub Pages, deployed by Actions (never committed) | web, smart-TV web, Roku | §4; *layout to measure* |
-| `radio-catalog.sqlite.xz` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included; never read by a client |
+| `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw; `data/evenings/` is not built yet |
+| `radio-catalog.sqlite.xz`, `harvest-cache.tar.xz`, `SHA256SUMS` | dated Release (`catalog-YYYY-MM-DD`) | the pipeline only | the full research database, hidden rows included, and every harvest cache; never read by a client. The publish step restores from the newest one and does not write it; a dated Release is cut by whoever refreshes the harvests |
 
 Audio is never re-hosted. Every client plays `https://archive.org/download/{id}/{file}`
 from the episode's default recording, percent-encoded by the pipeline (the stored
@@ -128,7 +129,9 @@ the starting shape, Archive Watch's:
 
 The series index is the gatekeeper for every thin client: an id absent from it
 is never fetched, listed, or linked. Deploying through Actions means the owner
-moves Settings > Pages > Source to GitHub Actions before the first publish.
+moves Settings > Pages > Source to GitHub Actions; until then the publish
+workflow builds and tests the web projection and skips its deploy with a
+warning (§7).
 
 ## 5. Query verbs
 
@@ -184,10 +187,48 @@ the unclaimed one.
 
 ## 7. Refresh protocol
 
-The publish workflow runs on a schedule and on dispatch, under one concurrency
-group with every other catalog writer. It merges onto the current artifact and
-refuses to publish a catalog that shrank past a floor without a recorded reason
-(Archive Watch Decision 020). A run that read nothing goes red.
+`.github/workflows/catalog-publish.yml`, daily at 09:41 UTC and on dispatch
+(push events do not start workflows in this repo). Two jobs:
+
+- **build**, no lock: restores `radio-catalog.sqlite.xz` and
+  `harvest-cache.tar.xz` from the newest `catalog-YYYY-MM-DD` Release (checked
+  against its `SHA256SUMS`), rebuilds with `build_db.py` and `enrich_db.py`,
+  runs every suite (`catalog/tests/run_all.sh`), builds the served projection,
+  the clean-only projection, and the web projection, runs `test_projection.py`
+  (`PROJECTION=`) and `test_web_projection.py` (`WEB_PROJECTION=`) over the real
+  artifacts, and prints what the publish changes (`catalog/tools/publish_diff.py`:
+  counts and bytes against the live manifest, episodes per rights state against
+  the restored snapshot, and which ids left and why: aliased, now hidden, or
+  neither, the last a warning per §9.6).
+- **publish**, holding `catalog-writers`, the one concurrency group every
+  catalog writer shares (`cancel-in-progress: false`): re-reads the live
+  `manifest.json` from `catalog-latest` and `data/manifest.json` from Pages,
+  refuses either projection when it serves more than 2% fewer episodes
+  (`MAX_SHRINK`) without a recorded reason, uploads `ear-drama.sqlite.zz` then
+  `manifest.json` to `catalog-latest` (`--clobber`, through `tools/gh_retry.sh`,
+  sizes checked after), and deploys the site with the web projection under
+  `/data/` through `actions/deploy-pages`.
+
+The guard is the merge rule: the catalog is rebuilt whole from the snapshot's
+caches, so nothing is merged field by field, and the guard keeps a rebuild from
+publishing less than is live. The recorded reason is the dispatch input
+`shrink_reason`, printed into the run summary. A missing `catalog-latest` is a
+first publish; one that exists without its manifest is an emergency and fails.
+A second floor (`RESEARCH_FLOOR`, 10%) holds the rebuild against the snapshot it
+was restored from, so a half-read cache is caught even on a first publish; it is
+looser because a snapshot can predate rights rulings (the 2026-10-21 snapshot
+serves 121,907 episodes, the 2026-10-22 audit 116,380).
+
+A run that read nothing goes red: no dated Release, a checksum mismatch, a build
+with no episodes, a red suite, or a projection under its floor (10,000 served,
+1,000 clean-only) each stop the run before anything is published. A red X is
+reserved for broken: Pages not yet served from Actions (`build_type` other than
+`workflow`) skips the deploy with a warning.
+
+The public-web gate is the repository variable `DMCA_AGENT_REGISTERED`: the web
+projection gets `--include-unclaimed` only when it is exactly `true`, and the
+build fails if the web manifest's `cleanOnly` disagrees with the variable. The
+native projection serves clean and unclaimed rows either way.
 
 ## 8. Extension files
 
@@ -207,4 +248,6 @@ and has a negative control:
 4. Every `no_recommend` episode is absent from every shelf, evening, and channel.
 5. Every web shard id is in the series index (the gatekeeper).
 6. Every id that left the catalog since the last publish is either aliased or
-   in `takedowns.json`.
+   in `takedowns.json`. Reported by `catalog/tools/publish_diff.py` on every
+   publish (a takedown shows as a hidden row with its bucket); a warning, not a
+   gate, until aliases are written for undated ids.

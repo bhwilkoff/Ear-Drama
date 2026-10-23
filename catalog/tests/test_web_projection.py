@@ -1,8 +1,9 @@
 """The web projection (tools/build_web_projection.py) against docs/CATALOG-CONTRACT.md §4.
 
     python3 tests/test_web_projection.py
-A fixture proves each rule and its broken control; when out/web/ exists, the
-gatekeeper and rights checks also run over every file of the real build.
+A fixture proves each rule and its broken control; when out/web/ (or
+$WEB_PROJECTION) exists, the gatekeeper and rights checks also run over every
+file of the real build.
 """
 import json
 import os
@@ -191,11 +192,13 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: the gate catches a leaked unclaimed row", got.get("the gate: clean rows only"),
           ["suspense|1943-05-25"])
 
-real = os.path.join(os.path.dirname(__file__), "..", "out", "web")
+real = os.environ.get("WEB_PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "web")
 if os.path.exists(os.path.join(real, "manifest.json")):
     check("contract holds on the real web build", violations(real), {})
     check("real build: Sorry, Wrong Number is found by its words", "suspense|1948-11-18" in search(real, "sorry wrong")
           if not load(real, "manifest.json")["cleanOnly"] else True, True)
+elif os.environ.get("WEB_PROJECTION"):
+    check("the web build named by WEB_PROJECTION exists", False, True)   # asked for, so never a skip
 else:
     print("  SKIP  real web build: out/web/ not built")
 
