@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Ear Drama app icon: a white ring microphone on On Air's tally red (Decision 064, brand.primary.light).
+       The element hangs on four diagonal springs inside the ring; its grille is three red bars. -->
+  <rect width="1024" height="1024" fill="#B0152F"/>
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <circle cx="512" cy="448" r="292" stroke-width="60"/>
+    <path d="M318 254 L436 352 M706 254 L588 352 M318 642 L436 544 M706 642 L588 544" stroke-width="20"/>
+  </g>
+  <g fill="#FFFFFF">
+    <rect x="422" y="322" width="180" height="252" rx="90"/>
+    <rect x="484" y="734" width="56" height="130" rx="10"/>
+    <rect x="332" y="852" width="360" height="56" rx="28"/>
+  </g>
+  <g stroke="#B0152F" stroke-width="16" stroke-linecap="round">
+    <path d="M462 404 H562 M462 448 H562 M462 492 H562"/>
+  </g>
+</svg>
