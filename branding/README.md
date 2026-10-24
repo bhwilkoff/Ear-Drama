@@ -35,8 +35,9 @@ icons the canonical paths are:
 |---|---|---|---|
 | iOS App Icon (1024×1024) | `icon-master.svg` | `AppIcon.appiconset/Icon-1024.png` | `inkscape` / `rsvg-convert` |
 | tvOS layered icon (imagestack) | `tvos-icon-layers/*.svg` | "App Icon & Top Shelf Image" brandassets | render per-layer, see below |
-| Android adaptive foreground (108dp) | `icon-master.svg` cropped to 72×72 safe zone | `mipmap-anydpi-v26/ic_launcher_foreground.xml` | hand-edit vector |
-| Android themed icon (monochrome) | `icon-monochrome.svg` | `drawable/ic_launcher_monochrome.xml` | same |
+| iOS dark and tinted appearances | `icon-dark.svg`, `icon-tinted.svg` | `AppIcon.appiconset/Icon-1024-{dark,tinted}.png` | `tools/render-app-icon.py` |
+| Android adaptive foreground (108dp) | the mark in `icon-master.svg`, inside the 66dp circle | `drawable/ic_launcher_foreground.xml` | `tools/render-app-icon.py` |
+| Android themed icon (monochrome) | the same silhouette (`icon-monochrome.svg`) | `drawable/ic_launcher_monochrome.xml` | same |
 | Web favicon set | `icon-master.svg` | `/favicon.ico`, `/icon-192.png`, `/icon-512.png` | realfavicongenerator.net or `sharp-cli` |
 | OG image (1200×630) | `og-image-master.svg` | `/assets/og/og-default.png` | `sharp-cli` / Figma export |
 | Play feature graphic (1024×500) | `feature-graphic.svg` | `play-store/feature-graphic.png` | Figma export |

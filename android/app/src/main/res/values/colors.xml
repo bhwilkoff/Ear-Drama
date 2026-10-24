@@ -5,6 +5,8 @@
     <color name="brand_primary">#FFB0152F</color>
     <color name="brand_background">#FFFFFFFF</color>
     <color name="brand_surface">#FFF4F4F5</color>
+    <!-- The launcher icon's ground is the icon master's red in both modes (branding/icon-master.svg). -->
+    <color name="icon_background">#FFB0152F</color>
     <color name="genre_drama">#FFB42575</color>
     <color name="genre_mystery">#FF3753A2</color>
     <color name="genre_scifi">#FF03838C</color>

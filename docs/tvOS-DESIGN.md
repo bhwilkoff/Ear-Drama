@@ -228,7 +228,9 @@ The only shapes; a new one needs a new rule.
 ## §7 Type, color, and accessibility
 
 - **§7.1 Six levels** (`TypeRamp`, tvOS branch of
-  `apple/Core/Design.swift`) over the system's ten-foot text styles,
+  `apple/Core/Design.swift`) over the system's ten-foot text styles
+  (the page title and section header in the bundled Big Shoulders Bold
+  at those styles' sizes, Decision 060),
   none below the 29 pt body floor: the caption level (L5) maps to the
   tvOS body style there and is set apart by its muted color, so the
   rights line, meta lines, time labels, and the transcript's caption

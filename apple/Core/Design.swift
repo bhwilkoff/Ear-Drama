@@ -81,16 +81,18 @@ extension Color {
 
 /// The six-level type ramp. Apple platforms use the system text styles, so
 /// Dynamic Type keeps working; tvOS maps to its own larger ten-foot styles.
+/// The display levels set the bundled BigShoulders-Bold (Decision 060) at the
+/// system style's default size, scaled with Dynamic Type relative to that style.
 enum TypeRamp {
     #if os(tvOS)
-    nonisolated static let pageTitle = Font.title.weight(.bold)  // L1
+    nonisolated static let pageTitle = displayFont(.title)  // L1
     #else
-    nonisolated static let pageTitle = Font.largeTitle.weight(.bold)  // L1
+    nonisolated static let pageTitle = displayFont(.largeTitle)  // L1
     #endif
     #if os(tvOS)
-    nonisolated static let sectionHeader = Font.title3.weight(.bold)  // L2
+    nonisolated static let sectionHeader = displayFont(.title3)  // L2
     #else
-    nonisolated static let sectionHeader = Font.title2.weight(.bold)  // L2
+    nonisolated static let sectionHeader = displayFont(.title2)  // L2
     #endif
     #if os(tvOS)
     nonisolated static let bodyStrong = Font.headline.weight(.semibold)  // L3
@@ -112,6 +114,35 @@ enum TypeRamp {
     #else
     nonisolated static let tabular = Font.body.monospacedDigit().weight(.regular)  // L6
     #endif
+
+    nonisolated static let displayFontName = "BigShoulders-Bold"
+
+    nonisolated private static func displayFont(_ style: Font.TextStyle) -> Font {
+        Font.custom(displayFontName, size: defaultSize(style), relativeTo: style)
+    }
+
+    /// The style's size at the default text size, so relativeTo: does the scaling.
+    nonisolated static func defaultSize(_ style: Font.TextStyle) -> CGFloat {
+        #if canImport(UIKit)
+        let ui: UIFont.TextStyle
+        #else
+        let ui: NSFont.TextStyle
+        #endif
+        switch style {
+        #if !os(tvOS)
+        case .largeTitle: ui = .largeTitle
+        #endif
+        case .title: ui = .title1
+        case .title2: ui = .title2
+        case .title3: ui = .title3
+        default: ui = .body
+        }
+        #if canImport(UIKit)
+        return UIFont.preferredFont(forTextStyle: ui, compatibleWith: UITraitCollection(preferredContentSizeCategory: .large)).pointSize
+        #else
+        return NSFont.preferredFont(forTextStyle: ui).pointSize
+        #endif
+    }
 }
 
 enum Spacing {

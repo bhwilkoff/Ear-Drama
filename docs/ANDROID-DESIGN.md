@@ -509,7 +509,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   on a red M3 `primary`, and on a token genre with no mark.
 - **§6.2 Six type levels** (`AppTypography`, `ui/theme/Type.kt`):
   `displaySmall`, `headlineSmall`, `titleMedium`, `bodyMedium`,
-  `labelMedium`, `bodySmall` with tabular figures, over the system face.
+  `labelMedium`, `bodySmall` with tabular figures. `displaySmall` and
+  `headlineSmall` set the bundled Big Shoulders Bold (`res/font`,
+  Decision 060); the rest set the system face.
   Refuse a seventh; `TypeLevelsTest` fails on any other style named.
 - **§6.3 Icons are Material Symbols** (R-ICON-1); the skip icons are
   Media3's own.

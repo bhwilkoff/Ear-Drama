@@ -63,7 +63,14 @@ for the discipline.
 | L6 Tabular | `.tabular` | `.body.monospacedDigit()` | same | `bodySmall` w/ tabular | `.tabular` |
 
 The sizes and weights live in `design-tokens.json` (`type`), and the
-generator applies them on the web, Android, and Windows. Apple keeps the
+generator applies them on the web, Android, and Windows. **Faces**
+(Decision 060, `font` in the JSON): L1 and L2 (`"face": "display"`) set
+Big Shoulders on the web, Apple, and Android; body text is Public Sans on
+the web and the system face on Apple and Android. `tools/build_fonts.py`
+builds every shipped file from the OFL masters in `branding/fonts/`
+(web `fonts/*.woff2`, Apple `Resources/Fonts/BigShoulders-Bold.ttf`,
+Android `res/font/big_shoulders_bold.ttf`); the token test fails on a
+named face with no file. Windows keeps its system face for now. Apple keeps the
 system text styles so Dynamic Type works, with the JSON's weights.
 macOS shares the iOS `Font.TextStyle` ramp (same Core `Design.swift`).
 tvOS uses the same six levels but its own larger ramp: system tokens

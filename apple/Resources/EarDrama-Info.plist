@@ -6,5 +6,11 @@
 	<string>$(EARDRAMA_WORKER_URL)</string>
 	<key>EDGoogleClientID</key>
 	<string>$(EARDRAMA_GOOGLE_IOS_CLIENT_ID)</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BigShoulders-Bold.ttf</string>
+	</array>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
 </dict>
 </plist>

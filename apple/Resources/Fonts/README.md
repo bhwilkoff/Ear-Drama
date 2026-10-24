@@ -1,20 +1,12 @@
 # Fonts/
 
-Drop your brand `.ttf` / `.otf` files here, then:
+`BigShoulders-Bold.ttf` is the display face for the page title and section
+headers (L1, L2; Decision 060). Body text stays the system face. The file is
+built by `tools/build_fonts.py` from the OFL master in `branding/fonts/`;
+never edit it here. Its license is `OFL-BigShoulders.txt`, bundled beside it.
 
-1. Add each font file to the Xcode target (drag → check "Add to
-   target: AppName").
-2. Register in `Info.plist` under `UIAppFonts`:
-   ```xml
-   <key>UIAppFonts</key>
-   <array>
-     <string>Inter-Regular.ttf</string>
-     <string>Inter-Bold.ttf</string>
-   </array>
-   ```
-3. Reference via `Font.custom("Inter-Regular", size: 16)` or the
-   `.font(.custom(...))` modifier.
-
-Keep the font list lean — the six-level hierarchy rule from
-`mobile-first-density-design` means you almost never need more than
-two faces (one display, one body) at two-to-three weights each.
+- Registered in `Resources/EarDrama-Info.plist`: `UIAppFonts` (iOS, tvOS) and
+  `ATSApplicationFontsPath` (macOS).
+- Read only through `TypeRamp.pageTitle` / `TypeRamp.sectionHeader` in
+  `Core/Design.swift`, which `tools/design_tokens.mjs` writes from
+  `design-tokens.json` (`font.display.apple`).

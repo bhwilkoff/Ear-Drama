@@ -250,6 +250,7 @@ contract is `docs/CATALOG-CONTRACT.md`.
 |---|---|---|
 | System tab bar (Liquid Glass on iOS 26) | 🚧 | The floor is iOS 18, so the system draws what each version has |
 | Lock Screen and Control Center controls | 🚧 | Now Playing and remote commands; device check pending |
+| Dark and tinted app icons | 🚧 | The mark in the dark-mode red on a clear ground; a grayscale one for tinting (`tools/render-app-icon.py`); not yet seen on a device |
 | Live Activities, widgets | 🔮 | After 1.0 |
 
 ---
@@ -274,7 +275,7 @@ iOS app resized (`macos-platform-patterns`).
 | Focus-driven layout, Play focused on Detail | 🚧 | The ten-foot constraint (`tvos-platform-patterns`) |
 | Full-screen Now Playing | 🚧 | Typographic, no artwork required |
 | Top Shelf | ⏳ | The listener's Continue items |
-| Layered parallax icon | ⏳ | Waits on the palette pick and the icon (M0) |
+| Layered parallax icon | 🚧 | Back (red), ring, microphone layers (`branding/tvos-icon-layers/`); not yet seen on a device |
 
 ---
 
@@ -284,7 +285,7 @@ iOS app resized (`macos-platform-patterns`).
 |---|---|---|
 | Predictive back | 🚧 enabled in the manifest | iOS swipe-back is fixed-animation |
 | Media3 notification and lock-screen controls | 🚧 | The MediaSession service |
-| Adaptive icon with a monochrome layer | ⏳ | Waits on the icon (M0) |
+| Adaptive icon with a monochrome layer | 🚧 | The ring microphone on the icon red, with its own monochrome silhouette (`tools/render-app-icon.py`); not yet seen on a device |
 | Android Auto library tree | ⏳ | M9 stub |
 
 ---
