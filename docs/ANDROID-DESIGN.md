@@ -175,7 +175,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   together. A Kind chip (Any kind, Series, Plays) and a "Has a script"
   chip lead its row of `FilterChip`s; a play carries no genre, decade, or
   network, so setting one narrows to series, and "Has a script" keeps the
-  rows whose record carries a usable script, today the plays. A play row
+  rows whose record carries a usable script: the plays, and the series
+  with an episode whose `script` is set (contract §3.1). A play row
   is its title, then author and part count, and opens the play's page.
   Below the chips, a paged list
   of series (200 at a time), each one line of years and count: the sort
@@ -197,8 +198,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.4 Episode detail**, the web's order (web §4.5): the series as a
   link, the title as a heading, the date, one facts line ("Undated" when
   there is no date, then network, sponsor, length: `detailFacts`), Play
-  (or "Resume at" the saved position), the download control, "Automatic
-  transcript" when the gate passed, Cast and credits, Versions (or the
+  (or "Resume at" the saved position), the download control, "Start an
+  ear drama" when the episode's `script` names a bundled script
+  (Decision 068; never on a TV), "Automatic transcript" when the gate
+  passed, Cast and credits, Versions (or the
   one copy's notes), and the rights line. A part with no data is absent;
   the sponsor shows only where the catalog carries the contract's
   `sponsor` column (probed, as Apple does). Share is the top bar's action

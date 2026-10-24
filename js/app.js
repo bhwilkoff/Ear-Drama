@@ -623,7 +623,8 @@
   const networksOf = (s) => (s.networks ? s.networks.split(', ') : []);
 
   /* Browse lists series and plays together (WEB-DESIGN §4.3). A play's record carries no genre,
-     decade, or network, so any of those narrows to series; "Has a script" keeps what carries one. */
+     decade, or network, so any of those narrows to series; "Has a script" keeps what carries one:
+     the plays, and a series with an episode that links one (its index row's `scripts`). */
   function browseFilter(rows, f, skip) {
     return rows.filter(s => (skip === 'kind' || !f.kind || s.kind === f.kind)
       && (skip === 'script' || !f.script || s.hasScript)
@@ -668,7 +669,7 @@
     load(body, async () => {
       const [idx, m, scripts] = await Promise.all([API.seriesIndex(), API.manifest(), onTV() ? [] : castable()]);
       manifest = m;
-      return { rows: [...idx.rows.map(s => ({ ...s, kind: 'series', hasScript: false })), ...scripts.map(playItem)] };
+      return { rows: [...idx.rows.map(s => ({ ...s, kind: 'series', hasScript: !onTV() && s.scripts > 0 })), ...scripts.map(playItem)] };
     }, ({ rows }) => {
       const count = (list, fn) => {
         const c = new Map();
@@ -800,8 +801,11 @@
       if (!d) throw new API.DataError('missing', r.id);
       const s = await API.seriesPage(d.series).catch(() => null);
       const lines = await Promise.all([API.rightsLine(d.rights, d.rightsBasis), API.manifest()]);
-      return { d, s, rightsLine: lines[0], m: lines[1] };
-    }, ({ d, s, rightsLine, m }) => {
+      // Decision 068: an episode whose row links a castable script can become an ear drama,
+      // when this browser's copy of the castable file holds that script (contract §3.1).
+      const script = d.script && !onTV() ? (await castable()).find(x => x.id === d.script) || null : null;
+      return { d, s, rightsLine: lines[0], m: lines[1], script };
+    }, ({ d, s, rightsLine, m, script }) => {
       if (d.id !== r.id) history.replaceState(null, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
       const title = epTitle(d);
@@ -843,7 +847,8 @@
         d.date ? el('p', { class: 'body' }, fmtLongDate(d.date)) : null,
         facts ? el('p', { class: 'caption' }, facts) : null,
         d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null),
-        el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn)));
+        el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn,
+          script ? PlaysUI.startButton(script, playsHelpers) : null)));
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
       // is null otherwise), fetched from archive.org the first time it is opened.

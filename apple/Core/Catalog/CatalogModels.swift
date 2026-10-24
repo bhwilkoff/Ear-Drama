@@ -160,6 +160,8 @@ nonisolated struct EpisodeDetail: Hashable, Sendable {
     let rightsLine: String?
     /// The episode's face, a person credited in it (contract §3.3a), or nil.
     var star: String? = nil
+    /// A castable script this episode can be recorded from (contract §3.1), or nil.
+    var script: String? = nil
     var defaultRecording: Recording? { recordings.first }
     /// The credited star with a portrait, drawn beside the heading.
     var starFace: Face? {

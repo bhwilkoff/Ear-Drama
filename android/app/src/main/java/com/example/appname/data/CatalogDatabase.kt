@@ -59,6 +59,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         if ("sort_name" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }) "s.sort_name" else "s.name"
     }
 
+    /** §3.1's `script` (Decision 068); an older catalog links none. */
+    private val hasScript: Boolean by lazy {
+        "script" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
+    }
+
     /** Every series' genre and face, read once: rows that mix series draw a tile from it. */
     private val seriesLook: Map<String, Pair<String?, Face?>> by lazy {
         val faces = hasArt && "star" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
@@ -308,6 +313,13 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         else queryRaw("SELECT new_id FROM episode_aliases WHERE old_id = ?", listOf(id)) { it.getText(0) }
             .firstOrNull() ?: id
 
+    /** Each series' linked script ids (§3.1), for Browse's "Has a script". */
+    suspend fun scriptedSeries(): Map<String, List<String>> = read {
+        if (!hasScript) emptyMap()
+        else queryRaw("SELECT series_key, script FROM episodes WHERE script IS NOT NULL") { it.getText(0) to it.getText(1) }
+            .groupBy({ it.first }, { it.second })
+    }
+
     /** §5 `episodeDetail`: the row, its credits, and its recordings in rank order. */
     suspend fun episodeDetail(id: String): EpisodeDetail? = read {
         val resolved = resolve(id)
@@ -316,9 +328,10 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val transcript = if (hasTranscript) "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" else "NULL"
         val sponsor = if (hasSponsor) "e.sponsor" else "NULL"
         val star = if (hasEpisodeStar) "e.star" else "NULL"
+        val script = if (hasScript) "e.script" else "NULL"
         val head = queryRaw(
             "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json, " +
-                "$loudness, $transcript, $sponsor, $star$EPISODE_FROM WHERE e.id = ?",
+                "$loudness, $transcript, $sponsor, $star, $script$EPISODE_FROM WHERE e.id = ?",
             listOf(resolved),
         ) { st ->
             EpisodeDetail(
@@ -335,6 +348,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 transcriptUrl = st.textOrNull(15),
                 sponsor = st.textOrNull(16)?.takeIf { it.isNotBlank() },
                 star = st.textOrNull(17),
+                script = st.textOrNull(18),
             )
         }.firstOrNull() ?: return@read null
         val artColumns = if (hasArt) "a.url, a.width, a.height, a.credit, a.evidence_url" else "NULL, NULL, NULL, NULL, NULL"

@@ -126,15 +126,23 @@ struct SeriesBrowseScreen: View {
     @State private var facets: (genres: [String], networks: [String], decades: [Int]) = ([], [], [])
     @State private var kind: BrowseKind?
     @State private var hasScript = false
+    /// Series key -> the castable script ids its episodes link (contract §3.1).
+    @State private var scripted: [String: [String]] = [:]
     @State private var genre: String?
     @State private var network: String?
     @State private var decade: Int?
 
     private struct Filter: Hashable { let genre: String?, network: String?, decade: Int?, generation: Int }
 
-    /// A play carries no genre, network, or decade, and only plays carry a
-    /// script today, so either side of the list can be narrowed away.
-    private var showsSeries: Bool { kind != .plays && !hasScript }
+    /// A play carries no genre, network, or decade, so those narrow to series;
+    /// "Has a script" keeps the plays and the series with a linked episode
+    /// whose script this device's bundle holds.
+    private var showsSeries: Bool { kind != .plays }
+    private func shownSeries(_ all: [SeriesRow]) -> [SeriesRow] {
+        guard showsSeries else { return [] }
+        guard hasScript else { return all }
+        return all.filter { scripted[$0.key]?.contains { plays.script($0) != nil } == true }
+    }
     private var showsPlays: Bool { kind != .series && genre == nil && network == nil && decade == nil }
     private var shownPlays: [PlayScript] { showsPlays ? plays.scripts : [] }
     private var isFiltered: Bool { kind != nil || hasScript || genre != nil || network != nil || decade != nil }
@@ -144,7 +152,7 @@ struct SeriesBrowseScreen: View {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                let rows = showsSeries ? series : []
+                let rows = shownSeries(series)
                 if rows.isEmpty && shownPlays.isEmpty {
                     ContentUnavailableView {
                         Label("Nothing matches", systemImage: "line.3.horizontal.decrease.circle")
@@ -167,7 +175,10 @@ struct SeriesBrowseScreen: View {
         }
         .safeAreaInset(edge: .top, spacing: 0) { chips }
         .navigationTitle("Browse")
-        .task(id: catalog.loadKey) { facets = await catalog.browseFacets() }
+        .task(id: catalog.loadKey) {
+            facets = await catalog.browseFacets()
+            scripted = await catalog.scriptedSeries()
+        }
         .task { await plays.load() }
         .task(id: Filter(genre: genre, network: network, decade: decade, generation: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
@@ -298,6 +309,7 @@ struct EpisodeScreen: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @Environment(DownloadStore.self) private var downloads
+    @Environment(PlaysLibrary.self) private var plays
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #else
@@ -320,6 +332,7 @@ struct EpisodeScreen: View {
             guard catalog.state == .ready else { return }
             detail = .some(await catalog.episodeDetail(id))
         }
+        .task { await plays.load() }
     }
 
     private func content(_ detail: EpisodeDetail) -> some View {
@@ -356,6 +369,10 @@ struct EpisodeScreen: View {
                 .tint(Color.brandPrimary)
                 .disabled(detail.recordings.isEmpty)
                 DownloadControl(detail: detail)
+                // Decision 068: an episode linked to a castable script this bundle holds.
+                if let id = detail.script, let script = plays.script(id) {
+                    StartEarDramaButton(script: script)
+                }
                 if let url = episode.transcriptURL {
                     Button {
                         #if os(macOS)

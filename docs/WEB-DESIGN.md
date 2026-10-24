@@ -111,16 +111,18 @@ web app follows today.
   choice yields zero rows (§10.5). The real count is shown. A play carries
   no genre, decade, or network in its record, so setting one of those
   narrows to series; "Has a script" narrows to the rows whose record
-  carries a usable script, which today are the plays (an episode with a
-  script joins when the projection marks one). A play row reads its title,
+  carries a usable script: the plays, and the series with an episode
+  whose Detail row carries a `script` (contract §3.1). A play row reads its title,
   then its author and part count, and opens its page (§4.10).
 - **§4.4 A series page** lists its episodes oldest first, every row
   leading with its air date in tabular figures (R1). Seasons are a
   segmented scope; undated episodes are their own scope.
 - **§4.5 Episode detail** shows the series, the title, the date, one
   caption line of facts, Play, queue, Share, the cast and credits, the
-  recordings, and the rights line. Every part draws only from data, and
-  a part with no data is absent, never a placeholder:
+  recordings, and the rights line. "Start an ear drama" joins the actions
+  when the Detail row's `script` names a script in this browser's
+  castable file (Decision 068), never on a TV. Every part draws only from
+  data, and a part with no data is absent, never a placeholder:
   - No title: the episode's number names it ("No. 90"), else "Untitled";
     an id never reaches the screen.
   - No date: "Undated" opens the facts line, and no date line is drawn.

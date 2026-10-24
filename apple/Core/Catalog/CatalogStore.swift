@@ -116,6 +116,10 @@ final class CatalogStore {
         await run { $0.episodeDetail(id: id) } ?? nil
     }
 
+    func scriptedSeries() async -> [String: [String]] {
+        await run { $0.scriptedSeries() } ?? [:]
+    }
+
     func search(_ query: String) async -> SearchResults {
         await run { $0.search(query) } ?? SearchResults()
     }
