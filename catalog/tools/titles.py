@@ -11,6 +11,10 @@ extension, 99 with underscores):
   "01CbsNews-LinkletterHouseParty"    -> "Cbs News-Linkletter House Party"
   "EdnaWolfeWantsToGetNancyFowler"    -> "Edna Wolfe Wants To Get Nancy Fowler"
 
+  "NBC-Story-Behind-The-Headlines---Appeasement-Marches-On"
+      -> "NBC Story Behind The Headlines - Appeasement Marches On"
+(no spaces and three or more hyphen-joined words; "Twenty-Two" stays).
+
 A spaced leading number stays ("77 Sunset Strip" is a title), "McGee" and
 "MacArthur" stay whole, and capitals are never changed.
 """
@@ -19,7 +23,13 @@ import re
 EXT = re.compile(r"\.(mp3|ogg|m4a|flac|wav)$", re.I)
 GLUED_TRACK = re.compile(r"^\d{1,3}(?=[A-Z][a-z])")
 HUMP = re.compile(r"(?<=[a-z])(?=[A-Z])")
+HYPHEN_RUN = re.compile(r"-+")
 MC = re.compile(r"\b(Ma?c) ([A-Z])")
+
+
+def _words(t):
+    words = re.findall(r"[^\W_]+", t)
+    return len(words) >= 3 and sum(1 for w in words if re.search(r"[^\W\d_]", w)) >= 2
 
 
 def display_title(raw):
@@ -28,8 +38,11 @@ def display_title(raw):
     t = EXT.sub("", raw.strip())
     if "_" in t:
         t = re.sub(r"_+", " ", t)
+    spaceless = " " not in t
+    if spaceless and "-" in t and _words(t):
+        t = HYPHEN_RUN.sub(lambda m: " - " if len(m.group()) >= 3 else " ", t)
     t = GLUED_TRACK.sub("", t)
-    if " " not in t and len(HUMP.findall(t)) >= 2:
+    if spaceless and len(HUMP.findall(t)) >= 2:
         t = MC.sub(r"\1\2", HUMP.sub(" ", t))
     t = re.sub(r"\s{2,}", " ", t).strip()
     return t or raw.strip()

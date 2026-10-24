@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import genre_of
 import shelves as SH
+from sort_name import sort_name
 from titles import display_title
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
@@ -55,7 +56,7 @@ MIN_EPISODES = 10_000
 SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
-    networks TEXT, episodes INTEGER NOT NULL, star TEXT);
+    networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
@@ -187,8 +188,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
             "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?)",
-                      (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key)))
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?)",
+                      (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key), sort_name(name)))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",

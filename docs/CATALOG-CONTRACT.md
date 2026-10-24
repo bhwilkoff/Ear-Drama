@@ -125,7 +125,14 @@ copy, then measured bitrate. The versions picker lists the rest in rank order.
 
 - `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
-  the logs say aired), `kind_summary`, `star` (§3.3a, or NULL).
+  the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below).
+- **`series.sort_name`** (and `sortName` on the web series index, `sort_name`
+  on a castable script): the A-to-Z key, computed once by
+  `catalog/tools/sort_name.py` and golden-tested in `tests/test_sort_name.py`.
+  Accents dropped, leading non-alphanumerics skipped (`"Banjos`, `: CARL`,
+  `? Jiminy`), then one leading article (The, A, An), then case-folded; digits
+  sort before letters. Every client sorts Browse A to Z by it and falls back
+  to `name` when an older catalog lacks the column; none re-derives it.
 - `runs`: `(id, series_key, first_date, last_date, kind, network)`; kind is one
   of anthology, character, serial, strip, comedy-variety, news, broadcast-day.
 - `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art.id` or NULL).

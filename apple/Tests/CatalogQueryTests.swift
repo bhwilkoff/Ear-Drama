@@ -31,6 +31,11 @@ enum Fixture {
         ("ghost", "A Series With Nothing Served", "drama", "1950-01-01", "1950-12-31", nil),
     ]
 
+    /// The pipeline's `sort_name` per fixture series (golden values, not an algorithm mirrored here).
+    static let sortNames = ["suspense": "suspense", "mrsorrowful": "mr. sorrowful says", "speeches": "wartime speeches",
+                            "librivox1": "great quest", "ghost": "series with nothing served",
+                            "quoted": "fixture quoted\"", "thehour": "fixture hour"]
+
     /// Inserted OUT of broadcast order on purpose: the verbs must sort.
     static let episodes: [Ep] = [
         Ep(id: "suspense|1943-05-25", series: "suspense", date: "1943-05-25", season: "1942-43", num: 40,
@@ -126,8 +131,8 @@ enum Fixture {
         }
         let counts = Dictionary(grouping: episodes, by: \.series).mapValues(\.count)
         for s in series {
-            try insert("INSERT INTO series (key, name, genre, first_date, last_date, networks, episodes) VALUES (?,?,?,?,?,?,?)",
-                       [s.key, s.name, s.genre, s.first, s.last, s.networks, counts[s.key] ?? 0])
+            try insert("INSERT INTO series (key, name, genre, first_date, last_date, networks, episodes, sort_name) VALUES (?,?,?,?,?,?,?,?)",
+                       [s.key, s.name, s.genre, s.first, s.last, s.networks, counts[s.key] ?? 0, Self.sortNames[s.key] ?? s.name.lowercased()])
         }
         for (pid, name) in people { try insert("INSERT INTO people (id, name) VALUES (?, ?)", [pid, name]) }
         for c in credits { try insert("INSERT INTO credits VALUES (?,?,?,?)", [c.0, c.1, c.2, c.3]) }
@@ -243,9 +248,20 @@ struct CatalogQueryTests {
     @Test func browseListsServedSeriesByName() throws {
         let db = try Fixture.open()
         let names = db.seriesBrowse().map(\.name)
-        #expect(names == ["Mr. Sorrowful Says", "Suspense", "The Great Quest", "Wartime Speeches"])
+        #expect(names == ["The Great Quest", "Mr. Sorrowful Says", "Suspense", "Wartime Speeches"])
         #expect(!names.contains("A Series With Nothing Served"))
         #expect(db.seriesBrowse().first { $0.key == "suspense" }?.episodeCount == 4)
+    }
+
+    @Test func browseAToZSortsByTheShippedSortName() throws {
+        let extra = Fixture.series + [("thehour", "The Fixture Hour", "drama", nil, nil, nil),
+                                      ("quoted", "\"Fixture Quoted\"", "drama", nil, nil, nil)]
+        let eps = Fixture.episodes + [
+            Fixture.Ep(id: "thehour|s1", series: "thehour", date: nil, season: nil, num: 1, title: "One", rights: "clean"),
+            Fixture.Ep(id: "quoted|s1", series: "quoted", date: nil, season: nil, num: 1, title: "One", rights: "clean")]
+        let url = try Fixture.make(episodeRows: eps, seriesRows: extra)
+        let db = try #require(CatalogDatabase(path: url.path))
+        #expect(Array(db.seriesBrowse().map(\.key).prefix(4)) == ["thehour", "quoted", "librivox1", "mrsorrowful"])
     }
 
     @Test func browseFiltersByGenreNetworkAndDecade() throws {

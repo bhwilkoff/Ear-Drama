@@ -634,7 +634,7 @@
 
   /** A castable script as a Browse row (contract: castable-scripts.json, read through API). */
   function playItem(script) {
-    return { kind: 'plays', hasScript: true, key: script.id, name: script.title, script,
+    return { kind: 'plays', hasScript: true, key: script.id, name: script.title, sortName: script.sort_name, script,
              author: PlaysCore.authorLine(script), episodes: 0, first: null, genre: null, networks: null };
   }
   function playMeta(script) {
@@ -689,10 +689,12 @@
       fillSelect($('f-network'), 'All networks', new Map([...nets].slice(0, 40)), f.network);
 
       const list = browseFilter(rows, f);
+      const key = s => s.sortName || s.name;
+      const byName = (a, b) => key(a).localeCompare(key(b), 'en', { sensitivity: 'base' });
       const sorters = {
-        name: (a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }),
-        count: (a, b) => b.episodes - a.episodes || a.name.localeCompare(b.name),
-        first: (a, b) => (a.first || '9999').localeCompare(b.first || '9999') || a.name.localeCompare(b.name),
+        name: byName,
+        count: (a, b) => b.episodes - a.episodes || byName(a, b),
+        first: (a, b) => (a.first || '9999').localeCompare(b.first || '9999') || byName(a, b),
       };
       list.sort(sorters[f.sort] || sorters.name);
       const plays = list.filter(s => s.kind === 'plays').length;

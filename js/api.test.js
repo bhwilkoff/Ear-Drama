@@ -172,6 +172,14 @@ test('067: listenShelves draws mostDownloaded as published ids, in order', async
   assertEq(pop.rows.map(e => e.id).join(','), 'drama1|1940-01-01,comedy2|1948-01-01', 'in the published order');
 });
 
+test('series index rows expose sortName, and A to Z by it skips quotes and articles', () => {
+  const rows = API.rowsOf(['key', 'name', 'sortName'],
+    [['q', '"Fixture Quoted"', 'fixture quoted"'], ['t', 'The Fixture Hour', 'fixture hour']]);
+  assertEq(rows.map(r => r.sortName).join('|'), 'fixture quoted"|fixture hour');
+  const byName = (a, b) => (a.sortName || a.name).localeCompare(b.sortName || b.name, 'en', { sensitivity: 'base' });
+  assertEq(rows.slice().sort(byName).map(r => r.key).join(''), 'tq', 'sorted by sortName, not by the raw name');
+});
+
 test('listenShelves runs onThisDay on 29 February only on 29 February', async () => {
   const leap = { 'index/days/02-29.json': { fields: ['id', 'date'], rows: [['l|1948-02-29', '1948-02-29']] } };
   const { get } = plane({ listenShelves: [{ rule: 'onThisDay' }] }, leap);
