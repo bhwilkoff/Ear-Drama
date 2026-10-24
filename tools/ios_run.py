@@ -55,12 +55,23 @@ APP_ANCHOR_RX = APP_ANCHOR_RX  # see tools/app_config.py
 #
 # Ear Drama's sections (LaunchDoors.swift: home|browse|stations|surprise|search|library;
 # Decision 068, the old listen|series|radio|plays still open);
-# the regexes are not yet calibrated against a device capture (SCRATCHPAD item 3).
+# each regex is text only its screen draws, never a tab-bar label (calibrated on the iPhone 12,
+# 2026-10-24: the tab bar's "Browse"/"Library"/"Search" made Release-build Home frames pass).
 SCENARIOS = {
     "home":        {"env": {HOOK_START_TAB: "home"}, "minutes": 0.6,
-                    "expect_any": r"Home"},
+                    "expect_any": r"This day in radio|Continue"},
     "search":      {"env": {HOOK_START_TAB: "search"}, "minutes": 0.6,
-                    "expect_any": r"Search"},
+                    "expect_any": r"Titles, series, people|Search titles"},
+    "browse":      {"env": {HOOK_START_TAB: "browse"}, "minutes": 0.6,
+                    "expect_any": r"Kind|Genre|Decade"},
+    "stations":    {"env": {HOOK_START_TAB: "stations"}, "minutes": 0.6,
+                    "expect_any": r"Tonight in"},
+    "surprise":    {"env": {HOOK_START_TAB: "surprise"}, "minutes": 0.6,
+                    "expect_any": r"An episode|An evening"},
+    "library":     {"env": {HOOK_START_TAB: "library"}, "minutes": 0.6,
+                    "expect_any": r"Nothing played yet|Following|History|Ear dramas|Downloads"},
+    "series":      {"env": {HOOK_START_TAB: "browse", HOOK_START_ITEM: "tarzan"}, "minutes": 0.6,
+                    "expect_any": r"Tarzan"},
     # Mute is in every launch already (DOOR_DEFAULTS); spelled out on the
     # scenario most likely to start playback.
     "item":        {"env": {HOOK_START_ITEM: QA_ITEM_ID, HOOK_MUTE: "1"}, "minutes": 0.6,

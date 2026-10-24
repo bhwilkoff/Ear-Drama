@@ -54,7 +54,7 @@ PLAY_REPORTS_BUCKET = ""                          # e.g. "pubsite_prod_rev_0978.
 # Real hardware, by udid/serial. None = not on this bench. This is the SIMPLE form,
 # one device per kind. A manifest (tools/bench.py) overrides it when present.
 DEVICES = {
-    "iphone":  None,      # devicectl udid
+    "iphone":  "00008101-000339320188801E",  # iPhone 12 (owner 2026-10-24: "use the iPhone 12 for live testing")
     "ipad":    None,      # devicectl udid
     "appletv": None,      # devicectl udid (paired over the network)
     "android": None,      # adb serial
