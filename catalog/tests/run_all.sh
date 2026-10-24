@@ -20,6 +20,9 @@ for t in tests/test_*.py; do
   printf '%-40s rc=%s %4ss  %s\n' "$t" "$rc" "$(( $(date +%s) - start ))" "$(printf '%s\n' "$out" | tail -1)"
   if [ "$rc" -ne 0 ]; then
     printf '%s\n' "$out" | grep -E 'FAIL|Error|error' | head -20
+    # The traceback names the file and line; the grep above keeps only its last line.
+    echo "  --- last 25 lines of $t ---"
+    printf '%s\n' "$out" | tail -25 | sed 's/^/  | /'
     failed+=("$t")
   fi
 done
