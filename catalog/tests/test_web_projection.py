@@ -82,7 +82,7 @@ def violations(out):
     v = {}
     index = {r[0] for r in load(out, "index", "series.json")["rows"]}
     listed = {}
-    for f in os.listdir(os.path.join(out, "series")):
+    for f in sorted(os.listdir(os.path.join(out, "series"))):
         page = load(out, "series", f)
         if page["key"] not in index:
             v.setdefault("every series page is in the index", []).append(page["key"])
@@ -92,7 +92,7 @@ def violations(out):
         for e in page["episodes"]:
             listed[e[0]] = page["key"]
     clean_only = load(out, "manifest.json")["cleanOnly"]
-    for f in os.listdir(os.path.join(out, "episodes")):
+    for f in sorted(os.listdir(os.path.join(out, "episodes"))):
         for eid, d in load(out, "episodes", f).items():
             if listed.get(eid) != d[0]:
                 v.setdefault("every shard id is on its series page in the index", []).append(eid)
@@ -105,7 +105,7 @@ def violations(out):
     # withPerson: the shard shape the browser reads (API.personPage), and the gatekeeper over its rows.
     fields = load(out, "manifest.json")["fields"]
     people = {}
-    for f in os.listdir(os.path.join(out, "people")) if os.path.isdir(os.path.join(out, "people")) else []:
+    for f in sorted(os.listdir(os.path.join(out, "people"))) if os.path.isdir(os.path.join(out, "people")) else []:
         for pid, p in load(out, "people", f).items():
             people[pid] = p
             if W.shard_of(pid) + ".json" != f:
@@ -122,16 +122,18 @@ def violations(out):
             if dates != sorted(dates):
                 v.setdefault("a person's credits run oldest first (R1)", []).append(pid)
     sp = os.path.join(out, "search", "people")
-    for f in os.listdir(sp) if os.path.isdir(sp) else []:
+    for f in sorted(os.listdir(sp)) if os.path.isdir(sp) else []:
         d = load(out, "search", "people", f)
         for r in d["rows"]:
             if len(r) != len(fields["people"]) or r[0] not in people:
                 v.setdefault("every people search row has its person page", []).append(r[0])
             elif f[:-5] not in {W.term_file(w) for w in W.tokens(r[1]) if len(w) >= 2}:
                 v.setdefault("a person is filed under a word of their name", []).append(r[0])
+            elif len(people[r[0]]) != len(fields["person"]):
+                continue  # a malformed person row is reported by its own rule above, never indexed here
             elif r[2] != len({c[0] for c in people[r[0]][4]}):
                 v.setdefault("a search row counts the person's episodes", []).append(r[0])
-    for f in os.listdir(os.path.join(out, "index", "days")):
+    for f in sorted(os.listdir(os.path.join(out, "index", "days"))):
         for r in load(out, "index", "days", f)["rows"]:
             if r[0] not in listed:
                 v.setdefault("every day row is listed", []).append(r[0])
