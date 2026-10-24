@@ -175,6 +175,14 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   result offers Clear Filters.
 - **§4.3 A series page** shows the series' one meta line, then its
   episodes oldest first in sections by broadcast season, "Undated" last.
+  The toolbar's Download menu (iPhone, iPad, Mac; never the TV) offers
+  Download All Episodes, then one Download item per season when there
+  is more than one, then Remove Downloads once any of the series is on
+  the device. A download asks first, naming the count and, from each
+  copy's bitrate and length, about how much space it takes ("Download
+  52 episodes?", "About 640 MB."); an item whose episodes are all
+  downloaded or downloading is disabled. Removing a series' downloads
+  asks first (R17, the car and bedtime: a whole run before the trip).
 - **§4.4 Episode detail** is a `List`: the series (a link), the title,
   one facts line (date, network, sponsor, length), Play or Pause, the
   download control, "Start an ear drama" when the episode's `script`
@@ -196,16 +204,28 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§4.6 Library** is In progress, Downloads, Played, and **Ear
   dramas** (the productions on this device, each with its progress line;
   a production opens its cast sheet, on the Mac its window), on this
-  device. A history row swipes or long-presses to Remove from History;
-  a download row to Remove Download; Remove All Downloads asks first.
+  device. A history row swipes or long-presses to Remove from History.
+  Downloads is one row, "Downloads" with the episode count and the
+  storage they hold, that pushes the Downloads place (§4.8): a bulk
+  download is hundreds of rows, which would bury the rest of Library.
 - **§4.7 The transcript** is a sheet (`TranscriptSheet_iOS`,
   `apple/Shared/TranscriptViews.swift`) from Detail or the player, with
   Done. Plain, selectable text at the body size in a 680 pt measure,
   one sentence a line, fetched from archive.org when opened.
 - **§4.8 Downloads** (`apple/Shared/Downloads.swift`) ride a background
   `URLSession` that the system relaunches the app to finish
-  (`.backgroundTask(.urlSession)`). A downloaded file is played, never
-  exported: no Share or Files action.
+  (`.backgroundTask(.urlSession)`), at most four transfers to a host at
+  once, following archive.org's redirect to its storage node. A
+  downloaded file is played, never exported: no Share or Files action.
+  The Downloads place (`DownloadsScreen`) groups downloads by series,
+  by name, each in the order it was asked for; a row swipes or
+  long-presses to Remove Download (Cancel Download while it runs), a
+  series' Remove asks first, and the foot of the list carries the
+  storage held on this device and Remove All Downloads, which asks
+  first. Empty, it says "No downloads". Playback prefers the finished
+  file (`AudioPlayer.localFile`); a queued, running, failed, or partial
+  download never plays, and the lock screen's picture is the one Now
+  Playing draws, so with no network it is the typographic card.
 
 - **§4.9 Stations** (was Radio, Decision 068) is Tonight in 19xx (`RadioScreen`,
   `apple/Shared/RadioScreen.swift`), the web's §4.9 in a `List`: the
@@ -429,8 +449,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§9.1 CarPlay** (`apple/iOS/CarPlay_iOS.swift`) is the car's four
   tabs (R17): Continue, Stations, Browse, Downloads. Continue lists up to 12
   in-progress episodes with their progress and plays through the one
-  `AudioPlayer`, then pushes `CPNowPlayingTemplate.shared`; the other
-  three say "Not in the car yet". No transcript in the car. It is
+  `AudioPlayer`, then pushes `CPNowPlayingTemplate.shared`. Downloads
+  lists the finished downloads, newest first, up to the car's row
+  limit, each playing its file the same way ("No downloads" when there
+  are none). Stations and Browse say "Not in the car yet". No transcript in the car. It is
   dormant until Apple grants `com.apple.developer.carplay-audio`.
 - **§9.2 The Apple Watch** (`apple/watchOS/EarDramaWatchApp.swift`) is
   Continue and, later, downloads only; until the phone hands its history

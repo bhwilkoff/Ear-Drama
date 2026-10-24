@@ -184,8 +184,10 @@ fun AppRoot(
                                     onOpenSeries = openSeries,
                                     onOpenProduction = openProduction,
                                     onListenTogether = { roomSheet = true },
+                                    onOpenDownloads = { stack.navigateTo(Route.Downloads) },
                                 )
                             }
+                            entry<Route.Downloads> { DownloadsScreen(onBack = back, onOpenEpisode = openEpisode) }
                             entry<Route.Series> { route ->
                                 SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode)
                             }

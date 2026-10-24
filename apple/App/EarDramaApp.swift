@@ -59,6 +59,7 @@ struct EarDramaApp: App {
         CarPlayServices.player = player
         CarPlayServices.history = history
         CarPlayServices.store = store
+        CarPlayServices.downloads = downloads
         #endif
         _store = State(initialValue: store)
         _catalog = State(initialValue: catalog)

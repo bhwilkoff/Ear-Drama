@@ -33,9 +33,58 @@ data class DownloadRecord(
     enum class State { Queued, Downloading, Downloaded, Failed }
 
     val isActive: Boolean get() = state == State.Queued || state == State.Downloading
+
+    /** Episode ids carry the series key before their `|`, so a series' downloads are found from the index as it is. */
+    val seriesKey: String get() = seriesKeyOf(episodeId)
+
+    companion object {
+        fun seriesKeyOf(episodeId: String): String = episodeId.substringBefore('|')
+    }
     val fraction: Float?
         get() = if (expectedBytes > 0) (receivedBytes.toFloat() / expectedBytes).coerceAtMost(1f) else null
 }
+
+/** One episode's default recording, ready to download. */
+data class DownloadRequest(
+    val episodeId: String,
+    val title: String,
+    val seriesName: String,
+    val url: String,
+    /** Bitrate times length, when the catalog knows both. */
+    val estimatedBytes: Long? = null,
+) {
+    companion object {
+        fun from(detail: EpisodeDetail, title: String): DownloadRequest? {
+            val recording = detail.recordings.firstOrNull() ?: return null
+            val seconds = recording.lengthSeconds ?: detail.episode.lengthSeconds
+            val kbps = recording.kbps
+            val estimate = if (kbps != null && kbps > 0 && seconds != null && seconds > 0) {
+                Math.round(kbps * 125.0 * seconds)
+            } else {
+                null
+            }
+            return DownloadRequest(detail.episode.id, title, detail.episode.seriesName, recording.url, estimate)
+        }
+    }
+}
+
+/**
+ * What a bulk download would start: everything asked for that is not already
+ * downloaded or on its way (a failed one starts over), and about how much space
+ * it takes (Decision 071).
+ */
+class DownloadPlan(candidates: List<DownloadRequest>, records: Map<String, DownloadRecord>) {
+    val requests: List<DownloadRequest> = candidates.distinctBy { it.episodeId }.filter { request ->
+        val r = records[request.episodeId]
+        r == null || r.state == DownloadRecord.State.Failed
+    }
+    /** The sum of the estimates the catalog could make; null when it could make none. */
+    val estimatedBytes: Long? = requests.mapNotNull { it.estimatedBytes }.takeIf { it.isNotEmpty() }?.sum()
+    val count: Int get() = requests.size
+}
+
+/** What the player opens: the finished file when there is one, else the network copy. */
+data class PlaybackSource(val location: String, val isLocal: Boolean)
 
 /** What moves the bytes. Production is WorkManager; the tests drive the store's callbacks themselves. */
 interface DownloadTransport {
@@ -96,6 +145,22 @@ open class DownloadStore(
     val sortedRecords: List<DownloadRecord>
         get() = _records.value.values.sortedByDescending { it.addedAtMs }
 
+    /** The Downloads place: by series name, each series in the order it was asked for. */
+    val seriesGroups: List<Pair<String, List<DownloadRecord>>>
+        get() = _records.value.values.groupBy { it.seriesKey }.values
+            .map { rows -> rows.sortedWith(compareBy({ it.addedAtMs }, { it.episodeId })) }
+            .sortedBy { it.first().seriesName.lowercase() }
+            .map { it.first().seriesKey to it }
+
+    /** True when any of this series is downloaded or on its way. */
+    fun hasDownloads(seriesKey: String): Boolean = _records.value.values.any { it.seriesKey == seriesKey }
+
+    /** The episodes among [ids] that still need a download (none, or a failed one). */
+    fun missing(ids: List<String>): List<String> {
+        val records = _records.value
+        return ids.filter { records[it]?.state?.let { s -> s == DownloadRecord.State.Failed } ?: true }
+    }
+
     /** Bytes the finished downloads hold on this device. */
     val totalBytes: Long
         get() = _records.value.values.filter { it.state == DownloadRecord.State.Downloaded }.sumOf { it.receivedBytes }
@@ -106,6 +171,9 @@ open class DownloadStore(
         if (r.state != DownloadRecord.State.Downloaded || r.remoteUrl != recording) return null
         return file(r.fileName).takeIf { it.isFile }
     }
+
+    fun playbackSource(episodeId: String, url: String): PlaybackSource =
+        localFile(episodeId, url)?.let { PlaybackSource(it.path, true) } ?: PlaybackSource(url, false)
 
     /** The file a running transfer writes; the worker deletes it however the transfer ends. */
     fun transferFile(token: String): File = file("$token.$PARTIAL_EXTENSION")
@@ -120,7 +188,13 @@ open class DownloadStore(
         download(detail.episode.id, title, detail.episode.seriesName, recording.url)
     }
 
-    fun download(episodeId: String, title: String, seriesName: String, url: String) = synchronized(lock) {
+    fun download(
+        episodeId: String,
+        title: String,
+        seriesName: String,
+        url: String,
+        addedAtMs: Long = clock(),
+    ) = synchronized(lock) {
         val existing = _records.value[episodeId]
         if (existing != null && existing.state != DownloadRecord.State.Failed) return@synchronized
         existing?.let { deleteFiles(it) }
@@ -129,11 +203,22 @@ open class DownloadStore(
         val record = DownloadRecord(
             episodeId = episodeId, title = title, seriesName = seriesName, remoteUrl = url,
             fileName = "${fileStem(episodeId)}.$ext", state = DownloadRecord.State.Queued,
-            addedAtMs = clock(), token = UUID.randomUUID().toString(),
+            addedAtMs = addedAtMs, token = UUID.randomUUID().toString(),
         )
         put(record)
         saveIndex()
         transport.begin(record.token, url)
+    }
+
+    /** Starts every request of a plan, in order; each is added a millisecond after the last so the place keeps that order. */
+    fun download(plan: DownloadPlan) {
+        val start = clock()
+        plan.requests.forEachIndexed { i, r -> download(r.episodeId, r.title, r.seriesName, r.url, addedAtMs = start + i) }
+    }
+
+    /** Every download of one series, gone: transfers, files, records. */
+    fun removeSeries(seriesKey: String) {
+        _records.value.values.filter { it.seriesKey == seriesKey }.map { it.episodeId }.forEach(::remove)
     }
 
     /** Stops a queued or running download and forgets it. */

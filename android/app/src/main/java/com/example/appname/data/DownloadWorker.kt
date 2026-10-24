@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -68,12 +70,27 @@ class WorkManagerDownloadTransport(private val context: Context) : DownloadTrans
  * and WorkManager runs the job again from the start.
  */
 class DownloadWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    companion object {
+        /** A whole run is hundreds of jobs; archive.org gets four at a time (Decision 071). */
+        private val slots = Semaphore(4)
+    }
 
     override suspend fun doWork(): Result {
         val container = (applicationContext as AppNameApplication).container
         val store = container.downloads
         val token = inputData.getString(WorkManagerDownloadTransport.KEY_TOKEN) ?: return Result.failure()
         val url = inputData.getString(WorkManagerDownloadTransport.KEY_URL) ?: return Result.failure()
+        if (!store.isActive(token)) return Result.success()
+        return slots.withPermit { transfer(store, container, token, url) }
+    }
+
+    private suspend fun transfer(
+        store: DownloadStore,
+        container: com.example.appname.app.AppContainer,
+        token: String,
+        url: String,
+    ): Result {
+        // Cancelled or removed while it waited for a slot.
         if (!store.isActive(token)) return Result.success()
         val temp = store.transferFile(token)
         try {

@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.navigation.SiteLinks
 import com.example.appname.ui.ClaimTvFocus
+import com.example.appname.ui.SeriesDownloadAction
 import com.example.appname.ui.ShareAction
 import com.example.appname.ui.tvFocusMark
 import kotlinx.coroutines.launch
@@ -68,6 +69,10 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
         if (ready == null) emptyList() else db.seasonEpisodes(key, season)
     }
     val following by rememberCatalogQuery(key, watchUser = true) { container.user.isFollowing(key) }
+    // Every episode id of the run, for the Download action (§4.3).
+    val allIds by rememberCatalogQuery(key, ready != null) { db ->
+        ready?.seasons?.flatMap { s -> db.seasonEpisodes(key, s.season).map { it.id } }.orEmpty()
+    }
     val scope = rememberCoroutineScope()
     Scaffold(
         topBar = {
@@ -79,6 +84,15 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                     }
                 },
                 actions = {
+                    if (ready != null) {
+                        val seasonIds = (episodes as? Loadable.Ready)?.value?.map { it.id }
+                        SeriesDownloadAction(
+                            seriesKey = key,
+                            allIds = (allIds as? Loadable.Ready)?.value.orEmpty(),
+                            season = season,
+                            seasonIds = seasonIds.takeIf { ready.seasons.size > 1 },
+                        )
+                    }
                     ready?.series?.let { ShareAction(it.name, SiteLinks.series(it.key)) }
                 },
             )

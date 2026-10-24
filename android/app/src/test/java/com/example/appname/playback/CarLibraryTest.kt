@@ -32,8 +32,11 @@ class CarLibraryTest {
 
     @After fun close() = db.close()
 
-    private fun library(rows: suspend (List<String>) -> List<EpisodeRow> = { db.episodes(it) }, budgetMs: Long = 8_000) =
-        CarLibrary({ user.inProgress().map { it.episodeId } }, rows, budgetMs)
+    private fun library(
+        rows: suspend (List<String>) -> List<EpisodeRow> = { db.episodes(it) },
+        budgetMs: Long = 8_000,
+        downloaded: List<String> = emptyList(),
+    ) = CarLibrary({ user.inProgress().map { it.episodeId } }, rows, { downloaded }, budgetMs)
 
     /** Each way the tree breaks its rules, empty when it keeps them. */
     private suspend fun problems(lib: CarLibrary): List<String> {
@@ -90,11 +93,18 @@ class CarLibraryTest {
         assertNull(meta.artworkData)
     }
 
-    @Test fun `Radio, Series and Downloads are empty in the stub`() = runBlocking {
+    @Test fun `Radio and Series are empty in the stub, Downloads until something is downloaded`() = runBlocking {
         val lib = library()
         listOf(CarLibrary.RADIO, CarLibrary.SERIES, CarLibrary.DOWNLOADS).forEach {
             assertEquals(it, emptyList<CarNode>(), lib.children(it))
         }
+    }
+
+    @Test fun `Downloads lists the finished downloads in order, playable, and keeps the tree's rules`() = runBlocking {
+        val lib = library(downloaded = listOf("sus|1943-05-25", "gone|1950-01-01", "sus|1943-01-07"))
+        val nodes = lib.children(CarLibrary.DOWNLOADS)!!
+        assertEquals(listOf("sus|1943-05-25", "sus|1943-01-07"), nodes.map { it.id })
+        assertEquals(emptyList<String>(), problems(lib))
     }
 
     @Test fun `an unknown folder is an error, not an empty list`() = runBlocking {

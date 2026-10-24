@@ -215,3 +215,123 @@ struct DownloadStoreTests {
         #expect(stem != DownloadStore.fileStem("suspense|1943-05-25"))
     }
 }
+
+/// Decision 071: a season or a whole run asked for at once, the space it
+/// takes, the Downloads place's grouping, a series removed, and the player
+/// choosing the file only when it is finished.
+struct DownloadRunTests {
+    private func makeStore(_ transport: FakeTransport = FakeTransport()) -> DownloadStore {
+        DownloadStore(directory: FileManager.default.temporaryDirectory
+            .appendingPathComponent("downloads-\(UUID().uuidString)", isDirectory: true), transport: transport)
+    }
+
+    private func tempFile(bytes: Int) throws -> URL {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("dl-\(UUID().uuidString).tmp")
+        try Data(repeating: 0x55, count: bytes).write(to: file)
+        return file
+    }
+
+    private func request(_ id: String, bytes: Int64? = 1_000) -> DownloadRequest {
+        DownloadRequest(episodeID: id, title: id, seriesName: DownloadRecord.seriesKey(of: id).capitalized,
+                        url: URL(string: "https://archive.org/download/x/\(DownloadStore.fileStem(id)).mp3")!,
+                        estimatedBytes: bytes)
+    }
+
+    private func finish(_ store: DownloadStore, _ id: String, bytes: Int = 64) throws {
+        let token = try #require(store.record(for: id)?.token)
+        store.transferFinished(token: token, location: try tempFile(bytes: bytes), httpStatus: 200)
+    }
+
+    private func detail(kbps: Int?, seconds: Double?) -> EpisodeDetail {
+        let episode = EpisodeRow(id: "suspense|1943-05-25", seriesKey: "suspense", seriesName: "Suspense",
+                                 airDate: "1943-05-25", season: "1942-43", number: nil, title: "Sorry, Wrong Number",
+                                 lengthSeconds: seconds, rights: "unclaimed", rightsBasis: nil, network: "CBS")
+        let recording = Recording(rank: 0, archiveID: "OTRR_Suspense", url: URL(string: "https://archive.org/download/a/b.mp3")!,
+                                  format: "VBR MP3", kbps: kbps, lengthSeconds: seconds, variant: nil, partial: false)
+        return EpisodeDetail(episode: episode, sponsor: nil, credits: [], recordings: [recording], rightsLine: nil)
+    }
+
+    @Test func theSeriesKeyIsTheIDBeforeItsBar() {
+        #expect(DownloadRecord.seriesKey(of: "suspense|1943-05-25") == "suspense")
+        #expect(DownloadRecord.seriesKey(of: "x|y|z") == "x")
+        #expect(DownloadRecord.seriesKey(of: "lonely") == "lonely")
+    }
+
+    @Test func aRequestEstimatesBitrateTimesLength() throws {
+        // 128 kbps for 30 minutes is 128,000 / 8 bytes a second for 1,800 s.
+        let full = try #require(DownloadRequest(detail(kbps: 128, seconds: 1_800)))
+        #expect(full.estimatedBytes == 28_800_000)
+        #expect(full.title == "Sorry, Wrong Number")
+        #expect(DownloadRequest(detail(kbps: nil, seconds: 1_800))?.estimatedBytes == nil)
+        #expect(DownloadRequest(detail(kbps: 128, seconds: nil))?.estimatedBytes == nil)
+        let none = EpisodeDetail(episode: detail(kbps: 1, seconds: 1).episode, sponsor: nil, credits: [],
+                                 recordings: [], rightsLine: nil)
+        #expect(DownloadRequest(none) == nil)
+    }
+
+    @Test func aPlanSkipsWhatIsDownloadedOrRunningAndRetriesWhatFailed() throws {
+        let transport = FakeTransport()
+        let store = makeStore(transport)
+        store.download(DownloadPlan([request("s|1"), request("s|2"), request("s|3")], records: [:]))
+        try finish(store, "s|1")
+        let failing = try #require(store.record(for: "s|3")?.token)
+        store.transferFailed(token: failing, message: "lost")
+        // s|1 finished, s|2 running, s|3 failed, s|4 new, s|4 asked twice.
+        let plan = DownloadPlan([request("s|1"), request("s|2"), request("s|3"), request("s|4"), request("s|4", bytes: nil)],
+                                records: store.records)
+        #expect(plan.requests.map(\.episodeID) == ["s|3", "s|4"])
+        #expect(plan.estimatedBytes == 2_000)
+        #expect(store.missing(["s|1", "s|2", "s|3", "s|4"]) == ["s|3", "s|4"])
+        store.download(plan)
+        #expect(transport.begun.count == 5)
+        #expect(store.record(for: "s|3")?.state == .queued)
+        #expect(DownloadPlan([request("s|9", bytes: nil)], records: [:]).estimatedBytes == nil)
+    }
+
+    @Test func thePlaceGroupsBySeriesInTheOrderAsked() throws {
+        let store = makeStore()
+        store.download(DownloadPlan([request("suspense|3"), request("suspense|1"), request("suspense|2")], records: [:]))
+        store.download(DownloadPlan([request("baby|1")], records: [:]))
+        let groups = store.seriesGroups
+        #expect(groups.map(\.key) == ["baby", "suspense"])
+        #expect(groups[1].records.map(\.episodeID) == ["suspense|3", "suspense|1", "suspense|2"])
+        #expect(store.hasDownloads(inSeries: "suspense"))
+        #expect(!store.hasDownloads(inSeries: "gunsmoke"))
+    }
+
+    @Test func removingASeriesLeavesTheOthersAndTheirBytes() throws {
+        let transport = FakeTransport()
+        let store = makeStore(transport)
+        store.download(DownloadPlan([request("suspense|1"), request("suspense|2"), request("baby|1")], records: [:]))
+        try finish(store, "suspense|1", bytes: 100)
+        try finish(store, "baby|1", bytes: 40)
+        #expect(store.totalBytes == 140)
+        let running = try #require(store.record(for: "suspense|2")?.token)
+        store.removeSeries("suspense")
+        #expect(transport.cancelled == [running])
+        #expect(store.records.keys.sorted() == ["baby|1"])
+        #expect(store.totalBytes == 40)
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: store.directory.path)) ?? []
+        #expect(files.filter { $0 != DownloadStore.indexName }.count == 1)
+    }
+
+    @Test func thePlayerOpensTheFileOnlyOnceItIsFinished() throws {
+        let store = makeStore()
+        let r = request("suspense|1")
+        store.download(DownloadPlan([r], records: [:]))
+        let recording = Recording(rank: 0, archiveID: "x", url: r.url, format: nil, kbps: nil,
+                                  lengthSeconds: nil, variant: nil, partial: false)
+        let hook: (String, Recording) -> URL? = { id, rec in store.localFile(for: id, recording: rec.url) }
+        // Queued: the network copy.
+        #expect(AudioPlayer.source(episodeID: r.episodeID, recording: recording, localFile: hook) == (r.url, false))
+        // Finished: the file on this device.
+        try finish(store, r.episodeID)
+        let local = AudioPlayer.source(episodeID: r.episodeID, recording: recording, localFile: hook)
+        #expect(local.isLocal)
+        #expect(local.url.isFileURL)
+        #expect(local.url.path.hasPrefix(store.directory.path))
+        // Removed: back to the network.
+        store.remove(r.episodeID)
+        #expect(AudioPlayer.source(episodeID: r.episodeID, recording: recording, localFile: hook) == (r.url, false))
+    }
+}

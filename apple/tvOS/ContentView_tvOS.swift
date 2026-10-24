@@ -483,6 +483,8 @@ private struct SearchScreen_tvOS: View {
 }
 
 private struct LibraryScreen_tvOS: View {
+    /// The TV keeps no media files (tvOS-DESIGN: downloads are n/a), and says so.
+    static let noDownloads: LocalizedStringKey = "Downloads are on iPhone, iPad, and Mac."
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @State private var inProgress: [EpisodeRow]?
@@ -495,6 +497,8 @@ private struct LibraryScreen_tvOS: View {
                 if inProgress.isEmpty {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
+                    } description: {
+                        Text(Self.noDownloads)
                     } actions: {
                         AccountRow().fixedSize()
                     }
@@ -510,7 +514,12 @@ private struct LibraryScreen_tvOS: View {
                                 }
                             }
                         }
-                        Section { AccountRow() }
+                        Section {
+                            AccountRow()
+                        } footer: {
+                            Text(Self.noDownloads)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
                     }
                 }
             } else {

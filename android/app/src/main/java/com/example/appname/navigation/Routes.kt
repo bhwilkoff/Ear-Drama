@@ -14,6 +14,8 @@ sealed interface Route : NavKey {
     @Serializable data object Radio : Route
     @Serializable data object Search : Route
     @Serializable data object Library : Route
+    /** Library's Downloads place (§4.6), by series. */
+    @Serializable data object Downloads : Route
     @Serializable data class Series(val key: String) : Route
     @Serializable data class Episode(val id: String) : Route
     @Serializable data class Transcript(val id: String) : Route

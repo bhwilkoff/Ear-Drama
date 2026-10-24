@@ -194,7 +194,15 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `FilterChip`s, a segmented scope and never a push, the oldest selected
   first; the episodes of that season run oldest first. Follow writes the
   store sync carries (`UserStore.setFollowing`, §2.3); an unfollow is a
-  marker. Share is the top bar's action (§4.12).
+  marker. Share is the top bar's action (§4.12). The top bar's Download
+  action (as Detail's download control, on a TV too) opens a menu: Download all
+  episodes, Download this season (the selected chip's, when there is
+  more than one season), and Remove downloads once any of the series is
+  on the device. A download asks first in an `AlertDialog` naming the
+  count and about how much space it takes, from each copy's bitrate and
+  length ("Download 52 episodes?", "About 640 MB."); an item whose
+  episodes are all downloaded or downloading is disabled; removing a
+  series' downloads asks first (iOS-DESIGN §4.3, R17).
 - **§4.4 Episode detail**, the web's order (web §4.5): the series as a
   link, the title as a heading, the date, one facts line ("Undated" when
   there is no date, then network, sponsor, length: `detailFacts`), Play
@@ -211,7 +219,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   word-prefix), then episodes; "In the
   transcript" marks a transcript-only match.
 - **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
-  (with storage held and Remove All, which asks first), Played
+  (one row, "Downloads" with the episode count and the storage held,
+  opening the Downloads route, `Route.Downloads`: downloads grouped by
+  series, by name, each in the order asked for, a row's Remove or
+  Cancel, a series' Remove that asks first, the storage held and Remove
+  All Downloads, which asks first, at the foot; "No downloads" when
+  empty; iOS-DESIGN §4.8), Played
   (Apple's word), and Following (the web's last Library scope, §4.7): the
   followed series, newest follow first, each opening its page. A follow
   the open catalog does not serve is kept for sync and not listed. Then
@@ -460,7 +473,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 The rights line, the transcript label, and volume leveling are as in
 §1.6 and are not reworded. A downloaded file is played, never exported:
-no share or open-with action (`ui/Downloads.kt`). A finished play's mix
+no share or open-with action (`ui/Downloads.kt`). Playback prefers the
+finished file (`DownloadStore.localFile`); a queued, running, failed, or
+partial download never plays. WorkManager runs at most four downloads at
+once, and OkHttp follows archive.org's redirect to its storage node. A finished play's mix
 is the one file the app shares, and only when the person presses Export
 (`FileProvider`, `Plays/` only). Share (§4.12) sends a link, never a file. A device voice is never written to a
 file (`StandInNeverStoredTest`). No analytics.
@@ -470,8 +486,9 @@ file (`StandInNeverStoredTest`). No analytics.
 - **§9.1 Android Auto** (`playback/CarLibrary.kt`) is the browse tree the
   service serves: four roots, Continue, Stations, Browse, Downloads (R17).
   Continue lists this device's in-progress episodes as playable nodes
-  (title, series and date) within an 8 s budget; the other three are
-  empty. No artwork. Every release with car support waits on Google's
+  (title, series and date) within an 8 s budget; Downloads lists the
+  finished downloads, newest first, each playing its file; Stations and
+  Browse are empty. No artwork. Every release with car support waits on Google's
   car review.
 - **§9.2 Android TV and Fire TV** are a runtime branch of the one app
   (`ui/Television.kt`, `isTelevision()`), never a flavor. On a TV the
