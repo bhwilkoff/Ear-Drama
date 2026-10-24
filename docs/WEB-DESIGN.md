@@ -108,7 +108,8 @@ web app follows today.
 - **§4.3 Browse** (was Series, Decision 068) lists radio series and
   stage plays together. Its filters are visible controls in one row, as
   Archive Watch's chips (its iOS-DESIGN §4.2a): Kind (Any kind, Series,
-  Plays), Genre, Decade, Network, "Has a script", and Sort. Each facet's
+  Plays), Genre, Decade, Network, "Has a script", and Sort. Sort is Popular (the default), A to Z, Most episodes, and Oldest first. Popular is the published `downloads` (contract §3.3): counted series first, most downloaded first, then every row without a count by `sortName`. A play has no count, so under Popular it sorts after every counted series; a catalog published before the field has no counts, so Popular is A to Z.
+  The URL carries `sort=` only when it is not Popular. Each facet's
   counts are computed against the other facets' selection, so no offered
   choice yields zero rows (§10.5). The real count is shown. A play carries
   no genre, decade, or network in its record, so setting one of those

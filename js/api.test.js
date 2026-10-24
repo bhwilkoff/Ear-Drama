@@ -231,6 +231,18 @@ test('series index rows expose sortName, and A to Z by it skips quotes and artic
   assertEq(rows.slice().sort(byName).map(r => r.key).join(''), 'tq', 'sorted by sortName, not by the raw name');
 });
 
+test('Popular: counted series first, most downloaded first; no count (a play, an older catalog) after, A to Z', () => {
+  const byName = (a, b) => (a.sortName || a.name).localeCompare(b.sortName || b.name, 'en', { sensitivity: 'base' });
+  const rows = API.rowsOf(['key', 'name', 'sortName', 'downloads'],
+    [['01', '01 03-02', '01 03-02', null], ['s', 'Suspense', 'suspense', 900], ['g', 'Gunsmoke', 'gunsmoke', 4000],
+     ['z', 'Zero', 'zero', 0], ['b', 'Bob', 'bob']]);
+  rows.push({ key: 'p', name: 'A Play', sortName: 'play', kind: 'plays' });
+  assertEq(rows.slice().sort(API.byDownloads(byName)).map(r => r.key).join(' '), 'g s 01 b p z',
+    'counted by count, then the rest by sortName');
+  const old = API.rowsOf(['key', 'name', 'sortName'], [['s', 'Suspense', 'suspense'], ['01', '01 03-02', '01 03-02']]);
+  assertEq(old.sort(API.byDownloads(byName)).map(r => r.key).join(' '), '01 s', 'control: no field is A to Z');
+});
+
 test('listenShelves runs onThisDay on 29 February only on 29 February', async () => {
   const leap = { 'index/days/02-29.json': { fields: ['id', 'date'], rows: [['l|1948-02-29', '1948-02-29']] } };
   const { get } = plane({ listenShelves: [{ rule: 'onThisDay' }] }, leap);

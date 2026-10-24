@@ -718,7 +718,7 @@
     setTitle('Browse');
     const kind = ['series', 'plays'].includes(r.p.get('kind')) ? r.p.get('kind') : '';
     const f = { kind, script: r.p.get('script') === '1', genre: r.p.get('genre') || '', decade: r.p.get('decade') || '',
-                network: r.p.get('network') || '', sort: r.p.get('sort') || 'name' };
+                network: r.p.get('network') || '', sort: r.p.get('sort') || 'popular' };
     const body = $('browse-body');
     $('f-sort').value = f.sort;
     $('f-script').checked = f.script;
@@ -749,11 +749,12 @@
       const key = s => s.sortName || s.name;
       const byName = (a, b) => key(a).localeCompare(key(b), 'en', { sensitivity: 'base' });
       const sorters = {
+        popular: API.byDownloads(byName),
         name: byName,
         count: (a, b) => b.episodes - a.episodes || byName(a, b),
         first: (a, b) => (a.first || '9999').localeCompare(b.first || '9999') || byName(a, b),
       };
-      list.sort(sorters[f.sort] || sorters.name);
+      list.sort(sorters[f.sort] || sorters.popular);
       const plays = list.filter(s => s.kind === 'plays').length;
       $('browse-count').textContent = [list.length - plays ? plural(list.length - plays, 'series', 'series') : null,
         plays ? plural(plays, 'play', 'plays') : null].filter(Boolean).join(' · ') || plural(0, 'series', 'series');
@@ -777,7 +778,7 @@
     const p = new URLSearchParams({ view: 'browse' });
     for (const k of ['kind', 'genre', 'decade', 'network', 'sort']) {
       const v = $(`f-${k}`).value;
-      if (v && !(k === 'sort' && v === 'name')) p.set(k, v);
+      if (v && !(k === 'sort' && v === 'popular')) p.set(k, v);
     }
     if ($('f-script').checked) p.set('script', '1');
     navigate(`?${p}`, true);

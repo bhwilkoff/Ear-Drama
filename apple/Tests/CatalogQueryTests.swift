@@ -276,6 +276,28 @@ struct CatalogQueryTests {
         #expect(Array(db.seriesBrowse().map(\.key).prefix(4)) == ["thehour", "quoted", "librivox1", "mrsorrowful"])
     }
 
+    /// Contract §3.3 `series.downloads`: Popular puts counted series first, most
+    /// downloaded first, the uncounted after by name; an older catalog is A to Z.
+    @Test func browsePopularOrdersByDownloadsThenName() throws {
+        func catalog(dropColumn: Bool) throws -> CatalogDatabase {
+            let url = try Fixture.make()
+            var h: OpaquePointer?
+            try #require(sqlite3_open(url.path, &h) == SQLITE_OK)
+            defer { sqlite3_close(h) }
+            let sql = dropColumn ? "ALTER TABLE series DROP COLUMN downloads"
+                : "UPDATE series SET downloads = CASE key WHEN 'speeches' THEN 900 WHEN 'mrsorrowful' THEN 50 END"
+            try #require(sqlite3_exec(h, sql, nil, nil, nil) == SQLITE_OK)
+            return try #require(CatalogDatabase(path: url.path))
+        }
+        let db = try catalog(dropColumn: false)
+        #expect(db.seriesBrowse(sort: .popular).map(\.key) == ["speeches", "mrsorrowful", "librivox1", "suspense"])
+        #expect(db.seriesBrowse(sort: .name).map(\.key) == ["librivox1", "mrsorrowful", "suspense", "speeches"])
+        #expect(db.seriesBrowse(sort: .episodes).first?.key == "suspense")
+        let old = try catalog(dropColumn: true)
+        #expect(old.seriesBrowse(sort: .popular).map(\.key) == old.seriesBrowse(sort: .name).map(\.key))
+        #expect(SeriesSort.allCases.map(\.title) == ["Popular", "A to Z", "Most episodes", "Oldest first"])
+    }
+
     @Test func browseFiltersByGenreNetworkAndDecade() throws {
         let db = try Fixture.open()
         #expect(db.seriesBrowse(genre: "mystery").map(\.key) == ["suspense"])

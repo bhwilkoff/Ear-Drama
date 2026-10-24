@@ -53,7 +53,7 @@ DOC_CHUNK = 500
 SHELF_SERIES = 12
 # star: the name of the series' face (contract §3.3, art_policy.series_star); art: that face's portrait.
 # scripts: how many of the series' served episodes carry a castable script (episode_scripts.py).
-SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts"]
+SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts", "downloads"]
 # A served image (art_policy.py): url takes ?width=; credit is set only where the license requires one.
 ART_FIELDS = ["url", "width", "height", "credit", "evidence"]
 # li, ltp: the default copy's loudness (LUFS) and true peak (dBTP), DECISIONS 061; null when unmeasured.
@@ -178,6 +178,10 @@ def build(src, out, include_unclaimed=False):
     aliases = {o: n for o, n in s.execute("SELECT old_id, new_id FROM episode_aliases") if n in eps}
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     item_downloads = dict(s.execute("SELECT archive_id, downloads FROM items")) if "items" in tables else {}
+    series_dl = SH.series_downloads(((e[1], recs[e[0]][0][1]) for e in eps.values()), item_downloads)
+    popular = SH.browse_downloads(series_dl, {e[1] for e in eps.values() if e[10] is None})
+    for k, row in series.items():
+        row.append(popular.get(k))
     arc_rows = {}
     if {"arcs", "arc_parts"} <= tables:
         for aid, sk, eid in s.execute("SELECT a.id, a.series_key, p.episode_id FROM arcs a JOIN arc_parts p "
@@ -301,6 +305,7 @@ def build(src, out, include_unclaimed=False):
                    "terms": len(postings), "termFiles": len(files), "docs": len(docs),
                    "portraits": len({c[3] for e, cs in credits.items() if e in eps for c in cs if c[4]}),
                    "seriesStars": sum(1 for r in series.values() if r[8]),
+                   "seriesDownloads": sum(1 for r in series.values() if r[11] is not None),
                    "people": len(people_rows), "peopleShards": len(people_shards), "peopleFiles": len(people_files),
                    "arcs": len(web_arcs), "arcEpisodes": len(arc_of)},
         "shard": {"hash": "fnv1a32-utf8", "mask": SHARD_MASK, "digits": 3},
@@ -312,8 +317,7 @@ def build(src, out, include_unclaimed=False):
         "genreNames": GENRE_NAMES,
         "listenShelves": SH.listen_shelves([(e[0], e[1], e[2], e[4], e[10], e[5]) for e in eps.values()],
                                            {k: (r[2], r[5]) for k, r in series.items()},
-                                           downloads=SH.series_downloads(((e[1], recs[e[0]][0][1]) for e in eps.values()),
-                                                                         item_downloads)),
+                                           downloads=series_dl),
         "rightsLines": RIGHTS_LINES, "variantLines": VARIANT_LINES, "partialLine": PARTIAL_LINE,
     }
     manifest["bytes"] = measure(out)

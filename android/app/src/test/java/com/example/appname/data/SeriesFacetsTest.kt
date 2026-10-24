@@ -71,7 +71,7 @@ class SeriesFacetsTest {
         }
     }
 
-    @Test fun `the three orders are the web's`() = runBlocking {
+    @Test fun `the orders are the web's, Popular first`() = runBlocking {
         assertEquals(
             listOf("commandperformance", "gunsmoke", "lux", "none", "oddity", "suspense"),
             db.seriesBrowse(BrowseFilter(sort = SeriesSort.Name)).map { it.key },
@@ -85,7 +85,7 @@ class SeriesFacetsTest {
             listOf("lux", "commandperformance", "suspense", "none", "gunsmoke", "oddity"),
             db.seriesBrowse(BrowseFilter(sort = SeriesSort.FirstAired)).map { it.key },
         )
-        assertEquals(listOf("A to Z", "Most episodes", "Oldest first"), SeriesSort.entries.map { it.label })
+        assertEquals(listOf("Popular", "A to Z", "Most episodes", "Oldest first"), SeriesSort.entries.map { it.label })
     }
 
     @Test fun `the sponsor is read where the catalog carries it`() = runBlocking {

@@ -58,7 +58,7 @@ MIN_EPISODES = 10_000
 SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
-    networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL);
+    networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
@@ -201,8 +201,9 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?)",
-                      (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key), sort_name(name)))
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                      (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key), sort_name(name),
+                       None))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
@@ -215,12 +216,19 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     used = {aid for (aid,) in d.execute("SELECT DISTINCT archive_id FROM recordings")}
     d.executemany("INSERT INTO items VALUES (?,?)",
                   sorted((a, n) for a, n in counts_by_item.items() if a in used and isinstance(n, int)))
+    series_dl = SH.series_downloads(d.execute(
+        "SELECT e.series_key, r.archive_id FROM episodes e JOIN recordings r ON r.episode_id = e.id AND r.rank = 0"),
+        dict(d.execute("SELECT archive_id, downloads FROM items")))
+    recommendable = {k for (k,) in d.execute("SELECT DISTINCT series_key FROM episodes WHERE no_recommend IS NULL")}
+    d.executemany("UPDATE series SET downloads = ? WHERE key = ?",
+                  [(n, k) for k, n in SH.browse_downloads(series_dl, recommendable).items()])
     write_arcs(d)
     d.executescript(INDEXES)
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
               for t in ("episodes", "recordings", "series", "people", "credits", "art", "arcs", "arc_parts")}
     counts["portraits"] = d.execute("SELECT COUNT(*) FROM people WHERE portrait IS NOT NULL").fetchone()[0]
     counts["seriesStars"] = d.execute("SELECT COUNT(*) FROM series WHERE star IS NOT NULL").fetchone()[0]
+    counts["seriesDownloads"] = d.execute("SELECT COUNT(*) FROM series WHERE downloads IS NOT NULL").fetchone()[0]
     counts["episodeStars"] = d.execute("SELECT COUNT(*) FROM episodes WHERE star IS NOT NULL").fetchone()[0]
     counts["clean"] = d.execute("SELECT COUNT(*) FROM episodes WHERE rights = 'clean'").fetchone()[0]
     counts["loudness"] = d.execute("SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL").fetchone()[0]
@@ -232,9 +240,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             "listenShelves": SH.listen_shelves(
                 d.execute("SELECT id, series_key, air_date, num, no_recommend, title FROM episodes"),
                 {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")},
-                downloads=SH.series_downloads(d.execute(
-                    "SELECT e.series_key, r.archive_id FROM episodes e JOIN recordings r ON r.episode_id = e.id "
-                    "AND r.rank = 0"), dict(d.execute("SELECT archive_id, downloads FROM items"))))}
+                downloads=series_dl)}
     for k, v in meta.items():
         d.execute("INSERT INTO meta VALUES (?,?)", (k, json.dumps(v)))
     d.execute("INSERT INTO episodes_fts (episodes_fts) VALUES ('optimize')")   # one b-tree, before VACUUM

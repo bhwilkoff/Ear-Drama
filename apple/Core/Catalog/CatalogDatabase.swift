@@ -23,6 +23,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let hasNoRecommend: Bool
     /// Contract §3.3: the pipeline's A-to-Z key; a catalog published before it sorts by `name`.
     private let hasSortName: Bool
+    /// Contract §3.3 `series.downloads`, Browse's Popular key; a catalog without it sorts Popular A to Z.
+    private let hasDownloads: Bool
     private let hasLoudness: Bool
     private let hasTranscript: Bool
     /// The index carries the transcript column (contract §3.4), so a match can
@@ -61,6 +63,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         hasSponsor = Self.columnExists(h, table: "episodes", column: "sponsor")
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
         hasSortName = Self.columnExists(h, table: "series", column: "sort_name")
+        hasDownloads = Self.columnExists(h, table: "series", column: "downloads")
         hasLoudness = Self.columnExists(h, table: "episodes", column: "loudness_i")
             && Self.columnExists(h, table: "episodes", column: "loudness_tp")
         hasTranscript = Self.columnExists(h, table: "episodes", column: "transcript_url")
@@ -206,7 +209,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     /// `runs` table, which the served projection does not carry yet.
     /// `recommendAnd` applies only when a shelf asks (`forShelf`).
     func seriesBrowse(genre: String? = nil, network: String? = nil, decade: Int? = nil,
-                      forShelf: Bool = false, limit: Int = 20_000) -> [SeriesRow] {
+                      sort: SeriesSort = .name, forShelf: Bool = false, limit: Int = 20_000) -> [SeriesRow] {
         var clauses = ["s.episodes > 0"]
         var binds: [Bind] = []
         if let genre { clauses.append("s.genre = ?"); binds.append(.text(genre)) }
@@ -224,9 +227,20 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         }
         let sql = """
             SELECT \(Self.seriesColumns) FROM series s WHERE \(clauses.joined(separator: " AND "))
-            ORDER BY \(hasSortName ? "s.sort_name" : "s.name") COLLATE NOCASE, s.key LIMIT \(limit)
+            ORDER BY \(order(sort)) LIMIT \(limit)
             """
         return rows(sql, binds, decodeSeries)
+    }
+
+    /// Popular: counted series first, most downloaded first, then the uncounted by name.
+    private func order(_ sort: SeriesSort) -> String {
+        let name = "\(hasSortName ? "s.sort_name" : "s.name") COLLATE NOCASE, s.key"
+        switch sort {
+        case .popular where hasDownloads: return "COALESCE(s.downloads, 0) <= 0, s.downloads DESC, \(name)"
+        case .popular, .name: return name
+        case .episodes: return "s.episodes DESC, \(name)"
+        case .firstAired: return "s.first_date IS NULL, s.first_date, \(name)"
+        }
     }
 
     /// The genres present, most series first, for the browse filter.

@@ -103,6 +103,14 @@ def series_downloads(default_copies, downloads):
     return out
 
 
+def browse_downloads(by_series, recommendable):
+    """Browse's "Popular" key (contract §3.3 `series.downloads`): `series_downloads`
+    for each series with a recommendable served episode, the set `most_downloaded`
+    ranks. A series with no count read, or none it may recommend, is absent, never 0:
+    Browse lists it after the counted ones, by name (never recommended, always findable)."""
+    return {k: n for k, n in by_series.items() if k in recommendable and n > 0}
+
+
 def most_downloaded(episodes, by_series, limit=SHELF_LIMIT):
     """Decision 067: popularity from data. The series archive.org's listeners have
     downloaded most (`series_downloads`), each by its earliest surviving

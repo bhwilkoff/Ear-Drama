@@ -187,8 +187,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   Below the chips, a paged list
   of series (200 at a time), each one line of years and count: the sort
   and the network as dropdown chips (a `DropdownMenu`), then the decades,
-  then the genres. The sort is the web's three, "A to Z", "Most
-  episodes", and "Oldest first" (`SeriesSort`, undated last). The
+  then the genres. The sort is the web's four, "Popular" (the default,
+  filled once another is chosen), "A to Z", "Most episodes", and "Oldest
+  first" (`SeriesSort`, undated last). Sort is Popular (the default), A to Z, Most episodes, and Oldest first. Popular is the published `downloads` (contract §3.3): counted series first, most downloaded first, then every row without a count by `sortName`. A play has no count, so under Popular it sorts after every counted series; a catalog published before the field has no counts, so Popular is A to Z. Plays follow
+  the series under every order. The
   networks are those `series.networks` names, each with the series it
   would list ("CBS (2,781)"), most first, at most 40, after "All
   networks". The decades come from the series' own dates

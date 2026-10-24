@@ -151,7 +151,22 @@ none on the web), never as a skip. Segment times are never estimated.
 
 - `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
-  the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below).
+  the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below),
+  `downloads` (below).
+- **`series.downloads`** (and `downloads` on the web series index): Browse's
+  "Popular" key, the series' `mostDownloaded` sum (§5.1, Decision 067):
+  archive.org's own download counts over the distinct items holding its
+  served episodes' default copies (`shelves.series_downloads`), kept only
+  for a series with a recommendable served episode (`shelves.browse_downloads`).
+  NULL, never 0, when no count was read or the series may not be
+  recommended: Browse lists it after the counted ones, by `sort_name`
+  (never recommended, always findable). Each output sums its own rows, so
+  the clean-only web counts only what it serves. Every client sorts
+  Popular by it (counted first, most first, then `sort_name`) and treats a
+  catalog without the column as all uncounted, so Popular is A to Z; none
+  re-derives it. `meta.counts.seriesDownloads` (the manifest's
+  `counts.seriesDownloads`) is how many series carry one. Guarded in
+  `catalog/tests/test_listen_shelves.py`.
 - **`series.sort_name`** (and `sortName` on the web series index, `sort_name`
   on a castable script): the A-to-Z key, computed once by
   `catalog/tools/sort_name.py` and golden-tested in `tests/test_sort_name.py`.
@@ -282,7 +297,7 @@ passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
 face's name) and `art`, a series page carries both as keys, a credit appends
 `art` (its person's portrait or null), and a Detail row appends `star` (the
 episode's face, a person id among its credits). A series row appends `scripts` (how many of its served episodes carry a
-`script`) and a Detail row appends `script` (§3.1, or null), then `arc`
+`script`), then `downloads` (§3.3, or null) and a Detail row appends `script` (§3.1, or null), then `arc`
 (`fields.arc`: `id`, `part`, `parts`, `next`, `nextStory`; null outside an
 arc). The web serves an arc only whole: one with a part the clean-only gate
 holds back is not served, and is never another arc's `nextStory` (MEASURED

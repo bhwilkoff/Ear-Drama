@@ -133,8 +133,11 @@ struct SeriesBrowseScreen: View {
     @State private var genre: String?
     @State private var network: String?
     @State private var decade: Int?
+    @State private var sort: SeriesSort = .popular
 
-    private struct Filter: Hashable { let genre: String?, network: String?, decade: Int?, generation: Int }
+    private struct Filter: Hashable {
+        let genre: String?, network: String?, decade: Int?, sort: SeriesSort, generation: Int
+    }
 
     /// A play carries no genre, network, or decade, so those narrow to series;
     /// "Has a script" keeps the plays and the series with a linked episode
@@ -149,42 +152,45 @@ struct SeriesBrowseScreen: View {
     private var shownPlays: [PlayScript] { showsPlays ? plays.scripts : [] }
     private var isFiltered: Bool { kind != nil || hasScript || genre != nil || network != nil || decade != nil }
 
+    /// One List for every state, as Home and Library: swapping scroll views
+    /// under the bar lost the large title (seen on an iPhone 12, 2026-10-24).
     var body: some View {
-        Group {
+        List {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                let rows = shownSeries(series)
-                if rows.isEmpty && shownPlays.isEmpty {
-                    ContentUnavailableView {
-                        Label("Nothing matches", systemImage: "line.3.horizontal.decrease.circle")
-                    } actions: {
-                        Button("Clear Filters") { clear() }
-                    }
-                } else {
-                    List {
-                        ForEach(rows) { row in
-                            NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
-                        }
-                        ForEach(shownPlays) { script in
-                            NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
-                        }
-                    }
+                ForEach(shownSeries(series)) { row in
+                    NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                }
+                ForEach(shownPlays) { script in
+                    NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
                 }
             } else {
-                List { SkeletonRows() }
+                SkeletonRows()
             }
         }
-        .safeAreaInset(edge: .top, spacing: 0) { chips }
+        .overlay {
+            if catalog.state != .unavailable, let series, shownSeries(series).isEmpty, shownPlays.isEmpty {
+                ContentUnavailableView {
+                    Label("Nothing matches", systemImage: "line.3.horizontal.decrease.circle")
+                } actions: {
+                    Button("Clear Filters") { clear() }
+                }
+            }
+        }
+        .modifier(TopBar { chips })
         .navigationTitle("Browse")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.large)
+        #endif
         .task(id: catalog.loadKey) {
             facets = await catalog.browseFacets()
             scripted = await catalog.scriptedSeries()
         }
         .task { await plays.load() }
-        .task(id: Filter(genre: genre, network: network, decade: decade, generation: catalog.loadKey)) {
+        .task(id: Filter(genre: genre, network: network, decade: decade, sort: sort, generation: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
-            series = await catalog.seriesBrowse(genre: genre, network: network, decade: decade)
+            series = await catalog.seriesBrowse(genre: genre, network: network, decade: decade, sort: sort)
         }
     }
 
@@ -228,12 +234,17 @@ struct SeriesBrowseScreen: View {
                     .toggleStyle(.button)
                     .buttonBorderShape(.capsule)
                     .tint(hasScript ? Color.brandSecondary : Color.brandTextMuted)
+                // An order, not a filter: never filled, never cleared (Archive Watch §4.2a).
+                chip("Sort: \(sort.title)", on: false) {
+                    Picker("Sort", selection: $sort) {
+                        ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                }
             }
             .padding(.horizontal, Spacing.s4)
             .padding(.vertical, Spacing.s2)
         }
         .scrollIndicators(.hidden)
-        .background(.bar)
     }
 
     private func chip<Content: View>(_ title: String, on: Bool, @ViewBuilder content: () -> Content) -> some View {
@@ -250,6 +261,24 @@ struct SeriesBrowseScreen: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .fixedSize()
+    }
+}
+
+/// A bar of controls pinned under the navigation bar. On 26 it is the
+/// system's `safeAreaBar`, which keeps the large title and the scroll edge
+/// effect; before, an inset whose material stops at the safe area, so it never
+/// paints over the title.
+private struct TopBar<Bar: View>: ViewModifier {
+    @ViewBuilder let bar: () -> Bar
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26, macOS 26, *) {
+            content.safeAreaBar(edge: .top, spacing: 0) { bar() }
+        } else {
+            content.safeAreaInset(edge: .top, spacing: 0) {
+                bar().background(.bar, ignoresSafeAreaEdges: [])
+            }
+        }
     }
 }
 
