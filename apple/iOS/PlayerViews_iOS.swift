@@ -116,6 +116,9 @@ struct PlayerSheet_iOS: View {
                         .foregroundStyle(Color.brandTextMuted)
                         .lineLimit(1)
                 }
+                NextStoryButton()
+                    .buttonStyle(.bordered)
+                    .font(TypeRamp.body)
             }
             .padding(Spacing.s6)
             .background(Color.brandBackground)

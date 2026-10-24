@@ -644,6 +644,7 @@ private struct NowPlaying_tvOS: View {
                 SleepButton()
                 LevelToggle()
                 ListenTogetherButton()
+                NextStoryButton()
                 if player.item?.episode.transcriptURL != nil {
                     Button {
                         transcriptOpen = true

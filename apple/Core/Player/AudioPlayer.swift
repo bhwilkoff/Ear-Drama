@@ -11,8 +11,9 @@ import Observation
 /// The one playback engine every Apple platform shares (research 04 §2, §10):
 /// AVPlayer over the episode's default recording, the audio session, Now
 /// Playing and remote commands, speed, a resume position per episode, the R20
-/// sleep timer, the volume leveler (Decision 067), and the queue rule: one
-/// episode, then what the person queued, then stop.
+/// sleep timer, the volume leveler (Decision 067), and the queue rule: a
+/// story arc's next part, else what the person queued, then stop; at an arc's
+/// end the next story is offered, never started (`PlaybackQueue`).
 @Observable
 final class AudioPlayer {
     nonisolated enum Skip {
@@ -38,6 +39,10 @@ final class AudioPlayer {
     /// The current item plays from a downloaded file, not the network.
     private(set) var isLocal = false
     private(set) var upNext: [EpisodeRow] = []
+    /// The current episode's place in its story arc, once read.
+    private(set) var arc: ArcPosition?
+    /// On an arc's last part: the series' next story, for the person to start.
+    private(set) var nextStory: EpisodeRow?
     private(set) var sleep = SleepTimer()
     /// Bumps once a second while a sleep countdown runs, so its label redraws.
     private(set) var clock = Date()
@@ -71,6 +76,8 @@ final class AudioPlayer {
     /// Resolves an episode id to its detail (the catalog lives in the app's
     /// CatalogStore; the player never opens the database itself).
     @ObservationIgnored var resolveDetail: (String) async -> EpisodeDetail? = { _ in nil }
+    /// Resolves an episode id to its place in a story arc (CatalogStore.arc).
+    @ObservationIgnored var resolveArc: (String) async -> ArcPosition? = { _ in nil }
     /// The person's queue, head first (the synced `ListeningQueue`), and how
     /// to take an episode off it once it plays.
     @ObservationIgnored var queuedIDs: () -> [String] = { [] }
@@ -156,6 +163,9 @@ final class AudioPlayer {
         elapsed = 0
         duration = recording.lengthSeconds ?? detail.episode.lengthSeconds
         upNext = []
+        arc = nil
+        nextStory = nil
+        arcRead = nil
 
         let source = Self.source(episodeID: detail.episode.id, recording: recording, localFile: localFile)
         isLocal = source.isLocal
@@ -188,23 +198,52 @@ final class AudioPlayer {
         dequeue(detail.episode.id)
         playsQueue = queue
         refreshUpNext()
+        if queue { readArc(detail.episode.id) }
     }
 
     /// Whether this item plays the queue after it (a Radio slot and a room do not).
     @ObservationIgnored private var playsQueue = false
+    /// The arc read in flight for the current item, awaited at its end.
+    @ObservationIgnored private var arcRead: Task<ArcPosition?, Never>?
 
-    /// Shows what plays next: the queue's head, resolved for its title.
+    private func readArc(_ episodeID: String) {
+        let read = Task { [weak self] () -> ArcPosition? in
+            guard let self else { return nil }
+            return await self.resolveArc(episodeID)
+        }
+        arcRead = read
+        Task { [weak self] in
+            let found = await read.value
+            guard let self, self.item?.episode.id == episodeID else { return }
+            self.arc = found
+            self.refreshUpNext()
+            guard let offer = PlaybackQueue.offer(found), let detail = await self.resolveDetail(offer),
+                  self.item?.episode.id == episodeID else { return }
+            self.nextStory = detail.episode
+        }
+    }
+
+    /// Shows what plays next: the arc's next part, else the queue's head, resolved for its title.
     func refreshUpNext() {
         guard playsQueue, let current = item,
-              let next = PlaybackQueue.next(after: current.episode.id, queued: queuedIDs()) else {
+              let next = PlaybackQueue.after(current.episode.id, arc: arc, queued: queuedIDs()) else {
             upNext = []
             return
         }
         let episodeID = current.episode.id
         Task { [weak self] in
-            guard let self, let detail = await self.resolveDetail(next),
+            guard let self, let detail = await self.resolveDetail(next.episodeID),
                   self.item?.episode.id == episodeID else { return }
             self.upNext = [detail.episode]
+        }
+    }
+
+    /// Starts the next story the last part offers (Decision 067: offered, never started by itself).
+    func playNextStory() {
+        guard let story = nextStory else { return }
+        Task { [weak self] in
+            guard let self, let detail = await self.resolveDetail(story.id) else { return }
+            self.play(detail)
         }
     }
 
@@ -369,22 +408,34 @@ final class AudioPlayer {
         guard let current = item else { return }
         history.markFinished(current.episode.id, duration: duration)
         // R20: once the timer fires (or it was set for this episode), nothing
-        // starts the next one. Decision 067: only what the person queued plays
-        // next, whatever its series; with the queue empty, playback stops.
+        // starts the next one. Decision 067: an arc's next part plays next;
+        // otherwise only what the person queued, whatever its series; with
+        // nothing up next, playback stops (the next story stays offered).
         let mayContinue = sleep.episodeDidEnd()
         onTransport(mayContinue ? .ended : .sleepFired)
-        guard mayContinue, playsQueue,
-              let next = PlaybackQueue.next(after: current.episode.id, queued: queuedIDs()) else {
-            upNext = []
-            isPlaying = false
-            publishNowPlaying()
+        let episodeID = current.episode.id
+        guard mayContinue, playsQueue else {
+            stopAtEnd()
             return
         }
-        upNext = []
+        let read = arcRead
         Task { [weak self] in
-            guard let self, let detail = await self.resolveDetail(next) else { return }
+            let found = await read?.value
+            guard let self, self.item?.episode.id == episodeID else { return }
+            guard let next = PlaybackQueue.after(episodeID, arc: found, queued: self.queuedIDs()),
+                  let detail = await self.resolveDetail(next.episodeID),
+                  self.item?.episode.id == episodeID else {
+                self.stopAtEnd()
+                return
+            }
             self.load(detail, recording: nil, from: nil, queue: true, rate: self.speed)
         }
+    }
+
+    private func stopAtEnd() {
+        upNext = []
+        isPlaying = false
+        publishNowPlaying()
     }
 
     private func saveProgress() {

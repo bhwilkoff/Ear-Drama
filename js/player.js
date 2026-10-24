@@ -3,9 +3,12 @@
  * the queue, and the sleep timer. The views draw it; this module owns it.
  *
  * Bounded lean-back (R3, R14, R20; Decision 067):
- *  - At an episode's end the next one plays only when the person queued it:
- *    one episode, then the queue, then stop. Nothing the person did not choose
- *    starts by itself. (A serial's arc end waits on the runs table.)
+ *  - A part of a story arc (the published `arc`, contract §3.3) is followed by
+ *    the arc's next part. At the arc's last part playback stops and the next
+ *    story is offered (`nextStory`), never started. Outside an arc, and after
+ *    an arc's last part: what the person queued, then stop. Nothing the person
+ *    did not choose starts by itself. A live slot (`arc: false`) follows its
+ *    clock, never an arc.
  *  - The sleep timer offers "End of this episode" first, fades the volume
  *    over its last FADE_S seconds, and once it has fired nothing starts until
  *    the person presses play.
@@ -44,6 +47,9 @@ const Player = (() => {
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
   let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
   let guestHold = null;     // set by js/together.js: a guest's own pause (true) and resume (false)
+  let arc = null;           // the current episode's arc ({ part, parts, next, nextStory }), once read
+  let arcWait = null;       // the read in flight, or null once settled
+  let arcSource = (id) => (typeof API !== 'undefined' && API.arcOf ? API.arcOf(id) : null);
 
   function emit(kind) { listeners.forEach(fn => fn(kind || 'state')); }
   function onChange(fn) { listeners.add(fn); }
@@ -52,8 +58,9 @@ const Player = (() => {
    * Load an episode card ({ id, title, series, seriesName, date, url, length }) and, by default, play it.
    * `at` starts it at a given second instead of its resume point (the Radio tab's one clock, R10).
    */
-  function load(ep, { autoplay = true, at: startAt = null } = {}) {
+  function load(ep, { autoplay = true, at: startAt = null, arc: inArc = true } = {}) {
     current = Store.card(ep);
+    readArc(inArc ? ep.id : null);
     fired = false;
     interrupted = false;
     lastError = null;
@@ -137,6 +144,38 @@ const Player = (() => {
   function nextInQueue() {
     if (!current) return null;
     return Store.queue()[0] || null;
+  }
+
+  /** Decision 067: the arc's next part, else (outside an arc, or after its last part) the queue's head. */
+  function upNext() {
+    if (arc && arc.next) return { kind: 'part', card: arc.next };
+    const q = nextInQueue();
+    return q ? { kind: 'queue', card: q } : null;
+  }
+
+  /** On an arc's last part: the series' next story, offered for the person to start, never started. */
+  function nextStory() { return arc && !arc.next ? arc.nextStory || null : null; }
+
+  function readArc(id) {
+    arc = null;
+    arcWait = null;
+    if (!id) return;
+    let got;
+    try { got = arcSource(id); } catch { got = null; }
+    if (!got || typeof got.then !== 'function') { arc = got || null; return; }
+    const wait = got.then(a => a, () => null).then(a => {
+      if (arcWait !== wait) return;
+      arc = a || null;
+      arcWait = null;
+      emit('arc');
+    });
+    arcWait = wait;
+  }
+
+  function advance() {
+    const n = upNext();
+    if (n) load(n.card);
+    else emit('ended');
   }
 
   /* ---- Sleep timer (R20) ---- */
@@ -301,9 +340,9 @@ const Player = (() => {
     if (current && isFinite(audio.duration)) Store.savePosition(current.id, audio.duration, audio.duration);
     if (sleep && sleep.kind === 'end') { fireSleep(); return; }
     if (fired) return;
-    const next = nextInQueue();
-    if (next) load(next);
-    else emit('ended');
+    if (!arcWait) { advance(); return; }
+    const id = current && current.id;
+    arcWait.then(() => { if (!fired && current && current.id === id && audio.ended) advance(); });
   });
   window.addEventListener('pagehide', savePosition);
 
@@ -366,7 +405,7 @@ const Player = (() => {
       seekforward: d => skip((d && d.seekOffset) || FWD_S),
       seekto: d => seek(d.seekTime),
       previoustrack: () => seek(0),
-      nexttrack: () => { const n = nextInQueue(); if (n) load(n); },
+      nexttrack: () => { const n = upNext(); if (n) load(n.card); },
     };
     for (const [action, fn] of Object.entries(handlers)) {
       const guarded = ['play', 'pause', 'stop'].includes(action) ? fn : person(fn);
@@ -377,7 +416,8 @@ const Player = (() => {
   function setMuted(m) { audio.muted = !!m; setOutput(fade); }
 
   return {
-    audio, load, setSleep, setMuted, nextInQueue, sleepRemaining, onChange, setArtwork,
+    audio, load, setSleep, setMuted, nextInQueue, upNext, nextStory, sleepRemaining, onChange, setArtwork,
+    setArcSource(fn) { arcSource = fn; },
     play: personPlay, pause: personPause, toggle: personToggle, seek: person(seek),
     back: person(back), forward: person(forward), setRate: person(setRate),
     setFollowing, follow, setGuestHold, setLeveling, wake,

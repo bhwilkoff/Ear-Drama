@@ -444,12 +444,14 @@ web app follows today.
 - **§5.3 Bedtime is a mode** (R20). The sleep timer offers "End of this
   episode" first, fades the volume over its last 10 s (`FADE_S`), and
   nothing starts again until the person presses play.
-- **§5.4 Lean-back is bounded** (R3, R14, Decision 067). At an episode's
-  end the next one plays only when the person queued it, whatever its
-  series: one episode, then the queue, then stop. A serial playing to its
-  arc's end waits on the runs table.
+- **§5.4 Lean-back is bounded** (R3, R14, Decision 067): a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc
+  (`Player.load(…, { arc: false })`). Now Playing's caption names what is
+  up next ("Next part:" or "Next in queue:"); the last part shows a "Next
+  story" button (`#np-story`), hidden for a Listen Together guest.
+  `Player.upNext` and `Player.nextStory` are the rule; `API.arcOf` reads it.
 - **§5.5 Never skip the commercials** (R8). Skip is a fixed interval,
-  never a jump past a segment.
+  never a jump past a segment. No data marks a commercial's start and end
+  yet, and the web has no chapter surface (contract §3.2a).
 - **§5.6 Media Session** carries the title, series, and date, with play,
   pause, and seek handlers, and the artwork Now Playing draws (§6.4): the
   portrait at 500 px, or the typographic card painted to a 512 px PNG. Keyboard: k or space toggles, j and l skip.

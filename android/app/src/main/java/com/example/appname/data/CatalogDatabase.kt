@@ -64,6 +64,12 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         "script" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
     }
 
+    /** §3.3's `arcs` and `arc_parts` (Decision 067); an older catalog has no arcs. */
+    private val hasArcs: Boolean by lazy {
+        "next_arc" in queryRaw("PRAGMA table_info(arcs)") { it.getText(1) } &&
+            "part" in queryRaw("PRAGMA table_info(arc_parts)") { it.getText(1) }
+    }
+
     /** Every series' genre and face, read once: rows that mix series draw a tile from it. */
     private val seriesLook: Map<String, Pair<String?, Face?>> by lazy {
         val faces = hasArt && "star" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
@@ -318,6 +324,29 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         if (queryRaw("SELECT 1 FROM episodes WHERE id = ?", listOf(id)) { 1 }.isNotEmpty()) id
         else queryRaw("SELECT new_id FROM episode_aliases WHERE old_id = ?", listOf(id)) { it.getText(0) }
             .firstOrNull() ?: id
+
+    /**
+     * The story arc [id] is a part of (§3.3, Decision 067): the parts after it, in order, and the
+     * series' next story's first part (`next_arc` already applies recommendAnd), offered, never
+     * started. Null outside an arc and for a catalog that predates arcs.
+     */
+    suspend fun arcAhead(id: String): ArcAhead? = read {
+        if (!hasArcs) return@read null
+        val resolved = resolve(id)
+        val head = queryRaw(
+            "SELECT p.arc_id, p.part, a.next_arc FROM arc_parts p JOIN arcs a ON a.id = p.arc_id WHERE p.episode_id = ?",
+            listOf(resolved),
+        ) { Triple(it.getText(0), it.getLong(1), it.textOrNull(2)) }.firstOrNull() ?: return@read null
+        val rest = queryRaw(
+            "SELECT episode_id FROM arc_parts WHERE arc_id = ? AND part > ? ORDER BY part",
+            listOf(head.first, head.second),
+        ) { it.getText(0) }
+        val story = head.third?.let { next ->
+            queryRaw("SELECT episode_id FROM arc_parts WHERE arc_id = ? AND part = 1", listOf(next)) { it.getText(0) }
+                .firstOrNull()
+        }
+        ArcAhead(rest, story)
+    }
 
     /** Each series' linked script ids (§3.1), for Browse's "Has a script". */
     suspend fun scriptedSeries(): Map<String, List<String>> = read {

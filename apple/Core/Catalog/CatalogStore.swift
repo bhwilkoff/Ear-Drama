@@ -116,6 +116,10 @@ final class CatalogStore {
         await run { $0.episodeDetail(id: id) } ?? nil
     }
 
+    func arc(_ id: String) async -> ArcPosition? {
+        await run { $0.arc(of: id) } ?? nil
+    }
+
     func personPage(_ id: String) async -> PersonPage? {
         await run { $0.personPage(id: id) } ?? nil
     }

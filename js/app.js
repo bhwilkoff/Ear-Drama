@@ -474,7 +474,7 @@
     live.playing = s.utc_start;
     live.waiting = false;
     live.id = d.id;
-    Player.load(cardOf(d, s.episode.series), { at: Math.max(0, at) });
+    Player.load(cardOf(d, s.episode.series), { at: Math.max(0, at), arc: false });
     if (!$('view-radio').hidden) paintRadio();
   }
 
@@ -1382,8 +1382,12 @@
       const on = s && ((b.dataset.sleep === 'end' && s.kind === 'end') || (s.kind === 'time' && b.dataset.sleep === String(s.minutes)));
       b.setAttribute('aria-current', on ? 'true' : 'false');
     });
-    const next = Player.nextInQueue();
-    $('np-next').textContent = next ? `Next in queue: ${epTitle(next)}` : '';
+    const next = Player.upNext();
+    $('np-next').textContent = !next ? '' : next.kind === 'part' ? `Next part: ${epTitle(next.card)}`
+      : `Next in queue: ${epTitle(next.card)}`;
+    const story = Player.nextStory();
+    $('np-story').hidden = !story || guest;
+    if (story) $('np-story').setAttribute('aria-label', `Next story: ${epTitle(story)}`);
     if (kind === 'sleep-fired') announce('Sleep timer ended.');
   }
   Player.onChange(paintPlayer);
@@ -1477,6 +1481,10 @@
   seekEl.addEventListener('input', () => { seeking = true; $('np-pos').textContent = fmtClock(Number(seekEl.value)); });
   seekEl.addEventListener('change', () => { seeking = false; Player.seek(Number(seekEl.value)); });
   $('np-speed').addEventListener('change', (e) => { Player.setRate(e.target.value); announce(`Speed ${e.target.value}×`); });
+  $('np-story').addEventListener('click', () => {
+    const story = Player.nextStory();
+    if (story) Player.load(story);
+  });
   $('np-level').addEventListener('click', () => {
     const on = !Player.leveling;
     Player.setLeveling(on);

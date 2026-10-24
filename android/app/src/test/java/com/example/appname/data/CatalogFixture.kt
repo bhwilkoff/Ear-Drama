@@ -83,6 +83,7 @@ object CatalogFixture {
         listenShelves: String? = null,
         withArt: Boolean = false,
         withScript: Boolean = false,
+        withArcs: Boolean = false,
     ): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
@@ -194,6 +195,22 @@ object CatalogFixture {
             if (withScript) {
                 c.execSQL("ALTER TABLE episodes ADD COLUMN script TEXT")
                 c.execSQL("UPDATE episodes SET script = 'grw-A1' WHERE id = 'sus|1943-05-25'")
+            }
+            // Contract §3.3's story arcs (Decision 067), as build_projection.py writes them: two of
+            // Suspense's, the first offering the second; a part out of date order on purpose.
+            if (withArcs) {
+                c.execSQL(
+                    "CREATE TABLE arcs (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, title TEXT, parts INTEGER NOT NULL, " +
+                        "method TEXT NOT NULL, next_arc TEXT)",
+                )
+                c.execSQL("CREATE TABLE arc_parts (episode_id TEXT PRIMARY KEY, arc_id TEXT NOT NULL, part INTEGER NOT NULL)")
+                c.execSQL("INSERT INTO arcs VALUES ('sus|arc|a', 'suspense', 'A', 3, 'titled-parts', 'sus|arc|b')")
+                c.execSQL("INSERT INTO arcs VALUES ('sus|arc|b', 'suspense', 'B', 2, 'titled-parts', NULL)")
+                c.execSQL("INSERT INTO arc_parts VALUES ('sus|1943-05-25', 'sus|arc|a', 3)")
+                c.execSQL("INSERT INTO arc_parts VALUES ('sus|1942-06-17', 'sus|arc|a', 1)")
+                c.execSQL("INSERT INTO arc_parts VALUES ('sus|1943-01-07', 'sus|arc|a', 2)")
+                c.execSQL("INSERT INTO arc_parts VALUES ('sus|u1', 'sus|arc|b', 1)")
+                c.execSQL("INSERT INTO arc_parts VALUES ('sus|u2', 'sus|arc|b', 2)")
             }
             if (!withTranscript) c.execSQL("ALTER TABLE episodes DROP COLUMN transcript_url")
             if (!withLoudness) {

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +32,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -255,6 +257,19 @@ fun PlayerSheet(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(vertical = Spacing.S3.dp),
                 )
+            }
+            // Decision 067: at an arc's last part the next story is offered, never started by itself.
+            val story = now.nextStory
+            if (story != null && !guest) {
+                OutlinedButton(
+                    onClick = { engine.play(story) },
+                    modifier = Modifier.padding(bottom = Spacing.S3.dp).tvFocusMark()
+                        .semantics { contentDescription = "Next story: ${episodeTitle(story)}" },
+                ) {
+                    Icon(Icons.Filled.SkipNext, contentDescription = null)
+                    Spacer(Modifier.size(Spacing.S2.dp))
+                    Text("Next story")
+                }
             }
         }
     }

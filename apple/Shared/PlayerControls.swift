@@ -86,6 +86,24 @@ struct LevelToggle: View {
     }
 }
 
+/// Decision 067: on a story arc's last part, the series' next story, offered
+/// for the person to start and never started by itself. Absent otherwise.
+struct NextStoryButton: View {
+    @Environment(AudioPlayer.self) private var player
+
+    var body: some View {
+        if let story = player.nextStory, !player.isFollowing {
+            Button {
+                player.playNextStory()
+            } label: {
+                Label("Next story", systemImage: "forward.end")
+            }
+            .accessibilityLabel("Next story: \(story.displayTitle)")
+            .help("Next story: \(story.displayTitle)")
+        }
+    }
+}
+
 /// Opens the sleep timer's choices. They are a confirmation dialog rather than
 /// a Menu so a test door can open them and so they read as one decision.
 struct SleepButton: View {

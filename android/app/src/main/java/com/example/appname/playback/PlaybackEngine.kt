@@ -50,6 +50,8 @@ data class NowPlaying(
     val sleep: SleepState = SleepState.Off,
     val sleepRemainingMs: Long? = null,
     val upNext: List<EpisodeRow> = emptyList(),
+    /** On a story arc's last part: the series' next story, offered for the person to start (Decision 067). */
+    val nextStory: EpisodeRow? = null,
     val failed: Boolean = false,
     /** The failure was the network, not the recording. */
     val offline: Boolean = false,
@@ -89,6 +91,8 @@ class PlaybackEngine(
     private var episodes: List<EpisodeRow> = emptyList()
     /** Each queued item's copy as the catalog names it, never a local file: a room shares this (§4.13). */
     private var urls: List<String> = emptyList()
+    /** The arc's last part's id and the next story it offers, for this queue (Decision 067). */
+    private var offer: Pair<String, EpisodeRow>? = null
     /** False for a room's copy, whose start is the host's, not this device's saved place. */
     private var resumeSaved = true
     private var lastFactor = 1f
@@ -283,7 +287,11 @@ class PlaybackEngine(
         val detail = db.episodeDetail(episodeId) ?: return null
         val startUrl = url ?: detail.recordings.firstOrNull()?.url ?: return null
         val queued = user.queue()
-        val following = if (queue) PlaybackQueue.after(detail.episode.id, queued) else emptyList()
+        val arc = if (queue) db.arcAhead(detail.episode.id) else null
+        val following = if (queue) PlaybackQueue.after(detail.episode.id, arc, queued) else emptyList()
+        offer = PlaybackQueue.offeredBy(detail.episode.id, arc)?.let { by ->
+            arc?.nextStory?.let { db.episodeDetail(it) }?.let { by to it.episode }
+        }
         val followingItems = following.mapNotNull { id ->
             val next = db.episodeDetail(id) ?: return@mapNotNull null
             next.recordings.firstOrNull()?.url?.let { next.episode to it }
@@ -469,6 +477,7 @@ class PlaybackEngine(
                 SystemClock.elapsedRealtime(), remainingMediaMs(p), p.playbackParameters.speed,
             ),
             upNext = if (sleep.allowsAutoAdvance()) episodes.drop(index + 1) else emptyList(),
+            nextStory = offer?.takeIf { it.first == current?.id }?.second,
         )
     }
 
@@ -520,6 +529,7 @@ class PlaybackEngine(
         ensureSession()
         saveNow()
         episodes = listOf(row)
+        offer = null
         urls = listOf(url)
         resumeSaved = false
         lastFactor = 1f

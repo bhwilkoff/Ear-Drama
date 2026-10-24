@@ -245,6 +245,28 @@ const API = (() => {
     return o;
   }
 
+  /**
+   * The story arc an episode is a part of (contract §3.3, Decision 067): { id, part, parts, next, nextStory },
+   * the next part's card (null on the last part) and, on the last part only, the series' next story's
+   * first part, offered and never started. Null outside an arc, or for a catalog that predates arcs.
+   */
+  async function arcOf(id, get = getJSON) {
+    const m = await get('manifest.json');
+    if (!m.fields || !m.fields.arc || !m.fields.detail.includes('arc')) return null;
+    const shard = await get(`episodes/${shardOf(id, m.shard.mask)}.json`).catch(e => {
+      if (e.kind === 'missing') return {};
+      throw e;
+    });
+    const rec = shard[id];
+    const raw = rec && rowsOf(m.fields.detail, [rec])[0].arc;
+    if (!raw) return null;
+    const a = rowsOf(m.fields.arc, [raw])[0];
+    const want = [a.next, a.nextStory].filter(Boolean);
+    const cards = new Map((want.length ? await episodesByIds(want, get) : []).map(c => [c.id, c]));
+    return { id: a.id, part: a.part, parts: a.parts, next: cards.get(a.next) || null,
+             nextStory: cards.get(a.nextStory) || null };
+  }
+
   /** Phase 1 of search: series names from the index. */
   async function searchSeries(q, limit = 8) {
     const words = tokens(q).filter(w => w.length >= 2);
@@ -845,7 +867,7 @@ const API = (() => {
   return {
     rooms,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, artOf, artURL, ART_STEPS,
-    manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
+    manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,
     transcript, transcriptLines, transcriptLabel,

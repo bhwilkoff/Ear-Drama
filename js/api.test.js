@@ -197,6 +197,32 @@ test('067: listenShelves draws mostDownloaded as published ids, in order', async
   assertEq(pop.rows.map(e => e.id).join(','), 'drama1|1940-01-01,comedy2|1948-01-01', 'in the published order');
 });
 
+test('067: arcOf reads the published arc, with the next part and, on the last part, the next story', async () => {
+  const DETAIL = ['series', 'title', 'date', 'length', 'recordings', 'li', 'ltp', 'arc'];
+  const row = (title, arc) => ['jd', title, null, 1770, [[`https://archive.org/download/jd/${title}.mp3`]], null, null, arc];
+  const rows = {
+    'jd|1': row('A1', ['jd|arc|1', 1, 2, 'jd|2', null]),
+    'jd|2': row('A2', ['jd|arc|1', 2, 2, null, 'jd|3']),
+    'jd|3': row('B1', null),
+  };
+  const files = {};
+  for (const [id, r] of Object.entries(rows)) {
+    const p = `episodes/${API.shardOf(id)}.json`;
+    files[p] = { ...(files[p] || {}), [id]: r };
+  }
+  const arcFields = ['id', 'part', 'parts', 'next', 'nextStory'];
+  const { get } = plane({ fields: { detail: DETAIL, recording: ['url'], arc: arcFields } }, files);
+  const first = await API.arcOf('jd|1', get);
+  assertEq(JSON.stringify([first.part, first.parts, first.next.id, first.nextStory]), '[1,2,"jd|2",null]', 'part 1 of 2');
+  assertEq(first.next.url, 'https://archive.org/download/jd/A2.mp3', 'the next part is a playable card');
+  const last = await API.arcOf('jd|2', get);
+  assertEq(JSON.stringify([last.next, last.nextStory.id]), '[null,"jd|3"]', 'the last part names the next story');
+  assertEq(await API.arcOf('jd|3', get), null, 'outside an arc');
+  assertEq(await API.arcOf('gone|1', get), null, 'an id not served');
+  const old = plane({ fields: { detail: DETAIL.slice(0, 7), recording: ['url'] } }, files);
+  assertEq(await API.arcOf('jd|1', old.get), null, 'control: a catalog that predates arcs has none');
+});
+
 test('series index rows expose sortName, and A to Z by it skips quotes and articles', () => {
   const rows = API.rowsOf(['key', 'name', 'sortName'],
     [['q', '"Fixture Quoted"', 'fixture quoted"'], ['t', 'The Fixture Hour', 'fixture hour']]);

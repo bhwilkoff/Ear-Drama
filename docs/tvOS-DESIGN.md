@@ -43,9 +43,9 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   `ArtTile` (the series' star, else its letter), Detail and the series
   page put a `FaceFigure` (240 / 200 pt) beside the title, cast lines
   carry 64 pt portraits in a grid, and owed credits follow as text; **R12** brand is chrome only; **R13** shelves by rule.
-- **R14** lean-back is bounded: the sleep timer ends a session, and the
-  queue is the person's own: one episode, then what they queued, then
-  stop (Decision 067).
+- **R14** lean-back is bounded: the sleep timer ends a session, and what
+  plays next is Decision 067's: a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc. The action row carries
+  "Next story" (`NextStoryButton`) on an arc's last part only.
 - **R15 and Decision 067**: volume leveled on the device by the shared
   `VolumeLeveler` tap (iOS-DESIGN §1.7); "Level volume" is a toggle in
   Now Playing's action row. Radio's action row carries a "Year" menu when
