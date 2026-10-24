@@ -374,7 +374,7 @@ select {
 }
 .art-tile.has-img .art-letter { visibility: hidden; }
 .series-card .art-tile { align-self: flex-start; }
-.series-row a { flex-direction: row; align-items: center; gap: var(--space-3); }
+.series-row a { flex-direction: row; align-items: center; gap: var(--space-3); padding-left: 0; border-left: 0; }
 .series-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 /* A face beside a page heading: whose it is, and the credit its license asks for. */

@@ -45,6 +45,39 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         "sponsor" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
     }
 
+    /** Contract §3.3a: the projection carries portraits; an older catalog has none. */
+    private val hasArt: Boolean by lazy {
+        "portrait" in queryRaw("PRAGMA table_info(people)") { it.getText(1) } &&
+            "url" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }
+    }
+    private val hasEpisodeStar: Boolean by lazy {
+        hasArt && "star" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
+    }
+
+    /** Every series' genre and face, read once: rows that mix series draw a tile from it. */
+    private val seriesLook: Map<String, Pair<String?, Face?>> by lazy {
+        val faces = hasArt && "star" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
+        val sql = if (faces) {
+            "SELECT s.key, s.genre, p.name, a.url, a.width, a.height, a.credit, a.evidence_url FROM series s " +
+                "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait"
+        } else "SELECT key, genre, NULL, NULL, NULL, NULL, NULL, NULL FROM series"
+        queryRaw(sql) { st ->
+            val art = artwork(st, 3)
+            val name = st.textOrNull(2)
+            st.getText(0) to (st.textOrNull(1) to if (art != null && name != null) Face(name, art) else null)
+        }.toMap()
+    }
+
+    private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
+        Artwork(
+            url = it,
+            width = if (st.isNull(at + 1)) null else st.getLong(at + 1).toInt(),
+            height = if (st.isNull(at + 2)) null else st.getLong(at + 2).toInt(),
+            credit = st.textOrNull(at + 3),
+            evidence = st.textOrNull(at + 4),
+        )
+    }
+
     /** §3.4: the index carries transcript words, so a match can be told apart as transcript-only. */
     private val ftsHasTranscript: Boolean by lazy {
         "transcript" in queryRaw("PRAGMA table_info(episodes_fts)") { it.getText(1) }
@@ -277,9 +310,10 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         // Shown only where the gate passed, whatever else the row carries.
         val transcript = if (hasTranscript) "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" else "NULL"
         val sponsor = if (hasSponsor) "e.sponsor" else "NULL"
+        val star = if (hasEpisodeStar) "e.star" else "NULL"
         val head = queryRaw(
             "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json, " +
-                "$loudness, $transcript, $sponsor$EPISODE_FROM WHERE e.id = ?",
+                "$loudness, $transcript, $sponsor, $star$EPISODE_FROM WHERE e.id = ?",
             listOf(resolved),
         ) { st ->
             EpisodeDetail(
@@ -295,13 +329,16 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 loudnessTp = if (st.isNull(14)) null else st.getDouble(14),
                 transcriptUrl = st.textOrNull(15),
                 sponsor = st.textOrNull(16)?.takeIf { it.isNotBlank() },
+                star = st.textOrNull(17),
             )
         }.firstOrNull() ?: return@read null
+        val artColumns = if (hasArt) "a.url, a.width, a.height, a.credit, a.evidence_url" else "NULL, NULL, NULL, NULL, NULL"
+        val artJoin = if (hasArt) " LEFT JOIN art a ON a.id = p.portrait" else ""
         val credits = queryRaw(
-            "SELECT c.person_id, p.name, c.role, c.character FROM credits c " +
-                "JOIN people p ON p.id = c.person_id WHERE c.episode_id = ? ORDER BY c.rowid",
+            "SELECT c.person_id, p.name, c.role, c.character, $artColumns FROM credits c " +
+                "JOIN people p ON p.id = c.person_id$artJoin WHERE c.episode_id = ? ORDER BY c.rowid",
             listOf(resolved),
-        ) { Credit(it.getText(0), it.getText(1), it.textOrNull(2), it.textOrNull(3)) }
+        ) { Credit(it.getText(0), it.getText(1), it.textOrNull(2), it.textOrNull(3), artwork(it, 4)) }
         val recordings = queryRaw(
             "SELECT rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings " +
                 "WHERE episode_id = ? ORDER BY rank",
@@ -423,6 +460,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         firstDate = st.textOrNull(3),
         lastDate = st.textOrNull(4),
         episodes = st.getLong(5).toInt(),
+        face = seriesLook[st.getText(0)]?.second,
     )
 
     private fun episodeRow(st: SQLiteStatement) = EpisodeRow(
@@ -434,6 +472,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         num = if (st.isNull(5)) null else st.getLong(5).toInt(),
         title = st.textOrNull(6),
         lengthSeconds = if (st.isNull(7)) null else st.getDouble(7),
+        seriesGenre = seriesLook[st.getText(1)]?.first,
+        seriesFace = seriesLook[st.getText(1)]?.second,
     )
 
     private fun SQLiteStatement.textOrNull(i: Int): String? = if (isNull(i)) null else getText(i)

@@ -46,7 +46,14 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **R5** copies are Versions on Detail, each with its own Play, the rank
   0 copy the default.
 - **R11** cards are typographic `OutlinedCard`s (date, title, series);
-  no node, card, or notification carries invented art.
+  no node, card, or notification carries invented art. As amended by
+  Decision 069 (2026-10-24): a served portrait or the typographic card
+  drawn from data is the art. A row that mixes series leads with a 40 dp
+  tile (the series' star, else its first letter in its genre hue); the
+  series page and Detail put the face beside the heading with the name
+  and any owed CC credit; cast lines carry 32 dp round portraits; Now
+  Playing and the Media3 session's `artworkUri` carry the same picture.
+  One helper builds every image URL (Commons' 120 / 330 / 500 steps).
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order
   (contract §5.1; the same list and titles on every platform): This day
