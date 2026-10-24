@@ -157,13 +157,74 @@
     }
   }
 
+  /* ---- Art (§6.4, Decision 069): a served portrait, else a card drawn from data ---- */
+
+  function initialOf(name) {
+    const w = String(name || '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/^(the|a|an)\s+/i, '');
+    const m = w.match(/[\p{L}\p{N}]/u);
+    return m ? m[0].toUpperCase() : '';
+  }
+  /** The image, at the smallest Commons step that covers `px` CSS pixels on this screen; a
+      failed load leaves the box as it was (the tile's letter, or nothing). */
+  function putImage(box, art, px, alt) {
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
+    const img = el('img', { src: API.artURL(art, px * dpr), alt, loading: 'lazy', decoding: 'async' });
+    img.addEventListener('error', () => { img.remove(); box.classList.remove('has-img'); });
+    box.classList.add('has-img');
+    box.append(img);
+    return img;
+  }
+  /** A row's 40 px tile: the series' star, else its first letter on its genre. Filled from the
+      series index by paintArt when the row knows only the series key. */
+  function artTile(s) {
+    const t = el('span', { class: 'art-tile', 'aria-hidden': 'true', dataset: { genre: (s && s.genre) || '' } },
+      el('span', { class: 'art-letter' }, initialOf(s && s.name)));
+    if (s && s.art) { t.dataset.done = '1'; putImage(t, s.art, 40, ''); } else if (s && s.key) t.dataset.series = s.key;
+    return t;
+  }
+  let artPending = false;
+  function paintArt() {
+    if (artPending) return;
+    artPending = true;
+    queueMicrotask(() => {
+      artPending = false;
+      const tiles = [...document.querySelectorAll('.art-tile[data-series]:not([data-done])')];
+      if (!tiles.length) return;
+      tiles.forEach(t => { t.dataset.done = '1'; });
+      API.seriesIndex().then(({ byKey }) => tiles.forEach(t => {
+        const s = byKey.get(t.dataset.series);
+        if (!s) return;
+        t.dataset.genre = s.genre || '';
+        t.querySelector('.art-letter').textContent = initialOf(s.name);
+        if (s.art) putImage(t, s.art, 40, '');
+      })).catch(() => tiles.forEach(t => { delete t.dataset.done; }));
+    });
+  }
+  new MutationObserver(paintArt).observe(document.body, { childList: true, subtree: true });
+
+  /** A face beside a page heading, captioned with whose it is and, when its license asks, the credit. */
+  function faceFigure(art, name) {
+    const box = el('span', { class: 'face-img' });
+    putImage(box, art, 112, name || '');
+    return el('figure', { class: 'face' }, box,
+      el('figcaption', { class: 'caption' }, name,
+        art.credit ? el('a', { class: 'face-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit) : null));
+  }
+  /** The typographic card (R11): the name, one meta line, on the genre. Any titled work with a year
+      and a genre draws one: a series, or a stage play. */
+  function typeCard({ name, line, genre }) {
+    return el('span', { class: 'type-card', dataset: { genre: genre || '' } },
+      el('span', { class: 'type-card-name' }, name || ''), line ? el('span', { class: 'caption' }, line) : null);
+  }
+
   /* ---- Rows and cards ---- */
 
   /** An episode row: date first (R1), then title; the series when the list mixes series. */
   function episodeRow(ep, { showSeries = false } = {}) {
     const progress = Store.progress(ep.id);
     const sub = [showSeries ? ep.seriesName : null, fmtLength(ep.length)].filter(Boolean).join(' · ');
-    const link = el('a', { class: 'ep-link', href: `?item=${encodeURIComponent(ep.id)}` },
+    const link = el('a', { class: `ep-link${showSeries ? ' has-art' : ''}`, href: `?item=${encodeURIComponent(ep.id)}` },
+      showSeries ? artTile({ key: ep.series, name: ep.seriesName }) : null,
       el('span', { class: 'ep-date tabular' }, ep.date || 'Undated'),
       el('span', { class: 'ep-title body-strong' }, epTitle(ep)),
       sub ? el('span', { class: 'ep-sub caption' }, sub) : null,
@@ -190,6 +251,7 @@
   function seriesCard(s) {
     return el('li', {},
       el('a', { class: 'series-card', href: `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
+        artTile(s),
         el('span', { class: 'body-strong series-card-name' }, s.name),
         el('span', { class: 'caption' }, seriesMeta(s))));
   }
@@ -202,8 +264,9 @@
   function seriesRow(s) {
     return el('li', { class: 'series-row' },
       el('a', { href: `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
-        el('span', { class: 'body-strong' }, s.name),
-        el('span', { class: 'caption' }, seriesMeta(s))));
+        artTile(s),
+        el('span', { class: 'series-row-text' }, el('span', { class: 'body-strong' }, s.name),
+          el('span', { class: 'caption' }, seriesMeta(s)))));
   }
 
   /* ================================================================
@@ -628,8 +691,10 @@
       };
 
       const meta = el('p', { class: 'caption' }, seriesMeta({ ...s, episodes: s.episodes.length }));
-      const head = el('header', { class: 'page-head', dataset: { genre: s.genre || '' } },
-        el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta,
+      const head = el('header', { class: `page-head${s.art ? ' has-face' : ''}`, dataset: { genre: s.genre || '' } },
+        s.art ? faceFigure(s.art, s.star) : null,
+        el('div', { class: 'page-head-text' },
+          el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta),
         el('div', { class: 'actions' }, followBtn, shareBtn));
       if (s.genre) {
         genreName(s.genre).then(n => meta.prepend(el('a', { href: `?view=series&genre=${encodeURIComponent(s.genre)}` }, n),
@@ -687,12 +752,15 @@
       // facts carries "Undated", and the number is not repeated when it already names the episode.
       const facts = [d.date ? null : 'Undated', d.network, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
                      d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
-      body.append(el('header', { class: 'page-head', dataset: { genre: (s && s.genre) || '' } },
+      const star = d.star ? d.credits.find(c => c.person === d.star && c.art) : null;
+      body.append(el('header', { class: `page-head${star ? ' has-face' : ''}`, dataset: { genre: (s && s.genre) || '' } },
+        star ? faceFigure(star.art, star.name) : null,
+        el('div', { class: 'page-head-text' },
         el('a', { class: 'section-header eyebrow-link', href: `?series=${encodeURIComponent(d.series)}` }, seriesName),
         el('h1', { class: 'view-heading', id: 'episode-h', tabindex: '-1' }, title),
         d.date ? el('p', { class: 'body' }, fmtLongDate(d.date)) : null,
         facts ? el('p', { class: 'caption' }, facts) : null,
-        d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null,
+        d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null),
         el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn)));
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
@@ -709,13 +777,23 @@
         const order = [...groups.keys()].sort((a, b) => (b === 'cast') - (a === 'cast'));
         const dl = el('dl', { class: 'credits' });
         order.forEach(role => {
+          const faces = groups.get(role).some(c => c.art);
           dl.append(el('div', { class: 'credit' },
             el('dt', { class: 'caption' }, role.charAt(0).toUpperCase() + role.slice(1)),
-            groups.get(role).map(c => el('dd', { class: 'body' }, c.name,
-              c.character ? el('span', { class: 'caption' }, ` as ${c.character}`) : null))));
+            groups.get(role).map(c => {
+              const slot = faces ? el('span', { class: 'face-sm', 'aria-hidden': 'true' }) : null;
+              if (c.art) putImage(slot, c.art, 32, '');
+              return el('dd', { class: `body${faces ? ' with-face' : ''}` }, slot,
+                el('span', {}, c.name, c.character ? el('span', { class: 'caption' }, ` as ${c.character}`) : null));
+            })));
         });
+        // CC BY and BY-SA portraits carry their credit (Decision 069); the header's face already does.
+        const owed = [...new Map(d.credits.filter(c => c.art && c.art.credit && c !== star)
+          .map(c => [c.person, c])).values()];
         body.append(el('section', { class: 'block', 'aria-labelledby': 'credits-h' },
-          el('h2', { class: 'section-header', id: 'credits-h' }, 'Cast and credits'), dl));
+          el('h2', { class: 'section-header', id: 'credits-h' }, 'Cast and credits'), dl,
+          owed.length ? el('p', { class: 'caption photo-credits' }, owed.map((c, i) => [i ? ' · ' : '',
+            `${c.name}: `, el('a', { href: c.art.evidence, rel: 'noopener', target: '_blank' }, c.art.credit)])) : null));
       }
 
       const fs = el('fieldset', { class: 'versions' },
@@ -980,7 +1058,7 @@
       $('mini-meta').classList.toggle('is-error', !!err);
       if (err) announce(errText);
     }
-    if (kind === 'load') paintTranscriptLink(cur);
+    if (kind === 'load') { paintTranscriptLink(cur); paintPlayerArt(cur); }
     if (!seeking) {
       seekEl.max = String(Math.floor(d));
       seekEl.value = String(Math.floor(t));
@@ -1003,6 +1081,70 @@
     if (kind === 'sleep-fired') announce('Sleep timer ended.');
   }
   Player.onChange(paintPlayer);
+
+  /** Now Playing's picture and the lock screen's (§5.6): the episode's face, else the series',
+      else the series' typographic card, the same art on both. */
+  function paintPlayerArt(cur) {
+    const box = $('np-art');
+    box.replaceChildren();
+    Player.setArtwork(null);
+    Promise.all([API.episodeDetail(cur.id).catch(() => null), API.seriesIndex().catch(() => null)]).then(([d, idx]) => {
+      if (!Player.current || Player.current.id !== cur.id) return;
+      const s = idx && idx.byKey.get(cur.series || (d && d.series));
+      const face = (d && d.star && d.credits.find(c => c.person === d.star && c.art)) || null;
+      const art = face ? face.art : s && s.art;
+      if (art) {
+        const fig = el('span', { class: 'np-face' });
+        putImage(fig, art, 240, (face ? face.name : s.star) || '');
+        box.append(fig);
+        Player.setArtwork([{ src: API.artURL(art, 500), sizes: '500x500', type: 'image/jpeg' }]);
+        return;
+      }
+      const name = (s && s.name) || cur.seriesName;
+      if (!name) return;
+      const line = s ? [years(s.first, s.last), s.networks].filter(Boolean).join(' · ') : null;
+      const card = typeCard({ name, line, genre: s && s.genre });
+      box.append(card);
+      const png = cardImage(card, name, line);
+      if (png) {
+        png.then(url => {
+          if (Player.current && Player.current.id === cur.id) Player.setArtwork([{ src: url, sizes: '512x512', type: 'image/png' }]);
+        });
+      }
+    });
+  }
+  let cardURL = null;
+  /** The typographic card painted for the lock screen, from the drawn card's own colors. */
+  function cardImage(card, name, line) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 512;
+    const g = c.getContext && c.getContext('2d');
+    if (!g || !c.toBlob) return null;
+    const cs = getComputedStyle(card);
+    g.fillStyle = cs.backgroundColor || '#F4F4F5';
+    g.fillRect(0, 0, 512, 512);
+    g.fillStyle = cs.getPropertyValue('--genre-accent').trim() || cs.color;
+    g.fillRect(0, 0, 24, 512);
+    g.fillStyle = cs.color;
+    g.font = `700 56px ${cs.fontFamily}`;
+    const lines = [];
+    let at = '';
+    for (const w of String(name).split(/\s+/)) {
+      const t = at ? `${at} ${w}` : w;
+      if (g.measureText(t).width > 420 && at) { lines.push(at); at = w; } else at = t;
+    }
+    if (at) lines.push(at);
+    const shown = lines.slice(0, 5);
+    let y = 512 - 64 - (line ? 52 : 0) - (shown.length - 1) * 64;
+    shown.forEach(l => { g.fillText(l, 56, y); y += 64; });
+    if (line) { g.font = `400 34px ${cs.fontFamily}`; g.fillText(line, 56, y - 8); }
+    return new Promise(res => c.toBlob(b => {
+      if (!b) return;
+      if (cardURL) URL.revokeObjectURL(cardURL);
+      cardURL = URL.createObjectURL(b);
+      res(cardURL);
+    }, 'image/png'));
+  }
 
   /** The player's way to the transcript (R16): Detail with the transcript open. */
   function paintTranscriptLink(cur) {

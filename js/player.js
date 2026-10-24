@@ -202,11 +202,17 @@ const Player = (() => {
 
   const ms = typeof navigator !== 'undefined' && 'mediaSession' in navigator ? navigator.mediaSession : null;
 
+  let artwork = [];
   function setMetadata() {
     if (!ms || !current || typeof MediaMetadata === 'undefined') return;
     ms.metadata = new MediaMetadata({
-      title: current.title || '', artist: current.seriesName || '', album: current.date || '',
+      title: current.title || '', artist: current.seriesName || '', album: current.date || '', artwork,
     });
+  }
+  /** The lock screen's picture (§5.6), the same art Now Playing draws; null clears it. */
+  function setArtwork(list) {
+    artwork = Array.isArray(list) ? list : [];
+    setMetadata();
   }
 
   function updatePositionState() {
@@ -252,7 +258,7 @@ const Player = (() => {
   function setMuted(m) { audio.muted = !!m; }
 
   return {
-    audio, load, setSleep, setMuted, nextInQueue, sleepRemaining, onChange,
+    audio, load, setSleep, setMuted, nextInQueue, sleepRemaining, onChange, setArtwork,
     play: person(play), pause: person(pause), toggle: person(toggle), seek: person(seek),
     back: person(back), forward: person(forward), setRate: person(setRate),
     setFollowing, follow,

@@ -33,6 +33,17 @@ function assertEq(a, b, msg) {
 
 // --- TESTS -----------------------------------------------------------
 
+test('art: one helper, Commons standard widths only (contract §3.3)', () => {
+  const art = API.artOf(['https://commons.wikimedia.org/wiki/Special:FilePath/A.jpg', 600, 800, null, 'https://x']);
+  assertEq(art.width, 600, 'positional fields become named');
+  assertEq(art.credit, null, 'no credit when none is owed');
+  assertEq(API.artURL(art, 80), `${art.url}?width=120`, 'a 40 px tile at 2x takes the 120 step');
+  assertEq(API.artURL(art, 224), `${art.url}?width=330`, 'a head takes the 330 step');
+  assertEq(API.artURL(art, 2000), `${art.url}?width=500`, 'never beyond the largest step');
+  assertEq(API.artOf(null), null, 'control: no art is null, never an empty picture');
+  assertEq(API.artURL(null, 40), null, 'control: no art, no URL');
+});
+
 test('playbackVolume reaches -21 LUFS by cutting, clamped at -1 dBTP (DECISIONS 061)', () => {
   const near = (a, b) => Math.abs(a - b) < 1e-9;
   assert(near(API.playbackVolume(-15, -6), Math.pow(10, -6 / 20)), 'a loud episode is cut 6 dB');

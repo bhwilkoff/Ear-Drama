@@ -710,3 +710,33 @@ and PLAYS-DESIGN §9), each blocking a feature batch.
 
 **How to apply**: each binding design doc gets the rule before its feature
 changes; LOOP-PLAN "Feature batches" carries the work.
+
+---
+
+## 069: A show's picture is a served portrait of its star, else its typographic card
+
+*Date: 2026-10-24*
+
+A portrait reaches a client only when the image's own Commons record carries
+public-domain or free-license evidence AND the person was matched to Wikidata on
+a date of ours; the image is the person's own Wikidata image (P18). A series
+wears the portrait of the person heard on most of its credited episodes (at
+least 3 and a third of them); an episode wears its series' star when heard, else
+its first on-air credit with a portrait. Everything else is drawn as a
+typographic card from data: the name, the years, the network, on the genre hue.
+
+**Why**: the owner, 2026-10-24: *"I don't see any images or artifacts from the
+shows yet."* Track E measured about 1 in 30 matches as someone else, mostly on
+the undated rule, which is the only rule that fails on its own logic; a wrong
+face presented as checked is worse than none (`evidence-gated-catalog-curation`
+§7). No series photograph is usable (Track F), so series art comes through the
+stars. The undated rule (RESEARCH §12 V1), Library of Congress "no known
+restrictions" (V2) and Smithsonian CC0 (V4) stay closed until the owner answers.
+
+**How to apply**: `catalog/tools/art_policy.py` is the one predicate;
+`docs/CATALOG-CONTRACT.md` §3.3a the shape; `catalog/tests/test_projection_art.py`
+the guard. A CC BY / BY-SA image carries its `credit` wherever it is shown at
+header size or in Detail credits (a required fact). Clients never re-host,
+never crop a portrait into a frame that loses the face (top-anchored), and draw
+no stock placeholder: the typographic card is the default artwork. To open a
+closed class, answer its V question; the predicate changes, never a list of ids.
