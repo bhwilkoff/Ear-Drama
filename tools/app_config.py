@@ -173,7 +173,7 @@ MIN_OCR_LINES = 4              # fewer than this = the frame is unreadable
 # real screen. The harness grades "is my app on the glass" by matching this, so it
 # must be words your UI actually renders (tab titles, primary actions), not the app's
 # name. Getting this wrong makes every scenario fail with "wrong app/screen".
-APP_ANCHOR_RX = r"Listen|Series|Radio|Library"
+APP_ANCHOR_RX = r"Home|Browse|Stations|Library"
 
 # Text that means the app is broken, whatever else is on screen.
 FORBIDDEN = (r"No results|Couldn.t load|Something went wrong|"

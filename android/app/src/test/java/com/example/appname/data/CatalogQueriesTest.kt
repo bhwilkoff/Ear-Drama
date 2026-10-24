@@ -113,6 +113,15 @@ class CatalogQueriesTest {
         assertEquals("sus|1942-06-17", genre.first().id)
     }
 
+    @Test fun `Surprise's random episode applies recommendAnd`() = runBlocking {
+        // The control: the never-recommended broadcast is served and has recordings.
+        assertNotNull(db.episodeDetail("sus|1943-02-04")?.recordings?.firstOrNull())
+        val draws = (1..400).mapNotNull { db.randomEpisode()?.id }
+        assertEquals(400, draws.size)
+        assertFalse(draws.contains("sus|1943-02-04"))
+        assertTrue(draws.toSet().size > 1)
+    }
+
     @Test fun `the queue stays inside the season and skips the never-recommended`() = runBlocking {
         val next = db.followingInSeason("sus|1943-01-07")
         assertEquals(listOf("sus|1943-03-11", "sus|1943-05-25"), next.map { it.id })

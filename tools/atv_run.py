@@ -62,14 +62,14 @@ FORBID_DEFAULT = FORBIDDEN
 #              multi-press navigation is better served by a launch door.
 # drop_env:    BASE_ENV keys this scenario must NOT send.
 #
-# Ear Drama's tabs (LaunchDoors.swift: listen|series|radio|plays|search|library);
+# Ear Drama's sections (LaunchDoors.swift: home|browse|stations|surprise|search|library);
 # not yet calibrated against an Apple TV capture (SCRATCHPAD item 3). Tab titles are
 # on every screen, so a calibrated signature should be content unique to the surface.
 SCENARIOS = {
-    "listen": dict(
-        env={HOOK_START_TAB: "listen"}, minutes=0.4,
-        expect_any=r"Listen", expect_end=r"Listen",
-        note="Listen tab renders."),
+    "home": dict(
+        env={HOOK_START_TAB: "home"}, minutes=0.4,
+        expect_any=r"Home", expect_end=r"Home",
+        note="Home renders."),
     "search": dict(
         env={HOOK_START_TAB: "search"}, minutes=0.4,
         expect_any=r"Search",

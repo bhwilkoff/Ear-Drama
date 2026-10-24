@@ -333,6 +333,17 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         return resolved.compactMap { byID[$0] }
     }
 
+    /// Surprise's episode (iOS-DESIGN §4.11): one served episode with a
+    /// recording, at random. It chooses for the listener, so `recommendAnd`.
+    /// SQLite's own random(): nothing needs to match another device.
+    func randomEpisode() -> EpisodeRow? {
+        rows("""
+            SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
+            WHERE EXISTS (SELECT 1 FROM recordings r WHERE r.episode_id = e.id) \(recommendAnd)
+            ORDER BY random() LIMIT 1
+            """, [], decodeEpisode).first
+    }
+
     /// `search(q)`: word-prefix, never substring, on every platform (§3.4).
     /// "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful".
     func search(_ query: String, limit: Int = 100) -> SearchResults {

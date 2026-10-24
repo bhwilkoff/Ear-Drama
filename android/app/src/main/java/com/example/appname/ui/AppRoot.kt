@@ -5,11 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.TheaterComedy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -41,7 +40,6 @@ import com.example.appname.ui.screens.EpisodeScreen
 import com.example.appname.ui.screens.LibraryScreen
 import com.example.appname.ui.screens.ListenScreen
 import com.example.appname.ui.screens.MiniPlayer
-import com.example.appname.ui.screens.PlaysScreen
 import com.example.appname.ui.screens.ProductionScreen
 import com.example.appname.ui.screens.RadioScreen
 import com.example.appname.ui.screens.RecordingScreen
@@ -50,13 +48,13 @@ import com.example.appname.ui.screens.PlayerSheet
 import com.example.appname.ui.screens.SearchScreen
 import com.example.appname.ui.screens.SeriesBrowseScreen
 import com.example.appname.ui.screens.SeriesScreen
+import com.example.appname.ui.screens.SurpriseScreen
 import com.example.appname.ui.screens.TranscriptScreen
 
 private fun Tab.icon(): ImageVector = when (this) {
-    Tab.Listen -> Icons.Filled.Headphones
-    Tab.Series -> Icons.Filled.Layers
-    Tab.Radio -> Icons.Filled.Radio
-    Tab.Plays -> Icons.Filled.TheaterComedy
+    Tab.Home -> Icons.Filled.Home
+    Tab.Browse -> Icons.Filled.Explore
+    Tab.Stations -> Icons.Filled.Radio
     Tab.Search -> Icons.Filled.Search
     Tab.Library -> Icons.Filled.Bookmarks
 }
@@ -73,7 +71,7 @@ fun AppRoot(
     inbox: SnapshotStateList<InboxRequest> = remember { mutableStateListOf() },
     muted: Boolean = false,
 ) {
-    var selected by rememberSaveable { mutableStateOf(Tab.Listen) }
+    var selected by rememberSaveable { mutableStateOf(Tab.Home) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var incomingSearch by remember { mutableStateOf<String?>(null) }
     var roomSheet by rememberSaveable { mutableStateOf(false) }
@@ -91,7 +89,14 @@ fun AppRoot(
     LaunchedEffect(inbox.size) {
         while (inbox.isNotEmpty()) {
             when (val request = inbox.removeAt(0)) {
-                is InboxRequest.Tab -> Tab.named(request.tab)?.let { selected = it }
+                is InboxRequest.Tab -> when {
+                    // Surprise is Home's push, never a tab (ANDROID-DESIGN §3.1).
+                    request.tab.equals("surprise", ignoreCase = true) -> {
+                        selected = Tab.Home
+                        stacks.getValue(Tab.Home).navigateTo(Route.Surprise)
+                    }
+                    else -> Tab.named(request.tab)?.let { selected = it }
+                }
                 is InboxRequest.Item -> stacks.getValue(selected).navigateTo(Route.Episode(request.id))
                 is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
                 is InboxRequest.Search -> {
@@ -114,7 +119,8 @@ fun AppRoot(
     val openSeries: (String) -> Unit = { key -> stack.navigateTo(Route.Series(key)) }
     val openTranscript: (String) -> Unit = { id -> stack.navigateTo(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
-    val television = LocalIsTelevision.current
+    val openScript: (String) -> Unit = { id -> stack.navigateTo(Route.Script(id)) }
+    val openProduction: (String) -> Unit = { id -> stack.navigateTo(Route.Production(id)) }
 
     CompositionLocalProvider(
         LocalPlayerMuted provides muted,
@@ -124,7 +130,7 @@ fun AppRoot(
         HapticEvents()
         NavigationSuiteScaffold(
             navigationSuiteItems = {
-                Tab.entries.filter { it.onTelevision || !television }.forEach { tab ->
+                Tab.entries.forEach { tab ->
                     item(
                         selected = tab == selected,
                         onClick = {
@@ -148,13 +154,26 @@ fun AppRoot(
                         backStack = stack,
                         onBack = back,
                         entryProvider = entryProvider {
-                            entry<Route.Listen> { ListenScreen(onOpenEpisode = openEpisode) }
-                            entry<Route.SeriesBrowse> { SeriesBrowseScreen(onOpenSeries = openSeries) }
+                            entry<Route.Listen> {
+                                ListenScreen(onOpenEpisode = openEpisode, onSurprise = { stack.navigateTo(Route.Surprise) })
+                            }
+                            entry<Route.SeriesBrowse> {
+                                SeriesBrowseScreen(onOpenSeries = openSeries, onOpenScript = openScript)
+                            }
+                            entry<Route.Surprise> {
+                                SurpriseScreen(
+                                    onBack = back,
+                                    onOpenEpisode = openEpisode,
+                                    onOpenScript = openScript,
+                                    onOpenProduction = openProduction,
+                                )
+                            }
                             entry<Route.Radio> { RadioScreen(onOpenEpisode = openEpisode) }
                             entry<Route.Search> {
                                 SearchScreen(
                                     onOpenSeries = openSeries,
                                     onOpenEpisode = openEpisode,
+                                    onOpenScript = openScript,
                                     incoming = incomingSearch,
                                     onIncomingTaken = { incomingSearch = null },
                                 )
@@ -163,6 +182,7 @@ fun AppRoot(
                                 LibraryScreen(
                                     onOpenEpisode = openEpisode,
                                     onOpenSeries = openSeries,
+                                    onOpenProduction = openProduction,
                                     onListenTogether = { roomSheet = true },
                                 )
                             }
@@ -178,15 +198,9 @@ fun AppRoot(
                                 )
                             }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
-                            entry<Route.Plays> {
-                                PlaysScreen(
-                                    onOpenScript = { id -> stack.add(Route.Script(id)) },
-                                    onOpenProduction = { id -> stack.add(Route.Production(id)) },
-                                )
-                            }
                             entry<Route.Script> { route ->
                                 ScriptScreen(route.id, onBack = back, onOpenProduction = { id ->
-                                    // Casting replaces the script with its cast sheet: depth stays two (§1.4).
+                                    // Starting one replaces the play's page with its cast sheet: depth stays two (§1.4).
                                     if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
                                     stack.add(Route.Production(id))
                                 })

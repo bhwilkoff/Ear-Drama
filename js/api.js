@@ -357,6 +357,16 @@ const API = (() => {
     return day ? { ...day, zone: d.zone } : null;
   }
 
+  /** The whole published file, for Surprise's random evening (WEB-DESIGN §4.13); null when none is. */
+  async function tonightFile() {
+    try {
+      return await getJSON('tonight.json');
+    } catch (e) {
+      if (e.kind === 'missing') return null;
+      throw e;
+    }
+  }
+
   /**
    * Where the one clock stands in an evening at `now` (ms): the index of the slot on the air,
    * and whether the evening is before, during, or after. Every instant is the file's own
@@ -736,7 +746,7 @@ const API = (() => {
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
     transcript, transcriptLines, transcriptLabel,
-    localDate, tonight, onAir, castableScripts, account,
+    localDate, tonight, tonightFile, onAir, castableScripts, account,
   };
 })();
 

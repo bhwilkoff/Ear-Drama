@@ -57,10 +57,16 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 
 ## §2 Information architecture
 
-- **§2.1 Five tabs, hard set**: Listen, Series, Radio, Library, Search,
-  in a `TabView` with `.sidebarAdaptable`; Search uses
-  `Tab(role: .search)`. Radio follows Series, as on the web, and is the
-  TV's most natural tab ("Tonight in 1942", §4.8). No Plays tab (PLAYS-DESIGN §6).
+- **§2.1 Six sidebar entries, hard set** (Decision 068: sections are
+  actions, as Archive Watch's tvOS-DESIGN §2.2): Home, Browse, Stations,
+  Search, Library, Surprise, in a `TabView` with `.sidebarAdaptable`;
+  Search uses `Tab(role: .search)`. Stations is the TV's most natural
+  entry ("Tonight in 1942", §4.8). Surprise is the phone's
+  (`docs/iOS-DESIGN.md` §4.11) without the play: the TV records nothing
+  (PLAYS-DESIGN §6), so Browse, Search, and Surprise show no plays and
+  Library no Ear dramas.
+  - *Replaced*: "Five tabs, hard set: Listen, Series, Radio, Library,
+    Search ... No Plays tab."
 - **§2.2 Leaving a tab resets its stack** (`AppStore.selectResettingPrevious`):
   stale push state must not greet the next visit (§11.4).
 - **§2.3 Its own destination registry.** `RouteDestinations_tvOS`
@@ -85,11 +91,12 @@ The only shapes; a new one needs a new rule.
 
 ## §4 Surfaces
 
-- **§4.1 Listen** is Continue listening as the first shelf (up to ten),
+- **§4.1 Home** (was Listen) is Continue listening as the first shelf (up to ten),
   then the catalog's `meta.listenShelves` in order (contract §5.1;
   `docs/iOS-DESIGN.md` R13): "This day in radio", then a shelf per
   published genre.
-- **§4.2 Series browse** is a `List` led by a Genre picker.
+- **§4.2 Browse** (was Series) is a `List` of series led by a Genre
+  picker.
 - **§4.3 A series page** is the series name and meta line (not
   focusable), then episodes oldest first in sections by broadcast
   season, "Undated" last.
@@ -122,7 +129,7 @@ The only shapes; a new one needs a new rule.
   remote scrolls the text a few sentences at a time and only the
   focused paragraph is bright. Menu closes it.
 
-- **§4.8 Radio** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
+- **§4.8 Stations** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
   is the web's §4.9 at ten feet: "Tonight in 1942" at page-title size,
   the evening's date, the network and station; then, during the
   evening, an action row in its own focus section with "Listen live"
@@ -140,6 +147,11 @@ The only shapes; a new one needs a new rule.
   (R14). The listing's credit is a caption, not a link: the TV opens no
   web page. The empty and error states are iOS's words
   (`docs/iOS-DESIGN.md` §4.9).
+
+- **§4.10 Surprise** (`SurpriseScreen_tvOS`) is two picks drawn when it
+  opens, an episode and an evening (`docs/iOS-DESIGN.md` §4.11), each a
+  card-row with Play that opens Now Playing, then Shuffle. Play is the
+  default focus, as on Detail.
 
 ## §5 The player
 
@@ -224,7 +236,7 @@ The rights line, the transcript label, and loudness by cutting are as in
   Mac after any Core change.
 - **§9.2 Planned for the TV**: Top Shelf (the person's Continue items),
   the layered parallax icon (waits on the palette and the icon, M0),
-  and the Radio tab's guide. SharePlay landed (§5.5).
+  and Stations' guide. SharePlay landed (§5.5).
 
 ## §10 Traps this codebase has already paid for
 
@@ -238,7 +250,7 @@ The rights line, the transcript label, and loudness by cutting are as in
 ## §11 Deliberate inversions
 
 - **§11.1 Detail focuses Play and Play opens Now Playing** (§6.2), and
-  Radio focuses Listen live, which opens Now Playing (§4.8). iOS, the
+  Stations focuses Listen live, which opens Now Playing (§4.8). iOS, the
   Mac, and Android leave the person where they are.
 - **§11.2 `.card`, never `.plain`.** On iOS `.plain` is correct.
 - **§11.3 Now Playing fills the screen.** The phone uses a sheet, the

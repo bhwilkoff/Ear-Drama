@@ -124,6 +124,10 @@ final class CatalogStore {
         await run { $0.episodes(ids: ids) } ?? []
     }
 
+    func randomEpisode() async -> EpisodeRow? {
+        await run { $0.randomEpisode() } ?? nil
+    }
+
     /// The Listen tab: the catalog's published shelves on the person's own
     /// calendar date (`CatalogDatabase.listenShelves`).
     func listenShelves(today: Date = Date(), calendar: Calendar = .current) async -> [Shelf] {

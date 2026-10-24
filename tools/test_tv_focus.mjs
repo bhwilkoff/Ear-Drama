@@ -205,9 +205,9 @@ await new Promise(r => setTimeout(r, 350));
 press(K.BACK_TIZEN);
 check('Back from a series page navigates', global._wentBack, true);
 
-// At the root (Listen, the bare page or ?view=listen) Tizen asks before exiting
-// and never runs history.back(), which would leave the app's own page.
-for (const search of ['', '?view=listen']) {
+// At the root (Home: the bare page, ?view=home, or its old name ?view=listen) Tizen
+// asks before exiting and never runs history.back(), which would leave the app's own page.
+for (const search of ['', '?view=home', '?view=listen']) {
   global._wentBack = false;
   doc._modal = null;
   global.location.search = search;
@@ -218,17 +218,17 @@ for (const search of ['', '?view=listen']) {
 }
 
 // Launched straight onto an inner screen there is no history: Back goes to
-// Listen through the app's own link instead of leaving the app.
+// Home through the app's own link instead of leaving the app.
 {
-  const home = new El('a', { left: 0, top: 0, width: 10, height: 10 }, { href: '?view=listen', 'data-nav': 'listen' });
+  const home = new El('a', { left: 0, top: 0, width: 10, height: 10 }, { href: '?view=home', 'data-nav': 'home' });
   const realQS = doc.querySelector;
-  doc.querySelector = (sel) => (sel === 'a[data-nav="listen"]' ? home : realQS(sel));
+  doc.querySelector = (sel) => (sel === 'a[data-nav="home"]' ? home : realQS(sel));
   global.history.length = 1;
   global._wentBack = false;
   global.location.search = '?item=abc';
   await new Promise(r => setTimeout(r, 350));
   press(K.BACK_TIZEN);
-  check('Back with no history goes to Listen', home.clicked === true && global._wentBack === false, true);
+  check('Back with no history goes to Home', home.clicked === true && global._wentBack === false, true);
   global.history.length = 2;
   doc.querySelector = realQS;
 }

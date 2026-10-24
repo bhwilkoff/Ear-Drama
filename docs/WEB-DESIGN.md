@@ -49,11 +49,16 @@ web app follows today.
 
 ## §3 Routing and URL state
 
-- **§3.1 Query routes, not hash routes.** `?view=listen|series|radio|plays|search|library`,
+- **§3.1 Query routes, not hash routes.** `?view=home|browse|stations|surprise|search|library`
+  (Decision 068), `?view=browse&kind=&script=1&genre=&decade=&network=&sort=`,
   `?series={key}&season=`, `?item={episode id}`, `?view=search&q=`,
-  `?view=library&tab=`, and for plays (§4.10) `?play={script id}`,
+  `?view=library&tab=`, and for an ear drama (§4.10) `?play={script id}`,
   `?production={id}`, `?production={id}&part={part id}`, and `?room={CODE}`
-  (§4.12), which opens the Listen Together sheet over the Listen view. This inverts the
+  (§4.12), which opens the Listen Together sheet over the Home view. The
+  names before Decision 068 still open: `?view=listen` is Home,
+  `?view=series` Browse, `?view=radio` Stations, and `?view=plays` Browse
+  narrowed to plays (`kind=plays`), each rewritten in place
+  (`history.replaceState`) so the address shows the new name. This inverts the
   template's hash routes on purpose: query routes are what the path twins
   forward into. A production lives only in the browser that made it
   (PLAYS-DESIGN §6), so its routes have no path twin and no app link.
@@ -70,14 +75,26 @@ web app follows today.
 
 ## §4 Surfaces
 
-- **§4.1 Navigation.** Six destinations, Listen, Series, Radio, Plays,
-  Search, Library (05-design-research §8, plus Plays on 2026-10-23, as the
-  Apple apps carry a Plays tab, Decision 059): a bottom tab bar on a phone,
-  six columns at 375 px, and a sidebar from 768 px. The phone's six reduce to the car's four
-  (Continue, Radio, Series, Downloads) without a new one (R17). Depth is
-  at most two from a tab: tab, series, episode; Plays, cast sheet, part;
-  a season or a Library section is a segmented scope, never a push.
-- **§4.2 Listen** = Continue listening (this device), Following, then the
+- **§4.1 Navigation: sections are actions** (Decision 068, owner
+  2026-10-24: *"we should focus on actions and not content type ... we
+  should mimic the items from Archive Watch"*). Six destinations, **Home,
+  Browse, Stations, Surprise, Search, Library**, Archive Watch's web nav
+  (its WEB-DESIGN §3.0) with Ear Drama's Stations in Channels' place: a
+  bottom tab bar on a phone, six columns at 375 px, and a sidebar from
+  768 px. Each owns one verb (the verb test, Archive Watch iOS-DESIGN
+  §12.2): Home is chosen for you, Browse is everything by facet, Stations
+  is lean back on one clock, Surprise is a random pick, Search finds,
+  Library is yours. There is no section for a content type: a stage play
+  sits in Browse and Search beside the radio series, and recording is an
+  action on its page (§4.10). The phone's six reduce to the car's four
+  (Continue, Stations, Browse, Downloads) without a new one (R17). Depth
+  is at most two from a section: section, series, episode; Browse, play,
+  cast sheet; a season or a Library section is a segmented scope, never a
+  push.
+  - *Replaced* (2026-10-23): "Six destinations, Listen, Series, Radio,
+    Plays, Search, Library (05-design-research §8, plus Plays on
+    2026-10-23, as the Apple apps carry a Plays tab, Decision 059)."
+- **§4.2 Home** (was Listen, Decision 068) = Continue listening (this device), Following, then the
   manifest's `listenShelves` in its order (contract §5.1; the same list on
   every platform): `onThisDay` is "This day in radio", the contract's query
   on the person's own date; each `genreFirsts` is an episode list headed
@@ -85,9 +102,17 @@ web app follows today.
   only when it has rows. A catalog without the key falls back to
   `index/listen.json`'s genre shelves of series. No "Most episodes" shelf
   (HUMAN-SHAPED.md B, pending the owner).
-- **§4.3 Series browse** = genre, decade, and network selects plus sort.
-  Each facet's counts are computed against the other facets' selection,
-  so no offered choice yields zero rows (§10.5). The real count is shown.
+- **§4.3 Browse** (was Series, Decision 068) lists radio series and
+  stage plays together. Its filters are visible controls in one row, as
+  Archive Watch's chips (its iOS-DESIGN §4.2a): Kind (Any kind, Series,
+  Plays), Genre, Decade, Network, "Has a script", and Sort. Each facet's
+  counts are computed against the other facets' selection, so no offered
+  choice yields zero rows (§10.5). The real count is shown. A play carries
+  no genre, decade, or network in its record, so setting one of those
+  narrows to series; "Has a script" narrows to the rows whose record
+  carries a usable script, which today are the plays (an episode with a
+  script joins when the projection marks one). A play row reads its title,
+  then its author and part count, and opens its page (§4.10).
 - **§4.4 A series page** lists its episodes oldest first, every row
   leading with its air date in tabular figures (R1). Seasons are a
   segmented scope; undated episodes are their own scope.
@@ -118,8 +143,9 @@ web app follows today.
     followed archive.org's 302 to the storage node, which answered 200,
     `access-control-allow-origin: *`, `text/plain; charset=utf-8`.
 - **§4.6 Search** is word-prefix over the projection's term files,
-  debounced 180 ms, series first, then episodes paged 30 at a time, the
-  query mirrored to the URL.
+  debounced 180 ms, series first, then plays (word-prefix on the title and
+  author of `castable-scripts.json`), then episodes paged 30 at a time,
+  the query mirrored to the URL.
   - **Gap: web search does not find transcript words.** The apps match
     them through the served projection's `episodes_fts` (contract §3.4),
     but that index is contentless, so the web builder has no text to cut
@@ -129,9 +155,13 @@ web app follows today.
     from fetched transcripts: it would search only what this browser
     happened to open. Until the projection carries transcript terms,
     transcript search is native only (PARITY).
-- **§4.7 Library** = the account row (§4.11), then Queue, History, Following, on this device. Clear
-  history asks first.
-- **§4.9 Radio** = Tonight in 19xx: the evening `tonight.json` publishes
+- **§4.7 Library** = the account row (§4.11), then Queue, History,
+  Following, and **Ear dramas** (the productions this browser recorded in
+  or joined, newest first, each with "N of M lines recorded" or
+  "Finished"; Decision 068), on this device. Clear history asks first.
+  An empty Ear dramas says "No ear dramas yet." and nothing more.
+- **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
+  should be stations"*) = Tonight in 19xx; genre stations later: the evening `tonight.json` publishes
   for the listener's own calendar date (contract §8), as the night's
   schedule. Each slot shows its local time with the original Eastern time
   beside it as a fact ("7:00 PM ET" alone where the two agree), and the
@@ -147,25 +177,29 @@ web app follows today.
   (`printed`) stays in the file as witness and is **not drawn** until the
   owner rules on it. The listing is credited in one caption line linking
   the page it was read from. No evening for today is the empty state.
-- **§4.10 Plays: pass the phone** (`docs/PLAYS-DESIGN.md` is binding on
+- **§4.10 Ear dramas: pass the phone** (`docs/PLAYS-DESIGN.md` is binding on
   what the feature does; this rule is how it looks on the web). Code:
   `js/plays-core.js` (the script, production, relay, timeline, and audio
   math, mirroring `apple/Core/Plays`), `js/plays-store.js`,
   `js/plays-voice.js`, `js/plays-audio.js`, `js/plays-worklet.js`,
   `js/plays-session.js`, `js/plays-ui.js`; tests `js/plays.test.js`.
-  - **Not on a TV**: the smart-TV layer (`html.tv`) hides the Plays tab, as
-    Android TV does; TVs play back only (research 08 §5).
-  - **The list** (`?view=plays`): "Your plays" (this browser's
-    productions, newest first, each with "N of M lines recorded" or
-    "Finished"), then "Plays you can cast" from
-    `data/plays/castable-scripts.json`, read generically through
-    `API.castableScripts`. Each play shows its title, author, part count,
-    and its rights evidence claims verbatim, each linked to its source,
-    and the source's name linked. Nothing on it is written by the app.
-    The Pages deploy copies the file into `data/plays/`
-    (`catalog-publish.yml`); locally, copy it into the `data` link's
-    `plays/` folder.
-  - **A play** (`?play=`): the same lines, "Cast this play", and its parts
+  - **Not on a TV**: the smart-TV layer (`html.tv`) hides every way to
+    start an ear drama (the plays in Browse, Search, and Surprise, and
+    Library's Ear dramas), as Android TV does; TVs play back only
+    (research 08 §5).
+  - **No list of its own** (Decision 068). The plays are rows in Browse
+    and Search (§4.3, §4.6) and a pick on Surprise (§4.13); a person's
+    productions are Library's Ear dramas (§4.7). Each play shows its
+    title, author, part count, and its rights evidence claims verbatim,
+    each linked to its source, and the source's name linked, read
+    generically from `data/plays/castable-scripts.json` through
+    `API.castableScripts`. Nothing on it is written by the app. The Pages
+    deploy copies the file into `data/plays/` (`catalog-publish.yml`);
+    locally, copy it into the `data` link's `plays/` folder.
+    - *Replaced*: "**The list** (`?view=plays`): "Your plays" ... then
+      "Plays you can cast"."
+  - **A play** (`?play=`): the same lines, "Start an ear drama" (was
+    "Cast this play"), and its parts
     largest first with line counts (directions and sound are parts too).
     Casting replaces this page in the history with the cast sheet, so the
     depth stays two.
@@ -221,6 +255,19 @@ web app follows today.
     the episode player pauses when it starts. Reaching its end without
     seeking forward finishes the play; Export downloads the WAV.
   - `?mute=1` silences the device voice, the cues, and the mix.
+- **§4.13 Surprise** (`?view=surprise`, Decision 068; Archive Watch
+  WEB-DESIGN §4.9): three random picks drawn from the data on each visit,
+  each playable or startable in one tap, and Shuffle to draw again. **An
+  episode**: a served, recommendable episode with a recording (a series
+  drawn in proportion to its episodes, then one of its episodes), its
+  series, title, and date, and Play. **An evening**: one evening from
+  `tonight.json` (contract §8), its date, network, and station, and Play,
+  which plays its first surviving slot from the start (never live, never
+  a queue: what plays next is the owner's call). **A play**: one castable
+  script, its title and author, and "Start an ear drama", which makes the
+  production and opens its cast sheet (§4.10); not on a TV. The draw is
+  `Math.random()`: nothing needs to match another device. No copy is
+  written for a pick; a pick with no data is absent.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll and on each site page: Credits, Privacy, Take-down requests,
   Delete an account (§4.11).
@@ -469,7 +516,7 @@ web app follows today.
 - **§9.1** Update `PARITY.md` in the same change set as any user-facing
   feature; quote these rule numbers in proposals.
 - **§9.2 Not on the web yet**, each arriving with its milestone: the
-  Radio tab's genre channels, transcript search (§4.6; reading a transcript
+  Stations' genre stations, transcript search (§4.6; reading a transcript
   is on Detail, §4.5), downloads. Sign-in and sync (M5, §4.11) and Listen
   Together (M6, §4.12) are built and wait on the owner's Worker URL and
   client ids.

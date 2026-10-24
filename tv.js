@@ -292,18 +292,18 @@
       history.back();
     } else {
       // Launched straight onto an inner screen: there is no history to go back
-      // through, so Back goes to Listen rather than leaving the app.
-      const home = document.querySelector('a[data-nav="listen"]');
+      // through, so Back goes to Home rather than leaving the app.
+      const home = document.querySelector('a[data-nav="home"]');
       if (home) home.click();
     }
   }
 
-  /** The root is Listen, the screen the app opens on (js/app.js parseRoute:
-   *  no item, no series, and no view other than listen). */
+  /** The root is Home, the screen the app opens on (js/app.js parseRoute:
+   *  no item, no series, and no view other than home; listen is its old name). */
   function atRoot() {
     const p = new URLSearchParams(location.search || '');
     const view = p.get('view');
-    return !p.get('item') && !p.get('series') && (!view || view === 'listen');
+    return !p.get('item') && !p.get('series') && (!view || view === 'home' || view === 'listen');
   }
 
   function askToExit() {

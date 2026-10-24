@@ -8,7 +8,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
@@ -40,10 +44,13 @@ import java.time.format.DateTimeFormatter
 
 private data class Shelf(val key: String, val title: String, val rows: List<EpisodeRow>)
 
-/** Listen: Continue listening, then shelves by rule from data (each applies `recommendAnd`). */
+/**
+ * Home (was Listen): Continue listening, then shelves by rule from data (each
+ * applies `recommendAnd`). The top bar's one action opens Surprise (§3.1).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListenScreen(onOpenEpisode: (String) -> Unit) {
+fun ListenScreen(onOpenEpisode: (String) -> Unit, onSurprise: () -> Unit) {
     val container = LocalAppContainer.current
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd")) }
     // Continue re-runs on every saved position; the rule shelves only on a catalog swap.
@@ -61,7 +68,16 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit) {
             Shelf(s.key, title, s.rows)
         }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("Listen") }) }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Home") },
+                actions = {
+                    IconButton(onClick = onSurprise) { Icon(Icons.Filled.Shuffle, contentDescription = "Surprise") }
+                },
+            )
+        },
+    ) { padding ->
         LoadableContent(ruled, Modifier.padding(padding)) { rules ->
             val first = (continuing as? Loadable.Ready)?.value
             val list = (listOfNotNull(first) + rules).filter { it.rows.isNotEmpty() }

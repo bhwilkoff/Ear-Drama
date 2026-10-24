@@ -1,31 +1,39 @@
 import SwiftUI
 
-/// The top-level verbs: the iPhone tab bar, the Mac sidebar, the TV sidebar.
-/// Radio follows Series, as on the web (Tonight in 19xx, contract §8). Plays is
-/// on iPhone, iPad, and Mac; the TV records nothing and shows no Plays tab
-/// (PLAYS-DESIGN §6).
+/// The top-level verbs, as Archive Watch's (Decision 068; iOS-DESIGN §3.1):
+/// sections are actions, never content types. The Mac and TV sidebars list all
+/// six; iPhone's tab bar holds five, and Surprise is a push from Home's toolbar
+/// (`Route.surprise`), listed in the sidebar only at regular width.
 enum AppTab: String, CaseIterable, Identifiable, Hashable {
-    case listen, series, radio, plays, search, library
+    case home, browse, stations, surprise, search, library
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .listen: "Listen"
-        case .series: "Series"
-        case .radio: "Radio"
-        case .plays: "Plays"
+        case .home: "Home"
+        case .browse: "Browse"
+        case .stations: "Stations"
+        case .surprise: "Surprise"
         case .search: "Search"
         case .library: "Library"
         }
     }
     var symbol: String {
         switch self {
-        case .listen: "play.circle"
-        case .series: "square.stack"
-        case .radio: "radio"
-        case .plays: "theatermasks"
+        case .home: "house"
+        case .browse: "square.grid.2x2"
+        case .stations: "radio"
+        case .surprise: "shuffle"
         case .search: "magnifyingglass"
         case .library: "books.vertical"
         }
+    }
+
+    /// A door's or link's name for a section, the names before Decision 068
+    /// included: listen is Home, series Browse, radio Stations, plays Browse.
+    init?(door raw: String) {
+        let renamed = ["listen": "home", "series": "browse", "radio": "stations", "plays": "browse"]
+        guard let tab = AppTab(rawValue: renamed[raw.lowercased()] ?? raw.lowercased()) else { return nil }
+        self = tab
     }
 }
 
@@ -36,6 +44,8 @@ enum Route: Hashable {
     case episode(String)
     /// Library's account row (iOS-DESIGN §4.10). Never a deep link.
     case account
+    /// Surprise pushed from Home's toolbar on iPhone (iOS-DESIGN §4.11).
+    case surprise
 
     /// Episode ids carry the series key and a `|`; series keys never do.
     init(id: String) {
@@ -46,7 +56,7 @@ enum Route: Hashable {
 /// Global app state, injected via @Environment(AppStore.self).
 @Observable
 final class AppStore {
-    var selectedTab: AppTab = .listen
+    var selectedTab: AppTab = .home
     /// One NavigationPath per tab.
     var paths: [AppTab: NavigationPath] = [:]
     /// The full player is showing (iPhone sheet, TV full screen).
@@ -112,7 +122,7 @@ final class AppStore {
         for request in pending {
             switch request {
             case .tab(let raw):
-                if let tab = AppTab(rawValue: raw) {
+                if let tab = AppTab(door: raw) {
                     selectedTab = tab
                     paths[tab] = NavigationPath()
                 }

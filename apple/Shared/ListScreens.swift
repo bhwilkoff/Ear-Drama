@@ -13,6 +13,7 @@ struct RouteDestinations: ViewModifier {
             case let .series(key): SeriesScreen(key: key)
             case let .episode(id): EpisodeScreen(id: id)
             case .account: AccountScreen()
+            case .surprise: SurpriseScreen()
             }
         }
         .navigationDestination(for: PlayRoute.self) { route in
@@ -50,11 +51,12 @@ extension View {
     func playContextMenu(_ episodeID: String) -> some View { modifier(PlayContextMenu(episodeID: episodeID)) }
 }
 
-// MARK: - Listen
+// MARK: - Home (iOS-DESIGN §4.1; was Listen)
 
 struct ListenScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
+    @Environment(AppStore.self) private var store
     @State private var shelves: [Shelf]?
     @State private var continuing: [EpisodeRow] = []
 
@@ -90,7 +92,15 @@ struct ListenScreen: View {
                 SkeletonRows()
             }
         }
-        .navigationTitle("Listen")
+        .navigationTitle("Home")
+        #if os(iOS)
+        // iPhone's way to Surprise (iOS-DESIGN §3.1, Archive Watch §2.6: a push).
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { store.push(Route.surprise) } label: { Label("Surprise", systemImage: AppTab.surprise.symbol) }
+            }
+        }
+        #endif
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
             shelves = await catalog.listenShelves()
@@ -101,74 +111,132 @@ struct ListenScreen: View {
     }
 }
 
-// MARK: - Series browse
+// MARK: - Browse (iOS-DESIGN §4.2; was Series)
+
+/// What Browse lists: a radio series, or a stage play (Decision 068).
+enum BrowseKind: String, CaseIterable, Hashable {
+    case series, plays
+    var title: String { self == .series ? "Series" : "Plays" }
+}
 
 struct SeriesBrowseScreen: View {
     @Environment(CatalogStore.self) private var catalog
+    @Environment(PlaysLibrary.self) private var plays
     @State private var series: [SeriesRow]?
     @State private var facets: (genres: [String], networks: [String], decades: [Int]) = ([], [], [])
+    @State private var kind: BrowseKind?
+    @State private var hasScript = false
     @State private var genre: String?
     @State private var network: String?
     @State private var decade: Int?
 
     private struct Filter: Hashable { let genre: String?, network: String?, decade: Int?, generation: Int }
 
+    /// A play carries no genre, network, or decade, and only plays carry a
+    /// script today, so either side of the list can be narrowed away.
+    private var showsSeries: Bool { kind != .plays && !hasScript }
+    private var showsPlays: Bool { kind != .series && genre == nil && network == nil && decade == nil }
+    private var shownPlays: [PlayScript] { showsPlays ? plays.scripts : [] }
+    private var isFiltered: Bool { kind != nil || hasScript || genre != nil || network != nil || decade != nil }
+
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                if series.isEmpty {
+                let rows = showsSeries ? series : []
+                if rows.isEmpty && shownPlays.isEmpty {
                     ContentUnavailableView {
-                        Label("No series match", systemImage: "line.3.horizontal.decrease.circle")
+                        Label("Nothing matches", systemImage: "line.3.horizontal.decrease.circle")
                     } actions: {
-                        Button("Clear Filters") { genre = nil; network = nil; decade = nil }
+                        Button("Clear Filters") { clear() }
                     }
                 } else {
-                    List(series) { row in
-                        NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                    List {
+                        ForEach(rows) { row in
+                            NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                        }
+                        ForEach(shownPlays) { script in
+                            NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
+                        }
                     }
                 }
             } else {
                 List { SkeletonRows() }
             }
         }
-        .navigationTitle("Series")
-        .toolbar { ToolbarItem(placement: .primaryAction) { filterMenu } }
+        .safeAreaInset(edge: .top, spacing: 0) { chips }
+        .navigationTitle("Browse")
         .task(id: catalog.loadKey) { facets = await catalog.browseFacets() }
+        .task { await plays.load() }
         .task(id: Filter(genre: genre, network: network, decade: decade, generation: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
             series = await catalog.seriesBrowse(genre: genre, network: network, decade: decade)
         }
     }
 
-    private var isFiltered: Bool { genre != nil || network != nil || decade != nil }
+    private func clear() { kind = nil; hasScript = false; genre = nil; network = nil; decade = nil }
 
-    private var filterMenu: some View {
-        Menu {
-            Picker("Genre", selection: $genre) {
-                Text("Any genre").tag(String?.none)
-                ForEach(facets.genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
+    /// Archive Watch's iOS-DESIGN §4.2a: the filters are chips you can see,
+    /// each a native Menu naming its value; Clear leads once anything is set.
+    private var chips: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: Spacing.s2) {
+                if isFiltered {
+                    Button("Clear") { clear() }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Clear filters")
+                }
+                chip(kind?.title ?? "Kind", on: kind != nil) {
+                    Picker("Kind", selection: $kind) {
+                        Text("Any kind").tag(BrowseKind?.none)
+                        ForEach(BrowseKind.allCases, id: \.self) { Text($0.title).tag(BrowseKind?.some($0)) }
+                    }
+                }
+                chip(genre.map(GenreDisplay.name) ?? "Genre", on: genre != nil) {
+                    Picker("Genre", selection: $genre) {
+                        Text("Any genre").tag(String?.none)
+                        ForEach(facets.genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
+                    }
+                }
+                chip(decade.map { "\($0)s" } ?? "Decade", on: decade != nil) {
+                    Picker("Decade", selection: $decade) {
+                        Text("Any decade").tag(Int?.none)
+                        ForEach(facets.decades, id: \.self) { Text(verbatim: "\($0)s").tag(Int?.some($0)) }
+                    }
+                }
+                chip(network ?? "Network", on: network != nil) {
+                    Picker("Network", selection: $network) {
+                        Text("Any network").tag(String?.none)
+                        ForEach(facets.networks, id: \.self) { Text($0).tag(String?.some($0)) }
+                    }
+                }
+                Toggle("Has a script", isOn: $hasScript)
+                    .toggleStyle(.button)
+                    .buttonBorderShape(.capsule)
+                    .tint(hasScript ? Color.brandSecondary : Color.brandTextMuted)
             }
-            .pickerStyle(.menu)
-            Picker("Network", selection: $network) {
-                Text("Any network").tag(String?.none)
-                ForEach(facets.networks, id: \.self) { Text($0).tag(String?.some($0)) }
-            }
-            .pickerStyle(.menu)
-            Picker("Decade", selection: $decade) {
-                Text("Any decade").tag(Int?.none)
-                ForEach(facets.decades, id: \.self) { Text(verbatim: "\($0)s").tag(Int?.some($0)) }
-            }
-            .pickerStyle(.menu)
-            if isFiltered {
-                Button("Clear Filters", role: .destructive) { genre = nil; network = nil; decade = nil }
-            }
-        } label: {
-            Label("Filter", systemImage: isFiltered
-                  ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+            .padding(.horizontal, Spacing.s4)
+            .padding(.vertical, Spacing.s2)
         }
-        .accessibilityLabel("Filter series")
+        .scrollIndicators(.hidden)
+        .background(.bar)
+    }
+
+    private func chip<Content: View>(_ title: String, on: Bool, @ViewBuilder content: () -> Content) -> some View {
+        Menu {
+            content()
+        } label: {
+            Text(verbatim: title)
+                .font(TypeRamp.caption)
+                .padding(.horizontal, Spacing.s3)
+                .padding(.vertical, Spacing.s1)
+                .foregroundStyle(on ? Color.brandOnSecondary : Color.brandText)
+                .background(on ? Color.brandSecondary : Color.brandSurface, in: Capsule())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .fixedSize()
     }
 }
 
@@ -405,6 +473,7 @@ struct VersionLabel: View {
 struct SearchResultsList: View {
     let query: String
     @Environment(CatalogStore.self) private var catalog
+    @Environment(PlaysLibrary.self) private var plays
     @State private var results: SearchResults?
     @State private var searchedFor = ""
 
@@ -413,7 +482,8 @@ struct SearchResultsList: View {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 ContentUnavailableView("Search titles, series, and people", systemImage: "magnifyingglass")
             } else if let results, searchedFor == query {
-                if results.isEmpty {
+                let matchingPlays = Self.plays(plays.scripts, matching: query)
+                if results.isEmpty && matchingPlays.isEmpty {
                     ContentUnavailableView.search(text: query)
                 } else {
                     List {
@@ -421,6 +491,13 @@ struct SearchResultsList: View {
                             Section("Series") {
                                 ForEach(results.series) { row in
                                     NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                                }
+                            }
+                        }
+                        if !matchingPlays.isEmpty {
+                            Section("Plays") {
+                                ForEach(matchingPlays) { script in
+                                    NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
                                 }
                             }
                         }
@@ -442,6 +519,7 @@ struct SearchResultsList: View {
                 List { SkeletonRows() }
             }
         }
+        .task { await plays.load() }
         .task(id: query) {
             let q = query
             guard !q.trimmingCharacters(in: .whitespaces).isEmpty else { return }
@@ -453,6 +531,24 @@ struct SearchResultsList: View {
     }
 }
 
+extension SearchResultsList {
+    /// Word-prefix, as every search here (§3.4): each typed word begins a word
+    /// of the play's title or author.
+    static func plays(_ scripts: [PlayScript], matching query: String) -> [PlayScript] {
+        let words = Self.words(query)
+        guard !words.isEmpty else { return [] }
+        return scripts.filter { script in
+            let have = Self.words("\(script.title) \(script.authorLine)")
+            return words.allSatisfy { w in have.contains { $0.hasPrefix(w) } }
+        }
+    }
+
+    private static func words(_ text: String) -> [String] {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .split { !$0.isLetter && !$0.isNumber }.map(String.init)
+    }
+}
+
 // MARK: - Library
 
 struct LibraryScreen: View {
@@ -460,13 +556,14 @@ struct LibraryScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @Environment(DownloadStore.self) private var downloads
+    @Environment(PlaysLibrary.self) private var plays
     @State private var inProgress: [EpisodeRow]?
     @State private var played: [EpisodeRow] = []
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty {
+                if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
                     } actions: {
@@ -486,6 +583,7 @@ struct LibraryScreen: View {
                             }
                         }
                         DownloadsSection()
+                        EarDramasSection()
                         if !played.isEmpty {
                             Section("Played") {
                                 ForEach(played) { episode in

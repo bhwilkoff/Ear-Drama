@@ -3,33 +3,48 @@ import SwiftUI
 
 /// iPhone and iPad: one TabView whose style adapts (a tab bar on iPhone, a
 /// sidebar on iPad), one NavigationStack per tab, and the shared destination
-/// registry on every stack.
+/// registry on every stack. iOS-DESIGN §3.1 (Decision 068): iPhone's five tabs
+/// are Archive Watch's verbs; Surprise is a push from Home's toolbar, and only
+/// at regular width does the sidebar list it.
 struct ContentView_iOS: View {
     @Environment(AppStore.self) private var store
+    @Environment(\.horizontalSizeClass) private var hSize
 
     var body: some View {
         @Bindable var store = store
         TabView(selection: $store.selectedTab) {
-            Tab(AppTab.listen.title, systemImage: AppTab.listen.symbol, value: AppTab.listen) {
-                stack(.listen) { ListenScreen() }
+            Tab(AppTab.home.title, systemImage: AppTab.home.symbol, value: AppTab.home) {
+                stack(.home) { ListenScreen() }
             }
-            Tab(AppTab.series.title, systemImage: AppTab.series.symbol, value: AppTab.series) {
-                stack(.series) { SeriesBrowseScreen() }
+            Tab(AppTab.browse.title, systemImage: AppTab.browse.symbol, value: AppTab.browse) {
+                stack(.browse) { SeriesBrowseScreen() }
             }
-            Tab(AppTab.radio.title, systemImage: AppTab.radio.symbol, value: AppTab.radio) {
-                stack(.radio) { RadioScreen() }
-            }
-            Tab(AppTab.plays.title, systemImage: AppTab.plays.symbol, value: AppTab.plays) {
-                stack(.plays) { PlaysScreen() }
-            }
-            Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
-                stack(.library) { LibraryScreen() }
+            Tab(AppTab.stations.title, systemImage: AppTab.stations.symbol, value: AppTab.stations) {
+                stack(.stations) { RadioScreen() }
             }
             Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
                 stack(.search) { SearchScreen_iOS() }
             }
+            Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
+                stack(.library) { LibraryScreen() }
+            }
+            // Hidden "for: .tabBar" alone it would still count toward the phone's
+            // bar and grow a More tab (Archive Watch, seen on the iPhone 12).
+            if hSize == .regular {
+                Tab(AppTab.surprise.title, systemImage: AppTab.surprise.symbol, value: AppTab.surprise) {
+                    stack(.surprise) { SurpriseScreen() }
+                }
+                .defaultVisibility(.hidden, for: .tabBar)
+            }
         }
         .tabViewStyle(.sidebarAdaptable)
+        // At compact width Surprise is Home's push, never a tab: a door, or a
+        // window narrowed while it was selected, hands it to Home.
+        .onChange(of: [store.selectedTab == .surprise, hSize == .regular], initial: true) {
+            guard store.selectedTab == .surprise, hSize != .regular else { return }
+            store.selectedTab = .home
+            store.push(Route.surprise)
+        }
         .modifier(HapticFeedback_iOS())
         .sheet(isPresented: $store.isPlayerPresented) {
             PlayerSheet_iOS()

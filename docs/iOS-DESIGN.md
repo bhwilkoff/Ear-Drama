@@ -77,7 +77,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   trimmed.
 - **R16** the transcript is labeled "Automatic transcript"
   (`Transcript.label`), the same words on every platform.
-- **R17** the phone's four tabs reduce to the car's four (§9.1).
+- **R17** the phone's tabs reduce to the car's four (§9.1): Continue,
+  Stations, Browse, Downloads.
 - **R18** speed, the sleep timer, and skip live on the player.
 - **R20** the sleep timer's order is "End of this episode", then 15,
   30, and 45 minutes, then 1 hour (`SleepTimer.options`); it fades, and
@@ -87,7 +88,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   falling back to `RightsDisplay.contract`). An unclaimed recording
   reads "No rights claim known. Removed on request." and is never
   called public domain; a basis with no published words shows no line.
-- **R9, R10, R14 on the Radio tab** (§4.9): a gap is drawn as a gap,
+- **R9, R10, R14 on Stations** (§4.9): a gap is drawn as a gap,
   the slot on the air is read from the file's UTC instants on the one
   clock (`RadioClock.onAir`, `apple/Core/Radio/Tonight.swift`, golden
   against `js/api.test.js`), and nothing plays after the evening.
@@ -112,11 +113,27 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 ## §3 Navigation shell
 
-- **§3.1 Six tabs, hard set**: Listen, Series, Radio, Plays, Library,
-  Search (`AppTab`, `apple/Core/Store/AppStore.swift`). Radio follows
-  Series, as on the web (`docs/WEB-DESIGN.md` §3). Search uses
-  `Tab(role: .search)`, so the system places it last. Adding any other
-  tab amends this rule first. There is no Settings tab or gear.
+- **§3.1 Sections are actions** (Decision 068, owner 2026-10-24: *"we
+  should focus on actions and not content type ... we should mimic the
+  items from Archive Watch"*). **iPhone: five tabs, hard set, Home,
+  Browse, Stations, Search, Library**, as Archive Watch's iOS-DESIGN
+  §2.1 (Stations in Channels' place), with Search's
+  `Tab(role: .search)` so the system places it. **Surprise** is a push
+  from a toolbar button on Home (`Route.surprise`, the shuffle symbol),
+  as Archive Watch's §2.6: modes are pushes on the phone. At regular
+  width (iPad, the open Duo) the sidebar also lists Surprise, a `Tab`
+  hidden from the tab bar (`.defaultVisibility(.hidden, for: .tabBar)`)
+  and added only at regular width, so the phone's bar never grows a More
+  tab; narrowing to compact width hands a selected Surprise back to Home.
+  Each section owns one verb (Archive Watch §12.2): Home chosen for you,
+  Browse everything by facet, Stations lean back on one clock, Search
+  find, Library yours. No section is named for a content type: plays sit
+  in Browse and Search beside the series, and recording is "Start an ear
+  drama" on a play's page. `AppTab` (`apple/Core/Store/AppStore.swift`)
+  holds the six; adding any other amends this rule first. There is no
+  Settings tab or gear.
+  - *Replaced*: "Six tabs, hard set: Listen, Series, Radio, Plays,
+    Library, Search. Radio follows Series, as on the web."
 - **§3.2 One shell for both form factors.** `TabView(selection:)` with
   `.tabViewStyle(.sidebarAdaptable)` (`apple/iOS/ContentView_iOS.swift`):
   a tab bar on iPhone, a sidebar on iPad. No parallel split-view path.
@@ -134,12 +151,22 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 ## §4 Surfaces
 
-- **§4.1 Listen** is a `List`: Continue listening (the ten most recent
+- **§4.1 Home** (was Listen) is a `List`: Continue listening (the ten most recent
   in progress), then the catalog's published shelves in order (R13). A section draws only
-  with rows. Each episode row's context menu offers Play.
-- **§4.2 Series browse** is a `List` of series with a toolbar Filter
-  `Menu` of three pickers, Genre, Network, and Decade, plus Clear
-  Filters. An empty result offers Clear Filters.
+  with rows. Each episode row's context menu offers Play. The toolbar's
+  one item is Surprise (a `Label` with the shuffle symbol), pushing
+  §4.11.
+- **§4.2 Browse** (was Series) is a `List` of radio series and stage
+  plays together, under a horizontally scrolling row of capsule chips,
+  as Archive Watch's iOS-DESIGN §4.2a: Kind, Genre, Decade, Network,
+  each a native `Menu` naming its current value, and "Has a script", a
+  toggle. A chip that narrows the list is filled with the brand's blue
+  (Decision 064), and Clear leads the row once anything is set. A play
+  carries no genre, decade, or network, so setting one narrows to
+  series; "Has a script" keeps the rows whose record carries a usable
+  script, today the plays. A play row is its title, then its author and
+  part count, and pushes the play's page (`PlayRoute.script`). An empty
+  result offers Clear Filters.
 - **§4.3 A series page** shows the series' one meta line, then its
   episodes oldest first in sections by broadcast season, "Undated" last.
 - **§4.4 Episode detail** is a `List`: the series (a link), the title,
@@ -155,9 +182,12 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   without the app lands on the web page. A link is shared, never the
   file (§4.8).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
-  people", debounced, series first and then episodes. A row found only
+  people", debounced, series first, then plays (title and author,
+  word-prefix), then episodes. A row found only
   by its transcript says "In the transcript" (`Transcript.searchNote`).
-- **§4.6 Library** is In progress, Downloads, and Played, on this
+- **§4.6 Library** is In progress, Downloads, Played, and **Ear
+  dramas** (the productions on this device, each with its progress line;
+  a production opens its cast sheet, on the Mac its window), on this
   device. A history row swipes or long-presses to Remove from History;
   a download row to Remove Download; Remove All Downloads asks first.
 - **§4.7 The transcript** is a sheet (`TranscriptSheet_iOS`,
@@ -169,7 +199,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   (`.backgroundTask(.urlSession)`). A downloaded file is played, never
   exported: no Share or Files action.
 
-- **§4.9 Radio** is Tonight in 19xx (`RadioScreen`,
+- **§4.9 Stations** (was Radio, Decision 068) is Tonight in 19xx (`RadioScreen`,
   `apple/Shared/RadioScreen.swift`), the web's §4.9 in a `List`: the
   evening `tonight.json` publishes for the device's own calendar date
   (`RadioClock.localDate`, never the UTC date), fetched through
@@ -196,6 +226,18 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   load" with Try Again. The listing's credit is one caption link,
   "Schedule: {paper}, via {source}".
 
+- **§4.11 Surprise** (`SurpriseScreen`, `apple/Shared/SurpriseScreen.swift`;
+  Archive Watch PARITY §5) is a `List` of three picks drawn from the
+  data when it opens, and Shuffle in the toolbar to draw again: **an
+  episode** (a served, recommendable episode with a recording, at
+  random, `CatalogDatabase.randomEpisode`), its series, title, and date,
+  with Play; **an evening** (one of `tonight.json`'s evenings), its date
+  and network, with Play, which plays its first surviving slot from the
+  start, never live and never a queue; **a play** (one castable script),
+  its title and author, with "Start an ear drama". Each plays or starts
+  in one tap. The draw is the platform's own random: nothing needs to
+  match another device. No copy is written; a pick with no data is
+  absent.
 - **§4.10 The account lives at the foot of Library**, never a tab, a
   gear, or a sheet at launch (§3.1; Decision 057: optional, never at
   first launch). Library's last section is one row, "Account", whose
@@ -348,7 +390,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 ## §9 Stubs that live in the iOS target, and parity
 
 - **§9.1 CarPlay** (`apple/iOS/CarPlay_iOS.swift`) is the car's four
-  tabs (R17): Continue, Radio, Series, Downloads. Continue lists up to 12
+  tabs (R17): Continue, Stations, Browse, Downloads. Continue lists up to 12
   in-progress episodes with their progress and plays through the one
   `AudioPlayer`, then pushes `CPNowPlayingTemplate.shared`; the other
   three say "Not in the car yet". No transcript in the car. It is
@@ -394,9 +436,6 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 Listed, not fixed. Each item names where it is.
 
-- **Six tabs overflow the iPhone tab bar on iOS 18**, which shows four
-  and More; iOS 26 sets Search apart. Which tab gives way on an
-  iOS 18 phone is the owner's call (§3.1).
 - **Listening live drifts at a speed other than 1x**: the offset is
   taken at join, and the player's speed is the listener's.
 
@@ -417,7 +456,7 @@ Listed, not fixed. Each item names where it is.
   is no sort.
 - **Seasons are sections, not a scope** (`SeriesScreen`); the web and
   Android show one season at a time.
-- **The series link on Detail is a push**, so Listen, Episode, Series
+- **The series link on Detail is a push**, so Home, Episode, Series
   is a third level (§1.5), and from there another episode is a fourth.
 - **No Queue or Following verbs** on Detail or in Library, which the web
   has (`WEB-DESIGN` §4.5, §4.7). A person-built queue changes what plays

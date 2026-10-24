@@ -13,20 +13,24 @@ struct ContentView_tvOS: View {
     var body: some View {
         @Bindable var store = store
         TabView(selection: Binding(get: { store.selectedTab }, set: { store.selectResettingPrevious($0) })) {
-            Tab(AppTab.listen.title, systemImage: AppTab.listen.symbol, value: AppTab.listen) {
-                stack(.listen) { ListenScreen_tvOS() }
+            // tvOS-DESIGN §2.1 (Decision 068): Archive Watch's sidebar, Surprise listed.
+            Tab(AppTab.home.title, systemImage: AppTab.home.symbol, value: AppTab.home) {
+                stack(.home) { ListenScreen_tvOS() }
             }
-            Tab(AppTab.series.title, systemImage: AppTab.series.symbol, value: AppTab.series) {
-                stack(.series) { SeriesBrowseScreen_tvOS() }
+            Tab(AppTab.browse.title, systemImage: AppTab.browse.symbol, value: AppTab.browse) {
+                stack(.browse) { SeriesBrowseScreen_tvOS() }
             }
-            Tab(AppTab.radio.title, systemImage: AppTab.radio.symbol, value: AppTab.radio) {
-                stack(.radio) { RadioScreen_tvOS() }
+            Tab(AppTab.stations.title, systemImage: AppTab.stations.symbol, value: AppTab.stations) {
+                stack(.stations) { RadioScreen_tvOS() }
+            }
+            Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
+                stack(.search) { SearchScreen_tvOS() }
             }
             Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
                 stack(.library) { LibraryScreen_tvOS() }
             }
-            Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
-                stack(.search) { SearchScreen_tvOS() }
+            Tab(AppTab.surprise.title, systemImage: AppTab.surprise.symbol, value: AppTab.surprise) {
+                stack(.surprise) { SurpriseScreen_tvOS() }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -82,6 +86,7 @@ private struct RouteDestinations_tvOS: ViewModifier {
             case let .series(key): SeriesScreen_tvOS(key: key)
             case let .episode(id): EpisodeScreen_tvOS(id: id)
             case .account: AccountScreen_tvOS()
+            case .surprise: SurpriseScreen_tvOS()
             }
         }
     }
@@ -147,7 +152,7 @@ private struct ShelfRow_tvOS: View {
     }
 }
 
-// MARK: - Listen
+// MARK: - Home (was Listen)
 
 private struct ListenScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
@@ -187,7 +192,7 @@ private struct ListenScreen_tvOS: View {
     }
 }
 
-// MARK: - Series
+// MARK: - Browse (was Series; the TV lists no plays, PLAYS-DESIGN §6)
 
 private struct SeriesBrowseScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog

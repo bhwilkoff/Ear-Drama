@@ -78,11 +78,17 @@ Mac uses the same Core, so the same code holds them:
 
 ## §3 Navigation shell
 
-- **§3.1 Six sidebar sections, hard set**: Listen, Series, Radio,
-  Plays, Search, Library, in `AppTab` order
-  (`apple/Core/Store/AppStore.swift`), so Radio follows Series as on the
-  web and is ⌘3 in the Go menu (§5.5). A new section amends this rule
-  first.
+- **§3.1 Six sidebar sections, hard set** (Decision 068: sections are
+  actions, as Archive Watch's macOS sidebar): Home, Browse, Stations,
+  Surprise, Search, Library, in `AppTab` order
+  (`apple/Core/Store/AppStore.swift`), ⌘1 to ⌘6 in the Go menu (§5.5).
+  Plays are rows in Browse and Search; "Start an ear drama" on a play's
+  page opens the production's window; Library lists Ear dramas. Surprise
+  is `docs/iOS-DESIGN.md` §4.11 in the detail column. A new section
+  amends this rule first.
+  - *Replaced*: "Six sidebar sections, hard set: Listen, Series, Radio,
+    Plays, Search, Library ... Radio follows Series as on the web and is
+    ⌘3."
 - **§3.2 One `NavigationSplitView`.** The sidebar is a selectable `List`
   of the sections (180 to 210 pt); the detail column is one
   `NavigationStack` bound to the selected section's path and re-created
@@ -104,7 +110,7 @@ only here:
   or the Controls menu (§2.2), never a sheet.
 - **§4.2 Downloads** are the same background `URLSession` and the same
   Library section as iOS; a download is played, never exported.
-- **§4.3 Radio** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
+- **§4.3 Stations** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
   the detail column: the same slots, times, gaps, and Listen live on the
   one `LiveRadio`. A slot's Play is a borderless button the pointer
   reaches without opening the episode; the listing's credit is a link

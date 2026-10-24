@@ -6,7 +6,7 @@ that rule exists to prevent: a layout that is fine wide and clipped narrow. The
 clip detector reads the narrow frame, which is where clipping actually happens.
 
     python3 tools/web_run.py --list
-    python3 tools/web_run.py --only listen,item
+    python3 tools/web_run.py --only home,item
     python3 tools/web_run.py --base https://example.com       # a deployed site
 
 No device lease: the browser is a private headless instance with its own profile,
@@ -59,26 +59,26 @@ READY_DEADLINE_S = 20.0
 # route -> (path, expect_any, ready). `expect_any` is graded against OCR of the
 # frame. `ready` is matched against document.body.innerText before the shot, and
 # must be text that exists ONLY once the route has rendered: the tab bar carries
-# "Listen" and "Search" on every page, so waiting for those would shoot an empty
+# "Home" and "Search" on every page, so waiting for those would shoot an empty
 # view the instant the static shell parsed.
 #
 # The query params js/app.js reads in init(): ?view=<tab>, ?item=<id>, ?mute=1,
 # ?door_seconds=<n> (the twins of APP_START_TAB / _START_ITEM / _MUTE /
 # _DOOR_SECONDS): real, shareable URLs, not hash routes.
 ROUTES = {
-    "listen":      ("/", r"Listen", r"This day in radio"),
+    "home":        ("/", r"Home", r"This day in radio"),
     # The search view's label is visually hidden but in innerText only while the
     # view is shown; the placeholder OCR reads is not in innerText at all.
     "search":      ("/?view=search", r"Search", r"Search titles, series, and people"),
     "item":        (f"/?item={QA_ITEM_ID}&mute=1", QA_ITEM_RX, QA_ITEM_RX),
-    # The door navigates to Listen after 2 s; Listen's own section appears only
+    # The door navigates to Home after 2 s; Home's own section appears only
     # once it has, so the frame shows where the door ended, not where it began.
-    "door-return": (f"/?item={QA_ITEM_ID}&mute=1&door_seconds=2", r"Listen",
+    "door-return": (f"/?item={QA_ITEM_ID}&mute=1&door_seconds=2", r"Home",
                     r"This day in radio"),
 }
 # Routes that are EXPECTED to land on another route's screen, so the distinct-
 # screen check below must not call them duplicates.
-SAME_SCREEN_AS = {"door-return": "listen"}
+SAME_SCREEN_AS = {"door-return": "home"}
 
 
 class CDP(WS):

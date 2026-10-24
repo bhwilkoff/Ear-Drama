@@ -52,6 +52,18 @@ def detail_share_twin(text):
     return "ShareLink(item: SiteLinks.episode(episode.id)" in text
 
 
+def phone_shell_is_five_verbs(text, home):
+    """iOS-DESIGN §3.1 (Decision 068): iPhone's bar is Home, Browse, Stations,
+    Search, Library; Surprise is listed only at regular width, hidden from the
+    bar, and Home's toolbar pushes it."""
+    tabs = re.findall(r"Tab\(AppTab\.(\w+)\.title", text)
+    at = text.find("Tab(AppTab.surprise.title")
+    gate = text.rfind("if hSize == .regular", 0, at)
+    return (tabs == ["home", "browse", "stations", "search", "library", "surprise"]
+            and gate != -1 and ".defaultVisibility(.hidden, for: .tabBar)" in text[at:]
+            and "store.push(Route.surprise)" in home)
+
+
 def haptics_through_mapping(files):
     """iOS-DESIGN §6.5: no feedback call names the system's feedback directly."""
     bad = []
@@ -81,6 +93,7 @@ def main():
             failed += 1
 
     mac = read("apple/macOS/ContentView_macOS.swift")
+    phone = read("apple/iOS/ContentView_iOS.swift")
     tv = read("apple/tvOS/ContentView_tvOS.swift")
     detail = read("apple/Shared/ListScreens.swift")
     swift = {str(p.relative_to(ROOT)): p.read_text() for p in APPLE.rglob("*.swift") if "/Tests/" not in str(p)}
@@ -94,6 +107,8 @@ def main():
         ("tvOS tab roots carry Now Playing", tv_way_back, tv,
          tv.replace(".safeAreaInset(edge: .top, spacing: 0) { NowPlayingEntry_tvOS() }", "")),
         ("tvOS Detail has Versions", tv_versions, tv, tv.replace("VersionsSection_tvOS(detail: detail)", "EmptyView()")),
+        ("iPhone's bar is five verbs; Surprise from Home", lambda t: phone_shell_is_five_verbs(t, detail), phone,
+         phone.replace("if hSize == .regular {", "if true {")),
         ("Detail shares the https twin", detail_share_twin, detail,
          detail.replace("SiteLinks.episode(episode.id)", "episode.transcriptURL!")),
         ("haptics go through Haptic", haptics_through_mapping, swift,
