@@ -31,8 +31,13 @@ share always lands somewhere meaningful, even for recipients
 without the app. On a static host, a `404.html` forwarder that maps
 `/item/{id}` into the web app's router makes the twins real before
 server-side routes exist. The Android and Apple link filters stay off
-until Play's signing fingerprint (`assetlinks.json`) and the App Store
-record (`apple-app-site-association`) exist.
+until `assetlinks.json` and `apple-app-site-association` are written and
+tested. Both records now exist (2026-10-24): Play's app signing key for
+`app.eardrama` has SHA-256
+`F0:A8:CF:0F:A7:99:7F:EA:06:DB:98:2D:87:47:1A:EE:04:DB:D2:21:60:0B:71:48:C3:AC:27:FA:CB:90:16:1E`
+(SHA-1 `20:2E:10:A0:1F:EB:58:43:50:FA:74:8C:AE:DB:65:D1:2F:19:C6:B1`); the
+upload key's fingerprint joins it once an upload keystore exists. The
+Apple team is `L2G756LY8N`.
 
 ## Per-platform wiring
 

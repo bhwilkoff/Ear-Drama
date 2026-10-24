@@ -382,7 +382,7 @@ works elsewhere, and checks again.
 | Enable Sign in with Apple and Group Activities on the `app.eardrama` App ID, remake the profiles, then uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml` (the file `apple/Resources/EarDrama.entitlements` holds both keys) | Apple sign-in (M5), SharePlay (M6) | before either play gate |
 | Create the App Store Connect record for `app.eardrama` and the seven signing secrets (`docs/CLOUD-SUBMISSION.md`) | TestFlight | before M3's gate |
 | Create the Play Console app and the upload key | Play internal | before M4's gate |
-| Apple Services ID and Google OAuth clients for Ear Drama (`docs/runbooks/google-oauth-setup.md`; Android needs clients for `app.eardrama` with Play's signing SHA-1 and the debug id; then the Worker steps in `docs/WORKER.md`, which include switching on the Sign in with Apple entitlement) | sign-in | before M5's play gate |
+| ~~Apple Services ID and Google OAuth clients~~ Done 2026-10-24: Services ID `app.eardrama.signin`; Google clients for web, iOS/Mac, Android debug (`app.eardrama.debug`) and Android Play (`app.eardrama`, Play signing SHA-1); consent screen published; Worker audiences deployed; Apple entitlements on | sign-in | before M5's play gate |
 | A Cloudflare Worker and D1 for Ear Drama, or approval for the loop to create them | M5 to M8 | before M5 |
 | An Ear Drama archive.org account and its S3 keys, stored as Worker secrets | play uploads | before M8 |
 | The take-down email address, and the DMCA agent's details once registered (`js/site.js` TAKEDOWN_EMAIL; takedown/index.html) | the take-down page | before the public launch |
