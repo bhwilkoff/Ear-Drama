@@ -195,6 +195,7 @@ fun AppRoot(
                                     onBack = back,
                                     onOpenSeries = openSeries,
                                     onOpenTranscript = openTranscript,
+                                    onOpenProduction = openProduction,
                                 )
                             }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }

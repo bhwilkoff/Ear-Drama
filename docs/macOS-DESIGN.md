@@ -84,7 +84,8 @@ Mac uses the same Core, so the same code holds them:
   Surprise, Search, Library, in `AppTab` order
   (`apple/Core/Store/AppStore.swift`), ⌘1 to ⌘6 in the Go menu (§5.5).
   Plays are rows in Browse and Search; "Start an ear drama" on a play's
-  page opens the production's window; Library lists Ear dramas. Surprise
+  page, or on an episode whose `script` is set, opens the production's
+  window; Library lists Ear dramas. Surprise
   is `docs/iOS-DESIGN.md` §4.11 in the detail column. A new section
   amends this rule first.
   - *Replaced*: "Six sidebar sections, hard set: Listen, Series, Radio,

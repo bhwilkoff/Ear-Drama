@@ -59,7 +59,8 @@ private enum class BrowseKind(val label: String) { Series("Series"), Plays("Play
  * (§5 `seriesBrowse`; the listener drives it, so no `recommendAnd`). Every
  * series facet comes from the data, each counted against the others'
  * selection. A play carries no genre, decade, or network, so setting one
- * narrows to series; only plays carry a script today. No plays on a TV.
+ * narrows to series; "Has a script" keeps the plays and the series with a
+ * linked episode (§3.1). No plays on a TV.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +80,8 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
     val series by rememberCatalogQuery(genre, decade, network, sort, pages) { db ->
         db.seriesBrowse(BrowseFilter(genre = genre, network = network, decade = decade, sort = sort), limit = PAGE * pages)
     }
-    val showsSeries = kind != BrowseKind.Plays && !hasScript
+    val scripted by rememberCatalogQuery { db -> db.scriptedSeries() }
+    val showsSeries = kind != BrowseKind.Plays
     val plays = if (kind != BrowseKind.Series && genre == null && decade == null && network == null) allPlays else emptyList()
     Scaffold(topBar = { TopAppBar(title = { Text("Browse") }) }) { padding ->
         LoadableContent(series, Modifier.padding(padding)) { rows ->
@@ -162,7 +164,14 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
                         }
                     }
                 }
-                val seriesRows = if (showsSeries) rows else emptyList()
+                // "Has a script" keeps the series with an episode linked to a script this bundle holds (§4.2).
+                val bundled = allPlays.mapTo(HashSet()) { it.id }
+                val linked = (scripted as? Loadable.Ready)?.value.orEmpty()
+                val seriesRows = when {
+                    !showsSeries -> emptyList()
+                    hasScript -> rows.filter { r -> linked[r.key].orEmpty().any { it in bundled } }
+                    else -> rows
+                }
                 if (seriesRows.isEmpty() && plays.isEmpty()) {
                     item(key = "empty") { EmptyMessage("Nothing matches these filters.") }
                 }

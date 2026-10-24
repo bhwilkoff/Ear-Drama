@@ -82,6 +82,7 @@ object CatalogFixture {
         withSponsor: Boolean = false,
         listenShelves: String? = null,
         withArt: Boolean = false,
+        withScript: Boolean = false,
     ): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
@@ -188,6 +189,11 @@ object CatalogFixture {
                 c.execSQL("UPDATE people SET portrait = 2 WHERE id = 'p2'")
                 c.execSQL("UPDATE series SET star = 'p1' WHERE key = 'suspense'")
                 c.execSQL("UPDATE episodes SET star = 'p1' WHERE id = 'sus|1943-05-25'")
+            }
+            // Contract §3.1's `script` (Decision 068): one episode links a castable script.
+            if (withScript) {
+                c.execSQL("ALTER TABLE episodes ADD COLUMN script TEXT")
+                c.execSQL("UPDATE episodes SET script = 'grw-A1' WHERE id = 'sus|1943-05-25'")
             }
             if (!withTranscript) c.execSQL("ALTER TABLE episodes DROP COLUMN transcript_url")
             if (!withLoudness) {

@@ -117,6 +117,8 @@ data class EpisodeDetail(
     val sponsor: String? = null,
     /** The episode's face, a person credited in it (§3.3a), or null. */
     val star: String? = null,
+    /** A castable script this episode can be recorded from (§3.1, Decision 068), or null. */
+    val script: String? = null,
 ) {
     /** The credited star with a portrait, drawn beside the heading. */
     val starFace: Face?

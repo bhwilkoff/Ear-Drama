@@ -68,8 +68,10 @@ fun EpisodeScreen(
     onBack: () -> Unit,
     onOpenSeries: (String) -> Unit,
     onOpenTranscript: (String) -> Unit,
+    onOpenProduction: (String) -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val plays = rememberCastablePlays()
     val detail by rememberCatalogQuery(id, watchUser = true) { db ->
         db.episodeDetail(id)?.let { it to container.user.progress(it.episode.id) }
     }
@@ -145,6 +147,14 @@ fun EpisodeScreen(
                     }
                 }
                 item(key = "download") { DownloadControl(d) }
+                // Decision 068: an episode linked to a castable script this bundle holds; none on a TV.
+                plays.firstOrNull { it.id == d.script }?.let { script ->
+                    item(key = "ear-drama") {
+                        Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+                            StartEarDramaButton(script, onOpenProduction)
+                        }
+                    }
+                }
                 if (d.transcriptUrl != null) {
                     item(key = "transcript") {
                         OutlinedButton(

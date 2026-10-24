@@ -31,6 +31,7 @@ from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
 import art_policy as AP
+import episode_scripts as ES
 from audit_audio_rights import pd_published_year
 
 SCHEMA_VERSION = 1
@@ -59,7 +60,8 @@ CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
-    gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT, star TEXT);
+    gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT, star TEXT,
+    script TEXT);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
@@ -105,12 +107,14 @@ def download_url(archive_id, file):
                                                        urllib.parse.quote(file, safe="/"))
 
 
-def build(src, dst, clean_only=False, loudness=None, transcripts=None):
+def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=None):
     """`loudness` is the measurement cache (measure_loudness.py), id -> result; only
     a usable measurement of the episode's default copy URL is published.
     `transcripts` is the transcript cache (fetch_transcripts.py), id -> entry: a text
     of the default copy's own transcript is indexed for search whatever the gate says;
-    `has_transcript` and `transcript_url` are set only where the gate passes."""
+    `has_transcript` and `transcript_url` are set only where the gate passes.
+    `scripts` is the castable bundle (episode_scripts.load_bundle), id -> entry; None reads
+    plays/castable-scripts.json. An episode's `script` is set only where episode_scripts links one."""
     loudness = loudness or {}
     transcripts = transcripts or {}
     if os.path.exists(dst):
@@ -121,6 +125,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
     states = ("keep_clean",) if clean_only else SERVED
     q = ",".join("?" * len(states))
     served = {r[0] for r in s.execute(f"SELECT id FROM episodes WHERE state IN ({q})", states)}
+    script_of, script_report = ES.links(s, served, ES.load_bundle() if scripts is None else scripts)
+    print(json.dumps({"episodeScripts": script_report}), file=sys.stderr)
 
     names = {k: n for k, n in s.execute("SELECT key, name FROM series")}
     people_rows = {}
@@ -172,11 +178,11 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
-        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             eid, sk, air, dsrc, season(air), num, display_title(title), aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
-            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk))))
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid)))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
                    names.get(sk, ""),
@@ -211,6 +217,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
     counts["loudness"] = d.execute("SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL").fetchone()[0]
     counts["transcripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE has_transcript = 1").fetchone()[0]
     counts["transcriptsSearchable"] = searchable
+    counts["scripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script IS NOT NULL").fetchone()[0]
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES,
             "listenShelves": SH.listen_shelves(

@@ -169,14 +169,17 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   (Decision 064), and Clear leads the row once anything is set. A play
   carries no genre, decade, or network, so setting one narrows to
   series; "Has a script" keeps the rows whose record carries a usable
-  script, today the plays. A play row is its title, then its author and
+  script: the plays, and the series with an episode whose `script` is
+  set (contract §3.1). A play row is its title, then its author and
   part count, and pushes the play's page (`PlayRoute.script`). An empty
   result offers Clear Filters.
 - **§4.3 A series page** shows the series' one meta line, then its
   episodes oldest first in sections by broadcast season, "Undated" last.
 - **§4.4 Episode detail** is a `List`: the series (a link), the title,
   one facts line (date, network, sponsor, length), Play or Pause, the
-  download control, "Automatic transcript" when the gate passed, the
+  download control, "Start an ear drama" when the episode's `script`
+  names a bundled script (Decision 068), "Automatic transcript" when the
+  gate passed, the
   credits grouped by role, Versions when there is more than one copy,
   and the rights line. A part with no data is absent, never a
   placeholder. Play starts the audio in place; it never opens the

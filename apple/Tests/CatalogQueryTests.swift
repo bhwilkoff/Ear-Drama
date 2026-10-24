@@ -180,8 +180,10 @@ enum Fixture {
             try exec("DROP TABLE art; ALTER TABLE people DROP COLUMN portrait; ALTER TABLE series DROP COLUMN star; "
                      + "ALTER TABLE episodes DROP COLUMN star;")
         }
+        // One episode links a castable script (contract §3.1, Decision 068).
+        try exec("UPDATE episodes SET script = 'grw-A1' WHERE id = 'suspense|1943-05-25';")
         if dropTranscript {
-            try exec("ALTER TABLE episodes DROP COLUMN transcript_url;")
+            try exec("ALTER TABLE episodes DROP COLUMN transcript_url; ALTER TABLE episodes DROP COLUMN script;")
         }
         if dropLoudness {
             try exec("ALTER TABLE episodes DROP COLUMN loudness_i; ALTER TABLE episodes DROP COLUMN loudness_tp;")
@@ -347,6 +349,18 @@ struct CatalogQueryTests {
         let older = try Fixture.open(dropTranscript: true)
         #expect(older.episodeDetail(id: "suspense|1942-10-20")?.episode.transcriptURL == nil)
         #expect(older.episodeDetail(id: "suspense|1942-10-20")?.credits.count == 2)
+    }
+
+    /// §3.1, Decision 068: an episode's linked script reaches Detail and Browse's
+    /// "Has a script"; an unlinked one carries none, and an older catalog opens.
+    @Test func episodeDetailCarriesItsLinkedScript() throws {
+        let db = try Fixture.open()
+        #expect(db.episodeDetail(id: "suspense|1943-05-25")?.script == "grw-A1")
+        #expect(db.episodeDetail(id: "suspense|1942-10-20")?.script == nil)
+        #expect(db.scriptedSeries() == ["suspense": ["grw-A1"]])
+        let older = try Fixture.open(dropTranscript: true)
+        #expect(older.episodeDetail(id: "suspense|1943-05-25")?.script == nil)
+        #expect(older.scriptedSeries().isEmpty)
     }
 
     /// §3.4: transcript words find an episode, and the result says so only

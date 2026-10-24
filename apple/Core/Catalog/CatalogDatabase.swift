@@ -29,6 +29,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     /// The projection carries portraits (contract §3.3a).
     private let hasArt: Bool
     private let hasEpisodeStar: Bool
+    /// The projection links episodes to castable scripts (contract §3.1, Decision 068).
+    private let hasScript: Bool
     /// Every series' genre and face, read once: rows that mix series draw a tile from it.
     private let seriesLook: [String: (genre: String?, face: Face?)]
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
@@ -64,6 +66,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             && Self.columnExists(h, table: "art", column: "url")
         hasArt = art
         hasEpisodeStar = art && Self.columnExists(h, table: "episodes", column: "star")
+        hasScript = Self.columnExists(h, table: "episodes", column: "script")
         seriesLook = Self.loadSeriesLook(h, withFaces: art && Self.columnExists(h, table: "series", column: "star"))
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         publishedShelves = Self.metaText(h, key: "listenShelves").flatMap(PublishedShelf.parse)
@@ -284,17 +287,19 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         // §3.1: shown only where the gate passed, whatever else the row carries.
         let transcriptColumn = hasTranscript ? "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" : "NULL"
         let starColumn = hasEpisodeStar ? "e.star" : "NULL"
+        let scriptColumn = hasScript ? "e.script" : "NULL"
         let found = rows("""
-            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns), \(transcriptColumn), \(starColumn)
+            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns), \(transcriptColumn), \(starColumn),
+            \(scriptColumn)
             FROM episodes e JOIN series s ON s.key = e.series_key WHERE e.id = ?
-            """, [.text(id)]) { row -> (EpisodeRow, String?, String?) in
+            """, [.text(id)]) { row -> (EpisodeRow, String?, String?, String?) in
             var episode = decodeEpisode(row)
             episode.loudnessI = row.double(12)
             episode.loudnessTP = row.double(13)
             episode.transcriptURL = row.text(14).flatMap { URL(string: $0) }
-            return (episode, row.text(11), row.text(15))
+            return (episode, row.text(11), row.text(15), row.text(16))
         }.first
-        guard let (episode, sponsor, star) = found else { return nil }
+        guard let (episode, sponsor, star, script) = found else { return nil }
         let artColumns = hasArt ? "a.url, a.width, a.height, a.credit, a.evidence_url" : "NULL, NULL, NULL, NULL, NULL"
         let artJoin = hasArt ? "LEFT JOIN art a ON a.id = p.portrait" : ""
         let credits = rows("""
@@ -317,7 +322,19 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         }.compactMap { $0 }
         let rightsLine = RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
         return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings,
-                             rightsLine: rightsLine, star: star)
+                             rightsLine: rightsLine, star: star, script: script)
+    }
+
+    /// Each series' linked script ids (contract §3.1), for Browse's "Has a script".
+    func scriptedSeries() -> [String: [String]] {
+        guard hasScript else { return [:] }
+        var out: [String: [String]] = [:]
+        for (key, script) in rows("SELECT series_key, script FROM episodes WHERE script IS NOT NULL", [], {
+            ($0.text(0) ?? "", $0.text(1) ?? "")
+        }) {
+            out[key, default: []].append(script)
+        }
+        return out
     }
 
     /// Episodes by id, in the order asked (the person's own history).
