@@ -337,6 +337,43 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   through `speak` only, never `write`. Export (a `ShareLink`) is there
   whenever the play is complete, and renders the mix first if it is
   missing or stale.
+- **§4.12a A shared ear drama** (phase 2; PLAYS-DESIGN §11.7, binding:
+  "The same verbs on the web, iPhone, iPad, Mac, and Android ... Words on
+  screen are these, on every platform"). Logic in `PlaysShare`
+  (`apple/Core/Plays/PlaysShare.swift`, tested against a stub Worker);
+  every call through `APIClient.workerResponse`, refreshed first.
+  `share.json` (`{ pid, consented }`) sits beside `production.json`.
+  On the cast sheet, above the parts: **Share** (signed out, "Sharing
+  needs an account." and §4.10's sign-in buttons; an optional name in an
+  alert). Shared, the parts are the Worker's: mine and recording,
+  **Record**, with **Done with This Part** and **Release** in its
+  menu; open while none records, **Take Part** (`next` prominent,
+  `.borderedProminent`; the rest `.bordered`) and, for sound and
+  directions, **Leave Silent**; finished, mine or I direct, **Open
+  Part** in its menu; another's claim reads "Recording" and the name.
+  Then one row each: the director's **Invite** (a `ShareLink` of the
+  https twin, caption "Works for N days."); **Upload N Takes**, or,
+  while the owner's switch is off, the warning "Uploads are off." with
+  the button disabled, shown before anyone records; **People** (a
+  sheet: display names, "You" and "Director" as tags, **Report** with
+  a reason Picker and an optional note, **Block** after "You will no
+  longer hear their takes."); the director's **Publish** once complete,
+  then "Queued for archive.org"; "N takes are hidden from you." when the
+  Worker hides some. The consent is a sheet: the Worker's text as it
+  arrives (`Text(verbatim:)`), **I Agree** and **Not Now**. Opening a
+  shared cast sheet fetches the other members' chosen takes into
+  `takes/` (never overwriting a file), so Listen Through is phase 1's.
+  A read-along line voiced by someone else has **Report Take** in its
+  context menu. Refusals are `PlaysShare.line`, the web's strings.
+  Library's Ear dramas, signed in, also lists the shared productions not
+  on this device, then **Classes** (a teacher's code as two groups of
+  four, "Waits for the school's consent" on an under-13 class without
+  it, **Make a Class** with a name and an "Under 13" toggle, **Join a
+  Class** by code). An invite link (`eardrama://invite#TOKEN` or its
+  https twin, `DeepLink.parse`) lands in the inbox, selects Library,
+  and shows **Invitation** first: the title and parts; signed out "Sign
+  in to join"; each open part **Take Part** with an optional name; a
+  member **Open**; **Not Now** drops the token. tvOS offers none of it.
 
 ## §5 The player
 

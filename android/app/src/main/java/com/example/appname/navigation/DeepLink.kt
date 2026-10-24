@@ -1,5 +1,7 @@
 package com.example.appname.navigation
 
+import com.example.appname.plays.PlaysShare
+
 /**
  * DEEP_LINKS.md's URL shapes, parsed into inbox requests. Every
  * `eardrama://` link has its `https://eardrama.org` twin with the same path:
@@ -16,6 +18,7 @@ object DeepLink {
         val schemeEnd = url.indexOf("://").takeIf { it > 0 } ?: return null
         val scheme = url.substring(0, schemeEnd).lowercase()
         val rest = url.substring(schemeEnd + 3).substringBefore('#')
+        val fragment = url.substringAfter('#', "")
         val query = rest.substringAfter('?', "")
         val parts = rest.substringBefore('?').split('/')
         val segments = when (scheme) {
@@ -24,7 +27,9 @@ object DeepLink {
             else -> return null
         }.filter { it.isNotEmpty() }.map(::percentDecode)
         // `/?room=CODE`, the web's room link (DEEP_LINKS.md); the sheet normalizes the code.
+        // `/?view=library&tab=dramas#invite=TOKEN`, what the web's 404 forwarder leaves.
         if (segments.isEmpty()) {
+            PlaysShare.inviteToken("", fragment)?.let { return InboxRequest.Invite(it) }
             return queryParam(query, "room")?.trim()?.takeIf { it.isNotEmpty() && it.length <= 32 }?.let(InboxRequest::Room)
         }
         return when (segments.firstOrNull()) {
@@ -32,6 +37,8 @@ object DeepLink {
             "episode" -> segments.getOrNull(1)?.let(InboxRequest::Item)
             "search" -> InboxRequest.Search(queryParam(query, "q").orEmpty())
             "library" -> InboxRequest.Tab(Tab.Library.name)
+            // `/invite#TOKEN` (DEEP_LINKS.md): the token rides the fragment; a malformed one opens nothing.
+            "invite" -> PlaysShare.inviteToken("/" + segments.joinToString("/"), fragment)?.let(InboxRequest::Invite)
             else -> null
         }
     }

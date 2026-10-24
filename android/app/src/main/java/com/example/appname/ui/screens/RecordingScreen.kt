@@ -187,7 +187,11 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
                     refusal = refusal,
                     onDone = {
                         val latest = plays.store.production(productionId)
-                        if (latest != null) {
+                        if (latest != null && container.sharing.linkOf(productionId) != null) {
+                            // A shared part is finished on the Worker, from the cast sheet, once its takes are up (§11.7 rule 5).
+                            s.end()
+                            onBack()
+                        } else if (latest != null) {
                             try {
                                 plays.store.save(Relay.finish(part, latest, s.script))
                                 s.end()

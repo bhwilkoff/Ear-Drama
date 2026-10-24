@@ -328,7 +328,7 @@ All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
 | `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
 | `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
 | `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent }` |
-| `GET /classes` | anyone | | `{ teaching, member_of }` |
+| `GET /classes` | anyone | | `{ teaching, member_of }`; each taught class carries `code` and `school_consent` |
 | `POST /classes/join` | anyone with the code | `{ code, display_name? }` | `{ id, name, under13 }` |
 | `GET /classes/:id` | the teacher or a member | | the teacher sees the code and the roster; a student, the name |
 | `POST /classes/:id/school-consent` | the teacher | `{ reference? }` | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set |

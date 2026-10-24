@@ -73,6 +73,8 @@ nonisolated enum TakeAudio {
 final class ProductionStore {
     let root: URL
     private(set) var productions: [Production] = []
+    /// `share.json` per production id: its link to the Worker (PLAYS-DESIGN §11.7 rule 1).
+    private(set) var shares: [String: ProductionShare] = [:]
     private(set) var lastError: String?
 
     init(root: URL? = nil) {
@@ -101,6 +103,40 @@ final class ProductionStore {
             return try? decoder.decode(Production.self, from: data)
         }
         .sorted { $0.created > $1.created }
+        shares = [:]
+        for production in productions {
+            if let data = try? Data(contentsOf: shareURL(production.id)),
+               let share = try? decoder.decode(ProductionShare.self, from: data) {
+                shares[production.id] = share
+            }
+        }
+    }
+
+    func shareURL(_ id: String) -> URL { folder(id).appending(path: "share.json") }
+
+    func share(_ id: String) -> ProductionShare? { shares[id] }
+
+    /// The production on this device linked to the Worker's `pid`, if any.
+    func findShared(_ pid: String) -> Production? {
+        productions.first { shares[$0.id]?.pid == pid }
+    }
+
+    func setShare(_ id: String, _ share: ProductionShare) throws {
+        try Self.encoder.encode(share).write(to: shareURL(id), options: .atomic)
+        shares[id] = share
+    }
+
+    func readTake(_ id: String, file: String) throws -> Data {
+        try Data(contentsOf: takesFolder(id).appending(path: file))
+    }
+
+    /// Another member's take, written once: a file that exists is never
+    /// overwritten (takes are immutable, §8 rule 5).
+    func importTake(_ id: String, file: String, data: Data) throws {
+        let url = takesFolder(id).appending(path: file)
+        try FileManager.default.createDirectory(at: takesFolder(id), withIntermediateDirectories: true)
+        guard !FileManager.default.fileExists(atPath: url.path) else { return }
+        try data.write(to: url, options: .withoutOverwriting)
     }
 
     func create(_ script: PlayScript) throws -> Production {
@@ -148,6 +184,7 @@ final class ProductionStore {
             try FileManager.default.removeItem(at: folder)
         }
         productions.removeAll { $0.id == id }
+        shares[id] = nil
     }
 
     func discardUnusedTakes(_ id: String) throws {

@@ -108,6 +108,13 @@ fun AppRoot(
                     roomCode = request.code
                     roomSheet = true
                 }
+                is InboxRequest.Invite -> {
+                    // A TV plays back only (PLAYS-DESIGN §11.7): it holds nothing and opens nothing.
+                    if (!container.isTelevision) {
+                        container.sharing.hold(request.token)
+                        selected = Tab.Library
+                    }
+                }
                 InboxRequest.EndDoor -> {
                     container.playback.stop()
                     playerOpen = false

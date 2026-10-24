@@ -180,6 +180,36 @@ actor APIClient {
         return result
     }
 
+    /// A signed-in Worker call that hands back the status with the body, for
+    /// the plays routes, whose refusals carry a detail the screen names.
+    /// `path` is already percent-encoded (a part is `role%3AHAMLET`). Refreshed
+    /// first; a 401 gets one refresh and one retry, like every other call.
+    func workerResponse(_ method: String, path: String, body: Data? = nil, contentType: String? = nil,
+                        headers: [String: String] = [:]) async throws -> (Data, Int) {
+        let current = try await refreshIfNeeded()
+        let first = try await rawWorker(method, path, body, contentType, headers, token: current.accessToken)
+        guard first.1 == 401 else { return first }
+        let fresh = try await refresh(replacing: current)
+        return try await rawWorker(method, path, body, contentType, headers, token: fresh.accessToken)
+    }
+
+    private func rawWorker(_ method: String, _ path: String, _ body: Data?, _ contentType: String?,
+                           _ headers: [String: String], token: String) async throws -> (Data, Int) {
+        guard let base = config.workerURL else { throw WorkerError.notConfigured }
+        let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
+        guard let url = URL(string: root + path) else { throw WorkerError.badResponse }
+        var request = URLRequest(url: url, timeoutInterval: (body?.count ?? 0) > 1_000_000 ? 120 : 20)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let body {
+            request.setValue(contentType ?? "application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = body
+        }
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
+        return try await send(request)
+    }
+
     // MARK: - Plumbing
 
     private func authorized(_ method: String, _ path: String, query: [URLQueryItem] = [],

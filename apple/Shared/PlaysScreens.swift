@@ -59,19 +59,46 @@ struct StartEarDramaButton: View {
     }
 }
 
-/// Library's Ear dramas (iOS-DESIGN §4.6): the productions on this device.
+/// Library's Ear dramas (iOS-DESIGN §4.6, §4.12a): an opened invitation
+/// first, then the productions on this device and, signed in, the shared ones
+/// not opened here, then Classes.
 struct EarDramasSection: View {
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @Environment(AccountStore.self) private var account
+    @Environment(AppStore.self) private var app
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     var body: some View {
-        let productions = plays.store.productions
-        if !productions.isEmpty {
+        if let token = app.pendingInvite {
+            InvitationSection(token: token, open: open)
+        }
+        let rows = PlaysShare.libraryRows(plays.store, remote: account.isSignedIn ? shared.remote : [])
+        if !rows.isEmpty {
             Section("Ear dramas") {
-                ForEach(productions) { production in
-                    ProductionLink(production: production)
+                ForEach(rows) { row in
+                    if let production = row.local {
+                        ProductionLink(production: production)
+                    } else if let remote = row.remote {
+                        RemoteProductionRow(remote: remote, open: open)
+                    }
                 }
             }
         }
+        if account.isSignedIn {
+            ClassesSection()
+        }
+    }
+
+    private func open(_ production: Production) {
+        #if os(macOS)
+        openWindow(id: ProductionWindow_macOS.id, value: production.id)
+        #else
+        app.selectedTab = .library
+        app.push(PlayRoute.production(production.id))
+        #endif
     }
 }
 
@@ -262,15 +289,22 @@ struct CastSheet: View {
     let script: PlayScript
     let open: (PartID) -> Void
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
     @State private var taking: PartID?
     @State private var performer = ""
     @State private var refusal: String?
 
     var body: some View {
+        let rec = shared.record(for: production, in: plays.store)
         List {
+            SharedProductionSection(production: production, script: script)
             Section {
                 ForEach(script.castParts) { part in
-                    row(part)
+                    if let rec {
+                        SharedPartRow(production: production, script: script, part: part, rec: rec, open: open)
+                    } else {
+                        row(part)
+                    }
                 }
             } footer: {
                 if let refusal { Text(verbatim: refusal).foregroundStyle(Color.semanticError) }
@@ -294,6 +328,11 @@ struct CastSheet: View {
             Button("Take Part") { take() }
             Button("Cancel", role: .cancel) { taking = nil }
         }
+        .task(id: production.id) { await shared.refresh(production.id, store: plays.store, script: script) }
+        #if os(iOS)
+        .refreshable { await shared.refresh(production.id, store: plays.store, script: script) }
+        #endif
+        .sharedPlaysConsent()
     }
 
     @ViewBuilder private func row(_ part: CastPart) -> some View {
@@ -461,6 +500,7 @@ struct PartDetail: View {
         } else if let part {
             List(script.lines(for: part)) { line in
                 ScriptLineText(line: line)
+                    .modifier(ReportTakeMenu(production: production, script: script, lineID: line.id))
             }
             .navigationTitle(part.title)
         } else {

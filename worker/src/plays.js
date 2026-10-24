@@ -682,13 +682,14 @@ async function getClass(auth, env, classId) {
 
 async function listClasses(auth, env) {
   const [t, m] = await env.DB.batch([
-    env.DB.prepare("SELECT id, name, code, under13 FROM play_classes WHERE user_id = ?1 ORDER BY created_at").bind(auth.userId),
+    env.DB.prepare("SELECT c.id, c.name, c.code, c.under13, s.policy_version FROM play_classes c LEFT JOIN play_school_consents s ON s.class_id = c.id WHERE c.user_id = ?1 ORDER BY c.created_at").bind(auth.userId),
     env.DB.prepare(
       "SELECT c.id, c.name, c.under13 FROM play_class_members m JOIN play_classes c ON c.id = m.class_id WHERE m.user_id = ?1 ORDER BY m.joined_at",
     ).bind(auth.userId),
   ]);
   const flag = (r) => ({ ...r, under13: !!r.under13 });
-  return json({ teaching: t.results.map(flag), member_of: m.results.map(flag) });
+  const taught = ({ policy_version, ...r }) => ({ ...flag(r), school_consent: !!policy_version });
+  return json({ teaching: t.results.map(taught), member_of: m.results.map(flag) });
 }
 
 async function removeClassMember(auth, env, classId, userId) {

@@ -418,6 +418,47 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   Play. Undated last either way. On a TV the D-pad starts on the first
   episode. No bio is written (R13).
 
+- **§4.16 Shared ear dramas, phase 2** (binding rule: `docs/PLAYS-DESIGN.md`
+  §11.7, "The same verbs on the web, iPhone, iPad, Mac, and Android (§8
+  rule 7); Apple TV and the other TVs play back only and offer none of it.
+  ... Every call goes through the platform's one API client, refreshed
+  first. Words on screen are these, on every platform."). Android's idiom
+  (`ui/screens/SharedPlaysScreens.kt`; logic in `plays/PlaysShare.kt`, pure
+  Kotlin, ported from `js/plays-share.js`; calls in `plays/PlaysApi.kt`
+  on `WorkerApi`, which refreshes before each one):
+  - The cast sheet (§4.9) gains, for a signed-in person, **Share** (a
+    dialog with an optional name; signed out: "Sharing needs an account."
+    over the account row). `share.json` (`{ pid, consented }`) sits beside
+    `production.json` in `filesDir/Plays/<id>/`. A shared sheet shows each
+    part's Worker state and performer; Record for mine, **Take part** for an
+    open part while none records (the `next` part filled, the rest
+    outlined), **Leave silent** for sound and directions, **Open part** in
+    the `⋮` menu for a finished part while none records, **Release** for
+    mine. The director's **Invite** puts the link
+    (`https://eardrama.org/invite#{token}`) in the system share sheet and
+    shows "Works for N days.". **Upload N takes** is a `Button`; while the
+    Worker's `uploads` is false it is replaced by "Uploads are off.".
+    Consent is an `AlertDialog` holding the Worker's text verbatim with
+    **I agree** and **Not now**. **Done with this part** finishes a part
+    once its takes are up. **People** lists members with "You" and
+    "Director" tags, and Report (reason list and an optional note) and
+    Block (confirm: "You will no longer hear their takes.") for the rest.
+    **Publish** (director, once complete) queues, then "Queued for
+    archive.org". "N takes are hidden from you." stands under Listen.
+  - Listen through fetches the other members' chosen takes into the
+    production's `takes/` as files that are never overwritten, then runs
+    §4.9's listen-through; another member's line shows **Report**.
+  - An invite link is parsed by `DeepLink.parse` into the inbox
+    (`InboxRequest.Invite`), which holds the token for the session and
+    selects Library. Library's Ear dramas then lists an **Invitation**
+    (title and parts; signed out: "Sign in to join"; signed in: **Take
+    part** per open part with an optional name, **Open** for a member,
+    **Not now**), this device's productions, the shared ones this person is
+    in that the device has not opened, and, signed in, **Classes** (**Make a
+    class** with Under 13, the code in two groups of four, **Join a
+    class**). The manifest's https filters stay as §3.4 has them. A TV draws
+    none of it.
+
 ## §5 The player
 
 - **§5.1 One engine.** `PlaybackEngine` owns the Media3 player; the
@@ -583,6 +624,14 @@ file (`StandInNeverStoredTest`). No analytics.
   documentation and wait on the Pixel 8a and one Samsung (PLAYS-DESIGN
   §4.4). The bleed threshold is Apple's unmeasured 0.5.
 
+- **Shared ear dramas (§4.16) have not run on a device or against a
+  deployed Worker.** `PlaysShare` is proven on the JVM against a fake
+  transport (`PlaysShareTest`); `PlaysApi` and the Compose screens are
+  built from the Worker's documentation. The app's one OkHttp client keeps
+  its 10 second read timeout, which a 45 MB take upload may outlast on a
+  slow link; nothing measured it yet. The manifest's `eardrama://` and
+  https filters stay off (§3.4), so an invite link opens the app only once
+  they are on.
 - **No sponsor reaches Detail yet**: the contract names `sponsor`
   (§3.1), but the projection does not publish the column, so §4.4 probes
   for it and shows none (Apple likewise).

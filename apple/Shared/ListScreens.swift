@@ -659,13 +659,17 @@ struct LibraryScreen: View {
     @Environment(ListeningHistory.self) private var history
     @Environment(DownloadStore.self) private var downloads
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @Environment(AccountStore.self) private var account
+    @Environment(AppStore.self) private var app
     @State private var inProgress: [EpisodeRow]?
     @State private var played: [EpisodeRow] = []
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty {
+                if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty
+                    && app.pendingInvite == nil && !account.isSignedIn {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
                     } actions: {
@@ -705,6 +709,7 @@ struct LibraryScreen: View {
             }
         }
         .navigationTitle("Library")
+        .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
         .task(id: LibraryKey(entries: history.entries, load: catalog.loadKey)) {
             let ids = history.inProgressIDs
             let playedIDs = history.entries.filter(\.value.finished)
