@@ -58,6 +58,7 @@ struct PlayerSheet_iOS: View {
             VStack(spacing: Spacing.s6) {
                 Spacer(minLength: 0)
                 if let item = player.item {
+                    NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network)
                     VStack(spacing: Spacing.s2) {
                         Text(item.episode.seriesName)
                             .font(TypeRamp.body)

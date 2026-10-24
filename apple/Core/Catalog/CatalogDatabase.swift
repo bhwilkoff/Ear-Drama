@@ -26,6 +26,11 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     /// The index carries the transcript column (contract §3.4), so a match can
     /// be told apart as transcript-only.
     private let ftsHasTranscript: Bool
+    /// The projection carries portraits (contract §3.3a).
+    private let hasArt: Bool
+    private let hasEpisodeStar: Bool
+    /// Every series' genre and face, read once: rows that mix series draw a tile from it.
+    private let seriesLook: [String: (genre: String?, face: Face?)]
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
     let rightsLines: [String: String]
     /// `meta.listenShelves` (contract §5.1), or nil for a catalog that predates it.
@@ -55,6 +60,11 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         hasTranscript = Self.columnExists(h, table: "episodes", column: "transcript_url")
             && Self.columnExists(h, table: "episodes", column: "has_transcript")
         ftsHasTranscript = Self.columnExists(h, table: "episodes_fts", column: "transcript")
+        let art = Self.columnExists(h, table: "people", column: "portrait")
+            && Self.columnExists(h, table: "art", column: "url")
+        hasArt = art
+        hasEpisodeStar = art && Self.columnExists(h, table: "episodes", column: "star")
+        seriesLook = Self.loadSeriesLook(h, withFaces: art && Self.columnExists(h, table: "series", column: "star"))
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         publishedShelves = Self.metaText(h, key: "listenShelves").flatMap(PublishedShelf.parse)
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
@@ -124,6 +134,34 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         return String(cString: c)
     }
 
+    private static func loadSeriesLook(_ h: OpaquePointer, withFaces: Bool) -> [String: (genre: String?, face: Face?)] {
+        let sql = withFaces ? """
+            SELECT s.key, s.genre, p.name, a.url, a.width, a.height, a.credit, a.evidence_url FROM series s
+            LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait
+            """ : "SELECT key, genre, NULL, NULL, NULL, NULL, NULL, NULL FROM series"
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(h, sql, -1, &stmt, nil) == SQLITE_OK else { return [:] }
+        defer { sqlite3_finalize(stmt) }
+        var out: [String: (genre: String?, face: Face?)] = [:]
+        let text = { (i: Int32) in sqlite3_column_text(stmt, i).map { String(cString: $0) } }
+        let int = { (i: Int32) in sqlite3_column_type(stmt, i) == SQLITE_NULL ? nil : Int(sqlite3_column_int64(stmt, i)) }
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            guard let key = text(0) else { continue }
+            var face: Face?
+            if let name = text(2), let art = artwork(url: text(3), width: int(4), height: int(5), credit: text(6),
+                                                    evidence: text(7)) {
+                face = Face(name: name, art: art)
+            }
+            out[key] = (text(1), face)
+        }
+        return out
+    }
+
+    static func artwork(url: String?, width: Int?, height: Int?, credit: String?, evidence: String?) -> Artwork? {
+        guard let url = url.flatMap(URL.init(string:)) else { return nil }
+        return Artwork(url: url, width: width, height: height, credit: credit, evidence: evidence.flatMap(URL.init(string:)))
+    }
+
     private static func columnExists(_ h: OpaquePointer, table: String, column: String) -> Bool {
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(h, "PRAGMA table_info(\(table));", -1, &stmt, nil) == SQLITE_OK else { return false }
@@ -179,7 +217,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             SELECT \(Self.seriesColumns) FROM series s WHERE \(clauses.joined(separator: " AND "))
             ORDER BY s.name COLLATE NOCASE LIMIT \(limit)
             """
-        return rows(sql, binds, Self.series)
+        return rows(sql, binds, decodeSeries)
     }
 
     /// The genres present, most series first, for the browse filter.
@@ -207,7 +245,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     }
 
     func series(key: String) -> SeriesRow? {
-        rows("SELECT \(Self.seriesColumns) FROM series s WHERE s.key = ?", [.text(key)], Self.series).first
+        rows("SELECT \(Self.seriesColumns) FROM series s WHERE s.key = ?", [.text(key)], decodeSeries).first
     }
 
     /// `seriesPage(key)`: its episodes by broadcast season, oldest first (R1).
@@ -216,7 +254,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let episodes = rows("""
             SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
             WHERE e.series_key = ? ORDER BY \(Self.oldestFirst)
-            """, [.text(key)], Self.episode)
+            """, [.text(key)], decodeEpisode)
         var groups: [SeasonGroup] = []
         var current: [EpisodeRow] = []
         var currentSeason: String?? = .none
@@ -245,22 +283,28 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let loudnessColumns = hasLoudness ? "e.loudness_i, e.loudness_tp" : "NULL, NULL"
         // §3.1: shown only where the gate passed, whatever else the row carries.
         let transcriptColumn = hasTranscript ? "CASE WHEN e.has_transcript = 1 THEN e.transcript_url END" : "NULL"
+        let starColumn = hasEpisodeStar ? "e.star" : "NULL"
         let found = rows("""
-            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns), \(transcriptColumn)
+            SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns), \(transcriptColumn), \(starColumn)
             FROM episodes e JOIN series s ON s.key = e.series_key WHERE e.id = ?
-            """, [.text(id)]) { row -> (EpisodeRow, String?) in
-            var episode = Self.episode(row)
+            """, [.text(id)]) { row -> (EpisodeRow, String?, String?) in
+            var episode = decodeEpisode(row)
             episode.loudnessI = row.double(12)
             episode.loudnessTP = row.double(13)
             episode.transcriptURL = row.text(14).flatMap { URL(string: $0) }
-            return (episode, row.text(11))
+            return (episode, row.text(11), row.text(15))
         }.first
-        guard let (episode, sponsor) = found else { return nil }
+        guard let (episode, sponsor, star) = found else { return nil }
+        let artColumns = hasArt ? "a.url, a.width, a.height, a.credit, a.evidence_url" : "NULL, NULL, NULL, NULL, NULL"
+        let artJoin = hasArt ? "LEFT JOIN art a ON a.id = p.portrait" : ""
         let credits = rows("""
-            SELECT c.person_id, p.name, c.role, c.character FROM credits c JOIN people p ON p.id = c.person_id
+            SELECT c.person_id, p.name, c.role, c.character, \(artColumns) FROM credits c
+            JOIN people p ON p.id = c.person_id \(artJoin)
             WHERE c.episode_id = ? ORDER BY c.rowid
             """, [.text(id)]) { row in
-            Credit(personID: row.text(0) ?? "", name: row.text(1) ?? "", role: row.text(2), character: row.text(3))
+            Credit(personID: row.text(0) ?? "", name: row.text(1) ?? "", role: row.text(2), character: row.text(3),
+                   art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6), credit: row.text(7),
+                                     evidence: row.text(8)))
         }
         let recordings = rows("""
             SELECT rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings
@@ -273,7 +317,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         }.compactMap { $0 }
         let rightsLine = RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
         return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings,
-                             rightsLine: rightsLine)
+                             rightsLine: rightsLine, star: star)
     }
 
     /// Episodes by id, in the order asked (the person's own history).
@@ -284,7 +328,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let found = rows("""
             SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
             WHERE e.id IN (\(marks))
-            """, resolved.map { .text($0) }, Self.episode)
+            """, resolved.map { .text($0) }, decodeEpisode)
         let byID = Dictionary(found.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         return resolved.compactMap { byID[$0] }
     }
@@ -304,7 +348,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             SELECT \(Self.episodeColumns), \(flag) FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid
             JOIN series s ON s.key = e.series_key
             WHERE episodes_fts MATCH ? ORDER BY f.rank LIMIT \(limit)
-            """, binds) { row in (Self.episode(row), (row.int(11) ?? 0) != 0) }
+            """, binds) { row in (decodeEpisode(row), (row.int(11) ?? 0) != 0) }
         let episodes = found.map(\.0)
         let transcriptOnly = Set(found.filter(\.1).map(\.0.id))
         let phrase = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -313,7 +357,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             SELECT \(Self.seriesColumns) FROM series s
             WHERE s.episodes > 0 AND (s.name LIKE ? OR s.name LIKE ?)
             ORDER BY s.episodes DESC LIMIT 20
-            """, [.text("\(phrase)%"), .text("% \(phrase)%")], Self.series)
+            """, [.text("\(phrase)%"), .text("% \(phrase)%")], decodeSeries)
         return SearchResults(series: series, episodes: episodes, transcriptOnly: transcriptOnly)
     }
 
@@ -343,7 +387,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                 SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
                 WHERE e.air_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' AND e.air_date LIKE ?
                 \(recommendAnd) ORDER BY e.air_date, e.id LIMIT \(limit)
-                """, [.text("%\(suffix)")], Self.episode)
+                """, [.text("%\(suffix)")], decodeEpisode)
         case let .genreFirsts(genre):
             return rows("""
                 SELECT \(Self.episodeColumns) FROM series s
@@ -351,7 +395,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                     SELECT e.id FROM episodes e WHERE e.series_key = s.key \(recommendAnd)
                     ORDER BY \(Self.oldestFirst) LIMIT 1)
                 WHERE s.genre = ? ORDER BY s.episodes DESC, s.key LIMIT \(limit)
-                """, [.text(genre)], Self.episode)
+                """, [.text(genre)], decodeEpisode)
         }
     }
 
@@ -384,24 +428,28 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         rows("""
             SELECT DISTINCT \(Self.episodeColumns) FROM credits c JOIN episodes e ON e.id = c.episode_id
             JOIN series s ON s.key = e.series_key WHERE c.person_id = ? ORDER BY \(Self.oldestFirst) LIMIT \(limit)
-            """, [.text(personID)], Self.episode)
+            """, [.text(personID)], decodeEpisode)
     }
 
     // MARK: - Row decoding
 
-    private static func series(_ row: Row) -> SeriesRow {
+    private func decodeSeries(_ row: Row) -> SeriesRow {
         let networks = row.text(5).flatMap { $0.data(using: .utf8) }
             .flatMap { try? JSONDecoder().decode([String].self, from: $0) } ?? []
-        return SeriesRow(key: row.text(0) ?? "", name: row.text(1) ?? "", genre: row.text(2),
+        let key = row.text(0) ?? ""
+        return SeriesRow(key: key, name: row.text(1) ?? "", genre: row.text(2),
                          firstDate: row.text(3), lastDate: row.text(4), networks: networks,
-                         episodeCount: row.int(6) ?? 0)
+                         episodeCount: row.int(6) ?? 0, face: seriesLook[key]?.face)
     }
 
-    private static func episode(_ row: Row) -> EpisodeRow {
-        EpisodeRow(id: row.text(0) ?? "", seriesKey: row.text(1) ?? "", seriesName: row.text(2) ?? "",
-                   airDate: row.text(3), season: row.text(4), number: row.int(5), title: row.text(6),
-                   lengthSeconds: row.double(7), rights: row.text(8) ?? "unclaimed",
-                   rightsBasis: row.text(9), network: row.text(10))
+    private func decodeEpisode(_ row: Row) -> EpisodeRow {
+        let key = row.text(1) ?? ""
+        let look = seriesLook[key]
+        return EpisodeRow(id: row.text(0) ?? "", seriesKey: key, seriesName: row.text(2) ?? "",
+                          airDate: row.text(3), season: row.text(4), number: row.int(5), title: row.text(6),
+                          lengthSeconds: row.double(7), rights: row.text(8) ?? "unclaimed",
+                          rightsBasis: row.text(9), network: row.text(10),
+                          seriesGenre: look?.genre, seriesFace: look?.face)
     }
 
     // MARK: - Statement plumbing
