@@ -40,12 +40,13 @@ import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.theme.Spacing
 import kotlinx.coroutines.delay
 
-/** Search: episodes and series, word-prefix (§3.4), never filtered by `recommendAnd`. */
+/** Search: series, plays, and episodes, word-prefix (§3.4), never filtered by `recommendAnd`. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     onOpenSeries: (String) -> Unit,
     onOpenEpisode: (String) -> Unit,
+    onOpenScript: (String) -> Unit,
     incoming: String? = null,
     onIncomingTaken: () -> Unit = {},
 ) {
@@ -67,6 +68,8 @@ fun SearchScreen(
         delay(250)
         settled = query.trim()
     }
+    val allPlays = rememberCastablePlays()
+    val plays = remember(settled, allPlays) { playsMatching(allPlays, settled) }
     val results by rememberCatalogQuery(settled) { db ->
         if (settled.isEmpty()) SearchResults(emptyList(), emptyList()) else db.search(settled)
     }
@@ -100,12 +103,18 @@ fun SearchScreen(
         LoadableContent(results) { found ->
             when {
                 settled.isEmpty() -> Unit
-                found.isEmpty -> EmptyMessage("No matches for “$settled”.")
+                found.isEmpty && plays.isEmpty() -> EmptyMessage("No matches for “$settled”.")
                 else -> LazyColumn(Modifier.fillMaxSize()) {
                     if (found.series.isNotEmpty()) {
                         item(key = "series-h") { SectionHeader("Series") }
                         items(found.series, key = { "s:" + it.key }) { row ->
                             SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
+                        }
+                    }
+                    if (plays.isNotEmpty()) {
+                        item(key = "plays-h") { SectionHeader("Plays") }
+                        items(plays, key = { "p:" + it.id }) { script ->
+                            PlayListItem(script, onOpen = { onOpenScript(script.id) })
                         }
                     }
                     if (found.episodes.isNotEmpty()) {

@@ -29,8 +29,9 @@ production lessons this doc does not restate live in
   and the network through `ApiClient`; a screen never opens SQLite or
   OkHttp itself.
 - **§1.4 Depth is at most two from a tab**: tab, series, episode. A
-  season is a scope; the player is a sheet. In Plays it is tab, cast
-  sheet, part: casting a play replaces the script page with its cast sheet.
+  season is a scope; the player is a sheet. For an ear drama it is
+  Browse, cast sheet, part: starting one replaces the play's page with
+  its cast sheet.
 - **§1.5 Only essential words on screen** (AGENTS.md); no list or blurb
   written by the app (R13).
 
@@ -105,23 +106,27 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §3 Navigation shell
 
-- **§3.1 Six tabs, hard set**: Listen, Series, Radio, Plays, Search,
-  Library (`Tab`, `navigation/Routes.kt`), with Material icons
-  Headphones, Layers, Radio, TheaterComedy, Search, and Bookmarks (Radio
-  takes the radio, as on Apple; Series takes Layers, the nearest to
-  Apple's `square.stack`). Radio follows Series, as on the web and Apple.
-  Plays records, so a TV shows the other five (`Tab.onTelevision`;
-  PLAYS-DESIGN §2: TVs play back only). `NavigationSuiteScaffold` draws a
-  bar, a rail, or a drawer by window size; on a phone that is one
-  `NavigationBar` of six items, about 57 dp each at 360 dp ("Library",
-  the longest label, is about 42 dp in `labelMedium`), every label whole
-  at the default font size (measured from the type, not yet on a device). Material's guidance is three to five; the
-  six-section question is the owner's (§12, SCRATCHPAD item 12), and no
-  destination is dropped meanwhile.
+- **§3.1 Sections are actions** (Decision 068, owner 2026-10-24: *"we
+  should focus on actions and not content type ... we should mimic the
+  items from Archive Watch"*). **Five tabs, hard set: Home, Browse,
+  Stations, Search, Library** (`Tab`, `navigation/Routes.kt`), with
+  Material icons Home, Explore, Radio, Search, and Bookmarks.
+  **Surprise** is the Home top bar's one action (Shuffle), pushing
+  `Route.Surprise`, as Archive Watch's ANDROID-DESIGN ("The Home top bar
+  carries a shuffle action → Surprise grid"). `NavigationSuiteScaffold`
+  draws a bar, a rail, or a drawer by window size; five items is inside
+  Material's three to five. No tab is named for a content type: plays sit
+  in Browse and Search beside the series, "Start an ear drama" is on a
+  play's page, and Library lists Ear dramas. A TV records nothing
+  (PLAYS-DESIGN §2), so there the plays, the Surprise play, and Ear
+  dramas are not shown.
+  - *Replaced*: "Six tabs, hard set: Listen, Series, Radio, Plays,
+    Search, Library ... Plays records, so a TV shows the other five."
 - **§3.2 One route registry.** Every destination is a case of the sealed
   `Route` (Navigation 3 `NavKey`): the five roots, `Series`, `Episode`,
-  `Transcript`, and the plays' `Script`, `Production`, and `Recording`,
-  resolved in one `entryProvider` in `ui/AppRoot.kt`. Radio's root is
+  `Transcript`, `Surprise`, and the ear drama's `Script`, `Production`,
+  and `Recording`,
+  resolved in one `entryProvider` in `ui/AppRoot.kt`. Stations' root is
   `Route.Radio`; a slot opens the same `Episode` route.
 - **§3.3 One back stack per tab** (`rememberNavBackStack`). System back
   and predictive back pop within the tab
@@ -147,10 +152,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §4 Surfaces
 
-- **§4.1 Listen** is a `LazyColumn` of shelves, each a header over a
+- **§4.1 Home** (was Listen) is a `LazyColumn` of shelves, each a header over a
   `LazyRow` of 220 dp cards: Continue listening, then the published
-  shelves in order (R13). A shelf with no rows is not drawn.
-- **§4.2 Series browse** is one row of `FilterChip`s over a paged list
+  shelves in order (R13). A shelf with no rows is not drawn. The top
+  bar's action is Surprise (§4.14).
+- **§4.2 Browse** (was Series) lists radio series and stage plays
+  together. A Kind chip (Any kind, Series, Plays) and a "Has a script"
+  chip lead its row of `FilterChip`s; a play carries no genre, decade, or
+  network, so setting one narrows to series, and "Has a script" keeps the
+  rows whose record carries a usable script, today the plays. A play row
+  is its title, then author and part count, and opens the play's page.
+  Below the chips, a paged list
   of series (200 at a time), each one line of years and count: the sort
   and the network as dropdown chips (a `DropdownMenu`), then the decades,
   then the genres. The sort is the web's three, "A to Z", "Most
@@ -177,26 +189,30 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `sponsor` column (probed, as Apple does). Share is the top bar's action
   (§4.12).
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
-  debounced, with Clear, series first and then episodes; "In the
+  debounced, with Clear, series first, then plays (title and author,
+  word-prefix), then episodes; "In the
   transcript" marks a transcript-only match.
 - **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
   (with storage held and Remove All, which asks first), Played
   (Apple's word), and Following (the web's last Library scope, §4.7): the
   followed series, newest follow first, each opening its page. A follow
-  the open catalog does not serve is kept for sync and not listed.
+  the open catalog does not serve is kept for sync and not listed. Then
+  **Ear dramas** (Decision 068): this device's productions, each with
+  "n of m lines recorded" or "Finished" and a Delete that asks first,
+  opening its cast sheet.
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
   the episode title, then plain selectable text in `bodyMedium`, a
   sentence a line, at most 680 dp wide, fetched from archive.org when
   opened.
 - **§4.8 Episode rows carry two targets**: the row opens Detail ("Open
   episode") and the trailing button plays ("Play" and the title).
-- **§4.9 Plays** (`docs/PLAYS-DESIGN.md` binds what it does;
-  `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). The tab
-  is "Your plays" (each with "n of m lines recorded" or "Finished" and a
-  Delete that asks first) over "Plays you can cast", each row the
-  title, author and part count, and the rights line: the evidence claims
-  verbatim, each linked to its source, then the source by name. The
-  script page adds "Cast this play" and the parts with line counts. The
+- **§4.9 Ear dramas** (`docs/PLAYS-DESIGN.md` binds what it does;
+  `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). No tab
+  of their own (Decision 068): a play is a row in Browse and Search, and
+  a person's productions are Library's Ear dramas (§4.6). The play's
+  page shows the rights line (the evidence claims verbatim, each linked
+  to its source, then the source by name), "Start an ear drama" (was
+  "Cast this play"), and the parts with line counts. The
   cast sheet is a `ListItem` per part, largest first, with its one verb
   in the trailing slot: Take part (an `AlertDialog` with an optional
   name), Leave silent (sound and directions only), Record, or a `⋮` menu
@@ -212,7 +228,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   keeps, and the arrows move by line. Takes are 24-bit WAV (not FLAC:
   MediaMuxer has no FLAC container), the mix is AAC in `mix.m4a`, and
   only a finished play offers Export, through the share sheet.
-- **§4.10 Radio** is Tonight in 19xx (`RadioScreen`,
+- **§4.10 Stations** (was Radio) is Tonight in 19xx (`RadioScreen`,
   `ui/screens/RadioScreen.kt`), the web's §4.9 in a `LazyColumn` of
   `ListItem`s: the evening `tonight.json` publishes for the device's own
   calendar date (`RadioClock.localDate`, never the UTC date), fetched
@@ -305,6 +321,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   D-pad stops with the ring, the code field takes focus, and Share is
   absent.
 
+- **§4.14 Surprise** (`ui/screens/SurpriseScreen.kt`; Archive Watch
+  PARITY §5) is a `LazyColumn` of three picks drawn when it opens, and a
+  Shuffle action in its top bar: **an episode** (a served, recommendable
+  episode with a recording, at random, `CatalogDatabase.randomEpisode`)
+  with Play; **an evening** (one of `tonight.json`'s evenings), its date
+  and network, with Play, which plays its first surviving slot from the
+  start, never live and never a queue; **a play** (one castable script)
+  with "Start an ear drama", not on a TV. Each plays or starts in one
+  tap. `kotlin.random.Random`: nothing needs to match another device. No
+  copy is written; a pick with no data is absent.
+
 ## §5 The player
 
 - **§5.1 One engine.** `PlaybackEngine` owns the Media3 player; the
@@ -395,7 +422,7 @@ file (`StandInNeverStoredTest`). No analytics.
 ## §9 Stubs that live in the Android build, and parity
 
 - **§9.1 Android Auto** (`playback/CarLibrary.kt`) is the browse tree the
-  service serves: four roots, Continue, Radio, Series, Downloads (R17).
+  service serves: four roots, Continue, Stations, Browse, Downloads (R17).
   Continue lists this device's in-progress episodes as playable nodes
   (title, series and date) within an 8 s budget; the other three are
   empty. No artwork. Every release with car support waits on Google's
@@ -404,8 +431,8 @@ file (`StandInNeverStoredTest`). No analytics.
   (`ui/Television.kt`, `isTelevision()`), never a flavor. On a TV the
   focused card wears a ring and a 1.06 scale (`tvFocusMark`), never
   color alone, and each tab's screen claims focus on entry
-  (`ClaimTvFocus`): Listen its first card, Series its first filter chip,
-  Radio its Listen live button during the evening (else its first slot),
+  (`ClaimTvFocus`): Home its first card, Browse its first filter chip,
+  Stations its Listen live button during the evening (else its first slot),
   Search its field, Library its first row. The pushed screens and the
   player sheet claim it too: Detail its Play (tvOS-DESIGN §6.2), a series
   page its first episode (Follow and the seasons are above it), the
@@ -448,20 +475,15 @@ file (`StandInNeverStoredTest`). No analytics.
   animation.
 - **§11.4 The media session stays on on a TV**, the inverse of Archive
   Watch, a video app that turns its session off there.
-- **§11.5 Search is the fifth tab**, after Plays, where Apple's
-  `role: .search` lets the system place it last.
+- **§11.5 Search is the fourth tab**, before Library, as the web's order;
+  Apple's `role: .search` lets the system place it.
 - **§11.6 Listen live on a TV starts in place**, as Play does (§11.1);
   tvOS opens Now Playing full screen (tvOS-DESIGN §4.8). Android TV's
   player is still the phone's sheet (§12).
 
 ## §12 Open (what the code does not yet meet)
 
-- **Six destinations on the phone's bar** (§3.1): they fit at 360 dp
-  at the default font size, but Material's bar guidance is three to five
-  and the largest font scales will ellipsize the labels. The owner is
-  deciding the six-section question for every platform (SCRATCHPAD item
-  12); until then nothing is dropped.
-- **Radio has not run on a device.** Listening live, a slot starting at
+- **Stations has not run on a device.** Listening live, a slot starting at
   its own time, and each event that stops it are proven in
   `RadioTests` on the JVM, not yet heard on the Pixel or a TV.
 

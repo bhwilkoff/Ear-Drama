@@ -36,18 +36,18 @@
   <div class="shell">
     <nav class="sidebar" aria-label="Main">
       <p class="sidebar-title">Ear Drama</p>
-      <a class="nav-item" href="?view=listen" data-nav="listen">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9z"/></svg>
-        <span>Listen</span></a>
-      <a class="nav-item" href="?view=series" data-nav="series">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/></svg>
-        <span>Series</span></a>
-      <a class="nav-item" href="?view=radio" data-nav="radio">
+      <a class="nav-item" href="?view=home" data-nav="home">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg>
+        <span>Home</span></a>
+      <a class="nav-item" href="?view=browse" data-nav="browse">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg>
+        <span>Browse</span></a>
+      <a class="nav-item" href="?view=stations" data-nav="stations">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6H8.3l8.3-3.4L15.9 1 3.2 6.2C2.5 6.4 2 7.2 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 2v3h-2V9h-2v2H4V8zM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
-        <span>Radio</span></a>
-      <a class="nav-item" href="?view=plays" data-nav="plays">
-        <svg aria-hidden="true" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 3h16v7a8 8 0 0 1-16 0zm4 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM8.5 13a3.5 3.5 0 0 0 7 0z"/></svg>
-        <span>Plays</span></a>
+        <span>Stations</span></a>
+      <a class="nav-item" href="?view=surprise" data-nav="surprise">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10.6 9.2 5.4 4 4 5.4l5.2 5.2zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4zm.3 9.4-1.4 1.4 3.1 3.1-2 2H20v-5.5l-2 2z"/></svg>
+        <span>Surprise</span></a>
       <a class="nav-item" href="?view=search" data-nav="search">
         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
         <span>Search</span></a>
@@ -58,13 +58,14 @@
 
     <main id="main-content" tabindex="-1">
       <section id="view-listen" class="view" aria-labelledby="listen-h" hidden>
-        <h1 id="listen-h" class="view-heading" tabindex="-1">Listen</h1>
+        <h1 id="listen-h" class="view-heading" tabindex="-1">Home</h1>
         <div id="listen-body"></div>
       </section>
 
       <section id="view-series" class="view" aria-labelledby="series-h" hidden>
-        <h1 id="series-h" class="view-heading" tabindex="-1">Series</h1>
-        <form id="browse-filters" class="filters" aria-label="Filter series">
+        <h1 id="series-h" class="view-heading" tabindex="-1">Browse</h1>
+        <form id="browse-filters" class="filters" aria-label="Filter">
+          <label class="filter ear-drama-only"><span class="caption">Kind</span><select id="f-kind" name="kind"></select></label>
           <label class="filter"><span class="caption">Genre</span><select id="f-genre" name="genre"></select></label>
           <label class="filter"><span class="caption">Decade</span><select id="f-decade" name="decade"></select></label>
           <label class="filter"><span class="caption">Network</span><select id="f-network" name="network"></select></label>
@@ -73,6 +74,7 @@
             <option value="count">Most episodes</option>
             <option value="first">Oldest first</option>
           </select></label>
+          <label class="filter-check ear-drama-only"><input id="f-script" type="checkbox" name="script" value="1"><span id="f-script-label" class="body">Has a script</span></label>
         </form>
         <p id="browse-count" class="caption" aria-live="polite"></p>
         <div id="browse-body"></div>
@@ -87,12 +89,20 @@
       </section>
 
       <section id="view-radio" class="view" aria-labelledby="radio-h" hidden>
-        <h1 id="radio-h" class="view-heading" tabindex="-1">Radio</h1>
+        <h1 id="radio-h" class="view-heading" tabindex="-1">Stations</h1>
         <div id="radio-body"></div>
       </section>
 
+      <section id="view-surprise" class="view" aria-labelledby="surprise-h" hidden>
+        <div class="block-head">
+          <h1 id="surprise-h" class="view-heading" tabindex="-1">Surprise</h1>
+          <button type="button" id="surprise-again" class="btn btn-ghost">Shuffle</button>
+        </div>
+        <div id="surprise-body"></div>
+      </section>
+
       <section id="view-plays" class="view" aria-labelledby="plays-h" hidden>
-        <h1 id="plays-h" class="view-heading" tabindex="-1">Plays</h1>
+        <h1 id="plays-h" class="view-heading" tabindex="-1">Ear drama</h1>
         <div id="plays-body"></div>
       </section>
 
@@ -114,6 +124,7 @@
           <button type="button" data-lib="queue" aria-pressed="true">Queue</button>
           <button type="button" data-lib="history" aria-pressed="false">History</button>
           <button type="button" data-lib="following" aria-pressed="false">Following</button>
+          <button type="button" data-lib="dramas" aria-pressed="false" class="ear-drama-only">Ear dramas</button>
         </div>
         <div id="library-body"></div>
       </section>
@@ -152,18 +163,18 @@
   </section>
 
   <nav class="tabbar" aria-label="Main">
-    <a class="tab" href="?view=listen" data-nav="listen">
-      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9z"/></svg>
-      <span>Listen</span></a>
-    <a class="tab" href="?view=series" data-nav="series">
-      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16v2H4zm0 6h16v2H4zm0 6h10v2H4z"/></svg>
-      <span>Series</span></a>
-    <a class="tab" href="?view=radio" data-nav="radio">
+    <a class="tab" href="?view=home" data-nav="home">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3z"/></svg>
+      <span>Home</span></a>
+    <a class="tab" href="?view=browse" data-nav="browse">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg>
+      <span>Browse</span></a>
+    <a class="tab" href="?view=stations" data-nav="stations">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 6H8.3l8.3-3.4L15.9 1 3.2 6.2C2.5 6.4 2 7.2 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 2v3h-2V9h-2v2H4V8zM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
-      <span>Radio</span></a>
-    <a class="tab" href="?view=plays" data-nav="plays">
-      <svg aria-hidden="true" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M4 3h16v7a8 8 0 0 1-16 0zm4 4.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM8.5 13a3.5 3.5 0 0 0 7 0z"/></svg>
-      <span>Plays</span></a>
+      <span>Stations</span></a>
+    <a class="tab" href="?view=surprise" data-nav="surprise">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10.6 9.2 5.4 4 4 5.4l5.2 5.2zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4zm.3 9.4-1.4 1.4 3.1 3.1-2 2H20v-5.5l-2 2z"/></svg>
+      <span>Surprise</span></a>
     <a class="tab" href="?view=search" data-nav="search">
       <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M10 3a7 7 0 0 1 5.6 11.2l5.1 5.1-1.4 1.4-5.1-5.1A7 7 0 1 1 10 3zm0 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"/></svg>
       <span>Search</span></a>

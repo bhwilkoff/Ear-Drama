@@ -8,7 +8,7 @@ import SwiftUI
 // iPhone pushes; iPad puts the cast and the script side by side; the Mac opens
 // each production in its own window (ContentView_macOS.swift).
 
-/// The Plays tab's pushes, resolved by the one destination registry
+/// An ear drama's pushes, resolved by the one destination registry
 /// (`RouteDestinations`, ListScreens.swift).
 enum PlayRoute: Hashable {
     case script(String)
@@ -16,44 +16,67 @@ enum PlayRoute: Hashable {
     case recording(production: String, part: PartID)
 }
 
-// MARK: - Pick a play
+// MARK: - Start an ear drama
 
-struct PlaysScreen: View {
+// There is no Plays section (Decision 068): a play is a row in Browse and
+// Search and a pick on Surprise, and the person's productions are Library's
+// Ear dramas. Recording starts from the play's own page.
+
+/// "Start an ear drama" (PLAYS-DESIGN §2.1): makes the production and opens
+/// its cast sheet, in place on iPhone and iPad and in its own window on the Mac.
+struct StartEarDramaButton: View {
+    let script: PlayScript
+    @Environment(PlaysLibrary.self) private var plays
+    @Environment(AppStore.self) private var app
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+    @State private var error: String?
+
+    var body: some View {
+        Button {
+            start()
+        } label: {
+            Label("Start an ear drama", systemImage: "person.2")
+        }
+        if let error {
+            Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
+        }
+    }
+
+    private func start() {
+        do {
+            let production = try plays.store.create(script)
+            #if os(macOS)
+            openWindow(id: ProductionWindow_macOS.id, value: production.id)
+            #else
+            app.push(PlayRoute.production(production.id))
+            #endif
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+/// Library's Ear dramas (iOS-DESIGN §4.6): the productions on this device.
+struct EarDramasSection: View {
     @Environment(PlaysLibrary.self) private var plays
 
     var body: some View {
-        List {
-            let productions = plays.store.productions
-            if !productions.isEmpty {
-                Section("Your plays") {
-                    ForEach(productions) { production in
-                        ProductionLink(production: production)
-                    }
-                }
-            }
-            Section("Plays you can cast") {
-                switch plays.state {
-                case .loading:
-                    ProgressView()
-                case .unavailable:
-                    ContentUnavailableView("No plays on this device", systemImage: "theatermasks")
-                case .ready:
-                    ForEach(plays.scripts) { script in
-                        NavigationLink(value: PlayRoute.script(script.id)) {
-                            ScriptRow(script: script)
-                        }
-                    }
+        let productions = plays.store.productions
+        if !productions.isEmpty {
+            Section("Ear dramas") {
+                ForEach(productions) { production in
+                    ProductionLink(production: production)
                 }
             }
         }
-        .navigationTitle("Plays")
-        .task { await plays.load() }
     }
 }
 
 /// A production opens in place on iPhone and iPad, and in its own window on
 /// the Mac (§2.2).
-private struct ProductionLink: View {
+struct ProductionLink: View {
     let production: Production
     @Environment(PlaysLibrary.self) private var plays
     #if os(macOS)
@@ -104,7 +127,7 @@ enum ProductionProgress {
     }
 }
 
-private struct ScriptRow: View {
+struct ScriptRow: View {
     let script: PlayScript
 
     var body: some View {
@@ -124,11 +147,6 @@ private struct ScriptRow: View {
 struct PlayScriptScreen: View {
     let id: String
     @Environment(PlaysLibrary.self) private var plays
-    @Environment(AppStore.self) private var app
-    #if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-    #endif
-    @State private var error: String?
 
     var body: some View {
         if let script = plays.script(id) {
@@ -141,14 +159,7 @@ struct PlayScriptScreen: View {
                         }
                         RightsLine(script: script)
                     }
-                    Button {
-                        start(script)
-                    } label: {
-                        Label("Cast this play", systemImage: "person.2")
-                    }
-                    if let error {
-                        Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
-                    }
+                    StartEarDramaButton(script: script)
                 }
                 Section("Parts") {
                     ForEach(script.castParts) { part in
@@ -157,21 +168,10 @@ struct PlayScriptScreen: View {
                 }
             }
             .navigationTitle(script.title)
+            .task { await plays.load() }
         } else {
             ContentUnavailableView("Play not found", systemImage: "questionmark.square.dashed")
-        }
-    }
-
-    private func start(_ script: PlayScript) {
-        do {
-            let production = try plays.store.create(script)
-            #if os(macOS)
-            openWindow(id: ProductionWindow_macOS.id, value: production.id)
-            #else
-            app.push(PlayRoute.production(production.id))
-            #endif
-        } catch {
-            self.error = error.localizedDescription
+                .task { await plays.load() }
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -75,6 +76,8 @@ import com.example.appname.plays.Relay
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberHaptics
@@ -86,57 +89,82 @@ import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// Plays phase 1, pass the phone (docs/PLAYS-DESIGN.md, binding; ANDROID-DESIGN
+// Ear dramas, phase 1, pass the phone (docs/PLAYS-DESIGN.md, binding; ANDROID-DESIGN
 // §4.9). The same seven verbs as iPhone, iPad, and the Mac (§2): pick a play,
 // read the cast sheet, take a part, record line by line, pass the phone, listen
 // through, finish and keep it, in Material's own components.
 
-// MARK: Pick a play
+// MARK: Where an ear drama starts (Decision 068)
 
-@OptIn(ExperimentalMaterial3Api::class)
+// There is no Plays tab: a play is a row in Browse and Search and a pick on
+// Surprise, and the person's productions are Library's Ear dramas. A TV records
+// nothing (PLAYS-DESIGN §2), so there none of these is offered.
+
+/** The castable plays, or none on a TV. */
 @Composable
-fun PlaysScreen(onOpenScript: (String) -> Unit, onOpenProduction: (String) -> Unit) {
+fun rememberCastablePlays(): List<PlayScript> {
+    val television = LocalIsTelevision.current
     val plays = LocalAppContainer.current.plays
     val state by plays.state.collectAsState()
-    LaunchedEffect(Unit) { plays.load() }
-    Scaffold(topBar = { TopAppBar(title = { Text("Plays") }) }) { padding ->
-        val ready = state as? PlaysLibrary.State.Ready
-        if (ready == null) {
-            if (state == PlaysLibrary.State.Loading) {
-                Column(Modifier.fillMaxSize().padding(padding), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
-                }
-            } else {
-                EmptyMessage("No plays on this device.", Modifier.padding(padding))
+    LaunchedEffect(television) { if (!television) plays.load() }
+    if (television) return emptyList()
+    return (state as? PlaysLibrary.State.Ready)?.scripts.orEmpty()
+}
+
+/** Word-prefix, as every search here (§3.4): each typed word begins a word of the title or author. */
+fun playsMatching(scripts: List<PlayScript>, query: String): List<PlayScript> {
+    fun words(text: String) = text.lowercase().split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
+    val typed = words(query)
+    if (typed.isEmpty()) return emptyList()
+    return scripts.filter { script ->
+        val have = words("${script.title} ${script.authorLine}")
+        typed.all { w -> have.any { it.startsWith(w) } }
+    }
+}
+
+/** A play as a list row: its title, then author and part count; it opens the play's page. */
+@Composable
+fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
+    val speaking = script.castParts.count { it.id.isSpeaking }
+    ListItem(
+        headlineContent = { Text(script.title, style = MaterialTheme.typography.titleMedium) },
+        supportingContent = {
+            Text(
+                listOf(script.authorLine, "$speaking parts").filter { it.isNotEmpty() }.joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        modifier = Modifier.clickable(onClickLabel = "Open play", onClick = onOpen).tvFocusMark(),
+    )
+}
+
+/** "Start an ear drama" (PLAYS-DESIGN §2.1): makes the production and opens its cast sheet. */
+@Composable
+fun StartEarDramaButton(script: PlayScript, onOpenProduction: (String) -> Unit) {
+    val plays = LocalAppContainer.current.plays
+    val scope = rememberCoroutineScope()
+    var error by remember { mutableStateOf<String?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+        Button(onClick = {
+            scope.launch {
+                runCatching { plays.create(script) }
+                    .onSuccess { onOpenProduction(it.id) }
+                    .onFailure { error = it.message ?: "The production could not be saved." }
             }
-            return@Scaffold
+        }) {
+            Icon(Icons.Filled.Groups, contentDescription = null)
+            Text("Start an ear drama", Modifier.padding(start = Spacing.S2.dp))
         }
-        val productions by plays.store.productions.collectAsState()
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            if (productions.isNotEmpty()) {
-                item(key = "yours-h") { SectionHeader("Your plays") }
-                items(productions, key = { "p:" + it.id }) { production ->
-                    ProductionRow(production, onOpen = { onOpenProduction(production.id) })
-                }
-            }
-            item(key = "cast-h") { SectionHeader("Plays you can cast") }
-            items(ready.scripts, key = { "s:" + it.id }) { script ->
-                ListItem(
-                    headlineContent = { Text(script.title, style = MaterialTheme.typography.titleMedium) },
-                    supportingContent = {
-                        Column {
-                            val speaking = script.castParts.count { it.id.isSpeaking }
-                            Text(
-                                listOf(script.authorLine, "$speaking parts").filter { it.isNotEmpty() }.joinToString(" · "),
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            RightsLine(script)
-                        }
-                    },
-                    modifier = Modifier.clickable(onClickLabel = "Open play") { onOpenScript(script.id) },
-                )
-            }
-        }
+        error?.let { ErrorLine(it) }
+    }
+}
+
+/** Library's Ear dramas (§4.6): this device's productions, newest first; none on a TV. */
+fun LazyListScope.earDramasSection(productions: List<Production>, onOpenProduction: (String) -> Unit) {
+    if (productions.isEmpty()) return
+    item(key = "dramas-h") { SectionHeader("Ear dramas") }
+    items(productions, key = { "d:" + it.id }) { production ->
+        ProductionRow(production, onOpen = { onOpenProduction(production.id) })
     }
 }
 
@@ -199,8 +227,6 @@ fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> U
     LaunchedEffect(Unit) { plays.load() }
     val state by plays.state.collectAsState()
     val script = (state as? PlaysLibrary.State.Ready)?.scripts?.firstOrNull { it.id == id }
-    val scope = rememberCoroutineScope()
-    var error by remember { mutableStateOf<String?>(null) }
     Scaffold(topBar = { BackBar(onBack) }) { padding ->
         if (script == null) {
             if (state !is PlaysLibrary.State.Loading) EmptyMessage("This play is not on this device.", Modifier.padding(padding))
@@ -213,17 +239,7 @@ fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> U
                     Text(script.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
                     if (script.authorLine.isNotEmpty()) Text(script.authorLine, style = MaterialTheme.typography.bodyMedium)
                     RightsLine(script)
-                    Button(onClick = {
-                        scope.launch {
-                            runCatching { plays.create(script) }
-                                .onSuccess { onOpenProduction(it.id) }
-                                .onFailure { error = it.message ?: "The production could not be saved." }
-                        }
-                    }) {
-                        Icon(Icons.Filled.Groups, contentDescription = null)
-                        Text("Cast this play", Modifier.padding(start = Spacing.S2.dp))
-                    }
-                    error?.let { ErrorLine(it) }
+                    if (!LocalIsTelevision.current) StartEarDramaButton(script, onOpenProduction)
                 }
             }
             item(key = "parts-h") { SectionHeader("Parts") }

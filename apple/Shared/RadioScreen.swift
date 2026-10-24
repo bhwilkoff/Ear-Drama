@@ -19,7 +19,7 @@ struct RadioScreen: View {
                     load = await RadioLoad.load(catalog: catalog, now: context.date)
                 }
         }
-        .navigationTitle("Radio")
+        .navigationTitle("Stations")
     }
 
     @ViewBuilder private func content(now: Date) -> some View {

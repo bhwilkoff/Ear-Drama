@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<!-- Listen, the stub's one screen. Four states (universal-feature-states):
+<!-- Home (was Listen, Decision 068), the stub's one screen. Four states (universal-feature-states):
      loading (spinner), ready (the rows), empty, and error/offline, each a door
      with Try again (ten-foot-detail-design). Insets are the 5% overscan-safe
      margin: 96 px across, 54 px down. -->
@@ -11,7 +11,7 @@
   <script type="text/brightscript" uri="pkg:/components/Theme.brs" />
   <children>
     <Rectangle id="ground" width="1920" height="1080" />
-    <Label id="heading" translation="[96,54]" text="Listen" />
+    <Label id="heading" translation="[96,54]" text="Home" />
     <RowList id="rows" translation="[96,250]" visible="false" itemComponentName="SeriesTile" />
     <BusySpinner id="spinner" translation="[928,508]" visible="false" />
     <Group id="problem" translation="[96,250]" visible="false">

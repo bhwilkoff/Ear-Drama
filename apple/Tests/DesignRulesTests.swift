@@ -78,16 +78,32 @@ struct SiteLinksTests {
 struct AppStoreNavigationTests {
     @Test func backPopsOneScreenAndStopsAtTheRoot() {
         let store = AppStore()
-        store.selectedTab = .series
+        store.selectedTab = .browse
         #expect(!store.canGoBack)
         store.push(Route.series("a"))
         store.push(Route.episode("a|1"))
         store.goBack()
-        #expect(store.paths[.series]?.count == 1)
+        #expect(store.paths[.browse]?.count == 1)
         store.goBack()
         #expect(!store.canGoBack)
         store.goBack()
-        #expect(store.paths[.series]?.count == 0)
+        #expect(store.paths[.browse]?.count == 0)
+    }
+
+    /// Decision 068: the sections are Archive Watch's, in its order, and a door
+    /// or link that names a section by its old name still opens the new one.
+    @Test func sectionsAreActionsAndOldNamesStillOpen() {
+        #expect(AppTab.allCases.map(\.title) == ["Home", "Browse", "Stations", "Surprise", "Search", "Library"])
+        #expect(AppTab(door: "listen") == .home)
+        #expect(AppTab(door: "series") == .browse)
+        #expect(AppTab(door: "radio") == .stations)
+        #expect(AppTab(door: "plays") == .browse)
+        #expect(AppTab(door: "surprise") == .surprise)
+        #expect(AppTab(door: "nonsense") == nil)
+        let store = AppStore()
+        store.post(.tab("radio"))
+        _ = store.drainInbox()
+        #expect(store.selectedTab == .stations)
     }
 
     @Test func searchOpensTheSectionAndAsksForFocus() {

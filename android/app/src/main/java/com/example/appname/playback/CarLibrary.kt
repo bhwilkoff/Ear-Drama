@@ -12,7 +12,7 @@ data class CarNode(val id: String, val title: String, val subtitle: String?, val
 
 /**
  * The browse tree Android Auto draws (research 04 §3.2). The root's children
- * are the car's four tabs, Continue, Radio, Series, Downloads (R17). Continue
+ * are the car's four tabs, Continue, Stations, Browse, Downloads (R17). Continue
  * lists this device's in-progress episodes; the other three are empty in the
  * stub (Decision 056). No node carries art: the catalog has none to give.
  */
@@ -31,8 +31,8 @@ class CarLibrary(
 
         val TABS = listOf(
             CarNode(CONTINUE, "Continue", null, browsable = true),
-            CarNode(RADIO, "Radio", null, browsable = true),
-            CarNode(SERIES, "Series", null, browsable = true),
+            CarNode(RADIO, "Stations", null, browsable = true),
+            CarNode(SERIES, "Browse", null, browsable = true),
             CarNode(DOWNLOADS, "Downloads", null, browsable = true),
         )
 

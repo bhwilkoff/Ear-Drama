@@ -26,6 +26,18 @@ class LaunchDoorsTest {
         )
     }
 
+    /** Decision 068: Archive Watch's tabs, in its order; the old names still open the new tabs. */
+    @Test
+    fun tabsAreActionsAndOldNamesStillOpen() {
+        assertEquals(listOf("Home", "Browse", "Stations", "Search", "Library"), Tab.entries.map { it.label })
+        assertEquals(Tab.Home, Tab.named("listen"))
+        assertEquals(Tab.Browse, Tab.named("series"))
+        assertEquals(Tab.Stations, Tab.named("radio"))
+        assertEquals(Tab.Browse, Tab.named("plays"))
+        assertEquals(Tab.Stations, Tab.named("stations"))
+        assertEquals(null, Tab.named("surprise"))
+    }
+
     @Test
     fun stringTypedExtrasAreAccepted() {
         val doors = LaunchDoors.from(

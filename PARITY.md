@@ -92,12 +92,14 @@ When shipping any user-facing feature:
 
 | Verb | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Listen (Continue, Tonight in 19xx, shelves by rule) | 🚧 Continue, Following, then `listenShelves`; Tonight is on the Radio tab | 🚧 `listenShelves`; no Tonight | 🚧 `listenShelves`; no Tonight | 🚧 `listenShelves`; no Tonight | 🚧 `listenShelves`; no Tonight | Decision 058; R13 lists from data. Every client draws the published `listenShelves` in order (contract §5.1): This day in radio, then each genre's ids; an older catalog falls back to its own rules. No Most episodes (HUMAN-SHAPED B). Roku still reads `index/listen.json` |
-| Series (genre, network, decade, kind; runs, seasons, episodes) | 🚧 seasons as a scope, oldest first | 🚧 | 🚧 | 🚧 | 🚧 seasons, oldest first; genre, decade and network facets, three sorts, Follow | Broadcast seasons (058); oldest first (R1) |
-| Radio (evenings and genre channels on one clock) | 🚧 Tonight in 19xx from `tonight.json`; no genre channels | 🚧 Tonight; Listen live | 🚧 Tonight; ⌘3 | 🚧 Tonight; Listen live focused | 🚧 Tonight; Listen live; TV focus stops | Gaps stated, never filled (R9); floor 0.25 provisional (owner, SCRATCHPAD 4) |
-| Search (titles, people, transcript text, dates) | 🚧 word-prefix titles and people; no transcripts yet | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix | |
-| Library (followed series, queue, downloads, history) | 🚧 device-local; no downloads | 🚧 no downloads | 🚧 no downloads | 🚧 | 🚧 no downloads | Device-local until sync (M5) |
-| Plays (record a radio or stage play together) | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | Decision 059; TVs play back only |
+| Shell: Home · Browse · Stations · Surprise · Search · Library (Decision 068) | 🚧 six in the nav; old `?view=listen/series/radio/plays` rewritten to the new names | 🚧 iPhone five tabs, Surprise from Home's toolbar; iPad sidebar lists Surprise | 🚧 six sidebar sections, ⌘1 to ⌘6 | 🚧 six sidebar entries | 🚧 five tabs, Surprise from Home's top bar | Archive Watch's placement per platform; sections are verbs, never content types. Doors take the new names and still read the old |
+| Home (Continue, shelves by rule) | 🚧 Continue, Following, then `listenShelves` | 🚧 `listenShelves` | 🚧 `listenShelves` | 🚧 `listenShelves` | 🚧 `listenShelves` | Was Listen. Decision 058; R13 lists from data. Every client draws the published `listenShelves` in order (contract §5.1). No Most episodes (HUMAN-SHAPED B). Roku still reads `index/listen.json` |
+| Browse (series and plays together; kind, genre, decade, network, has a script) | 🚧 selects incl. Kind and Has a script; plays as rows | 🚧 chip row; plays as rows | 🚧 same | 🚧 series, Genre picker; no plays (TV records nothing) | 🚧 chips incl. Kind and Has a script; plays as rows (not on TV) | Was Series. Plays have no genre, decade, or network, so those narrow to series; only plays carry a script today |
+| Stations (evenings and genre stations on one clock) | 🚧 Tonight in 19xx from `tonight.json`; no genre stations | 🚧 Tonight; Listen live | 🚧 Tonight | 🚧 Tonight; Listen live focused | 🚧 Tonight; Listen live; TV focus stops | Was Radio. Gaps stated, never filled (R9); floor 0.25 provisional (owner, SCRATCHPAD 4) |
+| Surprise (a random episode, evening, and play; one tap) | 🚧 `?view=surprise` | 🚧 push from Home; iPad sidebar | 🚧 sidebar | 🚧 sidebar; no play | 🚧 Home top bar; no play on TV | Platform random, no cross-platform determinism; an evening plays its first surviving slot from the start, never a queue |
+| Search (titles, people, plays, transcript text, dates) | 🚧 word-prefix titles, people, plays; no transcripts yet | 🚧 FTS5 word-prefix; plays | 🚧 FTS5 word-prefix; plays | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix; plays (not on TV) | |
+| Library (followed series, queue, downloads, history, ear dramas) | 🚧 device-local; Ear dramas; no downloads | 🚧 Ear dramas | 🚧 Ear dramas | 🚧 no Ear dramas | 🚧 Ear dramas (not on TV) | Device-local until sync (M5) |
+| Start an ear drama (any page whose record carries a script) | 🚧 a play's page | 🚧 a play's page | 🚧 a play's page, opens its window | n/a | 🚧 a play's page | Decision 068: no Plays section; an episode with a usable script joins when the projection marks one |
 
 ---
 
@@ -124,7 +126,7 @@ When shipping any user-facing feature:
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
-| Pass the phone: record role by role on one device | 🚧 headphones confirmed by the person (a page cannot see the route); IndexedDB; not yet recorded | 🚧 built, tested; not yet recorded on a device | 🚧 own window, Recording menu; not yet recorded | n/a | 🚧 Plays tab (hidden on TV), takes as 24-bit WAV; not yet recorded | Web with headphones only; live stand-in voices never stored; 9 stage plays bundled (`catalog/plays/castable-scripts.json`), no radio play parses clean yet |
+| Pass the phone: record role by role on one device | 🚧 headphones confirmed by the person (a page cannot see the route); IndexedDB; not yet recorded | 🚧 built, tested; not yet recorded on a device | 🚧 own window, Recording menu; not yet recorded | n/a | 🚧 Start an ear drama on a play's page (not on TV), takes as 24-bit WAV; not yet recorded | Web with headphones only; live stand-in voices never stored; 9 stage plays bundled (`catalog/plays/castable-scripts.json`), no radio play parses clean yet |
 | Invite-link productions | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Sign-in required; report, block, filter |
 | Teacher classes (consent for under-13s) | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Behind the privacy policy that covers school consent |
 | Play back a finished play | 🚧 Listen through, Export as WAV | 🚧 Listen Through, Export | 🚧 Listen Through, Export | ⏳ AirPlay from a phone meanwhile | 🚧 Listen through, Export via share sheet | |
@@ -153,10 +155,10 @@ shared code only after the core five are complete.
 
 | Platform | State | First screen | Notes |
 |---|---|---|---|
-| CarPlay | 🚧 builds | Continue, Radio, Series, Downloads tabs (R17); Continue plays | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
+| CarPlay | 🚧 builds | Continue, Stations, Browse, Downloads tabs (R17); Continue plays | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
 | watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
-| Android Auto | 🚧 builds | Continue, Radio, Series, Downloads (R17); Continue plays through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
-| Android TV / Fire TV | 🚧 builds | Listen, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
+| Android Auto | 🚧 builds | Continue, Stations, Browse, Downloads (R17); Continue plays through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
+| Android TV / Fire TV | 🚧 builds | Home, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
 | Wear OS | 🚧 builds | Continue, "Waiting on the phone" | minSdk 30 (Wear OS 3); needs its own versionCode before upload |
 | webOS / Tizen | 🚧 builds (.ipk, .wgt) | Listen, D-pad focus on the first card; remote media keys; Back that walks history | Placeholder art; the .wgt was signed with the Archive Watch Samsung profile until Ear Drama has its own |
 | Roku | 🚧 builds (sideload zip) | Listen rows of series tiles from the web projection; loading, empty, error, offline | No Series screen yet; placeholder art |

@@ -47,8 +47,8 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         continueTab.emptyViewTitleVariants = ["Nothing in progress"]
         let tabs = [
             continueTab,
-            Self.placeholder("Radio", symbol: "radio"),
-            Self.placeholder("Series", symbol: "square.stack"),
+            Self.placeholder("Stations", symbol: "radio"),
+            Self.placeholder("Browse", symbol: "square.grid.2x2"),
             Self.placeholder("Downloads", symbol: "arrow.down.circle"),
         ]
         let tabBar = CPTabBarTemplate(templates: tabs)

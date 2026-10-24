@@ -47,7 +47,7 @@ pools (Suspense, most of the catalog); never for a public deploy until
 the DMCA agent is registered. To read data from another host, change
 the meta tag's `content` to that base URL.
 
-**Routes**: `?view=listen|series|search|library`, `?series={key}`
+**Routes**: `?view=home|browse|stations|surprise|search|library` (the pre-068 `listen|series|radio|plays` are rewritten to them), `?series={key}`
 (`&season=1948-49|undated`), `?item={episode id}`, `?view=search&q=`,
 `?view=library&tab=queue|history|following`. `404.html` forwards the
 path twins `/series/{key}`, `/episode/{id}`, `/search?q=`, `/library`.

@@ -372,7 +372,18 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
 .filter { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .filter select { width: 100%; }
-@media (min-width: 768px) { .filters { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.filter-check { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); align-self: end; cursor: pointer; }
+.filter-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--color-secondary); }
+@media (min-width: 768px) { .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ---- Surprise (WEB-DESIGN §4.13): three picks, each one tap from playing ---- */
+.picks { display: grid; gap: var(--space-3); }
+.pick { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); }
+.pick .section-header { margin-bottom: var(--space-2); }
+.pick-title { display: block; text-decoration: none; }
+.pick-title:hover { text-decoration: underline; }
+.pick .actions { margin-top: var(--space-3); }
+@media (min-width: 768px) { .picks { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .search-form { margin-bottom: var(--space-4); }
 

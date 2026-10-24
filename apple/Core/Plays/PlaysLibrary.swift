@@ -1,7 +1,7 @@
 #if os(iOS) || os(macOS)
 import Foundation
 
-/// The Plays tab's state: the bundled castable scripts and the productions on
+/// The ear dramas' state (Decision 068): the bundled castable scripts and the productions on
 /// this device. Created at launch, but it opens no audio and asks for nothing;
 /// the microphone is asked for only when a performer starts recording (§2.3).
 @Observable

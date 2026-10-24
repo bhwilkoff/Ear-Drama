@@ -113,10 +113,21 @@ The owner's play is the remaining check (SCRATCHPAD item 11).
 
 Every platform does the same seven things, in its own idiom.
 
-1. **Pick a play.** The Plays tab lists only scripts whose rights state is
-   `castable` (§3) and whose parse is clean. Each shows its title, author,
-   source, its number of parts, and its rights line with a link to the
-   evidence. Nothing on the list is written by a model.
+1. **Pick a play.** There is no Plays section (Decision 068, owner
+   2026-10-24: *"You should be able to re-record anything that has a
+   script. You search for something that has a script, and you should be
+   able to start a new ear drama ... the content type doesn't matter"*).
+   A play is found where anything is found: in Browse (with "Has a
+   script" as a filter), in Search, and as a pick on Surprise. Its own
+   page offers **Start an ear drama**, which opens this flow; later any
+   episode whose record carries a usable script shows the same action.
+   Only scripts whose rights state is `castable` (§3) and whose parse is
+   clean are offered. Each shows its title, author, source, its number of
+   parts, and its rights line with a link to the evidence. Nothing on it
+   is written by a model. The productions a person has recorded in or
+   joined are **Ear dramas** in Library.
+   - *Replaced*: "The Plays tab lists only scripts whose rights state is
+     `castable` ..."
 2. **Read the cast sheet.** Parts are listed largest first, with line counts
    and the scenes each appears in, using the script's own names. A part can be
    taken by anyone in the room, one person may double several small parts (a

@@ -53,11 +53,12 @@ APP_ANCHOR_RX = APP_ANCHOR_RX  # see tools/app_config.py
 # and teaches the loop to be ignored. (Other keys devharness.Grader.grade_glass
 # reads: expect_end, forbid.)
 #
-# Ear Drama's tabs (LaunchDoors.swift: listen|series|radio|plays|search|library);
+# Ear Drama's sections (LaunchDoors.swift: home|browse|stations|surprise|search|library;
+# Decision 068, the old listen|series|radio|plays still open);
 # the regexes are not yet calibrated against a device capture (SCRATCHPAD item 3).
 SCENARIOS = {
-    "listen":      {"env": {HOOK_START_TAB: "listen"}, "minutes": 0.6,
-                    "expect_any": r"Listen"},
+    "home":        {"env": {HOOK_START_TAB: "home"}, "minutes": 0.6,
+                    "expect_any": r"Home"},
     "search":      {"env": {HOOK_START_TAB: "search"}, "minutes": 0.6,
                     "expect_any": r"Search"},
     # Mute is in every launch already (DOOR_DEFAULTS); spelled out on the
@@ -67,7 +68,7 @@ SCENARIOS = {
     # The door bounds itself: the app leaves the item on its own clock.
     "door-return": {"env": {HOOK_START_ITEM: QA_ITEM_ID, HOOK_DOOR_SECONDS: "10"},
                     "minutes": 0.6, "expect_any": QA_ITEM_RX,
-                    "expect_end": r"Listen"},
+                    "expect_end": r"Home"},
 }
 
 

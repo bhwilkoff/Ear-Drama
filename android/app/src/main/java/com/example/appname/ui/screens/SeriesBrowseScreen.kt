@@ -50,15 +50,23 @@ import java.util.Locale
 
 private const val PAGE = 200
 
+/** What Browse lists (Decision 068): radio series, stage plays, or both. */
+private enum class BrowseKind(val label: String) { Series("Series"), Plays("Plays") }
+
 /**
- * Series (§4.2): browse by network, decade, and genre, in one of the web's
- * three orders (§5 `seriesBrowse`; the listener drives it, so no
- * `recommendAnd`). Every facet comes from the data, each counted against the
- * others' selection, so no choice offered yields zero rows.
+ * Browse (§4.2; was Series): radio series and stage plays together, by kind,
+ * "Has a script", network, decade, and genre, in one of the web's three orders
+ * (§5 `seriesBrowse`; the listener drives it, so no `recommendAnd`). Every
+ * series facet comes from the data, each counted against the others'
+ * selection. A play carries no genre, decade, or network, so setting one
+ * narrows to series; only plays carry a script today. No plays on a TV.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
+fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) -> Unit) {
+    var kind by rememberSaveable { mutableStateOf<BrowseKind?>(null) }
+    var hasScript by rememberSaveable { mutableStateOf(false) }
+    val allPlays = rememberCastablePlays()
     var genre by rememberSaveable { mutableStateOf<String?>(null) }
     var decade by rememberSaveable { mutableStateOf<Int?>(null) }
     var network by rememberSaveable { mutableStateOf<String?>(null) }
@@ -71,7 +79,9 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
     val series by rememberCatalogQuery(genre, decade, network, sort, pages) { db ->
         db.seriesBrowse(BrowseFilter(genre = genre, network = network, decade = decade, sort = sort), limit = PAGE * pages)
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("Series") }) }) { padding ->
+    val showsSeries = kind != BrowseKind.Plays && !hasScript
+    val plays = if (kind != BrowseKind.Series && genre == null && decade == null && network == null) allPlays else emptyList()
+    Scaffold(topBar = { TopAppBar(title = { Text("Browse") }) }) { padding ->
         LoadableContent(series, Modifier.padding(padding)) { rows ->
             val listState = rememberLazyListState()
             val nearEnd by remember {
@@ -93,6 +103,25 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
                         contentPadding = PaddingValues(horizontal = Spacing.S4.dp),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
                     ) {
+                        if (allPlays.isNotEmpty()) {
+                            item(key = "kind") {
+                                MenuChip(
+                                    label = kind?.label ?: "Kind",
+                                    selected = kind != null,
+                                    choices = listOf<Pair<BrowseKind?, String>>(null to "Any kind") +
+                                        BrowseKind.entries.map { it to it.label },
+                                    onChoose = { if (it != kind) { kind = it; haptics(Haptic.Selection) } },
+                                )
+                            }
+                            item(key = "script") {
+                                FilterChip(
+                                    selected = hasScript,
+                                    onClick = { hasScript = !hasScript; haptics(Haptic.Selection) },
+                                    label = { Text("Has a script") },
+                                    modifier = Modifier.tvFocusMark(),
+                                )
+                            }
+                        }
                         item(key = "sort") {
                             MenuChip(
                                 label = sort.label,
@@ -133,11 +162,15 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit) {
                         }
                     }
                 }
-                if (rows.isEmpty()) {
-                    item(key = "empty") { EmptyMessage("No series match these filters.") }
+                val seriesRows = if (showsSeries) rows else emptyList()
+                if (seriesRows.isEmpty() && plays.isEmpty()) {
+                    item(key = "empty") { EmptyMessage("Nothing matches these filters.") }
                 }
-                items(rows, key = { it.key }) { row ->
+                items(seriesRows, key = { it.key }) { row ->
                     SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
+                }
+                items(plays, key = { "play:" + it.id }) { script ->
+                    PlayListItem(script, onOpen = { onOpenScript(script.id) })
                 }
             }
         }

@@ -115,53 +115,54 @@ const PlaysUI = (() => {
     body.replaceChildren(h.stateBox(h.problem(err), { retry }));
   }
 
-  /* ---- Pick a play (§2.1) ---- */
+  /* ---- Library's Ear dramas (WEB-DESIGN §4.7; Decision 068): this browser's productions ---- */
 
-  async function renderList(body, my) {
-    h.setTitle('Plays');
-    $('plays-h').textContent = 'Plays';
+  async function renderMine(body, helpers) {
+    h = helpers;
+    const my = ++token;
     body.replaceChildren(h.stateBox('loading'));
-    let scripts;
     try {
-      [scripts] = await Promise.all([API.castableScripts(), openStore()]);
+      await openStore();
     } catch (err) {
-      if (my === token) failBox(body, err, () => renderList(body, my));
+      if (my === token) failBox(body, err, () => renderMine(body, helpers));
       return;
     }
     if (my !== token) return;
-    body.replaceChildren();
     const mine = store.productions;
-    if (mine.length) {
-      const ul = h.el('ul', { class: 'play-list', 'aria-labelledby': 'plays-mine-h' });
-      for (const p of mine) {
-        const script = await store.script(p);
-        if (my !== token) return;
-        ul.append(h.el('li', { class: 'play-row' },
-          h.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(p.id)}` },
-            h.el('span', { class: 'body-strong' }, p.title),
-            h.el('span', { class: 'caption' }, progressLine(p, script)))));
-      }
-      body.append(h.el('section', { class: 'block' },
-        h.el('h2', { class: 'section-header', id: 'plays-mine-h' }, 'Your plays'), ul));
+    if (!mine.length) { body.replaceChildren(h.stateBox('empty', { text: 'No ear dramas yet.' })); return; }
+    const ul = h.el('ul', { class: 'play-list' });
+    for (const p of mine) {
+      const script = await store.script(p);
+      if (my !== token) return;
+      ul.append(h.el('li', { class: 'play-row' },
+        h.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(p.id)}` },
+          h.el('span', { class: 'body-strong' }, p.title),
+          h.el('span', { class: 'caption' }, progressLine(p, script)))));
     }
-    const section = h.el('section', { class: 'block' },
-      h.el('h2', { class: 'section-header', id: 'plays-cast-h' }, 'Plays you can cast'));
-    if (!scripts.length) {
-      section.append(h.stateBox('empty', { text: 'No plays to cast yet.' }));
-    } else {
-      const ul = h.el('ul', { class: 'play-list', 'aria-labelledby': 'plays-cast-h' });
-      for (const script of scripts) {
-        const parts = C.castParts(script).filter(x => C.isSpeaking(x.id)).length;
-        ul.append(h.el('li', { class: 'play-row' },
-          h.el('a', { class: 'play-link', href: `?play=${encodeURIComponent(script.id)}` },
-            h.el('span', { class: 'body-strong' }, script.title),
-            h.el('span', { class: 'caption' },
-              [C.authorLine(script), `${num.format(parts)} parts`].filter(Boolean).join(' · '))),
-          rightsLine(script)));
+    body.replaceChildren(ul);
+  }
+
+  /* ---- Start an ear drama (§2.1): a play's page and Surprise both offer it ---- */
+
+  function startButton(script, helpers) {
+    h = h || helpers;
+    const box = helpers.el('span', { class: 'start-drama' });
+    const error = helpers.el('span', { class: 'caption refusal', role: 'alert' });
+    const start = helpers.el('button', { type: 'button', class: 'btn btn-accent', onclick: async () => {
+      start.disabled = true;
+      try {
+        await openStore();
+        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+        const p = await store.create(script);
+        helpers.navigate(`?production=${encodeURIComponent(p.id)}`, $('view-plays').hidden === false);
+      } catch (err) {
+        console.error(err);
+        error.textContent = 'This browser could not save a production.';
+        start.disabled = false;
       }
-      section.append(ul);
-    }
-    body.append(section);
+    } }, 'Start an ear drama');
+    box.append(start, error);
+    return box;
   }
 
   /* ---- A play: its rights and parts ---- */
@@ -177,30 +178,16 @@ const PlaysUI = (() => {
     }
     if (my !== token) return;
     if (!script) {
-      $('plays-h').textContent = 'Plays';
+      $('plays-h').textContent = 'Ear drama';
       body.replaceChildren(h.stateBox('missing'));
       return;
     }
-    h.setTitle(script.title, 'Plays');
+    h.setTitle(script.title);
     $('plays-h').textContent = script.title;
-    const error = h.el('p', { class: 'caption refusal', role: 'alert' });
-    const cast = h.el('button', { type: 'button', class: 'btn btn-accent', onclick: async () => {
-      cast.disabled = true;
-      try {
-        await openStore();
-        if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-        const p = await store.create(script);
-        h.navigate(`?production=${encodeURIComponent(p.id)}`, true);
-      } catch (err) {
-        console.error(err);
-        error.textContent = 'This browser could not save a production.';
-        cast.disabled = false;
-      }
-    } }, 'Cast this play');
     const author = C.authorLine(script);
     body.replaceChildren(
       h.el('div', { class: 'page-head' }, author ? h.el('p', { class: 'body' }, author) : null, rightsLine(script)),
-      h.el('div', { class: 'actions' }, cast), error,
+      h.el('div', { class: 'actions ear-drama-only' }, startButton(script, h)),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
         h.el('ul', { class: 'part-list', 'aria-labelledby': 'play-parts-h' },
@@ -219,7 +206,7 @@ const PlaysUI = (() => {
   }
 
   function notOnDevice(body) {
-    $('plays-h').textContent = 'Plays';
+    $('plays-h').textContent = 'Ear drama';
     body.replaceChildren(h.stateBox('empty', { text: 'This production is not in this browser.' }));
   }
 
@@ -233,7 +220,7 @@ const PlaysUI = (() => {
     if (!got) return;
     const { p, script } = got;
     if (!p || !script) { notOnDevice(body); return; }
-    h.setTitle(p.title, 'Plays');
+    h.setTitle(p.title);
     $('plays-h').textContent = p.title;
 
     const refusal = h.el('p', { class: 'caption refusal', role: 'alert' });
@@ -294,7 +281,7 @@ const PlaysUI = (() => {
       if (!confirm(`Delete ${p.title}? Every take is removed from this browser.`)) return;
       if (mix && mix.id === id) { URL.revokeObjectURL(mix.url); mix = null; }
       await store.delete(id);
-      h.navigate('?view=plays', true);
+      h.navigate('?view=library&tab=dramas', true);
     } }, 'Delete production'));
 
     body.replaceChildren(
@@ -393,7 +380,7 @@ const PlaysUI = (() => {
     const { p, script } = got;
     if (!p || !script || !C.castParts(script).some(x => x.id === part)) { notOnDevice(body); return; }
     const title = C.partTitle(part);
-    h.setTitle(title, p.title, 'Plays');
+    h.setTitle(title, p.title);
     $('plays-h').textContent = title;
     const back = h.el('a', { class: 'eyebrow-link section-header', href: `?production=${encodeURIComponent(id)}` }, p.title);
     if (C.stateOf(p, part).status !== 'recording') {
@@ -600,9 +587,8 @@ const PlaysUI = (() => {
     if (!(id && part && rec && rec.key === `${id} ${part}`)) leave();
     if (id && part) return renderPart(body, my, id, part);
     if (id) return renderProduction(body, my, id);
-    if (r.p.get('play')) return renderScript(body, my, r.p.get('play'));
-    return renderList(body, my);
+    return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, leave };
+  return { render, renderMine, startButton, leave };
 })();

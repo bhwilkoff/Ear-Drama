@@ -27,6 +27,7 @@ import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.downloadsSection
 import com.example.appname.ui.formatClock
@@ -38,11 +39,19 @@ private data class LibraryLists(
     val following: List<SeriesRow>,
 )
 
-/** Library: what the listener started, downloaded, played to the end, and follows (§4.6). */
+/** Library: what the listener started, downloaded, played to the end, follows, and recorded (§4.6). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit, onListenTogether: () -> Unit) {
+fun LibraryScreen(
+    onOpenEpisode: (String) -> Unit,
+    onOpenSeries: (String) -> Unit,
+    onOpenProduction: (String) -> Unit,
+    onListenTogether: () -> Unit,
+) {
     val container = LocalAppContainer.current
+    val allProductions by container.plays.store.productions.collectAsState()
+    // A TV records nothing (PLAYS-DESIGN §2), so it lists no ear dramas.
+    val productions = if (LocalIsTelevision.current) emptyList() else allProductions
     val lists by rememberCatalogQuery(watchUser = true) { db ->
         val progress = container.user.inProgress(limit = 100)
         val byId = progress.associateBy { it.episodeId }
@@ -59,7 +68,7 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Uni
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
             if (library.inProgress.isEmpty() && library.finished.isEmpty() && library.following.isEmpty() &&
-                downloadRecords.isEmpty()
+                downloadRecords.isEmpty() && productions.isEmpty()
             ) {
                 Column(Modifier.padding(padding)) {
                     AccountRow()
@@ -111,6 +120,7 @@ fun LibraryScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Uni
                         SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
                     }
                 }
+                earDramasSection(productions, onOpenProduction)
             }
         }
     }

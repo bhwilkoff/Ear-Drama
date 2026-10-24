@@ -26,10 +26,10 @@ struct ContentView_macOS: View {
             NavigationStack(path: store.path(for: store.selectedTab)) {
                 Group {
                     switch store.selectedTab {
-                    case .listen: ListenScreen()
-                    case .series: SeriesBrowseScreen()
-                    case .radio: RadioScreen()
-                    case .plays: PlaysScreen()
+                    case .home: ListenScreen()
+                    case .browse: SeriesBrowseScreen()
+                    case .stations: RadioScreen()
+                    case .surprise: SurpriseScreen()
                     case .search: SearchScreen_macOS()
                     case .library: LibraryScreen()
                     }

@@ -40,7 +40,7 @@ class CarLibraryTest {
         val out = mutableListOf<String>()
         val top = lib.children(CarLibrary.ROOT) ?: return listOf("the root has no children")
         val titles = top.map { it.title }
-        if (titles != listOf("Continue", "Radio", "Series", "Downloads")) out += "top level is $titles"
+        if (titles != listOf("Continue", "Stations", "Browse", "Downloads")) out += "top level is $titles"
         for (tab in top) {
             val tabMeta = tab.toMediaItem().mediaMetadata
             if (tabMeta.isBrowsable != true || tabMeta.isPlayable == true) out += "${tab.title} is not a folder"
@@ -103,7 +103,7 @@ class CarLibraryTest {
 
     @Test fun `children page`() = runBlocking {
         val lib = library()
-        assertEquals(listOf("Series", "Downloads"), lib.children(CarLibrary.ROOT, page = 1, pageSize = 2)!!.map { it.title })
+        assertEquals(listOf("Browse", "Downloads"), lib.children(CarLibrary.ROOT, page = 1, pageSize = 2)!!.map { it.title })
         assertEquals(emptyList<CarNode>(), lib.children(CarLibrary.ROOT, page = 2, pageSize = 2))
     }
 

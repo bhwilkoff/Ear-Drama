@@ -1,16 +1,19 @@
 /**
  * Ear Drama on the web: the views, the router, and the player's face.
  *
- * Routes (every view has a URL; the https twins of the apps' links):
- *   ?view=listen                      Listen (also the bare site)
- *   ?view=series&genre=&decade=&network=&sort=   Series browse
- *   ?view=radio                       Radio: Tonight in 19xx on the one clock
+ * Routes (every view has a URL; the https twins of the apps' links). The six
+ * sections are actions (Decision 068, WEB-DESIGN §4.1):
+ *   ?view=home                        Home (also the bare site)
+ *   ?view=browse&kind=&script=1&genre=&decade=&network=&sort=   Browse: series and plays
+ *   ?view=stations                    Stations: Tonight in 19xx on the one clock
+ *   ?view=surprise                    Surprise: three random picks
  *   ?series={key}&season={1948-49|undated}       a series page
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
- *   ?view=library&tab=queue|history|following    Library (this device)
- *   ?view=plays                       Plays (js/plays-ui.js); ?play={script id},
- *   ?production={id}, ?production={id}&part={part id}  (this browser only)
+ *   ?view=library&tab=queue|history|following|dramas    Library (this device)
+ *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
+ *                                     an ear drama (js/plays-ui.js; this browser only)
+ * The names before 068 (listen, series, radio, plays) are rewritten in place.
  *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
  * Path twins (/series/{key}, /episode/{id}, /search?q=) are forwarded into
  * these by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
@@ -29,9 +32,15 @@
   'use strict';
 
   const $ = (id) => document.getElementById(id);
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'radio', 'plays', 'search', 'library'];
-  const TAB_OF = { listen: 'listen', series: 'series', show: 'series', episode: 'series', radio: 'radio',
-                   plays: 'plays', search: 'search', library: 'library' };
+  /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
+     view-radio Stations); the URL and the nav use the section names. */
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'radio', 'surprise', 'plays', 'search', 'library'];
+  const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', search: 'search',
+                    library: 'library' };
+  const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', radio: 'stations',
+                   surprise: 'surprise', plays: 'browse', search: 'search', library: 'library' };
+  /** Decision 068's renames: an old ?view= opens the new section, and the address is rewritten. */
+  const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'browse' };
   const PAGE = 60;
 
   /* ================================================================
@@ -107,6 +116,8 @@
     return ep.num !== null && ep.num !== undefined ? `No. ${ep.num}` : 'Untitled';
   }
   function plural(n, one, many) { return `${num.format(n)} ${n === 1 ? one : many}`; }
+  /** The smart-TV layer (tv.js) is on: TVs play back only, so nothing here starts an ear drama. */
+  const onTV = () => document.documentElement.classList.contains('tv');
   function seriesMeta(s) {
     return [s.networks, years(s.first, s.last), s.episodes ? plural(s.episodes, 'episode', 'episodes') : null]
       .filter(Boolean).join(' · ');
@@ -215,9 +226,13 @@
     if (p.get('item')) return { view: 'episode', id: p.get('item'), p };
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
-    const v = p.get('view');
-    if (['series', 'radio', 'plays', 'search', 'library', 'listen'].includes(v)) return { view: v, p };
-    return { view: 'listen', p };
+    const old = p.get('view');
+    if (RENAMED[old]) {
+      if (old === 'plays') p.set('kind', 'plays');
+      p.set('view', RENAMED[old]);
+      history.replaceState(null, '', `?${p}${location.hash}`);
+    }
+    return { view: VIEW_OF[p.get('view')] || 'listen', p };
   }
 
   let firstRoute = true;
@@ -225,14 +240,17 @@
     takeRoomLink();
     const r = parseRoute();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
+    // A production is the person's own, so it sits under Library; a play's page under Browse.
+    const tab = r.view === 'plays' && r.p.get('production') ? 'library' : TAB_OF[r.view];
     document.querySelectorAll('[data-nav]').forEach(a => {
-      const on = a.dataset.nav === TAB_OF[r.view];
+      const on = a.dataset.nav === tab;
       a.classList.toggle('active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     if (r.view !== 'plays') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode,
-       radio: renderRadio, plays: renderPlays, search: renderSearch, library: renderLibrary })[r.view](r);
+       radio: renderRadio, surprise: renderSurprise, plays: renderPlays, search: renderSearch,
+       library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
       const h = $(`view-${r.view}`).querySelector('h1');
@@ -413,7 +431,7 @@
   let radioTimer = null;
 
   function renderRadio() {
-    setTitle('Radio');
+    setTitle('Stations');
     const body = $('radio-body');
     clearInterval(radioTimer);
     load(body, async () => {
@@ -511,11 +529,33 @@
   const decadeOf = (s) => (s.first ? `${s.first.slice(0, 3)}0` : null);
   const networksOf = (s) => (s.networks ? s.networks.split(', ') : []);
 
+  /* Browse lists series and plays together (WEB-DESIGN §4.3). A play's record carries no genre,
+     decade, or network, so any of those narrows to series; "Has a script" keeps what carries one. */
   function browseFilter(rows, f, skip) {
-    return rows.filter(s => (skip === 'genre' || !f.genre || s.genre === f.genre)
+    return rows.filter(s => (skip === 'kind' || !f.kind || s.kind === f.kind)
+      && (skip === 'script' || !f.script || s.hasScript)
+      && (skip === 'genre' || !f.genre || s.genre === f.genre)
       && (skip === 'decade' || !f.decade || decadeOf(s) === f.decade)
       && (skip === 'network' || !f.network || networksOf(s).includes(f.network)));
   }
+
+  /** A castable script as a Browse row (contract: castable-scripts.json, read through API). */
+  function playItem(script) {
+    return { kind: 'plays', hasScript: true, key: script.id, name: script.title, script,
+             author: PlaysCore.authorLine(script), episodes: 0, first: null, genre: null, networks: null };
+  }
+  function playMeta(script) {
+    const parts = PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length;
+    return [PlaysCore.authorLine(script), plural(parts, 'part', 'parts')].filter(Boolean).join(' · ');
+  }
+  function playRow(script) {
+    return el('li', { class: 'series-row ear-drama-only' },
+      el('a', { href: `?play=${encodeURIComponent(script.id)}` },
+        el('span', { class: 'body-strong' }, script.title),
+        el('span', { class: 'caption' }, playMeta(script))));
+  }
+  /** The plays, or none when the file does not load: Browse and Search still list the series. */
+  const castable = () => API.castableScripts().catch((err) => { console.error(err); return []; });
 
   function fillSelect(sel, allLabel, counts, current, label = (k) => k) {
     sel.replaceChildren(el('option', { value: '' }, allLabel));
@@ -525,15 +565,17 @@
   }
 
   function renderBrowse(r) {
-    setTitle('Series');
-    const f = { genre: r.p.get('genre') || '', decade: r.p.get('decade') || '', network: r.p.get('network') || '',
-                sort: r.p.get('sort') || 'name' };
+    setTitle('Browse');
+    const kind = ['series', 'plays'].includes(r.p.get('kind')) ? r.p.get('kind') : '';
+    const f = { kind, script: r.p.get('script') === '1', genre: r.p.get('genre') || '', decade: r.p.get('decade') || '',
+                network: r.p.get('network') || '', sort: r.p.get('sort') || 'name' };
     const body = $('browse-body');
     $('f-sort').value = f.sort;
+    $('f-script').checked = f.script;
     load(body, async () => {
-      const [idx, m] = await Promise.all([API.seriesIndex(), API.manifest()]);
+      const [idx, m, scripts] = await Promise.all([API.seriesIndex(), API.manifest(), onTV() ? [] : castable()]);
       manifest = m;
-      return idx;
+      return { rows: [...idx.rows.map(s => ({ ...s, kind: 'series', hasScript: false })), ...scripts.map(playItem)] };
     }, ({ rows }) => {
       const count = (list, fn) => {
         const c = new Map();
@@ -541,6 +583,11 @@
         return c;
       };
       const byCount = (c) => new Map([...c].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(b[0])));
+      const kinds = count(browseFilter(rows, f, 'kind'), s => s.kind);
+      fillSelect($('f-kind'), 'Any kind', new Map(['series', 'plays'].filter(k => kinds.has(k)).map(k => [k, kinds.get(k)])),
+        f.kind, k => (k === 'plays' ? 'Plays' : 'Series'));
+      const scripted = browseFilter(rows, f, 'script').filter(s => s.hasScript).length;
+      $('f-script-label').textContent = `Has a script (${num.format(scripted)})`;
       fillSelect($('f-genre'), 'All genres', byCount(count(browseFilter(rows, f, 'genre'), s => s.genre)), f.genre,
         k => manifest.genreNames[k] || k);
       const dec = count(browseFilter(rows, f, 'decade'), decadeOf);
@@ -555,14 +602,16 @@
         first: (a, b) => (a.first || '9999').localeCompare(b.first || '9999') || a.name.localeCompare(b.name),
       };
       list.sort(sorters[f.sort] || sorters.name);
-      $('browse-count').textContent = plural(list.length, 'series', 'series');
-      if (!list.length) { body.append(stateBox('empty', { text: 'No series match these filters.' })); return; }
+      const plays = list.filter(s => s.kind === 'plays').length;
+      $('browse-count').textContent = [list.length - plays ? plural(list.length - plays, 'series', 'series') : null,
+        plays ? plural(plays, 'play', 'plays') : null].filter(Boolean).join(' · ') || plural(0, 'series', 'series');
+      if (!list.length) { body.append(stateBox('empty', { text: 'Nothing matches these filters.' })); return; }
       const ul = el('ul', { class: 'series-list' });
       body.append(ul);
       let shown = 0;
       const more = el('button', { type: 'button', class: 'btn btn-ghost' }, 'Show more');
       const page = () => {
-        list.slice(shown, shown + PAGE).forEach(s => ul.append(seriesRow(s)));
+        list.slice(shown, shown + PAGE).forEach(s => ul.append(s.kind === 'plays' ? playRow(s.script) : seriesRow(s)));
         shown += PAGE;
         if (shown >= list.length) more.remove();
       };
@@ -573,11 +622,12 @@
   }
 
   $('browse-filters').addEventListener('change', () => {
-    const p = new URLSearchParams({ view: 'series' });
-    for (const k of ['genre', 'decade', 'network', 'sort']) {
+    const p = new URLSearchParams({ view: 'browse' });
+    for (const k of ['kind', 'genre', 'decade', 'network', 'sort']) {
       const v = $(`f-${k}`).value;
       if (v && !(k === 'sort' && v === 'name')) p.set(k, v);
     }
+    if ($('f-script').checked) p.set('script', '1');
     navigate(`?${p}`, true);
   });
 
@@ -632,7 +682,7 @@
         el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta,
         el('div', { class: 'actions' }, followBtn, shareBtn));
       if (s.genre) {
-        genreName(s.genre).then(n => meta.prepend(el('a', { href: `?view=series&genre=${encodeURIComponent(s.genre)}` }, n),
+        genreName(s.genre).then(n => meta.prepend(el('a', { href: `?view=browse&genre=${encodeURIComponent(s.genre)}` }, n),
           ' · '));
       }
       body.append(head);
@@ -775,6 +825,14 @@
   let searchSeq = 0;
   let searchTimer = null;
 
+  /** Word-prefix, as everywhere (WEB-DESIGN §4.6): every query word begins a word of the title or author. */
+  function scriptsMatching(scripts, words) {
+    return scripts.filter(s => {
+      const have = API.tokens(`${s.title} ${PlaysCore.authorLine(s)}`);
+      return words.every(w => have.some(h => h.startsWith(w)));
+    });
+  }
+
   function renderSearch(r) {
     setTitle('Search');
     const q = r.p.get('q') || '';
@@ -790,10 +848,12 @@
     if (!words.length) { body.replaceChildren(); return; }
     body.replaceChildren(stateBox('loading'));
     try {
-      const [series, numbers] = await Promise.all([API.searchSeries(q), API.searchEpisodeNumbers(q)]);
+      const [series, numbers, scripts] = await Promise.all([API.searchSeries(q), API.searchEpisodeNumbers(q),
+        onTV() ? [] : castable()]);
       if (seq !== searchSeq) return;
+      const plays = scriptsMatching(scripts, words);
       body.replaceChildren();
-      if (!series.total && !numbers.length) {
+      if (!series.total && !numbers.length && !plays.length) {
         body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }));
         return;
       }
@@ -802,6 +862,12 @@
           el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rs-h' }, 'Series'),
             el('span', { class: 'caption' }, plural(series.total, 'series', 'series'))),
           el('ul', { class: 'series-list' }, series.rows.map(seriesRow))));
+      }
+      if (plays.length) {
+        body.append(el('section', { class: 'block', 'aria-labelledby': 'rp-h' },
+          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rp-h' }, 'Plays'),
+            el('span', { class: 'caption' }, plural(plays.length, 'play', 'plays'))),
+          el('ul', { class: 'series-list' }, plays.map(playRow))));
       }
       if (numbers.length) {
         const { byKey } = await API.seriesIndex();
@@ -855,9 +921,83 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
+  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce };
   function renderPlays(r) {
-    PlaysUI.render(r, { el, icon, stateBox, problem, setTitle, navigate, announce });
+    PlaysUI.render(r, playsHelpers);
   }
+
+  /* ================================================================
+     SURPRISE (WEB-DESIGN §4.13): an episode, an evening, a play, drawn at random
+  ================================================================ */
+
+  const pickOf = (list) => list[Math.floor(Math.random() * list.length)];
+
+  /** A recommendable episode with a recording: a random day file (recommendAnd applied at build). */
+  async function randomEpisode() {
+    for (let tries = 0; tries < 6; tries++) {
+      const d = new Date(2024, 0, 1 + Math.floor(Math.random() * 366));
+      const rows = (await API.thisDay(d)).filter(e => e.url);
+      if (rows.length) return pickOf(rows);
+    }
+    return null;
+  }
+
+  /** One published evening and its first surviving slot the catalog serves. */
+  async function randomEvening() {
+    const file = await API.tonightFile();
+    const days = file ? Object.values(file.days || {}) : [];
+    if (!days.length) return null;
+    const day = pickOf(days);
+    for (const s of day.slots) {
+      if (!s.episode) continue;
+      const d = await API.episodeDetail(s.episode.id).catch(() => null);
+      if (d && d.recordings.length) return { day, first: cardOf(d, s.episode.series) };
+    }
+    return { day, first: null };
+  }
+
+  function pickBox(title, ...children) {
+    return el('section', { class: 'pick' }, el('h2', { class: 'section-header' }, title), ...children);
+  }
+
+  function renderSurprise() {
+    setTitle('Surprise');
+    const body = $('surprise-body');
+    load(body, () => Promise.all([
+      randomEpisode().catch((err) => { console.error(err); return null; }),
+      randomEvening().catch((err) => { console.error(err); return null; }),
+      onTV() ? [] : castable(),
+    ]), ([ep, evening, scripts]) => {
+      const picks = el('div', { class: 'picks' });
+      if (ep) {
+        const card = { ...ep, title: epTitle(ep) };
+        picks.append(pickBox('An episode',
+          el('a', { class: 'pick-title body-strong', href: `?item=${encodeURIComponent(ep.id)}` }, epTitle(ep)),
+          el('p', { class: 'caption' }, [ep.seriesName, ep.date].filter(Boolean).join(' · ')),
+          el('div', { class: 'actions' }, el('button', { type: 'button', class: 'btn btn-primary',
+            onclick: () => Player.load(card) }, icon('play'), 'Play'))));
+      }
+      if (evening) {
+        const { day, first } = evening;
+        picks.append(pickBox('An evening',
+          el('p', { class: 'body-strong' }, fmtLongDate(day.evening)),
+          el('p', { class: 'caption' }, [day.network, day.station].filter(Boolean).join(' · ')),
+          first ? el('p', { class: 'caption' }, [first.seriesName, first.title].filter(Boolean).join(' · ')) : null,
+          first ? el('div', { class: 'actions' }, el('button', { type: 'button', class: 'btn btn-primary',
+            onclick: () => { if (live) stopLive(); Player.load(first); } }, icon('play'), 'Play')) : null));
+      }
+      if (scripts.length) {
+        const script = pickOf(scripts);
+        picks.append(pickBox('A play',
+          el('a', { class: 'pick-title body-strong', href: `?play=${encodeURIComponent(script.id)}` }, script.title),
+          el('p', { class: 'caption' }, playMeta(script)),
+          el('div', { class: 'actions' }, PlaysUI.startButton(script, playsHelpers))));
+      }
+      if (!picks.children.length) { body.append(stateBox('empty', { text: 'Nothing to pick from yet.' })); return; }
+      body.append(picks);
+    });
+  }
+  $('surprise-again').addEventListener('click', () => { renderSurprise(); announce('Shuffled'); });
 
   /* ================================================================
      LIBRARY (this device)
@@ -867,7 +1007,7 @@
     setTitle('Library');
     AccountUI.paintRow($('account-row'));
     TogetherUI.paintRow($('together-row'));
-    const tab =['queue', 'history', 'following'].includes(r.p.get('tab')) ? r.p.get('tab') : 'queue';
+    const tab = ['queue', 'history', 'following', 'dramas'].includes(r.p.get('tab')) ? r.p.get('tab') : 'queue';
     document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
     const body = $('library-body');
@@ -897,6 +1037,8 @@
         el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
           if (confirm('Clear your listening history and resume points on this device?')) { Store.clearHistory(); route(); }
         } }, 'Clear history'));
+    } else if (tab === 'dramas') {
+      PlaysUI.renderMine(body, playsHelpers);
     } else {
       const f = Store.follows();
       if (!f.length) { body.append(stateBox('empty', { text: 'Not following any series.' })); return; }
@@ -1067,7 +1209,7 @@
   if (params.get('mute') === '1') Player.setMuted(true);
   Player.setRate(Store.rate());
   const doorSeconds = Number(params.get('door_seconds'));
-  if (doorSeconds > 0) setTimeout(() => navigate('?view=listen'), doorSeconds * 1000);
+  if (doorSeconds > 0) setTimeout(() => navigate('?view=home'), doorSeconds * 1000);
   /* Offline (WEB-DESIGN §7.3): a status line while the browser reports no network; what was
      opened before still opens from the service worker's copies. */
   const paintOnline = () => { $('offline-note').hidden = navigator.onLine !== false; };

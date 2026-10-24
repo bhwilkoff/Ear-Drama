@@ -49,7 +49,7 @@ TOOLS = Path(__file__).resolve().parent
 # The smoke set is the surfaces every platform shares, so a red cell means the
 # SAME feature broke somewhere — that is what makes the matrix readable.
 # Every name must be a scenario its runner lists (--list).
-SMOKE = ["listen", "search", "item"]
+SMOKE = ["home", "search", "item"]
 
 # platform -> how to run it. "only" runners batch their own scenarios (--only);
 # device runners take one --scenario at a time and a --device bench name.

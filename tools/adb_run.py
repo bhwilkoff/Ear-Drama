@@ -85,8 +85,8 @@ TV_PLATFORMS = ("androidtv", "firetv")
 # whose known debug-build failure is not a regression (e.g. Play Billing returns
 # no products for a debug package that is not Play-registered).
 SCENARIOS = {
-    "listen":      {"extras": {android_extra(HOOK_START_TAB): ("es", "listen")}, "minutes": 0.6,
-                    "expect_any": r"Listen"},
+    "home":        {"extras": {android_extra(HOOK_START_TAB): ("es", "home")}, "minutes": 0.6,
+                    "expect_any": r"Home"},
     "search":      {"extras": {android_extra(HOOK_START_TAB): ("es", "search")}, "minutes": 0.6,
                     "expect_any": r"Search"},
     # Mute is in every launch already (ANDROID_DOOR_EXTRAS); spelled out on the
@@ -98,7 +98,7 @@ SCENARIOS = {
     "door-return": {"extras": {android_extra(HOOK_START_ITEM): ("es", QA_ITEM_ID),
                                android_extra(HOOK_DOOR_SECONDS): ("ei", "10")},
                     "minutes": 0.6, "expect_any": QA_ITEM_RX,
-                    "expect_end": r"Listen"},
+                    "expect_end": r"Home"},
 }
 
 _ENTRY = {}

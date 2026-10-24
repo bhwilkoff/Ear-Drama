@@ -395,6 +395,20 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         return shelves.filter { it.rows.isNotEmpty() }
     }
 
+    /**
+     * Surprise's episode (ANDROID-DESIGN §4.14): one served episode with a
+     * recording, at random. It chooses for the listener, so `recommendAnd`.
+     * SQLite's own random(): nothing needs to match another device.
+     */
+    suspend fun randomEpisode(): EpisodeRow? = read {
+        queryRaw(
+            "SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE EXISTS " +
+                "(SELECT 1 FROM recordings r WHERE r.episode_id = e.id)$RECOMMEND_AND ORDER BY random() LIMIT 1",
+            emptyList(),
+            ::episodeRow,
+        ).firstOrNull()
+    }
+
     /** §5 `shelf`: a Listen shelf, always with `recommendAnd`. */
     suspend fun shelf(rule: ShelfRule, limit: Int = 30): List<EpisodeRow> = read {
         when (rule) {

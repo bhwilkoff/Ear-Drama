@@ -353,6 +353,22 @@ struct CatalogQueryTests {
         #expect(db.episodeDetail(id: flagged) != nil)
     }
 
+    /// Surprise's episode chooses for the listener: drawn many times it never
+    /// lands on a never-recommended episode, and with the flag cleared it can.
+    @Test func randomEpisodeAppliesRecommendAnd() throws {
+        let flagged = "speeches|1944-05-25"
+        let served = Set(Fixture.episodes.map(\.id))
+        let cleared = try Fixture.open(clearNoRecommend: true)
+        let clearedDraws = Set((0..<400).compactMap { _ in cleared.randomEpisode()?.id })
+        #expect(clearedDraws.contains(flagged))
+        let db = try Fixture.open()
+        let draws = (0..<400).compactMap { _ in db.randomEpisode()?.id }
+        #expect(draws.count == 400)
+        #expect(!draws.contains(flagged))
+        #expect(Set(draws).isSubset(of: served))
+        #expect(Set(draws).count > 1)
+    }
+
     @Test func genreShelfIsEachSeriesFirstEpisode() throws {
         let db = try Fixture.open()
         #expect(db.shelf(.genreFirsts("mystery")).map(\.id) == ["suspense|1942-06-17"])

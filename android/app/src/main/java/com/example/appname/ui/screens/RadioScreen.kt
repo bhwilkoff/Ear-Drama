@@ -110,7 +110,7 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
     val failed = load is RadioLoad.Failed
     LaunchedEffect(failed) { if (failed) haptics(Haptic.Error) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Radio") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Stations") }) }) { padding ->
         when (val state = load) {
             RadioLoad.Loading -> CenteredBox(Modifier.padding(padding)) {
                 CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
