@@ -24,7 +24,11 @@ final class AppDelegate_iOS: NSObject, UIApplicationDelegate {
         options: UIScene.ConnectionOptions
     ) -> UISceneConfiguration {
         guard connectingSceneSession.role == .carTemplateApplication else {
-            return connectingSceneSession.configuration
+            // A fresh configuration, never `connectingSceneSession.configuration`: that one already
+            // names SwiftUI's AppSceneDelegate, and handing it back makes SwiftUI wrap its own
+            // delegate, recursing in responds(to:) until the stack overflows at launch (seen on an
+            // iPhone 12, TestFlight 1.0.59).
+            return UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
         }
         let config = UISceneConfiguration(name: "CarPlay", sessionRole: connectingSceneSession.role)
         config.delegateClass = CarPlaySceneDelegate.self
