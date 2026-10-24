@@ -39,6 +39,7 @@ import com.example.appname.app.AppContainer
 import com.example.appname.data.CatalogDatabase
 import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.EpisodeRow
+import com.example.appname.data.PersonRow
 import com.example.appname.data.SeriesRow
 import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
@@ -237,6 +238,27 @@ fun EpisodeListItem(
         },
     )
 }
+
+/** A person in Search: portrait or initial, the name, and how many episodes credit them. */
+@Composable
+fun PersonListItem(row: PersonRow, onOpen: () -> Unit) {
+    ListItem(
+        modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open person", onClick = onOpen),
+        leadingContent = { ArtTile(row.person.name, null, row.person.face) },
+        headlineContent = {
+            Column {
+                Text(row.person.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    episodeCount(row.episodes),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+    )
+}
+
+fun episodeCount(n: Int): String = "%,d %s".format(n, if (n == 1) "episode" else "episodes")
 
 /**
  * A series row: the name and one line of years and count, behind the genre's

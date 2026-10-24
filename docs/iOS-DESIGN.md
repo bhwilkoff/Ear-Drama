@@ -36,7 +36,11 @@ doc does not restate live in `ios-production-gotchas`.
   pocket, on a nightstand, and plugged into a dashboard, so the sleep
   timer, the lock screen, downloads, and CarPlay are first-class here.
 - **§1.5 Depth is at most two from a tab.** Tab, series, episode. A
-  season is a scope, a transcript is a sheet, the player is a sheet.
+  season is a scope, a transcript is a sheet, the player is a sheet. A
+  person (§4.13) stands where a series does: Search, person, episode is
+  two. From Detail a credited name is a push, as Detail's series link is
+  (§12), so Browse, series, episode, person is the one deeper path, and it
+  is the listener's to take.
 - **§1.6 Only essential words on screen** (AGENTS.md). A caption is a
   refusal, a warning, or a fact a person cannot discover by looking. No
   list or blurb is written by the app (R13).
@@ -188,7 +192,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   download control, "Start an ear drama" when the episode's `script`
   names a bundled script (Decision 068), "Automatic transcript" when the
   gate passed, the
-  credits grouped by role, Versions when there is more than one copy,
+  credits grouped by role (each name a push to its person, §4.13), Versions when there is more than one copy,
   and the rights line. A part with no data is absent, never a
   placeholder. Play starts the audio in place; it never opens the
   player (§11.1). The toolbar carries Share: the system share sheet
@@ -198,9 +202,20 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   without the app lands on the web page. A link is shared, never the
   file (§4.8).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
-  people", debounced, series first, then plays (title and author,
+  people", debounced, series first, then People (§4.13, word-prefix on
+  the name, most episodes first, eight), then plays (title and author,
   word-prefix), then episodes. A row found only
   by its transcript says "In the transcript" (`Transcript.searchNote`).
+- **§4.13 A person** (`PersonScreen`, `Route.person`; `withPerson`,
+  contract §5) is a List: the portrait when one is served
+  (`FaceFigure`, Decision 069) beside one caption of facts, the years
+  from the people row and the episode count, then a section per series
+  whose rows are `EpisodeRowLabel` with the roles as its note ("Cast as
+  Mrs. Stevenson, Writer"). Order is a toolbar Menu with a Picker, Oldest
+  first or Newest first, shown only with more than one episode; undated
+  last either way. Each credit on Detail (§4.4) is a `NavigationLink` to
+  its person. No bio is written (R13). The Mac uses the same screen in
+  its detail column.
 - **§4.6 Library** is In progress, Downloads, Played, and **Ear
   dramas** (the productions on this device, each with its progress line;
   a production opens its cast sheet, on the Mac its window), on this

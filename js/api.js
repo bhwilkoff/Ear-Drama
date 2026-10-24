@@ -291,6 +291,79 @@ const API = (() => {
     return numbers.map(n => rowsOf(m.fields.doc, [byChunk.get(Math.floor(n / chunk))[n % chunk]])[0]);
   }
 
+  /* ---- People (contract §4, §5 withPerson and searchPeople) ---- */
+
+  /** A person's page: facts from the people row and every served credit, oldest first. Null when
+      the catalog serves no credit of theirs, or predates people pages. */
+  async function personPage(id) {
+    const m = await manifest();
+    if (!m.fields.person) return null;
+    let rec;
+    try {
+      rec = (await getJSON(`people/${shardOf(id, m.shard.mask)}.json`))[id];
+    } catch (e) {
+      if (e.kind === 'missing') return null;
+      throw e;
+    }
+    if (!rec) return null;
+    const o = rowsOf(m.fields.person, [rec])[0];
+    return { ...o, id, art: artOf(o.art), credits: rowsOf(m.fields.personCredit, o.credits) };
+  }
+
+  /** The years from the people row, as every platform writes them; null when neither is known. */
+  function lifeYears(birth, death) {
+    const b = birth && String(birth).slice(0, 4);
+    const d = death && String(death).slice(0, 4);
+    if (b && d) return `${b}–${d}`;
+    if (b) return `Born ${b}`;
+    return d ? `Died ${d}` : null;
+  }
+
+  /**
+   * A person's credits as the page draws them: one row per episode with every role it credits them
+   * in, grouped by series. Oldest first (R1) or newest first, undated last either way; a series sits
+   * where its first episode in that order does.
+   */
+  function personGroups(credits, newestFirst = false) {
+    const byId = new Map();
+    for (const c of credits) {
+      let ep = byId.get(c.id);
+      if (!ep) byId.set(c.id, ep = { id: c.id, date: c.date, title: c.title, num: c.num, series: c.series, roles: [] });
+      ep.roles.push({ role: c.role, character: c.character });
+    }
+    const eps = [...byId.values()];
+    if (newestFirst) {
+      const dated = eps.filter(e => e.date).reverse();
+      eps.splice(0, eps.length, ...dated, ...eps.filter(e => !e.date));
+    }
+    const groups = new Map();
+    for (const e of eps) {
+      if (!groups.has(e.series)) groups.set(e.series, []);
+      groups.get(e.series).push(e);
+    }
+    return [...groups].map(([series, episodes]) => ({ series, episodes }));
+  }
+
+  /** People whose name has every query word as a word prefix, most served episodes first. */
+  async function searchPeople(q, limit = 8) {
+    const words = [...new Set(tokens(q).filter(w => w.length >= 2))];
+    if (!words.length) return { total: 0, rows: [] };
+    const m = await manifest();
+    if (!m.fields.people) return { total: 0, rows: [] };
+    let d;
+    try {
+      d = await getJSON(`search/people/${termFile(words[0])}.json`);
+    } catch (e) {
+      if (e.kind === 'missing') return { total: 0, rows: [] };
+      throw e;
+    }
+    const hits = rowsOf(d.fields, d.rows).filter(r => {
+      const t = tokens(r.name);
+      return words.every(w => t.some(x => x.startsWith(w)));
+    }).map(r => ({ ...r, art: artOf(r.art) }));
+    return { total: hits.length, rows: hits.slice(0, limit) };
+  }
+
   /* ---- Transcripts (DECISIONS 058, contract §3.1) ---- */
 
   /** The one label on every platform: what it is, and that no person wrote it. */
@@ -734,6 +807,7 @@ const API = (() => {
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, artOf, artURL, ART_STEPS,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
+    personPage, lifeYears, personGroups, searchPeople,
     transcript, transcriptLines, transcriptLabel,
     localDate, tonight, tonightFile, onAir, castableScripts, account,
   };

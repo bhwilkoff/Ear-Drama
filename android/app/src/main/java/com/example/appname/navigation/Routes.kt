@@ -18,6 +18,8 @@ sealed interface Route : NavKey {
     @Serializable data object Downloads : Route
     @Serializable data class Series(val key: String) : Route
     @Serializable data class Episode(val id: String) : Route
+    /** A person's page (`withPerson`, §4.15), pushed from Detail's credits or Search. */
+    @Serializable data class Person(val id: String) : Route
     @Serializable data class Transcript(val id: String) : Route
     /** Surprise, pushed from Home's top bar (§4.14). */
     @Serializable data object Surprise : Route

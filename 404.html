@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ear Drama</title>
   <!-- The path twins of the apps' links, forwarded into the web app's router
-       (DEEP_LINKS.md): /series/{key}, /episode/{id}, /search?q=, /library.
+       (DEEP_LINKS.md): /series/{key}, /episode/{id}, /person/{id}, /search?q=, /library.
        GitHub Pages serves this page for any path it does not hold. -->
   <script>
     (function () {
@@ -15,6 +15,7 @@
       var head = parts[0], rest = parts.slice(1).map(decodeURIComponent).join('/');
       if (head === 'series' && rest) to.set('series', rest);
       else if (head === 'episode' && rest) to.set('item', rest);
+      else if (head === 'person' && rest) to.set('person', rest);
       else if (head === 'search') { to.set('view', 'search'); if (q.get('q')) to.set('q', q.get('q')); }
       else if (head === 'library') to.set('view', 'library');
       else if (head === 'listen') to.set('view', 'listen');

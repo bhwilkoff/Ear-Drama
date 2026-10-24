@@ -34,10 +34,10 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'radio', 'surprise', 'plays', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'plays', 'search', 'library'];
   const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', search: 'search',
                     library: 'library' };
-  const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', radio: 'stations',
+  const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'stations',
                    surprise: 'surprise', plays: 'browse', search: 'search', library: 'library' };
   /** Decision 068's renames: an old ?view= opens the new section, and the address is rewritten. */
   const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'browse' };
@@ -231,9 +231,9 @@
   /* ---- Rows and cards ---- */
 
   /** An episode row: date first (R1), then title; the series when the list mixes series. */
-  function episodeRow(ep, { showSeries = false } = {}) {
+  function episodeRow(ep, { showSeries = false, note = null } = {}) {
     const progress = Store.progress(ep.id);
-    const sub = [showSeries ? ep.seriesName : null, fmtLength(ep.length)].filter(Boolean).join(' · ');
+    const sub = [showSeries ? ep.seriesName : null, note, fmtLength(ep.length)].filter(Boolean).join(' · ');
     const link = el('a', { class: `ep-link${showSeries ? ' has-art' : ''}`, href: `?item=${encodeURIComponent(ep.id)}` },
       showSeries ? artTile({ key: ep.series, name: ep.seriesName }) : null,
       el('span', { class: 'ep-date tabular' }, ep.date || 'Undated'),
@@ -288,6 +288,7 @@
     const p = new URLSearchParams(location.search);
     if (p.get('item')) return { view: 'episode', id: p.get('item'), p };
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
+    if (p.get('person')) return { view: 'person', id: p.get('person'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
     const old = p.get('view');
     if (RENAMED[old]) {
@@ -311,7 +312,7 @@
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
     if (r.view !== 'plays') PlaysUI.leave();
-    ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode,
+    ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
        radio: renderRadio, surprise: renderSurprise, plays: renderPlays, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
@@ -870,8 +871,10 @@
             groups.get(role).map(c => {
               const slot = faces ? el('span', { class: 'face-sm', 'aria-hidden': 'true' }) : null;
               if (c.art) putImage(slot, c.art, 32, '');
+              // withPerson: a credited name opens the person's page (§4.14).
+              const name = c.person ? el('a', { class: 'eyebrow-link', href: `?person=${encodeURIComponent(c.person)}` }, c.name) : c.name;
               return el('dd', { class: `body${faces ? ' with-face' : ''}` }, slot,
-                el('span', {}, c.name, c.character ? el('span', { class: 'caption' }, ` as ${c.character}`) : null));
+                el('span', {}, name, c.character ? el('span', { class: 'caption' }, ` as ${c.character}`) : null));
             })));
         });
         // CC BY and BY-SA portraits carry their credit (Decision 069); the header's face already does.
@@ -903,6 +906,77 @@
       body.append(fs);
       if (rightsLine) body.append(el('p', { class: 'caption rights' }, rightsLine));
     });
+  }
+
+  /* ================================================================
+     A PERSON (withPerson, §4.14): every served episode crediting them, by series
+  ================================================================ */
+
+  const roleWord = (r) => { const w = r || 'cast'; return w.charAt(0).toUpperCase() + w.slice(1); };
+  function rolesLine(roles) {
+    return roles.map(r => r.character ? `${roleWord(r.role)} as ${r.character}` : roleWord(r.role)).join(', ');
+  }
+
+  function renderPerson(r) {
+    const body = $('person-body');
+    load(body, async () => {
+      const p = await API.personPage(r.id);
+      if (!p) throw new API.DataError('missing', r.id);
+      return { p, index: await API.seriesIndex() };
+    }, ({ p, index }) => {
+      setTitle(p.name);
+      const count = new Set(p.credits.map(c => c.id)).size;
+      const facts = [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes')].filter(Boolean).join(' · ');
+      body.append(el('header', { class: `page-head${p.art ? ' has-face' : ''}` },
+        p.art ? faceFigure(p.art, null) : null,
+        el('div', { class: 'page-head-text' },
+          el('h1', { class: 'view-heading', id: 'person-h', tabindex: '-1' }, p.name),
+          el('p', { class: 'caption' }, facts))));
+
+      const seg = el('div', { class: 'segmented', role: 'group', 'aria-label': 'Order' });
+      const listBox = el('div');
+      const draw = (newest) => {
+        listBox.replaceChildren();
+        API.personGroups(p.credits, newest).forEach((g, i) => {
+          const s = index.byKey.get(g.series);
+          const name = s ? s.name : g.series;
+          listBox.append(el('section', { class: 'block', 'aria-labelledby': `pg-${i}` },
+            el('div', { class: 'block-head' },
+              el('h2', { class: 'section-header', id: `pg-${i}` },
+                el('a', { class: 'eyebrow-link', href: `?series=${encodeURIComponent(g.series)}` }, name)),
+              el('span', { class: 'caption' }, plural(g.episodes.length, 'episode', 'episodes'))),
+            (() => {
+              const ul = el('ul', { class: 'ep-list' });
+              g.episodes.forEach(e => ul.append(episodeRow({ ...e, seriesName: name }, { note: rolesLine(e.roles) })));
+              paintProgress(ul);
+              return ul;
+            })()));
+        });
+      };
+      [['oldest', 'Oldest first'], ['newest', 'Newest first']].forEach(([v, label]) => {
+        const b = el('button', { type: 'button', 'aria-pressed': String((r.p.get('order') === 'newest') === (v === 'newest')) },
+          label);
+        b.addEventListener('click', () => {
+          const q = new URLSearchParams({ person: p.id });
+          if (v === 'newest') q.set('order', 'newest');
+          history.replaceState(null, '', `?${q}`);
+          seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+          draw(v === 'newest');
+        });
+        seg.append(b);
+      });
+      if (count > 1) body.append(seg);
+      body.append(listBox);
+      draw(r.p.get('order') === 'newest');
+    });
+  }
+
+  function personRow(p) {
+    return el('li', { class: 'series-row' },
+      el('a', { href: `?person=${encodeURIComponent(p.id)}` },
+        artTile({ name: p.name, art: p.art }),
+        el('span', { class: 'series-row-text' }, el('span', { class: 'body-strong' }, p.name),
+          el('span', { class: 'caption' }, plural(p.episodes, 'episode', 'episodes')))));
   }
 
   /** A disclosure that loads the text on first open; `#transcript` in the URL opens it. */
@@ -963,12 +1037,12 @@
     if (!words.length) { body.replaceChildren(); return; }
     body.replaceChildren(stateBox('loading'));
     try {
-      const [series, numbers, scripts] = await Promise.all([API.searchSeries(q), API.searchEpisodeNumbers(q),
-        onTV() ? [] : castable()]);
+      const [series, numbers, scripts, people] = await Promise.all([API.searchSeries(q), API.searchEpisodeNumbers(q),
+        onTV() ? [] : castable(), API.searchPeople(q)]);
       if (seq !== searchSeq) return;
       const plays = scriptsMatching(scripts, words);
       body.replaceChildren();
-      if (!series.total && !numbers.length && !plays.length) {
+      if (!series.total && !people.total && !numbers.length && !plays.length) {
         body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }));
         return;
       }
@@ -977,6 +1051,12 @@
           el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rs-h' }, 'Series'),
             el('span', { class: 'caption' }, plural(series.total, 'series', 'series'))),
           el('ul', { class: 'series-list' }, series.rows.map(seriesRow))));
+      }
+      if (people.total) {
+        body.append(el('section', { class: 'block', 'aria-labelledby': 'rpe-h' },
+          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rpe-h' }, 'People'),
+            el('span', { class: 'caption' }, plural(people.total, 'person', 'people'))),
+          el('ul', { class: 'series-list' }, people.rows.map(personRow))));
       }
       if (plays.length) {
         body.append(el('section', { class: 'block', 'aria-labelledby': 'rp-h' },

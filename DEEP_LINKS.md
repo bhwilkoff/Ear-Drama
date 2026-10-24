@@ -15,6 +15,7 @@ prefix lists, and a flat structure makes the lists short.
 |---|---|---|
 | Series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
 | Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
+| Person | `https://eardrama.org/person/{percent-encoded person id}` | Web routes via `?person={id}` (`&order=newest`), forwarded by `404.html` (WEB-DESIGN §4.14). The apps open a person in-app only (a credit on Detail, Search's People) and emit no person link yet, so there is no `eardrama://person/` and no app parse; add both before an app shares one |
 | Search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=` |
 | Listen Together room | `https://eardrama.org/?room={CODE}` | Web (WEB-DESIGN §4.12) and Android (ANDROID-DESIGN §4.13), Worker rooms (Decision 065); `eardrama://?room={CODE}` is its twin. The code is six Crockford Base32 characters, normalized as `normalizeCode` in `worker/src/room-protocol.js`. Opening it fills in the code; joining takes a tap on Join. The query form is the https twin because the site root is a real page (no `404.html` forwarding needed). Android parses it now (`DeepLink.parse`); its manifest filters stay off until Play's fingerprint, as for every https link. Apple joins through SharePlay, not a code |
 | OAuth callback | `eardrama://oauth/callback?...` | Custom scheme only, never HTTPS (provider redirects break otherwise) |

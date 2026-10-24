@@ -233,6 +233,23 @@ the starting shape, Archive Watch's:
 - `data/episodes/{shard}.json`: Detail fields, sharded by a stable hash of the
   episode id (FNV-1a, positions append-only), one shard per Detail view.
 - `data/tonight.json` and `data/channels.json`: the Radio tab (§8).
+- `data/people/{shard}.json`: `withPerson` (§5), sharded as the episodes
+  are but by the person id: `{id: [name, birth, death, art, credits]}`
+  (`fields.person`), each credit `[id, date, title, num, series, role,
+  character]` (`fields.personCredit`), one row per credit, oldest first
+  (R1), so an episode a person wrote and directed is two rows. Only served
+  episodes' credits; a person with none has no page.
+- `data/search/people/{p}.json`: people for Search, filed under the term
+  file (`termFile`) of each word of the name, `{fields, rows}` with rows
+  `[id, name, episodes, art]` (`fields.people`), most episodes first.
+  MEASURED 2026-10-24 on the 2026-10-22 projection, gate open: 15,784
+  people, 4,015 person shards, 29.7 MB raw (7.0 MB gzip), the largest
+  206 KB (30 KB gzip, Don Wilson's 1,384 credits); 267 search files,
+  11.0 MB raw (2.8 MB gzip), the largest `an` at 335 KB (78 KB gzip). Most
+  of the search bytes are 1,011 Goldin "people" whose name is a whole cast
+  list (`Name (role); Name (role)`), filed under every word of it; splitting
+  those credits in `enrich_db.py` is the fix, not a client filter. Gate
+  closed: 122 people, 56 KB in all.
 
 A Detail row's `transcript` is §3.1's `transcript_url` (null unless the gate
 passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
@@ -265,7 +282,8 @@ Every client reproduces these natively; each says which filter clauses it applie
 | `search(q)` | episodes and series, word-prefix | none |
 | `shelf(rule)` | episodes for a Listen shelf, by a rule from `listenShelves` (§5.1) | `recommendAnd` |
 | `tonight(localDate)` | the evening for the person's own date | `recommendAnd` |
-| `withPerson(id)` | episodes crediting a person | none |
+| `withPerson(id)` | the person (`people`: name, birth, death, portrait) and every served credit (`credits` joined to `episodes`), oldest first, one row per credit; a client groups by series and may reverse the order | none |
+| `searchPeople(q)` | people whose name has every query word as a word prefix, most served episodes first | none |
 
 ### Named filter clauses
 

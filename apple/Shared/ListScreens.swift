@@ -12,6 +12,7 @@ struct RouteDestinations: ViewModifier {
             switch route {
             case let .series(key): SeriesScreen(key: key)
             case let .episode(id): EpisodeScreen(id: id)
+            case let .person(id): PersonScreen(id: id)
             case .account: AccountScreen()
             case .surprise: SurpriseScreen()
             }
@@ -398,10 +399,14 @@ struct EpisodeScreen: View {
                 let faces = group.credits.contains { $0.art != nil }
                 Section(group.role) {
                     ForEach(group.credits) { credit in
-                        HStack(spacing: Spacing.s2) {
-                            if faces { CreditFace(art: credit.art) }
-                            Text(credit.line).font(TypeRamp.body)
+                        // withPerson (§4.13): a credited name pushes the person's page.
+                        NavigationLink(value: Route.person(credit.personID)) {
+                            HStack(spacing: Spacing.s2) {
+                                if faces { CreditFace(art: credit.art) }
+                                Text(credit.line).font(TypeRamp.body)
+                            }
                         }
+                        .disabled(credit.personID.isEmpty)
                     }
                 }
             }
@@ -464,6 +469,77 @@ struct EpisodeScreen: View {
     }
 }
 
+// MARK: - A person (withPerson, iOS-DESIGN §4.13)
+
+struct PersonScreen: View {
+    let id: String
+    @Environment(CatalogStore.self) private var catalog
+    @State private var page: PersonPage??
+    @State private var newestFirst = false
+
+    var body: some View {
+        Group {
+            switch page {
+            case .none:
+                List { SkeletonRows(count: 10) }
+            case .some(.none):
+                ContentUnavailableView("Person not found", systemImage: "questionmark.square.dashed")
+            case let .some(.some(page)):
+                List {
+                    Section {
+                        HStack(alignment: .top, spacing: Spacing.s3) {
+                            if let face = page.person.face { FaceFigure(face: face) }
+                            Text(verbatim: Self.facts(page))
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
+                    }
+                    ForEach(page.groups(newestFirst: newestFirst)) { group in
+                        Section {
+                            ForEach(group.episodes) { item in
+                                NavigationLink(value: Route.episode(item.id)) {
+                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                                }
+                                .playContextMenu(item.id)
+                            }
+                        } header: {
+                            Text(group.seriesName)
+                        }
+                    }
+                }
+                .navigationTitle(page.person.name)
+                .toolbar {
+                    if page.episodes.count > 1 {
+                        ToolbarItem(placement: .primaryAction) {
+                            Menu {
+                                Picker("Order", selection: $newestFirst) {
+                                    Text("Oldest first").tag(false)
+                                    Text("Newest first").tag(true)
+                                }
+                            } label: {
+                                Label("Order", systemImage: "arrow.up.arrow.down")
+                            }
+                            .help("Order")
+                        }
+                    }
+                }
+            }
+        }
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.large)
+        #endif
+        .task(id: catalog.loadKey) {
+            guard catalog.state == .ready else { return }
+            page = .some(await catalog.personPage(id))
+        }
+    }
+
+    /// The years and the count, facts from the data only (no bio is written).
+    static func facts(_ page: PersonPage) -> String {
+        [page.person.years, PersonRowLabel.count(page.episodes.count)].compactMap { $0 }.joined(separator: " · ")
+    }
+}
+
 struct VersionLabel: View {
     let recording: Recording
     let isDefault: Bool
@@ -510,6 +586,13 @@ struct SearchResultsList: View {
                             Section("Series") {
                                 ForEach(results.series) { row in
                                     NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                                }
+                            }
+                        }
+                        if !results.people.isEmpty {
+                            Section("People") {
+                                ForEach(results.people) { row in
+                                    NavigationLink(value: Route.person(row.id)) { PersonRowLabel(row: row) }
                                 }
                             }
                         }

@@ -19,6 +19,9 @@ Layout (every row positional; fields are only ever appended):
     episodes/{shard}.json         Detail, shard = FNV-1a(id) & SHARD_MASK, as 3 hex digits
     search/terms/{p}.json         word -> delta-coded doc numbers, by the word's first two characters
     search/docs/{k}.json          the doc table, DOC_CHUNK rows per file
+    people/{shard}.json           withPerson: a person's facts and every served credit, oldest first,
+                                  shard = FNV-1a(person id) & SHARD_MASK, as 3 hex digits
+    search/people/{p}.json        people, by the first two characters of each word of their name
 
 Search is word-prefix, never substring (contract §3.4), tokenized as FTS5's
 unicode61 does: lowercase, diacritics folded, split on anything that is not a
@@ -60,6 +63,12 @@ DETAIL_FIELDS = ["series", "title", "date", "season", "num", "network", "network
 # script: the castable script's id in plays/castable-scripts.json (episode_scripts.py), else null.
 RECORDING_FIELDS = ["url", "archiveId", "format", "kbps", "length", "variant", "partial"]
 CREDIT_FIELDS = ["name", "role", "character", "person", "art"]
+# withPerson (contract §5): facts only, the name, the years, and the credits themselves.
+PERSON_FIELDS = ["name", "birth", "death", "art", "credits"]
+# One row per credit, oldest first (R1); an episode credited twice (writer and director) has two rows.
+PERSON_CREDIT_FIELDS = ["id", "date", "title", "num", "series", "role", "character"]
+# A people search row; episodes counts the distinct served episodes crediting the person.
+PEOPLE_FIELDS = ["id", "name", "episodes", "art"]
 DAY_FIELDS = ["id", "date", "title", "series", "length", "url", "seriesName", "li", "ltp"]
 DOC_FIELDS = ["id", "title", "date", "series"]
 # The rights line, contract §5.5. Published so no client words it for itself.
@@ -127,6 +136,7 @@ def build(src, out, include_unclaimed=False):
         if eid in eps:
             recs.setdefault(eid, []).append([url, aid, fmt, kbps, length, variant, partial])
     names = dict(s.execute("SELECT id, name FROM people"))
+    lives = {pid: (b, d) for pid, b, d in s.execute("SELECT id, birth, death FROM people")}
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     has = lambda t, c: t in tables and c in {r[1] for r in s.execute(f"PRAGMA table_info({t})")}
     art = ({aid: [url, w, h, cr, ev] for aid, url, w, h, cr, ev in
@@ -220,6 +230,29 @@ def build(src, out, include_unclaimed=False):
             [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0], series[e[1]][1]] + lt(e[0]) for e in rows]})
     dump(os.path.join(out, "index", "aliases.json"), aliases)
 
+    # withPerson: per-person shards, every served credit, oldest first (R1).
+    person_credits = {}
+    for eid, cs in credits.items():
+        if eid in eps:
+            for c in cs:
+                person_credits.setdefault(c[3], []).append((eid, c[1], c[2]))
+    people_shards, people_rows = {}, []
+    for pid, cs in person_credits.items():
+        cs.sort(key=lambda c: oldest_first(eps[c[0]]) + (c[1] or "", c[2] or ""))
+        people_shards.setdefault(shard_of(pid), {})[pid] = [
+            names[pid], lives[pid][0], lives[pid][1], face.get(pid),
+            [[eid, eps[eid][2], eps[eid][5], eps[eid][4], eps[eid][1], role, ch] for eid, role, ch in cs]]
+        people_rows.append([pid, names[pid], len({c[0] for c in cs}), face.get(pid)])
+    for sh, rows in people_shards.items():
+        dump(os.path.join(out, "people", f"{sh}.json"), rows)
+    people_rows.sort(key=lambda r: (-r[2], r[1].lower(), r[0]))
+    people_files = {}
+    for r in people_rows:
+        for f in sorted({term_file(w) for w in tokens(r[1]) if len(w) >= 2}):
+            people_files.setdefault(f, []).append(r)
+    for f, rows in people_files.items():
+        dump(os.path.join(out, "search", "people", f"{f}.json"), {"fields": PEOPLE_FIELDS, "rows": rows})
+
     # Search: doc numbers in series order (most episodes first), then oldest first.
     order = sorted(by_series, key=lambda k: (-len(by_series[k]), k))
     docs = [e for k in order for e in by_series[k]]
@@ -247,12 +280,14 @@ def build(src, out, include_unclaimed=False):
         "counts": {"series": len(series), "episodes": len(eps), "shards": len(shards), "days": len(days),
                    "terms": len(postings), "termFiles": len(files), "docs": len(docs),
                    "portraits": len({c[3] for e, cs in credits.items() if e in eps for c in cs if c[4]}),
-                   "seriesStars": sum(1 for r in series.values() if r[8])},
+                   "seriesStars": sum(1 for r in series.values() if r[8]),
+                   "people": len(people_rows), "peopleShards": len(people_shards), "peopleFiles": len(people_files)},
         "shard": {"hash": "fnv1a32-utf8", "mask": SHARD_MASK, "digits": 3},
         "search": {"docChunk": DOC_CHUNK, "minWord": 2, "prefix": 2},
         "fields": {"series": SERIES_FIELDS, "episode": EPISODE_FIELDS, "detail": DETAIL_FIELDS,
                    "recording": RECORDING_FIELDS, "credit": CREDIT_FIELDS, "day": DAY_FIELDS, "doc": DOC_FIELDS,
-                   "art": ART_FIELDS},
+                   "art": ART_FIELDS, "person": PERSON_FIELDS, "personCredit": PERSON_CREDIT_FIELDS,
+                   "people": PEOPLE_FIELDS},
         "genreNames": GENRE_NAMES,
         "listenShelves": SH.listen_shelves([(e[0], e[1], e[2], e[4], e[10], e[5]) for e in eps.values()],
                                            {k: (r[2], r[5]) for k, r in series.items()},

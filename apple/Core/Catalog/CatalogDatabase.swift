@@ -389,7 +389,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             WHERE s.episodes > 0 AND (s.name LIKE ? OR s.name LIKE ?)
             ORDER BY s.episodes DESC LIMIT 20
             """, [.text("\(phrase)%"), .text("% \(phrase)%")], decodeSeries)
-        return SearchResults(series: series, episodes: episodes, transcriptOnly: transcriptOnly)
+        return SearchResults(series: series, episodes: episodes, transcriptOnly: transcriptOnly,
+                             people: searchPeople(query))
     }
 
     /// Every FTS column but `transcript` (contract §3.4).
@@ -466,6 +467,78 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             SELECT DISTINCT \(Self.episodeColumns) FROM credits c JOIN episodes e ON e.id = c.episode_id
             JOIN series s ON s.key = e.series_key WHERE c.person_id = ? ORDER BY \(Self.oldestFirst) LIMIT \(limit)
             """, [.text(personID)], decodeEpisode)
+    }
+
+    /// `withPerson(id)` as a page: the person's facts and every served episode
+    /// crediting them, oldest first, one row per episode with all its roles.
+    /// Nil when the catalog serves none of their credits.
+    func personPage(id personID: String) -> PersonPage? {
+        let artColumns = hasArt ? "a.url, a.width, a.height, a.credit, a.evidence_url" : "NULL, NULL, NULL, NULL, NULL"
+        let artJoin = hasArt ? "LEFT JOIN art a ON a.id = p.portrait" : ""
+        guard let person = rows("""
+            SELECT p.id, p.name, p.birth, p.death, \(artColumns) FROM people p \(artJoin) WHERE p.id = ?
+            """, [.text(personID)], { row in
+            Person(id: row.text(0) ?? "", name: row.text(1) ?? "", birth: row.text(2), death: row.text(3),
+                   art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6), credit: row.text(7),
+                                     evidence: row.text(8)))
+        }).first else { return nil }
+        let credits = rows("""
+            SELECT \(Self.episodeColumns), c.role, c.character FROM credits c JOIN episodes e ON e.id = c.episode_id
+            JOIN series s ON s.key = e.series_key WHERE c.person_id = ?
+            ORDER BY \(Self.oldestFirst), c.role, c.character
+            """, [.text(personID)]) { row in
+            (decodeEpisode(row), PersonRole(role: row.text(11), character: row.text(12)))
+        }
+        var episodes: [PersonEpisode] = []
+        var at: [String: Int] = [:]
+        for (episode, role) in credits {
+            if let i = at[episode.id] {
+                episodes[i].roles.append(role)
+            } else {
+                at[episode.id] = episodes.count
+                episodes.append(PersonEpisode(episode: episode, roles: [role]))
+            }
+        }
+        guard !episodes.isEmpty else { return nil }
+        return PersonPage(person: person, episodes: episodes)
+    }
+
+    /// `searchPeople(q)`: people whose name has every typed word (two
+    /// characters or more) as a word prefix, never a substring, diacritics
+    /// and case folded; most served episodes first, then by name.
+    func searchPeople(_ query: String, limit: Int = 8) -> [PersonRow] {
+        let words = Self.nameWords(query).filter { $0.count >= 2 }
+        guard !words.isEmpty else { return [] }
+        let hits = rows("SELECT id, name FROM people") { ($0.text(0) ?? "", $0.text(1) ?? "") }.filter { _, name in
+            let have = Self.nameWords(name)
+            return words.allSatisfy { w in have.contains { $0.hasPrefix(w) } }
+        }
+        let artColumns = hasArt ? "a.url, a.width, a.height, a.credit, a.evidence_url" : "NULL, NULL, NULL, NULL, NULL"
+        let artJoin = hasArt ? "LEFT JOIN art a ON a.id = p.portrait" : ""
+        let ranked = hits.map { id, name in
+            (id, name, rows("SELECT COUNT(DISTINCT episode_id) FROM credits WHERE person_id = ?", [.text(id)]) {
+                $0.int(0) ?? 0
+            }.first ?? 0)
+        }
+        .filter { $0.2 > 0 }
+        .sorted { ($0.2, $1.1.lowercased(), $1.0) > ($1.2, $0.1.lowercased(), $0.0) }
+        return ranked.prefix(limit).compactMap { id, _, count in
+            rows("""
+                SELECT p.id, p.name, p.birth, p.death, \(artColumns) FROM people p \(artJoin) WHERE p.id = ?
+                """, [.text(id)]) { row in
+                PersonRow(person: Person(id: row.text(0) ?? "", name: row.text(1) ?? "", birth: row.text(2),
+                                         death: row.text(3),
+                                         art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6),
+                                                           credit: row.text(7), evidence: row.text(8))),
+                          episodes: count)
+            }.first
+        }
+    }
+
+    /// unicode61's words, as the builder and the web tokenize (`API.tokens`).
+    static func nameWords(_ text: String) -> [String] {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .split { !$0.isLetter && !$0.isNumber }.map(String.init)
     }
 
     // MARK: - Row decoding

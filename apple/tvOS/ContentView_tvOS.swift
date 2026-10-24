@@ -85,6 +85,7 @@ private struct RouteDestinations_tvOS: ViewModifier {
             switch route {
             case let .series(key): SeriesScreen_tvOS(key: key)
             case let .episode(id): EpisodeScreen_tvOS(id: id)
+            case let .person(id): PersonScreen_tvOS(id: id)
             case .account: AccountScreen_tvOS()
             case .surprise: SurpriseScreen_tvOS()
             }
@@ -273,6 +274,63 @@ private struct SeriesScreen_tvOS: View {
     }
 }
 
+// MARK: - A person (withPerson, tvOS-DESIGN §4.11)
+
+private struct PersonScreen_tvOS: View {
+    let id: String
+    @Environment(CatalogStore.self) private var catalog
+    @State private var page: PersonPage??
+    @State private var newestFirst = false
+
+    var body: some View {
+        Group {
+            switch page {
+            case .none: ProgressView()
+            case .some(.none): ContentUnavailableView("Person not found", systemImage: "questionmark.square.dashed")
+            case let .some(.some(page)):
+                List {
+                    Section {
+                        HStack(alignment: .top, spacing: Spacing.s6) {
+                            if let face = page.person.face { FaceFigure(face: face, width: 200) }
+                            VStack(alignment: .leading, spacing: Spacing.s2) {
+                                Text(page.person.name).font(TypeRamp.pageTitle)
+                                Text(verbatim: PersonScreen_tvOS.facts(page))
+                                    .font(TypeRamp.caption)
+                                    .foregroundStyle(Color.brandTextMuted)
+                            }
+                        }
+                        .focusable(false)
+                        if page.episodes.count > 1 {
+                            Button {
+                                newestFirst.toggle()
+                            } label: {
+                                Label(newestFirst ? "Newest first" : "Oldest first", systemImage: "arrow.up.arrow.down")
+                            }
+                        }
+                    }
+                    ForEach(page.groups(newestFirst: newestFirst)) { group in
+                        Section(group.seriesName) {
+                            ForEach(group.episodes) { item in
+                                NavigationLink(value: Route.episode(item.id)) {
+                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .task(id: catalog.loadKey) {
+            guard catalog.state == .ready else { return }
+            page = .some(await catalog.personPage(id))
+        }
+    }
+
+    static func facts(_ page: PersonPage) -> String {
+        [page.person.years, PersonRowLabel.count(page.episodes.count)].compactMap { $0 }.joined(separator: " · ")
+    }
+}
+
 // MARK: - Episode detail
 
 private struct EpisodeScreen_tvOS: View {
@@ -351,27 +409,30 @@ private struct EpisodeScreen_tvOS: View {
 
                 if !catalog.isOnline { OfflineNotice() }
 
-                ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
-                    VStack(alignment: .leading, spacing: Spacing.s2) {
-                        Text(group.role).font(TypeRamp.bodyStrong)
-                        if group.credits.contains(where: { $0.art != nil }) {
-                            // Decision 069: portraits on cast lines; the slot stays so names align.
+                // withPerson (§4.11): every credited name is a focus stop that pushes the person.
+                VStack(alignment: .leading, spacing: Spacing.s6) {
+                    ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
+                        let faces = group.credits.contains { $0.art != nil }
+                        VStack(alignment: .leading, spacing: Spacing.s2) {
+                            Text(group.role).font(TypeRamp.bodyStrong)
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 520), alignment: .leading)],
                                       alignment: .leading, spacing: Spacing.s3) {
                                 ForEach(group.credits) { credit in
-                                    HStack(spacing: Spacing.s3) {
-                                        CreditFace(art: credit.art, size: 64)
-                                        Text(credit.line).font(TypeRamp.body).foregroundStyle(Color.brandTextMuted)
+                                    NavigationLink(value: Route.person(credit.personID)) {
+                                        HStack(spacing: Spacing.s3) {
+                                            // Decision 069: portraits on cast lines; the slot stays so names align.
+                                            if faces { CreditFace(art: credit.art, size: 64) }
+                                            Text(credit.line).font(TypeRamp.body)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
                                     }
+                                    .disabled(credit.personID.isEmpty)
                                 }
                             }
-                        } else {
-                            Text(group.credits.map(\.line).joined(separator: ", "))
-                                .font(TypeRamp.body)
-                                .foregroundStyle(Color.brandTextMuted)
                         }
                     }
                 }
+                .focusSection()
                 ForEach(detail.owedCredits, id: \.personID) { credit in
                     if let line = credit.art?.credit {
                         Text(verbatim: "\(credit.name): \(line)")
@@ -455,6 +516,13 @@ private struct SearchScreen_tvOS: View {
                 Section("Series") {
                     ForEach(results.series) { row in
                         NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                    }
+                }
+            }
+            if !results.people.isEmpty {
+                Section("People") {
+                    ForEach(results.people) { row in
+                        NavigationLink(value: Route.person(row.id)) { PersonRowLabel(row: row) }
                     }
                 }
             }

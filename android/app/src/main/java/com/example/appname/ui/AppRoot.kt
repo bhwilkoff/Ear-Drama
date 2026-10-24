@@ -40,6 +40,7 @@ import com.example.appname.ui.screens.EpisodeScreen
 import com.example.appname.ui.screens.LibraryScreen
 import com.example.appname.ui.screens.ListenScreen
 import com.example.appname.ui.screens.MiniPlayer
+import com.example.appname.ui.screens.PersonScreen
 import com.example.appname.ui.screens.ProductionScreen
 import com.example.appname.ui.screens.RadioScreen
 import com.example.appname.ui.screens.RecordingScreen
@@ -117,6 +118,7 @@ fun AppRoot(
 
     val openEpisode: (String) -> Unit = { id -> stack.navigateTo(Route.Episode(id)) }
     val openSeries: (String) -> Unit = { key -> stack.navigateTo(Route.Series(key)) }
+    val openPerson: (String) -> Unit = { id -> stack.navigateTo(Route.Person(id)) }
     val openTranscript: (String) -> Unit = { id -> stack.navigateTo(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
     val openScript: (String) -> Unit = { id -> stack.navigateTo(Route.Script(id)) }
@@ -174,6 +176,7 @@ fun AppRoot(
                                     onOpenSeries = openSeries,
                                     onOpenEpisode = openEpisode,
                                     onOpenScript = openScript,
+                                    onOpenPerson = openPerson,
                                     incoming = incomingSearch,
                                     onIncomingTaken = { incomingSearch = null },
                                 )
@@ -198,7 +201,11 @@ fun AppRoot(
                                     onOpenSeries = openSeries,
                                     onOpenTranscript = openTranscript,
                                     onOpenProduction = openProduction,
+                                    onOpenPerson = openPerson,
                                 )
+                            }
+                            entry<Route.Person> { route ->
+                                PersonScreen(route.id, onBack = back, onOpenEpisode = openEpisode)
                             }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->

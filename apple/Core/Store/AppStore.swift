@@ -42,6 +42,9 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
 enum Route: Hashable {
     case series(String)
     case episode(String)
+    /// A person's page (`withPerson`), pushed from Detail's credits or Search
+    /// (iOS-DESIGN §4.13).
+    case person(String)
     /// Library's account row (iOS-DESIGN §4.10). Never a deep link.
     case account
     /// Surprise pushed from Home's toolbar on iPhone (iOS-DESIGN §4.11).

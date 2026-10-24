@@ -69,6 +69,7 @@ fun EpisodeScreen(
     onOpenSeries: (String) -> Unit,
     onOpenTranscript: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
+    onOpenPerson: (String) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val plays = rememberCastablePlays()
@@ -172,7 +173,10 @@ fun EpisodeScreen(
                     // A person can hold two roles on one broadcast; the credit's position is its identity here.
                     val faces = d.credits.any { it.art != null }
                     itemsIndexed(d.credits, key = { i, _ -> "c$i" }) { _, c ->
+                        // withPerson (§4.15): a credited name opens the person's page.
                         ListItem(
+                            modifier = Modifier.tvFocusMark()
+                                .clickable(onClickLabel = "Open ${c.name}", onClick = { onOpenPerson(c.personId) }),
                             leadingContent = if (faces) { { CreditFace(c.art) } } else null,
                             headlineContent = { Text(c.name) },
                             supportingContent = listOfNotNull(c.character, c.role).joinToString(" · ")

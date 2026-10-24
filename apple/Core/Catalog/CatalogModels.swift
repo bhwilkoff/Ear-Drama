@@ -204,7 +204,106 @@ nonisolated struct SearchResults: Hashable, Sendable {
     /// Episodes found only by words in their transcript (contract §3.4), so a
     /// row can say why it matched.
     var transcriptOnly: Set<String> = []
-    var isEmpty: Bool { series.isEmpty && episodes.isEmpty }
+    /// `searchPeople(q)` (contract §5): credited people, most episodes first.
+    var people: [PersonRow] = []
+    var isEmpty: Bool { series.isEmpty && episodes.isEmpty && people.isEmpty }
+}
+
+// MARK: - People (withPerson, contract §5)
+
+/// A credited person: facts from the `people` row only, never a written bio.
+nonisolated struct Person: Hashable, Sendable, Identifiable {
+    let id: String
+    let name: String
+    let birth: String?
+    let death: String?
+    /// The person's served portrait (contract §3.3a), or nil.
+    var art: Artwork? = nil
+
+    var face: Face? { art.map { Face(name: name, art: $0) } }
+    var years: String? { Self.years(birth: birth, death: death) }
+
+    /// The years as every platform writes them (`API.lifeYears` on the web).
+    static func years(birth: String?, death: String?) -> String? {
+        let b = birth.map { String($0.prefix(4)) }.flatMap { $0.isEmpty ? nil : $0 }
+        let d = death.map { String($0.prefix(4)) }.flatMap { $0.isEmpty ? nil : $0 }
+        switch (b, d) {
+        case let (b?, d?): return "\(b)–\(d)"
+        case let (b?, nil): return "Born \(b)"
+        case let (nil, d?): return "Died \(d)"
+        case (nil, nil): return nil
+        }
+    }
+}
+
+/// A people search row.
+nonisolated struct PersonRow: Hashable, Sendable, Identifiable {
+    let person: Person
+    /// Distinct served episodes crediting the person.
+    let episodes: Int
+    var id: String { person.id }
+}
+
+/// One of a person's credits on an episode: the role and, for cast, whom they played.
+nonisolated struct PersonRole: Hashable, Sendable {
+    let role: String?
+    let character: String?
+
+    /// A role as a heading word, on Detail's credits and a person's rows.
+    static func title(_ role: String) -> String {
+        switch role.lowercased() {
+        case "cast": "Cast"
+        case "m. c.", "emcee": "Emcee"
+        default: role.prefix(1).uppercased() + role.dropFirst()
+        }
+    }
+}
+
+/// One episode on a person's page, with every role it credits them in.
+nonisolated struct PersonEpisode: Hashable, Sendable, Identifiable {
+    let episode: EpisodeRow
+    var roles: [PersonRole]
+    var id: String { episode.id }
+
+    /// "Cast as Mrs. Stevenson, Narrator": every role this episode credits the person in.
+    var rolesLine: String {
+        roles.map { r in
+            let title = PersonRole.title(r.role ?? "cast")
+            return r.character.map { "\(title) as \($0)" } ?? title
+        }.joined(separator: ", ")
+    }
+}
+
+nonisolated struct PersonSeriesGroup: Hashable, Sendable, Identifiable {
+    let seriesKey: String
+    let seriesName: String
+    let episodes: [PersonEpisode]
+    var id: String { seriesKey }
+}
+
+nonisolated struct PersonPage: Hashable, Sendable {
+    let person: Person
+    /// Every served episode crediting the person, oldest first (R1).
+    let episodes: [PersonEpisode]
+
+    /// By series, oldest or newest first, undated last either way; a series
+    /// sits where its first episode in that order does (`API.personGroups`).
+    func groups(newestFirst: Bool) -> [PersonSeriesGroup] {
+        let ordered = newestFirst
+            ? episodes.filter { $0.episode.airDate != nil }.reversed() + episodes.filter { $0.episode.airDate == nil }
+            : episodes
+        var order: [String] = []
+        var byKey: [String: [PersonEpisode]] = [:]
+        for item in ordered {
+            let key = item.episode.seriesKey
+            if byKey[key] == nil { order.append(key) }
+            byKey[key, default: []].append(item)
+        }
+        return order.map { key in
+            PersonSeriesGroup(seriesKey: key, seriesName: byKey[key]?.first?.episode.seriesName ?? key,
+                              episodes: byKey[key] ?? [])
+        }
+    }
 }
 
 /// The Listen tab's shelves. Each is a RULE over data (R13), never a list

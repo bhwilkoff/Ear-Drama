@@ -31,7 +31,10 @@ production lessons this doc does not restate live in
 - **§1.4 Depth is at most two from a tab**: tab, series, episode. A
   season is a scope; the player is a sheet. For an ear drama it is
   Browse, cast sheet, part: starting one replaces the play's page with
-  its cast sheet.
+  its cast sheet. A person (§4.15) stands where a series does: Search,
+  person, episode is two; from Detail a credit pushes the person, as
+  Detail's series link does, and a person already on the stack is popped
+  back to (§3.5), so person, episode, person never stacks.
 - **§1.5 Only essential words on screen** (AGENTS.md); no list or blurb
   written by the app (R13).
 
@@ -209,13 +212,13 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   (or "Resume at" the saved position), the download control, "Start an
   ear drama" when the episode's `script` names a bundled script
   (Decision 068; never on a TV), "Automatic transcript" when the gate
-  passed, Cast and credits, Versions (or the
+  passed, Cast and credits (each a row that opens its person, §4.15), Versions (or the
   one copy's notes), and the rights line. A part with no data is absent;
   the sponsor shows only where the catalog carries the contract's
   `sponsor` column (probed, as Apple does). Share is the top bar's action
   (§4.12).
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
-  debounced, with Clear, series first, then plays (title and author,
+  debounced, with Clear, series first, then People (§4.15), then plays (title and author,
   word-prefix), then episodes; "In the
   transcript" marks a transcript-only match.
 - **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
@@ -390,6 +393,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   with "Start an ear drama", not on a TV. Each plays or starts in one
   tap. `kotlin.random.Random`: nothing needs to match another device. No
   copy is written; a pick with no data is absent.
+- **§4.15 A person** (`ui/screens/PersonScreen.kt`, `Route.Person`;
+  `withPerson`) is a push from a Detail credit or Search's People, at the
+  depth of a series (§1.4): a top bar with the name and Back, the
+  portrait when one is served (`FaceFigure`), one Meta line of the years
+  from the people row and the episode count, a
+  `SingleChoiceSegmentedButtonRow` of Oldest first and Newest first (only
+  with more than one episode; selection haptic on change), then a
+  `SectionHeader` per series and `EpisodeListItem` rows whose supporting
+  line names the roles ("Cast as Mrs. Stevenson, Writer"), each with
+  Play. Undated last either way. On a TV the D-pad starts on the first
+  episode. No bio is written (R13).
 
 ## §5 The player
 
