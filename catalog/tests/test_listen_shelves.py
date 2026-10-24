@@ -186,7 +186,90 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: a genre outside the eight is caught", broken(lambda s: s[1].update(genre="horror")),
           ["a genre shelf names one of the eight genres"])
     check("control: an empty genre shelf is caught", broken(lambda s: s[1].update(episodes=[])),
-          ["a genre shelf is never empty"])
+          ["an episode shelf is never empty"])
+
+
+    check("native: a registry without download counts publishes no popularity shelf",
+          [s["rule"] for s in shelves if s["rule"] == "mostDownloaded"], [])
+
+    # --- mostDownloaded (Decision 067): archive.org's own download counts ---------
+    pop_raw, pop_db = os.path.join(tmp, "pop.sqlite"), os.path.join(tmp, "pop-served.sqlite")
+    fixture(pop_raw)
+    c = sqlite3.connect(pop_raw)
+    c.execute("UPDATE recordings SET archive_id = 'item_' || substr(episode_id, 1, instr(episode_id, '|') - 1)")
+    c.execute("UPDATE recordings SET archive_id = 'shared' WHERE episode_id LIKE 'd3|%'")
+    c.execute("CREATE TABLE items (id, downloads)")
+    # m5 is all unclaimed; w5 never recommended; x1 has no count read (absent, not zero)
+    counts = {"item_d1": 50, "item_d2": 900, "shared": 40, "item_d4": 10, "item_d5": 700, "item_m1": 5000,
+              "item_m2": 80, "item_m5": 9999, "item_w1": 300, "item_w5": 8000}
+    c.executemany("INSERT INTO items VALUES (?,?)", counts.items())
+    c.commit()
+    c.close()
+    B.build(pop_raw, pop_db)
+    pmeta, pserved, prec = native_sets(pop_db)
+    pshelves = pmeta["listenShelves"]
+    pop = next((s for s in pshelves if s["rule"] == "mostDownloaded"), None)
+    check("native: mostDownloaded follows onThisDay and comes before the genres",
+          [s["rule"] for s in pshelves][:3], ["onThisDay", "mostDownloaded", "genreFirsts"])
+    check("native: guarantees hold with the popularity shelf", SH.violations(pshelves, pserved, prec), {})
+    check("native: popularity shelf carries no text", no_text(pshelves, pserved), [])
+    check("mostDownloaded: most downloaded series first, each by its earliest recommendable episode",
+          pop["episodes"], [eid("m5", "1944-04-01", 1), eid("m1", "1943-05-25", 46), eid("d2", "1950-05-25", 4),
+                            eid("d5", None, 1), eid("w1", "1952-01-01", 1), eid("m2", "1944-01-01", 1),
+                            eid("d1", "1945-03-01", 1), eid("d3", "1948-05-25", 2), eid("d4", "1942-01-01", 7)])
+    check("control: a never-recommended series is never on it, however downloaded",
+          any(i.startswith("w5|") for i in pop["episodes"]), False)
+    check("control: a series whose count was never read is not ranked as zero, it is absent",
+          any(i.startswith("x1|") for i in pop["episodes"]), False)
+    c = sqlite3.connect(pop_db)
+    check("native: the projection carries the counts of its own items only",
+          dict(c.execute("SELECT archive_id, downloads FROM items")).get("item_m5"), 9999)
+    c.close()
+    wpop = next((s for s in W.build(pop_db, os.path.join(tmp, "pop-web"))["listenShelves"]
+                 if s["rule"] == "mostDownloaded"), None)
+    check("web: the gate closed ranks only what the web serves (no unclaimed m5)",
+          wpop and wpop["episodes"][:2], [eid("m1", "1949-09-15", 300), eid("d2", "1950-05-25", 4)])
+    check("control: under MIN_SERIES ranked series, no popularity shelf",
+          [s["rule"] for s in SH.listen_shelves([("a|1", "a", None, 1, None)], {"a": ("drama", 1)},
+                                                downloads={"a": 5})], ["onThisDay"])
+    check("control: a written title on it is caught",
+          sorted(SH.violations([{"rule": "mostDownloaded", "episodes": pop["episodes"], "title": "Popular"}],
+                               pserved, prec)), ["a shelf carries only its rule's keys (no text)"])
+    check("series_downloads: an item counts once per series, however many episodes it holds",
+          SH.series_downloads([("a", "i"), ("a", "i"), ("a", "j"), ("b", "i")], {"i": 10, "j": 1}), {"a": 11, "b": 10})
+
+
+# --- the counts themselves: harvest_downloads.py and build_db.download_counts ---
+import harvest_downloads as HD  # noqa: E402
+import build_db as BD  # noqa: E402
+
+
+def stub_get(answers):
+    calls = []
+
+    def get(url, params, pause=0.0):
+        calls.append(params["q"])
+        a = answers.pop(0)
+        return None if a is None else {"response": {"docs": a}}
+    return get, calls
+
+
+get, calls = stub_get([[{"identifier": "a", "downloads": 7}, {"identifier": "b"}, {"identifier": "zz", "downloads": 1}],
+                       None])
+doc = HD.harvest(["a", "b", "c", "d"], 2, 0, previous={"items": {"c": 3}}, get=get)
+check("harvest: one batched identifier lookup per batch", calls, ['identifier:("a" OR "b")', 'identifier:("c" OR "d")'])
+check("harvest: a count read is kept; one archive.org omits is not written", doc["items"], {"a": 7, "c": 3})
+check("harvest: a batch that could not be read is unread, never zero, and keeps the earlier count",
+      (doc["unread"], doc["items"].get("c"), "d" in doc["items"]), (["c", "d"], 3, False))
+check("control: an id archive.org returned that was not asked for is ignored", "zz" in doc["items"], False)
+with tempfile.TemporaryDirectory() as cache:
+    ia_write = HD.ia.write_json
+    ia_write(os.path.join(cache, "seeds.json"), {"items": {"a": {"downloads": 5}, "b": {"downloads": None}, "c": {}}})
+    ia_write(os.path.join(cache, "downloads.json"), {"items": {"a": 9, "d": 2}})
+    check("build_db: the newer harvest wins over the seed scrape; an unread item is absent",
+          BD.download_counts(cache), {"a": 9, "d": 2})
+    os.remove(os.path.join(cache, "downloads.json"))
+    check("control: without the harvest, the seed scrape's counts", BD.download_counts(cache), {"a": 5})
 
 
 # --- front matter is not where a shelf starts (2026-10-23, the web's Drama shelf) ---

@@ -141,6 +141,8 @@ def build(src, out, include_unclaimed=False):
         for e in by_series.pop(k):
             del eps[e[0]]   # an episode whose series is not served is not served
     aliases = {o: n for o, n in s.execute("SELECT old_id, new_id FROM episode_aliases") if n in eps}
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    item_downloads = dict(s.execute("SELECT archive_id, downloads FROM items")) if "items" in tables else {}
     s.close()
 
     def oldest_first(e):
@@ -229,7 +231,9 @@ def build(src, out, include_unclaimed=False):
                    "recording": RECORDING_FIELDS, "credit": CREDIT_FIELDS, "day": DAY_FIELDS, "doc": DOC_FIELDS},
         "genreNames": GENRE_NAMES,
         "listenShelves": SH.listen_shelves([(e[0], e[1], e[2], e[4], e[10], e[5]) for e in eps.values()],
-                                           {k: (r[2], r[5]) for k, r in series.items()}),
+                                           {k: (r[2], r[5]) for k, r in series.items()},
+                                           downloads=SH.series_downloads(((e[1], recs[e[0]][0][1]) for e in eps.values()),
+                                                                         item_downloads)),
         "rightsLines": RIGHTS_LINES, "variantLines": VARIANT_LINES, "partialLine": PARTIAL_LINE,
     }
     manifest["bytes"] = measure(out)

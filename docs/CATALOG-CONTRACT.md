@@ -101,11 +101,12 @@ projection's own length, so a gate change applies without fetching again.
 `manifest.json` counts `counts.transcripts` (shown) and
 `counts.transcriptsSearchable` (indexed).
 
-**Playback loudness** (Decision 061). Each client holds one constant, the
-target, -21 LUFS, and plays an episode at `gain = target - loudness_i` dB,
-clamped so `loudness_tp + gain <= -1`; a boost beyond the clamp is not applied,
-and the web only cuts (a Web Audio gain above 1 would clip). NULL means
-unmeasured: play at unity gain, never a guessed value. The two columns describe
+**Playback loudness** (Decision 067, superseding 061's per-file gain). No
+client reads `loudness_i` or `loudness_tp`: every player levels volume on the
+device as it plays (each platform's design doc names its mechanism), so a new
+or unmeasured recording is leveled like any other. The columns stay, additive
+and unread, filled only from measurements already taken; the measuring
+workflow no longer runs on a schedule. The two columns describe
 the rank-0 copy only; a measurement of another copy is never published, so a
 new default copy reads NULL until it is measured. A measurement outside -45 to
 -5 LUFS, or with a true peak above +6 dBTP, is kept in the pipeline as
@@ -130,6 +131,10 @@ copy, then measured bitrate. The versions picker lists the rest in rank order.
 - `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art` row or NULL).
 - `credits`: `(episode_id, person_id, role, character)`, the one home of
   credits: Detail joins it to `people` (they are not repeated in `detail_json`).
+- `items`: `(archive_id, downloads)`, archive.org's own download count for
+  each item a served recording comes from (`catalog/tools/harvest_downloads.py`,
+  else the seed scrape's count in `seeds.json`). An item whose count was never
+  read is absent, never zero. Read by the `mostDownloaded` shelf (§5.1).
 - `art`: images with their evidence (`url`, `width`, `height`, `license`,
   `evidence_url`, `author` when the license requires credit). An image is
   served only when its own record carries the evidence (DECISIONS 055).
@@ -229,9 +234,10 @@ comes back empty, and ignores a rule it does not know.
 | Rule | Keys | Definition |
 |---|---|---|
 | `onThisDay` | `rule` | episodes whose `air_date` is a full `YYYY-MM-DD` on the person's own calendar month and day, any year (a month or year alone never matches; 29 February shows only on 29 February), `recommendAnd`, ordered by `air_date` ascending, ties by `id`, limit 20. It depends on the person's date, so it is a query by rule, never precomputed; `catalog/tests/golden/on_this_day.json` holds the cases every client's query must return. |
+| `mostDownloaded` | `rule`, `episodes` | Decision 067: popularity from data. Each served series' downloads are archive.org's own counts summed over the distinct items holding its served episodes' default copies (`shelves.series_downloads`, over that output's own rows, so the clean-only web ranks only what it serves); the series with the most, each by its earliest recommendable episode (front matter skipped, as `genreFirsts`), ties by key, limit 20, published when at least `MIN_SERIES` series rank. A series with no count read is not ranked. Precomputed ids. Its heading is the client's word for the rule ("Most downloaded"). |
 | `genreFirsts` | `rule`, `genre`, `episodes` | for each served series in the genre, its earliest recommendable episode (oldest first: dated before undated, then `air_date`, then `num` with nulls last, then `id`), series with the most served episodes first, ties by key, limit 20. Precomputed: `episodes` is the ordered id list, so a client reads ids and never re-derives the query. |
 
-- **Order**: `onThisDay` first, then one `genreFirsts` per genre in
+- **Order**: `onThisDay` first, then `mostDownloaded`, then one `genreFirsts` per genre in
   `genres.GENRES` order that has at least `MIN_SERIES` (5) served series with
   a recommendable episode. MEASURED 2026-10-23 on the 2026-10-22 projection:
   natively drama 986, comedy 469, mystery 227, documentary 154, serial 128,
@@ -242,10 +248,13 @@ comes back empty, and ignores a rule it does not know.
   the key exists in both outputs; every rule is from the known set and carries
   only its keys; every published id is served by that output and recommendable;
   a genre shelf names one of the eight and is never empty.
-- **Excluded pending the owner**: "Most episodes" (the web's series shelf,
-  `index/listen.json` `most`) is not a rule here; whether a size ranking belongs
-  on Listen is the owner's call (HUMAN-SHAPED.md B). `index/listen.json` stays
-  until the web reads `listenShelves`.
+- **Excluded by the owner** (Decision 067): "Most episodes" (the web's series
+  shelf, `index/listen.json` `most`) is not a rule here; popularity is
+  `mostDownloaded`. `index/listen.json` stays for older clients (Roku).
+  MEASURED 2026-10-24 on the 2026-10-22 projection with `seeds.json`'s counts:
+  6,215 of 8,724 default-copy items carry a count (91,305 of 108,005 episodes);
+  `harvest_downloads.py` reads the rest (one batched advancedsearch call per 100
+  items, a pause between).
 
 ### 5.5 Display vocabulary
 
@@ -345,16 +354,27 @@ Listen shelves are not a file: they ride in the manifests as `listenShelves`
   those. The web's copy is the same evenings with each episode the web
   projection does not serve withheld, so every platform plays the same
   evening on the same date.
-- **Shape**: `zone`, `floor` and `floor_provisional` (the coverage floor of
-  DECISIONS 058, one constant, provisional until the owner fixes it),
-  `days.{date}`: `evening`, `picked` (`anniversary` or `weekday`),
-  `network`, `station`, `coverage`, `witness` (paper, station, page URL),
-  and `slots[]`: `et_start`, `et_end`, `length_min`, `utc_start`,
-  `utc_end`, then `episode` (`id`, `series`, `title`, `rights`, `length_s`)
-  or `gap: true` with `known_series` (a catalog series name, only when the
-  printed text reads clearly as one), `withheld`, or `refused`. `printed`
-  is the paper's OCR text, kept as witness; clients do not draw it until
-  the owner rules on it.
+- **Which evening** (Decisions 058, 067): the date's anniversary in its
+  best-surviving year whenever any program of that evening survives (the 0.25
+  floor is gone); else the best evening for the weekday; never one with
+  nothing to play.
+- **Shape**: `zone`, `days.{date}`: `evening`, `picked` (`anniversary` or
+  `weekday`), `network`, `station`, `coverage`, `witness` (paper, station,
+  page URL), `slots[]`, and `years[]`. A slot is `et_start`, `et_end`,
+  `length_min`, `utc_start`, `utc_end`, then `episode` (`id`, `series`,
+  `title`, `rights`, `length_s`) or `gap: true` with `known_series` (a catalog
+  series name, only when the listing matched a series), `withheld`, or
+  `refused`. A gap shows its time and `known_series`, never the newspaper's
+  text: the paper's OCR text is not published (Decision 067; the measured
+  cache keeps it as witness).
+- **Other years** (Decision 067): `years[]` holds the same calendar date's
+  other published years, oldest first, one evening per year (that year's best
+  network), each with `evening`, `network`, `station`, `coverage`, `witness`,
+  and `slots[]` on today's clock, served only and never stitched; a listener
+  may pick one in place of the day's evening. A weekday pick offers none. A
+  kept day keeps its evening and slots and takes the new build's years; a
+  withdrawal applies to them too, and a year left with nothing to play leaves
+  the list.
 
 ## 9. Contract tests (to write with the publish step)
 

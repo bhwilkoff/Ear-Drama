@@ -65,6 +65,9 @@ CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archiv
 CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death TEXT);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
 CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
+-- archive.org's own download count for each item a served recording comes from (contract §3.3);
+-- an item whose count was never read is absent.
+CREATE TABLE items (archive_id TEXT PRIMARY KEY, downloads INTEGER NOT NULL);
 -- Contentless: a match's rowid is the episode's rowid (join episodes ON rowid). Only the index
 -- is stored, so the transcript column costs its postings, never its text. detail=column keeps
 -- word-prefix terms and column filters (every client query) and drops token positions, which
@@ -172,6 +175,13 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?)", (pid, name, birth, death))
 
+    try:
+        counts_by_item = dict(s.execute("SELECT id, downloads FROM items WHERE downloads IS NOT NULL"))
+    except sqlite3.OperationalError:  # a registry built before the column: no popularity shelf
+        counts_by_item = {}
+    used = {aid for (aid,) in d.execute("SELECT DISTINCT archive_id FROM recordings")}
+    d.executemany("INSERT INTO items VALUES (?,?)",
+                  sorted((a, n) for a, n in counts_by_item.items() if a in used and isinstance(n, int)))
     d.executescript(INDEXES)
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
               for t in ("episodes", "recordings", "series", "people", "credits")}
@@ -183,7 +193,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES,
             "listenShelves": SH.listen_shelves(
                 d.execute("SELECT id, series_key, air_date, num, no_recommend, title FROM episodes"),
-                {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")})}
+                {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")},
+                downloads=SH.series_downloads(d.execute(
+                    "SELECT e.series_key, r.archive_id FROM episodes e JOIN recordings r ON r.episode_id = e.id "
+                    "AND r.rank = 0"), dict(d.execute("SELECT archive_id, downloads FROM items"))))}
     for k, v in meta.items():
         d.execute("INSERT INTO meta VALUES (?,?)", (k, json.dumps(v)))
     d.execute("INSERT INTO episodes_fts (episodes_fts) VALUES ('optimize')")   # one b-tree, before VACUUM

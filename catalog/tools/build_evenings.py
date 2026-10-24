@@ -48,11 +48,9 @@ PAPERS = {"w": "Washington Post", "n": "New York Times", "c": "Chicago Daily Tri
 
 PRIME = (19 * 60, 23 * 60)  # 7-11 PM Eastern, the measured window
 ZONE = "America/New_York"   # the printed times are Eastern; tonight replays on the same Eastern clock
-# The coverage floor of DECISIONS 058. PROVISIONAL: proposed in docs/research/evenings.md §5
-# from 586 measured evenings and awaiting the owner. This is the one place the number
-# lives; the published file states it and says it is provisional.
-FLOOR = 0.25
-FLOOR_PROVISIONAL = True
+# Decision 067 (the owner, 2026-10-23): an evening shows when ANY program survives, so
+# Decision 058's 0.25 coverage floor is gone; an evening whose every slot is a gap is
+# never offered.
 # The published window, by calendar date: yesterday through 13 days ahead of the build's
 # UTC date, so every time zone finds its own today (contract §8).
 WINDOW_BACK, WINDOW_AHEAD = 1, 13
@@ -923,14 +921,26 @@ def anniversary_dates(start, days, y0=1935, y1=1955):
     return out
 
 
-def pick_tonight(day, measured, floor):
-    """Decision 058: this calendar date in its best-surviving year when that evening clears
-    the floor; else the best evening for this weekday. Never a stitched evening."""
-    ok = [r for r in measured.values() if "coverage" in r and r.get("readable")]
-    anniv = [r for r in ok if r["date"][5:] == day.strftime("%m-%d")]
-    best = max(anniv, key=lambda r: (r["coverage"], r["date"]), default=None)
-    if best and best["coverage"] >= floor:
+def anniversaries(day, measured):
+    """Every readable evening on this calendar date in which a program survives, one per
+    year (that year's best network), oldest year first."""
+    best = {}
+    for r in measured.values():
+        if "coverage" in r and r.get("readable") and r["coverage"] > 0 and r["date"][5:] == day.strftime("%m-%d"):
+            y = r["date"][:4]
+            if y not in best or (r["coverage"], r["network"]) > (best[y]["coverage"], best[y]["network"]):
+                best[y] = r
+    return [best[y] for y in sorted(best)]
+
+
+def pick_tonight(day, measured):
+    """Decisions 058 and 067: this calendar date in its best-surviving year when any program
+    of that evening survives; else the best evening for this weekday. Never a stitched
+    evening, and never one with nothing to play."""
+    best = max(anniversaries(day, measured), key=lambda r: (r["coverage"], r["date"]), default=None)
+    if best:
         return best, "anniversary"
+    ok = [r for r in measured.values() if "coverage" in r and r.get("readable") and r["coverage"] > 0]
     wk = [r for r in ok if dt.date.fromisoformat(r["date"]).weekday() == day.weekday()]
     alt = max(wk, key=lambda r: (r["coverage"], r["date"]), default=None)
     return alt, "weekday"
@@ -984,31 +994,49 @@ def withhold(slots, served):
 
 def served_evening(rec, served):
     """A measured evening as the served projection can play it now: coverage counts only
-    served episodes, so the floor and the pick see what a listener would hear."""
+    served episodes, so the pick sees what a listener would hear."""
     if not served or "slots" not in rec:
         return rec
     slots, changed = withhold(rec["slots"], served)
     return dict(rec, slots=slots, coverage=slot_coverage(slots)) if changed else rec
 
 
-def tonight(start, days, measured, floor=FLOOR, served=None):
-    out = {"schemaVersion": 1, "zone": ZONE, "floor": floor, "floor_provisional": FLOOR_PROVISIONAL,
-           "window_et": [hhmm(PRIME[0]), hhmm(PRIME[1])],
-           "rule": "Decision 058: anniversary in best-surviving year above the floor, else best evening for the weekday; "
-                   "gaps are gaps (R9)", "days": {}}
+# What a published slot carries. The paper's OCR text (`printed`) is not among them: a gap
+# shows its time and, when the listing matched a series, that series' name (`known_series`),
+# never the newspaper's text (Decision 067). The measured cache keeps it as witness.
+SLOT_KEYS = ("et_start", "et_end", "length_min", "episode", "gap", "known_series", "withheld", "refused")
+
+
+def published_slots(day, slots):
+    return [dict({k: json.loads(json.dumps(s[k])) for k in SLOT_KEYS if k in s},
+                 utc_start=to_utc(day, s["et_start"]), utc_end=to_utc_end(day, s))
+            for s in slots if _mins(s["et_end"]) > PRIME[0] and _mins(s["et_start"]) < PRIME[1]]
+
+
+def published_evening(day, ev):
+    return {"evening": ev["date"], "network": ev["network"], "station": ev["station"],
+            "coverage": ev["coverage"], "witness": ev["witness"], "slots": published_slots(day, ev["slots"])}
+
+
+def other_years(day, measured, picked):
+    """Decision 067: a listener may pick another published year for the same date. Each is
+    a whole evening of its own (never stitched), served only, replayed on today's clock."""
+    return [published_evening(day, r) for r in anniversaries(day, measured) if r["date"] != picked]
+
+
+def tonight(start, days, measured, served=None):
+    out = {"schemaVersion": 1, "zone": ZONE, "window_et": [hhmm(PRIME[0]), hhmm(PRIME[1])],
+           "rule": "Decisions 058 and 067: the anniversary in its best-surviving year when any program survives, "
+                   "else the best evening for the weekday; gaps are gaps (R9); years are the date's other "
+                   "published years", "days": {}}
     measured = {k: served_evening(r, served) for k, r in measured.items()}
     for i in range(days):
         day = start + dt.timedelta(days=i)
-        ev, why = pick_tonight(day, measured, floor)
+        ev, why = pick_tonight(day, measured)
         if not ev:
             continue
-        out["days"][day.isoformat()] = {
-            "evening": ev["date"], "picked": why, "network": ev["network"], "station": ev["station"],
-            "coverage": ev["coverage"], "witness": ev["witness"],
-            "slots": [dict(json.loads(json.dumps(s)), utc_start=to_utc(day, s["et_start"]), utc_end=to_utc_end(day, s))
-                      for s in ev["slots"]
-                      if _mins(s["et_end"]) > PRIME[0] and _mins(s["et_start"]) < PRIME[1]],
-        }
+        out["days"][day.isoformat()] = dict(published_evening(day, ev), picked=why,
+                                            years=other_years(day, measured, ev["date"]))
     return out
 
 
@@ -1106,19 +1134,42 @@ def report(measured, floors=(0.1, 0.15, 0.2, 0.25, 1 / 3, 0.4, 0.5, 0.6)):
     return "\n".join(lines)
 
 
+EVENING_KEYS = ("evening", "network", "station", "coverage", "witness", "slots")
+
+
+def withhold_day(v, served):
+    """A published day with each episode `served` refuses withheld, in its evening and in
+    every other year it offers (a year left with nothing to play is no longer offered)."""
+    slots, changed = withhold(v["slots"], served)
+    out = dict(v, slots=slots, coverage=slot_coverage(slots)) if changed else v
+    if v.get("years"):
+        years = []
+        for y in v["years"]:
+            ys, yc = withhold(y["slots"], served)
+            years.append(dict(y, slots=ys, coverage=slot_coverage(ys)) if yc else y)
+        out = dict(out, years=[y for y in years if y["coverage"] > 0])
+    return out
+
+
 def keep_published(new, old, start, served=None):
-    """Contract §8: a day once published keeps its value; days before the window drop off.
-    The one change a kept day can take is a withdrawal: an episode the served projection no
-    longer serves becomes a withheld gap (unclaimed recordings are removed on request)."""
+    """Contract §8: a day once published keeps its evening and slots; days before the window
+    drop off. A kept day takes the new build's other years (an offer beside the evening,
+    never the evening itself), and the paper's text leaves it. The one change its evening
+    can take is a withdrawal: an episode the served projection no longer serves becomes a
+    withheld gap (unclaimed recordings are removed on request)."""
     days = dict(new["days"])
     for d, v in old.get("days", {}).items():
         if d >= start:
-            days[d] = v
+            kept = dict(v, slots=[{k: x for k, x in s.items() if k != "printed"} for s in v.get("slots", [])])
+            w = new["days"].get(d)
+            if w is not None:
+                offer = list(w.get("years") or [])
+                if w.get("picked") == "anniversary":
+                    offer.append({k: w[k] for k in EVENING_KEYS})
+                kept["years"] = sorted((y for y in offer if y["evening"] != v["evening"]), key=lambda y: y["evening"])
+            days[d] = kept
     if served:
-        for d, v in days.items():
-            slots, changed = withhold(v["slots"], served)
-            if changed:
-                days[d] = dict(v, slots=slots, coverage=slot_coverage(slots))
+        days = {d: withhold_day(v, served) for d, v in days.items()}
     return dict(new, days=dict(sorted(days.items())))
 
 
@@ -1156,11 +1207,7 @@ def for_web(doc, web_dir):
             p = os.path.join(web_dir, "episodes", f"{k}.json")
             shards[k] = json.load(open(p)) if os.path.exists(p) else {}
         return eid in shards[k]
-    days = {}
-    for d, v in doc["days"].items():
-        slots, changed = withhold(v["slots"], served)
-        days[d] = dict(v, slots=slots, coverage=slot_coverage(slots)) if changed else v
-    return dict(doc, days=days)
+    return dict(doc, days={d: withhold_day(v, served) for d, v in doc["days"].items()})
 
 
 def _today(s):
@@ -1278,8 +1325,8 @@ def main():
             json.dump(doc, f, indent=1)
         kept = [d for d in doc["days"] if d in old.get("days", {})]
         print(f"wrote {args.out}: {len(doc['days'])} days ({len(kept)} kept as published, "
-              f"{len(new_days - set(kept))} new) for {start} + {days} days; floor {FLOOR}"
-              f"{' (provisional)' if FLOOR_PROVISIONAL else ''}")
+              f"{len(new_days - set(kept))} new) for {start} + {days} days; "
+              f"{sum(len(v.get('years') or []) for v in doc['days'].values())} other years offered")
         return 0 if doc["days"] else 1
     return 0
 

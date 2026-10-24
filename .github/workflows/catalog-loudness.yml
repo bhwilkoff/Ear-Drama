@@ -28,11 +28,9 @@
 name: Catalog loudness
 
 on:
-  schedule:
-    # Once a day (10:23 UTC, 4:23 AM MT): about 25 GB from archive.org a run. Four a
-    # day (about 100 GB) covers the catalog in ~27 days instead of ~108; that pace
-    # waits on the owner, since nobody has told archive.org (Decision 060).
-    - cron: '23 10 * * *'
+  # No schedule: Decision 067 (the owner, 2026-10-23) levels volume on each device as it
+  # plays, so no client reads a per-file measurement and the measuring stops. Dispatch
+  # stays for a one-off research run; it streams about 25 GB from archive.org.
   workflow_dispatch:
     inputs:
       batch:
