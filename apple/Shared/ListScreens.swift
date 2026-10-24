@@ -189,9 +189,12 @@ struct SeriesScreen: View {
             case let .some(.some(page)):
                 List {
                     Section {
-                        Text(verbatim: page.series.metaLine)
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
+                        HStack(alignment: .top, spacing: Spacing.s3) {
+                            if let face = page.series.face { FaceFigure(face: face) }
+                            Text(verbatim: page.series.metaLine)
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
                     }
                     ForEach(page.seasons) { season in
                         Section {
@@ -257,18 +260,21 @@ struct EpisodeScreen: View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         return List {
             Section {
-                VStack(alignment: .leading, spacing: Spacing.s2) {
-                    NavigationLink(value: Route.series(episode.seriesKey)) {
-                        Text(episode.seriesName)
-                            .font(TypeRamp.body)
-                            .foregroundStyle(Color.brandLink)
+                HStack(alignment: .top, spacing: Spacing.s3) {
+                    if let face = detail.starFace { FaceFigure(face: face) }
+                    VStack(alignment: .leading, spacing: Spacing.s2) {
+                        NavigationLink(value: Route.series(episode.seriesKey)) {
+                            Text(episode.seriesName)
+                                .font(TypeRamp.body)
+                                .foregroundStyle(Color.brandLink)
+                        }
+                        Text(episode.displayTitle)
+                            .font(TypeRamp.sectionHeader)
+                            .foregroundStyle(Color.brandText)
+                        Text(verbatim: factsLine(detail))
+                            .font(TypeRamp.tabular)
+                            .foregroundStyle(Color.brandTextMuted)
                     }
-                    Text(episode.displayTitle)
-                        .font(TypeRamp.sectionHeader)
-                        .foregroundStyle(Color.brandText)
-                    Text(verbatim: factsLine(detail))
-                        .font(TypeRamp.tabular)
-                        .foregroundStyle(Color.brandTextMuted)
                 }
                 .padding(.vertical, Spacing.s2)
 
@@ -302,9 +308,25 @@ struct EpisodeScreen: View {
             }
 
             ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
+                let faces = group.credits.contains { $0.art != nil }
                 Section(group.role) {
                     ForEach(group.credits) { credit in
-                        Text(credit.line).font(TypeRamp.body)
+                        HStack(spacing: Spacing.s2) {
+                            if faces { CreditFace(art: credit.art) }
+                            Text(credit.line).font(TypeRamp.body)
+                        }
+                    }
+                }
+            }
+            // CC BY / BY-SA portraits carry their credit (Decision 069); the heading's face already does.
+            let owed = detail.owedCredits
+            if !owed.isEmpty {
+                Section {
+                    ForEach(owed, id: \.personID) { credit in
+                        if let art = credit.art, let line = art.credit {
+                            LabeledContent(credit.name) { ArtCredit(credit: line, evidence: art.evidence) }
+                                .font(TypeRamp.caption)
+                        }
                     }
                 }
             }

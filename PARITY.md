@@ -105,6 +105,7 @@ When shipping any user-facing feature:
 
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
+| Show art: star portraits, typographic card, lock-screen artwork | 🚧 tiles on mixed rows and series rows, faces on series page and Detail, cast portraits, Now Playing and Media Session | 🚧 same; `MPMediaItemArtwork` | 🚧 same; transport-bar tile | 🚧 card tiles, Detail and series faces, cast grid, 400 pt Now Playing art | 🚧 tiles, faces, cast portraits, sheet art, Media3 `artworkUri` / card PNG | Decision 069, contract §3.3a: dated matches' own P18 portraits only; CC credits shown; no device check yet |
 | Episode detail (date, network, sponsor, cast, versions, rights line) | 🚧 no sponsor yet | 🚧 | 🚧 | 🚧 | 🚧 no sponsor | Unclaimed reads "no claim known; removed on request", never public domain |
 | Player: background play, system controls, speed, skip | 🚧 Media Session | 🚧 Now Playing, remote commands | 🚧 Controls menu, keyboard | 🚧 full-screen Now Playing | 🚧 Media3 session | iPhone web cannot be relied on for background audio |
 | Sleep timer: "end of this episode" first, fades (R20) | 🚧 fade ignored by iPhone Safari (pauses) | 🚧 | 🚧 | 🚧 | 🚧 | Decision 062: 10 s fade, speeds 0.75 to 2, save every 5 s, 3 s rewind after an interruption; on every core platform |

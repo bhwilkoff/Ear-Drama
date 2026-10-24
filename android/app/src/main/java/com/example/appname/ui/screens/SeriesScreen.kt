@@ -48,6 +48,8 @@ import com.example.appname.ui.Meta
 import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.seasonLabel
 import com.example.appname.ui.seriesYears
+import com.example.appname.ui.FaceFigure
+import androidx.compose.foundation.layout.Box
 import com.example.appname.ui.theme.Spacing
 
 /** A series page (§4.3): Follow and Share, its broadcast seasons as a segmented scope (not a push), episodes oldest first (R1). */
@@ -92,6 +94,9 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
             val rows = (episodes as? Loadable.Ready)?.value.orEmpty()
             ClaimTvFocus(firstRow, rows.firstOrNull()?.id)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+                seriesPage.series.face?.let { face ->
+                    item(key = "face") { Box(Modifier.padding(start = Spacing.S4.dp, top = Spacing.S2.dp)) { FaceFigure(face) } }
+                }
                 item(key = "meta") {
                     val years = seriesYears(seriesPage.series)
                     Meta(

@@ -109,10 +109,13 @@ private struct EpisodeCard_tvOS: View {
                     .lineLimit(3)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
-                Text(episode.seriesName)
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
-                    .lineLimit(1)
+                HStack(spacing: Spacing.s3) {
+                    ArtTile(name: episode.seriesName, genre: episode.seriesGenre, face: episode.seriesFace, size: 64)
+                    Text(episode.seriesName)
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                        .lineLimit(1)
+                }
             }
             .padding(Spacing.s6)
             .frame(width: 420, height: 236, alignment: .topLeading)
@@ -235,11 +238,14 @@ private struct SeriesScreen_tvOS: View {
             case let .some(.some(page)):
                 List {
                     Section {
-                        VStack(alignment: .leading, spacing: Spacing.s2) {
-                            Text(page.series.name).font(TypeRamp.pageTitle)
-                            Text(verbatim: page.series.metaLine)
-                                .font(TypeRamp.caption)
-                                .foregroundStyle(Color.brandTextMuted)
+                        HStack(alignment: .top, spacing: Spacing.s6) {
+                            if let face = page.series.face { FaceFigure(face: face, width: 200) }
+                            VStack(alignment: .leading, spacing: Spacing.s2) {
+                                Text(page.series.name).font(TypeRamp.pageTitle)
+                                Text(verbatim: page.series.metaLine)
+                                    .font(TypeRamp.caption)
+                                    .foregroundStyle(Color.brandTextMuted)
+                            }
                         }
                         .focusable(false)
                     }
@@ -292,17 +298,20 @@ private struct EpisodeScreen_tvOS: View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         return ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: Spacing.s8) {
-                VStack(alignment: .leading, spacing: Spacing.s3) {
-                    Text(episode.seriesName)
-                        .font(TypeRamp.bodyStrong)
-                        .foregroundStyle(Color.brandTextMuted)
-                    Text(episode.displayTitle)
-                        .font(TypeRamp.pageTitle)
-                        .foregroundStyle(Color.brandText)
-                    Text(verbatim: [AirDate.display(episode.airDate), episode.network, detail.sponsor, episode.durationText]
-                        .compactMap { $0 }.joined(separator: " · "))
-                        .font(TypeRamp.tabular)
-                        .foregroundStyle(Color.brandTextMuted)
+                HStack(alignment: .top, spacing: Spacing.s8) {
+                    if let face = detail.starFace { FaceFigure(face: face, width: 240) }
+                    VStack(alignment: .leading, spacing: Spacing.s3) {
+                        Text(episode.seriesName)
+                            .font(TypeRamp.bodyStrong)
+                            .foregroundStyle(Color.brandTextMuted)
+                        Text(episode.displayTitle)
+                            .font(TypeRamp.pageTitle)
+                            .foregroundStyle(Color.brandText)
+                        Text(verbatim: [AirDate.display(episode.airDate), episode.network, detail.sponsor,
+                                        episode.durationText].compactMap { $0 }.joined(separator: " · "))
+                            .font(TypeRamp.tabular)
+                            .foregroundStyle(Color.brandTextMuted)
+                    }
                 }
                 .accessibilityElement(children: .combine)
 
@@ -340,8 +349,28 @@ private struct EpisodeScreen_tvOS: View {
                 ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
                     VStack(alignment: .leading, spacing: Spacing.s2) {
                         Text(group.role).font(TypeRamp.bodyStrong)
-                        Text(group.credits.map(\.line).joined(separator: ", "))
-                            .font(TypeRamp.body)
+                        if group.credits.contains(where: { $0.art != nil }) {
+                            // Decision 069: portraits on cast lines; the slot stays so names align.
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 520), alignment: .leading)],
+                                      alignment: .leading, spacing: Spacing.s3) {
+                                ForEach(group.credits) { credit in
+                                    HStack(spacing: Spacing.s3) {
+                                        CreditFace(art: credit.art, size: 64)
+                                        Text(credit.line).font(TypeRamp.body).foregroundStyle(Color.brandTextMuted)
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(group.credits.map(\.line).joined(separator: ", "))
+                                .font(TypeRamp.body)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
+                    }
+                }
+                ForEach(detail.owedCredits, id: \.personID) { credit in
+                    if let line = credit.art?.credit {
+                        Text(verbatim: "\(credit.name): \(line)")
+                            .font(TypeRamp.caption)
                             .foregroundStyle(Color.brandTextMuted)
                     }
                 }
@@ -502,19 +531,22 @@ private struct NowPlaying_tvOS: View {
         VStack(alignment: .leading, spacing: Spacing.s8) {
             Spacer(minLength: 0)
             if let item = player.item {
-                VStack(alignment: .leading, spacing: Spacing.s3) {
-                    Text(item.episode.seriesName)
-                        .font(TypeRamp.sectionHeader)
-                        .foregroundStyle(Color.brandTextMuted)
-                    Text(item.episode.displayTitle)
-                        .font(TypeRamp.pageTitle)
-                        .foregroundStyle(Color.brandText)
-                    Text(verbatim: [AirDate.display(item.episode.airDate), item.episode.network]
-                        .compactMap { $0 }.joined(separator: " · "))
-                        .font(TypeRamp.tabular)
-                        .foregroundStyle(Color.brandTextMuted)
+                HStack(alignment: .bottom, spacing: Spacing.s8) {
+                    NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network, side: 400)
+                    VStack(alignment: .leading, spacing: Spacing.s3) {
+                        Text(item.episode.seriesName)
+                            .font(TypeRamp.sectionHeader)
+                            .foregroundStyle(Color.brandTextMuted)
+                        Text(item.episode.displayTitle)
+                            .font(TypeRamp.pageTitle)
+                            .foregroundStyle(Color.brandText)
+                        Text(verbatim: [AirDate.display(item.episode.airDate), item.episode.network]
+                            .compactMap { $0 }.joined(separator: " · "))
+                            .font(TypeRamp.tabular)
+                            .foregroundStyle(Color.brandTextMuted)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                .accessibilityElement(children: .combine)
             }
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: Spacing.s3) {

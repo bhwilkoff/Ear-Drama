@@ -124,15 +124,49 @@ copy, then measured bitrate. The versions picker lists the rest in rank order.
 
 - `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
-  the logs say aired), `kind_summary`.
+  the logs say aired), `kind_summary`, `star` (§3.3a, or NULL).
 - `runs`: `(id, series_key, first_date, last_date, kind, network)`; kind is one
   of anthology, character, serial, strip, comedy-variety, news, broadcast-day.
-- `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art` row or NULL).
+- `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art.id` or NULL).
 - `credits`: `(episode_id, person_id, role, character)`, the one home of
   credits: Detail joins it to `people` (they are not repeated in `detail_json`).
-- `art`: images with their evidence (`url`, `width`, `height`, `license`,
-  `evidence_url`, `author` when the license requires credit). An image is
-  served only when its own record carries the evidence (DECISIONS 055).
+- `art`: `(id, url, width, height, license, author, credit, evidence_url)`.
+  `url` is Commons' `Special:FilePath/<file>` with no width: each client's one
+  image helper appends `?width=` from Commons' standard steps (120, 330, 500),
+  never another value (Commons refuses most others) and never a re-hosted copy.
+  `width`/`height` are the original's when known, else NULL. `license` is the
+  class (`pd_us`, `pd_us_gov`, `cc0`, `pd_release`, `free_use`, `cc_by`,
+  `cc_by_sa`); `credit` ("Author, CC BY-SA 3.0") is set exactly when the license
+  requires attribution, and a client shows it wherever the image is shown at
+  header size or in the Detail credits; `evidence_url` is the file page.
+- `episodes.star`: the episode's face (§3.3a), or NULL.
+
+### 3.3a Portraits: what is served, and whose face a show wears
+
+`catalog/tools/art_policy.py` is the one predicate; both builders use it. A
+portrait is served only when all hold (DECISIONS 055, 069): the file's license
+class is one above; the PERSON was matched on a date (OTRRpedia's birth or death
+agreeing with Wikidata's; the undated one-namesake rule, about 1 in 30 wrong, is
+not served, RESEARCH §12 V1); the file is the person's own Wikidata image (P18),
+never a "depicts" file (often a group); and a license that needs credit has an
+author. One portrait per person, the most permissive class first. Library of
+Congress "no known restrictions" and Smithsonian CC0 photographs are not served
+(V2, V4, the owner's). MEASURED 2026-10-24 on the 121,907-episode build: 2,344
+images, 2,364 people, 305 series with a star, 24,894 episodes with one.
+
+- **`series.star`**: the person with a served portrait heard on the air (cast,
+  host, narrator, performer, guest, announcer excluded) on the most of the
+  series' credited episodes, when that is at least 3 episodes and a third of
+  them (an anthology's guest is not its face); ties by person id.
+- **`episodes.star`**: the series' star when heard in the episode, else the
+  episode's first on-air credit with a served portrait, else NULL.
+- A series with no star has no picture: its artwork is the typographic card
+  (name, years, network, on its genre hue), drawn by each client from data.
+- Guarantees (`catalog/tests/test_projection_art.py`, each broken once): every
+  image's class is served; a credit exactly when owed, with an author; every
+  image is worn by a person and every portrait exists; a star wears a portrait
+  and an episode's star is credited in it; every published image traced back to
+  its source rows passes the predicate again.
 
 ### 3.4 Search
 
@@ -174,8 +208,12 @@ the starting shape, Archive Watch's:
   episode id (FNV-1a, positions append-only), one shard per Detail view.
 - `data/tonight.json` and `data/channels.json`: the Radio tab (§8).
 
-A Detail row's last field, `transcript`, is §3.1's `transcript_url` (null
-unless the gate passed). Web search does not index transcript words yet: the
+A Detail row's `transcript` is §3.1's `transcript_url` (null unless the gate
+passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
+`width`, `height`, `credit`, `evidence`): a series row appends `star` (the
+face's name) and `art`, a series page carries both as keys, a credit appends
+`art` (its person's portrait or null), and a Detail row appends `star` (the
+episode's face, a person id among its credits). Web search does not index transcript words yet: the
 served projection's FTS is contentless, so the web builder has no text to cut
 from, and adding about 9,000 transcripts' vocabulary to the two-character term
 files is a size to measure before it is built. Until then, transcript search is

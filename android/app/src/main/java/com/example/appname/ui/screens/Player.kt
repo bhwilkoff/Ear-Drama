@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -57,6 +59,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.Loadable
+import com.example.appname.ui.NowPlayingArt
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.rememberCatalogQuery
@@ -154,6 +157,10 @@ fun PlayerSheet(
     val hasTranscript by rememberCatalogQuery(episode?.id) { db ->
         episode?.let { db.episodeDetail(it.id)?.transcriptUrl } != null
     }
+    // Decision 069: the episode's face, else the series', else its typographic card.
+    val face by rememberCatalogQuery(episode?.id) { db ->
+        episode?.let { db.episodeDetail(it.id)?.face ?: it.seriesFace }
+    }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         if (episode == null) {
             Box(Modifier.padding(Spacing.S6.dp)) { Text("Nothing is playing.") }
@@ -163,6 +170,11 @@ fun PlayerSheet(
             Modifier.fillMaxWidth().padding(horizontal = Spacing.S6.dp).navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            NowPlayingArt(
+                episode.seriesName, episode.seriesGenre, episode.airDate?.take(4),
+                (face as? Loadable.Ready)?.value ?: episode.seriesFace,
+            )
+            Spacer(Modifier.height(Spacing.S3.dp))
             Text(
                 episode.seriesName,
                 style = MaterialTheme.typography.labelMedium,

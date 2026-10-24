@@ -98,6 +98,23 @@ const API = (() => {
     });
   }
 
+  /* ---- Art (contract §3.3a, Decision 069) ---- */
+
+  const ART_FIELDS = ['url', 'width', 'height', 'credit', 'evidence'];
+  /** A published art array as an object, or null. */
+  function artOf(a) {
+    if (!Array.isArray(a) || !a[0]) return null;
+    return rowsOf(ART_FIELDS, [a])[0];
+  }
+  /** Commons' standard thumbnail steps; any other width is refused upstream. */
+  const ART_STEPS = [120, 330, 500];
+  /** The one image helper: the served file at the smallest standard width at least `px` wide. */
+  function artURL(art, px) {
+    if (!art || !art.url) return null;
+    const w = ART_STEPS.find(x => x >= px) || ART_STEPS[ART_STEPS.length - 1];
+    return `${art.url}?width=${w}`;
+  }
+
   /* ---- The verbs (contract §5) ---- */
 
   const manifest = () => getJSON('manifest.json');
@@ -107,7 +124,7 @@ const API = (() => {
   function seriesIndex() {
     if (!indexP) {
       indexP = getJSON('index/series.json').then(d => {
-        const rows = rowsOf(d.fields, d.rows);
+        const rows = rowsOf(d.fields, d.rows).map(r => ({ ...r, art: artOf(r.art) }));
         return { rows, byKey: new Map(rows.map(r => [r.key, r])) };
       });
       indexP.catch(() => { indexP = null; });
@@ -123,7 +140,7 @@ const API = (() => {
     const d = await get('index/listen.json').catch(e => {
       throw e.kind === 'missing' ? new DataError('error', e.message) : e;
     });
-    return { shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series) })) };
+    return { shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series).map(r => ({ ...r, art: artOf(r.art) })) })) };
   }
 
   const SHELF_LIMIT = 20;
@@ -197,7 +214,7 @@ const API = (() => {
   async function seriesPage(key) {
     const d = await getJSON(`series/${encodeURIComponent(key)}.json`);
     const episodes = rowsOf(d.fields, d.episodes).map(e => ({ ...e, series: d.key, seriesName: d.name }));
-    return { ...d, episodes };
+    return { ...d, art: artOf(d.art), episodes };
   }
 
   let aliasesP = null;
@@ -221,7 +238,7 @@ const API = (() => {
     const o = rowsOf(f.detail, [rec])[0];
     o.id = resolved;
     o.recordings = rowsOf(f.recording, o.recordings || []);
-    o.credits = rowsOf(f.credit, o.credits || []);
+    o.credits = rowsOf(f.credit, o.credits || []).map(c => ({ ...c, art: artOf(c.art) }));
     return o;
   }
 
@@ -715,7 +732,7 @@ const API = (() => {
 
   return {
     rooms,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, artOf, artURL, ART_STEPS,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
     transcript, transcriptLines, transcriptLabel,

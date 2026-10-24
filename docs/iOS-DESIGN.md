@@ -50,7 +50,19 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `apple/Shared/Rows.swift`), in tabular figures, oldest first.
 - **R5** copies of one broadcast are Versions on Detail, the rank 0
   copy first and the default.
-- **R11** rows and cards are typographic; no art is drawn or invented.
+- **R11, as amended by Decision 069** (2026-10-24): art is a served
+  portrait, else the typographic card drawn from data; no stock,
+  placeholder, or invented art (`apple/Shared/ArtViews.swift`, contract
+  §3.3a). A row that mixes series (`EpisodeRowLabel(showSeries:)`, every
+  `SeriesRowLabel`) leads with a 40 pt `ArtTile`: the series' star, else
+  its first letter in its genre hue, which replaces the old genre edge.
+  A series page's own rows carry none. The series page and Detail put a
+  `FaceFigure` (76 pt) beside the heading, captioned with the name and,
+  when owed, the CC credit; cast lines carry a 32 pt `CreditFace`, the
+  slot kept in a group with any portrait; owed credits follow as one
+  section. The player sheet shows `NowPlayingArt` (200 pt), and the lock
+  screen (`MPMediaItemArtwork`) the same picture: the portrait at 500 px,
+  else the card rendered by `ImageRenderer`. Portraits crop top-anchored.
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the
