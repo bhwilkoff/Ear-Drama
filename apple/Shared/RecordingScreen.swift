@@ -273,7 +273,11 @@ struct RecordingScreen: View {
                     .disabled(session.isBusy || session.production.chosen[line.id] == nil || index + 1 >= count)
             }
             .font(TypeRamp.body)
-            doneButton(session)
+            // A shared part is finished on the Worker, from the cast sheet,
+            // once its takes are up (PLAYS-DESIGN §11.7 rule 5).
+            if plays.store.share(productionID) == nil {
+                doneButton(session)
+            }
         }
     }
 

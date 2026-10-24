@@ -76,8 +76,10 @@ import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.PlaysLibrary
+import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
 import com.example.appname.plays.Relay
+import com.example.appname.ui.AccountRow
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
@@ -165,17 +167,34 @@ fun StartEarDramaButton(script: PlayScript, onOpenProduction: (String) -> Unit) 
     }
 }
 
-/** Library's Ear dramas (§4.6): this device's productions, newest first; none on a TV. */
-fun LazyListScope.earDramasSection(productions: List<Production>, onOpenProduction: (String) -> Unit) {
-    if (productions.isEmpty()) return
+/**
+ * Library's Ear dramas (§4.6, §4.16): the held invitation, this device's
+ * productions, the shared ones this person is in that the device has not
+ * opened, then Classes. None on a TV.
+ */
+fun LazyListScope.earDramasSection(
+    rows: List<PlaysShare.LibraryRow>,
+    invite: String?,
+    classes: Boolean,
+    onOpenProduction: (String) -> Unit,
+) {
+    if (rows.isEmpty() && invite == null && !classes) return
     item(key = "dramas-h") { SectionHeader("Ear dramas") }
-    items(productions, key = { "d:" + it.id }) { production ->
-        ProductionRow(production, onOpen = { onOpenProduction(production.id) })
+    if (invite != null) item(key = "invitation") { InvitationItem(invite, onOpenProduction) }
+    items(rows, key = { "d:" + (it.local?.id ?: it.pid) }) { row ->
+        val production = row.local
+        val remote = row.remote
+        if (production != null) {
+            ProductionRow(production, onOpen = { onOpenProduction(production.id) })
+        } else if (remote != null) {
+            RemoteProductionRow(remote, onOpenProduction)
+        }
     }
+    if (classes) item(key = "classes") { Column { ClassesBlock() } }
 }
 
 @Composable
-private fun ProductionRow(production: Production, onOpen: () -> Unit) {
+internal fun ProductionRow(production: Production, onOpen: () -> Unit) {
     val script = rememberCastScript(production.id)
     var confirming by remember { mutableStateOf(false) }
     ListItem(
@@ -296,6 +315,39 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
     var taking by remember { mutableStateOf<PartID?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
     val haptics = rememberHaptics()
+    val container = LocalAppContainer.current
+    val sharing = container.sharing
+    val television = LocalIsTelevision.current
+    val account by container.accounts.account.collectAsState()
+    val me = account?.userId
+    val links by sharing.links.collectAsState()
+    val records by sharing.records.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // A TV plays back only (PLAYS-DESIGN §11.7): a shared production there is just a local one.
+    val link = remember(id, links, television) { if (television) null else links[id] ?: sharing.linkOf(id) }
+    val rec = records[id]
+    val sheet = if (link != null && script != null) {
+        remember(id, script) { SharedSheet(id, script, sharing, scope, context, onRecord) }
+    } else {
+        null
+    }
+    var syncError by remember { mutableStateOf<String?>(null) }
+    var shareError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(link?.pid, me) {
+        if (link == null || me == null) return@LaunchedEffect
+        while (true) {
+            try {
+                sharing.refresh(id)
+                syncError = null
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                syncError = PlaysShare.line(e)
+            }
+            delay(20_000)
+        }
+    }
 
     fun apply(change: (Production) -> Production): Boolean {
         val latest = plays.store.production(id) ?: return false
@@ -319,8 +371,43 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
         }
         val next = Relay.next(production, script)
         val current = Relay.current(production, script)
+        val pendingByPart = remember(production, rec, me) {
+            if (rec == null) emptyMap() else PlaysShare.pending(production, script, rec, me).groupingBy { it.part.raw }.eachCount()
+        }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            items(script.castParts, key = { "part:" + it.id.raw }) { part ->
+            if (!television && link == null) {
+                item(key = "share") {
+                    ShareEntry(
+                        signedIn = account != null,
+                        error = shareError,
+                        onShare = { name ->
+                            shareError = null
+                            scope.launch {
+                                try {
+                                    sharing.share(id, script, name)
+                                } catch (e: kotlinx.coroutines.CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    shareError = PlaysShare.line(e)
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+            if (link != null && me == null) {
+                item(key = "shared-signed-out") {
+                    Column(Modifier.padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                        Text("Sharing needs an account.", style = MaterialTheme.typography.bodyMedium)
+                        AccountRow()
+                    }
+                }
+            }
+            if (link != null && sheet != null) {
+                syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
+                sharedCastRows(sheet, rec, me, pendingByPart, onRecord)
+            }
+            if (link == null) items(script.castParts, key = { "part:" + it.id.raw }) { part ->
                 CastRow(
                     part = part,
                     state = production.state(part.id),
@@ -336,7 +423,16 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
             }
             refusal?.let { item(key = "refusal") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
             item(key = "listen-h") { SectionHeader("Listen") }
-            item(key = "listen") { ListenThrough(production, script) }
+            item(key = "listen") { ListenThrough(production, script, sheet) }
+            if (rec != null && rec.hiddenTakes > 0) {
+                item(key = "hidden") {
+                    Text(
+                        if (rec.hiddenTakes == 1) "1 take is hidden from you." else "${rec.hiddenTakes} takes are hidden from you.",
+                        Modifier.padding(horizontal = Spacing.S4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
             item(key = "manage") {
                 Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S4.dp)) {
                     if (production.unusedTakes.isNotEmpty()) {
@@ -360,6 +456,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
                 },
             )
         }
+        sheet?.let { ConsentDialog(it) }
         if (confirmingDelete) DeleteProductionDialog(production, onDismiss = { confirmingDelete = false }, onDeleted = onBack)
     }
 }
@@ -463,7 +560,7 @@ private fun DeleteProductionDialog(production: Production, onDismiss: () -> Unit
  * Export is offered whenever the play is complete.
  */
 @Composable
-private fun ListenThrough(production: Production, script: PlayScript) {
+private fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?) {
     val container = LocalAppContainer.current
     val plays = container.plays
     val context = LocalContext.current
@@ -478,6 +575,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
     var listenedFrom by remember { mutableStateOf<String?>(null) }
     var live by remember { mutableStateOf<LiveListen?>(null) }
     var liveJob by remember { mutableStateOf<Job?>(null) }
+    var reportingTake by remember { mutableStateOf<String?>(null) }
     val complete = Relay.isComplete(production, script)
 
     fun stopLive() {
@@ -506,7 +604,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
         val running = live
         when {
-            running != null -> LiveListenPanel(running, script, onStop = { stopLive() })
+            running != null -> LiveListenPanel(running, script, onStop = { stopLive() }, onReport = shared?.let { { id: String -> reportingTake = id } })
             mixing -> CircularProgressIndicator(Modifier.semantics { contentDescription = "Mixing" })
             complete && loaded -> {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.S4.dp)) {
@@ -545,6 +643,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                 scope.launch {
                     mixing = true
                     try {
+                        shared?.prepareListen()
                         val file = plays.renderMix(production.id)
                         listenedFrom = plays.store.production(production.id)?.chosenFingerprint
                         mix.onEnded = {
@@ -574,7 +673,8 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                 live = listen
                 liveJob = scope.launch {
                     try {
-                        listen.run(Relay.listenPlan(production, script))
+                        shared?.prepareListen()
+                        listen.run(Relay.listenPlan(plays.store.production(production.id) ?: production, script))
                     } finally {
                         if (live === listen) {
                             listen.close()
@@ -604,12 +704,19 @@ private fun ListenThrough(production: Production, script: PlayScript) {
             }
         }
         error?.let { ErrorLine(it) }
+        shared?.error?.let { ErrorLine(it) }
+    }
+    reportingTake?.let { takeId ->
+        ReportDialog(onDismiss = { reportingTake = null }, onReport = { reason, note ->
+            reportingTake = null
+            shared?.report(null, takeId, reason, note)
+        })
     }
 }
 
 /** The line being heard, its speaker, and "Device voice" on a line the device reads, so a stand-in never passes as a person. */
 @Composable
-private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -> Unit) {
+private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -> Unit, onReport: ((String) -> Unit)?) {
     val entry by listen.current.collectAsState()
     val line = entry?.let { e -> script.lines.firstOrNull { it.id == e.lineID } }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
@@ -625,6 +732,11 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
     OutlinedButton(onClick = onStop) {
         Icon(Icons.Filled.Stop, contentDescription = null)
         Text("Stop", Modifier.padding(start = Spacing.S2.dp))
+    }
+    // Another member's take arrived as m-{id}.wav (PlaysShare.bringHome): it can be reported from here.
+    val heard = entry as? Relay.ListenEntry.TakeEntry
+    if (onReport != null && heard != null && heard.take.file.startsWith("m-")) {
+        TextButton(onClick = { onReport(heard.take.id) }) { Text("Report") }
     }
 }
 

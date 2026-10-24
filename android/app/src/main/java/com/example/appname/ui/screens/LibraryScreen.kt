@@ -10,6 +10,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -22,6 +23,7 @@ import com.example.appname.data.Progress
 import com.example.appname.data.SeriesRow
 import com.example.appname.ui.ListenTogetherRow
 import com.example.appname.ui.SeriesListItem
+import com.example.appname.plays.PlaysShare
 import com.example.appname.ui.AccountRow
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
@@ -52,7 +54,29 @@ fun LibraryScreen(
     val container = LocalAppContainer.current
     val allProductions by container.plays.store.productions.collectAsState()
     // A TV records nothing (PLAYS-DESIGN §2), so it lists no ear dramas.
-    val productions = if (LocalIsTelevision.current) emptyList() else allProductions
+    val television = LocalIsTelevision.current
+    val productions = if (television) emptyList() else allProductions
+    val sharing = container.sharing
+    val account by container.accounts.account.collectAsState()
+    val signedIn = account != null
+    val links by sharing.links.collectAsState()
+    val remote by sharing.remote.collectAsState()
+    val held by sharing.invite.collectAsState()
+    // Shared productions and classes are the Worker's; a TV plays back only (PLAYS-DESIGN §11.7).
+    LaunchedEffect(account?.userId, television) {
+        if (television) return@LaunchedEffect
+        if (account == null) {
+            sharing.forget()
+        } else {
+            runCatching { sharing.loadRemote() }
+            runCatching { sharing.loadClasses() }
+        }
+    }
+    val dramaRows = remember(productions, links, remote, television) {
+        if (television) emptyList() else PlaysShare.libraryRows(container.plays.store, remote)
+    }
+    val invitation = if (television) null else held
+    val withClasses = signedIn && !television
     val lists by rememberCatalogQuery(watchUser = true) { db ->
         val progress = container.user.inProgress(limit = 100)
         val byId = progress.associateBy { it.episodeId }
@@ -69,7 +93,7 @@ fun LibraryScreen(
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
             if (library.inProgress.isEmpty() && library.finished.isEmpty() && library.following.isEmpty() &&
-                downloadRecords.isEmpty() && productions.isEmpty()
+                downloadRecords.isEmpty() && dramaRows.isEmpty() && invitation == null && !withClasses
             ) {
                 Column(Modifier.padding(padding)) {
                     AccountRow()
@@ -115,7 +139,7 @@ fun LibraryScreen(
                         SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
                     }
                 }
-                earDramasSection(productions, onOpenProduction)
+                earDramasSection(dramaRows, invitation, withClasses, onOpenProduction)
             }
         }
     }

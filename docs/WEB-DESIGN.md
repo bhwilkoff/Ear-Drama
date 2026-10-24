@@ -62,7 +62,8 @@ web app follows today.
   (`history.replaceState`) so the address shows the new name. This inverts the
   template's hash routes on purpose: query routes are what the path twins
   forward into. A production lives only in the browser that made it
-  (PLAYS-DESIGN §6), so its routes have no path twin and no app link.
+  (PLAYS-DESIGN §6), so its routes have no path twin and no app link; a
+  shared one is reached by its invite, `/invite#{token}` (§4.10a).
 - **§3.2 Every `eardrama://` link has an `https://eardrama.org` path
   twin** (`/series/{key}`, `/episode/{id}`, `/person/{id}`, `/search?q=`, `/library`),
   forwarded by `404.html`. Never change these shapes; shipped apps share
@@ -163,7 +164,8 @@ web app follows today.
 - **§4.7 Library** = the account row (§4.11), then Queue, History,
   Following, and **Ear dramas** (the productions this browser recorded in
   or joined, newest first, each with "N of M lines recorded" or
-  "Finished"; Decision 068), on this device. Clear history asks first.
+  "Finished", "Shared" for a shared one, then the shared ones this browser
+  has not opened, and Classes, §4.10a; Decision 068), on this device. Clear history asks first.
   An empty Ear dramas says "No ear dramas yet." and nothing more.
 - **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
   should be stations"*) = the stations row, then Tonight's schedule.
@@ -287,6 +289,43 @@ web app follows today.
     the episode player pauses when it starts. Reaching its end without
     seeking forward finishes the play; Export downloads the WAV.
   - `?mute=1` silences the device voice, the cues, and the mix.
+- **§4.10a Shared ear dramas** (PLAYS-DESIGN §11.7 is binding on the verbs
+  and words; this is the web's idiom). Code: `js/plays-share.js` (no DOM,
+  the Worker's record mirrored into this browser's production) and the shared
+  views in `js/plays-ui.js`; tests `js/plays-share.test.js` against a stubbed
+  Worker. Nothing of it is offered while the Worker's URL is a placeholder
+  (`API.plays.available()`), and none of it on a TV.
+  - **The cast sheet of an unshared production** ends with **Share** (an
+    optional name field); signed out, Share opens the account sheet beside
+    "Sharing needs an account."
+  - **A shared cast sheet** (`?production=` with a `share.json`): the
+    Worker's parts and names; Record and Release on my claim; Take part on
+    every open part while none records (the suggested one the accent);
+    Leave silent on open sound and directions; Open part on a finished one
+    of mine or as director. Below, on my claim, **Upload N takes** (while a take waits) and
+    **Done with this part**, with one line under them: "Uploads are off."
+    while the record's `uploads` is false (the button disabled), or the
+    bleed warning when a chosen take is flagged. The consent appears in
+    place, as its own block, the Worker's words in a `pre-line` paragraph,
+    I agree and Not now. Then Listen through (it first fetches the other
+    members' chosen takes, then is §4.10's), "N takes are hidden from you."
+    when the Worker hides any, Publish for the director once complete
+    ("Queued for archive.org" after), then **People** (Report opens an inline
+    form with a reason select and a note; Block asks with `confirm`), Invite
+    for the director (the link in a read-only field, Share link through
+    `shareTarget`, "Works for N days."), and Delete production (this
+    browser's copy only).
+  - **Another member's part** (`?production=&part=`) is read-along with a
+    Take button (plays that take in its own `<audio>`) and Report per line.
+  - **An invite** arrives as `/invite#{token}` (forwarded by `404.html` as
+    `#invite={token}`); `app.js` holds it in `sessionStorage` for the tab,
+    clears it from the address, and opens `?view=library&tab=dramas`, where
+    **Invitation** leads the list (§11.7 rule 3).
+  - **Library's Ear dramas** (§4.7) lists this browser's productions, then
+    the shared ones not yet opened here (a button that makes the production
+    here, then opens it); shared rows say "Shared". Signed in, **Classes**
+    follows the list: each class with its code (two groups of four, tabular),
+    Make a class (name, "Under 13"), Join a class (code, optional name).
 - **§4.13 Surprise** (`?view=surprise`, Decision 068; Archive Watch
   WEB-DESIGN §4.9): three random picks drawn from the data on each visit,
   each playable or startable in one tap, and Shuffle to draw again. **An

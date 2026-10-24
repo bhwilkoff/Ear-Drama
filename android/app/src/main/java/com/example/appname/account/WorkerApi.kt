@@ -5,10 +5,12 @@ import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsBytes
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.content.TextContent
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -148,28 +150,64 @@ class WorkerApi(
         }
     }
 
-    private suspend fun authed(method: HttpMethod, path: String, body: String? = null): String {
+    private suspend fun authed(method: HttpMethod, path: String, body: String? = null): String =
+        authedResponse(method, path, body).bodyAsText()
+
+    /** Shared plays (docs/WORKER.md): a signed-in call with a JSON body, answered as text. */
+    suspend fun callText(method: HttpMethod, path: String, body: String? = null): String = authed(method, path, body)
+
+    /**
+     * A signed-in call that sends [raw] bytes (a take's audio) with [headers],
+     * or reads the answer as bytes, through the same refresh and one retry.
+     */
+    suspend fun callBytes(
+        method: HttpMethod,
+        path: String,
+        raw: ByteArray? = null,
+        headers: Map<String, String> = emptyMap(),
+    ): ByteArray = authedResponse(method, path, null, raw, headers).bodyAsBytes()
+
+    private suspend fun authedResponse(
+        method: HttpMethod,
+        path: String,
+        body: String? = null,
+        raw: ByteArray? = null,
+        headers: Map<String, String> = emptyMap(),
+    ): HttpResponse {
         val token = freshAccessToken()
-        var response = send(method, path, body, token)
+        var response = send(method, path, body, token, raw, headers)
         if (response.status.value == 401) {
-            response = send(method, path, body, freshAccessToken(failed = token))
+            response = send(method, path, body, freshAccessToken(failed = token), raw, headers)
         }
-        return ok(response).bodyAsText()
+        return ok(response)
     }
 
-    private suspend fun send(method: HttpMethod, path: String, body: String? = null, token: String? = null): HttpResponse {
+    private suspend fun send(
+        method: HttpMethod,
+        path: String,
+        body: String? = null,
+        token: String? = null,
+        raw: ByteArray? = null,
+        headers: Map<String, String> = emptyMap(),
+    ): HttpResponse {
         if (!config.workerReady) throw SignedOutException()
         return http.request(config.baseUrl.trimEnd('/') + path) {
             this.method = method
             token?.let { header(HttpHeaders.Authorization, "Bearer $it") }
-            if (body != null) setBody(TextContent(body, ContentType.Application.Json))
+            headers.forEach { (name, value) -> if (!name.equals(HttpHeaders.ContentType, true)) header(name, value) }
+            if (raw != null) {
+                val type = headers.entries.firstOrNull { it.key.equals(HttpHeaders.ContentType, true) }?.let { ContentType.parse(it.value) }
+                setBody(ByteArrayContent(raw, type))
+            } else if (body != null) {
+                setBody(TextContent(body, ContentType.Application.Json))
+            }
         }
     }
 
     private suspend fun ok(response: HttpResponse): HttpResponse {
         if (response.status.isSuccess()) return response
         val problem = runCatching { WorkerJson.decodeFromString<WorkerProblem>(response.bodyAsText()) }.getOrNull()
-        throw WorkerException(response.status.value, problem?.error)
+        throw WorkerException(response.status.value, problem?.error, problem?.detail)
     }
 
     private suspend inline fun <reified T> decode(response: HttpResponse): T =

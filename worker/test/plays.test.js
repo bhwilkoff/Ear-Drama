@@ -463,6 +463,14 @@ describe("takes", () => {
     expect((await record(director, p.id)).takes).toEqual([]);
   });
 
+  it("say whether uploads are open, in the record and the consent, so a client can say so before recording", async () => {
+    const { director, p } = await recording("t-switch");
+    const off = { token: director.access_token, envOverride: { TAKES: undefined } };
+    expect((await record(director, p.id)).uploads).toBe(true);
+    expect((await (await call("GET", `/v1/plays/productions/${p.id}`, off)).json()).uploads).toBe(false);
+    expect((await (await call("GET", "/v1/plays/consent", off)).json()).uploads).toBe(false);
+  });
+
   it("audio is served to members only", async () => {
     const { director, p } = await recording("t-audio");
     const up = await upload(director, p.id, linesFor(firstPart)[0]);
@@ -578,7 +586,7 @@ describe("the CC0 consent (Decision 059)", () => {
   it("is a version id with the owner's words still a marked placeholder", async () => {
     const s = await person("c-get");
     const r = await (await call("GET", "/v1/plays/consent", { token: s.access_token })).json();
-    expect(r).toEqual({ version: CONSENT_VERSION, text: CONSENT_TEXT });
+    expect(r).toEqual({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: true });
     expect(CONSENT_TEXT.startsWith("OWNER:")).toBe(true);
   });
 
@@ -679,6 +687,8 @@ describe("teacher classes (Decision 059)", () => {
     const s = await person("u13-student");
     const c = await (await call("POST", "/v1/plays/classes", { token: t.access_token, body: { name: "Grade 5", under13: true } })).json();
     const join = () => call("POST", "/v1/plays/classes/join", { token: s.access_token, body: { code: c.code } });
+    const listed = async () => (await (await call("GET", "/v1/plays/classes", { token: t.access_token })).json()).teaching[0];
+    expect(await listed()).toMatchObject({ id: c.id, under13: true, school_consent: false });
     const refused = await join();
     expect(refused.status).toBe(403);
     expect((await refused.json()).error).toBe("school_consent_required");
@@ -687,6 +697,7 @@ describe("teacher classes (Decision 059)", () => {
     const r = await call("POST", `/v1/plays/classes/${c.id}/school-consent`, { token: t.access_token, body: { reference: "Letter 2026-10" }, envOverride: policy });
     expect(r.status).toBe(201);
     expect(await r.json()).toMatchObject({ policy_version: "privacy-test-1" });
+    expect((await listed()).school_consent).toBe(true);
     expect((await join()).status).toBe(200);
   });
 

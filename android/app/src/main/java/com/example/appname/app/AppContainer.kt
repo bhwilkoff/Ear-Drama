@@ -13,7 +13,9 @@ import com.example.appname.data.DownloadStore
 import com.example.appname.data.UserStore
 import com.example.appname.data.WorkManagerDownloadTransport
 import com.example.appname.playback.PlaybackEngine
+import com.example.appname.plays.PlaysApi
 import com.example.appname.plays.PlaysLibrary
+import com.example.appname.plays.SharedPlays
 import com.example.appname.radio.LiveRadio
 import com.example.appname.together.EngineRoomPlayer
 import com.example.appname.together.ListenTogether
@@ -32,6 +34,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val downloads = DownloadStore(File(context.filesDir, "downloads"), WorkManagerDownloadTransport(context))
     val playback = PlaybackEngine(context, api, catalog, user, downloads)
     val plays = PlaysLibrary(context)
+    val isTelevision = context.isTelevision()
     val live = LiveRadio(
         play = { detail, startMs -> playback.play(detail.episode, startMs = startMs, queue = false) },
         pause = { playback.pause() },
@@ -43,6 +46,16 @@ class AppContainer(context: Context, scope: CoroutineScope) {
             RoomsApi(api.client, BuildConfig.WORKER_BASE_URL),
             EngineRoomPlayer(playback, catalog),
             CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+        )
+    }
+
+    /** Shared ear dramas, phase 2 (PLAYS-DESIGN §11.7): the Worker's calls on the one client, never on a TV. */
+    val sharing: SharedPlays by lazy {
+        SharedPlays(
+            PlaysApi(accounts.worker),
+            plays.store,
+            { accounts.account.value?.userId },
+            { plays.load(); (plays.state.value as? PlaysLibrary.State.Ready)?.scripts.orEmpty() },
         )
     }
 

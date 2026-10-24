@@ -606,7 +606,7 @@ like, or ranking of a performance.
 
 Phase 2 makes one production recordable across several devices, by people a
 director invites (LOOP-PLAN M8, Decisions 057 and 059). This section is the
-server side only. No client calls it yet, nothing is deployed, and every rule
+server side; §11.7 is the apps' side. Nothing is deployed, and every rule
 below is proven by `worker/test/plays.test.js` and `account.test.js`, with a
 deliberate break for each in `worker/test/mutations.mjs`. The endpoints, the
 record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
@@ -703,7 +703,83 @@ The owner's answers in §9 hold on the server, word for word:
 | P7 | The 7-day claim lapse (C6 and C7 are answered, §9) | Applied as the default |
 | P8 | Do classes own productions (a class member joins without an invite)? | No: classes are a roster only; every production is invite-only |
 
-Not built yet: the apps' side of phase 2 on every platform, the job that
+### §11.7 Phase 2 in the apps (2026-10-24, binding)
+
+The same verbs on the web, iPhone, iPad, Mac, and Android (§8 rule 7); Apple
+TV and the other TVs play back only and offer none of it. Recording stays
+phase 1's, on the device, line by line; phase 2 adds only the link to the
+Worker. Every call goes through the platform's one API client, refreshed
+first (AGENTS.md hard rules). Words on screen are these, on every platform.
+
+1. **Share.** A production's cast sheet offers **Share** to a signed-in
+   person (signed out: "Sharing needs an account." and the platform's
+   sign-in). It sends the script id, revision, and cast sheet
+   (`POST /productions`, an optional display name) and keeps the Worker's id
+   beside the record: `share.json` (`{ pid, consented }`) in the production's
+   folder (web: IndexedDB `{id}/share.json`). The caller directs. A shared
+   production's parts, claims, and chosen takes are the Worker's from then on.
+2. **Invite.** The director's **Invite** makes a link,
+   `https://eardrama.org/invite#{token}` (twin `eardrama://invite#{token}`,
+   DEEP_LINKS.md), handed to the share sheet; the caption under it is the
+   fact "Works for N days." The token rides the fragment, so no server log
+   holds it. Shown once; the Worker keeps only its hash.
+3. **Join.** Opening a link holds the token (for this session) and opens
+   Library's Ear dramas, which shows **Invitation**: the play's title and
+   its parts with their states. Signed out: "Sign in to join". Signed in,
+   every open part offers **Take part** with an optional name field while no
+   part records, the suggested one (`next`) as the accent (C7: any order);
+   a member already in it sees **Open**. Joining makes the production on this
+   device from the bundle's script at the same revision; a revision the
+   bundle no longer has is "This play has changed since it was cast." and
+   offers nothing. "Not now" drops the token.
+4. **The shared cast sheet.** Each part with the Worker's state and the
+   performer's chosen name. Mine and recording: **Record** (phase 1's
+   recorder, §2.4). Open while none records: **Take part**; sound and
+   directions also **Leave silent**. Finished, mine or I direct: **Open part**
+   while none records. Mine: **Release** gives it back.
+5. **Upload.** After recording, **Upload N takes** sends the chosen take of
+   each line of a part this person holds that the Worker lacks, never a
+   flagged one (§5; the Worker refuses one anyway). **The owner's switch**
+   (P1): the record and `GET /consent` carry `uploads`; while it is false
+   the button is disabled and the warning "Uploads are off." stands in its
+   place, before anyone records, so nobody learns it after an evening's work.
+   Takes stay on the device either way. **Done with this part** finishes it
+   on the Worker once every line's take is up.
+6. **Consent before the first upload** (Decision 059). The Worker's text,
+   exactly as it arrives, with **I agree** and **Not now**; agreeing sends its
+   version id, kept in `share.json`, and a new version asks again. The app
+   writes none of the words.
+7. **Listen through.** The other members' chosen takes are fetched into the
+   production on this device (an imported take is a file like any other,
+   never overwritten), then phase 1's listen-through plays: human takes,
+   and the device voice live for the rest (§5). Export once every speaking
+   line is human, as in §2.7. A take hidden from this person (blocked or
+   reported) never arrives; "N takes are hidden from you." says so.
+8. **People: report and block** (guideline 1.2). The members by display
+   name, "You" and "Director" as tags. Everyone else has **Report** (a reason:
+   Offensive, Harassment, Personal information, Not a performance, Other;
+   and an optional note) and **Block** (asks first: "You will no longer hear
+   their takes."). Another member's line in read-along has **Report** on its
+   take. A report hides that take from the reporter at once.
+9. **Publish** (the director, once complete): queues only; then "Queued for
+   archive.org". Its refusals are one line each.
+10. **Classes.** Library's Ear dramas, signed in: **Classes**, each with its
+    code for its teacher (in two groups of four), **Make a class** (a name,
+    and "Under 13", fixed when made; such a class shows "Waits for the
+    school's consent"), and **Join a class** by its code. A roster only (P8).
+11. **Library's Ear dramas** lists this device's productions and, signed in,
+    the shared ones this person is in that the device has not opened
+    (`GET /productions`); opening one makes it here as in rule 3.
+
+Each refusal the Worker can give maps to one line (web
+`PlaysShare.line`, the same strings on Apple and Android): `storage_not_configured`
+"Uploads are off.", `not_open` "This part is taken.", `another_part_is_recording`
+"{Part} is still recording.", `lines_missing` "N lines still need a take.",
+`invite_not_found` "This invite does not work.", `not_found` "This production is
+not shared with you.", `consent_version_mismatch` "The consent changed. Read
+it again.", and the rest as written there.
+
+Not built yet: the job that
 uploads to archive.org, a moderator's view of reports, and a test that the
 Worker's part order matches `js/plays-core.js` and Apple's on every castable
 script (each is checked here against its own suite, not against the others).

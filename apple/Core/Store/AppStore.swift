@@ -79,7 +79,13 @@ final class AppStore {
         case tab(String)
         case item(String)
         case play(String)
+        /// An ear drama invite's token (PLAYS-DESIGN §11.7 rule 3).
+        case invite(String)
     }
+
+    /// The invite opened this session, shown as Library's Invitation until
+    /// joined or dropped ("Not now"). Held in memory only.
+    var pendingInvite: String?
 
     func post(_ request: InboxRequest) { inbox.append(request) }
 
@@ -133,6 +139,10 @@ final class AppStore {
                 push(Route(id: id))
             case .play(let id):
                 toPlay.append(id)
+            case .invite(let token):
+                pendingInvite = token
+                selectedTab = .library
+                paths[.library] = NavigationPath()
             }
         }
         return toPlay

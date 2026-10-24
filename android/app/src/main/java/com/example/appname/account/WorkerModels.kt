@@ -127,10 +127,15 @@ internal data class DeleteBody(
 )
 
 @Serializable
-internal data class WorkerProblem(val error: String? = null, val detail: String? = null)
+internal data class WorkerProblem(val error: String? = null, val detail: kotlinx.serialization.json.JsonElement? = null)
 
 /** A Worker answer outside 2xx, after the one retry a 401 earns. */
-class WorkerException(val status: Int, val code: String?) : Exception("Worker answered $status ${code.orEmpty()}")
+class WorkerException(
+    val status: Int,
+    val code: String?,
+    /** The Worker's `detail`, a string or a list (`lines_missing`), kept as sent. */
+    val detail: kotlinx.serialization.json.JsonElement? = null,
+) : Exception("Worker answered $status ${code.orEmpty()}")
 
 /** No account is signed in on this device (or it just ended). */
 class SignedOutException : Exception("Not signed in")

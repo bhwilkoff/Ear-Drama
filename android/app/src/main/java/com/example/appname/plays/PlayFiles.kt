@@ -157,7 +157,7 @@ class WavSink(private val file: File, private val sampleRate: Int) : MixSink {
  * `roomtone/`, and `mix.m4a`, the names Apple uses. Nothing is uploaded and
  * no account is needed (§8 rule 4).
  */
-class ProductionStore(val root: File) {
+class ProductionStore(val root: File) : ShareStore {
     private val _productions = MutableStateFlow<List<Production>>(emptyList())
     val productions: StateFlow<List<Production>> = _productions
 
@@ -171,7 +171,43 @@ class ProductionStore(val root: File) {
     fun mixFile(id: String) = File(folder(id), "mix.m4a")
     fun takeFile(production: Production, take: Take) = File(takesFolder(production.id), take.file)
 
-    fun production(id: String): Production? = _productions.value.firstOrNull { it.id == id }
+    override fun production(id: String): Production? = _productions.value.firstOrNull { it.id == id }
+
+    override fun all(): List<Production> = _productions.value
+
+    private val links = java.util.concurrent.ConcurrentHashMap<String, ShareLink>()
+
+    /** `share.json` (phase 2): the Worker's id for this production, and the consent version agreed to. */
+    override fun share(id: String): ShareLink? {
+        links[id]?.let { return it }
+        val file = File(folder(id), "share.json")
+        if (!file.isFile) return null
+        val link = runCatching { json.decodeFromString(ShareLink.serializer(), file.readText()) }.getOrNull() ?: return null
+        links[id] = link
+        return link
+    }
+
+    override fun setShare(id: String, link: ShareLink) {
+        folder(id).mkdirs()
+        writeAtomically(File(folder(id), "share.json"), json.encodeToString(ShareLink.serializer(), link))
+        links[id] = link
+    }
+
+    override fun findShared(pid: String): Production? = _productions.value.firstOrNull { share(it.id)?.pid == pid }
+
+    override fun readTake(id: String, file: String): ByteArray = File(takesFolder(id), file).readBytes()
+
+    override fun importTake(id: String, file: String, bytes: ByteArray) {
+        val target = File(takesFolder(id), file)
+        if (target.exists()) return
+        takesFolder(id).mkdirs()
+        val partial = File(takesFolder(id), ".$file.partial")
+        partial.writeBytes(bytes)
+        if (!partial.renameTo(target)) {
+            partial.delete()
+            check(target.exists()) { "could not save $file" }
+        }
+    }
 
     fun load() {
         _productions.value = (root.listFiles() ?: emptyArray()).mapNotNull { dir ->
@@ -180,7 +216,7 @@ class ProductionStore(val root: File) {
         }.sortedByDescending { it.created }
     }
 
-    fun create(script: PlayScript): Production {
+    override fun create(script: PlayScript): Production {
         val production = Production.create(script)
         takesFolder(production.id).mkdirs()
         roomToneFolder(production.id).mkdirs()
@@ -196,7 +232,7 @@ class ProductionStore(val root: File) {
         return runCatching { json.decodeFromString(PlayScript.serializer(), file.readText()) }.getOrNull()
     }
 
-    fun save(production: Production) {
+    override fun save(production: Production) {
         folder(production.id).mkdirs()
         writeAtomically(File(folder(production.id), "production.json"), json.encodeToString(Production.serializer(), production))
         val list = _productions.value
@@ -210,6 +246,7 @@ class ProductionStore(val root: File) {
     /** Deleting a production deletes its folder: takes, room tone, mix, record. */
     fun delete(id: String) {
         folder(id).deleteRecursively()
+        links.remove(id)
         _productions.value = _productions.value.filter { it.id != id }
     }
 

@@ -307,7 +307,7 @@ All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
 
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
-| `GET /consent` | anyone | | `{ version, text }`: the CC0 consent's version id, and the owner's words (a marked placeholder until approved) |
+| `GET /consent` | anyone | | `{ version, text, uploads }`: the CC0 consent's version id, the owner's words (a marked placeholder until approved), and whether uploads are open |
 | `POST /productions` | anyone | `{ script_id, script_revision, cast, display_name? }` | `201` the record; the caller directs |
 | `GET /productions` | anyone | | `{ productions: [{ id, title, script_id, director, updated_at }] }`, the caller's |
 | `GET /productions/:pid` | a member | | the record (below) |
@@ -328,7 +328,7 @@ All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
 | `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
 | `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
 | `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent }` |
-| `GET /classes` | anyone | | `{ teaching, member_of }` |
+| `GET /classes` | anyone | | `{ teaching, member_of }`; each taught class carries `code` and `school_consent` |
 | `POST /classes/join` | anyone with the code | `{ code, display_name? }` | `{ id, name, under13 }` |
 | `GET /classes/:id` | the teacher or a member | | the teacher sees the code and the roster; a student, the name |
 | `POST /classes/:id/school-consent` | the teacher | `{ reference? }` | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set |
@@ -348,7 +348,7 @@ false: listening through is the device's). A take carries `id`, `lineID`,
 `part`, `file`, `created`, `frames`, `sampleRate`, `capture`, `heard`,
 `loudness`, `peak`, and `bleed`. The Worker adds fields a phase 1 decoder
 ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
-`server_time`, `invites` (the director's view), and per take `user_id` and
+`uploads` (whether the take store is configured: the owner's switch, so a client says "Uploads are off." before anyone records), `server_time`, `invites` (the director's view), and per take `user_id` and
 `audio` (its path), per part `user_id` and `claim_expires_at`.
 
 ### Rules the clients rely on
@@ -506,8 +506,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 171 tests in workerd with a local D1 and a local R2 stand-in
-npm run test:mutations   # 96 deliberate breaks; every one must turn the suite red
+npm test                 # 173 tests in workerd with a local D1 and a local R2 stand-in
+npm run test:mutations   # 98 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
 node tools/castable-manifest.mjs             # after every rebuild of the castable scripts

@@ -182,6 +182,7 @@ async function recordFor(env, p, userId, now) {
     next: next(p.cast, rows, now),
     hidden_takes: takes.length - visible.length,
     archive: job ? { status: job.status, created_at: job.created_at } : null,
+    uploads: !!env.TAKES,
     server_time: now,
   };
   if (p.user_id === userId) {
@@ -681,13 +682,14 @@ async function getClass(auth, env, classId) {
 
 async function listClasses(auth, env) {
   const [t, m] = await env.DB.batch([
-    env.DB.prepare("SELECT id, name, code, under13 FROM play_classes WHERE user_id = ?1 ORDER BY created_at").bind(auth.userId),
+    env.DB.prepare("SELECT c.id, c.name, c.code, c.under13, s.policy_version FROM play_classes c LEFT JOIN play_school_consents s ON s.class_id = c.id WHERE c.user_id = ?1 ORDER BY c.created_at").bind(auth.userId),
     env.DB.prepare(
       "SELECT c.id, c.name, c.under13 FROM play_class_members m JOIN play_classes c ON c.id = m.class_id WHERE m.user_id = ?1 ORDER BY m.joined_at",
     ).bind(auth.userId),
   ]);
   const flag = (r) => ({ ...r, under13: !!r.under13 });
-  return json({ teaching: t.results.map(flag), member_of: m.results.map(flag) });
+  const taught = ({ policy_version, ...r }) => ({ ...flag(r), school_consent: !!policy_version });
+  return json({ teaching: t.results.map(taught), member_of: m.results.map(flag) });
 }
 
 async function removeClassMember(auth, env, classId, userId) {
@@ -711,7 +713,7 @@ export async function handlePlays(url, request, env, auth) {
   const now = Date.now();
   const [a, b, c, d, e] = seg;
 
-  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT });
+  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKES });
   if (a === "invites" && b === "view" && !c && m === "POST") return viewInvite(auth, request, env, now);
   if (a === "invites" && b === "claim" && !c && m === "POST") return claimByInvite(auth, request, env, now);
   if (a === "reports" && !b && m === "POST") return report(auth, request, env, now);

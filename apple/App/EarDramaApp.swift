@@ -14,6 +14,7 @@ struct EarDramaApp: App {
     #if os(iOS) || os(macOS)
     @State private var downloads: DownloadStore
     @State private var plays = PlaysLibrary()
+    @State private var shared = SharedPlays()
     #endif
     #if os(iOS)
     @UIApplicationDelegateAdaptor(AppDelegate_iOS.self) private var appDelegate
@@ -84,13 +85,20 @@ struct EarDramaApp: App {
                 #if os(iOS) || os(macOS)
                 .environment(downloads)
                 .environment(plays)
+                .environment(shared)
                 .task { await downloads.reconnect() }
                 #endif
                 // .onOpenURL fires for Universal Links AND custom schemes. It
                 // never routes directly: the request lands in the inbox.
                 .onOpenURL { url in
-                    let id = url.lastPathComponent.removingPercentEncoding ?? url.lastPathComponent
-                    if !id.isEmpty { store.post(.item(id)) }
+                    switch DeepLink.parse(url) {
+                    #if os(tvOS)
+                    // The TV plays back only; an invite opens nothing there.
+                    case .invite: break
+                    #endif
+                    case let request?: store.post(request)
+                    case nil: break
+                    }
                 }
         }
         #if os(macOS)
@@ -122,6 +130,7 @@ struct EarDramaApp: App {
             if let id {
                 ProductionWindow_macOS(productionID: id)
                     .environment(plays)
+                    .environment(shared)
                     .environment(player)
                     .environment(account)
                     .environment(store)

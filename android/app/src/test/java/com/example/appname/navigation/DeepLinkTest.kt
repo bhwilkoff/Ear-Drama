@@ -41,4 +41,15 @@ class DeepLinkTest {
         assertNull(DeepLink.parse("eardrama://episode/"))
         assertNull(DeepLink.parse("not a url"))
     }
+
+    @Test fun `an invite link and its twin hold the token`() {
+        val token = "A".repeat(43)
+        assertEquals(InboxRequest.Invite(token), DeepLink.parse("eardrama://invite#$token"))
+        assertEquals(InboxRequest.Invite(token), DeepLink.parse("https://eardrama.org/invite#$token"))
+        assertEquals(InboxRequest.Invite(token), DeepLink.parse("https://www.eardrama.org/invite/#$token"))
+        assertEquals("the web's forwarder shape", InboxRequest.Invite(token), DeepLink.parse("https://eardrama.org/?view=library&tab=dramas#invite=$token"))
+        assertNull("a short token opens nothing", DeepLink.parse("eardrama://invite#short"))
+        assertNull("no token opens nothing", DeepLink.parse("eardrama://invite"))
+        assertNull("another host is not ours", DeepLink.parse("https://example.org/invite#$token"))
+    }
 }
