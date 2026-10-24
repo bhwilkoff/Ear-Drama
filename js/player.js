@@ -2,9 +2,10 @@
  * The player: one <audio> element, the Media Session, resume, speed, skip,
  * the queue, and the sleep timer. The views draw it; this module owns it.
  *
- * Bounded lean-back (R3, R14, R20):
- *  - At an episode's end the next one plays only when the person queued it
- *    AND it is from the same series. Nothing unrelated ever starts by itself.
+ * Bounded lean-back (R3, R14, R20; Decision 067):
+ *  - At an episode's end the next one plays only when the person queued it:
+ *    one episode, then the queue, then stop. Nothing the person did not choose
+ *    starts by itself. (A serial's arc end waits on the runs table.)
  *  - The sleep timer offers "End of this episode" first, fades the volume
  *    over its last FADE_S seconds, and once it has fired nothing starts until
  *    the person presses play.
@@ -12,6 +13,8 @@
  * fixed 15 s back / 30 s forward, never a jump past a segment.
  * DECISIONS 062: FADE_S, SPEEDS, SAVE_EVERY_MS, and REWIND_S are the numbers
  * every platform's player uses (Android PlayerNumbers, Apple AudioPlayer).
+ * Decision 067: volume is leveled on the device as it plays (LEVEL), never by
+ * a per-file measurement.
  */
 const Player = (() => {
   'use strict';
@@ -23,18 +26,24 @@ const Player = (() => {
   const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
   const SAVE_EVERY_MS = 5000;
   const REWIND_S = 3;
+  /** Decision 067: the leveler every platform sets, a compressor over the whole signal. The makeup
+      gain is the Web Audio rule, 0.6 x the compression at 0 dBFS (here 10.8 dB), so Apple and
+      Android, which set it by hand, match the browser's own. */
+  const LEVEL = Object.freeze({ thresholdDb: -24, ratio: 4, kneeDb: 12, attackS: 0.003, releaseS: 0.25,
+                                makeupDb: 0.6 * 24 * (1 - 1 / 4) });
+  const LEVEL_KEY = 'ed.level';
   const listeners = new Set();
 
   let current = null;
   let sleep = null;         // null | { kind: 'end' } | { kind: 'time', endsAt, minutes }
   let fired = false;        // the sleep timer has ended playback; nothing may start on its own
-  let baseVolume = 1;       // the episode's loudness level (DECISIONS 061); the device's volume stays the person's
   let lastSave = 0;
   let sleepTimer = null;
   let lastError = null;
   let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
   let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
+  let guestHold = null;     // set by js/together.js: a guest's own pause (true) and resume (false)
 
   function emit(kind) { listeners.forEach(fn => fn(kind || 'state')); }
   function onChange(fn) { listeners.add(fn); }
@@ -49,9 +58,14 @@ const Player = (() => {
     interrupted = false;
     lastError = null;
     if (!audio.paused) pausing = true;
+    // The copy is fetched with CORS only when it may be leveled: a copy fetched without it
+    // would play silent through the graph (attachLeveler waits for one fetched with it).
+    corsReady = !!graph || leveling();
+    plainRetry = false;
+    if (corsReady) audio.crossOrigin = 'anonymous';
+    else if (audio.removeAttribute) audio.removeAttribute('crossorigin');
     audio.src = ep.url;
-    baseVolume = API.playbackVolume(current.li, current.ltp);
-    audio.volume = baseVolume;
+    setOutput(1);
     audio.defaultPlaybackRate = nearestSpeed(Store.rate());
     const at = startAt !== null ? startAt : Store.resumeAt(ep.id);
     audio.addEventListener('loadedmetadata', () => {
@@ -67,6 +81,7 @@ const Player = (() => {
 
   function play() {
     fired = false;
+    attachLeveler();
     if (interrupted) {
       interrupted = false;
       audio.currentTime = Math.max(0, audio.currentTime - REWIND_S);
@@ -118,11 +133,10 @@ const Player = (() => {
     lastSave = Date.now();
   }
 
-  /** The next episode the queue may start: its head, and only if it is from this series. */
+  /** The next episode the queue may start: its head, whatever its series (Decision 067). */
   function nextInQueue() {
     if (!current) return null;
-    const head = Store.queue()[0];
-    return head && head.series && head.series === current.series ? head : null;
+    return Store.queue()[0] || null;
   }
 
   /* ---- Sleep timer (R20) ---- */
@@ -153,9 +167,7 @@ const Player = (() => {
   function sleepTick() {
     if (!sleep) return;
     const left = sleepRemaining();
-    if (left !== null && left <= FADE_S) {
-      audio.volume = Math.max(0, Math.min(1, baseVolume * (left / FADE_S)));
-    }
+    if (left !== null && left <= FADE_S) setOutput(Math.max(0, Math.min(1, left / FADE_S)));
     if (sleep.kind === 'time' && left <= 0) fireSleep();
     emit('tick');
   }
@@ -170,7 +182,90 @@ const Player = (() => {
     emit('sleep-fired');
   }
 
-  function restoreVolume() { audio.volume = baseVolume; }
+  function restoreVolume() { setOutput(1); }
+
+  /* ---- Volume leveling (Decision 067, WEB-DESIGN §5.9) ----
+     The element plays through a DynamicsCompressorNode. archive.org sends
+     access-control-allow-origin: * (research 04 §5), so the element asks with crossorigin;
+     without it Web Audio would hear silence. The graph is built only once the AudioContext
+     runs (a tap or key started it), so a play the browser starts on its own is never routed
+     into a suspended context. Not on iPhone or iPad, where a page's AudioContext stops when
+     the screen locks, nor on a TV engine (tv.js), where it is unmeasured. */
+
+  const AC = typeof AudioContext !== 'undefined' ? AudioContext
+    : (typeof webkitAudioContext !== 'undefined' ? webkitAudioContext : null); // eslint-disable-line no-undef
+  const appleTouch = typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent || '')
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  let ctx = null;
+  let graph = null;           // { source, comp, out }
+  let fade = 1;               // the sleep timer's fade, 0..1
+  let corsReady = false;      // the loaded copy was fetched with CORS, so the graph can hear it
+  let plainRetry = false;     // a copy refused with CORS was loaded again without it
+
+  function canLevel() {
+    const tv = typeof document !== 'undefined' && document.documentElement
+      && document.documentElement.classList.contains('tv');
+    return !!AC && !appleTouch && !tv;
+  }
+  function levelOn() {
+    try { return localStorage.getItem(LEVEL_KEY) !== 'off'; } catch { return true; }
+  }
+  function leveling() { return canLevel() && levelOn(); }
+
+  /** Called from a tap or key: the AudioContext may only start inside one. */
+  function wake() {
+    if (!leveling()) return;
+    try {
+      if (!ctx) ctx = new AC();
+      if (ctx.state === 'suspended') ctx.resume().then(() => { if (!audio.paused) attachLeveler(); }, () => {});
+    } catch { ctx = null; }
+  }
+
+  function attachLeveler() {
+    if (graph || !corsReady || !leveling() || !ctx || ctx.state !== 'running') return;
+    try {
+      const source = ctx.createMediaElementSource(audio);
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = LEVEL.thresholdDb;
+      comp.knee.value = LEVEL.kneeDb;
+      comp.ratio.value = LEVEL.ratio;
+      comp.attack.value = LEVEL.attackS;
+      comp.release.value = LEVEL.releaseS;
+      const out = ctx.createGain();
+      source.connect(comp).connect(out).connect(ctx.destination);
+      graph = { source, comp, out };
+      audio.volume = 1;
+      setOutput(fade);
+    } catch (e) { console.error('leveling', e); }
+  }
+
+  /** The person turned leveling off or on. Once the element is routed it stays routed, so off
+      bypasses the compressor rather than leaving the graph. */
+  function setLeveling(on) {
+    try { localStorage.setItem(LEVEL_KEY, on ? 'on' : 'off'); } catch { /* kept for this page only */ }
+    if (graph) {
+      graph.source.disconnect();
+      graph.source.connect(on ? graph.comp : graph.out);
+    } else if (on) {
+      wake();   // the next episode loads with CORS and plays leveled
+    }
+    emit('level');
+  }
+
+  /** The sleep fade and the mute door, on the graph's output when there is one. */
+  function setOutput(f) {
+    fade = f;
+    if (graph) {
+      graph.out.gain.value = audio.muted ? 0 : f;
+      audio.volume = 1;
+    } else {
+      audio.volume = f;
+    }
+  }
+
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    ['pointerdown', 'keydown', 'touchend'].forEach(t => document.addEventListener(t, wake, { capture: true, passive: true }));
+  }
 
   /* ---- Element events ---- */
 
@@ -187,7 +282,21 @@ const Player = (() => {
   });
   audio.addEventListener('play', () => emit('play'));
   audio.addEventListener('durationchange', () => emit('time'));
-  audio.addEventListener('error', () => { lastError = audio.error; emit('error'); });
+  audio.addEventListener('error', () => {
+    // A storage node that did not answer with CORS refuses the crossorigin fetch: before the
+    // element is routed, play that copy unleveled rather than not at all.
+    if (current && corsReady && !graph && !plainRetry) {
+      plainRetry = true;
+      corsReady = false;
+      if (audio.removeAttribute) audio.removeAttribute('crossorigin');
+      audio.src = current.url;
+      play();
+      emit('level');
+      return;
+    }
+    lastError = audio.error;
+    emit('error');
+  });
   audio.addEventListener('ended', () => {
     if (current && isFinite(audio.duration)) Store.savePosition(current.id, audio.duration, audio.duration);
     if (sleep && sleep.kind === 'end') { fireSleep(); return; }
@@ -219,8 +328,17 @@ const Player = (() => {
 
   /* ---- Listen Together (WEB-DESIGN §4.12): a guest's player follows the host ---- */
 
-  /** The person's verbs, refused while following; the room's own corrections go through `follow`. */
+  /** The person's verbs, refused while following; the room's own corrections go through `follow`.
+      A guest's play and pause are their own (Decision 067): they hold their sound and, on
+      resume, the room's next correction catches them up (js/together.js). */
   const person = (fn) => (...args) => (following ? undefined : fn(...args));
+  const hold = (want) => () => {
+    if (!following) return want === 'toggle' ? toggle() : want ? pause() : play();
+    if (guestHold) guestHold(want === 'toggle' ? !audio.paused : want);
+    return undefined;
+  };
+  const personPlay = hold(false), personPause = hold(true), personToggle = hold('toggle');
+  function setGuestHold(fn) { guestHold = fn; }
   function setFollowing(on) {
     following = !!on;
     if (!following) audio.playbackRate = nearestSpeed(Store.rate());
@@ -235,9 +353,9 @@ const Player = (() => {
 
   if (ms) {
     const handlers = {
-      play: () => play(),
-      pause: () => pause(),
-      stop: () => pause(),
+      play: () => personPlay(),
+      pause: () => personPause(),
+      stop: () => personPause(),
       seekbackward: d => skip(-((d && d.seekOffset) || BACK_S)),
       seekforward: d => skip((d && d.seekOffset) || FWD_S),
       seekto: d => seek(d.seekTime),
@@ -245,22 +363,26 @@ const Player = (() => {
       nexttrack: () => { const n = nextInQueue(); if (n) load(n); },
     };
     for (const [action, fn] of Object.entries(handlers)) {
-      try { ms.setActionHandler(action, person(fn)); } catch { /* unsupported action */ }
+      const guarded = ['play', 'pause', 'stop'].includes(action) ? fn : person(fn);
+      try { ms.setActionHandler(action, guarded); } catch { /* unsupported action */ }
     }
   }
 
-  function setMuted(m) { audio.muted = !!m; }
+  function setMuted(m) { audio.muted = !!m; setOutput(fade); }
 
   return {
     audio, load, setSleep, setMuted, nextInQueue, sleepRemaining, onChange,
-    play: person(play), pause: person(pause), toggle: person(toggle), seek: person(seek),
+    play: personPlay, pause: personPause, toggle: personToggle, seek: person(seek),
     back: person(back), forward: person(forward), setRate: person(setRate),
-    setFollowing, follow,
+    setFollowing, follow, setGuestHold, setLeveling, wake,
+    get leveling() { return leveling(); },
+    get canLevel() { return canLevel(); },
+    get leveled() { return !!graph && levelOn(); },
     get following() { return following; },
     get current() { return current; },
     get sleep() { return sleep; },
     get fired() { return fired; },
     get error() { return lastError; },
-    BACK_S, FWD_S, FADE_S, SPEEDS, SAVE_EVERY_MS, REWIND_S, nearestSpeed,
+    BACK_S, FWD_S, FADE_S, SPEEDS, SAVE_EVERY_MS, REWIND_S, LEVEL, nearestSpeed,
   };
 })();

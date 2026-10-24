@@ -11,6 +11,10 @@
  * hands the room to the member present longest, and that member's next read
  * says `role: "host"`: this session then gives them the controls.
  *
+ * A guest may pause their own sound (Decision 067): the hold stops corrections
+ * and never reaches the room; on resume the next correction seeks them to
+ * where the host is now, so they catch up rather than the room waiting.
+ *
  * Every network call is API.rooms'. `make()` takes its player, clock, and
  * timers, so js/together.test.js runs this file against a stubbed Worker.
  */
@@ -39,6 +43,7 @@ const Together = (() => {
     let notice = null;        // why the last attempt or the room stopped: a Worker code, 'offline', or 'error'
     let busy = false;
     let blocked = false;      // the browser refused to start the guest's audio without a tap
+    let held = false;         // the guest paused their own sound; the room plays on
     let lastChangeAt = 0;
     let pollTimer = null;
     let tickTimer = null;
@@ -128,7 +133,7 @@ const Together = (() => {
 
     /** Applies the protocol's correction to the player. Nobody is asked to do anything. */
     function tick() {
-      if (!isGuest() || !onRoomEpisode()) return;
+      if (!isGuest() || !onRoomEpisode() || held) return;
       const s = room.state;
       if (!audio.paused && (audio.seeking || audio.readyState < HAVE_FUTURE_DATA)) return;
       const d = isFinite(audio.duration) ? audio.duration : Infinity;
@@ -210,12 +215,34 @@ const Together = (() => {
     function becomeHost() {
       T.clearInterval(tickTimer);
       blocked = false;
+      if (held) {
+        // A guest who held their sound is handed a room that played on: they take it from
+        // where the room is, never from where they paused.
+        held = false;
+        player.follow.seek(core.expectedPosition(room.state, serverNow()));
+        if (room.state.playing) startPlay();
+      }
       player.setFollowing(false);
       player.follow.rate(room.state.rate);
       schedulePublish();
     }
 
     ['play', 'pause', 'seeked', 'ratechange'].forEach((t) => audio.addEventListener(t, schedulePublish));
+
+    /** The guest's own pause and resume, from the player's verbs (keys, Media Session, the button). */
+    function setHold(on) {
+      if (!isGuest()) return;
+      if (on) {
+        held = true;
+        player.follow.pause();
+      } else {
+        held = false;
+        blocked = false;
+        tick();
+      }
+      emit();
+    }
+    if (player.setGuestHold) player.setGuestHold(setHold);
     player.onChange((kind) => {
       if (!room) return;
       if (kind === 'blocked' && isGuest()) { blocked = true; emit(); return; }
@@ -231,6 +258,7 @@ const Together = (() => {
       room = { code: snap.code, key, role: snap.role, members: snap.members, generation: null, state: null };
       notice = null;
       blocked = false;
+      held = false;
       apply(snap);
       save();
       if (isGuest()) startTicking();
@@ -243,6 +271,7 @@ const Together = (() => {
       T.clearTimeout(pollTimer); T.clearInterval(tickTimer); T.clearTimeout(publishTimer);
       room = null;
       blocked = false;
+      held = false;
       notice = why || null;
       if (wasGuest) player.setFollowing(false);
       save();
@@ -331,7 +360,7 @@ const Together = (() => {
 
     function info() {
       return {
-        available: api.available(), busy, notice, blocked,
+        available: api.available(), busy, notice, blocked, held,
         inRoom: !!room, code: room ? room.code : null, role: room ? room.role : null,
         members: room ? room.members : 0, state: room ? room.state : null,
         canStart: !room && !!(player.current && core.copyOfUrl(player.current.url)),
@@ -339,7 +368,7 @@ const Together = (() => {
     }
 
     return {
-      start, join, leave, end, tap, restore, info,
+      start, join, leave, end, tap, restore, info, hold: setHold,
       clearNotice() { notice = null; emit(); },
       onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
       _test: { tick, poll, publish },

@@ -167,9 +167,11 @@ function fakePlayer(w) {
       seek(t) { audio.currentTime = t; audio.fire('seeked'); },
       rate(r) { if (audio.playbackRate !== r) { audio.playbackRate = r; audio.fire('ratechange'); } },
     },
-    // The person's verbs, as the shipped Player guards them.
-    play() { if (!p.following) p.follow.play(); },
-    pause() { if (!p.following) p.follow.pause(); },
+    // The person's verbs, as the shipped Player guards them: a guest's play and pause are a hold.
+    hold: null,
+    setGuestHold(fn) { p.hold = fn; },
+    play() { if (!p.following) p.follow.play(); else if (p.hold) p.hold(false); },
+    pause() { if (!p.following) p.follow.pause(); else if (p.hold) p.hold(true); },
     seek(t) { if (!p.following) p.follow.seek(t); },
     setRate(r) { if (!p.following) { p.stored = r; p.follow.rate(r); } },
     emit,
@@ -332,7 +334,6 @@ async function main() {
   test('a guest cannot drive: the guest never writes, and a guest key is refused with the room unchanged', async () => {
     const { w, server, guest } = await pair(P);
     const gen = server.rooms.get('7KQ2MX').state.generation;
-    guest.player.pause();
     guest.player.seek(10);
     guest.player.setRate(2);
     guest.player.audio.fire('pause');
@@ -405,6 +406,39 @@ async function main() {
     const t = guest.core.expectedPosition(guest.session.info().state, w.now() + 4000);
     ok(Math.abs(guest.player.audio.currentTime - t) < 0.15, `caught up: ${guest.player.audio.currentTime} vs ${t}`);
     eq(server.rooms.get('7KQ2MX').state.generation, gen, 'the room never waited');
+  });
+
+  test('067: a guest may pause their own sound; the room plays on, and resume catches them up', async () => {
+    const { w, server, host, guest } = await pair(P);
+    const gen = server.rooms.get('7KQ2MX').state.generation;
+    guest.player.pause();
+    ok(guest.player.audio.paused, 'the guest\'s sound stops');
+    eq(guest.session.info().held, true, 'held');
+    const at = guest.player.audio.currentTime;
+    await w.advance(30000);
+    ok(guest.player.audio.paused && near(guest.player.audio.currentTime, at), 'no correction while held');
+    eq(server.rooms.get('7KQ2MX').state.generation, gen, 'the hold never reaches the room');
+    ok(!host.player.audio.paused, 'the host plays on');
+    eq(guest.session.info().inRoom, true, 'still in the room');
+    guest.player.play();
+    const t = guest.core.expectedPosition(guest.session.info().state, w.now() + 4000);
+    ok(!guest.player.audio.paused, 'resume plays');
+    ok(Math.abs(guest.player.audio.currentTime - t) < 0.15, `caught up to the host: ${guest.player.audio.currentTime} vs ${t}`);
+    eq(guest.session.info().held, false, 'released');
+    host.player.pause();
+    await w.advance(2500);
+    ok(guest.player.audio.paused, 'control: after resuming the guest follows the host again');
+  });
+
+  test('067: a held guest handed the room takes it from where the room is', async () => {
+    const { w, server, host, guest } = await pair(P);
+    guest.player.pause();
+    await w.advance(20000);
+    await host.session.leave();
+    await w.advance(2500);
+    eq(guest.session.info().role, 'host', 'role');
+    const st = server.rooms.get('7KQ2MX').state;
+    ok(st.playing === true && st.position > 620, `the room was not pulled back to the pause: ${st.position}`);
   });
 
   test('handoff: the host leaves, the guest becomes host and drives', async () => {
