@@ -22,6 +22,45 @@ nonisolated struct RadioEvening: Equatable, Sendable {
     }
 }
 
+/// The genre stations, read through the one API client. A station's episodes
+/// are resolved only when someone tunes in (`details`).
+enum StationsLoad: Equatable {
+    case loading
+    case stations([Station])
+    /// None is published, or the file could not be fetched: Stations shows
+    /// Tonight alone, as before any station existed.
+    case none
+
+    var stations: [Station] {
+        if case let .stations(s) = self { return s }
+        return []
+    }
+
+    static func load() async -> StationsLoad {
+        do {
+            guard let file = try await APIClient.shared.stations(), !file.stations.isEmpty else { return .none }
+            return .stations(file.stations)
+        } catch {
+            print("[Radio] stations.json unreachable: \(error.localizedDescription)")
+            return .none
+        }
+    }
+
+    /// The episodes one tune-in may play, resolved against the open catalog;
+    /// a slot absent here never plays.
+    static func details(_ slots: [RadioSlot], catalog: CatalogStore) async -> [String: EpisodeDetail] {
+        await catalog.whenReady()
+        var out: [String: EpisodeDetail] = [:]
+        for slot in slots {
+            guard let episode = slot.playableEpisode,
+                  let detail = await catalog.episodeDetail(episode.id),
+                  detail.defaultRecording != nil else { continue }
+            out[episode.id] = detail
+        }
+        return out
+    }
+}
+
 enum RadioLoad: Equatable {
     case loading
     /// No file is published, or it holds no evening for today.

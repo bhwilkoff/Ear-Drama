@@ -82,8 +82,10 @@ nonisolated struct LiveListening: Sendable {
 /// `AudioPlayer` through `LiveListening`. Views read `day` to mark Listening live.
 @Observable
 final class LiveRadio {
-    /// The evening listened to live, nil when not listening.
+    /// The evening listened to live, nil when not listening to one.
     private(set) var day: TonightDay?
+    /// The genre station listened to live (its genre), nil when not.
+    private(set) var station: String?
 
     @ObservationIgnored private var listening: LiveListening?
     @ObservationIgnored private var details: [String: EpisodeDetail] = [:]
@@ -98,8 +100,20 @@ final class LiveRadio {
     func tuneIn(_ day: TonightDay, details: [String: EpisodeDetail]) {
         stop()
         self.day = day
+        start(day.slots, details: details)
+    }
+
+    /// A genre station: the slot on now and those within the next hours
+    /// (`StationClock.ahead`), on the same clock and rules as an evening.
+    func tuneIn(station: Station, slots: [RadioSlot], details: [String: EpisodeDetail]) {
+        stop()
+        self.station = station.genre
+        start(slots, details: details)
+    }
+
+    private func start(_ slots: [RadioSlot], details: [String: EpisodeDetail]) {
         self.details = details
-        listening = LiveListening(slots: day.slots, lengths: details.mapValues {
+        listening = LiveListening(slots: slots, lengths: details.mapValues {
             $0.defaultRecording?.lengthSeconds ?? $0.episode.lengthSeconds
         })
         tick()
@@ -116,6 +130,7 @@ final class LiveRadio {
         loop = nil
         listening = nil
         day = nil
+        station = nil
     }
 
     func handle(_ event: TransportEvent) {

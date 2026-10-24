@@ -1,13 +1,15 @@
 #if os(iOS) || os(macOS)
 import SwiftUI
 
-// Tonight in 19xx on the iPhone, iPad, and Mac (iOS-DESIGN §4.9, macOS-DESIGN
-// §4.3): the evening published for the listener's own date, as a List of its
+// Stations on the iPhone, iPad, and Mac (iOS-DESIGN §4.9, macOS-DESIGN §4.3):
+// a row a station, Tonight in 19xx first and then the genre stations, each
+// with what is on now and Listen live; then tonight's evening as a List of its
 // slots on the one clock. The TV has its own focus-driven screen.
 
 struct RadioScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @State private var load: RadioLoad = .loading
+    @State private var stations: StationsLoad = .loading
     @State private var attempt = 0
     /// The year the listener picked for today, or nil for the published one.
     @State private var picked: String?
@@ -22,6 +24,7 @@ struct RadioScreen: View {
                     load = await RadioLoad.load(catalog: catalog, now: context.date, evening: picked)
                 }
         }
+        .task(id: attempt) { stations = await StationsLoad.load() }
         .navigationTitle("Stations")
     }
 
@@ -29,6 +32,8 @@ struct RadioScreen: View {
         switch load {
         case .loading:
             List { SkeletonRows() }
+        case .nothing where !stations.stations.isEmpty:
+            List { StationsSection(evening: nil, stations: stations.stations, now: now) }
         case .nothing:
             ContentUnavailableView("No evening is published for today", systemImage: "radio")
         case .failed:
@@ -38,13 +43,14 @@ struct RadioScreen: View {
                 Button("Try Again") { attempt += 1 }
             }
         case let .evening(evening):
-            EveningList(evening: evening, now: now, picked: $picked)
+            EveningList(evening: evening, stations: stations.stations, now: now, picked: $picked)
         }
     }
 }
 
 private struct EveningList: View {
     let evening: RadioEvening
+    let stations: [Station]
     let now: Date
     @Binding var picked: String?
     @Environment(AudioPlayer.self) private var player
@@ -55,6 +61,7 @@ private struct EveningList: View {
         let slots = evening.day.slots
         let onAir = RadioClock.onAir(slots, at: now)
         List {
+            StationsSection(evening: evening, stations: stations, now: now)
             Section {
                 VStack(alignment: .leading, spacing: Spacing.s1) {
                     Text(verbatim: "Tonight in \(evening.day.year)")
@@ -79,7 +86,6 @@ private struct EveningList: View {
                     }
                     .pickerStyle(.menu)
                 }
-                status(onAir)
             }
             Section {
                 ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
@@ -101,43 +107,110 @@ private struct EveningList: View {
             }
         }
     }
+}
 
-    @ViewBuilder private func status(_ onAir: RadioClock.OnAir) -> some View {
+/// The stations row (iOS-DESIGN §4.9): Tonight in 19xx first, then each genre
+/// station, each with what is on now and one Listen live. A genre station's
+/// episodes are resolved only when someone tunes in.
+private struct StationsSection: View {
+    let evening: RadioEvening?
+    let stations: [Station]
+    let now: Date
+    @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
+    @Environment(LiveRadio.self) private var live
+    @Environment(CatalogStore.self) private var catalog
+
+    var body: some View {
+        Section {
+            if let evening { tonight(evening) }
+            ForEach(stations) { station(for: $0) }
+        }
+    }
+
+    private func tonight(_ evening: RadioEvening) -> some View {
         let slots = evening.day.slots
-        switch onAir.phase {
-        case .before:
-            if let first = slots.first {
-                Text(verbatim: "Starts at \(RadioClock.clock(first.utcStart))")
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+        let onAir = RadioClock.onAir(slots, at: now)
+        let slot = onAir.index.map { slots[$0] }
+        let note: String? = switch onAir.phase {
+        case .before: slots.first.map { "Starts at \(RadioClock.clock($0.utcStart))" }
+        case .after: RadioClock.end(of: slots).map { "Ended at \(RadioClock.clock($0))" }
+        case .during: slot.flatMap { evening.detail(for: $0) == nil ? RadioClock.gapNote($0) : nil }
+        }
+        return StationRow(name: "Tonight in \(evening.day.year)", slot: slot, note: note,
+                          isLive: live.day == evening.day,
+                          canListen: slot.flatMap { evening.detail(for: $0) } != nil) {
+            player.isMuted = store.isMuted
+            live.tuneIn(evening.day, details: evening.details)
+        } stop: { stopLive() }
+    }
+
+    private func station(for station: Station) -> some View {
+        let on = StationClock.onNow(station.slots, at: now)
+        return StationRow(name: station.name, slot: on?.slot,
+                          note: on.flatMap { $0.slot.playableEpisode == nil ? RadioClock.gapNote($0.slot) : nil },
+                          isLive: live.station == station.genre,
+                          canListen: on?.slot.playableEpisode != nil) {
+            Task {
+                let slots = StationClock.ahead(station.slots, from: Date())
+                let details = await StationsLoad.details(slots, catalog: catalog)
+                player.isMuted = store.isMuted
+                live.tuneIn(station: station, slots: slots, details: details)
             }
-        case .after:
-            if let end = RadioClock.end(of: slots) {
-                Text(verbatim: "Ended at \(RadioClock.clock(end))")
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+        } stop: { stopLive() }
+    }
+
+    private func stopLive() {
+        player.pause()
+        live.stop()
+    }
+}
+
+private struct StationRow: View {
+    let name: String
+    let slot: RadioSlot?
+    let note: String?
+    let isLive: Bool
+    let canListen: Bool
+    let listen: () -> Void
+    let stop: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Spacing.s3) {
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                Text(verbatim: name).font(TypeRamp.bodyStrong)
+                if let episode = slot?.playableEpisode {
+                    Text(episode.series).font(TypeRamp.body)
+                    if let title = episode.title {
+                        Text(title)
+                            .font(TypeRamp.caption)
+                            .foregroundStyle(Color.brandTextMuted)
+                            .lineLimit(1)
+                    }
+                }
+                if let note {
+                    Text(verbatim: note)
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                }
             }
-        case .during:
-            if live.day == evening.day {
-                Button {
-                    player.pause()
-                    live.stop()
-                } label: {
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 0)
+            if isLive {
+                Button(action: stop) {
                     Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
                 }
                 .buttonStyle(.bordered)
                 .tint(Color.brandPrimary)
                 .accessibilityValue("On")
                 .accessibilityHint("Stops listening live")
-            } else if let index = onAir.index, evening.detail(for: slots[index]) != nil {
-                Button {
-                    player.isMuted = store.isMuted
-                    live.tuneIn(evening.day, details: evening.details)
-                } label: {
+            } else if canListen {
+                Button(action: listen) {
                     Label("Listen live", systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.brandPrimary)
+                .accessibilityLabel("Listen live to \(name)")
             }
         }
     }

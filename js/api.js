@@ -370,6 +370,46 @@ const API = (() => {
     return { phase: 'during', index };
   }
 
+  /* ---- Genre stations (contract §8, R10): published back to back on the one clock ---- */
+
+  /** The published stations, [{ genre, name, slots }], or [] when none is published. */
+  async function stations() {
+    try {
+      const d = await getJSON('stations.json');
+      return Array.isArray(d.stations) ? d.stations : [];
+    } catch (e) {
+      if (e.kind === 'missing') return [];
+      throw e;
+    }
+  }
+
+  /**
+   * What a station has on at `now` (ms): { index, slot, offset } with `offset` in seconds since the
+   * slot started, or null before its first slot or after its last. The slots are back to back and in
+   * order, so the search halves; a boundary belongs to the slot that starts.
+   */
+  function onNow(slots, now) {
+    let lo = 0;
+    let hi = (slots || []).length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const s = slots[mid];
+      if (now < Date.parse(s.utc_start)) hi = mid - 1;
+      else if (now >= Date.parse(s.utc_end)) lo = mid + 1;
+      else return { index: mid, slot: s, offset: (now - Date.parse(s.utc_start)) / 1000 };
+    }
+    return null;
+  }
+
+  /** The slot on now and every slot starting within `spanMs` of now: what one tune-in may play. */
+  function ahead(slots, now, spanMs = 12 * 3600 * 1000) {
+    const on = onNow(slots, now);
+    if (!on) return [];
+    const out = [];
+    for (let i = on.index; i < slots.length && Date.parse(slots[i].utc_start) < now + spanMs; i++) out.push(slots[i]);
+    return out;
+  }
+
   /**
    * The castable plays (PLAYS-DESIGN §3): catalog/plays/castable-scripts.json,
    * served at data/plays/. Only scripts the rights test calls castable and
@@ -735,7 +775,7 @@ const API = (() => {
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     transcript, transcriptLines, transcriptLabel,
-    localDate, tonight, tonightFile, onAir, castableScripts, account,
+    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, account,
   };
 })();
 

@@ -164,7 +164,17 @@ web app follows today.
   "Finished"; Decision 068), on this device. Clear history asks first.
   An empty Ear dramas says "No ear dramas yet." and nothing more.
 - **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
-  should be stations"*) = Tonight in 19xx; genre stations later: the evening `tonight.json` publishes
+  should be stations"*) = the stations row, then Tonight's schedule.
+  **The stations row** (R10, contract §8) lists Tonight in 19xx first, then
+  each genre station `stations.json` publishes, one row each: the station's
+  name (the genre's name from data), what is on now (series, then title), and
+  "Listen live" ("Listening live" while on; pressing it pauses). Outside the
+  evening Tonight's row says "Starts at" or "Ended at"; a withheld slot says
+  "Not in the catalog" and offers no Listen live. A genre station joins its
+  slot on now where the clock stands and plays each later slot at its own
+  time, under the evening's live rules (R14), for at most twelve hours from
+  tuning in; its episodes are fetched only on tune-in. With no stations file,
+  Tonight stands alone. **Tonight's schedule** is the evening `tonight.json` publishes
   for the listener's own calendar date (contract §8), as the night's
   schedule; an evening shows whenever any of its programs survives
   (Decision 067). When the day offers other published years (`years`), a

@@ -116,8 +116,9 @@ only here:
   §4.8); a row's Remove is on right-click. A download is played, never
   exported.
 - **§4.3 Stations** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
-  the detail column: the same slots, times, gaps, and Listen live on the
-  one `LiveRadio`. A slot's Play is a borderless button the pointer
+  the detail column: the same stations row (Tonight, then each genre
+  station, each with what is on now and Listen live), slots, times, gaps,
+  and Listen live on the one `LiveRadio`. A slot's Play is a borderless button the pointer
   reaches without opening the episode; the listing's credit is a link
   the default browser opens. Space pauses as anywhere (§5.3), and a
   pause ends listening live.

@@ -137,11 +137,16 @@ The only shapes; a new one needs a new rule.
   focused paragraph is bright. Menu closes it.
 
 - **§4.8 Stations** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
-  is the web's §4.9 at ten feet: "Tonight in 1942" at page-title size,
-  the evening's date, the network and station; then, during the
-  evening, an action row in its own focus section with "Listen live"
-  (or "Listening live", which pauses), focused by default; before it
-  "Starts at", after it "Ended at". Then every slot in one focus
+  is the web's §4.9 at ten feet. It opens on the stations shelf
+  (`StationsShelf_tvOS`), one horizontal focus section of `.card` buttons,
+  Tonight in 19xx first and then each genre station, the first focused by
+  default and only the focused card lifted: each card reads the station's
+  name, what is on now (series, then title), and "Listen live" ("Listening
+  live" while on; Tonight's says "Starts at" or "Ended at" outside the
+  evening). Pressing a card listens live and opens Now Playing; pressing the
+  one on the air pauses and stops. Then "Tonight in 1942" at page-title size,
+  the evening's date, the network and station, and the Year menu in its own
+  focus section when the date offers other years. Then every slot in one focus
   section, each a focus stop so the remote scrolls the whole evening
   and only the focused row is bright: a surviving slot opens its
   episode's Detail (Play lives there, §4.4); a gap is a focusable row
