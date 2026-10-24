@@ -710,3 +710,37 @@ and PLAYS-DESIGN §9), each blocking a feature batch.
 
 **How to apply**: each binding design doc gets the rule before its feature
 changes; LOOP-PLAN "Feature batches" carries the work.
+
+## 068: Sections are actions, as in Archive Watch; Stations; any script can become an ear drama
+
+*Date: 2026-10-24*
+
+The owner: *"we should focus on actions and not content type ... we should
+mimic the items from Archive Watch."* The shell becomes Archive Watch's: **Home ·
+Browse · Stations · Surprise · Search · Library**, placed per platform exactly as
+Archive Watch places them (iPhone: five tabs, Home, Browse, Stations, Search,
+Library, with Surprise behind a toolbar button on Home; iPad, Mac, and Apple TV
+sidebars and the web's nav list Surprise; Android's Home top bar opens it).
+Listen becomes Home, Series becomes Browse, Radio becomes **Stations**: *"Ear
+drama is the type of content across the app, but collections of ear dramas
+should be stations."* There is no Plays section. Supersedes 067's "six
+sections; Search in More".
+
+Recording is an action on anything with a script, not a section for one kind of
+content: *"You should be able to re-record anything that has a script. You
+search for something that has a script, and you should be able to start a new
+ear drama. It could be a radio show/drama or it could be a play ... the content
+type doesn't matter ... Ones you have participated in will show in library."*
+
+**Why**: a section named for a content type (Series, Plays) splits one verb
+(find something, listen to it, make your own) across places; Archive Watch's
+tabs are verbs (browse-curated, browse-all, lean back, find, saved), and the
+owner wants both apps to read the same.
+
+**How to apply**: every binding design doc's shell rule changes first (WEB,
+iOS, macOS, tvOS, ANDROID), then the code on all five, and PARITY.md. Stage
+plays appear in Browse and Search beside radio series; any item whose record
+carries a usable script shows "Start an ear drama" on its page; Library lists
+the ear dramas a person has recorded in or joined. Script rights rules stand
+(GRW only after they answer; C9). The verb test from Archive Watch's iOS-DESIGN
+§12.2 applies: a new section must own a verb no other owns.
