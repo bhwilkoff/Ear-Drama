@@ -14,9 +14,9 @@
 //
 //   node tools/test_design_tokens.mjs
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { plan, loadTokens, colors, genres, contrast, ROOT } from './design_tokens.mjs';
+import { plan, loadTokens, colors, genres, contrast, webFonts, ROOT } from './design_tokens.mjs';
 
 let failed = 0;
 const ok = (cond, msg) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${msg}`); if (!cond) failed++; };
@@ -105,6 +105,23 @@ ok(weakMarks(tokens).length === 0, `every genre mark holds 3:1 on background, su
 const faded = structuredClone(tokens);
 faded.color.genre.drama.light = '#E0E0E4';
 ok(weakMarks(faded).some((w) => w.startsWith('light drama')), 'the genre check catches a pale light-mode drama mark');
+
+// 6. Every face the tokens name is a file the platform ships (Decision 060),
+//    and only the display levels set the display face, with a negative control.
+const missingFonts = (t) => {
+  const want = [
+    ...webFonts(t).map((f) => `fonts/${f.src}`),
+    ...(t.font.display?.apple ? [`apple/Resources/Fonts/${t.font.display.apple}.ttf`] : []),
+    ...(t.font.display?.android ? [`android/app/src/main/res/font/${t.font.display.android}.ttf`] : []),
+  ];
+  return want.filter((p) => !existsSync(join(ROOT, p)));
+};
+ok(missingFonts(tokens).length === 0, `every named font file exists (missing: ${missingFonts(tokens).join(', ') || 'none'})`);
+const renamed = structuredClone(tokens);
+renamed.font.display.apple = 'NoSuchFace-Bold';
+ok(missingFonts(renamed).includes('apple/Resources/Fonts/NoSuchFace-Bold.ttf'), 'the font check catches a face with no file');
+const displayIds = tokens.type.filter((l) => l.face === 'display').map((l) => l.id);
+ok(JSON.stringify(displayIds) === JSON.stringify(['pageTitle', 'sectionHeader']), `the display face sets L1 and L2 only (${displayIds.join(', ')})`);
 
 console.log(failed ? `${failed} design-token check(s) FAILED` : `all ${results.length} token files match; contrast holds in light and dark`);
 process.exit(failed ? 1 : 0);

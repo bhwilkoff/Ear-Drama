@@ -464,7 +464,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   and the progress line in a row. Genre hues are content: the series
   row's leading genre mark, never chrome.
 - **§6.2 Six type levels** (`TypeRamp`) over the system text styles,
-  so Dynamic Type works and nothing truncates a title.
+  so Dynamic Type works and nothing truncates a title. The page title
+  and section header set the bundled Big Shoulders Bold at their
+  style's size, scaled `relativeTo:` that style (Decision 060); body
+  text is the system face.
 - **§6.3 `.buttonStyle(.plain)` is correct here** on a label that should
   not tint as a button (the mini player); rows with two targets use
   `.borderless`. This inverts tvOS (§11.2).

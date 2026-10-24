@@ -529,7 +529,11 @@ web app follows today.
   the series card's and row's genre edge and the series page head, never
   a button, a tab, or a link.
 - **§6.2 Density from removing chrome.** Six type levels (page title,
-  section header, body strong, body, caption, tabular), system fonts.
+  section header, body strong, body, caption, tabular). The page title
+  and section header set Big Shoulders (the display face); every other
+  level sets Public Sans (Decision 060). Both are self-hosted from
+  `fonts/` (`font-display: swap`, the display face preloaded, both in the
+  service worker's shell), built by `tools/build_fonts.py`.
 - **§6.3 Safari layout.** `body { height: 100dvh; display: flex;
   flex-direction: column; overflow: hidden }`, `main` is the one scroll
   container. No `viewport-fit=cover`, no `position: fixed` overlays.

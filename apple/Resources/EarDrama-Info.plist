@@ -17,5 +17,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>BigShoulders-Bold.ttf</string>
+	</array>
+	<key>ATSApplicationFontsPath</key>
+	<string>.</string>
 </dict>
 </plist>

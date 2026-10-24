@@ -8,6 +8,9 @@
    design-tokens.json: change it there, run `node tools/design_tokens.mjs`,
    and every platform follows (see the make-it-look-like-itself skill). */
 /* BEGIN design-tokens. Generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. */
+@font-face { font-family: "Big Shoulders"; src: url("../fonts/big-shoulders.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Public Sans"; src: url("../fonts/public-sans.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Public Sans"; src: url("../fonts/public-sans-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
 :root {
   color-scheme: light;
   --color-primary: #B0152F;
@@ -33,12 +36,15 @@
   --color-genre-news: #44420E;
   --color-genre-documentary: #217500;
   --color-genre-serial: #5D0087;
-  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Big Shoulders", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --type-page-title-size: 1.75rem;
   --type-page-title-weight: 700;
+  --type-page-title-family: var(--font-display);
   --type-section-header-size: 1.25rem;
   --type-section-header-weight: 700;
+  --type-section-header-family: var(--font-display);
   --type-body-strong-size: 1rem;
   --type-body-strong-weight: 600;
   --type-body-size: 1rem;
@@ -183,8 +189,8 @@ ul { list-style: none; }
 h1:focus, main:focus { outline: none; }
 
 /* ---- The six-level type ramp ---- */
-.view-heading { font-size: var(--type-page-title-size); font-weight: var(--type-page-title-weight); line-height: 1.15; }
-.section-header { font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); line-height: 1.25; }
+.view-heading { font-family: var(--type-page-title-family); font-size: var(--type-page-title-size); font-weight: var(--type-page-title-weight); line-height: 1.15; }
+.section-header { font-family: var(--type-section-header-family); font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); line-height: 1.25; }
 .body-strong { font-size: var(--type-body-strong-size); font-weight: var(--type-body-strong-weight); }
 .body { font-size: var(--type-body-size); font-weight: var(--type-body-weight); }
 .caption { font-size: var(--type-caption-size); font-weight: var(--type-caption-weight); color: var(--color-text-muted); }
@@ -218,7 +224,7 @@ h1:focus, main:focus { outline: none; }
     padding: var(--space-4) var(--space-3); border-right: 1px solid var(--color-border); background: var(--color-surface);
     overflow-y: auto;
   }
-  .sidebar-title { font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); padding: 0 var(--space-3) var(--space-4); }
+  .sidebar-title { font-family: var(--type-section-header-family); font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); padding: 0 var(--space-3) var(--space-4); }
   .nav-item {
     display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap); padding: 0 var(--space-3);
     border-radius: var(--radius-control); text-decoration: none; font-weight: var(--type-body-strong-weight);
@@ -367,7 +373,7 @@ select {
   width: 40px; height: 40px; overflow: hidden; border-radius: var(--radius-control);
   background: var(--color-surface-alt); box-shadow: inset 0 -3px 0 var(--genre-accent);
 }
-.art-letter { font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); line-height: 1; color: var(--genre-accent); }
+.art-letter { font-family: var(--type-section-header-family); font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); line-height: 1; color: var(--genre-accent); }
 .art-tile[data-genre=""] .art-letter { color: var(--color-text-muted); }
 .art-tile img, .face-img img, .face-sm img, .np-face img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%;
@@ -423,7 +429,7 @@ select {
   border-radius: var(--radius-card); border-left: 8px solid var(--genre-accent);
   background: var(--color-surface-alt); color: var(--color-text);
 }
-.type-card-name { font-size: var(--type-page-title-size); font-weight: var(--type-page-title-weight); line-height: 1.15; overflow-wrap: anywhere; }
+.type-card-name { font-family: var(--type-page-title-family); font-size: var(--type-page-title-size); font-weight: var(--type-page-title-weight); line-height: 1.15; overflow-wrap: anywhere; }
 
 /* ---- Radio: an evening's schedule on the one clock (R9, R10) ---- */
 .radio-head { margin-bottom: var(--space-4); }

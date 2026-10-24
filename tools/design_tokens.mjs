@@ -113,11 +113,31 @@ function webVars(t, mode) {
   ];
 }
 
+// The self-hosted faces (fonts/ at the site root), one @font-face per file.
+// The family is the first quoted name in the face's web stack.
+export function webFonts(t) {
+  const out = [];
+  for (const role of ['display', 'body']) {
+    const f = t.font[role];
+    if (!f || !f.webFiles) continue;
+    const family = /^"([^"]+)"/.exec(f.web);
+    if (!family) throw new Error(`design-tokens.json: font.${role}.web must start with the quoted family its webFiles carry`);
+    for (const file of f.webFiles) out.push({ role, family: family[1], ...file });
+  }
+  return out;
+}
+
 function webStyles(t) {
-  const out = [':root {', '  color-scheme: light;', ...webVars(t, 'light').map((l) => '  ' + l)];
+  const out = [];
+  for (const f of webFonts(t)) {
+    out.push(`@font-face { font-family: "${f.family}"; src: url("../fonts/${f.src}") format("woff2"); font-weight: ${f.weight}; font-style: ${f.style || 'normal'}; font-display: swap; }`);
+  }
+  out.push(':root {', '  color-scheme: light;', ...webVars(t, 'light').map((l) => '  ' + l));
+  if (t.font.display) out.push(`  --font-display: ${t.font.display.web};`);
   out.push(`  --font-body: ${t.font.body.web};`, `  --font-mono: ${t.font.mono.web};`);
   for (const l of t.type) {
     out.push(`  --type-${kebab(l.id)}-size: ${l.size / 16}rem;`, `  --type-${kebab(l.id)}-weight: ${WEIGHT.css(l.weight)};`);
+    if (l.face === 'display') out.push(`  --type-${kebab(l.id)}-family: var(--font-display);`);
   }
   for (const [k, v] of Object.entries(t.space)) out.push(`  --space-${k}: ${v}px;`);
   for (const [k, v] of Object.entries(t.radius)) out.push(`  --radius-${kebab(k)}: ${v}px;`);
@@ -134,6 +154,7 @@ function themeColorMeta(t) {
   return [
     `<meta name="theme-color" content="${b.light.toUpperCase()}" media="(prefers-color-scheme: light)">`,
     `<meta name="theme-color" content="${b.dark.toUpperCase()}" media="(prefers-color-scheme: dark)">`,
+    ...webFonts(t).filter((f) => f.preload).map((f) => `<link rel="preload" href="fonts/${f.src}" as="font" type="font/woff2" crossorigin>`),
   ];
 }
 
@@ -231,16 +252,57 @@ function appleDesign(t) {
   L.push('    #endif');
   L.push('}');
   L.push('');
+  const display = t.font.display && t.font.display.apple;
+  const displayStyles = [...new Set(t.type.filter((l) => l.face === 'display').flatMap((l) => [l.apple, l.tvos]))];
   L.push('/// The six-level type ramp. Apple platforms use the system text styles, so');
   L.push('/// Dynamic Type keeps working; tvOS maps to its own larger ten-foot styles.');
+  if (display) {
+    L.push(`/// The display levels set the bundled ${display} (Decision 060) at the`);
+    L.push("/// system style's default size, scaled with Dynamic Type relative to that style.");
+  }
   L.push('enum TypeRamp {');
   for (const l of t.type) {
-    const f = (style) => `Font.${style}${l.mono ? '.monospacedDigit()' : ''}.weight(.${WEIGHT.swift(l.weight)})`;
+    const f = (style) => (display && l.face === 'display')
+      ? `displayFont(.${style})`
+      : `Font.${style}${l.mono ? '.monospacedDigit()' : ''}.weight(.${WEIGHT.swift(l.weight)})`;
     L.push('    #if os(tvOS)');
     L.push(`    nonisolated static let ${l.id} = ${f(l.tvos)}  // ${l.level}`);
     L.push('    #else');
     L.push(`    nonisolated static let ${l.id} = ${f(l.apple)}  // ${l.level}`);
     L.push('    #endif');
+  }
+  if (display) {
+    const ui = { largeTitle: 'largeTitle', title: 'title1', title2: 'title2', title3: 'title3', headline: 'headline', body: 'body', caption: 'caption1' };
+    L.push('');
+    L.push(`    nonisolated static let displayFontName = "${display}"`);
+    L.push('');
+    L.push('    nonisolated private static func displayFont(_ style: Font.TextStyle) -> Font {');
+    L.push('        Font.custom(displayFontName, size: defaultSize(style), relativeTo: style)');
+    L.push('    }');
+    L.push('');
+    L.push("    /// The style's size at the default text size, so relativeTo: does the scaling.");
+    L.push('    nonisolated static func defaultSize(_ style: Font.TextStyle) -> CGFloat {');
+    L.push('        #if canImport(UIKit)');
+    L.push('        let ui: UIFont.TextStyle');
+    L.push('        #else');
+    L.push('        let ui: NSFont.TextStyle');
+    L.push('        #endif');
+    L.push('        switch style {');
+    for (const st of displayStyles) {
+      if (!ui[st]) throw new Error(`design-tokens.json: no UIFont.TextStyle for "${st}"`);
+      // tvOS has no large title; its display levels name tvOS styles instead.
+      if (st === 'largeTitle') L.push('        #if !os(tvOS)');
+      L.push(`        case .${st}: ui = .${ui[st]}`);
+      if (st === 'largeTitle') L.push('        #endif');
+    }
+    L.push('        default: ui = .body');
+    L.push('        }');
+    L.push('        #if canImport(UIKit)');
+    L.push('        return UIFont.preferredFont(forTextStyle: ui, compatibleWith: UITraitCollection(preferredContentSizeCategory: .large)).pointSize');
+    L.push('        #else');
+    L.push('        return NSFont.preferredFont(forTextStyle: ui).pointSize');
+    L.push('        #endif');
+    L.push('    }');
   }
   L.push('}');
   L.push('');
@@ -317,23 +379,33 @@ function androidColor(t, pkg) {
   return L.join('\n') + '\n';
 }
 
-function androidType(t, pkg) {
+function androidType(t, pkg, rPkg) {
+  const display = t.font.display && t.font.display.android;
+  if (display && !rPkg) throw new Error('android/app/build.gradle.kts: no namespace, so the display font has no R class');
   const L = [`// Design tokens, ${NOTE}:`, '// change design-tokens.json at the repository root and run `node tools/design_tokens.mjs`.', `package ${pkg}`, ''];
+  if (display) L.push(`import ${rPkg}.R`);
   L.push('import androidx.compose.material3.Typography');
   L.push('import androidx.compose.ui.text.TextStyle');
+  if (display) L.push('import androidx.compose.ui.text.font.Font');
   L.push('import androidx.compose.ui.text.font.FontFamily');
   L.push('import androidx.compose.ui.text.font.FontWeight');
   L.push('import androidx.compose.ui.unit.sp');
   L.push('');
-  L.push('// The system face. A custom face goes in res/font/ and replaces this line by');
-  L.push('// hand only if the chosen look truly needs one; keep fonts out of the splash path.');
+  L.push('// Body text is the system face (Decision 060).');
   L.push('private val BrandFontFamily = FontFamily.Default');
+  if (display) {
+    const w = t.type.find((l) => l.face === 'display');
+    L.push('');
+    L.push('// The display levels set the bundled Big Shoulders (res/font, built by tools/build_fonts.py).');
+    L.push(`val DisplayFontFamily = FontFamily(Font(R.font.${display}, FontWeight.${WEIGHT.kotlin(w ? w.weight : 700)}))`);
+  }
   L.push('');
   L.push('/** The six-level ramp: refuse a seventh level; refactor instead. */');
   L.push('val AppTypography = Typography(');
   for (const l of t.type) {
     const extra = l.mono ? ', fontFeatureSettings = "tnum"' : '';
-    L.push(`    ${l.android} = TextStyle(fontFamily = BrandFontFamily, fontWeight = FontWeight.${WEIGHT.kotlin(l.weight)}, fontSize = ${l.size}.sp${extra}), // ${l.level} ${l.id}`);
+    const fam = display && l.face === 'display' ? 'DisplayFontFamily' : 'BrandFontFamily';
+    L.push(`    ${l.android} = TextStyle(fontFamily = ${fam}, fontWeight = FontWeight.${WEIGHT.kotlin(l.weight)}, fontSize = ${l.size}.sp${extra}), // ${l.level} ${l.id}`);
   }
   L.push(')');
   return L.join('\n') + '\n';
@@ -349,6 +421,8 @@ function androidColorsXml(t, mode) {
     `    <color name="brand_primary">#FF${hex6(b.primary[mode])}</color>`,
     `    <color name="brand_background">#FF${hex6(b.background[mode])}</color>`,
     `    <color name="brand_surface">#FF${hex6(b.surface[mode])}</color>`,
+    '    <!-- The launcher icon\'s ground is the icon master\'s red in both modes (branding/icon-master.svg). -->',
+    `    <color name="icon_background">#FF${hex6(b.primary.light)}</color>`,
     ...genres(t).map((g) => `    <color name="genre_${g.name}">#FF${hex6(g[mode])}</color>`),
     '</resources>',
     '',
@@ -411,7 +485,10 @@ function androidTheme(root) {
   };
   const dir = walk(base);
   if (!dir) throw new Error(`${base}: no ui/theme folder with a Theme.kt in it`);
-  return { dir, pkg: dir.slice(base.length + 1).replaceAll('/', '.') };
+  let gradle = '';
+  try { gradle = readFileSync(join(root, 'android/app/build.gradle.kts'), 'utf8'); } catch { /* no namespace */ }
+  const ns = /^\s*namespace\s*=\s*"([^"]+)"/m.exec(gradle);
+  return { dir, pkg: dir.slice(base.length + 1).replaceAll('/', '.'), rPkg: ns ? ns[1] : null };
 }
 
 // The Windows app folder is renamed with the app too (AppName.App).
@@ -440,7 +517,7 @@ export function targets(t, root = ROOT) {
     { path: 'apple/Assets.xcassets/AccentColor.colorset/Contents.json', whole: () => appleAccent(t) },
     ...(android ? [
       { path: `${android.dir}/Color.kt`, whole: () => androidColor(t, android.pkg) },
-      { path: `${android.dir}/Type.kt`, whole: () => androidType(t, android.pkg) },
+      { path: `${android.dir}/Type.kt`, whole: () => androidType(t, android.pkg, android.rPkg) },
     ] : []),
     { path: 'android/app/src/main/res/values/colors.xml', whole: () => androidColorsXml(t, 'light') },
     { path: 'android/app/src/main/res/values-night/colors.xml', whole: () => androidColorsXml(t, 'dark') },

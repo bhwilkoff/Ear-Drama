@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- The iOS tinted icon: grayscale, white on black, for the system to tint. Written by tools/render-app-icon.py; edit the geometry there. -->
+  <rect width="1024" height="1024" fill="#000000"/>
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <path d="M220,448 A292,292 0 1,1 804,448 A292,292 0 1,1 220,448 Z" stroke-width="60"/>
+    <path d="M318,254 L436,352 M706,254 L588,352 M318,642 L436,544 M706,642 L588,544" stroke-width="20"/>
+  </g>
+  <g fill="#FFFFFF">
+    <path d="M422,412 A90,90 0 0,1 602,412 L602,484 A90,90 0 0,1 422,484 Z M462,396 H562 A8,8 0 0,1 562,412 H462 A8,8 0 0,1 462,396 Z M462,440 H562 A8,8 0 0,1 562,456 H462 A8,8 0 0,1 462,440 Z M462,484 H562 A8,8 0 0,1 562,500 H462 A8,8 0 0,1 462,484 Z" fill-rule="evenodd"/>
+    <path d="M494,734 H530 A10,10 0 0,1 540,744 V854 A10,10 0 0,1 530,864 H494 A10,10 0 0,1 484,854 V744 A10,10 0 0,1 494,734 Z"/>
+    <path d="M360,852 H664 A28,28 0 0,1 664,908 H360 A28,28 0 0,1 360,852 Z"/>
+  </g>
+</svg>

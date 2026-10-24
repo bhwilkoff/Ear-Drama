@@ -49,6 +49,15 @@ for (const page of ['index.html', 'credits/index.html', 'privacy/index.html', 't
   }
 }
 
+// The self-hosted faces work offline only if the shell carries them.
+const css = fs.readFileSync(path.join(ROOT, 'css/styles.css'), 'utf8');
+const faces = [...css.matchAll(/@font-face\s*{[^}]*url\("([^"]+)"/g)].map((m) => m[1]);
+ok('styles.css declares its fonts', faces.length > 0);
+for (const f of faces) {
+  const pathname = new URL(f, new URL('css/styles.css', SCOPE)).pathname;
+  ok(`the shell carries the font ${f}`, shellPaths.has(pathname));
+}
+
 function answered(url, { destination = '', mode = 'no-cors', method = 'GET', headers = {} } = {}) {
   let responded = false;
   handlers.fetch({

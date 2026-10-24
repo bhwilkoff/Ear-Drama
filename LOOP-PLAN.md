@@ -194,13 +194,18 @@ after the owner has played it; until then it is *built*.
       **Owner picks.**
 - [ ] On the owner's pick: `design-tokens.json`, `node tools/design_tokens.mjs`,
       `node tools/test_design_tokens.mjs`, and every platform built and looked at.
-- [ ] The icon from the ring microphone (09 §2.3, candidate 1): a cut-out on a
+- [x] The icon from the ring microphone (09 §2.3, candidate 1): a cut-out on a
       flat ground from the brand palette, a tvOS parallax stack, an Android
       adaptive icon with a monochrome layer, generated dark and tinted iOS
       variants, every size from `tools/render-app-icon.py`, and each one read
-      at its real size before it is called done.
-- [ ] Fonts: Big Shoulders and Public Sans self-hosted for the web, with their
-      OFL files; system faces for body text on Apple and Android.
+      at its real size before it is called done. (iOS default, dark, tinted and
+      the Android layers come from the script; the Mac grid and tvOS layers
+      from their own SVGs in `branding/`, commit 05c046f. Not yet seen on a
+      device.)
+- [x] Fonts: Big Shoulders and Public Sans self-hosted for the web, with their
+      OFL files; system faces for body text on Apple and Android. (Big Shoulders
+      Bold also bundled on Apple and Android for L1/L2, per Decision 060;
+      `tools/build_fonts.py`, `font` in `design-tokens.json`.)
 
 **Play gate:** the comparison page, then the tokens and icon on every platform.
 
