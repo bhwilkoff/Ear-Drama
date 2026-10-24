@@ -2,7 +2,6 @@ package com.example.appname.together
 
 import com.example.appname.data.CatalogRepository
 import com.example.appname.data.EpisodeRow
-import com.example.appname.playback.LoudnessLevel
 import com.example.appname.playback.PlaybackEngine
 
 /**
@@ -44,11 +43,10 @@ class EngineRoomPlayer(private val engine: PlaybackEngine, private val catalog: 
             title = state.file.substringAfterLast('/').substringBeforeLast('.'),
             lengthSeconds = null,
         )
-        val level = detail?.let { LoudnessLevel.volume(it, url) } ?: 1f
-        engine.playRoomCopy(row, url, (position * 1000).toLong(), state.playing, state.rate.toFloat(), level)
+        engine.asRoom { engine.playRoomCopy(row, url, (position * 1000).toLong(), state.playing, state.rate.toFloat()) }
     }
 
-    override fun apply(correction: Correction) {
+    override fun apply(correction: Correction) = engine.asRoom {
         when (correction) {
             Correction.None -> Unit
             is Correction.Pause -> {
@@ -73,6 +71,10 @@ class EngineRoomPlayer(private val engine: PlaybackEngine, private val catalog: 
 
     override fun onChange(listener: (() -> Unit)?) {
         engine.onRoomChange = listener
+    }
+
+    override fun onGuestHold(listener: ((Boolean) -> Unit)?) {
+        engine.onGuestHold = listener
     }
 
     private fun ms(seconds: Double): Long = (seconds * 1000).toLong()

@@ -77,6 +77,18 @@ class ListenShelvesTest {
         db.close()
     }
 
+    /** Decision 067: the popularity shelf draws its published ids, in order, under its own heading. */
+    @Test fun `most downloaded draws its published ids`() = runBlocking {
+        val db = open(CatalogFixture.build(tmp.root, listenShelves = """
+            [{"rule": "onThisDay"},
+             {"rule": "mostDownloaded", "episodes": ["sus|1942-06-17", "gone|1900-01-01", "cp|1945-02-04"]}]
+        """.trimIndent()))
+        val popular = db.listenShelves("05-25").firstOrNull { it.key == "mostdownloaded" } ?: error("no popularity shelf")
+        assertEquals("Most downloaded", popular.heading)
+        assertEquals(listOf("sus|1942-06-17", "cp|1945-02-04"), popular.rows.map { it.id })
+        db.close()
+    }
+
     @Test fun `an older catalog falls back to the rules run here`() = runBlocking {
         val db = open(CatalogFixture.build(tmp.root))
         assertNull(db.publishedShelves)

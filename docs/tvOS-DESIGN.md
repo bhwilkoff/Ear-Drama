@@ -41,8 +41,12 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   cards are typographic (date, title, series), with no art and no
   placeholder; **R12** brand is chrome only; **R13** shelves by rule.
 - **R14** lean-back is bounded: the sleep timer ends a session, and the
-  queue holds only this series (see §12 for the open queue rule).
-- **R15 and Decision 061**: loudness by cutting, `LoudnessLevel.volume`.
+  queue is the person's own: one episode, then what they queued, then
+  stop (Decision 067).
+- **R15 and Decision 067**: volume leveled on the device by the shared
+  `VolumeLeveler` tap (iOS-DESIGN §1.7); "Level volume" is a toggle in
+  Now Playing's action row. Radio's action row carries a "Year" menu when
+  the date offers other published years (Decision 067).
 - **R16**: the reader's caption and every button say "Automatic
   transcript".
 - **R18**: speed, sleep, and skip are on Now Playing.
@@ -166,7 +170,8 @@ The only shapes; a new one needs a new rule.
   the TV cannot place a call. The SharePlay control appears in Now
   Playing's focus section only while a FaceTime call is live
   (`GroupStateObserver`); outside one there is no control that cannot
-  work. A following member's transport and speed are disabled, with "The
+  work. A following member's skip and speed are disabled (Play and Pause
+  stay theirs, a hold that catches up on play, Decision 067), with "The
   host has the controls." under them.
 
 ## §6 Focus contract
@@ -209,7 +214,7 @@ The only shapes; a new one needs a new rule.
 
 ## §8 Values
 
-The rights line, the transcript label, and loudness by cutting are as in
+The rights line, the transcript label, and volume leveling are as in
 §1.8, never reworded. Share on the TV is a QR code when that row lands
 (PARITY §5).
 

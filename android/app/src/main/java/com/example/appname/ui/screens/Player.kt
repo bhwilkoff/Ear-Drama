@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -22,6 +23,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
@@ -78,7 +80,6 @@ private fun rememberIsRoomGuest(): Boolean {
 fun MiniPlayer(onExpand: () -> Unit) {
     val engine = LocalAppContainer.current.playback
     val now by engine.state.collectAsState()
-    val guest = rememberIsRoomGuest()
     val episode = now.episode ?: return
     val title = episodeTitle(episode)
     Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, tonalElevation = 2.dp) {
@@ -107,7 +108,8 @@ fun MiniPlayer(onExpand: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                PlayPauseButton(now, engine, filled = false, enabled = !guest)
+                // A guest's Play and Pause are their own (Decision 067): pause holds, play catches up.
+                PlayPauseButton(now, engine, filled = false, enabled = true)
             }
         }
     }
@@ -201,7 +203,7 @@ fun PlayerSheet(
                         modifier = Modifier.size(32.dp),
                     )
                 }
-                PlayPauseButton(now, engine, filled = true, enabled = !guest, modifier = Modifier.focusRequester(playPause).tvFocusMark())
+                PlayPauseButton(now, engine, filled = true, enabled = true, modifier = Modifier.focusRequester(playPause).tvFocusMark())
                 IconButton(onClick = engine::skipForward, enabled = !guest, modifier = Modifier.size(56.dp).tvFocusMark()) {
                     Icon(
                         painterResource(androidx.media3.session.R.drawable.media3_icon_skip_forward_30),
@@ -228,6 +230,7 @@ fun PlayerSheet(
                         tint = if (room is RoomStatus.In) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                     )
                 }
+                LevelToggle(engine)
                 SleepMenu(now, engine)
             }
             if (now.upNext.isNotEmpty()) {
@@ -242,6 +245,23 @@ fun PlayerSheet(
                 )
             }
         }
+    }
+}
+
+/** Decision 067: volume leveled on the device as it plays, on by default; this turns it off and on. */
+@Composable
+private fun LevelToggle(engine: PlaybackEngine) {
+    val on by engine.leveling.collectAsState()
+    IconToggleButton(
+        checked = on,
+        onCheckedChange = engine::setLeveling,
+        modifier = Modifier.tvFocusMark().semantics { stateDescription = if (on) "On" else "Off" },
+    ) {
+        Icon(
+            Icons.Filled.GraphicEq,
+            contentDescription = "Level volume",
+            tint = if (on) MaterialTheme.colorScheme.secondary else LocalContentColor.current,
+        )
     }
 }
 

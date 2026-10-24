@@ -9,14 +9,17 @@ struct RadioScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @State private var load: RadioLoad = .loading
     @State private var attempt = 0
+    /// The year the listener picked for today, or nil for the published one.
+    @State private var picked: String?
 
-    private struct Key: Hashable { let date: String; let load: Int; let attempt: Int }
+    private struct Key: Hashable { let date: String; let load: Int; let attempt: Int; let picked: String? }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             content(now: context.date)
-                .task(id: Key(date: RadioClock.localDate(context.date), load: catalog.loadKey, attempt: attempt)) {
-                    load = await RadioLoad.load(catalog: catalog, now: context.date)
+                .task(id: Key(date: RadioClock.localDate(context.date), load: catalog.loadKey, attempt: attempt,
+                              picked: picked)) {
+                    load = await RadioLoad.load(catalog: catalog, now: context.date, evening: picked)
                 }
         }
     }
@@ -34,7 +37,7 @@ struct RadioScreen_tvOS: View {
                 Button("Try Again") { attempt += 1 }
             }
         case let .evening(evening):
-            Evening_tvOS(evening: evening, now: now)
+            Evening_tvOS(evening: evening, now: now, picked: $picked)
         }
     }
 }
@@ -42,6 +45,7 @@ struct RadioScreen_tvOS: View {
 private struct Evening_tvOS: View {
     let evening: RadioEvening
     let now: Date
+    @Binding var picked: String?
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @Environment(LiveRadio.self) private var live
@@ -95,19 +99,28 @@ private struct Evening_tvOS: View {
         let slots = evening.day.slots
         switch onAir.phase {
         case .before:
-            if let first = slots.first {
-                Text(verbatim: "Starts at \(RadioClock.clock(first.utcStart))")
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+            HStack(spacing: Spacing.s6) {
+                yearMenu
+                if let first = slots.first {
+                    Text(verbatim: "Starts at \(RadioClock.clock(first.utcStart))")
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                }
             }
+            .focusSection()
         case .after:
-            if let end = RadioClock.end(of: slots) {
-                Text(verbatim: "Ended at \(RadioClock.clock(end))")
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+            HStack(spacing: Spacing.s6) {
+                yearMenu
+                if let end = RadioClock.end(of: slots) {
+                    Text(verbatim: "Ended at \(RadioClock.clock(end))")
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                }
             }
+            .focusSection()
         case .during:
             HStack(spacing: Spacing.s6) {
+                yearMenu
                 if live.day == evening.day {
                     Button {
                         player.pause()
@@ -131,6 +144,25 @@ private struct Evening_tvOS: View {
                 }
             }
             .focusSection()
+        }
+    }
+}
+
+extension Evening_tvOS {
+    /// Decision 067: another published year for the same date, in the action
+    /// row; picking one ends listening live. Absent when the date offers none.
+    @ViewBuilder var yearMenu: some View {
+        if evening.choices.count > 1 {
+            Menu {
+                ForEach(evening.choices, id: \.self) { choice in
+                    Button(String(choice.prefix(4))) {
+                        if live.day == evening.day { live.stop() }
+                        picked = choice
+                    }
+                }
+            } label: {
+                Label("Year \(evening.day.year)", systemImage: "calendar")
+            }
         }
     }
 }

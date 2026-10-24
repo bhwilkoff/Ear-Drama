@@ -187,6 +187,7 @@ class FakeRoomPlayer : RoomPlayer {
     val applied = mutableListOf<Correction>()
     val loads = mutableListOf<RoomState>()
     var listener: (() -> Unit)? = null
+    var holdListener: ((Boolean) -> Unit)? = null
 
     override fun hostState(): RoomState? = host
     override fun sample(): PlayerSample? = episode?.let { PlayerSample(position, playing) }
@@ -205,5 +206,9 @@ class FakeRoomPlayer : RoomPlayer {
 
     override fun onChange(listener: (() -> Unit)?) {
         this.listener = listener
+    }
+
+    override fun onGuestHold(listener: ((Boolean) -> Unit)?) {
+        holdListener = listener
     }
 }

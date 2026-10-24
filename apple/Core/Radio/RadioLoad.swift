@@ -13,6 +13,9 @@ nonisolated struct RadioEvening: Equatable, Sendable {
     /// The surviving slots' episodes the catalog holds; a slot absent here
     /// is drawn as a gap ("Not in the catalog") and never plays.
     let details: [String: EpisodeDetail]
+    /// The evenings a listener may pick for this date (Decision 067), oldest
+    /// first, `day` among them; one entry when the date offers no other year.
+    var choices: [String] = []
 
     func detail(for slot: RadioSlot) -> EpisodeDetail? {
         slot.playableEpisode.flatMap { details[$0.id] }
@@ -29,7 +32,7 @@ enum RadioLoad: Equatable {
 
     /// Reads the file through the one API client and resolves each surviving
     /// slot in the catalog. Views never fetch it themselves.
-    static func load(catalog: CatalogStore, now: Date = Date()) async -> RadioLoad {
+    static func load(catalog: CatalogStore, now: Date = Date(), evening picked: String? = nil) async -> RadioLoad {
         let file: TonightFile?
         do {
             file = try await APIClient.shared.tonight()
@@ -37,7 +40,8 @@ enum RadioLoad: Equatable {
             print("[Radio] tonight.json unreachable: \(error.localizedDescription)")
             return .failed
         }
-        guard let file, let day = file.day(for: RadioClock.localDate(now)) else { return .nothing }
+        guard let file, let published = file.day(for: RadioClock.localDate(now)) else { return .nothing }
+        let day = picked.flatMap { e in published.choices.first { $0.evening == e } } ?? published
         await catalog.whenReady()
         var details: [String: EpisodeDetail] = [:]
         for slot in day.slots {
@@ -46,6 +50,7 @@ enum RadioLoad: Equatable {
                   detail.defaultRecording != nil else { continue }
             details[episode.id] = detail
         }
-        return .evening(RadioEvening(day: day, zone: file.zone, details: details))
+        return .evening(RadioEvening(day: day, zone: file.zone, details: details,
+                                     choices: published.choices.map(\.evening)))
     }
 }

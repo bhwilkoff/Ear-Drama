@@ -26,6 +26,9 @@ interface RoomPlayer {
 
     /** Called on every play, pause, seek, speed, or episode change; the room publishes it when this device hosts. */
     fun onChange(listener: (() -> Unit)?)
+
+    /** Called when the person, not the room, pauses (true) or plays (false): a guest's own hold. */
+    fun onGuestHold(listener: ((Boolean) -> Unit)?)
 }
 
 /** What the Listen together sheet draws. */
@@ -38,7 +41,8 @@ sealed interface RoomStatus {
 
     data object Busy : RoomStatus
 
-    data class In(val code: String, val isHost: Boolean, val members: Int) : RoomStatus
+    /** [held]: a guest paused their own sound (Decision 067); the room plays on. */
+    data class In(val code: String, val isHost: Boolean, val members: Int, val held: Boolean = false) : RoomStatus
 }
 
 /**
@@ -48,7 +52,9 @@ sealed interface RoomStatus {
  * least every 30 s), and a guest applies `RoomProtocol.correction` to the
  * read. When a read says this device is now host (handoff), the controls are
  * its and its speed snaps back to the room's. Only the host's key writes:
- * a guest never sends state at all.
+ * a guest never sends state at all. A guest may pause their own sound
+ * (Decision 067): no correction applies while held, the room never hears of
+ * it, and play catches them up to where the host is now.
  */
 class ListenTogether(
     private val api: RoomsApi,
@@ -69,6 +75,8 @@ class ListenTogether(
     private val samples = ArrayDeque<ClockSample>()
     private var poller: Job? = null
     private var pendingPublish: Job? = null
+    private var held = false
+    private var last: RoomSnapshot? = null
 
     val inRoom: Boolean get() = _status.value is RoomStatus.In
     val isGuest: Boolean get() = (_status.value as? RoomStatus.In)?.isHost == false
@@ -147,6 +155,13 @@ class ListenTogether(
             val becameHost = snapshot.isHost && !isHost
             update(snapshot)
             if (becameHost) {
+                if (held) {
+                    // A held guest is handed a room that played on: they take it from where the
+                    // room is, never from where they paused.
+                    held = false
+                    publishHeld()
+                    player.apply(Correction.Seek(RoomProtocol.expectedPosition(snapshot.state, serverNow()), snapshot.state.playing))
+                }
                 // The controls are this device's now; a drift nudge is never the room's speed.
                 player.apply(Correction.Rate(snapshot.state.rate))
             } else if (!snapshot.isHost) {
@@ -160,7 +175,21 @@ class ListenTogether(
     /** Where the room's clock is now, by the best sample so far. */
     fun serverNow(): Long = now() + (RoomProtocol.clockOffset(samples.toList()) ?: 0.0).toLong()
 
+    /** The guest's own pause (true) and play (false). Play catches up at once, from the last read. */
+    fun hold(on: Boolean) {
+        if (!isGuest || held == on) return
+        held = on
+        publishHeld()
+        if (!on) last?.let { snapshot -> scope.launch { follow(snapshot) } }
+    }
+
+    private fun publishHeld() {
+        (_status.value as? RoomStatus.In)?.let { _status.value = it.copy(held = held) }
+    }
+
     private suspend fun follow(snapshot: RoomSnapshot) {
+        last = snapshot
+        if (held) return
         val state = snapshot.state
         val serverNow = serverNow()
         val target = RoomProtocol.expectedPosition(state, serverNow)
@@ -177,8 +206,11 @@ class ListenTogether(
         key = entered.key
         samples.clear()
         generation = -1
+        held = false
+        last = null
         update(entered.snapshot)
         player.onChange { schedulePublish() }
+        player.onGuestHold { hold(it) }
         if (autoPoll) {
             poller?.cancel()
             poller = scope.launch {
@@ -196,7 +228,7 @@ class ListenTogether(
             lastChangeAt = now()
         }
         isHost = snapshot.isHost
-        _status.value = RoomStatus.In(snapshot.code, snapshot.isHost, snapshot.members)
+        _status.value = RoomStatus.In(snapshot.code, snapshot.isHost, snapshot.members, held && !snapshot.isHost)
     }
 
     private fun schedulePublish() {
@@ -222,6 +254,9 @@ class ListenTogether(
         poller?.cancel()
         pendingPublish?.cancel()
         player.onChange(null)
+        player.onGuestHold(null)
+        held = false
+        last = null
         code = null
         key = null
         isHost = false

@@ -66,6 +66,19 @@ struct ListenShelvesTests {
         #expect(try Fixture.open(listenShelves: "{}").publishedShelves == nil)
     }
 
+    /// Decision 067: the popularity shelf draws its published ids, in order.
+    @Test func mostDownloadedDrawsItsPublishedIds() throws {
+        let db = try Fixture.open(listenShelves: """
+            [{"rule": "onThisDay"},
+             {"rule": "mostDownloaded", "episodes": ["mrsorrowful|1950-05-25", "gone|1900-01-01", "suspense|1942-06-17"]}]
+            """)
+        let shelves = db.listenShelves(month: 5, day: 25)
+        let popular = try #require(shelves.first { $0.rule == .mostDownloaded })
+        #expect(popular.rule.title == "Most downloaded")
+        #expect(popular.episodes.map(\.id) == ["mrsorrowful|1950-05-25", "suspense|1942-06-17"])
+        #expect(db.shelf(.mostDownloaded).isEmpty, "never re-derived on the device")
+    }
+
     @Test func parseKeepsOnlyKnownRules() {
         #expect(PublishedShelf.parse(Self.published) == [
             .genreFirsts(genre: "drama", episodes: ["librivox1|s2", "librivox1|s1"]), .onThisDay,

@@ -16,6 +16,7 @@ struct TransportControls: View {
             }
             .accessibilityLabel("Back 15 seconds")
             .help("Back 15 seconds")
+            .disabled(player.isFollowing)
 
             Button {
                 player.togglePlayPause()
@@ -35,9 +36,11 @@ struct TransportControls: View {
             }
             .accessibilityLabel("Forward 30 seconds")
             .help("Forward 30 seconds")
+            .disabled(player.isFollowing)
         }
         .font(.title)
-        .disabled(player.item == nil || player.isFollowing)
+        // A following member's Play and Pause are their own (Decision 067).
+        .disabled(player.item == nil)
     }
 }
 
@@ -62,6 +65,24 @@ struct SpeedMenu: View {
 
     static func label(_ rate: Float) -> String {
         rate == rate.rounded() ? "\(Int(rate))×" : "\(rate.formatted(.number.precision(.fractionLength(1...2))))×"
+    }
+}
+
+/// Decision 067: volume leveled on the device as it plays, on by default;
+/// this turns it off and on (kept on the device).
+struct LevelToggle: View {
+    @Environment(AudioPlayer.self) private var player
+
+    var body: some View {
+        @Bindable var player = player
+        Toggle(isOn: $player.isLeveling) {
+            Label("Level volume", systemImage: "waveform")
+        }
+        #if !os(tvOS)
+        .toggleStyle(.button)
+        #endif
+        .accessibilityLabel("Level volume")
+        .help("Level volume")
     }
 }
 

@@ -144,11 +144,15 @@ nonisolated enum ShelfRule: Hashable, Sendable, Identifiable {
     case onThisDay(month: Int, day: Int)
     /// The first surviving episode of each series in a genre.
     case genreFirsts(String)
+    /// Decision 067: the series archive.org's listeners downloaded most, each
+    /// by its first surviving episode. Only ever published; never run here.
+    case mostDownloaded
 
     var id: String {
         switch self {
         case let .onThisDay(m, d): "day-\(m)-\(d)"
         case let .genreFirsts(g): "genre-\(g)"
+        case .mostDownloaded: "most-downloaded"
         }
     }
 
@@ -156,6 +160,7 @@ nonisolated enum ShelfRule: Hashable, Sendable, Identifiable {
         switch self {
         case .onThisDay: "This day in radio"
         case let .genreFirsts(g): GenreDisplay.name(g)
+        case .mostDownloaded: "Most downloaded"
         }
     }
 }
@@ -166,6 +171,7 @@ nonisolated enum ShelfRule: Hashable, Sendable, Identifiable {
 nonisolated enum PublishedShelf: Hashable, Sendable {
     case onThisDay
     case genreFirsts(genre: String, episodes: [String])
+    case mostDownloaded(episodes: [String])
 
     /// The published list, or nil when the value is not a JSON array (an
     /// older catalog). A rule this build does not know is skipped.
@@ -179,6 +185,9 @@ nonisolated enum PublishedShelf: Hashable, Sendable {
             case "genreFirsts":
                 guard let g = s["genre"] as? String, let ids = s["episodes"] as? [String] else { return nil }
                 return .genreFirsts(genre: g, episodes: ids)
+            case "mostDownloaded":
+                guard let ids = s["episodes"] as? [String] else { return nil }
+                return .mostDownloaded(episodes: ids)
             default: return nil
             }
         }

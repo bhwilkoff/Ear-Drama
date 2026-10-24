@@ -9,14 +9,17 @@ struct RadioScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @State private var load: RadioLoad = .loading
     @State private var attempt = 0
+    /// The year the listener picked for today, or nil for the published one.
+    @State private var picked: String?
 
-    private struct Key: Hashable { let date: String; let load: Int; let attempt: Int }
+    private struct Key: Hashable { let date: String; let load: Int; let attempt: Int; let picked: String? }
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 15)) { context in
             content(now: context.date)
-                .task(id: Key(date: RadioClock.localDate(context.date), load: catalog.loadKey, attempt: attempt)) {
-                    load = await RadioLoad.load(catalog: catalog, now: context.date)
+                .task(id: Key(date: RadioClock.localDate(context.date), load: catalog.loadKey, attempt: attempt,
+                              picked: picked)) {
+                    load = await RadioLoad.load(catalog: catalog, now: context.date, evening: picked)
                 }
         }
         .navigationTitle("Radio")
@@ -35,7 +38,7 @@ struct RadioScreen: View {
                 Button("Try Again") { attempt += 1 }
             }
         case let .evening(evening):
-            EveningList(evening: evening, now: now)
+            EveningList(evening: evening, now: now, picked: $picked)
         }
     }
 }
@@ -43,6 +46,7 @@ struct RadioScreen: View {
 private struct EveningList: View {
     let evening: RadioEvening
     let now: Date
+    @Binding var picked: String?
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @Environment(LiveRadio.self) private var live
@@ -65,6 +69,16 @@ private struct EveningList: View {
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityAddTraits(.isHeader)
+                if evening.choices.count > 1 {
+                    // Decision 067: another published year for the same date.
+                    Picker("Year", selection: Binding(get: { evening.day.evening }, set: { year in
+                        if live.day == evening.day { live.stop() }
+                        picked = year
+                    })) {
+                        ForEach(evening.choices, id: \.self) { Text(verbatim: String($0.prefix(4))).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                }
                 status(onAir)
             }
             Section {

@@ -78,13 +78,14 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 058: Listening features in 1.0: Radio evenings, Listen Together, transcripts
 - 059: Shared plays in 1.0: pass the phone and invite links, radio and stage scripts, CC0
 - 060: The look: the ring microphone, Big Shoulders and Public Sans, new genre hues
-- 061: Playback loudness targets -21 LUFS, reached by cutting
+- 061: Playback loudness targets -21 LUFS, reached by cutting (superseded by 067 and 069)
 - 062: One set of player numbers on every platform
 - 063: Sign-in is verified at the Worker, which issues its own session; sync is last-write-wins per row
 - 064: The palette is On Air
 - 065: Listen Together rooms need no account; the host is a member and hands off
 - 066: Shared plays live on the Worker, invite-only, with take audio in R2 behind the owner's switch
 - 067: The owner's rulings of 2026-10-23 on plays, Radio, playback, and the shell
+- 069: Volume is leveled by each platform's own dynamics processor, at one set of numbers
 
 ---
 
@@ -710,3 +711,55 @@ and PLAYS-DESIGN §9), each blocking a feature batch.
 
 **How to apply**: each binding design doc gets the rule before its feature
 changes; LOOP-PLAN "Feature batches" carries the work.
+
+---
+
+## 069: Volume is leveled by each platform's own dynamics processor, at one set of numbers
+
+*Date: 2026-10-24*
+
+Every player levels volume on the device as it plays, on by default, with one
+switch ("Level volume") on the player that the person may turn off (kept on
+the device). No client reads a per-file measurement. One compressor over the
+whole signal, the same numbers everywhere: threshold -24 dBFS, ratio 4,
+attack 3 ms, release 250 ms, makeup gain 10.8 dB (the Web Audio rule, 0.6 x
+the compression at 0 dBFS, which the browser applies on its own), and a 12 dB
+knee where the platform has one. Web: a `DynamicsCompressorNode` on the
+`<audio>` element (`Player.LEVEL`). Apple: an `MTAudioProcessingTap` on the
+item's audio track running Apple's DynamicsProcessor unit (`LevelNumbers`,
+ratio stated as 6 dB headroom), holding samples inside full scale. Android:
+`android.media.audiofx.DynamicsProcessing` on ExoPlayer's audio session, one
+full-band compressor band and a limiter at -1 dBFS (`LevelNumbers`).
+
+**Why**: the owner, 2026-10-23 (Decision 067): *"There has to be a way to do
+this in software rather than as a metric for each recording."* A per-file gain
+needed a 25 GB-a-day measuring run and still left a new or unmeasured copy at
+unity; a compressor levels every copy, downloaded or streamed, the moment it
+plays. Each platform's own processor was chosen over one hand-written
+algorithm (`Native APIs, no workarounds`): the browser's node, Apple's unit,
+and Android's effect are maintained by the platform and run off the main
+thread. The numbers are the browser's defaults moved toward speech (ratio 4
+rather than 12, so a voice is evened, not flattened), and the makeup rule is
+the browser's own so the two platforms that set it by hand match the one that
+cannot. Measured offline through the Apple unit on 2026-10-24: a -40 dBFS
+passage followed by a -6 dBFS one, 34 dB apart, comes out 21 dB apart.
+
+**How to apply**:
+- The numbers live once per platform under the same names and are tested
+  against these values (`js/player.test.js`, `VolumeLevelerTests`,
+  `LevelingAndQueueTest`); change all three together.
+- The web asks archive.org with `crossorigin` (it sends
+  `access-control-allow-origin: *`, research 04 §5), builds the graph only once a
+  tap has started the AudioContext, and loads a copy refused that way again
+  without it, unleveled. Not on iPhone or iPad web (a page's AudioContext stops
+  at the lock screen) or a TV engine (unmeasured): the switch says "Not in this
+  browser".
+- A track, tap, or effect that cannot be made plays unleveled; it never stops
+  playback.
+- The sleep timer's fade and the mute door stay on the player's own volume (on
+  the web, the graph's output gain), after the leveler.
+- `loudness_i` / `loudness_tp` stay in the projection, unread;
+  `catalog-loudness.yml` runs only on dispatch.
+- Not yet heard on a device: the agent never plays sound at the owner. The
+  first device check listens to a quiet and a loud episode in turn with the
+  switch on and off.

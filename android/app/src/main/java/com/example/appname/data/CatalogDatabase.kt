@@ -385,6 +385,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 when (it) {
                     PublishedShelf.OnThisDay -> ListenShelf("thisday", null, shelf(ShelfRule.ThisDay(monthDay)))
                     is PublishedShelf.GenreFirsts -> ListenShelf("genre:${it.genre}", it.genre, episodes(it.episodes))
+                    is PublishedShelf.MostDownloaded ->
+                        ListenShelf("mostdownloaded", null, episodes(it.episodes), heading = "Most downloaded")
                 }
             }
         } else {

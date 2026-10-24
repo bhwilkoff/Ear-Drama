@@ -1,16 +1,12 @@
 import Foundation
 
-/// What may play after an episode ends. The queue is the rest of the SAME
-/// series in broadcast order (R1, research 05 §2.4), so playback never runs
-/// into unrelated content. A serial's arc end (R3) needs the `runs` table the
-/// served projection does not carry yet; until it does, a series ends the queue.
+/// What may play after an episode ends (Decision 067, the owner's rule until
+/// serial arcs exist): one episode, then whatever the person queued, whatever
+/// its series, then stop. Nothing the person did not choose starts by itself.
+/// The same rule as the web's `Player.nextInQueue` and Android's `PlaybackQueue`.
 nonisolated enum PlaybackQueue {
-    static let maximum = 50
-
-    /// The episodes after `episodeID` in its series page's order.
-    static func following(_ episodeID: String, in page: SeriesPage) -> [EpisodeRow] {
-        let all = page.episodes
-        guard let index = all.firstIndex(where: { $0.id == episodeID }) else { return [] }
-        return Array(all[(index + 1)...].prefix(maximum)).filter { $0.seriesKey == page.series.key }
+    /// The queue's head, skipping the episode that just played.
+    static func next(after episodeID: String, queued: [String]) -> String? {
+        queued.first { $0 != episodeID }
     }
 }

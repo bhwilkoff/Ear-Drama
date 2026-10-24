@@ -104,6 +104,9 @@ struct TransportBar_macOS: View {
                 .frame(minWidth: 200)
                 SpeedMenu().fixedSize()
                 SleepButton().fixedSize()
+                LevelToggle()
+                    .labelStyle(.iconOnly)
+                    .fixedSize()
                 ListenTogetherButton()
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
@@ -184,7 +187,7 @@ struct PlaybackCommands_macOS: Commands {
         CommandMenu("Controls") {
             // Disabled while a part records, so the microphone never hears the episode.
             Button(player.isPlaying ? "Pause" : "Play") { player.togglePlayPause() }
-                .disabled(player.item == nil || recording != nil || player.isFollowing)
+                .disabled(player.item == nil || recording != nil)
             Button("Back 15 Seconds") { player.skip(by: -AudioPlayer.Skip.back) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
                 .disabled(player.item == nil || player.isFollowing)

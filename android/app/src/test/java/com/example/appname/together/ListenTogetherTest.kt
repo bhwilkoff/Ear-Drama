@@ -103,6 +103,42 @@ class ListenTogetherTest {
         assertEquals(code, (guestSession.status.value as RoomStatus.In).code)
     }
 
+    @Test fun `067 a guest may pause their own sound and catches up on play`() = runBlocking {
+        val (_, guest, code) = hostAndGuest()
+        val (guestSession, guestPlayer) = guest
+        guestPlayer.playing = true
+        guestPlayer.position = 613.5
+        val before = worker.state(code)
+        val applied = guestPlayer.applied.size
+        guestPlayer.holdListener!!(true)
+        guestPlayer.playing = false
+        assertEquals(RoomStatus.In(code, isHost = false, members = 2, held = true), guestSession.status.value)
+        clock += 30_000
+        guestSession.pollOnce()
+        assertEquals("no correction while held", applied, guestPlayer.applied.size)
+        assertEquals("the hold never reaches the room", before, worker.state(code))
+        assertEquals(0, worker.count("PUT"))
+        guestPlayer.holdListener!!(false)
+        // 31 s after the room's 612.5 at rate 1, and far from where the guest paused: a seek, then play.
+        assertEquals(Correction.Seek(643.5, play = true), guestPlayer.applied.last())
+        assertEquals(false, (guestSession.status.value as RoomStatus.In).held)
+        guestPlayer.playing = true
+        guestPlayer.position = 643.5
+        guestSession.pollOnce()
+        assertTrue("control: released, the guest follows again", guestPlayer.applied.size > applied + 1)
+    }
+
+    @Test fun `067 a held guest handed the room takes it from where the room is`() = runBlocking {
+        val (host, guest, code) = hostAndGuest()
+        guest.second.holdListener!!(true)
+        clock += 20_000
+        host.first.leave()
+        guest.first.pollOnce()
+        assertEquals(RoomStatus.In(code, isHost = true, members = 1), guest.first.status.value)
+        val seek = guest.second.applied.filterIsInstance<Correction.Seek>().lastOrNull()
+        assertEquals("seeks to the room's place, never the pause", 633.5, seek?.position ?: 0.0, 1e-6)
+    }
+
     @Test fun `when the host leaves the longest-present member takes over and drives`() = runBlocking {
         val (host, guest, code) = hostAndGuest()
         val third = session(FakeRoomPlayer())

@@ -366,13 +366,13 @@ struct CatalogQueryTests {
         #expect(db.withPerson("nobody").isEmpty)
     }
 
-    @Test func queueStaysInsideTheSeries() throws {
-        let db = try Fixture.open()
-        let page = try #require(db.seriesPage(key: "suspense"))
-        #expect(PlaybackQueue.following("suspense|1942-06-17", in: page).map(\.id)
-                == ["suspense|1942-10-20", "suspense|1943-05-25", "suspense|lost"])
-        #expect(PlaybackQueue.following("suspense|lost", in: page).isEmpty)
-        #expect(PlaybackQueue.following("mrsorrowful|1950-05-25", in: page).isEmpty)
+    /// Decision 067: one episode, then the person's queue whatever its series, then stop.
+    @Test func onlyTheQueuePlaysNext() {
+        #expect(PlaybackQueue.next(after: "suspense|1942-06-17", queued: ["gunsmoke|1952-04-26", "x|1"])
+                == "gunsmoke|1952-04-26", "another series, because the person queued it")
+        #expect(PlaybackQueue.next(after: "suspense|1942-06-17", queued: []) == nil,
+                "with nothing queued, nothing plays: the rest of the series is never started")
+        #expect(PlaybackQueue.next(after: "a|1", queued: ["a|1", "b|2"]) == "b|2", "the episode just played is skipped")
     }
 
     /// Contract §5.5: the published words, read from `meta.rightsLines`.
