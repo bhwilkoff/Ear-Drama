@@ -67,6 +67,11 @@ private struct SearchScreen_macOS: View {
                 fieldFocused = true
                 store.wantsSearchFocus = false
             }
+            .onChange(of: store.pendingSearch, initial: true) { _, q in
+                guard let q else { return }
+                query = q
+                store.pendingSearch = nil
+            }
     }
 }
 

@@ -6,5 +6,16 @@
 	<string>$(EARDRAMA_WORKER_URL)</string>
 	<key>EDGoogleClientID</key>
 	<string>$(EARDRAMA_GOOGLE_IOS_CLIENT_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.eardrama</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>eardrama</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

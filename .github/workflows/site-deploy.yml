@@ -31,6 +31,7 @@ on:
       - 'cast/**'
       - 'pulse/**'
       - 'catalog/plays/castable-scripts.json'
+      - '.well-known/**'
       - 'tools/assemble_site.sh'
       - '.github/workflows/site-deploy.yml'
   workflow_dispatch:

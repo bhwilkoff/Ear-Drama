@@ -195,7 +195,7 @@ history, queue, and follows, and it is required to make a play with others.
 | Feature | Web | iOS | macOS | tvOS | Android | Notes |
 |---|---|---|---|---|---|---|
 | Routes for series, episode, search | 🚧 + 404 forwarder | ⏳ | ⏳ | ⏳ | ⏳ | DEEP_LINKS.md |
-| Universal Links / App Links | n/a | ⏳ | ⏳ | n/a | ⏳ | Wait on the App Store record and Play's signing fingerprint |
+| Universal Links / App Links | n/a | ✅ | ✅ | n/a | ✅ | 2026-10-24: AASA + assetlinks.json on eardrama.org; series, episode, person, search, library, invite open the apps (DEEP_LINKS.md). Built and unit-tested; not yet opened on a device from a real link. tvOS takes `eardrama://` only (no Safari) |
 | `eardrama://` scheme | n/a | ⏳ | ⏳ | ⏳ | ⏳ | OAuth callbacks and Top Shelf |
 | Share an episode | 🚧 Web Share | 🚧 share sheet, https link | 🚧 share menu, https link | ⏳ QR code | 🚧 share sheet, https link (not on TV) | The web page is every share's landing twin |
 | Archive Watch film cross-links | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | Out of 1.0 (Decision 058) |

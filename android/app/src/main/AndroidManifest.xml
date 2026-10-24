@@ -47,18 +47,25 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
 
-            <!-- App Links (HTTPS, autoVerify against .well-known/assetlinks.json).
-                 Off until Play's signing fingerprint exists for eardrama.org's
-                 assetlinks.json; then host eardrama.org, paths /series/, /episode/,
-                 /search, and /library (DEEP_LINKS.md). DeepLink.parse already routes them. -->
-            <!--
+            <!-- App Links (HTTPS, autoVerify against .well-known/assetlinks.json, which
+                 lists Play's signing key and the debug key). The paths are the
+                 AASA's components (DEEP_LINKS.md); tools/test_deep_links.mjs
+                 holds them equal. DeepLink.parse routes them. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="eardrama.org"/>
+                <data android:scheme="https"/>
+                <data android:host="eardrama.org"/>
+                <data android:pathPrefix="/series/"/>
+                <data android:pathPrefix="/episode/"/>
+                <data android:pathPrefix="/person/"/>
+                <data android:path="/search"/>
+                <data android:path="/library"/>
+                <data android:path="/library/"/>
+                <data android:path="/invite"/>
+                <data android:path="/invite/"/>
             </intent-filter>
-            -->
 
             <!-- Sign in with Apple's return, forwarded by eardrama.org/auth/apple/
                  (DEEP_LINKS.md, OAuth callback). Only the oauth host: it opens no
@@ -70,16 +77,13 @@
                 <data android:scheme="eardrama" android:host="oauth" android:pathPrefix="/apple"/>
             </intent-filter>
 
-            <!-- The eardrama:// scheme (DeepLink.parse routes it). Off, as the HTTPS
-                 filter is, until the store records exist (LOOP-PLAN, deep links). -->
-            <!--
+            <!-- The eardrama:// scheme, the https links' twin (DeepLink.parse routes it). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="eardrama"/>
             </intent-filter>
-            -->
         </activity>
 
         <service

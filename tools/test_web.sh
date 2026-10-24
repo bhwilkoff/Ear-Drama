@@ -26,7 +26,8 @@ for t in js/api.test.js \
          tools/test_pulse_charts.mjs \
          tools/test_pulse_render.mjs \
          tools/test_design_tokens.mjs \
-         tools/test_sw.mjs; do
+         tools/test_sw.mjs \
+         tools/test_deep_links.mjs; do
   out=$(node "$t" 2>&1); rc=$?
   last=$(printf '%s\n' "$out" | tail -1)
   if [ $rc -ne 0 ] || printf '%s' "$out" | grep -q FAIL; then

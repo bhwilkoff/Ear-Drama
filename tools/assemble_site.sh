@@ -18,6 +18,7 @@ cp catalog/plays/castable-scripts.json "$out/data/plays/"
 # .nojekyll is empty by design: it must exist, not have size.
 test -e "$out/.nojekyll" || { echo "::error::$out/.nojekyll is missing; not deploying"; exit 1; }
 for f in index.html 404.html CNAME manifest.json css/styles.css js/app.js \
+         .well-known/apple-app-site-association .well-known/assetlinks.json \
          data/manifest.json data/index/series.json data/plays/castable-scripts.json; do
   test -s "$out/$f" || { echo "::error::$out/$f is missing or empty; not deploying"; exit 1; }
 done

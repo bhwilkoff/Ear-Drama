@@ -100,6 +100,7 @@ fun AppRoot(
                 }
                 is InboxRequest.Item -> stacks.getValue(selected).navigateTo(Route.Episode(request.id))
                 is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
+                is InboxRequest.Person -> stacks.getValue(selected).navigateTo(Route.Person(request.id))
                 is InboxRequest.Search -> {
                     selected = Tab.Search
                     incomingSearch = request.query

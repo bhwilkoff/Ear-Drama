@@ -88,17 +88,11 @@ struct EarDramaApp: App {
                 .environment(shared)
                 .task { await downloads.reconnect() }
                 #endif
-                // .onOpenURL fires for Universal Links AND custom schemes. It
-                // never routes directly: the request lands in the inbox.
-                .onOpenURL { url in
-                    switch DeepLink.parse(url) {
-                    #if os(tvOS)
-                    // The TV plays back only; an invite opens nothing there.
-                    case .invite: break
-                    #endif
-                    case let request?: store.post(request)
-                    case nil: break
-                    }
+                // Custom-scheme links and Universal Links (applinks:eardrama.org)
+                // never route directly: the request lands in the inbox.
+                .onOpenURL { url in open(url) }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL { open(url) }
                 }
         }
         #if os(macOS)
@@ -139,6 +133,17 @@ struct EarDramaApp: App {
         }
         .defaultSize(width: 960, height: 720)
         #endif
+    }
+
+    private func open(_ url: URL) {
+        switch DeepLink.parse(url) {
+        #if os(tvOS)
+        // The TV plays back only; an invite opens nothing there.
+        case .invite: break
+        #endif
+        case let request?: store.post(request)
+        case nil: break
+        }
     }
 }
 
