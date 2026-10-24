@@ -49,6 +49,17 @@ def parsers():
     check(bull and bull[0]["role"] == "cast" and bull[0]["note"], f"long parenthesis is a note, not roles {bull}")
     check(any(x["role"] == "commercial spokesperson" for x in a), "role normalized")
 
+    c = E.parse_artists('Joseph Kearns ("The Man In Black"); William Spier (producer, director);  Ann Fixture ; '
+                        'Sammy Davis, Jr. (singer)')
+    check([x["name"] for x in c] == ["Joseph Kearns", "William Spier", "William Spier", "Ann Fixture",
+                                      "Sammy Davis, Jr."], f"semicolon cast list splits per person {c}")
+    check(c[0]["character"] == "The Man In Black" and c[0]["role"] == "cast", f"character kept on split {c[0]}")
+    check([x["role"] for x in c if x["name"] == "William Spier"] == ["producer", "director"], "roles kept on split")
+    check(not any(";" in x["name"] for x in c), "control: no name carries a semicolon")
+    one = E.parse_artists("Edward G. Robinson (cast; guest)")
+    check(len(one) == 1 and one[0]["name"] == "Edward G. Robinson", f"control: ';' inside parens is not a separator {one}")
+    check(len(E.parse_artists("Edward G. Robinson;")) == 1, "control: one segment is not a list")
+
     check(E.parse_source("CBS net, KQW, San Jose aircheck") == ("CBS", "network", False), "CBS net")
     check(E.parse_source("Blue Network") == ("Blue", "network", False), "Blue Network")
     check(E.parse_source("Mutual-Don Lee net origination") == ("Mutual-Don Lee", "network", False), "Don Lee")
@@ -88,6 +99,7 @@ def build():
         db.execute("INSERT INTO series (key, name) VALUES (?,?)", (k, n))
     eps = [("suspense|1945-03-01", "suspense", "1945-03-01", "My Wife, Geraldine"),
            ("suspense|1945-03-08", "suspense", "1945-03-08", "The Bet"),
+           ("suspense|1945-03-02", "suspense", "1945-03-02", "The List"),
            ("suspense|1965-01-01", "suspense", "1965-01-01", "Out of Run"),
            ("x:a/1.mp3", "suspense", None, "The Burning Court"),
            ("x:a/2.mp3", "whistler", None, "Retribution"),
@@ -114,6 +126,8 @@ def inputs():
                    "Edward G. Robinson, William Spier (director)"),
         goldin_row(24105, "Suspense", "March 01, 1945", None, "Somebody Else", source="CBS-TV net, audio + video"),
         goldin_row(24106, "Suspense", "", '"The Burning Court"', "Charles Ruggles"),
+        goldin_row(24107, "Suspense", "March 02, 1945", None,
+                   "William Spier (producer); Ann Fixture (host); Joseph Kearns (cast)"),
         goldin_row(30001, "The Whistler", "", '"Retribution"', "Bill Forman"),
     ] + [goldin_row(40000 + i, "CBS News Of The World", f"January 0{d}, 1938", source="CBS net")
          for i, d in enumerate((3, 4, 5, 6))]
@@ -172,6 +186,10 @@ def join():
     check(run == [("CBS", "1942-06-17", "1962-09-30", "Roma Wines", "otrrpedia:programData")], f"runs {run}")
     p = q("SELECT birth, birth_name FROM people WHERE id='otrr:902'")
     check(p == [("1893-12-12", "Emanuel Goldenberg")], f"person facts {p}")
+    sp = q("SELECT person_id, name, role FROM episode_credits WHERE episode_id='suspense|1945-03-02' ORDER BY 1, 3")
+    check(sp == [("goldin:ann fixture", "Ann Fixture", "host"), ("otrr:900", "William Spier", "producer"),
+                 ("otrr:901", "Joseph Kearns", "cast")], f"cast list split, deduped onto existing people {sp}")
+    check(q("SELECT COUNT(*) FROM people WHERE name LIKE '%;%'")[0][0] == 0, "control: no compound person row")
     n1 = q("SELECT COUNT(*) FROM episode_credits")[0][0]
     E.enrich(db, *args, {})
     check(q("SELECT COUNT(*) FROM episode_credits")[0][0] == n1, "control: a re-run adds no duplicates")
