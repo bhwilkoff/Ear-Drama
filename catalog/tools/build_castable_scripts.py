@@ -22,6 +22,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 import script_parse as P
 import script_rights as R
+from sort_name import sort_name
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "plays", "castable-scripts.json")
@@ -62,6 +63,7 @@ def script_entry(record, rights, parsed):
         "revision": hashlib.sha256(body.encode()).hexdigest()[:12],
         "kind": record["kind"],
         "title": title,
+        "sort_name": sort_name(title),
         **({"collection": collection} if collection else {}),
         "authors": [{"name": a.get("name"), "born": a.get("born"), "died": a.get("died")}
                     for a in record.get("authors") or []],
@@ -98,7 +100,7 @@ def main():
             why = rights["bucket"] if not rights["castable"] else "parse_" + parsed.get("status", "?") + (
                 "_unclean" if parsed.get("status") == "parsed" else "")
             skipped[why] = skipped.get(why, 0) + 1
-    scripts.sort(key=lambda s: (s["title"].lower(), s["id"]))
+    scripts.sort(key=lambda s: (s["sort_name"], s["id"]))
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"format": FORMAT, "scripts": scripts}, f, ensure_ascii=False, separators=(",", ":"))

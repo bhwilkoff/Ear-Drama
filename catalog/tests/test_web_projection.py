@@ -148,6 +148,11 @@ with tempfile.TemporaryDirectory() as tmp:
     m = W.build(served, out)
     check("gate closed by default", m["cleanOnly"], True)
     check("contract holds on the fixture", violations(out), {})
+    idx = load(out, "index", "series.json")
+    sn = idx["fields"].index("sortName")
+    check("series index carries sortName", {r[0]: r[sn] for r in idx["rows"]},
+          {"suspense": "suspense", "mrsorrowful": "mr. sorrowful", "speeches": "speeches"})
+    check("series index is ordered by sortName", [r[sn] for r in idx["rows"]], sorted(r[sn] for r in idx["rows"]))
     page = load(out, "series", "suspense.json")
     ids = [e[0] for e in page["episodes"]]
     check("series page: oldest first, undated last (R1)", ids,

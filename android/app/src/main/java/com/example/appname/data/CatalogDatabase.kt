@@ -54,6 +54,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         hasArt && "star" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
     }
 
+    /** Contract §3.3: the pipeline's A-to-Z key; a catalog published before it sorts by `name`. */
+    private val nameKey: String by lazy {
+        if ("sort_name" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }) "s.sort_name" else "s.name"
+    }
+
     /** Every series' genre and face, read once: rows that mix series draw a tile from it. */
     private val seriesLook: Map<String, Pair<String?, Face?>> by lazy {
         val faces = hasArt && "star" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
@@ -241,9 +246,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     suspend fun seriesBrowse(filter: BrowseFilter, limit: Int = 200, offset: Int = 0): List<SeriesRow> = read {
         val (clause, binds) = facetClause(filter)
         val order = when (filter.sort) {
-            SeriesSort.Name -> "s.name COLLATE NOCASE, s.key"
-            SeriesSort.Episodes -> "s.episodes DESC, s.name COLLATE NOCASE, s.key"
-            SeriesSort.FirstAired -> "s.first_date IS NULL, s.first_date, s.name COLLATE NOCASE, s.key"
+            SeriesSort.Name -> "$nameKey COLLATE NOCASE, s.key"
+            SeriesSort.Episodes -> "s.episodes DESC, $nameKey COLLATE NOCASE, s.key"
+            SeriesSort.FirstAired -> "s.first_date IS NULL, s.first_date, $nameKey COLLATE NOCASE, s.key"
         }
         queryRaw(
             "SELECT $SERIES_COLUMNS FROM series s WHERE 1 = 1$clause ORDER BY $order LIMIT ? OFFSET ?",

@@ -61,6 +61,12 @@ def an_unclean_parse_is_never_offered():
 
 
 @case
+def the_entry_carries_its_sort_name():
+    entry = B.script_entry(dict(RECORD, title='"The Fixture Play"'), CASTABLE, P.parse(STAGE, "stage"))
+    assert entry["sort_name"] == 'fixture play"', entry["sort_name"]
+
+
+@case
 def lines_keep_the_exact_slices_and_the_evidence():
     parsed = P.parse(STAGE, "stage")
     entry = B.script_entry(RECORD, CASTABLE, parsed)

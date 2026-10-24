@@ -143,6 +143,8 @@ with tempfile.TemporaryDirectory() as tmp:
           c.execute("SELECT COUNT(*) FROM episodes_fts WHERE episodes_fts MATCH 'people:moorehead'").fetchone()[0], 1)
     check("series genre stored with its source", c.execute("SELECT genre, genre_source FROM series WHERE key = 'suspense'").fetchone(),
           ("mystery", "otrrpedia"))
+    check("series sort_name is computed once in the pipeline (stored)",
+          c.execute("SELECT sort_name FROM series WHERE key = 'suspense'").fetchone()[0], "suspense")
     check("the rights lines are published, never 'public domain'",
           json.loads(c.execute("SELECT value FROM meta WHERE key = 'rightsLines'").fetchone()[0])["unclaimed"],
           "No rights claim known. Removed on request.")

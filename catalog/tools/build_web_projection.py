@@ -39,6 +39,7 @@ import unicodedata
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import NAMES as GENRE_NAMES
+from sort_name import sort_name
 import build_projection as P
 import shelves as SH
 
@@ -47,7 +48,7 @@ SHARD_MASK = 0xFFF
 DOC_CHUNK = 500
 SHELF_SERIES = 12
 # star: the name of the series' face (contract §3.3, art_policy.series_star); art: that face's portrait.
-SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art"]
+SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName"]
 # A served image (art_policy.py): url takes ?width=; credit is set only where the license requires one.
 ART_FIELDS = ["url", "width", "height", "credit", "evidence"]
 # li, ltp: the default copy's loudness (LUFS) and true peak (dBTP), DECISIONS 061; null when unmeasured.
@@ -150,7 +151,7 @@ def build(src, out, include_unclaimed=False):
             star = series_star.get(key)
             series[key] = [key, name, genre, first, last, len(by_series[key]),
                            ", ".join(json.loads(nets)) if nets else None,
-                           names.get(star) if star in face else None, face.get(star)]
+                           names.get(star) if star in face else None, face.get(star), sort_name(name)]
     for k in [k for k in by_series if k not in series]:
         for e in by_series.pop(k):
             del eps[e[0]]   # an episode whose series is not served is not served
@@ -161,7 +162,7 @@ def build(src, out, include_unclaimed=False):
         return (e[2] is None, e[2] or "", e[4] if e[4] is not None else 1 << 30, (e[5] or "").lower(), e[0])
 
     # The gatekeeper index.
-    index_rows = sorted(series.values(), key=lambda r: (r[1].lower(), r[0]))
+    index_rows = sorted(series.values(), key=lambda r: (r[9], r[0]))
     dump(os.path.join(out, "index", "series.json"), {"fields": SERIES_FIELDS, "rows": index_rows})
 
     # Series pages.

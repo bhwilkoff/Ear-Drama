@@ -172,6 +172,14 @@ test('listenShelves follows the published order and draws each id in order', asy
   assert(!read.includes('index/listen.json'), 'the old index is not read when the key is published');
 });
 
+test('series index rows expose sortName, and A to Z by it skips quotes and articles', () => {
+  const rows = API.rowsOf(['key', 'name', 'sortName'],
+    [['q', '"Fixture Quoted"', 'fixture quoted"'], ['t', 'The Fixture Hour', 'fixture hour']]);
+  assertEq(rows.map(r => r.sortName).join('|'), 'fixture quoted"|fixture hour');
+  const byName = (a, b) => (a.sortName || a.name).localeCompare(b.sortName || b.name, 'en', { sensitivity: 'base' });
+  assertEq(rows.slice().sort(byName).map(r => r.key).join(''), 'tq', 'sorted by sortName, not by the raw name');
+});
+
 test('listenShelves runs onThisDay on 29 February only on 29 February', async () => {
   const leap = { 'index/days/02-29.json': { fields: ['id', 'date'], rows: [['l|1948-02-29', '1948-02-29']] } };
   const { get } = plane({ listenShelves: [{ rule: 'onThisDay' }] }, leap);

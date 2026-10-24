@@ -21,6 +21,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let handle: OpaquePointer
     private let hasSponsor: Bool
     private let hasNoRecommend: Bool
+    /// Contract §3.3: the pipeline's A-to-Z key; a catalog published before it sorts by `name`.
+    private let hasSortName: Bool
     private let hasLoudness: Bool
     private let hasTranscript: Bool
     /// The index carries the transcript column (contract §3.4), so a match can
@@ -55,6 +57,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         self.onCorruption = onCorruption
         hasSponsor = Self.columnExists(h, table: "episodes", column: "sponsor")
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
+        hasSortName = Self.columnExists(h, table: "series", column: "sort_name")
         hasLoudness = Self.columnExists(h, table: "episodes", column: "loudness_i")
             && Self.columnExists(h, table: "episodes", column: "loudness_tp")
         hasTranscript = Self.columnExists(h, table: "episodes", column: "transcript_url")
@@ -215,7 +218,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         }
         let sql = """
             SELECT \(Self.seriesColumns) FROM series s WHERE \(clauses.joined(separator: " AND "))
-            ORDER BY s.name COLLATE NOCASE LIMIT \(limit)
+            ORDER BY \(hasSortName ? "s.sort_name" : "s.name") COLLATE NOCASE, s.key LIMIT \(limit)
             """
         return rows(sql, binds, decodeSeries)
     }
