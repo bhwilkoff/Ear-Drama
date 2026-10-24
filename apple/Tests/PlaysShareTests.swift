@@ -301,8 +301,8 @@ struct PlaysShareInviteTests {
         // A broken invite opens nothing; it is never read as an item named "invite".
         #expect(DeepLink.parse(URL(string: "eardrama://invite#nope")!) == nil)
         #expect(DeepLink.parse(URL(string: "https://eardrama.org/invite#nope")!) == nil)
-        #expect(DeepLink.parse(URL(string: "eardrama://episode/abc%7C1")!) == .item("abc|1"))
-        #expect(DeepLink.parse(URL(string: "https://eardrama.org/series/fibber")!) == .item("fibber"))
+        #expect(DeepLink.parse(URL(string: "eardrama://episode/abc%7C1")!) == .episode("abc|1"))
+        #expect(DeepLink.parse(URL(string: "https://eardrama.org/series/fibber")!) == .series("fibber"))
     }
 
     @Test func anInviteOpensLibraryAndIsHeldUntilDropped() {

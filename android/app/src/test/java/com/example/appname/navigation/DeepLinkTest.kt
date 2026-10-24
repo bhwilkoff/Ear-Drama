@@ -18,11 +18,18 @@ class DeepLinkTest {
         assertEquals(InboxRequest.Item("a b|é"), DeepLink.parse("eardrama://episode/a%20b%7C%C3%A9"))
     }
 
+    @Test fun `a person link and its twin open the person`() {
+        assertEquals(InboxRequest.Person("agnes-moorehead"), DeepLink.parse("https://eardrama.org/person/agnes-moorehead"))
+        assertEquals(InboxRequest.Person("orson welles"), DeepLink.parse("eardrama://person/orson%20welles"))
+        assertNull(DeepLink.parse("https://eardrama.org/person/"))
+    }
+
     @Test fun `search carries its query and library opens the tab`() {
         assertEquals(InboxRequest.Search("sorry wrong"), DeepLink.parse("https://eardrama.org/search?q=sorry+wrong"))
         assertEquals(InboxRequest.Search("Agnes M"), DeepLink.parse("eardrama://search?q=Agnes%20M#x"))
         assertEquals(InboxRequest.Search(""), DeepLink.parse("eardrama://search"))
         assertEquals(InboxRequest.Tab("Library"), DeepLink.parse("https://eardrama.org/library"))
+        assertEquals(InboxRequest.Tab("Library"), DeepLink.parse("https://eardrama.org/library/"))
     }
 
     @Test fun `a room link fills in its code and the bare root opens nothing`() {

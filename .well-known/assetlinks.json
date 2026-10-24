@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.eardrama",
+      "sha256_cert_fingerprints": [
+        "F0:A8:CF:0F:A7:99:7F:EA:06:DB:98:2D:87:47:1A:EE:04:DB:D2:21:60:0B:71:48:C3:AC:27:FA:CB:90:16:1E"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.eardrama.debug",
+      "sha256_cert_fingerprints": [
+        "E2:25:5E:2C:DF:2A:6B:35:D6:A5:8C:6C:79:CC:0C:86:FB:BA:76:88:E9:DF:82:49:60:D0:DA:5C:3D:39:73:C2"
+      ]
+    }
+  }
+]

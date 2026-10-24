@@ -91,6 +91,8 @@ targets:
         INFOPLIST_FILE: apple/Resources/EarDrama-Info.plist
         # Sign in with Apple and Group Activities (SharePlay); both are enabled
         # on the app.eardrama App ID (2026-10-23), so the profiles carry them.
+        # Associated Domains (applinks:eardrama.org, Universal Links) was
+        # enabled on the App ID 2026-10-24; a profile without it fails the build.
         CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every

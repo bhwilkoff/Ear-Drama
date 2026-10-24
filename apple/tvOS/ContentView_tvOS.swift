@@ -507,6 +507,7 @@ private struct VersionsSection_tvOS: View {
 
 private struct SearchScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
+    @Environment(AppStore.self) private var store
     @State private var query = ""
     @State private var results = SearchResults()
 
@@ -542,6 +543,11 @@ private struct SearchScreen_tvOS: View {
             if !query.isEmpty, results.isEmpty { ContentUnavailableView.search(text: query) }
         }
         .searchable(text: $query, prompt: "Titles, series, people")
+        .onChange(of: store.pendingSearch, initial: true) { _, q in
+            guard let q else { return }
+            query = q
+            store.pendingSearch = nil
+        }
         .task(id: query) {
             let q = query
             guard (try? await Task.sleep(for: .milliseconds(300))) != nil else { return }

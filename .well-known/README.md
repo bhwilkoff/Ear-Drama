@@ -1,14 +1,23 @@
-# /.well-known/ — universal links + app links verification
+# /.well-known/: universal links + app links verification
 
-Place verification files for native-app deep-link binding here.
-Served from your domain root by GitHub Pages (or whichever static
-host you use).
+Ear Drama's records (2026-10-24): `apple-app-site-association` for
+`L2G756LY8N.app.eardrama`, and `assetlinks.json` for `app.eardrama` (Play's
+app signing key) and `app.eardrama.debug` (the debug keystore's key). The
+paths match DEEP_LINKS.md; `tools/test_deep_links.mjs` holds them equal to
+the Android filter and the 404 forwarder, and `tools/assemble_site.sh`
+refuses to deploy without both files. GitHub Pages serves the AASA as
+`application/octet-stream`, which Apple's CDN accepts (DEEP_LINKS.md,
+Verification files). When an upload keystore exists, add its SHA-256 beside
+Play's.
+
+The generic notes follow.
 
 ## iOS — `apple-app-site-association`
 
 Path: `/.well-known/apple-app-site-association`
-**No file extension. No `.json` suffix. Served as
-`application/json`.**
+**No file extension. No `.json` suffix.** `application/json` is the
+documented type; GitHub Pages sends `application/octet-stream`, which
+Apple's CDN accepts (measured on archivewatch.org, 2026-10-24).
 
 ```json
 {
@@ -72,8 +81,8 @@ with no error in the app.
 ## Verifying
 
 After deploy:
-- iOS: https://search.apple.com/.well-known/apple-app-site-association
-       (Apple's CDN verifies the format)
+- iOS: `curl -s https://app-site-association.cdn-apple.com/a/v1/eardrama.org`
+       (the copy Apple's CDN holds, which is what devices use)
 - Android: https://developers.google.com/digital-asset-links/tools/generator
            (Google's tester)
 

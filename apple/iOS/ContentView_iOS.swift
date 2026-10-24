@@ -98,12 +98,18 @@ private struct HapticFeedback_iOS: ViewModifier {
 }
 
 private struct SearchScreen_iOS: View {
+    @Environment(AppStore.self) private var store
     @State private var query = ""
 
     var body: some View {
         SearchResultsList(query: query)
             .navigationTitle("Search")
             .searchable(text: $query, prompt: "Titles, series, people")
+            .onChange(of: store.pendingSearch, initial: true) { _, q in
+                guard let q else { return }
+                query = q
+                store.pendingSearch = nil
+            }
     }
 }
 #endif

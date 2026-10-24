@@ -81,7 +81,16 @@ final class AppStore {
         case play(String)
         /// An ear drama invite's token (PLAYS-DESIGN §11.7 rule 3).
         case invite(String)
+        /// Deep links (DEEP_LINKS.md): a series key, an episode id, a person id.
+        case series(String)
+        case episode(String)
+        case person(String)
+        /// Search with its query filled in.
+        case search(String)
     }
+
+    /// A deep link's search query, taken once by the Search screen.
+    var pendingSearch: String?
 
     /// The invite opened this session, shown as Library's Invitation until
     /// joined or dropped ("Not now"). Held in memory only.
@@ -143,6 +152,16 @@ final class AppStore {
                 pendingInvite = token
                 selectedTab = .library
                 paths[.library] = NavigationPath()
+            case .series(let key):
+                push(Route.series(key))
+            case .episode(let id):
+                push(Route.episode(id))
+            case .person(let id):
+                push(Route.person(id))
+            case .search(let q):
+                selectedTab = .search
+                paths[.search] = NavigationPath()
+                pendingSearch = q
             }
         }
         return toPlay

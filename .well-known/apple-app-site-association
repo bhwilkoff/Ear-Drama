@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["L2G756LY8N.app.eardrama"],
+        "components": [
+          { "/": "/series/?*", "comment": "a series" },
+          { "/": "/episode/?*", "comment": "an episode" },
+          { "/": "/person/?*", "comment": "a person" },
+          { "/": "/search", "comment": "search, its query in ?q=" },
+          { "/": "/library", "comment": "the Library tab" },
+          { "/": "/library/" },
+          { "/": "/invite", "comment": "an ear drama invite, its token in the fragment" },
+          { "/": "/invite/" }
+        ]
+      }
+    ]
+  }
+}
