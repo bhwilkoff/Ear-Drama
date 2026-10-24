@@ -111,14 +111,15 @@ The only shapes; a new one needs a new rule.
   title at page-title size, the facts line (date, network, sponsor,
   length), then an action row in one focus section: Play, Series, and
   "Automatic transcript" when the gate passed. Then the offline warning,
-  the credits by role, Versions when there is more than one copy (R5),
+  the credits by role (one focus section; every credited name is a focus
+  stop that pushes its person, §4.11), Versions when there is more than one copy (R5),
   and the rights line. Versions is its own focus section of buttons, the
   rank 0 copy first and the default; each names its archive.org
   identifier, notes, length, and bit rate, and plays that copy in Now
   Playing. Play on the episode already loaded opens Now Playing where
   it is, never from the start (§5.4).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
-  people", series first, then episodes, with "In the transcript" on a
+  people", series first, then People (§4.11), then episodes, with "In the transcript" on a
   row found only by its transcript.
 - **§4.6 Library** is In progress. A held Select on a row offers Remove
   from History. Its last row is "Account" (§4.9).
@@ -164,6 +165,16 @@ The only shapes; a new one needs a new rule.
   opens, an episode and an evening (`docs/iOS-DESIGN.md` §4.11), each a
   card-row with Play that opens Now Playing, then Shuffle. Play is the
   default focus, as on Detail.
+
+- **§4.11 A person** (`PersonScreen_tvOS`, `withPerson`) is a List: the
+  portrait at 200 pt when one is served, the name at page-title size and
+  the facts line (the years from the people row, the episode count), not
+  focusable; then one button naming the order, Oldest first or Newest
+  first, which flips it (shown only with more than one episode); then a
+  section per series of episode rows, each naming the roles it credits
+  the person in. Focus lands on the order button or the first row,
+  never the heading. No bio is written (R13). Back pops to Detail or
+  Search (§1.5).
 
 ## §5 The player
 

@@ -121,6 +121,12 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         private const val CURRENT_ORDER = "cur.air_date IS NULL, COALESCE(cur.air_date, ''), " +
             "cur.num IS NULL, COALESCE(cur.num, 0), COALESCE(cur.title, ''), cur.id"
 
+        /** unicode61's words, as the builder and the web tokenize (`API.tokens`). */
+        fun nameWords(text: String): List<String> =
+            java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+                .replace(Regex("\\p{M}+"), "").lowercase()
+                .split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
+
         /** Opens and probes; null when the file is not a catalog this build can read. */
         fun open(path: String): CatalogDatabase? = try {
             val db = CatalogDatabase(BundledSQLiteDriver().open(path))
@@ -417,7 +423,69 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 "ORDER BY f.rank, $OLDEST_FIRST LIMIT ?",
             listOfNotNull(elsewhere) + listOf(all, limit),
         ) { episodeRow(it) to (it.getLong(8) != 0L) }
-        SearchResults(series, found.map { it.first }, found.filter { it.second }.map { it.first.id }.toSet())
+        SearchResults(series, found.map { it.first }, found.filter { it.second }.map { it.first.id }.toSet(),
+            searchPeopleBlocking(query))
+    }
+
+    // --- People (withPerson, contract §5) ---
+
+    private val personColumns: String
+        get() = "p.id, p.name, p.birth, p.death, " +
+            if (hasArt) "a.url, a.width, a.height, a.credit, a.evidence_url" else "NULL, NULL, NULL, NULL, NULL"
+    private val personJoin: String get() = if (hasArt) " LEFT JOIN art a ON a.id = p.portrait" else ""
+
+    private fun person(st: SQLiteStatement) =
+        Person(st.getText(0), st.getText(1), st.textOrNull(2), st.textOrNull(3), artwork(st, 4))
+
+    /**
+     * `withPerson(id)` as a page: the person's facts and every served episode
+     * crediting them, oldest first, one row per episode with all its roles.
+     * Null when the catalog serves none of their credits.
+     */
+    suspend fun personPage(id: String): PersonPage? = read {
+        val person = queryRaw("SELECT $personColumns FROM people p$personJoin WHERE p.id = ?", listOf(id), ::person)
+            .firstOrNull() ?: return@read null
+        val credits = queryRaw(
+            "SELECT $EPISODE_COLUMNS, c.role, c.character FROM credits c JOIN episodes e ON e.id = c.episode_id " +
+                "JOIN series s ON s.key = e.series_key WHERE c.person_id = ? " +
+                "ORDER BY $OLDEST_FIRST, COALESCE(c.role, ''), COALESCE(c.character, '')",
+            listOf(id),
+        ) { episodeRow(it) to PersonRole(it.textOrNull(8), it.textOrNull(9)) }
+        val episodes = LinkedHashMap<String, PersonEpisode>()
+        for ((episode, role) in credits) {
+            val held = episodes[episode.id]
+            episodes[episode.id] = held?.copy(roles = held.roles + role) ?: PersonEpisode(episode, listOf(role))
+        }
+        if (episodes.isEmpty()) null else PersonPage(person, episodes.values.toList())
+    }
+
+    /**
+     * `searchPeople(q)`: people whose name has every typed word (two characters
+     * or more) as a word prefix, never a substring, diacritics and case folded;
+     * most served episodes first, then by name.
+     */
+    suspend fun searchPeople(query: String, limit: Int = 8): List<PersonRow> = read { searchPeopleBlocking(query, limit) }
+
+    private fun searchPeopleBlocking(query: String, limit: Int = 8): List<PersonRow> {
+        val words = nameWords(query).filter { it.length >= 2 }
+        if (words.isEmpty()) return emptyList()
+        val hits = queryRaw("SELECT id, name FROM people") { it.getText(0) to it.getText(1) }.filter { (_, name) ->
+            val have = nameWords(name)
+            words.all { w -> have.any { it.startsWith(w) } }
+        }
+        return hits.map { (pid, name) ->
+            Triple(pid, name, queryRaw("SELECT COUNT(DISTINCT episode_id) FROM credits WHERE person_id = ?", listOf(pid)) {
+                it.getLong(0).toInt()
+            }.firstOrNull() ?: 0)
+        }
+            .filter { it.third > 0 }
+            .sortedWith(compareByDescending<Triple<String, String, Int>> { it.third }
+                .thenBy { it.second.lowercase() }.thenBy { it.first })
+            .take(limit)
+            .mapNotNull { (pid, _, count) ->
+                queryRaw("SELECT $personColumns FROM people p$personJoin WHERE p.id = ?", listOf(pid), ::person)
+                    .firstOrNull()?.let { PersonRow(it, count) }
+            }
     }
 
     // --- Shelves ---

@@ -51,7 +51,8 @@ web app follows today.
 
 - **§3.1 Query routes, not hash routes.** `?view=home|browse|stations|surprise|search|library`
   (Decision 068), `?view=browse&kind=&script=1&genre=&decade=&network=&sort=`,
-  `?series={key}&season=`, `?item={episode id}`, `?view=search&q=`,
+  `?series={key}&season=`, `?item={episode id}`, `?person={person id}&order=newest`
+  (§4.14), `?view=search&q=`,
   `?view=library&tab=`, and for an ear drama (§4.10) `?play={script id}`,
   `?production={id}`, `?production={id}&part={part id}`, and `?room={CODE}`
   (§4.12), which opens the Listen Together sheet over the Home view. The
@@ -63,7 +64,7 @@ web app follows today.
   forward into. A production lives only in the browser that made it
   (PLAYS-DESIGN §6), so its routes have no path twin and no app link.
 - **§3.2 Every `eardrama://` link has an `https://eardrama.org` path
-  twin** (`/series/{key}`, `/episode/{id}`, `/search?q=`, `/library`),
+  twin** (`/series/{key}`, `/episode/{id}`, `/person/{id}`, `/search?q=`, `/library`),
   forwarded by `404.html`. Never change these shapes; shipped apps share
   them (DEEP_LINKS.md).
 - **§3.3 One router.** `route()` reads the location and shows one
@@ -146,9 +147,10 @@ web app follows today.
     followed archive.org's 302 to the storage node, which answered 200,
     `access-control-allow-origin: *`, `text/plain; charset=utf-8`.
 - **§4.6 Search** is word-prefix over the projection's term files,
-  debounced 180 ms, series first, then plays (word-prefix on the title and
-  author of `castable-scripts.json`), then episodes paged 30 at a time,
-  the query mirrored to the URL.
+  debounced 180 ms, series first, then people (§4.14, from
+  `search/people/`, most episodes first, eight shown with the total), then
+  plays (word-prefix on the title and author of `castable-scripts.json`),
+  then episodes paged 30 at a time, the query mirrored to the URL.
   - **Gap: web search does not find transcript words.** The apps match
     them through the served projection's `episodes_fts` (contract §3.4),
     but that index is contentless, so the web builder has no text to cut
@@ -298,6 +300,19 @@ web app follows today.
   production and opens its cast sheet (§4.10); not on a TV. The draw is
   `Math.random()`: nothing needs to match another device. No copy is
   written for a pick; a pick with no data is absent.
+- **§4.14 A person** (`?person={id}`, `withPerson`, contract §4 and §5):
+  every served episode crediting them, grouped by series, each row its date,
+  title, and the roles it credits them in ("Cast as Mrs. Stevenson,
+  Writer"). Reached from a credited name on Detail (§4.5, each name a link)
+  and from Search's People. The head is the portrait when one is served
+  (Decision 069, with its credit), the name, and one facts line: the years
+  from the people row ("1900–1974", "Born 1915", "Died 1985") and the episode
+  count. Facts only from data: no bio, no blurb, no "known for" (R13).
+  Order is a segmented Oldest first / Newest first (`&order=newest`), drawn
+  only when there is more than one episode; undated episodes are last
+  either way, and a series sits where its first episode in that order does.
+  A series heading links to the series. The page belongs to Browse's
+  section in the nav, as Detail does.
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll and on each site page: Credits, Privacy, Take-down requests,
   Delete an account (§4.11).

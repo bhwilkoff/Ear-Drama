@@ -250,6 +250,63 @@ test('tokens fold like unicode61 and match the builder', () => {
   assertEq(API.termFile('1948'), '19');
 });
 
+// --- People (contract §4 people shards, §5 withPerson) ---
+
+test('withPerson: one row per episode with every role, grouped by series, either order, undated last', () => {
+  const c = (id, date, series, role, character = null) => ({ id, date, title: id, num: null, series, role, character });
+  const credits = [c('a|1940-01-01', '1940-01-01', 'a', 'cast', 'Ann'), c('a|1940-01-01', '1940-01-01', 'a', 'writer'),
+                   c('b|1942-01-01', '1942-01-01', 'b', 'host'), c('a|1945-01-01', '1945-01-01', 'a', 'cast'),
+                   c('b|undated', null, 'b', 'host')];
+  const oldest = API.personGroups(credits);
+  assertEq(oldest.map(g => `${g.series}:${g.episodes.map(e => e.id).join('+')}`).join(','),
+    'a:a|1940-01-01+a|1945-01-01,b:b|1942-01-01+b|undated', 'oldest first, by series in first appearance');
+  assertEq(oldest[0].episodes[0].roles.map(r => r.role).join(','), 'cast,writer', 'two credits, one row');
+  assertEq(oldest[0].episodes[0].roles[0].character, 'Ann');
+  const newest = API.personGroups(credits, true);
+  assertEq(newest.map(g => `${g.series}:${g.episodes.map(e => e.id).join('+')}`).join(','),
+    'a:a|1945-01-01+a|1940-01-01,b:b|1942-01-01+b|undated', 'newest first, undated still last');
+  assertEq(API.personGroups([]).length, 0, 'control: no credits, no groups');
+});
+
+test('withPerson: years from the people row only', () => {
+  assertEq(API.lifeYears('1900-12-21', '1974-04-30'), '1900–1974');
+  assertEq(API.lifeYears('1915', null), 'Born 1915');
+  assertEq(API.lifeYears(null, '1985'), 'Died 1985');
+  assertEq(API.lifeYears(null, null), null, 'control: no facts, no line');
+});
+
+test('withPerson and searchPeople read the person shards the builder writes', async () => {
+  const real = globalThis.fetch;
+  const files = {
+    'manifest.json': { shard: { mask: 0xfff }, fields: {
+      person: ['name', 'birth', 'death', 'art', 'credits'],
+      personCredit: ['id', 'date', 'title', 'num', 'series', 'role', 'character'],
+      people: ['id', 'name', 'episodes', 'art'] } },
+    [`people/${API.shardOf('fx:1')}.json`]: { 'fx:1': ['Agnes Moorehead', '1900', '1974', null,
+      [['suspense|1943-05-25', '1943-05-25', 'Sorry, Wrong Number', 46, 'suspense', 'cast', 'Mrs. Stevenson']]] },
+    'search/people/mo.json': { fields: ['id', 'name', 'episodes', 'art'],
+      rows: [['fx:1', 'Agnes Moorehead', 1, null], ['fx:2', 'Moore Jones', 3, null]] },
+  };
+  globalThis.fetch = async (url) => {
+    const path = String(url).replace(/^.*?\/data\//, '');
+    if (!(path in files)) return { ok: false, status: 404 };
+    return { ok: true, status: 200, json: async () => files[path] };
+  };
+  try {
+    const p = await API.personPage('fx:1');
+    assertEq(p.name, 'Agnes Moorehead');
+    assertEq(p.credits[0].character, 'Mrs. Stevenson', 'positional credit rows become named');
+    assertEq(p.credits[0].series, 'suspense');
+    assertEq(await API.personPage('fx:none'), null, 'control: a person with no shard is not served');
+    const found = await API.searchPeople('moore agn');
+    assertEq(found.rows.map(r => r.id).join(','), 'fx:1', 'every word a word prefix');
+    assertEq((await API.searchPeople('moore')).rows.map(r => r.id).join(','), 'fx:1,fx:2', 'published order kept');
+    assertEq((await API.searchPeople('oore')).total, 0, 'control: never substring');
+  } finally {
+    globalThis.fetch = real;
+  }
+});
+
 // Plain JS has no compiler: every API.x a script calls must be exported.
 test('every API.x called in js/*.js is exported', () => {
   if (typeof require === 'undefined') return;

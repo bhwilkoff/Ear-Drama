@@ -141,8 +141,87 @@ data class SearchResults(
     val series: List<SeriesRow>,
     val episodes: List<EpisodeRow>,
     val transcriptOnly: Set<String> = emptySet(),
+    /** `searchPeople(q)` (contract §5): credited people, most episodes first. */
+    val people: List<PersonRow> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = series.isEmpty() && episodes.isEmpty()
+    val isEmpty: Boolean get() = series.isEmpty() && episodes.isEmpty() && people.isEmpty()
+}
+
+// --- People (withPerson, contract §5) ---
+
+/** A credited person: facts from the `people` row only, never a written bio. */
+data class Person(
+    val id: String,
+    val name: String,
+    val birth: String?,
+    val death: String?,
+    /** The person's served portrait (§3.3a), or null. */
+    val art: Artwork? = null,
+) {
+    val face: Face? get() = art?.let { Face(name, it) }
+    val years: String? get() = years(birth, death)
+
+    companion object {
+        /** The years as every platform writes them (`API.lifeYears` on the web). */
+        fun years(birth: String?, death: String?): String? {
+            val b = birth?.take(4)?.ifEmpty { null }
+            val d = death?.take(4)?.ifEmpty { null }
+            return when {
+                b != null && d != null -> "$b–$d"
+                b != null -> "Born $b"
+                d != null -> "Died $d"
+                else -> null
+            }
+        }
+    }
+}
+
+/** A people search row; [episodes] counts the distinct served episodes crediting them. */
+data class PersonRow(val person: Person, val episodes: Int)
+
+data class PersonRole(val role: String?, val character: String?) {
+    companion object {
+        /** A role as a heading word, on Detail's credits and a person's rows. */
+        fun title(role: String?): String {
+            val r = role ?: "cast"
+            return when (r.lowercase()) {
+                "cast" -> "Cast"
+                "m. c.", "emcee" -> "Emcee"
+                else -> r.replaceFirstChar { it.uppercase() }
+            }
+        }
+    }
+}
+
+/** One episode on a person's page, with every role it credits them in. */
+data class PersonEpisode(val episode: EpisodeRow, val roles: List<PersonRole>) {
+    /** "Cast as Mrs. Stevenson, Narrator". */
+    val rolesLine: String
+        get() = roles.joinToString(", ") { r ->
+            val t = PersonRole.title(r.role)
+            r.character?.let { "$t as $it" } ?: t
+        }
+}
+
+data class PersonSeriesGroup(val seriesKey: String, val seriesName: String, val episodes: List<PersonEpisode>)
+
+data class PersonPage(
+    val person: Person,
+    /** Every served episode crediting the person, oldest first (R1). */
+    val episodes: List<PersonEpisode>,
+) {
+    /**
+     * By series, oldest or newest first, undated last either way; a series sits
+     * where its first episode in that order does (`API.personGroups`).
+     */
+    fun groups(newestFirst: Boolean): List<PersonSeriesGroup> {
+        val ordered = if (newestFirst) {
+            episodes.filter { it.episode.airDate != null }.reversed() + episodes.filter { it.episode.airDate == null }
+        } else episodes
+        return ordered.groupBy { it.episode.seriesKey }.map { (key, eps) ->
+            PersonSeriesGroup(key, eps.first().episode.seriesName, eps)
+        }
+    }
 }
 
 /** Filters for `seriesBrowse`; null means "any". */

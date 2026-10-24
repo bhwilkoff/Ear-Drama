@@ -34,6 +34,7 @@ import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.PersonListItem
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.ui.rememberCatalogQuery
@@ -47,6 +48,7 @@ fun SearchScreen(
     onOpenSeries: (String) -> Unit,
     onOpenEpisode: (String) -> Unit,
     onOpenScript: (String) -> Unit,
+    onOpenPerson: (String) -> Unit,
     incoming: String? = null,
     onIncomingTaken: () -> Unit = {},
 ) {
@@ -109,6 +111,12 @@ fun SearchScreen(
                         item(key = "series-h") { SectionHeader("Series") }
                         items(found.series, key = { "s:" + it.key }) { row ->
                             SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
+                        }
+                    }
+                    if (found.people.isNotEmpty()) {
+                        item(key = "people-h") { SectionHeader("People") }
+                        items(found.people, key = { "pe:" + it.person.id }) { row ->
+                            PersonListItem(row, onOpen = { onOpenPerson(row.person.id) })
                         }
                     }
                     if (plays.isNotEmpty()) {

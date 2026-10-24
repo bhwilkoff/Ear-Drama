@@ -9,6 +9,7 @@ import json
 import os
 import sqlite3
 import sys
+import shutil
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
@@ -62,6 +63,8 @@ def fixture(path):
         ("suspense|1943-05-25", 1, "afrs", "afrs.mp3", "VBR MP3", 128, 1690.0, "AFRS", 0)])
     d.executemany("INSERT INTO episode_credits VALUES (?,?,?,?,?)", [
         ("suspense|1943-05-25", "p1", "Agnes Moorehead", "cast", "Mrs. Stevenson"),
+        ("suspense|1949-09-15", "p1", "Agnes Moorehead", "cast", None),
+        ("suspense|1943-05-25", "p1", "Agnes Moorehead", "narrator", None),
         ("suspense|1944-02-24", "p2", "Orson Welles", "cast", None)])
     d.executemany("INSERT INTO people VALUES (?,?,?,?)", [("p1", "Agnes Moorehead", "1900", "1974"),
                                                          ("p2", "Orson Welles", "1915", "1985")])
@@ -99,6 +102,35 @@ def violations(out):
                 v.setdefault("the gate: clean rows only", []).append(eid)
             if d[7] == "clean" and d[8] not in W.RIGHTS_LINES:
                 v.setdefault("every clean basis has its line", []).append(d[8])
+    # withPerson: the shard shape the browser reads (API.personPage), and the gatekeeper over its rows.
+    fields = load(out, "manifest.json")["fields"]
+    people = {}
+    for f in os.listdir(os.path.join(out, "people")) if os.path.isdir(os.path.join(out, "people")) else []:
+        for pid, p in load(out, "people", f).items():
+            people[pid] = p
+            if W.shard_of(pid) + ".json" != f:
+                v.setdefault("every person sits in its own shard", []).append(pid)
+            if len(p) != len(fields["person"]) or any(len(c) != len(fields["personCredit"]) for c in p[4]):
+                v.setdefault("person rows have the published fields", []).append(pid)
+                continue
+            if not p[4]:
+                v.setdefault("a person page has at least one credit", []).append(pid)
+            for c in p[4]:
+                if listed.get(c[0]) != c[4]:
+                    v.setdefault("every person credit is listed on its series page", []).append(c[0])
+            dates = [c[1] for c in p[4] if c[1]]
+            if dates != sorted(dates):
+                v.setdefault("a person's credits run oldest first (R1)", []).append(pid)
+    sp = os.path.join(out, "search", "people")
+    for f in os.listdir(sp) if os.path.isdir(sp) else []:
+        d = load(out, "search", "people", f)
+        for r in d["rows"]:
+            if len(r) != len(fields["people"]) or r[0] not in people:
+                v.setdefault("every people search row has its person page", []).append(r[0])
+            elif f[:-5] not in {W.term_file(w) for w in W.tokens(r[1]) if len(w) >= 2}:
+                v.setdefault("a person is filed under a word of their name", []).append(r[0])
+            elif r[2] != len({c[0] for c in people[r[0]][4]}):
+                v.setdefault("a search row counts the person's episodes", []).append(r[0])
     for f in os.listdir(os.path.join(out, "index", "days")):
         for r in load(out, "index", "days", f)["rows"]:
             if r[0] not in listed:
@@ -169,7 +201,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("detail: versions in rank order", [r[5] for r in detail[12]], [None, "AFRS"])
     check("detail: credits joined to people", detail[13][0][:3], ["Agnes Moorehead", "cast", "Mrs. Stevenson"])
     check("search: word-prefix across words", search(out, "sorr wrong"), ["suspense|1943-05-25"])
-    check("search: people are words too", search(out, "moore"), ["suspense|1943-05-25"])
+    check("search: people are words too", search(out, "moore"), ["suspense|1943-05-25", "suspense|1949-09-15"])
     check("search: diacritics fold", search(out, "cafe"), ["suspense|tundated"])
     check("control: search is never substring", search(out, "orry"), [])
     listen = load(out, "index", "listen.json")
@@ -184,6 +216,37 @@ with tempfile.TemporaryDirectory() as tmp:
     check("gate open: the unclaimed row is served", "suspense|1944-02-24" in
           [e[0] for e in load(opened, "series", "suspense.json")["episodes"]], True)
     check("contract holds with the gate open", violations(opened), {})
+
+    # withPerson (contract §5): every served credit, oldest first, the gate applied to people too.
+    person = load(out, "people", W.shard_of("p1") + ".json")["p1"]
+    check("person: facts from the people row", person[:3], ["Agnes Moorehead", "1900", "1974"])
+    check("person: every credit, oldest first, two roles in one episode kept",
+          [(c[0], c[5]) for c in person[4]],
+          [("suspense|1943-05-25", "cast"), ("suspense|1943-05-25", "narrator"), ("suspense|1949-09-15", "cast")])
+    check("person: a credit row carries what the row draws", person[4][0][1:], ["1943-05-25", "Sorry, Wrong Number",
+                                                                               46, "suspense", "cast", "Mrs. Stevenson"])
+    found = load(out, "search", "people", W.term_file("moorehead") + ".json")["rows"]
+    check("people search: filed by a word of the name, counting episodes", found, [["p1", "Agnes Moorehead", 2, None]])
+    check("control: an unclaimed-only person has no page with the gate closed",
+          os.path.exists(os.path.join(out, "people", W.shard_of("p2") + ".json")), False)
+    check("gate open: the unclaimed-only person has a page", "p2" in
+          load(opened, "people", W.shard_of("p2") + ".json"), True)
+
+    # Broken controls for the person shards: a misplaced person, a stray credit, a lost field.
+    broken = os.path.join(tmp, "web-broken")
+    shutil.copytree(out, broken)
+    psh = W.shard_of("p1") + ".json"
+    p1 = load(broken, "people", psh)["p1"]
+    W.dump(os.path.join(broken, "people", "zzz.json"), {"p1": p1})
+    W.dump(os.path.join(broken, "people", psh), {"p1": p1[:4] + [p1[4] + [["ghost|1950-01-01", "1950-01-01", "Ghost",
+                                                                            None, "ghost", "cast", None]]]})
+    got = violations(broken)
+    check("control: a person outside their shard is caught", got.get("every person sits in its own shard"), ["p1"])
+    check("control: a credit to an unlisted episode is caught",
+          got.get("every person credit is listed on its series page"), ["ghost|1950-01-01"])
+    W.dump(os.path.join(broken, "people", psh), {"p1": p1[:3] + [p1[4]]})
+    check("control: a person row missing a field is caught",
+          "p1" in violations(broken).get("person rows have the published fields", []), True)
 
     # Broken controls: a stray shard id, a misplaced id, and a leaked unclaimed row must each be caught.
     sh = W.shard_of("suspense|1943-05-25") + ".json"

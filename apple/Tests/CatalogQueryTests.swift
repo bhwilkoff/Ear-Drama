@@ -471,6 +471,41 @@ struct CatalogQueryTests {
         #expect(db.withPerson("nobody").isEmpty)
     }
 
+    /// withPerson as a page (contract §5): facts from `people`, every served credit, grouped by series.
+    @Test func personPageListsEveryCreditBySeriesEitherOrder() throws {
+        let db = try Fixture.open()
+        let writer = try #require(db.personPage(id: "p2"))
+        #expect(writer.person.name == "Lucille Fletcher")
+        #expect(writer.episodes.map(\.id) == ["suspense|1942-10-20", "suspense|1943-05-25"])
+        #expect(writer.episodes.first?.rolesLine == "Writer")
+        #expect(writer.groups(newestFirst: true).flatMap { $0.episodes.map(\.id) }
+                == ["suspense|1943-05-25", "suspense|1942-10-20"])
+        #expect(writer.groups(newestFirst: false).map(\.seriesName) == ["Suspense"])
+        let agnes = try #require(db.personPage(id: "p1"))
+        #expect(agnes.person.face != nil, "the served portrait (Decision 069)")
+        #expect(agnes.episodes.first?.rolesLine == "Cast as Mrs. Stevenson")
+        #expect(db.personPage(id: "nobody") == nil, "control: no credits, no page")
+        let older = try Fixture.open(dropArt: true)
+        #expect(older.personPage(id: "p1")?.person.art == nil, "an older catalog opens, with no portrait")
+    }
+
+    @Test func peopleSearchIsWordPrefixMostEpisodesFirst() throws {
+        let db = try Fixture.open()
+        #expect(db.searchPeople("moore").map(\.id) == ["p1"])
+        #expect(db.searchPeople("orson wel").map(\.id) == ["p3"])
+        #expect(db.searchPeople("fletch").first?.episodes == 2)
+        #expect(db.searchPeople("oore").isEmpty, "control: never a substring")
+        #expect(db.searchPeople("o").isEmpty, "one character finds no one, as on the web")
+        #expect(db.search("moorehead").people.map(\.id) == ["p1"])
+    }
+
+    @Test func lifeYearsComeFromThePeopleRowOnly() {
+        #expect(Person.years(birth: "1900-12-21", death: "1974-04-30") == "1900–1974")
+        #expect(Person.years(birth: "1915", death: nil) == "Born 1915")
+        #expect(Person.years(birth: nil, death: "1985") == "Died 1985")
+        #expect(Person.years(birth: nil, death: nil) == nil)
+    }
+
     /// Decision 067: one episode, then the person's queue whatever its series, then stop.
     @Test func onlyTheQueuePlaysNext() {
         #expect(PlaybackQueue.next(after: "suspense|1942-06-17", queued: ["gunsmoke|1952-04-26", "x|1"])

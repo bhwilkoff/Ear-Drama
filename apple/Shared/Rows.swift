@@ -147,15 +147,34 @@ nonisolated enum CreditGroups {
         return order.map { ($0, byRole[$0] ?? []) }
     }
 
-    private static func roleTitle(_ role: String) -> String {
-        switch role.lowercased() {
-        case "cast": "Cast"
-        case "m. c.", "emcee": "Emcee"
-        default: role.prefix(1).uppercased() + role.dropFirst()
-        }
-    }
+    private static func roleTitle(_ role: String) -> String { PersonRole.title(role) }
 }
 
 extension Credit {
     var line: String { character.map { "\(name) as \($0)" } ?? name }
+}
+
+/// A person in Search: their portrait or initial, the name, and how many episodes credit them.
+struct PersonRowLabel: View {
+    let row: PersonRow
+
+    var body: some View {
+        HStack(spacing: Spacing.s3) {
+            ArtTile(name: row.person.name, genre: nil, face: row.person.face)
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                Text(row.person.name)
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.brandText)
+                    .multilineTextAlignment(.leading)
+                Text(verbatim: PersonRowLabel.count(row.episodes))
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    static func count(_ n: Int) -> String {
+        "\(n.formatted()) \(n == 1 ? "episode" : "episodes")"
+    }
 }
