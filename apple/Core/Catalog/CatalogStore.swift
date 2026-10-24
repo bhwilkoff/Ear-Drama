@@ -100,8 +100,8 @@ final class CatalogStore {
         return await Task.detached(priority: .userInitiated) { body(db) }.value
     }
 
-    func seriesBrowse(genre: String?, network: String?, decade: Int?) async -> [SeriesRow] {
-        await run { $0.seriesBrowse(genre: genre, network: network, decade: decade) } ?? []
+    func seriesBrowse(genre: String?, network: String?, decade: Int?, sort: SeriesSort = .popular) async -> [SeriesRow] {
+        await run { $0.seriesBrowse(genre: genre, network: network, decade: decade, sort: sort) } ?? []
     }
 
     func browseFacets() async -> (genres: [String], networks: [String], decades: [Int]) {

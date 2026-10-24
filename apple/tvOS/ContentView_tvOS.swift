@@ -200,8 +200,9 @@ private struct SeriesBrowseScreen_tvOS: View {
     @State private var series: [SeriesRow]?
     @State private var genres: [String] = []
     @State private var genre: String?
+    @State private var sort: SeriesSort = .popular
 
-    private struct Key: Hashable { let genre: String?; let load: Int }
+    private struct Key: Hashable { let genre: String?; let sort: SeriesSort; let load: Int }
 
     var body: some View {
         Group {
@@ -215,6 +216,9 @@ private struct SeriesBrowseScreen_tvOS: View {
                             ForEach(genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
                         }
                     }
+                    Picker("Sort", selection: $sort) {
+                        ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
                     ForEach(series) { row in
                         NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
                     }
@@ -224,9 +228,9 @@ private struct SeriesBrowseScreen_tvOS: View {
             }
         }
         .task(id: catalog.loadKey) { genres = await catalog.browseFacets().genres }
-        .task(id: Key(genre: genre, load: catalog.loadKey)) {
+        .task(id: Key(genre: genre, sort: sort, load: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
-            series = await catalog.seriesBrowse(genre: genre, network: nil, decade: nil)
+            series = await catalog.seriesBrowse(genre: genre, network: nil, decade: nil, sort: sort)
         }
     }
 }

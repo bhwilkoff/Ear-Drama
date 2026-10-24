@@ -59,6 +59,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         if ("sort_name" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }) "s.sort_name" else "s.name"
     }
 
+    /** Contract §3.3 `series.downloads`, Browse's Popular key; without it Popular is A to Z. */
+    private val hasDownloads: Boolean by lazy {
+        "downloads" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
+    }
+
     /** §3.1's `script` (Decision 068); an older catalog links none. */
     private val hasScript: Boolean by lazy {
         "script" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
@@ -263,6 +268,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     suspend fun seriesBrowse(filter: BrowseFilter, limit: Int = 200, offset: Int = 0): List<SeriesRow> = read {
         val (clause, binds) = facetClause(filter)
         val order = when (filter.sort) {
+            SeriesSort.Popular -> if (hasDownloads) {
+                "COALESCE(s.downloads, 0) <= 0, s.downloads DESC, $nameKey COLLATE NOCASE, s.key"
+            } else "$nameKey COLLATE NOCASE, s.key"
             SeriesSort.Name -> "$nameKey COLLATE NOCASE, s.key"
             SeriesSort.Episodes -> "s.episodes DESC, $nameKey COLLATE NOCASE, s.key"
             SeriesSort.FirstAired -> "s.first_date IS NULL, s.first_date, $nameKey COLLATE NOCASE, s.key"

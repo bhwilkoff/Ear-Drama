@@ -103,7 +103,9 @@ The only shapes; a new one needs a new rule.
   `docs/iOS-DESIGN.md` R13): "This day in radio", then a shelf per
   published genre.
 - **§4.2 Browse** (was Series) is a `List` of series led by a Genre
-  picker.
+  picker and a Sort picker (Popular by default, A to Z, Most episodes,
+  Oldest first; Popular as `docs/iOS-DESIGN.md` §4.2). The tab bar names
+  the section, so the screen draws no title, as every tvOS tab.
 - **§4.3 A series page** is the series name and meta line (not
   focusable), then episodes oldest first in sections by broadcast
   season, "Undated" last.

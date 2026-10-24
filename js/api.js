@@ -98,6 +98,21 @@ const API = (() => {
     });
   }
 
+  /** Browse's "Popular" (contract §3.3 `downloads`): counted rows first, most downloaded
+      first; a row with no count (a play, a series never read, an older catalog) after,
+      in `then`'s order, so a catalog without the field is A to Z. */
+  function byDownloads(then) {
+    return (a, b) => {
+      const x = a.downloads > 0 ? a.downloads : null, y = b.downloads > 0 ? b.downloads : null;
+      if (x !== y) {
+        if (x === null) return 1;
+        if (y === null) return -1;
+        return y - x;
+      }
+      return then(a, b);
+    };
+  }
+
   /* ---- Art (contract §3.3a, Decision 069) ---- */
 
   const ART_FIELDS = ['url', 'width', 'height', 'credit', 'evidence'];
@@ -915,7 +930,7 @@ const API = (() => {
 
   return {
     rooms, plays,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, artOf, artURL, ART_STEPS,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,

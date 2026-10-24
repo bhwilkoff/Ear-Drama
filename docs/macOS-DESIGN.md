@@ -108,6 +108,8 @@ the Mac is already a Mac list, with context menus on right-click. What
 each holds is `docs/iOS-DESIGN.md` §4.1 to §4.6, and the Mac differs
 only here:
 
+- **§4.0 Browse** is iOS's (`docs/iOS-DESIGN.md` §4.2): the same chips,
+  "Sort: Popular" by default, in a `safeAreaBar` under the toolbar.
 - **§4.1 The transcript opens a window** from Detail, the transport bar,
   or the Controls menu (§2.2), never a sheet.
 - **§4.2 Downloads** are the same background `URLSession`, the same

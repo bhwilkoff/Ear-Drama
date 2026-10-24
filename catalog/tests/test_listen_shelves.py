@@ -235,6 +235,27 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: a written title on it is caught",
           sorted(SH.violations([{"rule": "mostDownloaded", "episodes": pop["episodes"], "title": "Popular"}],
                                pserved, prec)), ["a shelf carries only its rule's keys (no text)"])
+
+    # --- series.downloads: Browse's "Popular" key (contract §3.3), the shelf's per-series sum ---
+    want = {"d1": 50, "d2": 900, "d3": 40, "d4": 10, "d5": 700, "m1": 5000, "m2": 80, "m5": 9999, "w1": 300}
+    c = sqlite3.connect(pop_db)
+    native_dl = dict(c.execute("SELECT key, downloads FROM series"))
+    c.close()
+    check("native series.downloads: the sum per series; unread and never-recommended are NULL, never 0",
+          native_dl, {**{k: None for k, _t, _e in SERIES}, **want})
+    with open(os.path.join(tmp, "pop-web", "index", "series.json"), encoding="utf-8") as fh:
+        idx = json.load(fh)
+    check("web index: downloads is a published field", idx["fields"][-1], "downloads")
+    web_dl = {r[0]: r[idx["fields"].index("downloads")] for r in idx["rows"]}
+    check("web index: the gate closed sums only what the web serves; unread is null",
+          {k: v for k, v in web_dl.items() if v is not None}, {k: v for k, v in want.items() if k != "m5"})
+    check("control: a series with no count read is in the index with null, not absent and not 0",
+          ("x1" in web_dl, web_dl.get("x1")), (True, None))
+    check("control: a zero count is not a count", SH.browse_downloads({"a": 0, "b": 3}, {"a", "b"}), {"b": 3})
+    c = sqlite3.connect(served_db)
+    check("control: a registry without counts publishes the column all NULL",
+          c.execute("SELECT COUNT(*) FROM series WHERE downloads IS NOT NULL").fetchone()[0], 0)
+    c.close()
     check("series_downloads: an item counts once per series, however many episodes it holds",
           SH.series_downloads([("a", "i"), ("a", "i"), ("a", "j"), ("b", "i")], {"i": 10, "j": 1}), {"a": 11, "b": 10})
 

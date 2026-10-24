@@ -236,8 +236,9 @@ data class BrowseFilter(
     val sort: SeriesSort = SeriesSort.Name,
 )
 
-/** Series browse's orders, the web's three (WEB-DESIGN §4.3) with its labels. */
+/** Series browse's orders (WEB-DESIGN §4.3) with its labels; Popular is Browse's default (ANDROID-DESIGN §4.2). */
 enum class SeriesSort(val label: String) {
+    Popular("Popular"),
     Name("A to Z"),
     Episodes("Most episodes"),
     FirstAired("Oldest first"),

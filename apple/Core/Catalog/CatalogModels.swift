@@ -43,6 +43,19 @@ nonisolated struct Face: Hashable, Sendable {
     let art: Artwork
 }
 
+/// Browse's orders (iOS-DESIGN §4.2): Popular is the default, then the web's three.
+nonisolated enum SeriesSort: String, CaseIterable, Hashable, Sendable {
+    case popular, name, episodes, firstAired
+    var title: String {
+        switch self {
+        case .popular: "Popular"
+        case .name: "A to Z"
+        case .episodes: "Most episodes"
+        case .firstAired: "Oldest first"
+        }
+    }
+}
+
 nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     let key: String
     let name: String

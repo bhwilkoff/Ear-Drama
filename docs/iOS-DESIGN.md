@@ -169,8 +169,17 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   plays together, under a horizontally scrolling row of capsule chips,
   as Archive Watch's iOS-DESIGN §4.2a: Kind, Genre, Decade, Network,
   each a native `Menu` naming its current value, and "Has a script", a
-  toggle. A chip that narrows the list is filled with the brand's blue
-  (Decision 064), and Clear leads the row once anything is set. A play
+  toggle, then "Sort: Popular", a `Menu` of the orders that is never
+  filled and never cleared (an order, not a filter, as Archive Watch's
+  "Sort: Popular"). Sort is Popular (the default), A to Z, Most episodes, and Oldest first. Popular is the published `downloads` (contract §3.3): counted series first, most downloaded first, then every row without a count by `sortName`. A play has no count, so under Popular it sorts after every counted series; a catalog published before the field has no counts, so Popular is A to Z. Plays
+  follow the series under every order. A chip that narrows the list is
+  filled with the brand's blue (Decision 064), and Clear leads the row
+  once anything is set. The chips are a bar under the navigation bar
+  (`safeAreaBar` on 26, an inset whose material stops at the safe area
+  before), over ONE `List` for every state, so the large "Browse" title
+  shows as on Home and Library (the title was blank on an iPhone 12,
+  2026-10-24, under an inset whose material ran to the top edge over a
+  swapped list; the fix awaits that device). A play
   carries no genre, decade, or network, so setting one narrows to
   series; "Has a script" keeps the rows whose record carries a usable
   script: the plays, and the series with an episode whose `script` is
@@ -577,8 +586,8 @@ Listed, not fixed. Each item names where it is.
   (`EpisodeRow.displayTitle`); the web says "Untitled".
 - **Series browse facets are not counted against one another**
   (`catalog.browseFacets()` takes no selection), so an offered choice
-  can yield zero rows; the web forbids that (`WEB-DESIGN` §10.5). There
-  is no sort.
+  can yield zero rows; the web forbids that (`WEB-DESIGN` §10.5). Plays
+  follow the series under every sort; the web interleaves them.
 - **Seasons are sections, not a scope** (`SeriesScreen`); the web and
   Android show one season at a time.
 - **The series link on Detail is a push**, so Home, Episode, Series

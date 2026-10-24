@@ -71,7 +71,7 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
     var genre by rememberSaveable { mutableStateOf<String?>(null) }
     var decade by rememberSaveable { mutableStateOf<Int?>(null) }
     var network by rememberSaveable { mutableStateOf<String?>(null) }
-    var sort by rememberSaveable { mutableStateOf(SeriesSort.Name) }
+    var sort by rememberSaveable { mutableStateOf(SeriesSort.Popular) }
     var pages by rememberSaveable(genre, decade, network, sort) { mutableIntStateOf(1) }
     val haptics = rememberHaptics()
     val genres by rememberCatalogQuery(decade, network) { db -> db.genres(decade, network) }
@@ -127,7 +127,7 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
                         item(key = "sort") {
                             MenuChip(
                                 label = sort.label,
-                                selected = sort != SeriesSort.Name,
+                                selected = sort != SeriesSort.Popular,
                                 choices = SeriesSort.entries.map { it to it.label },
                                 onChoose = { if (it != sort) { sort = it; haptics(Haptic.Selection) } },
                             )
