@@ -202,19 +202,33 @@ web app follows today.
     locally, copy it into the `data` link's `plays/` folder.
     - *Replaced*: "**The list** (`?view=plays`): "Your plays" ... then
       "Plays you can cast"."
-  - **A play** (`?play=`): the same lines, "Start an ear drama" (was
-    "Cast this play"), and its parts
+  - **A play** (`?play=`): the author with the years the record carries,
+    a facts line (the record's year when it has one, then "N parts · N
+    lines"; never an age rating, Decision 067), the rights line, "Start an
+    ear drama" (was "Cast this play"), and its parts
     largest first with line counts (directions and sound are parts too).
     Casting replaces this page in the history with the cast sheet, so the
     depth stays two.
-  - **The cast sheet** (`?production=`): every part with its state. Only
-    the relay's next part offers "Take part", with an optional name field;
+  - **The cast sheet** (`?production=`): every part with its state. Every
+    open part offers "Take part" while no part records, with an optional
+    name field; the largest open part's button is the accent one, the
+    others plain (C7, owner 2026-10-23: any order, largest suggested);
     sound and directions may "Leave silent"; a finished part offers "Open
-    part" only while no part records (C7). A refusal is one line in the
-    error color. Below: Listen through (§2.6, C5: offered only when every
-    speaking line has a human take), Export once finished, Discard unused
-    takes, Delete production (asks first).
-  - **Recording** (`?production=&part=`): before anything, the
+    part" only while no part records. A refusal is one line in the error
+    color. Below: Listen through, any time (§2.6, C5): until every
+    speaking line is human, one Listen through / Stop button runs
+    `ListenThrough` (`js/plays-session.js`), the current line shown as the
+    teleprompter draws it, labeled "Device voice" when `speechSynthesis`
+    reads it; once complete, the rendered mix in its own `<audio>`, and
+    Export beside it at any time (it renders the mix if needed). Then
+    Discard unused takes, Delete production (asks first).
+    - *Replaced*: "Only the relay's next part offers "Take part" ..." and
+      "Listen through (§2.6, C5: offered only when every speaking line has
+      a human take), Export once finished".
+  - **Recording** (`?production=&part=`): signed out, the page says
+    "Recording needs an account." with a Sign in button that opens the
+    account sheet (§4.11), and nothing else (owner 2026-10-23: always, even
+    a play never shared). Signed in, before anything, the
     headphones refusal. The web cannot see the audio route (Safari lists no
     outputs, and Chrome's labels name devices, not the route in use), so
     the page says "Headphones only. This browser cannot tell whether they

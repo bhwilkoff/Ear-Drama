@@ -16,6 +16,9 @@ import Testing
 //   stand-in test fails on the take length.
 //   RecordingSession writing the cue's stand-in as the take: the stand-in test
 //   fails (the scan finds it in every take and in the mix).
+// Broken control, 2026-10-24: SyntheticAudio.refuse made a no-op: the take,
+//   room-tone, mix, and export guard tests fail (9 issues), each writer
+//   having written the stand-in's samples.
 // The stand-in scan carries its own control (`leakyCaptureIsCaught`): when the
 // microphone hears the stand-in, the scan must find it in the take.
 
@@ -80,14 +83,24 @@ private func completeProduction(_ script: PlayScript, frames: Int = 4_800) -> Pr
 // MARK: - Relay order
 
 struct RelayTests {
-    @Test func theRelayIsOnePartAtATimeLargestFirst() throws {
+    @Test func anyOpenPartCanBeTakenOneAtATimeTheLargestSuggested() throws {
         let script = fixtureScript()
         #expect(Relay.order(script) == [.role("MOLLY"), .role("FIBBER"), .role("DOC"), .sound, .directions])
         var p = Production(script: script)
-        #expect(Relay.next(p, script) == .role("MOLLY"))
+        #expect(Relay.next(p, script) == .role("MOLLY"), "the largest open part is suggested")
 
-        #expect(throws: Relay.Refusal.notNext(expected: .role("MOLLY"))) {
-            try Relay.take(.role("FIBBER"), performer: nil, in: p, script: script)
+        let doc = try Relay.take(.role("DOC"), performer: nil, in: p, script: script)
+        #expect(doc.state(of: .role("DOC")).status == .recording, "any open part, in any order (C7)")
+        #expect(throws: Relay.Refusal.anotherPartIsRecording(.role("DOC"))) {
+            try Relay.take(.role("MOLLY"), performer: nil, in: doc, script: script)
+        }
+        let silent = try Relay.leaveSilent(.directions, in: p, script: script)
+        #expect(silent.state(of: .directions).status == .silent, "any open non-speaking part may be left silent")
+        #expect(throws: Relay.Refusal.notOpen) {
+            try Relay.take(.directions, performer: nil, in: silent, script: script)
+        }
+        #expect(throws: Relay.Refusal.notOpen) {
+            try Relay.reopen(.role("MOLLY"), in: p, script: script)
         }
         p = try Relay.take(.role("MOLLY"), performer: "  Ada ", in: p, script: script)
         #expect(p.state(of: .role("MOLLY")) == PartState(status: .recording, performer: "Ada"))
@@ -487,6 +500,192 @@ struct StandInNeverStoredTests {
     }
 }
 
+// MARK: - Listen through, any time
+
+private final class FakeSpeaker: ListenSpeaker {
+    private(set) var spoken: [String] = []
+    var onSpeak: (() -> Void)?
+    func speak(_ text: String, part: PartID, personalVoice: Bool) async {
+        spoken.append(text)
+        onSpeak?()
+    }
+    func stop() {}
+}
+
+private final class FakeTakePlayer: ListenTakePlayer {
+    private(set) var played: [URL] = []
+    func play(_ url: URL) async { played.append(url) }
+    func stop() {}
+}
+
+/// Any value inside `value` that is audio: samples, a buffer, a stand-in, data.
+private func audioInside(_ value: Any) -> [String] {
+    switch value {
+    case is [Float], is Data, is StandInAudio, is MicrophoneCapture, is AVAudioBuffer:
+        return [String(describing: type(of: value))]
+    default:
+        return Mirror(reflecting: value).children.flatMap { audioInside($0.value) }
+    }
+}
+
+struct ListenPlanTests {
+    @Test func thePlanIsTakesAndWordsInScriptOrder() {
+        let script = fixtureScript()
+        var p = Production(script: script)
+        p.add(take("t3", line: "L0003", part: .role("MOLLY"), frames: 100))
+        p.add(take("t4", line: "L0004", part: .sound, frames: 100))
+        p.add(take("leaky", line: "L0005", part: .role("DOC"), frames: 100, bleed: true))
+        let plan = Relay.listenPlan(p, script)
+        #expect(plan.map(\.lineID) == ["L0002", "L0003", "L0004", "L0005", "L0006", "L0007", "L0008", "L0009",
+                                       "L0010", "L0011"], "the unrecorded direction is skipped")
+        #expect(plan[1] == .take(lineID: "L0003", part: .role("MOLLY"), take: p.take("t3")!))
+        #expect(plan[2] == .take(lineID: "L0004", part: .sound, take: p.take("t4")!), "a recorded cue plays")
+        #expect(plan[0] == .voice(lineID: "L0002", part: .role("FIBBER"), text: "Well, Molly."))
+        #expect(plan[3] == .voice(lineID: "L0005", part: .role("DOC"), text: "Anybody home?"),
+                "a flagged take is read live instead")
+        #expect(audioInside(plan).isEmpty, "no plan entry holds audio: \(audioInside(plan))")
+        #expect(audioInside([ListenEntry.voice(lineID: "x", part: .sound, text: "y")] as [Any]
+            + [StandInAudio(samples: [0.1], sampleRate: 48_000)]) == ["StandInAudio"],
+                "the scan's control: a stand-in is found")
+        #expect(Relay.listenPlan(completeProduction(script), script).allSatisfy { !$0.isDeviceVoice })
+    }
+
+    @Test func aLiveListenThroughWritesNothingAndFinishesNothing() async throws {
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var p = try store.create(script)
+        let file = try store.writeTake(MicrophoneCapture(samples: tone([200], seconds: 0.1), sampleRate: 48_000),
+                                       production: p, lineID: "L0003")
+        p.add(Take(id: "t3", lineID: "L0003", part: .role("MOLLY"), file: file, created: .now, frames: 4_800,
+                   sampleRate: 48_000, capture: .direct, heard: [:], loudness: nil, peak: 0.3, bleed: false))
+        try store.save(p)
+        let before = try FileManager.default.subpathsOfDirectory(atPath: store.folder(p.id).path).sorted()
+        let speaker = FakeSpeaker()
+        let player = FakeTakePlayer()
+        let live = LiveListenThrough(speaker: speaker, player: player)
+        let recorded = p
+        await live.run(Relay.listenPlan(recorded, script)) { store.takeURL(recorded, $0) }
+        #expect(player.played == [store.takeURL(p, p.take("t3")!)])
+        #expect(speaker.spoken.count == 8, "the other eight speeches are read live")
+        #expect(!live.isRunning && live.current == nil)
+        let after = try FileManager.default.subpathsOfDirectory(atPath: store.folder(p.id).path).sorted()
+        #expect(after == before, "nothing is written")
+        #expect(ProductionStore(root: store.root).production(p.id)?.listenedThrough == false)
+
+        let stopping = FakeSpeaker()
+        let stopped = LiveListenThrough(speaker: stopping, player: FakeTakePlayer())
+        stopping.onSpeak = { stopped.stop() }
+        await stopped.run(Relay.listenPlan(recorded, script)) { store.takeURL(recorded, $0) }
+        #expect(stopping.spoken.count == 1, "Stop ends the listen-through")
+    }
+}
+
+// MARK: - A synthetic buffer reaches no writer
+
+/// §5 rule 3: every writer refuses samples a device voice made, even copied
+/// out of `StandInAudio` into the types the writers accept.
+struct SyntheticBufferGuardTests {
+    private func standIn() -> StandInAudio {
+        StandInAudio(samples: tone([330, 415], seconds: 0.3), sampleRate: 48_000)
+    }
+
+    @Test func theTakeAndRoomToneWritersRefuseIt() throws {
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let p = try store.create(script)
+        let synthetic = standIn()
+        let copied = MicrophoneCapture(samples: synthetic.samples, sampleRate: synthetic.sampleRate)
+        #expect(throws: SyntheticAudio.Refusal.synthetic) { try store.writeTake(copied, production: p, lineID: "L0003") }
+        #expect(throws: SyntheticAudio.Refusal.synthetic) { try store.writeRoomTone(copied, production: p) }
+        let cut = copied.slice(0..<(copied.samples.count - 64))
+        #expect(throws: SyntheticAudio.Refusal.synthetic, "a copy cut short is still known") {
+            try store.writeTake(cut, production: p, lineID: "L0003")
+        }
+        #expect(throws: SyntheticAudio.Refusal.synthetic) {
+            try TakeAudio.write(copied, to: store.takesFolder(p.id).appending(path: "direct.flac"))
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: store.takesFolder(p.id).path).isEmpty)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: store.roomToneFolder(p.id).path).isEmpty)
+        let human = MicrophoneCapture(samples: tone([331, 415], seconds: 0.3), sampleRate: 48_000)
+        _ = try store.writeTake(human, production: p, lineID: "L0003")
+    }
+
+    /// A take file holding a stand-in's samples, written behind the writers'
+    /// backs: the mix and the export still refuse it.
+    @Test func theMixAndTheExportRefuseIt() async throws {
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var p = try store.create(script)
+        let synthetic = standIn()
+        let human = tone([220], seconds: 0.3)
+        for l in script.lines where l.kind == .speech {
+            let name = "\(l.id).wav"
+            let samples = l.id == "L0005" ? synthetic.samples : human
+            let file = try AVAudioFile(forWriting: store.takesFolder(p.id).appending(path: name),
+                                       settings: TakeAudio.format.settings, commonFormat: .pcmFormatFloat32,
+                                       interleaved: false)
+            try file.write(from: try #require(TakeAudio.buffer(samples, format: TakeAudio.format)))
+            file.close()
+            p.add(Take(id: "t-\(l.id)", lineID: l.id, part: l.part, file: name, created: .now, frames: samples.count,
+                       sampleRate: 48_000, capture: .direct, heard: [:], loudness: nil, peak: 0.3, bleed: false))
+        }
+        try store.save(p)
+        let timeline = try MixTimeline.build(script: script, production: p)
+        let url = store.mixURL(p.id)
+        #expect(throws: SyntheticAudio.Refusal.synthetic) {
+            try MixRenderer.render(timeline, takesFolder: store.takesFolder(p.id), to: url)
+        }
+        let id = p.id
+        await #expect(throws: SyntheticAudio.Refusal.synthetic) { try await store.exportMix(id) }
+        #expect(!FileManager.default.fileExists(atPath: url.path), "no mix is written")
+        let humanOnly = MixTimeline(sampleRate: 48_000, placements: timeline.placements.filter { $0.lineID != "L0005" },
+                                    totalFrames: timeline.totalFrames)
+        try MixRenderer.render(humanOnly, takesFolder: store.takesFolder(p.id), to: url)
+        #expect(FileManager.default.fileExists(atPath: url.path), "the control: the human take files are mixed")
+    }
+
+    @Test func exportWaitsOnlyForACompletePlay() async throws {
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var p = try store.create(script)
+        let samples = tone([440], seconds: 0.2)
+        for l in script.lines where l.kind == .speech {
+            let file = try store.writeTake(MicrophoneCapture(samples: samples, sampleRate: 48_000), production: p,
+                                           lineID: l.id)
+            p.add(Take(id: "t-\(l.id)", lineID: l.id, part: l.part, file: file, created: .now, frames: samples.count,
+                       sampleRate: 48_000, capture: .direct, heard: [:], loudness: nil, peak: 0.3, bleed: false))
+        }
+        var partial = p
+        partial.chosen["L0005"] = nil
+        try store.save(partial)
+        let id = p.id
+        await #expect(throws: MixTimeline.Failure.incomplete(missing: ["L0005"])) { try await store.exportMix(id) }
+        try store.save(p)
+        #expect(!p.listenedThrough)
+        let url = try await store.exportMix(id)
+        #expect(FileManager.default.fileExists(atPath: url.path), "export renders the mix before any listen")
+    }
+}
+
+struct PlayFactsTests {
+    @Test func aPlayIsMarkedOnlyByItsRecordsFacts() {
+        let base = fixtureScript()
+        let script = PlayScript(id: base.id, revision: base.revision, kind: base.kind, title: base.title,
+                                authors: [.init(name: "Carlton, Henry Fisk", born: 1893, died: 1973),
+                                          .init(name: "Ann Other", born: nil, died: nil)],
+                                year: 1931, source: base.source, rights: base.rights, roles: base.roles,
+                                lines: base.lines)
+        #expect(script.authorLineWithYears == "Henry Fisk Carlton (1893–1973), Ann Other")
+        #expect(script.lengthLine == "3 parts · 11 lines")
+        #expect(script.year == 1931)
+        #expect(base.year == nil)
+    }
+}
+
 // MARK: - Loudness and data
 
 struct PlayLoudnessTests {
@@ -508,7 +707,7 @@ struct CastableScriptsFileTests {
         #expect(library.format == 1)
         #expect(!library.scripts.isEmpty)
         let castable: Set = ["script_gov_work", "script_pd_published_age", "script_registered_age",
-                             "script_source_cleared", "script_registered_not_renewed"]
+                             "script_source_cleared", "script_registered_not_renewed", "script_author_died"]
         for script in library.scripts {
             #expect(castable.contains(script.rights.bucket), "\(script.id) is castable")
             #expect(script.castParts.filter { $0.id.isSpeaking }.count >= 2, "\(script.id) has parts")

@@ -32,6 +32,7 @@ class AacMixSink(private val file: File, private val sampleRate: Int = TakeAudio
     }
 
     override fun write(samples: FloatArray, count: Int) {
+        SyntheticPCM.refuse(samples)
         var offset = 0
         while (offset < count) {
             val index = codec.dequeueInputBuffer(TIMEOUT_US)

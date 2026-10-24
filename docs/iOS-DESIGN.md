@@ -268,6 +268,28 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   Keychain and the sync cursor, last sync, and last error leave the
   device. Sync runs on sign-in, on Sync Now, and when the app comes to
   the front or leaves it.
+- **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
+  `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's
+  page is a `List`: its title, the author with their years when the
+  record has them, the record's year when present, its length as
+  "N parts · N lines" (speaking parts, every line), the rights
+  line, and "Start an ear drama"; nothing else marks it. The cast sheet
+  lists the parts largest first; every open part has Take Part, in any
+  order, and the suggested one (`Relay.next`) is `.borderedProminent`,
+  the rest `.bordered`, with no caption saying why. One part records at
+  a time; taking another while one records shows the refusal. At Start
+  Recording a signed-out person sees "Recording needs an account." and
+  the account sign-in buttons (§4.10's) in its place; taking a part,
+  reading along, and listening need none. Listen Through is always
+  offered: a complete play plays its rendered mix (the end marks it
+  Finished); an incomplete one runs `Relay.listenPlan` live, takes from
+  their files and the other speaking lines read by `AVSpeechSynthesizer`
+  `speak`, the current line's speaker and words on screen, "Device
+  voice" on a read line, and Stop. When Personal Voice is offered
+  (authorized, or "Use my Personal Voice" asks), it reads those lines
+  through `speak` only, never `write`. Export (a `ShareLink`) is there
+  whenever the play is complete, and renders the mix first if it is
+  missing or stale.
 
 ## §5 The player
 

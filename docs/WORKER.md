@@ -353,12 +353,13 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
 
 ### Rules the clients rely on
 
-- **The relay (C7, pending owner).** Only the next part may be claimed, in
-  the order of `castParts`: speaking parts largest first, then sound, then
+- **The relay (C7, owner 2026-10-23).** Any open part may be claimed, in any
+  order (`not_open` otherwise); `next` is the suggestion, the first open part
+  in the order of `castParts`: speaking parts largest first, then sound, then
   directions. Nothing can be claimed while a part records. A claim lapses
   seven days after it is made and the part is open again; its takes stay. The
   hourly sweep deletes lapsed claims.
-- **Done and silent (C6, pending owner).** A speaking part is done only when
+- **Done and silent (C6).** A speaking part is done only when
   every one of its lines has a chosen take. Only sound and directions may be
   left silent. A finished part reopens only while nothing records, for its
   performer or the director.

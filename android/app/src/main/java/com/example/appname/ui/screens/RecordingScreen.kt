@@ -83,6 +83,7 @@ import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.SystemStandInVoice
 import com.example.appname.plays.Take
 import com.example.appname.plays.AudioRoute
+import com.example.appname.ui.AccountRow
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.rememberHaptics
@@ -159,7 +160,10 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
         if (granted) begin(pendingEcho) else preflight = Preflight.MicrophoneDenied
     }
 
+    val account by container.accounts.account.collectAsState()
+
     fun start(echoCancelled: Boolean) {
+        if (account == null) return
         pendingEcho = echoCancelled
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             begin(echoCancelled)
@@ -196,6 +200,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
                     haptics = haptics,
                 )
                 else -> StartPanel(
+                    signedIn = account != null,
                     preflight = preflight,
                     failure = (phase as? Phase.Failed)?.message,
                     onStart = { start(echoCancelled = false) },
@@ -213,6 +218,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
 
 @Composable
 private fun StartPanel(
+    signedIn: Boolean,
     preflight: Preflight,
     failure: String?,
     onStart: () -> Unit,
@@ -224,19 +230,23 @@ private fun StartPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.S4.dp, Alignment.CenterVertically),
     ) {
-        when (preflight) {
-            Preflight.Ready -> {
+        when {
+            !signedIn -> {
+                Text("Recording needs an account.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                AccountRow()
+            }
+            preflight == Preflight.Ready -> {
                 Icon(Icons.Filled.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
                 Button(onClick = onStart, colors = liveButtonColors()) {
                     Icon(Icons.Filled.Mic, contentDescription = null)
                     Text("Start recording", Modifier.padding(start = Spacing.S2.dp))
                 }
             }
-            Preflight.MicrophoneDenied -> {
+            preflight == Preflight.MicrophoneDenied -> {
                 Text("Ear Drama needs the microphone to record your part.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 OutlinedButton(onClick = onSettings) { Text("Open settings") }
             }
-            Preflight.NeedsHeadphones -> {
+            else -> {
                 Text(
                     "Plug in headphones.",
                     textAlign = TextAlign.Center,

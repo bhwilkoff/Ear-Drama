@@ -26,6 +26,19 @@ extension ProductionStore {
         return url
     }
 
+    /// Export (§2.7): whenever every speaking line is human and no chosen take
+    /// is flagged, rendering the mix first when it is missing or stale.
+    func exportMix(_ id: String) async throws -> URL {
+        guard let production = production(id), let script = script(for: production) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        let missing = Relay.missingSpeech(production, script)
+        guard missing.isEmpty else { throw MixTimeline.Failure.incomplete(missing: missing) }
+        let flagged = Relay.needsRetake(production, script)
+        guard flagged.isEmpty else { throw MixTimeline.Failure.bleed(lines: flagged) }
+        return try await renderMix(id)
+    }
+
     /// Someone listened from the top to the end: the play is finished (§2.7).
     func markListenedThrough(_ id: String, fingerprint: String) {
         guard var p = production(id), p.chosenFingerprint == fingerprint else { return }

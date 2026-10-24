@@ -122,6 +122,11 @@ only here:
   Settings scene (§2.3 holds; an account is not a preference) and not a
   menu item. Sign in with Google opens the system's web authentication
   sheet (`ASWebAuthenticationSession`, PKCE, no third-party package).
+- **§4.5 An ear drama** is `docs/iOS-DESIGN.md` §4.12 in the
+  production's window: any open part can be taken, the suggested one
+  prominent; Start Recording needs an account and offers the same
+  sign-in buttons in the window; Listen Through runs live at any time;
+  Export appears whenever the play is complete.
 
 ## §5 The player
 

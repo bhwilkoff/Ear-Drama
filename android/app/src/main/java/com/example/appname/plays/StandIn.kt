@@ -20,7 +20,11 @@ import kotlinx.coroutines.withTimeoutOrNull
  * and released. It is not serializable and has no path to a file, and no file
  * writer in the app accepts it ([TakeAudio.write] takes only a [MicrophoneCapture]).
  */
-class StandInAudio(val samples: FloatArray, val sampleRate: Double)
+class StandInAudio(val samples: FloatArray, val sampleRate: Double) {
+    init {
+        SyntheticPCM.mark(samples)
+    }
+}
 
 /** Where stand-in lines come from. The app's is the system engine; the tests' is a signal they can look for in every file. */
 interface StandInVoice {

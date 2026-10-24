@@ -122,6 +122,7 @@ data class PlayScript(
     val rights: Rights,
     val roles: List<Role> = emptyList(),
     val lines: List<ScriptLine>,
+    val year: Int? = null,
 ) {
     @Serializable data class Author(val name: String? = null, val born: Int? = null, val died: Int? = null)
     @Serializable data class Source(val name: String, val url: String)
@@ -130,6 +131,28 @@ data class PlayScript(
     @Serializable data class Role(val name: String, val lines: Int, val words: Int)
 
     val authorLine: String get() = authors.mapNotNull { it.name }.joinToString(", ") { displayName(it) }
+
+    /** The author with born and died years where the record has them. */
+    val authorWithYears: String
+        get() = authors.mapNotNull { a ->
+            val name = a.name?.let(::displayName) ?: return@mapNotNull null
+            val years = when {
+                a.born != null && a.died != null -> " (${a.born}\u2013${a.died})"
+                a.born != null -> " (b. ${a.born})"
+                a.died != null -> " (d. ${a.died})"
+                else -> ""
+            }
+            name + years
+        }.joinToString(", ")
+
+    /** "N parts · N lines", counted from the record. */
+    val lengthLine: String
+        get() {
+            val parts = castParts.count { it.id.isSpeaking }
+            val n = lines.size
+            val count = String.format(java.util.Locale.US, "%,d", n)
+            return "$parts ${if (parts == 1) "part" else "parts"} \u00b7 $count ${if (n == 1) "line" else "lines"}"
+        }
 
     fun lines(part: PartID): List<ScriptLine> = lines.filter { it.part == part }
 

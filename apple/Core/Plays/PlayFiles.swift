@@ -27,6 +27,7 @@ nonisolated enum TakeAudio {
     }
 
     static func write(_ capture: MicrophoneCapture, to url: URL) throws {
+        try SyntheticAudio.refuse(capture.samples)
         let settings: [String: Any] = [AVFormatIDKey: kAudioFormatFLAC, AVSampleRateKey: capture.sampleRate,
                                        AVNumberOfChannelsKey: 1, AVLinearPCMBitDepthKey: 24]
         let fmt = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: capture.sampleRate, channels: 1,

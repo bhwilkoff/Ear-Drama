@@ -1,6 +1,7 @@
 #if os(iOS) || os(macOS)
 import AVFoundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Plays phase 1, pass the phone (docs/PLAYS-DESIGN.md, binding). The same seven
 // verbs on iPhone, iPad, and Mac (§2): pick a play, read the cast sheet, take a
@@ -154,9 +155,13 @@ struct PlayScriptScreen: View {
                 Section {
                     VStack(alignment: .leading, spacing: Spacing.s2) {
                         Text(verbatim: script.title).font(TypeRamp.sectionHeader)
-                        if !script.authorLine.isEmpty {
-                            Text(verbatim: script.authorLine).font(TypeRamp.body)
+                        if !script.authorLineWithYears.isEmpty {
+                            Text(verbatim: script.authorLineWithYears).font(TypeRamp.body)
                         }
+                        Text(verbatim: [script.year.map(String.init), script.lengthLine].compactMap { $0 }
+                            .joined(separator: " · "))
+                            .font(TypeRamp.caption)
+                            .foregroundStyle(Color.brandTextMuted)
                         RightsLine(script: script)
                     }
                     StartEarDramaButton(script: script)
@@ -250,8 +255,8 @@ struct ProductionScreen: View {
     }
 }
 
-/// Who takes which part (§2.2-2.5). Parts are listed largest first; only the
-/// relay's next part can be taken, one at a time (pending owner, C7).
+/// Who takes which part (§2.2-2.5). Parts are listed largest first; any open
+/// part can be taken, the suggested one prominent, one at a time (C7).
 struct CastSheet: View {
     let production: Production
     let script: PlayScript
@@ -312,16 +317,16 @@ struct CastSheet: View {
             switch state.status {
             case .recording:
                 Button("Record") { open(part.id) }.buttonStyle(.borderedProminent)
-            case .open where part.id == next:
+            case .open:
                 if !part.id.isSpeaking {
                     Button("Leave Silent") { apply { try Relay.leaveSilent(part.id, in: $0, script: script) } }
                         .buttonStyle(.bordered)
                 }
-                Button("Take Part") {
-                    performer = ""
-                    taking = part.id
+                if part.id == next {
+                    takeButton(part.id).buttonStyle(.borderedProminent)
+                } else {
+                    takeButton(part.id).buttonStyle(.bordered)
                 }
-                .buttonStyle(.borderedProminent)
             case .done, .silent:
                 Menu {
                     Button("Open Part") { apply { try Relay.reopen(part.id, in: $0, script: script) } }
@@ -331,9 +336,14 @@ struct CastSheet: View {
                 .menuStyle(.borderlessButton)
                 .disabled(Relay.current(production, script) != nil)
                 .fixedSize()
-            case .open:
-                EmptyView()
             }
+        }
+    }
+
+    private func takeButton(_ part: PartID) -> some View {
+        Button("Take Part") {
+            performer = ""
+            taking = part
         }
     }
 
@@ -352,20 +362,22 @@ struct CastSheet: View {
     private func take() {
         guard let part = taking else { return }
         taking = nil
-        apply { try Relay.take(part, performer: performer, in: $0, script: script) }
-        open(part)
+        if apply({ try Relay.take(part, performer: performer, in: $0, script: script) }) { open(part) }
     }
 
-    private func apply(_ change: (Production) throws -> Production) {
-        guard let latest = plays.store.production(production.id) else { return }
+    @discardableResult
+    private func apply(_ change: (Production) throws -> Production) -> Bool {
+        guard let latest = plays.store.production(production.id) else { return false }
         do {
             plays.store.update(try change(latest))
             refusal = nil
+            return true
         } catch let error as Relay.Refusal {
             refusal = RelayRefusalText.text(error)
         } catch {
             refusal = error.localizedDescription
         }
+        return false
     }
 }
 
@@ -373,7 +385,7 @@ enum RelayRefusalText {
     static func text(_ refusal: Relay.Refusal) -> String {
         switch refusal {
         case let .anotherPartIsRecording(part): "\(part.title) is still recording."
-        case let .notNext(expected): expected.map { "\($0.title) is next." } ?? "No part is open."
+        case .notOpen: "That part is not open."
         case let .linesMissing(lines): lines.count == 1 ? "1 line still needs a take." : "\(lines.count) lines still need a take."
         case .speakingPartCannotBeSilent: "A speaking part needs a voice."
         }
@@ -459,16 +471,18 @@ struct PartDetail: View {
 
 // MARK: - Listen through, finish, keep
 
-/// Pending owner (C5): a half-recorded play is not previewed outside the
-/// recording flow. Listening through is offered only when every speaking line
-/// has a human take, so it never holds a device voice; reaching the end of it
-/// finishes the play (§2.6-2.7).
+/// Listen through, any time (C5, C6; §2.6-2.7). A complete play plays its
+/// rendered mix, and hearing it to the end finishes it. An incomplete one runs
+/// the listen plan live: takes from their files, the other speaking lines read
+/// by the device voice, labeled, never stored. Export is there whenever the
+/// play is complete.
 struct ListenThrough: View {
     let production: Production
     let script: PlayScript
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AudioPlayer.self) private var player
     @State private var mix = MixPlayback()
+    @State private var live = LiveListenThrough.system()
     @State private var mixing = false
     @State private var error: String?
     @State private var listenedFrom: String?
@@ -476,24 +490,32 @@ struct ListenThrough: View {
     var body: some View {
         let missing = Relay.missingSpeech(production, script).count
         let retake = Relay.needsRetake(production, script).count
+        let complete = missing == 0 && retake == 0
         Group {
+            if live.isRunning {
+                liveTransport
+            } else if mixing {
+                ProgressView()
+            } else if complete, mix.duration > 0 {
+                transport
+            } else {
+                HStack(spacing: Spacing.s4) {
+                    Button {
+                        if complete { Task { await prepare() } } else { Task { await listenLive() } }
+                    } label: {
+                        Label(production.isFinished ? "Play" : "Listen Through", systemImage: "play.fill")
+                    }
+                    .tint(Color.brandPrimary)
+                    if complete { export }
+                }
+                if !complete { PersonalVoiceToggle(live: live) }
+            }
             if missing > 0 {
                 Text(missing == 1 ? "1 line still needs a voice." : "\(missing) lines still need a voice.")
                     .foregroundStyle(Color.brandTextMuted)
             } else if retake > 0 {
                 Text(retake == 1 ? "1 line needs a re-take with headphones." : "\(retake) lines need a re-take with headphones.")
                     .foregroundStyle(Color.brandTextMuted)
-            } else if mixing {
-                ProgressView()
-            } else if mix.duration > 0 {
-                transport
-            } else {
-                Button {
-                    Task { await prepare(andPlay: true) }
-                } label: {
-                    Label(production.isFinished ? "Play" : "Listen Through", systemImage: "play.fill")
-                }
-                .tint(Color.brandPrimary)
             }
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
@@ -503,8 +525,21 @@ struct ListenThrough: View {
             guard ended, !mix.skipped, let from = listenedFrom else { return }
             plays.store.markListenedThrough(production.id, fingerprint: from)
         }
-        .onChange(of: production.chosenFingerprint) { mix.stop() }
-        .onDisappear { mix.stop() }
+        .onChange(of: production.chosenFingerprint) {
+            mix.stop()
+            live.stop()
+        }
+        .onDisappear {
+            mix.stop()
+            live.stop()
+        }
+    }
+
+    private var export: some View {
+        ShareLink(item: MixExport(store: plays.store, productionID: production.id),
+                  preview: SharePreview(production.title)) {
+            Label("Export", systemImage: "square.and.arrow.up")
+        }
     }
 
     private var transport: some View {
@@ -520,11 +555,7 @@ struct ListenThrough: View {
                 #if os(iOS)
                 .sensoryFeedback(Haptic.selection.feedback, trigger: mix.isPlaying)
                 #endif
-                if production.isFinished {
-                    ShareLink(item: plays.store.mixURL(production.id)) {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                }
+                export
             }
             TimelineView(.periodic(from: .now, by: 0.5)) { _ in
                 if production.isFinished {
@@ -538,7 +569,27 @@ struct ListenThrough: View {
         }
     }
 
-    private func prepare(andPlay: Bool) async {
+    /// The line being heard, its speaker, and "Device voice" when the device
+    /// reads it, so a stand-in never passes as a person (§5 rule 3).
+    @ViewBuilder private var liveTransport: some View {
+        if let entry = live.current, let line = script.lines.first(where: { $0.id == entry.lineID }) {
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                if entry.isDeviceVoice {
+                    Label("Device voice", systemImage: "waveform").font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandSecondary)
+                }
+                ScriptLineText(line: line)
+            }
+        }
+        Button {
+            live.stop()
+        } label: {
+            Label("Stop", systemImage: "stop.fill")
+        }
+        .tint(Color.brandPrimary)
+    }
+
+    private func prepare() async {
         mixing = true
         defer { mixing = false }
         do {
@@ -546,12 +597,56 @@ struct ListenThrough: View {
             listenedFrom = plays.store.production(production.id)?.chosenFingerprint
             try mix.load(url)
             error = nil
-            if andPlay {
-                player.pause()
-                mix.toggle()
-            }
+            player.pause()
+            mix.toggle()
         } catch {
             self.error = error.localizedDescription
+        }
+    }
+
+    private func listenLive() async {
+        guard let latest = plays.store.production(production.id) else { return }
+        mix.stop()
+        player.pause()
+        error = nil
+        let store = plays.store
+        await live.run(Relay.listenPlan(latest, script)) { store.takeURL(latest, $0) }
+    }
+}
+
+/// "Use my Personal Voice" (§5 rule 6): offered where the system has Personal
+/// Voice, for the live listen-through only. Turning it on asks once.
+private struct PersonalVoiceToggle: View {
+    let live: LiveListenThrough
+    @State private var status = SystemListenSpeaker.personalVoiceStatus
+
+    var body: some View {
+        if status == .authorized || status == .notDetermined {
+            Toggle("Use my Personal Voice", isOn: Binding(get: { live.usesPersonalVoice && status == .authorized }) { on in
+                guard on else {
+                    live.usesPersonalVoice = false
+                    return
+                }
+                Task {
+                    if status == .notDetermined {
+                        status = await AVSpeechSynthesizer.requestPersonalVoiceAuthorization()
+                    }
+                    live.usesPersonalVoice = status == .authorized
+                }
+            })
+        }
+    }
+}
+
+/// The mix as the share sheet asks for it: rendered first when it is missing
+/// or stale (§2.7).
+nonisolated struct MixExport: Transferable {
+    let store: ProductionStore
+    let productionID: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .mpeg4Audio) { export in
+            SentTransferredFile(try await export.store.exportMix(export.productionID))
         }
     }
 }

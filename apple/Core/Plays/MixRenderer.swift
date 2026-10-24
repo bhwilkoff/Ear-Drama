@@ -7,8 +7,9 @@ import Foundation
 /// `AVAudioEngine` in offline manual rendering, a player node scheduled at each
 /// placement's sample time with the take's stored gain applied in memory. It
 /// reads only take files named by the timeline, and a timeline holds only human
-/// takes, so a stand-in cannot reach the mix (§5 rule 3). A take the bleed
-/// check flagged is refused, never mixed (§8 rule 3).
+/// takes, so a stand-in cannot reach the mix (§5 rule 3), and it refuses any
+/// take whose samples are marked synthetic. A take the bleed check flagged is
+/// refused, never mixed (§8 rule 3).
 nonisolated enum MixRenderer {
     enum Failure: Error { case engine(String), bleed(lineID: String) }
 
@@ -71,8 +72,10 @@ nonisolated enum MixRenderer {
     private static func schedule(_ placement: MixTimeline.Placement, on player: AVAudioPlayerNode, folder: URL,
                                  format: AVAudioFormat) throws {
         let audio = try TakeAudio.read(folder.appending(path: placement.file))
+        try SyntheticAudio.refuse(audio.samples)
         let window = Array(audio.samples[min(placement.inFrame, audio.samples.count)..<min(placement.outFrame,
                                                                                           audio.samples.count)])
+        try SyntheticAudio.refuse(window)
         let gained = vDSP.multiply(placement.gain, window)
         guard let buffer = TakeAudio.buffer(gained, format: format) else { return }
         player.scheduleBuffer(buffer, at: AVAudioTime(sampleTime: AVAudioFramePosition(placement.start),

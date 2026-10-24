@@ -216,14 +216,18 @@ const PlayStore = (() => {
         await store.save({ ...p, listenedThrough: true });
       },
 
-      /** Export is the person's own act (§2.7): a download of the finished mix, refused otherwise (§5 rule 4). */
-      async exportMix(id) {
+      /**
+       * Export is the person's own act (§2.7): a download of the mix whenever every
+       * speaking line is human (owner 2026-10-23), rendered first if missing or stale.
+       * Refused otherwise (§5 rule 4).
+       */
+      async exportMix(id, makeContext) {
         const p = store.production(id);
-        if (!p || !C.isFinished(p)) throw new C.MixFailure('unfinished');
-        const raw = await backend.get(mixPath(id));
-        if (raw === null) throw new C.MixFailure('unfinished');
+        const script = p && await store.script(p);
+        if (!p || !script || !C.isComplete(p, script)) throw new C.MixFailure('unfinished');
+        const blob = await store.renderMix(id, makeContext);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([raw], { type: 'audio/wav' }));
+        a.href = URL.createObjectURL(blob);
         a.download = `${p.title.replace(/[\\/:*?"<>|]+/g, '').trim() || 'Play'}.wav`;
         document.body.append(a);
         a.click();

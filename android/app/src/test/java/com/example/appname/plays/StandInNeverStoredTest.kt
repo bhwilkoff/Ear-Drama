@@ -142,6 +142,52 @@ class StandInNeverStoredTest {
         assertTrue("the bleed check flags the take", run.takes.any { it.bleed })
     }
 
+    /** Batch 0b: a device voice's PCM can never reach a take, room-tone, mix or export writer. */
+    @Test fun `a synthetic buffer is refused by every writer`() {
+        val voice = StandInAudio(FloatArray(4_800) { 0.2f }, 48_000.0)
+        val root = temporaryRoot()
+        try {
+            fun refused(label: String, block: () -> Unit) {
+                try {
+                    block()
+                    fail("$label accepted a device voice")
+                } catch (_: IllegalStateException) {
+                }
+            }
+            refused("TakeAudio.write") { TakeAudio.write(MicrophoneCapture(voice.samples, 48_000.0), File(root, "a.wav")) }
+            refused("WavSink") {
+                val sink = WavSink(File(root, "b.wav"), 48_000)
+                try { sink.write(voice.samples, voice.samples.size) } finally { sink.abandon() }
+            }
+            val store = ProductionStore(root)
+            val production = store.create(fixtureScript())
+            refused("writeTake") { store.writeTake(MicrophoneCapture(voice.samples, 48_000.0), production, "L0002") }
+            refused("writeRoomTone") { store.writeRoomTone(MicrophoneCapture(voice.samples, 48_000.0), production) }
+            assertTrue("nothing was left on disk", store.takesFolder(production.id).listFiles().orEmpty().isEmpty())
+            val human = MicrophoneCapture(tone(listOf(150.0), 0.1), 48_000.0)
+            TakeAudio.write(human, File(root, "human.wav"))
+            assertTrue(File(root, "human.wav").isFile)
+            val sources = File("src/main/java/com/example/appname/plays")
+            assertTrue("the AAC mix writer checks too", File(sources, "MixEncoder.kt").readText().contains("SyntheticPCM.refuse(samples)"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun `a listen plan holds text, never audio`() {
+        val script = fixtureScript()
+        val plan = Relay.listenPlan(Production.create(script), script)
+        assertTrue(plan.isNotEmpty())
+        assertTrue(plan.all { it is Relay.ListenEntry.Voice })
+        for (entry in plan) {
+            val fields = entry::class.java.declaredFields
+            assertTrue("${entry::class.simpleName} holds audio", fields.none { it.type.isArray || it.type == StandInAudio::class.java })
+        }
+        val live = File("src/main/java/com/example/appname/plays/LiveListen.kt").readText()
+        assertFalse("the live listen never synthesizes to a file", live.contains("synthesizeToFile"))
+        assertTrue("the live listen uses only local voices", live.contains("!it.isNetworkConnectionRequired"))
+    }
+
     /** Only the take and mix writers write audio, and the stand-in source touches no file at all. */
     @Test fun `only the take and mix writers write audio`() {
         val sources = File("src/main/java").walkTopDown().filter { it.extension == "kt" }.toList()

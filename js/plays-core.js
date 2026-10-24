@@ -160,9 +160,9 @@ const PlaysCore = (() => {
   }
 
   /* ---- The relay (§2.3-2.5) ----
-     Pending owner (C7): strictly one part at a time, in a fixed order, largest part
-     first. Only the next part can be taken, and only while no other part records.
-     Sound and directions come last and may be left silent; a speaking part may not (C6). */
+     C7 (owner 2026-10-23): parts in any order, the largest open part suggested first
+     (`next`), never forced. One part records at a time on one device (one microphone).
+     Sound and directions may be left silent; a speaking part may not (C6). */
 
   class Refusal extends Error {
     constructor(kind, detail) { super(kind); this.kind = kind; this.detail = detail; }
@@ -170,6 +170,7 @@ const PlaysCore = (() => {
 
   const order = (script) => castParts(script).map(p => p.id);
   const current = (p, script) => order(script).find(id => stateOf(p, id).status === 'recording') || null;
+  /** The suggested part: the largest open one, or null while a part records. */
   function next(p, script) {
     if (current(p, script)) return null;
     return order(script).find(id => stateOf(p, id).status === 'open') || null;
@@ -184,8 +185,7 @@ const PlaysCore = (() => {
   function take(p, script, part, performer) {
     const cur = current(p, script);
     if (cur) throw new Refusal('anotherPartIsRecording', cur);
-    const nx = next(p, script);
-    if (nx !== part) throw new Refusal('notNext', nx);
+    if (!order(script).includes(part) || stateOf(p, part).status !== 'open') throw new Refusal('notOpen', part);
     const name = (performer || '').trim();
     return withState(p, part, name ? { status: 'recording', performer: name } : { status: 'recording' });
   }
@@ -195,7 +195,7 @@ const PlaysCore = (() => {
 
   /** "Done with this part": a speaking part is done only when every one of its lines has a take (§5 rule 4). */
   function finish(p, script, part) {
-    if (stateOf(p, part).status !== 'recording') throw new Refusal('notNext', current(p, script));
+    if (stateOf(p, part).status !== 'recording') throw new Refusal('notOpen', part);
     if (isSpeaking(part)) {
       const missing = missingLines(p, script, part);
       if (missing.length) throw new Refusal('linesMissing', missing);
@@ -206,14 +206,18 @@ const PlaysCore = (() => {
   function leaveSilent(p, script, part) {
     if (isSpeaking(part)) throw new Refusal('speakingPartCannotBeSilent');
     const st = stateOf(p, part).status;
-    if (!(st === 'recording' || next(p, script) === part)) throw new Refusal('notNext', next(p, script));
+    if (st !== 'recording') {
+      const cur = current(p, script);
+      if (cur) throw new Refusal('anotherPartIsRecording', cur);
+      if (st !== 'open' || !order(script).includes(part)) throw new Refusal('notOpen', part);
+    }
     return withState(p, part, { ...stateOf(p, part), status: 'silent' });
   }
 
   function reopen(p, script, part) {
     const cur = current(p, script);
     if (cur) throw new Refusal('anotherPartIsRecording', cur);
-    if (!['done', 'silent'].includes(stateOf(p, part).status)) throw new Refusal('notNext', next(p, script));
+    if (!['done', 'silent'].includes(stateOf(p, part).status)) throw new Refusal('notOpen', part);
     return withState(p, part, { ...stateOf(p, part), status: 'recording' });
   }
 
@@ -223,6 +227,38 @@ const PlaysCore = (() => {
   const needsRetake = (p, script) => script.lines.map(l => l.id).filter(id => chosenTake(p, id)?.bleed === true);
   /** Only when every speaking line has an unflagged take and no chosen take is flagged can the play be mixed. */
   const isComplete = (p, script) => missingSpeech(p, script).length === 0 && needsRetake(p, script).length === 0;
+
+  /**
+   * The listen-through any time (C5, owner 2026-10-23): every line in script order that
+   * has a usable human take plays it; a speaking line without one is read live by the
+   * device voice; unrecorded directions and sound are skipped. A voice entry holds the
+   * words only, never audio, so nothing of it can be stored, mixed, or exported (§5).
+   */
+  function listenPlan(p, script) {
+    const plan = [];
+    for (const line of script.lines) {
+      const part = linePart(line);
+      const t = usableTake(p, line.id);
+      if (t) plan.push({ lineID: line.id, part, source: 'take', take: t });
+      else if (line.kind === 'speech') plan.push({ lineID: line.id, part, source: 'voice', text: spokenText(line) });
+    }
+    return plan;
+  }
+
+  /** "12 parts · 840 lines": a play's length, from its own lines. */
+  function lengthLine(script) {
+    const parts = castParts(script).filter(x => isSpeaking(x.id)).length;
+    const n = script.lines.length;
+    return `${parts === 1 ? '1 part' : `${parts} parts`} · ${n === 1 ? '1 line' : `${n.toLocaleString('en-US')} lines`}`;
+  }
+
+  /** "Henry Fisk Carlton (1892-1973)": each author with the years their record carries. */
+  function authorFacts(script) {
+    return (script.authors || []).filter(a => a.name).map(a => {
+      const years = a.born && a.died ? ` (${a.born}–${a.died})` : a.born ? ` (b. ${a.born})` : a.died ? ` (d. ${a.died})` : '';
+      return displayName(a.name) + years;
+    }).join(', ');
+  }
 
   /** The cue before a line: the previous speech when another part speaks it, or the two before it for a run-up. */
   function cueLines(script, lineID, runUp = false) {
@@ -238,7 +274,7 @@ const PlaysCore = (() => {
   function refusalText(r) {
     switch (r.kind) {
       case 'anotherPartIsRecording': return `${partTitle(r.detail)} is still recording.`;
-      case 'notNext': return r.detail ? `${partTitle(r.detail)} is next.` : 'No part is open.';
+      case 'notOpen': return `${partTitle(r.detail)} is not open.`;
       case 'linesMissing': return r.detail.length === 1 ? '1 line still needs a take.' : `${r.detail.length} lines still need a take.`;
       case 'speakingPartCannotBeSilent': return 'A speaking part needs a voice.';
       default: return String(r.message || r);
@@ -551,7 +587,7 @@ const PlaysCore = (() => {
     newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
-    cueLines, refusalText,
+    cueLines, refusalText, listenPlan, lengthLine, authorFacts,
     MixFailure, gain, buildTimeline, renderMix,
     integratedLoudness, samplePeak, rms, thresholdFor, LineEndDetector, lineWindow, CueMeter,
     wavHeader, pcmBytes, encodeWav, decodeWav,

@@ -17,7 +17,8 @@ recorded). Then the next person would take one of the simulated parts and
 record that."* Decision 059 put phases 1 and 2 in 1.0, with radio scripts and
 public-domain stage plays both castable when their own record carries the
 rights evidence, and no approval queue. This page is phase 1, which is the
-relay on one device, with no server, no account, and nothing uploaded.
+relay on one device, with no server and nothing uploaded; recording needs an
+account (owner 2026-10-23).
 
 The device voice is a scene partner, never a performer.
 
@@ -124,7 +125,11 @@ Every platform does the same seven things, in its own idiom.
    Only scripts whose rights state is `castable` (§3) and whose parse is
    clean are offered. Each shows its title, author, source, its number of
    parts, and its rights line with a link to the evidence. Nothing on it
-   is written by a model. The productions a person has recorded in or
+   is written by a model. A play is marked only by facts from its record:
+   its year when the record has one, its author (with their years), and its
+   length ("12 parts · 840 lines"); never an age rating or any label we
+   invent (owner 2026-10-23, Decision 067). "Start an ear drama" takes any
+   script the bundle carries, a radio episode's as well as a stage play's. The productions a person has recorded in or
    joined are **Ear dramas** in Library.
    - *Replaced*: "The Plays tab lists only scripts whose rights state is
      `castable` ..."
@@ -134,10 +139,16 @@ Every platform does the same seven things, in its own idiom.
    radio tradition), and "Stage directions" and "Sound effects" are parts
    like any other, so a person can read the directions aloud or knock on the
    table for the door.
-3. **Take a part.** The performer types a name (or not) and picks their part.
-   The app checks the audio route and asks for headphones (§4.3), records five
-   seconds of room tone with a visible countdown, and opens the script at
-   their first scene.
+3. **Take a part.** The performer types a name (or not) and picks any open
+   part, in any order (C7, owner 2026-10-23). The largest open part is
+   suggested first (its "Take part" is the prominent one), never forced; one
+   part records at a time on one device, because there is one microphone.
+   **Recording needs an account, always**, even for a play that is never
+   shared (owner 2026-10-23): at Start recording a signed-out person sees
+   "Recording needs an account." and the platform's sign-in instead. Taking a
+   part, reading along, and listening need none. Then the app checks the
+   audio route and asks for headphones (§4.3), records five seconds of room
+   tone with a visible countdown, and opens the script at their first scene.
 4. **Record line by line.** The previous line plays, from a human take where
    one exists and from a live device voice where not, with the speaking
    character's name and line on screen. Then the device stops and listens
@@ -147,19 +158,25 @@ Every platform does the same seven things, in its own idiom.
 5. **Pass the phone.** "Done with this part" returns to the cast sheet, which
    now shows that part as recorded. The next person takes another part and
    hears the first performer's takes where the device voice used to be.
-6. **Listen through.** The play can be heard from the top with every human
-   take in script order. Whether a half-recorded play may be previewed with
-   its open parts voiced live (each labeled as a device voice) is an owner
-   question (C5, §9). Pending owner, the apps take the conservative reading:
-   no preview of a half-voiced play outside the recording flow, so the
-   listen-through is offered only once every speaking line has a human take.
-   Inside the recording flow the cue before a line, and a run-up, still play
-   the device voice live where no take exists.
-7. **Finish and keep it.** When every speaking line has a human take and
-   someone has listened all the way through, the device renders the mix and
-   the play joins the person's library. They can play it back on this device,
-   send it by AirPlay or Cast to a television, or export the file through the
-   share sheet. An export is the person's own act, not the app publishing.
+6. **Listen through, any time** (C5 and C6, owner 2026-10-23). Anyone can
+   hear the whole play from the top: parts with a human take play that take,
+   and speaking lines without one are read live by the listening device's own
+   voice (or an openly licensed voice generated on that device), each labeled
+   "Device voice" with its speaker on screen, so a listener hears the play and
+   can choose to add their voice. Unrecorded directions and sound are skipped.
+   The plan is plain data (`listenPlan`): a take, or the words a device voice
+   reads, never audio. Nothing of a live listen-through is stored, mixed,
+   exported, or uploaded (§5). Once every speaking line is human, the
+   listen-through plays the rendered mix instead, and hearing it to the end
+   marks the play finished.
+   - *Replaced*: "Pending owner, the apps take the conservative reading: no
+     preview of a half-voiced play outside the recording flow ..."
+7. **Keep it and export it.** Export is offered whenever every speaking line
+   has a human take and no chosen take is flagged, at any time then, not only
+   after a full listen (owner 2026-10-23). The device renders the mix if it is
+   missing or stale. They can play it back on this device, send it by AirPlay
+   or Cast to a television, or export the file through the share sheet. An
+   export is the person's own act, not the app publishing.
 
 ### The platform idioms
 
@@ -199,9 +216,12 @@ author and employer are on record. A missing renewal row alone never opens a
 script, because the printed renewal file loses a quarter to a third of its
 entries to OCR (08b §1.3).
 
-"Individual author died by 1955" (research 08 C9) is recorded as
-`script_author_died_unapplied` and is not castable, because the owner has not
-ruled on it. Everything else is `script_no_evidence`, which is not castable.
+"Individual author died by 1955" (research 08 C9) is accepted (owner
+2026-10-23, Decision 067): `script_author_died`, castable, when every author
+is a named individual whose death year is on record at or before the line
+(today's year less 71, so 1955 in 2026), the work is not for hire, and no
+publication is on record (a published work's term runs from publication).
+Everything else is `script_no_evidence`, which is not castable.
 The tests are `catalog/tests/test_script_rights.py`: 22 cases, each with a
 control, and eleven broken controls recorded in its docstring.
 
@@ -274,7 +294,12 @@ list (66), the median cast is 16 parts (quartiles 11 and 20, the largest 62).
 lines. Every line keeps the block exactly as printed beside its parts
 (speech, direction, mic position, sound), and a part is a slice of that block,
 so no word is rewritten (08b §4). Directions are kept apart from speech so the
-people casting decide how to read them. Its tests, with four broken controls,
+people casting decide how to read them. A commercial is its own part (C10): from
+a printed commercial marker ("COMMERCIAL", "MIDDLE COMMERCIAL") to an "END
+COMMERCIAL" marker, the next commercial, or the first music cue after its first
+speech, each speech's part is its printed role with "(COMMERCIAL n)" after it,
+so the announcer of the play and the reader of each commercial can be different
+people. Its tests, with four broken controls,
 are `catalog/tests/test_script_parse.py`.
 
 A **stub** is not a script: under 500 words, or a page of links with no
@@ -449,14 +474,17 @@ So, on every platform:
 3. A partial play is never mixed into a file. A listen-through plays the human
    takes and voices the open parts live, on this device, and the screen labels
    each such line as a device voice, so a stand-in never passes as a person
-   (`learning-orientation-design`, the honesty checklist).
-4. A play cannot be finished with a stand-in in it, and an export of an
-   unfinished play is refused with a sentence that says why.
+   (`learning-orientation-design`, the honesty checklist). Every platform has a
+   guard test that fails if a synthetic buffer reaches a take write, the mix,
+   an export, or an upload, and each was seen to fail once.
+4. A play cannot be finished or exported with a stand-in in it; Export
+   appears only when every speaking line is human.
 5. Only local voices are offered: `localService` on the web and
    `!isNetworkConnectionRequired()` on Android, so a script line is never sent
    to a speech server.
-6. Personal Voice is not offered (C10, recommended): Apple forbids it in any
-   public-sharing context and aims it at people who use it to speak.
+6. Personal Voice (Apple) is offered as a live listen-through voice only
+   (owner 2026-10-23): spoken with `speak`, never written to a buffer, a file,
+   a cue, or a mix, so Apple's public-sharing limit is never reached.
 
 Voices are assigned per part from what the device has, by `gender` on Apple
 where the script states one and by a small hand map on Android, with pitch and
@@ -468,9 +496,9 @@ identifying, and the app points to Settings for more.
 
 ## §6. What is stored where on the device
 
-Phase 1 keeps everything on the device that made it. Nothing is uploaded, no
-account is needed, and no record leaves the device unless the person exports
-the finished play.
+Phase 1 keeps everything on the device that made it. Nothing is uploaded, and
+no record leaves the device unless the person exports the finished play. The
+account recording needs (§8 rule 4) holds no take.
 
 | What | Apple (iPhone, iPad, Mac) | Android | Web |
 |---|---|---|---|
@@ -517,8 +545,9 @@ why it is open to everyone, children included (08c §6.2).
 - **Pace.** Stand-in rate is adjustable, and Reduce Motion turns off the
   scrolling teleprompter in favor of a page per line.
 - **The honest cost.** A person who cannot speak cannot record a part in
-  phase 1, because Personal Voice is not offered (§5, C10). They can still
-  direct, take the sound-effects part, and listen.
+  phase 1: Personal Voice may read the open parts in a listen-through on their
+  own Apple device, but it is never stored, so it cannot be a part (§5). They
+  can still direct, take the sound-effects part, and listen.
 
 ---
 
@@ -531,7 +560,8 @@ why it is open to everyone, children included (08c §6.2).
    cast list, or a description. Stage directions are shown as printed.
 3. A synthetic voice is never written to a stored file, never part of a mix,
    and always labeled as a device voice where it plays (§5).
-4. Phase 1 uploads nothing and needs no account.
+4. Phase 1 uploads nothing. Recording needs an account, always (owner
+   2026-10-23); listening and reading along do not.
 5. A take is immutable; choosing a different take never deletes the old one
    until the person discards it.
 6. The app never scores or rejects a performance.
@@ -542,18 +572,23 @@ why it is open to everyone, children included (08c §6.2).
 
 ## §9. Questions only the owner can answer
 
-These are still open from research 08, plus three this design raised.
+Answered by the owner on 2026-10-23 (Decision 067), and built in batch 0b:
+
+| # | Question | The owner's answer, as built |
+|---|---|---|
+| C5 | May anyone hear a half-recorded play with live stand-ins? | Yes: anyone can listen through any time, open parts read live by the device (§2.6) |
+| C6 | A part nobody takes? | The play stays unexportable; its lines are read live in a listen-through, never stored |
+| C7 | Relay order? | Any order; the largest open part is suggested first, never forced (§2.3) |
+| C9 | "Individual author died by 1955" as evidence? | Accepted: `script_author_died`, castable (§3) |
+| C10 | Commercials? Personal Voice? | Commercials stay, each its own part (a speech inside commercial *n* is the part "ROLE (COMMERCIAL n)"); Personal Voice offered live only (§5 rule 6) |
+| New | Does a local, never-shared recording need an account? | Yes, always (§2.3, §8 rule 4) |
+
+Still open:
 
 | # | Question | What phase 1 does until it is answered |
 |---|---|---|
-| C5 | May anyone hear a half-recorded play with live stand-ins, or only its cast? On one device the cast and the listeners are usually the same people | Pending owner: no preview of a half-voiced play outside the recording flow; the listen-through opens once every speaking line has a human take |
-| C6 | A part nobody takes: leave the play unfinished, let someone double it, or allow a stored openly licensed voice (Kokoro, Apache-2.0; Piper's LibriTTS-R voices, CC BY 4.0)? | Pending owner: the play stays unfinished and never gets a stored synthetic voice; one person may double parts; only sound effects and stage directions may be left silent |
-| C7 | Relay order: strictly one part at a time, or any order with "largest part first" as the suggestion? Claim expiry (7 days) matters in phase 2 | Pending owner: strictly one part at a time, in a fixed order, largest first; a finished part can be reopened for a re-take only while no other part records |
-| C9 | Accept "individual author died by 1955" as evidence for an unregistered script? | Pending owner: recorded as `script_author_died_unapplied`, not castable |
-| C10 | Sponsors' commercials inside free scripts: keep, make optional, or drop? Personal Voice: not offered (recommended)? | Pending owner: scripts are performed as published, commercials included; Personal Voice is never offered or asked for |
-| New | Decision 057 says signing in is "required to record, cast, or publish a shared play." Does a local, never-shared recording need an account? | Pending owner: phase 1 is local only and needs no sign-in; Decision 057's sign-in covers sharing |
 | New | A text that is rights-castable but parses unclean (11 of the 20 sampled plays): who fixes its parts, and is that an editing role phase 1 needs? | Not offered until someone fixes it |
-| New | GRW (C8): ask before reusing its transcriptions? It decides whether the GRW radio scripts with other evidence can ever be cast from GRW's text | All 1,371 hidden on GRW's own terms |
+| New | GRW (C8): ask before reusing its transcriptions? The owner sends the request (Decision 067) | All 1,371 hidden on GRW's own terms |
 
 ---
 
@@ -564,7 +599,6 @@ open casting and peer review (phase 3); a stored synthetic voice of any kind;
 an effects library; teleplays; any model-written text in a play; any score,
 like, or ranking of a performance.
 
-Bring back the owner's answers to C5, C6, C7, C9, and C10.
 
 ---
 
@@ -597,10 +631,11 @@ record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
 
 ### §11.2 The relay across devices
 
-The pending defaults of §9 hold on the server, word for word:
+The owner's answers in §9 hold on the server, word for word:
 
-- **C7.** Only the next part may be claimed, largest speaking part first, then
-  sound, then directions; nothing is claimed while a part records; a finished
+- **C7.** Any open part may be claimed, in any order; the largest speaking part
+  is the suggestion (`next`), then sound, then directions; nothing is claimed
+  while a part records; a finished
   part reopens only while nothing records, for its performer or the director.
   A claim lapses after **7 days** (the figure §9 names), the part is open
   again, and its takes stay.
@@ -665,7 +700,7 @@ The pending defaults of §9 hold on the server, word for word:
 | P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
 | P5 | The privacy policy that covers school consent for students under 13 | `SCHOOL_CONSENT_POLICY` unset: no school consent can be recorded, so no under-13 class takes a student |
 | P6 | The Ear Drama archive.org account and its keys | Jobs queue at `pending_owner_account`; nothing uploads |
-| P7 | C6 and C7 (§9), including the 7-day claim lapse | Applied as their pending defaults |
+| P7 | The 7-day claim lapse (C6 and C7 are answered, §9) | Applied as the default |
 | P8 | Do classes own productions (a class member joins without an invite)? | No: classes are a roster only; every production is invite-only |
 
 Not built yet: the apps' side of phase 2 on every platform, the job that

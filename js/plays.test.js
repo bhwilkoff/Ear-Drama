@@ -14,6 +14,8 @@
  *   The session keeping the whole capture (no lineWindow): the stand-in test fails on take length.
  *   The store writing takes with put() instead of add(): the never-overwritten check fails.
  *   usableTake() ignoring `bleed`: the flagged-take test fails (the play reads complete and mixes the device voice).
+ * Broken control, 2026-10-24: ListenThrough writing the buffer its voice hands back as a take:
+ *   the synthetic-buffer guard fails three ways (writes, new files, the source scan).
  * The stand-in scan carries its own control (leaky): when the microphone hears
  * the device voice, the scan must find it in a take and the meter must flag it.
  * The source scan carries its own controls (a writer in the voice file, an
@@ -32,6 +34,7 @@ const C = vm.runInThisContext('PlaysCore');
 const PlayStore = vm.runInThisContext('PlayStore');
 const StandInVoice = vm.runInThisContext('StandInVoice');
 const RecordingSession = vm.runInThisContext('RecordingSession');
+const ListenThrough = vm.runInThisContext('ListenThrough');
 
 let passes = 0, failures = 0;
 const results = [];
@@ -125,13 +128,17 @@ const rmsAround = (x, center, half = 2400) => C.rms(x.subarray(Math.max(0, cente
 
 /* ---- The relay ---- */
 
-test('the relay is one part at a time, largest first (C7)', () => {
+test('the relay takes parts in any order, the largest suggested (C7)', () => {
   const script = fixtureScript();
   const R = (n) => C.role(n);
   eq(C.order(script), [R('MOLLY'), R('FIBBER'), R('DOC'), C.SOUND, C.DIRECTIONS], 'the order');
   let p = C.newProduction(script);
-  eq(C.next(p, script), R('MOLLY'), 'the largest part is next');
-  throwsKind(() => C.take(p, script, R('FIBBER')), 'notNext', R('MOLLY'), 'only the next part can be taken');
+  eq(C.next(p, script), R('MOLLY'), 'the largest part is suggested');
+  const doc = C.take(p, script, R('DOC'), '');
+  eq(C.current(doc, script), R('DOC'), 'a smaller part can be taken first');
+  const silent = C.leaveSilent(p, script, C.SOUND);
+  eq(C.stateOf(silent, C.SOUND).status, 'silent', 'sound can be left silent before any voice');
+  throwsKind(() => C.take(silent, script, C.SOUND), 'notOpen', C.SOUND, 'a part that is not open cannot be taken');
   p = C.take(p, script, R('MOLLY'), '  Ada ');
   eq(C.stateOf(p, R('MOLLY')), { status: 'recording', performer: 'Ada' }, 'the name is trimmed and kept');
   eq(C.next(p, script), null, 'nothing is offered while a part records');
@@ -141,7 +148,7 @@ test('the relay is one part at a time, largest first (C7)', () => {
   throwsKind(() => C.finish(p, script, R('MOLLY')), 'linesMissing', molly, 'a part is done only with every line taken');
   for (const id of molly) p = C.addTake(p, take(`t-${id}`, id, R('MOLLY'), 100));
   p = C.finish(p, script, R('MOLLY'));
-  eq(C.next(p, script), R('FIBBER'), 'the device passes to the next largest part');
+  eq(C.next(p, script), R('FIBBER'), 'the next largest open part is suggested');
   throwsKind(() => C.leaveSilent(p, script, R('FIBBER')), 'speakingPartCannotBeSilent', undefined, 'a speaking part needs a voice (C6)');
   for (const part of [R('FIBBER'), R('DOC')]) {
     p = C.take(p, script, part, '');
@@ -515,6 +522,78 @@ test('control: a microphone that hears the device voice is caught', async () => 
   ok(run.production.takes.some(t => t.bleed), 'the level meter flags the take');
 });
 
+test('a listen plan is takes and words: open speech read live, open sound and directions skipped (C5)', () => {
+  const script = fixtureScript();
+  let p = C.newProduction(script);
+  p = C.addTake(p, take('t3', 'L0003', C.role('MOLLY'), 100));
+  p = C.addTake(p, { ...take('leak', 'L0005', C.role('DOC'), 100), bleed: true });
+  const plan = C.listenPlan(p, script);
+  eq(plan.map(e => [e.lineID, e.source]), script.lines.filter(l => l.id === 'L0003' || l.kind === 'speech')
+    .map(l => [l.id, l.id === 'L0003' ? 'take' : 'voice']), 'the take plays, every other speech is read, the flagged take is not used');
+  for (const e of plan.filter(x => x.source === 'voice')) {
+    eq(Object.keys(e).sort(), ['lineID', 'part', 'source', 'text'], `${e.lineID}: a voice entry is words only`);
+    eq(typeof e.text, 'string', `${e.lineID}: its words`);
+  }
+});
+
+test('a play is marked only by facts from its record (Decision 067)', () => {
+  const script = { ...fixtureScript(), authors: [{ name: 'Carlton, Henry Fisk', born: 1893, died: 1973 },
+                                                 { name: 'Other, Ann', born: 1901 }, { name: 'Last, Al', died: 1950 }] };
+  eq(C.authorFacts(script), 'Henry Fisk Carlton (1893–1973), Ann Other (b. 1901), Al Last (d. 1950)', 'authors with their years');
+  eq(C.lengthLine(script), `3 parts · ${script.lines.length} lines`, 'speaking parts and every line, as Apple and Android count');
+});
+
+/** A store whose every write is counted, over a production half recorded. */
+async function halfRecorded() {
+  const script = fixtureScript();
+  const backend = PlayStore.memoryBackend();
+  const store = PlayStore.open(backend);
+  await store.load();
+  let p = await store.create(script);
+  const file = await store.writeTake({ samples: tone([200], 0.2), sampleRate: 48000 }, p, 'L0003');
+  p = C.addTake(store.production(p.id), { ...take('t3', 'L0003', C.role('MOLLY'), 9600), file });
+  await store.save(p);
+  const writes = [];
+  for (const k of ['add', 'put']) {
+    const real = backend[k].bind(backend);
+    backend[k] = async (key, value) => { writes.push(key); return real(key, value); };
+  }
+  return { script, backend, store, p, writes };
+}
+
+/** The guard (§5 rule 3): a device voice that HANDS BACK a synthetic buffer, as Apple's
+ *  and Android's engines do, must still reach no take, mix, export, or upload. */
+async function listenWithSyntheticBuffers() {
+  const { script, backend, store, p, writes } = await halfRecorded();
+  const synthetic = [];
+  const voice = {
+    async speak(text) { const b = Float32Array.from({ length: 4800 }, (_, i) => Math.sin(i / 7) * 0.3); synthetic.push(b); return b; },
+    cancel() {},
+  };
+  const audio = { async startPlayback() {}, async playTake() {}, stopPlayback() {}, stop() {} };
+  const keysBefore = await backend.keys();
+  const l = ListenThrough.create({ production: p, script, store, audio, voice });
+  await l.play();
+  const keysAfter = await backend.keys();
+  let exported = null;
+  try { await store.exportMix(p.id, fakeOffline); } catch (e) { exported = e.kind; }
+  return { synthetic: synthetic.length, writes, keysBefore, keysAfter, exported, production: store.production(p.id) };
+}
+
+test('guard: no synthetic buffer from a live listen-through reaches a take, the mix, an export, or an upload', async () => {
+  const run = await listenWithSyntheticBuffers();
+  ok(run.synthetic > 0, 'the device voice read the open lines and handed back buffers');
+  eq(run.writes, [], 'the listen-through wrote nothing');
+  eq(run.keysAfter, run.keysBefore, 'no file appeared');
+  eq(run.production.takes.length, 1, 'no take was added');
+  ok(!run.production.listenedThrough, 'a live listen-through never finishes the play');
+  eq(run.exported, 'unfinished', 'and a play with device-voiced lines cannot be exported');
+  const src = fs.readFileSync(path.join(__dirname, 'plays-session.js'), 'utf8');
+  const listen = src.slice(src.indexOf('const ListenThrough'));
+  eq(/\bstore\.(write|save|update|create|render|export|mark)\w*|\bfetch\s*\(|\bAPI\./.test(listen), false,
+     'the listen-through calls no writer, renderer, exporter, or network');
+});
+
 /** Which modules may hold or write play audio. */
 function writeViolations(file, source) {
   const out = [];
@@ -569,7 +648,7 @@ test('the bundled castable scripts decode, and each can be cast', () => {
   eq(lib.format, 1, 'format 1');
   ok(lib.scripts.length > 0, 'there are scripts');
   const castable = new Set(['script_gov_work', 'script_pd_published_age', 'script_registered_age',
-                            'script_source_cleared', 'script_registered_not_renewed']);
+                            'script_source_cleared', 'script_registered_not_renewed', 'script_author_died']);
   for (const s of lib.scripts) {
     ok(castable.has(s.rights.bucket), `${s.id} is castable`);
     ok(s.rights.evidence.some(e => e.claim), `${s.id} carries a claim to show`);

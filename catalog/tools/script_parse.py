@@ -361,6 +361,32 @@ def _radio_items(text):
     return items
 
 
+# A commercial is its own part (C10, owner 2026-10-23): from a printed marker to an end marker,
+# the next commercial, or the first music cue or separator after its first speech, each speech's
+# part is its printed role with "(COMMERCIAL n)" after it. A marker is a short non-speech block.
+COMMERCIAL = re.compile(r"\bCOMMERCIAL\b", re.I)
+COMMERCIAL_END = re.compile(r"\bEND(?:\s+OF)?\s+(?:THE\s+)?(?:\w+\s+)?COMMERCIAL\b|\bCOMMERCIAL\s+(?:ENDS|OUT)\b", re.I)
+
+
+def _mark_commercials(items):
+    n, inside, spoke = 0, False, False
+    for it in items:
+        if it["kind"] == "speech":
+            if inside:
+                it["role"] = f"{it['role']} (COMMERCIAL {n})"
+                spoke = True
+            continue
+        if it["kind"] in ("front", "back", "cast", "note", "other"):
+            continue
+        src = it["source"]
+        if COMMERCIAL_END.search(src):
+            inside = False
+        elif COMMERCIAL.search(src) and len(src.split()) <= 8:
+            n, inside, spoke = n + 1, True, False
+        elif inside and spoke and it["kind"] in ("music", "heading"):
+            inside = False
+
+
 # ---- stage ---------------------------------------------------------------------------------------
 
 def _not_label(role):
@@ -599,6 +625,7 @@ def parse(raw, kind):
         return {"status": "stub", "stub_kind": stub, "words": len(text.split())}
     if kind == "radio":
         items = _radio_items(text)
+        _mark_commercials(items)
     else:
         items, casts = _stage_items(text)
     stub = stub_check(text, items)
@@ -625,7 +652,7 @@ def parse(raw, kind):
     blocks = len(lines) + len(unclassified)
     castable = [r for r in roles.values() if r["lines"] >= CASTABLE_LINES]
     big = [r["name"] for r in castable]
-    aliases = [r["name"] for r in roles.values() if r["lines"] <= 2 and any(
+    aliases = [r["name"] for r in roles.values() if r["lines"] <= 2 and "(COMMERCIAL " not in r["name"] and any(
         r["name"] != b and (b.startswith(r["name"]) or r["name"].startswith(b)) for b in big)]
     issues = []
     share = len(unclassified) / max(1, blocks)

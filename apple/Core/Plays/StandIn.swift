@@ -6,11 +6,18 @@ import Foundation
 /// scene partner, never a performer: it is played, measured by the bleed check,
 /// and released. It has no Codable conformance and no path to a file, and no
 /// file writer in the app accepts it (`TakeAudio.write` takes only a
-/// `MicrophoneCapture`).
+/// `MicrophoneCapture`), and its samples are marked synthetic when it is made,
+/// so a writer refuses them even copied into another type (`SyntheticAudio`).
 nonisolated struct StandInAudio: Sendable {
     /// Mono, at `sampleRate` (48 kHz once resampled).
     let samples: [Float]
     let sampleRate: Double
+
+    init(samples: [Float], sampleRate: Double) {
+        self.samples = samples
+        self.sampleRate = sampleRate
+        SyntheticAudio.mark(samples)
+    }
 }
 
 /// Where stand-in lines come from. The app's is the system voice; the tests'
@@ -21,8 +28,8 @@ protocol StandInVoice: AnyObject {
 
 /// The system voices through `AVSpeechSynthesizer.write(_:toBufferCallback:)`
 /// into memory (research 08a §1.2). Only on-device voices are offered, never a
-/// Personal Voice (pending owner, C10: Apple forbids it in any sharing context,
-/// and the app never asks for its authorization) and never a novelty voice.
+/// novelty voice and never a Personal Voice: a Personal Voice is offered only
+/// in a live listen-through, through `speak` (C10, §5 rule 6; `ListenSpeaker`).
 final class SystemStandInVoice: StandInVoice {
     private let synthesizer = AVSpeechSynthesizer()
     private var assigned: [PartID: Int] = [:]
@@ -50,7 +57,7 @@ final class SystemStandInVoice: StandInVoice {
 
     /// Voices repeat on a device with few of them; pitch tells two parts on one
     /// voice apart, and the character's name on screen does the identifying.
-    private static let pitches: [Float] = [1.0, 0.86, 1.14, 0.93, 1.07]
+    static let pitches: [Float] = [1.0, 0.86, 1.14, 0.93, 1.07]
 
     func render(_ text: String, part: PartID, rate: Float) async -> StandInAudio? {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)

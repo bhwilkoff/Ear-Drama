@@ -121,6 +121,7 @@ struct EarDramaApp: App {
                 ProductionWindow_macOS(productionID: id)
                     .environment(plays)
                     .environment(player)
+                    .environment(account)
                     .environment(store)
                     .tint(Color.brandSecondary)
             }

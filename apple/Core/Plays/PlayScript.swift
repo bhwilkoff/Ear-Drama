@@ -151,6 +151,9 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     let kind: String
     let title: String
     let authors: [Author]
+    /// The record's own year, when it has one (Decision 067: a play is marked
+    /// only by facts from its record).
+    var year: Int? = nil
     let source: Source
     let rights: Rights
     let roles: [Role]
@@ -158,6 +161,29 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
 
     var authorLine: String {
         authors.compactMap(\.name).map(Self.displayName).joined(separator: ", ")
+    }
+
+    /// The authors with their years where the record has them:
+    /// "Henry Fisk Carlton (1893–1973)".
+    var authorLineWithYears: String {
+        authors.compactMap { author in
+            author.name.map { name in
+                let years = switch (author.born, author.died) {
+                case let (born?, died?): " (\(born)–\(died))"
+                case let (born?, nil): " (b. \(born))"
+                case let (nil, died?): " (d. \(died))"
+                case (nil, nil): ""
+                }
+                return Self.displayName(name) + years
+            }
+        }
+        .joined(separator: ", ")
+    }
+
+    /// "12 parts · 840 lines": the speaking parts and every line of the script.
+    var lengthLine: String {
+        let parts = castParts.filter { $0.id.isSpeaking }.count
+        return "\(parts) \(parts == 1 ? "part" : "parts") · \(lines.count.formatted()) \(lines.count == 1 ? "line" : "lines")"
     }
 
     /// "Carlton, Henry Fisk" as Gutenberg files it reads "Henry Fisk Carlton".

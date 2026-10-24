@@ -63,6 +63,9 @@ def script_entry(record, rights, parsed):
         "kind": record["kind"],
         "title": title,
         **({"collection": collection} if collection else {}),
+        # A play is marked only by facts from its record (Decision 067): the year is the
+        # record's own publication year, never estimated.
+        **({"year": record["published"]["year"]} if (record.get("published") or {}).get("year") else {}),
         "authors": [{"name": a.get("name"), "born": a.get("born"), "died": a.get("died")}
                     for a in record.get("authors") or []],
         "source": {"name": record["source"]["name"], "url": record["source"]["url"]},

@@ -63,6 +63,12 @@ const LiveAudio = (() => {
         node.connect(ctx.destination);
       },
 
+      /** The speaker only, for a listen-through: no microphone is asked for. */
+      async startPlayback() {
+        if (!ctx) ctx = new AudioContext();
+        await ctx.resume();
+      },
+
       beginCapture(onChunk) { capturing = { chunks: [], onChunk }; },
       endCapture() {
         const c = capturing;

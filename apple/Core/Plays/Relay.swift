@@ -3,14 +3,14 @@ import Foundation
 /// The relay (PLAYS-DESIGN §2.3-2.5): pure functions of the script and the
 /// production, so every platform can prove the same order.
 ///
-/// Pending owner (C7): strictly one part at a time, in a fixed order, largest
-/// part first. Only the next part in that order can be taken, and only while no
-/// other part is being recorded. Sound effects and stage directions come last
-/// and may be left silent; a speaking part may not (C6, below).
+/// C7 (owner 2026-10-23): any open part, in any order, while no other part is
+/// being recorded (one microphone). The largest open part is suggested, never
+/// forced. Sound effects and stage directions may be left silent; a speaking
+/// part may not (C6, below).
 nonisolated enum Relay {
     enum Refusal: Error, Equatable {
         case anotherPartIsRecording(PartID)
-        case notNext(expected: PartID?)
+        case notOpen
         case linesMissing([String])
         case speakingPartCannotBeSilent
     }
@@ -22,8 +22,8 @@ nonisolated enum Relay {
         order(script).first { production.state(of: $0).status == .recording }
     }
 
-    /// The part the relay hands the device to next: the first open part in the
-    /// order, or nil while a part is recording or when every part is through.
+    /// The suggested part: the first open part in the order, or nil while a
+    /// part is recording or when every part is through.
     static func next(_ production: Production, _ script: PlayScript) -> PartID? {
         guard current(production, script) == nil else { return nil }
         return order(script).first { production.state(of: $0).status == .open }
@@ -32,8 +32,7 @@ nonisolated enum Relay {
     static func take(_ part: PartID, performer: String?, in production: Production,
                      script: PlayScript) throws(Refusal) -> Production {
         if let current = current(production, script) { throw .anotherPartIsRecording(current) }
-        let next = next(production, script)
-        guard next == part else { throw .notNext(expected: next) }
+        guard production.state(of: part).status == .open else { throw .notOpen }
         var p = production
         let name = performer?.trimmingCharacters(in: .whitespacesAndNewlines)
         p.parts[part] = PartState(status: .recording, performer: (name?.isEmpty ?? true) ? nil : name)
@@ -50,7 +49,7 @@ nonisolated enum Relay {
     /// of its lines has a take, because a play cannot be finished with a stand-in
     /// in it (§5 rule 4). A sound or directions part may leave lines silent.
     static func finish(_ part: PartID, in production: Production, script: PlayScript) throws(Refusal) -> Production {
-        guard production.state(of: part).status == .recording else { throw .notNext(expected: current(production, script)) }
+        guard production.state(of: part).status == .recording else { throw .notOpen }
         if part.isSpeaking {
             let missing = missingLines(part, in: production, script: script)
             if !missing.isEmpty { throw .linesMissing(missing) }
@@ -60,15 +59,12 @@ nonisolated enum Relay {
         return p
     }
 
-    /// Pending owner (C6): nobody takes a part. Only sound effects and stage
+    /// C6: nobody takes a part. Only sound effects and stage
     /// directions may be left silent; a speaking part nobody takes leaves the play
     /// unfinished, and it never gets a stored synthetic voice.
     static func leaveSilent(_ part: PartID, in production: Production, script: PlayScript) throws(Refusal) -> Production {
         guard !part.isSpeaking else { throw .speakingPartCannotBeSilent }
-        let status = production.state(of: part).status
-        guard status == .recording || next(production, script) == part else {
-            throw .notNext(expected: next(production, script))
-        }
+        guard [.open, .recording].contains(production.state(of: part).status) else { throw .notOpen }
         var p = production
         p.parts[part, default: PartState()].status = .silent
         return p
@@ -77,9 +73,7 @@ nonisolated enum Relay {
     /// Back to a part that is through, to re-take a line. Still one part at a time.
     static func reopen(_ part: PartID, in production: Production, script: PlayScript) throws(Refusal) -> Production {
         if let current = current(production, script) { throw .anotherPartIsRecording(current) }
-        guard [.done, .silent].contains(production.state(of: part).status) else {
-            throw .notNext(expected: next(production, script))
-        }
+        guard [.done, .silent].contains(production.state(of: part).status) else { throw .notOpen }
         var p = production
         p.parts[part, default: PartState()].status = .recording
         return p

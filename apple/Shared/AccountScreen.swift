@@ -116,8 +116,6 @@ struct DeleteAccountModifier: ViewModifier {
 #if os(iOS) || os(macOS)
 struct AccountScreen: View {
     @Environment(AccountStore.self) private var account
-    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
-    @Environment(\.colorScheme) private var colorScheme
     @State private var confirmDelete = false
 
     var body: some View {
@@ -128,18 +126,8 @@ struct AccountScreen: View {
                     .foregroundStyle(Color.brandTextMuted)
             case .signedOut:
                 Section {
-                    AppleSignInButton()
-                        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-                        .frame(height: 44)
-                    if account.isGoogleAvailable {
-                        Button("Sign in with Google") { Task { await signInWithGoogle() } }
-                    }
-                    if let error = account.lastError {
-                        Label(error, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(Color.semanticError)
-                    }
+                    SignInButtons()
                 }
-                .disabled(account.isWorking)
             case .signedIn(let provider):
                 AccountStatusSection(provider: provider)
                 Section {
@@ -151,6 +139,31 @@ struct AccountScreen: View {
         }
         .navigationTitle("Account")
         .modifier(DeleteAccountModifier(isPresented: $confirmDelete))
+    }
+}
+
+/// Signed out: Apple's button first, Google under it (App Review 4.8), and
+/// the last error. The account screen's, and Start Recording's (PLAYS-DESIGN
+/// §2.3: recording needs an account).
+struct SignInButtons: View {
+    @Environment(AccountStore.self) private var account
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Group {
+            AppleSignInButton()
+                .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                .frame(height: 44)
+            if account.isGoogleAvailable {
+                Button("Sign in with Google") { Task { await signInWithGoogle() } }
+            }
+            if let error = account.lastError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(Color.semanticError)
+            }
+        }
+        .disabled(account.isWorking)
     }
 
     private func signInWithGoogle() async {

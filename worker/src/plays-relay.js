@@ -6,13 +6,12 @@
  * The part rules are js/plays-core.js's and apple/Core/Plays' (castParts,
  * linePart, the relay), carried to a production that lives on the Worker:
  *
- * C7, PENDING OWNER: strictly one part at a time, in a fixed order, largest
- * part first. Only the next open part can be claimed, and only while no other
- * part records. A finished part can be reopened for a re-take only while no
- * other part records. In phase 2 a claim lapses CLAIM_TTL_MS after it was
- * made, and the part is open again (its takes stay).
- * C6, PENDING OWNER: sound and directions may be left silent; a speaking part
- * may not.
+ * C7 (owner 2026-10-23, Decision 067): parts in any order, the largest open
+ * part suggested first (`next`), never forced. Any open part can be claimed
+ * while no other part records. A finished part can be reopened for a re-take
+ * only while no other part records. In phase 2 a claim lapses CLAIM_TTL_MS
+ * after it was made, and the part is open again (its takes stay).
+ * C6: sound and directions may be left silent; a speaking part may not.
  */
 
 export const DIRECTIONS = "directions";
@@ -101,8 +100,7 @@ export function claimRefusal(cast, rows, part, now) {
   if (!castParts(cast).some((p) => p.id === part)) return { error: "no_such_part" };
   const cur = current(cast, rows, now);
   if (cur) return { error: "another_part_is_recording", detail: cur };
-  const nx = next(cast, rows, now);
-  if (nx !== part) return { error: "not_next", detail: nx };
+  if (statusOf(rows, part, now) !== "open") return { error: "not_open" };
   return null;
 }
 
@@ -124,8 +122,8 @@ export function finishRefusal(cast, rows, part, userId, chosenLines, now) {
 export function silentRefusal(cast, rows, part, userId, now) {
   if (isSpeaking(part)) return { error: "speaking_part_needs_a_voice" };
   if (isClaimant(rows, part, userId, now)) return null;
-  const nx = next(cast, rows, now);
-  return nx === part ? null : { error: "not_next", detail: nx };
+  if (current(cast, rows, now)) return { error: "another_part_is_recording", detail: current(cast, rows, now) };
+  return statusOf(rows, part, now) === "open" ? null : { error: "not_open" };
 }
 
 export function reopenRefusal(cast, rows, part, userId, directorId, now) {
