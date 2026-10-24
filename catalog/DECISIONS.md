@@ -184,3 +184,20 @@ a change to the order rule applies to the slots appended after the kept ones.
 A pass over a series the wait skipped is lost for that cycle, not deferred
 (the file carries no cursor). A station that cannot fill three days without a
 repeat fails the build rather than repeat.
+
+## 010. A semicolon list of artists is credits, never one person
+
+**Rule**: `enrich_db.parse_artists` splits Goldin's Artists string on top-level
+semicolons first (when 2+ non-empty segments), then parses each segment as
+before; the person id is the normal one for the name (`People.goldin`).
+
+**Why**: Goldin types some cast lists with semicolons, and the comma-only
+split made the whole list one person: 1,247 people rows with ';' in the name
+(a whole cast under one name, shown in Search and as a person page).
+
+**How to apply**: measured 2026-10-24 on the real database: people rows with
+';' 1,247 to 7 (two are OTRR names, five are strings with an unbalanced quote
+that cannot be split safely; counted as `goldin_compound_names_unparsed`),
+people 53,925 to 53,101, episode credits 334,592 to 340,487. A ';' inside a
+parenthesis is not a separator. Comma-only variants were measured (9 names)
+and left alone.

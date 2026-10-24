@@ -121,7 +121,12 @@ def parse_artists(s):
     'William Spier (producer, editor, director)' gives three rows; a quoted
     parenthesis ('Joseph Kearns ("The Man In Black")') is a character; a long
     parenthesis that is not a list of short roles is kept as a note, not a role.
-    'Sammy Davis, Jr.' stays one name."""
+    'Sammy Davis, Jr.' stays one name. A string with 2+ non-empty ';' segments
+    is a cast list Goldin typed with semicolons: each segment is parsed on its
+    own, so no whole cast list becomes one person."""
+    segs = [x for x in split_top(s or "", ";") if x.strip(" ,")]
+    if len(segs) >= 2:
+        return [a for seg in segs for a in parse_artists(seg)]
     parts = split_top(s or "")
     merged = []
     for p in parts:
@@ -624,6 +629,8 @@ def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases
             credited[ep].add((key, a["role"]))
             crow.append((ep, key, a["name"], a["role"], a["character"], "goldin", str(rec["cat"]), rec["ep_how"]))
             stats["credits_goldin"] += 1
+            if ";" in a["name"]:
+                stats["goldin_compound_names_unparsed"] += 1
     for ep, cat in ep_goldin.items():
         db.execute("UPDATE episodes SET goldin_cat = ? WHERE id = ?", (cat, ep))
 
