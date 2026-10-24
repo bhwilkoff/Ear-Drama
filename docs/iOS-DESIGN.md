@@ -102,8 +102,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   clock (`RadioClock.onAir`, `apple/Core/Radio/Tonight.swift`, golden
   against `js/api.test.js`), and nothing plays after the evening.
 - Not built anywhere yet, because the data plane does not carry them:
-  R2 runs, R3 arc ends, R4 gaps, R6 other performances, R7 auditions,
-  R8 commercial chapters.
+  R2 runs, R4 gaps, R6 other performances, R7 auditions (R3 arc ends:
+  §12; R8 commercial chapters wait on data, contract §3.2a).
 
 ## §2 Data plane
 
@@ -522,10 +522,16 @@ Listed, not fixed. Each item names where it is.
 - **Listening live drifts at a speed other than 1x**: the offset is
   taken at join, and the player's speed is the listener's.
 
-- **What plays next is the owner's rule** (Decision 067): one episode,
-  then whatever the person queued (the synced `ListeningQueue`), whatever
-  its series, then stop (`PlaybackQueue.next`). A serial playing to its
-  arc's end waits on the runs table. The same on every platform.
+- **What plays next is the owner's rule** (Decision 067): a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc
+  (`queue: false`). `PlaybackQueue.after` and `.offer` are the rule;
+  `CatalogDatabase.arc(of:)` reads it; Now Playing's "Next:" line names what
+  is up next and `NextStoryButton` offers the next story on the last part
+  (iOS, iPadOS, macOS's transport bar, tvOS's action row), never for a
+  Listen Together guest. The same on every platform.
+- **R8 commercial chapters**: no data marks a commercial's start and end
+  yet (contract §3.2a), so no chapters are drawn; when it does,
+  `AVPlayerItem.navigationMarkerGroups` carries them. Skip stays a fixed
+  interval.
 - **Resume and "played" differ from the web**: past 30 s and played
   within 45 s of the end, against the web's 10 s to 95% window (§5.6).
   Decision 062 settles the fade, speeds, save cadence, and rewind

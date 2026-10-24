@@ -201,3 +201,33 @@ that cannot be split safely; counted as `goldin_compound_names_unparsed`),
 people 53,925 to 53,101, episode credits 334,592 to 340,487. A ';' inside a
 parenthesis is not a separator. Comma-only variants were measured (9 names)
 and left alone.
+
+## 011 — Story arcs come from what titles say, and any doubt leaves the episodes single
+*Date: 2026-10-24*
+
+A story arc (contract §3.3, `arcs` and `arc_parts`; `tools/arcs.py`) is the
+parts of one serial story, in order. It is derived only from titled parts in
+one series ("The Molly K Matter - Ep 3", "Space Station of Danger, Part 2",
+"Chapter 4"), and kept only when the parts run 1 to n with no gap and no part
+twice, n is at least 2 and no more than a stated "of N", and the dates, where
+known, rise with the part, neighbors at most 45 days apart. A bare "Episode 7",
+or the series' own name and a number, numbers a series, not a story. Same-titled
+dated episodes without a part number are not arcs.
+
+**Why**: Decision 067 plays a serial to its arc's end and stops, so an arc
+decides what plays without being asked. A wrong arc plays the wrong thing on
+its own; a missing arc only falls back to the rule that stood before (one
+episode, then the queue). Measured 2026-10-24 on the 121,907-episode served
+build: 1,988 candidate stories, 480 arcs over 3,886 episodes in 238 series
+(Johnny Dollar's 1955-56 five-part stories make 49); 330 refused for a lost
+part, 23 for a part twice (The Molly K Matter's "Ep 5" and "pt5"), 2 for parts
+against the calendar. A gap is refused, not cut short: playing parts 1 and 2 and
+then offering the next story would skip a part 4 that survives.
+
+**How to apply**: loosen a rule only with a measurement of what it adds and a
+sample read against the episodes. The web serves an arc only whole (a part the
+gate holds back would be skipped), so its counts are smaller (198 arcs on the
+clean-only web). `next_arc` is the series' following arc whose first part is
+recommendable (`recommendAnd`: the offer chooses for the listener); parts inside
+an arc play regardless, since the listener chose the story. No source marks a
+commercial's start and end yet, so there are no chapters (R8); see contract §3.2a.

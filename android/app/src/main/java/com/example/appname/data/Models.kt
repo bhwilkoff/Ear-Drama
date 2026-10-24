@@ -93,6 +93,9 @@ data class Recording(
     val partial: Boolean,
 )
 
+/** An arc part's view ahead (contract §3.3): the parts after it, in order, and the next story's first part. */
+data class ArcAhead(val rest: List<String>, val nextStory: String?)
+
 data class EpisodeDetail(
     val episode: EpisodeRow,
     val rights: String,

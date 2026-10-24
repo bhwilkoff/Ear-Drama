@@ -113,6 +113,8 @@ struct TransportBar_macOS: View {
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
                     .fixedSize()
+                NextStoryButton()
+                    .fixedSize()
                 if let item = player.item, let url = item.episode.transcriptURL {
                     Button {
                         openWindow(id: TranscriptRef.windowID,

@@ -26,6 +26,7 @@ struct EarDramaApp: App {
         let history = ListeningHistory()
         let player = AudioPlayer(history: history)
         player.resolveDetail = { [weak catalog] id in await catalog?.episodeDetail(id) }
+        player.resolveArc = { [weak catalog] id in await catalog?.arc(id) }
         player.cardImage = { episode in
             let renderer = ImageRenderer(content: TypeCard(name: episode.seriesName, line: episode.network,
                                                            genre: episode.seriesGenre).frame(width: 256, height: 256))

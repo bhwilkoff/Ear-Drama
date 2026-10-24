@@ -181,9 +181,19 @@ enum Fixture {
             UPDATE episodes SET star = 'p1' WHERE id = 'suspense|1943-05-25';
             UPDATE episodes SET star = 'p3' WHERE id = 'suspense|1942-10-20';
             """)
+        // Two story arcs of Suspense (contract §3.3), the first offering the second.
+        try exec("""
+            INSERT INTO arcs VALUES ('suspense|arc|a', 'suspense', 'The Burning Court', 2, 'titled-parts', 'suspense|arc|b');
+            INSERT INTO arcs VALUES ('suspense|arc|b', 'suspense', 'Sorry, Wrong Number', 2, 'titled-parts', NULL);
+            INSERT INTO arc_parts VALUES ('suspense|1942-06-17', 'suspense|arc|a', 1);
+            INSERT INTO arc_parts VALUES ('suspense|1942-10-20', 'suspense|arc|a', 2);
+            INSERT INTO arc_parts VALUES ('suspense|1943-05-25', 'suspense|arc|b', 1);
+            INSERT INTO arc_parts VALUES ('suspense|lost', 'suspense|arc|b', 2);
+            """)
         if dropArt {
+            // An older catalog: no portraits, and no arcs.
             try exec("DROP TABLE art; ALTER TABLE people DROP COLUMN portrait; ALTER TABLE series DROP COLUMN star; "
-                     + "ALTER TABLE episodes DROP COLUMN star;")
+                     + "ALTER TABLE episodes DROP COLUMN star; DROP TABLE arcs; DROP TABLE arc_parts;")
         }
         // One episode links a castable script (contract §3.1, Decision 068).
         try exec("UPDATE episodes SET script = 'grw-A1' WHERE id = 'suspense|1943-05-25';")
@@ -513,6 +523,32 @@ struct CatalogQueryTests {
         #expect(PlaybackQueue.next(after: "suspense|1942-06-17", queued: []) == nil,
                 "with nothing queued, nothing plays: the rest of the series is never started")
         #expect(PlaybackQueue.next(after: "a|1", queued: ["a|1", "b|2"]) == "b|2", "the episode just played is skipped")
+    }
+
+    /// Decision 067: an arc's next part plays before anything queued; after the
+    /// arc's last part only the queue; the next story is offered, never up next.
+    @Test func anArcPlaysToItsEndThenTheQueue() {
+        let first = ArcPosition(arcID: "a", part: 1, parts: 2, nextPart: "s|2", nextStory: nil)
+        let last = ArcPosition(arcID: "a", part: 2, parts: 2, nextPart: nil, nextStory: "s|3")
+        #expect(PlaybackQueue.after("s|1", arc: first, queued: ["q|1"]) == .part("s|2"), "the next part first")
+        #expect(PlaybackQueue.after("s|2", arc: last, queued: ["q|1"]) == .queue("q|1"), "then what was queued")
+        #expect(PlaybackQueue.after("s|2", arc: last, queued: []) == nil, "the next story never starts by itself")
+        #expect(PlaybackQueue.offer(last) == "s|3", "it is offered on the last part")
+        #expect(PlaybackQueue.offer(first) == nil, "and only there")
+        #expect(PlaybackQueue.after("x|1", arc: nil, queued: ["q|1"]) == .queue("q|1"), "outside an arc: the queue")
+    }
+
+    /// Contract §3.3: the published arc, its next part, and on the last part the next story.
+    @Test func arcsComeFromTheCatalog() throws {
+        let db = try Fixture.open()
+        #expect(db.arc(of: "suspense|1942-06-17")
+                == ArcPosition(arcID: "suspense|arc|a", part: 1, parts: 2, nextPart: "suspense|1942-10-20", nextStory: nil))
+        #expect(db.arc(of: "suspense|1942-10-20")?.nextStory == "suspense|1943-05-25", "the last part offers the next story")
+        #expect(db.arc(of: "suspense|lost").map { [$0.nextPart, $0.nextStory] } == [nil, nil], "the last story offers none")
+        #expect(db.arc(of: "mrsorrowful|1950-05-25") == nil, "outside an arc")
+        #expect(db.arc(of: "suspense|old-slug")?.arcID == "suspense|arc|b", "an alias resolves")
+        let older = try Fixture.open(dropArt: true)
+        #expect(older.arc(of: "suspense|1942-06-17") == nil, "a catalog that predates arcs has none")
     }
 
     /// Contract §5.5: the published words, read from `meta.rightsLines`.

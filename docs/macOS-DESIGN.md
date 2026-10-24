@@ -268,7 +268,8 @@ the Mac target.
 - **No minimum size on the main window**; the template sets one so the
   transport bar never crushes the split view.
 - **Every iOS §12 item that lives in shared code holds here too**: the
-  queue rule, the resume and "played" windows, the untitled fallback,
+  queue and arc rule (the transport bar carries "Next story" on an arc's
+  last part), the resume and "played" windows, the untitled fallback,
   uncounted facets, seasons as sections, the Detail series link as a
   third push, no Queue or Following, and the two explaining empty
   states. Haptics are n/a on the Mac (the trackpad's feedback is the

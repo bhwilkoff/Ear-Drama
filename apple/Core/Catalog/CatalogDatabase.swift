@@ -33,6 +33,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let hasEpisodeStar: Bool
     /// The projection links episodes to castable scripts (contract §3.1, Decision 068).
     private let hasScript: Bool
+    private let hasArcs: Bool
     /// Every series' genre and face, read once: rows that mix series draw a tile from it.
     private let seriesLook: [String: (genre: String?, face: Face?)]
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
@@ -70,6 +71,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         hasArt = art
         hasEpisodeStar = art && Self.columnExists(h, table: "episodes", column: "star")
         hasScript = Self.columnExists(h, table: "episodes", column: "script")
+        hasArcs = Self.columnExists(h, table: "arcs", column: "next_arc")
+            && Self.columnExists(h, table: "arc_parts", column: "part")
         seriesLook = Self.loadSeriesLook(h, withFaces: art && Self.columnExists(h, table: "series", column: "star"))
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         publishedShelves = Self.metaText(h, key: "listenShelves").flatMap(PublishedShelf.parse)
@@ -326,6 +329,25 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let rightsLine = RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
         return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings,
                              rightsLine: rightsLine, star: star, script: script)
+    }
+
+    /// The story arc an episode is a part of (contract §3.3, Decision 067), or
+    /// nil outside an arc and for a catalog that predates arcs. The next story
+    /// is named only on the last part (`next_arc` already applies recommendAnd).
+    func arc(of rawID: String) -> ArcPosition? {
+        guard hasArcs else { return nil }
+        let id = resolve(rawID)
+        return rows("""
+            SELECT p.arc_id, p.part, a.parts,
+                (SELECT n.episode_id FROM arc_parts n WHERE n.arc_id = p.arc_id AND n.part = p.part + 1),
+                (SELECT f.episode_id FROM arc_parts f WHERE f.arc_id = a.next_arc AND f.part = 1)
+            FROM arc_parts p JOIN arcs a ON a.id = p.arc_id WHERE p.episode_id = ?
+            """, [.text(id)]) { row -> ArcPosition? in
+            guard let arcID = row.text(0), let part = row.int(1), let parts = row.int(2) else { return nil }
+            let nextPart = row.text(3)
+            return ArcPosition(arcID: arcID, part: part, parts: parts, nextPart: nextPart,
+                               nextStory: nextPart == nil ? row.text(4) : nil)
+        }.first ?? nil
     }
 
     /// Each series' linked script ids (contract §3.1), for Browse's "Has a script".

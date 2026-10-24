@@ -135,7 +135,19 @@ rows as `counts.loudness`.
 (catalog DECISIONS 007): complete before partial, domestic before AFRS, OTRR's
 copy, then measured bitrate. The versions picker lists the rest in rank order.
 
-### 3.3 `series`, `runs`, `people`, `credits`, `art`
+### 3.2a Commercial segments (R8): a seam, no data yet
+
+R8 shows a broadcast's commercials as chapters and never skips them. No
+source the pipeline reads marks where a commercial starts and ends (checked
+2026-10-24: the research database's `recordings` carry no segment times, and
+archive.org's files carry no chapter marks), so no projection carries chapters
+and no player draws them. When a source does, its times arrive as
+`segments (episode_id, rank, start_s, end_s, kind)` keyed to the copy they were
+measured on, and each player shows them as chapters where the platform has
+them (Apple's `AVPlayerItem.navigationMarkerGroups`, Media3's chapter metadata,
+none on the web), never as a skip. Segment times are never estimated.
+
+### 3.3 `series`, `runs`, `people`, `credits`, `art`, `arcs`
 
 - `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
@@ -149,6 +161,19 @@ copy, then measured bitrate. The versions picker lists the rest in rank order.
   to `name` when an older catalog lacks the column; none re-derives it.
 - `runs`: `(id, series_key, first_date, last_date, kind, network)`; kind is one
   of anthology, character, serial, strip, comedy-variety, news, broadcast-day.
+  Not published yet: the story arcs below decide queueing without it.
+- **`arcs`** `(id, series_key, title, parts, method, next_arc)` and
+  **`arc_parts`** `(episode_id PRIMARY KEY, arc_id, part)`: one serial story's
+  parts in order (Decision 067, catalog DECISIONS 011, `catalog/tools/arcs.py`).
+  `method` says how it was derived (`titled-parts`); `next_arc` is the series'
+  following arc whose first part is recommendable, or NULL; `title` is the
+  story's name from its first part's title, or NULL ("Chapter 1"). Guarantees
+  (`catalog/tests/test_arcs.py`, each broken once; the build refuses to publish
+  otherwise): every arc has at least two parts, every part is a served episode
+  of the arc's series, no episode is in two arcs, and dated parts rise in order.
+  MEASURED 2026-10-24 on the 121,907-episode build: 480 arcs over 3,886
+  episodes in 238 series. A client plays the next part when one ends, and on
+  the last part offers `next_arc`'s part 1 (§5 `arcOf`).
 - `people`: `id`, `name`, `birth`, `death`, `portrait` (an `art.id` or NULL).
 - `credits`: `(episode_id, person_id, role, character)`, the one home of
   credits: Detail joins it to `people` (they are not repeated in `detail_json`).
@@ -257,7 +282,11 @@ passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
 face's name) and `art`, a series page carries both as keys, a credit appends
 `art` (its person's portrait or null), and a Detail row appends `star` (the
 episode's face, a person id among its credits). A series row appends `scripts` (how many of its served episodes carry a
-`script`) and a Detail row appends `script` (§3.1, or null). Web search does not index transcript words yet: the
+`script`) and a Detail row appends `script` (§3.1, or null), then `arc`
+(`fields.arc`: `id`, `part`, `parts`, `next`, `nextStory`; null outside an
+arc). The web serves an arc only whole: one with a part the clean-only gate
+holds back is not served, and is never another arc's `nextStory` (MEASURED
+2026-10-24: 198 arcs over 2,942 of the web's 15,125 episodes). Web search does not index transcript words yet: the
 served projection's FTS is contentless, so the web builder has no text to cut
 from, and adding about 9,000 transcripts' vocabulary to the two-character term
 files is a size to measure before it is built. Until then, transcript search is
@@ -284,6 +313,7 @@ Every client reproduces these natively; each says which filter clauses it applie
 | `tonight(localDate)` | the evening for the person's own date | `recommendAnd` |
 | `withPerson(id)` | the person (`people`: name, birth, death, portrait) and every served credit (`credits` joined to `episodes`), oldest first, one row per credit; a client groups by series and may reverse the order | none |
 | `searchPeople(q)` | people whose name has every query word as a word prefix, most served episodes first | none |
+| `arcOf(id)` | the episode's arc, its part and part count, the next part's id (none on the last part), and on the last part only the next story's first part | none (`next_arc` already applies `recommendAnd`) |
 
 ### Named filter clauses
 

@@ -61,6 +61,7 @@ function boot(env = {}) {
     vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf-8'), ctx, { filename: f });
   }
   vm.runInContext('globalThis.Player = Player; globalThis.Store = Store;', ctx);
+  ctx.Player.setArcSource(env.arcSource || (() => null));
   const tap = () => (docListeners.pointerdown || []).forEach(fn => fn());
   return { audio, storage, tap, Player: ctx.Player, Store: ctx.Store };
 }
@@ -185,6 +186,83 @@ test('067: an episode ends, the queue plays next whatever its series, then playb
   assertEq(Player.current.id, 'y|1950-01-01', 'the queued episode plays');
   audio.ended = true; audio.fire('ended');
   assertEq(Player.current.id, 'y|1950-01-01', 'with the queue empty nothing else starts');
+});
+
+/** A three-part story and the series' next one, as API.arcOf hands them over. */
+const part = (n) => ({ id: `jd|1955-10-0${n + 2}`, title: `The Macormack Matter - Ep ${n}`, series: 'jd',
+                       url: `https://archive.org/download/jd/${n}.mp3` });
+const nextOne = { id: 'jd|1955-10-10', title: 'The Molly K Matter - Ep 1', series: 'jd', url: 'https://archive.org/download/jd/m.mp3' };
+const story = (id) => {
+  const n = Number(id.slice(-1)) - 2;
+  if (id.startsWith('jd|1955-10-0') && n >= 1 && n <= 3) {
+    return { part: n, parts: 3, next: n < 3 ? part(n + 1) : null, nextStory: n === 3 ? nextOne : null };
+  }
+  return null;
+};
+
+test('067: a part of an arc is followed by the next part, before anything queued', () => {
+  const { audio, Player, Store } = boot({ arcSource: story });
+  const other = { id: 'y|1950-01-01', title: 'Another', series: 'y', url: 'https://archive.org/download/y/b.mp3' };
+  Store.enqueue(other);
+  Player.load(part(1));
+  assertEq(Player.upNext().kind, 'part', 'the next part is up next');
+  assertEq(Player.nextStory(), null, 'no story is offered before the last part');
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, part(2).id, 'part 2 plays');
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, part(3).id, 'part 3 plays');
+  assertEq(Player.nextStory() && Player.nextStory().id, nextOne.id, 'the last part offers the next story');
+  assertEq(Player.upNext().card.id, other.id, 'after the arc only the queue is up next');
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, other.id, 'what the person queued plays after the arc');
+});
+
+test('067: at an arc\'s end playback stops; the next story is offered, never started', () => {
+  const { audio, Player } = boot({ arcSource: story });
+  const kinds = [];
+  Player.onChange(k => kinds.push(k));
+  Player.load(part(3));
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, part(3).id, 'nothing else starts');
+  assertEq(kinds.includes('ended'), true, 'playback stopped');
+  assertEq(Player.nextStory().id, nextOne.id, 'the offer stays after the end');
+  Player.load(Player.nextStory());
+  assertEq(Player.current.id, nextOne.id, 'the person starts it');
+});
+
+test('067: a live slot follows its clock, never an arc', () => {
+  const { audio, Player } = boot({ arcSource: story });
+  Player.load(part(1), { at: 60, arc: false });
+  assertEq(Player.upNext(), null, 'no part is up next on the air');
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, part(1).id, 'the slot ends; the station starts what is next');
+});
+
+test('067: an arc read still in flight is waited for at the end, and dropped if the person moved on', async () => {
+  let release;
+  const { audio, Player } = boot({ arcSource: (id) => new Promise(r => { release = () => r(story(id)); }) });
+  Player.load(part(1));
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, part(1).id, 'nothing starts before the arc is known');
+  release();
+  await new Promise(r => setTimeout(r, 0));
+  assertEq(Player.current.id, part(2).id, 'then the next part plays');
+  Player.load(part(1));
+  const first = release;
+  Player.load(nextOne);
+  first();
+  await new Promise(r => setTimeout(r, 0));
+  assertEq(Player.upNext(), null, 'a stale read never lands on the episode now playing');
+});
+
+test('067: a failed arc read falls back to one episode, then the queue', async () => {
+  const { audio, Player, Store } = boot({ arcSource: () => Promise.reject(new Error('offline')) });
+  const other = { id: 'y|1950-01-01', title: 'Another', series: 'y', url: 'https://archive.org/download/y/b.mp3' };
+  Store.enqueue(other);
+  Player.load(part(1));
+  await new Promise(r => setTimeout(r, 0));
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, other.id, 'the queue plays');
 });
 
 test('067: a Listen Together guest\'s play and pause are their own hold, handed to the room session', () => {

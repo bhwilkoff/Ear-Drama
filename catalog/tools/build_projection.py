@@ -34,6 +34,7 @@ import transcript_gate as TG
 import art_policy as AP
 import episode_scripts as ES
 from audit_audio_rights import pd_published_year
+import arcs as ARCS
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
@@ -73,6 +74,11 @@ CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, heig
     license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
 CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
+-- Story arcs (arcs.py, contract §3.3): a serial plays to its arc's end and stops (Decision 067).
+-- next_arc is the series' following arc whose first part is recommendable, offered, never started.
+CREATE TABLE arcs (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, title TEXT, parts INTEGER NOT NULL,
+    method TEXT NOT NULL, next_arc TEXT);
+CREATE TABLE arc_parts (episode_id TEXT PRIMARY KEY, arc_id TEXT NOT NULL, part INTEGER NOT NULL);
 -- archive.org's own download count for each item a served recording comes from (contract §3.3);
 -- an item whose count was never read is absent.
 CREATE TABLE items (archive_id TEXT PRIMARY KEY, downloads INTEGER NOT NULL);
@@ -89,6 +95,7 @@ CREATE INDEX episodes_series ON episodes (series_key, air_date);
 CREATE INDEX episodes_date ON episodes (air_date);
 CREATE INDEX credits_person ON credits (person_id);
 CREATE INDEX credits_episode ON credits (episode_id);
+CREATE INDEX arc_parts_arc ON arc_parts (arc_id, part);
 """
 
 
@@ -208,9 +215,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     used = {aid for (aid,) in d.execute("SELECT DISTINCT archive_id FROM recordings")}
     d.executemany("INSERT INTO items VALUES (?,?)",
                   sorted((a, n) for a, n in counts_by_item.items() if a in used and isinstance(n, int)))
+    write_arcs(d)
     d.executescript(INDEXES)
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("episodes", "recordings", "series", "people", "credits", "art")}
+              for t in ("episodes", "recordings", "series", "people", "credits", "art", "arcs", "arc_parts")}
     counts["portraits"] = d.execute("SELECT COUNT(*) FROM people WHERE portrait IS NOT NULL").fetchone()[0]
     counts["seriesStars"] = d.execute("SELECT COUNT(*) FROM series WHERE star IS NOT NULL").fetchone()[0]
     counts["episodeStars"] = d.execute("SELECT COUNT(*) FROM episodes WHERE star IS NOT NULL").fetchone()[0]
@@ -234,6 +242,23 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     d.execute("VACUUM")
     d.close()
     return meta
+
+
+def write_arcs(d):
+    """Derive the story arcs over the episodes this projection serves (arcs.py) and write them."""
+    rows = list(d.execute("SELECT id, series_key, air_date, title FROM episodes"))
+    found, report = ARCS.derive(rows, dict(d.execute("SELECT key, name FROM series")))
+    bad = ARCS.violations(found, {r[0]: (r[1], r[2]) for r in rows})
+    if bad:
+        raise SystemExit("refusing to publish arcs: " + "; ".join(bad[:5]))
+    quiet = {eid for (eid,) in d.execute("SELECT id FROM episodes WHERE no_recommend IS NOT NULL")}
+    nxt = ARCS.next_arcs(found, lambda first: first not in quiet)
+    for a in found:
+        d.execute("INSERT INTO arcs VALUES (?,?,?,?,?,?)",
+                  (a["id"], a["series"], a["title"], len(a["parts"]), a["method"], nxt[a["id"]]))
+        d.executemany("INSERT INTO arc_parts VALUES (?,?,?)",
+                      [(eid, a["id"], i) for i, eid in enumerate(a["parts"], 1)])
+    print(json.dumps({"arcs": {k: report[k] for k in report}}), file=sys.stderr)
 
 
 def served_portraits(s, people):

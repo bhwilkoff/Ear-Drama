@@ -79,10 +79,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **R18** speed, sleep, and skip live on the player sheet.
 - **R20** the sleep menu lists "End of this episode" first, then 15, 30,
   45, and 60 minutes (`SleepTimer`); it fades, and once fired the queue
-  stops. What plays next is the owner's rule (Decision 067): one episode,
-  then whatever the person queued (the synced queue), whatever its series,
-  then stop (`PlaybackQueue.after`); a queued episode leaves the queue as it
-  starts.
+  stops. What plays next is the owner's rule (Decision 067): a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc
+  (`queue = false`). The player's playlist is the episode, the arc's
+  remaining parts (`CatalogDatabase.arcAhead`), then the synced queue
+  (`PlaybackQueue.after`); a queued episode leaves the queue as it starts.
+  The sheet's "Next story" button (`NowPlaying.nextStory`) shows on the
+  last part only, never for a Listen Together guest.
 - **R21** every icon button has a `contentDescription`; §7.3.
 - **The rights line** is the published `meta.rightsLines` words
   (contract §5.5, `CatalogDatabase.rightsLines`), the contract's own
@@ -93,8 +95,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   the slot on the air is read from the file's UTC instants on the one
   clock (`RadioClock.onAir`, `radio/Tonight.kt`, golden against
   `js/api.test.js`), and nothing plays after the evening.
-- Not built anywhere yet (data plane first): R2, R3 arc ends, R4, R6,
-  R7, R8.
+- Not built anywhere yet (data plane first): R2, R4, R6, R7. R8: no data
+  marks a commercial's start and end yet (contract §3.2a); Media3's chapter
+  metadata will carry them when it does.
 
 ## §2 Data plane
 
