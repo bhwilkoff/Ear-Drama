@@ -98,7 +98,7 @@ When shipping any user-facing feature:
 | Stations (evenings and genre stations on one clock) | 🚧 Tonight in 19xx from `tonight.json`; no genre stations | 🚧 Tonight; Listen live | 🚧 Tonight | 🚧 Tonight; Listen live focused | 🚧 Tonight; Listen live; TV focus stops | Was Radio. Gaps stated, never filled (R9); floor 0.25 provisional (owner, SCRATCHPAD 4) |
 | Surprise (a random episode, evening, and play; one tap) | 🚧 `?view=surprise` | 🚧 push from Home; iPad sidebar | 🚧 sidebar | 🚧 sidebar; no play | 🚧 Home top bar; no play on TV | Platform random, no cross-platform determinism; an evening plays its first surviving slot from the start, never a queue |
 | Search (titles, people, plays, transcript text, dates) | 🚧 word-prefix titles, people, plays; no transcripts yet | 🚧 FTS5 word-prefix; plays | 🚧 FTS5 word-prefix; plays | 🚧 FTS5 word-prefix | 🚧 FTS5 word-prefix; plays (not on TV) | |
-| Library (followed series, queue, downloads, history, ear dramas) | 🚧 device-local; Ear dramas; no downloads | 🚧 Ear dramas | 🚧 Ear dramas | 🚧 no Ear dramas | 🚧 Ear dramas (not on TV) | Device-local until sync (M5) |
+| Library (followed series, queue, downloads, history, ear dramas) | 🚧 device-local; Ear dramas; no downloads (Decision 071) | 🚧 Ear dramas | 🚧 Ear dramas | 🚧 no Ear dramas | 🚧 Ear dramas (not on TV) | Device-local until sync (M5) |
 | Start an ear drama (any page whose record carries a script) | 🚧 a play's page; an episode whose `script` is set (fixture-verified) | 🚧 a play's page; a linked episode | 🚧 a play's page or a linked episode, opens its window | n/a | 🚧 a play's page; a linked episode (not on TV) | Decision 068: `episodes.script` links only castable bundled scripts (`episode_scripts.py`). 2026-10-24: 0 linked; 616 served episodes match a Generic Radio Workshop script and wait on GRW's permission, and even then each needs its own work-layer evidence |
 
 ---
@@ -117,7 +117,7 @@ When shipping any user-facing feature:
 | What plays next: one episode, then the person's queue, then stop (Decision 067) | 🚧 | 🚧 plays a synced queue; no queue verbs yet | 🚧 same | 🚧 same | 🚧 plays a synced queue; no queue verbs yet | Arcs wait on the runs table (the serial row) |
 | Versions picker; domestic copy by default | 🚧 | 🚧 | 🚧 | 🚧 Versions section on Detail | 🚧 | catalog Decision 007 |
 | Transcripts, labeled automatic | 🚧 closed section, fetched on open | 🚧 sheet, from Detail and the player | 🚧 window, ⌥⌘T | 🚧 focus-scrolling reader | 🚧 route from Detail and the player | Shown only above the measured quality gate (058) |
-| Downloads | ⏳ | 🚧 background session; remove, remove all | 🚧 same, Library section | n/a | 🚧 WorkManager, same store | tvOS has no durable storage for media |
+| Downloads (an episode, a season, a whole run; a Downloads place by series; storage held; remove a series or all) | n/a: decided, Decision 071 (WEB-DESIGN §7.2a) | 🚧 background session, four at a time; series Download menu asks with count and size; Library row to the place | 🚧 same; toolbar menu, right-click Remove | n/a; Library says "Downloads are on iPhone, iPad, and Mac." | 🚧 WorkManager, four at a time; top-bar Download menu; `Route.Downloads` | Decision 071. A finished file plays with no network; a queued, failed, or partial one never plays. Lock screen offline: Apple falls back to the typographic card, Android always shows the card for a downloaded file. No real run downloaded by an agent; no device check |
 | Listen Together | 🚧 Worker rooms; ?room= link; guests follow, never drive; a guest's pause holds, play catches up | 🚧 SharePlay; capability off until the App ID has it | 🚧 SharePlay | 🚧 SharePlay during a call | 🚧 Worker rooms; ?room= link; guests follow; TV joins by code; a guest's pause holds, play catches up | Worker rooms on web and Android (Decision 065); a guest's own pause on every platform (Decision 067); Apple ports room-protocol.js, golden-checked; not run on devices |
 | Credits, privacy, and take-down pages | 🚧 /credits/, /privacy/, /takedown/; owner placeholders | ⏳ link to the web pages | ⏳ | ⏳ | ⏳ | One set of pages; apps link to them |
 | Works offline (what was already loaded) | 🚧 service worker; network-first data, cached shell | ⏳ | ⏳ | n/a | 🚧 says "You are offline." above the mini player and on the no-catalog state | Audio downloads are their own row |
@@ -164,9 +164,9 @@ shared code only after the core five are complete.
 
 | Platform | State | First screen | Notes |
 |---|---|---|---|
-| CarPlay | 🚧 builds | Continue, Stations, Browse, Downloads tabs (R17); Continue plays | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
+| CarPlay | 🚧 builds | Continue, Stations, Browse, Downloads tabs (R17); Continue and Downloads play | Runs only once Apple grants the carplay-audio entitlement (Needs Ben) |
 | watchOS | 🚧 builds | Continue, "Waiting on the phone" | watchOS 11 floor (pairs with iOS 18); not embedded in the phone app yet |
-| Android Auto | 🚧 builds | Continue, Stations, Browse, Downloads (R17); Continue plays through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
+| Android Auto | 🚧 builds | Continue, Stations, Browse, Downloads (R17); Continue and Downloads play through the phone's queue | Every release with car support waits on Google's car review: internal or closed track only; Assistant voice (VC-1) not done |
 | Android TV / Fire TV | 🚧 builds | Home, D-pad focus on the first row; Now Playing card in the background (TV-NP) | Banner art is a placeholder for the owner |
 | Wear OS | 🚧 builds | Continue, "Waiting on the phone" | minSdk 30 (Wear OS 3); needs its own versionCode before upload |
 | webOS / Tizen | 🚧 builds (.ipk, .wgt) | Listen, D-pad focus on the first card; remote media keys; Back that walks history | Placeholder art; the .wgt was signed with the Archive Watch Samsung profile until Ear Drama has its own |

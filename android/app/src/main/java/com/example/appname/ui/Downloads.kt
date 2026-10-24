@@ -2,6 +2,20 @@ package com.example.appname.ui
 
 import android.text.format.Formatter
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.appname.data.DownloadPlan
+import com.example.appname.data.DownloadRequest
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -116,56 +130,191 @@ private fun DownloadProgress(record: DownloadRecord, modifier: Modifier = Modifi
 }
 
 /**
- * Library's Downloads section: every download, newest first, each removable,
- * one confirmed Remove All, and the storage they hold.
+ * Library's Downloads row: the count and the storage held, opening the
+ * Downloads place. A bulk download is hundreds of rows, which would bury the
+ * rest of Library (§4.6).
  */
-fun LazyListScope.downloadsSection(
-    records: List<DownloadRecord>,
-    totalBytes: Long,
-    onOpen: (String) -> Unit,
-    onRemove: (String) -> Unit,
-    onRemoveAll: () -> Unit,
-) {
+fun LazyListScope.downloadsSection(records: Map<String, DownloadRecord>, totalBytes: Long, onOpen: () -> Unit) {
     if (records.isEmpty()) return
-    item(key = "downloads-h") { SectionHeader("Downloads") }
-    items(records, key = { "d:" + it.episodeId }) { record ->
-        DownloadItem(record, onOpen = { onOpen(record.episodeId) }, onRemove = { onRemove(record.episodeId) })
+    item(key = "downloads") {
+        val count = if (records.size == 1) "1 episode" else "${records.size} episodes"
+        ListItem(
+            modifier = Modifier.clickable(onClickLabel = "Open downloads", onClick = onOpen).tvFocusMark(),
+            leadingContent = { Icon(Icons.Outlined.Download, contentDescription = null) },
+            headlineContent = { Text("Downloads") },
+            trailingContent = { Text("$count · ${byteText(totalBytes)}", style = MaterialTheme.typography.labelMedium) },
+        )
     }
-    item(key = "downloads-f") {
-        var confirming by rememberSaveable { mutableStateOf(false) }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Meta("${byteText(totalBytes)} on this device", Modifier.weight(1f))
-            TextButton(onClick = { confirming = true }) {
-                Text("Remove All Downloads", color = MaterialTheme.colorScheme.error)
-            }
-        }
-        if (confirming) {
-            AlertDialog(
-                onDismissRequest = { confirming = false },
-                title = { Text("Remove all downloads?") },
-                confirmButton = {
-                    TextButton(onClick = { confirming = false; onRemoveAll() }) {
-                        Text("Remove All Downloads", color = MaterialTheme.colorScheme.error)
+}
+
+/** The Downloads place: by series, each removable; a series' Remove and Remove All ask first; the storage at the foot. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DownloadsScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit) {
+    val downloads = LocalAppContainer.current.downloads
+    val records by downloads.records.collectAsState()
+    var confirmingAll by rememberSaveable { mutableStateOf(false) }
+    var removingSeries by rememberSaveable { mutableStateOf<String?>(null) }
+    val groups = remember(records) { downloads.seriesGroups }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Downloads") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                dismissButton = { TextButton(onClick = { confirming = false }) { Text("Cancel") } },
             )
+        },
+    ) { padding ->
+        if (groups.isEmpty()) {
+            EmptyMessage("No downloads", Modifier.padding(padding))
+            return@Scaffold
+        }
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+            groups.forEach { (key, rows) ->
+                item(key = "h:$key") {
+                    Row(
+                        Modifier.fillMaxWidth().padding(end = Spacing.S2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SectionHeader(rows.first().seriesName, Modifier.weight(1f))
+                        TextButton(
+                            onClick = { removingSeries = key },
+                            modifier = Modifier.semantics { contentDescription = "Remove ${rows.first().seriesName} downloads" },
+                        ) {
+                            Text("Remove", color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                items(rows, key = { "d:" + it.episodeId }) { record ->
+                    DownloadItem(
+                        record,
+                        showSeries = false,
+                        onOpen = { onOpenEpisode(record.episodeId) },
+                        onRemove = { downloads.remove(record.episodeId) },
+                    )
+                }
+            }
+            item(key = "foot") {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Meta("${byteText(downloads.totalBytes)} on this device", Modifier.weight(1f))
+                    TextButton(onClick = { confirmingAll = true }) {
+                        Text("Remove All Downloads", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        }
+    }
+    if (confirmingAll) {
+        ConfirmRemove("Remove all downloads?", "Remove All Downloads", onDismiss = { confirmingAll = false }) {
+            downloads.removeAll()
+        }
+    }
+    removingSeries?.let { key ->
+        ConfirmRemove("Remove this series' downloads?", "Remove Downloads", onDismiss = { removingSeries = null }) {
+            downloads.removeSeries(key)
+        }
+    }
+}
+
+@Composable
+private fun ConfirmRemove(title: String, action: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        confirmButton = {
+            TextButton(onClick = { onDismiss(); onConfirm() }) {
+                Text(action, color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** The words of a bulk download's question: the count, then about how much space (Decision 071). */
+fun downloadPlanTitle(plan: DownloadPlan): String =
+    if (plan.count == 1) "Download 1 episode?" else "Download ${plan.count} episodes?"
+
+/**
+ * A series page's Download action (§4.3): the whole run, the selected season,
+ * or Remove downloads; a download asks first with the count and the space.
+ */
+@Composable
+fun SeriesDownloadAction(seriesKey: String, allIds: List<String>, season: String?, seasonIds: List<String>?) {
+    val container = LocalAppContainer.current
+    val downloads = container.downloads
+    val records by downloads.records.collectAsState()
+    val scope = rememberCoroutineScope()
+    var open by remember { mutableStateOf(false) }
+    var plan by remember { mutableStateOf<DownloadPlan?>(null) }
+    var confirmingRemove by remember { mutableStateOf(false) }
+    val prepare: (List<String>) -> Unit = { ids ->
+        open = false
+        scope.launch {
+            val db = container.catalog.awaitDb() ?: return@launch
+            val requests = downloads.missing(ids).mapNotNull { id ->
+                db.episodeDetail(id)?.let { DownloadRequest.from(it, episodeTitle(it.episode)) }
+            }
+            plan = DownloadPlan(requests, downloads.records.value).takeIf { it.count > 0 }
+        }
+    }
+    Box {
+        IconButton(onClick = { open = true }, modifier = Modifier.tvFocusMark()) {
+            Icon(Icons.Outlined.Download, contentDescription = "Download")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DropdownMenuItem(
+                text = { Text("Download all episodes") },
+                enabled = remember(records, allIds) { downloads.missing(allIds).isNotEmpty() },
+                onClick = { prepare(allIds) },
+            )
+            if (seasonIds != null) {
+                DropdownMenuItem(
+                    text = { Text("Download ${seasonLabel(season)}") },
+                    enabled = remember(records, seasonIds) { downloads.missing(seasonIds).isNotEmpty() },
+                    onClick = { prepare(seasonIds) },
+                )
+            }
+            if (records.values.any { it.seriesKey == seriesKey }) {
+                DropdownMenuItem(
+                    text = { Text("Remove downloads", color = MaterialTheme.colorScheme.error) },
+                    onClick = { open = false; confirmingRemove = true },
+                )
+            }
+        }
+    }
+    plan?.let { p ->
+        AlertDialog(
+            onDismissRequest = { plan = null },
+            title = { Text(downloadPlanTitle(p)) },
+            text = p.estimatedBytes?.let { bytes -> { Text("About ${byteText(bytes)}.") } },
+            confirmButton = { TextButton(onClick = { plan = null; downloads.download(p) }) { Text("Download") } },
+            dismissButton = { TextButton(onClick = { plan = null }) { Text("Cancel") } },
+        )
+    }
+    if (confirmingRemove) {
+        ConfirmRemove("Remove this series' downloads?", "Remove Downloads", onDismiss = { confirmingRemove = false }) {
+            downloads.removeSeries(seriesKey)
         }
     }
 }
 
 /** A download row: the record's own title and series, so it stays readable with no network and across catalog swaps. */
 @Composable
-private fun DownloadItem(record: DownloadRecord, onOpen: () -> Unit, onRemove: () -> Unit) {
+private fun DownloadItem(record: DownloadRecord, showSeries: Boolean = true, onOpen: () -> Unit, onRemove: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClickLabel = "Open episode", onClick = onOpen),
         headlineContent = { Text(record.title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         supportingContent = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-                Text(record.seriesName, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (showSeries) {
+                    Text(record.seriesName, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                }
                 when (record.state) {
                     DownloadRecord.State.Downloaded -> Text(byteText(record.receivedBytes))
                     DownloadRecord.State.Queued, DownloadRecord.State.Downloading ->

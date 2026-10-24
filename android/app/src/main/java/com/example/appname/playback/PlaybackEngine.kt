@@ -23,6 +23,7 @@ import androidx.media3.session.SessionToken
 import com.example.appname.data.ApiClient
 import com.example.appname.data.CatalogRepository
 import com.example.appname.data.DownloadStore
+import com.example.appname.data.PlaybackSource
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Face
 import com.example.appname.data.UserStore
@@ -333,16 +334,31 @@ class PlaybackEngine(
         url: String,
         face: Face? = row.seriesFace,
         card: Boolean = false,
-    ): MediaItem = MediaItem.Builder()
+    ): MediaItem {
+        val source = downloads.playbackSource(row.id, url)
+        return mediaItem(row, source, face, card)
+    }
+
+    /**
+     * A downloaded file's lock-screen picture is the typographic card, drawn on
+     * the device, so it shows with no network (a portrait is a URL to fetch).
+     */
+    private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean): MediaItem = MediaItem.Builder()
         .setMediaId(row.id)
-        .setUri(downloads.localFile(row.id, url)?.let { Uri.fromFile(it) } ?: Uri.parse(url))
+        .setUri(if (source.isLocal) Uri.fromFile(java.io.File(source.location)) else Uri.parse(source.location))
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(row.title ?: row.airDate ?: row.seriesName)
                 .setArtist(row.seriesName)
                 .setSubtitle(row.airDate)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
-                .let { if (face != null || card) SessionArtwork.apply(it, row, face) else it }
+                .let {
+                    when {
+                        source.isLocal -> SessionArtwork.apply(it, row, null)
+                        face != null || card -> SessionArtwork.apply(it, row, face)
+                        else -> it
+                    }
+                }
                 .build(),
         )
         .build()

@@ -21,6 +21,9 @@ final class BackgroundDownloadTransport: DownloadTransport {
         // discretionary work for the system to defer.
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
+        // A whole run is hundreds of tasks; archive.org gets four at a time
+        // (Decision 071). Its 302 to a storage node is followed by default.
+        config.httpMaximumConnectionsPerHost = 4
         shim.transport = self
         return URLSession(configuration: config, delegate: shim, delegateQueue: .main)
     }()

@@ -13,12 +13,14 @@ data class CarNode(val id: String, val title: String, val subtitle: String?, val
 /**
  * The browse tree Android Auto draws (research 04 §3.2). The root's children
  * are the car's four tabs, Continue, Stations, Browse, Downloads (R17). Continue
- * lists this device's in-progress episodes; the other three are empty in the
- * stub (Decision 056). No node carries art: the catalog has none to give.
+ * lists this device's in-progress episodes and Downloads its finished
+ * downloads; Stations and Browse are empty in the stub (Decision 056). No node carries art: the catalog has none to give.
  */
 class CarLibrary(
     private val inProgressIds: suspend () -> List<String>,
     private val rows: suspend (List<String>) -> List<EpisodeRow>,
+    /** The finished downloads, newest first: what plays with no signal (R17). */
+    private val downloadedIds: () -> List<String> = { emptyList() },
     /** DR-3: a car loads content within 10 s, so a slow catalog yields an empty list instead. */
     private val budgetMs: Long = 8_000,
 ) {
@@ -53,7 +55,8 @@ class CarLibrary(
         val all = when (parentId) {
             ROOT -> TABS
             CONTINUE -> continuing()
-            RADIO, SERIES, DOWNLOADS -> emptyList()
+            DOWNLOADS -> downloaded()
+            RADIO, SERIES -> emptyList()
             else -> return null
         }
         if (page < 0 || pageSize <= 0) return all
@@ -64,6 +67,14 @@ class CarLibrary(
     suspend fun item(id: String): CarNode? = when (id) {
         ROOT -> root
         else -> TABS.firstOrNull { it.id == id } ?: rows(listOf(id)).firstOrNull()?.let(::episodeNode)
+    }
+
+    private suspend fun downloaded(): List<CarNode> {
+        val ids = downloadedIds()
+        return withTimeoutOrNull(budgetMs) {
+            val byId = rows(ids).associateBy { it.id }
+            ids.mapNotNull { byId[it] }.map(::episodeNode)
+        } ?: emptyList()
     }
 
     private suspend fun continuing(): List<CarNode> =

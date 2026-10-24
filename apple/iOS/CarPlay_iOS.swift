@@ -10,6 +10,7 @@ enum CarPlayServices {
     static var player: AudioPlayer?
     static var history: ListeningHistory?
     static var store: AppStore?
+    static var downloads: DownloadStore?
 }
 
 /// Routes a CarPlay scene to `CarPlaySceneDelegate` and leaves every other
@@ -37,6 +38,7 @@ final class AppDelegate_iOS: NSObject, UIApplicationDelegate {
 final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPTabBarTemplateDelegate {
     private var interfaceController: CPInterfaceController?
     private let continueTab = CPListTemplate(title: "Continue", sections: [])
+    private let downloadsTab = CPListTemplate(title: "Downloads", sections: [])
 
     func templateApplicationScene(
         _ templateApplicationScene: CPTemplateApplicationScene,
@@ -45,11 +47,13 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         self.interfaceController = interfaceController
         continueTab.tabImage = UIImage(systemName: "play.circle")
         continueTab.emptyViewTitleVariants = ["Nothing in progress"]
+        downloadsTab.tabImage = UIImage(systemName: "arrow.down.circle")
+        downloadsTab.emptyViewTitleVariants = ["No downloads"]
         let tabs = [
             continueTab,
             Self.placeholder("Stations", symbol: "radio"),
             Self.placeholder("Browse", symbol: "square.grid.2x2"),
-            Self.placeholder("Downloads", symbol: "arrow.down.circle"),
+            downloadsTab,
         ]
         let tabBar = CPTabBarTemplate(templates: tabs)
         tabBar.delegate = self
@@ -59,6 +63,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         Task {
             await CarPlayServices.catalog?.start()
             await reloadContinue()
+            reloadDownloads()
         }
     }
 
@@ -71,6 +76,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     func tabBarTemplate(_ tabBarTemplate: CPTabBarTemplate, didSelect selectedTemplate: CPTemplate) {
         if selectedTemplate === continueTab { Task { await reloadContinue() } }
+        if selectedTemplate === downloadsTab { reloadDownloads() }
     }
 
     private static func placeholder(_ title: String, symbol: String) -> CPListTemplate {
@@ -96,6 +102,23 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             return item
         }
         continueTab.updateSections([CPListSection(items: items)])
+    }
+
+    /// The finished downloads, newest first, as many as the car shows: what
+    /// plays with no signal (R17).
+    private func reloadDownloads() {
+        guard let downloads = CarPlayServices.downloads else { return }
+        let limit = min(CPListTemplate.maximumItemCount, 12)
+        let finished = downloads.sortedRecords.filter { $0.state == .downloaded }.prefix(limit)
+        let items = finished.map { record -> CPListItem in
+            let item = CPListItem(text: record.title, detailText: record.seriesName)
+            item.handler = { [weak self] _, completion in
+                self?.play(record.episodeID)
+                completion()
+            }
+            return item
+        }
+        downloadsTab.updateSections([CPListSection(items: Array(items))])
     }
 
     private func play(_ id: String) {

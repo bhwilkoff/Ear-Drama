@@ -16,6 +16,7 @@ struct RouteDestinations: ViewModifier {
             case .surprise: SurpriseScreen()
             }
         }
+        .navigationDestination(for: DownloadsRoute.self) { _ in DownloadsScreen() }
         .navigationDestination(for: PlayRoute.self) { route in
             switch route {
             case let .script(id): PlayScriptScreen(id: id)
@@ -289,6 +290,7 @@ struct SeriesScreen: View {
                     }
                 }
                 .navigationTitle(page.series.name)
+                .toolbar { SeriesDownloadMenu(page: page) }
             }
         }
         #if os(iOS)

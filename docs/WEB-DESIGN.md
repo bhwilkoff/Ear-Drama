@@ -513,6 +513,15 @@ web app follows today.
   An offline navigation to a path twin falls back to the cached
   `404.html`, which forwards it. `tools/test_sw.mjs` checks the routing
   out of the shipped file.
+- **§7.2a The web does not download audio** (Decision 071). Episodes
+  stream from archive.org and pass the service worker untouched; no
+  Download control, no audio in Cache Storage or OPFS. The places where
+  offline listening matters, a phone in the car and a phone at bedtime
+  with the screen locked, are where a browser is weakest: iPhone web
+  stops a page's audio at the lock screen and its storage is
+  best-effort, so a file counted on for the trip can be gone without a
+  word, and Android has the app. A download the web cannot promise to
+  keep is not offered. PARITY's Downloads cell is n/a with this reason.
 - **§7.3 Offline is a degraded mode, not a failure.** A status line,
   "You are offline.", sits in the document flow while the browser
   reports no network. Whatever the person opened before still opens; a

@@ -58,6 +58,9 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 - **The rights line** is the projection's words; unclaimed reads "No
   rights claim known. Removed on request."
 - **Downloads are n/a**: the TV has no durable storage for media.
+  Library's last line says so, in the muted color and never focused:
+  "Downloads are on iPhone, iPad, and Mac."
+  (the parity rule: a missing capability is a sentence on screen).
 
 ## §2 Information architecture
 

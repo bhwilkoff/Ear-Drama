@@ -86,6 +86,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 066: Shared plays live on the Worker, invite-only, with take audio in R2 behind the owner's switch
 - 067: The owner's rulings of 2026-10-23 on plays, Radio, playback, and the shell
 - 069: Volume is leveled by each platform's own dynamics processor, at one set of numbers
+- 071: Downloads are a whole run in the apps, asked first; the web downloads nothing
 
 ---
 
@@ -827,3 +828,47 @@ passage followed by a -6 dBFS one, 34 dB apart, comes out 21 dB apart.
 - Not yet heard on a device: the agent never plays sound at the owner. The
   first device check listens to a quiet and a loud episode in turn with the
   switch on and off.
+
+---
+
+## 071: Downloads are a whole run in the apps, asked first; the web downloads nothing
+
+*Date: 2026-10-24*
+
+On iPhone, iPad, Mac, and Android a person downloads an episode, a season, or
+a whole series run from the series page, and every bulk download asks first
+with the count and about how much space it takes (bitrate times length, from
+the catalog's own recording rows). Downloads become a place pushed from one
+Library row, grouped by series, with the storage held and Remove All at its
+foot. The Apple TV says on screen that downloads are on iPhone, iPad, and Mac.
+The web offers no download at all.
+
+**Why**: R17, the car and bedtime: the listener wants the next twenty episodes
+of a serial on the phone before a drive, and twenty taps on twenty Detail
+pages is the wrong verb. A run can be gigabytes, so the space is a fact the
+person cannot see by looking, and the one place a caption earns its words.
+Hundreds of rows in Library's middle would bury In progress and Played, so
+the downloads moved behind one row. The web was weighed honestly: Cache
+Storage could hold a file and a service worker could answer the `<audio>`
+range requests, but the places offline matters are a phone in a car and a
+phone locked at bedtime, and iPhone web stops a page's audio at the lock
+screen while its storage is best-effort and can be cleared without a word.
+Android has the app. A download the web cannot promise to keep is not
+offered (WEB-DESIGN §7.2a, and §5.8's standing "audio is never cached").
+
+**How to apply**:
+- The series key is an episode id's part before `|` (Route's own rule), so a
+  series' downloads are found from the records already on disk; no field was
+  added to the index.
+- A plan (`DownloadPlan`, both stores) skips what is downloaded or running and
+  retries what failed; transfers are capped at four at once (the background
+  session's per-host limit on Apple, a four-wide queue on Android) so a run
+  never opens hundreds of connections to archive.org.
+- Playback still prefers only a finished file; a queued, running, failed, or
+  partial download never plays (`localFile`). The leveler and the queue rule
+  are unchanged: a downloaded file is leveled as it plays, and what plays
+  next is still Decision 067's.
+- The car's Downloads tab lists finished downloads on CarPlay and Android Auto.
+- Not verified on a device: no real run was downloaded by the agent (tests use
+  fixtures), and nothing was heard.
+

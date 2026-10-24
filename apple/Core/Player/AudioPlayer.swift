@@ -157,9 +157,9 @@ final class AudioPlayer {
         duration = recording.lengthSeconds ?? detail.episode.lengthSeconds
         upNext = []
 
-        let local = localFile(detail.episode.id, recording)
-        isLocal = local != nil
-        let playerItem = AVPlayerItem(url: local ?? recording.url)
+        let source = Self.source(episodeID: detail.episode.id, recording: recording, localFile: localFile)
+        isLocal = source.isLocal
+        let playerItem = AVPlayerItem(url: source.url)
         playerItem.audioTimePitchAlgorithm = .timeDomain
         itemStatusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] observed, _ in
             let failed = observed.status == .failed
@@ -391,6 +391,14 @@ final class AudioPlayer {
         guard let current = item, elapsed > 0 else { return }
         lastSaved = Date()
         history.record(current.episode.id, position: elapsed, duration: duration)
+    }
+
+    /// What the player opens: the finished download of this recording when
+    /// the device has one, else the network copy.
+    nonisolated static func source(episodeID: String, recording: Recording,
+                                   localFile: (String, Recording) -> URL?) -> (url: URL, isLocal: Bool) {
+        if let local = localFile(episodeID, recording) { return (local, true) }
+        return (recording.url, false)
     }
 
     // MARK: - Now Playing and remote commands

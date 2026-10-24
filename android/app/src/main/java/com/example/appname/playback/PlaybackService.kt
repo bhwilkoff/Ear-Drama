@@ -1,5 +1,6 @@
 package com.example.appname.playback
 
+import com.example.appname.data.DownloadRecord
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.media3.common.MediaItem
@@ -48,6 +49,9 @@ class PlaybackService : MediaLibraryService() {
         val library = CarLibrary(
             inProgressIds = { container.user.inProgress().map { it.episodeId } },
             rows = { ids -> container.catalog.awaitDb()?.episodes(ids) ?: emptyList() },
+            downloadedIds = {
+                container.downloads.sortedRecords.filter { it.state == DownloadRecord.State.Downloaded }.map { it.episodeId }
+            },
         )
         val open = PendingIntent.getActivity(
             this,

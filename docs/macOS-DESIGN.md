@@ -110,8 +110,11 @@ only here:
 
 - **§4.1 The transcript opens a window** from Detail, the transport bar,
   or the Controls menu (§2.2), never a sheet.
-- **§4.2 Downloads** are the same background `URLSession` and the same
-  Library section as iOS; a download is played, never exported.
+- **§4.2 Downloads** are the same background `URLSession`, the same
+  series Download menu (in the toolbar), and the same Downloads place
+  pushed from Library's row as iOS (`docs/iOS-DESIGN.md` §4.3, §4.6,
+  §4.8); a row's Remove is on right-click. A download is played, never
+  exported.
 - **§4.3 Stations** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
   the detail column: the same slots, times, gaps, and Listen live on the
   one `LiveRadio`. A slot's Play is a borderless button the pointer

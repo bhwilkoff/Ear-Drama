@@ -26,9 +26,68 @@ nonisolated struct DownloadRecord: Codable, Hashable, Sendable, Identifiable {
     var token: String
 
     var id: String { episodeID }
+    /// Episode ids carry the series key before their `|` (Route's rule), so a
+    /// series' downloads are found from the index as it already is.
+    var seriesKey: String { DownloadRecord.seriesKey(of: episodeID) }
     var isActive: Bool { state == .queued || state == .downloading }
     var fraction: Double? {
         expectedBytes > 0 ? min(1, Double(receivedBytes) / Double(expectedBytes)) : nil
+    }
+}
+
+extension DownloadRecord {
+    nonisolated static func seriesKey(of episodeID: String) -> String {
+        String(episodeID.split(separator: "|", maxSplits: 1).first ?? Substring(episodeID))
+    }
+}
+
+/// One episode's default recording, ready to download.
+nonisolated struct DownloadRequest: Hashable, Sendable {
+    let episodeID: String
+    let title: String
+    let seriesName: String
+    let url: URL
+    /// Bitrate times length, when the catalog knows both.
+    let estimatedBytes: Int64?
+
+    init(episodeID: String, title: String, seriesName: String, url: URL, estimatedBytes: Int64? = nil) {
+        self.episodeID = episodeID
+        self.title = title
+        self.seriesName = seriesName
+        self.url = url
+        self.estimatedBytes = estimatedBytes
+    }
+
+    init?(_ detail: EpisodeDetail) {
+        guard let recording = detail.defaultRecording else { return nil }
+        let seconds = recording.lengthSeconds ?? detail.episode.lengthSeconds
+        var estimate: Int64?
+        if let kbps = recording.kbps, kbps > 0, let seconds, seconds > 0 {
+            estimate = Int64((Double(kbps) * 125 * seconds).rounded())
+        }
+        self.init(episodeID: detail.episode.id, title: detail.episode.displayTitle,
+                  seriesName: detail.episode.seriesName, url: recording.url, estimatedBytes: estimate)
+    }
+}
+
+/// What a bulk download would start: everything asked for that is not already
+/// downloaded or on its way (a failed one starts over), and about how much
+/// space it takes (Decision 071).
+nonisolated struct DownloadPlan: Hashable, Sendable {
+    let requests: [DownloadRequest]
+    /// The sum of the estimates the catalog could make; nil when it could make none.
+    let estimatedBytes: Int64?
+    var count: Int { requests.count }
+
+    init(_ candidates: [DownloadRequest], records: [String: DownloadRecord]) {
+        var seen = Set<String>()
+        requests = candidates.filter { request in
+            guard seen.insert(request.episodeID).inserted else { return false }
+            guard let r = records[request.episodeID] else { return true }
+            return r.state == .failed
+        }
+        let known = requests.compactMap(\.estimatedBytes)
+        estimatedBytes = known.isEmpty ? nil : known.reduce(0, +)
     }
 }
 
@@ -112,6 +171,26 @@ final class DownloadStore {
         records.values.sorted { $0.addedAt > $1.addedAt }
     }
 
+    /// The Downloads place: by series name, each series in the order it was asked for.
+    var seriesGroups: [(name: String, key: String, records: [DownloadRecord])] {
+        Dictionary(grouping: records.values, by: \.seriesKey)
+            .map { key, rows in
+                let sorted = rows.sorted { ($0.addedAt, $0.episodeID) < ($1.addedAt, $1.episodeID) }
+                return (name: sorted[0].seriesName, key: key, records: sorted)
+            }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    /// True when any of this series is downloaded or on its way.
+    func hasDownloads(inSeries key: String) -> Bool {
+        records.values.contains { $0.seriesKey == key }
+    }
+
+    /// The episodes among `ids` that still need a download (none, or a failed one).
+    func missing(_ ids: [String]) -> [String] {
+        ids.filter { id in records[id].map { $0.state == .failed } ?? true }
+    }
+
     /// Bytes the finished downloads hold on this device.
     var totalBytes: Int64 {
         records.values.filter { $0.state == .downloaded }.reduce(0) { $0 + $1.receivedBytes }
@@ -146,6 +225,20 @@ final class DownloadStore {
         records[episodeID] = record
         saveIndex()
         transport.begin(token: record.token, url: url)
+    }
+
+    /// Starts every request of a plan, in order. Each is added a millisecond
+    /// after the last so the Downloads place keeps the order it was asked in.
+    func download(_ plan: DownloadPlan, now: Date = Date()) {
+        for (i, r) in plan.requests.enumerated() {
+            download(episodeID: r.episodeID, title: r.title, seriesName: r.seriesName, url: r.url,
+                     now: now.addingTimeInterval(Double(i) / 1000))
+        }
+    }
+
+    /// Every download of one series, gone: transfers, files, records.
+    func removeSeries(_ key: String) {
+        for id in records.values.filter({ $0.seriesKey == key }).map(\.episodeID) { remove(id) }
     }
 
     /// Stops a queued or running download and forgets it.
@@ -303,6 +396,13 @@ final class DownloadStore {
               let decoded = try? JSONDecoder().decode([String: DownloadRecord].self, from: data)
         else { return [:] }
         return decoded
+    }
+}
+extension CatalogStore {
+    /// The default recordings of these episodes, in order, as download requests;
+    /// an episode with no surviving recording is left out.
+    func downloadRequests(_ ids: [String]) async -> [DownloadRequest] {
+        await run { db in ids.compactMap { db.episodeDetail(id: $0).flatMap { DownloadRequest($0) } } } ?? []
     }
 }
 #endif

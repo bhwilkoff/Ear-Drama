@@ -47,6 +47,7 @@ fun LibraryScreen(
     onOpenSeries: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
     onListenTogether: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val allProductions by container.plays.store.productions.collectAsState()
@@ -96,13 +97,7 @@ fun LibraryScreen(
                         )
                     }
                 }
-                downloadsSection(
-                    records = downloadRecords.values.sortedByDescending { it.addedAtMs },
-                    totalBytes = container.downloads.totalBytes,
-                    onOpen = onOpenEpisode,
-                    onRemove = container.downloads::remove,
-                    onRemoveAll = container.downloads::removeAll,
-                )
+                downloadsSection(downloadRecords, container.downloads.totalBytes, onOpen = onOpenDownloads)
                 if (library.finished.isNotEmpty()) {
                     item(key = "finished-h") { SectionHeader("Played") }
                     items(library.finished, key = { "f:" + it.id }) { row ->
