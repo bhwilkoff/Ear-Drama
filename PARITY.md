@@ -137,8 +137,8 @@ When shipping any user-facing feature:
 | Export whenever every speaking line is human (Decision 067) | 🚧 Export beside the mix, renders if stale | 🚧 `ShareLink`, renders on demand | 🚧 same | n/a | 🚧 share sheet, renders if stale | No longer waits for a full listen |
 | A play's facts: year, author's years, length (Decision 067) | 🚧 | 🚧 | 🚧 | n/a | 🚧 | "1876 · 16 parts · 657 lines"; the year is the record's own (`year` in the bundle, 3 of 15 have one); no age ratings |
 | Commercials as their own parts (C10) | ✅ data plane | ✅ data plane | ✅ data plane | n/a | ✅ data plane | `script_parse` names a speech inside commercial n "ROLE (COMMERCIAL n)"; no bundled script has a commercial yet |
-| Invite-link productions | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Sign-in required; report, block, filter |
-| Teacher classes (consent for under-13s) | ⏳ | ⏳ | ⏳ | n/a | ⏳ | Behind the privacy policy that covers school consent |
+| Invite-link productions (share, invite, join, claim any open part, upload, consent, report, block, publish) | 🚧 `js/plays-share.js`; stub-Worker tests; screenshots at 375 px against a stubbed record; never against a deployed Worker | ⏳ | ⏳ | n/a: TVs play back only | ⏳ | PLAYS-DESIGN §11.7. Sign-in required. Uploads wait on the owner's R2 switch (P1): the record's `uploads` is false and every client says "Uploads are off." Consent words are the owner's placeholder (P2) |
+| Teacher classes (consent for under-13s) | 🚧 Classes in Library's Ear dramas: make, join by code | ⏳ | ⏳ | n/a | ⏳ | A roster only (P8). An under-13 class takes no student until the privacy policy covers school consent (P5) |
 | Play back a finished play | 🚧 Listen through, Export as WAV | 🚧 Listen Through, Export | 🚧 Listen Through, Export | ⏳ AirPlay from a phone meanwhile | 🚧 Listen through, Export via share sheet | |
 
 ---

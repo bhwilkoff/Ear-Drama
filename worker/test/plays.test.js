@@ -463,6 +463,14 @@ describe("takes", () => {
     expect((await record(director, p.id)).takes).toEqual([]);
   });
 
+  it("say whether uploads are open, in the record and the consent, so a client can say so before recording", async () => {
+    const { director, p } = await recording("t-switch");
+    const off = { token: director.access_token, envOverride: { TAKES: undefined } };
+    expect((await record(director, p.id)).uploads).toBe(true);
+    expect((await (await call("GET", `/v1/plays/productions/${p.id}`, off)).json()).uploads).toBe(false);
+    expect((await (await call("GET", "/v1/plays/consent", off)).json()).uploads).toBe(false);
+  });
+
   it("audio is served to members only", async () => {
     const { director, p } = await recording("t-audio");
     const up = await upload(director, p.id, linesFor(firstPart)[0]);
@@ -578,7 +586,7 @@ describe("the CC0 consent (Decision 059)", () => {
   it("is a version id with the owner's words still a marked placeholder", async () => {
     const s = await person("c-get");
     const r = await (await call("GET", "/v1/plays/consent", { token: s.access_token })).json();
-    expect(r).toEqual({ version: CONSENT_VERSION, text: CONSENT_TEXT });
+    expect(r).toEqual({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: true });
     expect(CONSENT_TEXT.startsWith("OWNER:")).toBe(true);
   });
 

@@ -89,6 +89,8 @@ const M = [
   ["header length trusted", "src/plays-audio.js", "      if (body + size > b.length) return null; // the header claims more audio than was sent\n", ""],
   ["stereo accepted", "src/plays-audio.js", "fmt.channels !== 1 || ", ""],
   ["takes overwritten", "src/plays.js", "  if (!ins.meta.changes) {\n    await env.TAKES.delete(key);\n    return problem(409, \"take_exists\");\n  }\n", ""],
+  ["uploads always open", "src/plays.js", "    uploads: !!env.TAKES,\n", "    uploads: true,\n"],
+  ["consent hides the switch", "src/plays.js", "text: CONSENT_TEXT, uploads: !!env.TAKES }", "text: CONSENT_TEXT, uploads: true }"],
   ["unbounded takes a line", "src/plays.js", '  if (count.n >= MAX_TAKES_PER_LINE) return problem(409, "too_many_takes");\n', ""],
   ["new take not chosen", "src/plays.js", "  await env.DB.batch([...chooseStatements(env, p.id, meta.lineID, takeId), touch(env, p.id, now)]);", "  await env.DB.batch([touch(env, p.id, now)]);"],
   ["no upload limit", "src/plays.js", 'if (await limited(env.PLAY_UPLOAD_LIMITER, auth.userId)) return problem(429, "rate_limited");', ""],

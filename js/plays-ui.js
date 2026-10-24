@@ -7,6 +7,10 @@
  *
  * Every word of a script is drawn as printed; nothing here writes a list or
  * a blurb (§8 rule 2). The device voice is always labeled where it plays.
+ *
+ * Phase 2 (PLAYS-DESIGN §11.7, WEB-DESIGN §4.10a): a shared production's
+ * parts and chosen takes are the Worker's (js/plays-share.js); recording is
+ * phase 1's, on this browser, then uploaded.
  */
 const PlaysUI = (() => {
   'use strict';
@@ -22,6 +26,11 @@ const PlaysUI = (() => {
   let mix = null;
   /** The live listen-through on the production page, ended when the page changes. */
   let listen = null;
+  /** The last page drawn, redrawn when someone signs in or out here. */
+  let lastDraw = null;
+  const S = PlaysShare;
+  const REASONS = [['offensive', 'Offensive'], ['harassment', 'Harassment'], ['personal_information', 'Personal information'],
+                   ['not_a_performance', 'Not a performance'], ['other', 'Other']];
 
   const $ = (id) => document.getElementById(id);
   const ICON = {
@@ -119,8 +128,12 @@ const PlaysUI = (() => {
 
   /* ---- Library's Ear dramas (WEB-DESIGN §4.7; Decision 068): this browser's productions ---- */
 
+  const canShare = () => API.plays.available() && API.account.signedIn();
+  const signIn = () => { if (typeof AccountUI !== 'undefined') AccountUI.openSheet(); };
+
   async function renderMine(body, helpers) {
     h = helpers;
+    lastDraw = () => renderMine(body, helpers);
     const my = ++token;
     body.replaceChildren(h.stateBox('loading'));
     try {
@@ -130,20 +143,56 @@ const PlaysUI = (() => {
       return;
     }
     if (my !== token) return;
-    const mine = store.productions;
-    if (!mine.length) { body.replaceChildren(h.stateBox('empty', { text: 'No ear dramas yet.' })); return; }
-    const ul = h.el('ul', { class: 'play-list' });
-    for (const p of mine) {
-      const script = await store.script(p);
+    const out = [];
+    if (S.pendingInvite()) {
+      const inv = await inviteBox(my);
       if (my !== token) return;
-      ul.append(h.el('li', { class: 'play-row' },
-        h.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(p.id)}` },
-          h.el('span', { class: 'body-strong' }, p.title),
-          h.el('span', { class: 'caption' }, progressLine(p, script)))));
+      out.push(inv);
     }
-    body.replaceChildren(ul);
+    let remote = [];
+    if (canShare()) {
+      try { remote = (await API.plays.list()).productions || []; } catch (err) { console.error(err); }
+      if (my !== token) return;
+    }
+    const rows = S.libraryRows(store, remote);
+    if (!rows.length) out.push(h.stateBox('empty', { text: 'No ear dramas yet.' }));
+    else {
+      const ul = h.el('ul', { class: 'play-list' });
+      for (const r of rows) {
+        if (r.local) {
+          const script = await store.script(r.local);
+          if (my !== token) return;
+          ul.append(h.el('li', { class: 'play-row' },
+            h.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(r.local.id)}` },
+              h.el('span', { class: 'body-strong' }, r.local.title),
+              h.el('span', { class: 'caption' }, r.pid ? 'Shared' : progressLine(r.local, script)))));
+        } else {
+          const status = h.el('span', { class: 'caption refusal', role: 'alert' });
+          ul.append(h.el('li', { class: 'play-row' },
+            h.el('button', { type: 'button', class: 'play-link play-remote', onclick: () => openRemote(r.remote, status) },
+              h.el('span', { class: 'body-strong' }, r.remote.title),
+              h.el('span', { class: 'caption' }, 'Shared')), status));
+        }
+      }
+      out.push(ul);
+    }
+    if (canShare()) {
+      const classes = await classesBox(my);
+      if (my !== token) return;
+      out.push(classes);
+    }
+    body.replaceChildren(...out);
   }
 
+  /** A shared production this browser has not opened: made here from the bundle's script (§11.7 rule 11). */
+  async function openRemote(remote, status) {
+    try {
+      const rec = await API.plays.get(remote.id);
+      const script = S.scriptFor(await API.castableScripts(), rec.scriptID, rec.scriptRevision);
+      const local = await S.localFor(store, rec.id, script);
+      h.navigate(`?production=${encodeURIComponent(local.id)}`);
+    } catch (err) { console.error(err); status.textContent = S.line(err); }
+  }
   /* ---- Start an ear drama (§2.1): a play's page and Surprise both offer it ---- */
 
   function startButton(script, helpers) {
@@ -215,6 +264,7 @@ const PlaysUI = (() => {
   }
 
   async function renderProduction(body, my, id) {
+    lastDraw = () => renderProduction(body, token, id);
     body.replaceChildren(h.stateBox('loading'));
     let got;
     try { got = await production(my, id); } catch (err) {
@@ -226,6 +276,8 @@ const PlaysUI = (() => {
     if (!p || !script) { notOnDevice(body); return; }
     h.setTitle(p.title);
     $('plays-h').textContent = p.title;
+    const link = store.share(id);
+    if (link) return renderShared(body, my, p, script, link);
 
     const refusal = h.el('p', { class: 'caption refusal', role: 'alert' });
     const apply = (change) => {
@@ -281,21 +333,411 @@ const PlaysUI = (() => {
         rerender();
       } }, 'Discard unused takes'));
     }
-    manage.append(h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
-      if (!confirm(`Delete ${p.title}? Every take is removed from this browser.`)) return;
-      if (mix && mix.id === id) { URL.revokeObjectURL(mix.url); mix = null; }
-      await store.delete(id);
-      h.navigate('?view=library&tab=dramas', true);
-    } }, 'Delete production'));
+    manage.append(deleteButton(p));
 
     body.replaceChildren(
       h.el('p', { class: 'caption cast-progress' }, progressLine(p, script)),
       h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' }, rows),
       refusal,
       listenThrough(p, script, rerender),
+      shareBox(p, script, rerender),
       manage);
   }
 
+  function deleteButton(p) {
+    return h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
+      if (!confirm(`Delete ${p.title}? Every take is removed from this browser.`)) return;
+      if (mix && mix.id === p.id) { URL.revokeObjectURL(mix.url); mix = null; }
+      await store.delete(p.id);
+      h.navigate('?view=library&tab=dramas', true);
+    } }, 'Delete production');
+  }
+
+  /* ---- Phase 2: a production shared through the Worker (PLAYS-DESIGN §11.7) ---- */
+
+  /** Share (rule 1): signed in only; while the Worker is a placeholder it is not offered. */
+  function shareBox(p, script, rerender) {
+    const box = h.el('div', { class: 'share-box' });
+    if (!API.plays.available()) return box;
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    if (!API.account.signedIn()) {
+      box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: signIn }, 'Share')),
+        h.el('p', { class: 'caption' }, 'Sharing needs an account.'));
+      return box;
+    }
+    const name = h.el('input', { class: 'field-input', type: 'text', name: 'director', autocomplete: 'name', maxlength: '40',
+                                 placeholder: 'Your name', 'aria-label': 'Your name, optional' });
+    const go = h.el('button', { type: 'submit', class: 'btn' }, 'Share');
+    box.append(h.el('form', { class: 'take-form', onsubmit: async (e) => {
+      e.preventDefault();
+      go.disabled = true;
+      line.textContent = '';
+      try {
+        await S.share({ api: API.plays, store, local: store.production(p.id), script, displayName: name.value });
+        h.announce('Shared');
+        rerender();
+      } catch (err) {
+        console.error(err);
+        line.textContent = S.line(err);
+        go.disabled = false;
+      }
+    } }, name, go), line);
+    return box;
+  }
+
+  function sharedStatus(rec, script, part) {
+    const s = rec.parts[part.id] || { status: 'open' };
+    const name = s.performer ? ` · ${s.performer}` : '';
+    switch (s.status) {
+      case 'recording': {
+        const voiced = C.linesFor(script, part.id).filter(l => rec.chosen[l.id]).length;
+        return `${num.format(voiced)} of ${lines(part.lineCount)} recorded${name}`;
+      }
+      case 'done': return `Recorded${name}`;
+      case 'silent': return 'Left silent';
+      default: return lines(part.lineCount);
+    }
+  }
+
+  /** The consent step (rule 6, Decision 059): the Worker's text exactly as it arrives; its version goes back with the answer. */
+  function askConsent(slot, consent) {
+    return new Promise(resolve => {
+      const done = (v) => { slot.replaceChildren(); resolve(v); };
+      const yes = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: () => done(true) }, 'I agree');
+      slot.replaceChildren(h.el('section', { class: 'block consent', 'aria-labelledby': 'consent-h' },
+        h.el('h2', { class: 'section-header', id: 'consent-h' }, 'Consent'),
+        h.el('p', { class: 'body consent-text' }, String(consent.text || '')),
+        h.el('div', { class: 'actions' }, yes, h.el('button', { type: 'button', class: 'btn', onclick: () => done(false) }, 'Not now'))));
+      yes.focus();
+    });
+  }
+
+  /** Report a take or a member (rule 8, guideline 1.2): a reason and an optional note. */
+  function reportForm(pid, target, onDone) {
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const reason = h.el('select', { class: 'field-input', 'aria-label': 'Reason' },
+      REASONS.map(([v, label]) => h.el('option', { value: v }, label)));
+    const note = h.el('input', { class: 'field-input', type: 'text', maxlength: '500', placeholder: 'Note', 'aria-label': 'Note, optional' });
+    const send = h.el('button', { type: 'submit', class: 'btn' }, 'Report');
+    const form = h.el('form', { class: 'report-form', onsubmit: async (e) => {
+      e.preventDefault();
+      send.disabled = true;
+      try {
+        const n = note.value.trim();
+        await API.plays.report({ production_id: pid, ...target, reason: reason.value, ...(n ? { note: n } : {}) });
+        h.announce('Reported');
+        onDone(true);
+      } catch (err) {
+        console.error(err);
+        line.textContent = S.line(err);
+        send.disabled = false;
+      }
+    } }, reason, note, send, h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => onDone(false) }, 'Cancel'), line);
+    setTimeout(() => reason.focus(), 0);
+    return form;
+  }
+
+  async function renderShared(body, my, p, script, link) {
+    const id = p.id;
+    const rerender = () => renderProduction(body, token, id);
+    if (!canShare()) {
+      const can = API.plays.available();
+      body.replaceChildren(h.el('p', { class: 'caption' }, can ? 'Sign in to see this production.' : 'Not available yet.'),
+        h.el('div', { class: 'actions' }, can ? h.el('button', { type: 'button', class: 'btn', onclick: signIn }, 'Sign in') : null,
+          deleteButton(p)));
+      return;
+    }
+    let rec;
+    try { rec = await API.plays.get(link.pid); } catch (err) {
+      if (my !== token) return;
+      if (err.code === 'not_found') {
+        body.replaceChildren(h.el('p', { class: 'caption refusal' }, S.line(err)), h.el('div', { class: 'actions' }, deleteButton(p)));
+      } else failBox(body, err, () => rerender());
+      return;
+    }
+    if (my !== token) return;
+    const me = API.account.state().user_id;
+    const local = await S.follow(store, id, rec, me);
+    if (my !== token) return;
+    const pid = link.pid;
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const act = async (btn, fn) => {
+      btn.disabled = true;
+      line.textContent = '';
+      try { await fn(); rerender(); } catch (err) { console.error(err); line.textContent = S.line(err); btn.disabled = false; }
+    };
+    const button = (label, fn, cls = 'btn') => {
+      const b = h.el('button', { type: 'button', class: cls, onclick: () => act(b, fn) }, label);
+      return b;
+    };
+    const recording = S.recordingPart(rec);
+    const partHref = (part) => `?production=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`;
+
+    const rows = C.castParts(script).map(part => {
+      const s = rec.parts[part.id] || { status: 'open' };
+      const actions = h.el('div', { class: 'cast-actions' });
+      if (S.isMine(rec, part.id, me)) {
+        actions.append(h.el('a', { class: 'btn btn-accent', href: partHref(part.id) }, 'Record'),
+          button('Release', () => API.plays.partAction(pid, part.id, 'release')));
+      } else if (S.canClaim(rec, part.id)) {
+        actions.append(button('Take part', () => API.plays.claim(pid, part.id), rec.next === part.id ? 'btn btn-accent' : 'btn'));
+        if (!C.isSpeaking(part.id)) actions.append(button('Leave silent', () => API.plays.partAction(pid, part.id, 'silent')));
+      } else if ((s.status === 'done' || s.status === 'silent') && (s.user_id === me || rec.director === me)) {
+        const b = button('Open part', () => API.plays.partAction(pid, part.id, 'reopen'));
+        b.disabled = !!recording;
+        actions.append(b);
+      }
+      return h.el('li', { class: 'cast-row', dataset: { status: s.status } },
+        h.el('a', { class: 'cast-main', href: partHref(part.id) },
+          h.el('span', { class: 'body-strong' }, part.title),
+          h.el('span', { class: 'caption' }, sharedStatus(rec, script, part))),
+        actions.childNodes.length ? actions : null);
+    });
+
+    const consentSlot = h.el('div');
+    const mineBox = h.el('div', { class: 'share-box' });
+    if (S.myParts(rec, me).length) {
+      const todo = S.pending(local, script, rec, me);
+      const flagged = todo.filter(t => t.bleed).length;
+      const ready = todo.length - flagged;
+      const open = S.uploadsOpen(rec);
+      const status = h.el('p', { class: 'caption refusal', role: 'alert' });
+      const up = h.el('button', { type: 'button', class: 'btn', disabled: !ready || !open, onclick: async () => {
+        up.disabled = true;
+        status.textContent = '';
+        const run = () => S.upload({ api: API.plays, store, local: store.production(id), script, rec, me,
+                                     agree: (c) => askConsent(consentSlot, c) });
+        let r = await run();
+        if (r.error && r.error.code === 'consent_required') r = await run();
+        if (my !== token) return;
+        if (r.error) { console.error(r.error); status.textContent = S.line(r.error); up.disabled = false; return; }
+        if (r.stopped) { if (r.stopped === 'uploads_off') status.textContent = S.line({ code: 'uploads_off' }); up.disabled = false; return; }
+        h.announce(r.sent === 1 ? '1 take uploaded' : `${num.format(r.sent)} takes uploaded`);
+        rerender();
+      } }, ready === 1 ? 'Upload 1 take' : `Upload ${num.format(ready)} takes`);
+      const voiced = S.myParts(rec, me).every(part => !C.isSpeaking(part) || C.linesFor(script, part).every(l => rec.chosen[l.id]));
+      const done = h.el('button', { type: 'button', class: 'btn', disabled: ready > 0 || !voiced, onclick: () =>
+        act(done, () => Promise.all(S.myParts(rec, me).map(part => API.plays.partAction(pid, part, 'done')))) }, 'Done with this part');
+      mineBox.append(h.el('div', { class: 'actions' }, ready ? up : null, done), status);
+      if (!open) status.textContent = S.line({ code: 'uploads_off' });
+      else if (flagged) status.textContent = S.line({ code: 'bleed_flagged' });
+    }
+
+    body.replaceChildren(
+      h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' }, rows),
+      line, mineBox, consentSlot,
+      sharedListen(rec, local, script, pid, me, rerender),
+      peopleBox(rec, me, p, pid, rerender),
+      h.el('div', { class: 'actions' }, deleteButton(p)));
+  }
+
+  /**
+   * Listen through any time (rule 7, C5): the other members' chosen takes come
+   * into this browser first, then phase 1's listen-through plays the takes and
+   * reads the open lines live. Then Publish for the director, which only queues.
+   */
+  function sharedListen(rec, local, script, pid, me, rerender) {
+    let box;
+    if (S.inStep(local, script, rec, me)) {
+      box = listenThrough(store.production(local.id), script, rerender);
+    } else {
+      const status = h.el('p', { class: 'caption', role: 'status' });
+      const go = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: async () => {
+        go.disabled = true;
+        status.textContent = 'Getting the takes';
+        try {
+          await S.bringHome({ api: API.plays, store, localId: local.id, rec, script, me });
+          rerender();
+        } catch (err) { console.error(err); status.textContent = S.line(err); go.disabled = false; }
+      } }, svg('play', 'i-inline'), 'Listen through');
+      box = h.el('section', { class: 'block listen', 'aria-labelledby': 'listen-through-h' },
+        h.el('h2', { class: 'section-header', id: 'listen-through-h' }, 'Listen through'), go, status);
+    }
+    if (rec.hidden_takes) {
+      box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
+        : `${num.format(rec.hidden_takes)} takes are hidden from you.`));
+    }
+    if (rec.director === me && S.complete(rec, script)) {
+      const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+      if (rec.archive) {
+        box.append(h.el('p', { class: 'caption', role: 'status' }, 'Queued for archive.org'));
+      } else {
+        const pub = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+          pub.disabled = true;
+          line.textContent = '';
+          try { await API.plays.publish(pid); rerender(); } catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
+        } }, 'Publish');
+        box.append(h.el('div', { class: 'actions' }, pub), line);
+      }
+    }
+    return box;
+  }
+
+  /** The people in a production, by display name only: Invite for the director; Report and Block for everyone else (rules 2, 8). */
+  function peopleBox(rec, me, p, pid, rerender) {
+    const ul = h.el('ul', { class: 'cast-list', 'aria-labelledby': 'people-h' });
+    for (const m of rec.members) {
+      const row = h.el('li', { class: 'cast-row' });
+      const who = m.display_name || 'No name';
+      const tag = m.user_id === me ? 'You' : m.director ? 'Director' : '';
+      row.append(h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, who),
+        tag ? h.el('span', { class: 'caption' }, tag) : null));
+      if (m.user_id !== me) {
+        const acts = h.el('div', { class: 'cast-actions' });
+        const report = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
+          acts.replaceWith(reportForm(pid, { user_id: m.user_id }, () => rerender()));
+        } }, 'Report');
+        const block = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
+          if (!confirm(`Block ${who}? You will no longer hear their takes.`)) return;
+          block.disabled = true;
+          try { await API.plays.block(m.user_id); h.announce(`${who} blocked`); rerender(); } catch (err) { console.error(err); block.disabled = false; }
+        } }, 'Block');
+        acts.append(report, block);
+        row.append(acts);
+      }
+      ul.append(row);
+    }
+    const box = h.el('section', { class: 'block', 'aria-labelledby': 'people-h' },
+      h.el('h2', { class: 'section-header', id: 'people-h' }, 'People'), ul);
+    if (rec.director === me) {
+      const slot = h.el('div', { class: 'invite-slot' });
+      const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+      const inv = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        inv.disabled = true;
+        line.textContent = '';
+        try {
+          const made = await API.plays.invite(pid);
+          const url = S.inviteLink(made.token, location.origin);
+          const field = h.el('input', { class: 'field-input', type: 'text', readonly: true, value: url, 'aria-label': 'Invite link' });
+          const days = Math.max(1, Math.round((made.expires_at - Date.now()) / 86400000));
+          slot.replaceChildren(h.el('div', { class: 'take-form' }, field,
+            h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+              try { if ((await shareTarget({ title: p.title, text: p.title, url })) === 'copied') h.announce('Link copied'); } catch { field.select(); }
+            } }, 'Share link')),
+            h.el('p', { class: 'caption' }, days === 1 ? 'Works for 1 day.' : `Works for ${num.format(days)} days.`));
+          inv.disabled = false;
+        } catch (err) { console.error(err); line.textContent = S.line(err); inv.disabled = false; }
+      } }, 'Invite');
+      box.append(h.el('div', { class: 'actions' }, inv), slot, line);
+    }
+    return box;
+  }
+
+  /* ---- An invite link (rule 3, DEEP_LINKS.md): joining takes the person's tap, signed in ---- */
+
+  const inviteStatus = (pt) => ({ recording: 'Recording', done: 'Recorded', silent: 'Left silent' })[pt.status] || lines(pt.lineCount);
+
+  async function inviteBox(my) {
+    const tok = S.pendingInvite();
+    const box = h.el('section', { class: 'block invite', 'aria-labelledby': 'invite-h' },
+      h.el('h2', { class: 'section-header', id: 'invite-h' }, 'Invitation'));
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const dismiss = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
+      S.holdInvite(null);
+      box.remove();
+    } }, 'Not now');
+    if (!API.plays.available()) {
+      box.append(h.el('p', { class: 'caption' }, 'Not available yet.'), h.el('div', { class: 'actions' }, dismiss));
+      return box;
+    }
+    if (!API.account.signedIn()) {
+      box.append(h.el('div', { class: 'actions' },
+        h.el('button', { type: 'button', class: 'btn btn-primary', onclick: signIn }, 'Sign in to join'), dismiss));
+      return box;
+    }
+    let inv;
+    try { inv = await API.plays.viewInvite(tok); } catch (err) {
+      console.error(err);
+      line.textContent = S.line(err);
+      box.append(line, h.el('div', { class: 'actions' }, dismiss));
+      return box;
+    }
+    if (my !== token) return box;
+    const script = S.scriptFor(await API.castableScripts().catch(() => []), inv.scriptID, inv.scriptRevision);
+    box.append(h.el('p', { class: 'body-strong' }, inv.title));
+    const busy = inv.parts.some(pt => pt.status === 'recording');
+    const ul = h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' });
+    for (const pt of inv.parts) {
+      const row = h.el('li', { class: 'cast-row', dataset: { status: pt.status } },
+        h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, C.partTitle(pt.id)),
+          h.el('span', { class: 'caption' }, inviteStatus(pt))));
+      if (pt.status === 'open' && !busy && script && !inv.member) {
+        const name = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', maxlength: '40',
+                                     placeholder: 'Your name', 'aria-label': `Your name, optional, for ${C.partTitle(pt.id)}` });
+        const go = h.el('button', { type: 'submit', class: pt.id === inv.next ? 'btn btn-accent' : 'btn' }, 'Take part');
+        row.append(h.el('div', { class: 'cast-actions' }, h.el('form', { class: 'take-form', onsubmit: async (e) => {
+          e.preventDefault();
+          go.disabled = true;
+          line.textContent = '';
+          try {
+            const { local } = await S.join({ api: API.plays, store, token: tok, part: pt.id, displayName: name.value, script });
+            S.holdInvite(null);
+            h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
+          } catch (err) { console.error(err); line.textContent = S.line(err); go.disabled = false; }
+        } }, name, go)));
+      }
+      ul.append(row);
+    }
+    box.append(ul, line);
+    if (!script) line.textContent = S.line({ code: 'revision_mismatch' });
+    const acts = h.el('div', { class: 'actions' });
+    if (inv.member && script) {
+      acts.append(h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        try {
+          const local = await S.localFor(store, inv.id, script);
+          S.holdInvite(null);
+          h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
+        } catch (err) { console.error(err); line.textContent = S.line(err); }
+      } }, 'Open'));
+    }
+    acts.append(dismiss);
+    box.append(acts);
+    return box;
+  }
+
+  /* ---- Classes (rule 10, Decision 059): a teacher makes one and shares its code; a student joins with it ---- */
+
+  async function classesBox(my) {
+    const box = h.el('section', { class: 'block', 'aria-labelledby': 'classes-h' },
+      h.el('h2', { class: 'section-header', id: 'classes-h' }, 'Classes'));
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const redraw = async () => { const b = await classesBox(my); box.replaceWith(b); };
+    let list = { teaching: [], member_of: [] };
+    try { list = await API.plays.classes(); } catch (err) { console.error(err); line.textContent = S.line(err); }
+    const rows = [
+      ...list.teaching.map(c => h.el('li', { class: 'cast-row' },
+        h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, c.name),
+          c.under13 && !c.school_consent ? h.el('span', { class: 'caption' }, 'Waits for the school’s consent') : null),
+        h.el('span', { class: 'class-code tabular body-strong', 'aria-label': `Code ${c.code.split('').join(' ')}` },
+          `${c.code.slice(0, 4)} ${c.code.slice(4)}`))),
+      ...list.member_of.map(c => h.el('li', { class: 'cast-row' },
+        h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, c.name)))),
+    ];
+    if (rows.length) box.append(h.el('ul', { class: 'cast-list', 'aria-label': 'Classes' }, rows));
+
+    const cname = h.el('input', { class: 'field-input', type: 'text', maxlength: '40', placeholder: 'Class name',
+                                  'aria-label': 'Class name', required: true });
+    const under = h.el('input', { type: 'checkbox', id: 'class-under13' });
+    const make = h.el('button', { type: 'submit', class: 'btn' }, 'Make a class');
+    const code = h.el('input', { class: 'field-input class-code-input', type: 'text', maxlength: '12', placeholder: 'Class code',
+                                 'aria-label': 'Class code', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', required: true });
+    const sname = h.el('input', { class: 'field-input', type: 'text', maxlength: '40', autocomplete: 'name', placeholder: 'Your name',
+                                  'aria-label': 'Your name, optional' });
+    const join = h.el('button', { type: 'submit', class: 'btn' }, 'Join a class');
+    const submit = (btn, fn) => async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      line.textContent = '';
+      try { await fn(); await redraw(); } catch (err) { console.error(err); line.textContent = S.line(err); btn.disabled = false; }
+    };
+    box.append(
+      h.el('form', { class: 'take-form class-form', onsubmit: submit(make, () => API.plays.createClass(cname.value, under.checked)) },
+        cname, h.el('label', { class: 'check', for: 'class-under13' }, under, h.el('span', { class: 'body' }, 'Under 13')), make),
+      h.el('form', { class: 'take-form class-form', onsubmit: submit(join, () => API.plays.joinClass(code.value, sname.value)) },
+        code, sname, join),
+      line);
+    return box;
+  }
   /**
    * Listen through any time (C5, owner 2026-10-23). Until every speaking line is
    * human, the takes play and the open lines are read live by the device voice,
@@ -409,7 +851,19 @@ const PlaysUI = (() => {
     h.setTitle(title, p.title);
     $('plays-h').textContent = title;
     const back = h.el('a', { class: 'eyebrow-link section-header', href: `?production=${encodeURIComponent(id)}` }, p.title);
-    if (C.stateOf(p, part).status !== 'recording') {
+    const link = store.share(id);
+    if (link && canShare()) {
+      let remote = null;
+      try { remote = await API.plays.get(link.pid); } catch (err) { console.error(err); }
+      if (my !== token) return;
+      if (remote) {
+        const me = API.account.state().user_id;
+        const local = await S.follow(store, id, remote, me);
+        if (my !== token) return;
+        if (!S.isMine(remote, part, me)) { sharedReadAlong(body, back, local, script, part, remote, link.pid, my); return; }
+      }
+    }
+    if (C.stateOf(store.production(id), part).status !== 'recording') {
       body.replaceChildren(back, h.el('ol', { class: 'read-along' },
         C.linesFor(script, part).map(l => h.el('li', {}, lineView(l)))));
       return;
@@ -418,6 +872,37 @@ const PlaysUI = (() => {
     paintRecording();
   }
 
+  /** Another member's part: the lines with the takes the Worker shows this person, each playable and reportable (rule 8). */
+  function sharedReadAlong(body, back, local, script, part, rec, pid, my) {
+    let player = null;
+    const play = async (btn, takeId) => {
+      btn.disabled = true;
+      try {
+        const bytes = await API.plays.audio(pid, takeId);
+        if (my !== token) return;
+        if (player) { player.pause(); URL.revokeObjectURL(player.src); }
+        player = new Audio(URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' })));
+        player.muted = muted;
+        if (typeof Player !== 'undefined') Player.pause();
+        await player.play().catch(() => {});
+      } catch (err) { console.error(err); h.announce(S.line(err)); }
+      btn.disabled = false;
+    };
+    const items = C.linesFor(script, part).map(l => {
+      const li = h.el('li', {}, lineView(l));
+      const takeId = rec.chosen[l.id];
+      if (takeId) {
+        const acts = h.el('div', { class: 'take-row' });
+        const b = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => play(b, takeId) }, svg('play', 'i-inline'), 'Take');
+        acts.append(b, h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
+          acts.replaceWith(reportForm(pid, { take_id: takeId }, () => renderPart(body, ++token, local.id, part)));
+        } }, 'Report'));
+        li.append(acts);
+      }
+      return li;
+    });
+    body.replaceChildren(back, h.el('ol', { class: 'read-along' }, items));
+  }
   function startRecording() {
     if (!API.account.signedIn()) { paintRecording(); return; }
     const p = store.production(rec.id);
@@ -581,6 +1066,12 @@ const PlaysUI = (() => {
   /** "Done with this part" hands the device on (§2.5). */
   function finishPart() {
     const { id, part, script } = rec;
+    // Shared: the takes are uploaded and the part finished on the Worker, from the cast sheet (rule 5).
+    if (store.share(id)) {
+      leave();
+      h.navigate(`?production=${encodeURIComponent(id)}`, true);
+      return;
+    }
     try {
       store.update(C.finish(store.production(id), script, part));
     } catch (err) {
@@ -618,9 +1109,27 @@ const PlaysUI = (() => {
     listen = null;
   }
 
+  let watching = false;
+  /** A sign-in or sign-out redraws a shared page, never a live recording. */
+  function watchAccount() {
+    if (watching || !API.account || !API.account.onChange) return;
+    watching = true;
+    let was = API.account.signedIn();
+    API.account.onChange(() => {
+      const now = API.account.signedIn();
+      if (now === was) return;
+      was = now;
+      if (rec && rec.s && rec.s.started) return;
+      if (lastDraw) lastDraw();
+    });
+  }
+
   function render(r, helpers) {
     h = helpers;
+    watchAccount();
+    lastDraw = null;
     const my = ++token;
+
     const body = $('plays-body');
     const id = r.p.get('production');
     const part = r.p.get('part');
@@ -630,5 +1139,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, renderMine, startButton, leave };
+  return { render, renderMine: (body, helpers) => { watchAccount(); return renderMine(body, helpers); }, startButton, leave };
 })();

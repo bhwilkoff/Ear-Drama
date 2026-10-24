@@ -15,6 +15,7 @@
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * The names before 068 (listen, series, radio, plays) are rewritten in place.
  *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
+ *   /invite#{TOKEN}, #invite={TOKEN}  an ear drama invite, shown in Library's Ear dramas (§4.10a)
  * Path twins (/series/{key}, /episode/{id}, /search?q=) are forwarded into
  * these by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
  *
@@ -302,6 +303,7 @@
   let firstRoute = true;
   function route() {
     takeRoomLink();
+    takeInviteLink();
     const r = parseRoute();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
     // A production is the person's own, so it sits under Library; a play's page under Browse.
@@ -331,6 +333,14 @@
     const q = p.toString();
     history.replaceState(null, '', q ? `?${q}` : location.pathname);
     TogetherUI.open(code);
+  }
+
+  /** An ear drama invite (DEEP_LINKS.md, PLAYS-DESIGN §11.7 rule 3): held for this tab, cleared from the address, shown in Library's Ear dramas. */
+  function takeInviteLink() {
+    const tok = PlaysShare.inviteToken(location);
+    if (!tok) return;
+    PlaysShare.holdInvite(tok);
+    history.replaceState(null, '', '?view=library&tab=dramas');
   }
 
   function setTitle(...parts) { document.title = [...parts.filter(Boolean), 'Ear Drama'].join(' · '); }

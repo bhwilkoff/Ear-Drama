@@ -1,7 +1,9 @@
 /**
  * Productions on this browser (PLAYS-DESIGN §6, WEB-DESIGN §4.10): the one
  * module that writes a play's audio. Nothing is uploaded and no account is
- * needed (§8 rule 4).
+ * needed (§8 rule 4); a shared production (phase 2, js/plays-share.js) keeps
+ * its link to the Worker beside its record, and other members' takes are
+ * written here only as their audio arrives for the listen-through.
  *
  * IndexedDB `ed-plays`, one `files` store keyed by path, laid out like
  * Apple's Plays/<production>/ folder:
@@ -10,6 +12,7 @@
  *   {id}/takes/{line}-{8}.wav   one 24-bit mono WAV per take, written with add(): never overwritten
  *   {id}/roomtone/roomtone-{8}.wav
  *   {id}/mix.wav            the rendered mix of a finished play, rebuilt when its takes change
+ *   {id}/share.json         phase 2 only: the Worker's production id and the consent version agreed to
  * Audio is stored as ArrayBuffers, which every browser's IndexedDB keeps.
  * Writers take only microphone captures ({ samples, sampleRate }) or the
  * rendered mix; the device voice has no samples to give (js/plays-voice.js).
@@ -92,6 +95,8 @@ const PlayStore = (() => {
     const takePath = (id, file) => `${id}/takes/${file}`;
     const roomTonePath = (id, file) => `${id}/roomtone/${file}`;
     const mixPath = (id) => `${id}/mix.wav`;
+    const sharePath = (id) => `${id}/share.json`;
+    const shares = new Map();
 
     const store = {
       backend,
@@ -107,6 +112,10 @@ const PlayStore = (() => {
               try { return JSON.parse(await backend.get(k)); } catch { return null; }
             }));
             productions = records.filter(Boolean).sort((a, b) => b.created - a.created);
+            await Promise.all(productions.map(async p => {
+              const raw = await backend.get(sharePath(p.id)).catch(() => null);
+              if (raw) { try { shares.set(p.id, JSON.parse(raw)); } catch { /* unreadable: not shared */ } }
+            }));
             return productions;
           })();
           loaded.catch(() => { loaded = null; });
@@ -150,11 +159,27 @@ const PlayStore = (() => {
         return w;
       },
 
+      /** Phase 2: { pid, consented? } when this production is shared through the Worker. */
+      share(id) { return shares.get(id) || null; },
+      async setShare(id, link) {
+        shares.set(id, link);
+        await backend.put(sharePath(id), JSON.stringify(link));
+      },
+      findShared(pid) { return productions.find(p => shares.get(p.id)?.pid === pid) || null; },
+
+      /** Another member's take, as its audio arrived from the Worker; never overwrites a file. */
+      async importTake(id, file, bytes) {
+        const path = takePath(id, file);
+        if ((await backend.get(path)) !== null) return;
+        await backend.add(path, bytes instanceof ArrayBuffer ? bytes : bufferOf(new Uint8Array(bytes)));
+      },
+
       async delete(id) {
         await (writes.get(id) || Promise.resolve()).catch(() => {});
         await backend.removePrefix(folder(id));
         productions = productions.filter(p => p.id !== id);
         scripts.delete(id);
+        shares.delete(id);
         writes.delete(id);
       },
 

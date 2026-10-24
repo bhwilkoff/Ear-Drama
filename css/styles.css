@@ -506,6 +506,7 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .play-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
 .play-link { display: flex; flex-direction: column; gap: 2px; min-height: var(--tap); justify-content: center; text-decoration: none; }
 .play-link:hover .body-strong { text-decoration: underline; }
+.play-remote { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: start; cursor: pointer; width: 100%; }
 .play-rights { overflow-wrap: anywhere; }
 .play-rights a, .read-along a { color: var(--color-link); }
 .part-list { border-top: 1px solid var(--color-border); }
@@ -524,6 +525,21 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .listen { margin-top: var(--space-4); }
 .listen > * + * { margin-top: var(--space-2); }
 .mix-audio { display: block; width: 100%; }
+/* Phase 2: a production shared through the Worker (WEB-DESIGN §4.10a) */
+.share-box { margin-top: var(--space-3); }
+.share-box > * + * { margin-top: var(--space-2); }
+.share-box .take-form { max-width: 32rem; }
+.consent { margin-top: var(--space-4); }
+.consent-text { white-space: pre-line; max-width: 68ch; padding: var(--space-3) 0; }
+.report-form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); flex: 1 1 100%; }
+.report-form .field-input { flex: 1 1 10rem; width: auto; min-width: 0; }
+.report-form .refusal { flex: 1 1 100%; }
+.invite-slot:not(:empty) { margin-top: var(--space-2); }
+.invite-slot .caption { margin-top: var(--space-1); }
+.class-code { font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.class-form { max-width: 32rem; margin-top: var(--space-3); }
+.class-code-input { font-variant-numeric: tabular-nums; letter-spacing: 0.08em; text-transform: uppercase; }
+.read-along .take-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
 .read-along { list-style: none; margin-top: var(--space-3); }
 .read-along > li { padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
 .script-line { max-width: 68ch; }

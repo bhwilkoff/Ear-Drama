@@ -666,11 +666,14 @@ const API = (() => {
     }
     async function problemOf(resp, path) {
       let code = '';
-      try { code = (await resp.json()).error || ''; } catch { /* not JSON */ }
+      let detail;
+      try { const j = await resp.json(); code = j.error || ''; detail = j.detail; } catch { /* not JSON */ }
       const kind = resp.status === 401 ? 'unauthorized' : resp.status === 429 ? 'rate_limited'
         : resp.status === 503 ? 'not_configured' : 'error';
       const err = new DataError(kind, `${resp.status} ${code} ${path}`);
       err.status = resp.status;
+      err.code = code;
+      err.detail = detail;
       return err;
     }
     async function post(path, body, headers = {}) {
@@ -720,8 +723,12 @@ const API = (() => {
       return access.token;
     }
 
-    /** Every signed-in call. A 401 refreshes once and retries; a second 401 is surfaced. */
-    async function call(method, path, body) {
+    /**
+     * Every signed-in call. A 401 refreshes once and retries; a second 401 is surfaced.
+     * `opts.raw` sends bytes as the body (a take's audio) with `opts.headers`;
+     * `opts.bytes` answers the body as an ArrayBuffer.
+     */
+    async function call(method, path, body, opts = {}) {
       const b = base();
       if (!b) throw new DataError('not_configured', path);
       for (let attempt = 0; ; attempt++) {
@@ -730,13 +737,15 @@ const API = (() => {
         try {
           resp = await fetch(b + path, {
             method,
-            headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
-            body: body ? JSON.stringify(body) : undefined,
-            signal: AbortSignal.timeout(TIMEOUT_MS),
+            headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}),
+                       ...(opts.headers || {}) },
+            body: opts.raw !== undefined ? opts.raw : body ? JSON.stringify(body) : undefined,
+            signal: AbortSignal.timeout(opts.timeout || TIMEOUT_MS),
           });
         } catch (e) { throw netError(e, path); }
         if (resp.status === 401 && attempt === 0) { access = null; continue; }
         if (!resp.ok) throw await problemOf(resp, path);
+        if (opts.bytes) return resp.arrayBuffer();
         return resp.status === 204 ? null : resp.json();
       }
     }
@@ -783,7 +792,9 @@ const API = (() => {
     }
 
     return {
-      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE,
+      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE, call,
+      /** The Worker's URL is real (not a placeholder): signed-in features may be offered. */
+      reachable: () => !!base(),
       onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
       info: () => call('GET', '/v1/account'),
       syncRead: (since) => call('GET', `/v1/sync?since=${encodeURIComponent(Math.max(0, Math.floor(since || 0)))}`),
@@ -797,6 +808,44 @@ const API = (() => {
         reset() { access = null; refreshing = null; memState = undefined; },
         access: () => access,
       },
+    };
+  })();
+
+  /* ---- Shared plays (M8, Decisions 057, 059, 066; docs/WORKER.md "Shared plays") ---- */
+
+  /**
+   * Every route is signed in and goes through `account.call`, so the token is
+   * refreshed first. A refusal carries the Worker's own `code` and `detail`.
+   */
+  const plays = (() => {
+    const P = '/v1/plays';
+    const at = (pid) => `${P}/productions/${encodeURIComponent(pid)}`;
+    const c = (method, path, body, opts) => account.call(method, path, body, opts);
+    return {
+      available: () => account.reachable(),
+      consent: () => c('GET', `${P}/consent`),
+      create: (body) => c('POST', `${P}/productions`, body),
+      list: () => c('GET', `${P}/productions`),
+      get: (pid) => c('GET', at(pid)),
+      invite: (pid) => c('POST', `${at(pid)}/invites`, {}),
+      viewInvite: (token) => c('POST', `${P}/invites/view`, { token }),
+      joinByInvite: (token, part, displayName) =>
+        c('POST', `${P}/invites/claim`, { token, part, ...(displayName ? { display_name: displayName } : {}) }),
+      claim: (pid, part) => c('POST', `${at(pid)}/claim`, { part }),
+      partAction: (pid, part, action) => c('POST', `${at(pid)}/parts/${encodeURIComponent(part)}/${action}`, {}),
+      agree: (pid, version) => c('POST', `${at(pid)}/consent`, { version }),
+      upload: (pid, takeId, bytes, meta) => c('PUT', `${at(pid)}/takes/${encodeURIComponent(takeId)}`, null,
+        { raw: bytes, headers: { 'content-type': 'audio/wav', 'x-take': JSON.stringify(meta) }, timeout: 180000 }),
+      audio: (pid, takeId) => c('GET', `${at(pid)}/takes/${encodeURIComponent(takeId)}/audio`, null,
+        { bytes: true, timeout: 120000 }),
+      choose: (pid, takeId) => c('POST', `${at(pid)}/chosen`, { take_id: takeId }),
+      publish: (pid) => c('POST', `${at(pid)}/publish`, {}),
+      report: (body) => c('POST', `${P}/reports`, body),
+      block: (userId) => c('POST', `${P}/blocks`, { user_id: userId }),
+      classes: () => c('GET', `${P}/classes`),
+      createClass: (name, under13) => c('POST', `${P}/classes`, { name, under13: !!under13 }),
+      joinClass: (code, displayName) =>
+        c('POST', `${P}/classes/join`, { code, ...(displayName ? { display_name: displayName } : {}) }),
     };
   })();
 
@@ -865,7 +914,7 @@ const API = (() => {
   })();
 
   return {
-    rooms,
+    rooms, plays,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, artOf, artURL, ART_STEPS,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,

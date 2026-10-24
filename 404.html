@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ear Drama</title>
   <!-- The path twins of the apps' links, forwarded into the web app's router
-       (DEEP_LINKS.md): /series/{key}, /episode/{id}, /person/{id}, /search?q=, /library.
+       (DEEP_LINKS.md): /series/{key}, /episode/{id}, /person/{id}, /search?q=, /library, /invite#{token}.
        GitHub Pages serves this page for any path it does not hold. -->
   <script>
     (function () {
@@ -19,7 +19,9 @@
       else if (head === 'search') { to.set('view', 'search'); if (q.get('q')) to.set('q', q.get('q')); }
       else if (head === 'library') to.set('view', 'library');
       else if (head === 'listen') to.set('view', 'listen');
-      if ([...to.keys()].length) location.replace('/?' + to.toString());
+      else if (head === 'invite') { to.set('view', 'library'); to.set('tab', 'dramas'); }
+      var hash = head === 'invite' && location.hash.length > 1 ? '#invite=' + location.hash.slice(1) : '';
+      if ([...to.keys()].length) location.replace('/?' + to.toString() + hash);
     })();
   </script>
 </head>

@@ -3,7 +3,8 @@
 # packaged-TV origin rules, Pulse's charts and page, the design tokens (every
 # platform's token file matches design-tokens.json), the service worker's
 # routing and shell, plays phase 1 (relay, takes, timeline, mix, no stored
-# device voice), sign-in and sync against a stubbed Worker (refresh, merge,
+# device voice), plays phase 2 against a stubbed Worker (the uploads switch,
+# consent, no flagged upload, any open part, invite links), sign-in and sync against a stubbed Worker (refresh, merge,
 # last write wins, deletion), Listen Together against a stubbed Worker built
 # from worker/src/room-protocol.js (join, leave, drift, handoff, an ended
 # room, the core golden-checked against the protocol), and two checks a browser
@@ -16,6 +17,7 @@ fail=0
 for t in js/api.test.js \
          js/player.test.js \
          js/plays.test.js \
+         js/plays-share.test.js \
          js/account.test.js \
          js/together.test.js \
          tools/test_tv_focus.mjs \
