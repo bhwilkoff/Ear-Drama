@@ -228,14 +228,23 @@ describe("invite links", () => {
   });
 });
 
-describe("the relay order (C7, pending owner: one part at a time, largest first)", () => {
-  it("only the next part may be claimed", async () => {
+describe("the relay order (C7, owner 2026-10-23: any order, largest suggested)", () => {
+  it("any open part may be claimed, and the largest stays the suggestion", async () => {
     const s = await person("order");
     const p = await createProduction(s);
+    expect(p.next).toBe(firstPart);
     const r = await claim(s, p.id, secondPart);
+    expect(r.status).toBe(200);
+    expect((await r.json()).parts[secondPart]).toMatchObject({ status: "recording", user_id: s.user_id });
+  });
+
+  it("a part that is not open cannot be claimed", async () => {
+    const { director, p } = await recording("not-open");
+    await seedChosen(p.id, director.user_id, linesFor(firstPart), firstPart);
+    expect((await partAction(director, p.id, firstPart, "done")).status).toBe(200);
+    const r = await claim(director, p.id, firstPart);
     expect(r.status).toBe(409);
-    expect(await r.json()).toEqual({ error: "not_next", detail: firstPart });
-    expect((await claim(s, p.id, firstPart)).status).toBe(200);
+    expect(await r.json()).toEqual({ error: "not_open" });
   });
 
   it("no part may be claimed while another records, by invite or by a member", async () => {

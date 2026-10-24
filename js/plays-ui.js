@@ -20,6 +20,8 @@ const PlaysUI = (() => {
   let rec = null;
   /** The listen-through's rendered mix, kept for this page only: { id, from, url }. */
   let mix = null;
+  /** The live listen-through on the production page, ended when the page changes. */
+  let listen = null;
 
   const $ = (id) => document.getElementById(id);
   const ICON = {
@@ -184,9 +186,11 @@ const PlaysUI = (() => {
     }
     h.setTitle(script.title);
     $('plays-h').textContent = script.title;
-    const author = C.authorLine(script);
+    const author = C.authorFacts(script);
+    const facts = [script.year ? String(script.year) : null, C.lengthLine(script)].filter(Boolean).join(' · ');
     body.replaceChildren(
-      h.el('div', { class: 'page-head' }, author ? h.el('p', { class: 'body' }, author) : null, rightsLine(script)),
+      h.el('div', { class: 'page-head' }, author ? h.el('p', { class: 'body' }, author) : null,
+        h.el('p', { class: 'caption tabular play-facts' }, facts), rightsLine(script)),
       h.el('div', { class: 'actions ear-drama-only' }, startButton(script, h)),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
@@ -244,13 +248,13 @@ const PlaysUI = (() => {
       const actions = h.el('div', { class: 'cast-actions' });
       if (st.status === 'recording') {
         actions.append(h.el('a', { class: 'btn btn-accent', href: partHref(part.id) }, 'Record'));
-      } else if (st.status === 'open' && part.id === next) {
+      } else if (st.status === 'open' && !recording) {
         const name = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name',
                                      placeholder: 'Your name', 'aria-label': `Your name, optional, for ${part.title}` });
         const form = h.el('form', { class: 'take-form', onsubmit: (e) => {
           e.preventDefault();
           if (apply(cur => C.take(cur, script, part.id, name.value))) h.navigate(partHref(part.id));
-        } }, name, h.el('button', { type: 'submit', class: 'btn btn-accent' }, 'Take part'));
+        } }, name, h.el('button', { type: 'submit', class: part.id === next ? 'btn btn-accent' : 'btn' }, 'Take part'));
         if (!C.isSpeaking(part.id)) {
           form.append(h.el('button', { type: 'button', class: 'btn', onclick: () => {
             if (apply(cur => C.leaveSilent(cur, script, part.id))) rerender();
@@ -293,21 +297,16 @@ const PlaysUI = (() => {
   }
 
   /**
-   * Pending owner (C5): a half-recorded play is not previewed outside the
-   * recording flow, so the listen-through opens only when every speaking line
-   * has a human take; reaching its end without seeking ahead finishes the play.
+   * Listen through any time (C5, owner 2026-10-23). Until every speaking line is
+   * human, the takes play and the open lines are read live by the device voice,
+   * labeled (ListenThrough); then the rendered mix plays, hearing it to the end
+   * without seeking ahead finishes the play, and Export is offered.
    */
   function listenThrough(p, script, rerender) {
     const box = h.el('section', { class: 'block listen', 'aria-labelledby': 'listen-through-h' },
       h.el('h2', { class: 'section-header', id: 'listen-through-h' }, 'Listen through'));
-    const missing = C.missingSpeech(p, script).length;
-    if (missing) {
-      box.append(h.el('p', { class: 'caption' }, missing === 1 ? '1 line still needs a voice.' : `${num.format(missing)} lines still need a voice.`));
-      return box;
-    }
-    const retake = C.needsRetake(p, script).length;
-    if (retake) {
-      box.append(h.el('p', { class: 'caption' }, retake === 1 ? '1 line needs a re-take with headphones.' : `${num.format(retake)} lines need a re-take with headphones.`));
+    if (!C.isComplete(p, script)) {
+      liveListen(box, p, script);
       return box;
     }
     const from = C.fingerprint(p);
@@ -355,14 +354,41 @@ const PlaysUI = (() => {
 
     box.append(play, slot, status);
     if (mix && mix.id === p.id && mix.from === from) attach(false);
-    if (finished) {
-      box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: async () => {
-        try { await store.exportMix(p.id); } catch (err) { console.error(err); status.textContent = 'The mix did not export.'; }
-      } }, 'Export')));
-    } else {
-      box.append(h.el('p', { class: 'caption' }, 'Export opens after one listen all the way through.'));
-    }
+    box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+      try { await store.exportMix(p.id, LiveAudio.offlineContext); } catch (err) { console.error(err); status.textContent = 'The mix did not export.'; }
+    } }, 'Export')));
     return box;
+  }
+
+  /** The live listen-through of a play not yet fully voiced. Writes nothing (§5). */
+  function liveListen(box, p, script) {
+    if (listen) listen.end();
+    const slot = h.el('div', { class: 'listen-now', 'aria-live': 'polite' });
+    const control = h.el('button', { type: 'button', class: 'btn btn-primary' });
+    const l = ListenThrough.create({
+      production: p, script, store,
+      audio: LiveAudio.create({ muted }), voice: StandInVoice.create({ muted }),
+      onChange: () => paint(),
+    });
+    listen = l;
+    control.addEventListener('click', () => {
+      if (l.playing) { l.stop(); return; }
+      if (typeof Player !== 'undefined') Player.pause();
+      l.play();
+    });
+    function paint() {
+      if (listen !== l) return;
+      control.replaceChildren(svg(l.playing ? 'stop' : 'play', 'i-inline'), l.playing ? 'Stop' : 'Listen through');
+      const entry = l.playing ? l.current() : null;
+      const line = entry && script.lines.find(x => x.id === entry.lineID);
+      slot.replaceChildren();
+      if (!line) return;
+      if (entry.source === 'voice') slot.append(h.el('p', { class: 'caption device-voice' }, svg('wave', 'i-inline'), 'Device voice'));
+      slot.append(lineView(line));
+    }
+    paint();
+    if (!l.plan.length) control.disabled = true;
+    box.append(control, slot);
   }
 
   /* ---- A part: recording it, or reading along ---- */
@@ -393,6 +419,7 @@ const PlaysUI = (() => {
   }
 
   function startRecording() {
+    if (!API.account.signedIn()) { paintRecording(); return; }
     const p = store.production(rec.id);
     if (typeof Player !== 'undefined') Player.pause();
     const audio = LiveAudio.create({ muted });
@@ -444,6 +471,17 @@ const PlaysUI = (() => {
     const box = h.el('div', { class: 'rec-start' }, svg('headphones', 'rec-icon'));
     if (!LiveAudio.supported()) {
       box.append(h.el('p', { class: 'body' }, 'This browser cannot record.'));
+      return box;
+    }
+    if (!API.account.signedIn()) {
+      const avail = API.account.available();
+      box.append(
+        h.el('p', { class: 'body' }, 'Recording needs an account.'),
+        h.el('button', { type: 'button', class: 'btn btn-accent', disabled: !(avail.apple || avail.google), onclick: () => {
+          AccountUI.openSheet();
+          const sheet = document.querySelector('dialog.account-sheet');
+          if (sheet) sheet.addEventListener('close', () => paintRecording(), { once: true });
+        } }, 'Sign in'));
       return box;
     }
     const start = h.el('button', { type: 'button', class: 'btn btn-primary', disabled: !rec.headphones,
@@ -576,6 +614,8 @@ const PlaysUI = (() => {
   function leave() {
     if (rec && rec.s) rec.s.end();
     rec = null;
+    if (listen) listen.end();
+    listen = null;
   }
 
   function render(r, helpers) {

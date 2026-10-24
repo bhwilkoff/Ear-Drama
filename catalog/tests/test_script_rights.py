@@ -6,10 +6,12 @@ Broken controls, 2026-10-22, each run against a mutated copy of script_rights.py
 (the count is how many cases still passed; every mutation must fail at least one):
     rescue before hide (clearance first)   17/22    age line off by one              19/22
     missing renewal row alone opens        19/22    collection counts as authorship  20/22
-    author death (C9) applied              21/22    renewals never expire            21/22
+    author death (C9) applied, pre-ruling  21/22    renewals never expire            21/22
     title renewal ignores the author       21/22    adaptation renewal hides a play  21/22
     GRW terms not a hide                   21/22    translation ignored              21/22
     any "public domain" text clears        21/22
+C9 accepted (owner 2026-10-23), 2026-10-24: the bucket left not castable 21/22; a
+registration on record ignored 21/22.
 The adaptation control first PASSED 22/22: its only fixture's author had died
 before the renewal, which a second rule already refuses. Tarkington's case fixed it.
 """
@@ -246,10 +248,17 @@ def registered_after_1963_renewed_automatically():
 
 
 @case
-def author_died_by_1955_is_recorded_not_applied():
+def author_died_by_1955_is_castable_c9():
     a = [{"name": "Carlton, Henry Fisk", "died": 1955, "src": "https://www.wikidata.org/wiki/Q1"}]
     r = j(script(authors=a, for_hire=False))
-    assert (r["bucket"], r["state"], r["castable"]) == ("script_author_died_unapplied", "owner_pending", False), r
+    assert (r["bucket"], r["state"], r["castable"]) == ("script_author_died", "castable", True), r
+    assert r["evidence"] == [{"claim": "Carlton, Henry Fisk died 1955", "src": "https://www.wikidata.org/wiki/Q1"}]
+    assert j(script(authors=[{**a[0], "src": None}], for_hire=False))["bucket"] == "script_no_evidence"
+    assert j(script(authors=a + [{"name": "Hire, Some", "src": "https://x"}], for_hire=False))["bucket"] \
+        == "script_no_evidence"
+    assert j(script(authors=a, for_hire=False, registration=reg(year=1964)))["bucket"] == "script_no_evidence"
+    assert j(script(authors=a, for_hire=False, published={"year": 1940, "src": "https://x"}))["bucket"] \
+        == "script_no_evidence"
     assert j(script(authors=[{**a[0], "died": 1956}], for_hire=False))["bucket"] == "script_no_evidence"
     assert j(script(authors=a, for_hire=None))["bucket"] == "script_no_evidence"
     assert j(script(authors=a, for_hire=False), ctx(today=datetime.date(2025, 6, 1)))["bucket"] \

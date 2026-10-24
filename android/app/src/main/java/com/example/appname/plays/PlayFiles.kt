@@ -25,6 +25,22 @@ class MicrophoneCapture(val samples: FloatArray, val sampleRate: Double) {
     }
 }
 
+/**
+ * Marks the PCM a device voice produced. Every writer calls [refuse] on what
+ * it is handed, so a synthetic buffer can never reach a take, a mix, an export
+ * or an upload (PLAYS-DESIGN section 5 rule 1, section 8 rule 3). Identity, not content.
+ */
+object SyntheticPCM {
+    private val marked: MutableSet<FloatArray> =
+        java.util.Collections.newSetFromMap(java.util.Collections.synchronizedMap(java.util.WeakHashMap()))
+
+    fun mark(samples: FloatArray) { marked += samples }
+
+    fun refuse(samples: FloatArray) {
+        check(samples !in marked) { "a device voice is never stored" }
+    }
+}
+
 /** Where a rendered mix goes, a chunk at a time. The app's encodes AAC into `.m4a` (MixEncoder.kt). */
 interface MixSink {
     fun write(samples: FloatArray, count: Int)
@@ -44,6 +60,7 @@ object TakeAudio {
     const val FILE_EXTENSION = "wav"
 
     fun write(capture: MicrophoneCapture, file: File) {
+        SyntheticPCM.refuse(capture.samples)
         val sink = WavSink(file, capture.sampleRate.roundToInt())
         sink.write(capture.samples, capture.samples.size)
         sink.finish()
@@ -102,6 +119,7 @@ class WavSink(private val file: File, private val sampleRate: Int) : MixSink {
     }
 
     override fun write(samples: FloatArray, count: Int) {
+        SyntheticPCM.refuse(samples)
         val bytes = ByteArray(count * 3)
         for (i in 0 until count) {
             val v = (samples[i].coerceIn(-1f, 1f) * 8_388_607f).roundToInt()

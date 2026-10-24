@@ -14,11 +14,13 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -53,8 +55,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.LinkAnnotation
@@ -66,6 +70,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.example.appname.plays.CastPart
+import com.example.appname.plays.LiveListen
 import com.example.appname.plays.MixPlayback
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
@@ -86,6 +91,7 @@ import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.liveButtonColors
 import com.example.appname.ui.theme.Spacing
 import java.io.File
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -237,7 +243,11 @@ fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> U
             item(key = "head") {
                 Column(pad, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
                     Text(script.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-                    if (script.authorLine.isNotEmpty()) Text(script.authorLine, style = MaterialTheme.typography.bodyMedium)
+                    if (script.authorLine.isNotEmpty()) Text(script.authorWithYears, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        listOfNotNull(script.year?.toString(), script.lengthLine).joinToString(" \u00b7 "),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
                     RightsLine(script)
                     if (!LocalIsTelevision.current) StartEarDramaButton(script, onOpenProduction)
                 }
@@ -275,7 +285,7 @@ internal fun ErrorLine(text: String) {
 
 // MARK: The cast sheet
 
-/** Who takes which part (§2.2-2.5). Parts are listed largest first; only the relay's next part can be taken, one at a time (pending owner, C7). */
+/** Who takes which part (§2.2-2.5). Parts are listed largest first; any open part can be taken, one recording at a time (Decision 067, C7). */
 @Composable
 fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit) {
     val plays = LocalAppContainer.current.plays
@@ -316,6 +326,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
                     state = production.state(part.id),
                     status = partStatus(part, production, script),
                     isNext = part.id == next,
+                    canTake = current == null,
                     canReopen = current == null,
                     onRecord = { onRecord(part.id) },
                     onTake = { taking = part.id },
@@ -371,6 +382,7 @@ private fun CastRow(
     state: PartState,
     status: String,
     isNext: Boolean,
+    canTake: Boolean,
     canReopen: Boolean,
     onRecord: () -> Unit,
     onTake: () -> Unit,
@@ -384,9 +396,11 @@ private fun CastRow(
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
                 when (state.status) {
                     PartState.Status.Recording -> Button(onClick = onRecord) { Text("Record") }
-                    PartState.Status.Open -> if (isNext) {
+                    PartState.Status.Open -> {
                         if (!part.id.isSpeaking) OutlinedButton(onClick = onLeaveSilent) { Text("Leave silent") }
-                        Button(onClick = onTake) { Text("Take part") }
+                        if (canTake) {
+                            if (isNext) Button(onClick = onTake) { Text("Take part") } else OutlinedButton(onClick = onTake) { Text("Take part") }
+                        }
                     }
                     PartState.Status.Done, PartState.Status.Silent -> {
                         var open by remember { mutableStateOf(false) }
@@ -442,10 +456,11 @@ private fun DeleteProductionDialog(production: Production, onDismiss: () -> Unit
 // MARK: Listen through, finish, keep
 
 /**
- * Pending owner (C5): a half-recorded play is not previewed outside the
- * recording flow. Listening through is offered only when every speaking line
- * has a human take, so it never holds a device voice; reaching the end of it
- * without skipping ahead finishes the play (§2.6-2.7).
+ * Listening is open at any time (Decision 067). A complete play plays its mix;
+ * reaching the end without skipping ahead finishes it (§2.6-2.7). Any other
+ * play runs live: takes from their files, every other speech line read by the
+ * device voice, labeled, writing nothing and never finishing the play.
+ * Export is offered whenever the play is complete.
  */
 @Composable
 private fun ListenThrough(production: Production, script: PlayScript) {
@@ -461,12 +476,21 @@ private fun ListenThrough(production: Production, script: PlayScript) {
     var position by remember { mutableFloatStateOf(0f) }
     var error by remember { mutableStateOf<String?>(null) }
     var listenedFrom by remember { mutableStateOf<String?>(null) }
-    val missing = Relay.missingSpeech(production, script).size
-    val retake = Relay.needsRetake(production, script).size
+    var live by remember { mutableStateOf<LiveListen?>(null) }
+    var liveJob by remember { mutableStateOf<Job?>(null) }
+    val complete = Relay.isComplete(production, script)
+
+    fun stopLive() {
+        liveJob?.cancel()
+        live?.close()
+        liveJob = null
+        live = null
+    }
 
     DisposableEffect(production.chosenFingerprint) {
         onDispose {
             mix.stop()
+            stopLive()
             loaded = false
             playing = false
         }
@@ -480,19 +504,11 @@ private fun ListenThrough(production: Production, script: PlayScript) {
     }
 
     Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+        val running = live
         when {
-            missing > 0 -> Text(
-                if (missing == 1) "1 line still needs a voice." else "$missing lines still need a voice.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            retake > 0 -> Text(
-                if (retake == 1) "1 line needs a re-take with headphones." else "$retake lines need a re-take with headphones.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            running != null -> LiveListenPanel(running, script, onStop = { stopLive() })
             mixing -> CircularProgressIndicator(Modifier.semantics { contentDescription = "Mixing" })
-            loaded -> {
+            complete && loaded -> {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.S4.dp)) {
                     IconButton(onClick = {
                         if (container.playback.state.value.isPlaying) container.playback.togglePlay()
@@ -505,12 +521,6 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                             contentDescription = if (playing) "Pause" else "Play",
                             tint = OnAir.colors.live,
                         )
-                    }
-                    if (production.isFinished) {
-                        OutlinedButton(onClick = { shareMix(context, plays.store.mixFile(production.id)) }) {
-                            Icon(Icons.Filled.Share, contentDescription = null)
-                            Text("Export", Modifier.padding(start = Spacing.S2.dp))
-                        }
                     }
                 }
                 val duration = mix.durationMs.coerceAtLeast(1).toFloat()
@@ -531,7 +541,7 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                     )
                 }
             }
-            else -> Button(onClick = {
+            complete -> Button(onClick = {
                 scope.launch {
                     mixing = true
                     try {
@@ -558,8 +568,63 @@ private fun ListenThrough(production: Production, script: PlayScript) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Text(if (production.isFinished) "Play" else "Listen through", Modifier.padding(start = Spacing.S2.dp))
             }
+            else -> Button(onClick = {
+                if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+                val listen = LiveListen(context, plays.store.takesFolder(production.id))
+                live = listen
+                liveJob = scope.launch {
+                    try {
+                        listen.run(Relay.listenPlan(production, script))
+                    } finally {
+                        if (live === listen) {
+                            listen.close()
+                            live = null
+                            liveJob = null
+                        }
+                    }
+                }
+            }, colors = liveButtonColors()) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Text("Listen through", Modifier.padding(start = Spacing.S2.dp))
+            }
+        }
+        if (complete && running == null) {
+            OutlinedButton(onClick = {
+                scope.launch {
+                    try {
+                        shareMix(context, plays.renderMix(production.id))
+                        error = null
+                    } catch (e: Exception) {
+                        error = e.message ?: "The play could not be mixed."
+                    }
+                }
+            }, enabled = !mixing) {
+                Icon(Icons.Filled.Share, contentDescription = null)
+                Text("Export", Modifier.padding(start = Spacing.S2.dp))
+            }
         }
         error?.let { ErrorLine(it) }
+    }
+}
+
+/** The line being heard, its speaker, and "Device voice" on a line the device reads, so a stand-in never passes as a person. */
+@Composable
+private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -> Unit) {
+    val entry by listen.current.collectAsState()
+    val line = entry?.let { e -> script.lines.firstOrNull { it.id == e.lineID } }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
+        if (entry is Relay.ListenEntry.Voice) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Text("Device voice", Modifier.padding(start = Spacing.S1.dp), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        line?.role?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        line?.let { Text(it.spokenText, style = MaterialTheme.typography.headlineSmall) }
+    }
+    OutlinedButton(onClick = onStop) {
+        Icon(Icons.Filled.Stop, contentDescription = null)
+        Text("Stop", Modifier.padding(start = Spacing.S2.dp))
     }
 }
 

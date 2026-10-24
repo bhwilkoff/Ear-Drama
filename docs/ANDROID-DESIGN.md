@@ -228,14 +228,30 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). No tab
   of their own (Decision 068): a play is a row in Browse and Search, and
   a person's productions are Library's Ear dramas (§4.6). The play's
-  page shows the rights line (the evidence claims verbatim, each linked
-  to its source, then the source by name), "Start an ear drama" (was
-  "Cast this play"), and the parts with line counts. The
-  cast sheet is a `ListItem` per part, largest first, with its one verb
-  in the trailing slot: Take part (an `AlertDialog` with an optional
-  name), Leave silent (sound and directions only), Record, or a `⋮` menu
-  with Open part; then Listen, then Discard unused takes and Delete
-  production. Recording asks for the microphone at Start recording,
+  page shows the author (with born and died years when the record has
+  them), the record's year when it has one, and its length as "N parts
+  · N lines", nothing invented (no rating, no label); then the rights
+  line (the evidence claims verbatim, each linked to its source, then
+  the source by name), "Start an ear drama" (was "Cast this play"), and
+  the parts with line counts. The cast sheet is a `ListItem` per part,
+  largest first, with its one verb in the trailing slot (Decision 067,
+  batch 0b): every open part shows Take part (an `AlertDialog` with an
+  optional name) while no part records, in any order; the part
+  `Relay.next` suggests (the first open one) gets the filled button, the
+  others `OutlinedButton`. Also Leave silent (any open sound or
+  directions part), Record, or a `⋮` menu with Open part; then Listen,
+  then Discard unused takes and Delete production. Listen runs at any
+  time: a finished-or-complete play plays the mix; otherwise
+  `Relay.listenPlan` runs live, each take from its file and each
+  speech line without one read by `TextToSpeech.speak` on a local voice
+  only (never `synthesizeToFile`, never stored), with the speaker and
+  words on screen and "Device voice" on those lines, and a Stop; a live
+  listen writes nothing and never marks the play listened through.
+  Export shows whenever the play is complete, rendering the mix if it
+  is missing or stale, with no caption. Recording needs an account:
+  signed out, the Start recording step shows "Recording needs an
+  account." and the Library account row's sign-in sheet instead of the
+  button; taking a part, reading, and listening need none. Recording asks for the microphone at Start recording,
   checks the route (headphones, or a refusal line with "Record without
   headphones", which turns on echo cancellation and marks the takes
   `aec`), counts five seconds of room tone, then shows the cue (labeled
@@ -245,7 +261,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   Done with this part. Space or the headset key records or stops, Enter
   keeps, and the arrows move by line. Takes are 24-bit WAV (not FLAC:
   MediaMuxer has no FLAC container), the mix is AAC in `mix.m4a`, and
-  only a finished play offers Export, through the share sheet.
+  a complete play offers Export, through the share sheet. A device
+  voice's PCM is tagged `synthetic`; every writer (`TakeAudio.write`,
+  the mix renderer, an upload) refuses it, and a listen plan's voice
+  entries hold text only (`StandInNeverStoredTest`).
 - **§4.10 Stations** (was Radio) is Tonight in 19xx (`RadioScreen`,
   `ui/screens/RadioScreen.kt`), the web's §4.9 in a `LazyColumn` of
   `ListItem`s: the evening `tonight.json` publishes for the device's own

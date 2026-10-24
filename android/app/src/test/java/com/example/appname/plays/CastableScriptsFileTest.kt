@@ -15,7 +15,7 @@ import org.junit.Test
 class CastableScriptsFileTest {
     private val castable = setOf(
         "script_gov_work", "script_pd_published_age", "script_registered_age",
-        "script_source_cleared", "script_registered_not_renewed",
+        "script_source_cleared", "script_registered_not_renewed", "script_author_died",
     )
 
     @Test fun `the bundled file decodes and every script can be cast`() {

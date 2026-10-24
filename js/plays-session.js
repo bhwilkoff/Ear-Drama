@@ -179,3 +179,68 @@ const RecordingSession = (() => {
 
   return { create };
 })();
+
+/**
+ * The listen-through of a play not yet fully voiced (PLAYS-DESIGN §2.6; C5, owner
+ * 2026-10-23): C.listenPlan in order, each human take from the store, each open
+ * speaking line read live by the device voice. It holds a store only to read takes;
+ * it writes nothing, and a voice entry is words, so no device voice can reach a
+ * take, the mix, an export, or an upload (§5).
+ */
+const ListenThrough = (() => {
+  'use strict';
+  const C = PlaysCore;
+
+  function create({ production, script, store, audio, voice, onChange = () => {} }) {
+    const plan = C.listenPlan(production, script);
+    let run = 0;
+    const s = { plan, index: 0, playing: false, rate: 1 };
+
+    s.current = () => plan[s.index] || null;
+
+    s.play = async () => {
+      if (s.playing || !plan.length) return;
+      const my = ++run;
+      s.playing = true;
+      if (s.index >= plan.length) s.index = 0;
+      onChange(s);
+      try {
+        await audio.startPlayback();
+        while (my === run && s.index < plan.length) {
+          const entry = plan[s.index];
+          onChange(s);
+          if (entry.source === 'take') await audio.playTake(await store.readTake(production.id, entry.take.file));
+          else await voice.speak(entry.text, entry.part, s.rate);
+          if (my !== run) return;
+          s.index += 1;
+        }
+      } catch (e) {
+        console.error('listen-through', e);
+      }
+      if (my === run) {
+        s.playing = false;
+        if (s.index >= plan.length) s.index = 0;
+        onChange(s);
+      }
+    };
+
+    s.stop = () => {
+      run += 1;
+      s.playing = false;
+      voice.cancel();
+      audio.stopPlayback();
+      onChange(s);
+    };
+
+    s.end = () => {
+      run += 1;
+      s.playing = false;
+      voice.cancel();
+      audio.stop();
+    };
+
+    return s;
+  }
+
+  return { create };
+})();

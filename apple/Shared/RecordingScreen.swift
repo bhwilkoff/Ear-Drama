@@ -12,6 +12,7 @@ struct RecordingScreen: View {
     var dismissWhenDone = false
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AudioPlayer.self) private var player
+    @Environment(AccountStore.self) private var account
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var session: RecordingSession?
@@ -49,6 +50,11 @@ struct RecordingScreen: View {
     @ViewBuilder private var start: some View {
         VStack(spacing: Spacing.s4) {
             switch preflight {
+            case .ready where !account.isSignedIn:
+                Text("Recording needs an account.")
+                if account.status == .signedOut {
+                    SignInButtons().frame(maxWidth: 320)
+                }
             case .ready:
                 Image(systemName: "headphones").font(.largeTitle).foregroundStyle(Color.brandSecondary)
                 Button {
@@ -94,6 +100,7 @@ struct RecordingScreen: View {
 
     /// The microphone is asked for here, at the moment of recording, never at launch.
     private func begin(echoCancelled: Bool) async {
+        guard account.isSignedIn else { return }
         guard await AVAudioApplication.requestRecordPermission() else {
             preflight = .microphoneDenied
             return

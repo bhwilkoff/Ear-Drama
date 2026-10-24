@@ -97,6 +97,37 @@ def radio_roles_lines_and_cues():
     assert not [u for u in r["unclassified"] if u in ("FIBBER", "MOLLY", "DOC GAMBLE")], r["unclassified"][:5]
 
 
+COMMERCIALS = RADIO.replace("SOUND: DOOR OPENS", """MIDDLE COMMERCIAL
+
+ANNCR: Johnson's Glo-Coat gives your floors a shine.
+
+HARLOW: That's right, folks.
+
+MUSIC: BRIDGE
+
+ANNCR: And now, back to Wistful Vista.
+
+(SECOND COMMERCIAL)
+
+ANNCR: Get Glo-Coat today.
+
+END OF SECOND COMMERCIAL
+
+SOUND: DOOR OPENS""")
+
+
+@case
+def radio_commercials_are_their_own_parts():
+    r = P.parse(COMMERCIALS, "radio")
+    roles = [l["role"] for l in r["lines"] if l["kind"] == "speech"]
+    assert roles[0] == "ANNCR", roles[:3]
+    assert "ANNCR (COMMERCIAL 1)" in roles and "HARLOW (COMMERCIAL 1)" in roles, roles[:12]
+    assert "ANNCR (COMMERCIAL 2)" in roles, roles[:12]
+    assert roles[roles.index("HARLOW (COMMERCIAL 1)") + 1] == "ANNCR", roles[:12]
+    assert roles[roles.index("ANNCR (COMMERCIAL 2)") + 1] == "DOC", roles[:14]
+    assert not any("COMMERCIAL" in a for a in r["aliases"]), r["aliases"]
+
+
 @case
 def radio_directions_and_mic_are_parts_not_words():
     r = P.parse(RADIO, "radio")

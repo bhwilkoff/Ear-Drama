@@ -21,16 +21,17 @@ The law each rescue rests on (docs/research/08b-scripts.md §1.2, statute read
                                   included (not an uploader's word)
 
 "Before 1931" does NOT free an unpublished broadcast script (§303: a 1928 work
-for hire runs to 2048). "Individual author died by 1955" (§302(a), life + 70)
-is research 08 C9, which the owner has not ruled on: it is RECORDED as
-`script_author_died_unapplied` and is not castable until they do.
+for hire runs to 2048). "Individual author died by 1955" (§302(a) and §303(a),
+life + 70) is research 08 C9, accepted by the owner on 2026-10-23 (Decision 067):
+`script_author_died`, castable, when every author is a named individual whose
+death year is on record with a link, the work is not for hire, and neither a
+publication nor a registration is on record (those run their own terms).
 
 States:
     castable        a rescue fired
     hide_claim      a claim a reader can open (takedown, renewal, source terms,
                     a non-commercial licence)
     not_castable    not enough evidence either way (the default)
-    owner_pending   evidence of a kind the owner has not yet accepted (C9)
 """
 import datetime
 import gzip
@@ -180,16 +181,15 @@ def bucket(s, ctx):
                  "src": search.get("src")}]
         return "script_registered_unchecked", [{"claim": f"registered {reg['reg']} in {reg['year']}; renewal "
                                                          f"due {due} not searched", "src": reg["src"]}]
+    authors = s.get("authors") or []
+    if (authors and s.get("for_hire") is False and not pub.get("year") and not reg.get("year")
+            and all(a.get("died") and a.get("src") and a["died"] <= author_died_line(today) for a in authors)):
+        return "script_author_died", [{"claim": f"{a['name']} died {a['died']}", "src": a["src"]} for a in authors]
 
     # Not castable.
     if gov.get("agency"):
         return "script_gov_unverified", [{"claim": f"{gov['agency']} series; this script's author is not on record",
                                           "src": gov.get("src")}]
-    authors = s.get("authors") or []
-    if (authors and s.get("for_hire") is False and not pub.get("year")
-            and all(a.get("died") and a["died"] <= author_died_line(today) for a in authors)):
-        return "script_author_died_unapplied", [{"claim": f"{a['name']} died {a['died']}", "src": a.get("src")}
-                                                for a in authors]
     return "script_no_evidence", [{"claim": "no publication, registration, clearance, or government authorship "
                                             "on record", "src": src.get("url")}]
 
@@ -202,7 +202,7 @@ STATE = {
     "script_gov_work": "castable", "script_pd_published_age": "castable", "script_registered_age": "castable",
     "script_source_cleared": "castable", "script_registered_not_renewed": "castable",
     "script_registered_unchecked": "not_castable", "script_gov_unverified": "not_castable",
-    "script_author_died_unapplied": "owner_pending", "script_no_evidence": "not_castable",
+    "script_author_died": "castable", "script_no_evidence": "not_castable",
 }
 
 
