@@ -3,6 +3,7 @@ package com.example.appname.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,10 +15,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -99,12 +104,15 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
     val date = RadioClock.localDate(now)
     val dbVersion by container.catalog.dbVersion.collectAsState()
     var attempt by remember { mutableIntStateOf(0) }
-    val load by produceState<RadioLoad>(RadioLoad.Loading, date, dbVersion, attempt) {
+    // Decision 067: the year the listener picked for today, or null for the published one.
+    var picked by remember(date) { mutableStateOf<String?>(null) }
+    val load by produceState<RadioLoad>(RadioLoad.Loading, date, dbVersion, attempt, picked) {
         if (value is RadioLoad.Failed) value = RadioLoad.Loading
         value = RadioLoad.load(
             fetch = { container.api.tonight() },
             db = { container.catalog.awaitDb() },
             date = date,
+            picked = picked,
         )
     }
     val failed = load is RadioLoad.Failed
@@ -127,13 +135,19 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
                     Button(onClick = { attempt += 1 }) { Text("Try again") }
                 }
             }
-            is RadioLoad.Evening -> Evening(state.evening, now, Modifier.padding(padding), onOpenEpisode)
+            is RadioLoad.Evening -> Evening(state.evening, now, Modifier.padding(padding), onOpenEpisode) { picked = it }
         }
     }
 }
 
 @Composable
-private fun Evening(evening: RadioEvening, now: Instant, modifier: Modifier, onOpenEpisode: (String) -> Unit) {
+private fun Evening(
+    evening: RadioEvening,
+    now: Instant,
+    modifier: Modifier,
+    onOpenEpisode: (String) -> Unit,
+    onPickYear: (String) -> Unit,
+) {
     val container = LocalAppContainer.current
     val television = LocalIsTelevision.current
     val uri = LocalUriHandler.current
@@ -160,6 +174,12 @@ private fun Evening(evening: RadioEvening, now: Instant, modifier: Modifier, onO
                 Text(RadioClock.longDate(day.evening), style = MaterialTheme.typography.bodyMedium)
                 day.stationLine?.let {
                     Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (evening.choices.size > 1) {
+                    YearMenu(evening.day.evening, evening.choices) { year ->
+                        if (isLive) container.live.stop()
+                        onPickYear(year)
+                    }
                 }
                 Spacer(Modifier.height(Spacing.S2.dp))
                 when (onAir.phase) {
@@ -221,6 +241,33 @@ private fun Evening(evening: RadioEvening, now: Instant, modifier: Modifier, onO
                     modifier = Modifier
                         .then(if (link) Modifier.clickable { uri.openUri(url) } else Modifier)
                         .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Decision 067: another published year for the same date; picking one ends listening live. */
+@Composable
+private fun YearMenu(current: String, choices: List<String>, onPick: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        TextButton(
+            onClick = { open = true },
+            modifier = Modifier.tvFocusMark().semantics { contentDescription = "Year ${current.take(4)}" },
+        ) {
+            Text("Year ${current.take(4)}")
+            Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            choices.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(choice.take(4)) },
+                    onClick = {
+                        open = false
+                        if (choice != current) onPick(choice)
+                    },
+                    modifier = Modifier.semantics { selected = choice == current },
                 )
             }
         }

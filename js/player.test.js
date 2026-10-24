@@ -18,15 +18,40 @@ function fakeAudio() {
   };
 }
 
-function boot() {
+/** A Web Audio stand-in that records the graph the player builds. */
+function fakeAudioContext(log, state = 'running') {
+  const param = (v) => ({ value: v });
+  const node = (kind, extra = {}) => ({
+    kind, outs: [], ...extra,
+    connect(n) { this.outs.push(n); log.edges.push([kind, n.kind]); return n; },
+    disconnect() { this.outs = []; log.edges.push([kind, 'cut']); },
+  });
+  return class {
+    constructor() { this.state = state; this.destination = node('destination'); log.contexts++; }
+    resume() { this.state = 'running'; return Promise.resolve(); }
+    createMediaElementSource(el) { log.sources.push(el.crossOrigin); return node('source'); }
+    createDynamicsCompressor() {
+      const c = node('compressor', { threshold: param(-24), knee: param(30), ratio: param(12),
+                                     attack: param(0.003), release: param(0.25) });
+      log.comp = c;
+      return c;
+    }
+    createGain() { const g = node('gain', { gain: param(1) }); log.gain = g; return g; }
+  };
+}
+
+function boot(env = {}) {
   const audio = fakeAudio();
   const storage = {};
+  const docListeners = {};
   const ctx = vm.createContext({
     console, Math, Number, Date, JSON, Object, Promise, Set, Map, URL, URLSearchParams,
     setInterval, clearInterval, setTimeout, clearTimeout, location: { href: 'http://localhost/' },
-    document: { getElementById: () => audio },
+    document: { getElementById: () => audio, documentElement: { classList: { contains: () => false } },
+                addEventListener: (t, fn) => { (docListeners[t] ||= []).push(fn); } },
     window: { addEventListener() {} },
-    navigator: {},
+    navigator: env.navigator || {},
+    ...(env.AudioContext ? { AudioContext: env.AudioContext } : {}),
     localStorage: {
       getItem: k => (k in storage ? storage[k] : null),
       setItem: (k, v) => { storage[k] = String(v); },
@@ -36,7 +61,8 @@ function boot() {
     vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf-8'), ctx, { filename: f });
   }
   vm.runInContext('globalThis.Player = Player; globalThis.Store = Store;', ctx);
-  return { audio, storage, Player: ctx.Player, Store: ctx.Store };
+  const tap = () => (docListeners.pointerdown || []).forEach(fn => fn());
+  return { audio, storage, tap, Player: ctx.Player, Store: ctx.Store };
 }
 
 const ep = { id: 'x|1943-02-24', title: 'An Episode', series: 'x', seriesName: 'X', date: '1943-02-24',
@@ -132,7 +158,7 @@ test('a Listen Together guest cannot drive: the person\'s verbs do nothing; the 
   audio.currentTime = 100;
   Player.setFollowing(true);
   Player.toggle();
-  assertEq(audio.paused, false, 'toggle refused (still playing)');
+  assertEq(audio.paused, false, 'toggle refused (still playing) when the room asks for no hold');
   Player.seek(500); Player.back(); Player.forward();
   assertEq(audio.currentTime, 100, 'seek and skip refused');
   Player.setRate(2);
@@ -147,6 +173,89 @@ test('a Listen Together guest cannot drive: the person\'s verbs do nothing; the 
   Player.seek(50);
   assertEq(audio.currentTime, 50, 'controls back');
 });
+
+test('067: an episode ends, the queue plays next whatever its series, then playback stops', () => {
+  const { audio, Player, Store } = boot();
+  const other = { id: 'y|1950-01-01', title: 'Another', series: 'y', seriesName: 'Y', url: 'https://archive.org/download/y/b.mp3' };
+  Store.enqueue(other);
+  Player.load(ep);
+  audio.duration = 1800;
+  assertEq(Player.nextInQueue() && Player.nextInQueue().id, 'y|1950-01-01', 'another series is next');
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, 'y|1950-01-01', 'the queued episode plays');
+  audio.ended = true; audio.fire('ended');
+  assertEq(Player.current.id, 'y|1950-01-01', 'with the queue empty nothing else starts');
+});
+
+test('067: a Listen Together guest\'s play and pause are their own hold, handed to the room session', () => {
+  const { audio, Player } = boot();
+  const asked = [];
+  Player.load(ep);
+  Player.setFollowing(true);
+  Player.setGuestHold((on) => asked.push(on));
+  Player.toggle();
+  Player.pause();
+  audio.paused = true;
+  Player.toggle();
+  Player.play();
+  assertEq(asked, [true, true, false, false], 'toggle and pause hold; toggle and play resume');
+  Player.seek(500);
+  assertEq(asked.length, 4, 'seek is still the host\'s');
+  Player.setFollowing(false);
+  Player.pause();
+  assertEq(asked.length, 4, 'control: out of a room, pause is the player\'s own again');
+});
+
+test('067: volume is leveled by a compressor on the device, built only once a tap started audio', async () => {
+  const log = { contexts: 0, sources: [], edges: [] };
+  const { audio, tap, Player } = boot({ AudioContext: fakeAudioContext(log, 'suspended') });
+  Player.load(ep);
+  assertEq(audio.crossOrigin, 'anonymous', 'the copy is fetched with CORS so the graph can hear it');
+  assertEq(log.sources.length, 0, 'a play the browser started on its own is never routed into a suspended context');
+  tap();
+  await Promise.resolve(); await Promise.resolve();
+  Player.play();
+  assertEq(log.sources, ['anonymous'], 'routed once, through a CORS copy');
+  const c = log.comp;
+  assertEq([c.threshold.value, c.ratio.value, c.knee.value, c.attack.value, c.release.value],
+           [-24, 4, 12, 0.003, 0.25], 'the LEVEL numbers');
+  assertEq(Math.round(Player.LEVEL.makeupDb * 10) / 10, 10.8, 'makeup is the Web Audio rule, 0.6 x 18 dB');
+  assertEq(log.edges.slice(0, 3), [['source', 'compressor'], ['compressor', 'gain'], ['gain', 'destination']]);
+  assertEq(Player.leveled, true);
+  Player.setLeveling(false);
+  assertEq(log.edges.slice(-2), [['source', 'cut'], ['source', 'gain']], 'off bypasses the compressor');
+  Player.setLeveling(true);
+  assertEq(log.edges.slice(-1), [['source', 'compressor']], 'on routes through it again');
+  audio.duration = 1800;
+  Player.setSleep('end');
+  audio.currentTime = 1795;
+  await new Promise(r => setTimeout(r, 300));
+  assert(log.gain.gain.value < 1 && audio.volume === 1, 'the sleep fade rides the graph, not the element');
+  Player.setSleep('off');
+});
+
+test('control: no leveling on iPhone or iPad, where a page\'s audio graph stops at the lock screen', () => {
+  const log = { contexts: 0, sources: [], edges: [] };
+  const { audio, tap, Player } = boot({ AudioContext: fakeAudioContext(log),
+                                        navigator: { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)' } });
+  tap();
+  Player.load(ep);
+  assertEq([Player.canLevel, log.contexts, log.sources.length, audio.crossOrigin], [false, 0, 0, undefined]);
+});
+
+test('control: a copy refused with CORS plays again without it, unleveled', async () => {
+  const log = { contexts: 0, sources: [], edges: [] };
+  const { audio, Player } = boot({ AudioContext: fakeAudioContext(log, 'suspended') });
+  audio.removeAttribute = function (a) { if (a === 'crossorigin') delete this.crossOrigin; };
+  Player.load(ep);
+  audio.fire('error');
+  assertEq([audio.crossOrigin, Player.error], [undefined, null], 'retried plain, not an error');
+  audio.error = { code: 4 };
+  audio.fire('error');
+  assertEq(Player.error !== null, true, 'a second failure is the recording\'s');
+});
+
+function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }
 
 (async () => {
   let passed = 0, failed = 0;

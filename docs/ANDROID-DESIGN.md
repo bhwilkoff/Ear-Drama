@@ -58,20 +58,28 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order
   (contract §5.1; the same list and titles on every platform): This day
-  in radio on the person's own date, then each published genre's ids as
-  given. An older catalog without the key falls back to the rules run on
+  in radio on the person's own date, "Most downloaded" (archive.org's own
+  counts, Decision 067), then each published genre's ids as given. An older catalog without the key falls back to the rules run on
   the device (This day in radio, one shelf per genre the catalog names).
-- **R15 and Decision 061: loudness by cutting.** `LoudnessLevel.volume`
-  (`playback/LoudnessLevel.kt`) gives each queued item `-21 - I` dB,
-  peak-clamped at -1 dBTP and never above unity, for the default copy
-  only; the sleep fade multiplies it.
+- **R15 and Decisions 067, 070: volume leveled on the device.** No
+  per-file measurement is read. `VolumeLeveler` (`playback/VolumeLeveler.kt`)
+  puts Android's `DynamicsProcessing` effect on the player's audio session:
+  one full-band compressor at the numbers every platform shares
+  (`LevelNumbers`: threshold -24 dB, ratio 4, knee 12 dB, attack 3 ms,
+  release 250 ms, makeup 10.8 dB) and a limiter at -1 dBFS. On by default;
+  "Level volume" (an icon toggle on the player sheet, the selected state in
+  blue) turns it off, kept on the device. A device that cannot make the
+  effect plays unleveled. The sleep fade is the player's volume.
 - **R16** "Automatic transcript" (`Transcript.LABEL`) on Detail, the
   player, and the transcript screen's title.
 - **R17** the car's four roots are the phone's tabs reduced (§9.1).
 - **R18** speed, sleep, and skip live on the player sheet.
 - **R20** the sleep menu lists "End of this episode" first, then 15, 30,
   45, and 60 minutes (`SleepTimer`); it fades, and once fired the queue
-  stops.
+  stops. What plays next is the owner's rule (Decision 067): one episode,
+  then whatever the person queued (the synced queue), whatever its series,
+  then stop (`PlaybackQueue.after`); a queued episode leaves the queue as it
+  starts.
 - **R21** every icon button has a `contentDescription`; §7.3.
 - **The rights line** is the published `meta.rightsLines` words
   (contract §5.5, `CatalogDatabase.rightsLines`), the contract's own
@@ -242,7 +250,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   through `ApiClient.tonight()` from the catalog's Release (contract §2,
   §8) and resolved against the open catalog (`RadioLoad`). A header of
   "Tonight in 1942" (`headlineSmall`, a heading), the evening's date, and
-  the network and station; then one row a slot. Each row leads with its
+  the network and station; when the date offers other published years
+  (Decision 067), a "Year 1947" text button opens a menu of them, and
+  picking one loads that year's whole evening on tonight's clock (and ends
+  listening live); then one row a slot. An evening shows whenever any of
+  its programs survives. Each row leads with its
   local time (`bodySmall`, tabular) and the paper's Eastern time beneath
   it ("7:00 PM ET" alone where the two agree). The slot on the air says
   "Now", takes the `surfaceVariant` container and the red edge (§6.1a), and is marked selected
@@ -251,8 +263,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   Play that plays it from its start (§4.8); a gap is muted, not
   clickable: `known_series` where the file sets it, then "Not surviving"
   (or "Not in the catalog" for a withheld slot or one the open catalog
-  lacks), and its length. The paper's printed text is never decoded, so
-  no screen can draw it. Before the evening the header says "Starts at",
+  lacks), and its length. The newspaper's printed text is never drawn
+  (Decision 067); the file no longer carries it. Before the evening the header says "Starts at",
   after it "Ended at"; during it, "Listen live" (`LiveRadio`,
   `radio/LiveListening.kt`) joins the slot on the air at the clock's
   offset through the one `PlaybackEngine`, with nothing queued behind
@@ -307,8 +319,13 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   shows the code in `displaySmall`, "n listening", then Share (the
   https link, phone only), Leave, and, for the host, End room. A guest
   hears the host: play, pause, seek, and speed follow through the one
-  `PlaybackEngine`, and the player sheet's transport is disabled for a
-  guest (a code lets someone listen, never drive). When the host leaves
+  `PlaybackEngine`, and the player sheet's skip, seek, and speed are
+  disabled for a guest (a code lets someone listen, never drive). Play and
+  Pause stay the guest's own (Decision 067): pausing, from the sheet, the
+  notification, or a headset, holds their sound while the room plays on;
+  playing catches them up to where the host is now (`ListenTogether.hold`,
+  reported by `PlaybackEngine.onGuestHold`); a held guest handed the room
+  takes it from where the room is. When the host leaves
   or goes quiet, the member present longest becomes host and gets the
   controls. One plain line, never the error color, for "No room has
   that code.", "This room has ended.", "This room is full.", "Too many
@@ -419,7 +436,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §8 Values
 
-The rights line, the transcript label, and loudness by cutting are as in
+The rights line, the transcript label, and volume leveling are as in
 §1.6 and are not reworded. A downloaded file is played, never exported:
 no share or open-with action (`ui/Downloads.kt`). A finished play's mix
 is the one file the app shares, and only when the person presses Export
@@ -500,10 +517,6 @@ file (`StandInNeverStoredTest`). No analytics.
   documentation and wait on the Pixel 8a and one Samsung (PLAYS-DESIGN
   §4.4). The bleed threshold is Apple's unmeasured 0.5.
 
-- **The queue is the rest of the season** (`followingInSeason`), where
-  Apple plays on through the series and the web only what the person
-  queued (`docs/WEB-DESIGN.md` §5.4). R14 needs one rule, and it is the
-  owner's to set (DECISIONS 062).
 - **No sponsor reaches Detail yet**: the contract names `sponsor`
   (§3.1), but the projection does not publish the column, so §4.4 probes
   for it and shows none (Apple likewise).

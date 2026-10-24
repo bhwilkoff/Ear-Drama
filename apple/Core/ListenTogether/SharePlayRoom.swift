@@ -110,6 +110,7 @@ final class SharePlayRoom {
         self.resolveDetail = resolveDetail
         player.onRoomChange = { [weak self] in self?.hostPlayerChanged() }
         player.onLeaveRoom = { [weak self] in self?.leave() }
+        player.onGuestHold = { [weak self] held in if !held { self?.follow() } }
     }
 
     private static func now() -> Double { Date().timeIntervalSince1970 * 1000 }
@@ -280,7 +281,14 @@ final class SharePlayRoom {
     /// This device became host: the room goes on from where its player is.
     private func takeOver() {
         guard let id = localID else { return }
+        let held = player.isHeld
         refreshRoles()
+        // A member who held their sound is handed a room that played on: they
+        // take it from where the room is, never from where they paused.
+        if held, let state = ledger.state?.publicState {
+            player.apply(.seek(position: RoomProtocol.expectedPosition(state, now: serverNow), play: state.playing),
+                         hostRate: state.rate)
+        }
         let reading = player.roomReading
         _ = ledger.propose(StateInput(position: reading.position, playing: ledger.state?.playing ?? reading.playing),
                            from: id, now: Self.now())
@@ -373,7 +381,7 @@ final class SharePlayRoom {
     /// Plays the host's copy where the host is, then keeps it there by the
     /// protocol's correction. A stalled member is left to buffer, then catches up.
     private func follow() {
-        guard isActive, !isHost, let state = ledger.state?.publicState else { return }
+        guard isActive, !isHost, !player.isHeld, let state = ledger.state?.publicState else { return }
         if loadedCopy?.episodeID != state.episodeID || loadedCopy?.copy != state.copy {
             load(state)
             return

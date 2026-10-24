@@ -190,17 +190,36 @@ def rec(date, cov, readable=True, net="CBS"):
 m = {("1947-10-23", "CBS"): rec("1947-10-23", 0.6), ("1952-10-23", "CBS"): rec("1952-10-23", 0.2),
      ("1948-10-21", "CBS"): rec("1948-10-21", 0.9), ("1950-10-23", "CBS"): rec("1950-10-23", 0.95, readable=False)}
 day = dt.date(2026, 10, 23)  # a Friday; 1947-10-23 was a Thursday, 1948-10-21 a Thursday
-check("058: the anniversary in its best-surviving year when it clears the floor",
-      [x["date"] if isinstance(x, dict) else x for x in B.pick_tonight(day, m, 0.5)], ["1947-10-23", "anniversary"])
-fri = dt.date(2026, 10, 22)  # Thursday; no 10-22 anniversary measured
+check("058: the anniversary in its best-surviving year",
+      [x["date"] if isinstance(x, dict) else x for x in B.pick_tonight(day, m)], ["1947-10-23", "anniversary"])
+thin = {("1949-10-22", "CBS"): rec("1949-10-22", 0.05), ("1948-10-21", "CBS"): rec("1948-10-21", 0.9)}
+check("067: an evening shows when any program survives (the 0.25 floor is gone)",
+      [x["date"] if isinstance(x, dict) else x for x in B.pick_tonight(dt.date(2026, 10, 22), thin)],
+      ["1949-10-22", "anniversary"])
+fri = dt.date(2026, 10, 22)  # Thursday; the only 10-22 anniversary measured has nothing surviving
 m2 = dict(m)
-m2[("1949-10-22", "CBS")] = rec("1949-10-22", 0.1)
-check("058: below the floor, the best evening for today's weekday",
-      [x["date"] if isinstance(x, dict) else x for x in B.pick_tonight(fri, m2, 0.5)], ["1948-10-21", "weekday"])
-check("control: an unreadable page is never offered, however high it scores",
-      B.pick_tonight(dt.date(2026, 10, 23), {("1950-10-23", "CBS"): rec("1950-10-23", 0.95, readable=False)}, 0.5)[0],
+m2[("1949-10-22", "CBS")] = rec("1949-10-22", 0)
+check("control: with nothing surviving on the date, the best evening for today's weekday",
+      [x["date"] if isinstance(x, dict) else x for x in B.pick_tonight(fri, m2)], ["1948-10-21", "weekday"])
+check("control: an evening with nothing surviving is never offered, even for its weekday",
+      B.pick_tonight(fri, {("1949-10-22", "CBS"): rec("1949-10-22", 0), ("1948-10-21", "CBS"): rec("1948-10-21", 0)})[0],
       None)
-doc = B.tonight(dt.date(2026, 10, 22), 2, m2, 0.5)
+check("control: an unreadable page is never offered, however high it scores",
+      B.pick_tonight(dt.date(2026, 10, 23), {("1950-10-23", "CBS"): rec("1950-10-23", 0.95, readable=False)})[0],
+      None)
+doc = B.tonight(dt.date(2026, 10, 22), 2, m2)
+one = doc["days"]["2026-10-23"]
+check("067: the date's other published years are offered, each a whole evening, oldest first",
+      [(y["evening"], y["coverage"]) for y in one["years"]], [("1952-10-23", 0.2)])
+check("067: another year replays on today's clock",
+      one["years"][0]["slots"][0]["utc_start"], one["slots"][0]["utc_start"])
+check("control: an unreadable year is not offered, and the picked year is not repeated",
+      {y["evening"] for y in one["years"]} & {"1950-10-23", "1947-10-23"}, set())
+check("control: a weekday pick offers no other years of the date", doc["days"]["2026-10-22"]["years"], [])
+check("067: a published slot never carries the paper's text, the evening's or another year's",
+      [s for v in doc["days"].values() for e in [v] + v["years"] for s in e["slots"] if "printed" in s], [])
+check("control: the measured evening still holds it as witness", m["1952-10-23", "CBS"]["slots"][0]["printed"],
+      "Suspense")
 check("tonight: keyed by calendar date", list(doc["days"]), ["2026-10-22", "2026-10-23"])
 check("tonight: the zone is stated", doc["zone"], "America/New_York")
 one = doc["days"]["2026-10-23"]
@@ -227,8 +246,7 @@ check("window: the file's first day is yesterday, its last today + 13", (min(doc
       ("2026-10-21", "2026-11-04"))
 check("control: a build a day later starts a day later", min(B.tonight(*B.window(dt.date(2026, 10, 23)), pool)["days"]),
       "2026-10-22")
-check("floor: one named constant, stated in the file and marked provisional",
-      (doc["floor"], doc["floor_provisional"], B.tonight.__defaults__[0]), (B.FLOOR, True, B.FLOOR))
+check("067: the file states no floor", ("floor" in doc, "floor_provisional" in doc), (False, False))
 check("R10: each slot carries the instant it ends", doc["days"]["2026-10-22"]["slots"][0]["utc_end"],
       "2026-10-23T00:30:00Z")
 
@@ -264,8 +282,17 @@ richer = dict(pool)
 richer[("1950-10-22", "CBS")] = rec("1950-10-22", 0.9)
 again = B.keep_published(B.tonight(*B.window(dt.date(2026, 10, 23)), richer, served=every), copy.deepcopy(pub),
                          "2026-10-22", served=every)
+strip = lambda v: {k: x for k, x in v.items() if k != "years"}  # noqa: E731
 check("never-change: a richer evening found later does not replace a published day",
-      again["days"]["2026-10-22"], pub["days"]["2026-10-22"])
+      strip(again["days"]["2026-10-22"]), strip(pub["days"]["2026-10-22"]))
+check("067: a kept day offers the richer evening as another year, beside its own",
+      [y["evening"] for y in again["days"]["2026-10-22"]["years"]], ["1947-10-22", "1950-10-22"])
+check("control: and never offers the kept evening itself",
+      pub["days"]["2026-10-22"]["evening"] in [y["evening"] for y in again["days"]["2026-10-22"]["years"]], False)
+gone_year = B.keep_published(B.tonight(*B.window(dt.date(2026, 10, 23)), richer, served=every), copy.deepcopy(pub),
+                             "2026-10-22", served=lambda eid: eid != "suspense|1950-10-22")
+check("withdrawal: an offered year left with nothing to play is no longer offered",
+      [y["evening"] for y in gone_year["days"]["2026-10-22"]["years"]], ["1947-10-22"])
 check("never-change: the guard finds nothing changed", B.changed_days(pub, again, "2026-10-22"), [])
 check("never-change: yesterday's yesterday drops off the window", "2026-10-21" in again["days"], False)
 check("control: a day never published takes the new value", again["days"]["2026-11-05"]["evening"], "1948-11-05")

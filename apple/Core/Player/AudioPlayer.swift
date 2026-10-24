@@ -11,7 +11,8 @@ import Observation
 /// The one playback engine every Apple platform shares (research 04 §2, §10):
 /// AVPlayer over the episode's default recording, the audio session, Now
 /// Playing and remote commands, speed, a resume position per episode, the R20
-/// sleep timer, and a queue that never runs into unrelated content.
+/// sleep timer, the volume leveler (Decision 067), and the queue rule: one
+/// episode, then what the person queued, then stop.
 @Observable
 final class AudioPlayer {
     nonisolated enum Skip {
@@ -51,15 +52,29 @@ final class AudioPlayer {
     /// Listen Together: this device follows a host, so its own transport is
     /// refused and the room drives it (iOS-DESIGN §5.8).
     private(set) var isFollowing = false
+    /// Decision 067: a following member paused their own sound. The room plays
+    /// on; resuming catches them up to where the host is now.
+    private(set) var isHeld = false
     var isMuted = false {
         didSet { player.isMuted = isMuted }
     }
+    /// Decision 067: volume leveled on the device as it plays, on unless the
+    /// person turned it off (kept on the device).
+    var isLeveling: Bool {
+        didSet {
+            leveler.set(isLeveling)
+            UserDefaults.standard.set(isLeveling, forKey: Self.levelingKey)
+        }
+    }
+    static let levelingKey = "player.leveling"
 
     /// Resolves an episode id to its detail (the catalog lives in the app's
     /// CatalogStore; the player never opens the database itself).
     @ObservationIgnored var resolveDetail: (String) async -> EpisodeDetail? = { _ in nil }
-    /// The series page an episode belongs to, for the queue.
-    @ObservationIgnored var resolveSeriesPage: (String) async -> SeriesPage? = { _ in nil }
+    /// The person's queue, head first (the synced `ListeningQueue`), and how
+    /// to take an episode off it once it plays.
+    @ObservationIgnored var queuedIDs: () -> [String] = { [] }
+    @ObservationIgnored var dequeue: (String) -> Void = { _ in }
     /// A downloaded file for this episode's recording, played instead of the
     /// network copy (iOS and Mac; the TV never downloads).
     @ObservationIgnored var localFile: (String, Recording) -> URL? = { _, _ in nil }
@@ -75,6 +90,9 @@ final class AudioPlayer {
     /// drawn by the app (SwiftUI), since the player knows no views.
     @ObservationIgnored var cardImage: (EpisodeRow) -> CGImage? = { _ in nil }
     @ObservationIgnored private var artwork: MPMediaItemArtwork?
+    /// A follower held (true) or released (false) their own sound; the room
+    /// catches them up on release.
+    @ObservationIgnored var onGuestHold: (Bool) -> Void = { _ in }
 
     @ObservationIgnored let history: ListeningHistory
     @ObservationIgnored private let player = AVPlayer()
@@ -84,12 +102,13 @@ final class AudioPlayer {
     @ObservationIgnored private var notificationTokens: [NSObjectProtocol] = []
     @ObservationIgnored private var lastSaved = Date.distantPast
     @ObservationIgnored private var commandsInstalled = false
-    /// The episode's loudness level (DECISIONS 061); the sleep fade scales
-    /// from it, and the device's volume stays the listener's.
-    @ObservationIgnored private var baseVolume: Float = 1
+    @ObservationIgnored private let leveler: LevelerSwitch
 
     init(history: ListeningHistory) {
         self.history = history
+        let leveling = UserDefaults.standard.object(forKey: Self.levelingKey) as? Bool ?? true
+        isLeveling = leveling
+        leveler = LevelerSwitch(leveling)
         player.automaticallyWaitsToMinimizeStalling = true
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main
@@ -116,8 +135,8 @@ final class AudioPlayer {
     // MARK: - Transport
 
     /// Plays an episode's default recording, resuming where the listener left
-    /// it, with the rest of its series queued behind it. `offset` starts it
-    /// there instead (a Radio slot); `queue: false` queues nothing behind it.
+    /// it, with the person's queue behind it. `offset` starts it there instead
+    /// (a Radio slot); `queue: false` plays nothing after it.
     func play(_ detail: EpisodeDetail, recording: Recording? = nil, from offset: Double? = nil, queue: Bool = true) {
         if isFollowing { onLeaveRoom() }
         load(detail, recording: recording, from: offset, queue: queue, rate: speed)
@@ -154,8 +173,8 @@ final class AudioPlayer {
         }
         player.replaceCurrentItem(with: playerItem)
         player.isMuted = isMuted
-        baseVolume = LoudnessLevel.volume(for: detail.episode, recording: recording)
-        player.volume = baseVolume
+        player.volume = 1
+        level(playerItem)
         if let start = offset ?? history.resumePosition(for: detail.episode.id) {
             elapsed = start
             player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
@@ -166,33 +185,69 @@ final class AudioPlayer {
         onTransport(.loaded(detail.episode.id))
         onRoomChange()
 
-        guard queue else { return }
-        let episodeID = detail.episode.id
-        let seriesKey = detail.episode.seriesKey
+        dequeue(detail.episode.id)
+        playsQueue = queue
+        refreshUpNext()
+    }
+
+    /// Whether this item plays the queue after it (a Radio slot and a room do not).
+    @ObservationIgnored private var playsQueue = false
+
+    /// Shows what plays next: the queue's head, resolved for its title.
+    func refreshUpNext() {
+        guard playsQueue, let current = item,
+              let next = PlaybackQueue.next(after: current.episode.id, queued: queuedIDs()) else {
+            upNext = []
+            return
+        }
+        let episodeID = current.episode.id
         Task { [weak self] in
-            guard let self, let page = await self.resolveSeriesPage(seriesKey),
+            guard let self, let detail = await self.resolveDetail(next),
                   self.item?.episode.id == episodeID else { return }
-            self.upNext = PlaybackQueue.following(episodeID, in: page)
+            self.upNext = [detail.episode]
+        }
+    }
+
+    /// The tap goes on once the asset's audio track is known; until then, and
+    /// wherever a tap cannot be made, the item plays unleveled.
+    private func level(_ playerItem: AVPlayerItem) {
+        Task { [weak self] in
+            guard let track = try? await playerItem.asset.loadTracks(withMediaType: .audio).first,
+                  let self, self.player.currentItem === playerItem else { return }
+            playerItem.audioMix = VolumeLeveler.mix(for: track, toggle: self.leveler)
         }
     }
 
     func resume() {
-        guard item != nil, !isFollowing else { return }
+        if isFollowing {
+            guard isHeld else { return }
+            isHeld = false
+            onGuestHold(false)
+            return
+        }
+        guard item != nil else { return }
         // A listener pressing Play after the timer stopped them is awake.
         if sleep.mode == .fired { sleep.cancel() }
-        player.volume = baseVolume
+        player.volume = 1
         activateSession()
         player.playImmediately(atRate: speed)
     }
 
     func pause() {
-        guard !isFollowing else { return }
+        if isFollowing {
+            isHeld = true
+            player.pause()
+            onGuestHold(true)
+            return
+        }
         player.pause()
         saveProgress()
         onTransport(.paused)
     }
 
-    func togglePlayPause() { isPlaying ? pause() : resume() }
+    func togglePlayPause() {
+        if isFollowing { isHeld ? resume() : pause() } else { isPlaying ? pause() : resume() }
+    }
 
     func skip(by seconds: Double) {
         guard !isFollowing else { return }
@@ -223,6 +278,7 @@ final class AudioPlayer {
     func setFollowing(_ following: Bool) {
         guard following != isFollowing else { return }
         isFollowing = following
+        isHeld = false
         // A drift nudge never outlives the room.
         if !following, player.rate != 0 { player.rate = speed }
     }
@@ -276,7 +332,7 @@ final class AudioPlayer {
 
     func cancelSleep() {
         sleep.cancel()
-        player.volume = baseVolume
+        player.volume = 1
     }
 
     // MARK: - Ticks
@@ -291,7 +347,7 @@ final class AudioPlayer {
             clock = now
             let remaining = duration.map { max(0, $0 - elapsed) / Double(max(speed, 0.01)) }
             let output = sleep.tick(now: now, remainingInEpisode: remaining)
-            player.volume = baseVolume * output.volume
+            player.volume = output.volume
             if output.shouldPause {
                 player.pause()
                 saveProgress()
@@ -313,17 +369,20 @@ final class AudioPlayer {
         guard let current = item else { return }
         history.markFinished(current.episode.id, duration: duration)
         // R20: once the timer fires (or it was set for this episode), nothing
-        // starts the next one. R3: the queue holds only this series.
+        // starts the next one. Decision 067: only what the person queued plays
+        // next, whatever its series; with the queue empty, playback stops.
         let mayContinue = sleep.episodeDidEnd()
         onTransport(mayContinue ? .ended : .sleepFired)
-        guard mayContinue, let next = upNext.first else {
+        guard mayContinue, playsQueue,
+              let next = PlaybackQueue.next(after: current.episode.id, queued: queuedIDs()) else {
+            upNext = []
             isPlaying = false
             publishNowPlaying()
             return
         }
-        upNext.removeFirst()
+        upNext = []
         Task { [weak self] in
-            guard let self, let detail = await self.resolveDetail(next.id) else { return }
+            guard let self, let detail = await self.resolveDetail(next) else { return }
             self.load(detail, recording: nil, from: nil, queue: true, rate: self.speed)
         }
     }

@@ -91,6 +91,25 @@ struct RadioTests {
         #expect(day.slots[1].utcEnd == Self.t("2026-10-22T23:45:00Z"))
     }
 
+    /// Decision 067: a listener may pick another published year for the same date.
+    @Test func anotherPublishedYearIsOfferedAsAWholeEvening() throws {
+        let json = """
+            {"zone": "America/New_York", "days": {"2026-10-22": {"evening": "1947-10-22", "network": "CBS",
+              "slots": [{"et_start": "20:00", "et_end": "20:30", "length_min": 30, "gap": true,
+                         "utc_start": "2026-10-23T00:00:00Z", "utc_end": "2026-10-23T00:30:00Z"}],
+              "years": [{"evening": "1939-10-22", "network": "NBC", "station": "WRC",
+                "slots": [{"et_start": "21:00", "et_end": "21:30", "length_min": 30, "gap": true, "known_series": "Lux",
+                           "utc_start": "2026-10-23T01:00:00Z", "utc_end": "2026-10-23T01:30:00Z"}]}]}}}
+            """
+        let day = try #require(try TonightFile.decode(Data(json.utf8)).day(for: "2026-10-22"))
+        #expect(day.choices.map(\.evening) == ["1939-10-22", "1947-10-22"])
+        let other = try #require(day.choices.first)
+        #expect(other.stationLine == "NBC · WRC")
+        #expect(other.slots.first?.knownSeries == "Lux")
+        let older = try #require(try TonightFile.decode(Self.file).day(for: "2026-10-22"))
+        #expect(older.choices.count == 1, "control: a file without years offers only its evening")
+    }
+
     @Test func withheldAndGapSlotsNeverPlay() throws {
         let day = try #require(try TonightFile.decode(Self.file).day(for: "2026-10-22"))
         #expect(day.slots[0].playableEpisode == nil)

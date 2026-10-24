@@ -42,8 +42,9 @@ Mac uses the same Core, so the same code holds them:
   transport bar, and the system Now Playing artwork, as iOS-DESIGN R11); **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).
-- **R15 and Decision 061**: `LoudnessLevel.volume` cuts to -21 LUFS,
-  peak-clamped, never boosted, default copy only.
+- **R15 and Decision 067**: volume leveled on the device by the shared
+  `VolumeLeveler` tap (iOS-DESIGN §1.7); "Level volume" sits beside the
+  sleep timer in the player bar.
 - **R16**: "Automatic transcript" is the label on the menu item, the
   toolbar button's tooltip, and the transcript window's subtitle.
 - **R18**: speed, the sleep timer, and skip are on the transport bar and
@@ -170,8 +171,9 @@ only here:
   and SharePlay (or Leave SharePlay) in the Controls menu. Outside a call
   the system's sharing sheet opens on the window
   (`GroupActivitySharingController`, `presentAsSheet`). A following
-  member's Play, skip, and speed are disabled in the bar and the menu,
-  with "The host has the controls." under the bar.
+  member's skip and speed are disabled in the bar and the menu, with
+  "The host has the controls." under the bar; Play and Pause stay theirs,
+  a hold that catches up on play (Decision 067, iOS-DESIGN §5.8).
 - **§5.4 Progress** saves every 5 s and on pause (template §B3c); resume
   and "played" follow `docs/iOS-DESIGN.md` §5.6. The numbers are
   Decision 062's, named once in `PlayerNumbers` (`docs/iOS-DESIGN.md`
@@ -205,7 +207,7 @@ only here:
 
 ## §8 Values
 
-The rights line, the transcript label, and loudness by cutting are
+The rights line, the transcript label, and volume leveling are
 §1.5's and are not reworded. No analytics, no third-party packages. The
 credits, privacy, and take-down pages are the website's; the Help menu
 links to them (§5.6).

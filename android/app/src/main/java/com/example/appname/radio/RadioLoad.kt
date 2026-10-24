@@ -13,6 +13,8 @@ data class RadioEvening(
      * drawn as a gap ("Not in the catalog") and never plays.
      */
     val details: Map<String, EpisodeDetail>,
+    /** The evenings a listener may pick for this date (Decision 067), oldest first, [day] among them. */
+    val choices: List<String> = listOf(day.evening),
 ) {
     fun detail(slot: RadioSlot): EpisodeDetail? = slot.playableEpisode?.let { details[it.id] }
 }
@@ -34,6 +36,7 @@ sealed interface RadioLoad {
             fetch: suspend () -> TonightFile?,
             db: suspend () -> CatalogDatabase?,
             date: String,
+            picked: String? = null,
         ): RadioLoad {
             val file = try {
                 fetch()
@@ -43,7 +46,8 @@ sealed interface RadioLoad {
                 println("[Radio] tonight.json unreachable: ${e.message}")
                 return Failed
             }
-            val day = file?.day(date) ?: return Nothing
+            val published = file?.day(date) ?: return Nothing
+            val day = picked?.let { e -> published.choices.firstOrNull { it.evening == e } } ?: published
             val catalog = db()
             val details = buildMap {
                 for (slot in day.slots) {
@@ -53,7 +57,7 @@ sealed interface RadioLoad {
                     put(episode.id, detail)
                 }
             }
-            return Evening(RadioEvening(day, file.zone, details))
+            return Evening(RadioEvening(day, file.zone, details, published.choices.map { it.evening }))
         }
     }
 }

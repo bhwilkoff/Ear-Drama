@@ -428,6 +428,8 @@ select {
 /* ---- Radio: an evening's schedule on the one clock (R9, R10) ---- */
 .radio-head { margin-bottom: var(--space-4); }
 .radio-head > * + * { margin-top: var(--space-1); }
+.radio-head .radio-year { flex-direction: row; align-items: center; gap: var(--space-2); }
+.radio-head .radio-year select { width: auto; }
 .slots { margin-bottom: var(--space-3); border-top: 1px solid var(--color-border); }
 .slot {
   display: grid; grid-template-columns: var(--date-col) minmax(0, 1fr) var(--tap); align-items: center;

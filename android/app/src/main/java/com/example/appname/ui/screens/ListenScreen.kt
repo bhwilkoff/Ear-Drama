@@ -64,7 +64,7 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit, onSurprise: () -> Unit) {
     // The catalog's listenShelves, in its order (contract §5.1).
     val ruled by rememberCatalogQuery(today) { db ->
         db.listenShelves(today).map { s ->
-            val title = s.genre?.let { DisplayVocabulary.genreName(it) ?: it } ?: "This day in radio"
+            val title = s.heading ?: s.genre?.let { DisplayVocabulary.genreName(it) ?: it } ?: "This day in radio"
             Shelf(s.key, title, s.rows)
         }
     }

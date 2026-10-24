@@ -20,6 +20,30 @@ nonisolated struct TonightDay: Decodable, Hashable, Sendable {
     let station: String?
     let witness: Witness?
     let slots: [RadioSlot]
+    /// Decision 067: the same date's other published years, each a whole
+    /// evening on tonight's clock (contract §8). Absent in an older file.
+    private let otherYears: [TonightDay]?
+
+    enum CodingKeys: String, CodingKey {
+        case evening, network, station, witness, slots
+        case otherYears = "years"
+    }
+
+    init(evening: String, network: String?, station: String?, witness: Witness?, slots: [RadioSlot],
+         years: [TonightDay] = []) {
+        self.evening = evening
+        self.network = network
+        self.station = station
+        self.witness = witness
+        self.slots = slots
+        self.otherYears = years
+    }
+
+    var years: [TonightDay] { otherYears ?? [] }
+
+    /// This evening and the date's other published years, oldest first: what a
+    /// listener may pick between.
+    var choices: [TonightDay] { ([self] + years).sorted { $0.evening < $1.evening } }
 
     nonisolated struct Witness: Decodable, Hashable, Sendable {
         let paper: String?
@@ -48,8 +72,9 @@ nonisolated struct TonightDay: Decodable, Hashable, Sendable {
 }
 
 /// One slot of the evening: an episode the catalog serves, or a gap stated as
-/// a gap (R9). The paper's OCR text (`printed`) is witness only and is not
-/// decoded, so no screen can draw it (WEB-DESIGN §4.9).
+/// a gap (R9): its time and, when the listing matched a series, that series'
+/// name. The newspaper's printed text is never drawn (Decision 067); the file
+/// no longer carries it, and this type never decoded it.
 nonisolated struct RadioSlot: Decodable, Hashable, Sendable, Identifiable {
     let etStart: String
     let etEnd: String

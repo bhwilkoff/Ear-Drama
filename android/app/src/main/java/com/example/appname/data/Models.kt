@@ -180,6 +180,9 @@ sealed interface PublishedShelf {
 
     data class GenreFirsts(val genre: String, val episodes: List<String>) : PublishedShelf
 
+    /** Decision 067: the series archive.org's listeners downloaded most, by their first episodes. Only ever published. */
+    data class MostDownloaded(val episodes: List<String>) : PublishedShelf
+
     companion object {
         /** The published list, or null when the value is not a JSON array (an older catalog). Unknown rules are skipped. */
         fun parse(json: String): List<PublishedShelf>? {
@@ -194,6 +197,11 @@ sealed interface PublishedShelf {
                             ?: return@mapNotNull null
                         GenreFirsts(genre, ids)
                     }
+                    "mostDownloaded" -> {
+                        val ids = (s["episodes"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                            ?: return@mapNotNull null
+                        MostDownloaded(ids)
+                    }
                     else -> null
                 }
             }
@@ -201,5 +209,5 @@ sealed interface PublishedShelf {
     }
 }
 
-/** A Listen shelf ready to draw: [genre] null is This day in radio. */
-data class ListenShelf(val key: String, val genre: String?, val rows: List<EpisodeRow>)
+/** A Listen shelf ready to draw: [heading] names a rule's own shelf; otherwise [genre] null is This day in radio. */
+data class ListenShelf(val key: String, val genre: String?, val rows: List<EpisodeRow>, val heading: String? = null)

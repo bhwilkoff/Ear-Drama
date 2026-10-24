@@ -44,17 +44,6 @@ test('art: one helper, Commons standard widths only (contract §3.3)', () => {
   assertEq(API.artURL(null, 40), null, 'control: no art, no URL');
 });
 
-test('playbackVolume reaches -21 LUFS by cutting, clamped at -1 dBTP (DECISIONS 061)', () => {
-  const near = (a, b) => Math.abs(a - b) < 1e-9;
-  assert(near(API.playbackVolume(-15, -6), Math.pow(10, -6 / 20)), 'a loud episode is cut 6 dB');
-  assert(near(API.playbackVolume(-18, -1.3), Math.pow(10, -3 / 20)), '-18 LUFS is cut 3 dB');
-  assertEq(API.playbackVolume(-25, -10), 1, 'a quiet episode is never boosted');
-  assert(near(API.playbackVolume(-20, 1.0), Math.pow(10, -2 / 20)),
-    'control: a hot peak pulls the gain below the loudness target (clamp)');
-  assertEq(API.playbackVolume(null, null), 1, 'unmeasured plays at unity');
-  assertEq(API.playbackVolume(undefined, -3), 1, 'no loudness, no change');
-});
-
 test('transcript fetches the URL once, as text, and never caches a failure (DECISIONS 058)', async () => {
   const real = globalThis.fetch;
   const seen = [];
@@ -170,6 +159,17 @@ test('listenShelves follows the published order and draws each id in order', asy
   assertEq(got[1].rows.map(e => e.id).join(','), 'a|1943-05-25,b|1950-05-25', "the person's own date, oldest first");
   assertEq(got[2].rows.map(e => e.id).join(','), 'drama1|1940-01-01', 'an id not served is dropped');
   assert(!read.includes('index/listen.json'), 'the old index is not read when the key is published');
+});
+
+test('067: listenShelves draws mostDownloaded as published ids, in order', async () => {
+  const { get } = plane({ listenShelves: [
+    { rule: 'onThisDay' },
+    { rule: 'mostDownloaded', episodes: ['drama1|1940-01-01', 'comedy2|1948-01-01'] },
+  ] });
+  const got = await API.listenShelves(new Date(2026, 4, 25), get);
+  const pop = got.find(s => s.rule === 'mostDownloaded');
+  assert(pop, 'the popularity shelf is drawn');
+  assertEq(pop.rows.map(e => e.id).join(','), 'drama1|1940-01-01,comedy2|1948-01-01', 'in the published order');
 });
 
 test('listenShelves runs onThisDay on 29 February only on 29 February', async () => {

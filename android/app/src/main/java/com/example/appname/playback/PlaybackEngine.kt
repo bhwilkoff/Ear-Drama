@@ -16,6 +16,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -89,9 +90,30 @@ class PlaybackEngine(
     private var urls: List<String> = emptyList()
     /** False for a room's copy, whose start is the host's, not this device's saved place. */
     private var resumeSaved = true
-    /** Each queued item's loudness level (DECISIONS 061); the sleep fade scales from it. */
-    private var levels: List<Float> = emptyList()
     private var lastFactor = 1f
+    /** Decision 067: volume leveled on the device as it plays (DynamicsProcessing on the player's session). */
+    private val leveler = VolumeLeveler(context)
+    val leveling: StateFlow<Boolean> get() = leveler.on
+    fun setLeveling(on: Boolean) = leveler.set(on)
+
+    /**
+     * A Listen Together guest's own pause (true) and play (false), Decision 067:
+     * whatever pressed it (the sheet, the notification, a headset), reported to
+     * the room session, which holds them and catches them up on play.
+     */
+    var onGuestHold: ((Boolean) -> Unit)? = null
+    /** True while the room itself drives this player, so its own play and pause are not the guest's. */
+    private var roomApplying = false
+
+    /** Runs a room correction; its play and pause are the room's, never a guest's hold. */
+    fun <T> asRoom(block: () -> T): T {
+        roomApplying = true
+        try {
+            return block()
+        } finally {
+            roomApplying = false
+        }
+    }
     private var ticker: Job? = null
     private var lastSaveAt = 0L
     private var interrupted = false
@@ -134,7 +156,17 @@ class PlaybackEngine(
             .setSeekBackIncrementMs(SKIP_BACK_MS)
             .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .build()
-            .also { it.addListener(listener) }
+            .also {
+                it.addListener(listener)
+                it.addAnalyticsListener(analytics)
+                leveler.attach(it.audioSessionId)
+            }
+    }
+
+    private val analytics = object : AnalyticsListener {
+        override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
+            leveler.attach(audioSessionId)
+        }
     }
 
     private val listener = object : Player.Listener {
@@ -152,6 +184,9 @@ class PlaybackEngine(
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST && !roomApplying) {
+                onGuestHold?.invoke(!playWhenReady)
+            }
             if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                 saveNow()
                 itemEnded(sleep.onItemEnded())
@@ -193,6 +228,8 @@ class PlaybackEngine(
             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && !sleep.allowsAutoAdvance()) {
                 player.pause()
             }
+            // A queued episode that starts leaves the queue, as the web's does.
+            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) mediaItem?.mediaId?.let { dequeue(it) }
             if (resumeSaved) mediaItem?.mediaId?.let { id -> resumeAt(id) }
             applyVolume(lastFactor)
             onRoomChange?.invoke()
@@ -207,11 +244,11 @@ class PlaybackEngine(
     }
 
     /**
-     * Plays [episode] and queues the rest of its season of the same series,
-     * oldest first (R3: never past it, never into another series). [url]
+     * Plays [episode], then the person's queue, whatever its series, then
+     * stops (Decision 067: nothing they did not choose starts by itself). [url]
      * overrides the default copy with a version the listener picked.
      * [startMs] starts it there instead of the saved position (a Radio slot);
-     * [queue] false queues nothing behind it.
+     * [queue] false plays nothing after it.
      */
     fun play(episode: EpisodeRow, url: String? = null, startMs: Long? = null, queue: Boolean = true) {
         ensureSession()
@@ -244,17 +281,18 @@ class PlaybackEngine(
         val db = catalog.awaitDb() ?: return null
         val detail = db.episodeDetail(episodeId) ?: return null
         val startUrl = url ?: detail.recordings.firstOrNull()?.url ?: return null
-        val following = if (queue) db.followingInSeason(detail.episode.id) else emptyList()
-        val followingItems = following.mapNotNull { row ->
-            val next = db.episodeDetail(row.id) ?: return@mapNotNull null
-            next.recordings.firstOrNull()?.url?.let { Triple(row, it, LoudnessLevel.volume(next, it)) }
+        val queued = user.queue()
+        val following = if (queue) PlaybackQueue.after(detail.episode.id, queued) else emptyList()
+        val followingItems = following.mapNotNull { id ->
+            val next = db.episodeDetail(id) ?: return@mapNotNull null
+            next.recordings.firstOrNull()?.url?.let { next.episode to it }
         }
-        val items = listOf(Triple(detail.episode, startUrl, LoudnessLevel.volume(detail, startUrl))) + followingItems
+        val items = listOf(detail.episode to startUrl) + followingItems
+        if (detail.episode.id in queued) user.setQueue(queued - detail.episode.id)
         saveNow()
         episodes = items.map { it.first }
         urls = items.map { it.second }
         resumeSaved = true
-        levels = items.map { it.third }
         lastFactor = 1f
         sleep.onUserPlay()
         syncPauseAtEnd()
@@ -262,10 +300,17 @@ class PlaybackEngine(
         // The phone's Play and the car's alike, so another episode ends listening live.
         onTransport(TransportEvent.Loaded(detail.episode.id))
         // The first item wears the episode's own face (or its series' card); the rest their series' face.
-        val media = items.mapIndexed { i, (row, u, _) ->
+        val media = items.mapIndexed { i, (row, u) ->
             if (i == 0) mediaItem(row, u, detail.face, card = true) else mediaItem(row, u)
         }
         return Queue(media, startMs ?: startPositionFor(detail.episode.id))
+    }
+
+    private fun dequeue(id: String) {
+        scope.launch {
+            val queued = user.queue()
+            if (id in queued) user.setQueue(queued - id)
+        }
     }
 
     private suspend fun startPositionFor(id: String): Long {
@@ -353,11 +398,11 @@ class PlaybackEngine(
         }
     }
 
-    /** [factor] is the sleep fade's, applied over the current item's loudness level. */
+    /** [factor] is the sleep fade's; leveling is the session's effect, not the volume. */
     private fun applyVolume(factor: Float) {
         lastFactor = factor
         val p = playerOrNull ?: return
-        p.volume = if (muted) 0f else (levels.getOrNull(p.currentMediaItemIndex) ?: 1f) * factor
+        p.volume = if (muted) 0f else factor
     }
 
     private fun remainingMediaMs(p: Player): Long? =
@@ -455,13 +500,12 @@ class PlaybackEngine(
      * one item, nothing queued, at the host's place and speed, never this
      * device's saved position.
      */
-    fun playRoomCopy(row: EpisodeRow, url: String, startMs: Long, playing: Boolean, speed: Float, level: Float) {
+    fun playRoomCopy(row: EpisodeRow, url: String, startMs: Long, playing: Boolean, speed: Float) {
         ensureSession()
         saveNow()
         episodes = listOf(row)
         urls = listOf(url)
         resumeSaved = false
-        levels = listOf(level)
         lastFactor = 1f
         _state.value = _state.value.copy(failed = false, offline = false)
         onTransport(TransportEvent.Loaded(row.id))

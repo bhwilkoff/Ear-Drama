@@ -51,7 +51,12 @@ data class TonightDay(
     val station: String? = null,
     val witness: Witness? = null,
     val slots: List<RadioSlot> = emptyList(),
+    /** Decision 067: the same date's other published years, each a whole evening on tonight's clock. */
+    val years: List<TonightDay> = emptyList(),
 ) {
+    /** This evening and the date's other published years, oldest first: what a listener may pick between. */
+    val choices: List<TonightDay> get() = (listOf(this) + years).sortedBy { it.evening }
+
     @Serializable
     data class Witness(val paper: String? = null, val url: String? = null, val via: String? = null)
 
@@ -75,8 +80,9 @@ data class TonightDay(
 
 /**
  * One slot of the evening: an episode the catalog serves, or a gap stated as
- * a gap (R9). The paper's OCR text (`printed`) is witness only and is not
- * decoded, so no screen can draw it (WEB-DESIGN §4.9).
+ * a gap (R9): its time and, when the listing matched a series, that series'
+ * name. The newspaper's printed text is never drawn (Decision 067); the file
+ * no longer carries it, and this type never decoded it.
  */
 @Serializable
 data class RadioSlot(

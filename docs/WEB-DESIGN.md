@@ -97,11 +97,12 @@ web app follows today.
 - **§4.2 Home** (was Listen, Decision 068) = Continue listening (this device), Following, then the
   manifest's `listenShelves` in its order (contract §5.1; the same list on
   every platform): `onThisDay` is "This day in radio", the contract's query
-  on the person's own date; each `genreFirsts` is an episode list headed
-  by the published genre name, its ids drawn in order. Each section draws
-  only when it has rows. A catalog without the key falls back to
-  `index/listen.json`'s genre shelves of series. No "Most episodes" shelf
-  (HUMAN-SHAPED.md B, pending the owner).
+  on the person's own date; `mostDownloaded` is "Most downloaded", the
+  published ids in order (archive.org's own download counts, Decision 067);
+  each `genreFirsts` is an episode list headed by the published genre name,
+  its ids drawn in order. Each section draws only when it has rows. A catalog
+  without the key falls back to `index/listen.json`'s genre shelves of
+  series. No "Most episodes" shelf (the owner, Decision 067).
 - **§4.3 Browse** (was Series, Decision 068) lists radio series and
   stage plays together. Its filters are visible controls in one row, as
   Archive Watch's chips (its iOS-DESIGN §4.2a): Kind (Any kind, Series,
@@ -163,7 +164,10 @@ web app follows today.
 - **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
   should be stations"*) = Tonight in 19xx; genre stations later: the evening `tonight.json` publishes
   for the listener's own calendar date (contract §8), as the night's
-  schedule. Each slot shows its local time with the original Eastern time
+  schedule; an evening shows whenever any of its programs survives
+  (Decision 067). When the day offers other published years (`years`), a
+  native "Year" select beside the heading picks one: that year's whole
+  evening on tonight's clock, and picking ends listening live. Each slot shows its local time with the original Eastern time
   beside it as a fact ("7:00 PM ET" alone where the two agree), and the
   slot on the air is marked on the one clock, read from the file's UTC
   instants (R10). A surviving slot links to its episode and plays from
@@ -172,10 +176,10 @@ web app follows today.
   another episode, or the sleep timer ends listening live, and so does
   the last slot: nothing plays after the evening (R14). A gap is drawn as
   a gap (R9): its time, its length, the catalog series name only where the
-  file sets `known_series`, and "Not surviving" (or "Not in the catalog"
-  for a recording this projection does not serve). The paper's OCR text
-  (`printed`) stays in the file as witness and is **not drawn** until the
-  owner rules on it. The listing is credited in one caption line linking
+  file sets `known_series` (the listing matched a series), and "Not
+  surviving" (or "Not in the catalog" for a recording this projection does
+  not serve). The newspaper's printed text is never drawn (Decision 067); the
+  file no longer carries it. The listing is credited in one caption line linking
   the page it was read from. No evening for today is the empty state.
 - **§4.10 Ear dramas: pass the phone** (`docs/PLAYS-DESIGN.md` is binding on
   what the feature does; this rule is how it looks on the web). Code:
@@ -361,8 +365,10 @@ web app follows today.
     `Player.toggle`) do nothing (`Player.setFollowing`); the room's
     corrections go through `Player.follow`. A drift nudge sets the
     element's rate only and is never kept as the person's speed (§5.2).
-    Play is enabled only when the browser refused to start the sound,
-    and that one tap starts it. The mini player's caption reads
+    Play and pause are the guest's own (Decision 067): pause holds their
+    sound while the room plays on, and play catches them up to where the
+    host is now (`Together.hold`, through `Player.setGuestHold`); the same
+    tap starts the sound when the browser refused to. The mini player's caption reads
     "Listening together · {n}". Picking another episode, or the sleep
     timer ending, leaves the room, as it ends listening live (§4.9).
   - **The rules are the protocol's**, ported in `js/together-core.js` and
@@ -397,9 +403,10 @@ web app follows today.
 - **§5.3 Bedtime is a mode** (R20). The sleep timer offers "End of this
   episode" first, fades the volume over its last 10 s (`FADE_S`), and
   nothing starts again until the person presses play.
-- **§5.4 Lean-back is bounded** (R3, R14). At an episode's end the next
-  one plays only when the person queued it and it is from the same
-  series.
+- **§5.4 Lean-back is bounded** (R3, R14, Decision 067). At an episode's
+  end the next one plays only when the person queued it, whatever its
+  series: one episode, then the queue, then stop. A serial playing to its
+  arc's end waits on the runs table.
 - **§5.5 Never skip the commercials** (R8). Skip is a fixed interval,
   never a jump past a segment.
 - **§5.6 Media Session** carries the title, series, and date, with play,
@@ -411,6 +418,18 @@ web app follows today.
   next play starts 3 s back (`REWIND_S`). DECISIONS 062 holds all four
   numbers; `js/player.test.js` checks them.
 - **§5.8 Audio is never cached** by the service worker (§7.2).
+- **§5.9 Volume is leveled on the device** (Decision 067; DECISIONS 070).
+  The element plays through a `DynamicsCompressorNode` (`Player.LEVEL`:
+  threshold -24 dB, ratio 4, knee 12 dB, attack 3 ms, release 250 ms; the
+  browser's own makeup gain, 10.8 dB), on by default, and "Level volume" in
+  Now Playing's options turns it off (kept on the device). The copy is
+  fetched with `crossorigin` so Web Audio can hear it; a copy refused that
+  way plays again without it, unleveled. The graph is built only once a
+  tap or key has started the AudioContext. Not on iPhone or iPad (a page's
+  AudioContext stops at the lock screen) or a TV engine: the button is
+  disabled with "Not in this browser" (a refusal, §1.5). The sleep fade and
+  the mute door ride the graph's output gain. No per-file measurement is
+  read.
 
 ## §6 Look
 

@@ -181,6 +181,33 @@ class RadioTests {
         assertTrue(evening.day.slots.all { evening.detail(it) == null })
     }
 
+    /** Decision 067: a listener may pick another published year for the same date. */
+    @Test fun `another published year for the date is offered and loads whole`() = runBlocking {
+        val withYears = TonightFile.decode("""
+            {"zone": "America/New_York", "days": {"2026-10-22": {"evening": "1947-10-22", "network": "CBS",
+              "slots": [{"et_start": "20:00", "et_end": "20:30", "length_min": 30, "gap": true,
+                         "utc_start": "2026-10-23T00:00:00Z", "utc_end": "2026-10-23T00:30:00Z"}],
+              "years": [{"evening": "1939-10-22", "network": "NBC", "station": "WRC",
+                "slots": [{"et_start": "21:00", "et_end": "21:30", "length_min": 30, "gap": true, "known_series": "Lux",
+                           "utc_start": "2026-10-23T01:00:00Z", "utc_end": "2026-10-23T01:30:00Z"}]}]}}}
+        """.trimIndent())
+        val base = (RadioLoad.load(fetch = { withYears }, db = { null }, date = "2026-10-22") as RadioLoad.Evening).evening
+        assertEquals(listOf("1939-10-22", "1947-10-22"), base.choices)
+        assertEquals("1947-10-22", base.day.evening)
+        val picked = (RadioLoad.load(fetch = { withYears }, db = { null }, date = "2026-10-22", picked = "1939-10-22")
+            as RadioLoad.Evening).evening
+        assertEquals("1939-10-22", picked.day.evening)
+        assertEquals("NBC · WRC", picked.day.stationLine)
+        assertEquals("Lux", picked.day.slots.single().knownSeries)
+        assertEquals("the choices stay the date's", base.choices, picked.choices)
+        val unknown = (RadioLoad.load(fetch = { withYears }, db = { null }, date = "2026-10-22", picked = "1900-10-22")
+            as RadioLoad.Evening).evening
+        assertEquals("control: a year not offered falls back to the published evening", "1947-10-22", unknown.day.evening)
+        val older = (RadioLoad.load(fetch = { TonightFile.decode(file) }, db = { null }, date = "2026-10-22")
+            as RadioLoad.Evening).evening
+        assertEquals("control: a file without years offers only its evening", listOf("1942-10-22"), older.choices)
+    }
+
     // --- Listening live
 
     private val evening = listOf(

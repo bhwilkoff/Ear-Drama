@@ -203,6 +203,9 @@ const API = (() => {
     }
     const out = await Promise.all(m.listenShelves.map(async s => {
       if (s && s.rule === 'onThisDay') return { rule: 'onThisDay', rows: await thisDay(date, get) };
+      if (s && s.rule === 'mostDownloaded' && Array.isArray(s.episodes)) {
+        return { rule: 'mostDownloaded', rows: await episodesByIds(s.episodes, get) };
+      }
       if (s && s.rule === 'genreFirsts' && Array.isArray(s.episodes)) {
         return { rule: 'genreFirsts', genre: s.genre, rows: await episodesByIds(s.episodes, get) };
       }
@@ -286,20 +289,6 @@ const API = (() => {
       .map(async k => [k, await getJSON(`search/docs/${k}.json`)]));
     const byChunk = new Map(files);
     return numbers.map(n => rowsOf(m.fields.doc, [byChunk.get(Math.floor(n / chunk))[n % chunk]])[0]);
-  }
-
-  /**
-   * DECISIONS 061: play at -21 LUFS, reached by cutting. A volume factor in (0, 1]:
-   * the gain is -21 - I, clamped so the true peak stays at or below -1 dBTP, and
-   * never above 0 dB (a media element cannot boost). Unmeasured plays at 1.
-   */
-  const LOUDNESS_TARGET = -21;
-  function playbackVolume(li, ltp) {
-    if (li == null || !isFinite(li)) return 1;
-    let g = LOUDNESS_TARGET - li;
-    if (ltp != null && isFinite(ltp)) g = Math.min(g, -1 - ltp);
-    g = Math.min(g, 0);
-    return Math.pow(10, g / 20);
   }
 
   /* ---- Transcripts (DECISIONS 058, contract §3.1) ---- */
@@ -744,7 +733,7 @@ const API = (() => {
     rooms,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, artOf, artURL, ART_STEPS,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail,
-    searchSeries, searchEpisodeNumbers, searchDocs, rightsLine, playbackVolume, LOUDNESS_TARGET,
+    searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     transcript, transcriptLines, transcriptLabel,
     localDate, tonight, tonightFile, onAir, castableScripts, account,
   };

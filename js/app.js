@@ -381,6 +381,8 @@
       shelves.forEach((s, i) => {
         if (s.rule === 'onThisDay') {
           shelvesBox.append(episodeShelf('This day in radio', s.rows, 'day', monthDay.format(today)));
+        } else if (s.rule === 'mostDownloaded') {
+          shelvesBox.append(episodeShelf('Most downloaded', s.rows, 'popular'));
         } else if (s.rule === 'genreFirsts') {
           shelvesBox.append(episodeShelf(genreLabel(s.genre), s.rows, `genre-${i}`));
         } else {
@@ -500,9 +502,7 @@
     load(body, async () => {
       const day = await API.tonight(API.localDate(new Date(clockNow())));
       if (!day) return { day: null };
-      const ids = day.slots.filter(s => s.episode).map(s => s.episode.id);
-      const got = await Promise.all(ids.map(id => API.episodeDetail(id)));
-      return { day, details: new Map(got.filter(Boolean).map(d => [d.id, d])) };
+      return { day, base: day, details: await eveningDetails(day) };
     }, (data) => {
       radioState = data;
       if (!data.day) {
@@ -517,9 +517,33 @@
     });
   }
 
+  async function eveningDetails(day) {
+    const ids = day.slots.filter(s => s.episode).map(s => s.episode.id);
+    const got = await Promise.all(ids.map(id => API.episodeDetail(id)));
+    return new Map(got.filter(Boolean).map(d => [d.id, d]));
+  }
+
+  /** Decision 067: the same date in another published year, a whole evening of its own on tonight's clock. */
+  function yearChoices(base) {
+    const all = [base, ...(base.years || []).map(y => ({ ...y, zone: base.zone, years: base.years }))];
+    return all.sort((a, b) => byText(a.evening, b.evening));
+  }
+  function byText(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+
+  async function pickYear(evening) {
+    const base = radioState.base;
+    const day = evening === base.evening ? base : yearChoices(base).find(e => e.evening === evening);
+    if (!day) return;
+    if (live) stopLive();
+    const details = await eveningDetails(day);
+    radioState = { day, base, details };
+    paintRadio();
+    announce(`Tonight in ${evening.slice(0, 4)}`);
+  }
+
   function paintRadio() {
     if (!radioState || !radioState.day) return;
-    const { day, details } = radioState;
+    const { day, details, base } = radioState;
     const body = $('radio-body');
     const where = API.onAir(day.slots, clockNow());
     const zone = day.zone;
@@ -573,9 +597,15 @@
     });
 
     const w = day.witness || {};
+    const choices = base && base.years && base.years.length ? yearChoices(base) : null;
+    const years = choices ? el('label', { class: 'filter radio-year' }, el('span', { class: 'caption' }, 'Year'),
+      el('select', { 'aria-label': 'Year', onchange: (e) => pickYear(e.target.value) },
+        ...choices.map(c => el('option', { value: c.evening, selected: c.evening === day.evening ? '' : null },
+          c.evening.slice(0, 4))))) : null;
     body.replaceChildren(
       el('header', { class: 'radio-head' },
         el('h2', { class: 'section-header', id: 'tonight-h' }, `Tonight in ${day.evening.slice(0, 4)}`),
+        years,
         el('p', { class: 'body' }, fmtLongDate(day.evening)),
         el('p', { class: 'caption' }, [day.network, day.station].filter(Boolean).join(' · ')),
         status ? el('div', { class: 'actions' }, status) : null),
@@ -1157,9 +1187,8 @@
   });
   together.onChange(() => paintPlayer('state'));
   /** A guest's Play is the host's; it is offered only when the browser would not start the sound by itself. */
-  function togglePressed() {
-    if (Player.following) together.tap(); else Player.toggle();
-  }
+  /** A Listen Together guest's toggle is their own hold (Decision 067); it also answers a refused autoplay. */
+  function togglePressed() { Player.toggle(); }
 
   function sleepText() {
     const s = Player.sleep;
@@ -1179,7 +1208,7 @@
     document.querySelectorAll('[data-act="toggle"]').forEach(b => {
       b.setAttribute('aria-label', playing ? 'Pause' : 'Play');
       b.classList.toggle('is-playing', playing);
-      b.disabled = guest && !room.blocked;
+
     });
     document.querySelectorAll('[data-act="back"], [data-act="fwd"]').forEach(b => { b.disabled = guest; });
     seekEl.disabled = guest;
@@ -1209,6 +1238,9 @@
     $('np-pos').textContent = fmtClock(seeking ? Number(seekEl.value) : t);
     $('np-left').textContent = `-${fmtClock(Math.max(0, d - t))}`;
     $('np-speed').value = String(Player.nearestSpeed(a.playbackRate || 1));
+    $('np-level').setAttribute('aria-pressed', Player.leveling ? 'true' : 'false');
+    $('np-level').disabled = !Player.canLevel;
+    $('np-level-note').hidden = Player.canLevel;
     const st = sleepText();
     document.querySelectorAll('.sleep-label').forEach(x => { x.textContent = st; });
     document.querySelectorAll('[data-act="sleep"]').forEach(b => b.setAttribute('aria-label', st));
@@ -1313,6 +1345,11 @@
   seekEl.addEventListener('input', () => { seeking = true; $('np-pos').textContent = fmtClock(Number(seekEl.value)); });
   seekEl.addEventListener('change', () => { seeking = false; Player.seek(Number(seekEl.value)); });
   $('np-speed').addEventListener('change', (e) => { Player.setRate(e.target.value); announce(`Speed ${e.target.value}×`); });
+  $('np-level').addEventListener('click', () => {
+    const on = !Player.leveling;
+    Player.setLeveling(on);
+    announce(on ? 'Volume leveling on' : 'Volume leveling off');
+  });
   $('sleep-menu').addEventListener('click', (e) => {
     const b = e.target.closest('[data-sleep]');
     if (!b) return;

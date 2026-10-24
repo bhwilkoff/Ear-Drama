@@ -67,14 +67,19 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the
   catalog's `meta.listenShelves` in its order (contract §5.1; the same
-  list and titles on every platform): "This day in radio", then each
-  genre by its `GenreDisplay` name, ids as published. An older catalog
+  list and titles on every platform): "This day in radio", "Most
+  downloaded" (archive.org's own counts, Decision 067), then each genre by
+  its `GenreDisplay` name, ids as published. An older catalog
   without the key falls back to the rules run on the device.
-- **R15 and Decision 061: loudness by cutting.** `LoudnessLevel.volume`
-  (`apple/Core/Player/LoudnessLevel.swift`) sets AVPlayer's volume to
-  `-21 - I` dB, clamped so the true peak stays at or below -1 dBTP and
-  never above unity, for the default copy only. Silence is never
-  trimmed.
+- **R15 and Decision 067: volume leveled on the device.** No per-file
+  measurement is read. Each item's audio track carries an
+  `MTAudioProcessingTap` (`VolumeLeveler`, `apple/Core/Player/VolumeLeveler.swift`)
+  that runs Apple's DynamicsProcessor unit at the numbers every platform
+  shares (`LevelNumbers`: threshold -24 dB, ratio 4 as 6 dB headroom,
+  attack 3 ms, release 250 ms, makeup 10.8 dB), holding samples inside full
+  scale. On by default; "Level volume" (`LevelToggle`) on the player turns
+  it off, kept on the device. An item whose track or tap cannot be made
+  plays unleveled. Silence is never trimmed.
 - **R16** the transcript is labeled "Automatic transcript"
   (`Transcript.label`), the same words on every platform.
 - **R17** the phone's tabs reduce to the car's four (§9.1): Continue,
@@ -205,7 +210,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   (`RadioClock.localDate`, never the UTC date), fetched through
   `APIClient.tonight()` from the catalog's Release (contract §2, §8).
   A header of "Tonight in 1942", the evening's date, and the network
-  and station; then one row a slot. Each row shows its local time with
+  and station; when the date offers other published years (Decision 067),
+  a menu Picker "Year" under it loads that year's whole evening on
+  tonight's clock (picking stops listening live); then one row a slot.
+  An evening shows whenever any of its programs survives. Each row shows its local time with
   the paper's Eastern time beside it as a caption ("7:00 PM ET" alone
   where the two agree). The slot on the air says "Now" and takes the
   surface-alt row background, repainted every 15 seconds from the
@@ -213,7 +221,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   borderless Play that plays it from its start; a gap is muted text:
   `known_series` where the file sets it, then "Not surviving" (or "Not
   in the catalog" for a withheld slot or one the open catalog lacks),
-  and its length. The paper's printed text is never drawn. Before the
+  and its length. The newspaper's printed text is never drawn (Decision
+  067; the file no longer carries it). Before the
   evening the header says "Starts at", after it "Ended at"; during it,
   "Listen live" (`LiveRadio`, `apple/Core/Radio/LiveListening.swift`)
   joins the slot on the air at the clock's offset, and each later
@@ -305,9 +314,12 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `GroupActivitySharingController`, which picks people and places the
   call. It never plays alone in place of starting. Once a room is live
   the same control is a menu with Leave SharePlay; the system's SharePlay
-  UI carries who is there. A following member's transport, speed, and
+  UI carries who is there. A following member's skip, speed, and
   scrubber are disabled, and the one caption is the refusal "The host has
-  the controls." The control is chrome, so it takes the tint, never the
+  the controls." Play and Pause stay theirs (Decision 067): Pause holds
+  their own sound while the room plays on, and Play catches them up to
+  where the host is now (`AudioPlayer.isHeld`, `SharePlayRoom.follow`); a
+  held member handed the room takes it from where the room is. The control is chrome, so it takes the tint, never the
   live red.
   - **The rules are the Worker's, ported, not re-derived.**
     `RoomProtocol` (`apple/Core/ListenTogether/RoomProtocol.swift`, no
@@ -381,7 +393,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 ## §8 Values
 
 - **§8.1** The rights line, the "Automatic transcript" label, and
-  loudness by cutting are stated in §1.7 and are not reworded here.
+  volume leveling are stated in §1.7 and are not reworded here.
 - **§8.2** No analytics and no third-party code (AGENTS.md "no
   third-party Swift packages"). The privacy, credits, and take-down
   pages are the website's; the app links to them when that row lands
@@ -439,11 +451,10 @@ Listed, not fixed. Each item names where it is.
 - **Listening live drifts at a speed other than 1x**: the offset is
   taken at join, and the player's speed is the listener's.
 
-- **The queue disagrees across platforms.** `PlaybackQueue.following`
-  (`apple/Core/Player/PlaybackQueue.swift`) plays on through the rest of
-  the series, up to 50; Android plays on through the rest of the
-  season; the web plays the next one only when the person queued it
-  (`docs/WEB-DESIGN.md` §5.4). R14 needs one rule; the owner picks it.
+- **What plays next is the owner's rule** (Decision 067): one episode,
+  then whatever the person queued (the synced `ListeningQueue`), whatever
+  its series, then stop (`PlaybackQueue.next`). A serial playing to its
+  arc's end waits on the runs table. The same on every platform.
 - **Resume and "played" differ from the web**: past 30 s and played
   within 45 s of the end, against the web's 10 s to 95% window (§5.6).
   Decision 062 settles the fade, speeds, save cadence, and rewind
@@ -459,9 +470,8 @@ Listed, not fixed. Each item names where it is.
 - **The series link on Detail is a push**, so Home, Episode, Series
   is a third level (§1.5), and from there another episode is a fourth.
 - **No Queue or Following verbs** on Detail or in Library, which the web
-  has (`WEB-DESIGN` §4.5, §4.7). A person-built queue changes what plays
-  after an episode, which is the open queue rule above, so it waits on
-  the owner; Following has no native rule yet (where the button sits,
+  has (`WEB-DESIGN` §4.5, §4.7). The player plays a queue synced from
+  another device; adding to it here is not built yet; Following has no native rule yet (where the button sits,
   the Listen shelf, the Library section), so it needs one before it is
   built.
 - **R20's "one step from the lock screen"** is not built: the timer is

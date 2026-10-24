@@ -54,6 +54,21 @@ def load(path, default):
     return ia.read_json(path) if os.path.exists(path) else default
 
 
+def download_counts(cache=None):
+    """archive.org's own download count per item: the seed scrape's (seeds.json), with
+    the newer read of harvest_downloads.py (downloads.json) over it. An item neither
+    read is absent, never zero (a throttled read is not "nobody listened")."""
+    cache = cache or ia.CACHE
+    out = {}
+    for ident, v in (load(os.path.join(cache, "seeds.json"), {}).get("items") or {}).items():
+        if isinstance(v.get("downloads"), int):
+            out[ident] = v["downloads"]
+    for ident, n in (load(os.path.join(cache, "downloads.json"), {}).get("items") or {}).items():
+        if isinstance(n, int):
+            out[ident] = n
+    return out
+
+
 def item_series(item):
     t = item.get("title") or item.get("identifier") or ""
     t = re.sub(r"[_]+", " ", t)
@@ -1158,10 +1173,12 @@ def main():
         if ck in by_series:
             alias, source = reg.src[ak]
             db.execute("INSERT INTO series_aliases VALUES (?,?,?,?)", (ak, ck, alias, source))
+    downloads = download_counts()
     for it in items.values():
-        db.execute("INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?)", (
+        db.execute("INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?)", (
             it["id"], it["title"], json.dumps(it["collections"]), it["licenseurl"], it["uploader"],
-            it["publicdate"], bool(it["is_dark"]), it["reviews"], it["avg_stars"], it["transcripts"]))
+            it["publicdate"], bool(it["is_dark"]), it["reviews"], it["avg_stars"], it["transcripts"],
+            downloads.get(it["id"])))
     for ep in episodes.values():
         for pp in ep.get("people") or []:
             db.execute("INSERT INTO credits VALUES (?,?,?,?,?)", (ep["id"], pp["id"], pp["name"], pp["role"], "otrr.org"))
