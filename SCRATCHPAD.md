@@ -33,6 +33,12 @@
      Through out of order. Eleven stage plays ship; no radio play parses clean yet.
   13. **Store words** (`docs/store/LISTING-DRAFT.md`): approve or edit the App
      Store and Play text (category: Entertainment, decided).
+  16. **Which radio scripts may people re-record?** (Decision 068, batch R,
+     2026-10-24) 616 served radio episodes match a GRW transcription, but 0 are
+     castable: GRW's consent alone opens none, because 1,360 of 1,371 scripts
+     carry no rights evidence of their own (10 are government work with no
+     author on record, 1 is registered with its renewal unsearched). A rule
+     for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
 - **Status (2026-10-23, 8:35 AM MT, tick 68)**: the 1.0 loop runs from
