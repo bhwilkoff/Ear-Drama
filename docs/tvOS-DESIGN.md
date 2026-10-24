@@ -38,8 +38,11 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 §1.7; the TV runs the same Core:
 
 - **R1** every card and row leads with the date, oldest first; **R11**
-  cards are typographic (date, title, series), with no art and no
-  placeholder; **R12** brand is chrome only; **R13** shelves by rule.
+  cards are typographic (date, title, series), with no placeholder; as
+  amended by Decision 069, a card's series line leads with its 64 pt
+  `ArtTile` (the series' star, else its letter), Detail and the series
+  page put a `FaceFigure` (240 / 200 pt) beside the title, cast lines
+  carry 64 pt portraits in a grid, and owed credits follow as text; **R12** brand is chrome only; **R13** shelves by rule.
 - **R14** lean-back is bounded: the sleep timer ends a session, and the
   queue holds only this series (see §12 for the open queue rule).
 - **R15 and Decision 061**: loudness by cutting, `LoudnessLevel.volume`.
@@ -155,8 +158,10 @@ The only shapes; a new one needs a new rule.
 - **§5.1 One engine**, the shared `AudioPlayer`, with the `.playback`
   and `.spokenAudio` session and remote commands as on iOS
   (`docs/iOS-DESIGN.md` §5.1, §5.4, §5.5).
-- **§5.2 Now Playing is full screen and typographic** (`NowPlaying_tvOS`):
-  the series, the title at page-title size, date and network; a
+- **§5.2 Now Playing is full screen** (`NowPlaying_tvOS`): the episode's
+  art at 400 pt (its star, else the series', else the series'
+  typographic card, Decision 069), then the series, the title at
+  page-title size, date and network; a
   progress bar with elapsed and remaining time; back 15 s, Play,
   forward 30 s, speed, the sleep timer, and the transcript, in one
   focus section. Play/Pause on the remote toggles from anywhere on the

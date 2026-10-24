@@ -4,6 +4,45 @@ import Foundation
 // value here is a pipeline output; nothing is computed on the client except
 // display formatting (§5.5).
 
+/// A served image (contract §3.3a, Decision 069): a Commons file with its
+/// evidence. `url` takes a width; `credit` is set only where the license asks.
+nonisolated struct Artwork: Hashable, Sendable {
+    let url: URL
+    var width: Int? = nil
+    var height: Int? = nil
+    var credit: String? = nil
+    var evidence: URL? = nil
+
+    /// Commons' standard thumbnail steps; any other width is refused upstream.
+    static let steps = [120, 330, 500]
+
+    /// The one image helper: the smallest standard width covering `pixels`.
+    func url(pixels: Double) -> URL {
+        let width = Self.steps.first { Double($0) >= pixels } ?? Self.steps[Self.steps.count - 1]
+        var parts = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        parts?.queryItems = [URLQueryItem(name: "width", value: String(width))]
+        return parts?.url ?? url
+    }
+}
+
+/// The first letter or digit of a name, skipping a leading article.
+nonisolated enum ArtInitial {
+    static func of(_ name: String) -> String {
+        var rest = Substring(name).drop { !$0.isLetter && !$0.isNumber }
+        for article in ["The ", "A ", "An "] where rest.lowercased().hasPrefix(article.lowercased()) {
+            rest = rest.dropFirst(article.count)
+            break
+        }
+        return rest.first { $0.isLetter || $0.isNumber }.map { String($0).uppercased() } ?? ""
+    }
+}
+
+/// Whose face a series or episode wears: a person's name and served portrait.
+nonisolated struct Face: Hashable, Sendable {
+    let name: String
+    let art: Artwork
+}
+
 nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     let key: String
     let name: String
@@ -12,6 +51,8 @@ nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     let lastDate: String?
     let networks: [String]
     let episodeCount: Int
+    /// The series' star and portrait (contract §3.3a), or nil: its art is then the typographic card.
+    var face: Face? = nil
 
     var id: String { key }
 
@@ -56,6 +97,9 @@ nonisolated struct EpisodeRow: Hashable, Sendable, Identifiable {
     /// passed (contract §3.1, `has_transcript = 1`); fetched on demand, never
     /// bundled. Read only by `episodeDetail`.
     var transcriptURL: URL? = nil
+    /// The series' genre and face, so a row that mixes series can draw its tile.
+    var seriesGenre: String? = nil
+    var seriesFace: Face? = nil
 
     /// The episode's display title. A row the pipeline left untitled shows its
     /// log number, then its date, and only then the series name.
@@ -101,6 +145,8 @@ nonisolated struct Credit: Hashable, Sendable, Identifiable {
     let name: String
     let role: String?
     let character: String?
+    /// The person's served portrait (contract §3.3a), or nil.
+    var art: Artwork? = nil
 
     var id: String { "\(personID)|\(role ?? "")|\(character ?? "")" }
 }
@@ -112,7 +158,29 @@ nonisolated struct EpisodeDetail: Hashable, Sendable {
     let recordings: [Recording]
     /// The published rights words (contract §5.5); nil shows no line.
     let rightsLine: String?
+    /// The episode's face, a person credited in it (contract §3.3a), or nil.
+    var star: String? = nil
     var defaultRecording: Recording? { recordings.first }
+    /// The credited star with a portrait, drawn beside the heading.
+    var starFace: Face? {
+        guard let star, let credit = credits.first(where: { $0.personID == star && $0.art != nil }),
+              let art = credit.art else { return nil }
+        return Face(name: credit.name, art: art)
+    }
+    /// What Now Playing and the lock screen show: the episode's face, else the series'.
+    var face: Face? { starFace ?? episode.seriesFace }
+    /// The portraits whose license asks for a credit, once each, leaving out
+    /// the heading's face, which carries its own (Decision 069).
+    var owedCredits: [Credit] {
+        let headed = starFace == nil ? nil : star
+        var seen = Set<String>()
+        return credits.filter { credit in
+            guard credit.art?.credit != nil, credit.personID != headed, !seen.contains(credit.personID)
+            else { return false }
+            seen.insert(credit.personID)
+            return true
+        }
+    }
 }
 
 nonisolated struct SeasonGroup: Hashable, Sendable, Identifiable {

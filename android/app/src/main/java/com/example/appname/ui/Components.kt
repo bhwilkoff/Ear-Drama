@@ -29,9 +29,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -226,6 +223,10 @@ fun EpisodeListItem(
     ).joinToString(" · ").ifEmpty { null }
     ListItem(
         modifier = modifier.tvFocusMark().clickable(onClickLabel = "Open episode", onClick = onOpen),
+        // Decision 069: a row that mixes series leads with its series' tile; a series page's rows do not.
+        leadingContent = if (showSeries) {
+            { ArtTile(row.seriesName, row.seriesGenre, row.seriesFace) }
+        } else null,
         overlineContent = date?.takeIf { title != it }?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
         headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         supportingContent = second?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
@@ -246,17 +247,12 @@ fun EpisodeListItem(
 @Composable
 fun SeriesListItem(row: SeriesRow, onOpen: () -> Unit) {
     val second = listOfNotNull(seriesYears(row), "${row.episodes} episodes").joinToString(" · ")
-    val mark = OnAir.genre(row.genre) ?: MaterialTheme.colorScheme.outline
     ListItem(
         modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open series", onClick = onOpen),
+        // The tile carries the genre hue the 4 dp mark used to (Decision 069).
+        leadingContent = { ArtTile(row.name, row.genre, row.face) },
         headlineContent = {
-            Column(
-                Modifier
-                    .drawBehind {
-                        drawRoundRect(mark, size = Size(4.dp.toPx(), size.height), cornerRadius = CornerRadius(2.dp.toPx()))
-                    }
-                    .padding(start = Spacing.S3.dp),
-            ) {
+            Column {
                 Text(row.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
                     second,

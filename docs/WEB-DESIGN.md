@@ -403,7 +403,8 @@ web app follows today.
 - **§5.5 Never skip the commercials** (R8). Skip is a fixed interval,
   never a jump past a segment.
 - **§5.6 Media Session** carries the title, series, and date, with play,
-  pause, and seek handlers. Keyboard: k or space toggles, j and l skip.
+  pause, and seek handlers, and the artwork Now Playing draws (§6.4): the
+  portrait at 500 px, or the typographic card painted to a 512 px PNG. Keyboard: k or space toggles, j and l skip.
 - **§5.7 Progress persists** every 5 s (`SAVE_EVERY_MS`) and on pause;
   resume only inside the 10 s to 95% window. A pause the browser made (a
   call, another tab's sound), not the person, is an interruption: the
@@ -431,8 +432,36 @@ web app follows today.
 - **§6.3 Safari layout.** `body { height: 100dvh; display: flex;
   flex-direction: column; overflow: hidden }`, `main` is the one scroll
   container. No `viewport-fit=cover`, no `position: fixed` overlays.
-- **§6.4 Cards are typographic** (R11): the name, one meta line, the
-  genre edge. No placeholder art.
+- **§6.4 Art is a served portrait, else the typographic card** (R11,
+  Decision 069, contract §3.3a). A picture comes only from the catalog: a
+  person's portrait the projection serves, or a card drawn from data (the
+  name, one meta line, on the genre hue). No stock, placeholder, or
+  uploader art. A stage play draws the same card from its own title, year,
+  and genre. Where art appears, and only there:
+  - **A row that mixes series** (Continue listening, This day, genre
+    shelves, search results, the queue and history, series rows and
+    cards) leads with a 40 px tile: the series' star, else the series'
+    first letter in its genre hue on the surface. Rows on a series page
+    carry none: one picture repeated down a list is chrome. On a phone the
+    date stacks above the title (still first, R1) so the title keeps its
+    width; from 768 px it takes its column.
+  - **A series page and Detail** put the face beside the heading (76 px
+    on a phone, 128 px from 768 px), captioned with the person's name (who
+    it is cannot be seen) and the credit when the license asks for one.
+    Detail uses the episode's star, a person credited in it; a series page
+    its star. No face, no picture: the heading is the card.
+  - **Cast lines** carry a 32 px round portrait where the person has one;
+    a role group with any portrait keeps the slot on every line, so names
+    align. Credits owed by those portraits follow the list, one caption,
+    each linked to its Commons file page.
+  - **Now Playing** shows the episode's star, else the series' star, else
+    the series' typographic card, at up to 200 px (the controls stay on a
+    phone's first screen); §5.6 sends the same art to the lock screen.
+  - Portraits are cropped only to a top-anchored frame (`object-position:
+    50% 20%`) and are the person's own Wikidata image, so the crop keeps
+    the face. A failed image leaves the tile's letter or nothing, never a
+    broken image. `API.artURL` is the one helper: Commons' standard widths
+    (120, 330, 500), never a re-hosted copy.
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline

@@ -27,6 +27,12 @@ struct EarDramaApp: App {
         let player = AudioPlayer(history: history)
         player.resolveDetail = { [weak catalog] id in await catalog?.episodeDetail(id) }
         player.resolveSeriesPage = { [weak catalog] key in await catalog?.seriesPage(key) }
+        player.cardImage = { episode in
+            let renderer = ImageRenderer(content: TypeCard(name: episode.seriesName, line: episode.network,
+                                                           genre: episode.seriesGenre).frame(width: 256, height: 256))
+            renderer.scale = 2
+            return renderer.cgImage
+        }
         let live = LiveRadio(player: player)
         let account = AccountStore(history: history, follows: FollowedSeries(), queue: ListeningQueue())
         player.onTransport = { [weak live] event in live?.handle(event) }

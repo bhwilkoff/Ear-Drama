@@ -30,6 +30,7 @@ from titles import display_title
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
+import art_policy as AP
 from audit_audio_rights import pd_published_year
 
 SCHEMA_VERSION = 1
@@ -54,15 +55,19 @@ MIN_EPISODES = 10_000
 SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
-    networks TEXT, episodes INTEGER NOT NULL);
+    networks TEXT, episodes INTEGER NOT NULL, star TEXT);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
-    gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT);
+    gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT, star TEXT);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
-CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death TEXT);
+CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death TEXT, portrait INTEGER);
+-- Served images and their evidence (art_policy.py): url is Commons' Special:FilePath with no
+-- width (a client appends ?width=); credit is the line a CC BY / BY-SA image must carry.
+CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, height INTEGER,
+    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
 CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
 -- Contentless: a match's rowid is the episode's rowid (join episodes ON rowid). Only the index
@@ -123,6 +128,18 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
             credits_by_ep.setdefault(eid, []).append((pid, name, role, character))
             people_rows.setdefault(pid, name)
 
+    portraits = served_portraits(s, people_rows)   # person id -> art row id, rows written to `art`
+    for aid, (file, cls, template, author, w, h) in enumerate(portraits["rows"], 1):
+        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?)", (
+            aid, AP.image_url(file), w, h, cls, author if AP.license_name(cls, template) else None,
+            AP.credit(cls, template, author), AP.evidence_url(file)))
+    faces = set(portraits["by_person"])
+    series_of = dict(s.execute("SELECT id, series_key FROM episodes"))
+    credited_by_series = {}
+    for eid, creds in credits_by_ep.items():
+        credited_by_series.setdefault(series_of.get(eid), {})[eid] = [(p, r) for p, _n, r, _c in creds]
+    stars = {sk: AP.series_star(eps, faces) for sk, eps in credited_by_series.items()}
+
     recs_by_ep = {}
     for row in s.execute("SELECT episode_id, rank, archive_id, file, format, kbps, length_s, variant, partial "
                          "FROM recordings ORDER BY episode_id, rank"):
@@ -152,10 +169,11 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
-        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             eid, sk, air, dsrc, season(air), num, display_title(title), aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
-            None, lr and lr["I"], lr and lr["TP"], turl if shown else None))
+            None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk))))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
                    names.get(sk, ""),
@@ -166,15 +184,19 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
             "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?)",
-                      (key, name, genre, gsrc, first, last, nets, per_series[key]))
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?)",
+                      (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key)))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
-            d.execute("INSERT INTO people VALUES (?,?,?,?)", (pid, name, birth, death))
+            d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
+                      (pid, name, birth, death, portraits["by_person"].get(pid)))
 
     d.executescript(INDEXES)
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("episodes", "recordings", "series", "people", "credits")}
+              for t in ("episodes", "recordings", "series", "people", "credits", "art")}
+    counts["portraits"] = d.execute("SELECT COUNT(*) FROM people WHERE portrait IS NOT NULL").fetchone()[0]
+    counts["seriesStars"] = d.execute("SELECT COUNT(*) FROM series WHERE star IS NOT NULL").fetchone()[0]
+    counts["episodeStars"] = d.execute("SELECT COUNT(*) FROM episodes WHERE star IS NOT NULL").fetchone()[0]
     counts["clean"] = d.execute("SELECT COUNT(*) FROM episodes WHERE rights = 'clean'").fetchone()[0]
     counts["loudness"] = d.execute("SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL").fetchone()[0]
     counts["transcripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE has_transcript = 1").fetchone()[0]
@@ -191,6 +213,34 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None):
     d.execute("VACUUM")
     d.close()
     return meta
+
+
+def served_portraits(s, people):
+    """The portraits art_policy serves for the people this projection carries:
+    {"rows": [(file, cls, template, author, width, height)], "by_person": {pid: art id}}.
+    A source without the people tables (a fixture, an older build) serves none."""
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    out = {"rows": [], "by_person": {}}
+    if not {"people_art", "people_wikidata"} <= tables:
+        return out
+    dims = {}
+    if "art" in tables:
+        for f, w, h in s.execute("SELECT file, width, height FROM art WHERE width IS NOT NULL"):
+            dims[f[5:] if f.startswith("File:") else f] = (w, h)
+    by_person = {}
+    for pid, file, cls, usable, via, author, template, basis in s.execute(
+            "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis "
+            "FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+        if pid in people and AP.served(basis, cls, usable, via, author):
+            by_person.setdefault(pid, []).append((file, cls, template, author))
+    ids = {}
+    for pid in sorted(by_person):
+        file, cls, template, author = AP.pick(by_person[pid])
+        if file not in ids:
+            out["rows"].append((file, cls, template, author) + dims.get(file, (None, None)))
+            ids[file] = len(out["rows"])
+        out["by_person"][pid] = ids[file]
+    return out
 
 
 def deflate(src, dst):

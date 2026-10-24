@@ -23,6 +23,7 @@ import com.example.appname.data.ApiClient
 import com.example.appname.data.CatalogRepository
 import com.example.appname.data.DownloadStore
 import com.example.appname.data.EpisodeRow
+import com.example.appname.data.Face
 import com.example.appname.data.UserStore
 import com.example.appname.radio.TransportEvent
 import com.google.common.util.concurrent.ListenableFuture
@@ -260,7 +261,11 @@ class PlaybackEngine(
         _state.value = _state.value.copy(failed = false, offline = false)
         // The phone's Play and the car's alike, so another episode ends listening live.
         onTransport(TransportEvent.Loaded(detail.episode.id))
-        return Queue(items.map { (row, u, _) -> mediaItem(row, u) }, startMs ?: startPositionFor(detail.episode.id))
+        // The first item wears the episode's own face (or its series' card); the rest their series' face.
+        val media = items.mapIndexed { i, (row, u, _) ->
+            if (i == 0) mediaItem(row, u, detail.face, card = true) else mediaItem(row, u)
+        }
+        return Queue(media, startMs ?: startPositionFor(detail.episode.id))
     }
 
     private suspend fun startPositionFor(id: String): Long {
@@ -278,7 +283,12 @@ class PlaybackEngine(
     }
 
     /** The downloaded copy of [url] when it is on this device, so it plays with no network. */
-    private fun mediaItem(row: EpisodeRow, url: String): MediaItem = MediaItem.Builder()
+    private fun mediaItem(
+        row: EpisodeRow,
+        url: String,
+        face: Face? = row.seriesFace,
+        card: Boolean = false,
+    ): MediaItem = MediaItem.Builder()
         .setMediaId(row.id)
         .setUri(downloads.localFile(row.id, url)?.let { Uri.fromFile(it) } ?: Uri.parse(url))
         .setMediaMetadata(
@@ -287,6 +297,7 @@ class PlaybackEngine(
                 .setArtist(row.seriesName)
                 .setSubtitle(row.airDate)
                 .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
+                .let { if (face != null || card) SessionArtwork.apply(it, row, face) else it }
                 .build(),
         )
         .build()
@@ -455,7 +466,7 @@ class PlaybackEngine(
         _state.value = _state.value.copy(failed = false, offline = false)
         onTransport(TransportEvent.Loaded(row.id))
         val p = player
-        p.setMediaItems(listOf(mediaItem(row, url)), 0, startMs.coerceAtLeast(0))
+        p.setMediaItems(listOf(mediaItem(row, url, card = true)), 0, startMs.coerceAtLeast(0))
         applyVolume(1f)
         p.setPlaybackSpeed(speed)
         p.prepare()

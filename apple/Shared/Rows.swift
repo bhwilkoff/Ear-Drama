@@ -13,6 +13,18 @@ struct EpisodeRowLabel: View {
     @Environment(ListeningHistory.self) private var history
 
     var body: some View {
+        HStack(alignment: .top, spacing: Spacing.s3) {
+            // Decision 069: a row that mixes series leads with its series' tile; a series page's rows do not.
+            if showSeries {
+                ArtTile(name: episode.seriesName, genre: episode.seriesGenre, face: episode.seriesFace)
+            }
+            text
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(accessibilityProgress)
+    }
+
+    private var text: some View {
         VStack(alignment: .leading, spacing: Spacing.s1) {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
                 Text(verbatim: AirDate.display(episode.airDate))
@@ -38,8 +50,6 @@ struct EpisodeRowLabel: View {
             .font(TypeRamp.caption)
             .foregroundStyle(Color.brandTextMuted)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(accessibilityProgress)
     }
 
     @ViewBuilder private var progressMark: some View {
@@ -66,21 +76,18 @@ struct SeriesRowLabel: View {
     let series: SeriesRow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            Text(series.name)
-                .font(TypeRamp.bodyStrong)
-                .foregroundStyle(Color.brandText)
-                .multilineTextAlignment(.leading)
-            Text(verbatim: series.metaLine)
-                .font(TypeRamp.caption)
-                .foregroundStyle(Color.brandTextMuted)
-        }
-        .padding(.leading, Spacing.s3)
-        .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.genre(series.genre) ?? Color.brandBorder)
-                .frame(width: 4)
-                .accessibilityHidden(true)
+        HStack(spacing: Spacing.s3) {
+            // The tile carries the genre hue the edge used to (Decision 069).
+            ArtTile(name: series.name, genre: series.genre, face: series.face)
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                Text(series.name)
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.brandText)
+                    .multilineTextAlignment(.leading)
+                Text(verbatim: series.metaLine)
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
         }
         .accessibilityElement(children: .combine)
     }

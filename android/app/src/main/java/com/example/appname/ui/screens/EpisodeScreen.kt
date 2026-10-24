@@ -34,7 +34,12 @@ import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.Recording
 import com.example.appname.data.Transcript
 import com.example.appname.navigation.SiteLinks
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import com.example.appname.ui.ArtCredit
 import com.example.appname.ui.ClaimTvFocus
+import com.example.appname.ui.CreditFace
+import com.example.appname.ui.FaceFigure
 import com.example.appname.ui.DownloadControl
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Loadable
@@ -97,6 +102,10 @@ fun EpisodeScreen(
             ClaimTvFocus(play, row.id)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 // §4.4, the web's order: the series, the title, the date, then the facts.
+                d.starFace?.let { face ->
+                    // Decision 069: the episode's star beside the heading, with whose face it is.
+                    item(key = "face") { Box(Modifier.padding(start = Spacing.S4.dp, top = Spacing.S2.dp)) { FaceFigure(face) } }
+                }
                 item(key = "head") {
                     Text(
                         row.seriesName,
@@ -151,12 +160,22 @@ fun EpisodeScreen(
                 if (d.credits.isNotEmpty()) {
                     item(key = "credits-h") { SectionHeader("Cast and credits") }
                     // A person can hold two roles on one broadcast; the credit's position is its identity here.
+                    val faces = d.credits.any { it.art != null }
                     itemsIndexed(d.credits, key = { i, _ -> "c$i" }) { _, c ->
                         ListItem(
+                            leadingContent = if (faces) { { CreditFace(c.art) } } else null,
                             headlineContent = { Text(c.name) },
                             supportingContent = listOfNotNull(c.character, c.role).joinToString(" · ")
                                 .ifEmpty { null }?.let { { Text(it) } },
                         )
+                    }
+                }
+                // CC BY / BY-SA portraits carry their credit; the heading's face already does.
+                itemsIndexed(d.owedCredits, key = { i, _ -> "owed$i" }) { _, c ->
+                    val art = c.art ?: return@itemsIndexed
+                    Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)) {
+                        Meta(c.name)
+                        ArtCredit(art.credit ?: "", art.evidence)
                     }
                 }
                 if (d.recordings.size > 1) {

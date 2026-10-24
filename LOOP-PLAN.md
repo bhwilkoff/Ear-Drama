@@ -84,13 +84,24 @@ Owner, 2026-10-23: build significant features before asking them to test.
    arcs exist; a Listen Together guest may pause and catch up; Tonight shows any
    evening with a surviving program, gaps name the matched series, and a
    listener may pick another year for the date; a popularity shelf from
-   archive.org's download counts; Search in More on an iOS 18 iPhone.
+   archive.org's download counts. (Search in More is superseded by 068.)
 0b. **The owner's rulings, plays side** (Decision 067): listen-through with
    live device or on-device openly licensed voices for unrecorded parts (never
    stored); parts in any order, largest suggested; Export whenever complete;
    recording requires sign-in; Personal Voice offered live; commercials as their
    own parts; "author died by 1955" accepted in script_rights (C9), then the
    bundle rebuilt; plays marked only by facts from their records.
+V. **Pictures for the shows** (owner 2026-10-24: "I don't see any images or
+   artifacts from the shows yet"): evidence-backed portraits and typographic
+   cards in the data plane and on every platform. Running 2026-10-24.
+S. **The shell is actions** (Decision 068): Home, Browse, Stations, Surprise,
+   Search, Library, placed as Archive Watch places them; no Plays section;
+   "Start an ear drama" on any page whose item has a script; Library lists
+   the person's ear dramas. Running 2026-10-24.
+R. **Scripts for radio episodes** (068): which served episodes have a script a
+   person may record from (rights by catalog rules; GRW only after they
+   answer), as a `script` link in the data plane so "Start an ear drama"
+   appears on those episodes and Browse's "Has a script" filter finds them.
 1. **Plays phase 2 in the apps** (M8): resume the stopped web and Apple agents
    (their work is saved in their worktrees), then Android on Sonnet as a port
    of Apple's. Invite links, relay claims, uploads, report/block, consent

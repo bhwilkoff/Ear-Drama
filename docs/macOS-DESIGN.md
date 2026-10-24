@@ -36,7 +36,10 @@ Stated once in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md` §1.7; the
 Mac uses the same Core, so the same code holds them:
 
 - **R1** the date leads every episode row, oldest first; **R5** Versions
-  on Detail; **R11** typographic rows; **R12** brand is chrome only;
+  on Detail; **R11** typographic rows with served art (Decision 069: the
+  shared `ArtTile` on rows that mix series, `FaceFigure` beside the series
+  and Detail headings, `CreditFace` on cast lines, the series' tile in the
+  transport bar, and the system Now Playing artwork, as iOS-DESIGN R11); **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).
 - **R15 and Decision 061**: `LoudnessLevel.volume` cuts to -21 LUFS,

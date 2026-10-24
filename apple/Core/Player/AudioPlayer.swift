@@ -1,5 +1,11 @@
 import AVFoundation
+import ImageIO
 import MediaPlayer
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 import Observation
 
 /// The one playback engine every Apple platform shares (research 04 §2, §10):
@@ -18,6 +24,8 @@ final class AudioPlayer {
     struct Item: Equatable {
         let episode: EpisodeRow
         let recording: Recording
+        /// The episode's face, else its series' (Decision 069): Now Playing's picture.
+        var face: Face? = nil
     }
 
     private(set) var item: Item?
@@ -63,6 +71,10 @@ final class AudioPlayer {
     /// A follower started something of its own (another episode, or the
     /// headphones came out): it leaves the room rather than fight the host.
     @ObservationIgnored var onLeaveRoom: () -> Void = {}
+    /// The series' typographic card as an image, for an episode with no face;
+    /// drawn by the app (SwiftUI), since the player knows no views.
+    @ObservationIgnored var cardImage: (EpisodeRow) -> CGImage? = { _ in nil }
+    @ObservationIgnored private var artwork: MPMediaItemArtwork?
 
     @ObservationIgnored let history: ListeningHistory
     @ObservationIgnored private let player = AVPlayer()
@@ -120,7 +132,8 @@ final class AudioPlayer {
         activateSession()
         installRemoteCommands()
         errorMessage = nil
-        item = Item(episode: detail.episode, recording: recording)
+        item = Item(episode: detail.episode, recording: recording, face: detail.face)
+        loadArtwork(for: item)
         elapsed = 0
         duration = recording.lengthSeconds ?? detail.episode.lengthSeconds
         upNext = []
@@ -323,6 +336,37 @@ final class AudioPlayer {
 
     // MARK: - Now Playing and remote commands
 
+    /// The lock screen's picture is the one Now Playing draws (Decision 069):
+    /// the portrait at Commons' 500 step, else the typographic card.
+    private func loadArtwork(for item: Item?) {
+        artwork = nil
+        guard let item else { return }
+        let id = item.episode.id
+        Task { [weak self] in
+            var image: CGImage?
+            if let face = item.face,
+               let (data, response) = try? await URLSession.shared.data(from: face.art.url(pixels: 500)),
+               (response as? HTTPURLResponse)?.statusCode == 200,
+               let source = CGImageSourceCreateWithData(data as CFData, nil) {
+                image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+            }
+            guard let self, self.item?.episode.id == id else { return }
+            guard let image = image ?? self.cardImage(item.episode) else { return }
+            self.artwork = Self.mediaArtwork(image)
+            self.publishNowPlaying()
+        }
+    }
+
+    private static func mediaArtwork(_ cg: CGImage) -> MPMediaItemArtwork {
+        let size = CGSize(width: cg.width, height: cg.height)
+        #if os(macOS)
+        let image = NSImage(cgImage: cg, size: size)
+        #else
+        let image = UIImage(cgImage: cg)
+        #endif
+        return MPMediaItemArtwork(boundsSize: size) { _ in image }
+    }
+
     private func publishNowPlaying() {
         guard let current = item else { return }
         var info: [String: Any] = [
@@ -336,6 +380,7 @@ final class AudioPlayer {
         // Artist only from data: the network that aired it.
         if let network = current.episode.network { info[MPMediaItemPropertyArtist] = network }
         if let duration { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        if let artwork { info[MPMediaItemPropertyArtwork] = artwork }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
         #if os(macOS)
         MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused

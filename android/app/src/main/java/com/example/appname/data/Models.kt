@@ -6,6 +6,38 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
+/**
+ * A served image (contract §3.3a, Decision 069): a Commons file with its
+ * evidence. [url] takes a width; [credit] is set only where the license asks.
+ */
+data class Artwork(
+    val url: String,
+    val width: Int? = null,
+    val height: Int? = null,
+    val credit: String? = null,
+    val evidence: String? = null,
+) {
+    /** The one image helper: the smallest Commons standard width covering [pixels]. */
+    fun url(pixels: Int): String = "$url?width=${STEPS.firstOrNull { it >= pixels } ?: STEPS.last()}"
+
+    companion object {
+        /** Commons' standard thumbnail steps; any other width is refused upstream. */
+        val STEPS = listOf(120, 330, 500)
+    }
+}
+
+/** Whose face a series or episode wears: a person's name and served portrait. */
+data class Face(val name: String, val art: Artwork)
+
+/** The first letter or digit of a name, skipping a leading article (a row's tile). */
+fun artInitial(name: String): String {
+    var rest = name.dropWhile { !it.isLetterOrDigit() }
+    for (article in listOf("The ", "A ", "An ")) {
+        if (rest.startsWith(article, ignoreCase = true)) { rest = rest.drop(article.length); break }
+    }
+    return rest.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: ""
+}
+
 /** A row of `series` (docs/CATALOG-CONTRACT.md §3.3). */
 data class SeriesRow(
     val key: String,
@@ -14,6 +46,8 @@ data class SeriesRow(
     val firstDate: String?,
     val lastDate: String?,
     val episodes: Int,
+    /** The series' star and portrait (§3.3a), or null: its art is then the typographic card. */
+    val face: Face? = null,
 )
 
 /** The light columns of `episodes` a list row shows; never `detail_json`. */
@@ -26,6 +60,9 @@ data class EpisodeRow(
     val num: Int?,
     val title: String?,
     val lengthSeconds: Double?,
+    /** The series' genre and face, so a row that mixes series can draw its tile. */
+    val seriesGenre: String? = null,
+    val seriesFace: Face? = null,
 )
 
 /** One broadcast season of a series page; [season] is null for undated episodes. */
@@ -36,7 +73,14 @@ data class SeriesPage(
     val seasons: List<SeasonRow>,
 )
 
-data class Credit(val personId: String, val name: String, val role: String?, val character: String?)
+data class Credit(
+    val personId: String,
+    val name: String,
+    val role: String?,
+    val character: String?,
+    /** The person's served portrait (§3.3a), or null. */
+    val art: Artwork? = null,
+)
 
 data class Recording(
     val rank: Int,
@@ -71,7 +115,24 @@ data class EpisodeDetail(
     val rightsLine: String? = null,
     /** §3.1's dated sponsor, when a log gives one; a catalog without the column reads null. */
     val sponsor: String? = null,
-)
+    /** The episode's face, a person credited in it (§3.3a), or null. */
+    val star: String? = null,
+) {
+    /** The credited star with a portrait, drawn beside the heading. */
+    val starFace: Face?
+        get() = star?.let { s -> credits.firstOrNull { it.personId == s && it.art != null } }
+            ?.let { Face(it.name, it.art!!) }
+
+    /** What Now Playing and the session show: the episode's face, else the series'. */
+    val face: Face? get() = starFace ?: episode.seriesFace
+
+    /** Portraits whose license asks for a credit, once each, leaving out the heading's face (Decision 069). */
+    val owedCredits: List<Credit>
+        get() {
+            val headed = if (starFace == null) null else star
+            return credits.filter { it.art?.credit != null && it.personId != headed }.distinctBy { it.personId }
+        }
+}
 
 /** [transcriptOnly]: the episodes found only by words in their transcript (§3.4). */
 data class SearchResults(
