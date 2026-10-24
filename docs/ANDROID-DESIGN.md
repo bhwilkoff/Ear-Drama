@@ -278,7 +278,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   voice's PCM is tagged `synthetic`; every writer (`TakeAudio.write`,
   the mix renderer, an upload) refuses it, and a listen plan's voice
   entries hold text only (`StandInNeverStoredTest`).
-- **§4.10 Stations** (was Radio) is Tonight in 19xx (`RadioScreen`,
+- **§4.10 Stations** (was Radio) opens with the stations row, the web's
+  §4.9 as the list's first items (`stationRows`): Tonight in 19xx first,
+  then each genre station from `stations.json` (`ApiClient.stations()`,
+  `radio/Stations.kt`), one `ListItem` each with the station's name
+  (`titleMedium`), what is on now (series, then title), and a trailing
+  "Listen live" (the live-red button; "Listening live" outlined in red
+  while on, which pauses). Tonight's row carries "Starts at" / "Ended at"
+  outside the evening, so the evening's header no longer does. A genre
+  station tunes in through the same `LiveRadio` with the next twelve
+  hours' slots, resolved in the open catalog on tap. On a TV the first
+  Listen live takes focus on entry. Then Tonight in 19xx (`RadioScreen`,
   `ui/screens/RadioScreen.kt`), the web's §4.9 in a `LazyColumn` of
   `ListItem`s: the evening `tonight.json` publishes for the device's own
   calendar date (`RadioClock.localDate`, never the UTC date), fetched
@@ -299,7 +309,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   clickable: `known_series` where the file sets it, then "Not surviving"
   (or "Not in the catalog" for a withheld slot or one the open catalog
   lacks), and its length. The newspaper's printed text is never drawn
-  (Decision 067); the file no longer carries it. Before the evening the header says "Starts at",
+  (Decision 067); the file no longer carries it. Before the evening Tonight's row says "Starts at",
   after it "Ended at"; during it, "Listen live" (`LiveRadio`,
   `radio/LiveListening.kt`) joins the slot on the air at the clock's
   offset through the one `PlaybackEngine`, with nothing queued behind

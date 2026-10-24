@@ -227,8 +227,17 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   download never plays, and the lock screen's picture is the one Now
   Playing draws, so with no network it is the typographic card.
 
-- **§4.9 Stations** (was Radio, Decision 068) is Tonight in 19xx (`RadioScreen`,
-  `apple/Shared/RadioScreen.swift`), the web's §4.9 in a `List`: the
+- **§4.9 Stations** (was Radio, Decision 068) opens with the stations row,
+  the web's §4.9 as the List's first section (`StationsSection`): Tonight in
+  19xx first, then each genre station from `stations.json`
+  (`APIClient.stations()`, `StationClock.onNow`), one row each with the
+  station's name, what is on now (series, then title), and a trailing
+  "Listen live" (bordered prominent; "Listening live" bordered while on,
+  which pauses). Tonight's row carries "Starts at" / "Ended at" outside the
+  evening, so the evening's header no longer does. A genre station tunes in
+  through the same `LiveRadio` (`tuneIn(station:)`) with the slots of the
+  next twelve hours, resolved in the open catalog on tap. Then Tonight in
+  19xx (`RadioScreen`, `apple/Shared/RadioScreen.swift`), the web's §4.9 in a `List`: the
   evening `tonight.json` publishes for the device's own calendar date
   (`RadioClock.localDate`, never the UTC date), fetched through
   `APIClient.tonight()` from the catalog's Release (contract §2, §8).
@@ -246,7 +255,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   in the catalog" for a withheld slot or one the open catalog lacks),
   and its length. The newspaper's printed text is never drawn (Decision
   067; the file no longer carries it). Before the
-  evening the header says "Starts at", after it "Ended at"; during it,
+  evening Tonight's row says "Starts at", after it "Ended at"; during it,
   "Listen live" (`LiveRadio`, `apple/Core/Radio/LiveListening.swift`)
   joins the slot on the air at the clock's offset, and each later
   surviving slot starts at its own time. A pause, another episode, the

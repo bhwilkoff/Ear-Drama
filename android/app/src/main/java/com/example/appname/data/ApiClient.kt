@@ -1,5 +1,7 @@
 package com.example.appname.data
 
+import com.example.appname.radio.Station
+import com.example.appname.radio.StationsFile
 import com.example.appname.radio.TonightFile
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -86,7 +88,20 @@ class ApiClient @Inject constructor() {
         }
     }
 
+    /**
+     * The genre stations (contract §8) beside tonight.json, or an empty list
+     * when none is published (404). Throws on any other failed status.
+     */
+    suspend fun stations(url: String = STATIONS_URL): List<Station> = withContext(Dispatchers.IO) {
+        okHttp.newCall(Request.Builder().url(url).header("Accept", "application/json").build()).execute().use { response ->
+            if (response.code == 404) return@use emptyList()
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
+            StationsFile.decode(response.body.string())
+        }
+    }
+
     companion object {
+        const val STATIONS_URL = "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/stations.json"
         const val TONIGHT_URL = "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/tonight.json"
         const val USER_AGENT = "EarDrama-Android (https://eardrama.org)"
     }

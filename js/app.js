@@ -443,7 +443,8 @@
   /* Listening live: the slot on the air plays from where the clock stands; when its recording
      ends, the next surviving slot plays when its own time comes. A pause, another episode, or
      the sleep timer ends it, and so does the evening's last slot: nothing plays after (R14). */
-  let live = null;            // { day, details, playing: utc_start of the slot loaded, waiting }
+  // { slots, day (an evening) or station (a genre), details, playing: utc_start of the slot loaded, waiting }
+  let live = null;
   let liveTimer = null;
 
   function cardOf(d, seriesName) {
@@ -460,14 +461,14 @@
 
   function liveTick() {
     if (!live) return;
-    const where = API.onAir(live.day.slots, clockNow());
+    const where = API.onAir(live.slots, clockNow());
     if (where.phase === 'after') { stopLive(); return; }
-    const s = where.index >= 0 ? live.day.slots[where.index] : null;
+    const s = where.index >= 0 ? live.slots[where.index] : null;
     const d = s && s.episode && live.details.get(s.episode.id);
     if (!d || live.playing === s.utc_start) return;
     if (live.playing && !live.waiting) return;   // the listener took the player elsewhere
     const at = (clockNow() - Date.parse(s.utc_start)) / 1000;
-    const length = d.recordings[0].length || d.length || s.length_min * 60;
+    const length = d.recordings[0].length || d.length || s.length_s || s.length_min * 60;
     if (at >= length - 5) return;                 // its recording ended inside its slot
     live.playing = s.utc_start;
     live.waiting = false;
@@ -476,8 +477,9 @@
     if (!$('view-radio').hidden) paintRadio();
   }
 
-  function tuneIn(day, details) {
-    live = { day, details, playing: null, waiting: true, id: null };
+  function tuneIn(day, details, station = null, slots = day && day.slots) {
+    live = { slots, day, station, details,
+             playing: null, waiting: true, id: null };
     clearInterval(liveTimer);
     liveTimer = setInterval(liveTick, 1000);
     liveTick();
@@ -492,7 +494,7 @@
     else if (kind === 'pause' && !Player.audio.ended) stopLive();
   });
 
-  let radioState = null;      // { day, details } for the view's repaint
+  let radioState = null;      // { day, base, details, stations } for the view's repaint
   let radioTimer = null;
 
   function renderRadio() {
@@ -500,12 +502,14 @@
     const body = $('radio-body');
     clearInterval(radioTimer);
     load(body, async () => {
+      // A missing or unreachable stations file leaves Tonight alone, as before any station existed.
+      const stations = API.stations().catch((e) => { console.error(e); return []; });
       const day = await API.tonight(API.localDate(new Date(clockNow())));
-      if (!day) return { day: null };
-      return { day, base: day, details: await eveningDetails(day) };
+      if (!day) return { day: null, stations: await stations };
+      return { day, base: day, details: await eveningDetails(day), stations: await stations };
     }, (data) => {
       radioState = data;
-      if (!data.day) {
+      if (!data.day && !data.stations.length) {
         body.append(stateBox('empty', { text: 'No evening is published for today.' }));
         return;
       }
@@ -536,34 +540,75 @@
     if (!day) return;
     if (live) stopLive();
     const details = await eveningDetails(day);
-    radioState = { day, base, details };
+    radioState = { ...radioState, day, base, details };
     paintRadio();
     announce(`Tonight in ${evening.slice(0, 4)}`);
   }
 
+  /* The stations row (WEB-DESIGN §4.9): Tonight first, then each genre station, each with what is
+     on now and one Listen live. A station's episodes are fetched only when someone tunes in. */
+  function liveButton(isLive, canListen, name, start) {
+    if (isLive) {
+      return el('button', { type: 'button', class: 'btn btn-live', 'aria-pressed': 'true',
+                            onclick: () => { Player.pause(); stopLive(); } }, 'Listening live');
+    }
+    return canListen ? el('button', { type: 'button', class: 'btn btn-primary', 'aria-label': `Listen live to ${name}`,
+                                      onclick: start }, icon('play'), 'Listen live') : null;
+  }
+
+  function stationRow(name, slot, note, button) {
+    const ep = slot && !slot.withheld && slot.episode;
+    return el('li', { class: 'station' },
+      el('div', { class: 'station-main' },
+        el('span', { class: 'body-strong' }, name),
+        ep ? el('span', { class: 'body' }, ep.series) : null,
+        ep && ep.title ? el('span', { class: 'caption station-title' }, ep.title) : null,
+        note ? el('span', { class: 'caption' }, note) : null),
+      button);
+  }
+
+  async function tuneInStation(st) {
+    const slots = API.ahead(st.slots, clockNow());
+    const ids = slots.filter(s => s.episode && !s.withheld).map(s => s.episode.id);
+    const got = await Promise.all(ids.map(id => API.episodeDetail(id).catch(() => null)));
+    tuneIn(null, new Map(got.filter(Boolean).map(d => [d.id, d])), st.genre, slots);
+    paintRadio();
+  }
+
+  function stationsList(day, details, stations) {
+    const rows = [];
+    if (day) {
+      const where = API.onAir(day.slots, clockNow());
+      const slot = where.index >= 0 ? day.slots[where.index] : null;
+      const d = slot && slot.episode && details.get(slot.episode.id);
+      const last = day.slots[day.slots.length - 1];
+      const note = where.phase === 'before' ? `Starts at ${localClock.format(new Date(day.slots[0].utc_start))}`
+        : where.phase === 'after' ? `Ended at ${localClock.format(new Date(last.utc_end))}`
+        : slot && !d ? (slot.withheld || slot.episode ? 'Not in the catalog' : 'Not surviving') : null;
+      const name = `Tonight in ${day.evening.slice(0, 4)}`;
+      rows.push(stationRow(name, d ? slot : null, note,
+        liveButton(live && live.day === day, Boolean(d), name, () => { tuneIn(day, details); paintRadio(); })));
+    }
+    for (const st of stations) {
+      const on = API.onNow(st.slots, clockNow());
+      const playable = on && !on.slot.withheld && on.slot.episode;
+      rows.push(stationRow(st.name, on && on.slot, on && !playable ? 'Not in the catalog' : null,
+        liveButton(live && live.station === st.genre, Boolean(playable), st.name, () => tuneInStation(st))));
+    }
+    return el('ul', { class: 'stations', 'aria-label': 'Stations' }, ...rows);
+  }
+
   function paintRadio() {
-    if (!radioState || !radioState.day) return;
+    if (!radioState) return;
     const { day, details, base } = radioState;
+    const stations = radioState.stations || [];
     const body = $('radio-body');
+    if (!day) {
+      body.replaceChildren(stationsList(null, null, stations));
+      return;
+    }
     const where = API.onAir(day.slots, clockNow());
     const zone = day.zone;
-    const isLive = live && live.day === day;
-    const last = day.slots[day.slots.length - 1];
-
-    let status = null;
-    const onSlot = where.index >= 0 ? day.slots[where.index] : null;
-    const onDetail = onSlot && onSlot.episode && details.get(onSlot.episode.id);
-    if (where.phase === 'before') {
-      status = el('p', { class: 'caption' }, `Starts at ${localClock.format(new Date(day.slots[0].utc_start))}`);
-    } else if (where.phase === 'after') {
-      status = el('p', { class: 'caption' }, `Ended at ${localClock.format(new Date(last.utc_end))}`);
-    } else if (isLive) {
-      status = el('button', { type: 'button', class: 'btn btn-live', 'aria-pressed': 'true',
-                              onclick: () => { Player.pause(); stopLive(); } }, 'Listening live');
-    } else if (onDetail) {
-      status = el('button', { type: 'button', class: 'btn btn-primary', onclick: () => tuneIn(day, details) },
-        icon('play'), 'Listen live');
-    }
 
     const list = el('ol', { class: 'slots' });
     day.slots.forEach((s, i) => {
@@ -603,12 +648,12 @@
         ...choices.map(c => el('option', { value: c.evening, selected: c.evening === day.evening ? '' : null },
           c.evening.slice(0, 4))))) : null;
     body.replaceChildren(
+      stationsList(day, details, stations),
       el('header', { class: 'radio-head' },
         el('h2', { class: 'section-header', id: 'tonight-h' }, `Tonight in ${day.evening.slice(0, 4)}`),
         years,
         el('p', { class: 'body' }, fmtLongDate(day.evening)),
-        el('p', { class: 'caption' }, [day.network, day.station].filter(Boolean).join(' · ')),
-        status ? el('div', { class: 'actions' }, status) : null),
+        el('p', { class: 'caption' }, [day.network, day.station].filter(Boolean).join(' · '))),
       el('section', { 'aria-labelledby': 'tonight-h' }, list),
       w.url ? el('p', { class: 'caption witness' }, 'Schedule: ',
         el('a', { href: w.url, rel: 'noopener', target: '_blank' }, w.paper || 'newspaper listing'),

@@ -25,8 +25,11 @@ class LiveRadio(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
 ) {
     private val _day = MutableStateFlow<TonightDay?>(null)
-    /** The evening listened to live, null when not listening. */
+    /** The evening listened to live, null when not listening to one. */
     val day: StateFlow<TonightDay?> = _day
+    private val _station = MutableStateFlow<String?>(null)
+    /** The genre station listened to live (its genre), null when not. */
+    val station: StateFlow<String?> = _station
 
     private var listening: LiveListening? = null
     private var details: Map<String, EpisodeDetail> = emptyMap()
@@ -35,8 +38,19 @@ class LiveRadio(
     fun tuneIn(evening: RadioEvening) {
         stop()
         _day.value = evening.day
-        details = evening.details
-        listening = LiveListening(evening.day.slots, evening.details.mapValues { (_, d) -> d.defaultLength })
+        start(evening.day.slots, evening.details)
+    }
+
+    /** A genre station: the slot on now and those after it ([StationClock.ahead]), on the evening's rules. */
+    fun tuneIn(station: Station, slots: List<RadioSlot>, details: Map<String, EpisodeDetail>) {
+        stop()
+        _station.value = station.genre
+        start(slots, details)
+    }
+
+    private fun start(slots: List<RadioSlot>, details: Map<String, EpisodeDetail>) {
+        this.details = details
+        listening = LiveListening(slots, details.mapValues { (_, d) -> d.defaultLength })
         tick()
         if (listening == null) return
         loop = scope.launch {
@@ -53,6 +67,7 @@ class LiveRadio(
         loop = null
         listening = null
         _day.value = null
+        _station.value = null
     }
 
     /** Listening live's own button: pauses, which ends it. */

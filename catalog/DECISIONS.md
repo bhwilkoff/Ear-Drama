@@ -158,3 +158,29 @@ make (quoted prefix terms, column filters); only phrase and NEAR queries lose.
 cache's stored verdict is evidence, not the decision. A transcript of a copy
 that is no longer the default is neither indexed nor shown. A phrase search
 feature would need positions back, measured against the size budget first.
+
+## 009 — Genre stations: the genre's broadcasts in the order they aired, one published clock
+*Date: 2026-10-24*
+
+A genre station (R10, Decisions 058 and 068) is a published schedule in
+`stations.json`: the genre's served, recommendable, complete episodes, 5 to 90
+minutes, back to back on one UTC clock, in the order they first aired, each
+build keeping every published slot and appending four days ahead. No episode
+repeats in the window, and a series waits for six others before it airs again.
+
+**Why**: everyone tuned to a station must hear the same episode at the same
+moment (AGENTS.md: publish a computed value, never a seeded shuffle), and the
+owner rules out AI-written lists, so the order has to be a fact of the data.
+Broadcast order is one: a station walks its genre's surviving radio as it aired,
+which mixes series the way a real evening did. Measured 2026-10-24 on the
+2026-10-22 projection: eight stations, 1,905 slots for four days, 23 to 73
+series per station in a window (drama spans 1936 to 1939 in four days, so a
+pass through a genre takes months). With a three-slot wait, drama cycled four
+1936 series for hours; six gives 23 series in the same window. A complete
+default copy only: a partial one is a broadcast as it was not aired.
+
+**How to apply**: never rebuild a schedule from scratch over a published one;
+a change to the order rule applies to the slots appended after the kept ones.
+A pass over a series the wait skipped is lost for that cycle, not deferred
+(the file carries no cursor). A station that cannot fill three days without a
+repeat fails the build rather than repeat.

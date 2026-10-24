@@ -57,6 +57,16 @@ actor APIClient {
         return try TonightFile.decode(data)
     }
 
+    /// The genre stations (contract §8), or nil when none is published.
+    func stations(from url: URL = CatalogSource.stationsURL) async throws -> StationsFile? {
+        let request = URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 20)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 404 { return nil }
+        guard 200...299 ~= http.statusCode else { throw URLError(.badServerResponse) }
+        return try StationsFile.decode(data)
+    }
+
     /// Google's token endpoint: the code and the PKCE verifier for an identity
     /// token, which is only ever handed to the Worker. An installed app's
     /// client has no secret.

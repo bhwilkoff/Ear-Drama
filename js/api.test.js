@@ -85,6 +85,31 @@ test('onAir reads the one clock from the published instants (R10, R14)', () => {
   assertEq(API.onAir([], Date.now()).phase, 'after', 'no slots: nothing on the air');
 });
 
+test('onNow finds what a station has on, and where in it (contract §8)', () => {
+  // The cases are Apple's StationsTests and Android's StationsTest.
+  const slots = [
+    { utc_start: '2026-10-24T18:00:00Z', utc_end: '2026-10-24T18:29:51Z', length_s: 1791,
+      episode: { id: 'suspense|1947-10-16', series: 'Suspense', title: 'Self Defense' } },
+    { utc_start: '2026-10-24T18:29:51Z', utc_end: '2026-10-24T18:44:51Z', length_s: 900, withheld: true },
+    { utc_start: '2026-10-24T18:44:51Z', utc_end: '2026-10-24T19:14:51Z', length_s: 1800,
+      episode: { id: 'whistler|1947-10-20', series: 'The Whistler' } },
+  ];
+  const at = (iso) => API.onNow(slots, Date.parse(iso));
+  assertEq(at('2026-10-24T17:59:59Z'), null, 'before the first slot nothing is on');
+  assertEq(at('2026-10-24T18:00:00Z').index, 0, 'the first slot starts on its instant');
+  assertEq(at('2026-10-24T18:10:00Z').offset, 600, 'where in the slot the clock stands');
+  assertEq(at('2026-10-24T18:29:50Z').index, 0, 'the slot until its end');
+  assertEq(at('2026-10-24T18:29:51Z').index, 1, 'a boundary belongs to the slot that starts');
+  assertEq(at('2026-10-24T18:44:51Z').offset, 0, 'the next slot starts at its own instant');
+  assertEq(at('2026-10-24T19:14:50Z').index, 2, 'the last slot until its end');
+  assertEq(at('2026-10-24T19:14:51Z'), null, 'after the last slot nothing is on');
+  assertEq(API.onNow([], Date.now()), null, 'no slots: nothing is on');
+  const from = Date.parse('2026-10-24T18:10:00Z');
+  assertEq(API.ahead(slots, from, 600 * 1000).length, 1, 'ahead: only the slot on now within 10 minutes');
+  assertEq(API.ahead(slots, from, 3600 * 1000).length, 3, 'ahead: every slot starting within an hour');
+  assertEq(API.ahead(slots, Date.parse('2026-10-24T20:00:00Z')).length, 0, 'ahead: nothing after the window');
+});
+
 test('localDate is the person\'s own calendar date, not UTC', () => {
   assertEq(API.localDate(new Date(2026, 9, 22, 23, 30)), '2026-10-22', '11:30 PM local stays on its own date');
   assertEq(API.localDate(new Date(2026, 0, 5, 0, 5)), '2026-01-05', 'control: padding');
@@ -93,7 +118,7 @@ test('localDate is the person\'s own calendar date, not UTC', () => {
 test('API exposes the data verbs', () => {
   assert(typeof API === 'object', 'API should be an object');
   for (const f of ['getJSON', 'manifest', 'seriesIndex', 'listen', 'thisDay', 'seriesPage', 'episodeDetail',
-                   'searchSeries', 'searchEpisodeNumbers', 'searchDocs', 'rightsLine', 'transcript', 'tonight', 'onAir']) {
+                   'searchSeries', 'searchEpisodeNumbers', 'searchDocs', 'rightsLine', 'transcript', 'tonight', 'onAir', 'stations', 'onNow', 'ahead']) {
     assert(typeof API[f] === 'function', `API.${f} should be a function`);
   }
 });

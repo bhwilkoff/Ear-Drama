@@ -443,6 +443,14 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .slot-title { overflow-wrap: anywhere; }
 .slot-gap .slot-time > .tabular, .slot-gap .slot-main > .body { color: var(--color-text-muted); }
 .witness { padding-bottom: var(--space-6); }
+.stations { margin-bottom: var(--space-6); border-top: 1px solid var(--color-border); }
+.station {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  min-height: var(--tap); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border);
+}
+.station-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.station-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.station > .btn { flex: none; }
 .witness a { color: var(--color-link); }
 
 /* ---- Filters ---- */

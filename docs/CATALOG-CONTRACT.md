@@ -232,7 +232,7 @@ the starting shape, Archive Watch's:
 - `data/series/{key}.json`: one series page, its runs, seasons, and episode rows.
 - `data/episodes/{shard}.json`: Detail fields, sharded by a stable hash of the
   episode id (FNV-1a, positions append-only), one shard per Detail view.
-- `data/tonight.json` and `data/channels.json`: the Radio tab (§8).
+- `data/tonight.json` and `data/stations.json`: the Stations section (§8).
 
 A Detail row's `transcript` is §3.1's `transcript_url` (null unless the gate
 passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
@@ -270,7 +270,7 @@ Every client reproduces these natively; each says which filter clauses it applie
 ### Named filter clauses
 
 - `recommendAnd`: `no_recommend IS NULL`. Every surface that chooses for the
-  listener (shelves, Tonight, channels, widgets, Top Shelf, autoplay after a
+  listener (shelves, Tonight, stations, widgets, Top Shelf, autoplay after a
   serial's arc) applies it; every surface the listener drives (search, browse,
   series pages, Detail) does not.
 
@@ -396,7 +396,7 @@ native projection serves clean and unclaimed rows either way.
 Small JSON the pipeline computes, so a widget or Top Shelf never opens the
 database: `tonight.json` keyed by calendar date (starting yesterday, so every
 time zone finds its own today, and a day once published keeps its value), and
-`channels.json`, the genre channels' schedules on the one clock (R10). The
+`stations.json`, the genre stations' schedules on the one clock (R10). The
 Listen shelves are not a file: they ride in the manifests as `listenShelves`
 (§5.1), so a widget reads them without opening the database.
 
@@ -436,6 +436,44 @@ Listen shelves are not a file: they ride in the manifests as `listenShelves`
   withdrawal applies to them too, and a year left with nothing to play leaves
   the list.
 
+`stations.json` (built by `catalog/tools/build_stations.py build`, Decisions
+058 and 068: *"collections of ear dramas should be stations"*):
+
+- **One station per genre** (`genres.py`, in its order) with at least
+  `MIN_SERIES` (5) series in its pool, named by `genres.NAMES` (data, never
+  copy). Shape: `schemaVersion`, `generatedAt`, `rule`, `stations[]`: `genre`,
+  `name`, `slots[]`. A slot is exactly `utc_start`, `utc_end`, `length_s`, then
+  `episode` (`id`, `series`, `title` when it has one) or `withheld: true`.
+- **One clock, published, never computed on a device**: slots run back to
+  back (each starts where the one before ends; `length_s` is start to end), so
+  every listener tuned to a station hears the same episode at the same moment.
+  A client finds the slot whose instants hold now and joins it at its offset
+  (`onNow` / `StationClock.onNow`), with the evening's live rules (R14).
+- **The pool**: served (the projection holds it), recommendable
+  (`recommendAnd`), the default copy complete (`partial = 0`) and 5 to 90
+  minutes long, never a book's front matter, its series in that genre.
+- **The order is data**: the genre's pool in the order it first aired (dated by
+  air date; undated by log number, so series interleave), continuing after the
+  last published slot and wrapping at the end; an episode already in the
+  window is never scheduled again; a series waits until six others have aired
+  (or every other series, in a smaller genre), passed over this cycle.
+- **Window**: from the slot running an hour before the build through at least
+  four days past it (the daily publish lands hours late; four days survives
+  three missed runs). The guard requires every station on the air at the build
+  and reaching three days ahead.
+- **Never changes**: each build keeps every published slot still running or
+  ahead exactly as it is and appends after the last. The one change a kept slot
+  can take is a withdrawal: its episode no longer served, it becomes
+  `withheld` with the same instants, so the clock never moves.
+  `build_stations.py kept` refuses any other change under the publish lock.
+- **The web's copy** (`build_stations.py web`) is the same schedules with each
+  episode the web projection does not serve withheld; a station left with
+  nothing to play is not offered there.
+- **Guards**: `catalog/tests/test_stations.py` (no gap or overlap, every slot
+  served and recommendable, no repeat, the window's floor, keys only, names
+  from data, a published slot kept), each broken once; the publish workflow runs
+  it over the real projection and `kept` under the lock.
+
 ## 9. Contract tests (to write with the publish step)
 
 Each asserts the documented shape over the real published artifact, every row,
@@ -444,7 +482,7 @@ and has a negative control:
 1. No served row has a `state` outside `keep_clean` and `keep_unclaimed`.
 2. Every `rights = unclaimed` row's display string is never "public domain".
 3. Every episode has exactly one rank-0 recording with a percent-encoded URL.
-4. Every `no_recommend` episode is absent from every shelf, evening, and channel.
+4. Every `no_recommend` episode is absent from every shelf, evening, and station.
 5. Every web shard id is in the series index (the gatekeeper).
 6. Every id that left the catalog since the last publish is either aliased or
    in `takedowns.json`. Reported by `catalog/tools/publish_diff.py` on every

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -42,6 +43,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +65,8 @@ import com.example.appname.radio.RadioClock
 import com.example.appname.radio.RadioEvening
 import com.example.appname.radio.RadioLoad
 import com.example.appname.radio.RadioSlot
+import com.example.appname.radio.Station
+import com.example.appname.radio.StationClock
 import com.example.appname.ui.CenteredBox
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
@@ -78,15 +82,19 @@ import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.tvFocusMark
 import java.time.Instant
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /** How often the slot on the air is re-read from the clock. */
 private const val REPAINT_MS = 15_000L
 
 /**
- * Radio: Tonight in 19xx (ANDROID-DESIGN §4.10), the evening published for
- * the listener's own date as a list of its slots on the one clock. On a TV
- * every slot is a focus stop and Listen live takes focus on entry (§9.2).
+ * Stations (ANDROID-DESIGN §4.10): a row a station, Tonight in 19xx first and
+ * then the genre stations, each with what is on now and Listen live; then the
+ * evening published for the listener's own date as a list of its slots on the
+ * one clock. On a TV every slot is a focus stop and the first Listen live
+ * takes focus on entry (§9.2).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,6 +123,17 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
             picked = picked,
         )
     }
+    // A missing or unreachable stations file leaves Tonight alone, as before any station existed.
+    val stations by produceState(emptyList<Station>(), attempt) {
+        value = try {
+            container.api.stations()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            println("[Radio] stations.json unreachable: ${e.message}")
+            emptyList()
+        }
+    }
     val failed = load is RadioLoad.Failed
     LaunchedEffect(failed) { if (failed) haptics(Haptic.Error) }
 
@@ -123,7 +142,13 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
             RadioLoad.Loading -> CenteredBox(Modifier.padding(padding)) {
                 CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
             }
-            RadioLoad.Nothing -> EmptyMessage("No evening is published for today.", Modifier.padding(padding))
+            RadioLoad.Nothing -> if (stations.isNotEmpty()) {
+                val first = remember { FocusRequester() }
+                ClaimTvFocus(first, stations.size)
+                LazyColumn(Modifier.padding(padding).fillMaxSize()) { stationRows(null, stations, now, first) }
+            } else {
+                EmptyMessage("No evening is published for today.", Modifier.padding(padding))
+            }
             RadioLoad.Failed -> CenteredBox(Modifier.padding(padding)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -135,7 +160,9 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
                     Button(onClick = { attempt += 1 }) { Text("Try again") }
                 }
             }
-            is RadioLoad.Evening -> Evening(state.evening, now, Modifier.padding(padding), onOpenEpisode) { picked = it }
+            is RadioLoad.Evening -> Evening(state.evening, stations, now, Modifier.padding(padding), onOpenEpisode) {
+                picked = it
+            }
         }
     }
 }
@@ -143,6 +170,7 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
 @Composable
 private fun Evening(
     evening: RadioEvening,
+    stations: List<Station>,
     now: Instant,
     modifier: Modifier,
     onOpenEpisode: (String) -> Unit,
@@ -156,14 +184,14 @@ private fun Evening(
     val slots = day.slots
     val onAir = RadioClock.onAir(slots, now)
     val isLive = liveDay == day
-    val canJoin = onAir.index?.let { evening.detail(slots[it]) } != null
-    val showsLive = onAir.phase == RadioClock.Phase.During && (isLive || canJoin)
 
     val liveButton = remember { FocusRequester() }
     val firstSlot = remember { FocusRequester() }
-    ClaimTvFocus(if (showsLive) liveButton else firstSlot, showsLive)
+    val canListen = stationActions(evening, stations, now).any { it }
+    ClaimTvFocus(if (canListen) liveButton else firstSlot, canListen)
 
     LazyColumn(modifier.fillMaxSize()) {
+        stationRows(evening, stations, now, liveButton)
         item(key = "header") {
             Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
                 Text(
@@ -179,35 +207,6 @@ private fun Evening(
                     YearMenu(evening.day.evening, evening.choices) { year ->
                         if (isLive) container.live.stop()
                         onPickYear(year)
-                    }
-                }
-                Spacer(Modifier.height(Spacing.S2.dp))
-                when (onAir.phase) {
-                    RadioClock.Phase.Before -> slots.firstOrNull()?.let {
-                        Caption("Starts at ${RadioClock.clock(it.utcStart)}")
-                    }
-                    RadioClock.Phase.After -> RadioClock.end(slots)?.let { Caption("Ended at ${RadioClock.clock(it)}") }
-                    RadioClock.Phase.During -> if (isLive) {
-                        OutlinedButton(
-                            onClick = { container.live.pauseAndStop() },
-                            modifier = Modifier.focusRequester(liveButton).semantics { stateDescription = "On" },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.live),
-                            border = BorderStroke(1.dp, OnAir.colors.live),
-                        ) {
-                            Icon(Icons.Filled.Sensors, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text("Listening live")
-                        }
-                    } else if (canJoin) {
-                        Button(
-                            onClick = { container.live.tuneIn(evening) },
-                            modifier = Modifier.focusRequester(liveButton),
-                            colors = liveButtonColors(),
-                        ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text("Listen live")
-                        }
                     }
                 }
             }
@@ -247,6 +246,129 @@ private fun Evening(
     }
 }
 
+/** Which rows of [stationRows] can listen live now, in order: Tonight's (when [evening] is set), then each station's. */
+private fun stationActions(evening: RadioEvening?, stations: List<Station>, now: Instant): List<Boolean> =
+    listOfNotNull(evening?.let { e -> RadioClock.onAir(e.day.slots, now).index?.let { e.detail(e.day.slots[it]) } != null }) +
+        stations.map { StationClock.onNow(it.slots, now)?.slot?.playableEpisode != null }
+
+/**
+ * The stations row (§4.10): Tonight first, then each genre station, each with
+ * what is on now and one Listen live. [first] lands on the first row that can
+ * listen, for the TV's focus on entry. A station's episodes are resolved only
+ * when someone tunes in.
+ */
+private fun LazyListScope.stationRows(evening: RadioEvening?, stations: List<Station>, now: Instant, first: FocusRequester) {
+    val actions = stationActions(evening, stations, now)
+    val firstAction = actions.indexOfFirst { it }
+    var row = 0
+    if (evening != null) {
+        val index = row++
+        item(key = "station-tonight") {
+            val container = LocalAppContainer.current
+            val liveDay by container.live.day.collectAsState()
+            val slots = evening.day.slots
+            val onAir = RadioClock.onAir(slots, now)
+            val slot = onAir.index?.let { slots[it] }
+            val note = when (onAir.phase) {
+                RadioClock.Phase.Before -> slots.firstOrNull()?.let { "Starts at ${RadioClock.clock(it.utcStart)}" }
+                RadioClock.Phase.After -> RadioClock.end(slots)?.let { "Ended at ${RadioClock.clock(it)}" }
+                RadioClock.Phase.During -> slot?.takeIf { evening.detail(it) == null }?.let { RadioClock.gapNote(it) }
+            }
+            StationRow(
+                name = "Tonight in ${evening.day.year}",
+                slot = slot?.takeIf { evening.detail(it) != null },
+                note = note,
+                isLive = liveDay == evening.day,
+                canListen = actions[index],
+                modifier = if (index == firstAction) Modifier.focusRequester(first) else Modifier,
+                onListen = { container.live.tuneIn(evening) },
+                onStop = { container.live.pauseAndStop() },
+            )
+        }
+    }
+    stations.forEach { station ->
+        val index = row++
+        item(key = "station-${station.genre}") {
+            val container = LocalAppContainer.current
+            val scope = rememberCoroutineScope()
+            val liveStation by container.live.station.collectAsState()
+            val on = StationClock.onNow(station.slots, now)
+            StationRow(
+                name = station.name,
+                slot = on?.slot,
+                note = on?.slot?.takeIf { it.playableEpisode == null }?.let { RadioClock.gapNote(it) },
+                isLive = liveStation == station.genre,
+                canListen = actions[index],
+                modifier = if (index == firstAction) Modifier.focusRequester(first) else Modifier,
+                onListen = {
+                    scope.launch {
+                        val slots = StationClock.ahead(station.slots, Instant.now())
+                        val details = StationClock.details(slots, container.catalog.awaitDb())
+                        container.live.tuneIn(station, slots, details)
+                    }
+                },
+                onStop = { container.live.pauseAndStop() },
+            )
+        }
+    }
+}
+
+/** A station's row: its name, what is on now (series, title), and Listen live or Listening live. */
+@Composable
+private fun StationRow(
+    name: String,
+    slot: RadioSlot?,
+    note: String?,
+    isLive: Boolean,
+    canListen: Boolean,
+    modifier: Modifier,
+    onListen: () -> Unit,
+    onStop: () -> Unit,
+) {
+    val episode = slot?.playableEpisode
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    ListItem(
+        headlineContent = { Text(name, style = MaterialTheme.typography.titleMedium) },
+        supportingContent = {
+            Column {
+                episode?.let { Text(it.series, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                episode?.title?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                note?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = muted) }
+            }
+        },
+        trailingContent = when {
+            isLive -> {
+                {
+                    OutlinedButton(
+                        onClick = onStop,
+                        modifier = modifier.semantics { stateDescription = "On" },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.live),
+                        border = BorderStroke(1.dp, OnAir.colors.live),
+                    ) {
+                        Icon(Icons.Filled.Sensors, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Listening live")
+                    }
+                }
+            }
+            canListen -> {
+                {
+                    Button(
+                        onClick = onListen,
+                        modifier = modifier.semantics { contentDescription = "Listen live to $name" },
+                        colors = liveButtonColors(),
+                    ) {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Listen live")
+                    }
+                }
+            }
+            else -> null
+        },
+    )
+}
+
 /** Decision 067: another published year for the same date; picking one ends listening live. */
 @Composable
 private fun YearMenu(current: String, choices: List<String>, onPick: (String) -> Unit) {
@@ -272,11 +394,6 @@ private fun YearMenu(current: String, choices: List<String>, onPick: (String) ->
             }
         }
     }
-}
-
-@Composable
-private fun Caption(text: String) {
-    Text(text, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /**
