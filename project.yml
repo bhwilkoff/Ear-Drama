@@ -89,11 +89,9 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         # Only the Accounts.xcconfig keys; Xcode merges the generated keys in.
         INFOPLIST_FILE: apple/Resources/EarDrama-Info.plist
-        # Sign in with Apple and Group Activities (SharePlay) are OFF until the
-        # owner enables both capabilities on the App ID and the profiles are
-        # remade (docs/WORKER.md step 4, docs/iOS-DESIGN.md §5.8); a signed
-        # build that names one before then fails. Then add:
-        #   CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
+        # Sign in with Apple and Group Activities (SharePlay); both are enabled
+        # on the app.eardrama App ID (2026-10-23), so the profiles carry them.
+        CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every
         # TestFlight / App Store build.
@@ -102,8 +100,8 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
-        # Mac App Store listing category; ignored on iOS and tvOS. FILL IN.
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        # Mac App Store listing category (Entertainment, Decision 067); ignored on iOS and tvOS.
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.entertainment
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         # tvOS needs a LAYERED "App Icon & Top Shelf Image" brandassets set,
