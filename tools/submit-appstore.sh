@@ -34,8 +34,8 @@ fi
 #               scheme (`AppName`); a macOS build is often a SEPARATE scheme — set it below.
 # ORG / TEAM  — the org name EXACTLY as it appears in your signing certs, and your 10-char Team ID.
 PROJECT="EarDrama.xcodeproj"
-BID_FILTER="com.example.appname"
-ORG="${ASC_ORG_NAME:-<ORG_NAME>}"          # e.g. "Acme, Inc." — must match the cert's O= exactly
+BID_FILTER="app.eardrama"
+ORG="${ASC_ORG_NAME:-Learning is Change, Inc.}"          # e.g. "Acme, Inc." — must match the cert's O= exactly
 TEAM="${ASC_TEAM_ID:?set ASC_TEAM_ID (your 10-char Apple Team ID)}"
 case "$PLATFORM" in
   mac)  SCHEME="EarDrama"; DEST="generic/platform=macOS"; PKG=1 ;;   # ← if macOS is a separate scheme, set it here
