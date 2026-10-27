@@ -250,3 +250,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Tick 85, 2026-10-23, agents: M8's clients on the web and Apple
 - CI green (Worker Tests and Android Build at 15:45 UTC); the loudness run is long by design (in progress since 15:13). Launched M8's Apple client alongside the web one (invite links through the deep-link inbox, relay claims, uploads with every refusal path shown as one plain line, report/block, the consent step showing the Worker's OWNER placeholder, classes with the under-13 refusal). Android follows. The owner is still on a call: builds one at a time.
+
+### Tick 86, 2026-10-27, main thread: the crash on play fixed (1.0.68); the loop resumed
+- Owner: "many times attempting to play an ear drama results in an app crash." Reproduced on the iPhone 12 (1.0.67 Debug, muted autoplay, SIGTRAP at 40 s). Crash log: `_dispatch_assert_queue_fail` in AudioPlayer.mediaArtwork's closure, called from MPNowPlayingInfoCenter's accessQueue; MainActor default isolation made the artwork handler main-actor. Fix: @Sendable handler from a nonisolated func; the KVO and NWPathMonitor handlers @Sendable too. After: four varied episodes 45 s each, no crash log, frames show the clock moving; Release 1.0.68 launches; macOS and tvOS clean; Apple 164 tests pass. Shipped: App Store build run 40583842946.
+- Launched: an iPhone 12 device sweep (every iOS surface, muted, fix what crashes) and offline/error states on the platforms still ⏳. Verified: the play crash fix on device. Not verified: audible playback, anything on the owner's own phone.
