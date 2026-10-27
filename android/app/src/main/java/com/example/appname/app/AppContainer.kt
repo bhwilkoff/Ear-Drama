@@ -33,6 +33,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val user: UserStore by lazy { UserStore.open(File(context.filesDir, "user.sqlite").path) }
     val downloads = DownloadStore(File(context.filesDir, "downloads"), WorkManagerDownloadTransport(context))
     val playback = PlaybackEngine(context, api, catalog, user, downloads)
+    val queue by lazy { QueueVerbs(user, playback) }
     val plays = PlaysLibrary(context)
     val isTelevision = context.isTelevision()
     val live = LiveRadio(

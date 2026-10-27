@@ -193,6 +193,7 @@ struct PlaybackCommands_macOS: Commands {
     let store: AppStore
     let downloads: DownloadStore
     let room: SharePlayRoom
+    let queue: ListeningQueue
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.recordingControls) private var recording
 
@@ -238,6 +239,17 @@ struct PlaybackCommands_macOS: Commands {
                     guard let item = player.item else { return }
                     downloads.download(episodeID: item.episode.id, title: item.episode.displayTitle,
                                        seriesName: item.episode.seriesName, url: item.recording.url)
+                }
+                .disabled(player.item == nil)
+            }
+            Divider()
+            // Acts on the episode now playing, as the other commands do.
+            if let item = player.item, queue.contains(item.episode.id) {
+                Button("Remove from Queue") { queue.remove(item.episode.id) }
+            } else {
+                Button("Add to Queue") {
+                    guard let item = player.item else { return }
+                    queue.add(item.episode.id)
                 }
                 .disabled(player.item == nil)
             }

@@ -1,6 +1,9 @@
 package com.example.appname.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +28,9 @@ import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -206,6 +212,7 @@ fun seriesYears(row: SeriesRow): String? {
  * only where the list mixes series. Tapping opens Detail; the trailing
  * button plays.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EpisodeListItem(
     row: EpisodeRow,
@@ -214,7 +221,9 @@ fun EpisodeListItem(
     onPlay: () -> Unit,
     supporting: String? = null,
     modifier: Modifier = Modifier,
+    inQueueList: Boolean = false,
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
     val date = formatAirDate(row.airDate)
     val title = episodeTitle(row)
     val second = listOfNotNull(
@@ -222,8 +231,14 @@ fun EpisodeListItem(
         formatLength(row.lengthSeconds),
         supporting,
     ).joinToString(" · ").ifEmpty { null }
+    Box {
     ListItem(
-        modifier = modifier.tvFocusMark().clickable(onClickLabel = "Open episode", onClick = onOpen),
+        modifier = modifier.tvFocusMark().combinedClickable(
+            onClickLabel = "Open episode",
+            onClick = onOpen,
+            onLongClickLabel = "Queue options",
+            onLongClick = { menuOpen = true },
+        ),
         // Decision 069: a row that mixes series leads with its series' tile; a series page's rows do not.
         leadingContent = if (showSeries) {
             { ArtTile(row.seriesName, row.seriesGenre, row.seriesFace) }
@@ -237,6 +252,8 @@ fun EpisodeListItem(
             }
         },
     )
+    QueueMenu(row.id, menuOpen, { menuOpen = false }, inQueueList)
+    }
 }
 
 /** A person in Search: portrait or initial, the name, and how many episodes credit them. */

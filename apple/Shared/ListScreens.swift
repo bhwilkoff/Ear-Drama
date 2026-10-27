@@ -45,6 +45,7 @@ private struct PlayContextMenu: ViewModifier {
             } label: {
                 Label("Play", systemImage: "play")
             }
+            QueueMenuItem(episodeID: episodeID)
         }
     }
 }
@@ -402,6 +403,7 @@ struct EpisodeScreen: View {
                 }
                 .tint(Color.brandPrimary)
                 .disabled(detail.recordings.isEmpty)
+                QueueToggleButton(episodeID: episode.id)
                 DownloadControl(detail: detail)
                 // Decision 068: an episode linked to a castable script this bundle holds.
                 if let id = detail.script, let script = plays.script(id) {
@@ -685,9 +687,12 @@ extension SearchResultsList {
 // MARK: - Library
 
 struct LibraryScreen: View {
-    private struct LibraryKey: Equatable { let entries: [String: ListeningHistory.Entry]; let load: Int }
+    private struct LibraryKey: Equatable {
+        let entries: [String: ListeningHistory.Entry]; let queue: [String]; let load: Int
+    }
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
+    @Environment(ListeningQueue.self) private var queue
     @Environment(DownloadStore.self) private var downloads
     @Environment(PlaysLibrary.self) private var plays
     @Environment(SharedPlays.self) private var shared
@@ -695,11 +700,12 @@ struct LibraryScreen: View {
     @Environment(AppStore.self) private var app
     @State private var inProgress: [EpisodeRow]?
     @State private var played: [EpisodeRow] = []
+    @State private var queued: [EpisodeRow] = []
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && played.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty
+                if inProgress.isEmpty && played.isEmpty && queue.items.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty
                     && app.pendingInvite == nil && !account.isSignedIn {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
@@ -708,6 +714,26 @@ struct LibraryScreen: View {
                     }
                 } else {
                     List {
+                        if !queued.isEmpty {
+                            Section("Queue") {
+                                ForEach(queued) { episode in
+                                    NavigationLink(value: Route.episode(episode.id)) {
+                                        EpisodeRowLabel(episode: episode, showSeries: true)
+                                    }
+                                    .swipeActions {
+                                        Button(role: .destructive) { queue.remove(episode.id) } label: {
+                                            Label("Remove from queue", systemImage: "trash")
+                                        }
+                                    }
+                                    .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                                }
+                                .onMove { source, destination in
+                                    var ids = queued.map(\.id)
+                                    ids.move(fromOffsets: source, toOffset: destination)
+                                    queue.reorder(ids)
+                                }
+                            }
+                        }
                         if !inProgress.isEmpty {
                             Section("In progress") {
                                 ForEach(inProgress) { episode in
@@ -740,11 +766,15 @@ struct LibraryScreen: View {
             }
         }
         .navigationTitle("Library")
+        #if os(iOS)
+        .toolbar { if !queued.isEmpty { ToolbarItem(placement: .primaryAction) { EditButton() } } }
+        #endif
         .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
-        .task(id: LibraryKey(entries: history.entries, load: catalog.loadKey)) {
+        .task(id: LibraryKey(entries: history.entries, queue: queue.items, load: catalog.loadKey)) {
             let ids = history.inProgressIDs
             let playedIDs = history.entries.filter(\.value.finished)
                 .sorted { $0.value.updatedAt > $1.value.updatedAt }.map(\.key).prefix(100)
+            queued = await catalog.episodes(queue.items)
             inProgress = await catalog.episodes(ids)
             played = await catalog.episodes(Array(playedIDs))
         }

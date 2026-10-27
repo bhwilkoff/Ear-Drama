@@ -98,8 +98,26 @@ class UserStore private constructor(private val connection: SQLiteConnection, pr
         }
     }
 
-    /** Replaces the queue. It syncs whole, by its own `updated_at`. No Android verb calls it yet. */
+    /** Replaces the queue. It syncs whole, by its own `updated_at`. */
     suspend fun setQueue(items: List<String>) = write { putQueue(items, now(), dirty = true) }
+
+    /** Applies one [QueueEdit] to the stored queue in one step; an edit that leaves it as it was writes nothing. */
+    private suspend fun editQueue(edit: (List<String>) -> List<String>) {
+        var changed = false
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val current = readQueue()?.items.orEmpty()
+                val next = edit(current)
+                if (next != current) { putQueue(next, now(), dirty = true); changed = true }
+            }
+        }
+        if (changed) _changes.value += 1
+    }
+
+    suspend fun enqueue(id: String) = editQueue { QueueEdit.add(it, id) }
+    suspend fun dequeue(id: String) = editQueue { QueueEdit.remove(it, id) }
+    suspend fun moveInQueue(id: String, delta: Int) = editQueue { QueueEdit.move(it, id, delta) }
+    suspend fun reorderQueue(ids: List<String>) = editQueue { QueueEdit.reorder(it, ids) }
 
     suspend fun queue(): List<String> = read { readQueue()?.items.orEmpty() }
 

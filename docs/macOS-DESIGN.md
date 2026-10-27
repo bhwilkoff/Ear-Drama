@@ -287,8 +287,11 @@ the Mac target.
   queue and arc rule (the transport bar carries "Next story" on an arc's
   last part), the resume and "played" windows, the untitled fallback,
   uncounted facets, seasons as sections, the Detail series link as a
-  third push, no Queue or Following, and the two explaining empty
-  states. Haptics are n/a on the Mac (the trackpad's feedback is the
+  third push, no Following, and the two explaining empty
+  states. The queue verbs (iOS §12) are here as the right-click menu on
+  an episode row, the Detail button, Library's Queue section (drag to
+  reorder), and the Controls menu's "Add to Queue" / "Remove from Queue"
+  for the episode now playing. Haptics are n/a on the Mac (the trackpad's feedback is the
   system's).
 - **The Controls menu offers "Remove Download" for a failed download**,
   because it tests only that a record exists
