@@ -105,7 +105,7 @@ def main():
                      "                .keyboardShortcut(.space, modifiers: [])")),
         ("Go and Help menus", go_and_help_menus, mac, mac.replace('CommandMenu("Go")', 'CommandMenu("View")')),
         ("tvOS tab roots carry Now Playing", tv_way_back, tv,
-         tv.replace(".safeAreaInset(edge: .top, spacing: 0) { NowPlayingEntry_tvOS() }", "")),
+         tv.replace("                        NowPlayingEntry_tvOS()\n", "")),
         ("tvOS Detail has Versions", tv_versions, tv, tv.replace("VersionsSection_tvOS(detail: detail)", "EmptyView()")),
         ("iPhone's bar is five verbs; Surprise from Home", lambda t: phone_shell_is_five_verbs(t, detail), phone,
          phone.replace("if hSize == .regular {", "if true {")),

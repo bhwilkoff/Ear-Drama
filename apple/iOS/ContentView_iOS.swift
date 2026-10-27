@@ -62,16 +62,23 @@ struct ContentView_iOS: View {
 
 /// The mini player sits inside each tab's stack, above the tab bar, on every
 /// supported iOS. (The iOS 26 tab accessory would change the TabView's identity
-/// when playback starts and reset every tab's stack.)
+/// when playback starts and reset every tab's stack.) The offline line sits
+/// above it (iOS-DESIGN §7.2).
 private struct MiniPlayerInset: ViewModifier {
     @Environment(AudioPlayer.self) private var player
+    @Environment(CatalogStore.self) private var catalog
 
     func body(content: Content) -> some View {
         content.safeAreaInset(edge: .bottom, spacing: 0) {
-            if player.item != nil {
-                MiniPlayer_iOS()
-                    .padding(.vertical, Spacing.s2)
-                    .background(.regularMaterial)
+            if player.item != nil || !catalog.isOnline {
+                VStack(spacing: 0) {
+                    OfflineLine()
+                    if player.item != nil {
+                        MiniPlayer_iOS()
+                            .padding(.vertical, Spacing.s2)
+                    }
+                }
+                .background(.regularMaterial)
             }
         }
     }

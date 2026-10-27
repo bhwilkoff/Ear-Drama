@@ -71,6 +71,7 @@ fun AppRoot(
     container: AppContainer,
     inbox: SnapshotStateList<InboxRequest> = remember { mutableStateListOf() },
     muted: Boolean = false,
+    forceOffline: Boolean = false,
 ) {
     var selected by rememberSaveable { mutableStateOf(Tab.Home) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
@@ -78,7 +79,8 @@ fun AppRoot(
     var roomSheet by rememberSaveable { mutableStateOf(false) }
     var roomCode by rememberSaveable { mutableStateOf("") }
     val haptics = rememberHaptics()
-    val online by rememberOnline()
+    val network by rememberOnline()
+    val online = network && !forceOffline
     val stacks: Map<Tab, NavBackStack<NavKey>> = Tab.entries.associateWith { tab ->
         rememberNavBackStack(tab.root)
     }
@@ -235,7 +237,7 @@ fun AppRoot(
                     )
                 }
                 // Below the screens, so it never sits under the status bar (edge to edge).
-                if (!online) OfflineLine()
+                offlineLine(online)?.let { OfflineLine(it) }
                 MiniPlayer(onExpand = { playerOpen = true })
             }
         }

@@ -12,6 +12,8 @@ import Foundation
 /// - APP_AUTOPLAY=1: play APP_START_ITEM and show the player
 /// - APP_SLEEP_MENU=1: open the sleep timer's choices on the player
 /// - APP_MUTE=1 (or the `-APP_MUTE` launch argument): the player is muted
+/// - APP_FORCE_OFFLINE=1: the offline state, for a screenshot (fakes the
+///   state, never the network)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
 /// no-op in production. Doors never touch the router directly; they are posted
@@ -23,23 +25,28 @@ struct LaunchDoors: Sendable, Equatable {
     var sleepMenu = false
     var mute = false
     var doorSeconds: Int?
+    var forceOffline = false
 
     var isEmpty: Bool { self == LaunchDoors() }
 
     static let current: LaunchDoors = {
         #if DEBUG
-        let environment = ProcessInfo.processInfo.environment
-        let arguments = ProcessInfo.processInfo.arguments
-        return LaunchDoors(
+        return from(environment: ProcessInfo.processInfo.environment,
+                    arguments: ProcessInfo.processInfo.arguments)
+        #else
+        return LaunchDoors()
+        #endif
+    }()
+
+    static func from(environment: [String: String], arguments: [String]) -> LaunchDoors {
+        LaunchDoors(
             startTab: environment["APP_START_TAB"],
             startItem: environment["APP_START_ITEM"],
             autoplay: environment["APP_AUTOPLAY"] == "1",
             sleepMenu: environment["APP_SLEEP_MENU"] == "1",
             mute: environment["APP_MUTE"] == "1" || arguments.contains("-APP_MUTE"),
-            doorSeconds: environment["APP_DOOR_SECONDS"].flatMap { Int($0) }
+            doorSeconds: environment["APP_DOOR_SECONDS"].flatMap { Int($0) },
+            forceOffline: environment["APP_FORCE_OFFLINE"] == "1"
         )
-        #else
-        return LaunchDoors()
-        #endif
-    }()
+    }
 }

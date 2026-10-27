@@ -46,4 +46,11 @@ class LaunchDoorsTest {
         )
         assertEquals(LaunchDoors(mute = true, doorSeconds = 30), doors)
     }
+
+    @Test
+    fun forceOfflineDoorOpensOnlyInDebug() {
+        val extras = mapOf<String, Any?>(LaunchDoors.EXTRA_FORCE_OFFLINE to "1")
+        assertEquals(true, LaunchDoors.from(extras, debug = true).forceOffline)
+        assertEquals(false, LaunchDoors.from(extras, debug = false).forceOffline)
+    }
 }

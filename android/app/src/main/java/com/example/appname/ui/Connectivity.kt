@@ -27,6 +27,9 @@ val LocalOnline = compositionLocalOf { true }
 
 const val OFFLINE_LINE = "You are offline."
 
+/** The status line while [online] is false, else nothing. */
+fun offlineLine(online: Boolean): String? = if (online) null else OFFLINE_LINE
+
 private fun Context.hasNetwork(): Boolean {
     val cm = getSystemService(ConnectivityManager::class.java) ?: return true
     val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
@@ -58,9 +61,9 @@ fun rememberOnline(): State<Boolean> {
  * degraded mode, not a failure, so it is neutral, never the error color.
  */
 @Composable
-fun OfflineLine() {
+fun OfflineLine(text: String = OFFLINE_LINE) {
     Text(
-        OFFLINE_LINE,
+        text,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier

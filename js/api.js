@@ -27,6 +27,22 @@ const API = (() => {
     return new URL((meta && meta.content) || 'data/', PAGES_ROOT);
   }
 
+  // The ?offline=1 door (tools/app_config.py HOOK_FORCE_OFFLINE) is read once, at load, so it
+  // outlives navigation: it fakes the offline state for a screenshot, never the network.
+  const forcedOffline = (() => {
+    if (typeof location === 'undefined' || !location.search) return false;
+    const params = new URLSearchParams(location.search);
+    return params.get('offline') === '1';
+  })();
+
+  /** Offline is the browser's word (WEB-DESIGN §7.3), or the door's. */
+  function isOffline() {
+    return forcedOffline || (typeof navigator !== 'undefined' && navigator.onLine === false);
+  }
+
+  /** The status line while offline, else null. */
+  function offlineLine() { return isOffline() ? 'You are offline.' : null; }
+
   const cache = new Map();
 
   class DataError extends Error {
@@ -45,7 +61,7 @@ const API = (() => {
           resp = await fetch(new URL(path, dataBase()), { signal: AbortSignal.timeout(timeout) });
           break;
         } catch (e) {
-          const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+          const off = isOffline();
           if (off || attempt >= 1 || e.name === 'TimeoutError') {
             throw new DataError(off ? 'offline' : 'error', `${e.message} ${path}`);
           }
@@ -419,7 +435,7 @@ const API = (() => {
       try {
         resp = await fetch(url, { signal: AbortSignal.timeout(timeout) });
       } catch (e) {
-        const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+        const off = isOffline();
         throw new DataError(off ? 'offline' : 'error', `${e.message} ${url}`);
       }
       if (resp.status === 404) throw new DataError('missing', url);
@@ -676,7 +692,7 @@ const API = (() => {
     }
 
     function netError(e, path) {
-      const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+      const off = isOffline();
       return new DataError(off ? 'offline' : 'error', `${e.message} ${path}`);
     }
     async function problemOf(resp, path) {
@@ -894,7 +910,7 @@ const API = (() => {
         resp = await fetch(b + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined,
                                        signal: AbortSignal.timeout(TIMEOUT_MS) });
       } catch (e) {
-        const off = typeof navigator !== 'undefined' && navigator.onLine === false;
+        const off = isOffline();
         throw new DataError(off ? 'offline' : 'error', `${e.message} ${path}`);
       }
       const t1 = now();
@@ -929,7 +945,7 @@ const API = (() => {
   })();
 
   return {
-    rooms, plays,
+    rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
