@@ -122,7 +122,7 @@ final class AudioPlayer {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.tick() }
         }
-        statusObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+        statusObservation = player.observe(\.timeControlStatus, options: [.new]) { @Sendable [weak self] player, _ in
             let status = player.timeControlStatus
             Task { @MainActor in self?.timeControlChanged(status) }
         }
@@ -171,7 +171,7 @@ final class AudioPlayer {
         isLocal = source.isLocal
         let playerItem = AVPlayerItem(url: source.url)
         playerItem.audioTimePitchAlgorithm = .timeDomain
-        itemStatusObservation = playerItem.observe(\.status, options: [.new]) { [weak self] observed, _ in
+        itemStatusObservation = playerItem.observe(\.status, options: [.new]) { @Sendable [weak self] observed, _ in
             let failed = observed.status == .failed
             let message = observed.error?.localizedDescription
             Task { @MainActor in
@@ -475,14 +475,16 @@ final class AudioPlayer {
         }
     }
 
-    private static func mediaArtwork(_ cg: CGImage) -> MPMediaItemArtwork {
+    /// MediaPlayer calls the handler on its own queue: a main-actor closure
+    /// traps there (the 1.0.67 crash on play), so neither may be isolated.
+    nonisolated private static func mediaArtwork(_ cg: CGImage) -> MPMediaItemArtwork {
         let size = CGSize(width: cg.width, height: cg.height)
         #if os(macOS)
         let image = NSImage(cgImage: cg, size: size)
         #else
         let image = UIImage(cgImage: cg)
         #endif
-        return MPMediaItemArtwork(boundsSize: size) { _ in image }
+        return MPMediaItemArtwork(boundsSize: size) { @Sendable _ in image }
     }
 
     private func publishNowPlaying() {

@@ -78,7 +78,7 @@ final class CatalogStore {
     }
 
     private func watchNetwork() {
-        monitor.pathUpdateHandler = { [weak self] path in
+        monitor.pathUpdateHandler = { @Sendable [weak self] path in
             let online = path.status == .satisfied
             Task { @MainActor in self?.isOnline = online }
         }
