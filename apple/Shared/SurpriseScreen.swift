@@ -30,7 +30,7 @@ struct SurpriseScreen: View {
                     NavigationLink(value: Route.episode(episode.id)) {
                         EpisodeRowLabel(episode: episode, showSeries: true)
                     }
-                    Button { play(episode.id) } label: { Label("Play", systemImage: "play.fill") }
+                    Button { play(episode.id) } label: { Label("Play", systemImage: "play.fill").foregroundStyle(Color.brandPrimary) }
                         .tint(Color.brandPrimary)
                 }
             }
@@ -48,7 +48,7 @@ struct SurpriseScreen: View {
                             EpisodeRowLabel(episode: first.episode, showSeries: true)
                         }
                         // From its start, never live, and nothing queued behind it.
-                        Button { play(first.episode.id) } label: { Label("Play", systemImage: "play.fill") }
+                        Button { play(first.episode.id) } label: { Label("Play", systemImage: "play.fill").foregroundStyle(Color.brandPrimary) }
                             .tint(Color.brandPrimary)
                     }
                 }

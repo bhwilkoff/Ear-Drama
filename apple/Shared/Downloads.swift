@@ -30,6 +30,10 @@ struct DownloadControl: View {
                     Label("Cancel Download", systemImage: "xmark.circle")
                 }
                 .fixedSize()
+                #if os(iOS)
+                // In an iPhone List row the hidden title still took the row's height.
+                .labelStyle(.iconOnly)
+                #endif
             }
         case .downloaded:
             HStack(spacing: Spacing.s3) {
@@ -44,6 +48,10 @@ struct DownloadControl: View {
                     Label("Remove Download", systemImage: "trash")
                 }
                 .fixedSize()
+                #if os(iOS)
+                // In an iPhone List row the hidden title still took the row's height.
+                .labelStyle(.iconOnly)
+                #endif
             }
         case .failed:
             HStack(spacing: Spacing.s3) {

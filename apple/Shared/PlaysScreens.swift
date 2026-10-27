@@ -544,6 +544,7 @@ struct ListenThrough: View {
                         if complete { Task { await prepare() } } else { Task { await listenLive() } }
                     } label: {
                         Label(production.isFinished ? "Play" : "Listen Through", systemImage: "play.fill")
+                            .foregroundStyle(Color.brandPrimary)
                     }
                     .tint(Color.brandPrimary)
                     if complete { export }
@@ -590,6 +591,7 @@ struct ListenThrough: View {
                     mix.toggle()
                 } label: {
                     Label(mix.isPlaying ? "Pause" : "Play", systemImage: mix.isPlaying ? "pause.fill" : "play.fill")
+                        .foregroundStyle(Color.brandPrimary)
                 }
                 .tint(Color.brandPrimary)
                 #if os(iOS)
@@ -625,6 +627,7 @@ struct ListenThrough: View {
             live.stop()
         } label: {
             Label("Stop", systemImage: "stop.fill")
+                .foregroundStyle(Color.brandPrimary)
         }
         .tint(Color.brandPrimary)
     }

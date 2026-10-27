@@ -78,6 +78,10 @@ final class CatalogStore {
     }
 
     private func watchNetwork() {
+        if LaunchDoors.current.forceOffline {
+            isOnline = false
+            return
+        }
         monitor.pathUpdateHandler = { @Sendable [weak self] path in
             let online = path.status == .satisfied
             Task { @MainActor in self?.isOnline = online }
