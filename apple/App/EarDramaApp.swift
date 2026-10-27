@@ -7,6 +7,7 @@ struct EarDramaApp: App {
     @State private var store: AppStore
     @State private var catalog: CatalogStore
     @State private var history: ListeningHistory
+    @State private var queue: ListeningQueue
     @State private var player: AudioPlayer
     @State private var live: LiveRadio
     @State private var account: AccountStore
@@ -36,10 +37,8 @@ struct EarDramaApp: App {
         }
         let queue = ListeningQueue()
         player.queuedIDs = { [weak queue] in queue?.items ?? [] }
-        player.dequeue = { [weak queue] id in
-            guard let queue, queue.items.contains(id) else { return }
-            queue.set(queue.items.filter { $0 != id })
-        }
+        player.dequeue = { [weak queue] id in queue?.remove(id) }
+        queue.onChange = { [weak player] in player?.refreshUpNext() }
         let live = LiveRadio(player: player)
         let account = AccountStore(history: history, follows: FollowedSeries(), queue: queue)
         player.onTransport = { [weak live] event in live?.handle(event) }
@@ -66,6 +65,7 @@ struct EarDramaApp: App {
         _store = State(initialValue: store)
         _catalog = State(initialValue: catalog)
         _history = State(initialValue: history)
+        _queue = State(initialValue: queue)
         _player = State(initialValue: player)
         _live = State(initialValue: live)
         _account = State(initialValue: account)
@@ -78,6 +78,7 @@ struct EarDramaApp: App {
                 .environment(store)
                 .environment(catalog)
                 .environment(history)
+                .environment(queue)
                 .environment(player)
                 .environment(live)
                 .environment(account)
@@ -98,7 +99,7 @@ struct EarDramaApp: App {
         #if os(macOS)
         .commands {
             GoCommands_macOS(store: store)
-            PlaybackCommands_macOS(player: player, store: store, downloads: downloads, room: room)
+            PlaybackCommands_macOS(player: player, store: store, downloads: downloads, room: room, queue: queue)
             RecordingCommands_macOS()
             HelpCommands_macOS()
         }

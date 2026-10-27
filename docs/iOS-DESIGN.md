@@ -601,9 +601,16 @@ Listed, not fixed. Each item names where it is.
   Android show one season at a time.
 - **The series link on Detail is a push**, so Home, Episode, Series
   is a third level (§1.5), and from there another episode is a fourth.
-- **No Queue or Following verbs** on Detail or in Library, which the web
-  has (`WEB-DESIGN` §4.5, §4.7). The player plays a queue synced from
-  another device; adding to it here is not built yet; Following has no native rule yet (where the button sits,
+- **The queue verbs are the web's** (`WEB-DESIGN` §4.5, §4.7): add to the
+  end (an episode already queued moves to the end), remove, move up or
+  down. Detail carries "Add to queue" / "In queue" under Play; every
+  episode row's context menu carries "Add to queue" or "Remove from
+  queue"; Library's first section, "Queue", swipes to remove, drags to
+  reorder (Edit on iPhone), and its context menu has Move up, Move down,
+  Remove. `ListeningQueue.onChange` calls `AudioPlayer.refreshUpNext()`,
+  so the player's "Next:" line follows the queue. The verbs only order
+  what the person chose; what plays next is Decision 067's, untouched.
+  Following has no native rule yet (where the button sits,
   the Listen shelf, the Library section), so it needs one before it is
   built.
 - **R20's "one step from the lock screen"** is not built: the timer is

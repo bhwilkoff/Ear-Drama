@@ -46,6 +46,11 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 - **R14** lean-back is bounded: the sleep timer ends a session, and what
   plays next is Decision 067's: a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc. The action row carries
   "Next story" (`NextStoryButton`) on an arc's last part only.
+- **Queue verbs** (iOS-DESIGN §12): long-press (the context menu) an
+  episode card for "Add to queue" or "Remove from queue"; Detail's
+  action row carries "Add to queue" / "In queue"; Library lists the
+  "Queue" first, its context menu has Move up, Move down, Remove. There
+  is no drag on the TV. They only order what the person chose.
 - **R15 and Decision 067**: volume leveled on the device by the shared
   `VolumeLeveler` tap (iOS-DESIGN §1.7); "Level volume" is a toggle in
   Now Playing's action row. Radio's action row carries a "Year" menu when

@@ -135,6 +135,7 @@ private struct EpisodeCard_tvOS: View {
         }
         .buttonStyle(.card)
         .accessibilityElement(children: .combine)
+        .contextMenu { QueueMenuItem(episodeID: episode.id) }
     }
 }
 
@@ -404,6 +405,7 @@ private struct EpisodeScreen_tvOS: View {
                     .tint(Color.brandPrimary)
                     .focused($playFocused)
                     .disabled(detail.recordings.isEmpty)
+                    QueueToggleButton(episodeID: episode.id)
                     NavigationLink(value: Route.series(episode.seriesKey)) {
                         Label("Series", systemImage: "square.stack")
                     }
@@ -571,14 +573,16 @@ private struct LibraryScreen_tvOS: View {
     static let noDownloads: LocalizedStringKey = "Downloads are on iPhone, iPad, and Mac."
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
+    @Environment(ListeningQueue.self) private var queue
     @State private var inProgress: [EpisodeRow]?
+    @State private var queued: [EpisodeRow] = []
 
-    private struct Key: Equatable { let ids: [String]; let load: Int }
+    private struct Key: Equatable { let ids: [String]; let queue: [String]; let load: Int }
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty {
+                if inProgress.isEmpty && queued.isEmpty {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
                     } description: {
@@ -588,6 +592,16 @@ private struct LibraryScreen_tvOS: View {
                     }
                 } else {
                     List {
+                        if !queued.isEmpty {
+                            Section("Queue") {
+                                ForEach(queued) { episode in
+                                    NavigationLink(value: Route.episode(episode.id)) {
+                                        EpisodeRowLabel(episode: episode, showSeries: true)
+                                    }
+                                    .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                                }
+                            }
+                        }
                         ForEach(inProgress) { episode in
                             NavigationLink(value: Route.episode(episode.id)) {
                                 EpisodeRowLabel(episode: episode, showSeries: true)
@@ -610,7 +624,8 @@ private struct LibraryScreen_tvOS: View {
                 ProgressView()
             }
         }
-        .task(id: Key(ids: history.inProgressIDs, load: catalog.loadKey)) {
+        .task(id: Key(ids: history.inProgressIDs, queue: queue.items, load: catalog.loadKey)) {
+            queued = await catalog.episodes(queue.items)
             inProgress = await catalog.episodes(history.inProgressIDs)
         }
     }

@@ -649,11 +649,17 @@ file (`StandInNeverStoredTest`). No analytics.
   listening (web §4.2); Android's follows are in Library (§4.6).
 - **The `eardrama://` and App Link filters are off** in the manifest
   (§3.4); `DeepLink.parse` routes both once they are on.
-- **No Queue verb**, which the web has: what plays next is the owner's
-  call (SCRATCHPAD item 9, and the queue item above). Sync stores the
-  queue other devices send (`UserStore.queue`) and sends it back
-  unchanged; nothing on Android shows it, and no Android verb removes an
-  episode from history.
+- **The queue verbs are the web's** (`WEB-DESIGN` §4.5, §4.7): add to the
+  end (an episode already queued moves to the end), remove, move up or
+  down (`QueueEdit`, written through `UserStore.enqueue` and the like).
+  Detail carries an "Add to queue" / "In queue" button under Play; a
+  long-press on any episode row opens a menu with "Add to queue" or
+  "Remove from queue"; Library's first section, "Queue", swipes away to
+  remove and its long-press menu adds Move up and Move down.
+  `PlaybackEngine.queueChanged()` rebuilds what follows the playing
+  episode by the same `PlaybackQueue.after`, so "Up next" matches. The
+  verbs only order what the person chose; what plays next is Decision
+  067's, untouched. No Android verb removes an episode from history.
 - **Sign-in has not run.** The Worker is not deployed and the ids are
   placeholders (docs/WORKER.md, Needs Ben). Apple on Android also needs
   the return page at `https://eardrama.org/auth/apple/`, which forwards

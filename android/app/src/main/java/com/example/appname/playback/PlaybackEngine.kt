@@ -24,6 +24,7 @@ import com.example.appname.data.ApiClient
 import com.example.appname.data.CatalogRepository
 import com.example.appname.data.DownloadStore
 import com.example.appname.data.PlaybackSource
+import com.example.appname.data.CatalogDatabase
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Face
 import com.example.appname.data.UserStore
@@ -95,6 +96,8 @@ class PlaybackEngine(
     private var offer: Pair<String, EpisodeRow>? = null
     /** False for a room's copy, whose start is the host's, not this device's saved place. */
     private var resumeSaved = true
+    /** Whether the playlist's tail is the arc and the person's queue (a Radio slot and a room play nothing after). */
+    private var playsQueue = false
     private var lastFactor = 1f
     /** Decision 067: volume leveled on the device as it plays (DynamicsProcessing on the player's session). */
     private val leveler = VolumeLeveler(context)
@@ -292,16 +295,14 @@ class PlaybackEngine(
         offer = PlaybackQueue.offeredBy(detail.episode.id, arc)?.let { by ->
             arc?.nextStory?.let { db.episodeDetail(it) }?.let { by to it.episode }
         }
-        val followingItems = following.mapNotNull { id ->
-            val next = db.episodeDetail(id) ?: return@mapNotNull null
-            next.recordings.firstOrNull()?.url?.let { next.episode to it }
-        }
+        val followingItems = playable(db, following)
         val items = listOf(detail.episode to startUrl) + followingItems
         if (detail.episode.id in queued) user.setQueue(queued - detail.episode.id)
         saveNow()
         episodes = items.map { it.first }
         urls = items.map { it.second }
         resumeSaved = true
+        playsQueue = queue
         lastFactor = 1f
         sleep.onUserPlay()
         syncPauseAtEnd()
@@ -313,6 +314,34 @@ class PlaybackEngine(
             if (i == 0) mediaItem(row, u, detail.face, card = true) else mediaItem(row, u)
         }
         return Queue(media, startMs ?: startPositionFor(detail.episode.id))
+    }
+
+    private suspend fun playable(db: CatalogDatabase, ids: List<String>): List<Pair<EpisodeRow, String>> = ids.mapNotNull { id ->
+        val next = db.episodeDetail(id) ?: return@mapNotNull null
+        next.recordings.firstOrNull()?.url?.let { next.episode to it }
+    }
+
+    /**
+     * The person added, removed, or moved a queued episode: what follows the one
+     * playing is rebuilt by the same rule (`PlaybackQueue.after`), so "Up next"
+     * and the playlist match the queue. The playing item is untouched.
+     */
+    fun queueChanged() {
+        scope.launch {
+            val p = playerOrNull ?: return@launch
+            val index = p.currentMediaItemIndex
+            val current = episodes.getOrNull(index) ?: return@launch
+            if (!playsQueue || p.mediaItemCount == 0) return@launch
+            val db = catalog.awaitDb() ?: return@launch
+            val following = PlaybackQueue.after(current.id, db.arcAhead(current.id), user.queue())
+            val items = playable(db, following)
+            if (p.currentMediaItem?.mediaId != current.id) return@launch
+            p.removeMediaItems(index + 1, p.mediaItemCount)
+            p.addMediaItems(items.map { (row, url) -> mediaItem(row, url) })
+            episodes = episodes.take(index + 1) + items.map { it.first }
+            urls = urls.take(index + 1) + items.map { it.second }
+            publish()
+        }
     }
 
     private fun dequeue(id: String) {
@@ -531,6 +560,7 @@ class PlaybackEngine(
         episodes = listOf(row)
         offer = null
         urls = listOf(url)
+        playsQueue = false
         resumeSaved = false
         lastFactor = 1f
         _state.value = _state.value.copy(failed = false, offline = false)

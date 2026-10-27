@@ -41,6 +41,7 @@ import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.CreditFace
 import com.example.appname.ui.FaceFigure
 import com.example.appname.ui.DownloadControl
+import com.example.appname.ui.QueueToggle
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
@@ -147,6 +148,7 @@ fun EpisodeScreen(
                         Text(if (resume != null) "Resume at ${formatClock(resume.positionMs)}" else "Play")
                     }
                 }
+                item(key = "queue") { QueueToggle(row.id, Modifier.padding(horizontal = Spacing.S4.dp)) }
                 item(key = "download") { DownloadControl(d) }
                 // Decision 068: an episode linked to a castable script this bundle holds; none on a TV.
                 plays.firstOrNull { it.id == d.script }?.let { script ->

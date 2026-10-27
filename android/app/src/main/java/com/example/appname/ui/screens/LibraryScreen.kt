@@ -32,10 +32,12 @@ import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.downloadsSection
+import com.example.appname.ui.queueSection
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberCatalogQuery
 
 private data class LibraryLists(
+    val queued: List<EpisodeRow>,
     val inProgress: List<Pair<EpisodeRow, Progress>>,
     val finished: List<EpisodeRow>,
     val following: List<SeriesRow>,
@@ -81,6 +83,7 @@ fun LibraryScreen(
         val progress = container.user.inProgress(limit = 100)
         val byId = progress.associateBy { it.episodeId }
         LibraryLists(
+            queued = db.episodes(container.user.queue()).distinctBy { it.id },
             inProgress = db.episodes(progress.map { it.episodeId }).mapNotNull { row ->
                 byId[row.id]?.let { row to it }
             }.distinctBy { it.first.id },
@@ -92,7 +95,7 @@ fun LibraryScreen(
     val downloadRecords by container.downloads.records.collectAsState()
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
-            if (library.inProgress.isEmpty() && library.finished.isEmpty() && library.following.isEmpty() &&
+            if (library.queued.isEmpty() && library.inProgress.isEmpty() && library.finished.isEmpty() && library.following.isEmpty() &&
                 downloadRecords.isEmpty() && dramaRows.isEmpty() && invitation == null && !withClasses
             ) {
                 Column(Modifier.padding(padding)) {
@@ -109,6 +112,11 @@ fun LibraryScreen(
                 // §4.11: the account is the first row, above what this device holds.
                 item(key = "account") { AccountRow() }
                 item(key = "together") { ListenTogetherRow(onListenTogether) }
+                queueSection(
+                    library.queued,
+                    onOpen = onOpenEpisode,
+                    onPlay = { container.playback.play(it) },
+                )
                 if (library.inProgress.isNotEmpty()) {
                     item(key = "progress-h") { SectionHeader("In progress") }
                     items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->

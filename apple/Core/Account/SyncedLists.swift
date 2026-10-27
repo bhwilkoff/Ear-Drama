@@ -102,8 +102,9 @@ final class FollowedSeries {
 }
 
 /// The person's own queue, one ordered list that wins or loses whole by its
-/// stamp (docs/WORKER.md). Apple has no queue verbs yet (iOS-DESIGN §12: the
-/// queue rule waits on the owner); a queue built elsewhere is kept here.
+/// stamp (docs/WORKER.md). The verbs are the web's `Store.enqueue`, `dequeue`,
+/// and `moveInQueue`: add to the end, remove, reorder. They never change what
+/// plays next (Decision 067); `onChange` lets the player refresh "Up next".
 @Observable
 final class ListeningQueue {
     private static let key = "listeningQueue.v1"
@@ -118,6 +119,8 @@ final class ListeningQueue {
     @ObservationIgnored private(set) var updatedAt: Date?
     @ObservationIgnored private(set) var dirty: Bool
     @ObservationIgnored private let defaults: UserDefaults
+    /// Called on the main actor after the person or a sync changes the list.
+    @ObservationIgnored var onChange: (() -> Void)?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -132,6 +135,37 @@ final class ListeningQueue {
         updatedAt = now
         dirty = true
         save()
+        onChange?()
+    }
+
+    func contains(_ id: String) -> Bool { items.contains(id) }
+
+    /// Adds to the end; an episode already queued moves to the end, as on the web.
+    func add(_ id: String, now: Date = Date()) {
+        set(items.filter { $0 != id } + [id], now: now)
+    }
+
+    func remove(_ id: String, now: Date = Date()) {
+        guard contains(id) else { return }
+        set(items.filter { $0 != id }, now: now)
+    }
+
+    /// One step up (-1) or down (+1); at an end it does nothing.
+    func move(_ id: String, by delta: Int, now: Date = Date()) {
+        guard let i = items.firstIndex(of: id), items.indices.contains(i + delta) else { return }
+        var next = items
+        next.swapAt(i, i + delta)
+        set(next, now: now)
+    }
+
+    /// A drag: the ids in their new order. Queued ids the list did not name
+    /// (not in this catalog) keep their place after them; an unknown id is ignored.
+    func reorder(_ ids: [String], now: Date = Date()) {
+        var seen = Set<String>()
+        let named = ids.filter { items.contains($0) && seen.insert($0).inserted }
+        let next = named + items.filter { !seen.contains($0) }
+        guard next != items else { return }
+        set(next, now: now)
     }
 
     /// The queue to upload: only a change made here (or, for the merge, a
@@ -151,6 +185,7 @@ final class ListeningQueue {
         updatedAt = at
         dirty = false
         save()
+        onChange?()
     }
 
     func markSynced(_ sent: QueueState) {
