@@ -269,3 +269,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - CI green; the 1.0.70 App Store build succeeded (run 40592132876).
 - Merged b1b72e7 (Sonnet port of the web): add to the end (a queued episode moves to the end), remove, move up/down, drag on iOS/Mac; Detail button, row context menus, a Library Queue section on every Apple platform and Android; Mac Controls menu; Android rebuilds the Media3 tail on a queue change. What plays next unchanged (Decision 067). Verified on main: macOS 173 tests in 39 suites, tvOS clean, Android 238/0 and 0 `w:`, design rules, US English. Not verified: any gesture on a device.
 - The iPhone 12 is lent to the Archive Watch session for one XCUITest; TestFlight waits for a device tap of the queue.
+
+### Tick 90, 2026-10-27, main thread: the queue on the iPhone 12; 1.0.71 to TestFlight
+- The iPhone 12 was lent to the Archive Watch session for its XCUITest (its lease lapsed mid-run; it apologized), then returned.
+- XCUITest on the phone (local harness in a scratch worktree, under a devlease): Detail "Add to queue" to "In queue" on two episodes, Library's Queue section in added order, long-press Move down reorders, swipe Remove empties it and the section goes. Player "Next:" showed a serial's next part (Johnny Dollar Ep 4) ahead of the queue's head: correct by Decision 067; my assertion was wrong. Release 1.0.71 launches; crash logs unchanged (two, both 1.0.67 or older).
+- Shipped: App Store build for 1.0.71 (build 72).
