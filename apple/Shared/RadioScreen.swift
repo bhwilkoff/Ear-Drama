@@ -207,6 +207,7 @@ private struct StationRow: View {
             } else if canListen {
                 Button(action: listen) {
                     Label("Listen live", systemImage: "play.fill")
+                        .foregroundStyle(Color.brandOnPrimary)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.brandPrimary)

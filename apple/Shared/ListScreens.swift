@@ -397,6 +397,8 @@ struct EpisodeScreen: View {
                     Label(isCurrent && player.isPlaying ? "Pause" : "Play",
                           systemImage: isCurrent && player.isPlaying ? "pause.fill" : "play.fill")
                         .font(TypeRamp.bodyStrong)
+                        // A List row draws a Label's icon in the app tint, not the button's.
+                        .foregroundStyle(detail.recordings.isEmpty ? Color.brandTextMuted : Color.brandPrimary)
                 }
                 .tint(Color.brandPrimary)
                 .disabled(detail.recordings.isEmpty)
