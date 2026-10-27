@@ -248,7 +248,12 @@ The only shapes; a new one needs a new rule.
   `ContentUnavailableView` ("Nothing to list yet", "Nothing played
   yet"); a catalog that cannot open is `CatalogUnavailableView` with
   Try Again; the transcript reader has loading, failed, and offline,
-  each with Try Again.
+  each with Try Again. Offline is iOS §7.2 minus downloads (the TV never
+  downloads): `OfflineLine` ("You are offline.", neutral, never
+  focusable) heads every tab's root above the Now Playing entry, the
+  catalog already on the box keeps working, Detail and Now Playing carry
+  the refusal, and a network failure is the player's line "You are
+  offline.". The Siri Remote has no haptics.
 - **§7.4 VoiceOver.** Each card reads as one element; the Detail and Now
   Playing headers are combined; every control carries a label.
 

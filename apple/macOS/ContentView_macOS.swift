@@ -38,8 +38,12 @@ struct ContentView_macOS: View {
             }
             .id(store.selectedTab)
         }
+        // The offline line sits above the transport (macOS-DESIGN §7.2).
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if player.item != nil { TransportBar_macOS() }
+            VStack(spacing: 0) {
+                OfflineLine().background(.bar)
+                if player.item != nil { TransportBar_macOS() }
+            }
         }
         .navigationTitle(player.item?.episode.displayTitle ?? "Ear Drama")
         // Space plays and pauses here, never as a menu key (macOS-DESIGN §5.3):

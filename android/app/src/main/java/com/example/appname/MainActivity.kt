@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
     /** Deep links and test doors are posted here; AppRoot drains it. */
     private val inbox = mutableStateListOf<InboxRequest>()
     private var playerMuted by mutableStateOf(false)
+    private var forceOffline by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Splash Screen API — call BEFORE super.onCreate(). Android 12+
@@ -57,7 +58,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 CompositionLocalProvider(LocalIsTelevision provides television) {
-                    AppRoot(container = container, inbox = inbox, muted = playerMuted)
+                    AppRoot(container = container, inbox = inbox, muted = playerMuted, forceOffline = forceOffline)
                 }
             }
         }
@@ -71,7 +72,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Test doors (appname_start_tab / _start_item / _mute / _door_seconds, the
+     * Test doors (appname_start_tab / _start_item / _mute / _door_seconds / _force_offline, the
      * tools/app_config.py hooks). DEBUG builds only: a no-op in release.
      */
     private fun openDoors(intent: Intent?) {
@@ -81,6 +82,7 @@ class MainActivity : ComponentActivity() {
         val map = extras.keySet().associateWith { extras.get(it) }
         val doors = LaunchDoors.from(map, debug = BuildConfig.DEBUG)
         if (doors.mute) playerMuted = true
+        if (doors.forceOffline) forceOffline = true
         inbox += doors.requests()
         doors.doorSeconds?.let { seconds ->
             lifecycleScope.launch {

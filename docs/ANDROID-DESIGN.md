@@ -533,7 +533,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `EmptyMessage` sentence; "This episode is not in the catalog." has no
   retry. Offline is a degraded mode, not a failure (web §7.3): while the
   device reports no network, "You are offline." sits in the flow above
-  the mini player, in the neutral color (`OfflineLine`).
+  the mini player, in the neutral color (`OfflineLine`); the
+  `appname_force_offline` door holds it for a screenshot.
 - **§7.2 The transcript has its own states**: loading, "You are
   offline." or "The transcript did not load." with Try again.
 - **§7.3 TalkBack.** Section headers and the Detail title are

@@ -78,8 +78,10 @@ final class CatalogStore {
     }
 
     private func watchNetwork() {
+        let forced = LaunchDoors.current.forceOffline
+        if forced { isOnline = false }
         monitor.pathUpdateHandler = { @Sendable [weak self] path in
-            let online = path.status == .satisfied
+            let online = Connectivity.isOnline(pathSatisfied: path.status == .satisfied, forcedOffline: forced)
             Task { @MainActor in self?.isOnline = online }
         }
         monitor.start(queue: DispatchQueue(label: "app.eardrama.network"))

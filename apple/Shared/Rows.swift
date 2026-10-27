@@ -118,6 +118,24 @@ struct OfflineNotice: View {
     }
 }
 
+/// The app-wide status line while there is no network (web §7.3, Android
+/// `OfflineLine`): a degraded mode, not a failure, so the neutral color. What
+/// was already loaded keeps working under it.
+struct OfflineLine: View {
+    @Environment(CatalogStore.self) private var catalog
+
+    var body: some View {
+        if let line = Connectivity.line(online: catalog.isOnline) {
+            Label(line, systemImage: "wifi.slash")
+                .font(TypeRamp.caption)
+                .foregroundStyle(Color.brandTextMuted)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, Spacing.s1)
+                .accessibilityElement(children: .combine)
+        }
+    }
+}
+
 /// Loading placeholder that keeps the eventual layout (skeleton rows).
 struct SkeletonRows: View {
     var count = 6

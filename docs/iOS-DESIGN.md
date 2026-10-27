@@ -498,11 +498,17 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `ContentUnavailableView`; a catalog that cannot open at all is
   `CatalogUnavailableView` with Try Again; "Series not found" and
   "Episode not found" carry no retry because retrying cannot help.
-- **§7.2 Offline is a warning where it matters.** `OfflineNotice`
-  ("Offline. Episodes need a connection to play.", the warning color)
-  shows on Detail and the player only when the episode is not
-  downloaded. The transcript reader says "You are offline." and retries
-  on its own when the network returns.
+- **§7.2 Offline is a degraded mode, not a failure** (web §7.3, Android
+  §7.1). While the device has no network, `OfflineLine` ("You are
+  offline.", the neutral color) sits above the mini player on every tab;
+  the seed or downloaded catalog, downloads, and Library keep working
+  under it. `OfflineNotice` ("Offline. Episodes need a connection to
+  play.", the warning color) is the refusal on Detail and the player,
+  only when the episode is not downloaded, and an undownloaded episode
+  that fails for the network says "You are offline." as the player's
+  error line (with the `error` haptic), never a spinner. The transcript
+  reader says "You are offline." and retries on its own when the network
+  returns. `APP_FORCE_OFFLINE=1` renders the state.
 - **§7.3 VoiceOver.** Every transport control, speed, and the sleep timer
   carries a label and a value; the mini player says "Now playing" with
   the hint "Opens the player"; an episode row reads as one element with

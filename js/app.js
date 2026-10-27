@@ -153,7 +153,7 @@
   }
   function problem(err) {
     if (err && err.kind === 'missing') return 'missing';
-    if ((err && err.kind === 'offline') || navigator.onLine === false) return 'offline';
+    if ((err && err.kind === 'offline') || API.isOffline()) return 'offline';
     return 'error';
   }
   /** Fill `box` from an async loader, showing loading, then the result or the right problem state. */
@@ -1366,7 +1366,7 @@
       $('np-series').setAttribute('href', `?series=${encodeURIComponent(cur.series || '')}`);
       $('np-meta').textContent = [cur.date ? fmtLongDate(cur.date) : 'Undated'].join('');
       const err = kind === 'error' && Player.error;
-      const errText = navigator.onLine === false ? 'You are offline.' : 'This recording did not load.';
+      const errText = API.isOffline() ? 'You are offline.' : 'This recording did not load.';
       $('mini-meta').textContent = err ? errText
         : room.inRoom ? `Listening together · ${room.members}` : [cur.seriesName, cur.date].filter(Boolean).join(' · ');
       $('mini-meta').classList.toggle('is-error', !!err);
@@ -1542,7 +1542,7 @@
   if (doorSeconds > 0) setTimeout(() => navigate('?view=home'), doorSeconds * 1000);
   /* Offline (WEB-DESIGN §7.3): a status line while the browser reports no network; what was
      opened before still opens from the service worker's copies. */
-  const paintOnline = () => { $('offline-note').hidden = navigator.onLine !== false; };
+  const paintOnline = () => { $('offline-note').hidden = !API.offlineLine(); };
   window.addEventListener('offline', paintOnline);
   window.addEventListener('online', () => { paintOnline(); if (document.querySelector('.state-problem')) route(); });
   paintOnline();

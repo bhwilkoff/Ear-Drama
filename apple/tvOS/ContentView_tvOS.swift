@@ -42,7 +42,13 @@ struct ContentView_tvOS: View {
     private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {
         NavigationStack(path: store.path(for: tab)) {
             root()
-                .safeAreaInset(edge: .top, spacing: 0) { NowPlayingEntry_tvOS() }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    // The offline line heads every tab's root (tvOS-DESIGN §7.3).
+                    VStack(spacing: 0) {
+                        OfflineLine()
+                        NowPlayingEntry_tvOS()
+                    }
+                }
                 .routeDestinations_tvOS()
         }
     }

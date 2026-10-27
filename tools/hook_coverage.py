@@ -54,7 +54,7 @@ CAPABILITIES = [
      HOOK_DOOR_SECONDS, "?door_seconds"),
     ("skip the walkthrough",   HOOK_SKIP_ONBOARD, android_extra(HOOK_SKIP_ONBOARD), HOOK_SKIP_ONBOARD, None),
     ("render the offline state", HOOK_FORCE_OFFLINE, android_extra(HOOK_FORCE_OFFLINE),
-     HOOK_FORCE_OFFLINE, None),
+     HOOK_FORCE_OFFLINE, "?offline"),
     ("one Dynamic Type size",  HOOK_TYPE_SIZE,  android_extra(HOOK_TYPE_SIZE), HOOK_TYPE_SIZE, None),
 ]
 

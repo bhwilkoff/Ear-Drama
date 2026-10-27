@@ -224,9 +224,13 @@ only here:
 - **§7.1 The four states** are iOS's (`docs/iOS-DESIGN.md` §7.1):
   skeleton rows, `ContentUnavailableView`, `CatalogUnavailableView`
   with Try Again, and no retry where retrying cannot help.
-- **§7.2 Offline** shows on Detail and the transport bar only when the
-  episode is not downloaded; the transcript window says "You are
-  offline." and retries when the network returns.
+- **§7.2 Offline** is iOS §7.2: `OfflineLine` ("You are offline.",
+  neutral) sits above the transport bar, or alone along the window's
+  bottom edge when nothing is loaded; the refusal (`OfflineNotice`)
+  shows on Detail and the transport bar only when the episode is not
+  downloaded, and a network failure is the player's line "You are
+  offline."; the transcript window says "You are offline." and retries
+  when the network returns. No haptic (§8).
 - **§7.3 VoiceOver and the keyboard.** Labels and values on every
   control; every command reachable from the menu bar, so the app is
   usable without the pointer.

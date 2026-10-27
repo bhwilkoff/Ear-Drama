@@ -597,7 +597,8 @@ web app follows today.
   "You are offline.", sits in the document flow while the browser
   reports no network. Whatever the person opened before still opens; a
   view that was never opened shows the neutral offline state, never the
-  error color.
+  error color. `API.isOffline()` is the one test of it; the `?offline=1`
+  door holds the state for a screenshot (it never blocks the network).
 - **§7.4 On a local server the worker runs only with `?sw=1`**, and is
   unregistered otherwise, so a cache-first shell never hides an edit.
 - **§7.5 Every control is labeled**, and the first screen is usable

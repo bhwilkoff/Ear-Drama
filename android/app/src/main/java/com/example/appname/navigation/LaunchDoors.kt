@@ -38,6 +38,8 @@ data class LaunchDoors(
     val startItem: String? = null,
     val mute: Boolean = false,
     val doorSeconds: Int? = null,
+    /** APP_FORCE_OFFLINE: render the offline state (fakes the state, never the network). */
+    val forceOffline: Boolean = false,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(startTab?.let(InboxRequest::Tab), startItem?.let(InboxRequest::Item))
@@ -47,6 +49,7 @@ data class LaunchDoors(
         const val EXTRA_START_ITEM = "appname_start_item"
         const val EXTRA_MUTE = "appname_mute"
         const val EXTRA_DOOR_SECONDS = "appname_door_seconds"
+        const val EXTRA_FORCE_OFFLINE = "appname_force_offline"
 
         /** [extras] is the intent's extras as a map; `am start` sends --es/--ez/--ei types. */
         fun from(extras: Map<String, Any?>, debug: Boolean): LaunchDoors {
@@ -56,6 +59,7 @@ data class LaunchDoors(
                 startItem = extras[EXTRA_START_ITEM]?.toString(),
                 mute = extras[EXTRA_MUTE].let { it == true || it == "1" || it == "true" },
                 doorSeconds = extras[EXTRA_DOOR_SECONDS].let { it as? Int ?: it?.toString()?.toIntOrNull() },
+                forceOffline = extras[EXTRA_FORCE_OFFLINE].let { it == true || it == "1" || it == "true" },
             )
         }
     }

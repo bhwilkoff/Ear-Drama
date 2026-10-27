@@ -358,6 +358,32 @@ test('every API.x called in js/*.js is exported', () => {
   assert(!('notAVerb' in API), 'control: the check can fail');
 });
 
+test('the offline line comes with no network and goes when it returns; ?offline=1 holds it (WEB-DESIGN §7.3)', () => {
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const setOnline = (v) => Object.defineProperty(globalThis, 'navigator', { value: { onLine: v }, configurable: true });
+  try {
+    setOnline(false);
+    assertEq(API.offlineLine(), 'You are offline.', 'offline shows the line');
+    assertEq(API.isOffline(), true);
+    setOnline(true);
+    assertEq(API.offlineLine(), null, 'back online, the line goes');
+    if (typeof require === 'function') {
+      const vm = require('node:vm');
+      const src = require('node:fs').readFileSync(__dirname + '/api.js', 'utf-8');
+      const door = (search) => {
+        const ctx = vm.createContext({ URL, URLSearchParams, AbortSignal, setTimeout, navigator: { onLine: true },
+          location: { protocol: 'http:', href: 'http://localhost/', search } });
+        vm.runInContext(src + ';globalThis.API = API;', ctx);
+        return ctx.API;
+      };
+      assertEq(door('?offline=1').offlineLine(), 'You are offline.', 'the door holds the line while the network is up');
+      assertEq(door('?view=home').offlineLine(), null, 'control: no door, no line');
+    }
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'navigator', had); else delete globalThis.navigator;
+  }
+});
+
 // --- RUNNER ----------------------------------------------------------
 
 async function run() {

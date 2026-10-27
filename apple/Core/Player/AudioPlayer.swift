@@ -174,10 +174,11 @@ final class AudioPlayer {
         itemStatusObservation = playerItem.observe(\.status, options: [.new]) { @Sendable [weak self] observed, _ in
             let failed = observed.status == .failed
             let message = observed.error?.localizedDescription
+            let problem = Connectivity.playerProblem(observed.error)
             Task { @MainActor in
                 guard failed else { return }
                 print("[AudioPlayer] item failed: \(message ?? "unknown")")
-                self?.errorMessage = "This recording would not play."
+                self?.errorMessage = problem
                 self?.isPlaying = false
             }
         }
