@@ -110,6 +110,11 @@ struct PlayerSheet_iOS: View {
                         .foregroundStyle(Color.semanticError)
                 }
                 if !catalog.isOnline && !player.isLocal { OfflineNotice() }
+                #if DEBUG
+                if let diag = player.diagLine {
+                    Text(diag).font(.caption2).monospaced().accessibilityIdentifier("PlaybackDiag")
+                }
+                #endif
                 if let next = player.upNext.first {
                     Text("Next: \(next.displayTitle)")
                         .font(TypeRamp.caption)

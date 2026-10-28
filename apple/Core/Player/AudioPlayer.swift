@@ -36,6 +36,8 @@ final class AudioPlayer {
     private(set) var elapsed: Double = 0
     private(set) var duration: Double?
     private(set) var errorMessage: String?
+    /// APP_PLAYBACK_DIAG only: the engine's state each tick, drawn on the player.
+    private(set) var diagLine: String?
     /// The current item plays from a downloaded file, not the network.
     private(set) var isLocal = false
     private(set) var upNext: [EpisodeRow] = []
@@ -169,12 +171,17 @@ final class AudioPlayer {
 
         let source = Self.source(episodeID: detail.episode.id, recording: recording, localFile: localFile)
         isLocal = source.isLocal
-        let playerItem = AVPlayerItem(url: source.url)
+        // Archive VBR MP3s often lack a Xing/VBRI table, so AVFoundation's quick
+        // estimate scales the first frame's bitrate: a 23-minute file read as an
+        // hour, and a seek past its real end stalled (iPhone 12, 2026-10-27).
+        let asset = AVURLAsset(url: source.url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        let playerItem = AVPlayerItem(asset: asset)
         playerItem.audioTimePitchAlgorithm = .timeDomain
         itemStatusObservation = playerItem.observe(\.status, options: [.new]) { @Sendable [weak self] observed, _ in
             let failed = observed.status == .failed
             let message = observed.error?.localizedDescription
-            let problem = Connectivity.playerProblem(observed.error)
+            var problem = Connectivity.playerProblem(observed.error)
+            if failed, Self.diagnoses { problem += " " + Self.diagnosis(observed) }
             Task { @MainActor in
                 guard failed else { return }
                 print("[AudioPlayer] item failed: \(message ?? "unknown")")
@@ -186,7 +193,7 @@ final class AudioPlayer {
         player.isMuted = isMuted
         player.volume = 1
         level(playerItem)
-        if let start = offset ?? history.resumePosition(for: detail.episode.id) {
+        if let start = offset ?? history.resumePosition(for: detail.episode.id, length: duration) {
             elapsed = start
             player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
         }
@@ -382,6 +389,7 @@ final class AudioPlayer {
         let seconds = player.currentTime().seconds
         if seconds.isFinite { elapsed = seconds }
         if let d = player.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
+        if Self.diagnoses { diagLine = diagnosisLine() }
 
         if sleep.mode != .off {
             clock = now
@@ -443,6 +451,46 @@ final class AudioPlayer {
         guard let current = item, elapsed > 0 else { return }
         lastSaved = Date()
         history.record(current.episode.id, position: elapsed, duration: duration)
+    }
+
+    /// APP_PLAYBACK_DIAG=1 (DEBUG only): a failed item's errors go on screen,
+    /// so a device screenshot carries what the console cannot.
+    nonisolated static let diagnoses: Bool = {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["APP_PLAYBACK_DIAG"] == "1"
+        #else
+        false
+        #endif
+    }()
+
+    private func diagnosisLine() -> String {
+        let status: String
+        switch player.timeControlStatus {
+        case .paused: status = "paused"
+        case .playing: status = "playing"
+        case .waitingToPlayAtSpecifiedRate: status = "waiting(\(player.reasonForWaitingToPlay?.rawValue ?? "-"))"
+        @unknown default: status = "?"
+        }
+        guard let item = player.currentItem else { return "diag \(status) no item" }
+        let ranges = item.loadedTimeRanges.map { r -> String in
+            let t = r.timeRangeValue
+            return "\(Int(t.start.seconds))+\(Int(t.duration.seconds))"
+        }.joined(separator: ",")
+        return "diag \(status) rate \(player.rate) item \(item.status.rawValue) keepUp \(item.isPlaybackLikelyToKeepUp) empty \(item.isPlaybackBufferEmpty) t \(Int(item.currentTime().seconds)) dur \(Int(item.duration.seconds.isFinite ? item.duration.seconds : -1)) loaded [\(ranges)]"
+    }
+
+    nonisolated static func diagnosis(_ item: AVPlayerItem) -> String {
+        var parts: [String] = []
+        var next = item.error as NSError?
+        while let e = next {
+            parts.append("\(e.domain) \(e.code)")
+            next = e.userInfo[NSUnderlyingErrorKey] as? NSError
+        }
+        if let event = item.errorLog()?.events.last {
+            parts.append("log \(event.errorDomain) \(event.errorStatusCode) \(event.errorComment ?? "") \(event.uri ?? "")")
+        }
+        parts.append("at \(Int(item.currentTime().seconds))s")
+        return "[" + parts.joined(separator: "; ") + "]"
     }
 
     /// What the player opens: the finished download of this recording when

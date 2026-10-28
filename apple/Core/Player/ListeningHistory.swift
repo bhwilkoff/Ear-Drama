@@ -48,8 +48,11 @@ final class ListeningHistory {
 
     /// The saved position, exactly (Decision 062: only an interruption
     /// rewinds); nil when there is nothing to resume.
-    func resumePosition(for id: String) -> Double? {
+    /// A place saved past the recording's known length (written while a VBR
+    /// file's length was misread, before 1.0.73) starts the episode over.
+    func resumePosition(for id: String, length: Double? = nil) -> Double? {
         guard let e = entries[id], !e.finished, e.position >= Self.startedThreshold else { return nil }
+        if let length, length > 0, e.position >= length - Self.finishedSlack { return nil }
         return e.position
     }
 
