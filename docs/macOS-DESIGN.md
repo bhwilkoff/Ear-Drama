@@ -298,7 +298,7 @@ the Mac target.
   queue and arc rule (the transport bar carries "Next story" on an arc's
   last part), the resume and "played" windows, the untitled fallback,
   uncounted facets, seasons as sections, the Detail series link as a
-  third push, no Following, and the two explaining empty
+  third push, and the two explaining empty
   states. The queue verbs (iOS §12) are here as the right-click menu on
   an episode row, the Detail button, Library's Queue section (drag to
   reorder), and the Controls menu's "Add to Queue" / "Remove from Queue"

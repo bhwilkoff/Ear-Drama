@@ -20,7 +20,7 @@ rules that hold on every platform stayed in `AGENTS.md`.
 ## Web app
 
 **Stack**: Vanilla HTML/JS. No framework, no build step. Custom
-CSS, mobile-first. <!-- FILL IN: API / auth / hosting choices -->.
+CSS, mobile-first. Catalog from the published data plane, one shared client (`js/api.js`), optional sign-in and sync through the Worker (Decisions 057, 063).
 GitHub Pages static hosting, branch `main`, root `/`.
 
 **Key directories**:

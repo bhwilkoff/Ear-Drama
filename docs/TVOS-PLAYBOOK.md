@@ -652,7 +652,7 @@ The template's DECISIONS.md already commits you to several of these sections. Fi
 - **Image source and poster sizes:** [FILL IN: your artwork host, its native poster size, your display size. Downsample in one pass per §7.2.]
 - **Living-room safety default:** [FILL IN: what is filtered by default on a shared screen (§1).]
 - **Category accents:** [FILL IN: your palette, if any (§5).]
-- **Top Shelf:** [FILL IN: style and deep link shape, e.g. `appname://item/{id}`.] Setup lives in `docs/runbooks/tvos-top-shelf-setup.md`.
+- **Top Shelf:** Sectioned, one "Continue listening" section of up to ten items, square art; Play and select open `eardrama://episode/{percent-encoded id}` (tvOS-DESIGN §9.3). The app writes `topshelf.json` into `group.app.eardrama`; the extension has no catalog or network. Inert until the App Group is enabled on the App ID. Setup lives in `docs/runbooks/tvos-top-shelf-setup.md`.
 
 ---
 
