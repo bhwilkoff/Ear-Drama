@@ -274,3 +274,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - The iPhone 12 was lent to the Archive Watch session for its XCUITest (its lease lapsed mid-run; it apologized), then returned.
 - XCUITest on the phone (local harness in a scratch worktree, under a devlease): Detail "Add to queue" to "In queue" on two episodes, Library's Queue section in added order, long-press Move down reorders, swipe Remove empties it and the section goes. Player "Next:" showed a serial's next part (Johnny Dollar Ep 4) ahead of the queue's head: correct by Decision 067; my assertion was wrong. Release 1.0.71 launches; crash logs unchanged (two, both 1.0.67 or older).
 - Shipped: App Store build for 1.0.71 (build 72).
+
+### Tick 91, 2026-10-27, merge: the iOS tap tier (1.0.72)
+- CI green; the 1.0.71 App Store build succeeded (run 40603303302).
+- Merged 4928443: `EarDramaUITests` (iOS only, own scheme): player verbs, queue add/reorder/remove, download/play-from-file/remove, a smoke test per section; each restores what it changes. `tools/ios_uitest.py` leases "iphone", exports frames, fails on a new crash log, verifies teardown. `IOS_ANCHOR_RX` (calibrated on real frames; Springboard is the negative control) so player-sheet runs no longer FAIL on correct frames.
+- Verified on main: `python3 tools/ios_uitest.py` 9/9 PASS in one run on the iPhone 12, no new crash log, left as found; frames read (download played from the file). macOS 173 tests; test_ios_anchor ok.
+- Lease naming: we and Archive Watch had leased the phone as "iphone12"; the bench name is "iphone" (memory saved, peer told).
