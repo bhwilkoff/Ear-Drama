@@ -639,7 +639,7 @@ struct SearchResultsList: View {
     var body: some View {
         Group {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                EmptyState("Search titles, series, and people", systemImage: "magnifyingglass")
+                EmptyState("Search titles, people, and spoken words", systemImage: "magnifyingglass")
             } else if let results, searchedFor == query {
                 let matchingPlays = Self.plays(plays.scripts, matching: query)
                 if results.isEmpty && matchingPlays.isEmpty {

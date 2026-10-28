@@ -640,7 +640,7 @@ private struct SearchScreen_tvOS: View {
         .overlay {
             if !query.isEmpty, results.isEmpty { EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass") }
         }
-        .searchable(text: $query, prompt: "Titles, series, people")
+        .searchable(text: $query, prompt: "Titles, people, spoken words")
         .onChange(of: store.pendingSearch, initial: true) { _, q in
             guard let q else { return }
             query = q
@@ -655,8 +655,6 @@ private struct SearchScreen_tvOS: View {
 }
 
 private struct LibraryScreen_tvOS: View {
-    /// The TV keeps no media files (tvOS-DESIGN: downloads are n/a), and says so.
-    static let noDownloads: LocalizedStringKey = "Downloads are on iPhone, iPad, and Mac."
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @Environment(ListeningQueue.self) private var queue
@@ -708,9 +706,6 @@ private struct LibraryScreen_tvOS: View {
                     Section {
                         AccountRow()
                         SiteLinkRows()
-                    } footer: {
-                        Text(Self.noDownloads)
-                            .foregroundStyle(Color.brandTextMuted)
                     }
                 }
             } else {

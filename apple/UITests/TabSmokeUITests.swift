@@ -14,6 +14,6 @@ final class TabSmokeUITests: DeviceTestCase {
     func testBrowse() { check("browse", "Kind|Genre|Decade") }
     func testStations() { check("stations", "Tonight in") }
     func testSurprise() { check("surprise", "An episode|An evening") }
-    func testSearch() { check("search", "Titles, series, people|Search titles") }
+    func testSearch() { check("search", "Titles, people, spoken words|Search titles") }
     func testLibrary() { check("library", "Nothing played yet|In progress|Queue|Following|History|Ear dramas|Downloads") }
 }

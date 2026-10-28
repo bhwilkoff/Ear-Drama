@@ -111,7 +111,7 @@ private struct SearchScreen_iOS: View {
     var body: some View {
         SearchResultsList(query: query)
             .navigationTitle("Search")
-            .searchable(text: $query, prompt: "Titles, series, people")
+            .searchable(text: $query, prompt: "Titles, people, spoken words")
             .onChange(of: store.pendingSearch, initial: true) { _, q in
                 guard let q else { return }
                 query = q

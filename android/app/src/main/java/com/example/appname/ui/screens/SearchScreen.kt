@@ -86,7 +86,7 @@ fun SearchScreen(
                     onSearch = { settled = it.trim() },
                     expanded = false,
                     onExpandedChange = {},
-                    placeholder = { Text("Titles, series, people") },
+                    placeholder = { Text("Titles, people, spoken words") },
                     leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                     trailingIcon = if (query.isEmpty()) null else {
                         {

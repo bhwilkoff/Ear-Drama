@@ -64,7 +64,7 @@ private struct SearchScreen_macOS: View {
     var body: some View {
         SearchResultsList(query: query)
             .navigationTitle("Search")
-            .searchable(text: $query, placement: .toolbar, prompt: "Titles, series, people")
+            .searchable(text: $query, placement: .toolbar, prompt: "Titles, people, spoken words")
             .searchFocused($fieldFocused)
             .onChange(of: store.wantsSearchFocus, initial: true) { _, wants in
                 guard wants else { return }

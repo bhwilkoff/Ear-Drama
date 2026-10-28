@@ -103,10 +103,10 @@ targets:
         # enabled on the App ID 2026-10-24; a profile without it fails the build.
         CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
         # The Apple TV app adds the App Group it shares with the Top Shelf
-        # extension; iOS and the Mac do not carry it. OFF until the owner enables
-        # App Groups (group.app.eardrama) on app.eardrama and app.eardrama.TopShelf
-        # (LOOP-PLAN Needs Ben): the App Store profiles cannot carry it before, and
-        # the tvOS export would fail. Without it the shelf shows the static image.
+        # extension; iOS and the Mac do not carry it. OFF until group.app.eardrama is
+        # registered in the developer portal and assigned to app.eardrama and
+        # app.eardrama.TopShelf (both IDs already have the App Groups capability;
+        # the App Store Connect API cannot register a group, 2026-10-28).
         # "CODE_SIGN_ENTITLEMENTS[sdk=appletv*]": apple/Resources/EarDrama-tvOS.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every

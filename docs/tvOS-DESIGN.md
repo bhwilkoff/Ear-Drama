@@ -62,10 +62,10 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   it fades, and once fired nothing starts until Play.
 - **The rights line** is the projection's words; unclaimed reads "No
   rights claim known. Removed on request."
-- **Downloads are n/a**: the TV has no durable storage for media.
-  Library's last line says so, in the muted color and never focused:
-  "Downloads are on iPhone, iPad, and Mac."
-  (the parity rule: a missing capability is a sentence on screen).
+- **Downloads are n/a**: the TV has no durable storage for media, and
+  Library says nothing about it (owner 2026-10-28: "No need for downloads
+  on tv"). A sentence on screen is for a capability a device lacks for now;
+  one it can never have is n/a and silent.
 
 ## §2 Information architecture
 
