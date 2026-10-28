@@ -202,7 +202,9 @@ The only shapes; a new one needs a new rule.
   typographic card, Decision 069), then the series, the title at
   page-title size, date and network; a
   progress bar with elapsed and remaining time; back 15 s, Play,
-  forward 30 s, speed, the sleep timer, and the transcript, in one
+  forward 30 s, speed, the sleep timer, the system's audio output
+  picker (`AVRoutePickerView`, `RoutePicker_tvOS`: the TV's own speakers,
+  a HomePod, or another AirPlay speaker), and the transcript, in one
   focus section. Play/Pause on the remote toggles from anywhere on the
   screen (`onPlayPauseCommand`). Menu dismisses it.
 - **§5.3 Seeking is by skip.** tvOS has no `Slider`, so the progress bar

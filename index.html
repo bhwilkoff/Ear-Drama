@@ -239,6 +239,10 @@
             <span class="together-label">Listen together</span></button>
           <span id="np-together-note" class="caption" hidden>Not available yet</span>
         </span>
+        <button type="button" class="btn btn-ghost np-remote" id="np-remote" hidden>
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline" data-kind="airplay"><path d="M3 4h18v12h-5l-1.5-2H19V6H5v8h4.5L8 16H3zm9 8 6 8H6z"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline" data-kind="cast" hidden><path d="M21 3H3a2 2 0 0 0-2 2v3h2V5h18v14h-7v2h7a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM1 18v3h3a3 3 0 0 0-3-3zm0-4v2a5 5 0 0 1 5 5h2a7 7 0 0 0-7-7zm0-4v2a9 9 0 0 1 9 9h2A11 11 0 0 0 1 10z"/></svg>
+          <span id="np-remote-label">AirPlay</span></button>
       </div>
       <p id="np-next" class="caption"></p>
       <button type="button" class="btn" id="np-story" hidden>
@@ -266,6 +270,7 @@
   <script src="js/sync.js"></script>
   <script src="js/account.js"></script>
   <script src="js/player.js"></script>
+  <script src="js/remote-playback.js"></script>
   <script src="js/plays-core.js"></script>
   <script src="js/plays-store.js"></script>
   <script src="js/plays-share.js"></script>
@@ -277,11 +282,9 @@
   <script src="js/together.js"></script>
   <script src="js/together-ui.js"></script>
   <script src="js/app.js"></script>
-  <!-- Additive smart-TV layer + Cast sender: both self-disable off-TV
-       (tv.js adds html.tv only on a TV runtime; cast-sender no-ops when the
-       Cast framework never loads). See docs/TV-PLATFORMS.md. -->
+  <!-- Additive smart-TV layer: self-disables off-TV (tv.js adds html.tv only
+       on a TV runtime). See docs/TV-PLATFORMS.md. -->
   <link rel="stylesheet" href="tv.css">
   <script src="tv.js"></script>
-  <script src="js/cast-sender.js"></script>
 </body>
 </html>

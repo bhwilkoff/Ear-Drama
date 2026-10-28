@@ -5,6 +5,8 @@ import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
 import androidx.annotation.OptIn
+import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.RemoteCastPlayer
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -143,15 +145,35 @@ class PlaybackEngine(
     private val _state = MutableStateFlow(NowPlaying())
     val state: StateFlow<NowPlaying> = _state
 
-    private var playerOrNull: ExoPlayer? = null
+    /** The session's player: Media3's CastPlayer over [exoOrNull] when Cast is offered (CastRoute), else that ExoPlayer. */
+    private var playerOrNull: Player? = null
+    private var exoOrNull: ExoPlayer? = null
 
     /** The catalog's length of each queued item by uri, for MP3s whose own header cannot say (see [Mp3Seeking]). */
     private val lengthsUs = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
-    val player: ExoPlayer
+    val player: Player
         get() = playerOrNull ?: buildPlayer().also { playerOrNull = it }
 
-    private fun buildPlayer(): ExoPlayer {
+    private fun buildPlayer(): Player {
+        val exo = buildExoPlayer().also { exoOrNull = it }
+        val outer: Player = if (CastRoute.offered) {
+            runCatching {
+                val remote = RemoteCastPlayer.Builder(context)
+                    .setMediaItemConverter(CastRoute.Items)
+                    .setSeekBackIncrementMs(SKIP_BACK_MS)
+                    .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
+                    .build()
+                CastPlayer.Builder(context).setLocalPlayer(exo).setRemotePlayer(remote).build()
+            }.getOrElse { exo }
+        } else {
+            exo
+        }
+        outer.addListener(listener)
+        return outer
+    }
+
+    private fun buildExoPlayer(): ExoPlayer {
         val dataSource = DefaultDataSource.Factory(context, OkHttpDataSource.Factory(api.okHttp))
         return ExoPlayer.Builder(context)
             .setMediaSourceFactory(
@@ -171,7 +193,6 @@ class PlaybackEngine(
             .setSeekForwardIncrementMs(SKIP_FORWARD_MS)
             .build()
             .also {
-                it.addListener(listener)
                 it.addAnalyticsListener(analytics)
                 leveler.attach(it.audioSessionId)
             }
@@ -379,22 +400,24 @@ class PlaybackEngine(
         card: Boolean = false,
     ): MediaItem {
         val source = downloads.playbackSource(row.id, url)
-        return mediaItem(row, source, face, card)
+        return mediaItem(row, source, face, card, url)
     }
 
     /**
      * A downloaded file's lock-screen picture is the typographic card, drawn on
      * the device, so it shows with no network (a portrait is a URL to fetch).
      */
-    private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean): MediaItem {
+    private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean, copyUrl: String): MediaItem {
         val uri = if (source.isLocal) Uri.fromFile(java.io.File(source.location)) else Uri.parse(source.location)
         row.lengthSeconds?.takeIf { it > 0 }?.let { lengthsUs[uri.toString()] = (it * 1_000_000).toLong() }
-        return mediaItem(row, uri, source.isLocal, face, card)
+        return mediaItem(row, uri, source.isLocal, face, card, copyUrl)
     }
 
-    private fun mediaItem(row: EpisodeRow, uri: Uri, isLocal: Boolean, face: Face?, card: Boolean): MediaItem = MediaItem.Builder()
+    private fun mediaItem(row: EpisodeRow, uri: Uri, isLocal: Boolean, face: Face?, card: Boolean, copyUrl: String): MediaItem = MediaItem.Builder()
         .setMediaId(row.id)
         .setUri(uri)
+        // A Cast receiver plays the catalog copy even when this phone plays the downloaded file (CastRoute.Items).
+        .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(Uri.parse(copyUrl)).build())
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(row.title ?: row.airDate ?: row.seriesName)
@@ -444,7 +467,7 @@ class PlaybackEngine(
     val sleepOptions: List<SleepMode> get() = sleep.options
 
     private fun syncPauseAtEnd() {
-        playerOrNull?.pauseAtEndOfMediaItems = sleep.pausesAtEndOfItem || !sleep.allowsAutoAdvance()
+        exoOrNull?.pauseAtEndOfMediaItems = sleep.pausesAtEndOfItem || !sleep.allowsAutoAdvance()
     }
 
     /** The recording reached its end: the sleep timer's, or a plain end. */
@@ -466,7 +489,8 @@ class PlaybackEngine(
     /** [factor] is the sleep fade's; leveling is the session's effect, not the volume. */
     private fun applyVolume(factor: Float) {
         lastFactor = factor
-        val p = playerOrNull ?: return
+        // The phone's own output only: on a Cast session the session's volume is the speaker's, which the person sets.
+        val p = exoOrNull ?: return
         p.volume = if (muted) 0f else factor
     }
 
@@ -502,7 +526,7 @@ class PlaybackEngine(
         scope.launch { user.save(id, position, duration) }
     }
 
-    private fun displayDurationMs(p: ExoPlayer, id: String?): Long {
+    private fun displayDurationMs(p: Player, id: String?): Long {
         val own = p.duration.takeIf { it != C.TIME_UNSET } ?: 0
         val catalog = episodes.firstOrNull { it.id == id }?.lengthSeconds?.let { (it * 1000).toLong() }
         return Mp3Seeking.displayMs(own, catalog)

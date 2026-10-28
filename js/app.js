@@ -1577,6 +1577,18 @@
     Player.setLeveling(on);
     announce(on ? 'Volume leveling on' : 'Volume leveling off');
   });
+  // Another speaker (WEB-DESIGN §5.10): the browser's own AirPlay or Cast picker, shown while a target is there.
+  {
+    const audio = $('audio');
+    RemoteOutput.watch(audio, window, (kind) => {
+      const b = $('np-remote');
+      b.hidden = !kind || onTV();
+      if (b.hidden) return;
+      $('np-remote-label').textContent = RemoteOutput.LABELS[kind];
+      b.querySelectorAll('svg[data-kind]').forEach((s) => { s.hidden = s.dataset.kind !== kind; });
+    });
+    $('np-remote').addEventListener('click', () => RemoteOutput.prompt(audio, window));
+  }
   $('sleep-menu').addEventListener('click', (e) => {
     const b = e.target.closest('[data-sleep]');
     if (!b) return;

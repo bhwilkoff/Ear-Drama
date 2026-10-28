@@ -53,6 +53,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.media3.cast.MediaRouteButton
+import androidx.media3.common.util.UnstableApi
+import com.example.appname.playback.CastRoute
 import com.example.appname.playback.NowPlaying
 import com.example.appname.playback.PlaybackEngine
 import com.example.appname.playback.SleepMode
@@ -62,6 +65,7 @@ import com.example.appname.data.Transcript
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.example.appname.ui.ClaimTvFocus
+import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.NowPlayingArt
 import com.example.appname.ui.LocalAppContainer
@@ -246,6 +250,7 @@ fun PlayerSheet(
                 }
                 LevelToggle(engine)
                 SleepMenu(now, engine)
+                CastButton()
             }
             if (now.upNext.isNotEmpty()) {
                 HorizontalDivider()
@@ -273,6 +278,19 @@ fun PlayerSheet(
             }
         }
     }
+}
+
+/**
+ * Another speaker or screen (CastRoute): Google's own Cast button, shown only
+ * while a receiver is on the network, never on a TV. On Android 13+ it opens
+ * the system output switcher; the button carries its own label.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun CastButton() {
+    if (LocalIsTelevision.current) return
+    val available by CastRoute.available.collectAsState()
+    if (available) MediaRouteButton(Modifier.size(48.dp))
 }
 
 /** Decision 067: volume leveled on the device as it plays, on by default; this turns it off and on. */

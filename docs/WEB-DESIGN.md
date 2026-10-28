@@ -513,6 +513,18 @@ web app follows today.
   disabled with "Not in this browser" (a refusal, §1.5). The sleep fade and
   the mute door ride the graph's output gain. No per-file measurement is
   read.
+- **§5.10 Another speaker is the browser's own picker** (the owner,
+  2026-10-28: "All apps should be able to make use of native sharing like
+  airplay or casting on their platforms."). One button in Now Playing's
+  options (`#np-remote`, `js/remote-playback.js`) opens Safari's AirPlay
+  picker (`webkitShowPlaybackTargetPicker`) or, in Chrome and Edge, the
+  Remote Playback API's Cast picker (`audio.remote.prompt()`). Its label
+  is the platform's word, "AirPlay" or "Cast"; it shows only while the
+  browser reports a target (`webkitplaybacktargetavailabilitychanged`,
+  `remote.watchAvailability`; a browser that cannot watch shows it and lets
+  the picker say what it finds), and never on a TV, which is the speaker.
+  The receiver fetches the element's own src, the archive.org copy. No
+  Cast SDK and no receiver of our own. Listen Together is a separate verb.
 
 ## §6 Look
 

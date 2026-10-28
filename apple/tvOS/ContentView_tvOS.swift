@@ -1,4 +1,5 @@
 #if os(tvOS)
+import AVKit
 import SwiftUI
 
 // The ten-foot app (tvos-platform-patterns, ten-foot-detail-design): a
@@ -767,6 +768,8 @@ private struct NowPlaying_tvOS: View {
                 SleepButton()
                 LevelToggle()
                 ListenTogetherButton()
+                RoutePicker_tvOS()
+                    .frame(width: 80, height: 80)
                 NextStoryButton()
                 if player.item?.episode.transcriptURL != nil {
                     Button {
@@ -795,5 +798,18 @@ private struct NowPlaying_tvOS: View {
             }
         }
     }
+}
+
+/// The system's audio output picker (AVKit): the Apple TV's own speakers, a
+/// HomePod, or another AirPlay speaker, never a custom device list.
+private struct RoutePicker_tvOS: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let view = AVRoutePickerView()
+        view.routePickerButtonStyle = .system
+        view.prioritizesVideoDevices = false
+        return view
+    }
+
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }
 #endif

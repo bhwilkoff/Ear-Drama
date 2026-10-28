@@ -8,6 +8,7 @@ import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
+import com.example.appname.playback.CastRoute
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,6 +61,8 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory, Configur
 
     override fun onCreate() {
         super.onCreate()
+        // Before the engine builds its player, which wraps itself in Cast when Cast is offered.
+        CastRoute.initialize(this)
         container = AppContainer(this, appScope)
         appScope.launch { container.downloads.reconnect() }
         appScope.launch {
