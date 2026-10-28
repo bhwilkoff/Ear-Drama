@@ -801,7 +801,7 @@ struct LibraryScreen: View {
                             }
                         }
                     }
-                    if !following.isEmpty {
+                    if !following.isEmpty && !Self.emptied {
                         Section("Following") {
                             ForEach(following) { row in
                                 NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }

@@ -1,6 +1,20 @@
 import XCTest
 
 final class FollowUITests: DeviceTestCase {
+    /// Home's Following section sits under up to ten Continue rows, and a List only
+    /// exposes the rows on screen: swipe until it appears (seen 2026-10-28).
+    @discardableResult
+    private func scrollTo(_ el: XCUIElement, in app: XCUIApplication, swipes: Int = 10) -> Bool {
+        for _ in 0..<swipes where !(el.exists && el.isHittable) { app.swipeUp() }
+        return el.exists
+    }
+
+    /// The series row under Following, not an episode of it in Continue: a series
+    /// row's label starts with the series name, an episode row's with its date.
+    private func seriesRow(_ app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", Fixture.seriesName)).firstMatch
+    }
+
     func testFollowShowsOnHomeThenUnfollow() throws {
         let app = launch(["APP_START_ITEM": Fixture.series, "APP_DOOR_SECONDS": "300"])
         let follow = app.buttons["Follow"]
@@ -13,10 +27,10 @@ final class FollowUITests: DeviceTestCase {
         app.terminate()
 
         let home = launch(["APP_START_TAB": "home", "APP_DOOR_SECONDS": "300"])
-        XCTAssertTrue(home.staticTexts["Following"].waitForExistence(timeout: 30), "Following on Home")
-        let row = home.descendants(matching: .any)
-            .matching(NSPredicate(format: "label CONTAINS %@", Fixture.seriesName)).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "the followed series on Home")
+        XCTAssertTrue(home.staticTexts["Continue listening"].waitForExistence(timeout: 30), "Home loaded")
+        XCTAssertTrue(scrollTo(home.staticTexts["Following"], in: home), "Following on Home")
+        let row = seriesRow(home)
+        XCTAssertTrue(scrollTo(row, in: home, swipes: 3), "the followed series under Following")
         shot(home, "02-home-following")
         row.tap()
 
@@ -28,9 +42,8 @@ final class FollowUITests: DeviceTestCase {
         home.terminate()
 
         let after = launch(["APP_START_TAB": "home", "APP_DOOR_SECONDS": "300"])
-        XCTAssertTrue(after.staticTexts["Continue listening"].waitForExistence(timeout: 30)
-                      || after.cells.firstMatch.waitForExistence(timeout: 30), "Home loaded")
-        XCTAssertFalse(after.staticTexts["Following"].exists, "Following row gone")
+        XCTAssertTrue(after.staticTexts["Continue listening"].waitForExistence(timeout: 30), "Home loaded")
+        XCTAssertFalse(scrollTo(after.staticTexts["Following"], in: after), "Following section gone")
         shot(after, "03-unfollowed")
     }
 }

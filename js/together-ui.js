@@ -122,11 +122,11 @@ const TogetherUI = (() => {
     if (!box || !session) return;
     rowBox = box;
     const i = session.info();
-    box.replaceChildren(
+    box.replaceChildren(...[
       el('button', { type: 'button', class: 'btn btn-ghost account-open', disabled: !i.available, onclick: () => open() },
         svg(GROUP), i.inRoom ? `Room ${spaced(i.code)}` : 'Join a room'),
       !i.available ? el('span', { class: 'caption' }, 'Not available yet')
-        : i.inRoom ? el('span', { class: 'caption' }, listening(i.members)) : null);
+        : i.inRoom ? el('span', { class: 'caption' }, listening(i.members)) : null].filter(Boolean));
   }
 
   /** Now Playing's button. */

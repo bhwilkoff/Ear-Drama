@@ -76,6 +76,21 @@ jobs:
           test -s built/web/manifest.json
           echo "go=yes" >> "$GITHUB_OUTPUT"
 
+      # Found 2026-10-28: no workflow ran the web tests, so a red one never
+      # blocked a deploy. A red test blocks this one (as in catalog-publish).
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.go == 'yes'
+        with:
+          node-version: 24
+
+      - name: Every web test (a red test blocks deploy)
+        if: steps.ready.outputs.go == 'yes'
+        run: |
+          set -euo pipefail
+          bash tools/test_web.sh
+          python3 tools/test_js_null_children.py
+          python3 tools/test_us_english.py
+
       - name: Assemble the site
         if: steps.ready.outputs.go == 'yes'
         run: bash tools/assemble_site.sh built/web _site
