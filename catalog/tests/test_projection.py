@@ -231,7 +231,13 @@ with tempfile.TemporaryDirectory() as tmp:
           ["loudness comes as a pair", "no implausible loudness is published"])
 
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
-if os.path.exists(real):
+def _has_sponsor_column(path):
+    with sqlite3.connect(path) as con:
+        return "sponsor" in {r[1] for r in con.execute("PRAGMA table_info(episodes)")}
+
+if os.path.exists(real) and not os.environ.get("PROJECTION") and not _has_sponsor_column(real):
+    print("  SKIP  real artifact: the local build predates episodes.sponsor; rebuild or name it with PROJECTION")
+elif os.path.exists(real):
     check("contract holds on the real artifact", violations(real), {})
 elif os.environ.get("PROJECTION"):
     check("the projection named by PROJECTION exists", False, True)   # asked for, so never a skip

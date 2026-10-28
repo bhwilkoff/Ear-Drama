@@ -293,3 +293,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Tick 94, 2026-10-27, merge: the web and headerless VBR (1.0.75)
 - Merged 0e3018d. Measured in headless Chrome (real timers): Gang Busters `duration` 1413.5 s against the catalog's 1421.6 (0.6%), X Minus One exact; seeks to 50% and 80% advance 5.00 s in 5 s, no error or stall. So the web needed only the resume rule: a saved place at or past 95% of the catalog length starts over (player.test.js, seen red twice). Web 0 FAIL on main. Not measured: Safari and iOS web.
+
+### Tick 95, 2026-10-27, merge: the sponsor, computed once (1.0.77)
+- Owner, after two idle ticks: "Wait, why are we looping with no new content." Loop stopped; memory saved; then "All that don't need me": transcript and date search (running), sponsors.
+- Merged 138471a: `catalog/tools/sponsors.py` picks the OTRRpedia dated run covering an episode's air date (an open run lasts until the series' next run; Sustained, Multi, Syndicated never published; none when uncovered); `episodes.sponsor` in the projection and `sponsor` in the web detail shard. Apple and Android already drew the column when present. 14,265 of 121,907 episodes get one. Main-thread fix: test_projection's real-artifact check skips a local build that predates the column (strict under PROJECTION). Verified on main: catalog 27/27, macOS 176, web 0 FAIL, Android unit tests. Not verified: any client showing it from a published catalog (next publish); none of the clean-only web episodes has a run.
