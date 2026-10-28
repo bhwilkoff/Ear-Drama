@@ -41,15 +41,18 @@
      for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-10-23, 8:35 AM MT, tick 68)**: the 1.0 loop runs from
-  `LOOP-PLAN.md` (a 5-minute cooldown; each tick starts with the GitHub Actions
-  check). Built on main at 1.0.35: listening (M2 to M4); Tonight in 19xx in CI
-  and on Radio everywhere; plays phase 1 on iPhone, iPad, Mac, Android, and the
-  web (M7); sign-in and sync on all five plus the Worker (M5, nothing deployed);
-  Listen Together rooms on the Worker (M6, Decision 065); the On Air palette
-  (Decision 064) on the web and Apple; the stubs (M9). None of it is verified
-  until you play it. Running: Android (On Air + rooms), web rooms, SharePlay,
-  the web harness fix. Rulings: Decisions 056-065, catalog 004-008.
+- **Status (2026-10-27, 8:40 PM MT, tick 94)**: the loop runs from
+  `LOOP-PLAN.md` (wakes on results, 30-minute fallback; each tick starts with
+  the GitHub Actions check). Main is at 1.0.76. Today: the crash on play fixed
+  (1.0.68: Now Playing artwork ran a main-actor closure on MediaPlayer's queue);
+  headerless VBR MP3s play and seek at their real length on Apple (1.0.73) and
+  Android (1.0.74, Pixel-checked), the web unaffected; offline and error states
+  everywhere; queue verbs on Apple and Android; Credits, Privacy, Take-down in
+  the apps. The iPhone 12 runs a committed tap tier, `python3
+  tools/ios_uitest.py` (16 tests, lease "iphone"), green in one run on 1.0.73.
+  TestFlight: 1.0.68, 1.0.70, 1.0.71 submitted; 1.0.73 building. Not verified
+  anywhere: anything heard (sleep fade, leveling, a seek landing on its scene).
+  Log: `AUTONOMOUS_PROGRESS.md` ticks 86-94.
 - **Catalog now** (rebuilt on main, tick 22-23): 155,608 episodes in 15,695
   series; served 108,005 (25.7 MB compressed); clean 7,716 (LibriVox projects
   still being recorded are not served). Research database and caches: the
