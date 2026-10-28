@@ -110,6 +110,11 @@ final class CatalogStore {
         await run { ($0.genres(), $0.networks(), $0.decades()) } ?? ([], [], [])
     }
 
+    func series(_ keys: [String]) async -> [SeriesRow] {
+        guard !keys.isEmpty else { return [] }
+        return await run { $0.series(keys: keys) } ?? []
+    }
+
     func seriesPage(_ key: String) async -> SeriesPage? {
         await run { $0.seriesPage(key: key) } ?? nil
     }

@@ -167,7 +167,7 @@ fun AppRoot(
                         onBack = back,
                         entryProvider = entryProvider {
                             entry<Route.Listen> {
-                                ListenScreen(onOpenEpisode = openEpisode, onSurprise = { stack.navigateTo(Route.Surprise) })
+                                ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) })
                             }
                             entry<Route.SeriesBrowse> {
                                 SeriesBrowseScreen(onOpenSeries = openSeries, onOpenScript = openScript)

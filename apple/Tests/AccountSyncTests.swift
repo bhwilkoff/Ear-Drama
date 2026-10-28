@@ -258,7 +258,7 @@ struct AccountSyncTests {
         follows.setFollowing("suspense", true, now: Date(millis: 5000))
         follows.apply([FollowRow(seriesId: "suspense", following: false, updatedAt: 4000),
                        FollowRow(seriesId: "lux", following: true, updatedAt: 1)])
-        #expect(follows.followedKeys == ["lux", "suspense"])
+        #expect(follows.followedKeys == ["suspense", "lux"])   // newest follow first
         follows.apply([FollowRow(seriesId: "suspense", following: false, updatedAt: 6000)])
         #expect(follows.followedKeys == ["lux"])
 

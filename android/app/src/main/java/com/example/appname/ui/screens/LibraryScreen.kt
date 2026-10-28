@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.Progress
 import com.example.appname.data.SeriesRow
+import com.example.appname.data.resolveFollowing
 import com.example.appname.ui.ListenTogetherRow
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.plays.PlaysShare
@@ -91,7 +92,7 @@ fun LibraryScreen(
             }.distinctBy { it.first.id },
             finished = db.episodes(container.user.finished().map { it.episodeId }).distinctBy { it.id },
             // A followed series this catalog does not serve is kept for sync and not listed.
-            following = container.user.followed().mapNotNull { db.series(it) },
+            following = resolveFollowing(container.user.followed()) { db.series(it) },
         )
     }
     val downloadRecords by container.downloads.records.collectAsState()

@@ -40,8 +40,8 @@ extension ListeningHistory {
 }
 
 /// Followed series, with an unfollow kept as a marker so it reaches the other
-/// devices. Apple has no Follow control yet (iOS-DESIGN §12); a follow made on
-/// the web or Android lands here and is kept.
+/// devices. The series page's Follow button writes it (iOS-DESIGN §4.3); a
+/// follow made on the web or Android lands here too.
 @Observable
 final class FollowedSeries {
     nonisolated struct State: Codable, Hashable, Sendable {
@@ -62,7 +62,12 @@ final class FollowedSeries {
         pending = Set(defaults.stringArray(forKey: Self.pendingKey) ?? [])
     }
 
-    var followedKeys: [String] { states.filter(\.value.following).map(\.key).sorted() }
+    /// Newest follow first, as the web lists them; a tie breaks by key.
+    var followedKeys: [String] {
+        states.filter(\.value.following)
+            .sorted { $0.value.updatedAt != $1.value.updatedAt ? $0.value.updatedAt > $1.value.updatedAt : $0.key < $1.key }
+            .map(\.key)
+    }
 
     func isFollowing(_ key: String) -> Bool { states[key]?.following ?? false }
 
@@ -70,6 +75,14 @@ final class FollowedSeries {
         states[key] = State(following: following, updatedAt: now)
         pending.insert(key)
         save()
+    }
+
+    /// Follow or unfollow; returns whether the series is now followed.
+    @discardableResult
+    func toggle(_ key: String, now: Date = Date()) -> Bool {
+        let on = !isFollowing(key)
+        setFollowing(key, on, now: now)
+        return on
     }
 
     func syncRows(all: Bool = false) -> [FollowRow] {

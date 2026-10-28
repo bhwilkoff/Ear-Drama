@@ -60,8 +60,10 @@ struct ListenScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @Environment(AppStore.self) private var store
+    @Environment(FollowedSeries.self) private var follows
     @State private var shelves: [Shelf]?
     @State private var continuing: [EpisodeRow] = []
+    @State private var following: [SeriesRow] = []
 
     var body: some View {
         List {
@@ -78,6 +80,13 @@ struct ListenScreen: View {
                         }
                     }
                 }
+                if !following.isEmpty {
+                    Section("Following") {
+                        ForEach(following) { row in
+                            NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                        }
+                    }
+                }
                 ForEach(shelves) { shelf in
                     Section(shelf.rule.title) {
                         ForEach(shelf.episodes) { episode in
@@ -88,7 +97,7 @@ struct ListenScreen: View {
                         }
                     }
                 }
-                if shelves.isEmpty && continuing.isEmpty {
+                if shelves.isEmpty && continuing.isEmpty && following.isEmpty {
                     ContentUnavailableView("Nothing to list yet", systemImage: "radio")
                 }
             } else {
@@ -110,6 +119,9 @@ struct ListenScreen: View {
         }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
+        }
+        .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
+            following = await catalog.series(follows.followedKeys)
         }
     }
 }
@@ -285,9 +297,25 @@ private struct TopBar<Bar: View>: ViewModifier {
 
 // MARK: - Series page
 
+/// The web's Follow / Following toggle (iOS-DESIGN §4.3). Its state is the
+/// store the account sync carries; the screen plays the selection haptic.
+struct FollowButton: View {
+    let key: String
+    @Environment(FollowedSeries.self) private var follows
+
+    var body: some View {
+        let on = follows.isFollowing(key)
+        Button { follows.toggle(key) } label: {
+            Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
+        }
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
 struct SeriesScreen: View {
     let key: String
     @Environment(CatalogStore.self) private var catalog
+    @Environment(FollowedSeries.self) private var follows
     @State private var page: SeriesPage??
 
     var body: some View {
@@ -321,7 +349,13 @@ struct SeriesScreen: View {
                     }
                 }
                 .navigationTitle(page.series.name)
-                .toolbar { SeriesDownloadMenu(page: page) }
+                .toolbar {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        FollowButton(key: key)
+                        SeriesDownloadMenu(page: page)
+                    }
+                }
+                .sensoryFeedback(Haptic.selection.feedback, trigger: follows.isFollowing(key))
             }
         }
         #if os(iOS)
@@ -717,14 +751,16 @@ struct LibraryScreen: View {
     @Environment(SharedPlays.self) private var shared
     @Environment(AccountStore.self) private var account
     @Environment(AppStore.self) private var app
+    @Environment(FollowedSeries.self) private var follows
     @State private var inProgress: [EpisodeRow]?
     @State private var played: [EpisodeRow] = []
     @State private var queued: [EpisodeRow] = []
+    @State private var following: [SeriesRow] = []
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && played.isEmpty && queue.items.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty
+                if inProgress.isEmpty && played.isEmpty && queue.items.isEmpty && following.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty
                     && app.pendingInvite == nil && !account.isSignedIn {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
@@ -767,6 +803,13 @@ struct LibraryScreen: View {
                                 }
                             }
                         }
+                        if !following.isEmpty {
+                            Section("Following") {
+                                ForEach(following) { row in
+                                    NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                                }
+                            }
+                        }
                         DownloadsSection()
                         EarDramasSection()
                         if !played.isEmpty {
@@ -802,6 +845,9 @@ struct LibraryScreen: View {
             queued = await catalog.episodes(queue.items)
             inProgress = await catalog.episodes(ids)
             played = await catalog.episodes(Array(playedIDs))
+        }
+        .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
+            following = await catalog.series(follows.followedKeys)
         }
     }
 

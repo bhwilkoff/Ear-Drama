@@ -121,7 +121,10 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                 item(key = "follow") {
                     // §4.3: the web's Follow and Following; the store is the one sync carries (§2.3).
                     val on = (following as? Loadable.Ready)?.value == true
-                    val toggle: () -> Unit = { scope.launch { container.user.setFollowing(key, !on) } }
+                    val toggle: () -> Unit = {
+                        haptics(Haptic.Selection)
+                        scope.launch { container.user.setFollowing(key, !on) }
+                    }
                     val modifier = Modifier.padding(horizontal = Spacing.S4.dp).tvFocusMark()
                     if (on) {
                         FilledTonalButton(onClick = toggle, modifier = modifier) {
