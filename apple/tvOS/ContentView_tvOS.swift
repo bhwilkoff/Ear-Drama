@@ -614,6 +614,7 @@ private struct LibraryScreen_tvOS: View {
                         }
                         Section {
                             AccountRow()
+                            SiteLinkRows()
                         } footer: {
                             Text(Self.noDownloads)
                                 .foregroundStyle(Color.brandTextMuted)

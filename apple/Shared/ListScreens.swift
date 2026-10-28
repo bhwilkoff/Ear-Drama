@@ -710,7 +710,10 @@ struct LibraryScreen: View {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
                     } actions: {
-                        AccountRow().fixedSize()
+                        VStack(spacing: 12) {
+                            AccountRow().fixedSize()
+                            SiteLinkInline()
+                        }
                     }
                 } else {
                     List {
@@ -759,6 +762,9 @@ struct LibraryScreen: View {
                             }
                         }
                         Section { AccountRow() }
+                        #if os(iOS)
+                        Section { SiteLinkRows() }
+                        #endif
                     }
                 }
             } else {

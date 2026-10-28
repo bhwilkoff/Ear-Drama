@@ -7,6 +7,11 @@ package com.example.appname.navigation
  */
 object SiteLinks {
     const val ROOT = "https://eardrama.org/"
+    const val CREDITS = ROOT + "credits/"
+    const val PRIVACY = ROOT + "privacy/"
+    const val TAKEDOWN = ROOT + "takedown/"
+
+    val PAGES = listOf("Credits" to CREDITS, "Privacy" to PRIVACY, "Take-down requests" to TAKEDOWN)
 
     fun episode(id: String): String = ROOT + "episode/" + component(id)
 

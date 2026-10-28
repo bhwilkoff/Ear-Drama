@@ -31,6 +31,8 @@ import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.SectionHeader
+import com.example.appname.ui.SiteLinkRows
+import com.example.appname.ui.siteLinksItem
 import com.example.appname.ui.downloadsSection
 import com.example.appname.ui.queueSection
 import com.example.appname.ui.formatClock
@@ -101,6 +103,7 @@ fun LibraryScreen(
                 Column(Modifier.padding(padding)) {
                     AccountRow()
                     ListenTogetherRow(onListenTogether)
+                    SiteLinkRows()
                     EmptyMessage("Nothing played yet.")
                 }
                 return@LoadableContent
@@ -148,6 +151,7 @@ fun LibraryScreen(
                     }
                 }
                 earDramasSection(dramaRows, invitation, withClasses, onOpenProduction)
+                siteLinksItem()
             }
         }
     }
