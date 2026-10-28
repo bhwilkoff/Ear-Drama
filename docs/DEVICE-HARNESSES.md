@@ -378,6 +378,37 @@ lessons from Archive Watch's iPhone audit:
 - Judge by effect, never by existence.
 - A Mac keyboard and trackpad attached to the iPad can drive input tests.
 
+**Ear Drama's committed tap tier** is `apple/UITests/` (target and scheme
+`EarDramaUITests` in `project.yml`, iOS only, so the macOS `EarDrama` test
+action and CI never build it; run `xcodegen generate` first). It holds the
+player verbs (skip, speed, seek, pause/play, sleep timer, leveling, close),
+queue add/reorder/remove, a download-play-remove round trip, and one smoke
+test per section that asserts text only that screen draws. Every launch is
+muted; tests put back what they change (queue emptied, download removed).
+
+```bash
+python3 tools/ios_uitest.py --catalog-seed <path/to/ear-drama.sqlite>
+python3 tools/ios_uitest.py --only QueueUITests/testAddReorderRemove
+```
+
+`tools/ios_uitest.py` takes the `iphone` lease (renewed while it runs), runs
+`xcodebuild test -scheme EarDramaUITests` on the device with
+`-resultBundlePath`, prints PASS/FAIL per test from the result bundle,
+exports every attached screenshot to `build/qa/ios-uitest-<date>/attachments/`,
+terminates the app and has the device confirm it, and diffs the device's
+`systemCrashLogs` for `EarDrama-*.ips` before and after: a new crash log is
+a FAIL whatever the tests said. Team id comes from `ASC_TEAM_ID`. The tests
+open items from the live catalog (the app fetches it on first launch), not
+the clean-only seed; a fixture missing from the catalog fails with the
+verb it could not find.
+
+`ios_run.py`'s anchor (`IOS_ANCHOR_RX` in `tools/app_config.py`) accepts the
+tab bar (Browse, Stations and Library together) OR the full-screen player's
+chrome ("Sleep" plus a "-14:57" remaining time), so a player-sheet frame
+still counts as the app owning the glass. A real Springboard frame draws
+"Home" and "Search" and must fail; `tools/test_ios_anchor.py` holds the
+OCR text of real frames, Springboard as the negative control.
+
 ### The simulator QA sweep
 
 `tools/qa-sweep.sh` is a reference implementation from a sibling trivia

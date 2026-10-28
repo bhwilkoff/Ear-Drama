@@ -175,6 +175,14 @@ MIN_OCR_LINES = 4              # fewer than this = the frame is unreadable
 # name. Getting this wrong makes every scenario fail with "wrong app/screen".
 APP_ANCHOR_RX = r"Home|Browse|Stations|Library"
 
+# iOS only (tools/ios_run.py), calibrated on real iPhone 12 frames 2026-10-27.
+# Springboard drew "Home" (a folder name) and "Search", so one tab word proves
+# nothing there: the tab bar counts only with Browse, Stations and Library together.
+# The full-screen player sheet has no tab bar; it draws "Sleep" and a "-14:57" time
+# remaining, which Springboard does not.
+IOS_ANCHOR_RX = (r"^(?=.*\bBrowse\b)(?=.*\bStations\b)(?=.*\bLibrary\b)"
+                 r"|^(?=.*\bSleep\b)(?=.*-\d+:\d\d)")
+
 # Text that means the app is broken, whatever else is on screen.
 FORBIDDEN = (r"No results|Couldn.t load|Something went wrong|"
              r"failed to|\berror\b|couldn.t be")

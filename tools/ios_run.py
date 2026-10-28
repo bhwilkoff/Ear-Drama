@@ -46,7 +46,7 @@ SHOT_EVERY = 3.0
 BASE_ENV = {HOOK_SKIP_ONBOARD: "1", **DOOR_DEFAULTS}
 
 # Chrome that proves OUR app owns the glass rather than Springboard.
-APP_ANCHOR_RX = APP_ANCHOR_RX  # see tools/app_config.py
+APP_ANCHOR_RX = IOS_ANCHOR_RX  # see tools/app_config.py
 
 # expect_any regexes are calibrated against real captures on your own device,
 # never guessed — an assertion written from imagination fails on correct pixels
