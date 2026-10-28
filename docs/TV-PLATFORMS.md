@@ -123,8 +123,9 @@ Two "free reach" routes that are **not app stores**:
   burden back.
 - **Content rights must stay enforced in the data pipeline.** A reviewer
   spot-checking a problematic title on the home screen is a rejection and
-  removal risk on every platform, exactly as on Apple. [FILL IN: the app's
-  content-rights rule, if it serves third-party content.]
+  removal risk on every platform, exactly as on Apple. Ear Drama's rule (Decision 055,
+  `catalog/DECISIONS.md`): unclaimed recordings are kept and removed on request, never
+  called public domain; no paid license; checked by `catalog/tests/test_audio_rights.py`.
 - **Physical test hardware is required or strongly expected** on every family:
   a Fire TV Stick (about $30), one Samsung and one LG TV in Developer Mode, a
   Roku device ($30 to $100). Emulators and simulators exist but do not satisfy
