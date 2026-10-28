@@ -539,13 +539,30 @@ private struct SearchScreen_tvOS: View {
                     }
                 }
             }
+            if let aired = results.aired, !aired.episodes.isEmpty {
+                Section(aired.title) {
+                    ForEach(aired.episodes) { episode in
+                        NavigationLink(value: Route.episode(episode.id)) {
+                            EpisodeRowLabel(episode: episode, showSeries: true)
+                        }
+                    }
+                }
+            }
             if !results.episodes.isEmpty {
                 Section("Episodes") {
                     ForEach(results.episodes) { episode in
                         NavigationLink(value: Route.episode(episode.id)) {
-                            EpisodeRowLabel(episode: episode, showSeries: true,
-                                            note: results.transcriptOnly.contains(episode.id)
-                                                ? Transcript.searchNote : nil)
+                            EpisodeRowLabel(episode: episode, showSeries: true)
+                        }
+                    }
+                }
+            }
+            if !results.transcript.isEmpty {
+                Section(Transcript.label) {
+                    let words = Transcript.searchWords(query)
+                    ForEach(results.transcript) { episode in
+                        NavigationLink(value: Route.episode(episode.id)) {
+                            TranscriptHitLabel(episode: episode, words: words)
                         }
                     }
                 }

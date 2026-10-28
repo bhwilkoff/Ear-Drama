@@ -67,8 +67,9 @@ enum Fixture {
         ("suspense|1942-10-20", "p2", "writer", nil),
     ]
 
-    /// Automatic transcripts (contract §3.4): indexed whether or not they pass
-    /// the gate. The second one's words never appear in any title or name.
+    /// Automatic transcripts (contract §3.4). The second failed the gate: the
+    /// fixture indexes it as an older catalog did, and Search never finds it.
+    /// Its words never appear in any title or name.
     static let transcripts = [
         "suspense|1942-10-20": "The hitch-hiker stood by the road.\nHe waved at the lighthouse keeper.",
         "suspense|1943-05-25": "Operator, I want the police.\n\nA zeppelin passed over the city.",
@@ -411,26 +412,74 @@ struct CatalogQueryTests {
         #expect(older.scriptedSeries().isEmpty)
     }
 
-    /// §3.4: transcript words find an episode, and the result says so only
-    /// when nothing else in the row matched.
-    @Test func searchSaysWhenOnlyTheTranscriptMatched() throws {
+    /// §3.4, Decision 058: what is said in a shown transcript is its own
+    /// section, and a title, series, or name match stays in Episodes.
+    @Test func searchFindsWhatIsSaidInAShownTranscript() throws {
         let db = try Fixture.open()
         let keeper = db.search("lighthouse")
-        #expect(keeper.episodes.map(\.id) == ["suspense|1942-10-20"])
-        #expect(keeper.transcriptOnly == ["suspense|1942-10-20"])
-        // A gate-failed transcript is still searchable.
-        #expect(db.search("zeppelin").episodes.map(\.id) == ["suspense|1943-05-25"])
-        #expect(db.search("zeppelin").transcriptOnly == ["suspense|1943-05-25"])
-        // Control: "hitch" is in the title AND the transcript, so it is not flagged.
+        #expect(keeper.episodes.isEmpty)
+        #expect(keeper.transcript.map(\.id) == ["suspense|1942-10-20"])
+        #expect(keeper.transcript.first?.transcriptURL?.absoluteString == Fixture.transcriptURL)
+        // Control: a transcript that failed the gate is never searched, even
+        // where an older catalog indexed it.
+        #expect(db.search("zeppelin").transcript.isEmpty)
+        #expect(db.search("zeppelin").episodes.isEmpty)
+        // Control: "hitch" is in the title and the transcript: Episodes only, never twice.
         let title = db.search("hitch")
         #expect(title.episodes.map(\.id) == ["suspense|1942-10-20"])
-        #expect(title.transcriptOnly.isEmpty)
-        // A credited name is not a transcript match either.
-        #expect(db.search("moorehead").transcriptOnly.isEmpty)
-        // One word in the title, one only spoken: the transcript was needed.
-        #expect(db.search("hitch keeper").transcriptOnly == ["suspense|1942-10-20"])
-        // Series are matched by name, never by words spoken in their episodes.
+        #expect(title.transcript.isEmpty)
+        #expect(db.search("moorehead").transcript.isEmpty)
+        // Every word must be said; one in the title and one spoken is a transcript match.
+        #expect(db.search("hitch keeper").transcript.map(\.id) == ["suspense|1942-10-20"])
+        #expect(db.search("keeper police").transcript.isEmpty)
+        // A word under three letters is never searched in a transcript.
+        #expect(db.search("by").transcript.isEmpty)
         #expect(db.search("lighthouse").series.isEmpty)
+        #expect(!keeper.isEmpty)
+    }
+
+    /// A date the query names lists what aired then, oldest first, narrowed
+    /// by the other words (catalog/tests/golden/search_text.json).
+    @Test func searchFindsWhatAiredOnADate() throws {
+        let db = try Fixture.open()
+        #expect(db.search("1942").aired?.episodes.map(\.id) == ["suspense|1942-06-17", "suspense|1942-10-20"])
+        #expect(db.search("October 1942").aired?.episodes.map(\.id) == ["suspense|1942-10-20"])
+        #expect(db.search("1943-05-25").aired?.episodes.map(\.id) == ["suspense|1943-05-25"])
+        #expect(db.search("may 25, 1944").aired?.episodes.map(\.id) == ["speeches|1944-05-25"])
+        #expect(db.search("1942").aired?.title == "Aired 1942")
+        #expect(db.search("rede 1944").aired?.episodes.map(\.id) == ["speeches|1944-05-25"])
+        // Controls: a day nothing aired, and a query naming no date.
+        #expect(db.search("1943-05-26").aired?.episodes.isEmpty == true)
+        #expect(db.search("1943-05-26").isEmpty)
+        #expect(db.search("sorry wrong").aired == nil)
+        #expect(!db.search("1942").isEmpty)
+    }
+
+    /// The golden cases every platform holds to (js/api.js is the reference).
+    @Test func searchTextHoldsToTheGoldenCases() throws {
+        let url = repoRoot.appendingPathComponent("catalog/tests/golden/search_text.json")
+        let g = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let dates = try #require(g["dates"] as? [[String: Any]])
+        #expect(dates.count > 10)
+        for c in dates {
+            let q = try #require(c["q"] as? String)
+            let d = DateQuery.parse(q)
+            #expect(d?.prefix == c["prefix"] as? String, "date of \(q)")
+            if let d {
+                #expect(d.rest == c["rest"] as? String, "rest of \(q)")
+                #expect(DateQuery.label(d.prefix) == c["label"] as? String, "label of \(q)")
+            }
+        }
+        let snippets = try #require(g["snippets"] as? [String: Any])
+        let text = try #require(snippets["text"] as? String)
+        let max = try #require(snippets["max"] as? Int)
+        let cases = try #require(snippets["cases"] as? [[String: Any]])
+        #expect(cases.count > 4)
+        for c in cases {
+            let words = try #require(c["words"] as? [String])
+            #expect(Transcript.snippet(text, words: words, max: max) == c["snippet"] as? String, "snippet for \(words)")
+        }
+        #expect(Transcript.searchWords("Of the Zeppelin's ZEPPELIN") == ["the", "zeppelin"])
     }
 
     @Test func ftsQueryCanLeaveTheTranscriptOut() {

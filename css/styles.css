@@ -352,6 +352,8 @@ select {
 .ep-title { overflow-wrap: anywhere; }
 .ep-link:hover .ep-title { text-decoration: underline; }
 .ep-sub { grid-column: 2; }
+/* Search's transcript match: the line as said, verbatim (WEB-DESIGN §4.6). */
+.ep-quote { grid-column: 2; margin-top: var(--space-1); color: var(--color-text); font-style: italic; overflow-wrap: anywhere; }
 .ep-progress { grid-column: 2; display: block; height: 3px; margin-top: var(--space-1); border-radius: 2px; background: var(--color-surface-alt); }
 .ep-progress > span { display: block; height: 100%; border-radius: 2px; background: var(--color-primary); }
 .row-tools { display: flex; }
@@ -362,11 +364,13 @@ select {
 .ep-link.has-art { grid-template-columns: 40px minmax(0, 1fr); }
 .ep-link.has-art .art-tile { grid-row: 1 / span 4; align-self: start; }
 .ep-link.has-art .ep-date { grid-row: auto; grid-column: 2; padding-top: 0; }
-.ep-link.has-art .ep-title, .ep-link.has-art .ep-sub, .ep-link.has-art .ep-progress { grid-column: 2; }
+.ep-link.has-art .ep-title, .ep-link.has-art .ep-sub, .ep-link.has-art .ep-progress,
+.ep-link.has-art .ep-quote { grid-column: 2; }
 @media (min-width: 768px) {
   .ep-link.has-art { grid-template-columns: 40px var(--date-col) minmax(0, 1fr); }
   .ep-link.has-art .ep-date { grid-row: 1 / span 3; grid-column: 2; padding-top: 1px; }
-  .ep-link.has-art .ep-title, .ep-link.has-art .ep-sub, .ep-link.has-art .ep-progress { grid-column: 3; }
+  .ep-link.has-art .ep-title, .ep-link.has-art .ep-sub, .ep-link.has-art .ep-progress,
+  .ep-link.has-art .ep-quote { grid-column: 3; }
 }
 .art-tile {
   position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;

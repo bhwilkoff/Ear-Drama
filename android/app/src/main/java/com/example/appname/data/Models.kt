@@ -63,6 +63,8 @@ data class EpisodeRow(
     /** The series' genre and face, so a row that mixes series can draw its tile. */
     val seriesGenre: String? = null,
     val seriesFace: Face? = null,
+    /** Set only on Search's transcript matches: the shown transcript's own URL, where the snippet is read. */
+    val transcriptUrl: String? = null,
 )
 
 /** One broadcast season of a series page; [season] is null for undated episodes. */
@@ -139,15 +141,27 @@ data class EpisodeDetail(
         }
 }
 
-/** [transcriptOnly]: the episodes found only by words in their transcript (§3.4). */
+/**
+ * [episodes] match titles, series, and people; [aired] is what aired on the date the
+ * query names (null when it names none); [transcript] is what is said in a shown
+ * transcript (§3.4), less [episodes], each row carrying its `transcriptUrl`.
+ */
 data class SearchResults(
     val series: List<SeriesRow>,
     val episodes: List<EpisodeRow>,
-    val transcriptOnly: Set<String> = emptySet(),
     /** `searchPeople(q)` (contract §5): credited people, most episodes first. */
     val people: List<PersonRow> = emptyList(),
+    val aired: AiredResults? = null,
+    val transcript: List<EpisodeRow> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = series.isEmpty() && episodes.isEmpty() && people.isEmpty()
+    val isEmpty: Boolean
+        get() = series.isEmpty() && episodes.isEmpty() && people.isEmpty() && aired?.episodes.isNullOrEmpty() &&
+            transcript.isEmpty()
+}
+
+/** The episodes that aired on [prefix] (YYYY, YYYY-MM, or YYYY-MM-DD, [DateQuery]), oldest first. */
+data class AiredResults(val prefix: String, val episodes: List<EpisodeRow>) {
+    val title: String get() = "Aired ${DateQuery.label(prefix)}"
 }
 
 // --- People (withPerson, contract §5) ---

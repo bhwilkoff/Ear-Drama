@@ -437,16 +437,15 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     /**
      * §5 `search`: episodes and series, word-prefix, through the contentless
      * FTS5 table. Series match on the `series` column alone, so a word spoken
-     * in a transcript never lists a series.
+     * in a transcript never lists a series. Episodes match titles, series, and
+     * people; a date the query names lists what aired then; what is said in a
+     * shown transcript is its own section.
      */
     suspend fun search(query: String, limit: Int = 100): SearchResults = read {
-        val all = matchExpression(query) ?: return@read SearchResults(emptyList(), emptyList())
+        val aired = airedBlocking(query, limit)
+        val all = matchExpression(query, column = if (ftsHasTranscript) NON_TRANSCRIPT_COLUMNS else null)
+            ?: return@read SearchResults(emptyList(), emptyList(), aired = aired)
         val seriesOnly = matchExpression(query, column = "series")!!
-        // The same terms without the transcript column: a row the full match
-        // finds and this one does not was found by its transcript alone.
-        val elsewhere = if (ftsHasTranscript) matchExpression(query, column = NON_TRANSCRIPT_COLUMNS) else null
-        val flag = if (elsewhere == null) "0"
-        else "e.rowid NOT IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
         val series = queryRaw(
             "SELECT $SERIES_COLUMNS FROM series s WHERE s.key IN (" +
                 "SELECT e.series_key FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
@@ -454,14 +453,54 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             listOf(seriesOnly),
             ::seriesRow,
         )
-        val found = queryRaw(
-            "SELECT $EPISODE_COLUMNS, $flag FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
+        val episodes = queryRaw(
+            "SELECT $EPISODE_COLUMNS FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
                 "JOIN series s ON s.key = e.series_key WHERE episodes_fts MATCH ? " +
                 "ORDER BY f.rank, $OLDEST_FIRST LIMIT ?",
-            listOfNotNull(elsewhere) + listOf(all, limit),
-        ) { episodeRow(it) to (it.getLong(8) != 0L) }
-        SearchResults(series, found.map { it.first }, found.filter { it.second }.map { it.first.id }.toSet(),
-            searchPeopleBlocking(query))
+            listOf(all, limit),
+            ::episodeRow,
+        )
+        SearchResults(series, episodes, searchPeopleBlocking(query), aired, transcriptBlocking(query, all))
+    }
+
+    /**
+     * Search's transcript section: episodes whose shown automatic transcript
+     * (`has_transcript = 1`, Decision 058) says every query word of three
+     * letters or more as a word prefix, oldest first, less those [excluding]
+     * (the titles, series, and people match) already finds.
+     */
+    private fun transcriptBlocking(query: String, excluding: String?, limit: Int = 50): List<EpisodeRow> {
+        if (!ftsHasTranscript || !hasTranscript) return emptyList()
+        val words = Transcript.searchWords(query)
+        if (words.isEmpty()) return emptyList()
+        val match = words.joinToString(" ") { "{transcript} : \"$it\"*" }
+        val not = if (excluding == null) "" else
+            " AND e.rowid NOT IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
+        return queryRaw(
+            "SELECT $EPISODE_COLUMNS, e.transcript_url FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid " +
+                "JOIN series s ON s.key = e.series_key WHERE episodes_fts MATCH ? AND e.has_transcript = 1 " +
+                "AND e.transcript_url IS NOT NULL$not ORDER BY $OLDEST_FIRST LIMIT ?",
+            listOfNotNull(match, excluding) + listOf(limit),
+        ) { episodeRow(it).copy(transcriptUrl = it.textOrNull(8)) }
+    }
+
+    /**
+     * The episodes that aired on the date the query names ([DateQuery]), oldest
+     * first, narrowed by its other words in titles, series, and people; null
+     * when the query names no date.
+     */
+    private fun airedBlocking(query: String, limit: Int): AiredResults? {
+        val date = DateQuery.parse(query) ?: return null
+        val narrow = if (Transcript.tokens(date.rest).any { it.length >= 2 })
+            matchExpression(date.rest, column = if (ftsHasTranscript) NON_TRANSCRIPT_COLUMNS else null) else null
+        val clause = if (narrow == null) "" else
+            " AND e.rowid IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
+        val rows = queryRaw(
+            "SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE e.air_date LIKE ?$clause ORDER BY e.air_date, e.id LIMIT ?",
+            listOfNotNull(date.prefix + "%", narrow) + listOf(limit),
+            ::episodeRow,
+        )
+        return AiredResults(date.prefix, rows)
     }
 
     // --- People (withPerson, contract §5) ---

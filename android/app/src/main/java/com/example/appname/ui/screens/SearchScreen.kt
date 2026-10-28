@@ -1,5 +1,7 @@
 package com.example.appname.ui.screens
 
+import com.example.appname.data.EpisodeRow
+import androidx.compose.runtime.produceState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -125,6 +127,18 @@ fun SearchScreen(
                             PlayListItem(script, onOpen = { onOpenScript(script.id) })
                         }
                     }
+                    val aired = found.aired
+                    if (aired != null && aired.episodes.isNotEmpty()) {
+                        item(key = "aired-h") { SectionHeader(aired.title) }
+                        items(aired.episodes, key = { "a:" + it.id }) { row ->
+                            EpisodeListItem(
+                                row,
+                                showSeries = true,
+                                onOpen = { onOpenEpisode(row.id) },
+                                onPlay = { container.playback.play(row) },
+                            )
+                        }
+                    }
                     if (found.episodes.isNotEmpty()) {
                         item(key = "episodes-h") { SectionHeader("Episodes") }
                         items(found.episodes, key = { "e:" + it.id }) { row ->
@@ -133,7 +147,18 @@ fun SearchScreen(
                                 showSeries = true,
                                 onOpen = { onOpenEpisode(row.id) },
                                 onPlay = { container.playback.play(row) },
-                                supporting = Transcript.SEARCH_NOTE.takeIf { row.id in found.transcriptOnly },
+                            )
+                        }
+                    }
+                    if (found.transcript.isNotEmpty()) {
+                        val words = Transcript.searchWords(settled)
+                        item(key = "transcript-h") { SectionHeader(Transcript.LABEL) }
+                        items(found.transcript, key = { "t:" + it.id }) { row ->
+                            TranscriptHitItem(
+                                row,
+                                words,
+                                onOpen = { onOpenEpisode(row.id) },
+                                onPlay = { container.playback.play(row) },
                             )
                         }
                     }
@@ -141,4 +166,24 @@ fun SearchScreen(
             }
         }
     }
+}
+
+/**
+ * Search's transcript match (ANDROID-DESIGN §4.5): the episode row and the line where the
+ * words are said, read from the transcript's own URL; the row stands alone when it does not load.
+ */
+@Composable
+private fun TranscriptHitItem(row: EpisodeRow, words: List<String>, onOpen: () -> Unit, onPlay: () -> Unit) {
+    val container = LocalAppContainer.current
+    val quote by produceState<String?>(null, row.id, words) {
+        val url = row.transcriptUrl ?: return@produceState
+        value = try {
+            Transcript.snippet(container.api.text(url), words)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+    }
+    EpisodeListItem(row, showSeries = true, onOpen = onOpen, onPlay = onPlay, quote = quote)
 }

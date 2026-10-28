@@ -188,7 +188,9 @@ jobs:
           # The public-web gate: one flag, opened only by the repository variable.
           gate=""
           if [ "${DMCA_AGENT_REGISTERED:-}" = "true" ]; then gate="--include-unclaimed"; fi
-          python3 tools/build_web_projection.py --src out/publish/ear-drama.sqlite --out out/web $gate > out/web.log
+          said=()
+          if [ -s out/transcripts.json.gz ]; then said=(--transcripts out/transcripts.json.gz); fi
+          python3 tools/build_web_projection.py --src out/publish/ear-drama.sqlite --out out/web $gate "${said[@]}" > out/web.log
           head -12 out/web.log
           want=$([ -n "$gate" ] && echo False || echo True)
           got=$(python3 -c "import json;print(json.load(open('out/web/manifest.json'))['cleanOnly'])")

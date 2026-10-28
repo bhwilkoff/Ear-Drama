@@ -437,7 +437,9 @@ three or more times. On the 184 it shows 183 and hides the one real failure (a
 1955 Dragnet that looped on 45% of its runs at 70 words a minute); an 80 word
 floor would also have hidden two good, music-heavy transcripts (Baby Snooks
 0.90, Mercury Theatre 0.87), so the floor is 50. Every transcript stays
-searchable; only the text on screen is gated.
+searchable; only the text on screen is gated. **Narrowed 2026-10-27**
+(catalog/DECISIONS.md 012): only a transcript past the gate is
+searchable, so a search hit always has text to show.
 
 ---
 

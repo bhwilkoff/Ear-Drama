@@ -311,14 +311,14 @@ const API = (() => {
   }
 
   /** Phase 2: episodes, word-prefix on every word, never substring. Doc numbers come back ranked. */
-  async function searchEpisodeNumbers(q) {
+  async function searchEpisodeNumbers(q, get = getJSON) {
     const words = [...new Set(tokens(q).filter(w => w.length >= 2))];
     if (!words.length) return [];
     let hits = null;
     for (const w of words) {
       let terms;
       try {
-        terms = await getJSON(`search/terms/${termFile(w)}.json`);
+        terms = await get(`search/terms/${termFile(w)}.json`);
       } catch (e) {
         if (e.kind === 'missing') return [];
         throw e;
@@ -450,6 +450,143 @@ const API = (() => {
   /** The text as archive.org serves it (a sentence a line), blank lines and stray spaces dropped. */
   function transcriptLines(text) {
     return (text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  }
+
+  /* ---- What is said, and when it aired (contract §4: search/said, search/dates) ---- */
+
+  /** The transcript words a query searches: its words of saidMinWord letters or more. */
+  function saidWords(q, minWord = 3) {
+    return [...new Set(tokens(q).filter(w => w.length >= minWord))];
+  }
+
+  /** Doc numbers whose shown transcript has every query word as a word prefix, ascending. */
+  async function searchSaidNumbers(q, get = getJSON) {
+    const m = await get('manifest.json');
+    const words = saidWords(q, (m.search && m.search.saidMinWord) || 3);
+    if (!words.length) return [];
+    let hits = null;
+    for (const w of words) {
+      let terms;
+      try {
+        terms = await get(`search/said/${termFile(w)}.json`);
+      } catch (e) {
+        if (e.kind === 'missing') return [];
+        throw e;
+      }
+      const ns = new Set();
+      for (const t in terms) {
+        if (!t.startsWith(w)) continue;
+        let n = 0;
+        for (const d of terms[t]) { n += d; ns.add(n); }
+      }
+      hits = hits === null ? ns : new Set([...hits].filter(n => ns.has(n)));
+      if (!hits.size) return [];
+    }
+    return [...hits].sort((a, b) => a - b);
+  }
+
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+                  'October', 'November', 'December'];
+
+  function monthOf(t) {
+    const s = t.replace(/\.$/, '');
+    if (s === 'sept') return 9;
+    const i = MONTHS.findIndex(m => m.toLowerCase() === s || (s.length === 3 && m.toLowerCase().startsWith(s)));
+    return i < 0 ? 0 : i + 1;
+  }
+
+  /**
+   * The air date a query names, the same rule on every platform: "1954", "August 1954", "Aug 2, 1954",
+   * "2 August 1954", "1954-08", "1954-08-02", or "8/2/1954". { prefix, rest } where prefix is YYYY,
+   * YYYY-MM, or YYYY-MM-DD and rest is the query's other words; null when no date is named.
+   */
+  function dateQuery(q) {
+    const t = String(q || '').toLowerCase().split(/[\s,]+/).filter(Boolean);
+    const isYear = (s) => /^\d{4}$/.test(s || '') && +s >= 1900 && +s <= 2099;
+    const isDay = (s) => /^\d{1,2}$/.test(s || '') && +s >= 1 && +s <= 31;
+    const pad = (n) => String(n).padStart(2, '0');
+    for (let i = 0; i < t.length; i++) {
+      let y = null, m = 0, d = 0, used = 1;
+      let x;
+      if ((x = /^(\d{4})-(\d{1,2})(?:-(\d{1,2}))?$/.exec(t[i]))) {
+        y = x[1]; m = +x[2]; d = x[3] ? +x[3] : 0;
+        if (x[3] && !isDay(x[3])) continue;
+      } else if ((x = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(t[i])) && isDay(x[2])) {
+        y = x[3]; m = +x[1]; d = +x[2];
+      } else if (monthOf(t[i]) && isDay(t[i + 1]) && isYear(t[i + 2])) {
+        m = monthOf(t[i]); d = +t[i + 1]; y = t[i + 2]; used = 3;
+      } else if (monthOf(t[i]) && isYear(t[i + 1])) {
+        m = monthOf(t[i]); y = t[i + 1]; used = 2;
+      } else if (isDay(t[i]) && monthOf(t[i + 1] || '') && isYear(t[i + 2])) {
+        d = +t[i]; m = monthOf(t[i + 1]); y = t[i + 2]; used = 3;
+      } else if (isYear(t[i])) {
+        y = t[i];
+      }
+      if (!isYear(y) || m < 0 || m > 12 || (d && !m)) continue;
+      const prefix = [y, m ? pad(m) : null, d ? pad(d) : null].filter(Boolean).join('-');
+      return { prefix, rest: [...t.slice(0, i), ...t.slice(i + used)].join(' ') };
+    }
+    return null;
+  }
+
+  /** A date prefix as a person reads it: "1954", "August 1954", "August 2, 1954". */
+  function dateLabel(prefix) {
+    const [y, m, d] = prefix.split('-');
+    if (!m) return y;
+    return d ? `${MONTHS[+m - 1]} ${+d}, ${y}` : `${MONTHS[+m - 1]} ${y}`;
+  }
+
+  /**
+   * The episodes that aired on the date the query names, oldest first, narrowed by its other words
+   * (titles, series, people, as Episodes). { prefix, rows } or null when the query names no date.
+   */
+  async function searchAired(q, get = getJSON) {
+    const dq = dateQuery(q);
+    if (!dq) return null;
+    let file;
+    try {
+      file = await get(`search/dates/${dq.prefix.slice(0, 4)}.json`);
+    } catch (e) {
+      if (e.kind === 'missing') return { prefix: dq.prefix, rows: [] };
+      throw e;
+    }
+    let rows = rowsOf(file.fields, file.rows).filter(r => r.date.startsWith(dq.prefix));
+    if (tokens(dq.rest).some(w => w.length >= 2)) {
+      const ns = new Set(await searchEpisodeNumbers(dq.rest, get));
+      rows = rows.filter(r => ns.has(r.doc));
+    }
+    return { prefix: dq.prefix, rows };
+  }
+
+  /**
+   * The line of an automatic transcript where a query word is first said, verbatim, cut to about
+   * `max` characters around it with an ellipsis at a cut; null when no line says one. The same rule
+   * on every platform (Transcript.snippet).
+   */
+  function transcriptSnippet(text, words, max = 120) {
+    if (!words.length) return null;
+    const line = transcriptLines(text).find(l => tokens(l).some(t => words.some(w => t.startsWith(w))));
+    if (!line) return null;
+    if (line.length <= max) return line;
+    const lower = line.toLowerCase();
+    let at = line.length;
+    for (const w of words) {
+      for (let i = lower.indexOf(w); i >= 0; i = lower.indexOf(w, i + 1)) {
+        if (i === 0 || !/[\p{L}\p{N}]/u.test(lower[i - 1])) { at = Math.min(at, i); break; }
+      }
+    }
+    if (at === line.length) at = 0;
+    let start = Math.max(0, at - 40);
+    if (start > 0) {
+      const sp = line.indexOf(' ', start);
+      start = sp >= 0 && sp < at ? sp + 1 : at;
+    }
+    let end = Math.min(line.length, start + max);
+    if (end < line.length) {
+      const sp = line.lastIndexOf(' ', end);
+      if (sp > at) end = sp;
+    }
+    return `${start > 0 ? '…' : ''}${line.slice(start, end).trim()}${end < line.length ? '…' : ''}`;
   }
 
   /* ---- Tonight in 19xx (contract §8): the evenings are published; the client only reads the clock ---- */
@@ -950,7 +1087,8 @@ const API = (() => {
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,
-    transcript, transcriptLines, transcriptLabel,
+    transcript, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
+    dateQuery, dateLabel, searchAired,
     localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, account,
   };
 })();

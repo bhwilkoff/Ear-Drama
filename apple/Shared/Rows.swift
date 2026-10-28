@@ -10,6 +10,8 @@ struct EpisodeRowLabel: View {
     var showSeries = false
     /// Why a search row matched, when the row itself cannot show it.
     var note: String? = nil
+    /// A transcript match's line, verbatim from the automatic transcript.
+    var quote: String? = nil
     @Environment(ListeningHistory.self) private var history
 
     var body: some View {
@@ -49,6 +51,13 @@ struct EpisodeRowLabel: View {
             }
             .font(TypeRamp.caption)
             .foregroundStyle(Color.brandTextMuted)
+            if let quote {
+                Text(verbatim: quote)
+                    .font(TypeRamp.caption)
+                    .italic()
+                    .foregroundStyle(Color.brandText)
+                    .multilineTextAlignment(.leading)
+            }
         }
     }
 
@@ -69,6 +78,23 @@ struct EpisodeRowLabel: View {
     private var accessibilityProgress: String {
         guard let p = history.progress(for: episode.id) else { return "" }
         return p >= 1 ? "Played" : "\(Int(p * 100)) percent played"
+    }
+}
+
+/// Search's transcript match (iOS-DESIGN §4.5): the episode row and the line
+/// where the words are said, read from the transcript's own URL; the row
+/// stands alone when the text does not load.
+struct TranscriptHitLabel: View {
+    let episode: EpisodeRow
+    let words: [String]
+    @State private var quote: String?
+
+    var body: some View {
+        EpisodeRowLabel(episode: episode, showSeries: true, quote: quote)
+            .task(id: episode.id) {
+                guard let url = episode.transcriptURL else { return }
+                quote = await Transcript.snippet(from: url, words: words)
+            }
     }
 }
 

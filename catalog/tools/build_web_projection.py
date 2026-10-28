@@ -22,6 +22,9 @@ Layout (every row positional; fields are only ever appended):
     people/{shard}.json           withPerson: a person's facts and every served credit, oldest first,
                                   shard = FNV-1a(person id) & SHARD_MASK, as 3 hex digits
     search/people/{p}.json        people, by the first two characters of each word of their name
+    search/said/{p}.json          a transcript word -> delta-coded doc numbers, as search/terms, only
+                                  transcripts past the gate (DECISIONS 058), words of SAID_MIN_WORD or more
+    search/dates/{yyyy}.json      that year's dated docs (the doc row and its number), oldest first
 
 Search is word-prefix, never substring (contract §3.4), tokenized as FTS5's
 unicode61 does: lowercase, diacritics folded, split on anything that is not a
@@ -44,12 +47,15 @@ import ia_lib as ia
 from genres import NAMES as GENRE_NAMES
 from sort_name import sort_name
 import build_projection as P
+import fetch_transcripts as T
 import shelves as SH
 import arcs as ARCS
 
 SCHEMA_VERSION = 1
 SHARD_MASK = 0xFFF
 DOC_CHUNK = 500
+# A transcript word shorter than this is not filed: "of" and "a" would match nearly every transcript.
+SAID_MIN_WORD = 3
 SHELF_SERIES = 12
 # star: the name of the series' face (contract §3.3, art_policy.series_star); art: that face's portrait.
 # scripts: how many of the series' served episodes carry a castable script (episode_scripts.py).
@@ -76,6 +82,8 @@ PERSON_CREDIT_FIELDS = ["id", "date", "title", "num", "series", "role", "charact
 PEOPLE_FIELDS = ["id", "name", "episodes", "art"]
 DAY_FIELDS = ["id", "date", "title", "series", "length", "url", "seriesName", "li", "ltp"]
 DOC_FIELDS = ["id", "title", "date", "series"]
+# An air-date row: the doc row itself, so a date page reads one file, and its doc number to intersect words.
+DATE_FIELDS = DOC_FIELDS + ["doc"]
 # The rights line, contract §5.5. Published so no client words it for itself.
 RIGHTS_LINES = P.RIGHTS_LINES
 VARIANT_LINES = {"AFRS": "Armed Forces Radio rebroadcast", "AFRTS": "Armed Forces Radio rebroadcast"}
@@ -115,7 +123,11 @@ def dump(path, obj):
         json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
 
 
-def build(src, out, include_unclaimed=False):
+def build(src, out, include_unclaimed=False, transcripts=None):
+    """`transcripts` is the transcript cache (fetch_transcripts.py): the served projection's
+    FTS is contentless, so the words Search finds in a transcript are cut from the cache, and
+    only for an episode whose `transcript_url` is set (the gate passed on that copy)."""
+    transcripts = transcripts or {}
     if os.path.isdir(out):
         shutil.rmtree(out)
     os.makedirs(out)
@@ -297,6 +309,31 @@ def build(src, out, include_unclaimed=False):
         dump(os.path.join(out, "search", "docs", f"{k // DOC_CHUNK}.json"),
              [[e[0], e[5], e[2], e[1]] for e in docs[k:k + DOC_CHUNK]])
 
+    # What is said: only a transcript past the gate, never its text, only its words' doc numbers.
+    said, said_docs = {}, 0
+    for n, e in enumerate(docs):
+        text = T.text_for(transcripts.get(e[0]), turls.get(e[0])) if e[0] in turls else None
+        if text is None:
+            continue
+        said_docs += 1
+        for w in set(tokens(text)):
+            if len(w) >= SAID_MIN_WORD:
+                said.setdefault(w, []).append(n)
+    said_files = {}
+    for w, ns in said.items():
+        said_files.setdefault(term_file(w), {})[w] = [ns[0]] + [b - a for a, b in zip(ns, ns[1:])]
+    for f, words in said_files.items():
+        dump(os.path.join(out, "search", "said", f"{f}.json"), words)
+
+    # Air dates: a year's dated docs, oldest first, so "1954", "August 1954", and "1954-08-02" each read one file.
+    years = {}
+    for n, e in enumerate(docs):
+        if e[2] and re.fullmatch(r"\d{4}(-\d{2}(-\d{2})?)?", e[2]):
+            years.setdefault(e[2][:4], []).append([e[0], e[5], e[2], e[1], n])
+    for y, rows in years.items():
+        rows.sort(key=lambda r: (r[2], r[4]))
+        dump(os.path.join(out, "search", "dates", f"{y}.json"), {"fields": DATE_FIELDS, "rows": rows})
+
     manifest = {
         "schemaVersion": SCHEMA_VERSION,
         "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -307,13 +344,15 @@ def build(src, out, include_unclaimed=False):
                    "seriesStars": sum(1 for r in series.values() if r[8]),
                    "seriesDownloads": sum(1 for r in series.values() if r[11] is not None),
                    "people": len(people_rows), "peopleShards": len(people_shards), "peopleFiles": len(people_files),
-                   "arcs": len(web_arcs), "arcEpisodes": len(arc_of)},
+                   "arcs": len(web_arcs), "arcEpisodes": len(arc_of),
+                   "saidTerms": len(said), "saidFiles": len(said_files), "saidDocs": said_docs,
+                   "dateYears": len(years)},
         "shard": {"hash": "fnv1a32-utf8", "mask": SHARD_MASK, "digits": 3},
-        "search": {"docChunk": DOC_CHUNK, "minWord": 2, "prefix": 2},
+        "search": {"docChunk": DOC_CHUNK, "minWord": 2, "prefix": 2, "saidMinWord": SAID_MIN_WORD},
         "fields": {"series": SERIES_FIELDS, "episode": EPISODE_FIELDS, "detail": DETAIL_FIELDS,
                    "recording": RECORDING_FIELDS, "credit": CREDIT_FIELDS, "day": DAY_FIELDS, "doc": DOC_FIELDS,
                    "art": ART_FIELDS, "person": PERSON_FIELDS, "personCredit": PERSON_CREDIT_FIELDS,
-                   "people": PEOPLE_FIELDS, "arc": ARC_FIELDS},
+                   "people": PEOPLE_FIELDS, "arc": ARC_FIELDS, "date": DATE_FIELDS},
         "genreNames": GENRE_NAMES,
         "listenShelves": SH.listen_shelves([(e[0], e[1], e[2], e[4], e[10], e[5]) for e in eps.values()],
                                            {k: (r[2], r[5]) for k, r in series.items()},
@@ -353,8 +392,11 @@ def main():
     ap.add_argument("--out", default=os.path.join(ia.OUT, "web"))
     ap.add_argument("--include-unclaimed", action="store_true",
                     help="open the public-web gate; only once the DMCA agent is registered")
+    ap.add_argument("--transcripts", help="fetch_transcripts.py cache (.json.gz); absent = no transcript words filed")
     a = ap.parse_args()
-    m = build(a.src, a.out, a.include_unclaimed)
+    if a.transcripts and not os.path.exists(a.transcripts):
+        raise SystemExit(f"--transcripts {a.transcripts} does not exist (omit the flag to build without transcripts)")
+    m = build(a.src, a.out, a.include_unclaimed, T.load(a.transcripts) if a.transcripts else None)
     print(json.dumps({k: m[k] for k in ("cleanOnly", "counts", "bytes")}, indent=1))
 
 

@@ -401,23 +401,18 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     }
 
     /// `search(q)`: word-prefix, never substring, on every platform (§3.4).
-    /// "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful".
+    /// "sorr" finds "Sorry, Wrong Number" and never "Mr. Sorrowful". Episodes
+    /// match titles, series, and people; a date the query names lists what
+    /// aired then; what is said in a shown transcript is its own section.
     func search(_ query: String, limit: Int = 100) -> SearchResults {
-        guard let match = Self.ftsQuery(query) else { return SearchResults() }
-        // The same terms without the transcript column: a row the full match
-        // finds and this one does not was found by its transcript alone.
-        let elsewhere = ftsHasTranscript ? Self.ftsQuery(query, columns: Self.nonTranscriptColumns) : nil
-        let flag = elsewhere == nil ? "0"
-            : "e.rowid NOT IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
-        var binds: [Bind] = elsewhere.map { [.text($0)] } ?? []
-        binds.append(.text(match))
-        let found = rows("""
-            SELECT \(Self.episodeColumns), \(flag) FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid
+        let aired = searchAired(query, limit: limit)
+        let columns = ftsHasTranscript ? Self.nonTranscriptColumns : nil
+        guard let match = Self.ftsQuery(query, columns: columns) else { return SearchResults(aired: aired) }
+        let episodes = rows("""
+            SELECT \(Self.episodeColumns) FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid
             JOIN series s ON s.key = e.series_key
             WHERE episodes_fts MATCH ? ORDER BY f.rank LIMIT \(limit)
-            """, binds) { row in (decodeEpisode(row), (row.int(11) ?? 0) != 0) }
-        let episodes = found.map(\.0)
-        let transcriptOnly = Set(found.filter(\.1).map(\.0.id))
+            """, [.text(match)], decodeEpisode)
         let phrase = query.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "_", with: "")
         let series = rows("""
@@ -425,8 +420,56 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             WHERE s.episodes > 0 AND (s.name LIKE ? OR s.name LIKE ?)
             ORDER BY s.episodes DESC LIMIT 20
             """, [.text("\(phrase)%"), .text("% \(phrase)%")], decodeSeries)
-        return SearchResults(series: series, episodes: episodes, transcriptOnly: transcriptOnly,
-                             people: searchPeople(query))
+        return SearchResults(series: series, episodes: episodes, people: searchPeople(query), aired: aired,
+                             transcript: searchTranscripts(query, excluding: match))
+    }
+
+    /// Search's transcript section: episodes whose shown automatic transcript
+    /// (`has_transcript = 1`, Decision 058) says every query word of three
+    /// letters or more as a word prefix, oldest first, less those `excluding`
+    /// (the titles, series, and people match) already finds. Each row carries
+    /// its `transcriptURL`, where its snippet is read.
+    func searchTranscripts(_ query: String, excluding: String? = nil, limit: Int = 50) -> [EpisodeRow] {
+        guard ftsHasTranscript, hasTranscript else { return [] }
+        let words = Transcript.searchWords(query)
+        guard !words.isEmpty else { return [] }
+        let match = words.map { "{transcript} : \"\($0)\"*" }.joined(separator: " ")
+        var binds: [Bind] = [.text(match)]
+        var excluded = ""
+        if let excluding {
+            excluded = "AND e.rowid NOT IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
+            binds.append(.text(excluding))
+        }
+        return rows("""
+            SELECT \(Self.episodeColumns), e.transcript_url FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid
+            JOIN series s ON s.key = e.series_key
+            WHERE episodes_fts MATCH ? AND e.has_transcript = 1 AND e.transcript_url IS NOT NULL \(excluded)
+            ORDER BY \(Self.oldestFirst) LIMIT \(limit)
+            """, binds) { row in
+            var episode = decodeEpisode(row)
+            episode.transcriptURL = row.text(11).flatMap { URL(string: $0) }
+            return episode
+        }
+    }
+
+    /// The episodes that aired on the date the query names (`DateQuery`),
+    /// oldest first, narrowed by its other words in titles, series, and
+    /// people; nil when the query names no date.
+    func searchAired(_ query: String, limit: Int = 100) -> AiredResults? {
+        guard let date = DateQuery.parse(query) else { return nil }
+        var binds: [Bind] = [.text(date.prefix + "%")]
+        var narrow = ""
+        let columns = ftsHasTranscript ? Self.nonTranscriptColumns : nil
+        if Transcript.tokens(date.rest).contains(where: { $0.count >= 2 }),
+           let match = Self.ftsQuery(date.rest, columns: columns) {
+            narrow = "AND e.rowid IN (SELECT rowid FROM episodes_fts WHERE episodes_fts MATCH ?)"
+            binds.append(.text(match))
+        }
+        let found = rows("""
+            SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
+            WHERE e.air_date LIKE ? \(narrow) ORDER BY e.air_date, e.id LIMIT \(limit)
+            """, binds, decodeEpisode)
+        return AiredResults(prefix: date.prefix, episodes: found)
     }
 
     /// Every FTS column but `transcript` (contract §3.4).

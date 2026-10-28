@@ -345,6 +345,55 @@ test('withPerson and searchPeople read the person shards the builder writes', as
   }
 });
 
+test('search text: dates and snippets hold to catalog/tests/golden/search_text.json', () => {
+  if (typeof require === 'undefined') return;
+  const g = JSON.parse(require('node:fs').readFileSync(__dirname + '/../catalog/tests/golden/search_text.json', 'utf-8'));
+  for (const c of g.dates) {
+    const d = API.dateQuery(c.q);
+    assertEq(d ? d.prefix : null, c.prefix, `date of ${c.q}`);
+    if (d) {
+      assertEq(d.rest, c.rest, `rest of ${c.q}`);
+      assertEq(API.dateLabel(d.prefix), c.label, `label of ${c.q}`);
+    }
+  }
+  for (const c of g.snippets.cases) {
+    assertEq(API.transcriptSnippet(g.snippets.text, c.words, g.snippets.max), c.snippet, `snippet for ${c.words}`);
+  }
+  const lines = API.transcriptLines(g.snippets.text).join(' ');
+  for (const c of g.snippets.cases.filter(c => c.snippet)) {
+    assert(lines.includes(c.snippet.replace(/^…|…$/g, '')), `verbatim: ${c.snippet}`);
+  }
+});
+
+test('searchSaidNumbers and searchAired read search/said and search/dates', async () => {
+  const files = {
+    'manifest.json': { search: { docChunk: 500, minWord: 2, saidMinWord: 3 } },
+    'search/said/za.json': { zanzibar: [2, 5], zany: [4] },
+    'search/said/ph.json': { phone: [4, 3] },
+    'search/terms/su.json': { suspense: [2, 5] },
+    'search/dates/1943.json': { fields: ['id', 'title', 'date', 'series', 'doc'], rows: [
+      ['a|1943-05-25', 'Sorry', '1943-05-25', 'suspense', 2], ['b|1943-06-01', 'Loop', '1943-06-01', 'other', 3],
+      ['c|1943-06-08', 'Late', '1943-06-08', 'suspense', 7]] },
+  };
+  const get = async (p) => {
+    if (p in files) return files[p];
+    throw Object.assign(new Error(p), { kind: 'missing' });
+  };
+  assertEq((await API.searchSaidNumbers('zan', get)).join(','), '2,4,7', 'word prefix, every term, ascending');
+  assertEq((await API.searchSaidNumbers('zan phone', get)).join(','), '4,7', 'every word must be said');
+  assertEq((await API.searchSaidNumbers('of zanz', get)).join(','), '2,7', 'a word under saidMinWord is not searched');
+  assertEq((await API.searchSaidNumbers('anzi', get)).length, 0, 'control: never substring');
+  assertEq((await API.searchSaidNumbers('of', get)).length, 0, 'control: only short words, nothing searched');
+  const june = await API.searchAired('June 1943', get);
+  assertEq(june.prefix, '1943-06');
+  assertEq(june.rows.map(r => r.id).join(','), 'b|1943-06-01,c|1943-06-08', 'the month, oldest first');
+  assertEq((await API.searchAired('1943-05-25', get)).rows.map(r => r.id).join(','), 'a|1943-05-25', 'the day');
+  assertEq((await API.searchAired('1944', get)).rows.length, 0, 'control: a year with no file is empty');
+  assertEq((await API.searchAired('Suspense 1943', get)).rows.map(r => r.id).join(','), 'a|1943-05-25,c|1943-06-08',
+    'the other words narrow the date by title, series, people');
+  assertEq(await API.searchAired('sorry wrong', get), null, 'control: no date named, no section');
+});
+
 // Plain JS has no compiler: every API.x a script calls must be exported.
 test('every API.x called in js/*.js is exported', () => {
   if (typeof require === 'undefined') return;

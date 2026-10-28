@@ -152,16 +152,16 @@ web app follows today.
   debounced 180 ms, series first, then people (§4.14, from
   `search/people/`, most episodes first, eight shown with the total), then
   plays (word-prefix on the title and author of `castable-scripts.json`),
-  then episodes paged 30 at a time, the query mirrored to the URL.
-  - **Gap: web search does not find transcript words.** The apps match
-    them through the served projection's `episodes_fts` (contract §3.4),
-    but that index is contentless, so the web builder has no text to cut
-    term files from, and adding about 9,000 transcripts' vocabulary to
-    the two-character term files is a size to measure before it is
-    built (contract §4). The client never builds an index of its own
-    from fetched transcripts: it would search only what this browser
-    happened to open. Until the projection carries transcript terms,
-    transcript search is native only (PARITY).
+  then "Aired {date}" when the query names an air date (contract §3.4,
+  `search/dates/`, oldest first, narrowed by the other words), then
+  episodes paged 30 at a time, then **Automatic transcript** (`search/said/`,
+  every word of three letters or more said in a shown transcript, less the
+  episodes above), paged 10 at a time; each of its rows is the episode row
+  plus the line where the words are said, italic, verbatim from the text at
+  the Detail row's `transcript`, and the row stands alone when that text
+  does not load. The query is mirrored to the URL. The client never builds
+  an index of its own from fetched transcripts: it would search only what
+  this browser happened to open.
 - **§4.7 Library** = the account row (§4.11), then Queue, History,
   Following, and **Ear dramas** (the productions this browser recorded in
   or joined, newest first, each with "N of M lines recorded" or
@@ -632,8 +632,7 @@ web app follows today.
 - **§9.1** Update `PARITY.md` in the same change set as any user-facing
   feature; quote these rule numbers in proposals.
 - **§9.2 Not on the web yet**, each arriving with its milestone: the
-  Stations' genre stations, transcript search (§4.6; reading a transcript
-  is on Detail, §4.5), downloads. Sign-in and sync (M5, §4.11) and Listen
+  Stations' genre stations, downloads. Sign-in and sync (M5, §4.11) and Listen
   Together (M6, §4.12) are built and wait on the owner's Worker URL and
   client ids.
 

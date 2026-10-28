@@ -83,7 +83,8 @@ CREATE TABLE arc_parts (episode_id TEXT PRIMARY KEY, arc_id TEXT NOT NULL, part 
 -- an item whose count was never read is absent.
 CREATE TABLE items (archive_id TEXT PRIMARY KEY, downloads INTEGER NOT NULL);
 -- Contentless: a match's rowid is the episode's rowid (join episodes ON rowid). Only the index
--- is stored, so the transcript column costs its postings, never its text. detail=column keeps
+-- is stored, so the transcript column costs its postings, never its text; only a transcript
+-- past the gate is indexed (transcript_gate.py). detail=column keeps
 -- word-prefix terms and column filters (every client query) and drops token positions, which
 -- only phrase and NEAR queries use: measured 2026-10-22 on 233 transcripts, 2.1 KB compressed
 -- each this way, 8.6 KB with positions (about 78 MB over the catalog), contract §3.4.
@@ -119,8 +120,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     """`loudness` is the measurement cache (measure_loudness.py), id -> result; only
     a usable measurement of the episode's default copy URL is published.
     `transcripts` is the transcript cache (fetch_transcripts.py), id -> entry: a text
-    of the default copy's own transcript is indexed for search whatever the gate says;
-    `has_transcript` and `transcript_url` are set only where the gate passes.
+    of the default copy's own transcript is indexed for search, and `has_transcript` and
+    `transcript_url` set, only where the gate passes: what Search finds, Detail can show.
     `scripts` is the castable bundle (episode_scripts.load_bundle), id -> entry; None reads
     plays/castable-scripts.json. An episode's `script` is set only where episode_scripts links one."""
     loudness = loudness or {}
@@ -179,7 +180,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         turl = T.transcript_url(recs[0][2], recs[0][3])
         text = T.text_for(transcripts.get(eid), turl)
         shown = text is not None and TG.shown(text, recs[0][6])[0]
-        searchable += text is not None
+        searchable += shown
         for i, (_, _rank, aid, file, fmt, kbps, length, variant, partial) in enumerate(recs):
             d.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?)",
                       (eid, i, aid, download_url(aid, file), fmt, kbps, length, variant, int(bool(partial))))
@@ -194,7 +195,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
                    names.get(sk, ""),
-                   " ".join(n for _, n, _, _ in credits), text or ""))
+                   " ".join(n for _, n, _, _ in credits), text if shown else ""))
         per_series[sk] = per_series.get(sk, 0) + 1
 
     for key, name, re_genre, otrr_genres, lv, first, last, nets in s.execute(

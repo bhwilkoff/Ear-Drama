@@ -1,5 +1,6 @@
 package com.example.appname.ui
 
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -222,6 +223,8 @@ fun EpisodeListItem(
     supporting: String? = null,
     modifier: Modifier = Modifier,
     inQueueList: Boolean = false,
+    /** Search's transcript match: the line as said, verbatim from the automatic transcript. */
+    quote: String? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val date = formatAirDate(row.airDate)
@@ -245,7 +248,16 @@ fun EpisodeListItem(
         } else null,
         overlineContent = date?.takeIf { title != it }?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
         headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        supportingContent = second?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
+        supportingContent = if (second == null && quote == null) null else {
+            {
+                Column {
+                    if (second != null) Text(second, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (quote != null) {
+                        Text(quote, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        },
         trailingContent = {
             IconButton(onClick = onPlay) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = "Play $title")

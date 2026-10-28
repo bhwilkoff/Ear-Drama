@@ -97,7 +97,8 @@ Mac uses the same Core, so the same code holds them:
   per section (`.id(store.selectedTab)`), so each section keeps its own
   path. Every stack applies the shared `routeDestinations()` registry.
 - **§3.3 Search lives in the toolbar** (`.searchable(placement:
-  .toolbar)`), over the shared `SearchResultsList`.
+  .toolbar)`), over the shared `SearchResultsList`, so its sections are
+  iOS's (iOS-DESIGN §4.5: Aired, Episodes, Automatic transcript).
 - **§3.4 Everything external lands in the inbox**, drained by `RootView`
   (the same rule as iOS §3.5).
 

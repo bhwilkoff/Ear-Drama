@@ -224,8 +224,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   (§4.12).
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
   debounced, with Clear, series first, then People (§4.15), then plays (title and author,
-  word-prefix), then episodes; "In the
-  transcript" marks a transcript-only match.
+  word-prefix), then "Aired {date}" when the query names an air date
+  (`DateQuery`, contract §3.4), then episodes, then **Automatic
+  transcript** (`Transcript.LABEL`): each row the episode row with the
+  line where the words are said as an italic second supporting line,
+  verbatim (`Transcript.snippet`), read from the transcript's own URL.
 - **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
   (one row, "Downloads" with the episode count and the storage held,
   opening the Downloads route, `Route.Downloads`: downloads grouped by
