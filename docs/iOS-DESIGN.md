@@ -303,6 +303,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   in one tap. The draw is the platform's own random: nothing needs to
   match another device. No copy is written; a pick with no data is
   absent.
+- **§4.10a The site pages are Library's last section**, under the
+  account: "Credits", "Privacy", "Take-down requests", each a `Link` to
+  the website's page (`SiteLinks`), opened in the system browser. An
+  empty Library offers the same three under its Account action. Names
+  only; the pages carry the words.
 - **§4.10 The account lives at the foot of Library**, never a tab, a
   gear, or a sheet at launch (§3.1; Decision 057: optional, never at
   first launch). Library's last section is one row, "Account", whose

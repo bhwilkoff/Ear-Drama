@@ -138,6 +138,10 @@ The only shapes; a new one needs a new rule.
   Google is not on the TV yet: `ASWebAuthenticationSession` does not
   exist on tvOS, and the TV's Google path is a phone hand-off (a code on
   screen, approved on the phone) that waits on its own rule.
+- **§4.9a The site pages** are three plain rows under Library's Account
+  row: "Credits", "Privacy", "Take-down requests", each with its
+  address (`eardrama.org/credits`) as the value. A TV has no browser, so
+  the address is the whole control; the rows are not links.
 - **§4.7 The transcript reader** (`TranscriptScreen_tvOS`) is full
   screen: the episode title, the caption "Automatic transcript", then
   the text in paragraphs of four sentences, each a focus stop, so the

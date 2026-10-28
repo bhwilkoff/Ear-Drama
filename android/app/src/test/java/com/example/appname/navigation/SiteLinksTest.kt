@@ -22,6 +22,14 @@ class SiteLinksTest {
         assertEquals("https://eardrama.org/series/lux-radio", SiteLinks.series("lux-radio"))
     }
 
+    @Test fun `site pages are the web's three`() {
+        assertEquals(
+            listOf("Credits" to "https://eardrama.org/credits/", "Privacy" to "https://eardrama.org/privacy/",
+                "Take-down requests" to "https://eardrama.org/takedown/"),
+            SiteLinks.PAGES,
+        )
+    }
+
     @Test fun `a shared link parses back to the same screen`() {
         val id = "lux-radio|1943-05-25 Café & 'x'(1)"
         assertEquals(InboxRequest.Item(id), DeepLink.parse(SiteLinks.episode(id)))

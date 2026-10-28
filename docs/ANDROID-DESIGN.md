@@ -331,6 +331,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   are offline." with Try again when the device has no network. The
   listing's credit is one caption link, "Schedule: {paper}, via
   {source}", opened in the browser (text only on a TV).
+- **§4.11a The site pages** close Library: three `ListItem`s, "Credits",
+  "Privacy", "Take-down requests", each opened in a Custom Tab
+  (`SiteLinks.CREDITS`, `PRIVACY`, `TAKEDOWN`). An empty Library shows
+  them under the account row. A TV shows the address as supporting text
+  and opens nothing.
 - **§4.11 The account is Library's first row** (`ui/AccountRow.kt`).
   Android has no Settings screen and gets none for this: an account is a
   rare job, and Library is where the records it syncs already live
