@@ -23,7 +23,7 @@ struct SurpriseScreen_tvOS: View {
                 if !loaded {
                     ProgressView()
                 } else if episode == nil && evening == nil {
-                    ContentUnavailableView("Nothing to pick from yet", systemImage: "shuffle")
+                    EmptyState("Nothing to pick from yet", systemImage: "shuffle")
                 }
                 if let episode {
                     pick("An episode", lines: [episode.displayTitle, episode.seriesName, AirDate.display(episode.airDate)]) {

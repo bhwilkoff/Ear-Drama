@@ -202,7 +202,7 @@ struct PlayScriptScreen: View {
             .navigationTitle(script.title)
             .task { await plays.load() }
         } else {
-            ContentUnavailableView("Play not found", systemImage: "questionmark.square.dashed")
+            EmptyState("Play not found", systemImage: "questionmark.square.dashed")
                 .task { await plays.load() }
         }
     }
@@ -277,7 +277,7 @@ struct ProductionScreen: View {
             }
             .navigationTitle(production.title)
         } else {
-            ContentUnavailableView("Production not found", systemImage: "questionmark.square.dashed")
+            EmptyState("Production not found", systemImage: "questionmark.square.dashed")
         }
     }
 }
@@ -479,7 +479,7 @@ struct PartScreen: View {
         if let production = plays.store.production(productionID), let script = plays.castScript(for: production) {
             PartDetail(production: production, script: script, part: part, dismissWhenDone: true)
         } else {
-            ContentUnavailableView("Production not found", systemImage: "questionmark.square.dashed")
+            EmptyState("Production not found", systemImage: "questionmark.square.dashed")
         }
     }
 }
@@ -504,7 +504,7 @@ struct PartDetail: View {
             }
             .navigationTitle(part.title)
         } else {
-            ContentUnavailableView("Choose a part", systemImage: "theatermasks")
+            EmptyState("Choose a part", systemImage: "theatermasks")
         }
     }
 }

@@ -83,6 +83,23 @@ def player_numbers_named_once(files):
             and "fadeSeconds: TimeInterval = 10" not in sleep)
 
 
+def empty_states_through_one_view(files):
+    """iOS-DESIGN §7.4: a title-only or search empty state is EmptyState, never
+    a ContentUnavailableView of its own."""
+    rx = re.compile(r'ContentUnavailableView\(\s*"|ContentUnavailableView\.search')
+    return not [p for p, t in files.items() if not p.endswith("Shared/EmptyState.swift") and rx.search(t)]
+
+
+def library_empty_keeps_navigation(text, struct):
+    """iOS-DESIGN §7.4, tvOS-DESIGN §7.3a: an empty Library is the empty state
+    at the head of the list, with Account and the site pages still under it."""
+    m = re.search(r"struct " + struct + r": View \{.*?\n}\n", text, re.S)
+    body = m.group(0) if m else ""
+    empty, account, links = body.find("EmptyState("), body.find("AccountRow()"), body.find("SiteLinkRows()")
+    lst = body.rfind("List {", 0, empty)
+    return (-1 < lst < empty < account < links) and "} else {" not in body[lst:links]
+
+
 def main():
     failed = 0
 
@@ -117,6 +134,19 @@ def main():
          {**swift, "apple/Core/Player/AudioPlayer.swift":
           swift["apple/Core/Player/AudioPlayer.swift"].replace(
               "-PlayerNumbers.interruptionRewindSeconds", "-3")}),
+    ]
+    cases += [
+        ("empty states go through EmptyState", empty_states_through_one_view, swift,
+         {**swift, "x.swift": 'ContentUnavailableView("Nothing here", systemImage: "tray")'}),
+        ("an empty Library keeps Account and the site pages",
+         lambda t: library_empty_keeps_navigation(t, "LibraryScreen"), detail,
+         detail.replace("                List {\n                    if empty {",
+                        "                if empty { EmptyState(\"x\", systemImage: \"y\") } else {\n"
+                        "                List {\n                    if empty {", 1)),
+        ("an empty TV Library keeps Account and the site pages",
+         lambda t: library_empty_keeps_navigation(t, "LibraryScreen_tvOS"), tv,
+         tv.replace("                        SiteLinkRows()\n                    } footer:",
+                    "                    } footer:", 1)),
     ]
     for name, check, real, broken in cases:
         ok(check(real), name)

@@ -336,8 +336,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   {source}", opened in the browser (text only on a TV).
 - **§4.11a The site pages** close Library: three `ListItem`s, "Credits",
   "Privacy", "Take-down requests", each opened in a Custom Tab
-  (`SiteLinks.CREDITS`, `PRIVACY`, `TAKEDOWN`). An empty Library shows
-  them under the account row. A TV shows the address as supporting text
+  (`SiteLinks.CREDITS`, `PRIVACY`, `TAKEDOWN`). An empty Library keeps
+  them (§7.1a). A TV shows the address as supporting text
   and opens nothing.
 - **§4.11 The account is Library's first row** (`ui/AccountRow.kt`).
   Android has no Settings screen and gets none for this: an account is a
@@ -543,6 +543,24 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   device reports no network, "You are offline." sits in the flow above
   the mini player, in the neutral color (`OfflineLine`); the
   `appname_force_offline` door holds it for a screenshot.
+- **§7.1a One empty state: the fact and at most one action** (P4,
+  2026-10-28). The rule it serves (AGENTS.md, owner): "Only essential
+  words on screen. A caption must be a refusal, a warning, or a fact the
+  person cannot discover by looking." `EmptyMessage(text, action =
+  EmptyAction(label) { })` (`ui/Components.kt`) is every empty state: the
+  sentence and, when one helps, one tonal button. It never replaces
+  navigation: an empty Library keeps Account and Listen together above
+  "Nothing played yet." with Browse (it selects the Browse tab, with the
+  `selection` haptic), and the site pages and Ear dramas below, signed
+  in or out. Browse with nothing matching offers "Clear filters". No
+  results echo the query, "No matches for “{query}”.". On a TV the
+  action takes the D-pad focus (`ClaimTvFocus`), except Browse's, which
+  leaves the focus on the chip just pressed (`claimTvFocus = false`).
+- **§7.1b No hints**, as iOS §7.5: each candidate repeats a visible
+  control (Detail's "Add to queue"), and Search finding words
+  said in an episode belongs in the search placeholder (the owner's copy
+  call). No dismissal store, no "Show tips again"; Android has no
+  Settings screen to hold one (§4.11).
 - **§7.2 The transcript has its own states**: loading, "You are
   offline." or "The transcript did not load." with Try again.
 - **§7.3 TalkBack.** Section headers and the Detail title are

@@ -145,7 +145,7 @@ struct RecordingScreen: View {
     @ViewBuilder private func prompter(_ session: RecordingSession) -> some View {
         let lines = session.lines
         if lines.isEmpty {
-            ContentUnavailableView("No lines in this part", systemImage: "text.badge.xmark")
+            EmptyState("No lines in this part", systemImage: "text.badge.xmark")
         } else {
             let current = lines[min(index, lines.count - 1)]
             VStack(alignment: .leading, spacing: Spacing.s4) {

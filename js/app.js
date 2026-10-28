@@ -143,7 +143,12 @@
       return el('div', { class: 'state', role: 'status' }, el('div', { class: 'spinner', 'aria-hidden': 'true' }),
         el('span', { class: 'sr-only' }, 'Loading'));
     }
-    if (kind === 'empty') return el('p', { class: 'state caption' }, opts.text);
+    // The empty state (WEB-DESIGN §7.1a): the fact, and at most one way on, a link.
+    if (kind === 'empty') {
+      if (!opts.action) return el('p', { class: 'state caption' }, opts.text);
+      return el('div', { class: 'state' }, el('p', { class: 'caption' }, opts.text),
+        el('a', { class: 'btn', href: opts.action.href }, opts.action.label));
+    }
     const text = kind === 'offline' ? 'You are offline.' : kind === 'missing' ? 'Not in the catalog.'
       : 'This did not load.';
     return el('div', { class: kind === 'offline' ? 'state state-problem state-offline' : 'state state-problem', role: 'alert' },
@@ -758,7 +763,11 @@
       const plays = list.filter(s => s.kind === 'plays').length;
       $('browse-count').textContent = [list.length - plays ? plural(list.length - plays, 'series', 'series') : null,
         plays ? plural(plays, 'play', 'plays') : null].filter(Boolean).join(' · ') || plural(0, 'series', 'series');
-      if (!list.length) { body.append(stateBox('empty', { text: 'Nothing matches these filters.' })); return; }
+      if (!list.length) {
+        const clear = f.sort === 'popular' ? '?view=browse' : `?view=browse&sort=${encodeURIComponent(f.sort)}`;
+        body.append(stateBox('empty', { text: 'Nothing matches these filters.', action: { label: 'Clear filters', href: clear } }));
+        return;
+      }
       const ul = el('ul', { class: 'series-list' });
       body.append(ul);
       let shown = 0;
@@ -1320,6 +1329,7 @@
      LIBRARY (this device)
   ================================================================ */
 
+  const BROWSE = { label: 'Browse', href: '?view=browse' };
   function renderLibrary(r) {
     setTitle('Library');
     AccountUI.paintRow($('account-row'));
@@ -1331,7 +1341,7 @@
     body.replaceChildren();
     if (tab === 'queue') {
       const q = Store.queue();
-      if (!q.length) { body.append(stateBox('empty', { text: 'Nothing queued.' })); return; }
+      if (!q.length) { body.append(stateBox('empty', { text: 'Nothing queued.', action: BROWSE })); return; }
       const ul = el('ul', { class: 'ep-list' });
       q.forEach((ep, i) => {
         const row = episodeRow(ep, { showSeries: true });
@@ -1349,7 +1359,7 @@
       body.append(ul);
     } else if (tab === 'history') {
       const h = Store.history();
-      if (!h.length) { body.append(stateBox('empty', { text: 'Nothing played yet.' })); return; }
+      if (!h.length) { body.append(stateBox('empty', { text: 'Nothing played yet.', action: BROWSE })); return; }
       body.append(episodeList(h, { showSeries: true }),
         el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
           if (confirm('Clear your listening history and resume points on this device?')) { Store.clearHistory(); route(); }
@@ -1358,7 +1368,7 @@
       PlaysUI.renderMine(body, playsHelpers);
     } else {
       const f = Store.follows();
-      if (!f.length) { body.append(stateBox('empty', { text: 'Not following any series.' })); return; }
+      if (!f.length) { body.append(stateBox('empty', { text: 'Not following any series.', action: BROWSE })); return; }
       body.append(el('ul', { class: 'series-list' }, f.map(seriesRow)));
     }
   }

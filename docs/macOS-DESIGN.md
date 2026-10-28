@@ -223,7 +223,7 @@ only here:
 ## §7 States and accessibility
 
 - **§7.1 The four states** are iOS's (`docs/iOS-DESIGN.md` §7.1):
-  skeleton rows, `ContentUnavailableView`, `CatalogUnavailableView`
+  skeleton rows, `EmptyState` (§7.4), `CatalogUnavailableView`
   with Try Again, and no retry where retrying cannot help.
 - **§7.2 Offline** is iOS §7.2: `OfflineLine` ("You are offline.",
   neutral) sits above the transport bar, or alone along the window's
@@ -235,6 +235,16 @@ only here:
 - **§7.3 VoiceOver and the keyboard.** Labels and values on every
   control; every command reachable from the menu bar, so the app is
   usable without the pointer.
+- **§7.4 One empty state** is iOS §7.4, the same `EmptyState` view
+  (AGENTS.md: "Only essential words on screen. A caption must be a
+  refusal, a warning, or a fact the person cannot discover by
+  looking."): the fact and at most one action. An empty Library is
+  "Nothing played yet" with Browse, which selects Browse in the sidebar,
+  and the Account row stays under it; the site pages are the Help
+  menu's (§5.6), so they are not in Library on the Mac.
+- **§7.5 No hints**, as iOS §7.5: every command is in the menu bar
+  with its key, which is where a Mac person looks, so a tip would
+  repeat a menu. No dismissal store, no "Show Tips Again".
 
 ## §8 Values
 
