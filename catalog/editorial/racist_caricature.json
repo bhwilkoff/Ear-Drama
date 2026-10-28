@@ -1,0 +1,49 @@
+{
+  "_": "Programs that are never RECOMMENDED (shelves, evenings, stations, Surprise, Home) and stay findable by Search, Browse and their own pages: no_recommend with the reason 'racist caricature' (catalog DECISIONS 013, after Archive Watch Decision 174). Evidence only, never a hunch: each pattern names a source a reader can open that documents the program or form as racial caricature. `on` is 'series' (the series name only) or 'both' (series name or episode title). `not` exempts an episode id with its reason; `add` names one episode with its source.",
+  "series": {
+    "amos-n-andy": {
+      "pattern": "amos\\W{0,3}(?:'?n'?|and|&)?\\W{0,3}andy",
+      "on": "both",
+      "source": "https://en.wikipedia.org/wiki/Amos_%27n%27_Andy",
+      "why": "white actors voicing Black characters in the blackface minstrel tradition; protested for its racist stereotyping"
+    },
+    "beulah": {
+      "pattern": "^(?:the )?beulah(?: show)?$",
+      "on": "series",
+      "source": "https://en.wikipedia.org/wiki/Beulah_(radio_and_TV_series)",
+      "why": "its caricature of a Black maid, first voiced by a white man; criticized by the NAACP"
+    },
+    "aunt-jemima": {
+      "pattern": "^aunt jemima\\b",
+      "on": "series",
+      "source": "https://en.wikipedia.org/wiki/Aunt_Jemima",
+      "why": "built on the 'Mammy' stereotype"
+    },
+    "minstrel-show": {
+      "pattern": "\\bminstrel\\s*shows?\\b",
+      "on": "both",
+      "source": "https://en.wikipedia.org/wiki/Minstrel_show",
+      "why": "the blackface minstrel show, a form built on racial stereotypes of Black people"
+    },
+    "mitchell-minstrels": {
+      "pattern": "\\bmitchell minstrels\\b",
+      "on": "both",
+      "source": "https://en.wikipedia.org/wiki/The_Black_and_White_Minstrel_Show",
+      "why": "the George Mitchell Minstrels, who performed in blackface"
+    },
+    "fu-manchu": {
+      "pattern": "\\bfu\\W?manchu\\b",
+      "on": "both",
+      "source": "https://en.wikipedia.org/wiki/Fu_Manchu",
+      "why": "the character as a stereotype embodying the 'Yellow Peril'"
+    }
+  },
+  "not": {
+    "jeanshepherdshow|tamosandandy": "a Jean Shepherd monologue with Amos and Andy as its topic, not a performance of the act",
+    "chrwrvo|t070322009fromsamhenrytoamosandy": "a program on the history of the act (its title, From Sam 'n' Henry to Amos 'n' Andy), not a performance of it",
+    "raykroc|n1": "an interview with Ray Kroc about discovering the act's players (its title), not a performance",
+    "raykroc|n2": "an interview with Ray Kroc about discovering the act's players (its title), not a performance",
+    "goonshow|1955-12-06": "The Goon Show's parody of the character, not the character's own program; left for the owner"
+  },
+  "add": {}
+}

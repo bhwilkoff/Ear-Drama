@@ -435,7 +435,9 @@ the unclaimed one.
   projection serves `clean` rows only. This is one flag in the publish step,
   never a client filter (LOOP-PLAN standing rules).
 - **Never recommended, always findable**: `no_recommend` carries the reason
-  (Nazi-state speeches today; WWII propaganda per catalog DECISIONS 006).
+  (Nazi-state speeches and broadcasts, archive.org's own `deemphasize`
+  collection, and racist caricature with its source: catalog DECISIONS 006
+  and 013).
 - **Take-downs** go in `catalog/editorial/takedowns.json` and remove the rows at
   the next publish.
 

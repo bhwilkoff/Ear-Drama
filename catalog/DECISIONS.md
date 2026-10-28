@@ -108,6 +108,7 @@ These settle Q6-Q9 and 02-rights §11 items 5-10:
 | Music and variety shows built on popular songs | **hidden** (stricter than drama) |
 | AFRS originals | kept as government work only when no commercial performer is credited |
 | WWII and Cold War propaganda | never recommended, always findable (Archive Watch 149; `no_recommend`) |
+| Racist caricature (Amos 'n' Andy, minstrel shows, Fu Manchu) | never recommended, always findable, on a source (013) |
 | Noncommercial-use notices ($50 each) | not filed |
 
 **Why**: the owner accepted the defaults on 2026-10-22, "but stricter music".
@@ -258,3 +259,44 @@ KB (1.266 to 1.264 MB); the gate-open web projection gained `search/said/`
 (91,535 words in 796 files, 12.8 MB raw, 4.7 MB gzip, the largest `co.json` at
 387 KB raw, 144 KB gzip) and `search/dates/` (53 year files, the doc rows by air
 date, for Search's dates). A word under three letters is not filed.
+
+## 013 — Racist caricature is never recommended and always findable, on a source a reader can open
+*Date: 2026-10-28*
+
+`build_db.no_recommend_reason` sets `no_recommend` (the 006 mechanism) for three
+kinds of evidence, in this order. A Nazi-state recording: the speech words now
+include German compounds (Wahlkampfrede, Rundfunkansprache, Kundgebung), and a
+title that opens with the speaker's full name in the German archive's form
+("Adolf Hitler - Kulturtagung", "Adolf Hitler vor dem Reichstag"). A recording
+whose archive.org item is in archive.org's own `deemphasize` collection. And
+racist caricature, from `catalog/editorial/racist_caricature.json`: a series or
+title pattern, each with a source that documents it as racial caricature
+(Amos 'n' Andy, Beulah, Aunt Jemima, the minstrel show, the Mitchell Minstrels,
+Fu Manchu); `not` exempts a program about the act with its reason. The reason
+text names the source. Every surface that chooses for the listener already
+skips the flag (contract §5 `recommendAnd`); Search, Browse and Detail keep
+the episodes.
+
+**Why**: the owner, 2026-10-28: *"If we don't yet have flags for offensive
+materials we need to implement them. Archive watch has multiple different flags
+for racist materials that allow them to be searched for but never recommended
+on the surfaces we want users to leverage for discovery."* The flag existed
+for Nazi speeches only, and that rule missed 87 of the regime's own recordings
+because their titles name the speaker and the occasion, not a speech word.
+archive.org's subject tags were measured and refused as evidence here: the 18
+items tagged racism (11), stereotyping (4) or minstrels (3) are mostly programs ABOUT racism
+(Pacifica reels, anti-apartheid journalism), and one "minstrels" tag sits on a
+107-show variety collection. A guest spot where the Amos 'n' Andy act performs
+in character is flagged with the show; an interview or history program about
+it is not.
+
+**How to apply**: measured 2026-10-28 on the local research database: 1,016
+episodes flagged racist caricature (786 Amos and Andy Show, 89 The Shadow of
+Fu Manchu, 59 Beulah, 20 Aunt Jemima, the rest guest spots and minstrel
+episodes across 30 series), Nazi-state 97 to 184, 5 more on archive.org's
+deemphasize alone; none lost its flag. Add a program with a source a reader can
+open, never on a hunch or a bare keyword; exempt one in `not` with its reason.
+Left for the owner: Charlie Chan; Frank Watanabe and the Honorable Archie (no
+source found); The Goon Show's Fu Manchu parody (exempted); Jungle Jim's
+wartime slurs in titles; coon songs and "darkies" in record titles; Blue Coal
+Minstrels; Al Jolson's "Mammy".

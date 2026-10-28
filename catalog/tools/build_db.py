@@ -46,8 +46,41 @@ ITEM_NOISE = re.compile(
 # named in the title WITH a speech or rally; a program ABOUT Hitler is not his
 # broadcast (Decision 149: never widen on a keyword).
 _NAZI = r"(?:Adolf Hitler|Hitler|Goebbels|G(?:ö|oe)ring|Himmler)"
-_SPEECH = r"(?:Rede|Ansprache|Sportpalast\w*|speech|address|broadcast to)"
-NO_RECOMMEND = re.compile(rf"\b(?:{_NAZI}\b.{{0,40}}\b{_SPEECH}|{_SPEECH}\b.{{0,40}}\b{_NAZI}\b|Reichstagsrede|Reichsparteitag)", re.I)
+_SPEECH = r"(?:\w*rede|\w*ansprache|Sportpalast\w*|Kundgebung|speech|address|broadcast to|discurso)"
+# The German archive titles its recordings by speaker: "Adolf Hitler - Kulturtagung",
+# "Adolf Hitler vor dem Reichstag". Only the full name leads; "Hitler's Secret Army" does not.
+_FULL = r"(?:Adolf Hitler|Joseph Goebbels|Hermann G(?:ö|oe)ring|Heinrich Himmler|Rudolf He(?:ss|ß))"
+NO_RECOMMEND = re.compile(
+    rf"\b(?:{_NAZI}\b.{{0,40}}\b{_SPEECH}\b|{_SPEECH}\b.{{0,40}}\b{_NAZI}\b|Reichstagsrede|Reichsparteitag)"
+    rf"|^\W*(?:(?:\d+|DRF)\W+)*{_FULL}(?:\s*[-–]|\s+(?:und|vor|auf|in|im|bei|beim|spricht|über|ueber|an|zur|zum"
+    rf"|während|waehrend)\b)", re.I)
+
+
+def caricature_rules(table):
+    """editorial/racist_caricature.json as (compiled pattern, on, reason) per series entry."""
+    return [(re.compile(v["pattern"], re.I), v.get("on", "both"),
+             f"racist caricature: {v['why']} ({v['source']})") for v in (table.get("series") or {}).values()]
+
+
+def no_recommend_reason(ep, items, rules, table):
+    """The first reason this episode is never recommended, or None (catalog DECISIONS 013).
+    Series name and title are tested apart: "Founder's Day Speech" + "Adolph Hitler and
+    the Nazi Movement" is a US talk ABOUT him, and only matched when joined."""
+    title, sname = str(ep.get("title") or ""), str(ep.get("series_name") or "")
+    nr = NO_RECOMMEND.search(title) or NO_RECOMMEND.search(sname)
+    if nr:
+        return f"Nazi-state speech or broadcast ({nr.group(0).strip()})"
+    for r in ep.get("recordings") or []:
+        if "deemphasize" in ((items.get(r.get("archive_id")) or {}).get("collections") or []):
+            return f"archive.org de-emphasizes its item (https://archive.org/metadata/{r['archive_id']}/metadata/collection)"
+    if ep["id"] in (table.get("not") or {}):
+        return None
+    if ep["id"] in (table.get("add") or {}):
+        return f"racist caricature: {table['add'][ep['id']]}"
+    for rx, on, reason in rules:
+        if rx.search(sname) or (on == "both" and rx.search(title)):
+            return reason
+    return None
 
 
 def load(path, default):
@@ -996,17 +1029,17 @@ def main():
     seed_kind = {k: v.get("kind") for k, v in
                  (load(os.path.join(ia.EDITORIAL, "extra_seeds.json"), {}).get("ids") or {}).items()}
     CORPUS_KIND = {"aircheck": "aircheck", "shortwave_dx": "shortwave"}
+    caricature_table = load(os.path.join(ia.EDITORIAL, "racist_caricature.json"), {})
+    caricature = caricature_rules(caricature_table)
     for ep in episodes.values():
         ks = collections.Counter(k or "radio" for k in ep.pop("kinds"))
         ep["content_kind"] = ks.most_common(1)[0][0]
         kinds = {CORPUS_KIND.get(seed_kind.get(r["archive_id"])) for r in ep["recordings"]}
         if ep["content_kind"] == "radio" and len(kinds) == 1 and None not in kinds:
             ep["content_kind"] = kinds.pop()
-        # Series name and title are tested apart: "Founder's Day Speech" + "Adolph Hitler and
-        # the Nazi Movement" is a US talk ABOUT him, and only matched when joined.
-        nr = NO_RECOMMEND.search(str(ep.get("title") or "")) or NO_RECOMMEND.search(str(ep.get("series_name") or ""))
+        nr = no_recommend_reason(ep, items, caricature, caricature_table)
         if nr:
-            ep["no_recommend"] = f"Nazi-state speech or broadcast ({nr.group(0)})"
+            ep["no_recommend"] = nr
     del recs_out
 
     # LibriVox: each project is a "play" series; its sections are its parts.
