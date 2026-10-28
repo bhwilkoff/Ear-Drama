@@ -1512,7 +1512,9 @@
       const art = face ? face.art : s && s.art;
       if (art) {
         const aspect = art.width && art.height ? Math.min(art.width / art.height, 1) : 0.8;
-        box.append(portraitFrame(el('span', { class: 'np-face' }), art, Math.round(360 * aspect), (face ? face.name : s.star) || ''));
+        box.append(portraitFrame(el('span', { class: 'np-face', 'aria-hidden': 'true' }), art, Math.round(360 * aspect), (face ? face.name : s.star) || ''));
+        // Shown larger than a page's head, so a credited portrait carries its credit here too (Decision 069).
+        if (art.credit) box.append(el('a', { class: 'caption face-credit np-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit));
         Player.setArtwork([{ src: API.artURL(art, 500), sizes: '500x500', type: 'image/jpeg' }]);
         return;
       }
@@ -1520,6 +1522,7 @@
       if (!name) return;
       const line = s ? [years(s.first, s.last), s.networks].filter(Boolean).join(' · ') : null;
       const card = typeCard({ name, line, genre: s && s.genre });
+      card.setAttribute('aria-hidden', 'true');
       box.append(card);
       const png = cardImage(card, name, line);
       if (png) {

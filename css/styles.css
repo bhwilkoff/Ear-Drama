@@ -427,6 +427,7 @@ select {
 /* Now Playing's picture (§6.4a): full width, square, and no taller than 44 % of the screen, so
    Play stays on a phone's first screen; the face whole over its wash, else the typographic card. */
 .np-art:empty { display: none; }
+.np-credit { display: block; margin-top: var(--space-1); text-align: center; }
 .np-art { margin-bottom: var(--space-3); }
 .np-face, .np-art .type-card { width: min(100%, 44vh); width: min(100%, 44dvh); aspect-ratio: 1; margin: 0 auto; border-radius: var(--radius-card); }
 .type-card {

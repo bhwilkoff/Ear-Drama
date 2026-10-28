@@ -581,7 +581,8 @@ web app follows today.
   directly below. Now Playing's art is full width and square, no taller
   than 44 % of the screen (`min(100%, 44dvh)`) so Play stays on a
   phone's first screen; a portrait sits whole in it over the wash, a card
-  fills it. A row's tile is 56 px. Sizes come from the one helper: the
+  fills it, and a credit the portrait owes is captioned under it (the art
+  is larger than a page's head there). A row's tile is 56 px. Sizes come from the one helper: the
   120 step for tiles and every wash (the tile the person just tapped has
   already cached it, so a band is never an empty box while the sharp copy
   loads), the 500 or 960 step for a band and Now Playing by its drawn
