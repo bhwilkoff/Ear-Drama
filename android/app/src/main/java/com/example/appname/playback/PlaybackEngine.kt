@@ -145,13 +145,19 @@ class PlaybackEngine(
 
     private var playerOrNull: ExoPlayer? = null
 
+    /** The catalog's length of each queued item by uri, for MP3s whose own header cannot say (see [Mp3Seeking]). */
+    private val lengthsUs = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
     val player: ExoPlayer
         get() = playerOrNull ?: buildPlayer().also { playerOrNull = it }
 
     private fun buildPlayer(): ExoPlayer {
         val dataSource = DefaultDataSource.Factory(context, OkHttpDataSource.Factory(api.okHttp))
         return ExoPlayer.Builder(context)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(dataSource))
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(context, Mp3Seeking.extractorsFactory { lengthsUs[it.toString()] })
+                    .setDataSourceFactory(dataSource),
+            )
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -313,7 +319,7 @@ class PlaybackEngine(
         val media = items.mapIndexed { i, (row, u) ->
             if (i == 0) mediaItem(row, u, detail.face, card = true) else mediaItem(row, u)
         }
-        return Queue(media, startMs ?: startPositionFor(detail.episode.id))
+        return Queue(media, startMs ?: startPositionFor(detail.episode.id, detail.episode.lengthSeconds))
     }
 
     private suspend fun playable(db: CatalogDatabase, ids: List<String>): List<Pair<EpisodeRow, String>> = ids.mapNotNull { id ->
@@ -351,16 +357,16 @@ class PlaybackEngine(
         }
     }
 
-    private suspend fun startPositionFor(id: String): Long {
+    private suspend fun startPositionFor(id: String, lengthSeconds: Double?): Long {
         val saved = user.progress(id) ?: return 0
-        return PlayerNumbers.fromSaved(saved.positionMs, saved.finished)
+        return PlayerNumbers.fromSaved(saved.positionMs, saved.finished, lengthSeconds?.let { (it * 1000).toLong() })
     }
 
     private fun resumeAt(id: String) {
         val p = playerOrNull ?: return
         if (p.currentPosition > 1_000) return
         scope.launch {
-            val start = startPositionFor(id)
+            val start = startPositionFor(id, episodes.firstOrNull { it.id == id }?.lengthSeconds)
             if (start > 0 && p.currentMediaItem?.mediaId == id) p.seekTo(start)
         }
     }
@@ -380,9 +386,15 @@ class PlaybackEngine(
      * A downloaded file's lock-screen picture is the typographic card, drawn on
      * the device, so it shows with no network (a portrait is a URL to fetch).
      */
-    private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean): MediaItem = MediaItem.Builder()
+    private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean): MediaItem {
+        val uri = if (source.isLocal) Uri.fromFile(java.io.File(source.location)) else Uri.parse(source.location)
+        row.lengthSeconds?.takeIf { it > 0 }?.let { lengthsUs[uri.toString()] = (it * 1_000_000).toLong() }
+        return mediaItem(row, uri, source.isLocal, face, card)
+    }
+
+    private fun mediaItem(row: EpisodeRow, uri: Uri, isLocal: Boolean, face: Face?, card: Boolean): MediaItem = MediaItem.Builder()
         .setMediaId(row.id)
-        .setUri(if (source.isLocal) Uri.fromFile(java.io.File(source.location)) else Uri.parse(source.location))
+        .setUri(uri)
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(row.title ?: row.airDate ?: row.seriesName)
@@ -391,7 +403,7 @@ class PlaybackEngine(
                 .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
                 .let {
                     when {
-                        source.isLocal -> SessionArtwork.apply(it, row, null)
+                        isLocal -> SessionArtwork.apply(it, row, null)
                         face != null || card -> SessionArtwork.apply(it, row, face)
                         else -> it
                     }
@@ -484,10 +496,16 @@ class PlaybackEngine(
         val p = playerOrNull ?: return
         val id = p.currentMediaItem?.mediaId ?: return
         val position = p.currentPosition
-        val duration = p.duration.takeIf { it != C.TIME_UNSET } ?: 0
+        val duration = displayDurationMs(p, id)
         if (position <= 0 && duration <= 0) return
         lastSaveAt = SystemClock.elapsedRealtime()
         scope.launch { user.save(id, position, duration) }
+    }
+
+    private fun displayDurationMs(p: ExoPlayer, id: String?): Long {
+        val own = p.duration.takeIf { it != C.TIME_UNSET } ?: 0
+        val catalog = episodes.firstOrNull { it.id == id }?.lengthSeconds?.let { (it * 1000).toLong() }
+        return Mp3Seeking.displayMs(own, catalog)
     }
 
     private fun publish() {
@@ -499,7 +517,7 @@ class PlaybackEngine(
             isPlaying = p.isPlaying,
             buffering = p.playbackState == Player.STATE_BUFFERING,
             positionMs = p.currentPosition.coerceAtLeast(0),
-            durationMs = p.duration.takeIf { it != C.TIME_UNSET } ?: 0,
+            durationMs = displayDurationMs(p, current?.id),
             speed = p.playbackParameters.speed,
             sleep = sleep.state,
             sleepRemainingMs = sleep.remainingMs(
