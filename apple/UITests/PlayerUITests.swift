@@ -53,4 +53,16 @@ final class PlayerUITests: DeviceTestCase {
         shot(app, "08-closed-mini")
         XCTAssertEqual(app.state, .runningForeground)
     }
+
+    /// Another speaker (owner, 2026-10-28): AirPlay's own picker is on the player.
+    func testRoutePickerOnPlayer() throws {
+        let app = launch(["APP_START_ITEM": Fixture.short, "APP_AUTOPLAY": "1",
+                          "APP_DOOR_SECONDS": "120"])
+        XCTAssertTrue(app.buttons["Forward 30 seconds"].waitForExistence(timeout: 30))
+        let picker = app.descendants(matching: .any)["RoutePicker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 10), "the AirPlay route picker is on the player")
+        XCTAssertTrue(picker.isHittable, "the route picker can be pressed")
+        shot(app, "09-route-picker")
+        app.buttons["Close player"].tap(); sleep(2)
+    }
 }

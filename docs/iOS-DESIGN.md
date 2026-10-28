@@ -413,7 +413,9 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§5.3 The player is a sheet** with its drag indicator
   (`PlayerSheet_iOS`): series, title, date and network, the scrubber,
   elapsed and remaining time, back 15 s, Play, forward 30 s, then
-  speed, the sleep timer, and AirPlay's own `AVRoutePickerView`. Errors
+  speed, the sleep timer, and AirPlay's own `AVRoutePickerView`
+  (`RoutePicker_iOS`, labeled "AirPlay"; the `.longFormAudio` session
+  routes the whole player, and Now Playing follows it). Errors
   and the offline warning sit under them, and "Next:" names what the
   queue holds. The toolbar carries Close and, when there is one, the
   transcript.

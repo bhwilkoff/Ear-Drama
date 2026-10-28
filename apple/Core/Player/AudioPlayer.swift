@@ -113,12 +113,19 @@ final class AudioPlayer {
     @ObservationIgnored private var commandsInstalled = false
     @ObservationIgnored private let leveler: LevelerSwitch
 
+    #if os(macOS)
+    /// The Mac has no audio session, so its AirPlay picker routes this player itself (macOS-DESIGN §5.2).
+    var routedPlayer: AVPlayer { player }
+    #endif
+
     init(history: ListeningHistory) {
         self.history = history
         let leveling = UserDefaults.standard.object(forKey: Self.levelingKey) as? Bool ?? true
         isLeveling = leveling
         leveler = LevelerSwitch(leveling)
         player.automaticallyWaitsToMinimizeStalling = true
+        // AirPlay: the route picker hands this player to a speaker or an Apple TV (Decision 051: the origin URL).
+        player.allowsExternalPlayback = true
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.5, preferredTimescale: 600), queue: .main
         ) { [weak self] _ in

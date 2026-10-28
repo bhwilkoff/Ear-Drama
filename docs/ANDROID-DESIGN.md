@@ -77,6 +77,18 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   player, and the transcript screen's title.
 - **R17** the car's four roots are the phone's tabs reduced (§9.1).
 - **R18** speed, sleep, and skip live on the player sheet.
+- **R18a** Another speaker (the owner, 2026-10-28: "All apps should be
+  able to make use of native sharing like airplay or casting on their
+  platforms."): Google's own Cast button (Media3 `MediaRouteButton`) ends
+  the player sheet's option row, shown only while a Cast receiver is on
+  the network (`CastRoute.available`), and never on a TV or a device
+  without Play services (Fire TV), which offer no button. Android 13+
+  opens the system output switcher from it. Media3's `CastPlayer` wraps
+  the one ExoPlayer, so the queue and the place move to the receiver and
+  back; Google's Default Media Receiver plays the catalog copy, never a
+  downloaded file (`CastRoute.Items`). The volume keys move the speaker
+  while it plays, and the sleep fade and leveling act on the phone's own
+  output only. Listen Together is a separate verb.
 - **R20** the sleep menu lists "End of this episode" first, then 15, 30,
   45, and 60 minutes (`SleepTimer`); it fades, and once fired the queue
   stops. What plays next is the owner's rule (Decision 067): a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc

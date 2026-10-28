@@ -1,4 +1,5 @@
 #if os(macOS)
+import AVKit
 import SwiftUI
 
 // The Mac is a pointer + keyboard + menu-bar app (macos-platform-patterns),
@@ -122,6 +123,9 @@ struct TransportBar_macOS: View {
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
                     .fixedSize()
+                RoutePicker_macOS(player: player.routedPlayer)
+                    .frame(width: 24, height: 24)
+                    .help("AirPlay")
                 NextStoryButton()
                     .fixedSize()
                 if let item = player.item, let url = item.episode.transcriptURL {
@@ -315,6 +319,23 @@ struct RecordingCommands_macOS: Commands {
             .keyboardShortcut("r", modifiers: [.command, .shift])
             .disabled(recording == nil || recording!.session.isBusy)
         }
+    }
+}
+
+/// AirPlay's own picker (AVKit), never a custom device list. The Mac routes
+/// the player it is given, since it has no audio session (macOS-DESIGN §5.2).
+struct RoutePicker_macOS: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVRoutePickerView {
+        let view = AVRoutePickerView()
+        view.isRoutePickerButtonBordered = false
+        view.player = player
+        return view
+    }
+
+    func updateNSView(_ nsView: AVRoutePickerView, context: Context) {
+        if nsView.player !== player { nsView.player = player }
     }
 }
 #endif

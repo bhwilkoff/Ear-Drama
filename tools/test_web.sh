@@ -15,6 +15,7 @@ cd "$(dirname "$0")/.."
 
 fail=0
 for t in js/api.test.js \
+         js/remote-playback.test.js \
          js/player.test.js \
          js/plays.test.js \
          js/plays-share.test.js \

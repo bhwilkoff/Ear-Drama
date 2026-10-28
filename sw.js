@@ -11,7 +11,7 @@
  *    (/pulse/, /cast/), the sign-in return pages (/auth/), and other origins' pages pass through untouched.
  *  - Caches are named by version; activate deletes every older Ear Drama cache.
  */
-const SHELL_VERSION = 'ed-shell-v38';
+const SHELL_VERSION = 'ed-shell-v39';
 const DATA_VERSION = 'ed-data-v1';
 const KEEP = [SHELL_VERSION, DATA_VERSION];
 
@@ -32,6 +32,7 @@ const SHELL = [
   'js/sync.js',
   'js/account.js',
   'js/player.js',
+  'js/remote-playback.js',
   'js/plays-core.js',
   'js/plays-store.js',
   'js/plays-share.js',
@@ -45,7 +46,6 @@ const SHELL = [
   'js/together-ui.js',
   'js/app.js',
   'js/site.js',
-  'js/cast-sender.js',
   'tv.js',
   'credits/',
   'privacy/',

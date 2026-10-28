@@ -99,7 +99,8 @@ struct PlayerSheet_iOS: View {
                     Spacer()
                     RoutePicker_iOS()
                         .frame(width: 44, height: 44)
-                        .accessibilityLabel("Play on another device")
+                        .accessibilityLabel("AirPlay")
+                        .accessibilityIdentifier("RoutePicker")
                 }
                 .font(TypeRamp.body)
 

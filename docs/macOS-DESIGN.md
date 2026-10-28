@@ -156,8 +156,12 @@ only here:
 - **§5.2 The transport is a bar along the window's bottom edge**
   (`TransportBar_macOS`), shown while an episode is loaded: title,
   series and date, back 15 s, Play, forward 30 s, the scrubber with
-  elapsed and remaining time, speed, the sleep timer, and the
-  transcript button. Errors, or the offline warning, sit under it.
+  elapsed and remaining time, speed, the sleep timer, Listen Together,
+  AirPlay's own `AVRoutePickerView` (`RoutePicker_macOS`, given the
+  player to route, since the Mac has no audio session), and the
+  transcript button. Errors, or the offline warning, sit under it. The
+  Controls menu has no AirPlay item: AVKit opens its picker only from its
+  own button.
   Controls are `.borderless`, and speed and sleep are `.fixedSize()` so
   their labels never truncate (template §B11).
 - **§5.3 Every playback command is in the menu bar** (template §B10), in
