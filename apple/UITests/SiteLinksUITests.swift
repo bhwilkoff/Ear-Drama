@@ -28,7 +28,12 @@ final class SiteLinksUITests: DeviceTestCase {
 
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
         XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 15), "Safari came forward")
-        XCTAssertNotEqual(app.state, .runningForeground, "the app left the foreground")
+        // The app's state lags Safari's by a moment (seen 2026-10-28): wait, never read once.
+        XCTAssertTrue(app.wait(for: .runningBackground, timeout: 10)
+                      || app.state == .runningBackgroundSuspended, "the app left the foreground")
+        // The frame is taken once the page drew its own heading, not while it loads.
+        let heading = safari.webViews.staticTexts["Credits"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 20), "the Credits page loaded")
         shot(safari, "01-safari")
 
         app.activate()

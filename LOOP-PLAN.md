@@ -109,6 +109,18 @@ P8. **The first launch after a new install or a catalog publish quits** (seen
    next launch passes. Not explained. Diagnose before any fix: the app's console
    from `devicectl device process launch --console` on a fresh install, and the
    device log at the exit; a user updating from TestFlight may meet it.
+   Seen 4 times by 4:36 PM (each the first XCUITest launch after an install);
+   NOT seen at 4:49 PM on a fresh Debug-over-Release install, nor on three
+   Release launches by devicectl. Still unexplained.
+P9. **Android lint, then gate it** (P7 found lint never enforced: 10 errors,
+   9 UnsafeOptInUsageError in PlaybackService.kt and CatalogLengthSeeking.kt,
+   1 MissingIntentFilterForMediaSearch; 71 warnings). After the casting batch
+   merges (both touch the player). The media-search intent is a voice-search
+   feature: owner call.
+V2. **Visual pass** (owner 2026-10-28: "Portraits should show wherever they are
+   useful or joyful"). Running.
+N1. **Play on another speaker or screen** (owner 2026-10-28: "native sharing
+   like airplay or casting"). Running.
 
 Earlier batches (2026-10-23 to 2026-10-27; built unless marked):
 Owner, 2026-10-23: build significant features before asking them to test.
