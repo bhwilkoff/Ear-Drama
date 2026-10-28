@@ -117,8 +117,9 @@ P9. **Android lint, then gate it** (P7 found lint never enforced: 10 errors,
    1 MissingIntentFilterForMediaSearch; 71 warnings). After the casting batch
    merges (both touch the player). The media-search intent is a voice-search
    feature: owner call.
-V2. **Visual pass** (owner 2026-10-28: "Portraits should show wherever they are
-   useful or joyful"). Running.
+V2. **Visual pass, all artwork** (owner 2026-10-28: "Portraits should show wherever
+   they are useful or joyful", then "The visual pass should be for all artwork. We
+   want the app to be as visual as possible."). Running.
 N1. **Play on another speaker or screen** (owner 2026-10-28: "native sharing
    like airplay or casting"). Running.
 

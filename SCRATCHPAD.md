@@ -101,6 +101,7 @@ the entry retire when circumstances change).
 | Trademark clearance or filing for "Ear Drama" | Owner: neither for now (060) | before a public store release |
 | Outreach to RadioEchoes, Goldin/UMKC, OTRR, archive.org | Owner: skip for now (060); harvests stay polite | a harvest needs an export or a contact |
 | Archive Watch film cross-links in 1.0 | Owner left them out of 1.0 (058) | 1.x |
+| A separate Fire TV build without Google Play services | Owner 2026-10-28: "I don't think that the fire tv needs its own separate build if there are so few benefits." One Android build; Fire TV is guarded at run time (no Cast button, no Google sign-in without Play services) | Amazon rejects the build, or a Play-services library crashes on Fire TV |
 
 ---
 
