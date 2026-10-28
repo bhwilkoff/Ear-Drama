@@ -290,3 +290,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Tick 93, 2026-10-27, merge: Android VBR timing, device-checked on the Pixel 8a (1.0.74)
 - Merged 2556eb4 after a real-device check on the Pixel 8a (muted, devlease "pixel"): Gang Busters 1954-08-02 shows 23:41 (not ~1 h); seeks to ~50% and ~80% keep the clock moving (12:12 to 12:19; 19:05 to 19:12, frame read); X Minus One control the same; logcat clean. Android 246/0, 0 `w:` on main. Not verified: that a seek lands on the matching scene (needs ears). No Play build (a version is in review).
 - Running: the 1.0.73 App Store build.
+
+### Tick 94, 2026-10-27, merge: the web and headerless VBR (1.0.75)
+- Merged 0e3018d. Measured in headless Chrome (real timers): Gang Busters `duration` 1413.5 s against the catalog's 1421.6 (0.6%), X Minus One exact; seeks to 50% and 80% advance 5.00 s in 5 s, no error or stall. So the web needed only the resume rule: a saved place at or past 95% of the catalog length starts over (player.test.js, seen red twice). Web 0 FAIL on main. Not measured: Safari and iOS web.
