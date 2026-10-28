@@ -198,8 +198,10 @@ none on the web), never as a skip. Segment times are never estimated.
   read is absent, never zero. Read by the `mostDownloaded` shelf (§5.1).
 - `art`: `(id, url, width, height, license, author, credit, evidence_url)`.
   `url` is Commons' `Special:FilePath/<file>` with no width: each client's one
-  image helper appends `?width=` from Commons' standard steps (120, 330, 500),
-  never another value (Commons refuses most others) and never a re-hosted copy.
+  image helper appends `?width=` from Commons' standard steps (120, 330, 500,
+  960), never another value (Commons refuses most others) and never a re-hosted copy.
+  MEASURED 2026-10-28: `?width=800` is served as the 960 thumbnail, and a request
+  wider than the original returns the original, so 960 is always safe to ask for.
   `width`/`height` are the original's when known, else NULL. `license` is the
   class (`pd_us`, `pd_us_gov`, `cc0`, `pd_release`, `free_use`, `cc_by`,
   `cc_by_sa`); `credit` ("Author, CC BY-SA 3.0") is set exactly when the license

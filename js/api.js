@@ -138,7 +138,7 @@ const API = (() => {
     return rowsOf(ART_FIELDS, [a])[0];
   }
   /** Commons' standard thumbnail steps; any other width is refused upstream. */
-  const ART_STEPS = [120, 330, 500];
+  const ART_STEPS = [120, 330, 500, 960];
   /** The one image helper: the served file at the smallest standard width at least `px` wide. */
   function artURL(art, px) {
     if (!art || !art.url) return null;

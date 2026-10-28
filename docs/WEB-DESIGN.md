@@ -546,28 +546,47 @@ web app follows today.
   and genre. Where art appears, and only there:
   - **A row that mixes series** (Continue listening, This day, genre
     shelves, search results, the queue and history, series rows and
-    cards) leads with a 40 px tile: the series' star, else the series'
+    cards, Stations' rows and an evening's aired slots) leads with a 56 px
+    tile (§6.4a): the series' star, else the series'
     first letter in its genre hue on the surface. Rows on a series page
     carry none: one picture repeated down a list is chrome. On a phone the
     date stacks above the title (still first, R1) so the title keeps its
     width; from 768 px it takes its column.
-  - **A series page and Detail** put the face beside the heading (76 px
-    on a phone, 128 px from 768 px), captioned with the person's name (who
-    it is cannot be seen) and the credit when the license asks for one.
-    Detail uses the episode's star, a person credited in it; a series page
-    its star. No face, no picture: the heading is the card.
+  - **A series page, Detail, and a person's page** open with the face
+    band (§6.4a), captioned with the person's name (who it is cannot be
+    seen; a person's page leaves it to the heading) and the credit when
+    the license asks for one. Detail uses the episode's star, a person
+    credited in it; a series page its star. No face, no picture: the
+    heading is the card.
   - **Cast lines** carry a 32 px round portrait where the person has one;
     a role group with any portrait keeps the slot on every line, so names
     align. Credits owed by those portraits follow the list, one caption,
     each linked to its Commons file page.
   - **Now Playing** shows the episode's star, else the series' star, else
-    the series' typographic card, at up to 200 px (the controls stay on a
-    phone's first screen); §5.6 sends the same art to the lock screen.
-  - Portraits are cropped only to a top-anchored frame (`object-position:
-    50% 20%`) and are the person's own Wikidata image, so the crop keeps
-    the face. A failed image leaves the tile's letter or nothing, never a
-    broken image. `API.artURL` is the one helper: Commons' standard widths
-    (120, 330, 500), never a re-hosted copy.
+    the series' typographic card, full width and square (§6.4a); §5.6
+    sends the same art to the lock screen.
+  - Tiles and cast faces are cropped only to a top-anchored frame
+    (`object-position: 50% 20%`) and are the person's own Wikidata image,
+    so the crop keeps the face. A failed image leaves the tile's letter or
+    nothing, never a broken image. `API.artURL` is the one helper:
+    Commons' standard widths (120, 330, 500, 960), never a re-hosted copy.
+- **§6.4a Faces lead** (owner, 2026-10-28: *"Portraits should show
+  wherever they are useful or joyful (overall the visuals are not
+  highlighted yet on the app)."*). Where a face is served it is the first
+  thing on its page and large enough to know. A series page, Detail, and
+  a person's page open with a full-width face band, 240 px tall on a
+  phone and 320 px from 768 px: the whole portrait at its own aspect
+  (`object-fit: contain`, never reshaped) over a wash of the same image,
+  blurred and dimmed, with the genre's edge under it, and the caption
+  directly below. Now Playing's art is full width and square, no taller
+  than 44 % of the screen (`min(100%, 44dvh)`) so Play stays on a
+  phone's first screen; a portrait sits whole in it over the wash, a card
+  fills it. A row's tile is 56 px. Sizes come from the one helper: the
+  120 step for tiles and every wash (the tile the person just tapped has
+  already cached it, so a band is never an empty box while the sharp copy
+  loads), the 500 or 960 step for a band and Now Playing by its drawn
+  width at the screen's density. Band and art heights are fixed, so
+  nothing moves when an image lands; a failed sharp copy leaves the wash.
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline

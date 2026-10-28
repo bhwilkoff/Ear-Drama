@@ -219,13 +219,29 @@
   }
   new MutationObserver(paintArt).observe(document.body, { childList: true, subtree: true });
 
-  /** A face beside a page heading, captioned with whose it is and, when its license asks, the credit. */
-  function faceFigure(art, name) {
-    const box = el('span', { class: 'face-img' });
-    putImage(box, art, 112, name || '');
-    return el('figure', { class: 'face' }, box,
-      el('figcaption', { class: 'caption' }, name,
-        art.credit ? el('a', { class: 'face-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit) : null));
+  /** The whole portrait at its own aspect over a wash of the same image (§6.4a). The wash is the
+      row tile's 120 step, usually cached already, so the frame is never an empty box while the
+      sharp copy loads; a failed sharp copy leaves the wash. */
+  function portraitFrame(box, art, px, alt) {
+    const wash = el('img', { class: 'art-wash', src: API.artURL(art, 120), alt: '', decoding: 'async' });
+    wash.addEventListener('error', () => wash.remove());
+    box.classList.add('has-wash');
+    box.append(wash);
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
+    const img = el('img', { class: 'art-whole', src: API.artURL(art, px * dpr), alt, decoding: 'async' });
+    img.addEventListener('error', () => img.remove());
+    box.append(img);
+    return box;
+  }
+  /** A page's face (§6.4a): a full-width band, captioned with whose it is (when the heading does
+      not already say) and, when its license asks, the credit, linked to the file page. */
+  function faceHero(art, name) {
+    const tall = typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches ? 320 : 240;
+    const aspect = art.width && art.height ? art.width / art.height : 0.8;
+    const band = portraitFrame(el('span', { class: 'face-band' }), art, Math.round(tall * Math.min(aspect, 1.6)), name || '');
+    const credit = art.credit ? el('a', { class: 'face-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit) : null;
+    return el('figure', { class: 'face-hero' }, band,
+      name || credit ? el('figcaption', { class: 'caption' }, name || null, name && credit ? ' · ' : null, credit) : null);
   }
   /** The typographic card (R11): the name, one meta line, on the genre. Any titled work with a year
       and a genre draws one: a series, or a stage play. */
@@ -575,6 +591,7 @@
   function stationRow(name, slot, note, button) {
     const ep = slot && !slot.withheld && slot.episode;
     return el('li', { class: 'station' },
+      ep ? artTile({ key: ep.id.split('|')[0], name: ep.series }) : null,
       el('div', { class: 'station-main' },
         el('span', { class: 'body-strong' }, name),
         ep ? el('span', { class: 'body' }, ep.series) : null,
@@ -637,10 +654,12 @@
         same ? null : el('span', { class: 'caption tabular' }, `${fmtEt(s.et_start)} ET`));
       let main;
       if (d) {
-        main = el('a', { class: 'slot-main', href: `?item=${encodeURIComponent(d.id)}` },
-          el('span', { class: 'body-strong' }, s.episode.series),
-          el('span', { class: 'body slot-title' }, epTitle(d)),
-          el('span', { class: 'caption' }, [now ? 'Now' : null, `${s.length_min} min`].filter(Boolean).join(' · ')));
+        main = el('a', { class: 'slot-main has-art', href: `?item=${encodeURIComponent(d.id)}` },
+          artTile({ key: d.series, name: s.episode.series }),
+          el('span', { class: 'slot-text' },
+            el('span', { class: 'body-strong' }, s.episode.series),
+            el('span', { class: 'body slot-title' }, epTitle(d)),
+            el('span', { class: 'caption' }, [now ? 'Now' : null, `${s.length_min} min`].filter(Boolean).join(' · '))));
       } else {
         // A gap is stated, never filled (R9). The paper's printed text stays in the file as
         // witness and is not drawn until the owner rules on it (WEB-DESIGN §4.9).
@@ -841,7 +860,7 @@
 
       const meta = el('p', { class: 'caption' }, seriesMeta({ ...s, episodes: s.episodes.length }));
       const head = el('header', { class: `page-head${s.art ? ' has-face' : ''}`, dataset: { genre: s.genre || '' } },
-        s.art ? faceFigure(s.art, s.star) : null,
+        s.art ? faceHero(s.art, s.star) : null,
         el('div', { class: 'page-head-text' },
           el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta),
         el('div', { class: 'actions' }, followBtn, shareBtn));
@@ -906,7 +925,7 @@
                      d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
       const star = d.star ? d.credits.find(c => c.person === d.star && c.art) : null;
       body.append(el('header', { class: `page-head${star ? ' has-face' : ''}`, dataset: { genre: (s && s.genre) || '' } },
-        star ? faceFigure(star.art, star.name) : null,
+        star ? faceHero(star.art, star.name) : null,
         el('div', { class: 'page-head-text' },
         el('a', { class: 'section-header eyebrow-link', href: `?series=${encodeURIComponent(d.series)}` }, seriesName),
         el('h1', { class: 'view-heading', id: 'episode-h', tabindex: '-1' }, title),
@@ -947,7 +966,7 @@
           .map(c => [c.person, c])).values()];
         body.append(el('section', { class: 'block', 'aria-labelledby': 'credits-h' },
           el('h2', { class: 'section-header', id: 'credits-h' }, 'Cast and credits'), dl,
-          owed.length ? el('p', { class: 'caption photo-credits' }, owed.map((c, i) => [i ? ' · ' : '',
+          owed.length ? el('p', { class: 'caption photo-credits' }, owed.flatMap((c, i) => [i ? ' · ' : '',
             `${c.name}: `, el('a', { href: c.art.evidence, rel: 'noopener', target: '_blank' }, c.art.credit)])) : null));
       }
 
@@ -993,7 +1012,7 @@
       const count = new Set(p.credits.map(c => c.id)).size;
       const facts = [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes')].filter(Boolean).join(' · ');
       body.append(el('header', { class: `page-head${p.art ? ' has-face' : ''}` },
-        p.art ? faceFigure(p.art, null) : null,
+        p.art ? faceHero(p.art, null) : null,
         el('div', { class: 'page-head-text' },
           el('h1', { class: 'view-heading', id: 'person-h', tabindex: '-1' }, p.name),
           el('p', { class: 'caption' }, facts))));
@@ -1491,9 +1510,8 @@
       const face = (d && d.star && d.credits.find(c => c.person === d.star && c.art)) || null;
       const art = face ? face.art : s && s.art;
       if (art) {
-        const fig = el('span', { class: 'np-face' });
-        putImage(fig, art, 240, (face ? face.name : s.star) || '');
-        box.append(fig);
+        const aspect = art.width && art.height ? Math.min(art.width / art.height, 1) : 0.8;
+        box.append(portraitFrame(el('span', { class: 'np-face' }), art, Math.round(360 * aspect), (face ? face.name : s.star) || ''));
         Player.setArtwork([{ src: API.artURL(art, 500), sizes: '500x500', type: 'image/jpeg' }]);
         return;
       }

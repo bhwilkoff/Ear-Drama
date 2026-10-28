@@ -39,7 +39,9 @@ test('art: one helper, Commons standard widths only (contract §3.3)', () => {
   assertEq(art.credit, null, 'no credit when none is owed');
   assertEq(API.artURL(art, 80), `${art.url}?width=120`, 'a 40 px tile at 2x takes the 120 step');
   assertEq(API.artURL(art, 224), `${art.url}?width=330`, 'a head takes the 330 step');
-  assertEq(API.artURL(art, 2000), `${art.url}?width=500`, 'never beyond the largest step');
+  assertEq(API.artURL(art, 384), `${art.url}?width=500`, 'a phone band at 2x takes the 500 step');
+  assertEq(API.artURL(art, 512), `${art.url}?width=960`, 'a wide band or Now Playing takes the 960 step');
+  assertEq(API.artURL(art, 2000), `${art.url}?width=960`, 'never beyond the largest step');
   assertEq(API.artOf(null), null, 'control: no art is null, never an empty picture');
   assertEq(API.artURL(null, 40), null, 'control: no art, no URL');
 });
