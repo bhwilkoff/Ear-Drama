@@ -53,6 +53,7 @@ targets:
       - path: apple
         excludes:
           - "Tests/**"
+          - "UITests/**"
           # The Apple Watch app is its own target (EarDramaWatch, below).
           - "watchOS/**"
           # The folder READMEs are notes for people, not app resources.
@@ -194,3 +195,30 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: app.eardrama
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+
+  # The tap tier (docs/DEVICE-HARNESSES.md, iOS): XCUITest drives the real iPhone
+  # through tools/ios_uitest.py, which holds the device lease. iOS only; its own
+  # scheme below, so the macOS `EarDrama` test action and CI never build it.
+  EarDramaUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: apple/UITests
+    dependencies:
+      - target: EarDrama
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: EarDrama
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+
+schemes:
+  EarDramaUITests:
+    build:
+      targets:
+        EarDrama: all
+        EarDramaUITests: [test]
+    test:
+      config: Debug
+      targets: [EarDramaUITests]
