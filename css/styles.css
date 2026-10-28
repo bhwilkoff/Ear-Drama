@@ -202,6 +202,10 @@ h1:focus, main:focus { outline: none; }
 #main-content { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 .view { padding: var(--space-4); max-width: 960px; margin: 0 auto; }
+/* `hidden` always wins: an author `display` (e.g. .btn's inline-flex) otherwise beats the
+   browser's own [hidden] rule, and Now Playing's Next story and transcript buttons showed
+   while hidden (found 2026-10-28). */
+[hidden] { display: none !important; }
 .view[hidden] { display: none; }
 .view > .view-heading, .page-head .view-heading { margin-bottom: var(--space-3); }
 

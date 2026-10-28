@@ -145,8 +145,8 @@ def main():
                         "                List {\n                    if empty {", 1)),
         ("an empty TV Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen_tvOS"), tv,
-         tv.replace("                        SiteLinkRows()\n                    } footer:",
-                    "                    } footer:", 1)),
+         tv.replace("                        AccountRow()\n                        SiteLinkRows()\n",
+                    "                        AccountRow()\n", 1)),
     ]
     for name, check, real, broken in cases:
         ok(check(real), name)
