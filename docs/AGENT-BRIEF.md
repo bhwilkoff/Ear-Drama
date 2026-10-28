@@ -48,4 +48,8 @@ touches. Your brief adds the feature's goal, decisions, and acceptance tests.
 
 ## Report (under 400 words)
 What now exists that did not, per platform; the evidence (commands and counts);
-what is not verified; what needs the owner.
+what is not verified; what needs the owner. Then **Seen on the way** (owner,
+2026-10-28: "proactively looking for things to fix and design"): each defect
+or design gap you noticed outside your feature, as file, symptom, proposed
+fix, and whether it needs an owner ruling. Fix none of them unless it blocks
+your feature.

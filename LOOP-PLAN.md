@@ -77,6 +77,32 @@ what exists now, the evidence, what is not verified. Lessons go to memory.
 
 ## Feature batches (in order; each is one agent, every platform)
 
+**Current order (owner, 2026-10-28):** *"Yes, please start the loop with that
+order and make sure you are proactively looking for things to fix and design
+as you go through this loop."* Every agent reports, besides its feature, the
+defects and design gaps it saw on the way (file, symptom, proposed fix); the
+main thread fixes what needs no owner ruling in the next batch and lists the
+rest under Needs Ben. A tick with no batch running mines PARITY, the binding
+design docs and the device frames for the next fix before it ever stops.
+P1. **Parity audit with fixes** (M10; `cross-platform-parity-discipline`):
+   every row against the code, false cells corrected (e.g. `eardrama://` is
+   marked ⏳ on iOS but SearchUITests opens it), missing rows added.
+P2. **Harness: blind or perturbed means FAIL** (owner rule: an intermittent
+   harness is a harness defect): `ios_uitest.py` fails a frame showing a
+   system overlay (Screen Time's Time Limit passed a test 2026-10-27), and
+   waits for the install to finish before the tests (a launch during a
+   TestFlight-replacing install failed 2026-10-28).
+P3. **Follow a series on Apple and Android** (the web has Follow and a
+   Following row; Apple and Android store and sync follows with no control).
+P4. **EmptyState and one-shot hints on all five** (PARITY ⏳ everywhere;
+   essential words only, mobile-first-density rule 7).
+P5. **tvOS Top Shelf**: the listener's Continue items.
+P6. **Device tap tier for what is built and unchecked**: transcript search,
+   a real Universal Link opening the app, lock-screen controls, icons,
+   Android downloads and offline on the Pixel, tvOS focus and Now Playing.
+P7. **Zero warnings in clean Release builds everywhere** (M10).
+
+Earlier batches (2026-10-23 to 2026-10-27; built unless marked):
 Owner, 2026-10-23: build significant features before asking them to test.
 0a. **The owner's rulings, listening side** (Decision 067): on-device volume
    leveling in every player (no per-file loudness; the measuring workflow is
@@ -409,4 +435,5 @@ works elsewhere, and checks again.
 
 Feedback from play sessions goes here, newest first, and the next tick takes it.
 
-(none yet)
+- 2026-10-28: be proactive: look for things to fix and design while building (see Feature batches).
+- 2026-10-28: "You are claiming things without verification all over the place": verify a device's state (lease file, a frame) before reporting it.
