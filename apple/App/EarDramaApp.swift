@@ -8,6 +8,7 @@ struct EarDramaApp: App {
     @State private var catalog: CatalogStore
     @State private var history: ListeningHistory
     @State private var queue: ListeningQueue
+    @State private var follows: FollowedSeries
     @State private var player: AudioPlayer
     @State private var live: LiveRadio
     @State private var account: AccountStore
@@ -40,7 +41,8 @@ struct EarDramaApp: App {
         player.dequeue = { [weak queue] id in queue?.remove(id) }
         queue.onChange = { [weak player] in player?.refreshUpNext() }
         let live = LiveRadio(player: player)
-        let account = AccountStore(history: history, follows: FollowedSeries(), queue: queue)
+        let follows = FollowedSeries()
+        let account = AccountStore(history: history, follows: follows, queue: queue)
         player.onTransport = { [weak live] event in live?.handle(event) }
         let room = SharePlayRoom(player: player) { [weak catalog] id in
             await catalog?.whenReady()
@@ -66,6 +68,7 @@ struct EarDramaApp: App {
         _catalog = State(initialValue: catalog)
         _history = State(initialValue: history)
         _queue = State(initialValue: queue)
+        _follows = State(initialValue: follows)
         _player = State(initialValue: player)
         _live = State(initialValue: live)
         _account = State(initialValue: account)
@@ -79,6 +82,7 @@ struct EarDramaApp: App {
                 .environment(catalog)
                 .environment(history)
                 .environment(queue)
+                .environment(follows)
                 .environment(player)
                 .environment(live)
                 .environment(account)

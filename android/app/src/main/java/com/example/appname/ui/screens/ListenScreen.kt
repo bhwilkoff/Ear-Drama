@@ -28,6 +28,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.DisplayVocabulary
+import com.example.appname.data.SeriesRow
+import com.example.appname.data.resolveFollowing
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Loadable
@@ -37,20 +39,30 @@ import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.seriesYears
 import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-private data class Shelf(val key: String, val title: String, val rows: List<EpisodeRow>)
+private data class Shelf(
+    val key: String,
+    val title: String,
+    val rows: List<EpisodeRow>,
+    val series: List<SeriesRow> = emptyList(),
+) {
+    val isEmpty get() = rows.isEmpty() && series.isEmpty()
+    val firstCardId get() = rows.firstOrNull()?.id ?: series.firstOrNull()?.let { "s:" + it.key }
+}
 
 /**
- * Home (was Listen): Continue listening, then shelves by rule from data (each
- * applies `recommendAnd`). The top bar's one action opens Surprise (§3.1).
+ * Home (was Listen): Continue listening, Following (the series the listener
+ * follows, newest follow first, drawn only with rows), then shelves by rule
+ * from data (each applies `recommendAnd`). The top bar's one action opens Surprise (§3.1).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ListenScreen(onOpenEpisode: (String) -> Unit, onSurprise: () -> Unit) {
+fun ListenScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit, onSurprise: () -> Unit) {
     val container = LocalAppContainer.current
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd")) }
     // Continue re-runs on every saved position; the rule shelves only on a catalog swap.
@@ -60,6 +72,9 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit, onSurprise: () -> Unit) {
             "Continue listening",
             db.episodes(container.user.inProgress().map { it.episodeId }).distinctBy { it.id },
         )
+    }
+    val following by rememberCatalogQuery(watchUser = true) { db ->
+        Shelf("following", "Following", emptyList(), resolveFollowing(container.user.followed()) { db.series(it) })
     }
     // The catalog's listenShelves, in its order (contract §5.1).
     val ruled by rememberCatalogQuery(today) { db ->
@@ -80,13 +95,14 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit, onSurprise: () -> Unit) {
     ) { padding ->
         LoadableContent(ruled, Modifier.padding(padding)) { rules ->
             val first = (continuing as? Loadable.Ready)?.value
-            val list = (listOfNotNull(first) + rules).filter { it.rows.isNotEmpty() }
+            val followed = (following as? Loadable.Ready)?.value
+            val list = (listOfNotNull(first, followed) + rules).filter { !it.isEmpty }
             if (list.isEmpty()) {
                 EmptyMessage("Nothing to list yet.", Modifier.padding(padding))
             } else {
                 // On a TV the D-pad starts on the first row's first card.
                 val firstCard = remember { FocusRequester() }
-                val firstKey = list.first().let { it.key to it.rows.first().id }
+                val firstKey = list.first().let { it.key to it.firstCardId }
                 ClaimTvFocus(firstCard, firstKey)
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                     items(list, key = { it.key }) { shelf ->
@@ -103,10 +119,47 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit, onSurprise: () -> Unit) {
                                     },
                                 )
                             }
+                            items(shelf.series, key = { "s:" + it.key }) { row ->
+                                SeriesCard(
+                                    row,
+                                    onOpen = { onOpenSeries(row.key) },
+                                    modifier = if (shelf.key to "s:" + row.key == firstKey) {
+                                        Modifier.focusRequester(firstCard)
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/** A followed series as a typographic card: its name, then its years and count. */
+@Composable
+private fun SeriesCard(row: SeriesRow, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedCard(
+        onClick = onOpen,
+        modifier = Modifier.padding(end = Spacing.S3.dp).width(220.dp).tvFocusMark().then(modifier),
+    ) {
+        Column(Modifier.padding(Spacing.S3.dp)) {
+            Text(
+                row.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                minLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                listOfNotNull(seriesYears(row), "${row.episodes} episodes").joinToString(" · "),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

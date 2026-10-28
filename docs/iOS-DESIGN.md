@@ -161,7 +161,9 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 ## §4 Surfaces
 
 - **§4.1 Home** (was Listen) is a `List`: Continue listening (the ten most recent
-  in progress), then the catalog's published shelves in order (R13). A section draws only
+  in progress), then Following (the series the person follows, newest
+  follow first as the web lists them, each a `SeriesRowLabel` pushing its
+  page), then the catalog's published shelves in order (R13). A section draws only
   with rows. Each episode row's context menu offers Play. The toolbar's
   one item is Surprise (a `Label` with the shuffle symbol), pushing
   §4.11.
@@ -186,7 +188,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   set (contract §3.1). A play row is its title, then its author and
   part count, and pushes the play's page (`PlayRoute.script`). An empty
   result offers Clear Filters.
-- **§4.3 A series page** shows the series' one meta line, then its
+- **§4.3 A series page** carries Follow / Following as the toolbar's
+  primary action (the web's verb and words; a plus, then a checkmark once
+  followed), with the selection haptic on change. It writes
+  `FollowedSeries`, the store the account sync carries; an unfollow is a
+  marker. It shows the series' one meta line, then its
   episodes oldest first in sections by broadcast season, "Undated" last.
   The toolbar's Download menu (iPhone, iPad, Mac; never the TV) offers
   Download All Episodes, then one Download item per season when there
@@ -230,7 +236,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   last either way. Each credit on Detail (§4.4) is a `NavigationLink` to
   its person. No bio is written (R13). The Mac uses the same screen in
   its detail column.
-- **§4.6 Library** is In progress, Downloads, Played, and **Ear
+- **§4.6 Library** is Queue, In progress, Following (the followed series,
+  newest follow first, as Home's), Downloads, Played, and **Ear
   dramas** (the productions on this device, each with its progress line;
   a production opens its cast sheet, on the Mac its window), on this
   device. A history row swipes or long-presses to Remove from History.
@@ -620,9 +627,7 @@ Listed, not fixed. Each item names where it is.
   Remove. `ListeningQueue.onChange` calls `AudioPlayer.refreshUpNext()`,
   so the player's "Next:" line follows the queue. The verbs only order
   what the person chose; what plays next is Decision 067's, untouched.
-  Following has no native rule yet (where the button sits,
-  the Listen shelf, the Library section), so it needs one before it is
-  built.
+  Following's rules are §4.1 (Home), §4.3 (the button), and §4.6 (Library).
 - **R20's "one step from the lock screen"** is not built: the timer is
   only on the player sheet.
 - **Deep links take only the URL's last path component**

@@ -43,6 +43,9 @@ enum Fixture {
     /// 28 minutes, not a serial: the player and queue tests.
     static let long = "xminusone|1956-04-24"
     static let longTitle = "The Sense of Wonder"
+    /// The series of `long`: the follow test.
+    static let series = "xminusone"
+    static let seriesName = "X Minus One"
     /// 137 seconds: the download test.
     static let short = "hopalongcassidy|tandyclydebio"
     static let shortTitle = "Andy Clyde Bio"

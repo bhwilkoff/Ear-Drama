@@ -104,7 +104,8 @@ The only shapes; a new one needs a new rule.
 ## §4 Surfaces
 
 - **§4.1 Home** (was Listen) is Continue listening as the first shelf (up to ten),
-  then the catalog's `meta.listenShelves` in order (contract §5.1;
+  then Following (a shelf of typographic series cards, newest follow
+  first, drawn only with follows), then the catalog's `meta.listenShelves` in order (contract §5.1;
   `docs/iOS-DESIGN.md` R13): "This day in radio", then a shelf per
   published genre.
 - **§4.2 Browse** (was Series) is a `List` of series led by a Genre
@@ -112,7 +113,8 @@ The only shapes; a new one needs a new rule.
   Oldest first; Popular as `docs/iOS-DESIGN.md` §4.2). The tab bar names
   the section, so the screen draws no title, as every tvOS tab.
 - **§4.3 A series page** is the series name and meta line (not
-  focusable), then episodes oldest first in sections by broadcast
+  focusable), then a Follow / Following button (the first focus stop,
+  the web's words; `FollowedSeries`, synced), then episodes oldest first in sections by broadcast
   season, "Undated" last.
 - **§4.4 Episode detail** (`EpisodeScreen_tvOS`) is the series, the
   title at page-title size, the facts line (date, network, sponsor,
@@ -130,7 +132,8 @@ The only shapes; a new one needs a new rule.
   the query names an air date, then episodes, then **Automatic
   transcript**: each row the episode row plus the line where the words
   are said, verbatim (iOS-DESIGN §4.5).
-- **§4.6 Library** is In progress. A held Select on a row offers Remove
+- **§4.6 Library** is Queue, Following (the followed series), and In
+  progress. A held Select on a row offers Remove
   from History. Its last row is "Account" (§4.9).
 - **§4.9 The account** is the foot of Library, as on iOS
   (`docs/iOS-DESIGN.md` §4.10), never a tab and never at first launch.

@@ -139,6 +139,55 @@ private struct EpisodeCard_tvOS: View {
     }
 }
 
+/// A followed series as a typographic card, the episode card's size.
+private struct SeriesCard_tvOS: View {
+    let series: SeriesRow
+
+    var body: some View {
+        NavigationLink(value: Route.series(series.key)) {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                ArtTile(name: series.name, genre: series.genre, face: series.face, size: 64)
+                Spacer(minLength: 0)
+                Text(series.name)
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.brandText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Text(verbatim: series.metaLine)
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+                    .lineLimit(1)
+            }
+            .padding(Spacing.s6)
+            .frame(width: 420, height: 236, alignment: .topLeading)
+            .background(Color.brandSurface)
+        }
+        .buttonStyle(.card)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct SeriesShelf_tvOS: View {
+    let title: String
+    let series: [SeriesRow]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s4) {
+            Text(title)
+                .font(TypeRamp.sectionHeader)
+                .foregroundStyle(Color.brandText)
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 40) {
+                    ForEach(series) { SeriesCard_tvOS(series: $0) }
+                }
+                .padding(.vertical, Spacing.s6)
+            }
+            .scrollClipDisabled()
+        }
+        .focusSection()
+    }
+}
+
 private struct ShelfRow_tvOS: View {
     let title: String
     let episodes: [EpisodeRow]
@@ -165,21 +214,26 @@ private struct ShelfRow_tvOS: View {
 private struct ListenScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
+    @Environment(FollowedSeries.self) private var follows
     @State private var shelves: [Shelf]?
     @State private var continuing: [EpisodeRow] = []
+    @State private var following: [SeriesRow] = []
 
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let shelves {
-                if shelves.isEmpty && continuing.isEmpty {
+                if shelves.isEmpty && continuing.isEmpty && following.isEmpty {
                     ContentUnavailableView("Nothing to list yet", systemImage: "radio")
                 } else {
                     ScrollView(.vertical) {
                         LazyVStack(alignment: .leading, spacing: 80) {
                             if !continuing.isEmpty {
                                 ShelfRow_tvOS(title: "Continue listening", episodes: continuing)
+                            }
+                            if !following.isEmpty {
+                                SeriesShelf_tvOS(title: "Following", series: following)
                             }
                             ForEach(shelves) { ShelfRow_tvOS(title: $0.rule.title, episodes: $0.episodes) }
                         }
@@ -196,6 +250,9 @@ private struct ListenScreen_tvOS: View {
         }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
+        }
+        .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
+            following = await catalog.series(follows.followedKeys)
         }
     }
 }
@@ -245,6 +302,7 @@ private struct SeriesBrowseScreen_tvOS: View {
 private struct SeriesScreen_tvOS: View {
     let key: String
     @Environment(CatalogStore.self) private var catalog
+    @Environment(FollowedSeries.self) private var follows
     @State private var page: SeriesPage??
 
     var body: some View {
@@ -265,6 +323,10 @@ private struct SeriesScreen_tvOS: View {
                             }
                         }
                         .focusable(false)
+                        let on = follows.isFollowing(key)
+                        Button { follows.toggle(key) } label: {
+                            Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
+                        }
                     }
                     ForEach(page.seasons) { season in
                         Section(season.season ?? "Undated") {
@@ -591,15 +653,17 @@ private struct LibraryScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @Environment(ListeningQueue.self) private var queue
+    @Environment(FollowedSeries.self) private var follows
     @State private var inProgress: [EpisodeRow]?
     @State private var queued: [EpisodeRow] = []
+    @State private var following: [SeriesRow] = []
 
     private struct Key: Equatable { let ids: [String]; let queue: [String]; let load: Int }
 
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && queued.isEmpty {
+                if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
                     ContentUnavailableView {
                         Label("Nothing played yet", systemImage: "books.vertical")
                     } description: {
@@ -616,6 +680,13 @@ private struct LibraryScreen_tvOS: View {
                                         EpisodeRowLabel(episode: episode, showSeries: true)
                                     }
                                     .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                                }
+                            }
+                        }
+                        if !following.isEmpty {
+                            Section("Following") {
+                                ForEach(following) { row in
+                                    NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
                                 }
                             }
                         }
@@ -645,6 +716,9 @@ private struct LibraryScreen_tvOS: View {
         .task(id: Key(ids: history.inProgressIDs, queue: queue.items, load: catalog.loadKey)) {
             queued = await catalog.episodes(queue.items)
             inProgress = await catalog.episodes(history.inProgressIDs)
+        }
+        .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
+            following = await catalog.series(follows.followedKeys)
         }
     }
 }

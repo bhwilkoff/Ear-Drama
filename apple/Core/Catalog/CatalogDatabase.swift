@@ -271,6 +271,12 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         rows("SELECT \(Self.seriesColumns) FROM series s WHERE s.key = ?", [.text(key)], decodeSeries).first
     }
 
+    /// The series for `keys`, in the order given; a key this catalog does not
+    /// serve is skipped (a follow made elsewhere is kept for sync, not listed).
+    func series(keys: [String]) -> [SeriesRow] {
+        keys.compactMap { series(key: $0) }
+    }
+
     /// `seriesPage(key)`: its episodes by broadcast season, oldest first (R1).
     func seriesPage(key: String) -> SeriesPage? {
         guard let series = series(key: key) else { return nil }

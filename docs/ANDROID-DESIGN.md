@@ -174,7 +174,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 ## §4 Surfaces
 
 - **§4.1 Home** (was Listen) is a `LazyColumn` of shelves, each a header over a
-  `LazyRow` of 220 dp cards: Continue listening, then the published
+  `LazyRow` of 220 dp cards: Continue listening, then Following (the
+  series the listener follows as cards, newest follow first, each
+  opening its page; the web's order, web §4.2), then the published
   shelves in order (R13). A shelf with no rows is not drawn. The top
   bar's action is Surprise (§4.14).
 - **§4.2 Browse** (was Series) lists radio series and stage plays
@@ -654,8 +656,6 @@ file (`StandInNeverStoredTest`). No analytics.
   design; none has run on a TV. The player is still the sheet (§11.6).
 - **A TV cannot share**: DEEP_LINKS.md's QR code of the https twin is
   not built.
-- **Listen has no Following shelf**, which the web draws after Continue
-  listening (web §4.2); Android's follows are in Library (§4.6).
 - **The `eardrama://` and App Link filters are off** in the manifest
   (§3.4); `DeepLink.parse` routes both once they are on.
 - **The queue verbs are the web's** (`WEB-DESIGN` §4.5, §4.7): add to the
