@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ContentView_tvOS: View {
     @Environment(AppStore.self) private var store
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(ListeningHistory.self) private var history
 
     var body: some View {
         @Bindable var store = store
@@ -36,6 +38,11 @@ struct ContentView_tvOS: View {
         .tabViewStyle(.sidebarAdaptable)
         .fullScreenCover(isPresented: $store.isPlayerPresented) {
             NowPlaying_tvOS()
+        }
+        // The Top Shelf's Continue items follow the history from any tab.
+        .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
+            guard catalog.state == .ready else { return }
+            TopShelfSnapshot.publish(await catalog.episodes(Array(history.inProgressIDs.prefix(TopShelfSnapshot.limit))))
         }
     }
 

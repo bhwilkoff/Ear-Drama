@@ -437,6 +437,7 @@ works elsewhere, and checks again.
 | An Ear Drama archive.org account and its S3 keys, stored as Worker secrets | play uploads | before M8 |
 | The take-down email address, and the DMCA agent's details once registered (`js/site.js` TAKEDOWN_EMAIL; takedown/index.html) | the take-down page | before the public launch |
 | Approve the consent screen and store words | M8, M10 | as drafted |
+| Enable App Groups on App ID `app.eardrama` and the new `app.eardrama.TopShelf` with group `group.app.eardrama`, then uncomment the two `CODE_SIGN_ENTITLEMENTS` lines marked OFF in `project.yml` | the Apple TV Top Shelf's Continue items (built 2026-10-28, inert until then) | any time |
 | Free API keys for NARA, NYPL, and DPLA (V6) | more photos | any time; optional |
 
 ## Owner feedback
