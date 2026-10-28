@@ -335,6 +335,23 @@ test('control: a copy refused with CORS plays again without it, unleveled', asyn
 
 function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }
 
+test('a place at or past 95 % of the catalog length starts over, even when the saved length was misread', () => {
+  const { audio, Player, Store } = boot();
+  Store.savePosition(ep.id, 1400, 3600);
+  assertEq(Store.resumeAt(ep.id), 1400, 'no catalog length: the saved length rules');
+  assertEq(Store.resumeAt(ep.id, 1421.63), 0, 'past the catalog end window');
+  assertEq(Store.resumeAt(ep.id, 3000), 1400, 'inside the catalog length');
+  Store.savePosition(ep.id, 700, 3600);
+  Player.load({ ...ep, length: 1421.63 }, { autoplay: false });
+  audio.fire('loadedmetadata');
+  assertEq(audio.currentTime, 700, 'inside: resumes');
+  const late = boot();
+  late.Store.savePosition(ep.id, 1400, 3600);
+  late.Player.load({ ...ep, length: 1421.63 }, { autoplay: false });
+  late.audio.fire('loadedmetadata');
+  assertEq(late.audio.currentTime, 0, 'past the end: starts over');
+});
+
 (async () => {
   let passed = 0, failed = 0;
   for (const { name, fn } of tests) {

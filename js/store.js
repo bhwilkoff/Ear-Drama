@@ -72,10 +72,11 @@ const Store = (() => {
     stamp('h', id, { del: 0 });
     write(KEYS.positions, all);
   }
-  /** Resume only inside the 10 s to 95 % window; outside it, start from the top. */
-  function resumeAt(id) {
+  /** Resume only inside the 10 s to 95 % window; outside it, start from the top. The catalog length, when known, bounds the window too. */
+  function resumeAt(id, length) {
     const p = position(id);
     if (!p || !p.d) return 0;
+    if (length > 0 && p.t >= length * 0.95) return 0;
     return p.t >= 10 && p.t < p.d * 0.95 ? p.t : 0;
   }
   function progress(id) {

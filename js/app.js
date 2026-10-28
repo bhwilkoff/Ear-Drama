@@ -873,7 +873,7 @@
                             // The measurement belongs to the default copy only.
                             li: chosen === 0 ? d.li : null, ltp: chosen === 0 ? d.ltp : null });
 
-      const resume = Store.resumeAt(d.id);
+      const resume = Store.resumeAt(d.id, d.recordings[0].length || d.length);
       const playBtn = el('button', { type: 'button', class: 'btn btn-primary' }, icon('play'),
         resume ? `Resume at ${fmtClock(resume)}` : 'Play');
       playBtn.addEventListener('click', () => Player.load(card()));
