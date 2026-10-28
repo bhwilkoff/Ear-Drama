@@ -570,9 +570,9 @@ web app follows today.
     so the crop keeps the face. A failed image leaves the tile's letter or
     nothing, never a broken image. `API.artURL` is the one helper:
     Commons' standard widths (120, 330, 500, 960), never a re-hosted copy.
-- **§6.4a Faces lead** (owner, 2026-10-28: *"Portraits should show
-  wherever they are useful or joyful (overall the visuals are not
-  highlighted yet on the app)."*). Where a face is served it is the first
+- **§6.4a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*). The only art the
+  projection serves with evidence is a person's portrait (§6.4); every
+  other image class waits on the owner's V2 to V5. Where a face is served it is the first
   thing on its page and large enough to know. A series page, Detail, and
   a person's page open with a full-width face band, 240 px tall on a
   phone and 320 px from 768 px: the whole portrait at its own aspect
@@ -587,6 +587,11 @@ web app follows today.
   loads), the 500 or 960 step for a band and Now Playing by its drawn
   width at the screen's density. Band and art heights are fixed, so
   nothing moves when an image lands; a failed sharp copy leaves the wash.
+  With no face, a series page's head is drawn as its typographic card
+  (the name, the facts, Follow and Share on the surface with the genre's
+  8 px edge, at least 200 px tall, 240 px from 768 px): the designed
+  fallback, never a gray box. A play's row in Browse and Search leads
+  with its tile (the title's letter; plays carry no genre).
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline

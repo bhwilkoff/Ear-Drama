@@ -724,9 +724,10 @@
   }
   function playRow(script) {
     return el('li', { class: 'series-row ear-drama-only' },
-      el('a', { href: `?play=${encodeURIComponent(script.id)}` },
-        el('span', { class: 'body-strong' }, script.title),
-        el('span', { class: 'caption' }, playMeta(script))));
+      el('a', { href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: '' } },
+        artTile({ name: script.title }),
+        el('span', { class: 'series-row-text' }, el('span', { class: 'body-strong' }, script.title),
+          el('span', { class: 'caption' }, playMeta(script)))));
   }
   /** The plays, or none when the file does not load: Browse and Search still list the series. */
   const castable = () => API.castableScripts().catch((err) => { console.error(err); return []; });
@@ -859,7 +860,7 @@
       };
 
       const meta = el('p', { class: 'caption' }, seriesMeta({ ...s, episodes: s.episodes.length }));
-      const head = el('header', { class: `page-head${s.art ? ' has-face' : ''}`, dataset: { genre: s.genre || '' } },
+      const head = el('header', { class: `page-head${s.art ? ' has-face' : ' as-card'}`, dataset: { genre: s.genre || '' } },
         s.art ? faceHero(s.art, s.star) : null,
         el('div', { class: 'page-head-text' },
           el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta),

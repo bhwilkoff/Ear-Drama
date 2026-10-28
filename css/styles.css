@@ -405,6 +405,14 @@ select {
 @media (min-width: 768px) { .face-band { height: 320px; } }
 .face-hero figcaption { margin-top: var(--space-1); overflow-wrap: anywhere; }
 .face-credit { color: var(--color-link); }
+/* No face: the series page's head is drawn as its typographic card (§6.4a), the name on the genre. */
+.page-head.as-card {
+  display: flex; flex-direction: column; justify-content: flex-end; min-height: 200px;
+  padding: var(--space-6) var(--space-4) var(--space-4); border-left-width: 8px;
+  border-radius: var(--radius-card); background: var(--color-surface-alt);
+}
+.page-head.as-card > .page-head-text { flex: none; }
+@media (min-width: 768px) { .page-head.as-card { min-height: 240px; } }
 .page-head-text { min-width: 0; flex: 1; }
 .page-head-text > * + * { margin-top: var(--space-1); }
 .page-head.has-face > .actions { margin-top: var(--space-3); }
