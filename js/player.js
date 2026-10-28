@@ -74,7 +74,7 @@ const Player = (() => {
     audio.src = ep.url;
     setOutput(1);
     audio.defaultPlaybackRate = nearestSpeed(Store.rate());
-    const at = startAt !== null ? startAt : Store.resumeAt(ep.id);
+    const at = startAt !== null ? startAt : Store.resumeAt(ep.id, ep.length);
     audio.addEventListener('loadedmetadata', () => {
       if (at) audio.currentTime = at;
       audio.playbackRate = nearestSpeed(Store.rate());
