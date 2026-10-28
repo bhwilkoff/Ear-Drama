@@ -893,7 +893,7 @@
 
       // An undated episode with no network or credits is most of the catalog: its one line of
       // facts carries "Undated", and the number is not repeated when it already names the episode.
-      const facts = [d.date ? null : 'Undated', d.network, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
+      const facts = [d.date ? null : 'Undated', d.network, d.sponsor, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
                      d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
       const star = d.star ? d.credits.find(c => c.person === d.star && c.art) : null;
       body.append(el('header', { class: `page-head${star ? ' has-face' : ''}`, dataset: { genre: (s && s.genre) || '' } },

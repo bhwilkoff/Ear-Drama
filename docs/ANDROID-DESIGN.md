@@ -220,7 +220,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   passed, Cast and credits (each a row that opens its person, §4.15), Versions (or the
   one copy's notes), and the rights line. A part with no data is absent;
   the sponsor shows only where the catalog carries the contract's
-  `sponsor` column (probed, as Apple does). Share is the top bar's action
+  `sponsor` column (probed, as Apple does; the pipeline computes it). Share is the top bar's action
   (§4.12).
 - **§4.5 Search** is a `DockedSearchBar` ("Titles, series, people"),
   debounced, with Clear, series first, then People (§4.15), then plays (title and author,
@@ -642,9 +642,10 @@ file (`StandInNeverStoredTest`). No analytics.
   slow link; nothing measured it yet. The manifest's `eardrama://` and
   https filters stay off (§3.4), so an invite link opens the app only once
   they are on.
-- **No sponsor reaches Detail yet**: the contract names `sponsor`
-  (§3.1), but the projection does not publish the column, so §4.4 probes
-  for it and shows none (Apple likewise).
+- **The sponsor reaches Detail from the next published catalog**: the
+  projection now computes `sponsor` per episode (§3.1,
+  `catalog/tools/sponsors.py`); §4.4 still probes for the column, so an
+  older catalog shows none (Apple likewise).
 - **On a TV the pushed screens and the player sheet are the phone's
   layouts**, with focus claimed and the ring (§9.2), not a ten-foot
   design; none has run on a TV. The player is still the sheet (§11.6).
