@@ -68,6 +68,12 @@ def fixture(path):
         ("suspense|1944-02-24", "p2", "Orson Welles", "cast", None)])
     d.executemany("INSERT INTO people VALUES (?,?,?,?)", [("p1", "Agnes Moorehead", "1900", "1974"),
                                                          ("p2", "Orson Welles", "1915", "1985")])
+    d.execute("CREATE TABLE sponsors (series_key, otrr_idp, sponsor, start, end, source)")
+    d.executemany("INSERT INTO sponsors VALUES (?,?,?,?,?,?)", [
+        ("suspense", "1", "Roma Wines", "1943-01-01", "1943-12-31", "x"),
+        ("suspense", "1", "Autolite", "1948-01-01", "", "x"),
+        ("suspense", "1", "Sustained", "1949-01-01", "1949-12-31", "x"),
+        ("suspense", "1", "Undated Soap", "", "", "x")])
     d.commit()
     d.close()
 
@@ -192,6 +198,10 @@ with tempfile.TemporaryDirectory() as tmp:
     check("series page: oldest first, undated last (R1)", ids,
           ["suspense|1943-05-25", "suspense|1949-09-15", "suspense|tundated"])
     check("series page: seasons", page["seasons"], ["1942-43", "1949-50"])
+    sp_i = load(out, "manifest.json")["fields"]["detail"].index("sponsor")
+    check("detail shard carries the computed sponsor, null where none covers",
+          [load(out, "episodes", W.shard_of(i) + ".json")[i][sp_i] for i in ("suspense|1943-05-25", "suspense|1949-09-15")],
+          ["Roma Wines", None])
     everything = ""
     for root, _d, fs in os.walk(out):
         for f in fs:

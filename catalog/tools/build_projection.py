@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 from genres import genre_of
 import shelves as SH
+import sponsors as SP
 from sort_name import sort_name
 from titles import display_title
 from measure_loudness import load as load_loudness, usable as loudness_usable
@@ -63,7 +64,7 @@ CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date T
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
     gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT, star TEXT,
-    script TEXT);
+    script TEXT, sponsor TEXT);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
@@ -163,6 +164,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         if row[0] in served:
             recs_by_ep.setdefault(row[0], []).append(row)
 
+    sponsor_runs = SP.load(s)
     per_series = {}
     searchable = 0
     for (eid, sk, air, dsrc, num, title, aka, state, rb, wb, nr, net, nsrc) in s.execute(
@@ -186,11 +188,11 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
-        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             eid, sk, air, dsrc, season(air), num, display_title(title), aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
-            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid)))
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), SP.sponsor_for(sponsor_runs, sk, air)))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
                    names.get(sk, ""),

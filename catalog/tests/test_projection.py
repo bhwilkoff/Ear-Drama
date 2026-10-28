@@ -14,6 +14,7 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_projection as B
 import genres as G
+import sponsors as SP
 
 ran = failed = 0
 
@@ -57,6 +58,12 @@ def fixture(path):
         ("shadow|1938-01-02", "p2", "Orson Welles", "cast", "Lamont Cranston")])
     d.executemany("INSERT INTO people VALUES (?,?,?,?)", [("p1", "Agnes Moorehead", "1900", "1974"),
                                                          ("p2", "Orson Welles", "1915", "1985")])
+    d.execute("CREATE TABLE sponsors (series_key, otrr_idp, sponsor, start, end, source)")
+    d.executemany("INSERT INTO sponsors VALUES (?,?,?,?,?,?)", [
+        ("suspense", "1", "Roma Wines", "1943-01-01", "1943-12-31", "x"),
+        ("suspense", "1", "Autolite", "1948-01-01", "", "x"),
+        ("suspense", "1", "Sustained", "1949-01-01", "1949-12-31", "x"),
+        ("suspense", "1", "Undated Soap", "", "", "x")])
     d.commit()
     d.close()
 
@@ -97,10 +104,20 @@ CONTRACT = {
     "no implausible loudness is published": "SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL AND "
         "(loudness_i > -5 OR loudness_i < -45 OR loudness_tp > 6)",
     "gain_db stays empty (the target lives in clients)": "SELECT COUNT(*) FROM episodes WHERE gain_db IS NOT NULL",
+    "a sponsor needs a full air date and is never a non-sponsor marker": "SELECT COUNT(*) FROM episodes WHERE "
+        "sponsor IS NOT NULL AND (LENGTH(air_date) != 10 OR LOWER(sponsor) IN ('sustained','multi','syndicated','unknown','none'))",
     "a shown transcript has its URL, and only a shown one": "SELECT COUNT(*) FROM episodes WHERE "
         "(has_transcript = 1) != (transcript_url IS NOT NULL)",
 }
 
+runs = {"s": [("1943-01-01", "1943-12-31", False, "A"), ("1948-01-01", "1950-01-01", True, "B"),
+              ("1948-06-01", None, False, "C")]}
+check("sponsor_for: inclusive end", (SP.sponsor_for(runs, "s", "1943-12-31"), SP.sponsor_for(runs, "s", "1944-01-01")),
+      ("A", None))
+check("sponsor_for: a run's exclusive end is the next run's start", SP.sponsor_for(runs, "s", "1950-01-01"), "C")
+check("sponsor_for: overlapping runs are both named", SP.sponsor_for(runs, "s", "1948-07-01"), "B / C")
+check("control: no date, no sponsor", (SP.sponsor_for(runs, "s", None), SP.sponsor_for(runs, "s", "1948")), (None, None))
+check("control: another series has none", SP.sponsor_for(runs, "t", "1943-05-05"), None)
 check("genre: OTRR's first mappable label", G.genre_of(["Horror", "Mystery", "Science Fiction"]), ("mystery", "otrrpedia"))
 check("genre: a serial queues by arc", G.genre_of(["Action", "Super Hero", "Youth", "Adventure", "Serial"]),
       ("serial", "otrrpedia"))
@@ -152,6 +169,10 @@ with tempfile.TemporaryDirectory() as tmp:
           any("public domain" in v.lower() for v in B.RIGHTS_LINES.values()), False)
     check("seasons stored", c.execute("SELECT season FROM episodes WHERE id = 'suspense|1949-09-15'").fetchone()[0],
           "1949-50")
+    check("sponsor: the dated run covering the air date", c.execute(
+        "SELECT sponsor FROM episodes WHERE id = 'suspense|1943-05-25'").fetchone()[0], "Roma Wines")
+    check("control: 'Sustained' is not a sponsor, and an undated run never covers", c.execute(
+        "SELECT sponsor FROM episodes WHERE id = 'suspense|1949-09-15'").fetchone()[0], None)
     c.close()
     check("contract holds on the fixture", violations(dst), {})
     clean = os.path.join(tmp, "clean.sqlite")
@@ -165,8 +186,12 @@ with tempfile.TemporaryDirectory() as tmp:
     bad.execute("UPDATE recordings SET url = 'https://archive.org/download/a/b c.mp3' WHERE rank = 1")
     bad.commit()
     bad.close()
-    check("control: the contract catches a leaked hidden row and a raw space", sorted(violations(dst)),
-          ["every episode is clean or unclaimed", "no URL holds a raw space"])
+    bad = sqlite3.connect(dst)
+    bad.execute("UPDATE episodes SET sponsor = 'Sustained' WHERE id = 'suspense|1943-05-25'")
+    bad.commit()
+    bad.close()
+    check("control: the contract catches a published non-sponsor", sorted(violations(dst)),
+          ["a sponsor needs a full air date and is never a non-sponsor marker", "every episode is clean or unclaimed", "no URL holds a raw space"])
 
 # --- loudness: only a usable measurement of the default copy is published --------
 A = "https://archive.org/download/OTRR_Suspense_Singles/Suspense%2043-05-25%20Sorry%2C%20Wrong%20Number.mp3"
