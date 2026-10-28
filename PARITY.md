@@ -288,7 +288,7 @@ iOS app resized (`macos-platform-patterns`).
 |---|---|---|
 | Focus-driven layout, Play focused on Detail | 🚧 | The ten-foot constraint (`tvos-platform-patterns`) |
 | Full-screen Now Playing | 🚧 | Typographic, no artwork required |
-| Top Shelf | 🚧 | The listener's Continue items (up to ten, Home's order) from an App Group snapshot; opens `eardrama://episode/{id}`. Shipped inert: the App Group entitlement is OFF in project.yml until the owner enables it on the App ID (LOOP-PLAN Needs Ben); until then the static image shows. Not yet seen on a device. Credited portraits are left off the shelf |
+| Top Shelf | 🚧 | The listener's Continue items (up to ten, Home's order) from an App Group snapshot; opens `eardrama://episode/{id}`. App Group `group.app.eardrama` registered and assigned 2026-10-28; signed tvOS build carries it in the app and the extension. Not yet seen on a device. Credited portraits are left off the shelf |
 | Layered parallax icon | 🚧 | Back (red), ring, microphone layers (`branding/tvos-icon-layers/`); not yet seen on a device |
 
 ---
