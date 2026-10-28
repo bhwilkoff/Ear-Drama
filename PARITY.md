@@ -274,7 +274,7 @@ iOS app resized (`macos-platform-patterns`).
 |---|---|---|
 | Focus-driven layout, Play focused on Detail | 🚧 | The ten-foot constraint (`tvos-platform-patterns`) |
 | Full-screen Now Playing | 🚧 | Typographic, no artwork required |
-| Top Shelf | ⏳ | The listener's Continue items |
+| Top Shelf | 🚧 | The listener's Continue items (up to ten, Home's order) from an App Group snapshot; opens `eardrama://episode/{id}`. Needs the App Group on the App ID before a device build signs; not yet seen on a device. Credited portraits are left off the shelf |
 | Layered parallax icon | 🚧 | Back (red), ring, microphone layers (`branding/tvos-icon-layers/`); not yet seen on a device |
 
 ---

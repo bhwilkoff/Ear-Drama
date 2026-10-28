@@ -278,9 +278,18 @@ The rights line, the transcript label, and volume leveling are as in
 
 - **§9.1** Update `PARITY.md` in the same change set; build iOS and the
   Mac after any Core change.
-- **§9.2 Planned for the TV**: Top Shelf (the person's Continue items),
-  the layered parallax icon (waits on the palette and the icon, M0),
-  and Stations' guide. SharePlay landed (§5.5).
+- **§9.2 Planned for the TV**: the layered parallax icon (waits on the
+  palette and the icon, M0) and Stations' guide. SharePlay landed (§5.5).
+- **§9.3 Top Shelf** (`EarDramaTopShelf`, sectioned): the person's Continue
+  items, up to ten in Home's order, one line each (series, then episode),
+  Play and select open `eardrama://episode/{id}`. The app writes
+  `topshelf.json` into the App Group `group.app.eardrama` (the only place
+  besides Caches tvOS can write; §10.1) whenever the history changes; the
+  extension reads it and has no catalog or network. A portrait whose license
+  asks for a credit is left off, since the shelf cannot show the credit: no
+  artwork rather than a stand-in. Nothing in progress returns nil, so tvOS
+  keeps the static image. The App ID needs the App Group capability before a
+  device build signs (`docs/runbooks/tvos-top-shelf-setup.md`).
 
 ## §10 Traps this codebase has already paid for
 

@@ -62,6 +62,9 @@ targets:
           # Read by the build settings below, never bundled as resources.
           - "Resources/EarDrama-Info.plist"
           - "Resources/EarDrama.entitlements"
+          - "Resources/EarDrama-tvOS.entitlements"
+          # The Top Shelf extension is its own target (EarDramaTopShelf, below).
+          - "TopShelf/**"
       # The privacy manifest (App Store requirement): named here so it is
       # always a bundle resource, never left to file-type inference.
       - path: apple/Resources/PrivacyInfo.xcprivacy
@@ -72,6 +75,10 @@ targets:
         buildPhase: resources
         # The TV records nothing and keeps no plays in phase 1 (§6).
         destinationFilters: [iOS, macOS]
+    dependencies:
+      - target: EarDramaTopShelf
+        destinationFilters: [tvOS]
+        embed: true
     scheme:
       testTargets:
         - EarDramaTests
@@ -95,6 +102,9 @@ targets:
         # Associated Domains (applinks:eardrama.org, Universal Links) was
         # enabled on the App ID 2026-10-24; a profile without it fails the build.
         CODE_SIGN_ENTITLEMENTS: apple/Resources/EarDrama.entitlements
+        # The Apple TV app adds the App Group it shares with the Top Shelf
+        # extension; iOS and the Mac do not carry it.
+        "CODE_SIGN_ENTITLEMENTS[sdk=appletv*]": apple/Resources/EarDrama-tvOS.entitlements
         INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama"
         # Standard HTTPS only: skips the export-compliance question on every
         # TestFlight / App Store build.
@@ -148,6 +158,28 @@ targets:
             rm -f "$DST"
             echo "No catalog seed at ${CATALOG_SEED_PATH}; the app opens empty until the download lands."
           fi
+
+  # The Apple TV Top Shelf (tvOS-DESIGN §9.2): the listener's Continue items,
+  # read from the snapshot the app writes into the App Group. Only the snapshot
+  # file is shared with the app; it has no catalog and no network.
+  EarDramaTopShelf:
+    type: app-extension
+    platform: tvOS
+    sources:
+      - path: apple/TopShelf
+        excludes:
+          - "Info.plist"
+          - "TopShelf.entitlements"
+      - path: apple/Core/TopShelf/TopShelfSnapshot.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.TopShelf
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: apple/TopShelf/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: "Ear Drama Top Shelf"
+        CODE_SIGN_ENTITLEMENTS: apple/TopShelf/TopShelf.entitlements
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        SKIP_INSTALL: YES
 
   # Core unit tests. NOT hosted in the app: hosting the universal app built the
   # app module twice ("Multiple commands produce EarDrama.swiftmodule") in
