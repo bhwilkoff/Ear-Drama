@@ -36,6 +36,20 @@ class PlayerNumbersTest {
         assertFalse("the saved start never rewinds", "rewound" in start)
     }
 
+    /**
+     * A duration once misread as longer than the recording saved a place past its
+     * real end; the catalog length, less the finished slack, starts it over.
+     */
+    @Test fun `a saved place at or past the catalog length less the slack starts over`() {
+        val length = 1_421_600L
+        val slack = com.example.appname.data.UserStore.FINISHED_WITHIN_MS
+        assertEquals(600_000L, PlayerNumbers.fromSaved(600_000L, finished = false, lengthMs = length))
+        assertEquals(length - slack - 1, PlayerNumbers.fromSaved(length - slack - 1, finished = false, lengthMs = length))
+        assertEquals(0L, PlayerNumbers.fromSaved(length - slack, finished = false, lengthMs = length))
+        assertEquals(0L, PlayerNumbers.fromSaved(3_000_000L, finished = false, lengthMs = length))
+        assertEquals("no known length: the place stands", 3_000_000L, PlayerNumbers.fromSaved(3_000_000L, finished = false, lengthMs = null))
+    }
+
     private fun webNumbers(source: String): List<String> = listOf(
         Regex("""const FADE_S = (\d+);""").find(source)?.groupValues?.get(1)?.let { (it.toLong() * 1000).toString() }
             ?: "missing",
