@@ -183,6 +183,11 @@ APP_ANCHOR_RX = r"Home|Browse|Stations|Library"
 IOS_ANCHOR_RX = (r"^(?=.*\bBrowse\b)(?=.*\bStations\b)(?=.*\bLibrary\b)"
                  r"|^(?=.*\bSleep\b)(?=.*-\d+:\d\d)")
 
+# Text that means iOS, not the app, owns the glass: XCUITest's element queries still
+# match through these, so a test "passed" under Screen Time's Time Limit 2026-10-27.
+SYSTEM_OVERLAY_RX = (r"Time Limit|You.ve reached your limit|Ask for More Time|"
+                     r"Would Like to|Don.t Allow|Low Battery|Software Update")
+
 # Text that means the app is broken, whatever else is on screen.
 FORBIDDEN = (r"No results|Couldn.t load|Something went wrong|"
              r"failed to|\berror\b|couldn.t be")

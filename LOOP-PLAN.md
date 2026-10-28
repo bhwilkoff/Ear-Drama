@@ -101,6 +101,14 @@ P6. **Device tap tier for what is built and unchecked**: transcript search,
    a real Universal Link opening the app, lock-screen controls, icons,
    Android downloads and offline on the Pixel, tvOS focus and Now Playing.
 P7. **Zero warnings in clean Release builds everywhere** (M10).
+P8. **The first launch after a new install or a catalog publish quits** (seen
+   2026-10-28 at 10:18 AM and 3:55 PM on the iPhone 12, each the phone's first
+   launch after a publish or install): XCUITest launches the app, Home draws its
+   loading placeholders, and ~3 s later Springboard is back; no EarDrama .ips; a
+   JetsamEvent at the same second names tipsd and batterytrapd, not the app; the
+   next launch passes. Not explained. Diagnose before any fix: the app's console
+   from `devicectl device process launch --console` on a fresh install, and the
+   device log at the exit; a user updating from TestFlight may meet it.
 
 Earlier batches (2026-10-23 to 2026-10-27; built unless marked):
 Owner, 2026-10-23: build significant features before asking them to test.
