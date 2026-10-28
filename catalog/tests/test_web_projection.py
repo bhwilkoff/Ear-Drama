@@ -371,9 +371,12 @@ if os.path.exists(os.path.join(real, "manifest.json")):
     check("real build: Sorry, Wrong Number is found by its words", "suspense|1948-11-18" in search(real, "sorry wrong")
           if not load(real, "manifest.json")["cleanOnly"] else True, True)
     rm = load(real, "manifest.json")
-    check("real build: every dated doc has a year file", rm["counts"]["dateYears"] > 0, True)
-    check("real build: transcript words exist exactly when a shown transcript does",
-          rm["counts"]["saidTerms"] > 0, rm["counts"]["saidDocs"] > 0)
+    if "dateYears" not in rm["counts"] and not os.environ.get("WEB_PROJECTION"):
+        print("  SKIP  real web build: the local build predates search/dates and search/said; rebuild or name it with WEB_PROJECTION")
+    else:
+        check("real build: every dated doc has a year file", rm["counts"]["dateYears"] > 0, True)
+        check("real build: transcript words exist exactly when a shown transcript does",
+              rm["counts"]["saidTerms"] > 0, rm["counts"]["saidDocs"] > 0)
 elif os.environ.get("WEB_PROJECTION"):
     check("the web build named by WEB_PROJECTION exists", False, True)   # asked for, so never a skip
 else:
