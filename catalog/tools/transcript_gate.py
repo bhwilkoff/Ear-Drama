@@ -7,7 +7,8 @@ of audio with almost no repeated four-word runs; the one real failure (Dragnet
 loop a speech-to-text model falls into on music and noise; music-heavy shows that
 were transcribed well ran as low as 61 words a minute. The near-zero scores
 in that sample were scripts matched to the wrong broadcast, not bad transcripts.
-Every transcript stays searchable; only the on-screen text is gated.
+Search indexes only what passes, so what Search finds Detail can show
+(catalog/DECISIONS.md 012).
 """
 import collections
 import re

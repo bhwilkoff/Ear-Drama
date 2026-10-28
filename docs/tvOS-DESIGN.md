@@ -126,8 +126,10 @@ The only shapes; a new one needs a new rule.
   Playing. Play on the episode already loaded opens Now Playing where
   it is, never from the start (§5.4).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
-  people", series first, then People (§4.11), then episodes, with "In the transcript" on a
-  row found only by its transcript.
+  people", series first, then People (§4.11), then "Aired {date}" when
+  the query names an air date, then episodes, then **Automatic
+  transcript**: each row the episode row plus the line where the words
+  are said, verbatim (iOS-DESIGN §4.5).
 - **§4.6 Library** is In progress. A held Select on a row offers Remove
   from History. Its last row is "Account" (§4.9).
 - **§4.9 The account** is the foot of Library, as on iOS

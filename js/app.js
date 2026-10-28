@@ -1093,12 +1093,16 @@
     if (!words.length) { body.replaceChildren(); return; }
     body.replaceChildren(stateBox('loading'));
     try {
-      const [series, numbers, scripts, people] = await Promise.all([API.searchSeries(q), API.searchEpisodeNumbers(q),
-        onTV() ? [] : castable(), API.searchPeople(q)]);
+      const [series, numbers, scripts, people, aired, saidAll] = await Promise.all([API.searchSeries(q),
+        API.searchEpisodeNumbers(q), onTV() ? [] : castable(), API.searchPeople(q), API.searchAired(q),
+        API.searchSaidNumbers(q)]);
       if (seq !== searchSeq) return;
       const plays = scriptsMatching(scripts, words);
+      const titled = new Set(numbers);
+      const said = saidAll.filter(n => !titled.has(n));
       body.replaceChildren();
-      if (!series.total && !people.total && !numbers.length && !plays.length) {
+      if (!series.total && !people.total && !numbers.length && !plays.length && !(aired && aired.rows.length)
+          && !said.length) {
         body.append(stateBox('empty', { text: `No matches for “${q.trim()}”.` }));
         return;
       }
@@ -1119,6 +1123,12 @@
           el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'rp-h' }, 'Plays'),
             el('span', { class: 'caption' }, plural(plays.length, 'play', 'plays'))),
           el('ul', { class: 'series-list' }, plays.map(playRow))));
+      }
+      if (aired && aired.rows.length) {
+        const { byKey } = await API.seriesIndex();
+        if (seq !== searchSeq) return;
+        body.append(pagedEpisodes('ra-h', `Aired ${API.dateLabel(aired.prefix)}`, aired.rows.length,
+          async (from, to) => aired.rows.slice(from, to), byKey, seq, q));
       }
       if (numbers.length) {
         const { byKey } = await API.seriesIndex();
@@ -1149,10 +1159,66 @@
         await page();
         if (shown < numbers.length) sec.append(more);
       }
+      if (said.length) {
+        const { byKey } = await API.seriesIndex();
+        if (seq !== searchSeq) return;
+        const heard = API.saidWords(q);
+        body.append(pagedEpisodes('rt-h', API.transcriptLabel, said.length,
+          (from, to) => API.searchDocs(said.slice(from, to)), byKey, seq, q, 10, (ep, row) => quoteInto(ep, row, heard)));
+      }
     } catch (err) {
       if (seq !== searchSeq) return;
       console.error(err);
       body.replaceChildren(stateBox(problem(err), { retry: () => runSearch(q) }));
+    }
+  }
+
+  /** A titled section of episode rows, `size` at a time behind Show more; `decorate` adds to each row. */
+  function pagedEpisodes(id, title, total, fetchRows, byKey, seq, q, size = 30, decorate = null) {
+    const list = el('ul', { class: 'ep-list' });
+    const sec = el('section', { class: 'block', 'aria-labelledby': id },
+      el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id }, title),
+        el('span', { class: 'caption' }, plural(total, 'episode', 'episodes'))), list);
+    let shown = 0;
+    const more = el('button', { type: 'button', class: 'btn btn-ghost' }, 'Show more');
+    const page = async () => {
+      more.disabled = true;
+      try {
+        const docs = await fetchRows(shown, shown + size);
+        if (seq !== searchSeq) return;
+        docs.forEach(d => {
+          const ep = { ...d, seriesName: byKey.get(d.series)?.name || null };
+          const row = episodeRow(ep, { showSeries: true });
+          if (decorate) decorate(ep, row);
+          list.append(row);
+        });
+        paintProgress(list);
+        shown += docs.length;
+        if (shown >= total) more.remove();
+        else if (!more.isConnected) sec.append(more);
+      } catch (err) {
+        console.error(err);
+        more.replaceWith(stateBox(problem(err), { retry: () => runSearch(q) }));
+      }
+      more.disabled = false;
+    };
+    more.addEventListener('click', page);
+    page();
+    return sec;
+  }
+
+  /** The line where the words are said, verbatim from the automatic transcript; nothing when it does not load. */
+  async function quoteInto(ep, row, words) {
+    const quote = el('span', { class: 'ep-quote caption' });
+    row.querySelector('.ep-link').append(quote);
+    try {
+      const d = await API.episodeDetail(ep.id);
+      const text = d && d.transcript ? await API.transcript(d.transcript) : null;
+      const line = text && API.transcriptSnippet(text, words);
+      if (line) quote.textContent = line;
+      else quote.remove();
+    } catch (err) {
+      quote.remove();
     }
   }
 

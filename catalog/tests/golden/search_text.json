@@ -1,0 +1,142 @@
+{
+ "about": "Search text rules every platform holds to: the air date a query names (API.dateQuery, dateLabel) and the verbatim transcript snippet (API.transcriptSnippet). js/api.js is the reference; Apple and Android tests read this file.",
+ "dates": [
+  {
+   "q": "1954",
+   "prefix": "1954",
+   "rest": "",
+   "label": "1954"
+  },
+  {
+   "q": "August 1954",
+   "prefix": "1954-08",
+   "rest": "",
+   "label": "August 1954"
+  },
+  {
+   "q": "aug 2, 1954",
+   "prefix": "1954-08-02",
+   "rest": "",
+   "label": "August 2, 1954"
+  },
+  {
+   "q": "2 August 1954",
+   "prefix": "1954-08-02",
+   "rest": "",
+   "label": "August 2, 1954"
+  },
+  {
+   "q": "1954-08-02",
+   "prefix": "1954-08-02",
+   "rest": "",
+   "label": "August 2, 1954"
+  },
+  {
+   "q": "1954-08",
+   "prefix": "1954-08",
+   "rest": "",
+   "label": "August 1954"
+  },
+  {
+   "q": "8/2/1954",
+   "prefix": "1954-08-02",
+   "rest": "",
+   "label": "August 2, 1954"
+  },
+  {
+   "q": "Suspense 1943",
+   "prefix": "1943",
+   "rest": "suspense",
+   "label": "1943"
+  },
+  {
+   "q": "Sept. 1950",
+   "prefix": "1950-09",
+   "rest": "",
+   "label": "September 1950"
+  },
+  {
+   "q": "the shadow june 5 1938",
+   "prefix": "1938-06-05",
+   "rest": "the shadow",
+   "label": "June 5, 1938"
+  },
+  {
+   "q": "may",
+   "prefix": null
+  },
+  {
+   "q": "sorry wrong",
+   "prefix": null
+  },
+  {
+   "q": "1899",
+   "prefix": null
+  },
+  {
+   "q": "13/45/1954",
+   "prefix": null
+  },
+  {
+   "q": "1954-13",
+   "prefix": null
+  },
+  {
+   "q": "1954-02-32",
+   "prefix": null
+  },
+  {
+   "q": "98",
+   "prefix": null
+  }
+ ],
+ "snippets": {
+  "text": "Good evening.\n\nThis is the story of a Martian landing near Grover's Mill, New Jersey, where the farmers saw a strange cylinder fall from the sky on a quiet night in October of nineteen thirty eight, they said.\n  The end.  ",
+  "max": 120,
+  "cases": [
+   {
+    "words": [
+     "grover"
+    ],
+    "snippet": "…is the story of a Martian landing near Grover's Mill, New Jersey, where the farmers saw a strange cylinder fall from the…"
+   },
+   {
+    "words": [
+     "evening"
+    ],
+    "snippet": "Good evening."
+   },
+   {
+    "words": [
+     "said"
+    ],
+    "snippet": "…October of nineteen thirty eight, they said."
+   },
+   {
+    "words": [
+     "this"
+    ],
+    "snippet": "This is the story of a Martian landing near Grover's Mill, New Jersey, where the farmers saw a strange cylinder fall…"
+   },
+   {
+    "words": [
+     "zebra"
+    ],
+    "snippet": null
+   },
+   {
+    "words": [
+     "mill",
+     "martian"
+    ],
+    "snippet": "This is the story of a Martian landing near Grover's Mill, New Jersey, where the farmers saw a strange cylinder fall…"
+   },
+   {
+    "words": [
+     "end"
+    ],
+    "snippet": "The end."
+   }
+  ]
+ }
+}

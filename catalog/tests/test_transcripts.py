@@ -4,9 +4,10 @@
 
 Nothing here touches archive.org: fetches go to a local HTTP server or a fake.
 Each rule has a broken control. Rules: a transcript that fails the gate is
-searchable but never sets has_transcript; a transient error is never cached as
-missing; the cache never shrinks; FTS finds a word that appears only in a
-transcript, and only in the default copy's own transcript.
+neither searchable nor shown; a transient error is never cached as missing; the
+cache never shrinks; FTS and the web's search/said files find a word that
+appears only in a transcript, only in the default copy's own transcript, and
+never ship its text.
 """
 import gzip
 import http.server
@@ -210,14 +211,16 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: a failed gate never sets has_transcript", rows["suspense|1943-06-01"], (0, None))
     check("control: no transcript, nothing set", rows["suspense|1943-06-08"], (0, None))
     check("FTS finds a word only in a transcript", find("zanzibar"), ["suspense|1943-05-25"])
-    check("FTS finds a word only in a transcript that failed the gate", find("quixotic*"), ["suspense|1943-06-01"])
+    check("control: FTS never finds a word only in a transcript that failed the gate", find("quixotic*"), [])
+    check("FTS: the transcript column alone finds it", find('{transcript} : "zanz"*'), ["suspense|1943-05-25"])
+    check("control: the other columns never match transcript words", find('{title series people} : "zanz"*'), [])
     check("control: a word in no transcript finds nothing", find("xylophone"), [])
     check("detail=column keeps the Apple query form (quoted prefix terms)", find('"sorr"* "wrong"*'),
           ["suspense|1943-05-25"])
     check("detail=column keeps the Android column filter", len(find('series:"susp"*')), 3)
     check("control: a series filter never matches transcript text", find('series:"zanzibar"*'), [])
     check("manifest counts shown and searchable", (meta["counts"]["transcripts"], meta["counts"]["transcriptsSearchable"]),
-          (1, 2))
+          (1, 1))
     check("FTS stays contentless: the text is not stored",
           c.execute("SELECT COUNT(*) FROM sqlite_master WHERE name = 'episodes_fts_content'").fetchone()[0], 0)
     c.close()
@@ -237,8 +240,24 @@ with tempfile.TemporaryDirectory() as tmp:
 
     B.build(src, dst, transcripts=cache)
     web = os.path.join(tmp, "web")
-    W.build(dst, web, include_unclaimed=True)
+    W.build(dst, web, include_unclaimed=True, transcripts=cache)
     m = json.load(open(os.path.join(web, "manifest.json")))
+    said = lambda w: json.load(open(os.path.join(web, "search", "said", W.term_file(w) + ".json"))).get(w)
+    docs = json.load(open(os.path.join(web, "search", "docs", "0.json")))
+    check("web said: a word only in a shown transcript finds its doc",
+          [docs[n][0] for n in [said("zanzibar")[0]]], ["suspense|1943-05-25"])
+    check("control: web said never files a transcript that failed the gate",
+          bool(os.path.exists(os.path.join(web, "search", "said", W.term_file("quixotically") + ".json"))
+               and said("quixotically")), False)
+    check("control: web said files no word shorter than saidMinWord",
+          any(len(w) < W.SAID_MIN_WORD for f in os.listdir(os.path.join(web, "search", "said"))
+              for w in json.load(open(os.path.join(web, "search", "said", f)))), False)
+    shipped = ""
+    for root, _d, fs in os.walk(web):
+        for f in fs:
+            shipped += open(os.path.join(root, f), encoding="utf-8").read()
+    check("control: no transcript text is shipped, only its words", GOOD[:60] in shipped, False)
+    check("web manifest counts the transcripts filed", m["counts"]["saidDocs"], 1)
     det = lambda eid: json.load(open(os.path.join(web, "episodes", W.shard_of(eid) + ".json")))[eid]
     i = m["fields"]["detail"].index("transcript")
     check("web detail: the URL where the gate passed", det("suspense|1943-05-25")[i], url("suspense|1943-05-25"))

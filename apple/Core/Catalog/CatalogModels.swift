@@ -214,12 +214,24 @@ nonisolated struct SeriesPage: Hashable, Sendable {
 nonisolated struct SearchResults: Hashable, Sendable {
     var series: [SeriesRow] = []
     var episodes: [EpisodeRow] = []
-    /// Episodes found only by words in their transcript (contract §3.4), so a
-    /// row can say why it matched.
-    var transcriptOnly: Set<String> = []
     /// `searchPeople(q)` (contract §5): credited people, most episodes first.
     var people: [PersonRow] = []
-    var isEmpty: Bool { series.isEmpty && episodes.isEmpty && people.isEmpty }
+    /// What aired on the date the query names, or nil when it names none.
+    var aired: AiredResults? = nil
+    /// Episodes whose shown transcript says the query's words, less those in
+    /// `episodes`; each carries its `transcriptURL` (contract §3.4).
+    var transcript: [EpisodeRow] = []
+    var isEmpty: Bool {
+        series.isEmpty && episodes.isEmpty && people.isEmpty && (aired?.episodes.isEmpty ?? true)
+            && transcript.isEmpty
+    }
+}
+
+nonisolated struct AiredResults: Hashable, Sendable {
+    /// YYYY, YYYY-MM, or YYYY-MM-DD (`DateQuery`).
+    let prefix: String
+    let episodes: [EpisodeRow]
+    var title: String { "Aired \(DateQuery.label(prefix))" }
 }
 
 // MARK: - People (withPerson, contract §5)

@@ -98,8 +98,12 @@ def violations(out):
         for e in page["episodes"]:
             listed[e[0]] = page["key"]
     clean_only = load(out, "manifest.json")["cleanOnly"]
+    with_transcript = set()
+    ti = load(out, "manifest.json")["fields"]["detail"].index("transcript")
     for f in sorted(os.listdir(os.path.join(out, "episodes"))):
         for eid, d in load(out, "episodes", f).items():
+            if d[ti]:
+                with_transcript.add(eid)
             if listed.get(eid) != d[0]:
                 v.setdefault("every shard id is on its series page in the index", []).append(eid)
             if W.shard_of(eid) + ".json" != f:
@@ -143,6 +147,39 @@ def violations(out):
         for r in load(out, "index", "days", f)["rows"]:
             if r[0] not in listed:
                 v.setdefault("every day row is listed", []).append(r[0])
+    # What is said and when it aired (search/said, search/dates): doc numbers the browser can resolve.
+    m = load(out, "manifest.json")
+    chunk = m["search"]["docChunk"]
+    docs = []
+    for k in range(len(os.listdir(os.path.join(out, "search", "docs")))):
+        docs += load(out, "search", "docs", f"{k}.json")
+    sd = os.path.join(out, "search", "said")
+    for f in sorted(os.listdir(sd)) if os.path.isdir(sd) else []:
+        for w, deltas in load(out, "search", "said", f).items():
+            if W.term_file(w) + ".json" != f or len(w) < m["search"]["saidMinWord"]:
+                v.setdefault("a transcript word is filed under its term file, long enough", []).append(w)
+            if any(d_ <= 0 for d_ in deltas[1:]) or not deltas or deltas[0] < 0:
+                v.setdefault("transcript doc numbers rise", []).append(w)
+                continue
+            n = 0
+            for d_ in deltas:
+                n += d_
+                if n >= len(docs) or docs[n][0] not in with_transcript:
+                    v.setdefault("a transcript word finds only a doc whose transcript is shown", []).append(w)
+                    break
+    dd = os.path.join(out, "search", "dates")
+    dated = 0
+    for f in sorted(os.listdir(dd)) if os.path.isdir(dd) else []:
+        rows = load(out, "search", "dates", f)["rows"]
+        dated += len(rows)
+        if rows != sorted(rows, key=lambda r: (r[2], r[4])):
+            v.setdefault("a year's dates run oldest first", []).append(f)
+        for r in rows:
+            n = r[4]
+            if not r[2].startswith(f[:-5]) or n >= len(docs) or docs[n] != r[:4]:
+                v.setdefault("a date row is its doc's own row, in its year", []).append(f"{f}:{n}")
+    if os.path.isdir(dd) and dated != sum(1 for r in docs if r[2]):
+        v["every dated doc is in its year once"] = [dated]
     lines = " ".join(load(out, "manifest.json")["rightsLines"].values()).lower()
     if "public domain" in lines:
         v["no rights line says public domain"] = [lines]
@@ -171,6 +208,37 @@ def search(out, q):
     for n in sorted(hits or []):
         docs.append(load(out, "search", "docs", f"{n // chunk}.json")[n % chunk][0])
     return docs
+
+
+def said(out, q):
+    """The browser's transcript search, in Python: every query word of saidMinWord or more begins a word said."""
+    m = load(out, "manifest.json")
+    words = [w for w in W.tokens(q) if len(w) >= m["search"]["saidMinWord"]]
+    hits = None
+    for w in words:
+        try:
+            terms = load(out, "search", "said", W.term_file(w) + ".json")
+        except FileNotFoundError:
+            return []
+        ns = set()
+        for t, deltas in terms.items():
+            if t.startswith(w):
+                n = 0
+                for dlt in deltas:
+                    n += dlt
+                    ns.add(n)
+        hits = ns if hits is None else hits & ns
+    chunk = m["search"]["docChunk"]
+    return [load(out, "search", "docs", f"{n // chunk}.json")[n % chunk][0] for n in sorted(hits or [])]
+
+
+def aired(out, prefix):
+    """The docs aired on a date prefix (YYYY, YYYY-MM, YYYY-MM-DD), oldest first."""
+    try:
+        rows = load(out, "search", "dates", prefix[:4] + ".json")["rows"]
+    except FileNotFoundError:
+        return []
+    return [r[0] for r in rows if r[2].startswith(prefix)]
 
 
 check("fnv1a: the empty string is the offset basis", W.fnv1a(""), 0x811C9DC5)
@@ -222,6 +290,14 @@ with tempfile.TemporaryDirectory() as tmp:
     day = [r[0] for r in load(out, "index", "days", "05-25.json")["rows"]]
     check("this day: oldest first, never-recommended left out", day, ["suspense|1943-05-25", "mrsorrowful|1950-05-25"])
     check("never recommended, always findable", search(out, "rede"), ["speeches|1939-05-25"])
+    check("dates: a year, oldest first", aired(out, "1943"), ["suspense|1943-05-25"])
+    check("dates: a month", aired(out, "1950-05"), ["mrsorrowful|1950-05-25"])
+    check("dates: a day", aired(out, "1939-05-25"), ["speeches|1939-05-25"])
+    check("control: a day nothing aired finds nothing", aired(out, "1939-05-26"), [])
+    check("control: an undated episode is in no year",
+          any("suspense|tundated" in aired(out, f[:-5]) for f in os.listdir(os.path.join(out, "search", "dates"))),
+          False)
+    check("control: no transcript cache, no transcript words", os.path.isdir(os.path.join(out, "search", "said")), False)
 
     opened = os.path.join(tmp, "web-open")
     W.build(served, opened, include_unclaimed=True)
@@ -272,11 +348,32 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: the gate catches a leaked unclaimed row", got.get("the gate: clean rows only"),
           ["suspense|1943-05-25"])
 
+    # Broken controls for the date files: a misdated row and a lost row are each caught.
+    y = load(opened, "search", "dates", "1943.json")
+    r0 = y["rows"][0]
+    W.dump(os.path.join(opened, "search", "dates", "1943.json"), {**y, "rows": [r0[:2] + ["1943-05-26"] + r0[3:]]})
+    check("control: a misdated row is caught", violations(opened).get("a date row is its doc's own row, in its year"),
+          ["1943.json:%d" % r0[4]])
+    W.dump(os.path.join(opened, "search", "dates", "1943.json"), {**y, "rows": []})
+    check("control: a lost dated doc is caught", "every dated doc is in its year once" in violations(opened), True)
+    # Broken controls for search/said: a word finding a doc with no shown transcript, a word too short.
+    W.dump(os.path.join(opened, "search", "said", "zz.json"), {"zzz": [0]})
+    W.dump(os.path.join(opened, "search", "said", "ab.json"), {"ab": [0]})
+    got = violations(opened)
+    check("control: a said word finding a doc without a shown transcript is caught",
+          got.get("a transcript word finds only a doc whose transcript is shown"), ["ab", "zzz"])
+    check("control: a said word shorter than saidMinWord is caught",
+          got.get("a transcript word is filed under its term file, long enough"), ["ab"])
+
 real = os.environ.get("WEB_PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "web")
 if os.path.exists(os.path.join(real, "manifest.json")):
     check("contract holds on the real web build", violations(real), {})
     check("real build: Sorry, Wrong Number is found by its words", "suspense|1948-11-18" in search(real, "sorry wrong")
           if not load(real, "manifest.json")["cleanOnly"] else True, True)
+    rm = load(real, "manifest.json")
+    check("real build: every dated doc has a year file", rm["counts"]["dateYears"] > 0, True)
+    check("real build: transcript words exist exactly when a shown transcript does",
+          rm["counts"]["saidTerms"] > 0, rm["counts"]["saidDocs"] > 0)
 elif os.environ.get("WEB_PROJECTION"):
     check("the web build named by WEB_PROJECTION exists", False, True)   # asked for, so never a skip
 else:

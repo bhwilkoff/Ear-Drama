@@ -213,8 +213,13 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,
   people", debounced, series first, then People (§4.13, word-prefix on
   the name, most episodes first, eight), then plays (title and author,
-  word-prefix), then episodes. A row found only
-  by its transcript says "In the transcript" (`Transcript.searchNote`).
+  word-prefix), then "Aired {date}" when the query names an air date
+  (`DateQuery`, contract §3.4), then episodes, then **Automatic transcript**
+  (`Transcript.label`): episodes whose shown transcript says every query
+  word of three letters or more, less those above, each row
+  `TranscriptHitLabel`, the episode row plus the line where the words are
+  said, italic, verbatim (`Transcript.snippet`), read from the transcript's
+  own URL; the row stands alone when the text does not load.
 - **§4.13 A person** (`PersonScreen`, `Route.person`; `withPerson`,
   contract §5) is a List: the portrait when one is served
   (`FaceFigure`, Decision 069) beside one caption of facts, the years

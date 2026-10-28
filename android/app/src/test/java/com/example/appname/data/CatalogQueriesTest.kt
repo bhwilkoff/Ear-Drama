@@ -181,33 +181,52 @@ class CatalogQueriesTest {
         val older = CatalogDatabase.open(CatalogFixture.build(tmp.newFolder("pre-transcript"), withTranscript = false).path)!!
         try {
             assertNull(older.episodeDetail("sus|1943-01-07")!!.transcriptUrl)
-            assertEquals(listOf("sus|1943-01-07"), older.search("lighthouse").episodes.map { it.id })
+            // A catalog published before the gate columns never searches what is said.
+            assertTrue(older.search("lighthouse").isEmpty)
         } finally {
             older.close()
         }
     }
 
-    @Test fun `search says when only the transcript matched`() = runBlocking {
+    @Test fun `search finds what is said in a shown transcript, in its own section`() = runBlocking {
         val keeper = db.search("lighthouse")
-        assertEquals(listOf("sus|1943-01-07"), keeper.episodes.map { it.id })
-        assertEquals(setOf("sus|1943-01-07"), keeper.transcriptOnly)
-        // A transcript that failed the gate is still searchable.
-        assertEquals(setOf("sus|1943-05-25"), db.search("zeppelin").transcriptOnly)
-        // The control: "hitchhiker" is in the title AND the transcript, so it is not flagged.
+        assertTrue(keeper.episodes.isEmpty())
+        assertEquals(listOf("sus|1943-01-07"), keeper.transcript.map { it.id })
+        assertEquals(CatalogFixture.TRANSCRIPT_URL, keeper.transcript.single().transcriptUrl)
+        // The control: a transcript that failed the gate is never searched, even where an older catalog indexed it.
+        assertTrue(db.search("zeppelin").isEmpty)
+        // "hitchhiker" is in the title AND the transcript: Episodes only, never twice.
         val title = db.search("hitchhiker")
         assertEquals(listOf("sus|1943-01-07"), title.episodes.map { it.id })
-        assertTrue(title.transcriptOnly.isEmpty())
-        assertTrue(db.search("moore").transcriptOnly.isEmpty())
-        // One word in the title, one only spoken: the transcript was needed.
-        assertEquals(setOf("sus|1943-01-07"), db.search("hitchhiker tuned").transcriptOnly)
+        assertTrue(title.transcript.isEmpty())
+        assertTrue(db.search("moore").transcript.isEmpty())
+        // Every word must be said; one in the title and one only spoken is a transcript match.
+        assertEquals(listOf("sus|1943-01-07"), db.search("hitchhiker tuned").transcript.map { it.id })
+        assertTrue(db.search("tuned police").transcript.isEmpty())
+        // A word under three letters is never searched in a transcript.
+        assertTrue(db.search("by").transcript.isEmpty())
+    }
+
+    @Test fun `search finds what aired on a date the query names`() = runBlocking {
+        assertEquals(listOf("sus|1943-01-07", "sus|1943-02-04", "sus|1943-03-11", "sus|1943-05-25", "cp|1943-02-24")
+            .sortedBy { it.substringAfter('|') }, db.search("1943").aired!!.episodes.map { it.id })
+        assertEquals(listOf("sus|1943-02-04", "cp|1943-02-24"), db.search("February 1943").aired!!.episodes.map { it.id })
+        assertEquals(listOf("sus|1942-06-17"), db.search("1942-06-17").aired!!.episodes.map { it.id })
+        assertEquals(listOf("cp|1944-01-07"), db.search("jan 7, 1944").aired!!.episodes.map { it.id })
+        assertEquals("Aired February 1943", db.search("February 1943").aired!!.title)
+        assertEquals(listOf("sus|1943-02-04"), db.search("suspense feb 1943").aired!!.episodes.map { it.id })
+        // The controls: a day nothing aired, and a query naming no date.
+        assertTrue(db.search("1943-05-26").aired!!.episodes.isEmpty())
+        assertTrue(db.search("1943-05-26").isEmpty)
+        assertNull(db.search("sorry wrong").aired)
+        assertFalse(db.search("1943").isEmpty)
     }
 
     @Test fun `series search never matches a word spoken in a transcript`() = runBlocking {
         // "Command Performance" is spoken in a Suspense episode's transcript, and
         // that episode IS found by it, so the words are in the index...
         val found = db.search("command perf")
-        assertTrue(found.episodes.any { it.id == "sus|1943-01-07" })
-        assertTrue("sus|1943-01-07" in found.transcriptOnly)
+        assertTrue(found.transcript.any { it.id == "sus|1943-01-07" })
         // ...yet the series list holds only the series that bears the name.
         assertEquals(listOf("commandperformance"), found.series.map { it.key })
         // A word only spoken lists no series at all.

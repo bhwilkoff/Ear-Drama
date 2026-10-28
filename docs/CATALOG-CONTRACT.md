@@ -77,7 +77,7 @@ many copies survive.
 | `no_recommend` | TEXT | NULL, or the reason it is never recommended (§6) |
 | `network`, `network_source` | TEXT | the network that aired it, and which witness says so |
 | `sponsor` | TEXT | computed (`catalog/tools/sponsors.py`): the OTRRpedia dated sponsor run covering the air date, several joined by " / "; NULL when no dated run covers it, and "Sustained", "Multi", "Syndicated" are never published; clients show it as the third fact after the network, and the web detail shard carries it as `sponsor` |
-| `has_transcript` | INTEGER | 1 only when the default copy's automatic transcript was fetched and passes the on-screen gate (Decision 058: 50-220 words a minute, at most 10% repeated four-word runs, `catalog/tools/transcript_gate.py`); 0 otherwise, including a transcript that failed the gate (still searchable, §3.4) |
+| `has_transcript` | INTEGER | 1 only when the default copy's automatic transcript was fetched and passes the on-screen gate (Decision 058: 50-220 words a minute, at most 10% repeated four-word runs, `catalog/tools/transcript_gate.py`); 0 otherwise, including a transcript that failed the gate (neither shown nor searchable, §3.4) |
 | `gain_db` | REAL | retired, always NULL: the target lives in the clients (Decision 061), so the pipeline publishes the measurement below, never a gain |
 | `added_at` | TEXT | when the episode first appeared in a published catalog |
 | `detail_json` | TEXT | Detail-only fields (credits, versions, other performances, witnesses), decoded only on Detail |
@@ -239,8 +239,10 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
 `episodes_fts` (FTS5, contentless, `detail=column`; a match's `rowid` is the
 episode's `rowid`), columns `title` (title and aka), `series`, `people`
 (credited names), and `transcript`: the default copy's automatic transcript,
-indexed for every fetched transcript whether or not it passes the gate (an
-episode can be found by a word spoken in it and still show no text). Contentless
+indexed only where it passes the gate (`has_transcript = 1`; catalog
+DECISIONS 012), so whatever Search finds by what is said, Detail can show; a
+client also requires `has_transcript = 1`, so an older projection that indexed
+every transcript is read the same way. Contentless
 means only the index is stored, never the text. `detail=column` keeps
 word-prefix terms and column filters (`series:"x"*`), which are every query the
 clients make, and drops token positions, which only phrase and NEAR queries
@@ -254,6 +256,22 @@ brought new words, and 11.4 MB in a simulation reusing the 233 texts over
 platform: each typed word must begin a word in the row ("sorr wrong" finds
 "Sorry, Wrong Number"; "sorr" also finds "Mr. Sorrowful", correctly), and a
 match never starts inside a word ("orry" finds nothing).
+
+Search has three episode sections on every platform. **Episodes** match
+`{title series people}`. **Aired** lists the episodes whose `air_date` begins
+with the date the query names ("1954", "August 1954", "Aug 2, 1954", "2 August
+1954", "1954-08", "1954-08-02", "8/2/1954"), oldest first, narrowed by the
+query's other words in `{title series people}`. **Automatic transcript** lists
+the episodes whose shown transcript has every query word of three letters or
+more as a word prefix (`{transcript} : "w"*`), oldest first, less those in
+Episodes; each row's snippet is the first transcript line saying a query word,
+cut on the device from the text at `transcript_url`, verbatim, to about 120
+characters with an ellipsis at a cut. The date rule and the snippet rule are
+golden cases in `catalog/tests/golden/search_text.json`, which the web, Apple,
+and Android tests all read. MEASURED 2026-10-27 (5,657 transcripts shown of
+5,889 fetched): gating the index took 59 KB off the compressed served
+projection (32.55 to 32.49 MB) and 3 KB off the clean-only seed (1.266 to
+1.264 MB, one shown transcript).
 
 ### 3.5 Forwarding ids
 
@@ -279,6 +297,19 @@ the starting shape, Archive Watch's:
   character]` (`fields.personCredit`), one row per credit, oldest first
   (R1), so an episode a person wrote and directed is two rows. Only served
   episodes' credits; a person with none has no page.
+- `data/search/said/{p}.json`: what is said, filed as `search/terms` is (a
+  word's first two characters): `{word: delta-coded doc numbers}` for every
+  word of three letters or more (`search.saidMinWord`) in each shown
+  transcript (§3.4), cut from the transcript cache by `build_web_projection.py
+  --transcripts` for the episodes whose `transcript_url` is set. Never the
+  text. MEASURED 2026-10-27, gate open: 5,657 transcripts, 91,535 words in 796
+  files, 12.8 MB raw (4.7 MB gzip), the largest `co.json` at 387 KB (144 KB
+  gzip).
+- `data/search/dates/{yyyy}.json`: a year's dated docs for Search's Aired
+  section, `{fields, rows}` with rows the doc row and its number (`fields.date`:
+  `id`, `title`, `date`, `series`, `doc`), oldest first. MEASURED 2026-10-27,
+  gate open: 53 files, 1.2 MB raw (0.25 MB gzip) before the doc rows were
+  added; the publish log prints the current reading.
 - `data/search/people/{p}.json`: people for Search, filed under the term
   file (`termFile`) of each word of the name, `{fields, rows}` with rows
   `[id, name, episodes, art]` (`fields.people`), most episodes first.
@@ -301,11 +332,10 @@ episode's face, a person id among its credits). A series row appends `scripts` (
 (`fields.arc`: `id`, `part`, `parts`, `next`, `nextStory`; null outside an
 arc). The web serves an arc only whole: one with a part the clean-only gate
 holds back is not served, and is never another arc's `nextStory` (MEASURED
-2026-10-24: 198 arcs over 2,942 of the web's 15,125 episodes). Web search does not index transcript words yet: the
-served projection's FTS is contentless, so the web builder has no text to cut
-from, and adding about 9,000 transcripts' vocabulary to the two-character term
-files is a size to measure before it is built. Until then, transcript search is
-native only (PARITY).
+2026-10-24: 198 arcs over 2,942 of the web's 15,125 episodes). Web search
+finds what is said through `search/said/` (above): the served projection's FTS
+is contentless, so the web builder reads the transcript cache itself, only for
+an episode the served projection shows a transcript for.
 
 The series index is the gatekeeper for every thin client: an id absent from it
 is never fetched, listed, or linked. Deploying through Actions means the owner

@@ -58,7 +58,8 @@ object CatalogFixture {
     )
 
     /**
-     * Automatic transcripts (§3.4), indexed whether or not they pass the gate.
+     * Automatic transcripts (§3.4). The second failed the gate: the fixture indexes it as an
+     * older catalog did, and Search never finds it.
      * "Command" and "Performance" are spoken here on purpose: they name the
      * OTHER series, which must not be found by a word in this transcript.
      */

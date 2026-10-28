@@ -231,3 +231,30 @@ clean-only web). `next_arc` is the series' following arc whose first part is
 recommendable (`recommendAnd`: the offer chooses for the listener); parts inside
 an arc play regardless, since the listener chose the story. No source marks a
 commercial's start and end yet, so there are no chapters (R8); see contract §3.2a.
+
+## 012 — Search finds only what Detail can show: transcripts past the gate, words without text
+*Date: 2026-10-27*
+
+Only a transcript that passes `transcript_gate.shown` is indexed: in the served
+projection's `episodes_fts.transcript` column, and in the web projection's
+`search/said/` files, which hold each transcript word's doc numbers and never
+the text. A snippet is cut on the device from archive.org's own text at
+`transcript_url`, verbatim. This narrows 008, which indexed every fetched
+transcript.
+
+**Why**: the 2026-10-27 brief asked that only transcripts above the gate be searchable
+(Search by what is said and by air date). A search hit on a looped transcript would show a row whose text
+Detail refuses, and a snippet from that text is exactly the garble the gate
+exists to keep off screen. Shipping snippets instead of cutting them on the
+device was measured and refused: one 80-character snippet per word per
+transcript is 11 MB gzipped for the rarest words alone (those in at most 20 of
+5,657 transcripts) and 30 MB for those in at most 110, against 4.7 MB for every
+word's doc numbers.
+
+**How to apply**: measured 2026-10-27 on the 2026-10-22 research database with
+the transcripts-latest cache (5,657 shown of 5,889 fetched): the served
+projection fell 59 KB compressed (32.55 to 32.49 MB) and the clean-only seed 3
+KB (1.266 to 1.264 MB); the gate-open web projection gained `search/said/`
+(91,535 words in 796 files, 12.8 MB raw, 4.7 MB gzip, the largest `co.json` at
+387 KB raw, 144 KB gzip) and `search/dates/` (53 year files, the doc rows by air
+date, for Search's dates). A word under three letters is not filed.
