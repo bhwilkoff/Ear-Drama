@@ -35,13 +35,10 @@ struct RadioScreen: View {
         case .nothing where !stations.stations.isEmpty:
             List { StationsSection(evening: nil, stations: stations.stations, now: now) }
         case .nothing:
-            ContentUnavailableView("No evening is published for today", systemImage: "radio")
+            EmptyState("No evening is published for today", systemImage: "radio")
         case .failed:
-            ContentUnavailableView {
-                Label("Tonight could not load", systemImage: "wifi.slash")
-            } actions: {
-                Button("Try Again") { attempt += 1 }
-            }
+            EmptyState("Tonight could not load", systemImage: "wifi.slash",
+                       action: .init(title: "Try Again") { attempt += 1 })
         case let .evening(evening):
             EveningList(evening: evening, stations: stations.stations, now: now, picked: $picked)
         }

@@ -105,6 +105,8 @@ HOOK_TYPE_SIZE = "APP_TYPE_SIZE"
 # Render the offline UI STATE for a screenshot. It fakes the state, never the network's
 # response to it — the real offline proof denies the network to the process.
 HOOK_FORCE_OFFLINE = "APP_FORCE_OFFLINE"
+# Library drawn as a new listener's, for its empty state (Apple; fakes the lists).
+HOOK_EMPTY_LIBRARY = "APP_EMPTY_LIBRARY"
 
 # The item every runner's "item" scenario opens with HOOK_START_ITEM (the web's
 # ?item=), and text its detail screen renders.

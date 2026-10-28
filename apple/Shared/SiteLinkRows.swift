@@ -16,17 +16,3 @@ struct SiteLinkRows: View {
         #endif
     }
 }
-
-/// The same three under an empty Library's Account action (iOS).
-struct SiteLinkInline: View {
-    var body: some View {
-        #if os(iOS)
-        HStack(spacing: 16) {
-            Link("Credits", destination: SiteLinks.credits)
-            Link("Privacy", destination: SiteLinks.privacy)
-            Link("Take-down requests", destination: SiteLinks.takedown)
-        }
-        .font(.footnote)
-        #endif
-    }
-}

@@ -1,6 +1,5 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,13 +25,13 @@ import com.example.appname.ui.ListenTogetherRow
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.plays.PlaysShare
 import com.example.appname.ui.AccountRow
+import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.SectionHeader
-import com.example.appname.ui.SiteLinkRows
 import com.example.appname.ui.siteLinksItem
 import com.example.appname.ui.downloadsSection
 import com.example.appname.ui.queueSection
@@ -55,6 +54,7 @@ fun LibraryScreen(
     onOpenProduction: (String) -> Unit,
     onListenTogether: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onBrowse: () -> Unit,
 ) {
     val container = LocalAppContainer.current
     val allProductions by container.plays.store.productions.collectAsState()
@@ -98,24 +98,19 @@ fun LibraryScreen(
     val downloadRecords by container.downloads.records.collectAsState()
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
-            if (library.queued.isEmpty() && library.inProgress.isEmpty() && library.finished.isEmpty() && library.following.isEmpty() &&
-                downloadRecords.isEmpty() && dramaRows.isEmpty() && invitation == null && !withClasses
-            ) {
-                Column(Modifier.padding(padding)) {
-                    AccountRow()
-                    ListenTogetherRow(onListenTogether)
-                    SiteLinkRows()
-                    EmptyMessage("Nothing played yet.")
-                }
-                return@LoadableContent
-            }
-            // On a TV the D-pad starts on the first row (§9.2).
+            val empty = library.queued.isEmpty() && library.inProgress.isEmpty() && library.finished.isEmpty() &&
+                library.following.isEmpty() && downloadRecords.isEmpty() && dramaRows.isEmpty() && invitation == null
+            // On a TV the D-pad starts on the first row (§9.2), or on an empty Library's Browse (§7.1a).
             val firstRow = remember { FocusRequester() }
-            ClaimTvFocus(firstRow, Unit)
+            if (!empty) ClaimTvFocus(firstRow, Unit)
             LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
                 // §4.11: the account is the first row, above what this device holds.
                 item(key = "account") { AccountRow() }
                 item(key = "together") { ListenTogetherRow(onListenTogether) }
+                // §7.1a: the empty state heads what this device holds; the account and the site pages stay.
+                if (empty) {
+                    item(key = "empty") { EmptyMessage("Nothing played yet.", action = EmptyAction("Browse", onBrowse)) }
+                }
                 queueSection(
                     library.queued,
                     onOpen = onOpenEpisode,

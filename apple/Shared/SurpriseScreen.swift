@@ -23,7 +23,7 @@ struct SurpriseScreen: View {
             if !loaded {
                 SkeletonRows(count: 3)
             } else if episode == nil && evening == nil && script == nil {
-                ContentUnavailableView("Nothing to pick from yet", systemImage: "shuffle")
+                EmptyState("Nothing to pick from yet", systemImage: "shuffle")
             }
             if let episode {
                 Section("An episode") {

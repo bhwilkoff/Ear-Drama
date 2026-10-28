@@ -258,9 +258,8 @@ The only shapes; a new one needs a new rule.
   Play, Listen live, and the progress line, and a genre hue only as the
   series row's mark. Focus itself stays the system's lift and
   highlight (§6.1); the tint does not repaint it.
-- **§7.3 States.** Loading is a `ProgressView`; empty is a
-  `ContentUnavailableView` ("Nothing to list yet", "Nothing played
-  yet"); a catalog that cannot open is `CatalogUnavailableView` with
+- **§7.3 States.** Loading is a `ProgressView`; empty is `EmptyState`
+  (§7.3a; "Nothing to list yet", "Nothing played yet"); a catalog that cannot open is `CatalogUnavailableView` with
   Try Again; the transcript reader has loading, failed, and offline,
   each with Try Again. Offline is iOS §7.2 minus downloads (the TV never
   downloads): `OfflineLine` ("You are offline.", neutral, never
@@ -268,6 +267,19 @@ The only shapes; a new one needs a new rule.
   catalog already on the box keeps working, Detail and Now Playing carry
   the refusal, and a network failure is the player's line "You are
   offline.". The Siri Remote has no haptics.
+- **§7.3a One empty state, and the focus lands on its action.** iOS
+  §7.4's `EmptyState` (AGENTS.md: "Only essential words on screen. A
+  caption must be a refusal, a warning, or a fact the person cannot
+  discover by looking."): the fact and at most one action, which takes
+  the focus through `.defaultFocus` (`tvos-platform-patterns`: declared,
+  never `onAppear`). An empty Library is "Nothing played yet" with
+  Browse (it selects Browse and resets Library's stack, §3), heading the
+  list, with Account, the three site addresses, and the downloads line
+  still under it. Tonight that could not load takes the focus on Try
+  Again. No results echo the query and take no focus from the keyboard.
+- **§7.3b No hints**, as iOS §7.5: the remote's buttons are the
+  system's, and a banner on a ten-foot screen would sit in the focus
+  path. No dismissal store, no reset.
 - **§7.4 VoiceOver.** Each card reads as one element; the Detail and Now
   Playing headers are combined; every control carries a label.
 

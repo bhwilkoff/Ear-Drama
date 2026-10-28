@@ -98,7 +98,7 @@ struct ListenScreen: View {
                     }
                 }
                 if shelves.isEmpty && continuing.isEmpty && following.isEmpty {
-                    ContentUnavailableView("Nothing to list yet", systemImage: "radio")
+                    EmptyState("Nothing to list yet", systemImage: "radio")
                 }
             } else {
                 SkeletonRows()
@@ -184,11 +184,8 @@ struct SeriesBrowseScreen: View {
         }
         .overlay {
             if catalog.state != .unavailable, let series, shownSeries(series).isEmpty, shownPlays.isEmpty {
-                ContentUnavailableView {
-                    Label("Nothing matches", systemImage: "line.3.horizontal.decrease.circle")
-                } actions: {
-                    Button("Clear Filters") { clear() }
-                }
+                EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
+                           action: .init(title: "Clear Filters") { clear() })
             }
         }
         .modifier(TopBar { chips })
@@ -324,7 +321,7 @@ struct SeriesScreen: View {
             case .none:
                 List { SkeletonRows(count: 10) }
             case .some(.none):
-                ContentUnavailableView("Series not found", systemImage: "questionmark.square.dashed")
+                EmptyState("Series not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
                     Section {
@@ -390,7 +387,7 @@ struct EpisodeScreen: View {
             case .none:
                 List { SkeletonRows(count: 4) }
             case .some(.none):
-                ContentUnavailableView("Episode not found", systemImage: "questionmark.square.dashed")
+                EmptyState("Episode not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(detail)):
                 content(detail)
             }
@@ -550,7 +547,7 @@ struct PersonScreen: View {
             case .none:
                 List { SkeletonRows(count: 10) }
             case .some(.none):
-                ContentUnavailableView("Person not found", systemImage: "questionmark.square.dashed")
+                EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
                     Section {
@@ -642,11 +639,11 @@ struct SearchResultsList: View {
     var body: some View {
         Group {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                ContentUnavailableView("Search titles, series, and people", systemImage: "magnifyingglass")
+                EmptyState("Search titles, series, and people", systemImage: "magnifyingglass")
             } else if let results, searchedFor == query {
                 let matchingPlays = Self.plays(plays.scripts, matching: query)
                 if results.isEmpty && matchingPlays.isEmpty {
-                    ContentUnavailableView.search(text: query)
+                    EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass")
                 } else {
                     List {
                         if !results.series.isEmpty {
@@ -760,74 +757,76 @@ struct LibraryScreen: View {
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && played.isEmpty && queue.items.isEmpty && following.isEmpty && downloads.records.isEmpty && plays.store.productions.isEmpty
-                    && app.pendingInvite == nil && !account.isSignedIn {
-                    ContentUnavailableView {
-                        Label("Nothing played yet", systemImage: "books.vertical")
-                    } actions: {
-                        VStack(spacing: 12) {
-                            AccountRow().fixedSize()
-                            SiteLinkInline()
+                // The empty state heads the list; the account and the site
+                // pages stay under it, signed in or out (iOS-DESIGN §7.4).
+                let empty = Self.emptied || (inProgress.isEmpty && played.isEmpty && queued.isEmpty && following.isEmpty
+                    && downloads.records.isEmpty && plays.store.productions.isEmpty && app.pendingInvite == nil
+                    && (!account.isSignedIn || shared.remote.isEmpty))
+                List {
+                    if empty {
+                        Section {
+                            EmptyState("Nothing played yet", systemImage: "books.vertical",
+                                       action: .init(title: "Browse") { app.selectedTab = .browse })
+                                .listRowBackground(Color.clear)
                         }
                     }
-                } else {
-                    List {
-                        if !queued.isEmpty {
-                            Section("Queue") {
-                                ForEach(queued) { episode in
-                                    NavigationLink(value: Route.episode(episode.id)) {
-                                        EpisodeRowLabel(episode: episode, showSeries: true)
-                                    }
-                                    .swipeActions {
-                                        Button(role: .destructive) { queue.remove(episode.id) } label: {
-                                            Label("Remove from queue", systemImage: "trash")
-                                        }
-                                    }
-                                    .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                    if !queued.isEmpty {
+                        Section("Queue") {
+                            ForEach(queued) { episode in
+                                NavigationLink(value: Route.episode(episode.id)) {
+                                    EpisodeRowLabel(episode: episode, showSeries: true)
                                 }
-                                .onMove { source, destination in
-                                    var ids = queued.map(\.id)
-                                    ids.move(fromOffsets: source, toOffset: destination)
-                                    queue.reorder(ids)
+                                .swipeActions {
+                                    Button(role: .destructive) { queue.remove(episode.id) } label: {
+                                        Label("Remove from queue", systemImage: "trash")
+                                    }
                                 }
+                                .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                            }
+                            .onMove { source, destination in
+                                var ids = queued.map(\.id)
+                                ids.move(fromOffsets: source, toOffset: destination)
+                                queue.reorder(ids)
                             }
                         }
-                        if !inProgress.isEmpty {
-                            Section("In progress") {
-                                ForEach(inProgress) { episode in
-                                    NavigationLink(value: Route.episode(episode.id)) {
-                                        EpisodeRowLabel(episode: episode, showSeries: true)
-                                    }
-                                    .swipeActions { removeButton(episode.id) }
-                                    .contextMenu { removeButton(episode.id) }
+                    }
+                    if !inProgress.isEmpty {
+                        Section("In progress") {
+                            ForEach(inProgress) { episode in
+                                NavigationLink(value: Route.episode(episode.id)) {
+                                    EpisodeRowLabel(episode: episode, showSeries: true)
                                 }
+                                .swipeActions { removeButton(episode.id) }
+                                .contextMenu { removeButton(episode.id) }
                             }
                         }
-                        if !following.isEmpty {
-                            Section("Following") {
-                                ForEach(following) { row in
-                                    NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
-                                }
+                    }
+                    if !following.isEmpty {
+                        Section("Following") {
+                            ForEach(following) { row in
+                                NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
                             }
                         }
+                    }
+                    if !Self.emptied {
                         DownloadsSection()
                         EarDramasSection()
-                        if !played.isEmpty {
-                            Section("Played") {
-                                ForEach(played) { episode in
-                                    NavigationLink(value: Route.episode(episode.id)) {
-                                        EpisodeRowLabel(episode: episode, showSeries: true)
-                                    }
-                                    .swipeActions { removeButton(episode.id) }
-                                    .contextMenu { removeButton(episode.id) }
+                    }
+                    if !played.isEmpty {
+                        Section("Played") {
+                            ForEach(played) { episode in
+                                NavigationLink(value: Route.episode(episode.id)) {
+                                    EpisodeRowLabel(episode: episode, showSeries: true)
                                 }
+                                .swipeActions { removeButton(episode.id) }
+                                .contextMenu { removeButton(episode.id) }
                             }
                         }
-                        Section { AccountRow() }
-                        #if os(iOS)
-                        Section { SiteLinkRows() }
-                        #endif
                     }
+                    Section { AccountRow() }
+                    #if os(iOS)
+                    Section { SiteLinkRows() }
+                    #endif
                 }
             } else {
                 List { SkeletonRows() }
@@ -839,6 +838,7 @@ struct LibraryScreen: View {
         #endif
         .task(id: account.isSignedIn) { if account.isSignedIn { await shared.loadRemote() } }
         .task(id: LibraryKey(entries: history.entries, queue: queue.items, load: catalog.loadKey)) {
+            guard !Self.emptied else { inProgress = []; return }
             let ids = history.inProgressIDs
             let playedIDs = history.entries.filter(\.value.finished)
                 .sorted { $0.value.updatedAt > $1.value.updatedAt }.map(\.key).prefix(100)
@@ -850,6 +850,9 @@ struct LibraryScreen: View {
             following = await catalog.series(follows.followedKeys)
         }
     }
+
+    /// The APP_EMPTY_LIBRARY door (DEBUG only): Library drawn as a new listener's.
+    static let emptied = LaunchDoors.current.emptyLibrary
 
     private func removeButton(_ id: String) -> some View {
         Button(role: .destructive) { history.remove(id) } label: {

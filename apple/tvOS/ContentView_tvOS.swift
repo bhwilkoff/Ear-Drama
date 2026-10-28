@@ -232,7 +232,7 @@ private struct ListenScreen_tvOS: View {
                 CatalogUnavailableView()
             } else if let shelves {
                 if shelves.isEmpty && continuing.isEmpty && following.isEmpty {
-                    ContentUnavailableView("Nothing to list yet", systemImage: "radio")
+                    EmptyState("Nothing to list yet", systemImage: "radio")
                 } else {
                     ScrollView(.vertical) {
                         LazyVStack(alignment: .leading, spacing: 80) {
@@ -316,7 +316,7 @@ private struct SeriesScreen_tvOS: View {
         Group {
             switch page {
             case .none: ProgressView()
-            case .some(.none): ContentUnavailableView("Series not found", systemImage: "questionmark.square.dashed")
+            case .some(.none): EmptyState("Series not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
                     Section {
@@ -366,7 +366,7 @@ private struct PersonScreen_tvOS: View {
         Group {
             switch page {
             case .none: ProgressView()
-            case .some(.none): ContentUnavailableView("Person not found", systemImage: "questionmark.square.dashed")
+            case .some(.none): EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
                     Section {
@@ -426,7 +426,7 @@ private struct EpisodeScreen_tvOS: View {
         Group {
             switch detail {
             case .none: ProgressView()
-            case .some(.none): ContentUnavailableView("Episode not found", systemImage: "questionmark.square.dashed")
+            case .some(.none): EmptyState("Episode not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(detail)): content(detail)
             }
         }
@@ -638,7 +638,7 @@ private struct SearchScreen_tvOS: View {
             }
         }
         .overlay {
-            if !query.isEmpty, results.isEmpty { ContentUnavailableView.search(text: query) }
+            if !query.isEmpty, results.isEmpty { EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass") }
         }
         .searchable(text: $query, prompt: "Titles, series, people")
         .onChange(of: store.pendingSearch, initial: true) { _, q in
@@ -661,6 +661,7 @@ private struct LibraryScreen_tvOS: View {
     @Environment(ListeningHistory.self) private var history
     @Environment(ListeningQueue.self) private var queue
     @Environment(FollowedSeries.self) private var follows
+    @Environment(AppStore.self) private var app
     @State private var inProgress: [EpisodeRow]?
     @State private var queued: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
@@ -670,50 +671,46 @@ private struct LibraryScreen_tvOS: View {
     var body: some View {
         Group {
             if let inProgress {
-                if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
-                    ContentUnavailableView {
-                        Label("Nothing played yet", systemImage: "books.vertical")
-                    } description: {
-                        Text(Self.noDownloads)
-                    } actions: {
-                        AccountRow().fixedSize()
+                // The empty state heads the list and takes the focus; the
+                // account and the site pages stay under it (tvOS-DESIGN §7.3a).
+                List {
+                    if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
+                        EmptyState("Nothing played yet", systemImage: "books.vertical",
+                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) })
                     }
-                } else {
-                    List {
-                        if !queued.isEmpty {
-                            Section("Queue") {
-                                ForEach(queued) { episode in
-                                    NavigationLink(value: Route.episode(episode.id)) {
-                                        EpisodeRowLabel(episode: episode, showSeries: true)
-                                    }
-                                    .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                    if !queued.isEmpty {
+                        Section("Queue") {
+                            ForEach(queued) { episode in
+                                NavigationLink(value: Route.episode(episode.id)) {
+                                    EpisodeRowLabel(episode: episode, showSeries: true)
                                 }
+                                .contextMenu { QueueRowMenu(episodeID: episode.id) }
                             }
                         }
-                        if !following.isEmpty {
-                            Section("Following") {
-                                ForEach(following) { row in
-                                    NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
-                                }
+                    }
+                    if !following.isEmpty {
+                        Section("Following") {
+                            ForEach(following) { row in
+                                NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
                             }
                         }
-                        ForEach(inProgress) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .contextMenu {
-                                Button(role: .destructive) { history.remove(episode.id) } label: {
-                                    Label("Remove from History", systemImage: "trash")
-                                }
+                    }
+                    ForEach(inProgress) { episode in
+                        NavigationLink(value: Route.episode(episode.id)) {
+                            EpisodeRowLabel(episode: episode, showSeries: true)
+                        }
+                        .contextMenu {
+                            Button(role: .destructive) { history.remove(episode.id) } label: {
+                                Label("Remove from History", systemImage: "trash")
                             }
                         }
-                        Section {
-                            AccountRow()
-                            SiteLinkRows()
-                        } footer: {
-                            Text(Self.noDownloads)
-                                .foregroundStyle(Color.brandTextMuted)
-                        }
+                    }
+                    Section {
+                        AccountRow()
+                        SiteLinkRows()
+                    } footer: {
+                        Text(Self.noDownloads)
+                            .foregroundStyle(Color.brandTextMuted)
                     }
                 }
             } else {
@@ -721,6 +718,7 @@ private struct LibraryScreen_tvOS: View {
             }
         }
         .task(id: Key(ids: history.inProgressIDs, queue: queue.items, load: catalog.loadKey)) {
+            guard !LaunchDoors.current.emptyLibrary else { inProgress = []; return }
             queued = await catalog.episodes(queue.items)
             inProgress = await catalog.episodes(history.inProgressIDs)
         }

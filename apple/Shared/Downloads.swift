@@ -117,7 +117,7 @@ struct DownloadsScreen: View {
         let groups = downloads.seriesGroups
         Group {
             if groups.isEmpty {
-                ContentUnavailableView("No downloads", systemImage: "arrow.down.circle")
+                EmptyState("No downloads", systemImage: "arrow.down.circle")
             } else {
                 List {
                     ForEach(groups, id: \.key) { group in

@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -36,6 +37,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -130,15 +133,41 @@ private fun RetryMessage(text: String, modifier: Modifier) {
 fun liveButtonColors(): ButtonColors =
     ButtonDefaults.buttonColors(containerColor = OnAir.colors.live, contentColor = OnAir.colors.onLive)
 
+/** The one way on from an empty state: a verb and what it does. */
+data class EmptyAction(val label: String, val onClick: () -> Unit)
+
+/**
+ * The one empty state (§7.1a): the fact and, when one exists, one productive
+ * action. It sits beside the navigation the screen carries, never in its place.
+ * On a TV the action takes the focus, unless the screen keeps it where the
+ * listener just pressed ([claimTvFocus] false).
+ */
 @Composable
-fun EmptyMessage(text: String, modifier: Modifier = Modifier) {
-    CenteredBox(modifier) {
+fun EmptyMessage(
+    text: String,
+    modifier: Modifier = Modifier,
+    action: EmptyAction? = null,
+    claimTvFocus: Boolean = true,
+) {
+    val fill = if (action == null) Modifier.fillMaxSize() else Modifier.fillMaxWidth()
+    Column(
+        modifier = modifier.then(fill).padding(Spacing.S6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp, Alignment.CenterVertically),
+    ) {
         Text(
             text,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+        if (action != null) {
+            val focus = remember { FocusRequester() }
+            if (claimTvFocus) ClaimTvFocus(focus, action.label)
+            FilledTonalButton(onClick = action.onClick, modifier = Modifier.focusRequester(focus).tvFocusMark()) {
+                Text(action.label)
+            }
+        }
     }
 }
 

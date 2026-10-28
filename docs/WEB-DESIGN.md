@@ -574,8 +574,24 @@ web app follows today.
 
 - **§7.1 Every list has loading, empty, error, and offline states**
   (`universal-feature-states`), drawn by one function, `stateBox`. Empty
-  is a sentence; error and offline carry Try again; "Not in the catalog"
+  is a sentence (§7.1a); error and offline carry Try again; "Not in the catalog"
   has no retry because retrying cannot help.
+- **§7.1a The empty state is the fact and at most one way on** (P4,
+  2026-10-28). The rule it serves (AGENTS.md, owner): "Only essential
+  words on screen. A caption must be a refusal, a warning, or a fact the
+  person cannot discover by looking." `stateBox('empty', { text,
+  action })` draws the sentence and, when one helps, one link
+  (`{ label, href }`, a `.btn`). Library's Queue ("Nothing queued."),
+  History ("Nothing played yet."), and Following ("Not following any
+  series.") link to Browse; Browse with nothing matching links "Clear
+  filters" (keeping the sort). No results echo the query, "No matches
+  for “{query}”.", and suggest nothing. An empty state never replaces
+  navigation: the account row, Listen together, Library's sections, and
+  the footer's site pages stay drawn around it.
+- **§7.1b No hints** (one-shot tips), as iOS §7.5: each candidate
+  repeats a visible control, and Search finding words said in an
+  episode belongs in the search placeholder (the owner's copy call). No
+  dismissal store, no "Show tips again".
 - **§7.2 Service worker** (`sw.js`): the shell is cache-first under a
   versioned name (`ed-shell-vN`); catalog JSON is network-first with the
   last good copy as the fallback (`ed-data-vN`), yielding to the copy

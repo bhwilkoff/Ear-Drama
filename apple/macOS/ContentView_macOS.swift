@@ -283,7 +283,7 @@ struct ProductionWindow_macOS: View {
             }
             .navigationTitle(production.title)
         } else {
-            ContentUnavailableView("Production not found", systemImage: "questionmark.square.dashed")
+            EmptyState("Production not found", systemImage: "questionmark.square.dashed")
         }
     }
 }

@@ -318,15 +318,14 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§4.10a The site pages are Library's last section**, under the
   account: "Credits", "Privacy", "Take-down requests", each a `Link` to
   the website's page (`SiteLinks`), opened in the system browser. An
-  empty Library offers the same three under its Account action. Names
-  only; the pages carry the words.
+  empty Library keeps them (§7.4). Names only; the pages carry the words.
 - **§4.10 The account lives at the foot of Library**, never a tab, a
   gear, or a sheet at launch (§3.1; Decision 057: optional, never at
   first launch). Library's last section is one row, "Account", whose
   value is the state: "Not signed in", "Synced {time}", "Sync failed",
   or, while the build carries placeholder ids (`Accounts.xcconfig`),
   "Not available" with the row disabled and no error. An empty Library
-  offers the same row as its empty state's action. The row pushes
+  keeps the row under its empty state (§7.4). The row pushes
   `Route.account` (`AccountScreen`, `apple/Shared/AccountScreen.swift`):
   signed out, the system `SignInWithAppleButton` first and "Sign in with
   Google" under it (App Review 4.8: Apple wherever Google is); signed
@@ -511,8 +510,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 ## §7 States and accessibility
 
 - **§7.1 Every list has four states.** Loading keeps the eventual layout
-  (`SkeletonRows`, hidden from VoiceOver); empty is a
-  `ContentUnavailableView`; a catalog that cannot open at all is
+  (`SkeletonRows`, hidden from VoiceOver); empty is `EmptyState`
+  (§7.4); a catalog that cannot open at all is
   `CatalogUnavailableView` with Try Again; "Series not found" and
   "Episode not found" carry no retry because retrying cannot help.
 - **§7.2 Offline is a degraded mode, not a failure** (web §7.3, Android
@@ -530,6 +529,35 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   carries a label and a value; the mini player says "Now playing" with
   the hint "Opens the player"; an episode row reads as one element with
   its progress as a value; AirPlay is "Play on another device".
+- **§7.4 One empty state: the fact and at most one action** (P4,
+  2026-10-28; `universal-feature-states`). The rule it serves (AGENTS.md,
+  owner): "Only essential words on screen. A caption must be a refusal, a
+  warning, or a fact the person cannot discover by looking." Every empty
+  list on iOS, macOS, and tvOS is one view, `EmptyState`
+  (`apple/Shared/EmptyState.swift`): a title that states the fact, a
+  symbol, and at most one productive action, never a description. It
+  heads the screen's own list and never replaces navigation the screen
+  carries: an empty Library is "Nothing played yet" with Browse (it opens
+  Browse), and Account and the site pages stay under it, signed in or
+  out. Browse with nothing matching offers Clear Filters; Tonight that
+  could not load offers Try Again. No results echo the query, "No
+  matches for “{query}”", and suggest nothing. Where no action helps (no
+  shelves, nothing to pick, no evening today, no downloads, no lines in
+  a part) it is the title alone. "Not found" pages use the same view
+  with no action. `tools/test_apple_design_rules.py` fails on a
+  title-only `ContentUnavailableView` outside `EmptyState`, and on a
+  Library whose empty state is not inside its list above Account and the
+  site pages. `APP_EMPTY_LIBRARY=1` (DEBUG) draws Library as a new
+  listener's; `EmptyStateUITests` drives it and an empty search.
+- **§7.5 No hints** (one-shot tips; P4, 2026-10-28). Each candidate
+  failed `learning-orientation-design`'s test or §7.4's rule: a "press
+  and hold to queue" tip teaches what Detail's Queue button already
+  shows; Edit is in the toolbar; swipe-to-remove is the system's idiom.
+  The one fact a person cannot see, that Search finds words said in an
+  episode, belongs in the search field's prompt, not a banner (the
+  prompt's words are the owner's call). So there is no HintBanner, no
+  dismissal store, and no "Show tips again": a reset with nothing to
+  reset is a word without a job. A hint needs a rule here first.
 
 ## §8 Values
 

@@ -40,13 +40,10 @@ struct RadioScreen_tvOS: View {
             }
             .defaultFocus($shelfFocused, true)
         case .nothing:
-            ContentUnavailableView("No evening is published for today", systemImage: "radio")
+            EmptyState("No evening is published for today", systemImage: "radio")
         case .failed:
-            ContentUnavailableView {
-                Label("Tonight could not load", systemImage: "wifi.slash")
-            } actions: {
-                Button("Try Again") { attempt += 1 }
-            }
+            EmptyState("Tonight could not load", systemImage: "wifi.slash",
+                       action: .init(title: "Try Again") { attempt += 1 })
         case let .evening(evening):
             Evening_tvOS(evening: evening, stations: stations.stations, now: now, picked: $picked)
         }

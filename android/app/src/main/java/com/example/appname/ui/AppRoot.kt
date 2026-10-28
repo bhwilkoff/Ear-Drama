@@ -198,6 +198,7 @@ fun AppRoot(
                                     onOpenProduction = openProduction,
                                     onListenTogether = { roomSheet = true },
                                     onOpenDownloads = { stack.navigateTo(Route.Downloads) },
+                                    onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse },
                                 )
                             }
                             entry<Route.Downloads> { DownloadsScreen(onBack = back, onOpenEpisode = openEpisode) }

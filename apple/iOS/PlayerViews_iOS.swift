@@ -74,7 +74,7 @@ struct PlayerSheet_iOS: View {
                     }
                     .accessibilityElement(children: .combine)
                 } else {
-                    ContentUnavailableView("Nothing playing", systemImage: "play.slash")
+                    EmptyState("Nothing playing", systemImage: "play.slash")
                 }
                 Spacer(minLength: 0)
 

@@ -36,6 +36,7 @@ import com.example.appname.data.BrowseFilter
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.SeriesSort
 import com.example.appname.ui.ClaimTvFocus
+import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.Loadable
@@ -173,7 +174,17 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
                     else -> rows
                 }
                 if (seriesRows.isEmpty() && plays.isEmpty()) {
-                    item(key = "empty") { EmptyMessage("Nothing matches these filters.") }
+                    item(key = "empty") {
+                        // The D-pad stays on the chip just pressed; the action is one step down.
+                        EmptyMessage(
+                            "Nothing matches these filters.",
+                            action = EmptyAction("Clear filters") {
+                                kind = null; hasScript = false; genre = null; decade = null; network = null
+                                haptics(Haptic.Selection)
+                            },
+                            claimTvFocus = false,
+                        )
+                    }
                 }
                 items(seriesRows, key = { it.key }) { row ->
                     SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
