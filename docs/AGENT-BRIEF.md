@@ -4,6 +4,10 @@ Read this, `AGENTS.md`'s hard rules, and only the design docs your feature
 touches. Your brief adds the feature's goal, decisions, and acceptance tests.
 
 ## How to work
+- First, check it isn't built (owner, 2026-10-28: "Are we being as economical with
+  tokens on this loop as we can be?"): `git log --grep`, grep the code and PARITY for
+  the feature. If most of it exists, stop and report what is missing before building
+  (M8a spent a full Opus run rediscovering batch 1's invite client).
 - Your own git worktree; commit on your branch with `git commit -F` and a quoted
   heredoc ending in the two attribution lines the brief gives; never push; stage
   explicit paths.

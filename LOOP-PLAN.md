@@ -72,6 +72,12 @@ standing rules (worktree, commits, verification, no simulators, US English,
 On Air roles, the owner's calls not to make) and adds only the feature's goal,
 its decisions, and its acceptance tests.
 
+**Tokens** (owner, 2026-10-28: *"Are we being as economical with tokens on this loop as we
+can be?"*): the main thread greps for an existing implementation before writing a brief;
+Opus only for design, data-plane design and hard bugs, Sonnet for everything else
+(plumbing, ports, docs, CI); a fresh session every ten ticks or so, since the state lives
+here and in the progress log; reports to the owner stay short.
+
 **Logs are short.** `AUTONOMOUS_PROGRESS.md` gets one entry per batch merged:
 what exists now, the evidence, what is not verified. Lessons go to memory.
 
