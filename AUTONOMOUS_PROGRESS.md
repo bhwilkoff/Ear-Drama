@@ -479,3 +479,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Design tick 6, 2026-10-29, resumed after a forced restart
 - Owner: "Resume the loop after a forced restart of my computer". D2b-3 (direction D) had stopped with uncommitted work in its worktree (directions/d: app, data, styles, recorder page; no renders). Resumed it in place from its transcript. CI green; no device leases of ours held.
+
+### Design tick 7, 2026-10-29, direction D merged and published; owner gate
+- D2b-3 merged (1.0.105): direction D, 18 screens. Reviewing its frames found two of the owner's named problems still present (an event line wrapping onto "· Roma Wines"; a second Share in the Play row) that the fit gate had passed. Fixed (separator at a fact's end; one Share) and the gate now checks both (seen red on the old code and on three more rows); 0 problems at 320-1440, light and dark.
+- Review page https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB. Multi-file attaches failed about half the time; the owner: "You clearly need to take a different approach." Published as one self-contained file (images as data URIs). Lesson in memory.
+- The loop stops at the gate.

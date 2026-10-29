@@ -124,13 +124,13 @@ So **D2b** makes one cohesive direction, D:
 
 ## State
 
-- Phase: D2b (one cohesive direction from the owner's feedback), started 2026-10-29.
-- D2b-1 merged (`uniform-imagery-design`); D2b-2 merged (D2b-record-a-line.md,
-  directions/record/). Running: D2b-3, direction D (directions/d/), with the fit gate.
-- Owner calls from D2b: graded copies hosted by Ear Drama (re-hosting) or the two-number
-  grade applied per platform; Keep runs straight into the next cue; the play-color rule
-  from Gutenberg subject headings.
-- Owner calls still open: That night on Detail; whose face leads; what a signed-out
-  invitee sees; whether finished dramas are listed and credited; show line 10 or 5.
-- D2 (A Almanac, B Company, C Sleeve) review page: https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ;
-  the skill `catalog-experience-design`; S1 share pages and Q1 data fixes live.
+- Phase: D2b done 2026-10-29; **owner gate on direction D**.
+- Merged: `uniform-imagery-design` (D2b-1), Record a Line (D2b-2, directions/record),
+  direction D (D2b-3, directions/d, 1.0.105) plus its wrap and Share fixes and the
+  stronger fit gate. Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
+- Waiting on the owner (the page lists them): is D the direction; show line 10 or 5;
+  whose face leads; what a signed-out invitee sees; finished dramas listed and
+  credited; the grade as two numbers or hosted graded copies; Keep runs on to the
+  next cue; drama magenta beside recording red.
+- Next on yes: D3, one surface per batch on every platform (shared rules first).
+- Earlier: D2 review https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ; S1, Q1 live.
