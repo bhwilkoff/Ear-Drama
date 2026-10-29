@@ -37,7 +37,10 @@ name: Catalog transcripts
 
 on:
   schedule:
-    - cron: '17 8 * * *'           # once a day, 2:17 AM MT; before the 9:41 UTC publish
+    # Crons land 4-7 hours late here (runs of 2026-10-23..28 started 12:43-15:14 UTC for 08:17,
+    # and the publish 13:34-16:18 for 09:41). A fetch takes up to an hour, so 84 minutes of
+    # nominal gap let the two overlap and the publish restore yesterday's cache.
+    - cron: '17 4 * * *'           # once a day, hours ahead of the 9:41 UTC publish
   workflow_dispatch:
     inputs:
       batch:
@@ -153,7 +156,10 @@ jobs:
             python3 -c "import json;s=json.load(open('work/summary.json'));print(json.dumps(s, indent=1))" | tee -a "$GITHUB_STEP_SUMMARY"
           fi
           case "$verdict/$changed/${{ steps.fetch.outcome }}" in
-            idle/*) echo "::notice::nothing due: every candidate is cached or waiting its retry window" ;;
+            idle/*)
+              echo "::notice::nothing due: every candidate is cached or waiting its retry window"
+              # The yield line tools/audit_workflow_health.py reads; without it an idle day is SILENT.
+              echo "[catalog-transcripts] nothing to do: every candidate is cached or waiting its retry window" ;;
             fetched/*/success) ;;
             all_failed/*) echo "::error::transcripts were due and nothing came back (every request failed, or the breaker stopped the batch)" ;;
             killed/yes/*) echo "::warning::the fetch step was stopped by its backstop; publishing what it saved" ;;

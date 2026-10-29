@@ -1,4 +1,4 @@
-# (Workflow/incident names in comments refer to Archive Watch, the origin repo.)
+# (Incident names in comments refer to Archive Watch, the origin repo.)
 name: Workflow health
 
 # Catch the ways a workflow can be broken while reporting success — which is
@@ -15,10 +15,8 @@ name: Workflow health
 # it will end, and the checking should not end with it.
 
 on:
-  # DORMANT BY DEFAULT — uncomment once this repo has scheduled workflows
-  # of its own to guard (see docs/CI-FLEET.md).
-  # schedule:
-  # - cron: '13 7 * * *'      # daily, off the hour so it does not pile onto :00
+  schedule:
+  - cron: '13 7 * * *'      # daily, off the hour so it does not pile onto :00
   workflow_dispatch:
     inputs:
       lookback_hours:
@@ -50,6 +48,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '36' }}
+          # Push-triggered builds and deploys print no yield line; their failures still count.
+          NO_YIELD_LINE: 'Site deploy,Design Tokens,Worker Tests'
         run: |
           # The auditor exits 0 whenever it ran; a non-zero rc is its OWN
           # mechanics (gh unreachable) and must not skip the summary below.

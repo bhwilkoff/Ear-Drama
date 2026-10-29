@@ -157,7 +157,7 @@ def self_cancelling(name: str) -> bool:
     return hit
 
 
-URGENT_SEVERITIES = ("BROKEN", "KILLED")
+URGENT_SEVERITIES = ("BROKEN", "KILLED", "STALE")
 # Appended to a finding's printed line when its fix is already in flight. The
 # reporter (tools/report_workflow_health.py) reads the printed lines back and
 # keys on this exact text, so it is the contract between the two scripts.
@@ -171,8 +171,10 @@ def urgent_findings(findings):
     owner its own failure email from GitHub, so raising it again is a second
     alert for the same event, repeated daily until the fix lands — which is
     how the owner came to ask for the alerts to stop. BROKEN (green but
-    produced nothing) and KILLED (cancelled, which GitHub never emails about)
-    have no other voice; those go to the issue. FAILED and STALE stay in the
+    produced nothing), KILLED (cancelled, which GitHub never emails about) and
+    STALE (a schedule that stopped firing leaves no run to email about) have
+    no other voice; those go to the issue. STALE only fires after 2.5 of the
+    workflow's own periods, so one late or skipped tick never raises it. FAILED stays in the
     report, where a reader of the summary sees them.
 
     A finding whose fix is already in flight (a later manual run succeeded, so

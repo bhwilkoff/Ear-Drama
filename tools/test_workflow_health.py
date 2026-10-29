@@ -120,7 +120,7 @@ check("the jobs call is made once per run, not per question", len(calls) == 1, s
 A.api = _api
 
 check("DROPPED is reported, never raised twice", "DROPPED" not in A.URGENT_SEVERITIES)
-check("a real break still raises the issue", set(A.URGENT_SEVERITIES) == {"BROKEN", "KILLED"})
+check("a real break still raises the issue", set(A.URGENT_SEVERITIES) == {"BROKEN", "KILLED", "STALE"})
 
 
 # ── a workflow that ASKS to be superseded is not KILLED ─────────────────────
