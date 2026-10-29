@@ -477,6 +477,7 @@ works elsewhere, and checks again.
 | The take-down email address, and the DMCA agent's details once registered (`js/site.js` TAKEDOWN_EMAIL; takedown/index.html) | the take-down page | before the public launch |
 | Approve the consent screen and store words | M8, M10 | as drafted |
 | ~~Enable App Groups~~ DONE 2026-10-28: the owner signed in; `group.app.eardrama` registered in the portal and assigned to `app.eardrama` and `app.eardrama.TopShelf`; entitlements on | the Apple TV Top Shelf's Continue items | done |
+| Cut the cache Release with portrait sizes (the permission check refuses a new public Release from the agent): `bash tools/cut_catalog_release.sh build/catalog-release-2026-10-28 catalog-2026-10-28`, then `gh workflow run catalog-publish.yml`. Proven: only people_wd/files.json.gz differs (width/height on 3,765) | sized faces in every client | now |
 | Free API keys for NARA, NYPL, and DPLA (V6) | more photos | any time; optional |
 
 ## Owner feedback

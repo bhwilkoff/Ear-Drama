@@ -369,3 +369,11 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Not live yet: sizes reach clients only through a new cache Release. Creating it was refused by the permission check (a public surface: the owner's call). C1 stages the cache, proves by diff and rebuild that sizes are the only change, and writes tools/cut_catalog_release.sh for the owner.
 - Seen: Life With Luigi's "portrait" is a trailer frame with "With J. Carrol Naish" burned in (content call, owner). Jack Benny episodes dated 1921 (the show began 1932): C1 investigates.
 - Running: C1 (cache Release prep, Jack Benny dates), V4 (focal points for small crops, from the skill). App Store upload of 1.0.86 succeeded (run 40794744301).
+
+### Tick 105, 2026-10-28, C1 merged; Play and the cache Release wait on two owner commands
+- Owner: "We aren't live on anything. You need to keep pushing to update everything, including database." Then: "What!? I thought you built the Play Console app!?" It exists (owner, 2026-10-24); my report of it as missing came from an unclosed Needs Ben row. A read-only Play API probe: the service account reaches app.eardrama, every track empty.
+- Play fixes pushed (71c4f7c): play-release.yml sets PLAY_PACKAGE app.eardrama (it defaulted to com.example.appname); play-publish.py keeps a never-published app's release as a draft. The upload keystore and secrets: the permission check refused secret-store writes; `tools/setup_play_upload_key.sh` is the owner's one command.
+- C1 merged (309a989): tools/cut_catalog_release.sh (19 checks, seen red three ways); catalog-2026-10-28 staged in build/catalog-release-2026-10-28 (checksums OK; only the sized people_wd file differs; rebuild differs only in art width/height). Cutting it was refused by the permission check (a public surface): the owner's command. Jack Benny's 1921 dates were F4b reading "43-11-21" as 1921-03-11: fixed; served 108,005 -> 107,369 (-0.59%). PYTHONHASHSEED=0 in the publish. Catalog run_all 28/28 on main.
+- Dispatched: catalog publish with the date fix (run 40800038849); App Store upload of 1.0.87 (run 40798680295) after its iPhone 12 Release launch check.
+- Not done: old episode ids leave without forwarding (episode_aliases is never filled): 984 ids from the date fix. Owner ruling on priority.
+- Running: V4 (focal points for small crops).
