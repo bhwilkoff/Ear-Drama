@@ -111,7 +111,18 @@ P8. **The first launch after a new install or a catalog publish quits** (seen
    device log at the exit; a user updating from TestFlight may meet it.
    Seen 4 times by 4:36 PM (each the first XCUITest launch after an install);
    NOT seen at 4:49 PM on a fresh Debug-over-Release install, nor on three
-   Release launches by devicectl. Still unexplained.
+   Release launches by devicectl. **Diagnosed 2026-10-28 evening: not the app.**
+   Every logged case (10:18, 3:55, 4:35) is SearchUITests' first
+   `app.open(URL)` of the run, 5 s after a normal launch to idle: XCTest ends the
+   running app ("Automation session connection to pid N interrupted"), the
+   device starts no new process ("The process identifier of the launched
+   application could not be determined", CoreDeviceError 10004), and Springboard
+   shows. The app's captured output just stops; no process follows it. Not
+   reproduced in 7 XCUITest runs on changed bundles nor 8 devicectl
+   install-launch-URL-relaunch rounds. tools/ios_uitest.py now names it
+   (BLIND launch_dropped) and keeps the device diagnostics xcodebuild was
+   losing (no devicectl on its PATH). Device-side cause still unseen: the next
+   occurrence carries its logs.
 P9. **Android lint, then gate it** (P7 found lint never enforced: 10 errors,
    9 UnsafeOptInUsageError in PlaybackService.kt and CatalogLengthSeeking.kt,
    1 MissingIntentFilterForMediaSearch; 71 warnings). After the casting batch
