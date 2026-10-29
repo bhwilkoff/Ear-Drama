@@ -34,11 +34,13 @@ the owner's, listed under [Needs Ben](#needs-ben).
 | `worker/src/plays-relay.js` | the cast sheet and the relay (C7), pure: part order, claims and their lapse, done, silent, reopen, completeness |
 | `worker/src/plays-names.js` | the display-name deny list (the server's layer of the two-layer gate) |
 | `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header |
-| `worker/src/plays-manifest.js`, `worker/src/castable-manifest.json` | the castable manifest: script id, revision, title, and the SHA-256 of each cast sheet |
+| `worker/src/plays-archive.js` | the archive.org uploader (Decision 073): items, files, replacements, removals, backoff |
+| `worker/src/plays-manifest.js`, `worker/src/castable-manifest.json` | the castable manifest: script id, revision, title, source, rights evidence, and the SHA-256 of each cast sheet |
 | `worker/tools/castable-manifest.mjs` | rebuilds the manifest from `catalog/plays/castable-scripts.json` |
 | `worker/migrations/0001_accounts.sql` | the D1 schema for accounts and sync |
 | `worker/migrations/0002_rooms.sql` | the D1 schema for rooms |
 | `worker/migrations/0003_plays.sql` | the D1 schema for shared plays and classes |
+| `worker/migrations/0004_archive_uploader.sql` | the uploader's job columns and `play_archive_files` |
 | `worker/test/*.test.js` | the suite (vitest inside workerd, a throwaway local D1) |
 | `worker/test/mutations.mjs` | negative controls: breaks each guarantee and expects the suite to fail |
 
@@ -307,7 +309,7 @@ All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
 
 | Method and path | Who | Body | Answer |
 |---|---|---|---|
-| `GET /consent` | anyone | | `{ version, text, uploads }`: the CC0 consent's version id, the owner's words (a marked placeholder until approved), and whether uploads are open |
+| `GET /consent` | anyone | | `{ version, text, uploads, publishes }`: the CC0 consent's version id, the owner's words, whether uploads are open, and whether Publish is (both archive.org keys set) |
 | `POST /productions` | anyone | `{ script_id, script_revision, cast, display_name? }` | `201` the record; the caller directs |
 | `GET /productions` | anyone | | `{ productions: [{ id, title, script_id, director, updated_at }] }`, the caller's |
 | `GET /productions/:pid` | a member | | the record (below) |
@@ -321,10 +323,11 @@ All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
 | `POST /productions/:pid/parts/:part/reopen` | the part's performer or the director | | the record |
 | `POST /productions/:pid/parts/:part/release` | the claimant | | the part is open again; the record |
 | `POST /productions/:pid/consent` | a member | `{ version }` | `204`; `409 consent_version_mismatch` with the current version |
-| `PUT /productions/:pid/takes/:takeId` | the claimant | the audio; `x-take: <the take's fields as JSON>` | `201` the take |
+| `PUT /productions/:pid/takes/:takeId` | the claimant; on a published item, the line's performer (a replacement) | the audio; `x-take: <the take's fields as JSON>` | `201` the take; a replacement also `403 not_your_take`, `409 consent_missing`, `409 removed_by_director` |
 | `GET /productions/:pid/takes/:takeId/audio` | a member who may see it | | the audio |
 | `POST /productions/:pid/chosen` | the claimant | `{ take_id }` | the record |
-| `POST /productions/:pid/publish` | the director | | `201 { status: "pending_owner_account", take_ids, created_at }`; again, `200` and the same job |
+| `POST /productions/:pid/publish` | the director | | `201 { status: "queued", take_ids, created_at }`; again, `200` and the same job; after `failed`, `200` and queued again; `503 publishing_unavailable` without both keys |
+| `POST /productions/:pid/archive/lines/:lineId/remove` | the line's performer, or the director | `{ reason? }`: `withdrawn` (default) or a report reason | `202 { line_id, state }`; `404 not_published` before the item is |
 | `POST /reports` | a member | `{ production_id, take_id }` or `{ production_id, user_id }`, `reason`, `note?` | `201 { id }` |
 | `POST /blocks`, `GET /blocks`, `DELETE /blocks/:userId` | anyone | `{ user_id }` | `204`; `{ blocked: [...] }`; `204` |
 | `POST /classes` | anyone (the teacher) | `{ name, under13? }` | `201 { id, name, code, under13, school_consent }` |
@@ -397,8 +400,33 @@ ignores: `director`, `members`, `next`, `hidden_takes`, `archive`,
   consenting again.
 - **Publishing.** Only a complete production (every part done or silent,
   every speaking line chosen), with no open report on a chosen take, queues a
-  job. The job's status is `pending_owner_account` until the Ear Drama
-  archive.org account exists; nothing runs it yet.
+  job, and only while both archive.org keys are set. The record's `archive`
+  is `{ status, created_at, url, reason }`: `queued`, `uploading`,
+  `published` (`url` is the item), or `failed` (`reason` says why).
+- **The uploader** (`plays-archive.js`, Decision 073). The cron takes jobs
+  whose backoff has passed and that no other run holds (a ten-minute lease),
+  at most 20 archive.org requests a run. A production is one item,
+  `eardrama-<pid, lowercased>`, in `opensource_audio`, with `mediatype`
+  audio, the script's `title`, `source`, and rights evidence (`rights`),
+  `creator` and `credits` from the performers' chosen names, `licenseurl` CC0
+  1.0, and `date`. Each line's chosen take is one file, `NNNN-PART.ext` in
+  script order; only the last file of a first upload asks archive.org to
+  derive. A file archive.org confirmed is `sent` and never sent again; a
+  retry lands on the same name. check_limit comes before uploading; 429,
+  5xx, and network errors back off (5 minutes, doubling, at most 12 hours)
+  and fail after 10; any other 4xx fails at once with archive.org's code.
+  The keys go only in the `authorization: LOW` header and the metadata
+  form, are never logged, and are redacted from any stored reason.
+- **Replace and remove (P12).** On a published item, the performer of a
+  line's take may upload a new take for that line (at the current consent)
+  and the uploader overwrites the file (a different format deletes the old
+  name first); the performer or the director may remove a line, and the
+  uploader deletes the file (`x-archive-cascade-delete`, a `404` counts as
+  gone) and keeps `removed_by` and `reason`. A line the director removed is
+  not put back. A reported replacement is held until its report is closed.
+  When a performer has no line left, the item's credits are rewritten
+  through the metadata write API. A refused change marks that line `failed`
+  and leaves the item published.
 - **Classes.** A class code is eight Crockford Base32 characters, normalized
   like room codes. A class marked `under13` (fixed when it is made) takes no
   student until its teacher records the school's consent, and that record can
@@ -430,7 +458,8 @@ Times are milliseconds.
 | `play_consents` | `(user_id, production_id, version)` | `consented_at` |
 | `play_reports` | `id` | `user_id` (the reporter), `production_id`, `target_user_id` (cleared when that account goes), `take_id`, `reason`, `note`, `created_at`, `status` |
 | `play_blocks` | `(user_id, blocked_id)` | `created_at` |
-| `play_archive_jobs` | `production_id` | `user_id`, `status`, `take_ids`, `created_at`, `updated_at` |
+| `play_archive_jobs` | `production_id` | `user_id`, `status` (`queued`, `uploading`, `published`, `failed`), `take_ids`, `identifier`, `item_url`, `reason`, `attempts`, `next_attempt_at`, `lease_until`, `credits`, `published_at`, `created_at`, `updated_at` |
+| `play_archive_files` | `(production_id, line_id)` | `seq`, `part`, `take_id`, `name`, `state` (`pending`, `sent`, `remove`, `removed`, `failed`), `stale_name`, `removed_by`, `reason`, `updated_at`; no person column |
 | `play_classes` | `id` | `user_id` (the teacher), `name`, `code`, `under13`, `created_at` |
 | `play_class_members` | `(class_id, user_id)` | `display_name`, `joined_at` |
 | `play_school_consents` | `class_id` | `user_id` (the teacher who recorded it), `policy_version`, `reference`, `recorded_at` |
@@ -475,6 +504,7 @@ Secrets, with `wrangler secret put` (never in git, never in `wrangler.toml`):
 |---|---|
 | `SESSION_SECRET` | signs access tokens; at least 32 characters (`openssl rand -base64 48`). Without it, sign-in answers `503` |
 | `APPLE_PRIVATE_KEY` | the Sign in with Apple key (`.p8` contents), only for token revocation |
+| `IA_S3_ACCESS_KEY`, `IA_S3_SECRET_KEY` | the Ear Drama archive.org account's S3 keys (archive.org/account/s3.php). Publish and the uploader stay closed until both are set |
 
 Rate limits (`[[ratelimits]]`, Archive Watch's `limited()`; counts are kept
 for the window only):
@@ -491,7 +521,8 @@ for the window only):
 | `PLAY_UPLOAD_LIMITER` | user id | 30 a minute, take uploads |
 | `PLAY_JOIN_LIMITER` | user id | 20 a minute, invite views and claims and class joins |
 
-The cron (`23 * * * *`, hourly) deletes expired sessions, idle rooms, quiet
+Every five minutes (`*/5 * * * *`) the cron runs only the archive.org
+uploader. The hourly one (`23 * * * *`) also deletes expired sessions, idle rooms, quiet
 room members, rooms left with no member, lapsed play claims, and expired
 invites, and retries take objects a deletion could not remove. A revoked session is
 kept until it would have expired, because it is what recognizes a replayed
@@ -506,8 +537,8 @@ until a TV client signs in and the owner decides how they should.
 ```sh
 cd worker
 npm ci
-npm test                 # 173 tests in workerd with a local D1 and a local R2 stand-in
-npm run test:mutations   # 98 deliberate breaks; every one must turn the suite red
+npm test                 # 197 tests in workerd with a local D1, a local R2 stand-in, and a fake archive.org
+npm run test:mutations   # 132 deliberate breaks; every one must turn the suite red
 node test/mutations.mjs --check              # every break still matches its source, nothing run
 node test/mutations.mjs --only "name,name"   # just those, after fixing a survivor
 node tools/castable-manifest.mjs             # after every rebuild of the castable scripts
@@ -533,10 +564,19 @@ its sweep, done, silent, reopen, and release; takes refused for a
 non-claimant, another part's line, missing or stale consent, bleed, length,
 size, a lying header, stereo, an unknown format, a reused id, and the eleventh
 take of a line; the chosen take; reports and blocks hiding takes; the name
-filter and its controls; publishing queued only, with no network call; under-13
+filter and its controls; publishing queued, the request making no network call; under-13
 classes refused until a school consent exists, and that refused until the
 policy is set; the rate limits; deletion's director handoff, bucket cleanup,
-and orphan retry. The scripts come from the castable file by their data,
+and orphan retry. The uploader (`test/archive.test.js`) runs against a fake
+archive.org that keeps every request: both keys or nothing; one item with its
+metadata from data; one file per line in script order, derived once; the
+request budget and check_limit; a 503 SlowDown backing off and resuming at the
+failed line with no line sent twice; giving up after ten tries and a second
+Publish resuming; a size refusal failing at once; the keys absent from every
+log, stored reason, and response; and P12's replace, replace in another
+format, who may replace or remove, held reports, the credits rewrite, a 404 on
+delete, a refused change, and the job passing with the production when the
+director's account goes. The scripts come from the castable file by their data,
 never by name.
 `.github/workflows/worker-test.yml` runs `npm test` on any change under
 `worker/`. It has no Cloudflare credential and no deploy step.
@@ -550,7 +590,7 @@ Each of these is the owner's, in this order. None has been done.
 2. **Create the database**: `npx wrangler d1 create eardrama`, then put the
    printed `database_id` in `worker/wrangler.toml` (an id is not a secret).
 3. **Apply the schema**: `npx wrangler d1 migrations apply eardrama --remote`
-   (the three migrations: accounts, rooms, and plays).
+   (the migrations: accounts, rooms, plays, and the archive.org uploader).
 4. **Sign in with Apple**: in the Apple Developer account, enable Sign in with
    Apple on `app.eardrama`; create a Services ID for the web and Android, with
    `eardrama.org` as its domain and return URL. Put the Services ID in
@@ -587,4 +627,7 @@ Each of these is the owner's, in this order. None has been done.
     the seed deny list in `plays-names.js` with a vetted one; decide how
     reports reach you and how fast they are answered (guideline 1.2); set
     `SCHOOL_CONSENT_POLICY` once the privacy policy covers school consent; and
-    create the Ear Drama archive.org account before any queued job can run.
+    put the Ear Drama archive.org keys in with
+    `npx wrangler secret put IA_S3_ACCESS_KEY` and `... IA_S3_SECRET_KEY`,
+    apply `0004_archive_uploader.sql`, and deploy; the first publish then
+    makes the item.
