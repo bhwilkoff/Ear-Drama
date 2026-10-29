@@ -92,16 +92,42 @@ read before merge; merged, pushed, shipped (the push-everything rule).
 **D4. Review.** A `human-shaped-review` pass and a parity audit over the new
 surfaces; the owner plays it on devices; their feedback opens the next round.
 
+## Owner feedback on D2 (2026-10-29)
+
+*"Unfortunately, I like elements of all three. Overall, I think the visual
+approach of The Company makes the most sense. Images of people and of the shows
+themselves are the most appealing for any user to use as a way of browsing and
+selecting items. However, with no real way to standardize the images
+(dimentions, quality, etc.), we will need to create skills to allow for
+everything to look uniform even though it is not. I like the bulky blocks and
+colors of The Sleeve and I like the data visualization options of the Almanac.
+Overall, formatting and fitting things together could use some work on all three
+(a share button that goes to the next line instead of being next to the other
+buttons, poor word wrapping, etc.). In particular, the "Start an ear drama" on
+the Company design is exactly what we are trying to avoid
+(undifferentiated/undesigned lists of text without any visuals or colors
+whatsoever). I also don't think we have gotten even close on the Record a Line
+designs (on any of the designs). Can you create a cohesive design based upon
+this feedback?"*
+
+So **D2b** makes one cohesive direction, D:
+- **Lead with images** (The Company): people and shows are the way in.
+- **Uniform although the sources are not**: a new skill for making portraits and
+  graphics of every size, quality and kind sit together as one set (it may revise
+  `artwork-presentation-design`; fix the skill first, then the design).
+- **Bulky blocks and color** (The Sleeve): genre hues and big type as structure.
+- **Data visualization** (The Almanac): run strips, the day's years, the decade field.
+- **No undesigned lists**: every list (including picking a play) has visuals and color.
+- **Record a Line rethought from research**, not from the old flow.
+- **Fit and finish checked mechanically**: button rows that never wrap apart, no
+  orphaned or mid-word breaks, at 320, 375, 390 and 430 px.
+
 ## State
 
-- Phase: D2 done 2026-10-29; **owner gate**: pick a direction or a mix.
-- D2 merged: `.claude/skills/catalog-experience-design/`, `docs/research/design/D2-directions.md`,
-  prototypes in `docs/research/design/directions/` (A Almanac, B Company, C Sleeve);
-  review page https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ.
-- Waiting on the owner: the direction (or mix) and the show line (10 or 5 episodes);
-  That night on Detail; whose face leads (data order or a billing rule); what a
-  signed-out invitee sees; whether finished dramas are listed and credited.
-- Buildable now whatever the pick (the skill's shared rules): shows first with the
-  counted tail, core years, the event line, three faces then grouped credits,
-  copies by what differs, parts in minutes.
-- Running: nothing. S1 and Q1 merged and live (forwarding's first live run: 191 left, all aliased or tombstoned). Loop stopped at the gate.
+- Phase: D2b (one cohesive direction from the owner's feedback), started 2026-10-29.
+- Running: D2b-1 image uniformity skill; D2b-2 Record a Line research and design.
+  Then D2b-3 builds direction D from both skills, with a layout QA gate.
+- Owner calls still open: That night on Detail; whose face leads; what a signed-out
+  invitee sees; whether finished dramas are listed and credited; show line 10 or 5.
+- D2 (A Almanac, B Company, C Sleeve) review page: https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ;
+  the skill `catalog-experience-design`; S1 share pages and Q1 data fixes live.
