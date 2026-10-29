@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ear Drama directions</title>
+<link rel="stylesheet" href="shared/tokens.css">
+<link rel="stylesheet" href="shared/base.css">
+<style>
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+  .dirs { display: grid; gap: 32px; margin-top: 24px; }
+  @media (min-width: 768px) { .dirs { grid-template-columns: repeat(3, 1fr); } }
+  .dirs section { border-top: 2px solid var(--color-text); padding-top: 12px; }
+  .dirs li { padding: 6px 0; border-bottom: 1px solid var(--color-border); }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="l1">Ear Drama directions</h1>
+  <div class="dirs" id="dirs"></div>
+</main>
+<script>
+  const S = [['home', 'Home'], ['browse', 'Browse'], ['series-rich', 'Series: Suspense'], ['series-sparse', 'Series: Stay Tuned For Terror'],
+    ['episode-rich', 'Episode: The Black Curtain'], ['episode-bare', 'Episode: 1945 Radio News'], ['now-playing', 'Now Playing'],
+    ['create-pick', 'Pick a play'], ['create-part', 'Claim a part'], ['create-record', 'Record a line'], ['production', 'Shared production']];
+  const D = [['a', 'A, The Almanac'], ['b', 'B, The Company'], ['c', 'C, The Sleeve']];
+  document.getElementById('dirs').innerHTML = D.map(([k, n]) => `<section><h2 class="l2">${n}</h2><ul>${
+    S.map(([s, l]) => `<li><a href="${k}/index.html?s=${s}">${l}</a></li>`).join('')}<li><a href="${k}/direction.md">direction.md</a></li></ul></section>`).join('');
+</script>
+</body>
+</html>

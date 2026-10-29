@@ -55,6 +55,7 @@ Sources: `docs/research/gemini-and-other-agents.md`. Rows follow the
 | Designing any view (any platform) | `mobile-first-density-design` + `native-platform-first` |
 | Showing images of mixed aspect ratios (headers, Now Playing, tiles) | `artwork-presentation-design` |
 | Adding a list / grid / sheet / shelf | `universal-feature-states` |
+| A big, sparse catalog: rows, Detail, overviews, shares | `catalog-experience-design` |
 | A signed-in home, dashboard, account page, or role-based view | `learner-experience-design` |
 | **02 Shape of an app** | |
 | Shipping a feature on ANY platform, auditing a port, mirroring a rule across languages | `cross-platform-parity-discipline` |
