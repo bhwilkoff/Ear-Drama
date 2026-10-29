@@ -439,3 +439,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Tick 115, 2026-10-29, ITMS-90471 fixed (1.0.98)
 - Owner forwarded App Store Connect's note on build 98: "ITMS-90471: Missing Image Asset - Your app is missing the Top Shelf Image Wide 2x asset". Both Top Shelf sets now carry 1x and 2x rendered from the SVGs (actool for appletvos lists all four); tools/test_tvos_top_shelf_assets.py guards it (fails on the old sets). 1.0.98 launch-checked on the iPhone 12; App Store upload succeeded (run 40907469087). Not seen: App Store Connect's processing note for build 99.
+
+### Tick 116, 2026-10-29, archive.org live (1.0.99-1.0.101)
+- Owner gave the archive.org account and the take-down address (ben@learningischange.com, 1.0.99). The permission check refused the secret writes; the owner ran `wrangler secret put` for IA_S3_ACCESS_KEY and IA_S3_SECRET_KEY (both listed).
+- P14 (1.0.100): the Worker's cron uploads each publish job as eardrama-<production id> in opensource_audio, one file per line, metadata from data, CC0; backoff, redaction, idempotent; P12 replace/remove on the Worker. Merged tree: Worker 197 tests, all 132 mutations. Migration 0004 applied remote; deployed 22e8b003 (cron */5); no jobs yet, nothing on archive.org.
+- P15 (1.0.101): clients show queued/uploading/published (link)/failed (reason, Publish again); Replace and Remove on lines. Web shots read. iPhone 12 launch check passed; App Store upload (run 40925856611) and Play internal versionCode 4 (run 40925862693) succeeded.
+- Next: P16 (per-line archive state, Open part on published, removal reason starts empty); owner calls on account deletion vs archive lines and an Ear Drama collection.
