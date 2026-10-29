@@ -25,8 +25,11 @@
      awake. First check the iPhone app still opens normally (the CarPlay stub
      changed how its scenes start). Broken would be: playback that never starts, a sleep timer that
      starts the next episode, "public domain" anywhere.
-  10. **Setup steps** in LOOP-PLAN's Needs Ben (Pages source, DMCA agent, the
-     take-down email, store records, OAuth clients, Worker, archive.org account).
+  10. **Setup steps still open** (LOOP-PLAN Needs Ben): the take-down email
+     (`js/site.js` still holds a placeholder), the CarPlay entitlement request,
+     the archive.org account and S3 keys, store-word approval. Pages, the DMCA
+     agent, the Worker and D1, OAuth clients, App Store Connect, Play Console,
+     App Groups and the cache Release are done.
   11. **Record a play on a device** (M7's play gate): a two-role scene on the
      iPhone and on the Pixel (Android since 1.0.24), with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
@@ -41,30 +44,25 @@
      for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-10-27, 8:40 PM MT, tick 94)**: the loop runs from
-  `LOOP-PLAN.md` (wakes on results, 30-minute fallback; each tick starts with
-  the GitHub Actions check). Main is at 1.0.76. Today: the crash on play fixed
-  (1.0.68: Now Playing artwork ran a main-actor closure on MediaPlayer's queue);
-  headerless VBR MP3s play and seek at their real length on Apple (1.0.73) and
-  Android (1.0.74, Pixel-checked), the web unaffected; offline and error states
-  everywhere; queue verbs on Apple and Android; Credits, Privacy, Take-down in
-  the apps. The iPhone 12 runs a committed tap tier, `python3
-  tools/ios_uitest.py` (16 tests, lease "iphone"), green in one run on 1.0.73.
-  TestFlight: 1.0.68, 1.0.70, 1.0.71 submitted; 1.0.73 building. Not verified
-  anywhere: anything heard (sleep fade, leveling, a seek landing on its scene).
-  Log: `AUTONOMOUS_PROGRESS.md` ticks 86-94.
-- **Catalog now** (rebuilt on main, tick 22-23): 155,608 episodes in 15,695
-  series; served 108,005 (25.7 MB compressed); clean 7,716 (LibriVox projects
-  still being recorded are not served). Research database and caches: the
-  `catalog-2026-10-21` Release (`catalog/README.md`).
-- **Open infrastructure**: `https://www.eardrama.org` fails its certificate
-  (re-measured 2026-10-23; the apex serves). If Settings > Pages lists only the
-  apex, remove and re-add the custom domain.
-- **Owner steps**: the "Needs Ben" table in `LOOP-PLAN.md` (Pages source to
-  GitHub Actions, the DMCA agent and `DMCA_AGENT_REGISTERED`, the take-down
-  email, store records and signing secrets, OAuth clients, the Worker, the
-  archive.org account, the CarPlay entitlement). Outreach and trademark are off
-  for now (Decision 060).
+- **Status (2026-10-28, tick 110)**: the loop runs from `LOOP-PLAN.md` (wakes on
+  results, 30-minute fallback; each tick starts with the GitHub Actions check).
+  Main is at 1.0.92 (Android versionCode 2). First Play internal release done
+  (run 40808816813); TestFlight uploads continue (1.0.92, run 40808331721). Every
+  Ear Drama workflow's latest run is green. Log: `AUTONOMOUS_PROGRESS.md` ticks
+  86-110. Not verified anywhere: anything heard (sleep fade, leveling, a seek
+  landing on its scene), Android and tvOS on a device, AirPlay or Cast sessions.
+  Also waiting on you: station-slot forwarding ruling (A1), non-photo portraits
+  and Life With Luigi's title card (content calls), 1.x store words.
+- **Catalog now**: `catalog-2026-10-28` (cache Release with portrait sizes and
+  face boxes, cut by the owner); 107,369 episodes served after the Jack Benny
+  date fix. Daily scheduled publish is green. Research database and caches:
+  `catalog/README.md`.
+- **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml`
+  schedules are still commented out. `www.eardrama.org` now answers (301) and
+  the apex serves.
+- **Owner steps**: the "Needs Ben" table in `LOOP-PLAN.md` (only the take-down
+  email, the CarPlay entitlement, the archive.org account, store words, and
+  optional API keys remain). Outreach and trademark are off for now (Decision 060).
 
 ---
 

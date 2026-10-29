@@ -255,12 +255,15 @@ after the owner has played it; until then it is *built*.
 
 - [x] PARITY.md §0 records the platform set (core five, the stubs as ⏳ columns
       with Decision 056 as the reason), and a row for every 1.0 verb below.
-- [ ] Confirm that a push triggers CI (the open question in the scratchpad):
+- [x] (push runs seen: Android Build and Site deploy started on push for 1.0.92, runs 40808191235 and 40807437426)
+      Confirm that a push triggers CI (the open question in the scratchpad):
       push an `android/` change and watch Android Build start on its own.
 - [x] The generated project is named for the app: rename `AppName` in
       `project.yml`, `xcodegen generate`, unsigned builds for iOS, tvOS, and
       macOS, the Core tests, and an Android debug build, all warning-free.
-- [ ] **Palette and genre research** (060). Read the Human Shaped color work
+- [x] (the owner picked On Air from the Human Shaped directions, tick 60, Decision 064;
+      research in `docs/research/palette/`; the three-direction comparison page was not needed)
+      **Palette and genre research** (060). Read the Human Shaped color work
       (`humanshaped-site/design/research/`, `design/directions/`,
       `design/round-2/`, `design/round-3/`, its DECISIONS.md, and
       `UniversalAppTemplate/docs/platforms/design-system.md`), the brand
@@ -270,7 +273,8 @@ after the owner has played it; until then it is *built*.
       screen, a series page, and the player, light and dark, at 375 px and on
       a TV frame, and publish them as one comparison page for the owner.
       **Owner picks.**
-- [ ] On the owner's pick: `design-tokens.json`, `node tools/design_tokens.mjs`,
+- [x] (04c2578, tick 60, then `color.genre` in tick 61; Design Tokens CI green, run 40796824136)
+      On the owner's pick: `design-tokens.json`, `node tools/design_tokens.mjs`,
       `node tools/test_design_tokens.mjs`, and every platform built and looked at.
 - [x] The icon from the ring microphone (09 §2.3, candidate 1): a cut-out on a
       flat ground from the brand palette, a tvOS parallax stack, an Android
@@ -322,7 +326,9 @@ The clients read one published plane and re-derive nothing
       publish the evenings and the genre channels on the one clock.
 - [x] (genres.py, tick 14; 69% of served episodes) Genres mapped from data (archive.org subjects, log genres, Wikidata) to
       the new hue set; never from a reading of the title.
-- [ ] The catalog workflows on a schedule, with `workflow-health.yml` and
+- [~] (missing: `workflow-health.yml` and `retry-infra-failures.yml` still have their schedules commented out;
+      catalog-publish runs daily on cron, six scheduled successes 2026-10-23 to 2026-10-28, and catalog-transcripts is on cron)
+      The catalog workflows on a schedule, with `workflow-health.yml` and
       `retry-infra-failures.yml` on (`ci-fleet-engineering`).
 
 **Play gate:** a short report of what the published plane holds, with links to
@@ -334,7 +340,9 @@ The web goes first, because it is the landing twin for every share link and
 the fastest to see. Seed `docs/WEB-DESIGN.md` from the template at five views
 and bind to it.
 
-- [ ] Listen (Continue, Tonight in 19xx, This Day in Radio, shelves by rule),
+- [x] (built as Home, Browse, Stations, Search, Library, Decision 068; web tests ok and seen in headless Chrome
+      at 375 and 1440 px, ticks 99-104; PARITY cells stay 🚧 where no device has run them)
+      Listen (Continue, Tonight in 19xx, This Day in Radio, shelves by rule),
       Series (genre, network, decade, kind; runs, then seasons, then episodes,
       oldest first, R1), Episode detail (date, network, sponsor, cast, writer,
       versions, other performances, rights line), Search (titles, people,
@@ -343,7 +351,8 @@ and bind to it.
       speed, skip, the sleep timer that offers "end of this episode" first and
       fades (R20), serials that stop at the end of an arc (R3), commercials
       chaptered and never skipped (R8), loudness gain applied at playback.
-- [ ] The Radio tab on the one clock, local time drawn, the Eastern air time
+- [x] (built as Stations, ticks 25 and 99; PARITY Stations row; device-checked on the iPhone 12, 2026-10-27)
+      The Radio tab on the one clock, local time drawn, the Eastern air time
       shown as a fact, and gaps stated (R9, R10).
 - [x] (built, tick 36) Transcripts beside the audio where they pass the gate, labeled automatic.
 - [x] (built, ticks 16 and 22) Every surface with its loading, empty, error, and offline states; every
@@ -368,7 +377,9 @@ One target, four destinations, the shared `Core/`. Seed `iOS-DESIGN.md`,
       sleep timer reachable from the lock screen's app surface in one step.
 - [x] (built, tick 26; device check pending) Downloads on iOS and macOS (never tvOS, Archive Watch Decision 099's reasoning).
 - [x] (privacy manifest tick 26; VoiceOver labels tick 16, unchecked on a device) A privacy manifest, VoiceOver on every control.
-- [ ] The cloud build with `submit=false` first, then TestFlight.
+- [x] (App Store build (cloud) succeeded from 2026-10-24, run 40132845448; 1.0.68 run 40583842946;
+      1.0.92 run 40808331721, upload-only)
+      The cloud build with `submit=false` first, then TestFlight.
 
 **Play gate:** TestFlight on iPhone, iPad, Mac, and Apple TV.
 
@@ -378,7 +389,8 @@ One target, four destinations, the shared `Core/`. Seed `iOS-DESIGN.md`,
       a Media3 session service, notification and lock-screen controls,
       downloads, TalkBack on every control. Seed `ANDROID-DESIGN.md` at five
       views.
-- [ ] `play-release.yml` to the internal track.
+- [x] (run 40808816813, 2026-10-28: versionCode 2, 1.0.92, committed to internal, completed; 548d2f7)
+      `play-release.yml` to the internal track.
 
 **Play gate:** Play internal on the Pixel.
 
@@ -448,10 +460,17 @@ continue on the other.
 
 ### M10. 1.0
 
-- [ ] A full parity audit (`cross-platform-parity-discipline`) and a
+- [~] (missing: a final 1.0 audit; the P1 parity audit ran in tick 99 and the human-shaped review in
+      tick 77, 43891cb, with the owner's HUMAN-SHAPED answers still blank)
+      A full parity audit (`cross-platform-parity-discipline`) and a
       `human-shaped-review` pass, with everything they find fixed.
-- [ ] Clean release builds on every platform with zero warnings.
-- [ ] The public web serves the full audited catalog (the DMCA agent is
+- [~] (missing: a recorded Release-config build on every platform; seen so far, tick 107: generic iOS and
+      tvOS 0 Swift warnings, Android lintRelease clean, macOS 199 tests)
+      Clean release builds on every platform with zero warnings.
+- [~] (done: DMCA agent registered, `DMCA_AGENT_REGISTERED` true, catalog published daily; Play internal
+      versionCode 2 and TestFlight uploads at 1.0.92. Missing: the owner's take-down email, still a placeholder
+      in `js/site.js`, and a TestFlight build processed and installed on each Apple device)
+      The public web serves the full audited catalog (the DMCA agent is
       registered), and the four native apps are on TestFlight and Play
       internal at one version.
 - [ ] Store listings, screenshots, and text-bearing assets drafted for the
@@ -469,15 +488,15 @@ works elsewhere, and checks again.
 
 | What | Unblocks | By |
 |---|---|---|
-| Pick a palette direction | M0 tokens and icon | end of M0 |
-| Settings > Pages > Source: GitHub Actions (CATALOG-CONTRACT §4) | the web's data on Pages | before M1's publish |
+| ~~Pick a palette direction~~ DONE 2026-10-23: On Air, Decision 064 (tick 60) | M0 tokens and icon | done |
+| ~~Settings > Pages > Source: GitHub Actions~~ DONE 2026-10-23 (c76c602; Site deploy runs on push, latest green run 40807437388) | the web's data on Pages | done |
 | ~~Register a DMCA agent at copyright.gov ($6)~~ DONE 2026-10-23: DMCA-1083942; `DMCA_AGENT_REGISTERED` true; the take-down page still wants the agent's details as registered | unclaimed episodes on the public web | done |
 | Request the CarPlay audio entitlement (developer.apple.com/contact/carplay) | the CarPlay stub, later the car | now; Apple is slow |
-| Enable Sign in with Apple and Group Activities on the `app.eardrama` App ID, remake the profiles, then uncomment `CODE_SIGN_ENTITLEMENTS` in `project.yml` (the file `apple/Resources/EarDrama.entitlements` holds both keys) | Apple sign-in (M5), SharePlay (M6) | before either play gate |
-| Create the App Store Connect record for `app.eardrama` and the seven signing secrets (`docs/CLOUD-SUBMISSION.md`) | TestFlight | before M3's gate |
+| ~~Enable Sign in with Apple and Group Activities~~ DONE 2026-10-24 (the Services ID row below; `CODE_SIGN_ENTITLEMENTS` is on in `project.yml`, signed cloud builds upload). Still unseen: a real Apple sign-in or SharePlay session | Apple sign-in (M5), SharePlay (M6) | done |
+| ~~Create the App Store Connect record and the seven signing secrets~~ DONE: cloud builds upload from 2026-10-24 (run 40132845448), latest 1.0.92 (run 40808331721) | TestFlight | done |
 | ~~Create the Play Console app and the upload key~~ DONE: the app by the owner 2026-10-24; the upload key and the five repo secrets by the owner 2026-10-28 (`tools/setup_play_upload_key.sh`) | Play internal | done |
 | ~~Apple Services ID and Google OAuth clients~~ Done 2026-10-24: Services ID `app.eardrama.signin`; Google clients for web, iOS/Mac, Android debug (`app.eardrama.debug`) and Android Play (`app.eardrama`, Play signing SHA-1); consent screen published; Worker audiences deployed; Apple entitlements on | sign-in | before M5's play gate |
-| A Cloudflare Worker and D1 for Ear Drama, or approval for the loop to create them | M5 to M8 | before M5 |
+| ~~A Cloudflare Worker and D1 for Ear Drama~~ DONE 2026-10-23: 78e2a4d (D1, migrations 0001-0003) and 095cbb4 (eardrama-api.benwilkoff.workers.dev, in `js/config.js`) | M5 to M8 | done |
 | An Ear Drama archive.org account and its S3 keys, stored as Worker secrets | play uploads | before M8 |
 | The take-down email address, and the DMCA agent's details once registered (`js/site.js` TAKEDOWN_EMAIL; takedown/index.html) | the take-down page | before the public launch |
 | Approve the consent screen and store words | M8, M10 | as drafted |
