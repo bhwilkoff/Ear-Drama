@@ -18,6 +18,7 @@ import { handleRead, handleUpload } from "./sync.js";
 import { handleAccount, handleDelete } from "./account.js";
 import { handleRooms, sweepRooms } from "./rooms.js";
 import { handlePlays, sweepPlays } from "./plays.js";
+import { ARCHIVE_CRON, runArchive } from "./plays-archive.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
 
 async function route(request, env, url) {
@@ -64,7 +65,9 @@ async function route(request, env, url) {
 
 export default {
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env)]));
+    // The five-minute trigger only uploads to archive.org; the hourly one also sweeps.
+    if (event.cron === ARCHIVE_CRON) return ctx.waitUntil(runArchive(env));
+    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env), runArchive(env)]));
   },
 
   async fetch(request, env) {

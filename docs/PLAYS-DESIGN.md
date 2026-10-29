@@ -680,10 +680,29 @@ The owner's answers in §9 hold on the server, word for word:
   2026-10-29 (Decision 059), version `cc0-2026-10-29`; a consent recorded at a
   version whose text begins "OWNER:" never counts. New words take a
   new version id, and everyone consents again before the play is published.
-- **Publishing** queues a job and calls nothing. It needs a complete
-  production, no open report on a chosen take, and every performer's consent
-  at the current version. The job's status is `pending_owner_account` until
-  the Ear Drama archive.org account exists.
+- **Publishing** queues a job; the request itself calls nothing. It needs a
+  complete production, no open report on a chosen take, and every performer's
+  consent at the current version, and it opens only when both archive.org
+  keys are set (Decision 073).
+- **The uploader** (2026-10-29, Decision 073) is the Worker's cron, every
+  five minutes: one archive.org item per production, `eardrama-<production
+  id>`, in Community Audio (`opensource_audio`), one file per line in script
+  order (`0042-HAMLET.wav`), and no mixed file: the mix is the device's
+  (§2.7) and would hold every voice in one file nobody could take back alone.
+  Metadata is data only: the script's title, source, and rights evidence, the
+  performers' chosen names as `creator` and `credits`, CC0 1.0 as
+  `licenseurl`, `mediatype` audio. A job is `queued`, then `uploading`, then
+  `published` (with the item's URL) or `failed` (with the reason); the record's
+  `archive` carries `status`, `url`, and `reason`.
+- **Replace or remove a published take** (P12, owner 2026-10-29). A performer
+  uploads a new take for a line of theirs on the item, at the current
+  consent, and the Worker overwrites that line's file; or removes it, and the
+  file is deleted with who removed it and why. The director removes any line,
+  with a report's reason. A line the director removed stays removed. A
+  replacement is a take like any other: reports and blocks apply, and a
+  reported one is held back from the item. When a performer's last line
+  leaves, their name leaves the credits. Copies others made before cannot be
+  called back (the consent says so).
 - **Classes.** A teacher makes a class and students join by an eight-character
   code. A class marked under 13 (fixed when made) takes no student until its
   teacher records the school's consent, and that record is refused until the
@@ -701,7 +720,8 @@ The owner's answers in §9 hold on the server, word for word:
 | P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
 | P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
 | P5 | The privacy policy that covers school consent for students under 13 | `SCHOOL_CONSENT_POLICY` unset: no school consent can be recorded, so no under-13 class takes a student |
-| P6 | The Ear Drama archive.org account and its keys | Jobs queue at `pending_owner_account`; nothing uploads |
+| P6 | The Ear Drama archive.org account and its keys | Answered 2026-10-29: keys given; the uploader runs once both are Worker secrets (Decision 073) |
+| P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | No, their lines stay, uncredited; items go in Community Audio |
 | P7 | The 7-day claim lapse (C6 and C7 are answered, §9) | Applied as the default |
 | P8 | Do classes own productions (a class member joins without an invite)? | No: classes are a roster only; every production is invite-only |
 
@@ -850,7 +870,7 @@ would spend a family's data without asking; takes are fetched only while a
 person has the production open (the web waits for Listen through), never in
 the background.
 
-Not built yet: the job that
-uploads to archive.org, a moderator's view of reports, and a test that the
+Not built yet: the apps' screens for
+replacing or removing a published take (the Worker's side is built, P12), a moderator's view of reports, and a test that the
 Worker's part order matches `js/plays-core.js` and Apple's on every castable
 script (each is checked here against its own suite, not against the others).

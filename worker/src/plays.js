@@ -17,8 +17,10 @@
  * the owner turns R2 on (it asks for a payment method on file; research 08c
  * Q8); without it, an upload answers 503 and nothing else changes.
  *
- * Nothing here calls archive.org. Publishing queues a job record whose status
- * is `pending_owner_account` until the Ear Drama account exists.
+ * Nothing here calls archive.org. Publishing queues a job (status `queued`)
+ * that the cron's uploader (plays-archive.js) carries out once both archive.org
+ * keys are set; a performer's replacement or removal of a published take is a
+ * change to one line's file that the uploader carries out the same way.
  */
 
 import { json, limited, problem, readJson } from "./http.js";
@@ -41,9 +43,10 @@ import {
   statusOf,
 } from "./plays-relay.js";
 import MANIFEST from "./castable-manifest.json";
+import { extOf, fileName, iaConfigured } from "./plays-archive.js";
 
 /** Tables that hold no person's rows; test/account.test.js checks they reference no user. */
-export const PLAYS_ANONYMOUS_TABLES = ["play_orphan_objects"];
+export const PLAYS_ANONYMOUS_TABLES = ["play_orphan_objects", "play_archive_files"];
 
 /**
  * The CC0 consent (Decision 059). The version id is what a person agreed to;
@@ -72,6 +75,8 @@ export const MAX_MEMBERS = 64;
 export const MAX_TAKES_PER_LINE = 10;
 export const MAX_PRODUCTIONS = 100;
 export const REPORT_REASONS = ["offensive", "harassment", "personal_information", "not_a_performance", "other"];
+/** Why a line left the archive.org item: the performer withdrew it, or the director removed it for a report's reason. */
+export const REMOVE_REASONS = ["withdrawn", ...REPORT_REASONS];
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Seconds between 1970 and 2001: production.json dates are Foundation's. */
 const REFERENCE_DATE_S = 978307200;
@@ -159,7 +164,7 @@ async function recordFor(env, p, userId, now) {
       .all()
       .then((r) => r.results),
     env.DB.prepare("SELECT * FROM play_takes WHERE production_id = ?1 ORDER BY uploaded_at").bind(p.id).all().then((r) => r.results),
-    env.DB.prepare("SELECT status, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first(),
+    env.DB.prepare("SELECT status, created_at, item_url, reason FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first(),
   ]);
   const hidden = await hiddenFrom(env, userId, p.id);
   const { results: agreed } = await env.DB.prepare("SELECT user_id, version FROM play_consents WHERE production_id = ?1 AND version = ?2")
@@ -204,7 +209,7 @@ async function recordFor(env, p, userId, now) {
     })),
     next: next(p.cast, rows, now),
     hidden_takes: takes.length - visible.length,
-    archive: job ? { status: job.status, created_at: job.created_at } : null,
+    archive: job ? { status: job.status, created_at: job.created_at, url: job.item_url, reason: job.reason } : null,
     uploads: !!env.TAKES,
     server_time: now,
   };
@@ -425,7 +430,12 @@ async function uploadTake(auth, request, env, p, takeId, now) {
   const part = partOf(p.cast, meta.lineID);
   if (!part) return problem(422, "no_such_line");
   if (meta.part !== undefined && meta.part !== part) return problem(422, "line_is_another_part", part);
-  if (!isClaimant(await partRows(env, p.id), part, auth.userId, now)) return problem(403, "not_your_claim");
+  // A published line's performer may replace their take (P12); otherwise only the part's claimant uploads.
+  const replacing = await publishedLine(env, p.id, meta.lineID);
+  if (replacing) {
+    const refusal = await replaceRefusal(env, p, replacing, auth.userId);
+    if (refusal) return refusal;
+  } else if (!isClaimant(await partRows(env, p.id), part, auth.userId, now)) return problem(403, "not_your_claim");
   // No CC0 consent here (Decision 072): a take on the Worker reaches only this
   // production's members. The consent is asked before publishing, which goes beyond them.
   // A take the bleed check flagged holds the device voice, which is never stored (§5 rule 2, §8 rule 3).
@@ -482,9 +492,62 @@ async function uploadTake(auth, request, env, p, takeId, now) {
     return problem(409, "take_exists");
   }
   // A new take becomes the line's chosen one; the older takes stay (§8 rule 5).
-  await env.DB.batch([...chooseStatements(env, p.id, meta.lineID, takeId), touch(env, p.id, now)]);
+  const stmts = [...chooseStatements(env, p.id, meta.lineID, takeId), touch(env, p.id, now)];
+  if (replacing) stmts.push(replaceStatement(env, p.id, replacing, takeId, audio.type, now));
+  await env.DB.batch(stmts);
   const row = await env.DB.prepare("SELECT * FROM play_takes WHERE production_id = ?1 AND id = ?2").bind(p.id, takeId).first();
   return json(takeOut(p.id, row), 201);
+}
+
+/* ---- Replacing or removing a published take (P12) ---- */
+
+/** The line's file on a published item, with whose take it is; null before publishing. */
+const publishedLine = (env, pid, lineID) =>
+  env.DB.prepare(
+    "SELECT f.*, t.user_id FROM play_archive_files f JOIN play_archive_jobs j ON j.production_id = f.production_id " +
+      "LEFT JOIN play_takes t ON t.production_id = f.production_id AND t.id = f.take_id WHERE f.production_id = ?1 AND f.line_id = ?2 AND j.status = 'published'",
+  )
+    .bind(pid, lineID)
+    .first();
+
+/** Only the line's own performer replaces it, at the current consent, and not a line the director removed. */
+async function replaceRefusal(env, p, f, userId) {
+  if (f.user_id !== userId) return problem(403, "not_your_take");
+  if (f.removed_by === "director") return problem(409, "removed_by_director");
+  const agreed = await env.DB.prepare("SELECT version FROM play_consents WHERE production_id = ?1 AND user_id = ?2 AND version = ?3")
+    .bind(p.id, userId, CONSENT_VERSION)
+    .first();
+  if (!agreed || !consentApproved(agreed.version)) return problem(409, "consent_missing", [userId]);
+  return null;
+}
+
+/** The new take goes out under the line's name; a name in another format is deleted first. */
+const replaceStatement = (env, pid, f, takeId, contentType, now) => {
+  const name = fileName(f.seq, f.part, extOf(contentType));
+  return env.DB.prepare(
+    "UPDATE play_archive_files SET stale_name = CASE WHEN state IN ('sent', 'failed') AND name <> ?4 THEN name ELSE stale_name END, " +
+      "take_id = ?3, name = ?4, state = 'pending', removed_by = NULL, reason = NULL, updated_at = ?5 WHERE production_id = ?1 AND line_id = ?2",
+  ).bind(pid, f.line_id, takeId, name, now);
+};
+
+/** POST /productions/:id/archive/lines/:lineId/remove { reason? }: the line's file leaves the item. */
+async function removePublished(auth, request, env, p, lineId, now) {
+  const { body, error } = await readJson(request, 4 * 1024);
+  if (error) return error;
+  const reason = body.reason === undefined ? "withdrawn" : body.reason;
+  if (!REMOVE_REASONS.includes(reason)) return problem(400, "bad_request", `reason is one of ${REMOVE_REASONS.join(", ")}`);
+  const f = await publishedLine(env, p.id, lineId);
+  if (!f) return problem(404, "not_published");
+  const performer = f.user_id === auth.userId;
+  if (!performer && p.user_id !== auth.userId) return problem(403, "not_your_take");
+  if (f.state !== "removed" && f.state !== "remove") {
+    await env.DB.prepare(
+      "UPDATE play_archive_files SET state = 'remove', removed_by = ?3, reason = ?4, updated_at = ?5 WHERE production_id = ?1 AND line_id = ?2",
+    )
+      .bind(p.id, lineId, performer ? "performer" : "director", reason, now)
+      .run();
+  }
+  return json({ line_id: lineId, state: f.state === "removed" ? "removed" : "remove" }, 202);
 }
 
 const chooseStatements = (env, pid, lineID, takeId) => [
@@ -527,12 +590,12 @@ async function consent(auth, request, env, p, now) {
   return new Response(null, { status: 204 });
 }
 
-/** POST /v1/plays/productions/:id/publish: queues the archive.org upload; calls nothing. */
+/** POST /v1/plays/productions/:id/publish: queues the archive.org upload; the cron sends it. A failed job is queued again. */
 async function publish(auth, env, p, now) {
   if (p.user_id !== auth.userId) return problem(403, "director_only");
-  if (!env.IA_ACCESS) return problem(503, "publishing_unavailable");
+  if (!iaConfigured(env)) return problem(503, "publishing_unavailable");
   const job = await env.DB.prepare("SELECT status, take_ids, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
-  if (job) return json({ status: job.status, take_ids: JSON.parse(job.take_ids), created_at: job.created_at });
+  if (job && job.status !== "failed") return json({ status: job.status, take_ids: JSON.parse(job.take_ids), created_at: job.created_at });
   const left = incomplete(p.cast, await partRows(env, p.id), await chosenLines(env, p.id), now);
   if (left) return problem(409, "incomplete", left);
   const { results: chosen } = await env.DB.prepare("SELECT id, user_id FROM play_takes WHERE production_id = ?1 AND chosen = 1 ORDER BY line_id")
@@ -554,12 +617,14 @@ async function publish(auth, env, p, now) {
   const missing = performers.filter((u) => !ok.has(u));
   if (missing.length) return problem(409, "consent_missing", missing);
   const takeIds = chosen.map((t) => t.id);
+  // Again after a failure: the lines already on the item stay sent (plays-archive.js seedFiles).
   await env.DB.prepare(
-    "INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at) VALUES (?1, ?2, 'pending_owner_account', ?3, ?4, ?4)",
+    "INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at) VALUES (?1, ?2, 'queued', ?3, ?4, ?4) " +
+      "ON CONFLICT (production_id) DO UPDATE SET status = 'queued', take_ids = excluded.take_ids, reason = NULL, attempts = 0, next_attempt_at = 0, updated_at = excluded.updated_at",
   )
     .bind(p.id, auth.userId, JSON.stringify(takeIds), now)
     .run();
-  return json({ status: "pending_owner_account", take_ids: takeIds, created_at: now }, 201);
+  return json({ status: "queued", take_ids: takeIds, created_at: job ? job.created_at : now }, job ? 200 : 201);
 }
 
 /* ---- Reports and blocks (App Store guideline 1.2) ---- */
@@ -735,7 +800,7 @@ export async function handlePlays(url, request, env, auth) {
   const now = Date.now();
   const [a, b, c, d, e] = seg;
 
-  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKES, publishes: !!env.IA_ACCESS });
+  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKES, publishes: iaConfigured(env) });
   if (a === "invites" && b === "view" && !c && m === "POST") return viewInvite(auth, request, env, now);
   if (a === "invites" && b === "claim" && !c && m === "POST") return claimByInvite(auth, request, env, now);
   if (a === "reports" && !b && m === "POST") return report(auth, request, env, now);
@@ -776,6 +841,7 @@ export async function handlePlays(url, request, env, auth) {
   if (c === "chosen" && !d && m === "POST") return chooseTake(auth, request, env, p, now);
   if (c === "consent" && !d && m === "POST") return consent(auth, request, env, p, now);
   if (c === "publish" && !d && m === "POST") return publish(auth, env, p, now);
+  if (c === "archive" && d === "lines" && e && seg[5] === "remove" && seg.length === 6 && m === "POST") return removePublished(auth, request, env, p, e, now);
   return problem(404, "not_found");
 }
 
@@ -792,6 +858,13 @@ export async function playsBeforeDeletion(env, userId) {
   await env.DB.prepare(
     "UPDATE play_productions SET user_id = (SELECT m.user_id FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1 ORDER BY m.joined_at, m.user_id LIMIT 1) " +
       "WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1)",
+  )
+    .bind(userId)
+    .run();
+  // A published production's job passes with it, so its performers can still replace or remove their takes (P12).
+  await env.DB.prepare(
+    "UPDATE play_archive_jobs SET user_id = (SELECT p.user_id FROM play_productions p WHERE p.id = play_archive_jobs.production_id) " +
+      "WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_productions p WHERE p.id = play_archive_jobs.production_id AND p.user_id <> ?1)",
   )
     .bind(userId)
     .run();

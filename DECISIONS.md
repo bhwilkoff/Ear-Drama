@@ -87,6 +87,8 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 067: The owner's rulings of 2026-10-23 on plays, Radio, playback, and the shell
 - 069: Volume is leveled by each platform's own dynamics processor, at one set of numbers
 - 071: Downloads are a whole run in the apps, asked first; the web downloads nothing
+- 072: Invite-only takes need an account, not the CC0 consent
+- 073: One archive.org item per production, one file per line, named so a retry can only overwrite
 
 ---
 
@@ -966,3 +968,61 @@ invitees behind a clearly named TODO for that screen."
 - Owner to confirm: that a take shared with invitees only is outside 059's
   consent. If not, uploads wait for the screen too (one line in
   `uploadTake`).
+
+---
+
+## 073: One archive.org item per production, one file per line, named so a retry can only overwrite
+
+*Date: 2026-10-29*
+
+A published production is one archive.org item, `eardrama-<production id,
+lowercased>`, in Community Audio (`opensource_audio`), made by the Worker's
+cron through the S3-like API with the Ear Drama account's keys. Each line's
+chosen take is one file, `NNNN-PART.wav` (or `.flac`), NNNN its place in the
+script, so the item lists the play in order and a line keeps its name for
+good. A performer replaces their own line's take or removes it, and the
+director removes any line; the Worker overwrites or deletes that one file and
+keeps who removed it and why. Publish opens only when both
+`IA_S3_ACCESS_KEY` and `IA_S3_SECRET_KEY` are set.
+
+**Why**: the owner gave the account's keys on 2026-10-29 and asked (P12):
+*"We don't want to provide a pathway for people to delete and re-upload a
+full recording?"*, and the approved consent words promise *"You can replace it
+with a new take or remove it later"*. A promise of removal needs a file a
+person can point at: one file per line is the unit a performer owns, while a
+mixed file would hold everyone's voice and could only be re-cut on a device
+(the mix is rendered on the device, PLAYS-DESIGN §2.7, never on the Worker).
+An identifier fixed when the production is made, and file names fixed by the
+script, make every retry land on the same name, which archive.org overwrites
+rather than adding a second copy; an archive.org identifier is permanent, so
+it carries no title or person that could change. Community Audio is the
+collection archive.org opens to a new account's audio; a collection of Ear
+Drama's own needs archive.org to make it.
+
+**How to apply**:
+- `worker/src/plays-archive.js` is the only code that talks to archive.org:
+  20 requests a run, every five minutes (`*/5 * * * *`); check_limit before
+  uploading; 429, 5xx (archive.org's 503 SlowDown), and network errors back
+  off from 5 minutes, doubling to 12 hours, and fail after 10; any other 4xx
+  (a size refusal, a refused key) fails at once with archive.org's code as the
+  reason. The keys are never logged and are redacted from any stored reason.
+- Metadata is data: the script's title, source, and rights evidence from
+  `castable-manifest.json`; `creator` and `credits` from the performers'
+  chosen names; `licenseurl` CC0 1.0; `mediatype` audio. When a performer's
+  last line leaves the item, their name leaves its credits (the metadata write
+  API).
+- A replacement needs the performer's consent at the current version, and a
+  reported take is held back from the item until its report is answered. A
+  line the director removed cannot be put back by its performer.
+- A failed job is queued again by the director's Publish; lines already on
+  the item stay sent.
+- Owner to decide: whether deleting an account also removes that person's
+  lines from the item (today it does not; their lines stay, uncredited once
+  the account goes), and whether to ask archive.org for an Ear Drama
+  collection.
+
+**Who was in the room, who gains, who pays:** the owner gave the account and
+asked for replace and remove; the agent chose the identifier, the collection,
+and the file layout. Performers gain a recording they can take back from the
+item; listeners on archive.org get the play line by line, not one file; copies
+others made before a removal stay out of reach, as the consent says.
