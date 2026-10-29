@@ -80,6 +80,10 @@ def write_json(path, obj, gz=False):
 
 
 def read_json(path):
+    """A JSON file, gzipped when its name ends in .gz. A plain path that is absent falls back to
+    `path + ".gz"`, so a cache written gzipped never reads as missing."""
+    if not path.endswith(".gz") and not os.path.exists(path) and os.path.exists(path + ".gz"):
+        path += ".gz"
     op = gzip.open if path.endswith(".gz") else open
     with op(path, "rt", encoding="utf-8") as f:
         return json.load(f)

@@ -299,33 +299,49 @@ const API = (() => {
     return out.filter(s => s && s.rows.length);
   }
 
+  /** One series page; a key the catalog moved opens the series it now is, under its new key (§3.5). */
   async function seriesPage(key) {
-    const d = await getJSON(`series/${encodeURIComponent(key)}.json`);
+    const page = (k) => getJSON(`series/${encodeURIComponent(k)}.json`);
+    let d;
+    try {
+      d = await page(key);
+    } catch (e) {
+      const to = e && e.kind === 'missing' ? (await forwarding().catch(() => forwardingOf())).resolveSeries(key) : key;
+      if (to === key) throw e;
+      d = await page(to);
+    }
     const episodes = rowsOf(d.fields, d.episodes).map(e => ({ ...e, series: d.key, seriesName: d.name }));
     return { ...d, art: artOf(d.art), episodes };
   }
 
   /**
-   * Forwarding ids (contract §3.5), the one place the web resolves an episode id: `resolve(id)`
-   * is the id it now is (itself when it never moved), `gone(id)` is true when it left with no
-   * successor. Any other id this catalog does not serve may come from a newer one, and is kept.
+   * Forwarding ids (contract §3.5), the one place the web resolves an episode id or a series key:
+   * `resolve(id)` / `resolveSeries(key)` is what it now is (itself when it never moved), and
+   * `gone(id)` / `seriesGone(key)` is true when it left with no successor. Any other id or key this
+   * catalog does not serve may come from a newer one, and is kept.
    */
-  function forwardingOf(aliases, tombstones) {
-    const map = aliases && typeof aliases === 'object' && !Array.isArray(aliases) ? aliases : {};
+  function forwardingOf(aliases, tombstones, seriesAliases, seriesTombstones) {
+    const mapOf = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
+    const via = (map) => (k) => (Object.prototype.hasOwnProperty.call(map, k) && typeof map[k] === 'string' ? map[k] : k);
     const dead = new Set(Array.isArray(tombstones) ? tombstones : []);
+    const deadSeries = new Set(Array.isArray(seriesTombstones) ? seriesTombstones : []);
     return {
-      resolve: (id) => (Object.prototype.hasOwnProperty.call(map, id) && typeof map[id] === 'string' ? map[id] : id),
+      resolve: via(mapOf(aliases)),
       gone: (id) => dead.has(id),
+      resolveSeries: via(mapOf(seriesAliases)),
+      seriesGone: (key) => deadSeries.has(key),
     };
   }
   let forwardingP = null;
-  /** Read once a page; a catalog older than tombstones has none, and a failed read is tried again next time. */
+  /** Read once a page; a catalog older than tombstones or series forwarding has none of them, and a failed read is tried again next time. */
   function forwarding(get = getJSON) {
     if (!forwardingP) {
       const missingOk = (fallback) => (e) => { if (e && e.kind === 'missing') return fallback; throw e; };
       forwardingP = Promise.all([get('index/aliases.json').catch(missingOk({})),
-                                 get('index/tombstones.json').catch(missingOk([]))])
-        .then(([a, t]) => forwardingOf(a, t))
+                                 get('index/tombstones.json').catch(missingOk([])),
+                                 get('index/series-aliases.json').catch(missingOk({})),
+                                 get('index/series-tombstones.json').catch(missingOk([]))])
+        .then(([a, t, sa, st]) => forwardingOf(a, t, sa, st))
         .catch((e) => { forwardingP = null; throw e; });
     }
     return forwardingP;

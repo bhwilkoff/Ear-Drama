@@ -336,8 +336,8 @@ private struct SeriesScreen_tvOS: View {
                             }
                         }
                         .focusable(false)
-                        let on = follows.isFollowing(key)
-                        Button { follows.toggle(key) } label: {
+                        let on = follows.isFollowing(page.series.key)
+                        Button { follows.toggle(page.series.key) } label: {
                             Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
                         }
                     }

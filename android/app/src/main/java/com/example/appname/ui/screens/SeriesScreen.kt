@@ -64,14 +64,16 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
     var picked by rememberSaveable(key) { mutableStateOf<String?>(null) }
     var pickedAny by rememberSaveable(key) { mutableStateOf(false) }
     val ready = (page as? Loadable.Ready)?.value
+    // A key a later catalog moved opens the series it now is (contract §3.5); its key is the one stored.
+    val seriesKey = ready?.series?.key ?: key
     val season = if (pickedAny) picked else ready?.seasons?.firstOrNull()?.season
-    val episodes by rememberCatalogQuery(key, season, ready != null) { db ->
-        if (ready == null) emptyList() else db.seasonEpisodes(key, season)
+    val episodes by rememberCatalogQuery(seriesKey, season, ready != null) { db ->
+        if (ready == null) emptyList() else db.seasonEpisodes(seriesKey, season)
     }
-    val following by rememberCatalogQuery(key, watchUser = true) { container.user.isFollowing(key) }
+    val following by rememberCatalogQuery(seriesKey, watchUser = true) { container.user.isFollowing(seriesKey) }
     // Every episode id of the run, for the Download action (§4.3).
-    val allIds by rememberCatalogQuery(key, ready != null) { db ->
-        ready?.seasons?.flatMap { s -> db.seasonEpisodes(key, s.season).map { it.id } }.orEmpty()
+    val allIds by rememberCatalogQuery(seriesKey, ready != null) { db ->
+        ready?.seasons?.flatMap { s -> db.seasonEpisodes(seriesKey, s.season).map { it.id } }.orEmpty()
     }
     val scope = rememberCoroutineScope()
     Scaffold(
@@ -87,7 +89,7 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                     if (ready != null) {
                         val seasonIds = (episodes as? Loadable.Ready)?.value?.map { it.id }
                         SeriesDownloadAction(
-                            seriesKey = key,
+                            seriesKey = seriesKey,
                             allIds = (allIds as? Loadable.Ready)?.value.orEmpty(),
                             season = season,
                             seasonIds = seasonIds.takeIf { ready.seasons.size > 1 },
@@ -128,7 +130,7 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                     val on = (following as? Loadable.Ready)?.value == true
                     val toggle: () -> Unit = {
                         haptics(Haptic.Selection)
-                        scope.launch { container.user.setFollowing(key, !on) }
+                        scope.launch { container.user.setFollowing(seriesKey, !on) }
                     }
                     val modifier = Modifier.padding(horizontal = Spacing.S4.dp).tvFocusMark()
                     if (on) {

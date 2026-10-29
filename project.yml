@@ -221,6 +221,8 @@ targets:
       # Design.swift is left out: UIColor(dynamicProvider:) does not exist on
       # watchOS, and the file is generated (tools/design_tokens.mjs).
       - path: apple/Core/Player/ListeningHistory.swift
+      # Its history forwards moved ids like the phone's (contract §3.5).
+      - path: apple/Core/Catalog/IDForwarding.swift
     scheme: {}
     settings:
       base:

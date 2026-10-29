@@ -13,6 +13,10 @@ Identity is the recording, never the title: archive.org item plus file name.
 Aliases and tombstones are cumulative (the previous projection's are carried
 forward), every chain collapses to its end, and an id served again sheds its
 alias or tombstone.
+
+Series keys forward the same way (follows, series links): a key that left gets an
+alias to the served series now holding more than half of its recordings, or a
+tombstone (forward_series).
 """
 import argparse
 import json
@@ -26,6 +30,8 @@ import zlib
 TABLES = """
 CREATE TABLE IF NOT EXISTS episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS episode_tombstones (id TEXT PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS series_key_aliases (old_key TEXT PRIMARY KEY, new_key TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS series_key_tombstones (key TEXT PRIMARY KEY);
 """
 
 
@@ -40,13 +46,31 @@ def tables_of(con):
     return {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
 
+def series_copies(con):
+    """Each served series' recordings: the distinct copy keys of every copy of every episode it serves."""
+    out = {}
+    for sk, aid, url in con.execute("SELECT e.series_key, r.archive_id, r.url FROM recordings r "
+                                    "JOIN episodes e ON e.id = r.episode_id"):
+        out.setdefault(sk, set()).add(copy_key(aid, url))
+    return out
+
+
 def read_projection(con):
-    """What a projection says: its served ids, each one's copies in rank order, its aliases and tombstones."""
+    """What a projection says: its served ids, each one's copies in rank order, its aliases and tombstones,
+    and the same for its series keys (`series`: served, copies, aliases, tombstones)."""
     names = tables_of(con)
     copies = {}
     for eid, aid, url in con.execute("SELECT episode_id, archive_id, url FROM recordings ORDER BY episode_id, rank"):
         copies.setdefault(eid, []).append(copy_key(aid, url))
     return {
+        "series": {
+            "served": {r[0] for r in con.execute("SELECT key FROM series")},
+            "copies": series_copies(con),
+            "aliases": dict(con.execute("SELECT old_key, new_key FROM series_key_aliases"))
+            if "series_key_aliases" in names else {},
+            "tombstones": {r[0] for r in con.execute("SELECT key FROM series_key_tombstones")}
+            if "series_key_tombstones" in names else set(),
+        },
         "served": {r[0] for r in con.execute("SELECT id FROM episodes")},
         "copies": copies,
         "aliases": dict(con.execute("SELECT old_id, new_id FROM episode_aliases")) if "episode_aliases" in names else {},
@@ -96,20 +120,10 @@ def successor(old_copies, holders):
     return top[0] if len(top) == 1 else None
 
 
-def forward(previous, served, copies):
-    """The aliases and tombstones this build publishes: (aliases {old: new}, tombstones set, report).
-
-    `previous` is read_projection of the live projection (None on a first publish);
-    `served` and `copies` are this build's."""
-    if previous is None:
-        return {}, set(), {"left": 0, "aliased": 0, "tombstoned": 0, "carriedAliases": 0, "carriedTombstones": 0,
-                           "returned": 0}
-    holders = {}
-    for eid, keys in copies.items():
-        for k in keys:
-            holders.setdefault(k, set()).add(eid)
-    left = sorted(previous["served"] - served)
-    fresh = {o: successor(previous["copies"].get(o, []), holders) for o in left}
+def carry(previous, served, fresh):
+    """The forwarding a build publishes from the live one's and this build's fresh successors
+    ({left id: successor or None}): (aliases, tombstones, report). Cumulative, every chain
+    collapsed to its end, and an id served again sheds its alias or tombstone."""
     aliases, tombstones = {}, set()
     for o, n in fresh.items():
         if n is None:
@@ -131,12 +145,61 @@ def forward(previous, served, copies):
             returned += 1
         else:
             tombstones.add(o)
-    report = {"left": len(left), "aliased": sum(1 for n in fresh.values() if n), "tombstoned": sum(1 for n in fresh.values() if n is None),
+    report = {"left": len(fresh), "aliased": sum(1 for n in fresh.values() if n),
+              "tombstoned": sum(1 for n in fresh.values() if n is None),
               "carriedAliases": sum(1 for o in previous["aliases"] if o in aliases),
               "carriedTombstones": sum(1 for o in previous["tombstones"] if o in tombstones) +
               sum(1 for o in previous["aliases"] if o in tombstones),
               "returned": returned}
     return aliases, tombstones, report
+
+
+EMPTY_REPORT = {"left": 0, "aliased": 0, "tombstoned": 0, "carriedAliases": 0, "carriedTombstones": 0, "returned": 0}
+
+
+def forward(previous, served, copies):
+    """The aliases and tombstones this build publishes: (aliases {old: new}, tombstones set, report).
+
+    `previous` is read_projection of the live projection (None on a first publish);
+    `served` and `copies` are this build's."""
+    if previous is None:
+        return {}, set(), dict(EMPTY_REPORT)
+    holders = {}
+    for eid, keys in copies.items():
+        for k in keys:
+            holders.setdefault(k, set()).add(eid)
+    fresh = {o: successor(previous["copies"].get(o, []), holders) for o in sorted(previous["served"] - served)}
+    return carry(previous, served, fresh)
+
+
+def series_successor(old_keys, holders):
+    """The served series now holding more than half of a departed series' recordings, or None.
+
+    The denominator is every recording the series served, so one mostly taken down is not
+    forwarded on its remainder; a majority is never a tie (contract §3.5)."""
+    if not old_keys:
+        return None
+    score = {}
+    for k in old_keys:
+        for s in holders.get(k, ()):
+            score[s] = score.get(s, 0) + 1
+    best = max(score, key=lambda s: (score[s], s), default=None)
+    return best if best is not None and 2 * score[best] > len(old_keys) else None
+
+
+def forward_series(previous, served, copies):
+    """forward() for series keys: `previous` is read_projection's `series` part of the live
+    projection (None on a first publish); `served` is this build's series keys and `copies`
+    series_copies of it."""
+    if previous is None:
+        return {}, set(), dict(EMPTY_REPORT)
+    holders = {}
+    for sk, keys in copies.items():
+        for k in keys:
+            holders.setdefault(k, set()).add(sk)
+    fresh = {o: series_successor(previous["copies"].get(o, set()), holders)
+             for o in sorted(previous["served"] - served)}
+    return carry(previous, served, fresh)
 
 
 def inherit(source, served):
@@ -169,10 +232,12 @@ def violations(aliases, tombstones, served):
     return bad
 
 
-def write(d, aliases, tombstones):
+def write(d, aliases, tombstones, series_aliases=None, series_tombstones=()):
     d.executescript(TABLES)
     d.executemany("INSERT INTO episode_aliases VALUES (?,?)", sorted(aliases.items()))
     d.executemany("INSERT INTO episode_tombstones VALUES (?)", [(t,) for t in sorted(tombstones)])
+    d.executemany("INSERT INTO series_key_aliases VALUES (?,?)", sorted((series_aliases or {}).items()))
+    d.executemany("INSERT INTO series_key_tombstones VALUES (?)", [(t,) for t in sorted(series_tombstones)])
 
 
 def check_base(live_manifest, built_manifest):

@@ -9,7 +9,7 @@ Prints, as Markdown, every count and byte total in the two manifests side by
 side; with the databases, which episode ids came and went and why each one
 left (aliased to a new id, tombstoned because it is now hidden by the audit,
 tombstoned with no successor, or gone without either, which refuses the publish:
-contract §3.5);
+contract §3.5), and the same for series keys;
 with the research databases, the episode count per rights state.
 
 The guard: when the new manifest has fewer episodes than the published one by
@@ -117,6 +117,30 @@ def id_changes(old_db, new_db, research, tmpdir):
     return added, removed, why, bool(research)
 
 
+def series_changes(old_db, new_db, tmpdir):
+    """Series keys that left, and which of them left with neither an alias to a served series nor
+    a tombstone (contract §3.5). None when the old projection has no series table to compare."""
+    o, n = open_db(old_db, tmpdir), open_db(new_db, tmpdir)
+    try:
+        has = lambda c, t: c.execute("SELECT 1 FROM sqlite_master WHERE name = ?", (t,)).fetchone() is not None
+        if not has(o, "series"):
+            return None
+        old_keys = {r[0] for r in o.execute("SELECT key FROM series")}
+        new_keys = {r[0] for r in n.execute("SELECT key FROM series")} if has(n, "series") else set()
+        aliases = dict(n.execute("SELECT old_key, new_key FROM series_key_aliases")) \
+            if has(n, "series_key_aliases") else {}
+        tombs = {r[0] for r in n.execute("SELECT key FROM series_key_tombstones")} \
+            if has(n, "series_key_tombstones") else set()
+    finally:
+        o.close()
+        n.close()
+    removed = sorted(old_keys - new_keys)
+    why = {"aliased": [k for k in removed if aliases.get(k) in new_keys],
+           "tombstoned": [k for k in removed if k in tombs and aliases.get(k) not in new_keys]}
+    why["unexplained"] = [k for k in removed if k not in why["aliased"] and k not in why["tombstoned"]]
+    return sorted(new_keys - old_keys), removed, why
+
+
 def state_counts(path, tmpdir):
     con = open_db(path, tmpdir)
     out = dict(con.execute("SELECT state, COUNT(*) FROM episodes GROUP BY state"))
@@ -181,6 +205,18 @@ def main():
                 print(f"::error::{len(why['unexplained'])} episode ids left the {a.label} with no alias and no "
                       f"tombstone (contract §3.5); not publishing")
                 unforwarded = True
+            sc = series_changes(a.old_db, a.new_db, tmp)
+            if sc is not None:
+                s_added, s_removed, s_why = sc
+                out += [f"**Series keys**: {len(s_added):,} added, {len(s_removed):,} removed "
+                        f"({len(s_why['aliased']):,} aliased to a served series, {len(s_why['tombstoned']):,} "
+                        f"tombstoned, {len(s_why['unexplained']):,} neither aliased nor tombstoned).", ""]
+                if s_why["unexplained"]:
+                    # A follow, a series link, and a Worker follow row name the key (contract §3.5).
+                    out += ["First unforwarded series keys: " + ", ".join(s_why["unexplained"][:10]), ""]
+                    print(f"::error::{len(s_why['unexplained'])} series keys left the {a.label} with no alias and "
+                          f"no tombstone (contract §3.5); not publishing")
+                    unforwarded = True
 
     verdict = 1 if unforwarded else 0
     if a.research_floor is not None and research_kept:

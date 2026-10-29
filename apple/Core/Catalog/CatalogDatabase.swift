@@ -277,8 +277,23 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         return Array(stride(from: first / 10 * 10, through: last / 10 * 10, by: 10))
     }
 
+    /// The series `key` names, or the one it now is when a later catalog moved
+    /// the key (§3.5), so a follow or a series link never breaks.
     func series(key: String) -> SeriesRow? {
+        if let hit = seriesRow(key) { return hit }
+        let moved = resolveSeries(key)
+        return moved == key ? nil : seriesRow(moved)
+    }
+
+    private func seriesRow(_ key: String) -> SeriesRow? {
         rows("SELECT \(Self.seriesColumns) FROM series s WHERE s.key = ?", [.text(key)], decodeSeries).first
+    }
+
+    /// Resolves a forwarded series key (§3.5); a catalog published before series
+    /// forwarding has none.
+    func resolveSeries(_ key: String) -> String {
+        guard Self.columnExists(handle, table: "series_key_aliases", column: "old_key") else { return key }
+        return (rows("SELECT new_key FROM series_key_aliases WHERE old_key = ?", [.text(key)]) { $0.text(0) }.first ?? nil) ?? key
     }
 
     /// The series for `keys`, in the order given; a key this catalog does not
@@ -293,7 +308,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let episodes = rows("""
             SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
             WHERE e.series_key = ? ORDER BY \(Self.oldestFirst)
-            """, [.text(key)], decodeEpisode)
+            """, [.text(series.key)], decodeEpisode)
         var groups: [SeasonGroup] = []
         var current: [EpisodeRow] = []
         var currentSeason: String?? = .none
@@ -314,8 +329,9 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         (rows("SELECT new_id FROM episode_aliases WHERE old_id = ?", [.text(id)]) { $0.text(0) }.first ?? nil) ?? id
     }
 
-    /// Every alias and tombstone (§3.5), for the stores that rewrite kept ids.
-    /// A catalog published before tombstones has none.
+    /// Every alias and tombstone (§3.5), episode and series, for the stores that
+    /// rewrite kept ids and keys. A catalog published before tombstones, or before
+    /// series forwarding, has none of them.
     func forwarding() -> IDForwarding {
         var f = IDForwarding()
         for (old, new) in rows("SELECT old_id, new_id FROM episode_aliases", [], { ($0.text(0), $0.text(1)) }) {
@@ -323,6 +339,14 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         }
         if Self.columnExists(handle, table: "episode_tombstones", column: "id") {
             f.tombstones = Set(rows("SELECT id FROM episode_tombstones", [], { $0.text(0) }).compactMap { $0 })
+        }
+        if Self.columnExists(handle, table: "series_key_aliases", column: "old_key") {
+            for (old, new) in rows("SELECT old_key, new_key FROM series_key_aliases", [], { ($0.text(0), $0.text(1)) }) {
+                if let old, let new { f.seriesAliases[old] = new }
+            }
+        }
+        if Self.columnExists(handle, table: "series_key_tombstones", column: "key") {
+            f.seriesTombstones = Set(rows("SELECT key FROM series_key_tombstones", [], { $0.text(0) }).compactMap { $0 })
         }
         return f
     }

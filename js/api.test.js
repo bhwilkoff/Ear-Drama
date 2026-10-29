@@ -354,7 +354,10 @@ test('episodeDetail forwards a moved id (contract §3.5); a tombstoned or unknow
       people: ['id', 'name', 'episodes', 'art'] } },
     'index/aliases.json': { 'jb|1921-03-11': 'jb|1943-11-21' },
     'index/tombstones.json': ['jb|gone'],
+    'index/series-aliases.json': { jbp: 'jb' },
+    'index/series-tombstones.json': ['folkweave'],
     [`episodes/${API.shardOf('jb|1943-11-21')}.json`]: { 'jb|1943-11-21': ['jb', '1943-11-21', 'Show', [['u']], []] },
+    'series/jb.json': { key: 'jb', name: 'The Jack Benny Program', fields: ['id'], episodes: [['jb|1943-11-21']] },
   };
   let reads = 0;
   globalThis.fetch = async (url) => {
@@ -370,7 +373,16 @@ test('episodeDetail forwards a moved id (contract §3.5); a tombstoned or unknow
     assertEq(await API.episodeDetail('jb|1999-01-01'), null, 'control: an unknown id is not served either');
     const f = await API.forwarding();
     assertEq(f.gone('jb|gone'), true, 'the tombstones are read');
-    assertEq(reads, 2, 'aliases and tombstones are read once a page');
+    assertEq(reads, 4, 'aliases and tombstones, episode and series, are read once a page');
+    assertEq((await API.seriesPage('jbp')).key, 'jb', 'a moved series key opens the series it now is, under its new key');
+    assertEq((await API.seriesPage('jb')).episodes[0].series, 'jb', 'the page itself still opens');
+    let err = null;
+    try { await API.seriesPage('folkweave'); } catch (e) { err = e; }
+    assertEq(err && err.kind, 'missing', 'control: a tombstoned series key is not served');
+    err = null;
+    try { await API.seriesPage('nowhere'); } catch (e) { err = e; }
+    assertEq(err && err.kind, 'missing', 'control: an unknown series key is not served either');
+    assertEq(f.resolveSeries('jbp'), 'jb', 'the series aliases are read');
   } finally {
     globalThis.fetch = real;
   }

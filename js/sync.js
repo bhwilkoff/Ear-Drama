@@ -76,21 +76,28 @@ const Sync = (() => {
     quiet = setTimeout(run, Math.max(0, Math.min(QUIET_MS, firstDirty + MAX_WAIT_MS - now)));
   }
 
-  /** Rows that came from the Worker arrive as ids; the catalog fills in what the lists draw. */
+  /**
+   * Rows that came from the Worker, or ids forwarding moved, arrive as ids; the catalog fills in
+   * what the lists draw. Every stub, in batches of HYDRATE_BATCH, each batch drawn as it lands.
+   */
+  const HYDRATE_BATCH = 60;
   async function hydrate() {
     const { episodes, series } = Store.stubs();
     if (!episodes.length && !series.length) return;
-    const cards = { episodes: {}, series: {} };
     const idx = await API.seriesIndex().catch(() => null);
-    if (idx) series.forEach(k => { const s = idx.byKey.get(k); if (s) cards.series[k] = s; });
-    for (const id of episodes.slice(0, 60)) {
-      const d = await API.episodeDetail(id).catch(() => null);
-      if (!d || !d.recordings || !d.recordings.length) continue;
-      const s = idx && idx.byKey.get(d.series);
-      cards.episodes[id] = toCard ? toCard(d, s ? s.name : d.series) : { id };
+    const seriesCards = {};
+    if (idx) series.forEach(k => { const s = idx.byKey.get(k); if (s) seriesCards[k] = s; });
+    for (let i = 0; i === 0 || i < episodes.length; i += HYDRATE_BATCH) {
+      const cards = { episodes: {}, series: i === 0 ? seriesCards : {} };
+      for (const id of episodes.slice(i, i + HYDRATE_BATCH)) {
+        const d = await API.episodeDetail(id).catch(() => null);
+        if (!d || !d.recordings || !d.recordings.length) continue;
+        const s = idx && idx.byKey.get(d.series);
+        cards.episodes[id] = toCard ? toCard(d, s ? s.name : d.series) : { id };
+      }
+      quietly(() => Store.fillCards(cards));
+      emit('changed');
     }
-    quietly(() => Store.fillCards(cards));
-    emit('changed');
   }
 
   function start({ card } = {}) {

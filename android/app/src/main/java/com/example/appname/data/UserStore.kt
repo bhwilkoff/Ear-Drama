@@ -220,28 +220,16 @@ class UserStore private constructor(private val connection: SQLiteConnection, pr
      * stamp and dirty flag (a rewrite is not a listen, so it is never uploaded as new; each
      * device forwards the Worker's old-id rows for itself). The queue maps, drops a
      * tombstoned id, and keeps its stamp. A tombstoned id's progress stays: it is the
-     * listener's record. Returns how many ids moved.
+     * listener's record. A follow under a series key that moved does the same by its own
+     * `updated_at`; a tombstoned key's follow stays (the listener's choice). Returns how
+     * many ids and keys moved.
      */
     suspend fun forward(forwarding: IdForwarding): Int {
         var moved = 0
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                val rows = connection.prepare("SELECT episode_id, updated_at FROM progress").use { stmt ->
-                    buildList { while (stmt.step()) add(stmt.getText(0) to stmt.getLong(1)) }
-                }
-                val at = rows.toMap().toMutableMap()
-                for ((old, oldAt) in rows) {
-                    val new = forwarding.resolve(old)
-                    if (new == old) continue
-                    moved++
-                    if (oldAt > (at[new] ?: Long.MIN_VALUE)) {
-                        execText("DELETE FROM progress WHERE episode_id = ?", new)
-                        execText("UPDATE progress SET episode_id = ? WHERE episode_id = ?", new, old)
-                        at[new] = oldAt
-                    } else {
-                        execText("DELETE FROM progress WHERE episode_id = ?", old)
-                    }
-                }
+                moved += rekey("progress", "episode_id", forwarding::resolve)
+                moved += rekey("follows", "series_id", forwarding::resolveSeries)
                 readQueue()?.let { q ->
                     val next = forwarding.forward(q.items)
                     if (next != q.items) {
@@ -252,6 +240,28 @@ class UserStore private constructor(private val connection: SQLiteConnection, pr
             }
         }
         if (moved > 0) _changes.value += 1
+        return moved
+    }
+
+    /** Each row of [table] whose [column] moved takes the new value when it is the newer by `updated_at`; else it goes. */
+    private fun rekey(table: String, column: String, resolve: (String) -> String): Int {
+        val rows = connection.prepare("SELECT $column, updated_at FROM $table").use { stmt ->
+            buildList { while (stmt.step()) add(stmt.getText(0) to stmt.getLong(1)) }
+        }
+        val at = rows.toMap().toMutableMap()
+        var moved = 0
+        for ((old, oldAt) in rows) {
+            val new = resolve(old)
+            if (new == old) continue
+            moved++
+            if (oldAt > (at[new] ?: Long.MIN_VALUE)) {
+                execText("DELETE FROM $table WHERE $column = ?", new)
+                execText("UPDATE $table SET $column = ? WHERE $column = ?", new, old)
+                at[new] = oldAt
+            } else {
+                execText("DELETE FROM $table WHERE $column = ?", old)
+            }
+        }
         return moved
     }
 

@@ -60,6 +60,56 @@ struct IDForwardingTests {
         #expect(history.pending.isEmpty, "a row the Worker sent is not sent back")
     }
 
+    @Test func followsMoveOnceByTheNewerStamp() {
+        let d = defaults()
+        let follows = FollowedSeries(defaults: d)
+        let f = IDForwarding(seriesAliases: ["jbp": "jb", "older": "suspense", "both": "twin"],
+                             seriesTombstones: ["folkweave"])
+        follows.setFollowing("jbp", true, now: Date(millis: 5_000))
+        follows.setFollowing("folkweave", true, now: Date(millis: 5_000))
+        follows.setFollowing("suspense", true, now: Date(millis: 9_000))
+        follows.setFollowing("older", true, now: Date(millis: 1_000))
+        follows.markSynced([FollowRow(seriesId: "older", following: true, updatedAt: 1_000)])
+        follows.setFollowing("twin", false, now: Date(millis: 9_000))
+        follows.setFollowing("both", true, now: Date(millis: 2_000))
+
+        #expect(follows.forward(f) == 3)
+        #expect(follows.isFollowing("jb"), "the follow moved to the new key")
+        #expect(follows.states["jb"]?.updatedAt == Date(millis: 5_000), "keeping its own stamp")
+        #expect(follows.pending.contains("jb"), "a follow not yet uploaded stays owed")
+        #expect(follows.states["jbp"] == nil && !follows.pending.contains("jbp"), "and left the old key")
+        #expect(follows.states["suspense"]?.updatedAt == Date(millis: 9_000), "an older follow merges into the newer")
+        #expect(!follows.isFollowing("twin"), "a newer unfollow of the new key wins")
+        #expect(follows.isFollowing("folkweave"), "a tombstoned key's follow stays: it is the person's choice")
+        #expect(follows.forward(f) == 0, "it migrates once")
+        #expect(FollowedSeries(defaults: d).isFollowing("jb"), "and is saved")
+    }
+
+    @Test func aSyncedFollowForTheOldKeyLandsOnTheNewOne() {
+        let follows = FollowedSeries(defaults: defaults())
+        follows.setFollowing("jb", true, now: Date(millis: 1_000))
+        follows.apply([FollowRow(seriesId: "jbp", following: false, updatedAt: 9_000)])
+        follows.forward(IDForwarding(seriesAliases: ["jbp": "jb"]))
+        #expect(!follows.isFollowing("jb"), "another device's later unfollow wins")
+        #expect(follows.states["jbp"] == nil)
+        #expect(follows.pending.isEmpty, "a row the Worker sent is not sent back")
+    }
+
+    /// The watch has no catalog: it keeps the forwarding it is handed and
+    /// forwards its own history with it, as `EarDramaWatchApp` does on launch.
+    @Test func aKeptForwardingRoundTripsAndForwardsAHistory() {
+        let d = defaults()
+        #expect(IDForwarding.stored(in: d) == IDForwarding(), "nothing kept is no forwarding")
+        let f = IDForwarding(aliases: ["jb|1921-03-11": "jb|1943-11-21"], tombstones: ["jb|gone"],
+                             seriesAliases: ["jbp": "jb"], seriesTombstones: ["folkweave"])
+        f.store(in: d)
+        #expect(IDForwarding.stored(in: d) == f)
+        let history = ListeningHistory(defaults: d)
+        history.record("jb|1921-03-11", position: 600, duration: 1800, now: Date(millis: 5_000))
+        #expect(history.forward(IDForwarding.stored(in: d)) == 1)
+        #expect(history.entry(for: "jb|1943-11-21")?.position == 600)
+    }
+
     @Test func theQueueForwardsKeepingItsStampAndDirtyFlag() {
         let d = defaults()
         let queue = ListeningQueue(defaults: d)

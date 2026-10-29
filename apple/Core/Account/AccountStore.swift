@@ -126,6 +126,7 @@ final class AccountStore {
             let forwarding = forwarding()
             history.forward(forwarding)
             queue.forward(forwarding)
+            follows.forward(forwarding)
             defaults.set(NSNumber(value: down.serverTime), forKey: Key.since)
             let now = Date()
             lastSync = now

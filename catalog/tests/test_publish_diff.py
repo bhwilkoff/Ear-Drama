@@ -34,9 +34,19 @@ def manifest(path, episodes, clean, clean_only=False):
     return path
 
 
-def db(path, ids, aliases=(), states=None, deflate=False, tombstones=None):
+def db(path, ids, aliases=(), states=None, deflate=False, tombstones=None, series=None, series_aliases=None,
+       series_tombstones=None):
     raw = path + ".raw" if deflate else path
     c = sqlite3.connect(raw)
+    if series is not None:
+        c.execute("CREATE TABLE series (key TEXT)")
+        c.executemany("INSERT INTO series VALUES (?)", [(k,) for k in series])
+    if series_aliases is not None:
+        c.execute("CREATE TABLE series_key_aliases (old_key TEXT, new_key TEXT)")
+        c.executemany("INSERT INTO series_key_aliases VALUES (?,?)", series_aliases)
+    if series_tombstones is not None:
+        c.execute("CREATE TABLE series_key_tombstones (key TEXT)")
+        c.executemany("INSERT INTO series_key_tombstones VALUES (?)", [(k,) for k in series_tombstones])
     c.execute("CREATE TABLE episodes (id TEXT, state TEXT, rec_bucket TEXT)")
     c.execute("CREATE TABLE episode_aliases (old_id TEXT, new_id TEXT)")
     c.executemany("INSERT INTO episodes VALUES (?,?,?)",
@@ -105,6 +115,23 @@ with tempfile.TemporaryDirectory() as t:
     n3 = db(os.path.join(t, "new3.sqlite"), ["a", "b2", "e"], aliases=[("b", "b2")])
     rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", o, "--new-db", n3)
     check("control: a projection from before tombstones forwards only its aliases", rc, 1)
+
+    so = db(os.path.join(t, "s-old.sqlite.zz"), ["a"], deflate=True, series=["jb", "jbp", "tt", "gone", "x"])
+    sn = db(os.path.join(t, "s-new.sqlite"), ["a"], series=["jb", "tt1", "tt2", "y"],
+            series_aliases=[("jbp", "jb"), ("x", "nowhere")], series_tombstones=["tt"])
+    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", so, "--new-db", sn)
+    check("series keys: aliased, tombstoned, and unforwarded are told apart",
+          "**Series keys**: 3 added, 4 removed (1 aliased to a served series, 1 tombstoned, "
+          "2 neither aliased nor tombstoned)" in out, True)
+    check("control: a series key gone with neither (or aliased to an unserved series) refuses the publish",
+          (rc, "::error::2 series keys left" in out, "gone, x" in out), (1, True, True))
+    sn2 = db(os.path.join(t, "s-new2.sqlite"), ["a"], series=["jb", "tt1", "tt2", "y"],
+             series_aliases=[("jbp", "jb")], series_tombstones=["tt", "gone", "x"])
+    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", so, "--new-db", sn2)
+    check("every series key that left forwarded: the publish passes", rc, 0)
+    sn3 = db(os.path.join(t, "s-new3.sqlite"), ["a"], series=["jb", "tt1", "tt2", "y"])
+    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", so, "--new-db", sn3)
+    check("control: a projection from before series forwarding refuses a series key that left", rc, 1)
 
     restored = db(os.path.join(t, "restored.sqlite"), [str(i) for i in range(20)])
     full = db(os.path.join(t, "full.sqlite"), [str(i) for i in range(19)])
