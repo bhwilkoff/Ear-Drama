@@ -49,13 +49,26 @@ struct TopShelfTests {
         #expect(TopShelfSnapshot.shelf(from: TopShelfSnapshot.make(from: [episode("a|1")]))?.count == 1)
     }
 
-    @Test func aCreditedPortraitIsLeftOffTheShelf() {
+    @Test func aCreditedSeriesPortraitDetailMayNotShowIsLeftOffTheShelf() {
         let free = Artwork(url: URL(string: "https://upload.example/a.jpg")!)
         let credited = Artwork(url: URL(string: "https://upload.example/b.jpg")!, credit: "Author, CC BY-SA 3.0")
         let items = TopShelfSnapshot.make(from: [episode("a|1", art: free), episode("b|2", art: credited), episode("c|3")]).items
         #expect(items[0].artURL != nil)
         #expect(items[1].artURL == nil)
         #expect(items[2].artURL == nil)
+    }
+
+    /// tvOS-DESIGN §9.3: select opens Detail, which credits its heading face,
+    /// so that face rides the shelf even when its license asks for a credit.
+    @Test func theFaceDetailCreditsRidesTheShelf() {
+        let credited = Artwork(url: URL(string: "https://upload.example/b.jpg")!, credit: "Author, CC BY-SA 3.0")
+        let other = Artwork(url: URL(string: "https://upload.example/c.jpg")!)
+        let faces = ["b|2": Face(name: "B. Person", art: credited), "c|3": Face(name: "C. Person", art: other)]
+        let items = TopShelfSnapshot.make(from: [episode("a|1"), episode("b|2", art: credited),
+                                                 episode("c|3", art: credited)], pageFaces: faces).items
+        #expect(items[0].artURL == nil)
+        #expect(items[1].artURL == credited.url(pixels: 500))
+        #expect(items[2].artURL == other.url(pixels: 500), "Detail's face wins over the series'")
     }
 
     @Test func theLinkOpensTheEpisode() {

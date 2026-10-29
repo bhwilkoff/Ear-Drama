@@ -17,12 +17,16 @@ data class Artwork(
     val credit: String? = null,
     val evidence: String? = null,
 ) {
+    /** Width over height when the original's size is known; a portrait's usual shape otherwise. */
+    val aspect: Float
+        get() = if (width != null && height != null && width > 0 && height > 0) minOf(width.toFloat() / height, 1.6f) else 0.8f
+
     /** The one image helper: the smallest Commons standard width covering [pixels]. */
     fun url(pixels: Int): String = "$url?width=${STEPS.firstOrNull { it >= pixels } ?: STEPS.last()}"
 
     companion object {
         /** Commons' standard thumbnail steps; any other width is refused upstream. */
-        val STEPS = listOf(120, 330, 500)
+        val STEPS = listOf(120, 330, 500, 960)
     }
 }
 

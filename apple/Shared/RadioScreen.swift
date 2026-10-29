@@ -227,6 +227,10 @@ private struct SlotRow: View {
                 NavigationLink(value: Route.episode(detail.episode.id)) {
                     HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
                         time
+                        // R11a: an aired slot leads with its series' tile, its top on the first line.
+                        ArtTile(name: detail.episode.seriesName, genre: detail.episode.seriesGenre,
+                                face: detail.episode.seriesFace)
+                            .alignmentGuide(.firstTextBaseline) { $0[.top] + 14 }
                         VStack(alignment: .leading, spacing: Spacing.s1) {
                             Text(slot.playableEpisode?.series ?? detail.episode.seriesName)
                                 .font(TypeRamp.bodyStrong)

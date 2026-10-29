@@ -324,13 +324,17 @@ struct SeriesScreen: View {
                 EmptyState("Series not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
-                    Section {
-                        HStack(alignment: .top, spacing: Spacing.s3) {
-                            if let face = page.series.face { FaceFigure(face: face) }
-                            Text(verbatim: page.series.metaLine)
-                                .font(TypeRamp.caption)
-                                .foregroundStyle(Color.brandTextMuted)
+                    if let face = page.series.face {
+                        Section {
+                            FaceHero(face: face, genre: page.series.genre)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
+                                .listRowBackground(Color.clear)
                         }
+                    }
+                    Section {
+                        Text(verbatim: page.series.metaLine)
+                            .font(TypeRamp.caption)
+                            .foregroundStyle(Color.brandTextMuted)
                     }
                     ForEach(page.seasons) { season in
                         Section {
@@ -404,9 +408,15 @@ struct EpisodeScreen: View {
         let isCurrent = player.item?.episode.id == episode.id
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         return List {
+            if let face = detail.starFace {
+                Section {
+                    FaceHero(face: face, genre: episode.seriesGenre)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
+                        .listRowBackground(Color.clear)
+                }
+            }
             Section {
                 HStack(alignment: .top, spacing: Spacing.s3) {
-                    if let face = detail.starFace { FaceFigure(face: face) }
                     VStack(alignment: .leading, spacing: Spacing.s2) {
                         NavigationLink(value: Route.series(episode.seriesKey)) {
                             Text(episode.seriesName)
@@ -550,13 +560,17 @@ struct PersonScreen: View {
                 EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
-                    Section {
-                        HStack(alignment: .top, spacing: Spacing.s3) {
-                            if let face = page.person.face { FaceFigure(face: face) }
-                            Text(verbatim: Self.facts(page))
-                                .font(TypeRamp.caption)
-                                .foregroundStyle(Color.brandTextMuted)
+                    if let face = page.person.face {
+                        Section {
+                            FaceHero(face: face, genre: nil, showsName: false)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
+                                .listRowBackground(Color.clear)
                         }
+                    }
+                    Section {
+                        Text(verbatim: Self.facts(page))
+                            .font(TypeRamp.caption)
+                            .foregroundStyle(Color.brandTextMuted)
                     }
                     ForEach(page.groups(newestFirst: newestFirst)) { group in
                         Section {

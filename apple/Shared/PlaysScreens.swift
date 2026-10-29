@@ -159,12 +159,16 @@ struct ScriptRow: View {
     let script: PlayScript
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            Text(verbatim: script.title).font(TypeRamp.bodyStrong)
-            Text(verbatim: [script.authorLine, "\(script.castParts.filter { $0.id.isSpeaking }.count) parts"]
-                .filter { !$0.isEmpty }.joined(separator: " · "))
-                .font(TypeRamp.caption)
-                .foregroundStyle(Color.brandTextMuted)
+        // R11a: a play's row leads with its tile, the title's letter (plays carry no genre).
+        HStack(alignment: .top, spacing: Spacing.s3) {
+            ArtTile(name: script.title, genre: nil, face: nil)
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                Text(verbatim: script.title).font(TypeRamp.bodyStrong)
+                Text(verbatim: [script.authorLine, "\(script.castParts.filter { $0.id.isSpeaking }.count) parts"]
+                    .filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
         }
         .accessibilityElement(children: .combine)
     }

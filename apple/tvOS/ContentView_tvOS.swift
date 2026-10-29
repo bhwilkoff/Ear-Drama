@@ -43,7 +43,12 @@ struct ContentView_tvOS: View {
         // The Top Shelf's Continue items follow the history from any tab.
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             guard catalog.state == .ready else { return }
-            TopShelfSnapshot.publish(await catalog.episodes(Array(history.inProgressIDs.prefix(TopShelfSnapshot.limit))))
+            let episodes = await catalog.episodes(Array(history.inProgressIDs.prefix(TopShelfSnapshot.limit)))
+            var pageFaces: [String: Face] = [:]
+            for episode in episodes {
+                if let face = await catalog.episodeDetail(episode.id)?.starFace { pageFaces[episode.id] = face }
+            }
+            TopShelfSnapshot.publish(episodes, pageFaces: pageFaces)
         }
     }
 
@@ -738,7 +743,13 @@ private struct NowPlaying_tvOS: View {
             Spacer(minLength: 0)
             if let item = player.item {
                 HStack(alignment: .bottom, spacing: Spacing.s8) {
-                    NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network, side: 400)
+                    VStack(alignment: .leading, spacing: Spacing.s2) {
+                        NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network, side: 400)
+                        // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
+                        if let credit = item.face?.art.credit {
+                            ArtCredit(credit: credit, evidence: item.face?.art.evidence)
+                        }
+                    }
                     VStack(alignment: .leading, spacing: Spacing.s3) {
                         Text(item.episode.seriesName)
                             .font(TypeRamp.sectionHeader)

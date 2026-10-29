@@ -80,6 +80,7 @@ import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
 import com.example.appname.plays.Relay
 import com.example.appname.ui.AccountRow
+import com.example.appname.ui.ArtTile
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
@@ -135,6 +136,8 @@ fun playsMatching(scripts: List<PlayScript>, query: String): List<PlayScript> {
 fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
     val speaking = script.castParts.count { it.id.isSpeaking }
     ListItem(
+        // R11a: a play's row leads with its tile, the title's letter (plays carry no genre).
+        leadingContent = { ArtTile(script.title, null, null) },
         headlineContent = { Text(script.title, style = MaterialTheme.typography.titleMedium) },
         supportingContent = {
             Text(

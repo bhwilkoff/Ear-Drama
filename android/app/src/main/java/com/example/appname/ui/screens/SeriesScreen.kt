@@ -49,7 +49,7 @@ import com.example.appname.ui.Meta
 import com.example.appname.ui.rememberCatalogQuery
 import com.example.appname.ui.seasonLabel
 import com.example.appname.ui.seriesYears
-import com.example.appname.ui.FaceFigure
+import com.example.appname.ui.FaceHero
 import androidx.compose.foundation.layout.Box
 import com.example.appname.ui.theme.Spacing
 
@@ -109,7 +109,9 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
             ClaimTvFocus(firstRow, rows.firstOrNull()?.id)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 seriesPage.series.face?.let { face ->
-                    item(key = "face") { Box(Modifier.padding(start = Spacing.S4.dp, top = Spacing.S2.dp)) { FaceFigure(face) } }
+                    item(key = "face") {
+                        FaceHero(face, seriesPage.series.genre, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp))
+                    }
                 }
                 item(key = "meta") {
                     val years = seriesYears(seriesPage.series)

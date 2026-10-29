@@ -67,6 +67,24 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   section. The player sheet shows `NowPlayingArt` (200 pt), and the lock
   screen (`MPMediaItemArtwork`) the same picture: the portrait at 500 px,
   else the card rendered by `ImageRenderer`. Portraits crop top-anchored.
+  *Amended by R11a: `FaceHero` replaces `FaceFigure` on the series page,
+  Detail, and a person's page; the tile is 56 pt; Now Playing is full width.*
+- **R11a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*) (WEB-DESIGN §6.4a is the shared text).
+  The only art served with evidence is a person's portrait; other image
+  classes wait on the owner's V2 to V5. A series page, Detail, and a
+  person's page open with `FaceHero`, a full-width band (240 pt compact,
+  320 pt regular and on the Mac) in its own clear List section: the whole
+  portrait at its own aspect over `PortraitFrame`'s wash (the same image's
+  120 step, blurred and dimmed, so the band is never an empty box), the
+  genre's 4 pt edge under it, then the name (a person's page leaves it to
+  the title) and the credit when owed. The player sheet's `NowPlayingArt`
+  is full width and square, no taller than 44 % of the sheet
+  (`containerRelativeFrame`), so Play stays on the first screen; a
+  portrait sits whole in it, its owed credit under it (Decision 069). A row's `ArtTile` is 56 pt on iOS (the Mac
+  keeps 40); an evening's aired slot leads with its series' tile. Sizes:
+  the band and Now Playing ask `Artwork.url(pixels:)` for their drawn
+  width at the screen's scale (Commons' 120, 330, 500, 960); heights are
+  fixed, so nothing shifts when an image lands.
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the

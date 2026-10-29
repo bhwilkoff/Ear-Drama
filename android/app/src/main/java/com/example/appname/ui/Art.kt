@@ -2,15 +2,19 @@ package com.example.appname.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,14 +25,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -57,9 +68,72 @@ fun ArtImage(art: Artwork, side: Dp, modifier: Modifier = Modifier, description:
     )
 }
 
-/** A row's tile: the series' star, else its first letter in its genre hue on the surface. */
+/**
+ * The whole portrait at its own aspect over a wash of the same image, blurred and
+ * dimmed (ANDROID-DESIGN R11a): never reshaped, and never an empty box while the
+ * sharp copy loads, since the wash is the 120 step a row's tile has usually cached.
+ * Below Android 12 there is no blur, so the wash is left out rather than shown sharp.
+ */
 @Composable
-fun ArtTile(name: String, genre: String?, face: Face?, size: Dp = 40.dp) {
+fun PortraitFrame(art: Artwork, modifier: Modifier = Modifier, description: String? = null) {
+    val density = LocalDensity.current
+    BoxWithConstraints(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+        val aspect = art.aspect
+        val drawn = minOf(maxWidth, maxHeight * aspect)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            AsyncImage(
+                model = art.url(120),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(20.dp)
+                    .drawWithContent { drawContent(); drawRect(Color.Black.copy(alpha = 0.45f)) },
+            )
+        }
+        AsyncImage(
+            model = art.url(with(density) { drawn.roundToPx() }),
+            contentDescription = description,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+/**
+ * A page's face (R11a): a full-width band (240 dp, 320 dp on a wide screen) with the
+ * genre's edge under it, then whose it is (unless the heading already says) and the
+ * credit its license asks for, a required fact, so it is on screen with the picture.
+ */
+@Composable
+fun FaceHero(face: Face, genre: String?, modifier: Modifier = Modifier, showsName: Boolean = true) {
+    val width = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val tall = if (width >= 600.dp) 320.dp else 240.dp
+    val edge = OnAir.genre(genre)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
+        PortraitFrame(
+            face.art,
+            Modifier
+                .fillMaxWidth()
+                .height(tall)
+                .clip(RoundedCornerShape(12.dp))
+                .drawWithContent {
+                    drawContent()
+                    if (edge != null) drawRect(edge, Offset(0f, size.height - 4.dp.toPx()), Size(size.width, 4.dp.toPx()))
+                }
+                .testTag("face-hero")
+                .semantics { contentDescription = face.name },
+        )
+        if (showsName) {
+            Text(face.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        face.art.credit?.let { ArtCredit(it, face.art.evidence) }
+    }
+}
+
+/** A row's tile: the series' star, else its first letter in its genre hue on the surface; 56 dp so a face can be known (R11a). */
+@Composable
+fun ArtTile(name: String, genre: String?, face: Face?, size: Dp = 56.dp) {
     val hue = OnAir.genre(genre)
     val band = hue ?: MaterialTheme.colorScheme.outline
     val shape = RoundedCornerShape(8.dp)
@@ -144,17 +218,18 @@ fun TypeCard(name: String, line: String?, genre: String?, modifier: Modifier = M
     }
 }
 
-/** Now Playing's picture: the episode's face, else the series', else the series' typographic card. */
+/**
+ * Now Playing's picture: the episode's face, else the series', else the series' typographic card.
+ * Square and full width, no taller than [maxSide] (R11a: Play stays on the first screen); a
+ * portrait sits whole in it over its wash.
+ */
 @Composable
-fun NowPlayingArt(seriesName: String, genre: String?, line: String?, face: Face?, side: Dp = 200.dp) {
-    Box(Modifier.size(side).clearAndSetSemantics {}) {
+fun NowPlayingArt(seriesName: String, genre: String?, line: String?, face: Face?, maxSide: Dp = 200.dp) {
+    Box(Modifier.fillMaxWidth().heightIn(max = maxSide).aspectRatio(1f).clearAndSetSemantics {}) {
         if (face != null) {
-            ArtImage(
-                face.art, side,
-                Modifier.size(side).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
-            )
+            PortraitFrame(face.art, Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)))
         } else {
-            TypeCard(seriesName, line, genre, Modifier.fillMaxWidth())
+            TypeCard(seriesName, line, genre, Modifier.fillMaxSize())
         }
     }
 }

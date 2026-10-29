@@ -363,27 +363,28 @@ select {
 .row-tools { display: flex; }
 
 /* ---- Art (§6.4, Decision 069): a served portrait, else the typographic card ---- */
-/* A row that mixes series leads with its series' 40 px tile. On a phone the date stacks above
-   the title (still first, R1) so the title keeps its width; from 768 px it takes its column. */
-.ep-link.has-art { grid-template-columns: 40px minmax(0, 1fr); }
+/* A row that mixes series leads with its series' 56 px tile (§6.4a). On a phone the date stacks
+   above the title (still first, R1) so the title keeps its width; from 768 px it takes its column. */
+.ep-link.has-art { grid-template-columns: var(--tile) minmax(0, 1fr); }
 .ep-link.has-art .art-tile { grid-row: 1 / span 4; align-self: start; }
 .ep-link.has-art .ep-date { grid-row: auto; grid-column: 2; padding-top: 0; }
 .ep-link.has-art .ep-title, .ep-link.has-art .ep-sub, .ep-link.has-art .ep-progress,
 .ep-link.has-art .ep-quote { grid-column: 2; }
 @media (min-width: 768px) {
-  .ep-link.has-art { grid-template-columns: 40px var(--date-col) minmax(0, 1fr); }
+  .ep-link.has-art { grid-template-columns: var(--tile) var(--date-col) minmax(0, 1fr); }
   .ep-link.has-art .ep-date { grid-row: 1 / span 3; grid-column: 2; padding-top: 1px; }
   .ep-link.has-art .ep-title, .ep-link.has-art .ep-sub, .ep-link.has-art .ep-progress,
   .ep-link.has-art .ep-quote { grid-column: 3; }
 }
+:root { --tile: 56px; }
 .art-tile {
   position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
-  width: 40px; height: 40px; overflow: hidden; border-radius: var(--radius-control);
+  width: var(--tile); height: var(--tile); overflow: hidden; border-radius: var(--radius-control);
   background: var(--color-surface-alt); box-shadow: inset 0 -3px 0 var(--genre-accent);
 }
 .art-letter { font-family: var(--type-section-header-family); font-size: var(--type-section-header-size); font-weight: var(--type-section-header-weight); line-height: 1; color: var(--genre-accent); }
 .art-tile[data-genre=""] .art-letter { color: var(--color-text-muted); }
-.art-tile img, .face-img img, .face-sm img, .np-face img {
+.art-tile img, .face-sm img {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%;
 }
 .art-tile.has-img .art-letter { visibility: hidden; }
@@ -391,31 +392,34 @@ select {
 .series-row a { flex-direction: row; align-items: center; gap: var(--space-3); padding-left: 0; border-left: 0; }
 .series-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
-/* A face beside a page heading: whose it is, and the credit its license asks for. */
-.page-head.has-face {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "face text" "actions actions";
-  column-gap: var(--space-3); align-items: start;
+/* The whole portrait at its own aspect over a wash of itself (§6.4a): never reshaped, never an
+   empty box while it loads. The genre's edge runs under the frame, as on a tile. */
+.has-wash { position: relative; display: block; overflow: hidden; background: var(--color-surface-alt); }
+.art-wash {
+  position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px);
+  object-fit: cover; filter: blur(20px) brightness(0.55) saturate(0.8);
 }
-.page-head.has-face > * + * { margin-top: 0; }
-.page-head.has-face > .face { grid-area: face; }
-.page-head.has-face > .page-head-text { grid-area: text; }
-.page-head.has-face > .actions { grid-area: actions; }
-@media (min-width: 768px) {
-  .page-head.has-face { grid-template-areas: "face text" "face actions"; grid-template-rows: auto 1fr; }
+.art-whole { position: relative; display: block; width: 100%; height: 100%; object-fit: contain; }
+
+/* A page's face (§6.4a): a full-width band above the heading, captioned under it. */
+.page-head.has-face { border-left: 0; padding-left: 0; }
+.face-hero { margin: 0 0 var(--space-3); }
+.face-band { height: 240px; border-radius: var(--radius-card); }
+.face-band::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--genre-accent); }
+@media (min-width: 768px) { .face-band { height: 320px; } }
+.face-hero figcaption { margin-top: var(--space-1); overflow-wrap: anywhere; }
+.face-credit { color: var(--color-link); }
+/* No face: the series page's head is drawn as its typographic card (§6.4a), the name on the genre. */
+.page-head.as-card {
+  display: flex; flex-direction: column; justify-content: flex-end; min-height: 200px;
+  padding: var(--space-6) var(--space-4) var(--space-4); border-left-width: 8px;
+  border-radius: var(--radius-card); background: var(--color-surface-alt);
 }
+.page-head.as-card > .page-head-text { flex: none; }
+@media (min-width: 768px) { .page-head.as-card { min-height: 240px; } }
 .page-head-text { min-width: 0; flex: 1; }
 .page-head-text > * + * { margin-top: var(--space-1); }
-.face { flex: none; width: 76px; margin: 0; }
-.face-img {
-  position: relative; display: block; width: 76px; height: 95px; overflow: hidden;
-  border-radius: var(--radius-control); background: var(--color-surface-alt);
-}
-.face figcaption { margin-top: var(--space-1); overflow-wrap: anywhere; }
-.face-credit { display: block; color: var(--color-link); }
-@media (min-width: 768px) {
-  .face { width: 128px; }
-  .face-img { width: 128px; height: 160px; }
-}
+.page-head.has-face > .actions { margin-top: var(--space-3); }
 .credit dd.with-face { display: flex; align-items: center; gap: var(--space-2); padding: 2px 0; }
 .face-sm {
   position: relative; flex: none; width: 32px; height: 32px; overflow: hidden; border-radius: 50%;
@@ -424,13 +428,12 @@ select {
 .face-sm.has-img { background: var(--color-surface-alt); }
 .photo-credits a { color: var(--color-link); }
 
-/* Now Playing's picture: the face, else the typographic card. */
+/* Now Playing's picture (§6.4a): full width, square, and no taller than 44 % of the screen, so
+   Play stays on a phone's first screen; the face whole over its wash, else the typographic card. */
 .np-art:empty { display: none; }
+.np-credit { display: block; margin-top: var(--space-1); text-align: center; }
 .np-art { margin-bottom: var(--space-3); }
-.np-face {
-  position: relative; display: block; width: min(200px, 52vw); aspect-ratio: 1; overflow: hidden;
-  border-radius: var(--radius-card); background: var(--color-surface-alt);
-}
+.np-face, .np-art .type-card { width: min(100%, 44vh); width: min(100%, 44dvh); aspect-ratio: 1; margin: 0 auto; border-radius: var(--radius-card); }
 .type-card {
   display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-1);
   width: min(200px, 52vw); aspect-ratio: 1; padding: var(--space-4);
@@ -455,6 +458,9 @@ select {
 .slot-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: var(--space-1) 0; text-decoration: none; }
 a.slot-main:hover .body-strong { text-decoration: underline; }
 .slot-title { overflow-wrap: anywhere; }
+/* An aired slot leads with its series' tile (§6.4a); a gap has none. */
+.slot-main.has-art { flex-direction: row; align-items: center; gap: var(--space-3); }
+.slot-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .slot-gap .slot-time > .tabular, .slot-gap .slot-main > .body { color: var(--color-text-muted); }
 .witness { padding-bottom: var(--space-6); }
 .stations { margin-bottom: var(--space-6); border-top: 1px solid var(--color-border); }
@@ -462,7 +468,7 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
   min-height: var(--tap); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border);
 }
-.station-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.station-main { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
 .station-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .station > .btn { flex: none; }
 .witness a { color: var(--color-link); }
