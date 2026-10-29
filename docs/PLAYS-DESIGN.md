@@ -676,8 +676,9 @@ The owner's answers in §9 hold on the server, word for word:
 - **CC0 consent** (Decision 059) is recorded per person per production with
   the consent text's version id, before the play is published. A take
   uploaded to the Worker reaches only the production's members, so it needs
-  no consent (Decision 072, 2026-10-28). The words are the owner's: until
-  approved the text is a placeholder that begins "OWNER:". New words take a
+  no consent (Decision 072, 2026-10-28). The words are the owner's, approved
+  2026-10-29 (Decision 059), version `cc0-2026-10-29`; a consent recorded at a
+  version whose text begins "OWNER:" never counts. New words take a
   new version id, and everyone consents again before the play is published.
 - **Publishing** queues a job and calls nothing. It needs a complete
   production, no open report on a chosen take, and every performer's consent
@@ -696,7 +697,7 @@ The owner's answers in §9 hold on the server, word for word:
 | # | Question | What the Worker does until it is answered |
 |---|---|---|
 | P1 | R2 needs a payment method on file. Turn it on, or keep phase 2 waiting? | The `TAKES` binding is commented out; uploads answer `503` |
-| P2 | The CC0 consent words (Decision 059) | Text is an "OWNER:" placeholder at version `cc0-placeholder-1` |
+| P2 | The CC0 consent words (Decision 059) | Answered 2026-10-29: the owner's words at version `cc0-2026-10-29` |
 | P3 | A vetted deny list for names | A short seed list in `worker/src/plays-names.js` |
 | P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
 | P5 | The privacy policy that covers school consent for students under 13 | `SCHOOL_CONSENT_POLICY` unset: no school consent can be recorded, so no under-13 class takes a student |
@@ -750,16 +751,16 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
 6. **Consent before anything leaves the members** (Decisions 059 and 072).
    Invite-only takes on the Worker need an account and nothing more. The
    CC0 consent screen, with its warning that a published recording is
-   permanent, public, and reusable by anyone, including for AI training,
-   comes before anything is published beyond the members, and its words go
-   to the owner first (LOOP-PLAN M8). Until the owner approves them no app
-   shows a consent screen and no app offers Publish. The gate is one named
-   constant per platform, `TODO(M8-consent-screen)`: web
-   `PlaysShare.PUBLISH_OPEN`, Apple `PlaysShare.publishOpen`, Android
-   `PlaysShare.PUBLISH_OPEN`, each `false` and each pinned by a test that
-   fails when Publish is offered while it is. When the screen ships it
-   shows the Worker's text exactly as it arrives, with **I agree** and
-   **Not now**; agreeing sends its version id, kept in `share.json`.
+   public and reusable by anyone, including for AI training, comes before
+   anything is published beyond the members (Decision 059, words approved
+   2026-10-29). Tapping **Publish** opens the platform's own sheet or dialog
+   with the Worker's text exactly as `GET /consent` serves it (never
+   hard-coded), **I agree to publish my recording under CC0.** and **Not
+   now**; agreeing sends its version id, kept in `share.json`, then queues the
+   job. **Publish** is offered only while `GET /consent` says `publishes`;
+   otherwise the one line "Publishing opens when the Ear Drama archive
+   account is connected." stands in its place. The old gates
+   (`TODO(M8-consent-screen)`) are gone.
    - *Replaced*: "Consent before the first upload (Decision 059). The
      Worker's text, exactly as it arrives, with I agree and Not now ..."
 7. **Listen through.** Coming back to a shared production (opening it, the
@@ -779,8 +780,8 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
    their takes."). Another member's line in read-along has **Report** on its
    take. A report hides that take from the reporter at once.
 9. **Publish** (the director, once complete): queues only; then "Queued for
-   archive.org". Its refusals are one line each. Not offered until rule 6's
-   screen ships (`TODO(M8-consent-screen)`); a record that already carries
+   archive.org". Its refusals are one line each. Asks rule 6's consent
+   first; a record that already carries
    a queued job still says "Queued for archive.org".
 10. **Classes.** Library's Ear dramas, signed in: **Classes**, each with its
     code for its teacher (in two groups of four), **Make a class** (a name,

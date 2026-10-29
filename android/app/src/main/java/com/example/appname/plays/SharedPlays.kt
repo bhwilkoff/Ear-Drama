@@ -1,5 +1,6 @@
 package com.example.appname.plays
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -106,10 +107,23 @@ class SharedPlays(
         return withContext(io) { PlaysShare.bringHome(api, store, localId, rec, script, me()) }
     }
 
-    suspend fun publish(localId: String, script: PlayScript): PublishAnswer {
+    /** The Worker's consent words and whether it can reach archive.org; null when it cannot be read. */
+    suspend fun consent(): Consent? = try {
+        api.consent()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Publish after the consent screen (rule 6): agree at the version the Worker served, then queue the job. */
+    suspend fun publish(localId: String, script: PlayScript, consent: Consent): PublishAnswer {
+        if (!consent.publishes) throw PlaysException("publish_waits")
         val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
         val rec = _records.value[localId] ?: refresh(localId)
         if (!PlaysShare.canPublish(rec, script, me())) throw PlaysException("consent_missing")
+        api.agree(pid, consent.version)
+        setLink(localId, ShareLink(pid, consent.version))
         val answer = api.publish(pid)
         refresh(localId)
         return answer

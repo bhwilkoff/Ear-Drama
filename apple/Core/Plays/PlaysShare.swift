@@ -11,18 +11,28 @@ import Foundation
 /// only the chosen take of each line of a part this person holds, never one
 /// the bleed check flagged (it holds the device voice, §5). A take reaches only
 /// the members, so uploading asks no consent (Decision 072); the CC0 consent
-/// comes before Publish, and both wait for the owner's words. The Apple TV
+/// comes before Publish, which waits for the Worker to reach archive.org. The Apple TV
 /// compiles only the parts that read a record (§11.7 rule 12).
 enum PlaysShare {
-    /// TODO(M8-consent-screen): Publish sends the play beyond its members, so
-    /// it waits for the CC0 consent screen, whose words are the owner's
-    /// (Decisions 059 and 072, PLAYS-DESIGN §11.7 rule 6). Flip only with it.
-    static let publishOpen = false
+    /// The one line shown while the Worker cannot upload to archive.org (P6).
+    static let publishWaits = "Publishing opens when the Ear Drama archive account is connected."
 
-    /// Publish for the director of a complete play, once the consent screen ships (rule 9).
-    static func canPublish(_ rec: SharedRecord, _ script: PlayScript, _ me: String?, open: Bool = publishOpen) -> Bool {
-        open && me != nil && rec.director == me && rec.archive == nil && complete(rec, script)
+    /// Publish for the director of a complete play (rule 9). Whether the Worker can upload is `PlaysConsent.publishes`.
+    static func canPublish(_ rec: SharedRecord, _ script: PlayScript, _ me: String?) -> Bool {
+        me != nil && rec.director == me && rec.archive == nil && complete(rec, script)
     }
+
+    #if os(iOS) || os(macOS)
+    /// Publish after the consent screen (rule 6, Decisions 059 and 072): the agreement at the
+    /// version the Worker served is recorded, then the job is queued.
+    static func publish(api: any PlaysTransport, store: ProductionStore, localID: String, pid: String,
+                        consent: PlaysConsent) async throws -> PublishJob {
+        guard consent.publishes == true else { throw PlaysRefusal.code("publish_waits") }
+        try await api.agree(pid, version: consent.version)
+        try store.setShare(localID, ProductionShare(pid: pid, consented: consent.version))
+        return try await api.publish(pid)
+    }
+    #endif
 
     nonisolated struct CastLine: Codable, Equatable, Sendable {
         let id: String
@@ -309,7 +319,7 @@ enum PlaysShare {
         "unsupported_audio": "A take could not be read.",
         "audio_mismatch": "A take could not be read.",
         "bleed_flagged": "A take holds the device voice. Re-take it with headphones.",
-        "consent_required": "Agree to the consent before uploading.",
+        "publish_waits": publishWaits,
         "consent_version_mismatch": "The consent changed. Read it again.",
         "not_your_claim": "This part is not yours to record.",
         "not_your_part": "Only its performer or the director can open this part.",

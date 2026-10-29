@@ -35,6 +35,7 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
+from forwarding import episode_forwards  # noqa: E402
 from otr_parse import norm_series  # noqa: E402
 
 UA = "EarDrama/0.1 (+https://eardrama.org)"
@@ -977,16 +978,21 @@ def slot_coverage(slots, window=PRIME):
     return round(have / (hi - lo), 3)
 
 
-def withhold(slots, served):
+def withhold(slots, served, forward=None):
     """Each slot whose episode `served` refuses becomes a gap marked `withheld` (a recording
     that exists but this projection does not serve: hidden by rights, taken down, never
-    recommended), so no unserved episode ever fills a slot. Returns (slots, changed)."""
+    recommended), so no unserved episode ever fills a slot. An id that moved (`forward`,
+    contract §3.5) follows its alias instead; a tombstoned id is a gap. Returns (slots, changed)."""
     out, changed = [], False
     for s in slots:
         ep = s.get("episode")
         if ep and not served(ep["id"]):
-            s = {k: v for k, v in s.items() if k != "episode"}
-            s.update(gap=True, withheld=True, **({"known_series": ep["series"]} if ep.get("series") else {}))
+            to = (forward or {}).get(ep["id"])
+            if to:
+                s = dict(s, episode=dict(to))
+            else:
+                s = {k: v for k, v in s.items() if k != "episode"}
+                s.update(gap=True, withheld=True, **({"known_series": ep["series"]} if ep.get("series") else {}))
             changed = True
         out.append(s)
     return out, changed
@@ -1137,26 +1143,26 @@ def report(measured, floors=(0.1, 0.15, 0.2, 0.25, 1 / 3, 0.4, 0.5, 0.6)):
 EVENING_KEYS = ("evening", "network", "station", "coverage", "witness", "slots")
 
 
-def withhold_day(v, served):
+def withhold_day(v, served, forward=None):
     """A published day with each episode `served` refuses withheld, in its evening and in
     every other year it offers (a year left with nothing to play is no longer offered)."""
-    slots, changed = withhold(v["slots"], served)
+    slots, changed = withhold(v["slots"], served, forward)
     out = dict(v, slots=slots, coverage=slot_coverage(slots)) if changed else v
     if v.get("years"):
         years = []
         for y in v["years"]:
-            ys, yc = withhold(y["slots"], served)
+            ys, yc = withhold(y["slots"], served, forward)
             years.append(dict(y, slots=ys, coverage=slot_coverage(ys)) if yc else y)
         out = dict(out, years=[y for y in years if y["coverage"] > 0])
     return out
 
 
-def keep_published(new, old, start, served=None):
+def keep_published(new, old, start, served=None, forward=None):
     """Contract §8: a day once published keeps its evening and slots; days before the window
     drop off. A kept day takes the new build's other years (an offer beside the evening,
     never the evening itself), and the paper's text leaves it. The one change its evening
     can take is a withdrawal: an episode the served projection no longer serves becomes a
-    withheld gap (unclaimed recordings are removed on request)."""
+    withheld gap (unclaimed recordings are removed on request), or follows its id's alias."""
     days = dict(new["days"])
     for d, v in old.get("days", {}).items():
         if d >= start:
@@ -1169,11 +1175,11 @@ def keep_published(new, old, start, served=None):
                 kept["years"] = sorted((y for y in offer if y["evening"] != v["evening"]), key=lambda y: y["evening"])
             days[d] = kept
     if served:
-        days = {d: withhold_day(v, served) for d, v in days.items()}
+        days = {d: withhold_day(v, served, forward) for d, v in days.items()}
     return dict(new, days=dict(sorted(days.items())))
 
 
-def changed_days(old, new, start):
+def changed_days(old, new, start, forward=None):
     """The published days (on or after `start`) the new file would change, beyond a
     withdrawal. Empty is the never-change rule holding."""
     def plain(day):
@@ -1188,7 +1194,8 @@ def changed_days(old, new, start):
             bad.append(d)
             continue
         a, b = plain(v), plain(w)
-        if len(a) != len(b) or any(x[:2] != y[:2] or (y[2] and y[2] != x[2]) for x, y in zip(a, b)):
+        if len(a) != len(b) or any(x[:2] != y[:2] or (y[2] and y[2] != x[2] and y[2] != ((forward or {}).get(x[2]) or {}).get("id"))
+                             for x, y in zip(a, b)):
             bad.append(d)
     return bad
 
@@ -1249,6 +1256,7 @@ def main():
     a.add_argument("--old", required=True)
     a.add_argument("--new", required=True)
     a.add_argument("--today", default="")
+    a.add_argument("--projection", default=PROJECTION, help="the projection whose aliases a slot may follow")
     args = ap.parse_args()
     if args.cmd == "index":
         y0, y1 = (int(x) for x in args.years.split("-"))
@@ -1265,7 +1273,7 @@ def main():
     if args.cmd == "kept":
         start, _ = window(_today(args.today))
         old = json.load(open(args.old)) if os.path.exists(args.old) else {}
-        bad = changed_days(old, json.load(open(args.new)), start.isoformat())
+        bad = changed_days(old, json.load(open(args.new)), start.isoformat(), episode_forwards(args.projection))
         kept = sum(1 for d in old.get("days", {}) if d >= start.isoformat())
         print(f"published days kept: {kept - len(bad)} of {kept}" + (f"; changed: {bad}" if bad else ""))
         return 1 if bad else 0
@@ -1320,7 +1328,7 @@ def main():
         doc = tonight(start, days, load_measured(), served=cat.served)
         new_days = set(doc["days"])
         old = json.load(open(args.previous)) if args.previous and os.path.exists(args.previous) else {}
-        doc = keep_published(doc, old, start.isoformat(), served=cat.served)
+        doc = keep_published(doc, old, start.isoformat(), served=cat.served, forward=episode_forwards(PROJECTION))
         with open(args.out, "w") as f:
             json.dump(doc, f, indent=1)
         kept = [d for d in doc["days"] if d in old.get("days", {})]

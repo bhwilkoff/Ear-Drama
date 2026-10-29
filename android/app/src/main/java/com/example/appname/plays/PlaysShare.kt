@@ -82,7 +82,7 @@ data class SharedRecord(
 
 /** `GET /consent`: the owner's words, shown as they arrive. */
 @Serializable
-data class Consent(val version: String, val text: String, val uploads: Boolean = true)
+data class Consent(val version: String, val text: String, val uploads: Boolean = true, val publishes: Boolean = false)
 
 @Serializable
 data class InviteMade(val id: String, val token: String, @SerialName("expires_at") val expiresAt: Long)
@@ -208,16 +208,12 @@ object PlaysShare {
 
     fun isDirector(rec: SharedRecord, me: String?): Boolean = me != null && rec.director == me
 
-    /**
-     * TODO(M8-consent-screen): Publish sends the play beyond its members, so it
-     * waits for the CC0 consent screen, whose words are the owner's (Decisions
-     * 059 and 072, PLAYS-DESIGN §11.7 rule 6). Flip only with that screen.
-     */
-    const val PUBLISH_OPEN = false
+    /** The one line shown while the Worker cannot upload to archive.org (P6). */
+    const val PUBLISH_WAITS = "Publishing opens when the Ear Drama archive account is connected."
 
-    /** Publish for the director of a complete play, once the consent screen ships (rule 9). */
-    fun canPublish(rec: SharedRecord, script: PlayScript, me: String?, open: Boolean = PUBLISH_OPEN): Boolean =
-        open && isDirector(rec, me) && rec.archive == null && complete(rec, script)
+    /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is [Consent.publishes]. */
+    fun canPublish(rec: SharedRecord, script: PlayScript, me: String?): Boolean =
+        isDirector(rec, me) && rec.archive == null && complete(rec, script)
 
     /**
      * The local record follows the Worker's parts: only this person's live claim
@@ -481,7 +477,7 @@ object PlaysShare {
         "unsupported_audio" to "A take could not be read.",
         "audio_mismatch" to "A take could not be read.",
         "bleed_flagged" to "A take holds the device voice. Re-take it with headphones.",
-        "consent_required" to "Agree to the consent before uploading.",
+        "publish_waits" to PUBLISH_WAITS,
         "consent_version_mismatch" to "The consent changed. Read it again.",
         "not_your_claim" to "This part is not yours to record.",
         "not_your_part" to "Only its performer or the director can open this part.",

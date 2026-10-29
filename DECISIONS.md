@@ -661,8 +661,23 @@ Worker never takes a client's word for what is castable.
 
 **How to apply**: run `node worker/tools/castable-manifest.mjs` after every
 castable rebuild (a test fails when the two drift). New consent words need a new
-`CONSENT_VERSION`; the words themselves are the owner's (a placeholder starting
-"OWNER:" until then). Every person table goes in USER_TABLES, and any person
+`CONSENT_VERSION`; the words are the owner's, approved 2026-10-29 ("Let's refine
+the text and use it", then "Yes. Change the first line. It should all make sense
+as one coherent approval."), version `cc0-2026-10-29`, verbatim:
+
+> Publishing puts this play on the Internet Archive.
+> - Your recording will be public. You can replace it with a new take or remove it later, but copies others have already made can't be called back.
+> - You dedicate it to the public domain (CC0). Anyone may copy, change, or sell it, for any purpose and without credit, including training AI and cloning voices.
+> - It must be your own live voice: no synthetic or cloned voices, and no imitating a real person.
+> - You're 13 or older, or your teacher has recorded your school's consent.
+>
+> Agree button: "I agree to publish my recording under CC0."
+
+Publish refuses any consent recorded at a version whose text starts with
+"OWNER:" (the owner's "yes", 2026-10-29). Clients fetch the words from
+`GET /consent` and never hard-code them; `GET /consent` also says
+`publishes` (the archive.org keys exist), and Publish is offered only when it
+is true. Every person table goes in USER_TABLES, and any person
 column that is not `user_id` in OTHER_PERSON_COLUMNS. Owner items P1 to P8
 (R2, consent words, a vetted deny list, report handling, school consent, the
 archive.org account, C6/C7, class ownership) are in PLAYS-DESIGN §11.6.
@@ -895,7 +910,7 @@ offered (WEB-DESIGN §7.2a, and §5.8's standing "audio is never cached").
 
 ---
 
-## 072: Invite-only takes need an account, not the CC0 consent; the consent screen and Publish wait for the owner's words
+## 072: Invite-only takes need an account, not the CC0 consent; the consent screen and Publish wait for the owner's words (answered 2026-10-29)
 
 *Date: 2026-10-28*
 
@@ -905,11 +920,13 @@ upload or only at publish: "Consent at publish only."
 A take uploaded to the Worker is heard only by the production's members, so
 uploading it asks for an account and nothing more. The CC0 consent, with
 its warning, is asked before anything goes beyond the members, which today
-means Publish. Until the owner approves the consent words, no app shows a
-consent screen or offers Publish: one constant per platform,
-`TODO(M8-consent-screen)` (web `PlaysShare.PUBLISH_OPEN`, Apple
-`PlaysShare.publishOpen`, Android `PlaysShare.PUBLISH_OPEN`), is `false` and
-pinned by a test.
+means Publish. The owner approved the words on 2026-10-29 (Decision 059), so the three
+gates (`TODO(M8-consent-screen)`: web/Android `PlaysShare.PUBLISH_OPEN`, Apple
+`PlaysShare.publishOpen`) are gone. Each app shows the consent screen with the
+Worker's words before Publish and records consent at that version, and offers
+Publish only when `GET /consent` says `publishes`; until the Ear Drama
+archive.org account is connected it shows "Publishing opens when the Ear Drama
+archive account is connected."
 
 **Why**: Decision 059's consent is about publishing ("contributions are
 dedicated CC0 and uploaded to archive.org"), and its words are the owner's
@@ -928,9 +945,8 @@ invitees behind a clearly named TODO for that screen."
   `publish` still needs every performer's consent at the current version.
 - The clients' upload path never calls `GET /consent`'s `agree`; it reads
   `GET /consent` only for the owner's `uploads` switch.
-- When the owner approves the words: set `CONSENT_TEXT` and a new
-  `CONSENT_VERSION` in `worker/src/plays.js`, build the screen from
-  PLAYS-DESIGN §11.7 rule 6, and flip the three constants with their tests.
+- Done 2026-10-29: `CONSENT_TEXT` and `CONSENT_VERSION` (`cc0-2026-10-29`) in
+  `worker/src/plays.js`, the screen from PLAYS-DESIGN §11.7 rule 6.
 - Owner to confirm: that a take shared with invitees only is outside 059's
   consent. If not, uploads wait for the screen too (one line in
   `uploadTake`).

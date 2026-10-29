@@ -11,10 +11,12 @@ import json
 import os
 import sqlite3
 import sys
+import shutil
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_stations as B  # noqa: E402
+from forwarding import episode_forwards  # noqa: E402
 
 ran = failed = 0
 
@@ -120,6 +122,45 @@ check("a withdrawn episode leaves a withheld slot of the same length",
       (ws.get("withheld"), "episode" in ws, ws["utc_end"]), (True, False, running[2]["utc_end"]))
 check("a withdrawal is not a change", B.changed(doc, w), [])
 check("a withheld slot holds every guarantee", B.violations(w, served, recommended), {})
+
+# --- a moved id: the slot follows the alias (contract §3.5, §8) -------------------
+airing = {s["episode"]["id"] for s in doc["stations"][0]["slots"] if s.get("episode")}
+target = next(e for e in pool["mystery"] if e["id"] not in airing)
+fwd = {gone: {"id": target["id"], "series": target["series"], "title": target["title"]}}
+f = B.build(pool, later, previous=doc, served=lambda i: i != gone, forward=fwd)
+fs = {s["utc_start"]: s for s in f["stations"][0]["slots"]}[running[2]["utc_start"]]
+check("a moved id's slot follows its alias at the same instants",
+      (fs["episode"]["id"], fs["utc_end"], fs.get("withheld")), (target["id"], running[2]["utc_end"], None))
+check("following an alias is the one allowed change", B.changed(doc, f, fwd), [])
+check("control: without the alias the same change is refused", [x[2] for x in B.changed(doc, f)], ["replaced"])
+check("a followed slot holds every guarantee", B.violations(f, served, recommended), {})
+t = B.build(pool, later, previous=doc, served=lambda i: i != gone, forward={})
+check("a tombstoned id (no alias) stays a withheld gap",
+      {s["utc_start"]: s for s in t["stations"][0]["slots"]}[running[2]["utc_start"]].get("withheld"), True)
+other = next(e for e in pool["mystery"] if e["id"] not in airing and e["id"] != target["id"])
+wrong = json.loads(json.dumps(f))
+{s["utc_start"]: s for s in wrong["stations"][0]["slots"]}[running[2]["utc_start"]]["episode"]["id"] = other["id"]
+check("broken: a slot rewritten to anything but its alias is refused", [x[2] for x in B.changed(doc, wrong, fwd)],
+      ["replaced"])
+dup = B.build(pool, later, previous=doc, served=lambda i: i != gone,
+              forward={gone: {"id": running[3]["episode"]["id"], "series": "x"}})
+check("an alias to an episode the station already airs leaves a withheld gap, not a repeat",
+      ({s["utc_start"]: s for s in dup["stations"][0]["slots"]}[running[2]["utc_start"]].get("withheld"),
+       B.violations(dup, served, recommended)), (True, {}))
+fdb = os.path.join(tmp, "fwd.sqlite")
+shutil.copy(db, fdb)
+con = sqlite3.connect(fdb)
+con.execute("CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL)")
+con.execute("INSERT INTO episode_aliases VALUES ('mystery0|1900-01-01', ?)", (target["id"],))
+con.execute("INSERT INTO episode_aliases VALUES ('mystery0|1900-01-02', 'mystery0|1939-01-01')")
+con.commit()
+con.close()
+fw = episode_forwards(fdb)
+check("the projection's aliases are read (only to a served, recommendable target)", sorted(fw),
+      ["mystery0|1900-01-01"])
+check("an alias carries the target's series name and title",
+      fw["mystery0|1900-01-01"], {"id": target["id"], "series": target["series"], "title": target["title"]})
+check("no projection, no aliases", episode_forwards(os.path.join(tmp, "absent.sqlite")), {})
 
 # --- every guard, broken once ----------------------------------------------------
 
