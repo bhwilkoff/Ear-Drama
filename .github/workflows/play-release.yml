@@ -63,7 +63,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # No android-actions/setup-android: on the 2026-10-28 runner image its sdkmanager
+      # upgrade stops at "7 of 8 SDK package licenses not accepted" and fails the job
+      # (run 40805256910). The preinstalled SDK builds android-build.yml every push.
+      - uses: gradle/actions/setup-gradle@v4
 
       - uses: actions/setup-python@v5
         with:
