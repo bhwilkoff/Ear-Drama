@@ -125,8 +125,11 @@ So **D2b** makes one cohesive direction, D:
 ## State
 
 - Phase: D2b (one cohesive direction from the owner's feedback), started 2026-10-29.
-- Running: D2b-1 image uniformity skill; D2b-2 Record a Line research and design.
-  Then D2b-3 builds direction D from both skills, with a layout QA gate.
+- D2b-1 merged (`uniform-imagery-design`); D2b-2 merged (D2b-record-a-line.md,
+  directions/record/). Running: D2b-3, direction D (directions/d/), with the fit gate.
+- Owner calls from D2b: graded copies hosted by Ear Drama (re-hosting) or the two-number
+  grade applied per platform; Keep runs straight into the next cue; the play-color rule
+  from Gutenberg subject headings.
 - Owner calls still open: That night on Detail; whose face leads; what a signed-out
   invitee sees; whether finished dramas are listed and credited; show line 10 or 5.
 - D2 (A Almanac, B Company, C Sleeve) review page: https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ;

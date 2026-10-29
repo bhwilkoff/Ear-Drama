@@ -471,3 +471,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Design tick 4, 2026-10-29, the owner's D2 feedback; D2b starts
 - Owner: "I like elements of all three. Overall, I think the visual approach of The Company makes the most sense ... I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac ... I also don't think we have gotten even close on the Record a Line designs ... Can you create a cohesive design based upon this feedback?"
 - DESIGN-LOOP gains the feedback and D2b. Running: D2b-1 uniform imagery skill (Opus), D2b-2 Record a Line research and prototype (Opus). Next: D2b-3 direction D from both, with a fit gate at 320-430 px.
+
+### Design tick 5, 2026-10-29, D2b-1 and D2b-2 merged; D2b-3 running
+- uniform-imagery-design: one crop at the face box, one neutral gray grade, one mount on the genre hue; originals ungraded on Detail; duotone/sepia/colorize/upscale refused. 40 worst-case portraits read as one set (sheets read).
+- Record a Line: plays as genre blocks with a cast fingerprint; parts on a playbill with where-they-speak strips; the cue as the count-in; takes judged against the cue (Again, With cue, Keep); red only inside the recorder. Fit gate passed 13 states at 320-1440.
+- Running: D2b-3 direction D.
