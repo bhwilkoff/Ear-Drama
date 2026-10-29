@@ -403,3 +403,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged tree: catalog 30/30; test_web.sh PASS; the changed workflow log line run on A2's real manifest before merge (the new rule). Publish dispatched (run 40807438143).
 - Running: F2 (downloads store their series key instead of reverse-parsing the id; build_db loads .gz editorial files).
 - Waiting on the owner: Play Console "Release apps to testing tracks" for the service account on Ear Drama; the station-slot forwarding ruling; the non-photo portraits; Life With Luigi's title card.
+
+### Tick 110, 2026-10-28, F2 merged (1.0.92); first Play release; CI all green
+- F2: downloads store their series key (Apple, Android), forwarded like follows; build_db loads .gz editorial files. 1.0.92 Release launch check on the iPhone 12 passed; App Store upload succeeded (run 40808331721).
+- Owner: "You should be able to turn that on in the play console just fine." In Chrome as benwilkoff@gmail.com (Learning is Change, Inc.): Ear Drama added to the archivewatch-ci service account; the permission check refused most of the permission clicks; the owner finished and saved (13 permissions, as on the other three apps; verified on the page).
+- First Play release: versionCode 2 (1.0.92) committed to the internal track, "completed" (run 40808816813); the workflow pushed the versionCode (548d2f7).
+- Owner: "Graphics count just as much as photos." No photo-only art rule.
+- Owner: "Make sure all of the github actions are going through. I keep getting lots of errors to my email." 8 failure emails in 3 days: 6 Ear Drama (today's Play setup x2, A1's publish pattern x2, the 1.0.82 tvOS export, one more Play) each followed by a green run of the same workflow; 3 Archive Watch (Verify playback passed on attempt 3; App Store submit green since). Every Ear Drama workflow's latest run is green.
