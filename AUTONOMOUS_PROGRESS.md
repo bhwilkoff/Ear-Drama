@@ -423,3 +423,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Worker deployed from main (wrangler, version bfa576b2; no D1 migrations pending); /v1/health 200. Invite uploads no longer demand consent live.
 - Consent words drafted from Decision 059, the owner's AI-training warning, research 08c §6.4 and the under-13 rule; shown to the owner; P11 ships them (Worker text, version cc0-2026-10-29; clients show the served text; Publish only when the Worker can reach archive.org) and makes station/evening slots follow aliases.
 - V5 (Opus): red means recording; research and apply a primary-action color through the tokens.
+
+### Tick 113, 2026-10-29, V5 and P11 merged (1.0.94, 1.0.95); Worker redeployed
+- V5: red means recording only (studio red record token); primary actions ink; live gave up red; guards on web, Apple, Android. Web shots read before merge.
+- P11: the owner's CC0 words (cc0-2026-10-29) served by the Worker and shown before Publish on web, Apple, Android; placeholder consents refused; Publish only when the Worker can reach archive.org. Station and evening slots follow aliases (contract 8).
+- Merged tree after both: Worker 101 mutations; web PASS (shell v49); tokens; 13 design rules; catalog 30/30; macOS 204; iOS and tvOS 0 warnings; Android lint clean. Worker deployed (b7f2ef05), /v1/health 200; GET /consent needs auth, so the live text was not read (tests cover it).
+- Running: P13 (every performer consents to their own recording; the Worker refuses publish without the archive account; "Use this take" and the Cast error color).
