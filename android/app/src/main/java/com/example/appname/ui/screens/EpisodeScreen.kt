@@ -39,7 +39,7 @@ import androidx.compose.foundation.layout.Column
 import com.example.appname.ui.ArtCredit
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.CreditFace
-import com.example.appname.ui.FaceFigure
+import com.example.appname.ui.FaceHero
 import com.example.appname.ui.DownloadControl
 import com.example.appname.ui.QueueToggle
 import com.example.appname.ui.EmptyMessage
@@ -107,8 +107,10 @@ fun EpisodeScreen(
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 // §4.4, the web's order: the series, the title, the date, then the facts.
                 d.starFace?.let { face ->
-                    // Decision 069: the episode's star beside the heading, with whose face it is.
-                    item(key = "face") { Box(Modifier.padding(start = Spacing.S4.dp, top = Spacing.S2.dp)) { FaceFigure(face) } }
+                    // R11a: the episode's star leads the page, with whose face it is.
+                    item(key = "face") {
+                        FaceHero(face, row.seriesGenre, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp))
+                    }
                 }
                 item(key = "head") {
                     Text(

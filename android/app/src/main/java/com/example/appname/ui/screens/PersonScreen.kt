@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
-import com.example.appname.ui.FaceFigure
+import com.example.appname.ui.FaceHero
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
@@ -81,7 +81,9 @@ fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit
             ClaimTvFocus(firstRow, firstId)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 personPage.person.face?.let { face ->
-                    item(key = "face") { Box(Modifier.padding(start = Spacing.S4.dp, top = Spacing.S2.dp)) { FaceFigure(face) } }
+                    item(key = "face") {
+                        FaceHero(face, null, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp), showsName = false)
+                    }
                 }
                 item(key = "meta") {
                     Meta(

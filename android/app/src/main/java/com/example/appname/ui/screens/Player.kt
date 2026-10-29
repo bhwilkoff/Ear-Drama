@@ -47,6 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +62,7 @@ import com.example.appname.together.RoomStatus
 import com.example.appname.data.Transcript
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import com.example.appname.ui.ArtCredit
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.NowPlayingArt
@@ -174,10 +176,14 @@ fun PlayerSheet(
             Modifier.fillMaxWidth().padding(horizontal = Spacing.S6.dp).navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // R11a: full width, no taller than 44 % of the screen, so Play stays on the first screen.
+            val shown = (face as? Loadable.Ready)?.value ?: episode.seriesFace
             NowPlayingArt(
-                episode.seriesName, episode.seriesGenre, episode.airDate?.take(4),
-                (face as? Loadable.Ready)?.value ?: episode.seriesFace,
+                episode.seriesName, episode.seriesGenre, episode.airDate?.take(4), shown,
+                maxSide = (LocalConfiguration.current.screenHeightDp * 0.44f).dp,
             )
+            // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
+            shown?.art?.credit?.let { ArtCredit(it, shown.art.evidence) }
             Spacer(Modifier.height(Spacing.S3.dp))
             Text(
                 episode.seriesName,

@@ -57,7 +57,18 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   series page and Detail put the face beside the heading with the name
   and any owed CC credit; cast lines carry 32 dp round portraits; Now
   Playing and the Media3 session's `artworkUri` carry the same picture.
-  One helper builds every image URL (Commons' 120 / 330 / 500 steps).
+  One helper builds every image URL (Commons' 120 / 330 / 500 / 960 steps).
+- **R11a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*) (WEB-DESIGN §6.4a is the shared text). The
+  only art served with evidence is a person's portrait; other classes wait
+  on the owner's V2 to V5. The series page, Detail, and a person's page
+  open with `FaceHero`, a full-width band (240 dp, 320 dp from 600 dp wide)
+  replacing `FaceFigure`: the whole portrait at its own aspect over
+  `PortraitFrame`'s wash (the 120 step, blurred and dimmed; below Android
+  12, which has no blur, the surface instead), the genre's 4 dp edge under
+  it, then the name (a person's page leaves it to the title) and the credit
+  when owed. Now Playing's art is full width and square, no taller than
+  44 % of the screen, with a portrait's owed credit under it. A row's `ArtTile` is 56 dp; an evening's aired slot
+  leads with its series' tile. Heights are fixed, so nothing shifts.
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order
   (contract §5.1; the same list and titles on every platform): This day
