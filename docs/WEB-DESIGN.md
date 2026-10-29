@@ -577,10 +577,23 @@ web app follows today.
   - **Now Playing** shows the episode's star, else the series' star, else
     the series' typographic card, full width and square (§6.4a); §5.6
     sends the same art to the lock screen.
-  - Tiles and cast faces are cropped only to a top-anchored frame
-    (`object-position: 50% 20%`) and are the person's own Wikidata image,
-    so the crop keeps the face. A failed image leaves the tile's letter or
-    nothing, never a broken image. `API.artURL` is the one helper:
+  - **Small crops center on the published face** (amended 2026-10-28,
+    V4; `artwork-presentation-design` rules 4 and 5: a crop only in small
+    repeated slots, at a focal point computed once in the pipeline). Only
+    the small repeated slots crop: the 56 px row tile, the 32 px cast
+    face, and any square the system asks for (the lock screen). Each
+    shows the square `API.cropRect` picks around the portrait's `art.face`
+    box (contract §3.3a, the one formula): the face about half the
+    square, at most 4x zoom, so a wide frame (J. Carrol Naish's trailer
+    title card) shows his face, not the card's lettering. Without a face:
+    an upright or square picture takes its largest square at 50% across
+    and 20% down; a wide one is not cropped, so the tile keeps its letter
+    and the cast line its empty slot (a blind center crop of a wide frame
+    loses the face); an unknown size (an older catalog) keeps the plain
+    fill crop at 50% 20%. No client
+    detects faces. A page that is about the picture (§6.4a) never crops.
+    A failed image leaves the tile's letter or nothing, never a broken
+    image. `API.artURL` is the one helper:
     Commons' standard widths (120, 330, 500, 960), never a re-hosted copy.
 - **§6.4a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*). The only art the
   projection serves with evidence is a person's portrait (§6.4); every

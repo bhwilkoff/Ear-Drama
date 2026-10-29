@@ -66,7 +66,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   slot kept in a group with any portrait; owed credits follow as one
   section. The player sheet shows `NowPlayingArt` (200 pt), and the lock
   screen (`MPMediaItemArtwork`) the same picture: the portrait at 500 px,
-  else the card rendered by `ImageRenderer`. Portraits crop top-anchored.
+  else the card rendered by `ImageRenderer`. Portraits crop at the
+  published face (R11a).
   *Amended by R11a: `FaceHero` replaces `FaceFigure` on the series page,
   Detail, and a person's page; the tile is 56 pt; Now Playing is full width.*
 - **R11a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*) (WEB-DESIGN §6.4a is the shared text).
@@ -91,8 +92,19 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   on the first screen: a portrait is drawn whole at its own aspect and its
   box shrinks to it, centered; a card fills the square; an owed credit is
   under it (Decision 069). A row's `ArtTile` is 56 pt on iOS (the Mac
-  keeps 40) and a cast line's `CreditFace` 32 pt, both cropped
-  top-anchored; an evening's aired slot leads with its series' tile.
+  keeps 40) and a cast line's `CreditFace` 32 pt; an evening's aired
+  slot leads with its series' tile. **Small crops center on the published
+  face** (V4, WEB-DESIGN §6.4 is the shared text): `ArtTile`,
+  `CreditFace` show the square `Artwork.cropRect` picks around
+  `Artwork.face` (the contract §3.3a formula: the face about half the
+  square, at most 4x zoom), drawn by `CroppedArt` as the image scaled and
+  offset inside its clipped frame. The lock screen's square
+  (`MPMediaItemArtwork`, the 500 px image cut in Core before it is handed
+  over) is the largest square moved onto the face, never zoomed, as the
+  system shows it large. Without a face an upright or square picture
+  takes its largest square at 50 % across, 20 % down; a wide one is not
+  cropped: the tile keeps its letter, the cast line its empty slot, the
+  lock screen the whole picture. No client detects faces.
   Sizes: each box asks `Artwork.url(pixels:)` for its drawn width at the
   screen's scale (Commons' 120, 330, 500, 960); every box is sized from the
   published aspect, so nothing shifts when an image lands.

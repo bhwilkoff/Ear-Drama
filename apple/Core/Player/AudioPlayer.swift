@@ -523,6 +523,10 @@ final class AudioPlayer {
                (response as? HTTPURLResponse)?.statusCode == 200,
                let source = CGImageSourceCreateWithData(data as CFData, nil) {
                 image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+                // The system shows a square: hand it the one centered on the published face (R11a).
+                if let whole = image, let cut = face.art.squareCrop(width: whole.width, height: whole.height) {
+                    image = whole.cropping(to: CGRect(x: cut.x, y: cut.y, width: cut.side, height: cut.side)) ?? whole
+                }
             }
             guard let self, self.item?.episode.id == id else { return }
             guard let image = image ?? self.cardImage(item.episode) else { return }

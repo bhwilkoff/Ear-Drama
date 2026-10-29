@@ -50,6 +50,12 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         "portrait" in queryRaw("PRAGMA table_info(people)") { it.getText(1) } &&
             "url" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }
     }
+    /** The art columns a credit, person, or series query reads (§3.3a); `a.face` is NULL in an older catalog. */
+    private val artColumns: String by lazy {
+        if (!hasArt) return@lazy "NULL, NULL, NULL, NULL, NULL, NULL"
+        val face = "face" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }
+        "a.url, a.width, a.height, a.credit, a.evidence_url, ${if (face) "a.face" else "NULL"}"
+    }
     private val hasEpisodeStar: Boolean by lazy {
         hasArt && "star" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
     }
@@ -79,9 +85,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     private val seriesLook: Map<String, Pair<String?, Face?>> by lazy {
         val faces = hasArt && "star" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
         val sql = if (faces) {
-            "SELECT s.key, s.genre, p.name, a.url, a.width, a.height, a.credit, a.evidence_url FROM series s " +
+            "SELECT s.key, s.genre, p.name, $artColumns FROM series s " +
                 "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait"
-        } else "SELECT key, genre, NULL, NULL, NULL, NULL, NULL, NULL FROM series"
+        } else "SELECT key, genre, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM series"
         queryRaw(sql) { st ->
             val art = artwork(st, 3)
             val name = st.textOrNull(2)
@@ -96,6 +102,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             height = if (st.isNull(at + 2)) null else st.getLong(at + 2).toInt(),
             credit = st.textOrNull(at + 3),
             evidence = st.textOrNull(at + 4),
+            face = FaceBox.parse(st.textOrNull(at + 5)),
         )
     }
 
@@ -394,7 +401,6 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 script = st.textOrNull(18),
             )
         }.firstOrNull() ?: return@read null
-        val artColumns = if (hasArt) "a.url, a.width, a.height, a.credit, a.evidence_url" else "NULL, NULL, NULL, NULL, NULL"
         val artJoin = if (hasArt) " LEFT JOIN art a ON a.id = p.portrait" else ""
         val credits = queryRaw(
             "SELECT c.person_id, p.name, c.role, c.character, $artColumns FROM credits c " +
@@ -507,7 +513,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     private val personColumns: String
         get() = "p.id, p.name, p.birth, p.death, " +
-            if (hasArt) "a.url, a.width, a.height, a.credit, a.evidence_url" else "NULL, NULL, NULL, NULL, NULL"
+            artColumns
     private val personJoin: String get() = if (hasArt) " LEFT JOIN art a ON a.id = p.portrait" else ""
 
     private fun person(st: SQLiteStatement) =

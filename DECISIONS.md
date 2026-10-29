@@ -787,6 +787,16 @@ on every platform, an upright face is a print beside its heading and a wide one
 a plate above it, and nothing is drawn behind a picture
 (`artwork-presentation-design`, WEB-DESIGN §6.4a, R11a in each design doc).
 
+*Amended 2026-10-28 (V4)*: "top-anchored" is replaced by the published face. A
+wide portrait's small crop showed the middle of the frame (J. Carrol Naish's
+title card), so each served portrait now carries a face box computed once, on a
+Mac, by Apple Vision (`harvest_people_wikidata.py --phase faces`, contract
+§3.3a), and every small crop is the square around it from one formula (the
+face about half the square, at most 4x zoom: anchoring alone kept Naish's
+lettering in a 32 px circle). Without a face an
+upright picture keeps the top anchor and a wide one is not cropped. No client
+detects faces: the same box on every device, no model shipped, no battery.
+
 ---
 
 ## 070: Volume is leveled by each platform's own dynamics processor, at one set of numbers

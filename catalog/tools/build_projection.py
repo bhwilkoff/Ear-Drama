@@ -70,9 +70,10 @@ CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archiv
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
 CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death TEXT, portrait INTEGER);
 -- Served images and their evidence (art_policy.py): url is Commons' Special:FilePath with no
--- width (a client appends ?width=); credit is the line a CC BY / BY-SA image must carry.
+-- width (a client appends ?width=); credit is the line a CC BY / BY-SA image must carry;
+-- face ("x,y,w,h", normalized, top-left origin) is where a small crop centers (contract §3.3a).
 CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, height INTEGER,
-    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL);
+    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
 CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
 -- Story arcs (arcs.py, contract §3.3): a serial plays to its arc's end and stops (Decision 067).
@@ -148,10 +149,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             people_rows.setdefault(pid, name)
 
     portraits = served_portraits(s, people_rows)   # person id -> art row id, rows written to `art`
-    for aid, (file, cls, template, author, w, h) in enumerate(portraits["rows"], 1):
-        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?)", (
+    for aid, (file, cls, template, author, w, h, face) in enumerate(portraits["rows"], 1):
+        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?)", (
             aid, AP.image_url(file), w, h, cls, author if AP.license_name(cls, template) else None,
-            AP.credit(cls, template, author), AP.evidence_url(file)))
+            AP.credit(cls, template, author), AP.evidence_url(file), face))
     faces = set(portraits["by_person"])
     series_of = dict(s.execute("SELECT id, series_key FROM episodes"))
     credited_by_series = {}
@@ -272,7 +273,7 @@ def write_arcs(d):
 
 def served_portraits(s, people):
     """The portraits art_policy serves for the people this projection carries:
-    {"rows": [(file, cls, template, author, width, height)], "by_person": {pid: art id}}.
+    {"rows": [(file, cls, template, author, width, height, face)], "by_person": {pid: art id}}.
     A source without the people tables (a fixture, an older build) serves none."""
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     out = {"rows": [], "by_person": {}}
@@ -284,9 +285,14 @@ def served_portraits(s, people):
             dims[f[5:] if f.startswith("File:") else f] = (w, h)
     # The portrait's own size (harvest_people_wikidata.py --phase dims) wins: a client lays a
     # face out by its shape before the image arrives.
-    if "width" in {r[1] for r in s.execute("PRAGMA table_info(people_art)")}:
+    cols = {r[1] for r in s.execute("PRAGMA table_info(people_art)")}
+    if "width" in cols:
         for f, w, h in s.execute("SELECT file, width, height FROM people_art WHERE width > 0 AND height > 0"):
             dims[f] = (w, h)
+    # The face box (harvest_people_wikidata.py --phase faces) is the anchor of a small crop;
+    # face_text drops one that does not lie inside the image.
+    focus = ({f: AP.face_text(AP.face_list(t)) for f, t in
+              s.execute("SELECT file, face FROM people_art WHERE face IS NOT NULL")} if "face" in cols else {})
     by_person = {}
     for pid, file, cls, usable, via, author, template, basis in s.execute(
             "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis "
@@ -297,7 +303,7 @@ def served_portraits(s, people):
     for pid in sorted(by_person):
         file, cls, template, author = AP.pick(by_person[pid])
         if file not in ids:
-            out["rows"].append((file, cls, template, author) + dims.get(file, (None, None)))
+            out["rows"].append((file, cls, template, author) + dims.get(file, (None, None)) + (focus.get(file),))
             ids[file] = len(out["rows"])
         out["by_person"][pid] = ids[file]
     return out

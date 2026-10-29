@@ -72,6 +72,39 @@ class ArtTest {
         assertEquals("a wide picture is the plate", true, Artwork("x", width = 1830, height = 1000).isWide)
     }
 
+    /** Contract §3.3a's golden cases, the same as js/api.test.js and Apple's CatalogQueryTests. */
+    @Test fun `a small crop is the square around the published face`() {
+        fun at(w: Int?, h: Int?, face: String?) = Artwork("x", width = w, height = h, face = FaceBox.parse(face)).cropRect()
+        fun near(msg: String, got: CropRect?, x: Float, y: Float, w: Float, h: Float) {
+            assertNotNull(msg, got)
+            assertEquals(msg, x, got!!.x, 1e-5f)
+            assertEquals(msg, y, got.y, 1e-5f)
+            assertEquals(msg, w, got.w, 1e-5f)
+            assertEquals(msg, h, got.h, 1e-5f)
+        }
+        near("wide, small face: zoomed onto it", at(1000, 500, "0.5,0.2,0.1,0.2"), 0.45f, 0.1f, 0.2f, 0.4f)
+        near("wide, big face: the edge square", at(1000, 500, "0.85,0,0.15,0.6"), 0.5f, 0f, 0.5f, 1f)
+        near("tall: around the face", at(500, 1000, "0.3,0.25,0.4,0.2"), 0.1f, 0.15f, 0.8f, 0.4f)
+        near("square, big face: the whole", at(1000, 1000, "0.4,0.4,0.5,0.5"), 0f, 0f, 1f, 1f)
+        near("a tiny face: at most 4x", at(1000, 1000, "0.5,0.5,0.01,0.01"), 0.38f, 0.38f, 0.25f, 0.25f)
+        near("control: upright without a face keeps the top", at(500, 1000, null), 0f, 0.1f, 1f, 0.5f)
+        near("control: a square without a face is whole", at(1000, 1000, null), 0f, 0f, 1f, 1f)
+        assertNull("control: a wide picture without a face is not cropped", at(1000, 500, null))
+        assertNull("control: an unknown size keeps the plain crop", at(null, null, "0.6,0.1,0.2,0.2"))
+        assertNull("control: three numbers are no box", FaceBox.parse("0.1,0.2,0.3"))
+    }
+
+    @Test fun `the projection's face box reaches the art`() = runBlocking {
+        val db = CatalogDatabase.open(CatalogFixture.build(tmp.root, withArt = true).path)!!
+        try {
+            assertEquals(FaceBox(0.3f, 0.1f, 0.4f, 0.3f), db.series("suspense")?.face?.art?.face)
+            val d = db.episodeDetail("sus|1943-05-25")!!
+            assertNull("NULL is no box", d.credits.first { it.personId == "p2" }.art?.face)
+        } finally {
+            db.close()
+        }
+    }
+
     @Test fun `initials skip a leading article`() {
         assertEquals("W", artInitial("The Whistler"))
         assertEquals("A", artInitial("\"America First\""))

@@ -196,7 +196,7 @@ none on the web), never as a skip. Segment times are never estimated.
   each item a served recording comes from (`catalog/tools/harvest_downloads.py`,
   else the seed scrape's count in `seeds.json`). An item whose count was never
   read is absent, never zero. Read by the `mostDownloaded` shelf (§5.1).
-- `art`: `(id, url, width, height, license, author, credit, evidence_url)`.
+- `art`: `(id, url, width, height, license, author, credit, evidence_url, face)`.
   `url` is Commons' `Special:FilePath/<file>` with no width: each client's one
   image helper appends `?width=` from Commons' standard steps (120, 330, 500,
   960), never another value (Commons refuses most others) and never a re-hosted copy.
@@ -211,6 +211,7 @@ none on the web), never as a skip. Segment times are never estimated.
   `cc_by_sa`); `credit` ("Author, CC BY-SA 3.0") is set exactly when the license
   requires attribution, and a client shows it wherever the image is shown at
   header size or in the Detail credits; `evidence_url` is the file page.
+  `face` is where a small crop centers (§3.3a), or NULL.
 - `episodes.star`: the episode's face (§3.3a), or NULL.
 
 ### 3.3a Portraits: what is served, and whose face a show wears
@@ -234,8 +235,36 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
   episode's first on-air credit with a served portrait, else NULL.
 - A series with no star has no picture: its artwork is the typographic card
   (name, years, network, on its genre hue), drawn by each client from data.
+- **`art.face`**: the box a small crop (a row tile, a cast face, an avatar, the
+  lock screen's square) centers on, as `"x,y,w,h"`, four numbers normalized to the
+  image with the origin at its top left (the web's `art` array carries it as
+  `[x, y, w, h]`); NULL when no face was found or none was looked for. Computed
+  once, on a Mac, by `harvest_people_wikidata.py --phase faces`: Apple Vision's
+  face rectangles (revision 3, `catalog/tools/face_boxes.swift`) over Commons' 500
+  thumbnail: of the faces at confidence 0.5 or more, the largest, or, when others
+  are at least a quarter of its area (a group photograph), the box holding them
+  all, so a crop never zooms onto one face of a group; kept in `files.json.gz`
+  beside the size, with the detector's raw boxes (`faces`). MEASURED 2026-10-28:
+  all 3,765 harvested files read; of the 2,453 served, 2,422 have a box (204 of
+  them a group's), 278 of the 282 wide ones; a random 36 checked by eye were all
+  on a face. The 31 misses are mostly halftones, drawings and profiles, or not a
+  photograph of a person at all. A hint for a crop, never a claim of whose face it is. Every
+  client crops with the one formula below and never detects faces itself; a page
+  that is about the picture shows it whole and ignores it.
+  **The crop square** (`cropRect`, golden cases in `js/api.test.js`, Apple's
+  `CatalogQueryTests`, Android's `ArtTest`), in units of the image's height for an
+  image of aspect `a = width / height`: the largest square is `S0 = min(a, 1)`. With
+  a face, `m = max(w * a, h)` is its size, the square's side is
+  `S = clamp(2 * m, S0 / 4, S0)` (the face about half the square, at most 4x zoom),
+  centered on the face's center `((x + w / 2) * a, y + h / 2)` and moved inside the
+  image. Without a face an upright or square picture takes `S0` at 50 % across and
+  20 % down the slack; a wide one is not cropped (the tile keeps its letter, an
+  avatar its empty slot). The result is published to the view as a rectangle
+  normalized to the image (`x = left / a`, `y = top`, `w = S / a`, `h = S`), drawn by
+  scaling the image to `1 / w` of the slot's width and shifting it by `-x / w`.
+  An unknown size (an older catalog) keeps the plain fill crop at (0.5, 0.2).
 - Guarantees (`catalog/tests/test_projection_art.py`, each broken once): every
-  image's class is served; a credit exactly when owed, with an author; every
+  image's class is served; a face lies inside its image; a credit exactly when owed, with an author; every
   image is worn by a person and every portrait exists; a star wears a portrait
   and an episode's star is credited in it; every published image traced back to
   its source rows passes the predicate again.
@@ -330,7 +359,7 @@ the starting shape, Archive Watch's:
 
 A Detail row's `transcript` is §3.1's `transcript_url` (null unless the gate
 passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
-`width`, `height`, `credit`, `evidence`): a series row appends `star` (the
+`width`, `height`, `credit`, `evidence`, `face`): a series row appends `star` (the
 face's name) and `art`, a series page carries both as keys, a credit appends
 `art` (its person's portrait or null), and a Detail row appends `star` (the
 episode's face, a person id among its credits). A series row appends `scripts` (how many of its served episodes carry a

@@ -196,9 +196,23 @@ images, then just blurring and black bars."* V3 applied this skill: an
 upright or square face sits beside the heading as a captioned print, a
 wide one is a plate at its own aspect, Now Playing's box shrinks to the
 image, and the 56 px tiles and 32 px cast faces keep their top-anchored
-crops (no focal point is published yet; that is the next step, computed
-in the pipeline). The rules live in WEB-DESIGN §6.4a and R11a of each
-platform design doc.
+crops (no focal point was published yet). V4 published one: Apple Vision's
+face rectangles (revision 3, pinned), run once on a Mac over Commons' 500
+thumbnail by `harvest_people_wikidata.py --phase faces`, the largest face at
+confidence 0.5 or more (in a group photograph, the box holding every face
+near its size: a person's P18 can be a group, and zooming onto the largest
+face can show someone else), stored as `face` beside the size and published as
+`art.face` (contract §3.3a, with the one crop formula and its golden
+cases in all three test suites). The crop is the square around the face,
+the face about half of it, at most 4x zoom: anchoring alone kept Naish's
+title-card lettering in a 32 px circle, since a 1.83 frame's centered
+square already held his small face. Vision was chosen over OpenCV's Haar or
+DNN detectors because it ships with macOS (nothing to install or
+download), its revision can be pinned, and it reports a confidence per
+face that a Haar cascade does not; it does not run
+on Linux CI, which is why it is a harvest phase whose output rides the
+cache, never a build step. The rules live in WEB-DESIGN §6.4 and §6.4a and
+R11a of each platform design doc.
 
 ## See also
 

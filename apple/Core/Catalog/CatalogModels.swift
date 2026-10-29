@@ -12,6 +12,58 @@ nonisolated struct Artwork: Hashable, Sendable {
     var height: Int? = nil
     var credit: String? = nil
     var evidence: URL? = nil
+    /// Where a small crop centers (contract §3.3a), computed once in the pipeline.
+    var face: FaceBox? = nil
+
+    /// A face box normalized to the image, origin at its top left: "x,y,w,h" in the projection.
+    struct FaceBox: Hashable, Sendable {
+        let x, y, w, h: Double
+
+        init(x: Double, y: Double, w: Double, h: Double) {
+            (self.x, self.y, self.w, self.h) = (x, y, w, h)
+        }
+
+        init?(_ text: String?) {
+            let v = (text ?? "").split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            guard v.count == 4, v[2] > 0, v[3] > 0 else { return nil }
+            self.init(x: v[0], y: v[1], w: v[2], h: v[3])
+        }
+    }
+
+    /// A crop square normalized to the image: origin at its top left, `w` and `h` its share
+    /// of the image's width and height.
+    struct CropRect: Hashable, Sendable {
+        let x, y, w, h: Double
+    }
+
+    /// The square a small slot (a row tile, a cast face) shows (iOS-DESIGN R11a, contract
+    /// §3.3a, the web's `API.cropRect` with the same golden cases): around the published
+    /// face, the face about half the square and at most `maxZoom` times the largest square;
+    /// without a face the largest square at 50 % across and 20 % down; nil when the picture
+    /// is wide with no face (not cropped) or its size is unknown (the plain fill crop).
+    func cropRect(maxZoom: Double = 4) -> CropRect? {
+        guard let a = aspectRatio, face != nil || !isWide else { return nil }
+        let full = min(a, 1)
+        func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { min(hi, max(lo, v)) }
+        var (s, left, top) = (full, 0.5 * (a - full), 0.2 * (1 - full))
+        if let f = face {
+            s = clamp(2 * max(f.w * a, f.h), full / maxZoom, full)
+            left = clamp((f.x + f.w / 2) * a - s / 2, 0, a - s)
+            top = clamp(f.y + f.h / 2 - s / 2, 0, 1 - s)
+        }
+        return CropRect(x: left / a, y: top, w: s / a, h: s)
+    }
+
+    /// The square, in pixels, a lock screen is handed from a decoded `width` x `height` copy
+    /// of this picture: the largest square, moved onto the face (no zoom: the system shows it
+    /// large), or nil to hand over the whole.
+    func squareCrop(width: Int, height: Int) -> (x: Int, y: Int, side: Int)? {
+        guard width > 0, height > 0, width != height else { return nil }
+        var sized = self
+        (sized.width, sized.height) = (width, height)
+        guard let r = sized.cropRect(maxZoom: 1) else { return nil }
+        return (Int((r.x * Double(width)).rounded()), Int((r.y * Double(height)).rounded()), min(width, height))
+    }
 
     /// Commons' standard thumbnail steps; any other width is refused upstream.
     static let steps = [120, 330, 500, 960]

@@ -131,7 +131,7 @@ const API = (() => {
 
   /* ---- Art (contract §3.3a, Decision 069) ---- */
 
-  const ART_FIELDS = ['url', 'width', 'height', 'credit', 'evidence'];
+  const ART_FIELDS = ['url', 'width', 'height', 'credit', 'evidence', 'face'];
   /** A published art array as an object, or null. */
   function artOf(a) {
     if (!Array.isArray(a) || !a[0]) return null;
@@ -156,6 +156,26 @@ const API = (() => {
   function artShape(art) {
     const a = artAspect(art);
     return a !== null && a > wideAspect ? 'wide' : 'upright';
+  }
+  /** The square a small slot (a tile, a cast face) shows, as {x, y, w, h} normalized to the
+      image (contract §3.3a, WEB-DESIGN §6.4): around the published face box, the face about half
+      the square and at most 4x zoom; without a face the largest square at 50% across and 20%
+      down; null when the picture is wide with no face (not cropped) or its size is unknown (the
+      caller keeps the plain fill crop). The same formula and golden cases on Apple and Android. */
+  function cropRect(art) {
+    const a = artAspect(art);
+    if (a === null) return null;
+    const f = Array.isArray(art.face) && art.face.length === 4 ? art.face : null;
+    if (!f && a > wideAspect) return null;
+    const full = Math.min(a, 1);
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    let s = full, left = 0.5 * (a - full), top = 0.2 * (1 - full);
+    if (f) {
+      s = clamp(2 * Math.max(f[2] * a, f[3]), full / 4, full);
+      left = clamp((f[0] + f[2] / 2) * a - s / 2, 0, a - s);
+      top = clamp(f[1] + f[3] / 2 - s / 2, 0, 1 - s);
+    }
+    return { x: left / a, y: top, w: s / a, h: s };
   }
 
   /* ---- The verbs (contract §5) ---- */
@@ -1095,7 +1115,7 @@ const API = (() => {
 
   return {
     rooms, plays, isOffline, offlineLine,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,

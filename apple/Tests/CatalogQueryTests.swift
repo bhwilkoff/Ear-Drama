@@ -172,10 +172,11 @@ enum Fixture {
         // 1943 episode's; Orson Welles' portrait owes a CC credit.
         try exec("""
             INSERT INTO art VALUES (1, 'https://commons.wikimedia.org/wiki/Special:FilePath/Agnes_Moorehead.jpg',
-                600, 800, 'pd_us', NULL, NULL, 'https://commons.wikimedia.org/wiki/File:Agnes_Moorehead.jpg');
+                600, 800, 'pd_us', NULL, NULL, 'https://commons.wikimedia.org/wiki/File:Agnes_Moorehead.jpg',
+                '0.3,0.1,0.4,0.3');
             INSERT INTO art VALUES (2, 'https://commons.wikimedia.org/wiki/Special:FilePath/Orson_Welles.jpg',
                 NULL, NULL, 'cc_by', 'Alan Light', 'Alan Light, CC BY 2.0',
-                'https://commons.wikimedia.org/wiki/File:Orson_Welles.jpg');
+                'https://commons.wikimedia.org/wiki/File:Orson_Welles.jpg', NULL);
             UPDATE people SET portrait = 1 WHERE id = 'p1';
             UPDATE people SET portrait = 2 WHERE id = 'p3';
             UPDATE series SET star = 'p1' WHERE key = 'suspense';
@@ -254,6 +255,38 @@ struct CatalogQueryTests {
         #expect(ArtInitial.of("The Whistler") == "W")
         #expect(ArtInitial.of("\"America First\"") == "A")
         #expect(ArtInitial.of("...") == "")
+    }
+
+    /// Contract §3.3a's golden cases, the same as js/api.test.js and Android's ArtTest.
+    @Test func aSmallCropIsTheSquareAroundThePublishedFace() throws {
+        let url = try #require(URL(string: "https://x/A.jpg"))
+        func at(_ w: Int?, _ h: Int?, _ face: String?) -> Artwork.CropRect? {
+            Artwork(url: url, width: w, height: h, face: Artwork.FaceBox(face)).cropRect()
+        }
+        func near(_ got: Artwork.CropRect?, _ x: Double, _ y: Double, _ w: Double, _ h: Double) -> Bool {
+            guard let got else { return false }
+            return [got.x - x, got.y - y, got.w - w, got.h - h].allSatisfy { abs($0) < 1e-6 }
+        }
+        #expect(near(at(1000, 500, "0.5,0.2,0.1,0.2"), 0.45, 0.1, 0.2, 0.4), "wide, small face: zoomed onto it")
+        #expect(near(at(1000, 500, "0.85,0,0.15,0.6"), 0.5, 0, 0.5, 1), "wide, big face: the edge square")
+        #expect(near(at(500, 1000, "0.3,0.25,0.4,0.2"), 0.1, 0.15, 0.8, 0.4), "tall: around the face")
+        #expect(near(at(1000, 1000, "0.4,0.4,0.5,0.5"), 0, 0, 1, 1), "square, big face: the whole")
+        #expect(near(at(1000, 1000, "0.5,0.5,0.01,0.01"), 0.38, 0.38, 0.25, 0.25), "a tiny face: at most 4x")
+        #expect(near(at(500, 1000, nil), 0, 0.1, 1, 0.5), "control: upright without a face keeps the top")
+        #expect(near(at(1000, 1000, nil), 0, 0, 1, 1), "control: a square without a face is whole")
+        #expect(at(1000, 500, nil) == nil, "control: a wide picture without a face is not cropped")
+        #expect(at(nil, nil, "0.6,0.1,0.2,0.2") == nil, "control: an unknown size keeps the plain crop")
+        #expect(Artwork.FaceBox("0.1,0.2,0.3") == nil, "control: three numbers are no box")
+        let wide = Artwork(url: url, width: 1000, height: 500, face: Artwork.FaceBox("0.5,0.2,0.2,0.2"))
+        #expect(wide.squareCrop(width: 500, height: 250).map { [$0.x, $0.y, $0.side] } == [175, 0, 250],
+                "the lock screen's square sits on the face")
+        #expect(Artwork(url: url, width: 1000, height: 500).squareCrop(width: 500, height: 250) == nil,
+                "control: a wide picture without a face is handed over whole")
+        let db = try Fixture.open()
+        let star = try #require(db.series(key: "suspense")?.face)
+        #expect(star.art.face == Artwork.FaceBox(x: 0.3, y: 0.1, w: 0.4, h: 0.3), "the projection's box is read")
+        let hitch = try #require(db.episodeDetail(id: "suspense|1942-10-20"))
+        #expect(hitch.credits.first { $0.personID == "p3" }?.art?.face == nil, "NULL is no box")
     }
 
     @Test func anOlderCatalogWithoutArtStillOpens() throws {
