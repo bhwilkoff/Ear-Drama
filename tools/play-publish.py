@@ -117,9 +117,23 @@ def main():
             release["releaseNotes"] = [{"language": "en-US", "text": notes}]
 
         # A PUT of the whole track: repeating it is harmless.
-        with_retries("update track", lambda: edits.tracks().update(
-            packageName=pkg, editId=edit_id, track=args.track,
-            body={"track": args.track, "releases": [release]}).execute(), HttpError)
+        def put_track():
+            return edits.tracks().update(
+                packageName=pkg, editId=edit_id, track=args.track,
+                body={"track": args.track, "releases": [release]}).execute()
+        try:
+            with_retries("update track", put_track, HttpError)
+        except HttpError as e:
+            # An app never published (its store listing and content forms unfinished)
+            # takes only draft releases: "Only releases with status draft may be
+            # created on draft app." The bundle is already uploaded; keep it as a draft.
+            if "draft app" not in str(e) or status == "draft":
+                raise
+            status = release["status"] = "draft"
+            release.pop("userFraction", None)
+            print("  Play: this app has never been published, so the release is a DRAFT.")
+            print("  OWNER: finish the app's setup in Play Console, then roll the draft out.")
+            with_retries("update track", put_track, HttpError)
         print(f"track '{args.track}' → versionCode {vc} ({status}"
               + (f", rollout {args.rollout}" if args.rollout and not args.draft else "") + ")")
 
