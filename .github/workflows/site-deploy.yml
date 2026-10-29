@@ -33,6 +33,7 @@ on:
       - 'catalog/plays/castable-scripts.json'
       - '.well-known/**'
       - 'tools/assemble_site.sh'
+      - 'catalog/tools/build_share_pages.py'
       - '.github/workflows/site-deploy.yml'
   workflow_dispatch:
 
