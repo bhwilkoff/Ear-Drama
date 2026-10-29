@@ -363,3 +363,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Release launch check, 1.0.86 build 87, iPhone 12: installed, alive at 5 s and 20 s (pid 7008), crash logs 2 before and after, terminate verified gone. App Store build dispatched upload-only (run 40794744301; store words wait on the owner).
 - CI: 1.0.86 Android Build (the first lintRelease-gated run), Site deploy, Design Tokens green.
 - Not investigated: SiteLinksUITests.testCreditsOpensTheSiteAndComesBack failed once at 4:35 PM (app still foreground after the Safari hand-off); the backboardd memory during XCTest recordings.
+
+### Tick 104, 2026-10-28, V3 merged: faces in boxes of their own shape (1.0.87)
+- New skill `artwork-presentation-design` (sourced; blur-and-bars an anti-pattern). Upright and square faces are a framed print beside the heading; wide faces a plate above it; Now Playing's box takes the picture's shape. The pipeline publishes width/height (3,765 files sized). Web shots read before merge (Jack Benny tall at 375, Life With Luigi wide at 375 and 1440, Now Playing, the Apple offscreen render): no bars.
+- Not live yet: sizes reach clients only through a new cache Release. Creating it was refused by the permission check (a public surface: the owner's call). C1 stages the cache, proves by diff and rebuild that sizes are the only change, and writes tools/cut_catalog_release.sh for the owner.
+- Seen: Life With Luigi's "portrait" is a trailer frame with "With J. Carrol Naish" burned in (content call, owner). Jack Benny episodes dated 1921 (the show began 1932): C1 investigates.
+- Running: C1 (cache Release prep, Jack Benny dates), V4 (focal points for small crops, from the skill). App Store upload of 1.0.86 succeeded (run 40794744301).
