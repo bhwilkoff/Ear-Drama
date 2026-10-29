@@ -245,7 +245,7 @@ with tempfile.TemporaryDirectory() as tmp:
           native_dl, {**{k: None for k, _t, _e in SERIES}, **want})
     with open(os.path.join(tmp, "pop-web", "index", "series.json"), encoding="utf-8") as fh:
         idx = json.load(fh)
-    check("web index: downloads is a published field", idx["fields"][-1], "downloads")
+    check("web index: downloads is a published field", "downloads" in idx["fields"], True)
     web_dl = {r[0]: r[idx["fields"].index("downloads")] for r in idx["rows"]}
     check("web index: the gate closed sums only what the web serves; unread is null",
           {k: v for k, v in web_dl.items() if v is not None}, {k: v for k, v in want.items() if k != "m5"})

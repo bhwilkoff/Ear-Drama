@@ -63,7 +63,8 @@ MIN_EPISODES = 10_000
 SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
-    networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER);
+    networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER,
+    picture INTEGER, picture_kind TEXT, picture_source TEXT);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
@@ -177,7 +178,26 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     credited_by_series = {}
     for eid, creds in credits_by_ep.items():
         credited_by_series.setdefault(series_of.get(eid), {})[eid] = [(p, r) for p, _n, r, _c in creds]
-    stars = {sk: AP.series_star(eps, faces) for sk, eps in credited_by_series.items()}
+    marks, sitelinks = star_evidence(s, same)
+    served_series = {series_of[e] for e in served if e in series_of}
+    face_of = {sk: AP.series_face(credited_by_series.get(sk, {}), faces, marks.get(sk, ()), sitelinks)
+               for sk in served_series}
+    stars = {sk: f[0] for sk, f in face_of.items() if f}
+    # The series' picture (contract section 3.3a): its show image, else its star's portrait.
+    file_ids = {AP.image_url(r[0]): i for i, r in enumerate(portraits["rows"], 1)}
+    next_id = len(portraits["rows"]) + 1
+    pictures = {}
+    for sk, (file, src, cls, template, author, w, h, face) in sorted(served_show_images(s, served_series).items()):
+        url = AP.image_url(file)
+        if url not in file_ids:
+            d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?)", (
+                next_id, url, w, h, cls, author if AP.license_name(cls, template) else None,
+                AP.credit(cls, template, author), AP.evidence_url(file), face))
+            file_ids[url], next_id = next_id, next_id + 1
+        pictures[sk] = (file_ids[url], "show", src)
+    for sk, f in face_of.items():
+        if f and sk not in pictures:
+            pictures[sk] = (portraits["by_person"][f[0]], f[1], f[2])
 
     recs_by_ep = {}
     for row in s.execute("SELECT episode_id, rank, archive_id, file, format, kbps, length_s, variant, partial "
@@ -224,9 +244,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            pic = pictures.get(key, (None, None, None))
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key), sort_name(name),
-                       None))
+                       None) + pic)
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
@@ -253,6 +274,9 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     counts["portraits"] = d.execute("SELECT COUNT(*) FROM people WHERE portrait IS NOT NULL").fetchone()[0]
     counts["seriesStars"] = d.execute("SELECT COUNT(*) FROM series WHERE star IS NOT NULL").fetchone()[0]
     counts["seriesDownloads"] = d.execute("SELECT COUNT(*) FROM series WHERE downloads IS NOT NULL").fetchone()[0]
+    for kind in AP.KINDS:
+        counts[f"seriesPicture{kind.title()}"] = d.execute(
+            "SELECT COUNT(*) FROM series WHERE picture_kind = ?", (kind,)).fetchone()[0]
     counts["episodeStars"] = d.execute("SELECT COUNT(*) FROM episodes WHERE star IS NOT NULL").fetchone()[0]
     counts["clean"] = d.execute("SELECT COUNT(*) FROM episodes WHERE rights = 'clean'").fetchone()[0]
     counts["loudness"] = d.execute("SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL").fetchone()[0]
@@ -345,6 +369,42 @@ def same_person(s):
             keep = sorted(members, key=lambda m: (not born.get(m[0]), -m[1], m[0]))[0][0]
             out.update({pid: keep for pid, _ in members if pid != keep})
     return out
+
+
+def star_evidence(s, same=None):
+    """({series key: {person id}} the program's record marks as its star, {person id: Wikipedias
+    covering them}) from enrich_series_art.py; empty for a source without its tables."""
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    same = same or {}
+    marks, sitelinks = {}, {}
+    if "series_marks" in tables:
+        for sk, pid in s.execute("SELECT series_key, person_id FROM series_marks"):
+            marks.setdefault(sk, set()).add(same.get(pid, pid))
+    if {"wikipedia_sitelinks", "people_wikidata"} <= tables:
+        for pid, n in s.execute("SELECT w.person_id, l.n FROM people_wikidata w JOIN wikipedia_sitelinks l "
+                                "ON l.qid = w.qid"):
+            pid = same.get(pid, pid)
+            sitelinks[pid] = max(n, sitelinks.get(pid, 0))
+    return marks, sitelinks
+
+
+def served_show_images(s, series_keys):
+    """{series key: (file, source, cls, template, author, width, height, face)}: the one show image
+    art_policy serves for each series (show_served, then pick_show), checked again here from the
+    source rows. A source without series_art (a fixture, an older build) serves none."""
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "series_art" not in tables:
+        return {}
+    rows = {}
+    last = dict(s.execute("SELECT key, last_date FROM series"))
+    for sk, file, src, identity, cls, template, author, w, h, face, cats, when in s.execute(
+            "SELECT series_key, file, source, identity, license_class, template, author, width, height, face, "
+            "categories, date_field FROM series_art"):
+        if sk in series_keys and AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"),
+                                                when, last.get(sk)):
+            rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face))))
+    names = dict(s.execute("SELECT key, name FROM series"))
+    return {sk: AP.pick_show(r, names.get(sk)) for sk, r in rows.items()}
 
 
 def served_portraits(s, people, same=None):

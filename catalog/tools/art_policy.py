@@ -21,6 +21,7 @@ match carries it too:
 Library of Congress "no known restrictions" photographs and Smithsonian CC0
 portraits (Track F) are not here: RESEARCH.md §12 V2 and V4 are the owner's.
 """
+import math
 import re
 import urllib.parse
 
@@ -128,3 +129,173 @@ def face_text(box):
 def face_list(text):
     """`art.face` as the web's [x, y, w, h], or None."""
     return [float(v) for v in text.split(",")] if text else None
+
+
+# ---------------------------------------------------------------- the picture that leads a show
+
+# A series' picture (contract section 3.3a), in order: the show's own image ("show"), then its
+# star by recognizability ("star"), then the person heard most ("person"); else the board.
+# Owner, 2026-10-29: "images/graphics that show the full 'show' are better than individual
+# contributors. Images that show the star(s) are better than those that show folks that are
+# less recognizable."
+KINDS = ("show", "star", "person")
+# Where a show image may come from, best first: the item's own chosen image, logo, poster,
+# collage, related image; then a Commons file whose Structured Data depicts the item (P180);
+# then a file the item's own Commons category (P373) holds, named on the file's own page.
+SHOW_SOURCES = ("wikidata:P18", "wikidata:P154", "wikidata:P3383", "wikidata:P2716", "wikidata:P6802",
+                "commons:P180", "commons:category")
+SHOW_RANK = {s: i for i, s in enumerate(SHOW_SOURCES)}
+# How the series was matched to its Wikidata item. A title alone is never an identity
+# (evidence-gated-catalog-curation section 7); a title with the years or the network is.
+IDENTITY_SERVED = ("title+years", "title+network")
+# The largest show tile is 160 points (uniform-imagery-design: a show tile is 96 to 160 pt, and a
+# slot takes a picture only with at least the slot's pixels): a smaller show image would be
+# refused by every tile, so it does not displace a star who can fill one.
+SHOW_MIN_SIDE = 160
+# A still of the program's television run is a different broadcast (Life of Riley's TV cast).
+TELEVISION = re.compile(r"\b(television|TV)\b", re.I)
+NETWORK_NAMES = {"columbiabroadcastingsystem": "cbs", "cbsradio": "cbs", "cbsradionetwork": "cbs",
+                 "nationalbroadcastingcompany": "nbc", "nbcred": "nbc", "nbcradio": "nbc", "nbcblue": "blue",
+                 "bluenetwork": "blue", "mutualbroadcastingsystem": "mutual", "mbs": "mutual",
+                 "americanbroadcastingcompany": "abc", "abcradio": "abc"}
+
+
+def network_key(name):
+    k = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    return NETWORK_NAMES.get(k, k)
+
+
+YEAR_SLACK = 2
+
+
+def description_years(text):
+    """The years an item's own description names ('radio Western drama series (1952-1961)',
+    'from the mid-1980s'), as (first, last), or None."""
+    ys = []
+    for m in re.finditer(r"\b(19\d\d|20[0-2]\d)(s)?\b", text or ""):
+        y = int(m.group(1))
+        ys += [y, y + 9] if m.group(2) else [y]
+    return (min(ys), max(ys)) if ys else None
+
+
+def series_identity(evidence, our_networks, broadcasters, description=None):
+    """'title+years' when the Wikidata item's years (its own dates, its article's decade
+    category, or the years its own description names) overlap ours within YEAR_SLACK,
+    'title+network' when one of its broadcasters is one of our networks, else 'title' (refused).
+    evidence: series_wikidata.match_evidence as a dict."""
+    evidence = evidence or {}
+    if TELEVISION.search(description or "") and not re.search(r"\bradio\b", description or "", re.I):
+        return "television"   # its own description says it is the TV program (The Goldbergs, 1949-1956)
+    if evidence.get("years") == "overlap":
+        return "title+years"
+    ours = [y for y in (evidence.get("our_years") or []) if y]
+    dy = description_years(description)
+    if ours and dy and dy[0] <= max(ours) + YEAR_SLACK and dy[1] >= min(ours) - YEAR_SLACK:
+        return "title+years"
+    ours = {network_key(n) for n in our_networks or []}
+    if ours & {network_key(b) for b in broadcasters or []}:
+        return "title+network"
+    return "title"
+
+
+def file_year(date_field):
+    """The year a Commons file page's own date field names, or None."""
+    m = re.search(r"\b(1[89]\d\d|20\d\d)\b", date_field or "")
+    return int(m.group(1)) if m else None
+
+
+def show_served(identity, source, cls, author, width, height, file, categories=(), date_field=None,
+                last_date=None):
+    """True when this (series match, file) may lead the show: the match is more than a title,
+    the file came from one of the show's own records, its license class is one portraits are
+    served under (credited when required), it is big enough for a show tile, its own page does
+    not say it is from television, and its own date (its page's date field, else a year in its
+    name) is not after the run (YEAR_SLACK): Bob Barker's 1958 headshot is the TV Truth or
+    Consequences. A date before the run is kept: a show's origins are its own."""
+    if identity not in IDENTITY_SERVED or source not in SHOW_RANK or cls not in PREFER:
+        return False
+    if cls in NEEDS_CREDIT and NO_AUTHOR.match(author or ""):
+        return False
+    if not width or not height or min(width, height) < SHOW_MIN_SIDE:
+        return False
+    fy, last = file_year(date_field) or file_year(file), file_year(last_date)
+    if fy and last and fy > last + YEAR_SLACK:
+        return False
+    return not TELEVISION.search(" ".join([file or ""] + list(categories or [])))
+
+
+def pick_show(rows, series_name=None):
+    """The one show image: the best source, then a file whose own name names the show ("Ralph
+    Edwards Truth or Consequences 1942" before "Buff Cobb 1949" in the same category), then the
+    most permissive class, then the file name. rows: (file, source, cls, ...) passing `show_served`."""
+    name = _nt(series_name) if series_name else ""
+    named = lambda f: bool(name) and len(name) >= TITLE_MIN and name in _nt(f)
+    return min(rows, key=lambda r: (SHOW_RANK[r[1]], not named(r[0]), PREFER[r[2]], r[0])) if rows else None
+
+
+# The program's own record (OTRRpedia's "Noted Role") marks a star when the character is the
+# title role or the role is the star's or the host's own.
+MARK_ROLES = re.compile(r"^(star|host|hostess|himself|herself|emcee|m\.? ?c\.?)$", re.I)
+TITLE_MIN = 4
+# A marked star heard on at least a tenth of the credited episodes: Richard Kollmar's Boston
+# Blackie (184 of 190) or Steve Dunne's half season of Sam Spade, never Robert Montgomery's
+# season as host of Suspense's twenty years (15 of about 900 credited).
+MARK_SHARE = 0.1
+
+
+def _nt(s):
+    s = re.sub(r"\(.*?\)", " ", (s or "").lower())
+    s = re.sub(r"^\s*(the|a|an)\s+", "", s)
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def marks_star(character, series_name):
+    """True when a program's noted role names its star: 'Star', 'Host', 'Himself', or the
+    title role (the character is in the series' name: 'Boston Blackie(beginning in 1945)')."""
+    ch = re.sub(r"\(.*$", "", character or "").strip()
+    if MARK_ROLES.match(ch):
+        return True
+    c, s = _nt(ch), _nt(series_name)
+    return len(c) >= TITLE_MIN and c in s
+
+
+def recognizability(sitelinks):
+    """1 + ln(1 + the number of Wikipedias with an article about the person): a person no
+    Wikipedia covers weighs 1, one on 1 weighs 1.7, on 10 weighs 3.4, on 50 weighs 4.9. The log
+    because the counts are heavy-tailed (a film star on 60, a radio regular on 1 or 2): ten times
+    the coverage is one step more, never ten times the claim on the show."""
+    return 1 + math.log1p(max(0, sitelinks or 0))
+
+
+def series_face(credited, portrait_people, marked=(), sitelinks=None):
+    """(person id, kind, source) for the series' face, or None.
+    1. "star", "otrrpedia:noted-role": a person the program's record marks (title role, star,
+       host) with a served portrait, heard on at least STAR_MIN_EPISODES and MARK_SHARE of the
+       credited episodes (any, when none is credited);
+    2. "star", "wikipedia:sitelinks": else a regular (series_star's eligibility) whom at least
+       one Wikipedia covers;
+    3. "person", "credits:heard-most": else series_star, the heard-most rule.
+    Within 1 and 2 the score is the share of credited episodes x recognizability; ties by id.
+    credited: {episode_id: [(person_id, role), ...]}; marked: person ids; sitelinks: {pid: n}."""
+    sitelinks = sitelinks or {}
+    total = len(credited)
+    counts = {}
+    for creds in credited.values():
+        for pid in {p for p, role in creds if role in ON_AIR and p in portrait_people}:
+            counts[pid] = counts.get(pid, 0) + 1
+
+    def best(pids):
+        scored = [((counts.get(p, 0) / total if total else 1.0) * recognizability(sitelinks.get(p)), p)
+                  for p in pids]
+        return min(scored, key=lambda t: (-t[0], t[1]))[1] if scored else None
+
+    tagged = sorted({p for p in marked if p in portrait_people and (not total or (
+        counts.get(p, 0) >= STAR_MIN_EPISODES and counts.get(p, 0) >= MARK_SHARE * total))})
+    if tagged:
+        return best(tagged), "star", "otrrpedia:noted-role"
+    regulars = [p for p, n in counts.items() if n >= STAR_MIN_EPISODES and n >= STAR_SHARE * total]
+    known = [p for p in regulars if (sitelinks.get(p) or 0) >= 1]
+    if known:
+        return best(known), "star", "wikipedia:sitelinks"
+    pid = series_star(credited, portrait_people)
+    return (pid, "person", "credits:heard-most") if pid else None

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Show-first pictures</title>
+<link rel="stylesheet" href="../directions/shared/tokens.css">
+<style>
+  /* D2c-2 contact sheet: 40 shows as D's show tiles (uniform-imagery-design: one grade, one mount, one
+     edge, the name on the board), the picture before and after the show-first rule. ?set=before|after&theme=dark */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--color-background); color: var(--color-text); font-family: var(--font-body); padding: 16px; }
+  h1 { font: var(--type-section-header-weight) var(--type-section-header-size)/1.2 var(--font-display); margin: 0 0 4px; text-transform: uppercase; letter-spacing: .02em; }
+  .sub { font-size: var(--type-caption-size); color: var(--color-text-muted); margin: 0 0 12px; }
+  .grid { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); }
+  .why { display: block; font-size: 10px; line-height: 1.2; font-family: var(--font-mono); margin-top: 2px; overflow-wrap: anywhere; }
+  .win { position: relative; overflow: hidden; aspect-ratio: 1; width: 100%; }
+  .win img { position: absolute; display: block; }
+  .win img.fit { position: static; width: 100%; height: 100%; object-fit: contain; }
+  .a-tile { border-radius: var(--radius-card); background: var(--genre-accent, var(--color-surface-alt)); padding: 6px 6px 8px; }
+  .a-tile .win { border-radius: 4px; background: var(--print-ground); box-shadow: 0 0 0 1px var(--print-edge); }
+  .a-tile .name { color: var(--board-text, var(--color-text)); font: 700 15px/1.05 var(--font-display); text-transform: uppercase; margin-top: 6px; min-height: 2.1em; letter-spacing: .01em; overflow-wrap: normal; hyphens: manual; }
+  .a-tile .card { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 8px; font: 700 18px/1 var(--font-display); text-transform: uppercase; color: var(--board-text, var(--color-text)); background: var(--genre-accent, var(--color-surface-alt)); box-shadow: inset 0 0 0 1px var(--board-text, var(--color-border)); }
+  [data-genre] { --board-text: #FFFFFF; }
+  .a-tile .why { color: var(--board-text, var(--color-text-muted)); opacity: .85; }
+  :root { --print-ground: #EDEDED; --print-edge: rgba(19,19,22,.18); }
+  html[data-theme="dark"] [data-genre] { --board-text: #0F0F11; }
+  html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242,242,244,.16); }
+  svg.defs { position: absolute; width: 0; height: 0; }
+</style>
+<script src="data.js"></script>
+</head>
+<body>
+<svg class="defs" aria-hidden="true"><defs id="defs"></defs></svg>
+<h1 id="title"></h1>
+<p class="sub" id="sub"></p>
+<div id="grid" class="grid"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const set = q.get('set') || 'after';
+if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+const STEPS = [120, 330, 500, 960];
+const DPR = 2, SLOT = 103, MIN_TILE = 96;
+const url = (p, px) => p.url + '?width=' + (STEPS.find((s) => s >= px) || 960);
+document.getElementById('title').textContent = 'Show tiles · ' + set;
+document.getElementById('sub').textContent = set === 'before'
+  ? 'Before: the person heard on the most credited episodes.'
+  : 'After: the show’s own picture, then its star, then who is heard most.';
+const defs = document.getElementById('defs');
+function filterFor(i, p) {
+  const [k, o] = p.grade;
+  const fn = `<feFuncR type="linear" slope="${k}" intercept="${o}"/><feFuncG type="linear" slope="${k}" intercept="${o}"/><feFuncB type="linear" slope="${k}" intercept="${o}"/>`;
+  defs.insertAdjacentHTML('beforeend', `<filter id="g${i}" color-interpolation-filters="sRGB"><feColorMatrix type="saturate" values="0"/><feComponentTransfer>${fn}</feComponentTransfer></filter>`);
+  return `url(#g${i})`;
+}
+function cropImg(p, filter) {
+  const c = p.crop;
+  const img = document.createElement('img');
+  img.alt = '';
+  img.referrerPolicy = 'no-referrer';
+  if (!c) { img.className = 'fit'; img.src = url(p, SLOT * DPR); }
+  else {
+    img.src = url(p, SLOT * DPR / c.w);
+    Object.assign(img.style, { width: 100 / c.w + '%', height: 100 / c.h + '%', left: -c.x / c.w * 100 + '%', top: -c.y / c.h * 100 + '%' });
+  }
+  img.style.filter = filter;
+  return img;
+}
+const grid = document.getElementById('grid');
+window.SHEET[set].forEach((p, i) => {
+  const cell = document.createElement('div');
+  cell.className = 'a-tile';
+  if (p.genre) cell.dataset.genre = p.genre;
+  const win = document.createElement('div');
+  win.className = 'win';
+  const graphic = p.url && !p.face && p.w / p.h >= 0.9;
+  const tooSmall = p.cropPx != null && p.cropPx < SLOT;
+  if (!p.url || tooSmall) win.insertAdjacentHTML('beforeend', `<div class="card">${p.show}</div>`);
+  else win.appendChild(cropImg(graphic ? { ...p, crop: null } : p, filterFor(i, p)));
+  cell.appendChild(win);
+  const nm = document.createElement('div');
+  nm.className = 'name';
+  nm.textContent = p.show;
+  cell.appendChild(nm);
+  const why = document.createElement('span');
+  why.className = 'why';
+  why.textContent = `${i + 1} ${p.why}${p.kind === 'show' ? '' : p.name ? ' · ' + p.name : ''}`;
+  cell.appendChild(why);
+  grid.appendChild(cell);
+});
+</script>
+</body>
+</html>
