@@ -450,3 +450,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Owner: "Account deletion should definitely not remove their recordings from already submitted works ... And community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org". PLAYS-DESIGN P14 answered.
 - Labels approved by the owner and shipped in the Worker (deployed 7cc2820e): title suffix "(Ear Drama recording)", subject Ear Drama / audio drama / eardrama.org, a one-sentence factual description with the script's source, language eng. Pinned by the first-publish test (seen red on the old metadata).
 - Unexplained: one Worker run failed 2 tests right after a test edit; four later runs clean. Watch for it.
+
+### Design tick 1, 2026-10-29, the design loop starts (DESIGN-LOOP.md)
+- Owner: "Let's actually construct a new loop that is focused upon the design and display within the app ... Can you do ensure that the loop does extensive research ... Once you have designed the loop to do all of that, please start the loop as well."
+- DESIGN-LOOP.md written (e070bb7): D1 research, D2 a design skill plus three clickable directions for the owner to choose, D3 one surface per batch on every platform, D4 review. CI green.
+- Running: D1a finding in a huge catalog, D1b the single item and listening, D1c making and sharing (Opus, cited, each auditing today's surfaces at 375 px).
