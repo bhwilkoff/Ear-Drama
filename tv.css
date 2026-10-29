@@ -30,7 +30,7 @@ html.tv {
   --tv-bg: #0F0F11;
   --tv-text: #F2F2F4;
   --tv-text-muted: #C4C4CC;
-  --tv-accent: #E3384B;
+  --tv-accent: #F2F2F4;
   --tv-focus-ring: #F2F2F4;
 }
 /* END design-tokens */

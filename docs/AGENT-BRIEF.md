@@ -49,7 +49,7 @@ touches. Your brief adds the feature's goal, decisions, and acceptance tests.
 ## Rules that are easy to cross
 - Only essential words on screen: a refusal, a warning, or a fact the person
   cannot discover by looking. No AI-written copy or lists (data or a human).
-- On Air (Decision 064): red only for what is live; blue for links, focus,
+- On Air (Decision 064, owner 2026-10-29: "Red means recording."): red only for recording; ink for the primary action (Play, Listen through, Listen live); blue for links, focus,
   the selected tab; genre hues are content.
 - Unclaimed recordings are never called public domain; a synthetic voice is a
   live stand-in only, never stored or mixed.

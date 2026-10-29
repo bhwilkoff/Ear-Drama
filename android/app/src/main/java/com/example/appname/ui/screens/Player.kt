@@ -100,7 +100,7 @@ fun MiniPlayer(onExpand: () -> Unit) {
                 LinearProgressIndicator(
                     progress = { (now.positionMs.toFloat() / now.durationMs).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),
-                    color = OnAir.colors.live,
+                    color = OnAir.colors.play,
                 )
             }
             Row(
@@ -137,15 +137,15 @@ private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boo
             enabled = enabled,
             modifier = modifier.size(72.dp),
             colors = IconButtonDefaults.filledIconButtonColors(
-                containerColor = OnAir.colors.live,
-                contentColor = OnAir.colors.onLive,
+                containerColor = OnAir.colors.play,
+                contentColor = OnAir.colors.onPlay,
             ),
         ) {
             Icon(icon, contentDescription = label, modifier = Modifier.size(40.dp))
         }
     } else {
         IconButton(onClick = engine::togglePlay, enabled = enabled) {
-            Icon(icon, contentDescription = label, tint = if (enabled) OnAir.colors.live else LocalContentColor.current)
+            Icon(icon, contentDescription = label, tint = if (enabled) OnAir.colors.play else LocalContentColor.current)
         }
     }
 }
@@ -330,7 +330,7 @@ private fun PositionSlider(now: NowPlaying, engine: PlaybackEngine, enabled: Boo
             onValueChangeFinished = { engine.seekTo(dragValue.toLong()); dragging = false },
             valueRange = 0f..duration.toFloat(),
             enabled = enabled && now.durationMs > 0,
-            colors = SliderDefaults.colors(thumbColor = OnAir.colors.live, activeTrackColor = OnAir.colors.live),
+            colors = SliderDefaults.colors(thumbColor = OnAir.colors.play, activeTrackColor = OnAir.colors.play),
             modifier = Modifier.semantics {
                 contentDescription = "Position"
                 stateDescription = "${formatClock(shown.toLong())} of ${formatClock(now.durationMs)}"

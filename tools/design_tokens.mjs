@@ -181,7 +181,7 @@ function castCss(t) {
     `  --brand-text-muted: ${t.color.brand.textMuted.dark.toUpperCase()};`,
     '}',
     'cast-media-player {',
-    `  --theme-hue: ${hue(p)};`,
+    `  --theme-hue: ${hue((t.color.brand.secondary || t.color.brand.primary).dark)};`,
     `  --progress-color: ${p};`,
     '}',
   ];
@@ -422,7 +422,7 @@ function androidColorsXml(t, mode) {
     `    <color name="brand_background">#FF${hex6(b.background[mode])}</color>`,
     `    <color name="brand_surface">#FF${hex6(b.surface[mode])}</color>`,
     '    <!-- The launcher icon\'s ground is the icon master\'s red in both modes (branding/icon-master.svg). -->',
-    `    <color name="icon_background">#FF${hex6(b.primary.light)}</color>`,
+    `    <color name="icon_background">#FF${hex6((b.record || b.primary).light)}</color>`,
     ...genres(t).map((g) => `    <color name="genre_${g.name}">#FF${hex6(g[mode])}</color>`),
     '</resources>',
     '',
@@ -457,7 +457,7 @@ function windowsResources(t) {
 }
 
 function windowsStyles(t) {
-  const L = [`<sty:FluentAvaloniaTheme CustomAccentColor="#${hex6(t.color.brand.primary.light)}" />`, ''];
+  const L = [`<sty:FluentAvaloniaTheme CustomAccentColor="#${hex6((t.color.brand.secondary || t.color.brand.primary).light)}" />`, ''];
   L.push('<!-- The six-level type ramp, adopted via Classes. Refuse a seventh level. -->');
   for (const l of t.type) {
     L.push(`<Style Selector="TextBlock.${l.windows}"> <!-- ${l.level} ${l.id} -->`);
@@ -512,7 +512,7 @@ export function targets(t, root = ROOT) {
     { path: 'manifest.json', edit: (s) => setJsonFields(s, { background_color: t.color.brand.background.light.toUpperCase(), theme_color: t.color.brand.background.light.toUpperCase() }) },
     { path: 'tv.css', edit: (s, f) => cssBlock(s, f, '', tvCss(t)) },
     { path: 'cast/index.html', edit: (s, f) => cssBlock(s, f, '', castCss(t)) },
-    { path: 'tv/webos/appinfo.json', edit: (s) => setJsonFields(s, { bgColor: t.color.brand.background.dark.toUpperCase(), iconColor: t.color.brand.primary.dark.toUpperCase() }) },
+    { path: 'tv/webos/appinfo.json', edit: (s) => setJsonFields(s, { bgColor: t.color.brand.background.dark.toUpperCase(), iconColor: (t.color.brand.record || t.color.brand.primary).dark.toUpperCase() }) },
     { path: 'apple/Core/Design.swift', whole: () => appleDesign(t) },
     { path: 'apple/Assets.xcassets/AccentColor.colorset/Contents.json', whole: () => appleAccent(t) },
     ...(android ? [
@@ -523,7 +523,7 @@ export function targets(t, root = ROOT) {
     { path: 'android/app/src/main/res/values-night/colors.xml', whole: () => androidColorsXml(t, 'dark') },
     ...(win ? [
       { path: `${win}/App.axaml`, edit: (s, f) => xmlBlock(xmlBlock(s, f, 'resources', windowsResources(t)), f, 'styles', windowsStyles(t)) },
-      { path: `${win}/AppxManifest.xml`, edit: (s, f) => setPattern(s, f, /(<uap:SplashScreen [^>]*BackgroundColor=")(#[0-9A-Fa-f]{6})(")/, '#' + hex6(t.color.brand.primary.light)) },
+      { path: `${win}/AppxManifest.xml`, edit: (s, f) => setPattern(s, f, /(<uap:SplashScreen [^>]*BackgroundColor=")(#[0-9A-Fa-f]{6})(")/, '#' + hex6((t.color.brand.record || t.color.brand.primary).light)) },
     ] : []),
   ];
   return list.filter((tg) => has(tg.path.split('/')[0]));

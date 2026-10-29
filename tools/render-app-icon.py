@@ -33,8 +33,8 @@ from PIL import Image, ImageChops, ImageDraw
 
 ROOT = Path(__file__).resolve().parent.parent
 TOKENS = json.loads((ROOT / "design-tokens.json").read_text())
-RED = TOKENS["color"]["brand"]["primary"]["light"]
-DARK_RED = TOKENS["color"]["brand"]["primary"]["dark"]
+RED = TOKENS["color"]["brand"]["record"]["light"]
+DARK_RED = TOKENS["color"]["brand"]["record"]["dark"]
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 ICONSET = ROOT / "apple" / "Assets.xcassets" / "AppIcon.appiconset"
 DRAWABLE = ROOT / "android" / "app" / "src" / "main" / "res" / "drawable"

@@ -89,7 +89,7 @@ import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.OnAir
-import com.example.appname.ui.liveButtonColors
+import com.example.appname.ui.recordButtonColors
 import com.example.appname.ui.theme.Spacing
 import java.util.Locale
 import kotlinx.coroutines.delay
@@ -241,7 +241,7 @@ private fun StartPanel(
             }
             preflight == Preflight.Ready -> {
                 Icon(Icons.Filled.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
-                Button(onClick = onStart, colors = liveButtonColors()) {
+                Button(onClick = onStart, colors = recordButtonColors()) {
                     Icon(Icons.Filled.Mic, contentDescription = null)
                     Text("Start recording", Modifier.padding(start = Spacing.S2.dp))
                 }
@@ -345,7 +345,7 @@ private fun Prompter(
                 Icon(
                     if (listening) Icons.Filled.Stop else Icons.Filled.FiberManualRecord,
                     contentDescription = if (listening) "Stop" else "Record",
-                    tint = OnAir.colors.live,
+                    tint = OnAir.colors.record,
                     modifier = Modifier.size(56.dp),
                 )
             }
@@ -383,8 +383,8 @@ private fun Cue(session: RecordingSession, phase: Phase, line: ScriptLine, annou
             Modifier.semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(Icons.Filled.Mic, contentDescription = null, tint = OnAir.colors.live)
-            Text("Your line", Modifier.padding(start = Spacing.S2.dp), style = MaterialTheme.typography.titleMedium, color = OnAir.colors.live)
+            Icon(Icons.Filled.Mic, contentDescription = null, tint = OnAir.colors.record)
+            Text("Your line", Modifier.padding(start = Spacing.S2.dp), style = MaterialTheme.typography.titleMedium, color = OnAir.colors.record)
         }
         phase is Phase.Cue -> session.script.lines.firstOrNull { it.id == phase.lineID }?.let { cue ->
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {

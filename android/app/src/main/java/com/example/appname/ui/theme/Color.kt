@@ -5,10 +5,10 @@ package com.example.appname.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // --- BRAND tokens (UI chrome only, never content meaning) ---
-val BrandPrimaryLight = Color(0xFFB0152F)
-val BrandPrimaryDark = Color(0xFFE3384B)
+val BrandPrimaryLight = Color(0xFF131316)
+val BrandPrimaryDark = Color(0xFFF2F2F4)
 val BrandOnPrimaryLight = Color(0xFFFFFFFF)
-val BrandOnPrimaryDark = Color(0xFF120708)
+val BrandOnPrimaryDark = Color(0xFF0F0F11)
 val BrandBackgroundLight = Color(0xFFFFFFFF)
 val BrandBackgroundDark = Color(0xFF0F0F11)
 val BrandSurfaceLight = Color(0xFFF4F4F5)
@@ -27,6 +27,10 @@ val BrandOnSecondaryLight = Color(0xFFFFFFFF)
 val BrandOnSecondaryDark = Color(0xFF06141B)
 val BrandLinkLight = Color(0xFF0B6E99)
 val BrandLinkDark = Color(0xFF6CC0E0)
+val BrandRecordLight = Color(0xFFB0152F)
+val BrandRecordDark = Color(0xFFE3384B)
+val BrandOnRecordLight = Color(0xFFFFFFFF)
+val BrandOnRecordDark = Color(0xFF120708)
 
 // --- GENRE tokens (content only, never chrome), keyed by the catalog genre key ---
 val GenreDramaLight = Color(0xFFB42575)

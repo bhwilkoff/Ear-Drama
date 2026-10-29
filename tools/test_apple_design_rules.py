@@ -90,6 +90,16 @@ def empty_states_through_one_view(files):
     return not [p for p, t in files.items() if not p.endswith("Shared/EmptyState.swift") and rx.search(t)]
 
 
+def red_means_recording(files):
+    """Decision 064, owner 2026-10-29: "Red means recording." The record red is
+    set only where recording happens, and the recording controls take it."""
+    rx = re.compile(r"\bbrand(On)?Record\b")
+    outside = [p for p, t in files.items()
+               if not p.endswith(("Shared/RecordingScreen.swift", "Core/Design.swift")) and rx.search(t)]
+    rec = files.get("apple/Shared/RecordingScreen.swift", "")
+    return not outside and rec.count("Color.brandRecord") >= 3
+
+
 def library_empty_keeps_navigation(text, struct):
     """iOS-DESIGN §7.4, tvOS-DESIGN §7.3a: an empty Library is the empty state
     at the head of the list, with Account and the site pages still under it."""
@@ -138,6 +148,14 @@ def main():
     cases += [
         ("empty states go through EmptyState", empty_states_through_one_view, swift,
          {**swift, "x.swift": 'ContentUnavailableView("Nothing here", systemImage: "tray")'}),
+        ("red means recording", red_means_recording, swift,
+         {**swift, "apple/Shared/ListScreens.swift":
+          swift["apple/Shared/ListScreens.swift"].replace(".tint(Color.brandPrimary)", ".tint(Color.brandRecord)", 1)}),
+        ("the record control takes the red", red_means_recording, swift,
+         {**swift, "apple/Shared/RecordingScreen.swift":
+          swift["apple/Shared/RecordingScreen.swift"].replace(
+              ".font(.system(size: 64))\n                .foregroundStyle(Color.brandRecord)",
+              ".font(.system(size: 64))\n                .foregroundStyle(Color.semanticError)")}),
         ("an empty Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen"), detail,
          detail.replace("                List {\n                    if empty {",

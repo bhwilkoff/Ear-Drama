@@ -951,7 +951,7 @@ const PlaysUI = (() => {
         } }, 'Sign in'));
       return box;
     }
-    const start = h.el('button', { type: 'button', class: 'btn btn-primary', disabled: !rec.headphones,
+    const start = h.el('button', { type: 'button', class: 'btn btn-record', disabled: !rec.headphones,
                                    onclick: () => startRecording() }, svg('mic', 'i-inline'), 'Start recording');
     const check = h.el('input', { type: 'checkbox', id: 'rec-headphones', checked: rec.headphones,
                                   onchange: () => { rec.headphones = check.checked; start.disabled = !check.checked; } });

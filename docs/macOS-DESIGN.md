@@ -225,9 +225,11 @@ only here:
 - **§6.1a Color roles** are iOS-DESIGN §6.1a's (Decision 064): the
   windows' tint and `AccentColor` are the blue `brandSecondary`, so the
   sidebar selection is blue wherever the person's system accent is
-  Multicolor (a chosen system accent wins, as the Mac intends); red
-  only on Play, Listen live, Start recording, the scrubber, and the
-  progress line; genre hues only as the series row's genre mark.
+  Multicolor (a chosen system accent wins, as the Mac intends); ink
+  (`brandPrimary`) on Play, Listen live, the scrubber, and the progress
+  line; red (`brandRecord`) only on recording: Start Recording, the
+  record control, and "Your line" (owner, 2026-10-29: *"Red means
+  recording."*); genre hues only as the series row's genre mark.
 - **§6.2 Six type levels** (`TypeRamp`) over the system text styles;
   the page title and section header set the bundled Big Shoulders Bold
   (Decision 060).

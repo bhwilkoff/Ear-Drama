@@ -45,6 +45,11 @@ const pairs = [
     ['onSecondary', c.onSecondary, 'secondary', c.secondary, 4.5],
     ['secondary', c.secondary, 'background', c.background, 3],
   ] : []),
+  ...(c.record ? [
+    ['onRecord', c.onRecord, 'record', c.record, 4.5],
+    ['record', c.record, 'background', c.background, 3],
+    ['record', c.record, 'surface', c.surface, 3],
+  ] : []),
   ...(c.link ? [
     ['link', c.link, 'background', c.background, 4.5],
     ['link', c.link, 'surface', c.surface, 4.5],

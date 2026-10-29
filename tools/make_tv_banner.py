@@ -57,7 +57,7 @@ def _rgb(h):
 
 _BRAND = _json.loads((REPO / "design-tokens.json").read_text())["color"]["brand"]
 INK = _rgb(_BRAND["background"]["dark"])
-ACCENT = _rgb(_BRAND["primary"]["dark"])
+ACCENT = _rgb(_BRAND["record"]["dark"])
 WHITE = _rgb(_BRAND["text"]["dark"])
 MUTED = _rgb(_BRAND["textMuted"]["dark"])
 

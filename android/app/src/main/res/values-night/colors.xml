@@ -2,7 +2,7 @@
 <!-- Design tokens (dark), generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. -->
 <!-- Compose reads Color.kt; these serve themes.xml (the splash) and the launcher icon. -->
 <resources>
-    <color name="brand_primary">#FFE3384B</color>
+    <color name="brand_primary">#FFF2F2F4</color>
     <color name="brand_background">#FF0F0F11</color>
     <color name="brand_surface">#FF19191C</color>
     <!-- The launcher icon's ground is the icon master's red in both modes (branding/icon-master.svg). -->

@@ -589,30 +589,45 @@ person stay separate accounts until a linking decision is made. Setup steps:
 
 ## 064: The palette is On Air
 
-*Date: 2026-10-23*
+*Date: 2026-10-23; red rule rewritten 2026-10-29*
 
-Ear Drama's colors are the On Air direction (`docs/research/palette/README.md`):
-tally red (`#B0152F` light, `#E3384B` dark) for the one thing that is live (Play,
-the progress line, the playing episode), and the blue of 1930s mirrored-glass
-sets (`#0B6E99` / `#5AB4D6`, links `#6CC0E0` in dark) for links, the focus ring,
-and the selected tab, on neutral grounds. Genres take On Air's eight hues.
+Ear Drama's colors are the On Air direction (`docs/research/palette/README.md`).
+**Red means recording** and nothing else: studio red (`record`, `#B0152F` light,
+`#E3384B` dark) is the record button, Start recording, an armed or active take,
+"Your line" while the microphone is open, and the recording indicator. **The
+primary action is ink** (`primary`, `#131316` light, `#F2F2F4` dark, the text
+color as a fill): Play and Pause, Listen through, Listen live, the progress line,
+and the slot on the air. The blue of 1930s mirrored-glass sets (`#0B6E99` /
+`#5AB4D6`, links `#6CC0E0` in dark) does the wayfinding: links, the focus ring,
+the selected tab, and every other control, on neutral grounds. Genres take On
+Air's eight hues. A broadcast happening now is not a recording, so "live" gives
+up red and takes the primary action's ink.
 
 **Why**: the owner, 2026-10-23: *"I really like the On Air colors and I think we
-should be building with those in mind."* The research recommended Catalin and
-named On Air's costs, which the owner accepted knowingly: red is already
-iHeartRadio's and Pocket Casts' color (brand distance 4.5 and 7.8), and a
-dark-mode red bright enough to read cannot carry white text, so the dark Play
-button takes near-black type (4.66:1, APCA Lc 36).
+should be building with those in mind."* Then, 2026-10-29: *"Red means
+recording. Research a better color and use it."* The research (2026-10-29):
+recording apps keep red for the record state and leave the transport neutral
+(Voice Memos' red record button beside a plain play glyph; GarageBand's red
+Record beside a plain Play), and broadcast tally keeps red for one state only
+(Lawo's glossary: red on air, green preview, yellow recording). Every other free
+hue was taken: blue is wayfinding, green is `success` and Spotify's Play, amber
+is `warning`, orange is `error` and Audible's, and the eight genre hues cover the
+rest of the wheel. Ink collides with nothing, matches Apple Music's and Apple
+Podcasts' neutral Now Playing transport, and fixes On Air's one accepted cost:
+the dark red Play button read at 4.66:1 (APCA Lc 36); the ink one reads 17.13:1
+dark and 18.54:1 light.
 
-**How to apply**: `design-tokens.json` holds the brand and semantic values plus
-three new brand keys (`secondary`, `onSecondary`, `link`);
-`tools/test_design_tokens.mjs` now checks their contrast. Red stays for what is
-live and never decorates; blue does the wayfinding (Decision 012: brand is
-chrome, genre hues are content). "Live" includes Start recording, because On
-Air's red was the studio light that meant the microphone was live (an agent's
-reading, kept on 2026-10-23; the owner may overrule). Genre hues are the
-`color.genre` group, checked at 3:1 on every ground in both modes. The icon (the white ring microphone on tally red) waits on the
-CC0 photo download (SCRATCHPAD item 2).
+**How to apply**: `design-tokens.json` holds `primary`/`onPrimary` (ink) and
+`record`/`onRecord` (red, onRecord 7.01:1 light, 4.66:1 dark; record 4.50:1 on
+the dark page); `tools/test_design_tokens.mjs` checks both pairs. Platforms set
+red through one name each (`--color-record` and `.btn-record`; `Color.brandRecord`;
+`OnAir.colors.record` and `recordButtonColors()`), and the guards fail on red
+outside recording (`tools/test_apple_design_rules.py` "red means recording",
+Android `ColorRolesTest`). Blue does the wayfinding (Decision 012: brand is
+chrome, genre hues are content). Genre hues are the `color.genre` group, checked
+at 3:1 on every ground in both modes. The icon stays the white ring microphone on
+studio red (the generator takes icon grounds from `record`); it waits on the CC0
+photo download (SCRATCHPAD item 2).
 
 ---
 

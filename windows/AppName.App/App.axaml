@@ -18,8 +18,8 @@
             <!-- BEGIN design-tokens:resources. Generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. -->
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <Color x:Key="BrandPrimary">#B0152F</Color>
-                    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="#B0152F"/>
+                    <Color x:Key="BrandPrimary">#131316</Color>
+                    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="#131316"/>
                     <Color x:Key="BrandOnPrimary">#FFFFFF</Color>
                     <SolidColorBrush x:Key="BrandOnPrimaryBrush" Color="#FFFFFF"/>
                     <Color x:Key="BrandBackground">#FFFFFF</Color>
@@ -40,6 +40,10 @@
                     <SolidColorBrush x:Key="BrandOnSecondaryBrush" Color="#FFFFFF"/>
                     <Color x:Key="BrandLink">#0B6E99</Color>
                     <SolidColorBrush x:Key="BrandLinkBrush" Color="#0B6E99"/>
+                    <Color x:Key="BrandRecord">#B0152F</Color>
+                    <SolidColorBrush x:Key="BrandRecordBrush" Color="#B0152F"/>
+                    <Color x:Key="BrandOnRecord">#FFFFFF</Color>
+                    <SolidColorBrush x:Key="BrandOnRecordBrush" Color="#FFFFFF"/>
                     <Color x:Key="SemanticSuccess">#1D7A4A</Color>
                     <SolidColorBrush x:Key="SemanticSuccessBrush" Color="#1D7A4A"/>
                     <Color x:Key="SemanticWarning">#8A5300</Color>
@@ -64,15 +68,15 @@
                     <SolidColorBrush x:Key="GenreDocumentaryBrush" Color="#217500"/>
                     <Color x:Key="GenreSerial">#5D0087</Color>
                     <SolidColorBrush x:Key="GenreSerialBrush" Color="#5D0087"/>
-                    <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#9E132A"/>
-                    <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#8D1126"/>
-                    <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66B0152F"/>
+                    <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#111114"/>
+                    <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#0F0F12"/>
+                    <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66131316"/>
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <Color x:Key="BrandPrimary">#E3384B</Color>
-                    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="#E3384B"/>
-                    <Color x:Key="BrandOnPrimary">#120708</Color>
-                    <SolidColorBrush x:Key="BrandOnPrimaryBrush" Color="#120708"/>
+                    <Color x:Key="BrandPrimary">#F2F2F4</Color>
+                    <SolidColorBrush x:Key="BrandPrimaryBrush" Color="#F2F2F4"/>
+                    <Color x:Key="BrandOnPrimary">#0F0F11</Color>
+                    <SolidColorBrush x:Key="BrandOnPrimaryBrush" Color="#0F0F11"/>
                     <Color x:Key="BrandBackground">#0F0F11</Color>
                     <SolidColorBrush x:Key="BrandBackgroundBrush" Color="#0F0F11"/>
                     <Color x:Key="BrandSurface">#19191C</Color>
@@ -91,6 +95,10 @@
                     <SolidColorBrush x:Key="BrandOnSecondaryBrush" Color="#06141B"/>
                     <Color x:Key="BrandLink">#6CC0E0</Color>
                     <SolidColorBrush x:Key="BrandLinkBrush" Color="#6CC0E0"/>
+                    <Color x:Key="BrandRecord">#E3384B</Color>
+                    <SolidColorBrush x:Key="BrandRecordBrush" Color="#E3384B"/>
+                    <Color x:Key="BrandOnRecord">#120708</Color>
+                    <SolidColorBrush x:Key="BrandOnRecordBrush" Color="#120708"/>
                     <Color x:Key="SemanticSuccess">#5CC593</Color>
                     <SolidColorBrush x:Key="SemanticSuccessBrush" Color="#5CC593"/>
                     <Color x:Key="SemanticWarning">#E8B04B</Color>
@@ -115,9 +123,9 @@
                     <SolidColorBrush x:Key="GenreDocumentaryBrush" Color="#81CB70"/>
                     <Color x:Key="GenreSerial">#AE6DDC</Color>
                     <SolidColorBrush x:Key="GenreSerialBrush" Color="#AE6DDC"/>
-                    <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#CC3244"/>
-                    <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#B62D3C"/>
-                    <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66E3384B"/>
+                    <SolidColorBrush x:Key="BrandPrimaryHoverBrush" Color="#DADADC"/>
+                    <SolidColorBrush x:Key="BrandPrimaryPressedBrush" Color="#C2C2C3"/>
+                    <SolidColorBrush x:Key="BrandPrimaryDisabledBrush" Color="#66F2F2F4"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
             <x:Double x:Key="Space1">4</x:Double>
@@ -135,7 +143,7 @@
     <Application.Styles>
         <!-- The brand accent (instead of the default purple) and the type ramp. -->
         <!-- BEGIN design-tokens:styles. Generated from design-tokens.json by tools/design_tokens.mjs. Do not edit by hand. -->
-        <sty:FluentAvaloniaTheme CustomAccentColor="#B0152F" />
+        <sty:FluentAvaloniaTheme CustomAccentColor="#0B6E99" />
 
         <!-- The six-level type ramp, adopted via Classes. Refuse a seventh level. -->
         <Style Selector="TextBlock.view-heading"> <!-- L1 pageTitle -->

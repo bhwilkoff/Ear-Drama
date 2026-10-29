@@ -44,10 +44,19 @@ token test. The generator writes them as `--color-genre-<key>` plus a
 `[data-genre]` rule on the web, `Color.genreDrama` and
 `Color.genre(_:)` on Apple, `GenreDramaLight`/`Dark` and
 `genre_drama` on Android, and `GenreDramaBrush` on Windows. On Air's
-roles: red `primary` only for what is live (Play, the progress line,
-the playing or on-air marker); blue `secondary`/`link` for links, the
-focus ring, the selected tab, and every other control. `AccentColor`
-on Apple is the blue.
+roles (owner, 2026-10-29: *"Red means recording."*): ink `primary`
+(the text color as a fill) for the primary action (Play and Pause,
+Listen through, Listen live, the progress line, the on-air marker);
+red `record` for recording and nothing else (the record button, Start
+recording, an armed or active take, the recording indicator); blue
+`secondary`/`link` for links, the focus ring, the selected tab, and
+every other control. `AccentColor` on Apple, the Windows accent, and
+the Cast receiver's hue are the blue; the launcher, webOS, and Windows
+splash icon grounds are the record red, because the icon is the
+microphone. Each platform reaches red through one name
+(`--color-record`, `Color.brandRecord`, `OnAir.colors.record`), and
+the Apple design rules and Android `ColorRolesTest` fail on it outside
+recording.
 
 **Typography hierarchy**: three weights × two sizes = six levels.
 Refuse a seventh; refactor instead. See `mobile-first-density-design`

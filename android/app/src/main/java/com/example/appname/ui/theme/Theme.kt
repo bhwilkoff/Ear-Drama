@@ -36,10 +36,12 @@ import androidx.compose.ui.platform.LocalContext
  * take `colorScheme.primary` by default, so M3's `primary` slot holds the
  * brand's blue `secondary`: the selected tab, chips, filled buttons, the
  * spinner, and every other control follow it with no override. The brand's
- * red `primary` is only for what is live, read through [OnAir.colors]
- * (`live`, `onLive`) and set by hand on Play, the progress line, the slot on
- * the air, Listen live, and Start recording. It is M3's `tertiary` too, which
- * no default component uses. Dynamic color never changes [OnAir.colors].
+ * ink `primary` is the primary action, read through [OnAir.colors] (`play`,
+ * `onPlay`) and set by hand on Play and Pause, the progress line, the slot on
+ * the air, and Listen live. Red (`record`, `onRecord`) means recording and
+ * nothing else: Start recording, the record control, and "Your line" while the
+ * microphone is open. The red is M3's `tertiary` too, which no default
+ * component uses. Dynamic color never changes [OnAir.colors].
  */
 @Composable
 fun AppTheme(
@@ -76,20 +78,22 @@ object AppSemantics {
         @Composable @ReadOnlyComposable get() = LocalSemanticColors.current
 }
 
-/** On Air's chrome roles beyond M3's slots: red for what is live, and the link blue. */
+/** On Air's chrome roles beyond M3's slots: ink for the primary action, red for recording, and the link blue. */
 data class OnAirColors(
-    val live: Color,
-    val onLive: Color,
+    val play: Color,
+    val onPlay: Color,
+    val record: Color,
+    val onRecord: Color,
     /** Links and the focus ring; a lighter blue than `secondary` in dark mode. */
     val link: Color,
     val dark: Boolean,
 )
 
-private val LightOnAirColors = OnAirColors(BrandPrimaryLight, BrandOnPrimaryLight, BrandLinkLight, dark = false)
-private val DarkOnAirColors = OnAirColors(BrandPrimaryDark, BrandOnPrimaryDark, BrandLinkDark, dark = true)
+private val LightOnAirColors = OnAirColors(BrandPrimaryLight, BrandOnPrimaryLight, BrandRecordLight, BrandOnRecordLight, BrandLinkLight, dark = false)
+private val DarkOnAirColors = OnAirColors(BrandPrimaryDark, BrandOnPrimaryDark, BrandRecordDark, BrandOnRecordDark, BrandLinkDark, dark = true)
 private val LocalOnAirColors = staticCompositionLocalOf { LightOnAirColors }
 
-/** On Air's roles (`OnAir.colors.live`, `OnAir.colors.link`, `OnAir.genre(key)`), light or dark. */
+/** On Air's roles (`OnAir.colors.play`, `OnAir.colors.record`, `OnAir.colors.link`, `OnAir.genre(key)`), light or dark. */
 object OnAir {
     val colors: OnAirColors
         @Composable @ReadOnlyComposable get() = LocalOnAirColors.current
@@ -111,8 +115,8 @@ private val BrandLightColors = lightColorScheme(
     onSecondary = BrandOnSecondaryLight,
     secondaryContainer = selectedContainer(BrandSecondaryLight, BrandBackgroundLight),
     onSecondaryContainer = BrandSecondaryLight,
-    tertiary = BrandPrimaryLight,
-    onTertiary = BrandOnPrimaryLight,
+    tertiary = BrandRecordLight,
+    onTertiary = BrandOnRecordLight,
     background = BrandBackgroundLight,
     onBackground = BrandTextLight,
     surface = BrandBackgroundLight,
@@ -134,8 +138,8 @@ private val BrandDarkColors = darkColorScheme(
     onSecondary = BrandOnSecondaryDark,
     secondaryContainer = selectedContainer(BrandSecondaryDark, BrandBackgroundDark),
     onSecondaryContainer = BrandSecondaryDark,
-    tertiary = BrandPrimaryDark,
-    onTertiary = BrandOnPrimaryDark,
+    tertiary = BrandRecordDark,
+    onTertiary = BrandOnRecordDark,
     background = BrandBackgroundDark,
     onBackground = BrandTextDark,
     surface = BrandBackgroundDark,
