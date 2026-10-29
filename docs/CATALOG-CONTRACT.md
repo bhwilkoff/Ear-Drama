@@ -202,7 +202,11 @@ none on the web), never as a skip. Segment times are never estimated.
   960), never another value (Commons refuses most others) and never a re-hosted copy.
   MEASURED 2026-10-28: `?width=800` is served as the 960 thumbnail, and a request
   wider than the original returns the original, so 960 is always safe to ask for.
-  `width`/`height` are the original's when known, else NULL. `license` is the
+  `width`/`height` are the original's when known, else NULL: a portrait's from
+  `harvest_people_wikidata.py --phase dims` (Commons imageinfo, size only), a
+  series photograph's from `art`. A client lays a picture out by this shape before
+  it arrives (WEB-DESIGN §6.4a; wide past 1.15). MEASURED 2026-10-28: all 3,765
+  harvested files sized; the 271 series stars are 222 upright, 25 square, 24 wide. `license` is the
   class (`pd_us`, `pd_us_gov`, `cc0`, `pd_release`, `free_use`, `cc_by`,
   `cc_by_sa`); `credit` ("Author, CC BY-SA 3.0") is set exactly when the license
   requires attribution, and a client shows it wherever the image is shown at

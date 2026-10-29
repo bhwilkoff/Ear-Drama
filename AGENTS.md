@@ -53,6 +53,7 @@ Sources: `docs/research/gemini-and-other-agents.md`. Rows follow the
 | **01 First prototype** | |
 | Any web UI, routing, data, offline or image work | `web-platform-patterns` |
 | Designing any view (any platform) | `mobile-first-density-design` + `native-platform-first` |
+| Showing images of mixed aspect ratios (headers, Now Playing, tiles) | `artwork-presentation-design` |
 | Adding a list / grid / sheet / shelf | `universal-feature-states` |
 | A signed-in home, dashboard, account page, or role-based view | `learner-experience-design` |
 | **02 Shape of an app** | |

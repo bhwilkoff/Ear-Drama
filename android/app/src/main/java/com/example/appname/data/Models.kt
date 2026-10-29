@@ -17,9 +17,17 @@ data class Artwork(
     val credit: String? = null,
     val evidence: String? = null,
 ) {
-    /** Width over height when the original's size is known; a portrait's usual shape otherwise. */
+    /** Width over height from the projection, or null when the size was never read. */
+    val aspectRatio: Float?
+        get() = if (width != null && height != null && width > 0 && height > 0) width.toFloat() / height else null
+
+    /** The aspect a box is drawn at: the published one, else a portrait's usual 4:5. */
     val aspect: Float
-        get() = if (width != null && height != null && width > 0 && height > 0) minOf(width.toFloat() / height, 1.6f) else 0.8f
+        get() = aspectRatio ?: 0.8f
+
+    /** The plate above a heading, else the print beside it (ANDROID-DESIGN R11a); unknown is upright. */
+    val isWide: Boolean
+        get() = (aspectRatio ?: 0f) > WIDE_ASPECT
 
     /** The one image helper: the smallest Commons standard width covering [pixels]. */
     fun url(pixels: Int): String = "$url?width=${STEPS.firstOrNull { it >= pixels } ?: STEPS.last()}"
@@ -27,6 +35,9 @@ data class Artwork(
     companion object {
         /** Commons' standard thumbnail steps; any other width is refused upstream. */
         val STEPS = listOf(120, 330, 500, 960)
+
+        /** Past this width over height a picture is wide; the same number as WEB-DESIGN §6.4a. */
+        const val WIDE_ASPECT = 1.15f
     }
 }
 

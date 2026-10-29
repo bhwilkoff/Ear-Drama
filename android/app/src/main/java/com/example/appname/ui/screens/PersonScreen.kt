@@ -82,10 +82,14 @@ fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 personPage.person.face?.let { face ->
                     item(key = "face") {
-                        FaceHero(face, null, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp), showsName = false)
+                        FaceHero(
+                            face, null,
+                            Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp, bottom = Spacing.S2.dp),
+                            showsName = false,
+                            facts = listOfNotNull(personPage.person.years, episodeCount(personPage.episodes.size)).joinToString(" · "),
+                        )
                     }
-                }
-                item(key = "meta") {
+                } ?: item(key = "meta") {
                     Meta(
                         listOfNotNull(personPage.person.years, episodeCount(personPage.episodes.size)).joinToString(" · "),
                         Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),

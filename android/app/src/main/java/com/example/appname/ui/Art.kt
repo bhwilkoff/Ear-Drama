@@ -2,12 +2,13 @@ package com.example.appname.ui
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -25,11 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
@@ -69,65 +69,81 @@ fun ArtImage(art: Artwork, side: Dp, modifier: Modifier = Modifier, description:
 }
 
 /**
- * The whole portrait at its own aspect over a wash of the same image, blurred and
- * dimmed (ANDROID-DESIGN R11a): never reshaped, and never an empty box while the
- * sharp copy loads, since the wash is the 120 step a row's tile has usually cached.
- * Below Android 12 there is no blur, so the wash is left out rather than shown sharp.
+ * A picture in a box of its own shape (ANDROID-DESIGN R11a, `artwork-presentation-design`):
+ * an archival print's hairline and the control radius, the genre's edge under it, and nothing
+ * behind it, no wash, no bars. While it loads the box is the surface at exactly the picture's
+ * size; the caller sizes the box from [Artwork.aspect], so the image fills it, and an unknown
+ * size (drawn upright at 4:5) crops top-anchored rather than leaving bars.
  */
 @Composable
-fun PortraitFrame(art: Artwork, modifier: Modifier = Modifier, description: String? = null) {
-    val density = LocalDensity.current
-    BoxWithConstraints(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-        val aspect = art.aspect
-        val drawn = minOf(maxWidth, maxHeight * aspect)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            AsyncImage(
-                model = art.url(120),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(20.dp)
-                    .drawWithContent { drawContent(); drawRect(Color.Black.copy(alpha = 0.45f)) },
-            )
-        }
+fun ShapedArt(art: Artwork, modifier: Modifier = Modifier, genre: String? = null, description: String? = null) {
+    val edge = OnAir.genre(genre)
+    val shape = RoundedCornerShape(8.dp)
+    BoxWithConstraints(
+        modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
+            .drawWithContent {
+                drawContent()
+                if (edge != null) drawRect(edge, Offset(0f, size.height - 3.dp.toPx()), Size(size.width, 3.dp.toPx()))
+            },
+    ) {
+        val pixels = with(LocalDensity.current) { maxWidth.roundToPx() }
         AsyncImage(
-            model = art.url(with(density) { drawn.roundToPx() }),
+            model = art.url(pixels),
             contentDescription = description,
-            contentScale = ContentScale.Fit,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
             modifier = Modifier.fillMaxSize(),
         )
     }
 }
 
+/** The box for [art] inside a bound: its own aspect, as large as the bound allows. */
+fun fittedSize(art: Artwork, maxWidth: Dp, maxHeight: Dp): Pair<Dp, Dp> {
+    val width = minOf(maxWidth, maxHeight * art.aspect)
+    return width to width / art.aspect
+}
+
 /**
- * A page's face (R11a): a full-width band (240 dp, 320 dp on a wide screen) with the
- * genre's edge under it, then whose it is (unless the heading already says) and the
- * credit its license asks for, a required fact, so it is on screen with the picture.
+ * A page's face (R11a). Upright (a square included): the print, 168 dp tall (240 from 600 dp
+ * wide) and at most 150 dp wide (276), beside its label: whose face (unless the heading already
+ * says), the credit its license asks for (a required fact), and the page's [facts] when given.
+ * Wide: the plate, the column's width at its own aspect, at most 320 dp tall, at the start,
+ * with the label under it.
  */
 @Composable
-fun FaceHero(face: Face, genre: String?, modifier: Modifier = Modifier, showsName: Boolean = true) {
-    val width = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
-    val tall = if (width >= 600.dp) 320.dp else 240.dp
-    val edge = OnAir.genre(genre)
+fun FaceHero(face: Face, genre: String?, modifier: Modifier = Modifier, showsName: Boolean = true, facts: String? = null) {
+    val window = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
+    val regular = window >= 600.dp
+    val picture = Modifier.testTag("face-hero").semantics { contentDescription = face.name }
+    if (face.art.isWide) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+            ShapedArt(
+                face.art,
+                picture.widthIn(max = 320.dp * face.art.aspect).fillMaxWidth().aspectRatio(face.art.aspect),
+                genre,
+            )
+            FaceLabel(face, showsName, facts)
+        }
+    } else {
+        val (w, h) = if (regular) fittedSize(face.art, 276.dp, 240.dp) else fittedSize(face.art, 150.dp, 168.dp)
+        Row(modifier, horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp), verticalAlignment = Alignment.Bottom) {
+            ShapedArt(face.art, picture.width(w).height(h), genre)
+            FaceLabel(face, showsName, facts, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun FaceLabel(face: Face, showsName: Boolean, facts: String?, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-        PortraitFrame(
-            face.art,
-            Modifier
-                .fillMaxWidth()
-                .height(tall)
-                .clip(RoundedCornerShape(12.dp))
-                .drawWithContent {
-                    drawContent()
-                    if (edge != null) drawRect(edge, Offset(0f, size.height - 4.dp.toPx()), Size(size.width, 4.dp.toPx()))
-                }
-                .testTag("face-hero")
-                .semantics { contentDescription = face.name },
-        )
         if (showsName) {
             Text(face.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         face.art.credit?.let { ArtCredit(it, face.art.evidence) }
+        facts?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
 }
 
@@ -155,19 +171,12 @@ fun ArtTile(name: String, genre: String?, face: Face?, size: Dp = 56.dp) {
     }
 }
 
-/** A face beside a heading: the portrait, whose it is, and the credit its license asks for (a required fact). */
+/** A face beside a heading: the print at its own aspect inside a [height] bound, whose it is, and the credit owed. */
 @Composable
-fun FaceFigure(face: Face, width: Dp = 76.dp) {
-    Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-        ArtImage(
-            face.art, width,
-            Modifier
-                .width(width)
-                .height(width * 1.25f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            description = face.name,
-        )
+fun FaceFigure(face: Face, height: Dp = 96.dp) {
+    val (w, h) = fittedSize(face.art, height * 1.5f, height)
+    Column(Modifier.width(w), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
+        ShapedArt(face.art, Modifier.width(w).height(h), description = face.name)
         Text(face.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         face.art.credit?.let { ArtCredit(it, face.art.evidence) }
     }
@@ -220,14 +229,18 @@ fun TypeCard(name: String, line: String?, genre: String?, modifier: Modifier = M
 
 /**
  * Now Playing's picture: the episode's face, else the series', else the series' typographic card.
- * Square and full width, no taller than [maxSide] (R11a: Play stays on the first screen); a
- * portrait sits whole in it over its wash.
+ * The bound is a square, full width and no taller than [maxSide] (R11a: Play stays on the first
+ * screen); a portrait is drawn whole at its own aspect and its box shrinks to it, centered.
  */
 @Composable
 fun NowPlayingArt(seriesName: String, genre: String?, line: String?, face: Face?, maxSide: Dp = 200.dp) {
-    Box(Modifier.fillMaxWidth().heightIn(max = maxSide).aspectRatio(1f).clearAndSetSemantics {}) {
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().heightIn(max = maxSide).aspectRatio(1f).clearAndSetSemantics {},
+        contentAlignment = Alignment.Center,
+    ) {
         if (face != null) {
-            PortraitFrame(face.art, Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)))
+            val (w, h) = fittedSize(face.art, maxWidth, maxHeight)
+            ShapedArt(face.art, Modifier.width(w).height(h))
         } else {
             TypeCard(seriesName, line, genre, Modifier.fillMaxSize())
         }

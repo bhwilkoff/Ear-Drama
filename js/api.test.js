@@ -46,6 +46,16 @@ test('art: one helper, Commons standard widths only (contract §3.3)', () => {
   assertEq(API.artURL(null, 40), null, 'control: no art, no URL');
 });
 
+test('art: the shape decides the layout, from the published size (§6.4a)', () => {
+  const at = (w, h) => API.artOf(['https://x/A.jpg', w, h, null, null]);
+  assertEq(API.artShape(at(600, 800)), 'upright', 'a portrait is the print');
+  assertEq(API.artShape(at(1000, 1000)), 'upright', 'a square is the print too');
+  assertEq(API.artShape(at(1150, 1000)), 'upright', 'the threshold itself is still upright');
+  assertEq(API.artShape(at(1830, 1000)), 'wide', 'a wide picture is the plate');
+  assertEq(API.artShape(at(null, null)), 'upright', 'control: an unknown size is drawn upright, never guessed wide');
+  assertEq(API.artAspect(at(null, null)), null, 'control: an unknown size has no aspect');
+});
+
 test('transcript fetches the URL once, as text, and never caches a failure (DECISIONS 058)', async () => {
   const real = globalThis.fetch;
   const seen = [];

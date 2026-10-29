@@ -327,7 +327,7 @@ private struct SeriesScreen_tvOS: View {
                 List {
                     Section {
                         HStack(alignment: .top, spacing: Spacing.s6) {
-                            if let face = page.series.face { FaceFigure(face: face, width: 200) }
+                            if let face = page.series.face { FaceFigure(face: face, height: 250) }
                             VStack(alignment: .leading, spacing: Spacing.s2) {
                                 Text(page.series.name).font(TypeRamp.pageTitle)
                                 Text(verbatim: page.series.metaLine)
@@ -377,7 +377,7 @@ private struct PersonScreen_tvOS: View {
                 List {
                     Section {
                         HStack(alignment: .top, spacing: Spacing.s6) {
-                            if let face = page.person.face { FaceFigure(face: face, width: 200) }
+                            if let face = page.person.face { FaceFigure(face: face, height: 250) }
                             VStack(alignment: .leading, spacing: Spacing.s2) {
                                 Text(page.person.name).font(TypeRamp.pageTitle)
                                 Text(verbatim: PersonScreen_tvOS.facts(page))
@@ -448,7 +448,7 @@ private struct EpisodeScreen_tvOS: View {
         return ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: Spacing.s8) {
                 HStack(alignment: .top, spacing: Spacing.s8) {
-                    if let face = detail.starFace { FaceFigure(face: face, width: 240) }
+                    if let face = detail.starFace { FaceFigure(face: face, height: 300) }
                     VStack(alignment: .leading, spacing: Spacing.s3) {
                         Text(episode.seriesName)
                             .font(TypeRamp.bodyStrong)

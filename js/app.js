@@ -219,29 +219,46 @@
   }
   new MutationObserver(paintArt).observe(document.body, { childList: true, subtree: true });
 
-  /** The whole portrait at its own aspect over a wash of the same image (§6.4a). The wash is the
-      row tile's 120 step, usually cached already, so the frame is never an empty box while the
-      sharp copy loads; a failed sharp copy leaves the wash. */
-  function portraitFrame(box, art, px, alt) {
-    const wash = el('img', { class: 'art-wash', src: API.artURL(art, 120), alt: '', decoding: 'async' });
-    wash.addEventListener('error', () => wash.remove());
-    box.classList.add('has-wash');
-    box.append(wash);
+  /** A picture in a box of its own shape (§6.4a, `artwork-presentation-design`): never a wash,
+      bars, or a filter behind it. `--a` carries the aspect to the stylesheet; an unknown size is
+      drawn at 4:5 until the image decodes, then takes its own (and a wide one becomes a plate,
+      via `onShape`). A failed image removes its box. */
+  function shapedImage(art, px, alt, onShape) {
     const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
-    const img = el('img', { class: 'art-whole', src: API.artURL(art, px * dpr), alt, decoding: 'async' });
-    img.addEventListener('error', () => img.remove());
-    box.append(img);
-    return box;
+    const a = API.artAspect(art);
+    const frame = el('span', { class: `art-frame${a ? '' : ' no-size'}`, style: `--a: ${(a || 0.8).toFixed(3)}` });
+    const img = el('img', { src: API.artURL(art, px * dpr), alt, decoding: 'async',
+                            width: art.width || null, height: art.height || null });
+    img.addEventListener('error', () => frame.remove());
+    if (!a) {
+      img.addEventListener('load', () => {
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        const own = img.naturalWidth / img.naturalHeight;
+        frame.style.setProperty('--a', own.toFixed(3));
+        frame.classList.remove('no-size');
+        if (onShape) onShape(own > API.wideAspect ? 'wide' : 'upright');
+      });
+    }
+    frame.append(img);
+    return frame;
   }
-  /** A page's face (§6.4a): a full-width band, captioned with whose it is (when the heading does
-      not already say) and, when its license asks, the credit, linked to the file page. */
-  function faceHero(art, name) {
-    const tall = typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches ? 320 : 240;
-    const aspect = art.width && art.height ? art.width / art.height : 0.8;
-    const band = portraitFrame(el('span', { class: 'face-band' }), art, Math.round(tall * Math.min(aspect, 1.6)), name || '');
+  /** A page's face (§6.4a): the print beside an upright one's heading, the plate above a wide
+      one's, captioned with whose it is (when the heading does not already say) and, when its
+      license asks, the credit, linked to the file page. `head` takes the shape's class. */
+  function faceFigure(head, art, name) {
+    const setShape = (shape) => {
+      head.classList.toggle('face-print', shape !== 'wide');
+      head.classList.toggle('face-plate', shape === 'wide');
+    };
+    const wide = API.artShape(art) === 'wide';
+    const desk = typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches;
+    const px = wide ? (desk ? 720 : 375) : Math.round((desk ? 240 : 168) * Math.min(API.artAspect(art) || 0.8, 1.15));
+    setShape(wide ? 'wide' : 'upright');
     const credit = art.credit ? el('a', { class: 'face-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit) : null;
-    return el('figure', { class: 'face-hero' }, band,
+    const fig = el('figure', { class: 'face-fig' }, shapedImage(art, px, name || '', setShape),
       name || credit ? el('figcaption', { class: 'caption' }, name || null, name && credit ? ' · ' : null, credit) : null);
+    fig.querySelector('img').addEventListener('error', () => { fig.remove(); head.classList.remove('has-face', 'face-print', 'face-plate'); });
+    return fig;
   }
   /** The typographic card (R11): the name, one meta line, on the genre. Any titled work with a year
       and a genre draws one: a series, or a stage play. */
@@ -861,10 +878,10 @@
 
       const meta = el('p', { class: 'caption' }, seriesMeta({ ...s, episodes: s.episodes.length }));
       const head = el('header', { class: `page-head${s.art ? ' has-face' : ' as-card'}`, dataset: { genre: s.genre || '' } },
-        s.art ? faceHero(s.art, s.star) : null,
         el('div', { class: 'page-head-text' },
           el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta),
         el('div', { class: 'actions' }, followBtn, shareBtn));
+      if (s.art) head.prepend(faceFigure(head, s.art, s.star));
       if (s.genre) {
         genreName(s.genre).then(n => meta.prepend(el('a', { href: `?view=browse&genre=${encodeURIComponent(s.genre)}` }, n),
           ' · '));
@@ -925,8 +942,7 @@
       const facts = [d.date ? null : 'Undated', d.network, d.sponsor, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
                      d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
       const star = d.star ? d.credits.find(c => c.person === d.star && c.art) : null;
-      body.append(el('header', { class: `page-head${star ? ' has-face' : ''}`, dataset: { genre: (s && s.genre) || '' } },
-        star ? faceHero(star.art, star.name) : null,
+      const head = el('header', { class: `page-head${star ? ' has-face' : ''}`, dataset: { genre: (s && s.genre) || '' } },
         el('div', { class: 'page-head-text' },
         el('a', { class: 'section-header eyebrow-link', href: `?series=${encodeURIComponent(d.series)}` }, seriesName),
         el('h1', { class: 'view-heading', id: 'episode-h', tabindex: '-1' }, title),
@@ -934,7 +950,9 @@
         facts ? el('p', { class: 'caption' }, facts) : null,
         d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null),
         el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn,
-          script ? PlaysUI.startButton(script, playsHelpers) : null)));
+          script ? PlaysUI.startButton(script, playsHelpers) : null));
+      if (star) head.prepend(faceFigure(head, star.art, star.name));
+      body.append(head);
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
       // is null otherwise), fetched from archive.org the first time it is opened.
@@ -1012,11 +1030,12 @@
       setTitle(p.name);
       const count = new Set(p.credits.map(c => c.id)).size;
       const facts = [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes')].filter(Boolean).join(' · ');
-      body.append(el('header', { class: `page-head${p.art ? ' has-face' : ''}` },
-        p.art ? faceHero(p.art, null) : null,
+      const head = el('header', { class: `page-head${p.art ? ' has-face' : ''}` },
         el('div', { class: 'page-head-text' },
           el('h1', { class: 'view-heading', id: 'person-h', tabindex: '-1' }, p.name),
-          el('p', { class: 'caption' }, facts))));
+          el('p', { class: 'caption' }, facts)));
+      if (p.art) head.prepend(faceFigure(head, p.art, null));
+      body.append(head);
 
       const seg = el('div', { class: 'segmented', role: 'group', 'aria-label': 'Order' });
       const listBox = el('div');
@@ -1511,8 +1530,10 @@
       const face = (d && d.star && d.credits.find(c => c.person === d.star && c.art)) || null;
       const art = face ? face.art : s && s.art;
       if (art) {
-        const aspect = art.width && art.height ? Math.min(art.width / art.height, 1) : 0.8;
-        box.append(portraitFrame(el('span', { class: 'np-face', 'aria-hidden': 'true' }), art, Math.round(360 * aspect), (face ? face.name : s.star) || ''));
+        const np = shapedImage(art, Math.round(360 * Math.min(API.artAspect(art) || 0.8, 1)), (face ? face.name : s.star) || '');
+        np.classList.add('np-face');
+        np.setAttribute('aria-hidden', 'true');
+        box.append(np);
         // Shown larger than a page's head, so a credited portrait carries its credit here too (Decision 069).
         if (art.credit) box.append(el('a', { class: 'caption face-credit np-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit));
         Player.setArtwork([{ src: API.artURL(art, 500), sizes: '500x500', type: 'image/jpeg' }]);
