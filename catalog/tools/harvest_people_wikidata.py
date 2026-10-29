@@ -3,6 +3,7 @@
     python3 tools/harvest_people_wikidata.py                 # all three phases, resumable
     python3 tools/harvest_people_wikidata.py --top 2000      # only the 2,000 most-credited
     python3 tools/harvest_people_wikidata.py --phase commons # one phase
+    python3 tools/harvest_people_wikidata.py --phase dims    # each file's width and height
 
 Reads out/radio-catalog.sqlite (people + episode_credits) for the names, most
 credited first, and writes under .cache/people_wd/:
@@ -14,7 +15,9 @@ credited first, and writes under .cache/people_wd/:
                      commons_category (P373), enwiki}
   files.json.gz     {file name: licence class, template, author, date, source
                      links, page status} for each P18 of a MATCHED person and each
-                     of Track D's Commons files whose Structured Data depicts one
+                     of Track D's Commons files whose Structured Data depicts one;
+                     the dims phase adds the original's width and height, read
+                     from the Action API's imageinfo (size only), 50 files a call
   failed.json       requests that could not be read
 Both files are rewritten as each batch lands, so a killed run resumes where it
 stopped. All Wikidata reads go through the query service (SPARQL), whose bodies
@@ -198,9 +201,33 @@ def phase_commons(people, names_idx, ents, files, max_files=None):
     write_json(os.path.join(DIR, "files.json.gz"), files, gz=True)
 
 
+def phase_dims(files, batch=50):
+    """The original's width and height for each file page read: a client lays a portrait out
+    by its shape before the image arrives (contract section 3.3), so the shape is published once."""
+    todo = sorted(fn for fn, v in files.items() if v.get("page_status") == "ok" and "width" not in v)
+    print(f"dims: {len(todo)} files to size", flush=True)
+    for i in range(0, len(todo), batch):
+        chunk = todo[i:i + batch]
+        titles = {"File:" + fn.replace("_", " "): fn for fn in chunk}
+        obj = wm.call(wm.COMMONS_API, {"action": "query", "format": "json", "prop": "imageinfo",
+                                       "iiprop": "size", "titles": "|".join(titles)},
+                      cache_dir="people_wd/imageinfo")
+        if not obj:
+            continue
+        q = obj.get("query") or {}
+        alias = {n["to"]: n["from"] for n in q.get("normalized") or []}
+        for page in (q.get("pages") or {}).values():
+            fn = titles.get(alias.get(page.get("title"), page.get("title")))
+            info = (page.get("imageinfo") or [None])[0]
+            if fn and info and info.get("width") and info.get("height"):
+                files[fn]["width"], files[fn]["height"] = int(info["width"]), int(info["height"])
+        write_json(os.path.join(DIR, "files.json.gz"), files, gz=True)
+        print(f"  sized {min(i + batch, len(todo))}/{len(todo)}", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", choices=["names", "entities", "commons", "all"], default="all")
+    ap.add_argument("--phase", choices=["names", "entities", "commons", "dims", "all"], default="all")
     ap.add_argument("--top", type=int, default=None, help="only the N most-credited people")
     ap.add_argument("--max-files", type=int, default=None)
     a = ap.parse_args()
@@ -214,6 +241,8 @@ def main():
         phase_entities(people, names_idx, ents)
     if a.phase in ("commons", "all"):
         phase_commons(people, names_idx, ents, files, a.max_files)
+    if a.phase in ("dims", "all"):
+        phase_dims(files)
     write_json(os.path.join(DIR, "failed.json"), wm.FAILED)
     print(f"names {len(names_idx)}, entities {len(ents)}, files {len(files)}, failed {len(wm.FAILED)}")
     if not names_idx:

@@ -22,89 +22,117 @@ struct ArtImage: View {
     }
 }
 
-/// The whole portrait at its own aspect over a wash of the same image,
-/// blurred and dimmed (iOS-DESIGN R11a): never reshaped, and never an empty
-/// box while the sharp copy loads, since the wash is the 120 step a row's
-/// tile has usually cached already. A failed sharp copy leaves the wash.
-struct PortraitFrame: View {
+/// A picture in a box of its own shape (iOS-DESIGN R11a, `artwork-presentation-design`):
+/// an archival print's hairline and the control radius, the genre's edge under it, and
+/// nothing behind it, no wash, no bars. While it loads the box is the surface at exactly the
+/// picture's size; a caller sizes the box from `Artwork.aspectRatio`, so the image fills it,
+/// and an unknown size (drawn upright at 4:5) crops top-anchored rather than leaving bars.
+struct ShapedArt: View {
     let art: Artwork
+    var genre: String? = nil
     @Environment(\.displayScale) private var scale
 
     var body: some View {
         GeometryReader { geo in
-            let drawn = min(geo.size.width, geo.size.height * art.aspect)
-            Color.brandSurfaceAlt
-                .overlay {
-                    AsyncImage(url: art.url(pixels: 120)) { phase in
-                        if let image = phase.image {
-                            image.resizable().aspectRatio(contentMode: .fill)
-                                .blur(radius: 20).brightness(-0.3).saturation(0.8).scaleEffect(1.2)
-                        } else {
-                            Color.clear
-                        }
+            ZStack {
+                Color.brandSurfaceAlt
+                AsyncImage(url: art.url(pixels: Double(geo.size.width * scale))) { phase in
+                    if let image = phase.image {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        Color.clear
                     }
                 }
-                .overlay {
-                    AsyncImage(url: art.url(pixels: Double(drawn * scale))) { phase in
-                        if let image = phase.image {
-                            image.resizable().aspectRatio(contentMode: .fit)
-                        } else {
-                            Color.clear
-                        }
-                    }
-                }
-                .frame(width: geo.size.width, height: geo.size.height)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
-        .clipped()
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.genre(genre) ?? Color.clear).frame(height: 3)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: Radius.control))
+        .overlay {
+            RoundedRectangle(cornerRadius: Radius.control).strokeBorder(Color.brandBorder, lineWidth: 1)
+        }
     }
 }
 
 extension Artwork {
-    /// Width over height when the original's size is known; a portrait's usual shape otherwise.
-    var aspect: CGFloat {
-        guard let width, let height, width > 0, height > 0 else { return 0.8 }
-        return min(CGFloat(width) / CGFloat(height), 1.6)
+    /// The aspect a box is drawn at: the published one, else a portrait's usual 4:5.
+    var drawnAspect: CGFloat { CGFloat(aspectRatio ?? 0.8) }
+
+    /// The box for this picture inside a bound: its own aspect, as large as the bound allows.
+    func fitted(in bound: CGSize) -> CGSize {
+        let a = drawnAspect
+        let width = min(bound.width, bound.height * a)
+        return CGSize(width: width, height: width / a)
     }
 }
 
-/// A page's face (R11a): a full-width band, the genre's edge under it, then
-/// whose it is (unless the heading already says) and the credit its license
-/// asks for, a required fact, so it is on screen with the picture.
+/// A page's face (R11a). Upright (a square included): the print, beside its label (whose
+/// face, unless the heading already says; the credit its license asks for, a required fact;
+/// and the page's facts when given). Wide: the plate, the column's width at its own aspect,
+/// at most 320 tall, set at the leading edge, with the label under it.
 struct FaceHero: View {
     let face: Face
     var genre: String? = nil
     var showsName = true
+    var facts: String? = nil
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
-    private var height: CGFloat { sizeClass == .regular ? 320 : 240 }
+    private var printBound: CGSize { sizeClass == .regular ? CGSize(width: 276, height: 240) : CGSize(width: 150, height: 168) }
     #else
-    private let height: CGFloat = 320
+    private let printBound = CGSize(width: 276, height: 240)
     #endif
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            PortraitFrame(art: face.art)
-                .frame(height: height)
-                .frame(maxWidth: .infinity)
-                .overlay(alignment: .bottom) {
-                    Rectangle().fill(Color.genre(genre) ?? Color.clear).frame(height: 4)
+        Group {
+            if face.art.isWide {
+                VStack(alignment: .leading, spacing: Spacing.s2) {
+                    Color.clear
+                        .aspectRatio(face.art.drawnAspect, contentMode: .fit)
+                        .frame(maxWidth: 320 * face.art.drawnAspect)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .overlay { picture }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    label
                 }
-                .clipShape(RoundedRectangle(cornerRadius: Radius.card))
-                .accessibilityElement()
-                .accessibilityLabel(face.name)
-                .accessibilityAddTraits(.isImage)
-                .accessibilityIdentifier("face-hero")
-            Group {
-                if showsName {
-                    Text(face.name)
-                        .font(TypeRamp.caption)
-                        .foregroundStyle(Color.brandTextMuted)
-                }
-                if let credit = face.art.credit {
-                    ArtCredit(credit: credit, evidence: face.art.evidence)
+            } else {
+                let box = face.art.fitted(in: printBound)
+                HStack(alignment: .bottom, spacing: Spacing.s3) {
+                    picture.frame(width: box.width, height: box.height)
+                    label
+                    Spacer(minLength: 0)
                 }
             }
-            .padding(.horizontal, Spacing.s4)
+        }
+        .padding(.horizontal, Spacing.s4)
+    }
+
+    private var picture: some View {
+        ShapedArt(art: face.art, genre: genre)
+            .accessibilityElement()
+            .accessibilityLabel(face.name)
+            .accessibilityAddTraits(.isImage)
+            .accessibilityIdentifier("face-hero")
+    }
+
+    private var label: some View {
+        VStack(alignment: .leading, spacing: Spacing.s1) {
+            if showsName {
+                Text(face.name)
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
+            if let credit = face.art.credit {
+                ArtCredit(credit: credit, evidence: face.art.evidence)
+            }
+            if let facts {
+                Text(verbatim: facts)
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
         }
     }
 }
@@ -141,18 +169,18 @@ struct ArtTile: View {
     }
 }
 
-/// A face beside a heading: the portrait, whose it is, and the credit its
-/// license asks for (a required fact, so it is on screen).
+/// A face beside a heading (tvOS): the print at its own aspect inside a bound `height`
+/// tall (a wide one up to 1.5 times as wide), whose it is, and the credit its license asks
+/// for (a required fact, so it is on screen).
 struct FaceFigure: View {
     let face: Face
-    var width: CGFloat = 76
+    var height: CGFloat = 96
 
     var body: some View {
+        let box = face.art.fitted(in: CGSize(width: height * 1.5, height: height))
         VStack(alignment: .leading, spacing: Spacing.s1) {
-            ArtImage(art: face.art, points: width)
-                .frame(width: width, height: width * 1.25, alignment: .top)
-                .background(Color.brandSurfaceAlt)
-                .clipShape(RoundedRectangle(cornerRadius: Radius.control))
+            ShapedArt(art: face.art)
+                .frame(width: box.width, height: box.height)
                 .accessibilityLabel(face.name)
             Text(face.name)
                 .font(TypeRamp.caption)
@@ -161,7 +189,7 @@ struct FaceFigure: View {
                 ArtCredit(credit: credit, evidence: face.art.evidence)
             }
         }
-        .frame(width: width, alignment: .leading)
+        .frame(width: box.width, alignment: .leading)
     }
 }
 
@@ -232,9 +260,9 @@ struct TypeCard: View {
 }
 
 /// Now Playing's picture: the episode's face, else the series', else its card.
-/// Square: at `side` when given, else as large as the frame it is offered
-/// (iOS-DESIGN R11a: full width, bounded so Play stays on the first screen).
-/// A portrait sits whole in it over its wash.
+/// The bound is a square, `side` when given, else as large as the frame it is offered
+/// (iOS-DESIGN R11a: full width, bounded so Play stays on the first screen). A portrait is
+/// drawn whole at its own aspect and its box shrinks to it, centered; a card fills the square.
 struct NowPlayingArt: View {
     let episode: EpisodeRow
     let face: Face?
@@ -246,8 +274,12 @@ struct NowPlayingArt: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay {
                 if let face {
-                    PortraitFrame(art: face.art)
-                        .clipShape(RoundedRectangle(cornerRadius: Radius.card))
+                    GeometryReader { geo in
+                        let box = face.art.fitted(in: geo.size)
+                        ShapedArt(art: face.art)
+                            .frame(width: box.width, height: box.height)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                    }
                 } else {
                     TypeCard(name: episode.seriesName, line: line, genre: episode.seriesGenre)
                 }

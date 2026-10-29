@@ -456,7 +456,7 @@ CREATE TABLE people_art (
   person_id TEXT, qid TEXT, file TEXT, found_via TEXT,
   license_class TEXT, usable INTEGER, template TEXT, obligations TEXT,
   author TEXT, date_field TEXT, source_links TEXT,
-  evidence_url TEXT, thumb_url TEXT,
+  evidence_url TEXT, thumb_url TEXT, width INTEGER, height INTEGER,
   PRIMARY KEY (person_id, file)
 );
 CREATE TABLE people_art_meta (k TEXT PRIMARY KEY, v TEXT);
@@ -501,9 +501,10 @@ def main():
             page, thumb = commons_urls(fn)
             art_rows.append((p["id"], q, fn, via, cls, int(cls in USABLE), fv.get("template"),
                              OBLIGATIONS.get(cls), fv.get("author"), fv.get("date_field"),
-                             json.dumps(fv.get("source_links") or []), page, thumb))
+                             json.dumps(fv.get("source_links") or []), page, thumb,
+                             fv.get("width"), fv.get("height")))
     con.executemany("INSERT INTO people_wikidata VALUES (" + ",".join("?" * 15) + ")", wd_rows)
-    con.executemany("INSERT OR IGNORE INTO people_art VALUES (" + ",".join("?" * 13) + ")", art_rows)
+    con.executemany("INSERT OR IGNORE INTO people_art VALUES (" + ",".join("?" * 15) + ")", art_rows)
     rep = report(people, res, ents, art_rows)
     con.executemany("INSERT INTO people_art_meta VALUES (?,?)",
                     [("built", time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())),

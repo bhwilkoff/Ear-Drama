@@ -206,8 +206,33 @@ with tempfile.TemporaryDirectory() as tmp:
           ["an image owes a credit exactly when its license does"])
     check("control: retrace catches an undated match's portrait", retrace(dst, src), [("p2", AP.evidence_url("Mary.jpg"))])
 
+
+# A portrait's own size is published, so a client lays the face out by its shape before the
+# image arrives (contract section 3.3); a source without the columns publishes NULL, never a guess.
+with tempfile.TemporaryDirectory() as tmp:
+    src, dst, web = (os.path.join(tmp, n) for n in ("src.sqlite", "out.sqlite", "web"))
+    fixture(src)
+    d = sqlite3.connect(src)
+    d.execute("ALTER TABLE people_art ADD COLUMN width")
+    d.execute("ALTER TABLE people_art ADD COLUMN height")
+    d.execute("UPDATE people_art SET width = 640, height = 800 WHERE file = 'Jack Benny 1938.jpg'")
+    d.commit()
+    d.close()
+    B.build(src, dst)
+    c = sqlite3.connect(dst)
+    size = dict((pid, (w, h)) for pid, w, h in c.execute(
+        "SELECT p.id, a.width, a.height FROM people p JOIN art a ON a.id = p.portrait"))
+    c.close()
+    check("size: the portrait's own width and height are published", size["p1"], (640, 800))
+    check("control: a portrait whose size was never read publishes NULL", size["p3"], (None, None))
+    W.build(dst, web)
+    with open(os.path.join(web, "index", "series.json")) as f:
+        idx = json.load(f)
+    row = dict(zip(idx["fields"], idx["rows"][0]))
+    check("size: the series row's art carries it", (row["art"][1], row["art"][2]), (640, 800))
+
 here = os.path.dirname(__file__)
-real = os.environ.get("PROJECTION") or os.path.join(here, "..", "out", "publish", "ear-drama.sqlite")
+real =os.environ.get("PROJECTION") or os.path.join(here, "..", "out", "publish", "ear-drama.sqlite")
 source = os.environ.get("SOURCE") or os.path.join(here, "..", "out", "radio-catalog.sqlite")
 if os.path.exists(real):
     has_art = "art" in {r[0] for r in sqlite3.connect(real).execute("SELECT name FROM sqlite_master")}

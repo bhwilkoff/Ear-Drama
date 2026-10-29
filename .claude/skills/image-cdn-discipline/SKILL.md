@@ -149,9 +149,10 @@ ContentScale.Fit
 
 Practical companions:
 
-- Fill the empty space with an **ambient wash**: the same image, crop-scaled
-  and heavily blurred, behind the fit copy. It reads as intentional rather than
-  as a gap.
+- Better still, leave no empty space: size the box to the image's own aspect
+  (`artwork-presentation-design`). An **ambient wash** (the same image,
+  crop-scaled and heavily blurred, behind the fit copy) belongs only to a
+  full-screen, dark, lean-back scene; inside a page it reads as dark bars.
 - Draw the fit image **above** any scrim. Hero scrims usually end fully opaque,
   so art placed under one loses its bottom third.
 - `backdrop ?? poster` is a bug anywhere the destination is not the poster's

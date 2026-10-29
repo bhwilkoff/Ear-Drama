@@ -110,10 +110,13 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
                 seriesPage.series.face?.let { face ->
                     item(key = "face") {
-                        FaceHero(face, seriesPage.series.genre, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp))
+                        FaceHero(
+                            face, seriesPage.series.genre,
+                            Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp, bottom = Spacing.S2.dp),
+                            facts = listOfNotNull(seriesYears(seriesPage.series), "${seriesPage.series.episodes} episodes").joinToString(" · "),
+                        )
                     }
-                }
-                item(key = "meta") {
+                } ?: item(key = "meta") {
                     val years = seriesYears(seriesPage.series)
                     Meta(
                         listOfNotNull(years, "${seriesPage.series.episodes} episodes").joinToString(" · "),

@@ -74,6 +74,7 @@ them. "From" names the app where the lesson was learned.
 | `web-platform-patterns` | The vanilla web app: views, URL-driven state, the service worker, IndexedDB, image fallbacks, Safari layout traps, headless checks. | Archive Watch, Bsky Dreams |
 | `universal-feature-states` | Every list has loading, empty, error and offline states, and the difference between an empty state, an error banner, a hint and a walkthrough. | BOBA Playbook |
 | `mobile-first-density-design` | Density comes from removing chrome, not adding decoration. Six levels of type, tested at phone width first. | BOBA Playbook |
+| `artwork-presentation-design` | Portrait, square and wide images in one slot: the slot takes the image's shape, crops only small repeated slots at a focal point computed once in the pipeline, the print's caption and credit under it, and no blur-and-bars. | Ear Drama |
 | `native-platform-first` | Use the platform's own control before building a custom one. The most expensive mistake across every app. | BOBA Playbook |
 | `learner-experience-design` | What a person sees once they are in: a home that stops pitching, ordered by what needs them now, one page for every role, empty states with one action, teachers' lists of what needs them, account pages for rare jobs, and no scores. It grows a Lessons list each round. | humanshaped.org |
 

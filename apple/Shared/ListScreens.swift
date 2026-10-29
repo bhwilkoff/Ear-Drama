@@ -326,15 +326,16 @@ struct SeriesScreen: View {
                 List {
                     if let face = page.series.face {
                         Section {
-                            FaceHero(face: face, genre: page.series.genre)
+                            FaceHero(face: face, genre: page.series.genre, facts: page.series.metaLine)
                                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
                                 .listRowBackground(Color.clear)
                         }
-                    }
-                    Section {
-                        Text(verbatim: page.series.metaLine)
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
+                    } else {
+                        Section {
+                            Text(verbatim: page.series.metaLine)
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
                     }
                     ForEach(page.seasons) { season in
                         Section {
@@ -562,15 +563,16 @@ struct PersonScreen: View {
                 List {
                     if let face = page.person.face {
                         Section {
-                            FaceHero(face: face, genre: nil, showsName: false)
+                            FaceHero(face: face, genre: nil, showsName: false, facts: Self.facts(page))
                                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
                                 .listRowBackground(Color.clear)
                         }
-                    }
-                    Section {
-                        Text(verbatim: Self.facts(page))
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
+                    } else {
+                        Section {
+                            Text(verbatim: Self.facts(page))
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
                     }
                     ForEach(page.groups(newestFirst: newestFirst)) { group in
                         Section {

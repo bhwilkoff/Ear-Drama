@@ -282,6 +282,11 @@ def served_portraits(s, people):
     if "art" in tables:
         for f, w, h in s.execute("SELECT file, width, height FROM art WHERE width IS NOT NULL"):
             dims[f[5:] if f.startswith("File:") else f] = (w, h)
+    # The portrait's own size (harvest_people_wikidata.py --phase dims) wins: a client lays a
+    # face out by its shape before the image arrives.
+    if "width" in {r[1] for r in s.execute("PRAGMA table_info(people_art)")}:
+        for f, w, h in s.execute("SELECT file, width, height FROM people_art WHERE width > 0 AND height > 0"):
+            dims[f] = (w, h)
     by_person = {}
     for pid, file, cls, usable, via, author, template, basis in s.execute(
             "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis "

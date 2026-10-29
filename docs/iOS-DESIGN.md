@@ -71,20 +71,31 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   Detail, and a person's page; the tile is 56 pt; Now Playing is full width.*
 - **R11a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*) (WEB-DESIGN §6.4a is the shared text).
   The only art served with evidence is a person's portrait; other image
-  classes wait on the owner's V2 to V5. A series page, Detail, and a
-  person's page open with `FaceHero`, a full-width band (240 pt compact,
-  320 pt regular and on the Mac) in its own clear List section: the whole
-  portrait at its own aspect over `PortraitFrame`'s wash (the same image's
-  120 step, blurred and dimmed, so the band is never an empty box), the
-  genre's 4 pt edge under it, then the name (a person's page leaves it to
-  the title) and the credit when owed. The player sheet's `NowPlayingArt`
-  is full width and square, no taller than 44 % of the sheet
-  (`containerRelativeFrame`), so Play stays on the first screen; a
-  portrait sits whole in it, its owed credit under it (Decision 069). A row's `ArtTile` is 56 pt on iOS (the Mac
-  keeps 40); an evening's aired slot leads with its series' tile. Sizes:
-  the band and Now Playing ask `Artwork.url(pixels:)` for their drawn
-  width at the screen's scale (Commons' 120, 330, 500, 960); heights are
-  fixed, so nothing shifts when an image lands.
+  classes wait on the owner's V2 to V5. **The box takes the picture's
+  shape, never the picture the box's** (owner, 2026-10-28: *"I think you can find better solutions for different aspect ratios of images, then just blurring and black bars."*; `artwork-presentation-design`). `Artwork.isWide`
+  is width over height past `Artwork.wideAspect` (1.15, the web's and
+  Android's number); an unknown size is upright, drawn at 4:5. A series
+  page, Detail, and a person's page open with `FaceHero` in its own clear
+  List section, the navigation title above it. Upright (a square
+  included) is the print: `ShapedArt` at its own aspect inside 150 x 168 pt
+  compact, 276 x 240 pt regular and on the Mac, beside its label (the name,
+  which a person's page leaves to the title; the credit when owed; and the
+  series' or person's facts line, which then has no section of its own).
+  Wide is the plate: the column's width at its own aspect, at most 320 pt
+  tall, at the leading edge, the label under it. `ShapedArt` draws a
+  hairline (`brandBorder`), the control radius, and the genre's 3 pt edge,
+  and nothing behind the picture: no wash, bars, or filter; while it
+  loads the box is `brandSurfaceAlt` at exactly the picture's size. The
+  player sheet's `NowPlayingArt` bound is a square, full width and no
+  taller than 44 % of the sheet (`containerRelativeFrame`), so Play stays
+  on the first screen: a portrait is drawn whole at its own aspect and its
+  box shrinks to it, centered; a card fills the square; an owed credit is
+  under it (Decision 069). A row's `ArtTile` is 56 pt on iOS (the Mac
+  keeps 40) and a cast line's `CreditFace` 32 pt, both cropped
+  top-anchored; an evening's aired slot leads with its series' tile.
+  Sizes: each box asks `Artwork.url(pixels:)` for its drawn width at the
+  screen's scale (Commons' 120, 330, 500, 960); every box is sized from the
+  published aspect, so nothing shifts when an image lands.
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the

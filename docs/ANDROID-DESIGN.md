@@ -60,15 +60,26 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   One helper builds every image URL (Commons' 120 / 330 / 500 / 960 steps).
 - **R11a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*) (WEB-DESIGN §6.4a is the shared text). The
   only art served with evidence is a person's portrait; other classes wait
-  on the owner's V2 to V5. The series page, Detail, and a person's page
-  open with `FaceHero`, a full-width band (240 dp, 320 dp from 600 dp wide)
-  replacing `FaceFigure`: the whole portrait at its own aspect over
-  `PortraitFrame`'s wash (the 120 step, blurred and dimmed; below Android
-  12, which has no blur, the surface instead), the genre's 4 dp edge under
-  it, then the name (a person's page leaves it to the title) and the credit
-  when owed. Now Playing's art is full width and square, no taller than
-  44 % of the screen, with a portrait's owed credit under it. A row's `ArtTile` is 56 dp; an evening's aired slot
-  leads with its series' tile. Heights are fixed, so nothing shifts.
+  on the owner's V2 to V5. **The box takes the picture's shape, never the
+  picture the box's** (owner, 2026-10-28: *"I think you can find better solutions for different aspect ratios of images, then just blurring and black bars."*; `artwork-presentation-design`). `Artwork.isWide` is width over height
+  past `Artwork.WIDE_ASPECT` (1.15, the web's and Apple's number); an
+  unknown size is upright, drawn at 4:5. The series page, Detail, and a
+  person's page open with `FaceHero`. Upright (a square included) is the
+  print: `ShapedArt` at its own aspect inside 150 x 168 dp (276 x 240 dp
+  from 600 dp wide), beside its label (the name, which a person's page
+  leaves to the title; the credit when owed; and the series' or person's
+  facts line, which then has no row of its own). Wide is the plate: the
+  column's width at its own aspect, at most 320 dp tall, at the start, the
+  label under it. `ShapedArt` draws a hairline (`outlineVariant`), the 8 dp
+  radius, and the genre's 3 dp edge, and nothing behind the picture: no
+  wash, bars, or filter; while it loads the box is `surfaceVariant` at
+  exactly the picture's size. Now Playing's bound is a square, full width
+  and no taller than 44 % of the screen: a portrait is drawn whole at its
+  own aspect and its box shrinks to it, centered; a card fills the
+  square; an owed credit is under it. A row's `ArtTile` is 56 dp and a cast
+  line's `CreditFace` 32 dp, both cropped top-anchored; an evening's aired
+  slot leads with its series' tile. Every box is sized from the published
+  aspect, so nothing shifts when an image lands.
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order
   (contract §5.1; the same list and titles on every platform): This day

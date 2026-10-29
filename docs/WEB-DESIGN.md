@@ -585,21 +585,35 @@ web app follows today.
 - **§6.4a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*). The only art the
   projection serves with evidence is a person's portrait (§6.4); every
   other image class waits on the owner's V2 to V5. Where a face is served it is the first
-  thing on its page and large enough to know. A series page, Detail, and
-  a person's page open with a full-width face band, 240 px tall on a
-  phone and 320 px from 768 px: the whole portrait at its own aspect
-  (`object-fit: contain`, never reshaped) over a wash of the same image,
-  blurred and dimmed, with the genre's edge under it, and the caption
-  directly below. Now Playing's art is full width and square, no taller
-  than 44 % of the screen (`min(100%, 44dvh)`) so Play stays on a
-  phone's first screen; a portrait sits whole in it over the wash, a card
-  fills it, and a credit the portrait owes is captioned under it (the art
-  is larger than a page's head there). A row's tile is 56 px. Sizes come from the one helper: the
-  120 step for tiles and every wash (the tile the person just tapped has
-  already cached it, so a band is never an empty box while the sharp copy
-  loads), the 500 or 960 step for a band and Now Playing by its drawn
-  width at the screen's density. Band and art heights are fixed, so
-  nothing moves when an image lands; a failed sharp copy leaves the wash.
+  thing on its page and large enough to know. **The box takes the
+  picture's shape, never the picture the box's** (owner, 2026-10-28:
+  *"I think you can find better solutions for different aspect ratios of
+  images, then just blurring and black bars."*; the method is
+  `artwork-presentation-design`). Its aspect `a` is the projection's
+  width over height (contract §3.3); `a > 1.15` is wide, anything else
+  upright (a square included); an unknown size is drawn upright at 4:5
+  until the image decodes (`aspect-ratio: auto 4 / 5`). On a series page,
+  Detail, and a person's page an upright face is **the print**: beside
+  the heading, 168 px tall on a phone and 240 px from 768 px, as wide as
+  its aspect makes it (at most 40 % of the head), with a hairline border,
+  the control radius, the genre's 3 px edge under it, and its caption
+  (whose face, and the credit when owed) directly under it in its own
+  column; the heading and facts sit beside it and the actions run under
+  both. A wide face is **the plate**: above the heading at the column's
+  full width and its own aspect, at most 320 px tall, set at the start
+  (never centered in a filled band) when that cap binds, captioned under
+  it. Now Playing's bound is a square, full width and no taller than
+  44 % of the screen (`min(100%, 44dvh)`) so Play stays on a phone's
+  first screen: a portrait is drawn whole at its own aspect inside it and
+  its box shrinks to it, centered on the page; a card fills the square;
+  a credit the portrait owes is captioned under it (the art is larger
+  than a page's head there). Nothing is drawn behind a picture: no wash,
+  no bars, no filter; while it loads the box is the surface color at
+  exactly the picture's size, so nothing moves when it lands, and a
+  failed image removes its box. A row's tile is 56 px. Sizes come from
+  the one helper: the 120 step for tiles, the 330, 500 or 960 step for
+  the print, the plate and Now Playing by drawn width at the screen's
+  density.
   With no face, a series page's head is drawn as its typographic card
   (the name, the facts, Follow and Share on the surface with the genre's
   8 px edge, at least 200 px tall, 240 px from 768 px): the designed

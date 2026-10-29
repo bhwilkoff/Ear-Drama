@@ -392,22 +392,37 @@ select {
 .series-row a { flex-direction: row; align-items: center; gap: var(--space-3); padding-left: 0; border-left: 0; }
 .series-row-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
-/* The whole portrait at its own aspect over a wash of itself (§6.4a): never reshaped, never an
-   empty box while it loads. The genre's edge runs under the frame, as on a tile. */
-.has-wash { position: relative; display: block; overflow: hidden; background: var(--color-surface-alt); }
-.art-wash {
-  position: absolute; inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px);
-  object-fit: cover; filter: blur(20px) brightness(0.55) saturate(0.8);
+/* A picture in a box of its own shape (§6.4a, artwork-presentation-design): an archival print's
+   hairline and the control radius, the genre's edge under it, and nothing behind it. While it
+   loads the box is the surface at exactly the picture's size; --a is its width over height. */
+.art-frame {
+  position: relative; display: block; overflow: hidden; flex: none;
+  border: 1px solid var(--color-border); border-radius: var(--radius-control);
+  background: var(--color-surface-alt);
 }
-.art-whole { position: relative; display: block; width: 100%; height: 100%; object-fit: contain; }
+.art-frame::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--genre-accent); }
+.art-frame img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
 
-/* A page's face (§6.4a): a full-width band above the heading, captioned under it. */
+/* A page's face. Upright (a square included): the print beside the heading, its caption under it
+   at the picture's width; the actions run under both. Wide: the plate above the heading. */
 .page-head.has-face { border-left: 0; padding-left: 0; }
-.face-hero { margin: 0 0 var(--space-3); }
-.face-band { height: 240px; border-radius: var(--radius-card); }
-.face-band::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--genre-accent); }
-@media (min-width: 768px) { .face-band { height: 320px; } }
-.face-hero figcaption { margin-top: var(--space-1); overflow-wrap: anywhere; }
+.page-head.face-print {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-3); align-items: start;
+}
+.page-head.face-print > .face-fig { grid-row: 1 / span 2; grid-column: 1; }
+.page-head.face-print > .page-head-text { grid-column: 2; margin-top: 0; }
+.page-head.face-print > .actions { grid-column: 1 / -1; }
+.face-fig { margin: 0; }
+.face-print .face-fig { display: table; }
+.face-print .face-fig figcaption { display: table-caption; caption-side: bottom; }
+.face-print .art-frame {
+  --h: min(168px, calc(40vw / var(--a)));
+  height: var(--h); width: calc(var(--h) * var(--a));
+}
+@media (min-width: 768px) { .face-print .art-frame { --h: min(240px, calc(30vw / var(--a))); } }
+.face-plate .face-fig { margin-bottom: var(--space-3); }
+.face-plate .art-frame { width: min(100%, calc(320px * var(--a))); height: auto; aspect-ratio: var(--a); }
+.face-fig figcaption { margin-top: var(--space-1); overflow-wrap: anywhere; }
 .face-credit { color: var(--color-link); }
 /* No face: the series page's head is drawn as its typographic card (§6.4a), the name on the genre. */
 .page-head.as-card {
@@ -433,7 +448,14 @@ select {
 .np-art:empty { display: none; }
 .np-credit { display: block; margin-top: var(--space-1); text-align: center; }
 .np-art { margin-bottom: var(--space-3); }
-.np-face, .np-art .type-card { width: min(100%, 44vh); width: min(100%, 44dvh); aspect-ratio: 1; margin: 0 auto; border-radius: var(--radius-card); }
+.np-art { container-type: inline-size; }
+.np-art .type-card { width: min(100%, 44vh); width: min(100%, 44dvh); aspect-ratio: 1; margin: 0 auto; border-radius: var(--radius-card); }
+/* The bound is a square no taller than 44 % of the screen; the picture's box shrinks to its shape. */
+.np-face {
+  width: calc(min(100vw - 48px, 44vh) * min(var(--a), 1)); height: calc(min(100vw - 48px, 44vh) / max(var(--a), 1));
+  width: calc(min(100cqi, 44dvh) * min(var(--a), 1)); height: calc(min(100cqi, 44dvh) / max(var(--a), 1));
+  margin: 0 auto;
+}
 .type-card {
   display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-1);
   width: min(200px, 52vw); aspect-ratio: 1; padding: var(--space-4);

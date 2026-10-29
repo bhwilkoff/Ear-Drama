@@ -62,6 +62,17 @@ class ArtTest {
         assertEquals("${art.url}?width=960", art.url(4000))
         assertEquals(0.8f, art.aspect, 0f)
         assertEquals(0.75f, Artwork("x", width = 600, height = 800).aspect, 0f)
+    }
+
+    @Test fun `the shape decides the layout, from the published size`() {
+        assertEquals("an unknown size is upright, never guessed wide", false, Artwork("x").isWide)
+        assertEquals(null, Artwork("x").aspectRatio)
+        assertEquals("a portrait is the print", false, Artwork("x", width = 600, height = 800).isWide)
+        assertEquals("the threshold is still upright", false, Artwork("x", width = 1150, height = 1000).isWide)
+        assertEquals("a wide picture is the plate", true, Artwork("x", width = 1830, height = 1000).isWide)
+    }
+
+    @Test fun `initials skip a leading article`() {
         assertEquals("W", artInitial("The Whistler"))
         assertEquals("A", artInitial("\"America First\""))
         assertEquals("", artInitial("..."))

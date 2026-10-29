@@ -779,6 +779,14 @@ never crop a portrait into a frame that loses the face (top-anchored), and draw
 no stock placeholder: the typographic card is the default artwork. To open a
 closed class, answer its V question; the predicate changes, never a list of ids.
 
+*Amended 2026-10-28 (V3)*: a face's box takes the picture's shape. Owner: *"I
+think you can find better solutions for different aspect ratios of images, then
+just blurring and black bars."* The projection now publishes each portrait's
+width and height (`harvest_people_wikidata.py --phase dims`), wide is past 1.15
+on every platform, an upright face is a print beside its heading and a wide one
+a plate above it, and nothing is drawn behind a picture
+(`artwork-presentation-design`, WEB-DESIGN §6.4a, R11a in each design doc).
+
 ---
 
 ## 070: Volume is leveled by each platform's own dynamics processor, at one set of numbers

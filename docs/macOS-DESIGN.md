@@ -41,7 +41,9 @@ Mac uses the same Core, so the same code holds them:
   and Detail headings, `CreditFace` on cast lines, the series' tile in the
   transport bar, and the system Now Playing artwork, as iOS-DESIGN R11);
   **R11a** faces lead, as iOS-DESIGN R11a: the series page, Detail, and a
-  person's page open with the 320 pt `FaceHero` band, the Mac's rows keep
+  person's page open with `FaceHero` (the print beside its label inside
+  276 x 240 pt, or the plate for a wide picture, at most 320 pt tall; no
+  wash or bars (owner, 2026-10-28: *"I think you can find better solutions for different aspect ratios of images, then just blurring and black bars."*; `artwork-presentation-design`)), the Mac's rows keep
   the 40 pt tile, and an evening's aired slot leads with its tile;
   **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order

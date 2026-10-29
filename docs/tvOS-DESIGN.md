@@ -43,9 +43,12 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   `ArtTile` (the series' star, else its letter), Detail and the series
   page put a `FaceFigure` (240 / 200 pt) beside the title, cast lines
   carry 64 pt portraits in a grid, and owed credits follow as text;
-  **R11a** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*): the TV keeps its 64 pt card tiles and the 240 / 200
-  pt `FaceFigure`, and Now Playing's 400 pt art draws a portrait whole over
-  `PortraitFrame`'s wash, its owed credit under it; the Top Shelf carries faces (§9.3); **R12** brand is chrome only; **R13** shelves by rule.
+  **R11a** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*): the TV keeps its 64 pt card tiles; `FaceFigure` beside
+  the title is the print at its own aspect, 300 pt tall on Detail and 250 pt
+  on a series or person page (a wide picture up to 1.5 times as wide), and
+  Now Playing's 400 pt bound draws a portrait whole at its own aspect, its
+  box shrunk to it, its owed credit under it; nothing is drawn behind a
+  picture (owner, 2026-10-28: *"I think you can find better solutions for different aspect ratios of images, then just blurring and black bars."*; `artwork-presentation-design`); the Top Shelf carries faces (§9.3); **R12** brand is chrome only; **R13** shelves by rule.
 - **R14** lean-back is bounded: the sleep timer ends a session, and what
   plays next is Decision 067's: a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc. The action row carries
   "Next story" (`NextStoryButton`) on an arc's last part only.

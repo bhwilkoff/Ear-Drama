@@ -146,6 +146,18 @@ const API = (() => {
     return `${art.url}?width=${w}`;
   }
 
+  /** A picture's shape (WEB-DESIGN §6.4a): wide past this width over height, else upright. The
+      same number on every platform (iOS-DESIGN and ANDROID-DESIGN R11a). */
+  const wideAspect = 1.15;
+  /** Width over height from the projection, or null when the size was never read. */
+  function artAspect(art) {
+    return art && art.width > 0 && art.height > 0 ? art.width / art.height : null;
+  }
+  function artShape(art) {
+    const a = artAspect(art);
+    return a !== null && a > wideAspect ? 'wide' : 'upright';
+  }
+
   /* ---- The verbs (contract §5) ---- */
 
   const manifest = () => getJSON('manifest.json');
@@ -1083,7 +1095,7 @@ const API = (() => {
 
   return {
     rooms, plays, isOffline, offlineLine,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,

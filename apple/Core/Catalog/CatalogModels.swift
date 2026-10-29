@@ -23,6 +23,19 @@ nonisolated struct Artwork: Hashable, Sendable {
         parts?.queryItems = [URLQueryItem(name: "width", value: String(width))]
         return parts?.url ?? url
     }
+
+    /// Past this width over height a picture is wide; anything else is upright, a square
+    /// included (iOS-DESIGN R11a, the same number as WEB-DESIGN §6.4a and ANDROID-DESIGN).
+    static let wideAspect = 1.15
+
+    /// Width over height from the projection, or nil when the size was never read.
+    var aspectRatio: Double? {
+        guard let width, let height, width > 0, height > 0 else { return nil }
+        return Double(width) / Double(height)
+    }
+
+    /// The print beside a heading, or the plate above it. An unknown size is upright.
+    var isWide: Bool { (aspectRatio ?? 0) > Self.wideAspect }
 }
 
 /// The first letter or digit of a name, skipping a leading article.
