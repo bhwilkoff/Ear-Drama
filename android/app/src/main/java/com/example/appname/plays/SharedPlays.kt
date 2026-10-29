@@ -116,6 +116,15 @@ class SharedPlays(
         null
     }
 
+    /** A performer's own agreement at the version the Worker served; nothing is queued. */
+    suspend fun agree(localId: String, consent: Consent) {
+        if (!consent.publishes) throw PlaysException("publish_waits")
+        val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        api.agree(pid, consent.version)
+        setLink(localId, ShareLink(pid, consent.version))
+        refresh(localId)
+    }
+
     /** Publish after the consent screen (rule 6): agree at the version the Worker served, then queue the job. */
     suspend fun publish(localId: String, script: PlayScript, consent: Consent): PublishAnswer {
         if (!consent.publishes) throw PlaysException("publish_waits")

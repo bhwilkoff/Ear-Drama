@@ -193,6 +193,32 @@ test('Publish is the director\'s, once complete; the consent is recorded at the 
   eq(calls, [['agree', 'pid-1', 'cc0-2026-10-29'], ['publish', 'pid-1']], 'agree at the served version, then publish');
 });
 
+test('each performer agrees for their own recording; Publish waits for every one but the director', async () => {
+  const script = fixtureScript();
+  const parts = {};
+  for (const k of Object.keys(record().parts)) parts[k] = { status: 'done', user_id: ME };
+  const chosen = {};
+  for (const id of C.speechLineIDs(script)) chosen[id] = `t-${id}`;
+  const mem = (id, consented, performer = true) => ({ user_id: id, display_name: id, director: id === ME, performer, consented });
+  const base = { parts, chosen, members: [mem(ME, false), mem(THEM, false), mem('quiet', false, false)] };
+  const open = record(base);
+  eq(S.performers(open).map(m => m.user_id), [ME, THEM], 'only those who hold a chosen take');
+  eq(S.needsMyConsent(open, script, THEM), true, 'a performer in a complete play is asked');
+  eq(S.needsMyConsent(open, script, ME), false, 'the director is asked by Publish, not here');
+  eq(S.needsMyConsent(open, script, 'quiet'), false, 'a member who performs nothing is not asked');
+  eq(S.needsMyConsent(record({ ...base, members: [mem(ME, false), mem(THEM, true)] }), script, THEM), false, 'not twice');
+  eq(S.needsMyConsent(record({ ...base, parts: record().parts }), script, THEM), false, 'not before the play is complete');
+  eq(S.waitingOn(open).map(m => m.user_id), [THEM], 'Publish waits on the other performer');
+  eq(S.waitingOn(record({ ...base, members: [mem(ME, false), mem(THEM, true)] })).length, 0, 'and not on the director');
+  const calls = [];
+  const api = { agree: async (pid, v) => { calls.push(['agree', pid, v]); } };
+  await S.agreeToPublish({ api, pid: 'pid-1', consent: { version: 'cc0-x', text: 'w', publishes: true } });
+  eq(calls, [['agree', 'pid-1', 'cc0-x']], 'agreement at the served version, nothing queued');
+  let err = null;
+  try { await S.agreeToPublish({ api, pid: 'pid-1', consent: { version: 'v', text: 'w', publishes: false } }); } catch (e) { err = e; }
+  eq(err && err.code, 'publish_waits', 'nothing is asked while archive.org is unreachable');
+});
+
 test('Publish is refused while the Worker cannot reach archive.org, and says so in one line', async () => {
   const calls = [];
   const api = { agree: async () => { calls.push('agree'); }, publish: async () => { calls.push('publish'); } };

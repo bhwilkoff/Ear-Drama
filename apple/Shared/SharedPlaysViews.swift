@@ -20,6 +20,7 @@ struct SharedProductionSection: View {
     @State private var people = false
     @State private var consent: PlaysConsent?
     @State private var asking = false
+    @State private var notNow = false
 
     var body: some View {
         if account.status != .unavailable {
@@ -80,13 +81,29 @@ struct SharedProductionSection: View {
         }
         if rec.archive != nil || shared.queued.contains(rec.id) {
             Text("Queued for archive.org").foregroundStyle(Color.brandTextMuted)
+        } else if PlaysShare.needsMyConsent(rec, script, me) {
+            if let consent, consent.publishes == true, !notNow {
+                Text(consent.text).font(TypeRamp.body)
+                Button("I agree to publish my recording under CC0.") {
+                    Task { await shared.agree(production.id, store: plays.store, script: script, consent: consent) }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.brandPrimary)
+                Button("Not Now") { notNow = true }
+            }
         } else if PlaysShare.canPublish(rec, script, me) {
             if consent?.publishes == true {
+                ForEach(PlaysShare.performers(rec)) { m in
+                    let agreed = m.consented == true
+                    Label(m.displayName ?? "No name", systemImage: agreed ? "checkmark.circle.fill" : "circle")
+                        .accessibilityValue(agreed ? "Agreed" : "Not yet")
+                }
                 Button {
                     asking = true
                 } label: {
                     Label("Publish", systemImage: "tray.and.arrow.up")
                 }
+                .disabled(!PlaysShare.waitingOn(rec).isEmpty)
             } else if consent != nil {
                 Text(PlaysShare.publishWaits).foregroundStyle(Color.brandTextMuted)
             }

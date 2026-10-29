@@ -128,5 +128,11 @@ ok(missingFonts(renamed).includes('apple/Resources/Fonts/NoSuchFace-Bold.ttf'), 
 const displayIds = tokens.type.filter((l) => l.face === 'display').map((l) => l.id);
 ok(JSON.stringify(displayIds) === JSON.stringify(['pageTitle', 'sectionHeader']), `the display face sets L1 and L2 only (${displayIds.join(', ')})`);
 
+// The Cast receiver colors its error code with the error token, never the brand ink.
+const castErrorUsesToken = (html) => /#error code \{[^}]*color: var\(--color-error\)/.test(html);
+const castHtml = readFileSync(join(ROOT, 'cast/index.html'), 'utf8');
+ok(castErrorUsesToken(castHtml), 'the Cast error code takes the error token');
+ok(!castErrorUsesToken(castHtml.replace('color: var(--color-error); font-size: 1.8vh', 'color: var(--brand-primary); font-size: 1.8vh')), 'the Cast check catches the brand ink');
+
 console.log(failed ? `${failed} design-token check(s) FAILED` : `all ${results.length} token files match; contrast holds in light and dark`);
 process.exit(failed ? 1 : 0);

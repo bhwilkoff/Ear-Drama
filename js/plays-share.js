@@ -171,6 +171,20 @@ const PlaysShare = (() => {
     return add.length;
   }
 
+  /** Members who hold a chosen take: each consents for their own recording (Decision 059). */
+  const performers = (rec) => (rec.members || []).filter(m => m.performer);
+  /** True when this person, not the director, performs in a complete play and has not agreed yet. */
+  const needsMyConsent = (rec, script, me) => !!me && !rec.archive && rec.director !== me && complete(rec, script)
+    && performers(rec).some(m => m.user_id === me && !m.consented);
+  /** The performers other than the director who have not agreed: Publish waits on them. */
+  const waitingOn = (rec) => performers(rec).filter(m => m.user_id !== rec.director && !m.consented);
+  /** A performer's own agreement, at the version the Worker served. */
+  async function agreeToPublish({ api, store, local, pid, consent }) {
+    if (!consent || consent.publishes !== true) throw { code: 'publish_waits' };
+    await api.agree(pid, consent.version);
+    if (store && local) await store.setShare(local.id, { pid, consented: consent.version });
+  }
+
   /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is `consent.publishes`. */
   const canPublish = (rec, script, me) => !!me && rec.director === me && !rec.archive && complete(rec, script);
 
@@ -311,7 +325,7 @@ const PlaysShare = (() => {
   }
 
   return {
-    PUBLISH_WAITS, canPublish, publishPlay, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
+    PUBLISH_WAITS, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
     upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, line,
   };
 })();

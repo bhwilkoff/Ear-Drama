@@ -761,6 +761,19 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
    otherwise the one line "Publishing opens when the Ear Drama archive
    account is connected." stands in its place. The old gates
    (`TODO(M8-consent-screen)`) are gone.
+   - **Every performer agrees for their own recording** (Decision 059:
+     consent is per person; owner, 2026-10-29). The Worker's record marks
+     each member `performer` (holds a chosen take) and `consented` (agreed
+     at the current version). Once the production is complete and
+     `GET /consent` says `publishes`, each performer who is not the
+     director and has not agreed sees one prompt in that production: the
+     Worker's text exactly as served, **I agree to publish my recording
+     under CC0.**, and **Not now** (it returns next time the production
+     opens; nothing is sent). The director sees the performers as a list
+     of names, each with a mark for agreed or not yet, and nothing else
+     written. **Publish** is disabled until every performer other than the
+     director has agreed; tapping it then opens the director's own sheet as
+     above. Apple TV shows neither the prompt nor the list.
    - *Replaced*: "Consent before the first upload (Decision 059). The
      Worker's text, exactly as it arrives, with I agree and Not now ..."
 7. **Listen through.** Coming back to a shared production (opening it, the

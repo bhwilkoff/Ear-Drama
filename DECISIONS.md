@@ -623,7 +623,8 @@ the dark page); `tools/test_design_tokens.mjs` checks both pairs. Platforms set
 red through one name each (`--color-record` and `.btn-record`; `Color.brandRecord`;
 `OnAir.colors.record` and `recordButtonColors()`), and the guards fail on red
 outside recording (`tools/test_apple_design_rules.py` "red means recording",
-Android `ColorRolesTest`). Blue does the wayfinding (Decision 012: brand is
+Android `ColorRolesTest`). A secondary action that is not wayfinding (Use this take) is an ink outline: the
+platform's outlined button tinted `primary`. Blue does the wayfinding (Decision 012: brand is
 chrome, genre hues are content). Genre hues are the `color.genre` group, checked
 at 3:1 on every ground in both modes. The icon stays the white ring microphone on
 studio red (the generator takes icon grounds from `record`); it waits on the CC0

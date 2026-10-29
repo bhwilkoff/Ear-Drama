@@ -182,6 +182,25 @@ class PlaysShareTest {
         assertFalse("never twice", PlaysShare.canPublish(done.copy(archive = SharedArchive("pending_owner_account")), script, me))
     }
 
+    @Test fun `each performer agrees for their own recording and Publish waits on them`() {
+        val parts = Relay.order(script).associate { it.raw to SharedPart("done", userId = me) }
+        val chosen = script.speechLineIDs.associateWith { "t-$it" }
+        val members = listOf(
+            SharedMember(me, "Me", director = true, performer = true),
+            SharedMember("bo", "Bo", performer = true),
+            SharedMember("quiet", null),
+        )
+        val rec = record(parts = parts, chosen = chosen).copy(members = members)
+        assertEquals(listOf(me, "bo"), PlaysShare.performers(rec).map { it.userId })
+        assertTrue(PlaysShare.needsMyConsent(rec, script, "bo"))
+        assertFalse("the director is asked by Publish", PlaysShare.needsMyConsent(rec, script, me))
+        assertFalse(PlaysShare.needsMyConsent(rec, script, "quiet"))
+        assertEquals(listOf("bo"), PlaysShare.waitingOn(rec).map { it.userId })
+        val agreed = rec.copy(members = members.map { if (it.userId == "bo") it.copy(consented = true) else it })
+        assertFalse(PlaysShare.needsMyConsent(agreed, script, "bo"))
+        assertTrue(PlaysShare.waitingOn(agreed).isEmpty())
+    }
+
     @Test fun `Publish waits while the Worker cannot reach archive`() = runBlocking {
         val store = MemoryShareStore()
         val api = FakeApi()

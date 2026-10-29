@@ -113,6 +113,8 @@ const M = [
   ["filter skips claims", "src/plays.js", "  const p = await redeem(env, body.token, auth.userId, now);\n  if (!p) return problem(404, \"invite_not_found\");\n  const refusal = nameRefusal(body.display_name);\n  if (refusal) return problem(422, refusal);", "  const p = await redeem(env, body.token, auth.userId, now);\n  if (!p) return problem(404, \"invite_not_found\");"],
   ["publish incomplete", "src/plays.js", '  if (left) return problem(409, "incomplete", left);\n', ""],
   ["publish with a reported take", "src/plays.js", '  if (held.length) return problem(409, "reported_take", held);\n', ""],
+  ["publish without the archive account", "src/plays.js", '  if (!env.IA_ACCESS) return problem(503, "publishing_unavailable");\n', ""],
+  ["members hide who agreed", "src/plays.js", "consented: consented.has(m.user_id),", "consented: false,"],
   ["publish without consent", "src/plays.js", '  if (missing.length) return problem(409, "consent_missing", missing);\n', ""],
   ["anyone publishes", "src/plays.js", "async function publish(auth, env, p, now) {\n  if (p.user_id !== auth.userId) return problem(403, \"director_only\");", "async function publish(auth, env, p, now) {"],
   ["job claims to have run", "src/plays.js", "VALUES (?1, ?2, 'pending_owner_account', ?3, ?4, ?4)", "VALUES (?1, ?2, 'queued', ?3, ?4, ?4)"],

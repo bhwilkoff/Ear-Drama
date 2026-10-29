@@ -179,6 +179,7 @@ function castCss(t) {
     ':root {',
     `  --brand-primary: ${p};`,
     `  --brand-text-muted: ${t.color.brand.textMuted.dark.toUpperCase()};`,
+    `  --color-error: ${t.color.semantic.error.dark.toUpperCase()};`,
     '}',
     'cast-media-player {',
     `  --theme-hue: ${hue((t.color.brand.secondary || t.color.brand.primary).dark)};`,
