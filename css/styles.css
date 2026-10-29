@@ -580,7 +580,10 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .share-box > * + * { margin-top: var(--space-2); }
 .share-box .take-form { max-width: 32rem; }
 .consent { margin-top: var(--space-4); }
-.consent-text { white-space: pre-line; max-width: 68ch; padding: var(--space-3) 0; }
+.consent-text { max-width: 68ch; padding: var(--space-3) 0; }
+.consent-text p + p, .consent-text p + ul { margin-top: var(--space-2); }
+.consent-list { list-style: disc; padding-left: var(--space-6); }
+.consent-list li + li { margin-top: var(--space-2); }
 .report-form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); flex: 1 1 100%; }
 .report-form .field-input { flex: 1 1 10rem; width: auto; min-width: 0; }
 .report-form .refusal { flex: 1 1 100%; }
@@ -753,7 +756,7 @@ html.tv .account-row { display: none; }
 .np-together .btn-ghost { padding: 0 var(--space-2); }
 .np-together .btn-ghost:disabled { color: var(--color-text-muted); opacity: 1; }
 .room-code { margin: var(--space-2) 0 var(--space-1); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
-.consent-sheet .consent-text { white-space: pre-line; margin-bottom: var(--space-4); }
+.consent-sheet .consent-text { margin-bottom: var(--space-4); }
 .consent-sheet .actions + .actions { padding-top: var(--space-2); }
 .together-sheet .actions + .actions { padding-top: var(--space-2); }
 .together-start { margin-bottom: var(--space-4); }

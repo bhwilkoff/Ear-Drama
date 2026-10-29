@@ -46,6 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import com.example.appname.plays.ConsentBlock
+import com.example.appname.plays.ConsentText
 import androidx.compose.ui.unit.dp
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.ClassRow
@@ -267,7 +270,7 @@ fun LazyListScope.sharedCastRows(
             val words = consent
             if (words != null && words.publishes && !notNow) {
                 Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-                    Text(words.text, style = MaterialTheme.typography.bodyMedium)
+                    ConsentWords(words.text)
                     Button(onClick = { sheet.agree(words) }, enabled = !sheet.busy, colors = playButtonColors()) {
                         Text("I agree to publish my recording under CC0.")
                     }
@@ -300,7 +303,7 @@ fun LazyListScope.sharedCastRows(
                     AlertDialog(
                         onDismissRequest = { asking = false },
                         title = { Text("Publish") },
-                        text = { Text(words.text, Modifier.verticalScroll(rememberScrollState())) },
+                        text = { ConsentWords(words.text, Modifier.verticalScroll(rememberScrollState())) },
                         confirmButton = { TextButton(onClick = { asking = false; sheet.publish(words) }) { Text("I agree to publish my recording under CC0.") } },
                         dismissButton = { TextButton(onClick = { asking = false }) { Text("Not now") } },
                     )
@@ -313,6 +316,23 @@ fun LazyListScope.sharedCastRows(
     if (rec.archive != null) {
         item(key = "archive") {
             Text("Queued for archive.org", Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+/** The served consent words as a lead and a bulleted list, none changed. */
+@Composable
+private fun ConsentWords(text: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+        ConsentText.blocks(text).forEach { block ->
+            when (block.kind) {
+                ConsentBlock.Kind.Lead -> Text(block.text, style = MaterialTheme.typography.titleMedium)
+                ConsentBlock.Kind.Paragraph -> Text(block.text, style = MaterialTheme.typography.bodyMedium)
+                ConsentBlock.Kind.Item -> Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                    Text("•", Modifier.clearAndSetSemantics { }, style = MaterialTheme.typography.bodyMedium)
+                    Text(block.text, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
     }
 }

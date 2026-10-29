@@ -324,8 +324,21 @@ const PlaysShare = (() => {
     return 'Ear Drama could not be reached.';
   }
 
+  /**
+   * The Worker's consent words as structure, none changed: with "- " lines, the first
+   * plain line leads and each "- " line is an item; without them every line is a paragraph.
+   */
+  function consentBlocks(text) {
+    const lines = String(text || '').split('\n').map(l => l.trim()).filter(Boolean);
+    const listed = lines.some(l => l.startsWith('- '));
+    return lines.map((l, i) => {
+      if (listed && l.startsWith('- ')) return { kind: 'item', text: l.slice(2).trim() };
+      return { kind: listed && i === 0 ? 'lead' : 'para', text: l };
+    });
+  }
+
   return {
-    PUBLISH_WAITS, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
+    consentBlocks, PUBLISH_WAITS, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
     upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, line,
   };
 })();
