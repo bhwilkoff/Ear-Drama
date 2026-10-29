@@ -140,11 +140,31 @@ const at = process.argv.indexOf("--only");
 const only = at > 0 ? process.argv[at + 1].split(",") : null;
 const run = only ? M.filter(([name]) => only.includes(name)) : M;
 
+// A mutation is "caught" when vitest exits non-zero, so a suite that cannot run at all
+// (vitest missing, a broken import) would read as every mutation caught. The unmutated
+// suite must pass first (2026-10-29: without node_modules this printed "all 103 caught").
+try {
+  execFileSync("npx", ["--no-install", "vitest", "run"], { cwd: root, stdio: "pipe" });
+} catch (e) {
+  console.error("the unmutated suite does not pass, so no mutation can be judged:\n" + String(e.stderr || e.stdout || e.message).slice(-800));
+  process.exit(2);
+}
+
+// An interrupted run must not leave a mutated source behind.
+let pending = null;
+for (const sig of ["SIGINT", "SIGTERM"]) {
+  process.on(sig, () => {
+    if (pending) writeFileSync(pending.path, pending.src);
+    process.exit(130);
+  });
+}
+
 let survivors = 0;
 for (const [name, file, from, to] of run) {
   const path = root + file;
   const src = readFileSync(path, "utf8");
   if (src.split(from).length !== 2) throw new Error(`mutation "${name}" no longer matches ${file} exactly once`);
+  pending = { path, src };
   writeFileSync(path, src.replace(from, to));
   let red = false;
   try {
@@ -153,6 +173,7 @@ for (const [name, file, from, to] of run) {
     red = true;
   } finally {
     writeFileSync(path, src);
+    pending = null;
   }
   console.log(`${red ? "CAUGHT  " : "SURVIVED"} ${name}`);
   if (!red) survivors++;
