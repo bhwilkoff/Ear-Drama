@@ -9,8 +9,9 @@ nonisolated struct TopShelfSnapshot: Codable, Equatable, Sendable {
         let id: String
         let title: String
         let series: String
-        /// Nil when the series has no served image, or its license asks for a
-        /// credit the shelf cannot show: no artwork rather than a stand-in.
+        /// Nil when no face may ride the shelf: a credited portrait rides only
+        /// as the face the item's Detail shows with its credit, one select away
+        /// (tvOS-DESIGN §9.3). No artwork rather than a stand-in.
         let artURL: URL?
         let link: URL
 

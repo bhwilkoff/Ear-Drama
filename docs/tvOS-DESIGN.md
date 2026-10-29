@@ -303,9 +303,14 @@ The rights line, the transcript label, and volume leveling are as in
   Play and select open `eardrama://episode/{id}`. The app writes
   `topshelf.json` into the App Group `group.app.eardrama` (the only place
   besides Caches tvOS can write; §10.1) whenever the history changes; the
-  extension reads it and has no catalog or network. A portrait whose license
-  asks for a credit is left off, since the shelf cannot show the credit: no
-  artwork rather than a stand-in. Nothing in progress returns nil, so tvOS
+  extension reads it and has no catalog or network. Each item wears the
+  face its Detail draws (`EpisodeDetail.starFace`), else the series' face.
+  The shelf cannot draw a caption, so a portrait whose license asks for a
+  credit rides it only as the Detail face: select (and Play) opens that
+  Detail, which shows the portrait with its credit on its first screen, one
+  select away, the attribution "reasonable to the medium" CC BY and BY-SA
+  ask for. A credited series face that Detail does not show stays off: no
+  artwork rather than a stand-in. Square shape, the 500 step. Nothing in progress returns nil, so tvOS
   keeps the static image. The App ID needs the App Group capability before a
   device build signs (`docs/runbooks/tvos-top-shelf-setup.md`).
 

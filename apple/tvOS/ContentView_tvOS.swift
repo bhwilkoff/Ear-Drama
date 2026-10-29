@@ -42,7 +42,12 @@ struct ContentView_tvOS: View {
         // The Top Shelf's Continue items follow the history from any tab.
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             guard catalog.state == .ready else { return }
-            TopShelfSnapshot.publish(await catalog.episodes(Array(history.inProgressIDs.prefix(TopShelfSnapshot.limit))))
+            let episodes = await catalog.episodes(Array(history.inProgressIDs.prefix(TopShelfSnapshot.limit)))
+            var pageFaces: [String: Face] = [:]
+            for episode in episodes {
+                if let face = await catalog.episodeDetail(episode.id)?.starFace { pageFaces[episode.id] = face }
+            }
+            TopShelfSnapshot.publish(episodes, pageFaces: pageFaces)
         }
     }
 
