@@ -220,6 +220,9 @@ describe("invite links", () => {
     await env.DB.prepare("UPDATE play_invites SET expires_at = ?2 WHERE id = ?1").bind(inv.id, Date.now() - 1).run();
     expect((await claimByInvite(actor, inv.token, firstPart)).status).toBe(404);
     await runSweep();
+    expect(await env.DB.prepare("SELECT id FROM play_invites WHERE id = ?1").bind(inv.id).first()).not.toBeNull();
+    await env.DB.prepare("UPDATE play_invites SET expires_at = ?2 WHERE id = ?1").bind(inv.id, Date.now() - 31 * 24 * 3600_000).run();
+    await runSweep();
     expect(await env.DB.prepare("SELECT id FROM play_invites WHERE id = ?1").bind(inv.id).first()).toBeNull();
   });
 

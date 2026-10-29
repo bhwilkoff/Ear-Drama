@@ -193,15 +193,21 @@ actor APIClient {
         return try await rawWorker(method, path, body, contentType, headers, token: fresh.accessToken)
     }
 
+    /// A Worker GET that needs no account (an open invite, the finished listing): no bearer, no
+    /// refresh, and a 401 is never retried. `path` is already percent-encoded.
+    func openWorkerResponse(path: String, headers: [String: String] = [:]) async throws -> (Data, Int) {
+        try await rawWorker("GET", path, nil, nil, headers, token: nil)
+    }
+
     private func rawWorker(_ method: String, _ path: String, _ body: Data?, _ contentType: String?,
-                           _ headers: [String: String], token: String) async throws -> (Data, Int) {
+                           _ headers: [String: String], token: String?) async throws -> (Data, Int) {
         guard let base = config.workerURL else { throw WorkerError.notConfigured }
         let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
         guard let url = URL(string: root + path) else { throw WorkerError.badResponse }
         var request = URLRequest(url: url, timeoutInterval: (body?.count ?? 0) > 1_000_000 ? 120 : 20)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         if let body {
             request.setValue(contentType ?? "application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = body

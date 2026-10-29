@@ -167,6 +167,15 @@ class WorkerApi(
         headers: Map<String, String> = emptyMap(),
     ): ByteArray = authedResponse(method, path, null, raw, headers).bodyAsBytes()
 
+    /**
+     * A read that needs no account (an open invite, the finished listing): no bearer, no
+     * refresh, and a 401 is never retried. A placeholder Worker is a 503 `not_configured`.
+     */
+    suspend fun openBytes(path: String, headers: Map<String, String> = emptyMap()): ByteArray {
+        if (!config.workerReady) throw WorkerException(503, "not_configured")
+        return ok(send(HttpMethod.Get, path, headers = headers)).bodyAsBytes()
+    }
+
     private suspend fun authedResponse(
         method: HttpMethod,
         path: String,

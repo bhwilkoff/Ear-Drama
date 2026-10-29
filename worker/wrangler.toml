@@ -107,6 +107,23 @@ namespace_id = "8309"
   limit = 20
   period = 60
 
+# Plays that need no account (plays-open.js), counted per address: READ is an
+# open invite's view and the finished listing; AUDIO is the take files a
+# listener fetches in a run (a play has hundreds of lines).
+[[ratelimits]]
+name = "OPEN_READ_LIMITER"
+namespace_id = "8310"
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+[[ratelimits]]
+name = "OPEN_AUDIO_LIMITER"
+namespace_id = "8311"
+  [ratelimits.simple]
+  limit = 300
+  period = 60
+
 # PLACEHOLDER, owner: take audio for shared plays (plays.js). R2 asks for a
 # payment method on file even on its free tier (research 08c Q8), so the
 # binding stays commented out until the owner decides; without it, take

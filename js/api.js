@@ -1028,6 +1028,26 @@ const API = (() => {
       }
     }
 
+    /**
+     * A read that needs no account: no bearer, so nothing is refreshed and a 401 is
+     * never retried. `opts.headers` carries an invite's `x-invite`; a 410 is kind
+     * 'gone' (a revoked or expired invite); `opts.bytes` answers an ArrayBuffer.
+     */
+    async function open(path, opts = {}) {
+      const b = base();
+      if (!b) throw new DataError('not_configured', path);
+      let resp;
+      try {
+        resp = await fetch(b + path, { method: 'GET', headers: opts.headers || {}, signal: AbortSignal.timeout(opts.timeout || TIMEOUT_MS) });
+      } catch (e) { throw netError(e, path); }
+      if (!resp.ok) {
+        const err = await problemOf(resp, path);
+        if (resp.status === 410) err.kind = 'gone';
+        throw err;
+      }
+      return opts.bytes ? resp.arrayBuffer() : resp.json();
+    }
+
     function signedIn() { const s = state(); return !!(s && s.user_id); }
 
     /** A fresh raw nonce for one sign-in; the provider puts it (or its SHA-256) in the identity token. */
@@ -1070,7 +1090,7 @@ const API = (() => {
     }
 
     return {
-      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE, call,
+      available, state, signedIn, update, newNonce, signIn, signOut, deleteAccount, device: DEVICE, call, open,
       /** The Worker's URL is real (not a placeholder): signed-in features may be offered. */
       reachable: () => !!base(),
       onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
@@ -1121,6 +1141,23 @@ const API = (() => {
       removeLine: (pid, lineId, reason) => c('POST', `${at(pid)}/archive/lines/${encodeURIComponent(lineId)}/remove`, { reason }),
       report: (body) => c('POST', `${P}/reports`, body),
       block: (userId) => c('POST', `${P}/blocks`, { user_id: userId }),
+      /**
+       * No account (owner 2026-10-29). An invite link shows everything signed out: the play, its parts
+       * and states, who is in by chosen name, and the chosen takes. Only a read; claiming and recording
+       * still need `joinByInvite`. A revoked or expired invite is a DataError of kind 'gone'.
+       */
+      openInvite: (token) => account.open(`${P}/open/invite`, { headers: { 'x-invite': token } }),
+      openInviteAudio: (token, takeId) => account.open(`${P}/open/invite/takes/${encodeURIComponent(takeId)}/audio`,
+        { headers: { 'x-invite': token }, bytes: true, timeout: 120000 }),
+      /** Finished ear dramas, newest published first: { productions, next_cursor }. */
+      finished: ({ limit, cursor } = {}) => {
+        const q = new URLSearchParams();
+        if (limit) q.set('limit', String(limit));
+        if (cursor) q.set('cursor', cursor);
+        const qs = q.toString();
+        return account.open(`${P}/finished${qs ? `?${qs}` : ''}`);
+      },
+      finishedOne: (pid) => account.open(`${P}/finished/${encodeURIComponent(pid)}`),
       classes: () => c('GET', `${P}/classes`),
       createClass: (name, under13) => c('POST', `${P}/classes`, { name, under13: !!under13 }),
       joinClass: (code, displayName) =>

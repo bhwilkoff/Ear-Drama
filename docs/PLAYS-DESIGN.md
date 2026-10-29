@@ -24,7 +24,7 @@ The device voice is a scene partner, never a performer.
 
 ---
 
-> **Owner, 2026-10-29** (DESIGN-LOOP): an invite link shows everything signed out (the play, parts, who is in, playable takes); claiming and recording need an account. Finished ear dramas are listed and credited on Ear Drama's own pages. Recording has three modes: Run through, Line by line, Step. These supersede any narrower rule below until the sections are rewritten.
+> **Owner, 2026-10-29** (DESIGN-LOOP): an invite link shows everything signed out (the play, parts, who is in, playable takes); claiming and recording need an account. Finished ear dramas are listed and credited on Ear Drama's own pages. Recording has three modes: Run through, Line by line, Step. These supersede any narrower rule below; §11.1, §11.5 and §11.7 rule 3 are rewritten for the first two (Worker side built 2026-10-29: docs/WORKER.md "Open reads"). The recording modes are not yet rewritten into §2 or §4.
 
 ## §1. Why it should exist, and who it touches
 
@@ -615,7 +615,9 @@ record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
 
 ### §11.1 What a production is on the Worker
 
-- **An account is required** for every call (Decision 057).
+- **An account is required** for every call that contributes (Decision 057):
+  claiming, recording, uploading, reporting, blocking. Two reads need none (owner,
+  2026-10-29): an open invite, and the finished listing (§11.5).
 - **Castable only** (§8 rule 1). A production names a script id, its
   revision, and its cast sheet: every line id with its part, in script order,
   exactly as `linePart` gives it. The Worker holds a manifest of each castable
@@ -628,8 +630,11 @@ record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
   listening through stay on the device.
 - **Invite only.** The director makes invite links: 256 random bits, shown
   once, stored as a hash, revocable, expiring after 1 to 30 days (7 by
-  default). Whoever holds one, signed in, sees the cast sheet and claims one
-  part. At most 64 members.
+  default). Whoever holds one sees everything without an account (the play, its
+  parts and their states, who is in by chosen name, and the chosen takes,
+  playable; owner 2026-10-29: "they just can't contribute until they sign in").
+  Signed in, they also claim one part. A revoked or expired invite says so (410).
+  At most 64 members.
 
 ### §11.2 The relay across devices
 
@@ -705,6 +710,13 @@ The owner's answers in §9 hold on the server, word for word:
   reported one is held back from the item. When a performer's last line
   leaves, their name leaves the credits. Copies others made before cannot be
   called back (the consent says so).
+- **Finished ear dramas are listed and credited** (owner, 2026-10-29: "Why else
+  would we record them?"). A public, paginated listing of published productions:
+  title, the script's source, credits (part: chosen name), the archive.org item,
+  and the publish date, newest published first (a stated rule, never engagement),
+  plus one production by id. A removed line (P12) drops its credit; a deleted
+  account's lines stay on the item and are credited to no one. The site reads
+  the Worker directly (docs/WORKER.md "Open reads").
 - **Classes.** A teacher makes a class and students join by an eight-character
   code. A class marked under 13 (fixed when made) takes no student until its
   teacher records the school's consent, and that record is refused until the
@@ -748,8 +760,12 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
    fact "Works for N days." The token rides the fragment, so no server log
    holds it. Shown once; the Worker keeps only its hash.
 3. **Join.** Opening a link holds the token (for this session) and opens
-   Library's Ear dramas, which shows **Invitation**: the play's title and
-   its parts with their states. Signed out: "Sign in to join". Signed in,
+   Library's Ear dramas, which shows **Invitation**: the play's title, its
+   parts with their states, who is in by chosen name, and the takes, which play
+   (`GET /open/invite`; owner, 2026-10-29: signed out, everything is visible).
+   Signed out, "Sign in to join" stands where **Take part** would; claiming and
+   recording need an account. A revoked or expired invite reads "This invite does not work."
+   (the Worker's 410). Signed in,
    every open part offers **Take part** with an optional name field while no
    part records, the suggested one (`next`) as the accent (C7: any order);
    a member already in it sees **Open**. Joining makes the production on this
