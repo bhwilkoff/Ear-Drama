@@ -384,3 +384,11 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - The staged catalog-2026-10-28 now carries V4's file (sizes and faces): 106,276 members, order identical, only people_wd/files.json.gz differs; checksums OK; the cutter's dry run passes. Still the owner's command (the permission check).
 - Live: the date-fix publish (run 40800038849) serves 107,369 episodes, as predicted.
 - Seen, owner calls: some served "portraits" are not photographs of the person (a plaque, a 1924 cartoon, a guitar, a theatre bill); Life With Luigi's title-card frame. Seen, no ruling: test_discover_corpus should SKIP without the otrr cache; the web lock-screen artwork is not face-cropped.
+
+### Tick 107, 2026-10-28, F1 and A1 merged (1.0.89, 1.0.90)
+- F1: Apple evening-slot tiles inset by @ScaledMetric; web lock-screen artwork face-cropped through a canvas; test_discover_corpus skips without its cache.
+- A1: departed episode ids get an alias (by recording, never title) or a tombstone each publish; guarded; the publish fetches the live projection by checksum and refuses if another publish went live meanwhile; every client resolves in one place and rewrites stored ids once. C1's 984: 899 aliases, 85 tombstones (offline; the live catalog already dropped them at 7:30 PM, so the live aliases start with the next change, which the owner's ruling allows).
+- Verified on the merged tree: catalog 29/29; web; macOS 199 tests in 45 suites; iOS and tvOS 0 warnings; Android lintRelease clean, 266 tests. Catalog publish dispatched to run A1's new steps live (run 40804901093). App Store upload of 1.0.88 succeeded.
+- The owner ran both pending commands on one line; the cutter refused on argument count and nothing was created (checked: no Release, keystore or secret). Each command needs its own line.
+- Owner call (A1 seen): a published station or evening slot whose episode id moved becomes a gap; contract §8 says a published slot never changes. Recommend: forward kept slots through the aliases.
+- Running: A2 (series keys forward; watchOS history; sync hydrate; test_web.sh final line; ia_lib .gz).
