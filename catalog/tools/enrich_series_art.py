@@ -75,7 +75,7 @@ def candidates(qid, cat, items, depicts, trackd):
 def series_art_rows(con, items, depicts, files, trackd):
     import enrich_people_art as P
     nets = {k: json.loads(n) if n else [] for k, n in con.execute("SELECT key, networks FROM series")}
-    last = dict(con.execute("SELECT key, last_date FROM series"))
+    run = AP.run_dates(con)
     wd = _rj(os.path.join(CACHE, "wikidata", "items.json.gz"), {})
     rows = []
     for key, qid, ev, bc, cat in con.execute(
@@ -93,7 +93,7 @@ def series_art_rows(con, items, depicts, files, trackd):
             cats = fv.get("categories") or []
             cls = fv.get("class", "unread")
             served = AP.show_served(identity, src, cls, fv.get("author"), fv.get("width"), fv.get("height"), f, cats,
-                                    fv.get("date_field"), last.get(key))
+                                    fv.get("date_field"), *reversed(run.get(key, (None, None))))
             rows.append((key, qid, f, src, identity, cls, fv.get("template"), fv.get("author"),
                          fv.get("width"), fv.get("height"), AP.face_text(fv.get("face")), json.dumps(cats), fv.get("date_field"),
                          int(served), AP.evidence_url(f)))

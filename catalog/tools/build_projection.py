@@ -396,12 +396,12 @@ def served_show_images(s, series_keys):
     if "series_art" not in tables:
         return {}
     rows = {}
-    last = dict(s.execute("SELECT key, last_date FROM series"))
+    run = AP.run_dates(s)
     for sk, file, src, identity, cls, template, author, w, h, face, cats, when in s.execute(
             "SELECT series_key, file, source, identity, license_class, template, author, width, height, face, "
             "categories, date_field FROM series_art"):
         if sk in series_keys and AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"),
-                                                when, last.get(sk)):
+                                                when, *reversed(run.get(sk, (None, None)))):
             rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face))))
     names = dict(s.execute("SELECT key, name FROM series"))
     return {sk: AP.pick_show(r, names.get(sk)) for sk, r in rows.items()}

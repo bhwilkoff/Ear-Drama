@@ -423,7 +423,8 @@ a regular whom a Wikipedia covers, scored share of credited episodes x `1 + ln(1
 than the title (the item's years, or its description's, overlap ours ±2, or its broadcaster is
 our network), an item its own description does not call a television program, a license class
 a portrait is served under, a shorter side of 160 px, no television in its name or categories,
-and no date of its own after the run.
+and no date of its own outside the run (±2 years of the earliest logged broadcast and our last
+episode).
 
 **Why**: the owner, 2026-10-29: *"images/graphics that show the full 'show' are better than
 individual contributors. Images that show the star(s) are better than those that show folks that
@@ -435,11 +436,13 @@ statement is the uploader's license for the item (DECISIONS 002).
 **How to apply**: `art_policy.show_served`, `series_identity`, `series_face`; harvest
 `harvest_series_art.py` (`.cache/series_art/`); evidence tables from `enrich_series_art.py`, run
 by `enrich_people_art.py`; guard `tests/test_projection_art.py`. MEASURED on the 2026-10-28
-caches, 2,036 shows of 5+ episodes: before, 263 wore a person and 1,773 the board; after, 40
-show, 260 star, 1 person, 1,735 board (all 10,641: 55 / 308 / 1 / 10,277). Of 251 identity-
+caches, 2,036 shows of 5+ episodes: before, 263 wore a person and 1,773 the board; after, 37
+show, 261 star, 1 person, 1,737 board (all 10,641: 49 / 309 / 1 / 10,282). Of 251 identity-
 checked matches a random 40 checked by eye held 1 wrong item (Twenty Questions, the TV program),
-which the television rule now refuses; of the 55 show pictures served, 1 is wrong (Hilltop House:
-a Commons depicts statement on a 1914 photograph of the hotel). On 42 shows whose title-role
+which the television rule now refuses; of the 55 show pictures first served, 1 was wrong (Hilltop House:
+a Commons depicts statement on a 1914 photograph of the hotel), and the date rule now refuses it
+with 5 more dated before their program (Pal as Lassie 1942, a 1928 Strange as It Seems strip,
+George Raft's 1939 trailer, William Gargan 1933, Leon Janney as a child): 49 served. On 42 shows whose title-role
 holder has a portrait, the heard-most rule and share x recognizability each pick the title role
 32 times (raw sitelink counts: 28); the marks make the title role win, and the 25 shows that
 gained a face had none before. Coverage is bounded by Wikidata: 268 of the 2,036 shows match an

@@ -124,11 +124,12 @@ def retrace_shows(projection, source):
     s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
     ok = set()
     if "series_art" in {r[0] for r in s.execute("SELECT name FROM sqlite_master")}:
-        last = dict(s.execute("SELECT key, last_date FROM series"))
+        run = AP.run_dates(s)
         for k, file, src, identity, cls, author, w, h, cats, when in s.execute(
                 "SELECT series_key, file, source, identity, license_class, author, width, height, categories, "
                 "date_field FROM series_art"):
-            if AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"), when, last.get(k)):
+            if AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"), when,
+                              *reversed(run.get(k, (None, None)))):
                 ok.add((k, AP.evidence_url(file)))
     s.close()
     return sorted(published - ok)
@@ -360,6 +361,14 @@ check("control: a file dated after the run is refused",
       AP.show_served(*SHOW, date_field="March 1958", last_date="1952-07-29"), False)
 check("control: a file whose name dates it after the run is refused",
       AP.show_served(*SHOW[:6], "Bob Barker 1958 Truth or Consequences headshot.jpg", [], None, "1952-07-29"), False)
+check("control: a depicts file dated before the first broadcast is refused (Hill Top House, 1914)",
+      AP.show_served("title+years", "commons:P180", "pd_us", None, 1678, 1086, "Hill Top House, Harpers Ferry, WV.jpg",
+                     [], "1914", "1953-12-15", "1937-01-01"), False)
+check("control: a show image dated before the first broadcast is refused, whatever its source",
+      AP.show_served(*SHOW, date_field="1928-03-26", last_date="1948-05-23", first_date="1935-03-22"), False)
+check("show: a year before our first episode but inside the logged run passes",
+      AP.show_served(*SHOW[:6], "Ralph Edwards Truth or Consequences 1942.JPG", [], "1942-03-08", "1952-07-29",
+                     "1943-12-18"), True)
 check("show: a file dated inside the run passes", AP.show_served(*SHOW, date_field="1951", last_date="1952-07-29"), True)
 check("control: an item its own description calls a television program is no identity",
       AP.series_identity(YEARS, ["CBS"], ["CBS"], "1949-1956 CBS television program"), "television")

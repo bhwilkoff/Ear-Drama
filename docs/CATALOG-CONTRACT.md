@@ -246,7 +246,11 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
      category, P373). Its license class is one a portrait is served under (read
      again from its file page, credited when owed), its shorter side is at least
      160 px (the largest show tile), and neither its name nor its categories say
-     television (a still of the TV run is another broadcast). archive.org items'
+     television (a still of the TV run is another broadcast), and its own date (its
+     page's date field, else a year in its name) lies inside the run, ±2 years of the
+     earliest logged broadcast (`first_broadcast`, else our first episode) and our last
+     episode, whatever its source: a "depicts" statement on a 1914 photograph of a hotel
+     is not the 1939 soap opera named for it. archive.org items'
      own cover art is not a source: its only rights statement is the uploader's
      license for the item (catalog DECISIONS 002). `art_policy.show_served`.
   2. `star`: `series.star` when chosen by recognizability: a person the

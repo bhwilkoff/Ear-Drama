@@ -204,22 +204,37 @@ def file_year(date_field):
     return int(m.group(1)) if m else None
 
 
+def run_dates(con):
+    """{series key: (first, last)}: the earliest broadcast witnessed (the logs' first_broadcast or
+    our first episode, whichever is earlier) and our last episode's date, from the series table."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(series)")}
+    fb = "first_broadcast" if "first_broadcast" in cols else "NULL"
+    out = {}
+    for key, first, broadcast, last in con.execute(f"SELECT key, first_date, {fb}, last_date FROM series"):
+        starts = [d for d in (first, broadcast) if d]
+        out[key] = (min(starts) if starts else None, last)
+    return out
+
+
 def show_served(identity, source, cls, author, width, height, file, categories=(), date_field=None,
-                last_date=None):
+                last_date=None, first_date=None):
     """True when this (series match, file) may lead the show: the match is more than a title,
     the file came from one of the show's own records, its license class is one portraits are
     served under (credited when required), it is big enough for a show tile, its own page does
     not say it is from television, and its own date (its page's date field, else a year in its
-    name) is not after the run (YEAR_SLACK): Bob Barker's 1958 headshot is the TV Truth or
-    Consequences. A date before the run is kept: a show's origins are its own."""
+    name) lies inside the run (YEAR_SLACK either side): Bob Barker's 1958 headshot is the TV
+    Truth or Consequences, and a 1914 photograph of the Hill Top House hotel, reached through a
+    Commons depicts statement, predates the soap opera's first broadcast (1939)."""
     if identity not in IDENTITY_SERVED or source not in SHOW_RANK or cls not in PREFER:
         return False
     if cls in NEEDS_CREDIT and NO_AUTHOR.match(author or ""):
         return False
     if not width or not height or min(width, height) < SHOW_MIN_SIDE:
         return False
-    fy, last = file_year(date_field) or file_year(file), file_year(last_date)
+    fy, last, first = file_year(date_field) or file_year(file), file_year(last_date), file_year(first_date)
     if fy and last and fy > last + YEAR_SLACK:
+        return False
+    if fy and first and fy < first - YEAR_SLACK:
         return False
     return not TELEVISION.search(" ".join([file or ""] + list(categories or [])))
 
