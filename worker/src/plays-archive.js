@@ -78,12 +78,19 @@ export function metaValue(v) {
 /** The item's metadata, every value from data: the script's record and the performers' chosen names. */
 export function itemMeta(script, credits, createdAt) {
   const evidence = (script.rights?.evidence || []).map((e) => `${e.claim} ${e.src}`).join("; ");
+  // The owner approved these labels 2026-10-29 ("community audio is just fine, as long as we
+  // are doing a good job of labeling the ear dramas within archive.org"): subject "Ear Drama"
+  // finds every production in opensource_audio.
+  const from = script.source ? `, from ${script.source}` : "";
   return {
     mediatype: "audio",
     collection: IA_COLLECTION,
-    title: script.title,
+    title: `${script.title} (Ear Drama recording)`,
     creator: [...new Set(credits.map((c) => c.name).filter(Boolean))],
+    subject: ["Ear Drama", "audio drama", "eardrama.org"],
+    description: `Recorded part by part with Ear Drama (https://eardrama.org). Script: ${script.title}${from}. Each file is one line, in script order.`,
     credits: credits.map((c) => (c.name ? `${c.part}: ${c.name}` : c.part)).join("; "),
+    language: "eng",
     licenseurl: CC0_URL,
     rights: evidence,
     source: script.source || "",

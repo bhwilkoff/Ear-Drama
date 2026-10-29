@@ -215,7 +215,10 @@ describe("a first publish", () => {
     expect([...fake.items.keys()]).toEqual([id]);
     const item = fake.items.get(id);
     const entry = MANIFEST.scripts[small.id];
-    expect(item.meta).toMatchObject({ mediatype: "audio", collection: IA_COLLECTION, title: entry.title, licenseurl: CC0_URL, source: entry.source });
+    expect(item.meta).toMatchObject({ mediatype: "audio", collection: IA_COLLECTION, title: `${entry.title} (Ear Drama recording)`, licenseurl: CC0_URL, source: entry.source, language: "eng" });
+    // The owner-approved labels (2026-10-29): subject "Ear Drama" finds every production.
+    expect(item.meta.subject).toEqual(["Ear Drama", "audio drama", "eardrama.org"]);
+    expect(item.meta.description).toBe(`Recorded part by part with Ear Drama (https://eardrama.org). Script: ${entry.title}, from ${entry.source}. Each file is one line, in script order.`);
     expect(speaking.length).toBeGreaterThan(1);
     expect(item.meta.creator).toEqual(["Pat", "Zoë"]);
     expect(item.meta.credits).toContain(`${herPart}: Zoë`);
