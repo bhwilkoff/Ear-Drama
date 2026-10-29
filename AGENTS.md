@@ -54,6 +54,7 @@ Sources: `docs/research/gemini-and-other-agents.md`. Rows follow the
 | Any web UI, routing, data, offline or image work | `web-platform-patterns` |
 | Designing any view (any platform) | `mobile-first-density-design` + `native-platform-first` |
 | Showing images of mixed aspect ratios (headers, Now Playing, tiles) | `artwork-presentation-design` |
+| Making uneven images read as one set (grade, mount, size floor) | `uniform-imagery-design` |
 | Adding a list / grid / sheet / shelf | `universal-feature-states` |
 | A big, sparse catalog: rows, Detail, overviews, shares | `catalog-experience-design` |
 | A signed-in home, dashboard, account page, or role-based view | `learner-experience-design` |
