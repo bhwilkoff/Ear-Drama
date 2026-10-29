@@ -139,6 +139,11 @@ V3. **Artwork of mixed shapes, from a design skill** (owner 2026-10-28: "I think
    require a design skill and you need to either research or build that skill."):
    research and write `artwork-presentation-design`, then redesign V2's slots on
    all five from it. Running.
+A1. **Episode ids forward to their successor** (owner 2026-10-28: "Let's just get
+   everything set up the way that we want it to be. We don't have to worry about
+   current users, but we do have to worry about building for the future."):
+   aliases and tombstones written every publish, resolved in one place per client.
+   Running.
 P10. **Seen on the way (V2)**: RadioScreen.swift's evening-slot tile sits on
    a fixed `+ 14` offset that drifts with Dynamic Type; align to the time's
    first line with a scaled metric.
