@@ -155,6 +155,12 @@ P12. **Replace or remove a published take** (owner 2026-10-29: "We don't want to
    their take in a published production with a new one, or remove it, through Ear Drama's
    archive.org account (the Worker's uploader); the consent text says copies others made
    cannot be recalled. After P11 merges and once the archive.org account exists.
+P16. **Published-production polish** (seen in P15): the Worker's record carries per-line
+   archive state (`archive.lines`), so "Removed" survives a reload; "Open part" is
+   disabled once published; the director's removal reason starts empty and must be chosen.
+   Owner calls pending: does deleting an account remove that person's lines from the
+   archive.org item; ask archive.org for an Ear Drama collection (items go to
+   opensource_audio meanwhile).
 P10. **Seen on the way (V2)**: RadioScreen.swift's evening-slot tile sits on
    a fixed `+ 14` offset that drifts with Dynamic Type; align to the time's
    first line with a scaled metric.
