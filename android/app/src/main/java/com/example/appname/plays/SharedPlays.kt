@@ -43,6 +43,11 @@ class SharedPlays(
     private val _classes = MutableStateFlow<ClassesAnswer?>(null)
     val classes: StateFlow<ClassesAnswer?> = _classes
 
+    private val _removed = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Lines removed from the archive.org item in this run, as "pid line"; the record carries no per-line state. */
+    val removed: StateFlow<Set<String>> = _removed
+
     val userId: String? get() = me()
 
     fun hold(token: String?) {
@@ -136,6 +141,22 @@ class SharedPlays(
         val answer = api.publish(pid)
         refresh(localId)
         return answer
+    }
+
+    /** Publish again after a failure: the director's agreement stands, so the Worker is simply asked again. */
+    suspend fun publishAgain(localId: String, script: PlayScript) {
+        val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        val rec = _records.value[localId] ?: refresh(localId)
+        if (!PlaysShare.canPublishAgain(rec, me())) throw PlaysException("not_found")
+        api.publish(pid)
+        refresh(localId)
+    }
+
+    /** Remove a line from the published item (P12): "withdrawn" for a performer's own, a report reason for the director's. */
+    suspend fun removeLine(localId: String, lineId: String, reason: String) {
+        val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        api.removeLine(pid, lineId, reason)
+        _removed.update { it + "$pid $lineId" }
     }
 
     suspend fun reportTake(localId: String, takeId: String, reason: String, note: String?) {

@@ -62,7 +62,14 @@ data class SharedMember(
 )
 
 @Serializable
-data class SharedArchive(val status: String = "", @SerialName("created_at") val createdAt: Long = 0)
+data class SharedArchive(
+    val status: String = "",
+    @SerialName("created_at") val createdAt: Long = 0,
+    /** The item on archive.org, once `published`. */
+    val url: String? = null,
+    /** Why the job failed, in the Worker's words. */
+    val reason: String? = null,
+)
 
 /** The Worker's record (docs/WORKER.md, "The record"): production.json's fields plus the Worker's own. */
 @Serializable
@@ -156,6 +163,7 @@ interface PlaysTransport {
     suspend fun audio(pid: String, takeId: String): ByteArray
     suspend fun choose(pid: String, takeId: String): SharedRecord
     suspend fun publish(pid: String): PublishAnswer
+    suspend fun removeLine(pid: String, lineId: String, reason: String)
     suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?)
     suspend fun block(userId: String)
     suspend fun classes(): ClassesAnswer
@@ -194,6 +202,52 @@ object PlaysShare {
     fun recordingPart(rec: SharedRecord): String? = rec.parts.entries.firstOrNull { it.value.status == "recording" }?.key
 
     fun myParts(rec: SharedRecord, me: String?): List<String> = rec.parts.keys.filter { isMine(rec, it, me) }
+
+    fun published(rec: SharedRecord?): Boolean = rec?.archive?.status == "published"
+
+    /**
+     * The parts whose takes this person may send: the part they record now, and, once the item
+     * is on archive.org, the parts they finished, whose lines they may replace (P12).
+     */
+    fun ownParts(rec: SharedRecord, me: String?): List<String> = rec.parts.keys.filter {
+        isMine(rec, it, me) || (published(rec) && me != null && rec.parts[it]?.status == "done" && rec.parts[it]?.userId == me)
+    }
+
+    /** What the record says about the archive.org job, in essential words (rule 9). */
+    sealed interface ArchiveLine {
+        data class Waiting(val text: String) : ArchiveLine
+        data class Published(val url: String?) : ArchiveLine
+        data class Failed(val reason: String) : ArchiveLine
+    }
+
+    fun archiveLine(rec: SharedRecord): ArchiveLine? {
+        val a = rec.archive ?: return null
+        return when (a.status) {
+            "published" -> ArchiveLine.Published(a.url)
+            "failed" -> ArchiveLine.Failed(a.reason?.takeIf { it.isNotBlank() } ?: "Publishing failed.")
+            "uploading" -> ArchiveLine.Waiting("Uploading to archive.org")
+            else -> ArchiveLine.Waiting("Queued for archive.org")
+        }
+    }
+
+    /** Publish again, after a failure: the director's agreement stands, so the Worker is asked again. */
+    fun canPublishAgain(rec: SharedRecord, me: String?): Boolean = isDirector(rec, me) && rec.archive?.status == "failed"
+
+    /** A line of a published play this person may change (P12): their own (Replace, Remove), or the director's reason-bound Remove of another's. */
+    data class Change(val line: ScriptLine, val replace: Boolean, val needsReason: Boolean)
+
+    fun changeableLines(rec: SharedRecord, script: PlayScript, me: String?): List<Change> {
+        if (!published(rec) || me == null) return emptyList()
+        val own = ownParts(rec, me).toSet()
+        return script.lines.mapNotNull { l ->
+            if (l.kind != ScriptLine.Kind.Speech || rec.chosen[l.id] == null) return@mapNotNull null
+            when {
+                l.part.raw in own -> Change(l, replace = true, needsReason = false)
+                isDirector(rec, me) -> Change(l, replace = false, needsReason = true)
+                else -> null
+            }
+        }
+    }
 
     /** The owner's switch (Decision 066, P1): false until the take store exists. */
     fun uploadsOpen(rec: SharedRecord?): Boolean = rec != null && rec.uploads
@@ -259,7 +313,7 @@ object PlaysShare {
     private fun candidates(local: Production, script: PlayScript, rec: SharedRecord, me: String?): List<Take> {
         val onServer = rec.takes.map { it.id }.toSet()
         val out = LinkedHashMap<String, Take>()
-        for (part in myParts(rec, me)) {
+        for (part in ownParts(rec, me)) {
             for (l in script.lines(PartID(part))) {
                 val t = local.chosenTake(l.id)
                 if (t != null && t.id !in onServer) out[t.id] = t
@@ -349,7 +403,7 @@ object PlaysShare {
      */
     fun mergedChosen(local: Production, script: PlayScript, rec: SharedRecord, me: String?): Map<String, String> {
         val out = rec.chosen.toMutableMap()
-        for (part in myParts(rec, me)) {
+        for (part in ownParts(rec, me)) {
             for (l in script.lines(PartID(part))) local.chosen[l.id]?.let { out[l.id] = it }
         }
         return out
@@ -493,6 +547,10 @@ object PlaysShare {
         "audio_mismatch" to "A take could not be read.",
         "bleed_flagged" to "A take holds the device voice. Re-take it with headphones.",
         "publish_waits" to PUBLISH_WAITS,
+        "publishing_unavailable" to PUBLISH_WAITS,
+        "not_your_take" to "This line is not yours to change.",
+        "removed_by_director" to "The director removed this line.",
+        "not_published" to "This play is not on archive.org yet.",
         "consent_version_mismatch" to "The consent changed. Read it again.",
         "not_your_claim" to "This part is not yours to record.",
         "not_your_part" to "Only its performer or the director can open this part.",

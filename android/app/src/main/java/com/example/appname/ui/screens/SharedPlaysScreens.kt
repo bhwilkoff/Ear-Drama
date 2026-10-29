@@ -45,6 +45,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import com.example.appname.plays.ConsentBlock
@@ -154,6 +155,12 @@ class SharedSheet(
 
     fun block(userId: String) = run { sharing.block(id, userId) }
 
+    fun publishAgain() = run { sharing.publishAgain(id, script) }
+
+    fun removeLine(lineId: String, reason: String) = run { sharing.removeLine(id, lineId, reason) }
+
+    val removed get() = sharing.removed
+
     fun report(userId: String?, takeId: String?, reason: String, note: String) = run {
         if (takeId != null) sharing.reportTake(id, takeId, reason, note) else sharing.reportMember(id, userId.orEmpty(), reason, note)
     }
@@ -210,6 +217,7 @@ fun LazyListScope.sharedCastRows(
     me: String?,
     pendingByPart: Map<String, Int>,
     onRecord: (PartID) -> Unit,
+    onReplace: (PartID, String) -> Unit,
 ) {
     if (rec == null) return
     val recordingNow = PlaysShare.recordingPart(rec)
@@ -313,10 +321,83 @@ fun LazyListScope.sharedCastRows(
             }
         }
     }
-    if (rec.archive != null) {
-        item(key = "archive") {
-            Text("Queued for archive.org", Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), style = MaterialTheme.typography.bodyMedium)
+    PlaysShare.archiveLine(rec)?.let { line ->
+        item(key = "archive") { ArchiveRow(line, PlaysShare.canPublishAgain(rec, me), sheet) }
+    }
+    val changes = PlaysShare.changeableLines(rec, sheet.script, me)
+    if (changes.isNotEmpty()) {
+        item(key = "change-h") { SectionHeader(if (director) "Lines" else "Your lines") }
+        items(changes, key = { "change:" + it.line.id }) { change -> ChangeRow(rec.id, change, sheet, onReplace) }
+    }
+}
+
+/** The archive.org job in essential words (rule 9): quiet while it waits, the item's link (the system opens it), or the Worker's reason with Publish again. */
+@Composable
+private fun ArchiveRow(line: PlaysShare.ArchiveLine, again: Boolean, sheet: SharedSheet) {
+    val pad = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)
+    when (line) {
+        is PlaysShare.ArchiveLine.Waiting -> Text(line.text, pad, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        is PlaysShare.ArchiveLine.Published -> {
+            val uri = LocalUriHandler.current
+            val url = line.url
+            if (url != null) {
+                TextButton(onClick = { runCatching { uri.openUri(url) } }, modifier = pad) { Text("On archive.org") }
+            } else {
+                Text("On archive.org", pad, style = MaterialTheme.typography.bodyMedium)
+            }
         }
+        is PlaysShare.ArchiveLine.Failed -> Column(pad, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+            ErrorLine(line.reason)
+            if (again) OutlinedButton(onClick = sheet::publishAgain, enabled = !sheet.busy) { Text("Publish again") }
+        }
+    }
+}
+
+/**
+ * One line of a published play (P12, rule 13): Replace opens the recorder on it; Remove asks
+ * first, in the error color and never red, and the director picks the reason.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ChangeRow(pid: String, change: PlaysShare.Change, sheet: SharedSheet, onReplace: (PartID, String) -> Unit) {
+    val removedSet by sheet.removed.collectAsState()
+    val line = change.line
+    var reasons by remember { mutableStateOf(false) }
+    var confirming by remember { mutableStateOf<String?>(null) }
+    val gone = removedSet.any { it.endsWith(" " + line.id) }
+    ListItem(
+        overlineContent = if (line.role != null) ({ Text(line.role.orEmpty(), style = MaterialTheme.typography.labelMedium) }) else null,
+        headlineContent = { Text(line.spokenText, style = MaterialTheme.typography.bodyMedium) },
+        supportingContent = {
+            if (gone) {
+                Text("Removed", style = MaterialTheme.typography.labelMedium)
+            } else {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                    if (change.replace) OutlinedButton(onClick = { onReplace(line.part, line.id) }, enabled = !sheet.busy) { Text("Replace") }
+                    TextButton(
+                        onClick = { if (change.needsReason) reasons = true else confirming = "withdrawn" },
+                        enabled = !sheet.busy,
+                    ) { Text("Remove", color = AppSemantics.colors.error) }
+                    DropdownMenu(expanded = reasons, onDismissRequest = { reasons = false }) {
+                        REASONS.forEach { (code, label) ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = { reasons = false; confirming = code })
+                        }
+                    }
+                }
+            }
+        },
+    )
+    confirming?.let { reason ->
+        AlertDialog(
+            onDismissRequest = { confirming = null },
+            title = { Text("Remove this line from archive.org?") },
+            confirmButton = {
+                TextButton(onClick = { confirming = null; sheet.removeLine(line.id, reason) }) {
+                    Text("Remove", color = AppSemantics.colors.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { confirming = null }) { Text("Cancel") } },
+        )
     }
 }
 

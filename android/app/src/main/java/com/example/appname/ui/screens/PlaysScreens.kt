@@ -310,7 +310,7 @@ internal fun ErrorLine(text: String) {
 
 /** Who takes which part (§2.2-2.5). Parts are listed largest first; any open part can be taken, one recording at a time (Decision 067, C7). */
 @Composable
-fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit) {
+fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit, onReplace: (PartID, String) -> Unit = { _, _ -> }) {
     val plays = LocalAppContainer.current.plays
     val productions by plays.store.productions.collectAsState()
     val production = productions.firstOrNull { it.id == id }
@@ -413,7 +413,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
             }
             if (link != null && sheet != null) {
                 syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
-                sharedCastRows(sheet, rec, me, pendingByPart, onRecord)
+                sharedCastRows(sheet, rec, me, pendingByPart, onRecord, onReplace)
             }
             if (link == null) items(script.castParts, key = { "part:" + it.id.raw }) { part ->
                 CastRow(

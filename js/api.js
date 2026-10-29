@@ -1102,6 +1102,7 @@ const API = (() => {
         { bytes: true, timeout: 120000 }),
       choose: (pid, takeId) => c('POST', `${at(pid)}/chosen`, { take_id: takeId }),
       publish: (pid) => c('POST', `${at(pid)}/publish`, {}),
+      removeLine: (pid, lineId, reason) => c('POST', `${at(pid)}/archive/lines/${encodeURIComponent(lineId)}/remove`, { reason }),
       report: (body) => c('POST', `${P}/reports`, body),
       block: (userId) => c('POST', `${P}/blocks`, { user_id: userId }),
       classes: () => c('GET', `${P}/classes`),

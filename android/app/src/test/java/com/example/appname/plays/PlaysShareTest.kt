@@ -36,6 +36,10 @@ import org.junit.Test
  * 2026-10-28 (Decision 072), each seen to fail once:
  *  - `publish` ignoring `Consent.publishes`                        -> `Publish waits while the Worker cannot reach archive`
  *  - `upload` calling `api.agree` before sending                   -> `uploading to the members asks no consent`
+ *
+ * 2026-10-29 (P15), each seen to fail once:
+ *  - `archiveLine` never answering "published"                     -> `the archive job is told truthfully`
+ *  - `mergedChosen` reading `myParts` instead of `ownParts`        -> `a replacement take on a finished part is pending ...`
  */
 class PlaysShareTest {
     private val script = fixtureScript()
@@ -87,6 +91,7 @@ class PlaysShareTest {
         override suspend fun audio(pid: String, takeId: String): ByteArray { log("audio $takeId"); return byteArrayOf(1, 2, 3) }
         override suspend fun choose(pid: String, takeId: String): SharedRecord { log("choose $takeId"); return record() }
         override suspend fun publish(pid: String): PublishAnswer { log("publish"); return PublishAnswer("pending_owner_account") }
+        override suspend fun removeLine(pid: String, lineId: String, reason: String) { log("remove $lineId $reason") }
         override suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?) = error("not used")
         override suspend fun block(userId: String) = error("not used")
         override suspend fun classes() = error("not used")
@@ -416,6 +421,59 @@ class PlaysShareTest {
         assertEquals("Sound effects is still recording.", said("another_part_is_recording", detail = JsonPrimitive("sound")))
         assertEquals("1 line still needs a take.", said("lines_missing", detail = JsonArray(listOf(JsonPrimitive("L1")))))
         assertEquals("3 lines still need a take.", said("lines_missing", detail = JsonArray(List(3) { JsonPrimitive("L$it") })))
+    }
+
+    @Test fun `the archive job is told truthfully`() {
+        fun with(a: SharedArchive?) = record().copy(archive = a)
+        assertNull(PlaysShare.archiveLine(with(null)))
+        assertEquals(PlaysShare.ArchiveLine.Waiting("Queued for archive.org"), PlaysShare.archiveLine(with(SharedArchive("queued"))))
+        assertEquals(PlaysShare.ArchiveLine.Waiting("Uploading to archive.org"), PlaysShare.archiveLine(with(SharedArchive("uploading"))))
+        assertEquals(PlaysShare.ArchiveLine.Published("https://archive.org/details/x"), PlaysShare.archiveLine(with(SharedArchive("published", url = "https://archive.org/details/x"))))
+        val failed = with(SharedArchive("failed", reason = "archive.org refused the file (403)"))
+        assertEquals(PlaysShare.ArchiveLine.Failed("archive.org refused the file (403)"), PlaysShare.archiveLine(failed))
+        assertTrue(PlaysShare.canPublishAgain(failed, me))
+        assertFalse(PlaysShare.canPublishAgain(failed, "user-bo"))
+        assertFalse(PlaysShare.canPublishAgain(with(SharedArchive("published")), me))
+    }
+
+    @Test fun `a performer changes their own lines and the director removes any`() {
+        val done = mapOf(
+            molly.raw to SharedPart("done", "Ann", userId = me),
+            "role:FIBBER" to SharedPart("done", "Bo", userId = "user-bo"),
+        )
+        val chosen = script.speechLineIDs.associateWith { "t-$it" }
+        val pub = record(parts = done, chosen = chosen).copy(director = "user-bo", archive = SharedArchive("published", url = "u"))
+        val mine = PlaysShare.changeableLines(pub, script, me)
+        assertEquals(script.lines(molly).map { it.id }, mine.map { it.line.id })
+        assertTrue(mine.all { it.replace && !it.needsReason })
+        val director = PlaysShare.changeableLines(pub, script, "user-bo")
+        assertEquals(script.speechLineIDs.size, director.size)
+        assertTrue(director.filter { it.replace }.all { it.line.part.raw == "role:FIBBER" })
+        assertTrue(director.filter { !it.replace }.all { it.needsReason })
+        assertTrue(PlaysShare.changeableLines(pub.copy(archive = SharedArchive("queued")), script, me).isEmpty())
+        assertEquals(listOf(molly.raw), PlaysShare.ownParts(pub, me))
+        assertTrue(PlaysShare.ownParts(pub.copy(archive = null), me).isEmpty())
+    }
+
+    @Test fun `a replacement take on a finished part is pending once the play is published`() {
+        val store = MemoryShareStore()
+        val p = linked(store)
+        val onServer = script.lines(molly).map { SharedTake("t-${it.id}", it.id, molly.raw, "t-${it.id}.wav", userId = me) }
+        val done = record(parts = mapOf(molly.raw to SharedPart("done", "Ann", userId = me)), takes = onServer)
+        assertTrue(PlaysShare.pending(p, script, done, me).isEmpty())
+        val first = script.lines(molly).first().id
+        val replaced = p.add(take("t-new", first, molly, 4_800))
+        assertTrue(PlaysShare.pending(replaced, script, done, me).isEmpty())
+        val pub = done.copy(archive = SharedArchive("published"))
+        assertEquals(listOf("t-new"), PlaysShare.pending(replaced, script, pub, me).map { it.id })
+        assertEquals("t-new", PlaysShare.mergedChosen(replaced, script, pub, me)[first])
+    }
+
+    @Test fun `removing a line asks the Worker with the reason`() = runBlocking {
+        val api = FakeApi()
+        api.removeLine("pid-1", "L0003", "withdrawn")
+        assertEquals(listOf("remove L0003 withdrawn"), api.calls)
+        assertEquals("The director removed this line.", PlaysShare.line(PlaysException("removed_by_director")))
     }
 
     @Test fun `the relay helpers read the Worker's record`() {

@@ -22,7 +22,7 @@ struct RouteDestinations: ViewModifier {
             switch route {
             case let .script(id): PlayScriptScreen(id: id)
             case let .production(id): ProductionScreen(id: id)
-            case let .recording(production, part): PartScreen(productionID: production, part: part)
+            case let .recording(production, part, line): PartScreen(productionID: production, part: part, replacing: line)
             }
         }
     }

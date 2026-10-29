@@ -100,6 +100,10 @@ class PlaysApi(private val worker: WorkerApi) : PlaysTransport {
 
     override suspend fun publish(pid: String): PublishAnswer = decode(HttpMethod.Post, "${at(pid)}/publish", JsonObject(emptyMap()))
 
+    override suspend fun removeLine(pid: String, lineId: String, reason: String) {
+        text(HttpMethod.Post, "${at(pid)}/archive/lines/${enc(lineId)}/remove", buildJsonObject { put("reason", reason) })
+    }
+
     override suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?) {
         text(
             HttpMethod.Post, "$p/reports",

@@ -812,10 +812,16 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
    and an optional note) and **Block** (asks first: "You will no longer hear
    their takes."). Another member's line in read-along has **Report** on its
    take. A report hides that take from the reporter at once.
-9. **Publish** (the director, once complete): queues only; then "Queued for
-   archive.org". Its refusals are one line each. Asks rule 6's consent
-   first; a record that already carries
-   a queued job still says "Queued for archive.org".
+9. **Publish** (the director, once complete): queues only. Its refusals are
+   one line each. Asks rule 6's consent first. Once the record carries a job
+   it says only what the job is (P15, 2026-10-29), from `archive.status`:
+   `queued` "Queued for archive.org" and `uploading` "Uploading to
+   archive.org", both a quiet line; `published` **On archive.org**, a link to
+   `archive.url` that the platform opens with its own link handling; `failed`
+   the Worker's `reason` in the error color, and for the director **Publish
+   again** (no new consent: the agreement stands; the Worker queues the job
+   again). The record is re-read whenever the production is opened (rule 7).
+   Apple TV shows the line only, without the link or the action.
 10. **Classes.** Library's Ear dramas, signed in: **Classes**, each with its
     code for its teacher (in two groups of four), **Make a class** (a name,
     and "Under 13", fixed when made; such a class shows "Waits for the
@@ -837,6 +843,27 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
     Nothing is claimed, recorded, uploaded, invited, or published there;
     invites stay off the TV (DEEP_LINKS.md). Signed out, the section is
     absent, since Library already offers Account. The other TVs: none yet.
+13. **Replace or remove a published line** (P12, P15; Decision 073). Once the
+    job is `published`, the cast sheet lists, under Listen, **Your lines**
+    (the director: **Lines**): each spoken line with a chosen take that this
+    person may change, shown as printed. A performer has **Replace** and
+    **Remove** on each line of a part they finished. The director has
+    **Remove** on every line, and **Replace** on their own. **Replace**
+    opens phase 1's recorder on that one line, with the existing flow (its
+    takes, "Use this take"); the new take is a pending take of a finished
+    part, so **Upload N takes** appears as in rule 5, and the upload
+    overwrites the line on the item. **Remove** asks first with the
+    platform's own destructive confirmation ("Remove this line from
+    archive.org?" and **Remove**), then `POST
+    /productions/:pid/archive/lines/:lineId/remove` with `withdrawn` for
+    one's own line; the director chooses the reason from the report reasons
+    before the confirmation, and a director's own line needs none. The
+    action takes the error color, never red (Decision 064: red is for
+    recording). Done, the line reads "Removed" for the rest of the visit: the
+    record carries no per-line state yet, so a reopened production offers the
+    action again, and the Worker accepts it twice. Refusals: `not_your_take`
+    "This line is not yours to change.", `removed_by_director` "The director
+    removed this line.". Apple TV offers none of it.
 
 Each refusal the Worker can give maps to one line (web
 `PlaysShare.line`, the same strings on Apple and Android): `storage_not_configured`

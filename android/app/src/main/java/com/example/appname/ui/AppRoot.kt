@@ -229,10 +229,12 @@ fun AppRoot(
                             entry<Route.Production> { route ->
                                 ProductionScreen(route.id, onBack = back, onRecord = { part ->
                                     stack.add(Route.Recording(route.id, part.raw))
+                                }, onReplace = { part, line ->
+                                    stack.add(Route.Recording(route.id, part.raw, line))
                                 })
                             }
                             entry<Route.Recording> { route ->
-                                RecordingScreen(route.production, PartID(route.part), onBack = back)
+                                RecordingScreen(route.production, PartID(route.part), onBack = back, startLine = route.line)
                             }
                         },
                     )

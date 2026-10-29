@@ -277,14 +277,17 @@ struct ProductionWindow_macOS: View {
     let productionID: String
     @Environment(PlaysLibrary.self) private var plays
     @State private var selected: PartID?
+    @State private var replacing: String?
 
     var body: some View {
         if let production = plays.store.production(productionID), let script = plays.castScript(for: production) {
             NavigationSplitView {
-                CastSheet(production: production, script: script) { selected = $0 }
+                CastSheet(production: production, script: script, open: { selected = $0; replacing = nil },
+                          replace: { selected = $0; replacing = $1 })
                     .navigationSplitViewColumnWidth(min: 280, ideal: 320)
             } detail: {
-                PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script))
+                PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script),
+                           replacing: replacing)
             }
             .navigationTitle(production.title)
         } else {

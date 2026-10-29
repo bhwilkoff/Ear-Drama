@@ -14,7 +14,8 @@ import UniformTypeIdentifiers
 enum PlayRoute: Hashable {
     case script(String)
     case production(String)
-    case recording(production: String, part: PartID)
+    /// `line` set: replacing that one line of a finished part on a published play (P12).
+    case recording(production: String, part: PartID, line: String? = nil)
 }
 
 // MARK: - Start an ear drama
@@ -261,22 +262,27 @@ struct ProductionScreen: View {
     @Environment(AppStore.self) private var app
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var selected: PartID?
+    @State private var replacing: String?
 
     var body: some View {
         if let production = plays.store.production(id), let script = plays.castScript(for: production) {
             Group {
                 if sizeClass == .regular {
                     HStack(spacing: 0) {
-                        CastSheet(production: production, script: script) { selected = $0 }
+                        CastSheet(production: production, script: script, open: { selected = $0; replacing = nil },
+                                  replace: { selected = $0; replacing = $1 })
                             .frame(width: 340)
                         Divider()
-                        PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script))
+                        PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script),
+                                   replacing: replacing)
                             .frame(maxWidth: .infinity)
                     }
                 } else {
-                    CastSheet(production: production, script: script) { part in
+                    CastSheet(production: production, script: script, open: { part in
                         app.push(PlayRoute.recording(production: production.id, part: part))
-                    }
+                    }, replace: { part, line in
+                        app.push(PlayRoute.recording(production: production.id, part: part, line: line))
+                    })
                 }
             }
             .navigationTitle(production.title)
@@ -293,6 +299,7 @@ struct CastSheet: View {
     let production: Production
     let script: PlayScript
     let open: (PartID) -> Void
+    let replace: (PartID, String) -> Void
     @Environment(PlaysLibrary.self) private var plays
     @Environment(SharedPlays.self) private var shared
     @State private var taking: PartID?
@@ -313,6 +320,9 @@ struct CastSheet: View {
                 }
             } footer: {
                 if let refusal { Text(verbatim: refusal).foregroundStyle(Color.semanticError) }
+            }
+            if let rec, PlaysShare.published(rec) {
+                ChangeLinesSection(production: production, script: script, rec: rec, replace: replace)
             }
             Section {
                 ListenThrough(production: production, script: script)
@@ -481,11 +491,12 @@ private struct DeleteProductionDialog: ViewModifier {
 struct PartScreen: View {
     let productionID: String
     let part: PartID
+    var replacing: String?
     @Environment(PlaysLibrary.self) private var plays
 
     var body: some View {
         if let production = plays.store.production(productionID), let script = plays.castScript(for: production) {
-            PartDetail(production: production, script: script, part: part, dismissWhenDone: true)
+            PartDetail(production: production, script: script, part: part, replacing: replacing, dismissWhenDone: true)
         } else {
             EmptyState("Production not found", systemImage: "questionmark.square.dashed")
         }
@@ -498,13 +509,15 @@ struct PartDetail: View {
     let production: Production
     let script: PlayScript
     let part: PartID?
+    /// A line of a finished part being replaced on a published play (P12): the recorder opens on it.
+    var replacing: String?
     /// Only iPhone's pushed screen goes back when the part is done; beside the
     /// cast sheet (iPad, the Mac window) the panel simply turns to the lines.
     var dismissWhenDone = false
 
     var body: some View {
-        if let part, production.state(of: part).status == .recording {
-            RecordingScreen(productionID: production.id, part: part, dismissWhenDone: dismissWhenDone).id(part)
+        if let part, production.state(of: part).status == .recording || replacing != nil {
+            RecordingScreen(productionID: production.id, part: part, startLine: replacing, dismissWhenDone: dismissWhenDone).id(part)
         } else if let part {
             List(script.lines(for: part)) { line in
                 ScriptLineText(line: line)

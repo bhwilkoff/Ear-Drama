@@ -562,6 +562,11 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .part-list { border-top: 1px solid var(--color-border); }
 .part-row { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
 .refusal { color: var(--color-error); }
+.btn-destructive { color: var(--color-error); border-color: var(--color-error); background: transparent; }
+.change-lines > summary { cursor: pointer; }
+.change-row { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+.change-row .take-row { align-items: center; }
+.archive-failed .actions { margin-top: var(--space-2); }
 .refusal:empty { display: none; }
 .cast-progress { margin-bottom: var(--space-3); }
 .cast-list { border-top: 1px solid var(--color-border); margin-bottom: var(--space-3); }

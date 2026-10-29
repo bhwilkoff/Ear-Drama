@@ -53,8 +53,11 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         enum CodingKeys: String, CodingKey { case userID = "user_id", displayName = "display_name", director, performer, consented }
     }
 
+    /// The publish job: `queued`, `uploading`, `published` (`url` is the item), or `failed` (`reason`).
     struct Archive: Codable, Equatable, Sendable {
         var status: String
+        var url: String?
+        var reason: String?
     }
 
     var id: String
@@ -257,6 +260,7 @@ protocol PlaysTransport {
     func audio(_ pid: String, takeID: String) async throws -> Data
     func choose(_ pid: String, takeID: String) async throws -> SharedRecord
     func publish(_ pid: String) async throws -> PublishJob
+    func removeLine(_ pid: String, lineID: String, reason: String) async throws
     func report(_ pid: String, takeID: String?, userID: String?, reason: ReportReason, note: String?) async throws
     func block(_ userID: String) async throws
     func classes() async throws -> PlayClasses
@@ -327,6 +331,7 @@ struct WorkerPlays: PlaysTransport {
         let note: String?
     }
     private struct Block: Encodable { let user_id: String }
+    private struct RemoveLine: Encodable { let reason: String }
     private struct NewClass: Encodable { let name: String; let under13: Bool }
     private struct JoinClass: Encodable { let code: String; let display_name: String? }
     private struct Empty: Encodable {}
@@ -392,6 +397,10 @@ struct WorkerPlays: PlaysTransport {
 
     func publish(_ pid: String) async throws -> PublishJob {
         try decode(PublishJob.self, try await call("POST", "\(Self.at(pid))/publish", json: Empty()))
+    }
+
+    func removeLine(_ pid: String, lineID: String, reason: String) async throws {
+        _ = try await call("POST", "\(Self.at(pid))/archive/lines/\(Self.escape(lineID))/remove", json: RemoveLine(reason: reason))
     }
 
     func report(_ pid: String, takeID: String?, userID: String?, reason: ReportReason, note: String?) async throws {
