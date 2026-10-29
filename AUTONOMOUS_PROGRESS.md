@@ -436,3 +436,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - F3: the consent words render as a lead and four list items on every platform, words unchanged; web shots read.
 - 1.0.97: iPhone 12 Release launch check passed; App Store upload succeeded (run 40903611427); Play internal released (run 40903616979).
 - Stopped: nothing running; the backlog waits on the owner (archive.org account and keys for Publish and P12; the take-down email; device play gates).
+
+### Tick 115, 2026-10-29, ITMS-90471 fixed (1.0.98)
+- Owner forwarded App Store Connect's note on build 98: "ITMS-90471: Missing Image Asset - Your app is missing the Top Shelf Image Wide 2x asset". Both Top Shelf sets now carry 1x and 2x rendered from the SVGs (actool for appletvos lists all four); tools/test_tvos_top_shelf_assets.py guards it (fails on the old sets). 1.0.98 launch-checked on the iPhone 12; App Store upload succeeded (run 40907469087). Not seen: App Store Connect's processing note for build 99.
