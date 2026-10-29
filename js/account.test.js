@@ -66,6 +66,17 @@ function stubWorker(clock) {
       r.spent = true;
       return json(200, session(r.user));
     }
+    if (method === 'GET' && (path.startsWith('/v1/plays/open/') || path.startsWith('/v1/plays/finished'))) {
+      const inv = init.headers && init.headers['x-invite'];
+      w.calls[w.calls.length - 1].invite = inv;
+      if (path.startsWith('/v1/plays/open/')) {
+        if (inv === 'GONE') return json(410, { error: 'invite_gone' });
+        if (inv === 'UNKNOWN') return json(404, { error: 'invite_not_found' });
+        if (path.endsWith('/audio')) return { ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(4) };
+        return json(200, { id: 'p1', title: 'T' });
+      }
+      return json(200, { productions: [], next_cursor: null });
+    }
     const who = bearer(init);
     if (!who) return json(401, { error: 'unauthorized' });
     w.serverTime += 10;
@@ -430,6 +441,34 @@ test('API.forwarding reads aliases and tombstones once; a catalog without tombst
   eq(sf.seriesGone('folkweave'), true, 'a tombstoned key is gone');
   eq(sf.resolve('jbp'), 'jbp', 'series and episode forwarding are kept apart');
   eq(API.forwardingOf({ a: 'b' }, []).resolveSeries('a'), 'a', 'a catalog before series forwarding forwards no key');
+});
+
+test('open plays: an invite and the finished listing are read signed out, with no bearer and no refresh', async () => {
+  const { w } = fresh();
+  assert(!acct.signedIn(), 'no account');
+  const v = await API.plays.openInvite('TOKEN');
+  eq(v.title, 'T', 'the invite is read');
+  const bytes = await API.plays.openInviteAudio('TOKEN', 'take 1');
+  eq(bytes.byteLength, 4, 'a take plays');
+  await API.plays.finished({ limit: 5, cursor: '9:ABCDEFGH' });
+  await API.plays.finishedOne('P 1');
+  eq(w.calls.length, 4, 'four calls and nothing else (no refresh, no sign-in)');
+  assert(w.calls.every(c => !c.auth && c.method === 'GET'), 'no bearer on any of them');
+  eq(w.calls[0].invite, 'TOKEN', 'the token rides the x-invite header');
+  eq(w.calls[0].search, '', 'never the query');
+  eq(w.calls[1].path, '/v1/plays/open/invite/takes/take%201/audio', 'the audio path');
+  eq(w.calls[2].search, '?limit=5&cursor=9%3AABCDEFGH', 'the listing pages by cursor');
+  eq(w.calls[3].path, '/v1/plays/finished/P%201', 'one finished play');
+});
+
+test('open plays: a revoked or expired invite is kind gone, an unknown one is an error, and a placeholder Worker is not configured', async () => {
+  fresh();
+  const kind = async (fn) => { try { await fn(); return 'none'; } catch (e) { return `${e.kind}/${e.status}/${e.code}`; } };
+  eq(await kind(() => API.plays.openInvite('GONE')), 'gone/410/invite_gone', 'revoked');
+  eq(await kind(() => API.plays.openInviteAudio('GONE', 't')), 'gone/410/invite_gone', 'revoked audio');
+  eq(await kind(() => API.plays.openInvite('UNKNOWN')), 'error/404/invite_not_found', 'unknown');
+  fresh({ worker: 'REPLACE_WITH_WORKER_BASE_URL' });
+  eq(await kind(() => API.plays.finished()), 'not_configured/undefined/undefined', 'placeholder');
 });
 
 // Registered last: Sync.start keeps the card builder it is given for the rest of the page.

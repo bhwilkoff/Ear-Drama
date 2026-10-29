@@ -34,7 +34,7 @@ export function corsHeaders(origin) {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, PUT, POST, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, content-type, x-room-key, x-take",
+    "Access-Control-Allow-Headers": "authorization, content-type, x-room-key, x-take, x-invite",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin",
   };

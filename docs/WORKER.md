@@ -31,6 +31,7 @@ the owner's, listed under [Needs Ben](#needs-ben).
 | `worker/src/room-protocol.js` | Listen Together's protocol and arbiter, pure: state, handoff, expiry, codes, clock, drift |
 | `worker/src/rooms.js` | the rooms' HTTP and D1 adapter, and the room sweep |
 | `worker/src/plays.js` | shared plays' HTTP, D1, and bucket adapter; deletion's plays step; the plays sweep |
+| `worker/src/plays-open.js` | the reads that need no account: an open invite and its take audio, the finished-drama listing and one finished drama |
 | `worker/src/plays-relay.js` | the cast sheet and the relay (C7), pure: part order, claims and their lapse, done, silent, reopen, completeness |
 | `worker/src/plays-names.js` | the display-name deny list (the server's layer of the two-layer gate) |
 | `worker/src/plays-audio.js` | a take's length and format, read from its own WAV or FLAC header |
@@ -304,7 +305,7 @@ The tests bind a local stand-in.
 
 ### Endpoints
 
-All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
+All under `/v1/plays`, all bearer except the open reads below. `:pid` is a production, `:part` a part id
 (URL-encoded, so `role%3AHAMLET`).
 
 | Method and path | Who | Body | Answer |
@@ -337,9 +338,54 @@ All under `/v1/plays`, all bearer. `:pid` is a production, `:part` a part id
 | `POST /classes/:id/school-consent` | the teacher | `{ reference? }` | `201`; `503 pending_owner_policy` until `SCHOOL_CONSENT_POLICY` is set |
 | `DELETE /classes/:id/members/:userId` | the teacher, or that student | | `204` |
 
-A production the caller is not in, an unknown one, an invite that is unknown,
-revoked, expired, or blocked, and a hidden take all answer `404`, so none can
-be told apart.
+A production the caller is not in, an unknown one, an invite that is unknown
+or blocked, and a hidden take all answer `404`, so none can be told apart. (A
+revoked or expired invite is a plain `410` on the open read below; the signed-in
+`invites/view` and `invites/claim` still answer `404` for it.)
+
+### Open reads (no account; owner, 2026-10-29)
+
+*"On an invite link, they should be able to see everything. They just can't
+contribute until they sign in."* and *"Finished ear dramas should definitely be
+listed and credited. Why else would we record them?"* Four GET routes, handled
+by `src/plays-open.js` before the sign-in gate; each counts against a per-address
+limiter, not `USER_LIMITER`, and answers `429` past it. Every other method on
+these paths is `401` like the rest of `/v1/plays`: claiming, recording,
+uploading, reporting and blocking need an account.
+
+| Method and path | Answer |
+|---|---|
+| `GET /open/invite` with header `x-invite: <token>` | the play: `{ id, scriptID, scriptRevision, title, source, parts: [{ id, lineCount, status, performer? }], members: [{ name, director }], takes: [{ id, lineID, part, frames, sampleRate, audio }], chosen, next, archive, expires_at, server_time }`; `Cache-Control: private, max-age=30` |
+| `GET /open/invite/takes/:takeId/audio` with the same header | a chosen, visible take's audio; `private, max-age=300` |
+| `GET /finished?limit=&cursor=` | `{ productions: [{ id, script_id, title, source, credits: [{ part, name }], archive_url, published_at }], next_cursor }`; `limit` 1 to 50 (default 20); `Cache-Control: public, max-age=300, s-maxage=300` |
+| `GET /finished/:pid` | one of the above, `404` if it is not (or no longer) finished |
+
+- **The token rides a header**, never the path or query, so no access log holds
+  it (the link carries it in the fragment for the same reason). Unknown or
+  malformed: `404 invite_not_found`. Revoked or expired: `410 invite_gone`. An
+  expired invite is kept 30 days after it lapses (the sweep waits) so it can say
+  so; then it is forgotten (`404`).
+- **No account ids leave.** Members are chosen names; a part's `performer` is the
+  chosen name. Reading does not make the viewer a member or claim anything.
+- **Only each line's chosen take**, never an older one.
+- **Withheld from every anonymous viewer** (a viewer has no personal hidden
+  set, so the rule is the strict one): a take anyone reported (even once the
+  report is closed), every take by a person an open report names, and every take
+  by anyone the inviter blocked or who blocked the inviter. Those takes are not
+  listed and their audio is `404`.
+- **Finished means** the archive job is `published` and at least one line is
+  still on the item. The order is a stated rule: newest `published_at` first, ties
+  by id descending, never engagement. The cursor is `published_at:id`.
+- **Credits** run part by part in script order, one `{ part, name }` for each
+  performer chosen on a line still on the item. A removed line (P12) drops its
+  credit, and a part whose every line is removed drops out. A deleted account's
+  lines stay on the item, uncredited: their part reads `name: ""`, never a name.
+- **Why the Worker and not a published file:** the listing is the one gatekeeper
+  (`shared-data-plane-contract`). A static copy would be a second published copy that
+  goes stale between publishes and could keep crediting a line after its removal.
+  The site reads these routes directly; the edge cache (`s-maxage=300`) carries the
+  load. A build-time copy for search engines is later work, written from these
+  same routes.
 
 **The record** is production.json, merged line by line from every member's
 takes, with the field names Apple's `Production` and `js/plays-core.js`
@@ -520,6 +566,8 @@ for the window only):
 | `ROOM_MEMBER_LIMITER` | member id | 60 a minute, each member's own calls, so one device cannot use up a household's share |
 | `PLAY_UPLOAD_LIMITER` | user id | 30 a minute, take uploads |
 | `PLAY_JOIN_LIMITER` | user id | 20 a minute, invite views and claims and class joins |
+| `OPEN_READ_LIMITER` | client address | 60 a minute, an open invite's read and the finished listing, no account |
+| `OPEN_AUDIO_LIMITER` | client address | 300 a minute, an open invite's take audio (a play is hundreds of files) |
 
 Every five minutes (`*/5 * * * *`) the cron runs only the archive.org
 uploader. The hourly one (`23 * * * *`) also deletes expired sessions, idle rooms, quiet

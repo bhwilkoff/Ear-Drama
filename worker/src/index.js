@@ -18,6 +18,7 @@ import { handleRead, handleUpload } from "./sync.js";
 import { handleAccount, handleDelete } from "./account.js";
 import { handleRooms, sweepRooms } from "./rooms.js";
 import { handlePlays, sweepPlays } from "./plays.js";
+import { handleOpen, isOpenAudio, isOpenRoute } from "./plays-open.js";
 import { ARCHIVE_CRON, runArchive } from "./plays-archive.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
 
@@ -39,7 +40,13 @@ async function route(request, env, url) {
     return handleRooms(url, request, env, ip);
   }
 
-  // Shared plays (M8): an account is required for every route (Decision 057).
+  // Plays that need no account (owner 2026-10-29): an open invite's read and the finished listing, GETs only.
+  if (isOpenRoute(pathname, method)) {
+    if (await limited(isOpenAudio(pathname) ? env.OPEN_AUDIO_LIMITER : env.OPEN_READ_LIMITER, ip)) return problem(429, "rate_limited");
+    return handleOpen(url, request, env);
+  }
+
+  // Shared plays (M8): an account is required for every other route (Decision 057).
   if (pathname === "/v1/plays" || pathname.startsWith("/v1/plays/")) {
     const auth = await authenticate(request, env);
     if (auth.error) return auth.error;

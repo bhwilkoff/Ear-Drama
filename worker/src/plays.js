@@ -78,6 +78,7 @@ export const REPORT_REASONS = ["offensive", "harassment", "personal_information"
 /** Why a line left the archive.org item: the performer withdrew it, or the director removed it for a report's reason. */
 export const REMOVE_REASONS = ["withdrawn", ...REPORT_REASONS];
 const DAY_MS = 24 * 60 * 60 * 1000;
+export const EXPIRED_INVITE_KEPT_MS = 30 * DAY_MS;
 /** Seconds between 1970 and 2001: production.json dates are Foundation's. */
 const REFERENCE_DATE_S = 978307200;
 const foundation = (ms) => ms / 1000 - REFERENCE_DATE_S;
@@ -899,7 +900,8 @@ async function deleteObjects(env, keys) {
 export async function sweepPlays(env, now = Date.now()) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM play_parts WHERE status = 'recording' AND claimed_at < ?1").bind(now - CLAIM_TTL_MS),
-    env.DB.prepare("DELETE FROM play_invites WHERE expires_at < ?1").bind(now),
+    // An expired invite answers 410 for a month, then is forgotten (404).
+    env.DB.prepare("DELETE FROM play_invites WHERE expires_at < ?1").bind(now - EXPIRED_INVITE_KEPT_MS),
   ]);
   const { results } = await env.DB.prepare("SELECT object_key FROM play_orphan_objects LIMIT 1000").all();
   const keys = results.map((r) => r.object_key);
