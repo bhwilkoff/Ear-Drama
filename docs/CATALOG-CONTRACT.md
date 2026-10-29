@@ -407,9 +407,10 @@ unknown key is kept. A follow under a moved key merges into the new key's by
 the newer stamp, keeping its own stamp and pending state (never uploaded as
 new); a tombstoned key's follow stays (it is the person's choice; it simply
 has no new episodes). A series page, a series deep link, and a Worker follow
-row each resolve through it. Downloads need no series rewrite: a download's
-series is read from its episode id (the key before its `|`), which forwards
-above.
+row each resolve through it. A download stores its series key when it is made
+(from the episode's own series field, never parsed out of the episode id) and
+forwards it like a follow; a record written before the key was stored reads it
+from its id once, on decode.
 
 MEASURED 2026-10-28, the same pair of builds: 46 served series keys left; 20
 aliased (every one onto a series holding all of its recordings: 139 of 139 for

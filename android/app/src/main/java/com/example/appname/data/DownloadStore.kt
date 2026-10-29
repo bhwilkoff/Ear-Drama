@@ -16,6 +16,12 @@ data class DownloadRecord(
     val episodeId: String,
     val title: String,
     val seriesName: String,
+    /**
+     * The series' key, stored when the download is made from the episode's own series field and
+     * forwarded like a follow (contract 3.5); never read back out of [episodeId]. Empty only in a
+     * record written before it was stored: [seriesKey] then falls back to [legacySeriesKeyOf].
+     */
+    val storedSeriesKey: String = "",
     /** The recording the file came from (the catalog's rank 0 when it began). */
     val remoteUrl: String,
     val fileName: String,
@@ -34,11 +40,11 @@ data class DownloadRecord(
 
     val isActive: Boolean get() = state == State.Queued || state == State.Downloading
 
-    /** Episode ids carry the series key before their `|`, so a series' downloads are found from the index as it is. */
-    val seriesKey: String get() = seriesKeyOf(episodeId)
+    val seriesKey: String get() = storedSeriesKey.ifEmpty { legacySeriesKeyOf(episodeId) }
 
     companion object {
-        fun seriesKeyOf(episodeId: String): String = episodeId.substringBefore('|')
+        /** Only for a record with no stored key. */
+        fun legacySeriesKeyOf(episodeId: String): String = episodeId.substringBefore('|')
     }
     val fraction: Float?
         get() = if (expectedBytes > 0) (receivedBytes.toFloat() / expectedBytes).coerceAtMost(1f) else null
@@ -49,6 +55,7 @@ data class DownloadRequest(
     val episodeId: String,
     val title: String,
     val seriesName: String,
+    val seriesKey: String,
     val url: String,
     /** Bitrate times length, when the catalog knows both. */
     val estimatedBytes: Long? = null,
@@ -63,7 +70,7 @@ data class DownloadRequest(
             } else {
                 null
             }
-            return DownloadRequest(detail.episode.id, title, detail.episode.seriesName, recording.url, estimate)
+            return DownloadRequest(detail.episode.id, title, detail.episode.seriesName, detail.episode.seriesKey, recording.url, estimate)
         }
     }
 }
@@ -185,13 +192,14 @@ open class DownloadStore(
     /** Downloads the episode's default recording. A queued, running, or finished one is left alone; a failed one starts over. */
     fun download(detail: EpisodeDetail, title: String) {
         val recording = detail.recordings.firstOrNull() ?: return
-        download(detail.episode.id, title, detail.episode.seriesName, recording.url)
+        download(detail.episode.id, title, detail.episode.seriesName, detail.episode.seriesKey, recording.url)
     }
 
     fun download(
         episodeId: String,
         title: String,
         seriesName: String,
+        seriesKey: String,
         url: String,
         addedAtMs: Long = clock(),
     ) = synchronized(lock) {
@@ -201,7 +209,7 @@ open class DownloadStore(
         val ext = url.substringAfterLast('/').substringAfterLast('.', "").lowercase()
             .takeIf { it.isNotEmpty() && it.length <= 5 && it.all(Char::isLetterOrDigit) } ?: "mp3"
         val record = DownloadRecord(
-            episodeId = episodeId, title = title, seriesName = seriesName, remoteUrl = url,
+            episodeId = episodeId, title = title, seriesName = seriesName, storedSeriesKey = seriesKey, remoteUrl = url,
             fileName = "${fileStem(episodeId)}.$ext", state = DownloadRecord.State.Queued,
             addedAtMs = addedAtMs, token = UUID.randomUUID().toString(),
         )
@@ -213,7 +221,7 @@ open class DownloadStore(
     /** Starts every request of a plan, in order; each is added a millisecond after the last so the place keeps that order. */
     fun download(plan: DownloadPlan) {
         val start = clock()
-        plan.requests.forEachIndexed { i, r -> download(r.episodeId, r.title, r.seriesName, r.url, addedAtMs = start + i) }
+        plan.requests.forEachIndexed { i, r -> download(r.episodeId, r.title, r.seriesName, r.seriesKey, r.url, addedAtMs = start + i) }
     }
 
     /** Every download of one series, gone: transfers, files, records. */
@@ -253,6 +261,12 @@ open class DownloadStore(
                 _records.value = _records.value - old + (new to r.copy(episodeId = new))
                 changed = true
             }
+        }
+        for ((id, r) in _records.value.entries.sortedBy { it.key }) {
+            val key = forwarding.resolveSeries(r.seriesKey)
+            if (key == r.seriesKey) continue
+            _records.value = _records.value + (id to r.copy(storedSeriesKey = key))
+            changed = true
         }
         if (changed) saveIndex()
     }

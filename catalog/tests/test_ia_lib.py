@@ -42,5 +42,13 @@ with tempfile.TemporaryDirectory() as t:
     check("control: a .gz path absent does not fall back further",
           raises(lambda: ia.read_json(os.path.join(t, "plain.json.gz"))), "FileNotFoundError")
 
+import build_db as B  # noqa: E402
+
+with tempfile.TemporaryDirectory() as t:
+    only_gz, absent = os.path.join(t, "editorial.json"), os.path.join(t, "none.json")
+    ia.write_json(only_gz + ".gz", {"kind": "gzipped"}, gz=True)
+    check("build_db.load reads a file that exists only as .gz", B.load(only_gz, {}), {"kind": "gzipped"})
+    check("control: build_db.load of a path absent in both forms is the default", B.load(absent, "dflt"), "dflt")
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

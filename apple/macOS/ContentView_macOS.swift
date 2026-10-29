@@ -242,7 +242,8 @@ struct PlaybackCommands_macOS: Commands {
                 Button("Download Episode") {
                     guard let item = player.item else { return }
                     downloads.download(episodeID: item.episode.id, title: item.episode.displayTitle,
-                                       seriesName: item.episode.seriesName, url: item.recording.url)
+                                       seriesName: item.episode.seriesName,
+                                       seriesKey: item.episode.seriesKey, url: item.recording.url)
                 }
                 .disabled(player.item == nil)
             }

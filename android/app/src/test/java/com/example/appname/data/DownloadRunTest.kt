@@ -33,7 +33,7 @@ class DownloadRunTest {
     private fun store(transport: DownloadTransport = FakeTransport()) = DownloadStore(dir, transport) { now }
 
     private fun request(id: String, bytes: Long? = 1_000) = DownloadRequest(
-        id, id, DownloadRecord.seriesKeyOf(id).replaceFirstChar { it.uppercase() },
+        id, id, id.substringBefore('|').replaceFirstChar { it.uppercase() }, id.substringBefore('|'),
         "https://archive.org/download/x/${DownloadStore.fileStem(id)}.mp3", bytes,
     )
 
@@ -53,12 +53,6 @@ class DownloadRunTest {
         },
         detailJson = null,
     )
-
-    @Test fun `the series key is the id before its bar`() {
-        assertEquals("sus", DownloadRecord.seriesKeyOf("sus|1943-05-25"))
-        assertEquals("x", DownloadRecord.seriesKeyOf("x|y|z"))
-        assertEquals("lonely", DownloadRecord.seriesKeyOf("lonely"))
-    }
 
     @Test fun `a request estimates bitrate times length`() {
         // 128 kbps for 30 minutes is 128,000 / 8 bytes a second for 1,800 s.

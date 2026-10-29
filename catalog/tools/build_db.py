@@ -84,7 +84,7 @@ def no_recommend_reason(ep, items, rules, table):
 
 
 def load(path, default):
-    return ia.read_json(path) if os.path.exists(path) else default
+    return ia.read_json(path) if os.path.exists(path) or os.path.exists(path + ".gz") else default
 
 
 def download_counts(cache=None):
