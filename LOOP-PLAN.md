@@ -122,6 +122,12 @@ V2. **Visual pass, all artwork** (owner 2026-10-28: "Portraits should show where
    want the app to be as visual as possible."). Merged 1.0.86. The remaining
    artwork sources (LoC, Federal Theatre, NPG CC0, magazine photos, undated
    matches) are closed by RESEARCH §12 V1-V5, the owner's rights questions.
+V3. **Artwork of mixed shapes, from a design skill** (owner 2026-10-28: "I think
+   you can find better solutions for different aspect ratios of images, then just
+   blurring and black bars. As I said, anything that needs to be designed will
+   require a design skill and you need to either research or build that skill."):
+   research and write `artwork-presentation-design`, then redesign V2's slots on
+   all five from it. Running.
 P10. **Seen on the way (V2)**: RadioScreen.swift's evening-slot tile sits on
    a fixed `+ 14` offset that drifts with Dynamic Type; align to the time's
    first line with a scaled metric.

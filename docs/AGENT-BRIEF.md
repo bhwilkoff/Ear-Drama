@@ -9,6 +9,10 @@ touches. Your brief adds the feature's goal, decisions, and acceptance tests.
   explicit paths.
 - Doc first: quote the binding design doc's rule, change the rule if the feature
   needs it, then build (`binding-design-doc-discipline`).
+- Design runs through a design skill (owner, 2026-10-28: "anything that needs to be
+  designed will require a design skill and you need to either research or build
+  that skill"). Name the skill you follow; if none covers the problem, research
+  real references and write the skill in `.claude/skills/` first, then design.
 - One feature on every platform it belongs on, in one run: web (`js/`), Apple
   (`apple/`, iOS/iPadOS/macOS/tvOS), Android (`android/`), and the data plane
   (`catalog/`) or Worker (`worker/`) it needs. Same verb, native idiom.
