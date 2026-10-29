@@ -111,17 +111,22 @@ P8. **The first launch after a new install or a catalog publish quits** (seen
    device log at the exit; a user updating from TestFlight may meet it.
    Seen 4 times by 4:36 PM (each the first XCUITest launch after an install);
    NOT seen at 4:49 PM on a fresh Debug-over-Release install, nor on three
-   Release launches by devicectl. Still unexplained.
+   Release launches by devicectl. Still unexplained. Running (2026-10-28 6:30 PM).
 P9. **Android lint, then gate it** (P7 found lint never enforced: 10 errors,
    9 UnsafeOptInUsageError in PlaybackService.kt and CatalogLengthSeeking.kt,
    1 MissingIntentFilterForMediaSearch; 71 warnings). After the casting batch
    merges (both touch the player). The media-search intent is a voice-search
-   feature: owner call.
+   feature: owner call. Merged 1.0.86 (lintRelease gates Android Build).
 V2. **Visual pass, all artwork** (owner 2026-10-28: "Portraits should show wherever
    they are useful or joyful", then "The visual pass should be for all artwork. We
-   want the app to be as visual as possible."). Running.
+   want the app to be as visual as possible."). Merged 1.0.86. The remaining
+   artwork sources (LoC, Federal Theatre, NPG CC0, magazine photos, undated
+   matches) are closed by RESEARCH §12 V1-V5, the owner's rights questions.
+P10. **Seen on the way (V2)**: RadioScreen.swift's evening-slot tile sits on
+   a fixed `+ 14` offset that drifts with Dynamic Type; align to the time's
+   first line with a scaled metric.
 N1. **Play on another speaker or screen** (owner 2026-10-28: "native sharing
-   like airplay or casting"). Running.
+   like airplay or casting"). Merged 1.0.85.
 
 Earlier batches (2026-10-23 to 2026-10-27; built unless marked):
 Owner, 2026-10-23: build significant features before asking them to test.
