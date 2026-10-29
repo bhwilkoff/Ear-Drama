@@ -152,6 +152,32 @@ So **D is the direction** (the D2 gate is passed), and **D2c** refines it:
   cast photo, logo) before any one contributor; the star(s) before less recognizable
   people; all from data with evidence.
 
+## Owner rulings on the D questions (2026-10-29)
+
+*"1. Having more shows is better, so 5.
+2. On an invite link, they should be able to see everything. They just can't
+contribute until they sign in.
+3. Finished ear dramas should definitely be listed and credited. Why else would we
+record them?
+4. I think you should be able to have mutliple modes for recording your part. One
+option should let you record and have the other parts play (either human voices or
+generated voices for parts that haven't been taken yet) and it should play right
+through with your opportunity to record your part as it shows up naturally within
+the Ear Drama script. Another option should allow you to record each line
+individually or re-record any lines again by tapping them and re-recording. Another
+option could be a "wait for tap" to advance through the script as you are
+describing."*
+
+- **A show is 5 or more episodes** (2,037 shows; the rest is the counted tail).
+- **An invite link shows everything signed out**: the play, its parts, who is in, and
+  the takes (playable). Claiming a part and recording need an account.
+- **Finished ear dramas are listed and credited** on Ear Drama's own pages (and the
+  share page), performers by their chosen names.
+- **Three recording modes**: *Run through* (the play plays straight through, other
+  parts in human takes or live device voices, and the mic opens at each of your lines
+  as it comes); *Line by line* (record any line, tap any line to re-record); *Step*
+  (each cue waits for a tap to advance).
+
 ## State
 
 - Phase: D2c (refine D: color, one grammar, show-first pictures), started 2026-10-29.
@@ -159,5 +185,5 @@ So **D is the direction** (the D2 gate is passed), and **D2c** refines it:
 - Running: D2c-1 color system with the Human Shaped tools; D2c-2 show-first picture
   selection (catalog). Then D2c-3 rebuilds D on both with one grammar for every level of
   content, and the fit gate.
-- Still open from the D page: show line 10 or 5; what a signed-out invitee sees; finished
-  dramas listed and credited; Keep runs on to the next cue.
+- The four D questions answered (above). Build batch W1: signed-out invite viewing and the
+  finished-drama listing (Worker and clients).

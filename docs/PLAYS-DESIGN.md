@@ -24,6 +24,8 @@ The device voice is a scene partner, never a performer.
 
 ---
 
+> **Owner, 2026-10-29** (DESIGN-LOOP): an invite link shows everything signed out (the play, parts, who is in, playable takes); claiming and recording need an account. Finished ear dramas are listed and credited on Ear Drama's own pages. Recording has three modes: Run through, Line by line, Step. These supersede any narrower rule below until the sections are rewritten.
+
 ## §1. Why it should exist, and who it touches
 
 The `learning-orientation-design` skill asks three questions of the idea
