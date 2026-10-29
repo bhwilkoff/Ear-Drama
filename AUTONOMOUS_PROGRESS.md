@@ -465,3 +465,5 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - D2 merged: the catalog-experience-design skill; three directions (A Almanac, B Company, C Sleeve) as clickable prototypes on the live sample; 66 PNGs. Reviewed Home, bare episode and rich series across all three before publishing. Review page: https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ.
 - Seen: A's "that night" list leads with uploads ("GG Season 04"), so the shows-first rule is not yet applied inside that list; B's bare episode is thin.
 - Waiting on the owner: the direction or mix, and four questions (DESIGN-LOOP State). Running: Q1.
+- Q1 merged (1.0.104): catalog run_all 31/31, web PASS, macOS 211. Catalog publish 40941332239 live: 107,190 episodes; forwarding's first live departures: 191 left, 173 aliased, 18 tombstoned (every one accounted for); series 1 aliased, 1 tombstoned. Side effect to clean: a 0.29 s copy on Johnny Dollar 1955-08-29.
+- The design loop stops at the owner gate (D2 directions); nothing running.

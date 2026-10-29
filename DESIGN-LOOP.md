@@ -104,4 +104,4 @@ surfaces; the owner plays it on devices; their feedback opens the next round.
 - Buildable now whatever the pick (the skill's shared rules): shows first with the
   counted tail, core years, the event line, three faces then grouped credits,
   copies by what differs, parts in minutes.
-- Running: Q1 (catalog and display defects). S1 (share pages) merged and live.
+- Running: nothing. S1 and Q1 merged and live (forwarding's first live run: 191 left, all aliased or tombstoned). Loop stopped at the gate.
