@@ -95,9 +95,10 @@ surfaces; the owner plays it on devices; their feedback opens the next round.
 ## State
 
 - Phase: D1 (research), started 2026-10-29.
-- Running: D1b, D1c. D1a merged (docs/research/design/D1a-finding.md): 67.6% of
-  "series" are single uploads; shows-first, run strips, a wall of faces, a movable
-  date, a decade-by-genre map. Seen for the build backlog: Escape dated 1921 (another
-  date misparse), Bud Collyer as two people, Browse offering "Has a script (0)",
-  detective shows wearing a supporting actress's face (owner ruling).
+- Running: D1b. D1a and D1c merged (docs/research/design/). D1c found sharing
+  broken (/series/, /episode/ answer 404 to preview bots); fixed outside the design
+  phase as build batch S1 (static share pages with Open Graph from data).
+- Owner rulings collected for D2: what a signed-out invitee may see (title, part,
+  who is in); whether finished dramas are listed and credited on Ear Drama's own
+  pages; a detective show's face (lead vs a supporting actress).
 - Waiting on the owner: nothing yet (the D2 gate comes next).
