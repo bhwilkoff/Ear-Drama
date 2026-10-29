@@ -862,6 +862,16 @@ lettering in a 32 px circle). Without a face an
 upright picture keeps the top anchor and a wide one is not cropped. No client
 detects faces: the same box on every device, no model shipped, no battery.
 
+*Amended 2026-10-29 (D2c-2)*: the show's own picture leads, then its star. Owner: *"The
+images that should lead should always be ones that best represent the whole Ear Drama. So,
+images/graphics that show the full 'show' are better than individual contributors. Images that
+show the star(s) are better than those that show folks that are less recognizable."* Each series
+now publishes `picture`, `picture_kind` (show, star, person) and `picture_source`: a file from the
+show's own Wikidata or Commons record, matched on more than its title, with the same license
+evidence as a portrait; else the star the program's record marks or a Wikipedia covers; else the
+heard-most person; else the card (catalog DECISIONS 017, contract §3.3a). Clients still draw
+`star`'s portrait until D2c-3 reads `picture`.
+
 ---
 
 ## 070: Volume is leveled by each platform's own dynamics processor, at one set of numbers

@@ -408,3 +408,42 @@ overlaps Jell-O's start.
 departures are Johnny Dollar number-only episodes now filed under the date their file names
 carry. 1,311 copies dropped as overlong, 21 impossible lengths removed, 11 upload-day dates
 dropped, 51 fewer people, 63 episodes with a Goldin fragment credit down to 6.
+
+## 017 — The picture that leads a show is the show's own, then its star, then who is heard most
+
+*Date: 2026-10-29*
+
+A series' picture (`series.picture`, `picture_kind`, `picture_source`; contract §3.3a) is,
+in order: **show**, a file from the show's own record (its Wikidata item's image, logo, poster,
+collage or related image; a Commons file whose Structured Data depicts the item; a file whose
+own page lists the item's Commons category); **star**, a person the program's OTRRpedia record
+marks (title role, Star, Host) heard on at least 3 and a tenth of its credited episodes, else
+a regular whom a Wikipedia covers, scored share of credited episodes x `1 + ln(1 + Wikipedias)`;
+**person**, the heard-most rule; else the typographic board. A show image needs a match on more
+than the title (the item's years, or its description's, overlap ours ±2, or its broadcaster is
+our network), an item its own description does not call a television program, a license class
+a portrait is served under, a shorter side of 160 px, no television in its name or categories,
+and no date of its own outside the run (±2 years of the earliest logged broadcast and our last
+episode).
+
+**Why**: the owner, 2026-10-29: *"images/graphics that show the full 'show' are better than
+individual contributors. Images that show the star(s) are better than those that show folks that
+are less recognizable."* An image is used when its own record carries the evidence (DECISIONS
+055/069), and a title alone is no identity (`evidence-gated-catalog-curation` §7). archive.org
+cover art is not a source: a sample of 60 shows found uploaded art on 26 items, whose only rights
+statement is the uploader's license for the item (DECISIONS 002).
+
+**How to apply**: `art_policy.show_served`, `series_identity`, `series_face`; harvest
+`harvest_series_art.py` (`.cache/series_art/`); evidence tables from `enrich_series_art.py`, run
+by `enrich_people_art.py`; guard `tests/test_projection_art.py`. MEASURED on the 2026-10-28
+caches, 2,036 shows of 5+ episodes: before, 263 wore a person and 1,773 the board; after, 37
+show, 261 star, 1 person, 1,737 board (all 10,641: 49 / 309 / 1 / 10,282). Of 251 identity-
+checked matches a random 40 checked by eye held 1 wrong item (Twenty Questions, the TV program),
+which the television rule now refuses; of the 55 show pictures first served, 1 was wrong (Hilltop House:
+a Commons depicts statement on a 1914 photograph of the hotel), and the date rule now refuses it
+with 5 more dated before their program (Pal as Lassie 1942, a 1928 Strange as It Seems strip,
+George Raft's 1939 trailer, William Gargan 1933, Leon Janney as a child): 49 served. On 42 shows whose title-role
+holder has a portrait, the heard-most rule and share x recognizability each pick the title role
+32 times (raw sitelink counts: 28); the marks make the title role win, and the 25 shows that
+gained a face had none before. Coverage is bounded by Wikidata: 268 of the 2,036 shows match an
+item at all.

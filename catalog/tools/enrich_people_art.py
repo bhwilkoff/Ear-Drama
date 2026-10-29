@@ -513,6 +513,8 @@ def main():
     con.commit()
     write_json(os.path.join(OUT, "enrich_people_art_report.json"), rep)
     print(json.dumps(rep, indent=1)[:4000])
+    import enrich_series_art   # its tables need people_wikidata; the publish runs no separate step
+    enrich_series_art.write(con)
 
 
 def report(people, res, ents, art_rows):

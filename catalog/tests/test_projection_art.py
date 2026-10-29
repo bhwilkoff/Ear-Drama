@@ -13,7 +13,11 @@ Mutation controls, each seen to fail this suite on 2026-10-24: `served` acceptin
 the undated basis (dated_match returning True for it); `served` ignoring
 found_via; `credit` returning None for cc_by; the web builder writing a credit's
 art for a person with no portrait. Seen to fail on 2026-10-28 (V4): the builder
-publishing NULL for every face; face_text accepting a box off its image.
+publishing NULL for every face; face_text accepting a box off its image. Seen to fail on
+2026-10-29 (D2c-2, show-first pictures): show_served ignoring the identity (a title-only match),
+the license class, the size floor, television, or a date after the run; series_identity calling
+a title alone or a television item an identity; the builder serving every series_art row;
+series_face ignoring the marks or the marked share (a one-season host).
 """
 import json
 import os
@@ -45,8 +49,16 @@ CONTRACT = {
     "a credit names an author": "SELECT COUNT(*) FROM art WHERE credit IS NOT NULL AND (author IS NULL OR author = '')",
     "every image is a Commons file with its file page": "SELECT COUNT(*) FROM art WHERE url NOT LIKE '{}%' OR "
         "evidence_url NOT LIKE '{}%'".format(AP.FILEPATH, AP.FILE_PAGE),
-    "no image is published that no person wears": "SELECT COUNT(*) FROM art a WHERE NOT EXISTS "
-        "(SELECT 1 FROM people p WHERE p.portrait = a.id)",
+    "no image is published that no person or series wears": "SELECT COUNT(*) FROM art a WHERE NOT EXISTS "
+        "(SELECT 1 FROM people p WHERE p.portrait = a.id) AND NOT EXISTS (SELECT 1 FROM series s WHERE s.picture = a.id)",
+    "a series' picture is a published image of a known kind, with its source": "SELECT COUNT(*) FROM series s WHERE "
+        "(picture IS NULL) != (picture_kind IS NULL) OR (picture IS NULL) != (picture_source IS NULL) OR "
+        "picture_kind NOT IN ({}) OR (picture IS NOT NULL AND NOT EXISTS (SELECT 1 FROM art a WHERE a.id = s.picture))"
+        .format(",".join(f"'{k}'" for k in AP.KINDS)),
+    "a star's or person's picture is that person's portrait": "SELECT COUNT(*) FROM series s WHERE picture_kind IN "
+        "('star', 'person') AND NOT EXISTS (SELECT 1 FROM people p WHERE p.id = s.star AND p.portrait = s.picture)",
+    "a show picture comes from one of the show's own records": "SELECT COUNT(*) FROM series WHERE picture_kind = 'show' "
+        "AND picture_source NOT IN ({})".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES)),
     "every portrait is a published image": "SELECT COUNT(*) FROM people p WHERE portrait IS NOT NULL AND NOT EXISTS "
         "(SELECT 1 FROM art a WHERE a.id = p.portrait)",
     "a series' star wears a portrait": "SELECT COUNT(*) FROM series s WHERE star IS NOT NULL AND NOT EXISTS "
@@ -67,7 +79,12 @@ def _face_ok(text):
 
 def violations(db):
     c = sqlite3.connect(db)
-    out = {name: c.execute(sql).fetchone()[0] for name, sql in CONTRACT.items()}
+    pictured = "picture" in {r[1] for r in c.execute("PRAGMA table_info(series)")}
+    rules = {n: q for n, q in CONTRACT.items() if pictured or "picture" not in q}
+    if not pictured:   # a projection from before series pictures (contract section 3.3a)
+        rules["no image is published that no person wears"] = (
+            "SELECT COUNT(*) FROM art a WHERE NOT EXISTS (SELECT 1 FROM people p WHERE p.portrait = a.id)")
+    out = {name: c.execute(sql).fetchone()[0] for name, sql in rules.items()}
     # A face box is "x,y,w,h" inside its image (contract section 3.3a): a crop is never
     # centered on a point off the picture, and a client parses exactly four numbers.
     if "face" in {r[1] for r in c.execute("PRAGMA table_info(art)")}:
@@ -91,6 +108,29 @@ def retrace(projection, source):
             "FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
         if AP.served(basis, cls, usable, via, author):
             ok.add((pid, AP.evidence_url(file)))
+    s.close()
+    return sorted(published - ok) + retrace_shows(projection, source)
+
+
+def retrace_shows(projection, source):
+    """Every show picture traced to its series_art rows and judged again by show_served:
+    the (series, file page) pairs no row passes (a title-only match, a file without evidence)."""
+    p = sqlite3.connect(projection)
+    if "picture" not in {r[1] for r in p.execute("PRAGMA table_info(series)")}:
+        return []
+    published = {(k, ev) for k, ev in p.execute(
+        "SELECT s.key, a.evidence_url FROM series s JOIN art a ON a.id = s.picture WHERE s.picture_kind = 'show'")}
+    p.close()
+    s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
+    ok = set()
+    if "series_art" in {r[0] for r in s.execute("SELECT name FROM sqlite_master")}:
+        run = AP.run_dates(s)
+        for k, file, src, identity, cls, author, w, h, cats, when in s.execute(
+                "SELECT series_key, file, source, identity, license_class, author, width, height, categories, "
+                "date_field FROM series_art"):
+            if AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"), when,
+                              *reversed(run.get(k, (None, None)))):
+                ok.add((k, AP.evidence_url(file)))
     s.close()
     return sorted(published - ok)
 
@@ -288,6 +328,146 @@ with tempfile.TemporaryDirectory() as tmp:
     bad.close()
     check("control: the contract catches a face off its image",
           sorted(violations(dst)), ["a face is four numbers inside its image"])
+
+# --- the picture that leads a show (contract section 3.3a) ------------------------------
+YEARS, NET = {"years": "overlap"}, {"years": "unknown"}
+check("identity: the title with overlapping years", AP.series_identity(YEARS, ["CBS"], []), "title+years")
+check("identity: the title with the network", AP.series_identity(NET, ["Mutual"], ["Mutual Broadcasting System"]),
+      "title+network")
+check("control: a title alone is no identity", AP.series_identity(NET, ["CBS"], ["NBC"]), "title")
+check("control: a title with no network or years is no identity", AP.series_identity({}, [], []), "title")
+GUN = {"years": "unknown", "our_years": [1949, 1961]}
+check("identity: the years the item's own description names",
+      AP.series_identity(GUN, [], [], "American radio Western drama series (1952-1961)"), "title+years")
+check("identity: a decade in the description", AP.description_years("drama from the mid-1980s"), (1980, 1989))
+check("control: a description's years that miss ours are no identity",
+      AP.series_identity(GUN, [], [], "radio drama (1975-1980)"), "title")
+check("control: a description without years is no identity", AP.series_identity(GUN, [], [], "radio soap opera"),
+      "title")
+SHOW = ("title+years", "wikidata:P18", "pd_us", None, 640, 480, "Gildersleeve cast.jpg", ["Category:The Great Gildersleeve"])
+check("show: the item's own PD image, matched on the years", AP.show_served(*SHOW), True)
+check("control: a title-only match is refused", AP.show_served("title", *SHOW[1:]), False)
+check("control: a show image without license evidence is refused", AP.show_served(*SHOW[:2], "unknown", *SHOW[3:]), False)
+check("control: 'no known restrictions' is refused", AP.show_served(*SHOW[:2], "no_known_restrictions", *SHOW[3:]), False)
+check("control: archive.org cover art is not a show source", AP.show_served(SHOW[0], "archive.org:cover", *SHOW[2:]),
+      False)
+check("control: CC BY with no author is refused", AP.show_served(*SHOW[:2], "cc_by", "Unknown", *SHOW[4:]), False)
+check("control: smaller than a show tile is refused", AP.show_served(*SHOW[:4], 150, 480, *SHOW[6:]), False)
+check("control: an unsized file is refused", AP.show_served(*SHOW[:4], None, None, *SHOW[6:]), False)
+check("control: a television still is refused", AP.show_served(*SHOW[:6], "Riley TV cast.jpg", []), False)
+check("control: a television category is refused",
+      AP.show_served(*SHOW[:7], ["Category:The Life of Riley (TV series)"]), False)
+check("control: a file dated after the run is refused",
+      AP.show_served(*SHOW, date_field="March 1958", last_date="1952-07-29"), False)
+check("control: a file whose name dates it after the run is refused",
+      AP.show_served(*SHOW[:6], "Bob Barker 1958 Truth or Consequences headshot.jpg", [], None, "1952-07-29"), False)
+check("control: a depicts file dated before the first broadcast is refused (Hill Top House, 1914)",
+      AP.show_served("title+years", "commons:P180", "pd_us", None, 1678, 1086, "Hill Top House, Harpers Ferry, WV.jpg",
+                     [], "1914", "1953-12-15", "1937-01-01"), False)
+check("control: a show image dated before the first broadcast is refused, whatever its source",
+      AP.show_served(*SHOW, date_field="1928-03-26", last_date="1948-05-23", first_date="1935-03-22"), False)
+check("show: a year before our first episode but inside the logged run passes",
+      AP.show_served(*SHOW[:6], "Ralph Edwards Truth or Consequences 1942.JPG", [], "1942-03-08", "1952-07-29",
+                     "1943-12-18"), True)
+check("show: a file dated inside the run passes", AP.show_served(*SHOW, date_field="1951", last_date="1952-07-29"), True)
+check("control: an item its own description calls a television program is no identity",
+      AP.series_identity(YEARS, ["CBS"], ["CBS"], "1949-1956 CBS television program"), "television")
+check("identity: a radio and television series is still the radio one",
+      AP.series_identity(YEARS, [], [], "Radio and television series"), "title+years")
+check("pick_show: the item's own image before a depicts file",
+      AP.pick_show([("a.jpg", "commons:P180", "pd_us"), ("b.jpg", "wikidata:P18", "cc_by")])[0], "b.jpg")
+check("pick_show: in one source, a file whose name names the show first",
+      AP.pick_show([("Buff Cobb 1949.JPG", "commons:category", "pd_us"),
+                    ("Ralph Edwards Truth or Consequences 1942.JPG", "commons:category", "pd_us")],
+                   "Truth Or Consequences")[0], "Ralph Edwards Truth or Consequences 1942.JPG")
+check("marks: the title role", AP.marks_star("Boston Blackie(beginning in 1945)", "Boston Blackie"), True)
+check("marks: the host", AP.marks_star("Host", "Lux Radio Theatre"), True)
+check("control: a supporting character is no star", AP.marks_star("Mary Wesley", "Boston Blackie"), False)
+check("control: a short character is no title role", AP.marks_star("Al", "Al Pearce and His Gang"), False)
+check("recognizability: no Wikipedia weighs 1", AP.recognizability(0), 1.0)
+blackie = {f"e{i}": [("woods", "cast"), ("kollmar", "cast")] for i in range(10)} | {"e10": [("woods", "cast")]}
+both = {"woods", "kollmar", "morris"}
+check("face: today's rule takes the person heard most", AP.series_star(blackie, both), "woods")
+check("face: the title role the program marks beats who is heard most",
+      AP.series_face(blackie, both, {"kollmar"}, {}), ("kollmar", "star", "otrrpedia:noted-role"))
+check("face: a marked film star heard on 3 of 190 loses to the marked regular",
+      AP.series_face(blackie | {f"m{i}": [("morris", "cast")] for i in range(3)}, both, {"kollmar", "morris"},
+                     {"morris": 40, "kollmar": 2})[0], "kollmar")
+anth = {f"e{i}": [(f"g{i}", "cast")] for i in range(40)} | {f"h{i}": [("monty", "host")] for i in range(3)}
+check("control: a host marked for one season of a long anthology is not its face",
+      AP.series_face(anth, {"monty"}, {"monty"}, {"monty": 30}), None)
+check("control: a marked person never heard here is no face",
+      AP.series_face(blackie, both, {"morris"}, {"morris": 40})[0], "woods")
+check("face: unmarked, the regular more Wikipedias cover",
+      AP.series_face(blackie, both, (), {"kollmar": 3}), ("kollmar", "star", "wikipedia:sitelinks"))
+check("face: no one covered falls back to the heard-most rule",
+      AP.series_face(blackie, both, (), {}), ("woods", "person", "credits:heard-most"))
+check("face: a marked star of an uncredited series", AP.series_face({}, both, {"morris"}, {}),
+      ("morris", "star", "otrrpedia:noted-role"))
+check("control: no portrait, no face", AP.series_face(blackie, set(), {"kollmar"}, {"kollmar": 9}), None)
+
+with tempfile.TemporaryDirectory() as tmp:
+    src, dst, web = (os.path.join(tmp, n) for n in ("src.sqlite", "out.sqlite", "web"))
+    fixture(src)
+    d = sqlite3.connect(src)
+    d.executescript("""
+    CREATE TABLE series_art (series_key, qid, file, source, identity, license_class, template, author, width, height,
+        face, categories, date_field, served, evidence_url);
+    CREATE TABLE series_marks (series_key, person_id, character);
+    CREATE TABLE wikipedia_sitelinks (qid, n);
+    """)
+    d.executemany("INSERT INTO series_art VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+        ("benny", "Q1", "Benny title card.png", "wikidata:P154", "title", "pd_us", "PD-US", None, 800, 600, None, "[]",
+         None, 0, ""),
+        ("benny", "Q1", "Benny cast 1946.jpg", "commons:category", "title+years", "pd_us", "PD-US", None, 900, 700,
+         "0.1,0.2,0.6,0.3", "[]", "1946", 1, ""),
+        ("benny", "Q1", "Benny unknown.jpg", "wikidata:P18", "title+years", "unknown", None, None, 900, 700, None, "[]",
+         None, 0, ""),
+        ("benny", "Q1", "Benny 1960 special.jpg", "wikidata:P18", "title+years", "pd_us", "PD-US", None, 900, 700, None,
+         "[]", "1960-03-01", 0, "")])
+    d.execute("INSERT INTO series_marks VALUES ('benny', 'p3', 'Star')")
+    d.commit()
+    d.close()
+    meta = B.build(src, dst)
+    c = sqlite3.connect(dst)
+    pic = c.execute("SELECT s.picture_kind, s.picture_source, a.evidence_url, a.face, s.star FROM series s "
+                    "JOIN art a ON a.id = s.picture").fetchone()
+    c.close()
+    check("show: the evidenced show image leads, not the title-only logo or the unlicensed P18",
+          pic[:4], ("show", "commons:category", AP.evidence_url("Benny cast 1946.jpg"), "0.1,0.2,0.6,0.3"))
+    check("show: the series still names its star (the marked one)", pic[4], "p3")
+    check("show: the manifest counts the kinds", (meta["counts"]["seriesPictureShow"], meta["counts"]["seriesPictureStar"]),
+          (1, 0))
+    check("show: the contract holds", violations(dst), {})
+    check("show: retrace holds", retrace(dst, src), [])
+    W.build(dst, web)
+    with open(os.path.join(web, "index", "series.json")) as f:
+        idx = json.load(f)
+    row = dict(zip(idx["fields"], idx["rows"][0]))
+    check("web: the series row carries its picture, kind and source",
+          (row["picture"][0], row["pictureKind"], row["pictureSource"], row["art"][0]),
+          (AP.image_url("Benny cast 1946.jpg"), "show", "commons:category", AP.image_url("Phil Harris.jpg")))
+    with open(os.path.join(web, "series", "benny.json")) as f:
+        page = json.load(f)
+    check("web: the series page carries it too", (page["pictureKind"], page["picture"][0]),
+          ("show", AP.image_url("Benny cast 1946.jpg")))
+    # Broken controls: a source whose match is title-only, and a projection that serves a show image without a
+    # passing row, must each be caught.
+    d = sqlite3.connect(src)
+    d.execute("UPDATE series_art SET identity = 'title'")
+    d.commit()
+    d.close()
+    check("control: retrace catches a show image whose match is a title alone", retrace(dst, src),
+          [("benny", AP.evidence_url("Benny cast 1946.jpg"))])
+    B.build(src, dst)
+    c = sqlite3.connect(dst)
+    check("control: a title-only match serves no show image; the marked star leads",
+          c.execute("SELECT picture_kind, picture_source FROM series").fetchone(), ("star", "otrrpedia:noted-role"))
+    c.execute("UPDATE series SET picture_kind = 'show', picture_source = 'archive.org:cover'")
+    c.commit()
+    c.close()
+    check("control: the contract catches a show picture from no show record",
+          sorted(violations(dst)), ["a show picture comes from one of the show's own records"])
 
 here = os.path.dirname(__file__)
 real =os.environ.get("PROJECTION") or os.path.join(here, "..", "out", "publish", "ear-drama.sqlite")

@@ -206,9 +206,11 @@ def phase_commons(people, names_idx, ents, files, max_files=None):
     write_json(os.path.join(DIR, "files.json.gz"), files, gz=True)
 
 
-def phase_dims(files, batch=50):
+def phase_dims(files, batch=50, out=None, cache_dir="people_wd/imageinfo"):
     """The original's width and height for each file page read: a client lays a portrait out
-    by its shape before the image arrives (contract section 3.3), so the shape is published once."""
+    by its shape before the image arrives (contract section 3.3), so the shape is published once.
+    `out` is the files cache written as each batch lands (harvest_series_art.py passes its own)."""
+    out = out or os.path.join(DIR, "files.json.gz")
     todo = sorted(fn for fn, v in files.items() if v.get("page_status") == "ok" and "width" not in v)
     print(f"dims: {len(todo)} files to size", flush=True)
     for i in range(0, len(todo), batch):
@@ -216,7 +218,7 @@ def phase_dims(files, batch=50):
         titles = {"File:" + fn.replace("_", " "): fn for fn in chunk}
         obj = wm.call(wm.COMMONS_API, {"action": "query", "format": "json", "prop": "imageinfo",
                                        "iiprop": "size", "titles": "|".join(titles)},
-                      cache_dir="people_wd/imageinfo")
+                      cache_dir=cache_dir)
         if not obj:
             continue
         q = obj.get("query") or {}
@@ -226,7 +228,7 @@ def phase_dims(files, batch=50):
             info = (page.get("imageinfo") or [None])[0]
             if fn and info and info.get("width") and info.get("height"):
                 files[fn]["width"], files[fn]["height"] = int(info["width"]), int(info["height"])
-        write_json(os.path.join(DIR, "files.json.gz"), files, gz=True)
+        write_json(out, files, gz=True)
         print(f"  sized {min(i + batch, len(todo))}/{len(todo)}", flush=True)
 
 
@@ -263,13 +265,14 @@ def pick_face(faces):
     return [round(v, 4) for v in (x0, y0, x1 - x0, y1 - y0)]
 
 
-def phase_faces(files, detector, thumbs, batch=40, workers=3):
+def phase_faces(files, detector, thumbs, batch=40, workers=3, out=None):
     """A face box per portrait file (contract section 3.3a): Commons' 500 thumbnail is
     read once into `thumbs` (outside the cache; re-fetchable), at most `workers` at a time, and
     Apple Vision (face_boxes.swift, on this Mac) finds the faces. The cache keeps the detector's
     boxes (`faces`, so a change to pick_face needs no new detection), the chosen box (`face`,
     or null for none), and which detector said so. A file whose thumbnail could not be read is
-    left for the next run."""
+    left for the next run. `out` is the files cache written as each batch lands."""
+    out_path = out or os.path.join(DIR, "files.json.gz")
     import subprocess
     import time
     import urllib.request
@@ -316,7 +319,7 @@ def phase_faces(files, detector, thumbs, batch=40, workers=3):
                     files[fn]["faces"] = row["faces"]
                     files[fn]["face"] = pick_face(row["faces"])
                     files[fn]["face_by"] = FACE_BY
-            write_json(os.path.join(DIR, "files.json.gz"), files, gz=True)
+            write_json(out_path, files, gz=True)
             print(f"  faces {min(i + batch, len(todo))}/{len(todo)}", flush=True)
 
 

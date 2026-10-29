@@ -62,7 +62,10 @@ SAID_MIN_WORD = 3
 SHELF_SERIES = 12
 # star: the name of the series' face (contract §3.3, art_policy.series_star); art: that face's portrait.
 # scripts: how many of the series' served episodes carry a castable script (episode_scripts.py).
-SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts", "downloads"]
+# picture: the series' leading picture (contract §3.3a: the show's own image, else its star's portrait,
+# as an art array), pictureKind ("show", "star", "person") and pictureSource; all null for the board.
+SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts",
+                 "downloads", "picture", "pictureKind", "pictureSource"]
 # A served image (art_policy.py): url takes ?width=; credit is set only where the license requires one.
 ART_FIELDS = ["url", "width", "height", "credit", "evidence", "face"]
 # li, ltp: the default copy's loudness (LUFS) and true peak (dBTP), DECISIONS 061; null when unmeasured.
@@ -167,6 +170,9 @@ def build(src, out, include_unclaimed=False, transcripts=None):
              if a in art} if art else {})
     ep_star = dict(s.execute("SELECT id, star FROM episodes WHERE star IS NOT NULL")) if has("episodes", "star") else {}
     series_star = dict(s.execute("SELECT key, star FROM series WHERE star IS NOT NULL")) if has("series", "star") else {}
+    series_pic = ({k: (art.get(a), kind, src) for k, a, kind, src in s.execute(
+        "SELECT key, picture, picture_kind, picture_source FROM series WHERE picture IS NOT NULL") if a in art}
+        if has("series", "picture") and art else {})
     ep_script = (dict(s.execute("SELECT id, script FROM episodes WHERE script IS NOT NULL"))
                  if has("episodes", "script") else {})
     ep_sponsor = (dict(s.execute("SELECT id, sponsor FROM episodes WHERE sponsor IS NOT NULL"))
@@ -206,6 +212,7 @@ def build(src, out, include_unclaimed=False, transcripts=None):
     popular = SH.browse_downloads(series_dl, {e[1] for e in eps.values() if e[10] is None})
     for k, row in series.items():
         row.append(popular.get(k))
+        row.extend(series_pic.get(k, (None, None, None)))
     arc_rows = {}
     if {"arcs", "arc_parts"} <= tables:
         for aid, sk, eid in s.execute("SELECT a.id, a.series_key, p.episode_id FROM arcs a JOIN arc_parts p "
@@ -237,7 +244,8 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         meta = series[key]
         dump(os.path.join(out, "series", f"{key}.json"), {
             "key": key, "name": meta[1], "genre": meta[2], "first": meta[3], "last": meta[4],
-            "networks": meta[6], "star": meta[7], "art": meta[8], "seasons": seasons, "fields": EPISODE_FIELDS,
+            "networks": meta[6], "star": meta[7], "art": meta[8], "picture": meta[12], "pictureKind": meta[13],
+            "pictureSource": meta[14], "seasons": seasons, "fields": EPISODE_FIELDS,
             "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] + lt(e[0]) for e in rows]})
 
     # Detail shards.

@@ -152,7 +152,8 @@ none on the web), never as a skip. Segment times are never estimated.
 - `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
   the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below),
-  `downloads` (below).
+  `downloads` (below), `picture`, `picture_kind`, `picture_source` (§3.3a; all
+  three NULL together).
 - **`series.downloads`** (and `downloads` on the web series index): Browse's
   "Popular" key, the series' `mostDownloaded` sum (§5.1, Decision 067):
   archive.org's own download counts over the distinct items holding its
@@ -227,14 +228,54 @@ Congress "no known restrictions" and Smithsonian CC0 photographs are not served
 (V2, V4, the owner's). MEASURED 2026-10-24 on the 121,907-episode build: 2,344
 images, 2,364 people, 305 series with a star, 24,894 episodes with one.
 
-- **`series.star`**: the person with a served portrait heard on the air (cast,
-  host, narrator, performer, guest, announcer excluded) on the most of the
-  series' credited episodes, when that is at least 3 episodes and a third of
-  them (an anthology's guest is not its face); ties by person id.
+- **`series.picture`** (an `art.id`), **`picture_kind`** and **`picture_source`**:
+  the picture that leads the show, the first that exists of (owner, 2026-10-29:
+  *"images/graphics that show the full 'show' are better than individual
+  contributors. Images that show the star(s) are better than those that show folks
+  that are less recognizable."*):
+  1. `show`: the show's own image. The series' Wikidata item (catalog
+     `enrich_external.py`) must be matched on more than its title: `title+years`
+     (the item's own dates, its article's decade category, or the years its own
+     description names, "radio Western drama series (1952-1961)", overlap ours, ±2) or
+     `title+network` (its broadcaster is one of our networks); a title alone is
+     refused. The file comes from the item's own record, in this order of
+     `picture_source`: `wikidata:P18` (image), `wikidata:P154` (logo),
+     `wikidata:P3383` (poster), `wikidata:P2716` (collage), `wikidata:P6802`
+     (related image), `commons:P180` (a Commons file whose Structured Data depicts
+     the item), `commons:category` (a file whose own page lists the item's Commons
+     category, P373). Its license class is one a portrait is served under (read
+     again from its file page, credited when owed), its shorter side is at least
+     160 px (the largest show tile), and neither its name nor its categories say
+     television (a still of the TV run is another broadcast), and its own date (its
+     page's date field, else a year in its name) lies inside the run, ±2 years of the
+     earliest logged broadcast (`first_broadcast`, else our first episode) and our last
+     episode, whatever its source: a "depicts" statement on a 1914 photograph of a hotel
+     is not the 1939 soap opera named for it. archive.org items'
+     own cover art is not a source: its only rights statement is the uploader's
+     license for the item (catalog DECISIONS 002). `art_policy.show_served`.
+  2. `star`: `series.star` when chosen by recognizability: a person the
+     program's own OTRRpedia record marks (a "Noted Role" that is the title role,
+     Star, Host, Himself; `otrrpedia:noted-role`), heard on at least 3 and a tenth
+     of the credited episodes (any, when none is credited: a host of one season of a
+     twenty-year anthology is not its face); else a regular (the heard-most
+     eligibility below) whom at least one Wikipedia covers
+     (`wikipedia:sitelinks`). Among either, the highest share of credited episodes
+     x `1 + ln(1 + Wikipedias with an article about the person)`; ties by id.
+  3. `person`: `series.star` by the heard-most rule (`credits:heard-most`).
+  `picture` is that person's portrait for `star` and `person`. All NULL: the
+  typographic card. `art_policy.series_face`; the harvest is
+  `harvest_series_art.py` (`.cache/series_art/`), the evidence tables
+  `series_art`, `series_marks`, `wikipedia_sitelinks` (`enrich_series_art.py`).
+- **`series.star`**: the face chosen by 2 and 3 above, kept when a show image
+  leads (an episode wears it). The heard-most rule: the person with a served
+  portrait heard on the air (cast, host, narrator, performer, guest, announcer
+  excluded) on the most of the series' credited episodes, when that is at least 3
+  episodes and a third of them (an anthology's guest is not its face); ties by
+  person id.
 - **`episodes.star`**: the series' star when heard in the episode, else the
   episode's first on-air credit with a served portrait, else NULL.
-- A series with no star has no picture: its artwork is the typographic card
-  (name, years, network, on its genre hue), drawn by each client from data.
+- A series with no picture is drawn as the typographic card (name, years,
+  network, on its genre hue) by each client from data.
 - **`art.face`**: the box a small crop (a row tile, a cast face, an avatar, the
   lock screen's square) centers on, as `"x,y,w,h"`, four numbers normalized to the
   image with the origin at its top left (the web's `art` array carries it as
@@ -265,9 +306,12 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
   An unknown size (an older catalog) keeps the plain fill crop at (0.5, 0.2).
 - Guarantees (`catalog/tests/test_projection_art.py`, each broken once): every
   image's class is served; a face lies inside its image; a credit exactly when owed, with an author; every
-  image is worn by a person and every portrait exists; a star wears a portrait
-  and an episode's star is credited in it; every published image traced back to
-  its source rows passes the predicate again.
+  image is worn by a person or a series and every portrait exists; a star wears a portrait
+  and an episode's star is credited in it; a series' picture, kind and source are set
+  together, a star's or person's picture is that person's portrait, and a show picture's
+  source is one of the show's own records; every published image (portrait or show
+  picture) traced back to its source rows passes the predicate again, so a title-only
+  match or a file without license evidence is refused.
 
 ### 3.4 Search
 
@@ -472,7 +516,9 @@ the starting shape, Archive Watch's:
 A Detail row's `transcript` is §3.1's `transcript_url` (null unless the gate
 passed). Portraits (§3.3a) travel inline as `art` arrays (`fields.art`: `url`,
 `width`, `height`, `credit`, `evidence`, `face`): a series row appends `star` (the
-face's name) and `art`, a series page carries both as keys, a credit appends
+face's name) and `art` (the face's portrait), then, after `downloads`, `picture` (the
+series' leading picture, §3.3a, as an `art` array), `pictureKind` and `pictureSource`
+(null together; a series page carries the same three keys), a series page carries both as keys, a credit appends
 `art` (its person's portrait or null), and a Detail row appends `star` (the
 episode's face, a person id among its credits). A series row appends `scripts` (how many of its served episodes carry a
 `script`), then `downloads` (§3.3, or null) and a Detail row appends `script` (§3.1, or null), then `arc`
