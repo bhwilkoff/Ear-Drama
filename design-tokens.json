@@ -32,6 +32,17 @@
       "news":         { "light": "#44420E", "dark": "#CECEC0" },
       "documentary":  { "light": "#217500", "dark": "#81CB70" },
       "serial":       { "light": "#5D0087", "dark": "#AE6DDC" }
+    },
+    "onGenre": {
+      "$about": "Text and marks set ON a genre board (a show tile's board, a series' hero block), D2b-3: each holds 4.5:1 on its genre hue in both modes, so a name in body or caption type passes WCAG AA. White or ink, whichever passes; same keys as genre.",
+      "drama":        { "light": "#FFFFFF", "dark": "#0F0F11" },
+      "mystery":      { "light": "#FFFFFF", "dark": "#0F0F11" },
+      "scifi":        { "light": "#FFFFFF", "dark": "#0F0F11" },
+      "western":      { "light": "#FFFFFF", "dark": "#0F0F11" },
+      "comedy":       { "light": "#131316", "dark": "#0F0F11" },
+      "news":         { "light": "#FFFFFF", "dark": "#0F0F11" },
+      "documentary":  { "light": "#FFFFFF", "dark": "#0F0F11" },
+      "serial":       { "light": "#FFFFFF", "dark": "#0F0F11" }
     }
   },
   "font": {

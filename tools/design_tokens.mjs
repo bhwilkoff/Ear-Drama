@@ -66,6 +66,14 @@ export function genres(t) {
     .map(([name, v]) => ({ name, light: v.light, dark: v.dark }));
 }
 
+// The text color set on each genre board: [{ name, light, dark }], same keys as
+// genres(); web only until a native board consumes it (D2b-3).
+export function onGenres(t) {
+  return Object.entries((t.color && t.color.onGenre) || {})
+    .filter(([name]) => !name.startsWith('$'))
+    .map(([name, v]) => ({ name, light: v.light, dark: v.dark }));
+}
+
 const WEIGHT = {
   css: (w) => String(w),
   swift: (w) => ({ 400: 'regular', 500: 'medium', 600: 'semibold', 700: 'bold', 800: 'heavy', 900: 'black' })[w],
@@ -110,6 +118,7 @@ function webVars(t, mode) {
   return [
     ...colors(t).map((c) => `--color-${kebab(c.name)}: ${c[mode].toUpperCase()};`),
     ...genres(t).map((g) => `--color-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
+    ...onGenres(t).map((g) => `--color-on-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
   ];
 }
 
@@ -145,7 +154,8 @@ function webStyles(t) {
   const dark = ['  color-scheme: dark;', ...webVars(t, 'dark').map((l) => '  ' + l)];
   out.push('html[data-theme="dark"] {', ...dark, '}');
   out.push('@media (prefers-color-scheme: dark) {', '  html:not([data-theme="light"]) {', ...dark.map((l) => '  ' + l), '  }', '}');
-  for (const g of genres(t)) out.push(`[data-genre="${g.name}"] { --genre-accent: var(--color-genre-${kebab(g.name)}); }`);
+  const on = new Set(onGenres(t).map((g) => g.name));
+  for (const g of genres(t)) out.push(`[data-genre="${g.name}"] { --genre-accent: var(--color-genre-${kebab(g.name)});${on.has(g.name) ? ` --genre-on: var(--color-on-genre-${kebab(g.name)});` : ''} }`);
   return out;
 }
 

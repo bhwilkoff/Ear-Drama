@@ -18,6 +18,7 @@
 <main>
   <h1 class="l1">Ear Drama directions</h1>
   <div class="dirs" id="dirs"></div>
+  <section class="dirs" style="grid-template-columns:1fr"><section><h2 class="l2">D, one cohesive design (D2b-3)</h2><ul id="d"></ul></section></section>
 </main>
 <script>
   const S = [['home', 'Home'], ['browse', 'Browse'], ['series-rich', 'Series: Suspense'], ['series-sparse', 'Series: Stay Tuned For Terror'],
@@ -26,6 +27,12 @@
   const D = [['a', 'A, The Almanac'], ['b', 'B, The Company'], ['c', 'C, The Sleeve']];
   document.getElementById('dirs').innerHTML = D.map(([k, n]) => `<section><h2 class="l2">${n}</h2><ul>${
     S.map(([s, l]) => `<li><a href="${k}/index.html?s=${s}">${l}</a></li>`).join('')}<li><a href="${k}/direction.md">direction.md</a></li></ul></section>`).join('');
+  const DS = [['home', 'Home'], ['browse', 'Browse'], ['series-rich', 'Series: Suspense'], ['series-sparse', 'Series: Stay Tuned For Terror'],
+    ['episode-rich', 'Episode: The Black Curtain'], ['episode-bare', 'Episode: 1945 Radio News'], ['now-playing', 'Now Playing'], ['search', 'Search'],
+    ['stations', 'Stations'], ['library', 'Library'], ['production', 'Shared production']];
+  const DR = [['pick', 'Start an ear drama'], ['part', 'Claim a part'], ['ready', 'Record a line'], ['done', 'Done with the part'], ['listen', 'Listen through']];
+  document.getElementById('d').innerHTML = DS.map(([s, l]) => `<li><a href="d/index.html?s=${s}">${l}</a></li>`).join('') +
+    DR.map(([s, l]) => `<li><a href="d/record.html?s=${s}">${l}</a></li>`).join('') + '<li><a href="d/direction.md">direction.md</a></li>';
 </script>
 </body>
 </html>
