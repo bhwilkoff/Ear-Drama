@@ -18,6 +18,7 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import androidx.core.net.toUri
 
 /**
  * Play on another speaker or screen (the owner, 2026-10-28): Google Cast
@@ -98,7 +99,7 @@ object CastRoute {
             val playing = mediaItem.localConfiguration?.uri?.toString() ?: return base.toMediaQueueItem(mediaItem)
             val url = receiverUrl(playing, mediaItem.requestMetadata.mediaUri?.toString())
             return base.toMediaQueueItem(
-                mediaItem.buildUpon().setUri(Uri.parse(url)).setMimeType(mimeTypeFor(url)).build(),
+                mediaItem.buildUpon().setUri(url.toUri()).setMimeType(mimeTypeFor(url)).build(),
             )
         }
 

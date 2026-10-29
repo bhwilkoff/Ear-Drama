@@ -29,6 +29,7 @@ import kotlin.math.abs
  * the length is known, so index seeking (which would scan the file) never
  * engages. The catalog knows the real length, so a seek map is built from it.
  */
+@OptIn(UnstableApi::class)
 object Mp3Seeking {
     /**
      * Index seeking is the fallback when the byte length is unknown (chunked

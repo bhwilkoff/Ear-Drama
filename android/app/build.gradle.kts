@@ -121,6 +121,13 @@ android {
         account("APPLE_RETURN_URL", "https://eardrama.org/auth/apple/")
     }
 
+    lint {
+        abortOnError = true
+        warningsAsErrors = true
+        checkReleaseBuilds = true
+        lintConfig = file("lint.xml")
+    }
+
     signingConfigs {
         // Upload signing config — keystore + creds live in gradle.properties
         // (git-excluded). Play App Signing handles the production key.

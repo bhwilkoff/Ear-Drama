@@ -1,5 +1,6 @@
 package com.example.appname.plays
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
@@ -25,6 +26,8 @@ enum class AudioRoute {
     ;
 
     companion object {
+        // A device type newer than the OS is simply never listed by it; the constant is an inlined int.
+        @SuppressLint("InlinedApi")
         private val HEADPHONES = setOf(
             AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
             AudioDeviceInfo.TYPE_WIRED_HEADSET,

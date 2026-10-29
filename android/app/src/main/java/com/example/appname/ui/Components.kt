@@ -249,8 +249,8 @@ fun EpisodeListItem(
     showSeries: Boolean,
     onOpen: () -> Unit,
     onPlay: () -> Unit,
-    supporting: String? = null,
     modifier: Modifier = Modifier,
+    supporting: String? = null,
     inQueueList: Boolean = false,
     /** Search's transcript match: the line as said, verbatim from the automatic transcript. */
     quote: String? = null,

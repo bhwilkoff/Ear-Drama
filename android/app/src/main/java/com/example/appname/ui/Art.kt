@@ -38,6 +38,7 @@ import com.example.appname.data.Face
 import com.example.appname.data.artInitial
 import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
+import androidx.core.net.toUri
 
 // Art (Decision 069, contract §3.3a): a served portrait, else a card drawn
 // from data. No stock, placeholder, or uploader art. A portrait is the
@@ -107,7 +108,7 @@ fun ArtCredit(credit: String, evidence: String?, modifier: Modifier = Modifier) 
         style = MaterialTheme.typography.bodySmall,
         color = if (evidence != null) OnAir.colors.link else MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = if (evidence == null) modifier else modifier.clickable(onClickLabel = "Open the photo's page") {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(evidence))) }
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, evidence.toUri())) }
         },
     )
 }

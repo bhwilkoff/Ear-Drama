@@ -14,6 +14,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import android.util.Base64
 import java.net.URLDecoder
 import java.security.SecureRandom
+import androidx.core.net.toUri
 
 /** A random value for a nonce or a state: 32 bytes, base64url without padding. */
 fun randomToken(): String {
@@ -73,7 +74,7 @@ object AppleWebSignIn {
     data class Callback(val state: String?, val idToken: String?, val code: String?, val error: String?)
 
     fun authorizeUrl(config: WorkerConfig, pending: Pending): String =
-        Uri.parse("https://appleid.apple.com/auth/authorize").buildUpon()
+        "https://appleid.apple.com/auth/authorize".toUri().buildUpon()
             .appendQueryParameter("client_id", config.appleServicesId)
             .appendQueryParameter("redirect_uri", config.appleReturnUrl)
             .appendQueryParameter("response_type", "code id_token")
@@ -83,7 +84,7 @@ object AppleWebSignIn {
             .build().toString()
 
     fun open(activity: Activity, url: String) {
-        CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(activity, Uri.parse(url))
+        CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(activity, url.toUri())
     }
 
     /** The forwarded answer, from the fragment or the query (either may carry it). */

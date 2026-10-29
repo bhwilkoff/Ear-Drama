@@ -20,7 +20,7 @@ class LauncherIconTest {
 
     @Test fun `both launcher icons carry the ground, the mark, and a monochrome layer`() {
         for (name in listOf("ic_launcher", "ic_launcher_round")) {
-            val xml = File(res, "mipmap-anydpi-v26/$name.xml").readText()
+            val xml = File(res, "mipmap-anydpi/$name.xml").readText()
             assertEquals(name, emptyList<String>(), layerProblems(xml))
         }
         // The control: the template's placeholder (a white ground, no monochrome of its own) is caught.

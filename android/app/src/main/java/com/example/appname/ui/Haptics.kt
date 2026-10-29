@@ -1,5 +1,6 @@
 package com.example.appname.ui
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.compose.runtime.Composable
@@ -19,6 +20,7 @@ enum class Haptic {
     Selection, Light, Medium, Heavy, Success, Warning, Error;
 
     /** The `HapticFeedbackConstants` value for this event on API [sdk]; the named ones arrived in API 30. */
+    @SuppressLint("InlinedApi") // each newer constant is read only behind its own sdk check
     fun feedbackConstant(sdk: Int): Int = when (this) {
         Selection -> if (sdk >= Build.VERSION_CODES.R) HapticFeedbackConstants.SEGMENT_TICK else HapticFeedbackConstants.CLOCK_TICK
         Light -> HapticFeedbackConstants.KEYBOARD_TAP
