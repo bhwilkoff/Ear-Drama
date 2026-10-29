@@ -56,6 +56,25 @@ test('art: the shape decides the layout, from the published size (§6.4a)', () =
   assertEq(API.artAspect(at(null, null)), null, 'control: an unknown size has no aspect');
 });
 
+test('art: a small crop is the square around the published face (contract §3.3a golden cases)', () => {
+  const at = (w, h, face) => API.artOf(['https://x/A.jpg', w, h, null, null, face]);
+  const near = (got, want, msg) => {
+    if (want === null) return assertEq(got, null, msg);
+    assert(got && ['x', 'y', 'w', 'h'].every(k => Math.abs(got[k] - want[k]) < 1e-6),
+      `${msg}: expected ${JSON.stringify(want)}, got ${JSON.stringify(got)}`);
+  };
+  near(API.cropRect(at(1000, 500, [0.5, 0.2, 0.1, 0.2])), { x: 0.45, y: 0.1, w: 0.2, h: 0.4 }, 'wide, small face: zoomed onto it');
+  near(API.cropRect(at(1000, 500, [0.85, 0, 0.15, 0.6])), { x: 0.5, y: 0, w: 0.5, h: 1 }, 'wide, big face: the edge square');
+  near(API.cropRect(at(500, 1000, [0.3, 0.25, 0.4, 0.2])), { x: 0.1, y: 0.15, w: 0.8, h: 0.4 }, 'tall: around the face');
+  near(API.cropRect(at(1000, 1000, [0.4, 0.4, 0.5, 0.5])), { x: 0, y: 0, w: 1, h: 1 }, 'square, big face: the whole');
+  near(API.cropRect(at(1000, 1000, [0.5, 0.5, 0.01, 0.01])), { x: 0.38, y: 0.38, w: 0.25, h: 0.25 }, 'a tiny face: at most 4x');
+  near(API.cropRect(at(500, 1000, null)), { x: 0, y: 0.1, w: 1, h: 0.5 }, 'control: upright without a face keeps the top');
+  near(API.cropRect(at(1000, 1000, null)), { x: 0, y: 0, w: 1, h: 1 }, 'control: a square without a face is whole');
+  near(API.cropRect(at(1000, 500, null)), null, 'control: a wide picture without a face is not cropped');
+  near(API.cropRect(at(null, null, [0.6, 0.1, 0.2, 0.2])), null, 'control: an unknown size keeps the plain crop');
+  near(API.cropRect(API.artOf(['https://x/A.jpg', 1000, 500, null, null])), null, 'control: an older catalog without the field');
+});
+
 test('transcript fetches the URL once, as text, and never caches a failure (DECISIONS 058)', async () => {
   const real = globalThis.fetch;
   const seen = [];

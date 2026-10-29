@@ -44,7 +44,10 @@ Mac uses the same Core, so the same code holds them:
   person's page open with `FaceHero` (the print beside its label inside
   276 x 240 pt, or the plate for a wide picture, at most 320 pt tall; no
   wash or bars (owner, 2026-10-28: *"I think you can find better solutions for different aspect ratios of images, then just blurring and black bars."*; `artwork-presentation-design`)), the Mac's rows keep
-  the 40 pt tile, and an evening's aired slot leads with its tile;
+  the 40 pt tile, and an evening's aired slot leads with its tile; the
+  tile, `CreditFace`, and the system Now Playing square center on the
+  published face, as iOS-DESIGN R11a (V4), a wide picture without one
+  left uncropped;
   **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).

@@ -111,3 +111,20 @@ def episode_star(creds, portrait_people, star):
     if star in on_air:
         return star
     return on_air[0] if on_air else None
+
+
+def face_text(box):
+    """A face box ([x, y, w, h], normalized, top-left origin) as the projection's `art.face`
+    ("x,y,w,h", contract section 3.3a), or None when there is none or it does not lie inside
+    the image: a crop is never centered on a point off the picture."""
+    if not box or len(box) != 4:
+        return None
+    x, y, w, h = (float(v) for v in box)
+    if not (w > 0 and h > 0 and x >= 0 and y >= 0 and x + w <= 1.0001 and y + h <= 1.0001):
+        return None
+    return ",".join(f"{v:.4f}".rstrip("0").rstrip(".") for v in (x, y, w, h))
+
+
+def face_list(text):
+    """`art.face` as the web's [x, y, w, h], or None."""
+    return [float(v) for v in text.split(",")] if text else None

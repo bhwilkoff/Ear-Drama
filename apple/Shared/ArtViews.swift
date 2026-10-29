@@ -1,23 +1,44 @@
 import SwiftUI
 
 // Art (Decision 069, contract §3.3a): a served portrait, else a card drawn
-// from data. No stock, placeholder, or uploader art. A portrait is the
-// person's own Wikidata image, so a top-anchored crop keeps the face.
+// from data. No stock, placeholder, or uploader art. A small crop centers on
+// the face the pipeline published (R11a), never one found on the device.
 
-/// A served image at the smallest Commons step covering its frame on this
-/// screen. While it loads, or when it fails, the view behind it shows.
-struct ArtImage: View {
+/// A small square crop (a row tile, a cast face, R11a): the square `Artwork.cropRect` picks
+/// around the published face, the image scaled so that square fills the frame and shifted
+/// onto it, at the smallest Commons step covering it on this screen. A wide picture with no
+/// face draws nothing, so the view behind it shows (the tile's letter, the empty slot), as it
+/// does while loading or on failure; an unknown size keeps the plain top fill crop.
+struct CroppedArt: View {
     let art: Artwork
     let points: CGFloat
     @Environment(\.displayScale) private var scale
 
     var body: some View {
-        AsyncImage(url: art.url(pixels: Double(points * scale))) { phase in
-            if let image = phase.image {
-                image.resizable().aspectRatio(contentMode: .fill)
-            } else {
-                Color.clear
+        if let r = art.cropRect() {
+            let size = CGSize(width: points / CGFloat(r.w), height: points / CGFloat(r.h))
+            AsyncImage(url: art.url(pixels: Double(size.width * scale))) { phase in
+                if let image = phase.image {
+                    image.resizable()
+                        .frame(width: size.width, height: size.height)
+                        .offset(x: -CGFloat(r.x) * size.width, y: -CGFloat(r.y) * size.height)
+                } else {
+                    Color.clear
+                }
             }
+            .frame(width: points, height: points, alignment: .topLeading)
+            .clipped()
+        } else if art.aspectRatio == nil {
+            AsyncImage(url: art.url(pixels: Double(points * scale))) { phase in
+                if let image = phase.image {
+                    image.resizable().aspectRatio(contentMode: .fill)
+                        .frame(width: points, height: points, alignment: .top)
+                        .clipped()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: points, height: points)
         }
     }
 }
@@ -157,7 +178,7 @@ struct ArtTile: View {
                 .font(TypeRamp.sectionHeader)
                 .foregroundStyle(hue ?? Color.brandTextMuted)
             if let face {
-                ArtImage(art: face.art, points: size)
+                CroppedArt(art: face.art, points: size)
             }
         }
         .frame(width: size, height: size)
@@ -218,9 +239,9 @@ struct CreditFace: View {
 
     var body: some View {
         ZStack {
-            if let art {
+            if let art, art.cropRect() != nil || art.aspectRatio == nil {
                 Circle().fill(Color.brandSurfaceAlt)
-                ArtImage(art: art, points: size)
+                CroppedArt(art: art, points: size)
             }
         }
         .frame(width: size, height: size)

@@ -174,18 +174,18 @@ object CatalogFixture {
             if (withArt) {
                 c.execSQL(
                     "CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, height INTEGER, " +
-                        "license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL)",
+                        "license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT)",
                 )
                 c.execSQL("ALTER TABLE people ADD COLUMN portrait INTEGER")
                 c.execSQL("ALTER TABLE series ADD COLUMN star TEXT")
                 c.execSQL("ALTER TABLE episodes ADD COLUMN star TEXT")
                 c.execSQL(
                     "INSERT INTO art VALUES (1, '$ART_BASE/Agnes_Moorehead.jpg', 600, 800, 'pd_us', NULL, NULL, " +
-                        "'https://commons.wikimedia.org/wiki/File:Agnes_Moorehead.jpg')",
+                        "'https://commons.wikimedia.org/wiki/File:Agnes_Moorehead.jpg', '0.3,0.1,0.4,0.3')",
                 )
                 c.execSQL(
                     "INSERT INTO art VALUES (2, '$ART_BASE/Orson_Welles.jpg', NULL, NULL, 'cc_by', 'Alan Light', " +
-                        "'Alan Light, CC BY 2.0', 'https://commons.wikimedia.org/wiki/File:Orson_Welles.jpg')",
+                        "'Alan Light, CC BY 2.0', 'https://commons.wikimedia.org/wiki/File:Orson_Welles.jpg', NULL)",
                 )
                 c.execSQL("UPDATE people SET portrait = 1 WHERE id = 'p1'")
                 c.execSQL("UPDATE people SET portrait = 2 WHERE id = 'p2'")

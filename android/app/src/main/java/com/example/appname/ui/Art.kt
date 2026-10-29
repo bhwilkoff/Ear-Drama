@@ -16,16 +16,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -52,20 +56,45 @@ import com.example.appname.ui.theme.Spacing
 import androidx.core.net.toUri
 
 // Art (Decision 069, contract §3.3a): a served portrait, else a card drawn
-// from data. No stock, placeholder, or uploader art. A portrait is the
-// person's own Wikidata image, so a top-anchored crop keeps the face.
+// from data. No stock, placeholder, or uploader art. A small crop centers on
+// the face the pipeline published (R11a), never one found on the device.
 
-/** A portrait at the smallest Commons step covering [side] on this screen; a failed load shows what is behind it. */
+/**
+ * A small square crop (a row tile, a cast face, R11a): the square [Artwork.cropRect] picks around
+ * the published face, the image scaled so that square fills [side] and shifted onto it, at the
+ * smallest Commons step covering it on this screen. A wide picture with no face draws nothing, so
+ * what is behind it shows (the tile's letter, the empty slot), as it does while loading or on
+ * failure; an unknown size keeps the plain top fill crop.
+ */
 @Composable
 fun ArtImage(art: Artwork, side: Dp, modifier: Modifier = Modifier, description: String? = null) {
-    val pixels = with(LocalDensity.current) { side.roundToPx() }
-    AsyncImage(
-        model = art.url(pixels),
-        contentDescription = description,
-        contentScale = ContentScale.Crop,
-        alignment = Alignment.TopCenter,
-        modifier = modifier,
-    )
+    val r = art.cropRect()
+    if (r == null) {
+        if (art.aspectRatio != null) return
+        val pixels = with(LocalDensity.current) { side.roundToPx() }
+        AsyncImage(
+            model = art.url(pixels),
+            contentDescription = description,
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
+            modifier = modifier,
+        )
+        return
+    }
+    val w = side / r.w
+    val h = side / r.h
+    val pixels = with(LocalDensity.current) { w.roundToPx() }
+    Box(modifier.clipToBounds()) {
+        AsyncImage(
+            model = art.url(pixels),
+            contentDescription = description,
+            contentScale = ContentScale.FillBounds,
+            modifier = Modifier
+                .wrapContentSize(Alignment.TopStart, unbounded = true)
+                .offset(x = -w * r.x, y = -h * r.y)
+                .requiredSize(w, h),
+        )
+    }
 }
 
 /**
@@ -200,7 +229,7 @@ fun ArtCredit(credit: String, evidence: String?, modifier: Modifier = Modifier) 
 @Composable
 fun CreditFace(art: Artwork?, size: Dp = 32.dp) {
     Box(Modifier.size(size).clip(CircleShape).clearAndSetSemantics {}) {
-        if (art != null) {
+        if (art != null && (art.cropRect() != null || art.aspectRatio == null)) {
             ArtImage(art, size, Modifier.size(size).background(MaterialTheme.colorScheme.surfaceVariant))
         }
     }

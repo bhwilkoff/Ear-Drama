@@ -12,7 +12,8 @@ traced back to its source rows and judged again by the same predicate.
 Mutation controls, each seen to fail this suite on 2026-10-24: `served` accepting
 the undated basis (dated_match returning True for it); `served` ignoring
 found_via; `credit` returning None for cc_by; the web builder writing a credit's
-art for a person with no portrait.
+art for a person with no portrait. Seen to fail on 2026-10-28 (V4): the builder
+publishing NULL for every face; face_text accepting a box off its image.
 """
 import json
 import os
@@ -56,9 +57,22 @@ CONTRACT = {
 }
 
 
+def _face_ok(text):
+    try:
+        x, y, w, h = (float(v) for v in text.split(","))
+    except ValueError:
+        return False
+    return w > 0 and h > 0 and x >= 0 and y >= 0 and x + w <= 1.0001 and y + h <= 1.0001
+
+
 def violations(db):
     c = sqlite3.connect(db)
     out = {name: c.execute(sql).fetchone()[0] for name, sql in CONTRACT.items()}
+    # A face box is "x,y,w,h" inside its image (contract section 3.3a): a crop is never
+    # centered on a point off the picture, and a client parses exactly four numbers.
+    if "face" in {r[1] for r in c.execute("PRAGMA table_info(art)")}:
+        out["a face is four numbers inside its image"] = sum(
+            1 for (t,) in c.execute("SELECT face FROM art WHERE face IS NOT NULL") if not _face_ok(t))
     c.close()
     return {k: v for k, v in out.items() if v}
 
@@ -196,7 +210,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # Broken control: a projection that serves an undated match's image must fail both checks.
     bad = sqlite3.connect(dst)
-    bad.execute("INSERT INTO art VALUES (9, ?, NULL, NULL, 'pd_us', NULL, NULL, ?)",
+    bad.execute("INSERT INTO art VALUES (9, ?, NULL, NULL, 'pd_us', NULL, NULL, ?, NULL)",
                 (AP.image_url("Mary.jpg"), AP.evidence_url("Mary.jpg")))
     bad.execute("UPDATE people SET portrait = 9 WHERE id = 'p2'")
     bad.execute("UPDATE art SET credit = NULL WHERE license = 'cc_by'")
@@ -230,6 +244,50 @@ with tempfile.TemporaryDirectory() as tmp:
         idx = json.load(f)
     row = dict(zip(idx["fields"], idx["rows"][0]))
     check("size: the series row's art carries it", (row["art"][1], row["art"][2]), (640, 800))
+
+
+# A face box is computed once in the pipeline and published beside the size (contract section
+# 3.3a), so every client centers a small crop on the same point; none detects faces itself.
+import harvest_people_wikidata as H  # noqa: E402
+
+check("pick: the largest confident face", H.pick_face([[0.1, 0.1, 0.1, 0.1, 0.9], [0.5, 0.2, 0.3, 0.3, 0.8],
+                                                       [0.0, 0.0, 0.9, 0.9, 0.2]]), [0.5, 0.2, 0.3, 0.3])
+check("pick: a group's peer faces are held together, never one of them",
+      H.pick_face([[0.1, 0.2, 0.1, 0.1, 0.9], [0.6, 0.3, 0.12, 0.12, 0.9], [0.9, 0.9, 0.02, 0.02, 0.9]]),
+      [0.1, 0.2, 0.62, 0.22])
+check("pick: clamped to the image", H.pick_face([[-0.1, 0.9, 0.3, 0.3, 1.0]]), [0.0, 0.9, 0.2, 0.1])
+check("control: no confident face is None", H.pick_face([[0.1, 0.1, 0.2, 0.2, 0.3]]), None)
+check("face_text: four numbers", AP.face_text([0.25, 0.1, 0.5, 0.4]), "0.25,0.1,0.5,0.4")
+check("control: face_text refuses a box off the image", AP.face_text([0.8, 0.1, 0.5, 0.4]), None)
+with tempfile.TemporaryDirectory() as tmp:
+    src, dst, web = (os.path.join(tmp, n) for n in ("src.sqlite", "out.sqlite", "web"))
+    fixture(src)
+    d = sqlite3.connect(src)
+    for col in ("width", "height", "face"):
+        d.execute(f"ALTER TABLE people_art ADD COLUMN {col}")
+    d.execute("UPDATE people_art SET width = 900, height = 500, face = '0.6,0.15,0.2,0.36' "
+              "WHERE file = 'Jack Benny 1938.jpg'")
+    d.execute("UPDATE people_art SET face = '0.9,0.1,0.3,0.3' WHERE file != 'Jack Benny 1938.jpg'")
+    d.commit()
+    d.close()
+    B.build(src, dst)
+    c = sqlite3.connect(dst)
+    got = dict(c.execute("SELECT p.id, a.face FROM people p JOIN art a ON a.id = p.portrait"))
+    c.close()
+    check("face: the portrait's face box is published", got["p1"], "0.6,0.15,0.2,0.36")
+    check("control: a box off the image is published as NULL", got["p3"], None)
+    check("face: the contract holds", violations(dst), {})
+    W.build(dst, web)
+    with open(os.path.join(web, "index", "series.json")) as f:
+        idx = json.load(f)
+    row = dict(zip(idx["fields"], idx["rows"][0]))
+    check("face: the series row's art carries [x, y, w, h]", row["art"][5], [0.6, 0.15, 0.2, 0.36])
+    bad = sqlite3.connect(dst)
+    bad.execute("UPDATE art SET face = '0.9,0.1,0.3,0.3'")
+    bad.commit()
+    bad.close()
+    check("control: the contract catches a face off its image",
+          sorted(violations(dst)), ["a face is four numbers inside its image"])
 
 here = os.path.dirname(__file__)
 real =os.environ.get("PROJECTION") or os.path.join(here, "..", "out", "publish", "ear-drama.sqlite")

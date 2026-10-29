@@ -4,6 +4,8 @@
     python3 tools/harvest_people_wikidata.py --top 2000      # only the 2,000 most-credited
     python3 tools/harvest_people_wikidata.py --phase commons # one phase
     python3 tools/harvest_people_wikidata.py --phase dims    # each file's width and height
+    swiftc -O -o /tmp/face_boxes tools/face_boxes.swift && \
+    python3 tools/harvest_people_wikidata.py --phase faces --detector /tmp/face_boxes  # Mac only
 
 Reads out/radio-catalog.sqlite (people + episode_credits) for the names, most
 credited first, and writes under .cache/people_wd/:
@@ -17,14 +19,17 @@ credited first, and writes under .cache/people_wd/:
                      links, page status} for each P18 of a MATCHED person and each
                      of Track D's Commons files whose Structured Data depicts one;
                      the dims phase adds the original's width and height, read
-                     from the Action API's imageinfo (size only), 50 files a call
+                     from the Action API's imageinfo (size only), 50 files a call;
+                     the faces phase adds `face` ([x, y, w, h] normalized, top-left
+                     origin, or null) and `face_by` (the detector) for each usable file
   failed.json       requests that could not be read
 Both files are rewritten as each batch lands, so a killed run resumes where it
 stopped. All Wikidata reads go through the query service (SPARQL), whose bodies
 harvest_ext_wm.call also caches; Commons pages through index.php?action=raw,
 1.5 s apart (the Action API answered this egress 429 on 2026-10-19). Track D's
-cached Commons pages (.cache/commons/raw) are read first. No image binary is
-ever downloaded. Exits non-zero when nothing could be read.
+cached Commons pages (.cache/commons/raw) are read first. Only the faces phase
+reads image binaries (Commons' 500 thumbnail, kept outside the cache). Exits
+non-zero when nothing could be read.
 """
 import argparse
 import gzip
@@ -225,15 +230,108 @@ def phase_dims(files, batch=50):
         print(f"  sized {min(i + batch, len(todo))}/{len(todo)}", flush=True)
 
 
+FACE_BY = "apple-vision-face-rectangles-r3"
+MIN_FACE_CONFIDENCE = 0.5
+
+
+PEER_FACE_AREA = 0.25
+
+
+def pick_face(faces):
+    """The box a small crop is centered on, from the detector's [x, y, w, h, confidence] boxes
+    (normalized, top-left origin), clamped to the image and rounded to 4 places, or None. The
+    confident faces (MIN_FACE_CONFIDENCE) at least PEER_FACE_AREA of the largest one's area are
+    its peers; with one, the box is that face, and with several (a group photograph) the box
+    holds them all, so a crop never zooms onto one face of a group that may not be the person's.
+    A hint for a crop, never a claim of whose face it is."""
+    boxes = []
+    for f in faces or []:
+        x, y, w, h, conf = (list(f) + [1.0])[:5]
+        if conf < MIN_FACE_CONFIDENCE or w <= 0 or h <= 0:
+            continue
+        x0, y0 = max(0.0, x), max(0.0, y)
+        x1, y1 = min(1.0, x + w), min(1.0, y + h)
+        if x1 > x0 and y1 > y0:
+            boxes.append((x0, y0, x1, y1))
+    if not boxes:
+        return None
+    area = lambda b: (b[2] - b[0]) * (b[3] - b[1])
+    top = max(area(b) for b in boxes)
+    peers = [b for b in boxes if area(b) >= PEER_FACE_AREA * top]
+    x0, y0 = min(b[0] for b in peers), min(b[1] for b in peers)
+    x1, y1 = max(b[2] for b in peers), max(b[3] for b in peers)
+    return [round(v, 4) for v in (x0, y0, x1 - x0, y1 - y0)]
+
+
+def phase_faces(files, detector, thumbs, batch=40, workers=3):
+    """A face box per usable portrait file (contract section 3.3a): Commons' 500 thumbnail is
+    read once into `thumbs` (outside the cache; re-fetchable), at most `workers` at a time, and
+    Apple Vision (face_boxes.swift, on this Mac) finds the faces. The cache keeps the detector's
+    boxes (`faces`, so a change to pick_face needs no new detection), the chosen box (`face`,
+    or null for none), and which detector said so. A file whose thumbnail could not be read is
+    left for the next run."""
+    import subprocess
+    import time
+    import urllib.request
+    from concurrent.futures import ThreadPoolExecutor
+    todo = sorted(fn for fn, v in files.items() if v.get("page_status") == "ok"
+                  and v.get("class") in P.USABLE and (v.get("face_by") != FACE_BY or "faces" not in v))
+    print(f"faces: {len(todo)} files to read", flush=True)
+    os.makedirs(thumbs, exist_ok=True)
+
+    def fetch(fn):
+        p = os.path.join(thumbs, hashlib.sha1(fn.encode()).hexdigest() + ".img")
+        if os.path.exists(p):
+            return p, fn
+        url = ("https://commons.wikimedia.org/wiki/Special:FilePath/"
+               + urllib.parse.quote(fn.replace(" ", "_")) + "?width=500")
+        for attempt in range(4):
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": wm.UA})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    body = r.read()
+                with open(p + ".tmp", "wb") as f:
+                    f.write(body)
+                os.replace(p + ".tmp", p)
+                time.sleep(0.5)
+                return p, fn
+            except Exception as e:  # noqa: BLE001
+                print(f"  retry {attempt}: {e} {fn}", file=sys.stderr, flush=True)
+                time.sleep(5 * (attempt + 1))
+        wm.FAILED.append({"url": url})
+        return None, fn
+
+    with ThreadPoolExecutor(workers) as pool:
+        for i in range(0, len(todo), batch):
+            paths = {p: fn for p, fn in pool.map(fetch, todo[i:i + batch]) if p}
+            if not paths:
+                continue
+            out = subprocess.run([detector, *paths], capture_output=True, text=True, check=True).stdout
+            for line in out.splitlines():
+                row = json.loads(line)
+                fn = paths.get(row["path"])
+                if fn and "faces" in row:
+                    files[fn]["faces"] = row["faces"]
+                    files[fn]["face"] = pick_face(row["faces"])
+                    files[fn]["face_by"] = FACE_BY
+            write_json(os.path.join(DIR, "files.json.gz"), files, gz=True)
+            print(f"  faces {min(i + batch, len(todo))}/{len(todo)}", flush=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", choices=["names", "entities", "commons", "dims", "all"], default="all")
+    ap.add_argument("--phase", choices=["names", "entities", "commons", "dims", "faces", "all"], default="all")
+    ap.add_argument("--detector", help="faces: the compiled face_boxes.swift")
+    ap.add_argument("--thumbs", default=os.path.join(os.environ.get("TMPDIR", "/tmp"), "eardrama-face-thumbs"),
+                    help="faces: where the 500 thumbnails are kept (not part of the cache)")
     ap.add_argument("--top", type=int, default=None, help="only the N most-credited people")
     ap.add_argument("--max-files", type=int, default=None)
     a = ap.parse_args()
     os.makedirs(DIR, exist_ok=True)
-    con = sqlite3.connect(P.DB)
-    people = P.ranked_people(con)[:a.top] if a.top else P.ranked_people(con)
+    people = []
+    if a.phase in ("names", "entities", "commons", "all"):
+        con = sqlite3.connect(P.DB)
+        people = P.ranked_people(con)[:a.top] if a.top else P.ranked_people(con)
     names_idx, ents, files = _rj("names.json.gz", {}), _rj("entities.json.gz", {}), _rj("files.json.gz", {})
     if a.phase in ("names", "all"):
         phase_names(people, names_idx)
@@ -243,9 +341,13 @@ def main():
         phase_commons(people, names_idx, ents, files, a.max_files)
     if a.phase in ("dims", "all"):
         phase_dims(files)
+    if a.phase == "faces":  # Mac only (Apple Vision), so never part of "all"
+        if not a.detector:
+            ap.error("--phase faces needs --detector (swiftc -O -o face_boxes tools/face_boxes.swift)")
+        phase_faces(files, a.detector, a.thumbs)
     write_json(os.path.join(DIR, "failed.json"), wm.FAILED)
     print(f"names {len(names_idx)}, entities {len(ents)}, files {len(files)}, failed {len(wm.FAILED)}")
-    if not names_idx:
+    if not (files if a.phase in ("dims", "faces") else names_idx):
         sys.exit(1)
 
 

@@ -77,8 +77,17 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   and no taller than 44 % of the screen: a portrait is drawn whole at its
   own aspect and its box shrinks to it, centered; a card fills the
   square; an owed credit is under it. A row's `ArtTile` is 56 dp and a cast
-  line's `CreditFace` 32 dp, both cropped top-anchored; an evening's aired
-  slot leads with its series' tile. Every box is sized from the published
+  line's `CreditFace` 32 dp; an evening's aired slot leads with its series'
+  tile. **Small crops center on the published face** (V4, WEB-DESIGN §6.4
+  is the shared text): the tile and `CreditFace` show the square
+  `Artwork.cropRect` picks around `Artwork.face` (the contract §3.3a
+  formula: the face about half the square, at most 4x zoom), drawn as
+  Coil's image at `ContentScale.FillBounds`, sized and offset inside a
+  clipped box. Without a face an upright or square picture takes its
+  largest square at 50 % across, 20 % down; a wide one is not cropped: the
+  tile keeps its letter, the cast line its empty slot. No client detects
+  faces. The Media3 session hands the system a URL
+  (`artworkUri`), which it crops itself. Every box is sized from the published
   aspect, so nothing shifts when an image lands.
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order

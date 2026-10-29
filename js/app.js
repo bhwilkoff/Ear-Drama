@@ -181,11 +181,19 @@
     const m = w.match(/[\p{L}\p{N}]/u);
     return m ? m[0].toUpperCase() : '';
   }
-  /** The image, at the smallest Commons step that covers `px` CSS pixels on this screen; a
-      failed load leaves the box as it was (the tile's letter, or nothing). */
+  /** A small square crop (§6.4): the square `API.cropRect` picks around the published face,
+      the image scaled so that square fills the box, at the smallest Commons step that covers
+      it on this screen. A wide picture with no face is not cropped; an unknown size keeps the
+      stylesheet's plain fill crop; a failed load leaves the box as it was: the tile's letter,
+      or nothing. */
   function putImage(box, art, px, alt) {
+    const r = API.cropRect(art);
+    if (!r && API.artAspect(art) !== null) return null;
     const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
-    const img = el('img', { src: API.artURL(art, px * dpr), alt, loading: 'lazy', decoding: 'async' });
+    const pct = (v) => `${+(v * 100).toFixed(2)}%`;
+    const img = el('img', { src: API.artURL(art, (r ? px / r.w : px) * dpr), alt, loading: 'lazy', decoding: 'async',
+                            style: r ? `object-fit: fill; max-width: none; width: ${pct(1 / r.w)}; height: ${pct(1 / r.h)}; `
+                              + `left: ${pct(-r.x / r.w)}; top: ${pct(-r.y / r.h)}` : null });
     img.addEventListener('error', () => { img.remove(); box.classList.remove('has-img'); });
     box.classList.add('has-img');
     box.append(img);

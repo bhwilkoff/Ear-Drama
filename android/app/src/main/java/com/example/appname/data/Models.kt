@@ -16,7 +16,32 @@ data class Artwork(
     val height: Int? = null,
     val credit: String? = null,
     val evidence: String? = null,
+    /** Where a small crop centers (contract §3.3a), computed once in the pipeline. */
+    val face: FaceBox? = null,
 ) {
+    /**
+     * The square a small slot (a row tile, a cast face) shows, normalized to the image
+     * (ANDROID-DESIGN R11a, contract §3.3a, the web's `API.cropRect` with the same golden
+     * cases): around the published face, the face about half the square and at most 4x zoom;
+     * without a face the largest square at 50 % across and 20 % down; null when the picture is
+     * wide with no face (not cropped) or its size is unknown (the plain fill crop).
+     */
+    fun cropRect(): CropRect? {
+        val a = aspectRatio ?: return null
+        val f = face
+        if (f == null && isWide) return null
+        val full = minOf(a, 1f)
+        var s = full
+        var left = 0.5f * (a - full)
+        var top = 0.2f * (1 - full)
+        if (f != null) {
+            s = (2 * maxOf(f.w * a, f.h)).coerceIn(full / 4, full)
+            left = ((f.x + f.w / 2) * a - s / 2).coerceIn(0f, a - s)
+            top = (f.y + f.h / 2 - s / 2).coerceIn(0f, 1 - s)
+        }
+        return CropRect(left / a, top, s / a, s)
+    }
+
     /** Width over height from the projection, or null when the size was never read. */
     val aspectRatio: Float?
         get() = if (width != null && height != null && width > 0 && height > 0) width.toFloat() / height else null
@@ -40,6 +65,19 @@ data class Artwork(
         const val WIDE_ASPECT = 1.15f
     }
 }
+
+/** A face box normalized to the image, origin at its top left: "x,y,w,h" in the projection. */
+data class FaceBox(val x: Float, val y: Float, val w: Float, val h: Float) {
+    companion object {
+        fun parse(text: String?): FaceBox? {
+            val v = text?.split(',')?.mapNotNull { it.trim().toFloatOrNull() } ?: return null
+            return if (v.size == 4 && v[2] > 0f && v[3] > 0f) FaceBox(v[0], v[1], v[2], v[3]) else null
+        }
+    }
+}
+
+/** A crop square normalized to the image: origin at its top left, [w] and [h] its share of the image's width and height. */
+data class CropRect(val x: Float, val y: Float, val w: Float, val h: Float)
 
 /** Whose face a series or episode wears: a person's name and served portrait. */
 data class Face(val name: String, val art: Artwork)
