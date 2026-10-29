@@ -244,7 +244,11 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
   thumbnail: of the faces at confidence 0.5 or more, the largest, or, when others
   are at least a quarter of its area (a group photograph), the box holding them
   all, so a crop never zooms onto one face of a group; kept in `files.json.gz`
-  beside the size, with the detector's raw boxes (`faces`). A hint for a crop, never a claim of whose face it is. Every
+  beside the size, with the detector's raw boxes (`faces`). MEASURED 2026-10-28:
+  all 3,765 harvested files read; of the 2,453 served, 2,422 have a box (204 of
+  them a group's), 278 of the 282 wide ones; a random 36 checked by eye were all
+  on a face. The 31 misses are mostly halftones, drawings and profiles, or not a
+  photograph of a person at all. A hint for a crop, never a claim of whose face it is. Every
   client crops with the one formula below and never detects faces itself; a page
   that is about the picture shows it whole and ignores it.
   **The crop square** (`cropRect`, golden cases in `js/api.test.js`, Apple's

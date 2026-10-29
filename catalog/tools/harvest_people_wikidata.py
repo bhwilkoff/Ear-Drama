@@ -21,7 +21,7 @@ credited first, and writes under .cache/people_wd/:
                      the dims phase adds the original's width and height, read
                      from the Action API's imageinfo (size only), 50 files a call;
                      the faces phase adds `face` ([x, y, w, h] normalized, top-left
-                     origin, or null) and `face_by` (the detector) for each usable file
+                     origin, or null), `faces` (the raw boxes) and `face_by` (the detector)
   failed.json       requests that could not be read
 Both files are rewritten as each batch lands, so a killed run resumes where it
 stopped. All Wikidata reads go through the query service (SPARQL), whose bodies
@@ -264,7 +264,7 @@ def pick_face(faces):
 
 
 def phase_faces(files, detector, thumbs, batch=40, workers=3):
-    """A face box per usable portrait file (contract section 3.3a): Commons' 500 thumbnail is
+    """A face box per portrait file (contract section 3.3a): Commons' 500 thumbnail is
     read once into `thumbs` (outside the cache; re-fetchable), at most `workers` at a time, and
     Apple Vision (face_boxes.swift, on this Mac) finds the faces. The cache keeps the detector's
     boxes (`faces`, so a change to pick_face needs no new detection), the chosen box (`face`,
@@ -274,8 +274,10 @@ def phase_faces(files, detector, thumbs, batch=40, workers=3):
     import time
     import urllib.request
     from concurrent.futures import ThreadPoolExecutor
+    # Every file page read, whatever its cached class: enrich_people_art.py classes a file again
+    # from its page, so a cached "unknown" can be served.
     todo = sorted(fn for fn, v in files.items() if v.get("page_status") == "ok"
-                  and v.get("class") in P.USABLE and (v.get("face_by") != FACE_BY or "faces" not in v))
+                  and (v.get("face_by") != FACE_BY or "faces" not in v))
     print(f"faces: {len(todo)} files to read", flush=True)
     os.makedirs(thumbs, exist_ok=True)
 
