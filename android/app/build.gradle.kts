@@ -92,7 +92,7 @@ android {
         targetSdk = 36                         // bump to 37 when Android 17 ships + Play forces
         // Play rejects ANY previously-uploaded versionCode — bump +1 before
         // every Play upload, even if that upload was never released.
-        versionCode = 2
+        versionCode = 3
         // READ from AppVersion.xcconfig rather than copied, because copying is
         // what goes wrong: a literal here drifted 88 patch versions behind the
         // Apple apps in a shipped app, so an Android user reporting a problem
