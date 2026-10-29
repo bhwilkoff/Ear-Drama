@@ -476,3 +476,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - uniform-imagery-design: one crop at the face box, one neutral gray grade, one mount on the genre hue; originals ungraded on Detail; duotone/sepia/colorize/upscale refused. 40 worst-case portraits read as one set (sheets read).
 - Record a Line: plays as genre blocks with a cast fingerprint; parts on a playbill with where-they-speak strips; the cue as the count-in; takes judged against the cue (Again, With cue, Keep); red only inside the recorder. Fit gate passed 13 states at 320-1440.
 - Running: D2b-3 direction D.
+
+### Design tick 6, 2026-10-29, resumed after a forced restart
+- Owner: "Resume the loop after a forced restart of my computer". D2b-3 (direction D) had stopped with uncommitted work in its worktree (directions/d: app, data, styles, recorder page; no renders). Resumed it in place from its transcript. CI green; no device leases of ours held.
