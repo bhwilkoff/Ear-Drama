@@ -150,6 +150,11 @@ A1. **Episode ids forward to their successor** (owner 2026-10-28: "Let's just ge
    current users, but we do have to worry about building for the future."):
    aliases and tombstones written every publish, resolved in one place per client.
    Running.
+P12. **Replace or remove a published take** (owner 2026-10-29: "We don't want to provide a
+   pathway for people to delete and re-upload a full recording?"): a performer can replace
+   their take in a published production with a new one, or remove it, through Ear Drama's
+   archive.org account (the Worker's uploader); the consent text says copies others made
+   cannot be recalled. After P11 merges and once the archive.org account exists.
 P10. **Seen on the way (V2)**: RadioScreen.swift's evening-slot tile sits on
    a fixed `+ 14` offset that drifts with Dynamic Type; align to the time's
    first line with a scaled metric.
