@@ -459,3 +459,4 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Design tick 2, 2026-10-29, D1 done; D2 running
 - D1a, D1b, D1c merged (docs/research/design/). Measured: 67.6% of series are single uploads; 65.5% of episodes carry no credit, network or sponsor; only 2.5% of series have a portrait but 613 of the 1,795 most-heard people do; no shared link makes a preview card.
 - Running: D2 synthesis (Opus); S1 share pages and Q1 catalog/display defects (Sonnet).
+- S1 merged (1.0.103) and live: site deploy 40938967854 green; bot fetches (facebookexternalhit, Slackbot) of /series/gunsmoke/, /series/grandpasstories/ and /episode/010302%7Cn22/ answer 200 with og:title from data; the slashless form 301s to it. 118,010 share pages, site 356 MB.
