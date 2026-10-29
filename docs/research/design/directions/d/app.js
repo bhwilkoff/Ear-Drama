@@ -76,7 +76,8 @@
   }
   const histFrom = (s) => s.hist || null;
   /** Facts that wrap only between facts, each dot kept with the fact after it. */
-  const facts = (xs) => xs.filter(Boolean).map((x, i) => `<span class="nw">${i ? '· ' : ''}${e(x)}</span>`).join(' ');
+  // The separator rides at the END of a fact, so a wrapped line ends "1943 ·" and never opens on a stray dot (owner: "poor word wrapping").
+  const facts = (xs) => { const v = xs.filter(Boolean); return v.map((x, i) => `<span class="nw">${e(x)}${i < v.length - 1 ? '\u00a0·' : ''}</span>`).join(' '); };
   const span = (s) => (s.core ? K.coreYears(s.core) : s.first ? K.coreYears([+s.first.slice(0, 4), +(s.last || s.first).slice(0, 4)]) : '');
 
   /* ---------- The canonical tile: a show, or one of its episodes ---------- */
@@ -307,8 +308,7 @@
       <p class="rights">${e(ED.rightsLines.unclaimed)}</p></div>`;
   }
   const epActs = (len) => `<div class="acts"><a class="btn btn-primary" href="?s=now-playing">${I.play}Play · ${K.mins(len)}</a>
-      <a class="btn btn-way" href="#" aria-label="Add to queue">${I.queue}<span class="lab-wide">Add to queue</span></a>
-      <a class="icon-btn way" href="#" aria-label="Share">${I.share}</a></div>`;
+      <a class="btn btn-way" href="#" aria-label="Add to queue">${I.queue}<span class="lab-wide">Add to queue</span></a></div>`;
   function thatNight(rows, id) {
     const t = nightOf(rows, id);
     return `<section class="sec">${secH('That night on the radio', t.tail ? `<a class="l5" href="#">${t.tail} single recording${t.tail === 1 ? '' : 's'}</a>` : '')}
@@ -382,7 +382,7 @@
     const shows = ED.popular.filter((s) => (s.star || '').includes(qy) || s.name.includes(qy));
     const g = ED.gunsmoke;
     const eps = g.sample.slice(0, 5).map((x) => `<li><a class="row" href="#">${thumb(g.name, g.art, g.genre)}
-        <span class="row-body"><span class="row-title">${e(x.title)}</span><span class="row-sub"><span class="nw">${e(g.name)}</span> <span class="nw">· ${K.fmtDate(x.date)}</span></span></span>
+        <span class="row-body"><span class="row-title">${e(x.title)}</span><span class="row-sub">${facts([g.name, K.fmtDate(x.date)])}</span></span>
         <span class="row-len">${K.mins(x.length)}</span>${playDot()}</a></li>`).join('');
     return shell('search', `
       <h1 class="l1 page-h">Search</h1>
@@ -469,7 +469,7 @@
           <a class="board" href="record.html?s=ready" data-genre="drama">
             <p class="kicker">Radio play · in progress</p>
             <p class="board-name">${e(rodney.title)}</p>
-            <p class="facts"><span class="nw">RODNEY · you</span> <span class="nw">· 5 of 76 lines</span></p>
+            <p class="facts">${facts(['RODNEY · you', '5 of 76 lines'])}</p>
             <div class="cast-row">${prod.map(([p, w]) => pface(p, w)).join('')}</div>
           </a>
           <a class="board neutral" href="record.html?s=pick" data-genre="">
@@ -496,7 +496,7 @@
       <header class="board hero" data-genre="drama">
         <p class="kicker">Ear drama · Radio play</p>
         <h1 class="board-name">${e(p.title)}</h1>
-        <p class="facts"><span class="nw">${e(K.author(p.authors[0]))}</span> <span class="nw">· Recorded ${K.fmtDate(pr.recorded[0], 'md')}–${+pr.recorded[1].slice(8)}, 2026</span></p>
+        <p class="facts">${facts([K.author(p.authors[0]), `Recorded ${K.fmtDate(pr.recorded[0], 'md')}–${+pr.recorded[1].slice(8)}, 2026`])}</p>
         <div class="vstrip" role="img" aria-label="How much of the play has a human voice, start to end">${vs}</div>
       </header>
       <div class="acts"><a class="btn btn-primary" href="record.html?s=listen">${I.play}Listen through · ${K.aboutMin(rodney.words).replace('about ', '')}</a><a class="icon-btn way" href="#" aria-label="Share">${I.share}</a></div>

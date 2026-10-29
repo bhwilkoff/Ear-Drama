@@ -103,6 +103,21 @@ const CHECK = `(() => {
     const ws = lines.map((y) => y.r - y.l);
     if (ws.length > 1 && ws[ws.length - 1] < 0.25 * Math.max(...ws)) bad.push('stray last word: ' + label(h));
   }
+  // A separator dot that opens a line ("· Roma Wines"): the owner's "poor word wrapping".
+  const tw2 = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT); let t2;
+  while ((t2 = tw2.nextNode())) {
+    const el = t2.parentElement;
+    if (!el || !shown(el) || el.closest('svg, script, style, title')) continue;
+    const box = blockOf(el); const bl = box.getBoundingClientRect().left + box.clientLeft;
+    for (let i = t2.textContent.indexOf('·'); i >= 0; i = t2.textContent.indexOf('·', i + 1)) {
+      const rg = d.createRange(); rg.setStart(t2, i); rg.setEnd(t2, i + 1);
+      const x = [...rg.getClientRects()].find((r) => r.width > 0.5);
+      if (x && x.left - bl < 2) { bad.push('line opens on a separator: ' + label(box)); break; }
+    }
+  }
+  // One Share per screen: the owner saw a second one fall onto its own line.
+  const shares = [...d.querySelectorAll('[aria-label="Share"]')].filter(shown);
+  if (shares.length > 1) bad.push(shares.length + ' Share controls on one screen');
   return [...new Set(bad)];
 })()`;
 
