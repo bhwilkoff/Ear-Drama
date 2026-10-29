@@ -231,6 +231,10 @@ folder, so no tick has to re-derive them.
   `docs/APPLE-SUBMISSION-CLI.md`. For 1.0, Apple builds go to TestFlight and
   Android to Play's internal track; no public store release before the owner
   says so. No new Play upload while one is in review.
+  Owner, 2026-10-28: *"We aren't live on anything. You need to keep pushing to
+  update everything, including database."* Every merge goes all the way out:
+  main (site), a new cache Release when harvest caches change, a catalog
+  publish, and the App Store upload after the iPhone 12 launch check.
 
 ## Milestones
 
