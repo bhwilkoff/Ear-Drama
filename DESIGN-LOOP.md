@@ -94,10 +94,10 @@ surfaces; the owner plays it on devices; their feedback opens the next round.
 
 ## State
 
-- Phase: D1 (research), started 2026-10-29.
-- Running: D1b. D1a and D1c merged (docs/research/design/). D1c found sharing
-  broken (/series/, /episode/ answer 404 to preview bots); fixed outside the design
-  phase as build batch S1 (static share pages with Open Graph from data).
+- Phase: D2 (synthesis), started 2026-10-29; D1 done (three reports merged).
+- Running: D2 (skill catalog-experience-design and three clickable directions);
+  build batches S1 (share pages) and Q1 (catalog and display defects from the audits).
+  D1b: 65.5% of episodes carry no credit, network or sponsor; design for the bare page.
 - Owner rulings collected for D2: what a signed-out invitee may see (title, part,
   who is in); whether finished dramas are listed and credited on Ear Drama's own
   pages; a detective show's face (lead vs a supporting actress).

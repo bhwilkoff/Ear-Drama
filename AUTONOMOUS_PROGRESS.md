@@ -455,3 +455,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Owner: "Let's actually construct a new loop that is focused upon the design and display within the app ... Can you do ensure that the loop does extensive research ... Once you have designed the loop to do all of that, please start the loop as well."
 - DESIGN-LOOP.md written (e070bb7): D1 research, D2 a design skill plus three clickable directions for the owner to choose, D3 one surface per batch on every platform, D4 review. CI green.
 - Running: D1a finding in a huge catalog, D1b the single item and listening, D1c making and sharing (Opus, cited, each auditing today's surfaces at 375 px).
+
+### Design tick 2, 2026-10-29, D1 done; D2 running
+- D1a, D1b, D1c merged (docs/research/design/). Measured: 67.6% of series are single uploads; 65.5% of episodes carry no credit, network or sponsor; only 2.5% of series have a portrait but 613 of the 1,795 most-heard people do; no shared link makes a preview card.
+- Running: D2 synthesis (Opus); S1 share pages and Q1 catalog/display defects (Sonnet).
