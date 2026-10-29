@@ -79,6 +79,11 @@ PATTERNS = [
     # "Inner_Sanctum_-_450109_Desert_Death"   [Inner_Sanctum_otr]
     ("F2b_series_yymmdd_title", re.compile(
         r"^(?P<series>.+?)[ _-]+(?P<yy>[2-7]\d)(?P<mm>\d{2})(?P<dd>\d{2})[ _-]+(?P<title>[A-Za-z].*)$")),
+    # "YTJD_-_550829_-_231_-_The_TransPacific_Matter_Aud1" (series, YYMMDD, number, title, each set off by
+    #   " - "): F5 once read the date as part of the series and so dated the file by its number   [YTJD580511588RollingStoneMatterOTR]
+    ("F2d_series_yymmdd_num_title", re.compile(
+        r"^(?P<series>[A-Za-z][A-Za-z ]*?)[ _]-[ _](?P<yy>[2-7]\d)(?P<mm>0[1-9]|1[0-2])(?P<dd>0[1-9]|[12]\d|3[01])"
+        r"[ _]-[ _](?P<num>\d{1,4})[ _]-[ _](?P<title>[A-Za-z].*)$")),
     # "X Minus One 1955 04 24 No Contact ( 001)"   [xminusone19550424nocontact001 title]
     ("F3_spaced_date", re.compile(
         r"^(?P<series>.+?)[ _-]+(?P<yyyy>19[2-7]\d)[ _](?P<mm>\d{2})[ _](?P<dd>\d{2})"
@@ -94,7 +99,7 @@ PATTERNS = [
     # "42-06-17_Burning_Court", "1932-05-02 - 001) First Show", "01 38-07-11 Dracula"
     #  no series in the name: the ITEM supplies it   [SUSPENSE, TheJackBennyProgram, OrsonWelles_MercuryTheatre]
     ("F7_date_first", re.compile(
-        rf"^(?:\d{{1,3}}[ _.-]+)?{_DATE_DASH}[ _-]*(?:-[ _]*)?(?:\(?(?P<num>\d{{1,4}})\)[ _-]*)?(?P<title>.*)$")),
+        rf"^(?:\d{{1,3}}[ _.-]+)?{_DATE_DASH}(?:(?!\d)|(?=\d{{3,4}}[A-Za-z]))[ _-]*(?:-[ _]*)?(?:\(?(?P<num>\d{{1,4}})\)[ _-]*)?(?P<title>.*)$")),
     # "SuspenseTheHitchHiker09021942"   [SuspenseTheHitchHiker09021942]
     ("F4_us_mmddyyyy", re.compile(
         r"^(?P<head>.+?)[ _-]*(?P<mm>0[1-9]|1[0-2])[-_ ]?(?P<dd>[0-3]\d)[-_ ]?(?P<yyyy>19[2-7]\d)$")),
@@ -189,8 +194,16 @@ def _date(g, fam):
     return None, None                                  # digits that are not a date
 
 
+def is_upload_stamp(date, publicdate):
+    """A name's "9-25-21" read as 1921-09-25 when the item was uploaded on 2021-09-25: the digits
+    are the upload day (a recording of that name made then), not a broadcast date."""
+    d, u = str(date or ""), str(publicdate or "")[:10]
+    return bool(re.fullmatch(r"19[2-7]\d-\d\d-\d\d", d) and re.fullmatch(r"20\d\d-\d\d-\d\d", u)
+                and u[2:] == d[2:])
+
+
 LEAD_TRACK = re.compile(r"^(\d{1,4})[ ._-]+(?=[A-Za-z])")
-_NEED_DATE = ("F7c_yymmdd_num_title", "F4b_mmddyy_last", "F0_otrr_v2", "F0b_camel_yymmdd_num", "F2_yymmdd", "F2b_series_yymmdd_title", "F1d_camel_glued",
+_NEED_DATE = ("F2d_series_yymmdd_num_title", "F7c_yymmdd_num_title", "F4b_mmddyy_last", "F0_otrr_v2", "F0b_camel_yymmdd_num", "F2_yymmdd", "F2b_series_yymmdd_title", "F1d_camel_glued",
               "F7_date_first", "F1e_series_date_title", "F1g_num_then_date", "F2c_yymmdd_80s",
               "F7b_glued_yymmdd_first", "F10_iso_date_last", "F10c_yymmdd_last")
 # A title is something a person could read as one. Junk stems that are not:

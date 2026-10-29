@@ -18,6 +18,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import re
 import os
 import sqlite3
 import sys
@@ -156,13 +157,17 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     names = {k: n for k, n in s.execute("SELECT key, name FROM series")}
     people_rows = {}
     credits_by_ep = {}
+    same = same_person(s)
     for eid, pid, name, role, character in s.execute(
             "SELECT episode_id, person_id, name, role, character FROM episode_credits"):
         if eid in served:
-            credits_by_ep.setdefault(eid, []).append((pid, name, role, character))
+            pid = same.get(pid, pid)
+            row = (pid, name, role, character)
+            if row not in credits_by_ep.setdefault(eid, []):
+                credits_by_ep[eid].append(row)
             people_rows.setdefault(pid, name)
 
-    portraits = served_portraits(s, people_rows)   # person id -> art row id, rows written to `art`
+    portraits = served_portraits(s, people_rows, same)   # person id -> art row id, rows written to `art`
     for aid, (file, cls, template, author, w, h, face) in enumerate(portraits["rows"], 1):
         d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?)", (
             aid, AP.image_url(file), w, h, cls, author if AP.license_name(cls, template) else None,
@@ -208,7 +213,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             eid, sk, air, dsrc, season(air), num, display_title(title), aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
-            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), SP.sponsor_for(sponsor_runs, sk, air)))
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), SP.sponsor_for(sponsor_runs, sk, air, title)))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
                    names.get(sk, ""),
@@ -319,7 +324,30 @@ def write_forwarding(d, previous, forwarding_from):
     return {"base": base, **report, "series": s_report}
 
 
-def served_portraits(s, people):
+def same_person(s):
+    """person id -> the id that stands for the person, where two ids are one Wikidata person.
+    OTRRpedia files "Bud Collyer" and "Clayton 'Bud' Collyer" apart; each matched Q2927489 on a
+    death or birth date. Only a match on a date counts (a name-and-occupation match is not enough:
+    "Walter Brennan Jr." shares his father's); the id with a birth date, then the most credits, stands."""
+    tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if not {"people_wikidata", "people"} <= tables:
+        return {}
+    born = dict(s.execute("SELECT id, birth FROM people"))
+    groups = {}
+    count = "credited_episodes" if any(r[1] == "credited_episodes" for r in s.execute("PRAGMA table_info(people_wikidata)")) else "0"
+    for pid, qid, basis, n in s.execute(f"SELECT person_id, qid, basis, {count} FROM people_wikidata "
+                                        "WHERE qid IS NOT NULL AND qid != ''"):
+        if re.match(r"name\+(birth|death)_", basis or ""):
+            groups.setdefault(qid, []).append((pid, n or 0))
+    out = {}
+    for members in groups.values():
+        if len(members) > 1:
+            keep = sorted(members, key=lambda m: (not born.get(m[0]), -m[1], m[0]))[0][0]
+            out.update({pid: keep for pid, _ in members if pid != keep})
+    return out
+
+
+def served_portraits(s, people, same=None):
     """The portraits art_policy serves for the people this projection carries:
     {"rows": [(file, cls, template, author, width, height, face)], "by_person": {pid: art id}}.
     A source without the people tables (a fixture, an older build) serves none."""
@@ -345,6 +373,7 @@ def served_portraits(s, people):
     for pid, file, cls, usable, via, author, template, basis in s.execute(
             "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis "
             "FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+        pid = (same or {}).get(pid, pid)
         if pid in people and AP.served(basis, cls, usable, via, author):
             by_person.setdefault(pid, []).append((file, cls, template, author))
     ids = {}

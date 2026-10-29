@@ -60,6 +60,23 @@ def parsers():
     check(len(one) == 1 and one[0]["name"] == "Edward G. Robinson", f"control: ';' inside parens is not a separator {one}")
     check(len(E.parse_artists("Edward G. Robinson;")) == 1, "control: one segment is not a list")
 
+    g = E.parse_artists("Max Terr (music (music), Tony La Frano (announcer), Norman Field")
+    check([(x["name"], x["role"]) for x in g] == [("Max Terr", "music"), ("Tony La Frano", "announcer"), ("Norman Field", "cast")],
+          f"an unclosed parenthesis does not make a cast list one name {g}")
+    tail = E.parse_artists("Lon Clark  (possibly); ")
+    check([(x["name"], x["role"]) for x in tail] == [("Lon Clark", "cast")],
+          f"a trailing ';' does not keep the parenthesis in the name {tail}")
+    nest = E.parse_artists("Foo Bar (billed as Baz (Qux), writer), Ann Lee (announcer)")
+    check([x["name"] for x in nest][-1] == "Ann Lee" and nest[0]["name"] == "Foo Bar",
+          f"control: balanced nested parentheses still split at the top level {nest}")
+    rows = [("e", "p1", "Joseph Kearns", "cast", "The Man In Black", "goldin", "1", "f"),
+            ("e", "p1", "Joseph Kearns", "the man in black", None, "otrr", "2", "f"),
+            ("e", "p2", "Ann Lee", "announcer", None, "otrr", "2", "f"),
+            ("f", "p1", "Joseph Kearns", "the man in black", None, "otrr", "2", "f")]
+    left = E.collapse_character_roles(rows)
+    check([(r[0], r[3]) for r in left] == [("e", "cast"), ("e", "announcer"), ("f", "the man in black")],
+          f"a role that is the cast row's character is dropped, only on that episode {left}")
+
     check(E.parse_source("CBS net, KQW, San Jose aircheck") == ("CBS", "network", False), "CBS net")
     check(E.parse_source("Blue Network") == ("Blue", "network", False), "Blue Network")
     check(E.parse_source("Mutual-Don Lee net origination") == ("Mutual-Don Lee", "network", False), "Don Lee")

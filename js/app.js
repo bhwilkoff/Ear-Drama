@@ -506,7 +506,7 @@
   let liveTimer = null;
 
   function cardOf(d, seriesName) {
-    return { id: d.id, title: epTitle(d), series: d.series, seriesName, date: d.date,
+    return { id: d.id, title: epTitle(d), series: d.series, seriesName, date: d.date, network: d.network || null,
              url: d.recordings[0].url, length: d.recordings[0].length || d.length, li: d.li, ltp: d.ltp };
   }
 
@@ -763,6 +763,7 @@
     const keys = [...counts.keys()];
     keys.forEach(k => sel.append(el('option', { value: k, selected: k === current }, `${label(k)} (${num.format(counts.get(k))})`)));
     if (current && !counts.has(current)) sel.append(el('option', { value: current, selected: true }, `${label(current)} (0)`));
+    sel.parentElement.hidden = !counts.size && !current;
   }
 
   function renderBrowse(r) {
@@ -789,6 +790,7 @@
         f.kind, k => (k === 'plays' ? 'Plays' : 'Series'));
       const scripted = browseFilter(rows, f, 'script').filter(s => s.hasScript).length;
       $('f-script-label').textContent = `Has a script (${num.format(scripted)})`;
+      $('f-script-label').parentElement.hidden = !scripted && !f.script;
       fillSelect($('f-genre'), 'All genres', byCount(count(browseFilter(rows, f, 'genre'), s => s.genre)), f.genre,
         k => manifest.genreNames[k] || k);
       const dec = count(browseFilter(rows, f, 'decade'), decadeOf);
@@ -928,7 +930,7 @@
       const title = epTitle(d);
       setTitle(title, d.date, seriesName);
       let chosen = 0;
-      const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date,
+      const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date, network: d.network || null,
                             url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length,
                             // The measurement belongs to the default copy only.
                             li: chosen === 0 ? d.li : null, ltp: chosen === 0 ? d.ltp : null });
@@ -1405,6 +1407,7 @@
                          disabled: i === q.length - 1, onclick: () => { Store.moveInQueue(ep.id, 1); route(); } }, icon('down')),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': `Remove ${epTitle(ep)} from queue`,
                          onclick: () => { Store.dequeue(ep.id); announce('Removed from queue'); route(); } }, icon('remove')));
+        row.classList.add('ep-row-queue');
         row.append(tools);
         ul.append(row);
       });
@@ -1493,7 +1496,7 @@
       $('np-title').textContent = epTitle(cur);
       $('np-series').textContent = cur.seriesName || '';
       $('np-series').setAttribute('href', `?series=${encodeURIComponent(cur.series || '')}`);
-      $('np-meta').textContent = [cur.date ? fmtLongDate(cur.date) : 'Undated'].join('');
+      $('np-meta').textContent = [cur.date ? fmtLongDate(cur.date) : 'Undated', cur.network].filter(Boolean).join(' · ');
       const err = kind === 'error' && Player.error;
       const errText = API.isOffline() ? 'You are offline.' : 'This recording did not load.';
       $('mini-meta').textContent = err ? errText

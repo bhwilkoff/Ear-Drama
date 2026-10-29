@@ -97,13 +97,32 @@ def goldin_duration(s):
 
 
 def split_top(s, sep=","):
-    """Split on `sep` outside parentheses and double quotes."""
-    out, buf, depth, q = [], [], 0, False
+    """Split on `sep` outside parentheses and double quotes. A string whose parentheses do not
+    close ("Max Terr (music (music), Tony La Frano (announcer)") is split again with a
+    parenthesis that never nests, so one typo does not make the whole cast list one name."""
+    out = _split_top(s, sep, True)
+    return _split_top(s, sep, False) if _open_parens(s) else out
+
+
+def _open_parens(s):
+    depth, q = 0, False
     for ch in s:
         if ch == '"':
             q = not q
         elif ch == "(" and not q:
             depth += 1
+        elif ch == ")" and not q and depth:
+            depth -= 1
+    return depth > 0
+
+
+def _split_top(s, sep, nest):
+    out, buf, depth, q = [], [], 0, False
+    for ch in s:
+        if ch == '"':
+            q = not q
+        elif ch == "(" and not q:
+            depth = depth + 1 if nest else 1
         elif ch == ")" and not q and depth:
             depth -= 1
         if ch == sep and depth == 0 and not q:
@@ -124,7 +143,8 @@ def parse_artists(s):
     'Sammy Davis, Jr.' stays one name. A string with 2+ non-empty ';' segments
     is a cast list Goldin typed with semicolons: each segment is parsed on its
     own, so no whole cast list becomes one person."""
-    segs = [x for x in split_top(s or "", ";") if x.strip(" ,")]
+    s = (s or "").strip().rstrip(";").strip()
+    segs = [x for x in split_top(s, ";") if x.strip(" ,")]
     if len(segs) >= 2:
         return [a for seg in segs for a in parse_artists(seg)]
     parts = split_top(s or "")
@@ -142,18 +162,30 @@ def parse_artists(s):
         if not name or name in ("*", "?"):
             continue
         roles, character, note = [], None, None
+        if "(" in inner:
+            inner = re.sub(r"\b(\w+)(?:\s+\1\b)+", r"\1", inner.replace("(", " "))
         if inner:
             if inner.strip().startswith('"') and inner.strip().endswith('"') and inner.count('"') == 2:
                 character = inner.strip().strip('"')
             else:
                 pieces = [x.strip() for x in re.split(r",|\band\b|&", inner) if x.strip()]
-                if pieces and all(len(x.split()) <= 4 and '"' not in x for x in pieces):
+                if pieces and all(x.lower() in ("possibly", "probably", "maybe", "?") for x in pieces):
+                    note = inner.strip()
+                elif pieces and all(len(x.split()) <= 4 and '"' not in x for x in pieces):
                     roles = [x.lower() for x in pieces]
                 else:
                     note = inner.strip()
         for r in [norm_role(x) for x in roles] or ["cast"]:
             out.append({"name": name, "role": r, "character": character, "note": note})
     return out
+
+
+def collapse_character_roles(crow):
+    """Rows are (episode, person, name, role, character, ...). OTRR files an actor's character
+    as a role ("the man in black"); when Goldin credits the same person as cast in that
+    character, the cast row says it and the role-as-character row is dropped."""
+    played = {(r[0], r[1], r[4].lower()) for r in crow if r[3] == "cast" and r[4]}
+    return [r for r in crow if not (r[3] != "cast" and (r[0], r[1], r[3].lower()) in played)]
 
 
 def parse_source(s):
@@ -634,6 +666,7 @@ def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases
     for ep, cat in ep_goldin.items():
         db.execute("UPDATE episodes SET goldin_cat = ? WHERE id = ?", (cat, ep))
 
+    crow = collapse_character_roles(crow)
     db.executemany("INSERT INTO episode_credits VALUES (?,?,?,?,?,?,?,?)", crow)
     used = {c[1] for c in crow}
     for p in people.rows.values():

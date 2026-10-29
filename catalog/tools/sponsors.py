@@ -6,6 +6,8 @@ dated run does. A run with no end lasts until the next dated run of the series s
 OTRRpedia also files "Sustained" (no sponsor), "Multi" and "Syndicated" in that field:
 those are not sponsors and are never published.
 """
+import re
+
 NOT_SPONSORS = {"sustained", "multi", "syndicated", "unknown", "none"}
 SEP = " / "
 
@@ -33,8 +35,16 @@ def load(db):
     return out
 
 
-def sponsor_for(runs, series_key, air_date):
-    """The sponsor line for an episode, or None. runs is load()'s result."""
+def _words(text):
+    return " ".join(re.findall(r"[a-z0-9]+", (text or "").lower()))
+
+
+def sponsor_for(runs, series_key, air_date, title=None):
+    """The sponsor line for an episode, or None. runs is load()'s result.
+
+    A title that names another of the series' own sponsors contradicts the run (OTRRpedia's
+    General Tire run reaches past the day of "First show for Jell-O"): nothing is shown,
+    since neither source is known to be right."""
     if not air_date or len(air_date) != 10:
         return None
     names = []
@@ -45,4 +55,10 @@ def sponsor_for(runs, series_key, air_date):
             continue
         if name and name.lower() not in NOT_SPONSORS and name not in names:
             names.append(name)
+    if names and title:
+        t = " " + _words(title) + " "
+        for _s, _e, _x, other in runs.get(series_key, ()):
+            w = _words(other)
+            if w and other not in names and other.lower() not in NOT_SPONSORS and " " + w + " " in t:
+                return None
     return SEP.join(names) or None

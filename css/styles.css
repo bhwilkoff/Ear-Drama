@@ -369,6 +369,13 @@ select {
 .ep-progress { grid-column: 2; display: block; height: 3px; margin-top: var(--space-1); border-radius: 2px; background: var(--color-surface-alt); }
 .ep-progress > span { display: block; height: 100%; border-radius: 2px; background: var(--color-primary); }
 .row-tools { display: flex; }
+/* The queue row carries four controls: on a phone they take their own line so the date and title keep the row. */
+@media (max-width: 599px) {
+  .ep-row-queue { flex-wrap: wrap; }
+  .ep-row-queue .ep-link { flex: 1 1 100%; }
+  .ep-row-queue .ep-link ~ .icon-btn { margin-left: auto; }
+  .ep-row-queue .ep-date { white-space: nowrap; }
+}
 
 /* ---- Art (§6.4, Decision 069): a served portrait, else the typographic card ---- */
 /* A row that mixes series leads with its series' 56 px tile (§6.4a). On a phone the date stacks
