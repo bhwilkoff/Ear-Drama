@@ -1528,6 +1528,7 @@
 
   /** Now Playing's picture and the lock screen's (§5.6): the episode's face, else the series',
       else the series' typographic card, the same art on both. */
+  let lockArtURL = null;
   function paintPlayerArt(cur) {
     const box = $('np-art');
     box.replaceChildren();
@@ -1545,6 +1546,12 @@
         // Shown larger than a page's head, so a credited portrait carries its credit here too (Decision 069).
         if (art.credit) box.append(el('a', { class: 'caption face-credit np-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit));
         Player.setArtwork([{ src: API.artURL(art, 500), sizes: '500x500', type: 'image/jpeg' }]);
+        API.cropBlobURL(art, 500).then(url => {
+          if (!url) return;
+          if (lockArtURL) URL.revokeObjectURL(lockArtURL);
+          lockArtURL = url;
+          if (Player.current && Player.current.id === cur.id) Player.setArtwork([{ src: url, sizes: '500x500', type: 'image/jpeg' }]);
+        });
         return;
       }
       const name = (s && s.name) || cur.seriesName;

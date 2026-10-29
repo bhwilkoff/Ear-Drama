@@ -75,6 +75,10 @@ CASES = [
 
 
 def main():
+    log = os.path.join(H.ia.CACHE, "otrr", "otterlog.json")
+    if not os.path.exists(log):
+        print(f"SKIP  discover_corpus: the otrr harvest cache is absent ({log}); run the harvest to test it")
+        sys.exit(0)
     failed = 0
     for label, c, m, want in CASES:
         got, why, _ = D.classify(c, m)

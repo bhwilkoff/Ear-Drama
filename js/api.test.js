@@ -464,6 +464,24 @@ test('the offline line comes with no network and goes when it returns; ?offline=
   }
 });
 
+test('cropBlobURL draws the face square into the canvas, or keeps the plain URL', async () => {
+  const art = API.artOf(['https://x/A.jpg', 1000, 500, null, null, [0.5, 0.2, 0.1, 0.2]]);
+  const calls = [];
+  const env = (ok) => ({
+    fetch: async (u, o) => { calls.push([u, o.mode]); return { ok, blob: async () => 'b' }; },
+    createImageBitmap: async () => ({ width: 1000, height: 500 }),
+    canvas: () => ({ getContext: () => ({ drawImage: (...a) => calls.push(a) }), toBlob: (cb) => cb('png') }),
+    createObjectURL: () => 'blob:crop',
+  });
+  assertEq(await API.cropBlobURL(art, 500, env(true)), 'blob:crop');
+  assertEq(calls[0][1], 'cors', 'a CORS fetch, so the canvas stays readable');
+  const d = calls[1];
+  assertEq([d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8]].map(v => Math.round(v)).join(','), '450,50,200,200,0,0,500,500', 'the cropRect square');
+  assertEq(await API.cropBlobURL(art, 500, env(false)), null, 'control: a refused fetch keeps the plain URL');
+  const wide = API.artOf(['https://x/A.jpg', 1000, 500, null, null]);
+  assertEq(await API.cropBlobURL(wide, 500, env(true)), null, 'control: nothing to crop');
+});
+
 // --- RUNNER ----------------------------------------------------------
 
 async function run() {
