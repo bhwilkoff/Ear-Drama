@@ -3,8 +3,8 @@
  * against the SHIPPED js/plays-share.js with a stub Worker whose record
  * carries the fields worker/src/plays.js sends: the cast sheet the Worker
  * checks, the mirror of the Worker's claims, any open part claimable (C7),
- * the owner's uploads switch, the consent step before a first upload and
- * again on a new version, never uploading a flagged take, bringing other
+ * the owner's uploads switch, no consent on upload and Publish shut until
+ * the consent screen ships (Decision 072), never uploading a flagged take, bringing other
  * members' takes home without losing this person's unsent choice or keeping
  * a hidden one, invite links in both shapes, and Library's merged rows.
  * Nothing here plays or records sound.
@@ -13,6 +13,9 @@
  * Broken controls, 2026-10-24, each against a mutated copy of js/plays-share.js:
  *   upload() without the uploadsOpen check: "uploads off" fails (the upload endpoint is called).
  *   upload() asking consent only when none is stored (`!link.consented`): "a new consent version" fails.
+ * 2026-10-28 (Decision 072):
+ *   PUBLISH_OPEN = true: "Publish waits for the consent screen" fails.
+ *   upload() calling api.agree() before sending: "asks no consent" fails.
  *   pending() keeping flagged takes in `send`: "a flagged take is never uploaded" fails.
  *   mirror() keeping another person's claim as recording: "the mirror" fails.
  *   canClaim() allowing a claim while a part records: "any open part" fails.
@@ -148,60 +151,49 @@ test('any open part may be taken while none records (C7)', () => {
   ok(!S.canClaim(done, FIBBER), 'a finished part is not claimable');
 });
 
-test('uploads off: nothing is sent, and no consent is asked', async () => {
+test('uploads off: nothing is sent', async () => {
   const { script, store, local } = await sharedLocal();
   for (const [where, api, rec] of [
     ['record', stubApi(), record({ uploads: false })],
     ['consent', stubApi({ uploads: false }), record()],
   ]) {
-    let asked = 0;
-    const r = await S.upload({ api, store, local, script, rec, me: ME, agree: async () => { asked++; return true; } });
+    const r = await S.upload({ api, store, local, script, rec, me: ME });
     eq(r.stopped, 'uploads_off', `stopped by the switch in the ${where}`);
     eq(api.calls.filter(c => c[0] === 'upload').length, 0, `no upload call (${where})`);
-    eq(asked, 0, `no consent asked (${where})`);
   }
   ok(!S.uploadsOpen(record({ uploads: false })), 'uploadsOpen reads the switch');
   ok(S.uploadsOpen(record()), 'open when the store exists');
   eq(S.line({ code: 'storage_not_configured' }), 'Uploads are off.', 'the Worker\'s 503 reads the same');
 });
 
-test('consent before the first upload, at the Worker\'s version', async () => {
+test('uploading to the members asks no consent (Decision 072)', async () => {
   const { script, store, local } = await sharedLocal();
   const api = stubApi();
-  let shown = null;
-  const r = await S.upload({ api, store, local, script, rec: record(), me: ME, agree: async (c) => { shown = c; return true; } });
-  eq(shown && shown.text, 'OWNER: words', 'the Worker\'s words are shown as they arrive');
+  const r = await S.upload({ api, store, local, script, rec: record(), me: ME });
   eq(r.sent, 2, 'both takes sent');
-  const order = api.calls.map(c => c[0]);
-  ok(order.indexOf('agree') < order.indexOf('upload'), 'agreed before the first upload');
-  eq(store.share(local.id).consented, 'v1', 'the version is kept beside the record');
+  eq(api.calls.filter(c => c[0] === 'agree').length, 0, 'no consent agreed');
+  ok(!/\.agree\(/.test(fs.readFileSync(path.join(__dirname, 'plays-share.js'), 'utf8')), 'the upload path calls no agree()');
 });
 
-test('declining the consent sends nothing', async () => {
-  const { script, store, local } = await sharedLocal();
-  const api = stubApi();
-  const r = await S.upload({ api, store, local, script, rec: record(), me: ME, agree: async () => false });
-  eq(r.stopped, 'consent', 'stopped at consent');
-  eq(api.calls.filter(c => c[0] === 'upload' || c[0] === 'agree').length, 0, 'no agree, no upload');
-});
-
-test('a new consent version asks again', async () => {
-  const { script, store, local } = await sharedLocal();
-  await store.setShare(local.id, { pid: 'pid-1', consented: 'v1' });
-  let asked = 0;
-  await S.upload({ api: stubApi({ consentVersion: 'v1' }), store, local, script, rec: record(), me: ME,
-                   agree: async () => { asked++; return true; } });
-  eq(asked, 0, 'the same version does not ask');
-  await store.setShare(local.id, { pid: 'pid-1', consented: 'v1' });
-  await S.upload({ api: stubApi({ consentVersion: 'v2' }), store, local, script, rec: record(), me: ME,
-                   agree: async () => { asked++; return true; } });
-  eq(asked, 1, 'a new version asks');
+test('Publish waits for the consent screen (TODO(M8-consent-screen))', () => {
+  const script = fixtureScript();
+  eq(S.PUBLISH_OPEN, false, 'the gate is shut until the owner approves the words');
+  const parts = {};
+  for (const k of Object.keys(record().parts)) parts[k] = { status: 'done', user_id: ME };
+  const chosen = {};
+  for (const id of C.speechLineIDs(script)) chosen[id] = `t-${id}`;
+  const done = record({ parts, chosen });
+  ok(S.complete(done, script), 'the fixture is complete');
+  eq(S.canPublish(done, script, ME), false, 'not offered while the gate is shut');
+  eq(S.canPublish(done, script, ME, true), true, 'CONTROL: offered to the director once open');
+  eq(S.canPublish(done, script, THEM, true), false, 'CONTROL: never to a member');
+  eq(S.canPublish({ ...done, archive: { status: 'pending_owner_account' } }, script, ME, true), false, 'CONTROL: not twice');
 });
 
 test('a flagged take is never uploaded (§5), and an uploaded one is not sent twice', async () => {
   const { script, store, local } = await sharedLocal({ flagL0006: true });
   const api = stubApi();
-  const r = await S.upload({ api, store, local, script, rec: record(), me: ME, agree: async () => true });
+  const r = await S.upload({ api, store, local, script, rec: record(), me: ME });
   eq(r.flagged, 1, 'one flagged');
   eq(api.calls.filter(c => c[0] === 'upload').map(c => c[2].lineID), ['L0003'], 'only the clean take');
   ok(api.calls.filter(c => c[0] === 'upload').every(c => c[2].bleed === false), 'no sent take claims bleed');

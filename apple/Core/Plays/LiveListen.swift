@@ -1,4 +1,4 @@
-#if os(iOS) || os(macOS)
+#if os(iOS) || os(macOS) || os(tvOS)
 import AVFoundation
 import Foundation
 
@@ -45,7 +45,7 @@ final class LiveListenThrough {
             isRunning = false
             current = nil
         }
-        #if os(iOS)
+        #if os(iOS) || os(tvOS)
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
         try? AVAudioSession.sharedInstance().setActive(true)
         #endif
@@ -66,6 +66,28 @@ final class LiveListenThrough {
     }
 }
 
+/// The device's English voices a part may be read in, best first, and the
+/// pitches that tell two parts on one voice apart. The recorder's stand-in
+/// (`SystemStandInVoice`) and the listen-through read the same list; the TV,
+/// which records nothing, has only the listen-through.
+enum DeviceVoices {
+    static func castable() -> [AVSpeechSynthesisVoice] {
+        let language = AVSpeechSynthesisVoice.currentLanguageCode()
+        let english = AVSpeechSynthesisVoice.speechVoices().filter {
+            $0.language.hasPrefix("en")
+                && !$0.voiceTraits.contains(.isPersonalVoice)
+                && !$0.voiceTraits.contains(.isNoveltyVoice)
+        }
+        return english.sorted {
+            if ($0.language == language) != ($1.language == language) { return $0.language == language }
+            if $0.quality != $1.quality { return $0.quality.rawValue > $1.quality.rawValue }
+            return $0.identifier < $1.identifier
+        }
+    }
+
+    static let pitches: [Float] = [1.0, 0.86, 1.14, 0.93, 1.07]
+}
+
 /// The device's voices, spoken aloud. A Personal Voice is used only here and
 /// only through `speak` (§5 rule 6): never `write(_:toBufferCallback:)`, a
 /// file, a recording cue, or the mix.
@@ -74,13 +96,14 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
     private var finished: CheckedContinuation<Void, Never>?
     private var speaking: ObjectIdentifier?
     private var assigned: [PartID: Int] = [:]
-    private lazy var voices = SystemStandInVoice.castableVoices()
+    private lazy var voices = DeviceVoices.castable()
 
     override init() {
         super.init()
         synthesizer.delegate = self
     }
 
+    #if os(iOS) || os(macOS)
     static var personalVoiceStatus: AVSpeechSynthesizer.PersonalVoiceAuthorizationStatus {
         AVSpeechSynthesizer.personalVoiceAuthorizationStatus
     }
@@ -89,6 +112,10 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
         guard personalVoiceStatus == .authorized else { return nil }
         return AVSpeechSynthesisVoice.speechVoices().first { $0.voiceTraits.contains(.isPersonalVoice) }
     }
+    #else
+    /// Personal Voice is not offered on the TV.
+    static func personalVoice() -> AVSpeechSynthesisVoice? { nil }
+    #endif
 
     func speak(_ text: String, part: PartID, personalVoice: Bool) async {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -103,8 +130,7 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
                 return next
             }()
             utterance.voice = voices[index % voices.count]
-            utterance.pitchMultiplier = SystemStandInVoice.pitches[(index / voices.count)
-                % SystemStandInVoice.pitches.count]
+            utterance.pitchMultiplier = DeviceVoices.pitches[(index / voices.count) % DeviceVoices.pitches.count]
         }
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             finished = done

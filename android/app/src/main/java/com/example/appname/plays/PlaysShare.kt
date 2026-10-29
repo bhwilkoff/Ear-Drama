@@ -209,6 +209,17 @@ object PlaysShare {
     fun isDirector(rec: SharedRecord, me: String?): Boolean = me != null && rec.director == me
 
     /**
+     * TODO(M8-consent-screen): Publish sends the play beyond its members, so it
+     * waits for the CC0 consent screen, whose words are the owner's (Decisions
+     * 059 and 072, PLAYS-DESIGN §11.7 rule 6). Flip only with that screen.
+     */
+    const val PUBLISH_OPEN = false
+
+    /** Publish for the director of a complete play, once the consent screen ships (rule 9). */
+    fun canPublish(rec: SharedRecord, script: PlayScript, me: String?, open: Boolean = PUBLISH_OPEN): Boolean =
+        open && isDirector(rec, me) && rec.archive == null && complete(rec, script)
+
+    /**
      * The local record follows the Worker's parts: only this person's live claim
      * records here (so the phase 1 recorder opens for it); done and silent come
      * across with the performer's name; anyone else's claim is open here.
@@ -269,15 +280,14 @@ object PlaysShare {
         t.loudness?.takeIf { it.isFinite() }?.let { put("loudness", it) }
     }
 
-    enum class Stop { UploadsOff, Consent }
+    enum class Stop { UploadsOff }
 
     data class UploadResult(val sent: Int, val flagged: Int, val stopped: Stop? = null, val error: Exception? = null)
 
     /**
-     * Uploads this person's pending takes. [agree] is asked before the first
-     * upload, and again whenever the Worker's version moves on; it answers true
-     * when the person agreed. The owner's switch is read first, so a closed
-     * store never reaches the upload endpoint.
+     * Uploads this person's pending takes to the members. No consent is asked
+     * (Decision 072): `GET /consent` is read only for the owner's switch, first,
+     * so a closed store never reaches the upload endpoint.
      */
     suspend fun upload(
         api: PlaysTransport,
@@ -286,9 +296,8 @@ object PlaysShare {
         script: PlayScript,
         rec: SharedRecord,
         me: String?,
-        agree: suspend (Consent) -> Boolean,
     ): UploadResult {
-        var link = store.share(local.id) ?: return UploadResult(0, 0, error = PlaysException("not_found"))
+        val link = store.share(local.id) ?: return UploadResult(0, 0, error = PlaysException("not_found"))
         val flagged = flaggedPending(local, script, rec, me)
         val send = pending(local, script, rec, me)
         var sent = 0
@@ -297,12 +306,6 @@ object PlaysShare {
         try {
             val consent = api.consent()
             if (!consent.uploads) return UploadResult(sent, flagged, Stop.UploadsOff)
-            if (link.consented != consent.version) {
-                if (!agree(consent)) return UploadResult(sent, flagged, Stop.Consent)
-                api.agree(link.pid, consent.version)
-                link = link.copy(consented = consent.version)
-                store.setShare(local.id, link)
-            }
             for (t in send) {
                 val bytes = store.readTake(local.id, t.file)
                 try {
@@ -310,7 +313,6 @@ object PlaysShare {
                     sent++
                 } catch (e: PlaysException) {
                     if (e.code == "take_exists") continue
-                    if (e.code == "consent_required") store.setShare(local.id, link.copy(consented = null))
                     throw e
                 }
             }

@@ -12,6 +12,10 @@ import Testing
 //   PlaysShare.upload without the uploads guards (record and GET /consent):
 //     the owner's-switch test fails (4 issues: consent read, take sent).
 //   upload asking only when `consented` is nil: the consent test fails (v2 never asked).
+// 2026-10-28 (Decision 072), each seen to fail once:
+//   publishOpen = true: the Publish gate test fails.
+//   upload calling api.agree before sending: the no-consent test fails.
+//   SharedListen.production keeping a take the cache lacks: the TV plan test fails.
 //   mirror keeping another person's claim as recording: the mirror test fails.
 //   DeepLink.isToken without its length: the invite-link test fails.
 //   libraryRows listing a remote production already here: the Library test fails.
@@ -148,74 +152,54 @@ struct PlaysSharePendingTests {
         let store = temporaryStore()
         let local = try sharedProduction(store, script, [sharedTake("t-new", line: "L4", part: molly)])
         let off = StubWorker(mollyIsMine(uploads: false))
-        var asked = 0
-        let result = await PlaysShare.upload(api: off, store: store, local: local, script: script, rec: off.rec, me: me) { _ in
-            asked += 1
-            return true
-        }
+        let result = await PlaysShare.upload(api: off, store: store, local: local, script: script, rec: off.rec, me: me)
         #expect(result.stopped == .uploadsOff)
-        #expect(off.uploaded.isEmpty && off.consentCalls == 0 && asked == 0)
+        #expect(off.uploaded.isEmpty && off.consentCalls == 0)
         #expect(!PlaysShare.uploadsOpen(off.rec))
 
         // GET /consent carries the switch too.
         let consentOff = StubWorker(mollyIsMine())
         consentOff.consentAnswer.uploads = false
         let second = await PlaysShare.upload(api: consentOff, store: store, local: local, script: script, rec: consentOff.rec,
-                                             me: me) { _ in true }
+                                             me: me)
         #expect(second.stopped == .uploadsOff)
         #expect(consentOff.uploaded.isEmpty && consentOff.agreed.isEmpty)
     }
 
-    @Test func theConsentIsAskedBeforeTheFirstUploadAndAgainWhenItsVersionChanges() async throws {
+    @Test func uploadingToTheMembersAsksNoConsent() async throws {
         let script = shareScript()
         let store = temporaryStore()
         var local = try sharedProduction(store, script, [sharedTake("t-a", line: "L1", part: molly)])
         let api = StubWorker(mollyIsMine())
-        var asked: [String] = []
-
-        // Not now: nothing goes, nothing is recorded as agreed.
-        let declined = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: api.rec, me: me) {
-            asked.append($0.version)
-            return false
-        }
-        #expect(declined.stopped == .consent && api.uploaded.isEmpty && api.agreed.isEmpty)
+        let first = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: api.rec, me: me)
+        #expect(first.sent == 1 && api.uploaded == ["t-a"] && api.agreed.isEmpty)
         #expect(store.share(local.id)?.consented == nil)
 
-        // I agree: its version goes to the Worker and into share.json, then the take.
-        let first = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: api.rec, me: me) {
-            asked.append($0.version)
-            return $0.text == "OWNER: placeholder words"
-        }
-        #expect(first.sent == 1 && api.uploaded == ["t-a"] && api.agreed == ["v1"])
-        #expect(store.share(local.id)?.consented == "v1")
-        let reread = ProductionStore(root: store.root)
-        #expect(reread.share(local.id) == ProductionShare(pid: "P1", consented: "v1"))
-
-        // The same version: not asked again.
+        // The next take goes the same way: no consent, before or after.
         api.rec.takes = [serverTake("t-a", line: "L1", part: molly, user: me)]
         local.add(sharedTake("t-b", line: "L4", part: molly))
         try Data("fLaC".utf8).write(to: store.takesFolder(local.id).appending(path: "t-b.flac"))
         try store.save(local)
-        _ = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: api.rec, me: me) {
-            asked.append($0.version)
-            return true
-        }
-        #expect(api.uploaded == ["t-a", "t-b"])
-        #expect(asked == ["v1", "v1"])
+        _ = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: api.rec, me: me)
+        #expect(api.uploaded == ["t-a", "t-b"] && api.agreed.isEmpty)
+    }
 
-        // New words: asked again before the next upload.
-        api.rec.takes.append(serverTake("t-b", line: "L4", part: molly, user: me))
-        api.consentAnswer = PlaysConsent(version: "v2", text: "OWNER: new words", uploads: true)
-        local.add(sharedTake("t-c", line: "L6", part: molly))
-        try Data("fLaC".utf8).write(to: store.takesFolder(local.id).appending(path: "t-c.flac"))
-        try store.save(local)
-        _ = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: api.rec, me: me) {
-            asked.append($0.version)
-            return true
-        }
-        #expect(asked == ["v1", "v1", "v2"])
-        #expect(api.agreed == ["v1", "v2"] && api.uploaded == ["t-a", "t-b", "t-c"])
-        #expect(store.share(local.id)?.consented == "v2")
+    @Test func publishWaitsForTheConsentScreen() {
+        let script = shareScript()
+        var rec = mollyIsMine()
+        rec.director = me
+        rec.parts = Dictionary(uniqueKeysWithValues: Relay.order(script).map { ($0.rawValue, .init(status: .done, userID: me)) })
+        rec.chosen = Dictionary(uniqueKeysWithValues: script.speechLineIDs.map { ($0, "t-\($0)") })
+        #expect(PlaysShare.complete(rec, script))
+        // TODO(M8-consent-screen): shut until the owner approves the words.
+        #expect(!PlaysShare.publishOpen)
+        #expect(!PlaysShare.canPublish(rec, script, me))
+        // Controls: offered to the director once open, never to anyone else or twice.
+        #expect(PlaysShare.canPublish(rec, script, me, open: true))
+        #expect(!PlaysShare.canPublish(rec, script, "user-bo", open: true))
+        var queued = rec
+        queued.archive = .init(status: "pending_owner_account")
+        #expect(!PlaysShare.canPublish(queued, script, me, open: true))
     }
 
     @Test func theTakesFieldsGoAsTheWorkerReadsThem() throws {
@@ -409,5 +393,30 @@ struct PlaysShareLineTests {
         #expect(rec.takes.first?.userID == "u1" && rec.hiddenTakes == 2 && rec.uploads == false)
         #expect(rec.members.first?.director == true && rec.members.first?.displayName == nil)
         #expect(!PlaysShare.uploadsOpen(rec) && !PlaysShare.uploadsOpen(nil))
+    }
+}
+
+// MARK: - The Apple TV's listen-through (§11.7 rule 12)
+
+struct SharedListenTests {
+    @Test func theTVPlaysCachedChosenTakesAndReadsTheRestLive() {
+        let script = shareScript()
+        var rec = mollyIsMine(takes: [
+            serverTake("t-l1", line: "L1", part: molly, user: me),
+            serverTake("t-fib", line: "L2", part: fibber, user: "user-bo"),
+        ])
+        rec.chosen = ["L1": "t-l1", "L2": "t-fib", "L4": "t-hidden"]
+        // Only takes the Worker shows are fetched; a hidden one never is.
+        #expect(SharedListen.toFetch(rec, have: ["t-l1"]) == ["t-fib"])
+        // Before t-fib is cached, its line is read live; after, it plays.
+        let before = SharedListen.plan(rec, script: script, files: ["t-l1": "m-t-l1.wav"])
+        let after = SharedListen.plan(rec, script: script, files: ["t-l1": "m-t-l1.wav", "t-fib": "m-t-fib.flac"])
+        #expect(before.first { $0.lineID == "L2" }?.isDeviceVoice == true)
+        #expect(after.first { $0.lineID == "L2" }?.isDeviceVoice == false)
+        #expect(after.first { $0.lineID == "L1" }?.isDeviceVoice == false)
+        // The hidden take's line has no take, so the device voice reads it, labeled.
+        #expect(after.first { $0.lineID == "L4" }?.isDeviceVoice == true)
+        #expect(SharedListen.fileName("x", Data("RIFF....".utf8)) == "m-x.wav")
+        #expect(SharedListen.fileName("x", Data("fLaC".utf8)) == "m-x.flac")
     }
 }

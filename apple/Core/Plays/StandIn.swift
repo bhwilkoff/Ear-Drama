@@ -41,23 +41,11 @@ final class SystemStandInVoice: StandInVoice {
         #endif
     }
 
-    static func castableVoices() -> [AVSpeechSynthesisVoice] {
-        let language = AVSpeechSynthesisVoice.currentLanguageCode()
-        let english = AVSpeechSynthesisVoice.speechVoices().filter {
-            $0.language.hasPrefix("en")
-                && !$0.voiceTraits.contains(.isPersonalVoice)
-                && !$0.voiceTraits.contains(.isNoveltyVoice)
-        }
-        return english.sorted {
-            if ($0.language == language) != ($1.language == language) { return $0.language == language }
-            if $0.quality != $1.quality { return $0.quality.rawValue > $1.quality.rawValue }
-            return $0.identifier < $1.identifier
-        }
-    }
+    static func castableVoices() -> [AVSpeechSynthesisVoice] { DeviceVoices.castable() }
 
     /// Voices repeat on a device with few of them; pitch tells two parts on one
     /// voice apart, and the character's name on screen does the identifying.
-    static let pitches: [Float] = [1.0, 0.86, 1.14, 0.93, 1.07]
+    static let pitches = DeviceVoices.pitches
 
     func render(_ text: String, part: PartID, rate: Float) async -> StandInAudio? {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)

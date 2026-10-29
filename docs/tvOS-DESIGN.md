@@ -85,8 +85,10 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   Search uses `Tab(role: .search)`. Stations is the TV's most natural
   entry ("Tonight in 1942", §4.8). Surprise is the phone's
   (`docs/iOS-DESIGN.md` §4.11) without the play: the TV records nothing
-  (PLAYS-DESIGN §6), so Browse, Search, and Surprise show no plays and
-  Library no Ear dramas.
+  (PLAYS-DESIGN §6), so Browse, Search, and Surprise show no plays.
+  Library shows the shared Ear dramas this person is in, to listen to
+  (§4.12).
+  - *Replaced*: "... and Library no Ear dramas."
   - *Replaced*: "Five tabs, hard set: Listen, Series, Radio, Library,
     Search ... No Plays tab."
 - **§2.2 Leaving a tab resets its stack** (`AppStore.selectResettingPrevious`):
@@ -191,6 +193,23 @@ The only shapes; a new one needs a new rule.
   opens, an episode and an evening (`docs/iOS-DESIGN.md` §4.11), each a
   card-row with Play that opens Now Playing, then Shuffle. Play is the
   default focus, as on Detail.
+
+- **§4.12 Shared ear dramas** (PLAYS-DESIGN §11.7 rule 12, binding:
+  "Apple TV plays back ... Nothing is claimed, recorded, uploaded, invited,
+  or published there"). Signed in, Library gains an **Ear dramas** section
+  above Account: each shared production by title, newest first
+  (`SharedEarDramasSection_tvOS`); loading is a `ProgressView` row, empty is
+  "No ear drama is shared with you.", an error or offline is its one line
+  with Try Again. Signed out the section is absent. A row pushes
+  `SharedPlayScreen_tvOS`, a `List`: the title at page-title size, then
+  **Listen Through** (the default focus), which fetches the chosen takes
+  into `Caches/SharedPlays/<pid>/` and runs phase 1's listen plan
+  (`SharedListen.plan`), the line being heard under it with its speaker and
+  "Device voice" when the device reads it; "N takes are hidden from you.";
+  then Parts (each with its state and performer) and People ("You" and
+  "Director" tags; **Report** with a reason dialog and **Block** after "You
+  will no longer hear their takes." for everyone else), each a focus
+  section. Returning to the app re-reads the record unless it is playing.
 
 - **§4.11 A person** (`PersonScreen_tvOS`, `withPerson`) is a List: the
   portrait at 200 pt when one is served, the name at page-title size and

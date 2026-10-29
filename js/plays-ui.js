@@ -399,19 +399,6 @@ const PlaysUI = (() => {
     }
   }
 
-  /** The consent step (rule 6, Decision 059): the Worker's text exactly as it arrives; its version goes back with the answer. */
-  function askConsent(slot, consent) {
-    return new Promise(resolve => {
-      const done = (v) => { slot.replaceChildren(); resolve(v); };
-      const yes = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: () => done(true) }, 'I agree');
-      slot.replaceChildren(h.el('section', { class: 'block consent', 'aria-labelledby': 'consent-h' },
-        h.el('h2', { class: 'section-header', id: 'consent-h' }, 'Consent'),
-        h.el('p', { class: 'body consent-text' }, String(consent.text || '')),
-        h.el('div', { class: 'actions' }, yes, h.el('button', { type: 'button', class: 'btn', onclick: () => done(false) }, 'Not now'))));
-      yes.focus();
-    });
-  }
-
   /** Report a take or a member (rule 8, guideline 1.2): a reason and an optional note. */
   function reportForm(pid, target, onDone) {
     const line = h.el('p', { class: 'caption refusal', role: 'alert' });
@@ -439,6 +426,7 @@ const PlaysUI = (() => {
 
   async function renderShared(body, my, p, script, link) {
     const id = p.id;
+    sharedShown = id;
     const rerender = () => renderProduction(body, token, id);
     if (!canShare()) {
       const can = API.plays.available();
@@ -494,7 +482,6 @@ const PlaysUI = (() => {
         actions.childNodes.length ? actions : null);
     });
 
-    const consentSlot = h.el('div');
     const mineBox = h.el('div', { class: 'share-box' });
     if (S.myParts(rec, me).length) {
       const todo = S.pending(local, script, rec, me);
@@ -505,10 +492,7 @@ const PlaysUI = (() => {
       const up = h.el('button', { type: 'button', class: 'btn', disabled: !ready || !open, onclick: async () => {
         up.disabled = true;
         status.textContent = '';
-        const run = () => S.upload({ api: API.plays, store, local: store.production(id), script, rec, me,
-                                     agree: (c) => askConsent(consentSlot, c) });
-        let r = await run();
-        if (r.error && r.error.code === 'consent_required') r = await run();
+        const r = await S.upload({ api: API.plays, store, local: store.production(id), script, rec, me });
         if (my !== token) return;
         if (r.error) { console.error(r.error); status.textContent = S.line(r.error); up.disabled = false; return; }
         if (r.stopped) { if (r.stopped === 'uploads_off') status.textContent = S.line({ code: 'uploads_off' }); up.disabled = false; return; }
@@ -525,7 +509,7 @@ const PlaysUI = (() => {
 
     body.replaceChildren(
       h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' }, rows),
-      line, mineBox, consentSlot,
+      line, mineBox,
       sharedListen(rec, local, script, pid, me, rerender),
       peopleBox(rec, me, p, pid, rerender),
       h.el('div', { class: 'actions' }, deleteButton(p)));
@@ -534,7 +518,7 @@ const PlaysUI = (() => {
   /**
    * Listen through any time (rule 7, C5): the other members' chosen takes come
    * into this browser first, then phase 1's listen-through plays the takes and
-   * reads the open lines live. Then Publish for the director, which only queues.
+   * reads the open lines live. Publish waits for the consent screen (S.canPublish).
    */
   function sharedListen(rec, local, script, pid, me, rerender) {
     let box;
@@ -557,18 +541,16 @@ const PlaysUI = (() => {
       box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
         : `${num.format(rec.hidden_takes)} takes are hidden from you.`));
     }
-    if (rec.director === me && S.complete(rec, script)) {
+    if (rec.archive) {
+      box.append(h.el('p', { class: 'caption', role: 'status' }, 'Queued for archive.org'));
+    } else if (S.canPublish(rec, script, me)) {
       const line = h.el('p', { class: 'caption refusal', role: 'alert' });
-      if (rec.archive) {
-        box.append(h.el('p', { class: 'caption', role: 'status' }, 'Queued for archive.org'));
-      } else {
-        const pub = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
-          pub.disabled = true;
-          line.textContent = '';
-          try { await API.plays.publish(pid); rerender(); } catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
-        } }, 'Publish');
-        box.append(h.el('div', { class: 'actions' }, pub), line);
-      }
+      const pub = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        pub.disabled = true;
+        line.textContent = '';
+        try { await API.plays.publish(pid); rerender(); } catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
+      } }, 'Publish');
+      box.append(h.el('div', { class: 'actions' }, pub), line);
     }
     return box;
   }
@@ -1110,10 +1092,19 @@ const PlaysUI = (() => {
   }
 
   let watching = false;
+  /** The shared production on screen, re-read when the tab is shown again (§11.7 rule 7). */
+  let sharedShown = null;
   /** A sign-in or sign-out redraws a shared page, never a live recording. */
   function watchAccount() {
     if (watching || !API.account || !API.account.onChange) return;
     watching = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible' || !sharedShown || !lastDraw) return;
+      if ((rec && rec.s && rec.s.started) || (listen && listen.playing)) return;
+      const playing = document.querySelector('.mix-audio');
+      if (playing && !playing.paused) return;
+      lastDraw();
+    });
     let was = API.account.signedIn();
     API.account.onChange(() => {
       const now = API.account.signedIn();
@@ -1128,6 +1119,7 @@ const PlaysUI = (() => {
     h = helpers;
     watchAccount();
     lastDraw = null;
+    sharedShown = null;
     const my = ++token;
 
     const body = $('plays-body');

@@ -674,10 +674,11 @@ The owner's answers in §9 hold on the server, word for word:
 ### §11.5 Consent, publishing, and classes
 
 - **CC0 consent** (Decision 059) is recorded per person per production with
-  the consent text's version id, before that person's first upload. The words
-  are the owner's: until approved the text is a placeholder that begins
-  "OWNER:". New words take a new version id, and everyone consents again
-  before their next upload or before the play is published.
+  the consent text's version id, before the play is published. A take
+  uploaded to the Worker reaches only the production's members, so it needs
+  no consent (Decision 072, 2026-10-28). The words are the owner's: until
+  approved the text is a placeholder that begins "OWNER:". New words take a
+  new version id, and everyone consents again before the play is published.
 - **Publishing** queues a job and calls nothing. It needs a complete
   production, no open report on a chosen take, and every performer's consent
   at the current version. The job's status is `pending_owner_account` until
@@ -706,7 +707,7 @@ The owner's answers in §9 hold on the server, word for word:
 ### §11.7 Phase 2 in the apps (2026-10-24, binding)
 
 The same verbs on the web, iPhone, iPad, Mac, and Android (§8 rule 7); Apple
-TV and the other TVs play back only and offer none of it. Recording stays
+TV and the other TVs play back only (rule 12) and offer none of the rest. Recording stays
 phase 1's, on the device, line by line; phase 2 adds only the link to the
 Worker. Every call goes through the platform's one API client, refreshed
 first (AGENTS.md hard rules). Words on screen are these, on every platform.
@@ -744,12 +745,28 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
    the button is disabled and the warning "Uploads are off." stands in its
    place, before anyone records, so nobody learns it after an evening's work.
    Takes stay on the device either way. **Done with this part** finishes it
-   on the Worker once every line's take is up.
-6. **Consent before the first upload** (Decision 059). The Worker's text,
-   exactly as it arrives, with **I agree** and **Not now**; agreeing sends its
-   version id, kept in `share.json`, and a new version asks again. The app
-   writes none of the words.
-7. **Listen through.** The other members' chosen takes are fetched into the
+   on the Worker once every line's take is up. Uploading asks for no
+   consent: the take reaches only the members (rule 6).
+6. **Consent before anything leaves the members** (Decisions 059 and 072).
+   Invite-only takes on the Worker need an account and nothing more. The
+   CC0 consent screen, with its warning that a published recording is
+   permanent, public, and reusable by anyone, including for AI training,
+   comes before anything is published beyond the members, and its words go
+   to the owner first (LOOP-PLAN M8). Until the owner approves them no app
+   shows a consent screen and no app offers Publish. The gate is one named
+   constant per platform, `TODO(M8-consent-screen)`: web
+   `PlaysShare.PUBLISH_OPEN`, Apple `PlaysShare.publishOpen`, Android
+   `PlaysShare.PUBLISH_OPEN`, each `false` and each pinned by a test that
+   fails when Publish is offered while it is. When the screen ships it
+   shows the Worker's text exactly as it arrives, with **I agree** and
+   **Not now**; agreeing sends its version id, kept in `share.json`.
+   - *Replaced*: "Consent before the first upload (Decision 059). The
+     Worker's text, exactly as it arrives, with I agree and Not now ..."
+7. **Listen through.** Coming back to a shared production (opening it, the
+   app returning to the foreground, the browser tab shown again) reads the
+   record again, so a part recorded on another device shows as recorded
+   without a reload; nothing polls while the screen is away. The other
+   members' chosen takes are fetched into the
    production on this device (an imported take is a file like any other,
    never overwritten), then phase 1's listen-through plays: human takes,
    and the device voice live for the rest (§5). Export once every speaking
@@ -762,7 +779,9 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
    their takes."). Another member's line in read-along has **Report** on its
    take. A report hides that take from the reporter at once.
 9. **Publish** (the director, once complete): queues only; then "Queued for
-   archive.org". Its refusals are one line each.
+   archive.org". Its refusals are one line each. Not offered until rule 6's
+   screen ships (`TODO(M8-consent-screen)`); a record that already carries
+   a queued job still says "Queued for archive.org".
 10. **Classes.** Library's Ear dramas, signed in: **Classes**, each with its
     code for its teacher (in two groups of four), **Make a class** (a name,
     and "Under 13", fixed when made; such a class shows "Waits for the
@@ -770,6 +789,20 @@ first (AGENTS.md hard rules). Words on screen are these, on every platform.
 11. **Library's Ear dramas** lists this device's productions and, signed in,
     the shared ones this person is in that the device has not opened
     (`GET /productions`); opening one makes it here as in rule 3.
+12. **Apple TV plays back** (§2's table: TVs record nothing). Signed in,
+    Library's **Ear dramas** lists the shared productions this person is in
+    (`GET /productions`), newest first. Opening one shows the title, each
+    part with its state and performer's chosen name, and **Listen
+    Through**: the chosen takes the Worker shows this person are fetched
+    into Caches (the only place tvOS lets an app write besides the App
+    Group; nothing is kept as the person's work) and play in script order,
+    with each speaking line that has no take read live by the device voice,
+    labeled "Device voice" with its speaker (§5; never stored). **People**
+    offers **Report** and **Block** for every other member, because a TV
+    that plays other people's takes owes the same guideline 1.2 controls.
+    Nothing is claimed, recorded, uploaded, invited, or published there;
+    invites stay off the TV (DEEP_LINKS.md). Signed out, the section is
+    absent, since Library already offers Account. The other TVs: none yet.
 
 Each refusal the Worker can give maps to one line (web
 `PlaysShare.line`, the same strings on Apple and Android): `storage_not_configured`
@@ -778,6 +811,30 @@ Each refusal the Worker can give maps to one line (web
 `invite_not_found` "This invite does not work.", `not_found` "This production is
 not shared with you.", `consent_version_mismatch` "The consent changed. Read
 it again.", and the rest as written there.
+
+### §11.8 The learning test for phase 2 (2026-10-28, M8a)
+
+Asked of the invite-only client before its second pass:
+
+1. **Understanding**: the shared cast sheet is the play's own parts in the
+   Worker's order, each with who holds it, so a group spread over several
+   homes sees the same structure the table did. Facts only, from the record.
+2. **Participation**: every part is still a person's choice (C7, any open
+   part), and the takes of the people who went before now arrive from their
+   own devices, so each performer acts opposite real voices, not only the
+   device's.
+3. **Agency**: the Worker suggests a part and never assigns one. Consent to
+   publish is a person's own decision, which is why the screen waits for
+   words the owner has approved instead of a placeholder anyone could tap
+   through (rule 6). Report and Block are in every member's hands,
+   including on the TV.
+4. **Clarity**: a re-read of the record when the person comes back, not a
+   live socket; the TV plays and reports and does nothing else.
+
+What would we lose by automating? Fetching every take the moment it lands
+would spend a family's data without asking; takes are fetched only while a
+person has the production open (the web waits for Listen through), never in
+the background.
 
 Not built yet: the job that
 uploads to archive.org, a moderator's view of reports, and a test that the

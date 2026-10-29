@@ -44,7 +44,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.ClassRow
-import com.example.appname.plays.Consent
 import com.example.appname.plays.InviteView
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PlayScript
@@ -60,7 +59,6 @@ import com.example.appname.ui.shareLink
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.Spacing
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -97,10 +95,6 @@ class SharedSheet(
     var caption by mutableStateOf<String?>(null)
         private set
 
-    /** The consent being asked, with the answer it waits on. */
-    var asking by mutableStateOf<Pair<Consent, CompletableDeferred<Boolean>>?>(null)
-        private set
-
     private fun run(block: suspend () -> Unit) {
         if (busy) return
         busy = true
@@ -135,15 +129,7 @@ class SharedSheet(
     }
 
     fun upload() = run {
-        val result = sharing.upload(id, script) { consent ->
-            val answer = CompletableDeferred<Boolean>()
-            asking = consent to answer
-            try {
-                answer.await()
-            } finally {
-                asking = null
-            }
-        }
+        val result = sharing.upload(id, script)
         when {
             result.error != null -> error = PlaysShare.line(result.error)
             result.stopped == PlaysShare.Stop.UploadsOff -> error = PlaysShare.line(com.example.appname.plays.PlaysException("uploads_off"))
@@ -151,11 +137,7 @@ class SharedSheet(
         }
     }
 
-    fun answer(agreed: Boolean) {
-        asking?.second?.complete(agreed)
-    }
-
-    fun publish() = run { sharing.publish(id) }
+    fun publish() = run { sharing.publish(id, script) }
 
     fun block(userId: String) = run { sharing.block(id, userId) }
 
@@ -268,7 +250,7 @@ fun LazyListScope.sharedCastRows(
     items(rec.members, key = { "member:" + it.userId }) { member ->
         PersonRow(member.displayName, member.userId == me, member.director, sheet, member.userId)
     }
-    if (director && PlaysShare.complete(rec, sheet.script) && rec.archive == null) {
+    if (PlaysShare.canPublish(rec, sheet.script, me)) {
         item(key = "publish") {
             Button(onClick = sheet::publish, enabled = !sheet.busy, modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
                 Text("Publish")
@@ -399,18 +381,6 @@ fun ReportDialog(onDismiss: () -> Unit, onReport: (reason: String, note: String)
         },
         confirmButton = { TextButton(onClick = { reason?.let { onReport(it, note) } }, enabled = reason != null) { Text("Report") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-/** The consent (Decision 059): the Worker's words exactly as they arrive. The app writes none of them. */
-@Composable
-fun ConsentDialog(sheet: SharedSheet) {
-    val asking = sheet.asking ?: return
-    AlertDialog(
-        onDismissRequest = { sheet.answer(false) },
-        text = { Text(asking.first.text) },
-        confirmButton = { TextButton(onClick = { sheet.answer(true) }) { Text("I agree") } },
-        dismissButton = { TextButton(onClick = { sheet.answer(false) }) { Text("Not now") } },
     )
 }
 

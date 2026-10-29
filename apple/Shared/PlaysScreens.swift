@@ -289,6 +289,7 @@ struct ProductionScreen: View {
 /// Who takes which part (§2.2-2.5). Parts are listed largest first; any open
 /// part can be taken, the suggested one prominent, one at a time (C7).
 struct CastSheet: View {
+    @Environment(\.scenePhase) private var scenePhase
     let production: Production
     let script: PlayScript
     let open: (PartID) -> Void
@@ -336,7 +337,10 @@ struct CastSheet: View {
         #if os(iOS)
         .refreshable { await shared.refresh(production.id, store: plays.store, script: script) }
         #endif
-        .sharedPlaysConsent()
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, plays.store.share(production.id) != nil else { return }
+            Task { await shared.refresh(production.id, store: plays.store, script: script) }
+        }
     }
 
     @ViewBuilder private func row(_ part: CastPart) -> some View {

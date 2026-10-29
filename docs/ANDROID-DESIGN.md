@@ -493,13 +493,16 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     (`https://eardrama.org/invite#{token}`) in the system share sheet and
     shows "Works for N days.". **Upload N takes** is a `Button`; while the
     Worker's `uploads` is false it is replaced by "Uploads are off.".
-    Consent is an `AlertDialog` holding the Worker's text verbatim with
-    **I agree** and **Not now**. **Done with this part** finishes a part
+    Uploading asks no consent (Decision 072); no consent dialog until the
+    consent screen ships. **Done with this part** finishes a part
     once its takes are up. **People** lists members with "You" and
     "Director" tags, and Report (reason list and an optional note) and
     Block (confirm: "You will no longer hear their takes.") for the rest.
-    **Publish** (director, once complete) queues, then "Queued for
-    archive.org". "N takes are hidden from you." stands under Listen.
+    **Publish** is not offered until the consent screen ships
+    (`PlaysShare.PUBLISH_OPEN`, TODO(M8-consent-screen)); a record with a
+    job still says "Queued for archive.org". The record is re-read every
+    20 s while the screen is started and at once on every return to it
+    (`repeatOnLifecycle(STARTED)`), never in the background. "N takes are hidden from you." stands under Listen.
   - Listen through fetches the other members' chosen takes into the
     production's `takes/` as files that are never overwritten, then runs
     §4.9's listen-through; another member's line shows **Report**.

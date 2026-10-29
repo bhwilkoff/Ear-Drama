@@ -8,9 +8,9 @@
  * suggestion. Nothing here decides a claim; it asks and shows the answer.
  * Takes are recorded in this browser exactly as phase 1 records them, then
  * uploaded: only the chosen take of each line of a part this person holds,
- * never one the bleed check flagged (it holds the device voice, §5), and only
- * after the person agrees to the consent at the version the Worker names.
- * The consent's words are the Worker's (the owner's), shown as they arrive.
+ * never one the bleed check flagged (it holds the device voice, §5). A take
+ * reaches only the members, so uploading asks no consent (Decision 072); the
+ * CC0 consent comes before Publish, and both wait for the owner's words.
  */
 const PlaysShare = (() => {
   'use strict';
@@ -33,6 +33,12 @@ const PlaysShare = (() => {
   const canClaim = (rec, part) => !recordingPart(rec) && (!rec.parts[part] || rec.parts[part].status === 'open');
   /** Speaking lines with no chosen take this person can see. */
   const unvoiced = (rec, script) => C.speechLineIDs(script).filter(id => !rec.chosen[id]);
+  /**
+   * TODO(M8-consent-screen): Publish sends the play beyond its members, so it
+   * waits for the CC0 consent screen, whose words are the owner's (Decisions
+   * 059 and 072, PLAYS-DESIGN §11.7 rule 6). Flip only with that screen.
+   */
+  const PUBLISH_OPEN = false;
   const complete = (rec, script) => !recordingPart(rec)
     && Object.values(rec.parts).every(s => s.status === 'done' || s.status === 'silent')
     && unvoiced(rec, script).length === 0;
@@ -81,13 +87,12 @@ const PlaysShare = (() => {
   }
 
   /**
-   * Uploads this person's pending takes. `agree({ version, text })` is asked
-   * before the first upload, and again whenever the Worker's version moves on;
-   * it answers true when the person agreed. Returns
-   * { sent, flagged, stopped?: 'consent', error? }.
+   * Uploads this person's pending takes to the members (Decision 072: no
+   * consent is asked; `GET /consent` is read only for the owner's switch).
+   * Returns { sent, flagged, stopped?: 'uploads_off', error? }.
    */
-  async function upload({ api, store, local, script, rec, me, agree }) {
-    let link = store.share(local.id);
+  async function upload({ api, store, local, script, rec, me }) {
+    const link = store.share(local.id);
     const todo = pending(local, script, rec, me);
     const flagged = todo.filter(t => t.bleed).length;
     const send = todo.filter(t => !t.bleed);
@@ -97,12 +102,6 @@ const PlaysShare = (() => {
     try {
       const consent = await api.consent();
       if (consent.uploads === false) return { sent, flagged, stopped: 'uploads_off' };
-      if (link.consented !== consent.version) {
-        if (!(await agree(consent))) return { sent, flagged, stopped: 'consent' };
-        await api.agree(link.pid, consent.version);
-        link = { ...link, consented: consent.version };
-        await store.setShare(local.id, link);
-      }
       for (const t of send) {
         const bytes = await store.readTake(local.id, t.file);
         try {
@@ -110,7 +109,6 @@ const PlaysShare = (() => {
           sent++;
         } catch (e) {
           if (e.code === 'take_exists') continue;
-          if (e.code === 'consent_required') await store.setShare(local.id, { ...link, consented: null });
           throw e;
         }
       }
@@ -176,6 +174,10 @@ const PlaysShare = (() => {
     await store.save(n);
     return add.length;
   }
+
+  /** Publish for the director of a complete play, only once the consent screen ships (rule 9). */
+  const canPublish = (rec, script, me, open = PUBLISH_OPEN) =>
+    open && !!me && rec.director === me && !rec.archive && complete(rec, script);
 
   /** "Share this production": the Worker makes the record; the caller directs it. */
   async function share({ api, store, local, script, displayName }) {
@@ -302,7 +304,7 @@ const PlaysShare = (() => {
   }
 
   return {
-    castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
+    PUBLISH_OPEN, canPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
     upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, line,
   };
 })();
