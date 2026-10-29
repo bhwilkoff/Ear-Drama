@@ -11,6 +11,15 @@ Measures, per direction and mode:
   - CIEDE2000 from every genre hue to every Archive Watch genre hue;
   - CIEDE2000 from every genre hue to the direction's chrome and status colors;
   - the nearest brand colors in Simple Icons to each chrome color.
+
+D2c-1 (docs/research/palette/surfaces.md) added two modes:
+  --surfaces pairings.json TOKENS.json [...] [--json OUT]
+      every pairing a design draws (pairings.json), read against any token
+      file: WCAG and APCA per pair, CIEDE2000 and color-blind separation
+      between neighbors, OKLCH lightness and chroma bands, colors kept apart;
+  --boards boards.json
+      the OKLCH spec of the genre boards and marks -> the hex values
+      design-tokens.json carries (color.board, onBoard, genre, onGenre).
 """
 import json, math, random, sys, os
 
@@ -287,7 +296,182 @@ def report():
         print(f"  {t:22s} {m:5s} {n:7.1f} {p:7.1f} {dd:7.1f} {tr:7.1f} {aw:6.1f} {ch:9.1f}")
     print(f"\n{fails} contrast check(s) failed")
 
+# ---------- surfaces: every pairing a design actually draws (D2c-1) ----------
+# python3 palette_check.py --surfaces pairings.json TOKENS.json [TOKENS.json ...] [--json OUT]
+# Reads a pairing list (pairings.json) and resolves each side against a
+# design-tokens.json: "text", "board.{g}" (every genre key), "onBoard.{g}@0.3"
+# (that color at 30% over the ground, as the browser composites it), or a
+# literal named in the list. A token file without color.board falls back to
+# the list's "fallback" (D2b-3 drew its boards in the genre hue itself).
+
+def mix(fg, bg, a):
+    f, b = hex2rgb(fg), hex2rgb(bg)
+    return rgb2hex(tuple(a * x + (1 - a) * y for x, y in zip(f, b)))
+
+def token_resolver(tokens, mode, spec):
+    col = tokens['color']
+    flat = {}
+    for grp in ('brand', 'semantic'):
+        for k, v in col.get(grp, {}).items():
+            if not k.startswith('$'): flat[k] = v[mode]
+    groups = {}
+    for grp, v in col.items():
+        if grp in ('brand', 'semantic') or not isinstance(v, dict): continue
+        groups[grp] = {k: x[mode] for k, x in v.items() if not k.startswith('$')}
+    for grp, src in spec.get('fallback', {}).items():
+        if grp not in groups and src in groups: groups[grp] = dict(groups[src])
+    flat.update(spec.get('literals', {}).get(mode, {}))
+    def get(ref):
+        if '.' in ref:
+            g, k = ref.split('.', 1); return groups[g][k]
+        return flat[ref]
+    return get, groups
+
+def surfaces(spec_path, token_paths, out_json=None):
+    spec = json.load(open(spec_path))
+    TH = spec['thresholds']
+    results = []
+    fails_total = 0
+    for tp in token_paths:
+        tokens = json.load(open(tp))
+        label = tokens.get('$label') or os.path.basename(tp)
+        keys = [k for k in tokens['color']['genre'] if not k.startswith('$')]
+        print('=' * 78); print(f'{label}  ({tp})'); print('=' * 78)
+        res = {'label': label, 'modes': {}}
+        for mode in ('light', 'dark'):
+            get, groups = token_resolver(tokens, mode, spec)
+            ground = get('background')
+            m = {'pairs': [], 'fails': [], 'neighbors': {}, 'apart': [], 'bands': {}}
+            print(f'\n-- {mode}: pairings --')
+            for p in spec['pairs']:
+                fgs, bgs = p['fg'], p['bg'].split('|')
+                gs = keys if ('{g}' in fgs or '{g}' in p['bg']) else [None]
+                rows = []
+                for g in gs:
+                    for bgref in bgs:
+                        bref = bgref.replace('{g}', g) if g else bgref
+                        fref = fgs.replace('{g}', g) if g else fgs
+                        alpha = None
+                        if '@' in fref: fref, alpha = fref.split('@'); alpha = float(alpha)
+                        try: bg = get(bref); fg = get(fref)
+                        except KeyError: continue
+                        if alpha is not None: fg = mix(fg, bg, alpha)
+                        k = p['kind']; th = TH[k]
+                        r = contrast(fg, bg); lc = apca(fg, bg); d = de(fg, bg)
+                        bad = []
+                        if 'wcag' in th and r < th['wcag']: bad.append(f"WCAG {r:.2f} < {th['wcag']}")
+                        if 'lc' in th and lc < th['lc']: bad.append(f"Lc {lc:.1f} < {th['lc']}")
+                        if 'de' in th and d < th['de']: bad.append(f"dE {d:.1f} < {th['de']}")
+                        if mode == 'dark' and 'darkLcMax' in th and lc > th['darkLcMax']:
+                            bad.append(f"glare: Lc {lc:.1f} > {th['darkLcMax']} against the dark ground")
+                        rows.append((g, bref, fg, bg, r, lc, d, bad))
+                if not rows: continue
+                lo_r = min(x[4] for x in rows); lo_lc = min(x[5] for x in rows); hi_lc = max(x[5] for x in rows)
+                nb = sum(1 for x in rows if x[7])
+                acc = p.get('accepted')
+                status = ('KNOWN' if acc else 'FAIL') if nb else 'PASS'
+                print(f"  {status}  {p['kind']:7s} {p['fg']} on {p['bg']}: WCAG min {lo_r:.2f}, "
+                      f"APCA Lc {lo_lc:.1f}-{hi_lc:.1f}" + (f"  [{nb} of {len(rows)} fail]" if nb else '') + f"   ({p['where']})")
+                for x in rows:
+                    if x[7]:
+                        print(f"          {x[0] or '':12s} {x[2]} on {x[3]} ({x[1]}): " + '; '.join(x[7]) + (f"  [accepted: {acc}]" if acc else ''))
+                        if not acc: m['fails'].append(f"{p['fg']} on {x[1]}: " + '; '.join(x[7]))
+                m['pairs'].append({'fg': p['fg'], 'bg': p['bg'], 'kind': p['kind'], 'wcagMin': round(lo_r, 2),
+                                   'lcMin': round(lo_lc, 1), 'lcMax': round(hi_lc, 1), 'fail': nb})
+            print(f'\n-- {mode}: neighbors (CIEDE2000, normal and Machado 2009 at full severity) --')
+            for n in spec['neighbors']:
+                G = groups.get(n['set'])
+                if not G: continue
+                ks = [k for k in keys if k in G]
+                pairs = [(a, b) for i, a in enumerate(ks) for b in ks[i + 1:]]
+                row = {}
+                for vis in ('normal', 'protan', 'deutan', 'tritan'):
+                    f = (lambda a, b: de(G[a], G[b])) if vis == 'normal' else (lambda a, b, v=vis: de2000(sim(G[a], v), sim(G[b], v)))
+                    row[vis] = min((f(a, b), a, b) for a, b in pairs)
+                Ls = {k: hex_oklch(G[k])[0] for k in ks}; Cs = {k: hex_oklch(G[k])[1] for k in ks}
+                vib = [(a, b) for a, b in pairs if Cs[a] > 0.14 and Cs[b] > 0.14 and abs(Ls[a] - Ls[b]) < 0.06
+                       and abs((hex_oklch(G[a])[2] - hex_oklch(G[b])[2] + 180) % 360 - 180) > 100]
+                th = n.get('min', {})
+                bad = [f"{v} {row[v][0]:.1f} < {th[v]} ({row[v][1]}/{row[v][2]})" for v in th if row[v][0] < th[v]]
+                print(f"  {'FAIL' if bad else 'PASS'}  {n['set']:8s} " + ', '.join(f"{v} {row[v][0]:.1f} ({row[v][1]}/{row[v][2]})" for v in row)
+                      + f"   vibrating pairs: {len(vib)}" + (f" {vib}" if vib else '') + f"   ({n['where']})")
+                for b in bad: m['fails'].append(f"neighbors {n['set']}: {b}")
+                m['neighbors'][n['set']] = {v: round(row[v][0], 1) for v in row} | {'vibrating': len(vib)}
+            print(f'\n-- {mode}: bands (OKLCH lightness and chroma across a set) --')
+            for b in spec['bands']:
+                G = groups.get(b['set'])
+                if not G: continue
+                ks = [k for k in keys if k in G and k not in b.get('except', [])]
+                L = [hex_oklch(G[k])[0] for k in ks]; C = [hex_oklch(G[k])[1] for k in ks]
+                spreadL, spreadC = max(L) - min(L), max(C) - min(C)
+                lcs = [apca(get(b['text'].replace('{g}', k)), G[k]) for k in ks] if b.get('text') else []
+                bad = []
+                if spreadL > b['L']: bad.append(f"L spread {spreadL:.3f} > {b['L']}")
+                if spreadC > b['C']: bad.append(f"C spread {spreadC:.3f} > {b['C']}")
+                if lcs and max(lcs) - min(lcs) > b.get('lcSpread', 99): bad.append(f"text Lc spread {max(lcs) - min(lcs):.1f} > {b['lcSpread']}")
+                texts = sorted({get(b['text'].replace('{g}', k)) for k in ks}) if b.get('text') else []
+                if b.get('oneText') and len(texts) > 1: bad.append(f"{len(texts)} text colors on the set: {', '.join(texts)}")
+                print(f"  {'FAIL' if bad else 'PASS'}  {b['set']:8s} L {min(L):.2f}-{max(L):.2f} (spread {spreadL:.3f}), "
+                      f"C {min(C):.3f}-{max(C):.3f} (spread {spreadC:.3f})"
+                      + (f", text Lc {min(lcs):.1f}-{max(lcs):.1f}" if lcs else '') + (f", text colors {len(texts)}" if texts else '')
+                      + (f"  [{'; '.join(bad)}]" if bad else ''))
+                for x in bad: m['fails'].append(f"band {b['set']}: {x}")
+                m['bands'][b['set']] = {'L': [round(min(L), 3), round(max(L), 3)], 'C': [round(min(C), 3), round(max(C), 3)],
+                                        'textLc': [round(min(lcs), 1), round(max(lcs), 1)] if lcs else None}
+            print(f'\n-- {mode}: kept apart (CIEDE2000) --')
+            for a in spec['apart']:
+                gs = keys if '{g}' in a['a'] or '{g}' in a['b'] else [None]
+                vals = []
+                for g in gs:
+                    ra, rb = (a['a'].replace('{g}', g), a['b'].replace('{g}', g)) if g else (a['a'], a['b'])
+                    try: vals.append((de(get(ra), get(rb)), ra, rb))
+                    except KeyError: pass
+                if not vals: continue
+                v = min(vals); bad = v[0] < a['min']
+                print(f"  {'FAIL' if bad else 'PASS'}  {a['a']} vs {a['b']}: min {v[0]:.1f} ({v[1]} / {v[2]}, needs {a['min']})   ({a['why']})")
+                if bad: m['fails'].append(f"apart {v[1]} vs {v[2]}: {v[0]:.1f} < {a['min']}")
+                m['apart'].append({'a': a['a'], 'b': a['b'], 'min': round(v[0], 1)})
+            print(f"\n  {mode}: {len(m['fails'])} failure(s)")
+            fails_total += len(m['fails'])
+            res['modes'][mode] = m
+        results.append(res)
+    if out_json:
+        json.dump(results, open(out_json, 'w'), indent=1); print(f'\nwrote {out_json}')
+    print(f'\n{fails_total} surface check(s) failed across {len(token_paths)} token file(s)')
+    return fails_total
+
+# python3 palette_check.py --boards boards.json : the OKLCH spec -> the hex values
+# design-tokens.json carries (color.board, onBoard, genre, onGenre).
+# Boards: one lightness and one chroma per mode for every genre (a band), the
+# hue per genre; chroma is cut to the sRGB gamut where a hue cannot reach it.
+# Marks: an [L, C, h] per genre per mode (staggered in lightness on purpose, so
+# small marks stay apart for color-blind viewers).
+def gamut(L, C, h):
+    hx = oklch_hex(L, C, h)
+    while hx is None and C > 0: C -= 0.001; hx = oklch_hex(L, C, h)
+    return hx
+
+def boards(spec_path):
+    spec = json.load(open(spec_path))
+    b, mk = spec['board'], spec['mark']
+    out = {'board': {}, 'onBoard': {}, 'genre': {}, 'onGenre': {}}
+    for g, h in b['hues'].items():
+        out['board'][g] = {m: gamut(b[m]['L'], b[m]['C'] * b.get('chroma', {}).get(g, 1.0), h) for m in ('light', 'dark')}
+        out['onBoard'][g] = {m: b[m]['on'] for m in ('light', 'dark')}
+        out['genre'][g] = {m: gamut(*mk[m][g]) for m in ('light', 'dark')}
+        # the choice that holds WCAG 4.5:1, then the higher APCA
+        out['onGenre'][g] = {m: max(spec['onMarkChoices'][m], key=lambda c: (contrast(c, out['genre'][g][m]) >= 4.5, apca(c, out['genre'][g][m])))
+                             for m in ('light', 'dark')}
+    print(json.dumps(out, indent=1))
+    return out
+
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == '--surfaces':
+        a = sys.argv[2:]; oj = None
+        if '--json' in a: i = a.index('--json'); oj = a[i + 1]; a = a[:i] + a[i + 2:]
+        sys.exit(1 if surfaces(a[0], a[1:], oj) else 0)
+    if len(sys.argv) > 1 and sys.argv[1] == '--boards':
+        boards(sys.argv[2]); sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == '--search':
         for name in sys.argv[2:] or DIRECTIONS:
             best = None

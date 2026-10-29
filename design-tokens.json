@@ -10,7 +10,7 @@
       "text":         { "light": "#131316", "dark": "#F2F2F4", "use": "body text" },
       "textMuted":    { "light": "#5C5C66", "dark": "#C4C4CC", "use": "secondary text, captions" },
       "border":       { "light": "#D8D8DD", "dark": "#34343A", "use": "hairlines and outlines" },
-      "secondary":    { "light": "#0B6E99", "dark": "#5AB4D6", "use": "wayfinding: the selected tab or sidebar item, buttons that are not Play" },
+      "secondary":    { "light": "#0B6E99", "dark": "#6CC0E0", "use": "wayfinding: the selected tab or sidebar item, buttons that are not Play" },
       "onSecondary":  { "light": "#FFFFFF", "dark": "#06141B", "use": "text and icons on secondary" },
       "link":         { "light": "#0B6E99", "dark": "#6CC0E0", "use": "links and the focus ring" },
       "record":       { "light": "#B0152F", "dark": "#E3384B", "use": "recording and nothing else: the record button, Start recording, an armed or active take, the recording indicator" },
@@ -23,26 +23,48 @@
       "errorSurface": { "light": "#FDEEE8", "dark": "#3A1F16", "use": "the error banner's fill" }
     },
     "genre": {
-      "$about": "Content only, never chrome (Decision 012): a series' genre mark and nothing else. Keys are the catalog's genre keys (catalog/tools/genres.py GENRES). Each mark holds 3:1 on background, surface and surfaceAlt in both modes.",
-      "drama":        { "light": "#B42575", "dark": "#FF91C3" },
-      "mystery":      { "light": "#3753A2", "dark": "#8DACFA" },
-      "scifi":        { "light": "#03838C", "dark": "#16E3F2" },
-      "western":      { "light": "#A06841", "dark": "#D97E37" },
-      "comedy":       { "light": "#8D8300", "dark": "#E2D32B" },
-      "news":         { "light": "#44420E", "dark": "#CECEC0" },
-      "documentary":  { "light": "#217500", "dark": "#81CB70" },
-      "serial":       { "light": "#5D0087", "dark": "#AE6DDC" }
+      "$about": "Content only, never chrome (Decision 012): a genre's small mark (a legend key, a square in the decade field, a strip in the cast fingerprint, a year in the day's chart) and nothing else. Keys are the catalog's genre keys (catalog/tools/genres.py GENRES). Each mark holds 3:1 on background, surface and surfaceAlt in both modes, sits at least 11 CIEDE2000 from every chrome and status color (drama 22 from record), and keeps a lightness stagger so marks side by side stay apart for color-blind viewers (D2c-1, docs/research/palette/surfaces.md). Made from docs/research/palette/measure/boards.json.",
+      "drama":        { "light": "#9D547C", "dark": "#F89DC9" },
+      "mystery":      { "light": "#2459A5", "dark": "#8EBBFF" },
+      "scifi":        { "light": "#007C88", "dark": "#44D5D7" },
+      "western":      { "light": "#864E37", "dark": "#C99580" },
+      "comedy":       { "light": "#816B01", "dark": "#D4C27E" },
+      "news":         { "light": "#504C3E", "dark": "#B4B3B3" },
+      "documentary":  { "light": "#2F6100", "dark": "#7CB45A" },
+      "serial":       { "light": "#5A3983", "dark": "#AA87DE" }
     },
     "onGenre": {
-      "$about": "Text and marks set ON a genre board (a show tile's board, a series' hero block), D2b-3: each holds 4.5:1 on its genre hue in both modes, so a name in body or caption type passes WCAG AA. White or ink, whichever passes; same keys as genre.",
+      "$about": "Text set ON a genre mark used as a fill (a part's initial on its face): white or ink, whichever holds 4.5:1, and of those the higher APCA. Same keys as genre.",
       "drama":        { "light": "#FFFFFF", "dark": "#0F0F11" },
       "mystery":      { "light": "#FFFFFF", "dark": "#0F0F11" },
       "scifi":        { "light": "#FFFFFF", "dark": "#0F0F11" },
       "western":      { "light": "#FFFFFF", "dark": "#0F0F11" },
-      "comedy":       { "light": "#131316", "dark": "#0F0F11" },
+      "comedy":       { "light": "#FFFFFF", "dark": "#0F0F11" },
       "news":         { "light": "#FFFFFF", "dark": "#0F0F11" },
       "documentary":  { "light": "#FFFFFF", "dark": "#0F0F11" },
       "serial":       { "light": "#FFFFFF", "dark": "#0F0F11" }
+    },
+    "board": {
+      "$about": "A genre's board (D2c-1): the large block in the genre's hue that a show tile, a series hero, a bare episode's card and a play block stand on. One band per mode: every board at one OKLCH lightness and chroma (light L 0.48 C 0.11, dark L 0.37 C 0.09; science fiction and western sit lower in chroma where sRGB or the clay check holds them), so a grid of boards reads as one set and none outshines its neighbor; dark mode's boards are deeper than the marks, a lit surface, never a lamp. Same keys as genre; the hue is the mark's. Made from docs/research/palette/measure/boards.json.",
+      "drama":        { "light": "#86426F", "dark": "#5F2A4D" },
+      "mystery":      { "light": "#375C9B", "dark": "#223F6F" },
+      "scifi":        { "light": "#006A79", "dark": "#004854" },
+      "western":      { "light": "#8B492A", "dark": "#623018" },
+      "comedy":       { "light": "#795700", "dark": "#543B00" },
+      "news":         { "light": "#615D53", "dark": "#424038" },
+      "documentary":  { "light": "#296E38", "dark": "#154C22" },
+      "serial":       { "light": "#684D92", "dark": "#473368" }
+    },
+    "onBoard": {
+      "$about": "The one color everything ON a board takes (D2c-1): the name, the facts, the run strip, a typographic card's edge, and any button (an onBoard fill with the board's color as its label). White in light mode, the text color in dark; APCA Lc 85 or more on every board. Same keys as genre.",
+      "drama":        { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "mystery":      { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "scifi":        { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "western":      { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "comedy":       { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "news":         { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "documentary":  { "light": "#FFFFFF", "dark": "#F2F2F4" },
+      "serial":       { "light": "#FFFFFF", "dark": "#F2F2F4" }
     }
   },
   "font": {

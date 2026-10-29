@@ -7,12 +7,12 @@
     <color name="brand_surface">#FFF4F4F5</color>
     <!-- The launcher icon's ground is the icon master's red in both modes (branding/icon-master.svg). -->
     <color name="icon_background">#FFB0152F</color>
-    <color name="genre_drama">#FFB42575</color>
-    <color name="genre_mystery">#FF3753A2</color>
-    <color name="genre_scifi">#FF03838C</color>
-    <color name="genre_western">#FFA06841</color>
-    <color name="genre_comedy">#FF8D8300</color>
-    <color name="genre_news">#FF44420E</color>
-    <color name="genre_documentary">#FF217500</color>
-    <color name="genre_serial">#FF5D0087</color>
+    <color name="genre_drama">#FF9D547C</color>
+    <color name="genre_mystery">#FF2459A5</color>
+    <color name="genre_scifi">#FF007C88</color>
+    <color name="genre_western">#FF864E37</color>
+    <color name="genre_comedy">#FF816B01</color>
+    <color name="genre_news">#FF504C3E</color>
+    <color name="genre_documentary">#FF2F6100</color>
+    <color name="genre_serial">#FF5A3983</color>
 </resources>

@@ -1,0 +1,282 @@
+{
+  "$about": "The one source of the app's look. Change a value here, run `node tools/design_tokens.mjs`, and every platform's token file is rewritten to match; `node tools/test_design_tokens.mjs` fails if any of them drifts. These values are Ear Drama's On Air palette (Decision 064; docs/research/palette/README.md): ink for the primary action (Play, Listen through, Listen live), studio red for recording and nothing else, mirrored-glass blue for links, focus, and the selected tab.",
+  "color": {
+    "brand": {
+      "primary": {
+        "light": "#131316",
+        "dark": "#F2F2F4",
+        "use": "the primary action, in ink: Play and Pause, Listen through, Listen live, the progress line, the slot on the air"
+      },
+      "onPrimary": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11",
+        "use": "text and icons on primary"
+      },
+      "background": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11",
+        "use": "the page"
+      },
+      "surface": {
+        "light": "#F4F4F5",
+        "dark": "#19191C",
+        "use": "cards, panels, the sidebar"
+      },
+      "surfaceAlt": {
+        "light": "#E8E8EB",
+        "dark": "#232327",
+        "use": "hover, a quieter second surface"
+      },
+      "text": {
+        "light": "#131316",
+        "dark": "#F2F2F4",
+        "use": "body text"
+      },
+      "textMuted": {
+        "light": "#5C5C66",
+        "dark": "#C4C4CC",
+        "use": "secondary text, captions"
+      },
+      "border": {
+        "light": "#D8D8DD",
+        "dark": "#34343A",
+        "use": "hairlines and outlines"
+      },
+      "secondary": {
+        "light": "#0B6E99",
+        "dark": "#5AB4D6",
+        "use": "wayfinding: the selected tab or sidebar item, buttons that are not Play"
+      },
+      "onSecondary": {
+        "light": "#FFFFFF",
+        "dark": "#06141B",
+        "use": "text and icons on secondary"
+      },
+      "link": {
+        "light": "#0B6E99",
+        "dark": "#6CC0E0",
+        "use": "links and the focus ring"
+      },
+      "record": {
+        "light": "#B0152F",
+        "dark": "#E3384B",
+        "use": "recording and nothing else: the record button, Start recording, an armed or active take, the recording indicator"
+      },
+      "onRecord": {
+        "light": "#FFFFFF",
+        "dark": "#120708",
+        "use": "text and icons on record"
+      }
+    },
+    "semantic": {
+      "success": {
+        "light": "#1D7A4A",
+        "dark": "#5CC593",
+        "use": "an operation that worked"
+      },
+      "warning": {
+        "light": "#8A5300",
+        "dark": "#E8B04B",
+        "use": "something needs attention"
+      },
+      "error": {
+        "light": "#C2410C",
+        "dark": "#FF9466",
+        "use": "something failed"
+      },
+      "errorSurface": {
+        "light": "#FDEEE8",
+        "dark": "#3A1F16",
+        "use": "the error banner's fill"
+      }
+    },
+    "genre": {
+      "$about": "Content only, never chrome (Decision 012): a series' genre mark and nothing else. Keys are the catalog's genre keys (catalog/tools/genres.py GENRES). Each mark holds 3:1 on background, surface and surfaceAlt in both modes.",
+      "drama": {
+        "light": "#B42575",
+        "dark": "#FF91C3"
+      },
+      "mystery": {
+        "light": "#3753A2",
+        "dark": "#8DACFA"
+      },
+      "scifi": {
+        "light": "#03838C",
+        "dark": "#16E3F2"
+      },
+      "western": {
+        "light": "#A06841",
+        "dark": "#D97E37"
+      },
+      "comedy": {
+        "light": "#8D8300",
+        "dark": "#E2D32B"
+      },
+      "news": {
+        "light": "#44420E",
+        "dark": "#CECEC0"
+      },
+      "documentary": {
+        "light": "#217500",
+        "dark": "#81CB70"
+      },
+      "serial": {
+        "light": "#5D0087",
+        "dark": "#AE6DDC"
+      }
+    },
+    "onGenre": {
+      "$about": "Text and marks set ON a genre board (a show tile's board, a series' hero block), D2b-3: each holds 4.5:1 on its genre hue in both modes, so a name in body or caption type passes WCAG AA. White or ink, whichever passes; same keys as genre.",
+      "drama": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      },
+      "mystery": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      },
+      "scifi": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      },
+      "western": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      },
+      "comedy": {
+        "light": "#131316",
+        "dark": "#0F0F11"
+      },
+      "news": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      },
+      "documentary": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      },
+      "serial": {
+        "light": "#FFFFFF",
+        "dark": "#0F0F11"
+      }
+    }
+  },
+  "font": {
+    "$about": "Decision 060: Big Shoulders sets display type (L1, L2) everywhere; body text is Public Sans on the web and the system face on Apple and Android. The files are built from the OFL masters in branding/fonts/ by tools/build_fonts.py.",
+    "display": {
+      "web": "\"Big Shoulders\", \"Arial Narrow\", system-ui, sans-serif",
+      "webFiles": [
+        {
+          "src": "big-shoulders.woff2",
+          "weight": "700",
+          "preload": true
+        }
+      ],
+      "apple": "BigShoulders-Bold",
+      "android": "big_shoulders_bold"
+    },
+    "body": {
+      "web": "\"Public Sans\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+      "webFiles": [
+        {
+          "src": "public-sans.woff2",
+          "weight": "100 900"
+        },
+        {
+          "src": "public-sans-italic.woff2",
+          "weight": "100 900",
+          "style": "italic"
+        }
+      ],
+      "native": "the platform's system face (SF Pro, Roboto, Segoe UI Variable)"
+    },
+    "mono": {
+      "web": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      "windows": "Cascadia Mono,Consolas,Menlo,monospace"
+    }
+  },
+  "type": [
+    {
+      "id": "pageTitle",
+      "level": "L1",
+      "size": 28,
+      "weight": 700,
+      "face": "display",
+      "web": "view-heading",
+      "apple": "largeTitle",
+      "tvos": "title",
+      "android": "displaySmall",
+      "windows": "view-heading"
+    },
+    {
+      "id": "sectionHeader",
+      "level": "L2",
+      "size": 20,
+      "weight": 700,
+      "face": "display",
+      "web": "section-header",
+      "apple": "title2",
+      "tvos": "title3",
+      "android": "headlineSmall",
+      "windows": "section-header"
+    },
+    {
+      "id": "bodyStrong",
+      "level": "L3",
+      "size": 16,
+      "weight": 600,
+      "web": "body-strong",
+      "apple": "headline",
+      "tvos": "headline",
+      "android": "titleMedium",
+      "windows": "body-strong"
+    },
+    {
+      "id": "body",
+      "level": "L4",
+      "size": 16,
+      "weight": 400,
+      "web": "body",
+      "apple": "body",
+      "tvos": "body",
+      "android": "bodyMedium",
+      "windows": "body"
+    },
+    {
+      "id": "caption",
+      "level": "L5",
+      "size": 13,
+      "weight": 400,
+      "web": "caption",
+      "apple": "caption",
+      "tvos": "body",
+      "android": "labelMedium",
+      "windows": "caption"
+    },
+    {
+      "id": "tabular",
+      "level": "L6",
+      "size": 14,
+      "weight": 400,
+      "web": "tabular",
+      "apple": "body",
+      "tvos": "body",
+      "android": "bodySmall",
+      "windows": "tabular",
+      "mono": true
+    }
+  ],
+  "space": {
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "6": 24,
+    "8": 32
+  },
+  "radius": {
+    "control": 8,
+    "card": 12
+  },
+  "$label": "D2b-3 (before)"
+}

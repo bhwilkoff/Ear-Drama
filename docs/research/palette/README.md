@@ -1,5 +1,7 @@
 # Three palette directions for Ear Drama
 
+*On Air was chosen (Decision 064). Its genre colors were rebuilt for surfaces on October 29, 2026 (boards and marks as two tokens): see `surfaces.md`. The genre tables below are the October 22 marks.*
+
 October 22, 2026. I want Ear Drama to have a look of its own that still sits beside Archive Watch as a sibling, and Decision 060 left the brand palette open until it could be chosen from rendered screens rather than from a list of hex values. So this folder holds three directions, each a brand palette with its own set of eight genre hues, drawn on the same four screens in light and dark. Open `index.html` in a browser to compare them; the PNGs in `shots/` are the same page rendered by headless Chrome, and every number below comes from `measure/palette_check.py` reading `measure/directions.json`. The owner picks; nothing here touches `design-tokens.json` or any platform.
 
 ## What we took from Human Shaped

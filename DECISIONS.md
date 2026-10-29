@@ -600,10 +600,26 @@ Ear Drama's colors are the On Air direction (`docs/research/palette/README.md`).
 primary action is ink** (`primary`, `#131316` light, `#F2F2F4` dark, the text
 color as a fill): Play and Pause, Listen through, Listen live, the progress line,
 and the slot on the air. The blue of 1930s mirrored-glass sets (`#0B6E99` /
-`#5AB4D6`, links `#6CC0E0` in dark) does the wayfinding: links, the focus ring,
-the selected tab, and every other control, on neutral grounds. Genres take On
-Air's eight hues. A broadcast happening now is not a recording, so "live" gives
-up red and takes the primary action's ink.
+`#6CC0E0`, one blue for links and controls in dark since D2c-1) does the
+wayfinding: links, the focus ring, the selected tab, and every other control,
+on neutral grounds. A broadcast happening now is not a recording, so "live" gives up red and takes the primary
+action's ink.
+
+**Genre color is two tokens per genre, one hue** (rewritten 2026-10-29, D2c-1):
+a **board** (`color.board`), the block a show tile, a series hero, a bare
+episode's card or a play block stands on, and a **mark** (`color.genre`), the
+small square, strip or face in a legend, a chart or a cast fingerprint. Boards
+sit in **one lightness band per mode** (OKLCH L 0.48 light, 0.37 dark, chroma
+0.11 and 0.09, at most 0.04 apart), so a grid reads as one set; in dark mode a
+board is a deep surface, never brighter than APCA Lc 30 against the page.
+**Everything on a board takes one color** (`color.onBoard`: white light, the
+text color dark): the name, the facts, the run strip, a card's edge, and a
+button, which takes that color as its fill; no ink button, blue link or second
+text color sits on a board. Marks keep a lightness stagger for color-blind
+viewers and hold 3:1 on every ground. Drama is plum (hue 345), held 20 CIEDE2000
+from recording red as board and as mark; comedy is gold (82), not olive. The
+genre's name is always on screen in words, because boards in one band cannot be
+told apart by color-blind viewers (simulated ΔE00 about 2).
 
 **Why**: the owner, 2026-10-23: *"I really like the On Air colors and I think we
 should be building with those in mind."* Then, 2026-10-29: *"Red means
@@ -617,7 +633,15 @@ is `warning`, orange is `error` and Audible's, and the eight genre hues cover th
 rest of the wheel. Ink collides with nothing, matches Apple Music's and Apple
 Podcasts' neutral Now Playing transport, and fixes On Air's one accepted cost:
 the dark red Play button read at 4.66:1 (APCA Lc 36); the ink one reads 17.13:1
-dark and 18.54:1 light.
+dark and 18.54:1 light. The board rule: the owner, 2026-10-29, on direction D:
+*"the color combinations are looking terrible, especially on dark mode ...
+we really need to work hard to make sure the colors are working together
+instead of against each other."* D2b-3 drew its boards in the mark colors,
+and every pairing it drew, measured with the Human Shaped tools
+(`docs/research/palette/surfaces.md`), named why: dark boards spread from L 0.65
+to 0.85 and glared at Lc 38 to 78 against the page, light boards spread L 0.37
+to 0.60 with two text colors (comedy's ink at Lc 37), and 46 pairings failed.
+The two-token system fails none of them.
 
 **How to apply**: `design-tokens.json` holds `primary`/`onPrimary` (ink) and
 `record`/`onRecord` (red, onRecord 7.01:1 light, 4.66:1 dark; record 4.50:1 on
@@ -627,8 +651,16 @@ red through one name each (`--color-record` and `.btn-record`; `Color.brandRecor
 outside recording (`tools/test_apple_design_rules.py` "red means recording",
 Android `ColorRolesTest`). A secondary action that is not wayfinding (Use this take) is an ink outline: the
 platform's outlined button tinted `primary`. Blue does the wayfinding (Decision 012: brand is
-chrome, genre hues are content). Genre hues are the `color.genre` group, checked
-at 3:1 on every ground in both modes. The icon stays the white ring microphone on
+chrome, genre hues are content). Genre marks are `color.genre` (3:1 on every
+ground), boards `color.board` with `color.onBoard`, made from
+`docs/research/palette/measure/boards.json` by `palette_check.py --boards`;
+`tools/test_design_tokens.mjs` §5c fails on a second text color on the boards,
+a board outside the band, a dark board over Lc 30, text under 4.5:1 or Lc 75, or
+drama within 20 of record, each with a negative control. On the web a
+`[data-genre]` element gets `--genre-accent` (mark), `--genre-on-accent`,
+`--genre-board` and `--genre-on` (on board); native boards wait for D3. Dark
+`secondary` is the link blue `#6CC0E0`, so the selected segment's label reads
+Lc 63. The icon stays the white ring microphone on
 studio red (the generator takes icon grounds from `record`); it waits on the CC0
 photo download (SCRATCHPAD item 2).
 

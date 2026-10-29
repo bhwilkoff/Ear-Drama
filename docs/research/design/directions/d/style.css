@@ -14,7 +14,10 @@ img { display: block; }
 :root { --print-ground: #EDEDED; --print-edge: rgba(19, 19, 22, 0.18); --page-pad: var(--space-4); }
 html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 244, 0.16); }
 @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 244, 0.16); } }
-[data-genre=""], .neutral { --genre-accent: var(--color-surface-alt); --genre-on: var(--color-text); }
+[data-genre=""], .neutral { --genre-accent: var(--color-surface-alt); --genre-board: var(--color-surface-alt); --genre-on: var(--color-text); }
+/* D2c-1 (Decision 064, docs/research/palette/surfaces.md): a block that carries words is a BOARD (--genre-board, one
+   lightness band per mode, deeper and quieter in dark); a small square or strip is a MARK (--genre-accent). Everything
+   on a board takes the one on-board color (--genre-on): names, facts, run strips, a card's edge, a button. */
 
 .ed-main { padding-bottom: 168px; }
 .page-h { margin: var(--space-2) 0 var(--space-4); }
@@ -33,18 +36,18 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .initial { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; width: 100%; border-radius: 50%;
   background: var(--color-surface); color: var(--color-text-muted); font: 700 var(--type-page-title-size)/1 var(--font-display);
   box-shadow: 0 0 0 1px var(--color-border); }
-.initial.sq { border-radius: var(--radius-control); background: var(--genre-accent); color: var(--genre-on); box-shadow: none; }
+.initial.sq { border-radius: var(--radius-control); background: var(--genre-board); color: var(--genre-on); box-shadow: none; }
 .original { display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--print-edge); background: var(--print-ground); max-width: 100%; height: auto; }
 
-/* ---- The board: a block in the genre hue (The Sleeve), names in on-genre text ---- */
-.board { background: var(--genre-accent); color: var(--genre-on); border-radius: var(--radius-card); padding: var(--space-4); min-width: 0; }
+/* ---- The board: a block in the genre hue (The Sleeve), names in on-board text ---- */
+.board { background: var(--genre-board); color: var(--genre-on); border-radius: var(--radius-card); padding: var(--space-4); min-width: 0; }
 .board a:not(.btn) { color: inherit; }
 .board .kicker { font: 600 var(--type-caption-size)/1.2 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; }
 .board-name { font: 700 var(--type-page-title-size)/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; margin: 6px 0 4px; }
 .board .facts { font-size: var(--type-caption-size); }
-.board .bars rect.b { fill: var(--genre-on); }
-.board .bars rect.z { fill: var(--genre-on); opacity: 0.3; }
-.board .bars rect.b.dim { opacity: 0.5; }
+.board .bars rect.b, .tile .bars rect.b { fill: var(--genre-on); }
+.board .bars rect.z, .tile .bars rect.z { fill: var(--genre-on); opacity: 0.3; }
+.board .bars rect.b.dim, .tile .bars rect.b.dim { opacity: 0.5; }
 .board .axis { display: flex; justify-content: space-between; font: var(--type-caption-size)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; margin-top: 4px; }
 .hero { padding: var(--space-6) var(--space-4) var(--space-4); }
 .hero .board-name { font-size: var(--type-page-title-size); }
@@ -57,7 +60,7 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 /* ---- The show tile: one canonical cell (mobile-first-density-design §3) ---- */
 .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .tile { display: flex; flex-direction: column; gap: 6px; padding: 6px 6px 10px; border-radius: var(--radius-card);
-  background: var(--genre-accent); color: var(--genre-on); min-width: 0; }
+  background: var(--genre-board); color: var(--genre-on); min-width: 0; }
 .tile-name { font: 700 var(--type-section-header-size)/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; padding: 2px 4px 0; }
 .tile-sub { font-size: var(--type-caption-size); line-height: 1.3; padding: 0 4px; }
 .tile .bars { padding: 0 4px; }
@@ -87,7 +90,7 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .guest { display: flex; align-items: center; gap: 6px; font-size: var(--type-caption-size); color: var(--color-text-muted); }
 .guest .pic { width: 24px; flex: none; }
 .dblock { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--radius-control);
-  background: var(--genre-accent); color: var(--genre-on); line-height: 1; }
+  background: var(--genre-board); color: var(--genre-on); line-height: 1; }
 .dblock b { font: 700 var(--type-section-header-size)/1 var(--font-display); }
 .dblock i { font: 600 11px/1 var(--font-body); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
 .hatch { display: block; width: 48px; height: 48px; border-radius: var(--radius-control); border: 1px dashed var(--color-text-muted);
@@ -100,7 +103,7 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .acts .btn { flex: none; }
 .acts .lab-wide { display: none; }
 .icon-btn.way { border: 1.5px solid var(--color-border); }
-.chip-board { display: inline-block; padding: 6px 10px 5px; border-radius: var(--radius-control); background: var(--genre-accent); color: var(--genre-on);
+.chip-board { display: inline-block; padding: 6px 10px 5px; border-radius: var(--radius-control); background: var(--genre-board); color: var(--genre-on);
   font: 700 var(--type-section-header-size)/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
 .seg { display: flex; gap: 0; border: 1.5px solid var(--color-border); border-radius: var(--radius-control); padding: 2px; width: max-content; max-width: 100%; }
 .seg a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 6px; color: var(--color-secondary); font-weight: 600; white-space: nowrap; }
@@ -187,7 +190,7 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .pface.voice { background: transparent; border: 2px dashed var(--hue); color: var(--hue); }
 .pface.voice svg { width: 18px; height: 18px; }
 .cast-row { display: flex; gap: 6px; margin-top: var(--space-3); }
-.cast-row .pface { box-shadow: 0 0 0 2px var(--genre-accent); }
+.cast-row .pface { box-shadow: 0 0 0 2px var(--genre-board); }
 .bill { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .bill li { border-radius: var(--radius-card); background: var(--color-surface); border-top: 6px solid var(--hue); padding: var(--space-3); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .bill .part { font: 700 var(--type-section-header-size)/1 var(--font-display); letter-spacing: 0.02em; }

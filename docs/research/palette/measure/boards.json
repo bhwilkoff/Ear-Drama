@@ -1,0 +1,125 @@
+{
+ "$about": "D2c-1's genre color system in OKLCH, the source of color.board, onBoard, genre and onGenre in design-tokens.json (python3 palette_check.py --boards boards.json). Boards are one band per mode: every genre at the same lightness and chroma, so a grid of boards reads as one set, and white text on all of them; dark mode's band is deeper and quieter, so a board is a lit surface, never a lamp. Marks keep the genre's hue and a lightness stagger, so the small squares and strips stay apart for color-blind viewers. Hues: drama plum (345, kept 20 or more from recording red), mystery indigo, science fiction teal, western rust, comedy gold (82, away from olive), news a warm gray, documentary green, serials violet. The mark values came from a constrained search (3:1 on every ground, 11 or more from every chrome and status color, 22 from recording red for drama, chroma at most 0.135 so marks side by side do not vibrate), seeded at the board hues.",
+ "board": {
+  "hues": {
+   "drama": 342,
+   "mystery": 260,
+   "scifi": 212,
+   "western": 45,
+   "comedy": 82,
+   "news": 90,
+   "documentary": 148,
+   "serial": 300
+  },
+  "chroma": {
+   "news": 0.15,
+   "western": 0.9
+  },
+  "light": {
+   "L": 0.48,
+   "C": 0.11,
+   "on": "#FFFFFF"
+  },
+  "dark": {
+   "L": 0.37,
+   "C": 0.09,
+   "on": "#F2F2F4"
+  }
+ },
+ "mark": {
+  "light": {
+   "drama": [
+    0.545,
+    0.11,
+    347
+   ],
+   "mystery": [
+    0.47,
+    0.135,
+    258
+   ],
+   "scifi": [
+    0.536,
+    0.13,
+    206
+   ],
+   "western": [
+    0.484,
+    0.084,
+    43
+   ],
+   "comedy": [
+    0.533,
+    0.144,
+    95
+   ],
+   "news": [
+    0.417,
+    0.024,
+    96
+   ],
+   "documentary": [
+    0.44,
+    0.136,
+    135
+   ],
+   "serial": [
+    0.42,
+    0.12,
+    302
+   ]
+  },
+  "dark": {
+   "drama": [
+    0.8,
+    0.12,
+    350
+   ],
+   "mystery": [
+    0.787,
+    0.132,
+    258
+   ],
+   "scifi": [
+    0.8,
+    0.12,
+    196
+   ],
+   "western": [
+    0.715,
+    0.07,
+    43
+   ],
+   "comedy": [
+    0.814,
+    0.09,
+    95
+   ],
+   "news": [
+    0.768,
+    0.001,
+    96
+   ],
+   "documentary": [
+    0.71,
+    0.135,
+    135
+   ],
+   "serial": [
+    0.69,
+    0.13,
+    302
+   ]
+  }
+ },
+ "onMarkChoices": {
+  "light": [
+   "#FFFFFF",
+   "#131316"
+  ],
+  "dark": [
+   "#0F0F11",
+   "#F2F2F4"
+  ]
+ }
+}

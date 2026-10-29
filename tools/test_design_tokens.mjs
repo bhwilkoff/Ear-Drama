@@ -19,7 +19,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { plan, loadTokens, colors, genres, onGenres, contrast, webFonts, ROOT } from './design_tokens.mjs';
+import { plan, loadTokens, colors, genres, onGenres, boards, onBoards, oklch, apca, deltaE, contrast, webFonts, ROOT } from './design_tokens.mjs';
 
 let failed = 0;
 const ok = (cond, msg) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${msg}`); if (!cond) failed++; };
@@ -114,7 +114,8 @@ const faded = structuredClone(tokens);
 faded.color.genre.drama.light = '#E0E0E4';
 ok(weakMarks(faded).some((w) => w.startsWith('light drama')), 'the genre check catches a pale light-mode drama mark');
 
-// 5b. Text on a genre board (D2b-3): 4.5:1 on its own hue, both modes.
+// 5b. Text on a genre mark used as a fill (a part's initial): 4.5:1 on its own
+//     hue, both modes (D2b-3; D2c-1 moved the board text to color.onBoard).
 const weakBoards = (t) => {
   const hue = Object.fromEntries(genres(t).map((g) => [g.name, g]));
   const out = [];
@@ -128,10 +129,65 @@ const weakBoards = (t) => {
 ok(JSON.stringify(onGenres(tokens).map((g) => g.name).sort()) === JSON.stringify(gs.map((g) => g.name).sort()), 'color.onGenre names the same keys as color.genre');
 let lowestBoard = Infinity;
 for (const g of onGenres(tokens)) for (const mode of ['light', 'dark']) lowestBoard = Math.min(lowestBoard, contrast(g[mode], tokens.color.genre[g.name][mode]));
-ok(weakBoards(tokens).length === 0, `text on every genre board holds 4.5:1 (lowest ${lowestBoard.toFixed(2)}:1; under: ${weakBoards(tokens).join('; ') || 'none'})`);
-const whiteComedy = structuredClone(tokens);
-whiteComedy.color.onGenre.comedy.light = '#FFFFFF';
-ok(weakBoards(whiteComedy).some((w) => w.startsWith('light comedy')), 'the board check catches white text on the light comedy board (3.90:1)');
+ok(weakBoards(tokens).length === 0, `text on every genre mark holds 4.5:1 (lowest ${lowestBoard.toFixed(2)}:1; under: ${weakBoards(tokens).join('; ') || 'none'})`);
+const inkSerial = structuredClone(tokens);
+inkSerial.color.onGenre.serial.dark = '#F2F2F4';
+ok(weakBoards(inkSerial).some((w) => w.startsWith('dark serial')), 'the mark check catches light text on the dark serials mark');
+
+// 5c. The boards (D2c-1, Decision 064; docs/research/palette/surfaces.md). Per mode:
+//   - every board takes ONE text color, at 4.5:1 and APCA Lc 75 or more;
+//   - every board sits in one OKLCH lightness band (spread at most 0.04), so a
+//     grid of boards reads as one set and none outshines its neighbor;
+//   - in dark mode a board stays a surface, never a lamp: APCA Lc 30 or less
+//     against background and surface (D2b-3's full-hue boards read Lc 39 to 84);
+//   - the drama board and mark stay 20 CIEDE2000 from recording red, and no
+//     board comes within 15 of it (red means recording).
+//   Each rule has its own negative control below.
+const boardProblems = (t) => {
+  const out = [];
+  const bs = boards(t), ons = Object.fromEntries(onBoards(t).map((g) => [g.name, g]));
+  const gnames = genres(t).map((g) => g.name).sort();
+  if (JSON.stringify(bs.map((g) => g.name).sort()) !== JSON.stringify(gnames)) out.push('color.board does not name the genre keys');
+  if (JSON.stringify(Object.keys(ons).sort()) !== JSON.stringify(gnames)) out.push('color.onBoard does not name the genre keys');
+  const br = t.color.brand;
+  for (const mode of ['light', 'dark']) {
+    const texts = new Set(bs.map((g) => ons[g.name] && ons[g.name][mode]));
+    if (texts.size !== 1) out.push(`${mode}: ${texts.size} text colors on the boards`);
+    const Ls = bs.map((g) => oklch(g[mode]).L);
+    const spread = Math.max(...Ls) - Math.min(...Ls);
+    if (spread > 0.04) out.push(`${mode}: board lightness spread ${spread.toFixed(3)} > 0.04`);
+    for (const g of bs) {
+      const on = ons[g.name] && ons[g.name][mode];
+      if (!on) continue;
+      const r = contrast(on, g[mode]), lc = apca(on, g[mode]);
+      if (r < 4.5 || lc < 75) out.push(`${mode} ${g.name}: text ${r.toFixed(2)}:1, Lc ${lc.toFixed(1)} (needs 4.5:1, Lc 75)`);
+      if (mode === 'dark') for (const ground of ['background', 'surface']) {
+        const glare = apca(g[mode], br[ground][mode]);
+        if (glare > 30) out.push(`dark ${g.name} glares on ${ground}: Lc ${glare.toFixed(1)} > 30`);
+      }
+      if (br.record) {
+        const e = deltaE(g[mode], br.record[mode]), need = g.name === 'drama' ? 20 : 15;
+        if (e < need) out.push(`${mode} ${g.name} board is ${e.toFixed(1)} from record (needs ${need})`);
+      }
+    }
+    if (br.record && t.color.genre.drama) {
+      const e = deltaE(t.color.genre.drama[mode], br.record[mode]);
+      if (e < 20) out.push(`${mode} drama mark is ${e.toFixed(1)} from record (needs 20)`);
+    }
+  }
+  return out;
+};
+const bp = boardProblems(tokens);
+ok(bp.length === 0, `the boards hold: one text color per mode at Lc 75, one lightness band, no dark glare, drama apart from red (problems: ${bp.join('; ') || 'none'})`);
+const neg = (name, edit, expect) => {
+  const t = structuredClone(tokens); edit(t);
+  ok(boardProblems(t).some((p) => p.includes(expect)), `the board check catches ${name}`);
+};
+neg("D2b-3's full-hue dark drama board", (t) => { t.color.board.drama.dark = '#FF91C3'; }, 'dark drama glares');
+neg('a lighter board breaking the band', (t) => { t.color.board.comedy.light = '#8D8300'; }, 'board lightness spread');
+neg('a second text color on the boards', (t) => { t.color.onBoard.comedy.light = '#131316'; }, 'text colors on the boards');
+neg('a drama board in recording red', (t) => { t.color.board.drama.light = '#B0152F'; }, 'drama board is');
+neg('white text on a pale board', (t) => { t.color.board.news.light = '#CECEC0'; }, 'light news: text');
 
 // 6. Every face the tokens name is a file the platform ships (Decision 060),
 //    and only the display levels set the display face, with a negative control.

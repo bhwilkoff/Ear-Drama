@@ -19,7 +19,7 @@ extension Color {
     nonisolated static let brandText = Color.tokenPair(light: 0x131316, dark: 0xF2F2F4)
     nonisolated static let brandTextMuted = Color.tokenPair(light: 0x5C5C66, dark: 0xC4C4CC)
     nonisolated static let brandBorder = Color.tokenPair(light: 0xD8D8DD, dark: 0x34343A)
-    nonisolated static let brandSecondary = Color.tokenPair(light: 0x0B6E99, dark: 0x5AB4D6)
+    nonisolated static let brandSecondary = Color.tokenPair(light: 0x0B6E99, dark: 0x6CC0E0)
     nonisolated static let brandOnSecondary = Color.tokenPair(light: 0xFFFFFF, dark: 0x06141B)
     nonisolated static let brandLink = Color.tokenPair(light: 0x0B6E99, dark: 0x6CC0E0)
     nonisolated static let brandRecord = Color.tokenPair(light: 0xB0152F, dark: 0xE3384B)
@@ -32,14 +32,14 @@ extension Color {
     nonisolated static let semanticErrorSurface = Color.tokenPair(light: 0xFDEEE8, dark: 0x3A1F16)
 
     // Genre: content only, never chrome. Keyed by the catalog's genre key.
-    nonisolated static let genreDrama = Color.tokenPair(light: 0xB42575, dark: 0xFF91C3)
-    nonisolated static let genreMystery = Color.tokenPair(light: 0x3753A2, dark: 0x8DACFA)
-    nonisolated static let genreScifi = Color.tokenPair(light: 0x03838C, dark: 0x16E3F2)
-    nonisolated static let genreWestern = Color.tokenPair(light: 0xA06841, dark: 0xD97E37)
-    nonisolated static let genreComedy = Color.tokenPair(light: 0x8D8300, dark: 0xE2D32B)
-    nonisolated static let genreNews = Color.tokenPair(light: 0x44420E, dark: 0xCECEC0)
-    nonisolated static let genreDocumentary = Color.tokenPair(light: 0x217500, dark: 0x81CB70)
-    nonisolated static let genreSerial = Color.tokenPair(light: 0x5D0087, dark: 0xAE6DDC)
+    nonisolated static let genreDrama = Color.tokenPair(light: 0x9D547C, dark: 0xF89DC9)
+    nonisolated static let genreMystery = Color.tokenPair(light: 0x2459A5, dark: 0x8EBBFF)
+    nonisolated static let genreScifi = Color.tokenPair(light: 0x007C88, dark: 0x44D5D7)
+    nonisolated static let genreWestern = Color.tokenPair(light: 0x864E37, dark: 0xC99580)
+    nonisolated static let genreComedy = Color.tokenPair(light: 0x816B01, dark: 0xD4C27E)
+    nonisolated static let genreNews = Color.tokenPair(light: 0x504C3E, dark: 0xB4B3B3)
+    nonisolated static let genreDocumentary = Color.tokenPair(light: 0x2F6100, dark: 0x7CB45A)
+    nonisolated static let genreSerial = Color.tokenPair(light: 0x5A3983, dark: 0xAA87DE)
 
     /// The mark for a catalog genre key; nil for a key the palette does not name.
     nonisolated static func genre(_ key: String?) -> Color? {

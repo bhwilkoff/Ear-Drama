@@ -1,0 +1,262 @@
+{
+ "$about": "Every color pairing direction D draws (docs/research/design/directions/d/style.css, join.css, ../record/style.css), read from its CSS and its frames, D2c-1. palette_check.py --surfaces reads this list against any design-tokens.json. Kinds: body (16 px text), caption (13 px text and small labels), display (the 20 to 28 px bold display names), mark (non-text: a strip, a square, a button's edge), trace (a faint mark: the empty years of a run strip), field (a large block on a ground: visible, and in dark mode never brighter than the text is), mount (the print ground under a picture), refused (a pairing the rules forbid, reported only), edged (reported only: a 1 px edge separates it). APCA levels follow the APCA readability criterion's bronze levels: Lc 75 body, Lc 60 other content text, Lc 45 large bold headlines, Lc 30 spot non-text, Lc 15 the least a mark may be.",
+ "fallback": {
+  "board": "genre",
+  "onBoard": "onGenre"
+ },
+ "literals": {
+  "light": {
+   "print": "#EDEDED",
+   "claudeClay": "#D97757"
+  },
+  "dark": {
+   "print": "#2A2A2E",
+   "claudeClay": "#D97757"
+  }
+ },
+ "thresholds": {
+  "body": {
+   "wcag": 4.5,
+   "lc": 75
+  },
+  "caption": {
+   "wcag": 4.5,
+   "lc": 60
+  },
+  "display": {
+   "wcag": 3.0,
+   "lc": 45
+  },
+  "mark": {
+   "wcag": 3.0,
+   "lc": 30
+  },
+  "trace": {
+   "lc": 15
+  },
+  "field": {
+   "de": 8,
+   "darkLcMax": 30
+  },
+  "mount": {
+   "de": 5
+  },
+  "edged": {},
+  "refused": {}
+ },
+ "pairs": [
+  {
+   "fg": "text",
+   "bg": "background|surface|surfaceAlt",
+   "kind": "body",
+   "where": "every page and panel"
+  },
+  {
+   "fg": "textMuted",
+   "bg": "background|surface|surfaceAlt",
+   "kind": "caption",
+   "where": "row subtitles, counts, axes"
+  },
+  {
+   "fg": "link",
+   "bg": "background|surface",
+   "kind": "caption",
+   "where": "All 80, Browse, the back link"
+  },
+  {
+   "fg": "secondary",
+   "bg": "background|surface",
+   "kind": "mark",
+   "where": "the segmented control's edge and the selected tab"
+  },
+  {
+   "fg": "onSecondary",
+   "bg": "secondary",
+   "kind": "caption",
+   "where": "the selected segment (a 16 px semibold label of one word)"
+  },
+  {
+   "fg": "primary",
+   "bg": "background|surface|surfaceAlt",
+   "kind": "mark",
+   "where": "Play, the progress line, the mini player's button"
+  },
+  {
+   "fg": "onPrimary",
+   "bg": "primary",
+   "kind": "body",
+   "where": "Play's label"
+  },
+  {
+   "fg": "record",
+   "bg": "background|surface",
+   "kind": "mark",
+   "where": "the record button"
+  },
+  {
+   "fg": "onRecord",
+   "bg": "record",
+   "kind": "body",
+   "where": "Start recording",
+   "accepted": "Decision 064 accepts the dark record button at 4.66:1 (APCA Lc 36); its label is short and the red is the icon ground"
+  },
+  {
+   "fg": "print",
+   "bg": "background|surface",
+   "kind": "edged",
+   "where": "a face or picture's print ground on the page; its 1 px print edge, not the fill, separates it"
+  },
+  {
+   "fg": "board.{g}",
+   "bg": "background|surface",
+   "kind": "field",
+   "where": "a show tile, a series hero, a play block on the page"
+  },
+  {
+   "fg": "onBoard.{g}",
+   "bg": "board.{g}",
+   "kind": "display",
+   "where": "the show's name on its board"
+  },
+  {
+   "fg": "onBoard.{g}",
+   "bg": "board.{g}",
+   "kind": "caption",
+   "where": "years, counts, kicker and episode line on a board"
+  },
+  {
+   "fg": "onBoard.{g}",
+   "bg": "board.{g}",
+   "kind": "mark",
+   "where": "the run strip's bars and the typographic card's edge"
+  },
+  {
+   "fg": "onBoard.{g}@0.3",
+   "bg": "board.{g}",
+   "kind": "trace",
+   "where": "the run strip's empty years"
+  },
+  {
+   "fg": "print",
+   "bg": "board.{g}",
+   "kind": "mount",
+   "where": "the graded picture mounted on its board"
+  },
+  {
+   "fg": "primary",
+   "bg": "board.{g}",
+   "kind": "refused",
+   "where": "an ink button set on a board: refused by rule (a button on a board takes onBoard), reported only"
+  },
+  {
+   "fg": "onBoard.{g}",
+   "bg": "board.{g}",
+   "kind": "body",
+   "where": "a 16 px line on a board (the playbill hero)"
+  },
+  {
+   "fg": "genre.{g}",
+   "bg": "background|surface|surfaceAlt",
+   "kind": "mark",
+   "where": "legend keys, the decade field, the day's stacked years, timelines, the cast fingerprint"
+  },
+  {
+   "fg": "onGenre.{g}",
+   "bg": "genre.{g}",
+   "kind": "display",
+   "where": "a part's initial on its face (17 px or larger, bold display)"
+  }
+ ],
+ "neighbors": [
+  {
+   "set": "board",
+   "min": {
+    "normal": 12
+   },
+   "where": "boards side by side in a grid of tiles"
+  },
+  {
+   "set": "genre",
+   "min": {
+    "normal": 18,
+    "protan": 5,
+    "deutan": 5,
+    "tritan": 5
+   },
+   "where": "marks side by side: the day's years, the field, the cast fingerprint"
+  }
+ ],
+ "bands": [
+  {
+   "set": "board",
+   "L": 0.04,
+   "C": 0.04,
+   "except": [
+    "news"
+   ],
+   "text": "onBoard.{g}",
+   "lcSpread": 10,
+   "oneText": true,
+   "why": "boards sit in one band so a grid reads as one set"
+  },
+  {
+   "set": "genre",
+   "L": 0.13,
+   "C": 0.07,
+   "except": [
+    "news"
+   ],
+   "why": "marks are staggered in lightness on purpose (color-blind separation), within 0.13"
+  }
+ ],
+ "apart": [
+  {
+   "a": "board.drama",
+   "b": "record",
+   "min": 20,
+   "why": "red means recording; drama is the most common board"
+  },
+  {
+   "a": "genre.drama",
+   "b": "record",
+   "min": 20,
+   "why": "the drama mark beside the record button in the recorder"
+  },
+  {
+   "a": "board.{g}",
+   "b": "record",
+   "min": 15,
+   "why": "no board reads as a record button"
+  },
+  {
+   "a": "genre.{g}",
+   "b": "secondary",
+   "min": 10,
+   "why": "a genre mark never reads as wayfinding"
+  },
+  {
+   "a": "genre.{g}",
+   "b": "warning",
+   "min": 10,
+   "why": "nor as a warning"
+  },
+  {
+   "a": "genre.{g}",
+   "b": "error",
+   "min": 10,
+   "why": "nor as an error"
+  },
+  {
+   "a": "genre.{g}",
+   "b": "success",
+   "min": 10,
+   "why": "nor as success"
+  },
+  {
+   "a": "board.{g}",
+   "b": "claudeClay",
+   "min": 12,
+   "why": "Human Shaped lesson 3: stay out of the cream-and-clay default"
+  }
+ ]
+}
