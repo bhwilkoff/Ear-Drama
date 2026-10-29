@@ -9,8 +9,11 @@ and after: a new EarDrama-*.ips is a FAIL whatever the tests said.
 It builds once (`build-for-testing`), installs the app with devicectl, which returns
 only when the install is done, confirms the installed build is this one, and only then
 runs the tests (`test-without-building`), so "installed" is a fact the run states,
-not an assumption. (It did not cure the 2026-10-28 first-launch failure: the app opens
-and is gone ~3 s later with no crash log; that is an open app defect, LOOP-PLAN P8.) Every exported frame is
+not an assumption. The 2026-10-28 "first launch quits" (LOOP-PLAN P8) was not the app
+exiting: XCUIApplication.open(URL) ends the running app and asks the device for a new
+one, and on the first open(URL) of some runs the device started none (CoreDevice
+10004). That test is reported BLIND launch_dropped, never as an app failure, and the
+result bundle carries the device's diagnostics (they were lost before: see env()). Every exported frame is
 read by OCR; a frame showing a system overlay (SYSTEM_OVERLAY_RX: Screen Time's Time
 Limit, a permission alert) fails its test, because XCUITest's element queries match
 through the overlay, and a frame OCR cannot read fails the run as blind.
@@ -51,7 +54,18 @@ CRASH_RX = re.compile(rf"^\s*({re.escape(app_config.APPLE_APP_NAME)}-[\w.-]+\.ip
 def env():
     e = dict(os.environ)
     e.setdefault("DEVELOPER_DIR", "/Applications/Xcode.app/Contents/Developer")
-    # The app's bundled seed; a worktree without catalog/out reads the main checkout's.
+    # xcodebuild collects the device's diagnostics on a failure by running `xcrun devicectl`
+    # in an environment that drops DEVELOPER_DIR, so with xcode-select on the Command Line
+    # Tools it found no devicectl and every failure came back without device logs. xcrun
+    # falls back to PATH; a one-link directory first on PATH gives it the Xcode one.
+    shim = REPO / "build" / "devicectl-path"
+    tool = Path(e["DEVELOPER_DIR"]) / "usr" / "bin" / "devicectl"
+    if tool.exists():
+        shim.mkdir(parents=True, exist_ok=True)
+        link = shim / "devicectl"
+        if not link.is_symlink():
+            link.symlink_to(tool)
+        e["PATH"] = f"{shim}:{e.get('PATH', '')}"
     return e
 
 
@@ -148,6 +162,29 @@ def install_and_confirm(udid, app):
     return True, f"installed build {want}"
 
 
+LAUNCH_DROP_RX = re.compile(
+    r"error: -\[\w+\.(\w+) (\w+)\] : Failed to get launch progress for .*?"
+    r"process identifier of the launched application could not be determined")
+OPEN_URL_RX = re.compile(r"^\s+t =\s+[\d.]+s\s+(Open \S+ with URL \S+)")
+
+
+def dropped_launches(log_text):
+    """Tests whose launch the DEVICE dropped (CoreDevice 10004): XCTest ended the running
+    app for an XCUIApplication launch or open(URL) and no new process started, so
+    Springboard came back with no crash log. Returns [(Class/test, step)]. Seen
+    2026-10-28 on the first open(URL) of a run (LOOP-PLAN P8): the app's own output
+    stops when XCTest ends it and no process follows; it is not an app exit."""
+    out, step = [], None
+    for line in log_text.splitlines():
+        if line.startswith("Test Case "):
+            step = None
+        elif s := OPEN_URL_RX.match(line):
+            step = s.group(1)
+        elif m := LAUNCH_DROP_RX.search(line):
+            out.append((f"{m.group(1)}/{m.group(2)}", step or "launch()"))
+    return out
+
+
 def overlay_check(outdir_shots, shots):
     """OCR every exported frame. Returns {test id: [failure lines]}, with key None for
     frames the instrument could not read (blind, never a pass)."""
@@ -186,7 +223,7 @@ def run(entry, udid, a, outdir, bundle):
     if not ok:
         print("FAIL suite: the app on the device is not this build — this run covers NOTHING")
         return 1
-    extra = ["-resultBundlePath", str(bundle)]
+    extra = ["-resultBundlePath", str(bundle), "-collect-test-diagnostics", "on-failure"]
     for o in a.only:
         extra += ["-only-testing", f"{SCHEME}/{o}"]
     # Renew-free: hold() renews in the background for as long as this process lives.
@@ -206,10 +243,18 @@ def run(entry, udid, a, outdir, bundle):
             print(f"FAIL no_tests_ran: xcodebuild rc={rc}; see {log}")
             ok_all = False
         overlays = overlay_check(outdir / "attachments" / bundle.stem, shots)
+        dropped = dict(dropped_launches(log.read_text(errors="replace")) if log.exists() else [])
         for name, result in tests:
             hits = [v for tid, v in overlays.items() if tid and tid.split("/")[-1] == name]
+            drop = next((s for tid, s in dropped.items() if tid.split("/")[-1] == name.rstrip("()")), None)
             good = result == "Passed" and not hits
             ok_all &= good
+            if drop and not good:
+                print(f"BLIND {name} ({result}): launch_dropped at '{drop}': XCTest ended the "
+                      "running app and the device started no new one (CoreDevice 10004). No app "
+                      "process ran, so this tests nothing and is not an app exit (LOOP-PLAN P8); "
+                      "device diagnostics are in the result bundle")
+                continue
             print(f"{'PASS' if good else 'FAIL'} {name} ({result})")
             for h in (x for v in hits for x in v):
                 print(f"  FAIL overlay: {h} — XCUITest matched through it; this pass proves nothing")

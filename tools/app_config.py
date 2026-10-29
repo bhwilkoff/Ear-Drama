@@ -79,10 +79,10 @@ QA_ROOT = Path(os.environ.get("QA_ROOT", REPO / "build" / "qa"))
 #   python3.12 -m venv ~/.pyatv-venv && ~/.pyatv-venv/bin/pip install pyatv
 PYATV = Path(os.environ.get("PYATV", Path.home() / ".pyatv-venv" / "bin" / "atvremote"))
 ADB = Path(os.environ.get("ADB", Path.home() / "Library/Android/sdk/platform-tools/adb"))
-# Empty = inherit `xcode-select -p`. Set it when devicectl must come from a beta Xcode;
-# it is passed into every devicectl subprocess explicitly, because a plain os.environ
+# Defaults to the public Xcode: with xcode-select on the Command Line Tools there is no
+# devicectl, and every call failed rc=72 (2026-10-28). It is passed into every devicectl subprocess explicitly, because a plain os.environ
 # copy does not carry it when the parent shell never exported it.
-DEVELOPER_DIR = os.environ.get("DEVELOPER_DIR", "")
+DEVELOPER_DIR = os.environ.get("DEVELOPER_DIR", "/Applications/Xcode.app/Contents/Developer")
 
 # --- Env hooks ----------------------------------------------------------------
 # The env vars / intent extras your app reads to open a screen directly. These are
