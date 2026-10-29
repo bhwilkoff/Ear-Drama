@@ -122,15 +122,42 @@ So **D2b** makes one cohesive direction, D:
 - **Fit and finish checked mechanically**: button rows that never wrap apart, no
   orphaned or mid-word breaks, at 320, 375, 390 and 430 px.
 
+## Owner feedback on D (2026-10-29)
+
+*"This is looking much better so far, but the color combinations are looking
+terrible, especially on dark mode. Can you use the tools we built for Human Shaped
+(the universal app template) to better align on color combinations and making sure
+it looks good on all differnet kinds of surfaces. Additionally, the design is still
+not uniform for all different levels of content (some with images, some without,
+some with more information, some with less). We need to a design approach that
+evens out all of the inconsistencies and make the app look like one complete
+thought. The images that should lead should always be ones that best represent the
+whole Ear Drama. So, images/graphics that show the full "show" are better than
+individual contributors. Images that show the star(s) are better than those that
+show folks that are less recognizable. D is definitely the right approach to take
+for design of the app, but we really need to work hard to make sure the colors are
+working together instead of against each other and that all of the rough edges have
+been smoothed out with better design."*
+
+So **D is the direction** (the D2 gate is passed), and **D2c** refines it:
+- **Color, with the Human Shaped tools**: `docs/research/palette/measure/palette_check.py`
+  (APCA and WCAG, CIEDE2000, color-blind simulation, Simple Icons neighbors), the
+  palette lessons in `docs/research/palette/README.md`, humanshaped-site's
+  `research/notes/ai-design-anti-patterns.md`, `make-it-look-like-itself`, and the token
+  generator and test. Every pairing on every surface (ground, surface, board, button,
+  text, mark), light and dark, checked and rendered.
+- **One grammar for every level of content**: an item with a picture, without one, rich
+  or sparse, renders in the same structure, so the app reads as one thought.
+- **The picture that represents the whole show leads**: the show's own image (title card,
+  cast photo, logo) before any one contributor; the star(s) before less recognizable
+  people; all from data with evidence.
+
 ## State
 
-- Phase: D2b done 2026-10-29; **owner gate on direction D**.
-- Merged: `uniform-imagery-design` (D2b-1), Record a Line (D2b-2, directions/record),
-  direction D (D2b-3, directions/d, 1.0.105) plus its wrap and Share fixes and the
-  stronger fit gate. Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
-- Waiting on the owner (the page lists them): is D the direction; show line 10 or 5;
-  whose face leads; what a signed-out invitee sees; finished dramas listed and
-  credited; the grade as two numbers or hosted graded copies; Keep runs on to the
-  next cue; drama magenta beside recording red.
-- Next on yes: D3, one surface per batch on every platform (shared rules first).
-- Earlier: D2 review https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ; S1, Q1 live.
+- Phase: D2c (refine D: color, one grammar, show-first pictures), started 2026-10-29.
+  The owner chose D.
+- Running: D2c-1 color system with the Human Shaped tools; D2c-2 show-first picture
+  selection (catalog). Then D2c-3 rebuilds D on both with one grammar for every level of
+  content, and the fit gate.
+- Still open from the D page: show line 10 or 5; what a signed-out invitee sees; finished
+  dramas listed and credited; Keep runs on to the next cue.
