@@ -235,7 +235,7 @@ const Store = (() => {
     }
     hist.sort((a, b) => (b.at || 0) - (a.at || 0));
     for (const r of (remote && remote.follows) || []) {
-      const key = r.series_id;
+      const key = fsk(r.series_id);
       if (!(r.updated_at > (s.f[key] ? s.f[key].at : 0))) continue;
       changed++;
       const has = fol.some(x => x.key === key);
@@ -264,6 +264,7 @@ const Store = (() => {
   /* ---- Forwarding ids (contract §3.5; API.forwarding is the one resolver) ---- */
   let fwd = null;
   const fid = (id) => (fwd ? fwd.resolve(id) : id);
+  const fsk = (key) => (fwd && fwd.resolveSeries ? fwd.resolveSeries(key) : key);
   function forwardQueue(items) {
     const seen = new Set();
     const cards = new Map(items.filter(x => x.url || x.title).map(x => [x.id, x]));
@@ -276,7 +277,9 @@ const Store = (() => {
    * into the new id's by the newer stamp, keeps its own stamp and dirty flag (a rewrite is not a
    * listen, so it is never uploaded as new: the Worker's old-id rows are forwarded by each reader),
    * and becomes a stub the catalog draws again. A tombstoned id leaves the queue; history keeps it.
-   * Later Worker rows (applyRemote) are forwarded as they land. Returns how many ids it rewrote.
+   * A followed series key that moved does the same by its follow stamp; a tombstoned key's follow
+   * stays (the person's choice). Later Worker rows (applyRemote) are forwarded as they land.
+   * Returns how many ids and keys it rewrote.
    */
   function forward(f) {
     if (f) fwd = f;
@@ -301,16 +304,33 @@ const Store = (() => {
       delete pos[id];
       hist = hist.filter(x => x.id !== id);
     }
+    let fol = follows();
+    let followsMoved = 0;
+    const followAt = (k) => (s.f[k] ? s.f[k].at : (fol.some(x => x.key === k) ? 0 : -1));
+    for (const k of new Set([...fol.map(x => x.key), ...Object.keys(s.f)])) {
+      const n = fsk(k);
+      if (n === k) continue;
+      followsMoved++;
+      if (followAt(k) > followAt(n)) {
+        const on = s.f[k] ? !!s.f[k].on : true;
+        if (s.f[k]) s.f[n] = s.f[k]; else delete s.f[n];
+        fol = fol.filter(x => x.key !== n);
+        if (on) fol = fol.map(x => (x.key === k ? { key: n, name: null } : x));
+      }
+      delete s.f[k];
+      fol = fol.filter(x => x.key !== k);
+    }
     const q = queue();
     const fq = forwardQueue(q);
     const queueMoved = fq.length !== q.length || fq.some((x, i) => x.id !== q[i].id);
+    if (moved || followsMoved) saveStamps(s);
     if (moved) {
-      saveStamps(s);
       write(KEYS.positions, pos);
       write(KEYS.history, hist);
     }
+    if (followsMoved) write(KEYS.follows, fol);
     if (queueMoved) write(KEYS.queue, fq);
-    return moved + (queueMoved ? 1 : 0);
+    return moved + followsMoved + (queueMoved ? 1 : 0);
   }
 
   /** Episodes and series that arrived from the Worker without a card. */

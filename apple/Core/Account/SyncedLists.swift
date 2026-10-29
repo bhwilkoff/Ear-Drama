@@ -108,6 +108,27 @@ final class FollowedSeries {
         save()
     }
 
+    /// Forwarding (contract §3.5): a follow or unfollow kept under a series key
+    /// the catalog moved becomes the new key's when it is the newer, with its
+    /// stamp and pending state (a rewrite is not a choice, so it is never
+    /// uploaded as new); the old key is then gone. A tombstoned key's follow
+    /// stays: it is the person's choice. Returns how many keys moved.
+    @discardableResult
+    func forward(_ forwarding: IDForwarding) -> Int {
+        let moved = states.keys.filter { forwarding.resolveSeries($0) != $0 }.sorted()
+        for old in moved {
+            let new = forwarding.resolveSeries(old)
+            if let mine = states[old], mine.updatedAt > (states[new]?.updatedAt ?? .distantPast) {
+                states[new] = mine
+                if pending.contains(old) { pending.insert(new) } else { pending.remove(new) }
+            }
+            states[old] = nil
+            pending.remove(old)
+        }
+        if !moved.isEmpty { save() }
+        return moved.count
+    }
+
     private func save() {
         if let data = try? JSONEncoder().encode(states) { defaults.set(data, forKey: Self.key) }
         defaults.set(Array(pending), forKey: Self.pendingKey)
@@ -207,6 +228,17 @@ final class ListeningQueue {
         items = next
         save()
         onChange?()
+    }
+
+    /// The queue forwarded (`IDForwarding.forward`), keeping its stamp and
+    /// dirty flag, so a device on an older catalog is never overwritten by
+    /// this rewrite. Returns whether anything changed.
+    @discardableResult
+    func forward(_ forwarding: IDForwarding) -> Bool {
+        let next = forwarding.forward(items)
+        guard next != items else { return false }
+        replaceItemsKeepingStamp(next)
+        return true
     }
 
     func markSynced(_ sent: QueueState) {

@@ -82,6 +82,10 @@ CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TE
 -- now holding its default copy, or is tombstoned when none does; cumulative across publishes.
 CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
 CREATE TABLE episode_tombstones (id TEXT PRIMARY KEY);
+-- The same for series keys (follows, series links): an alias to the served series now holding
+-- more than half of the departed one's recordings, else a tombstone.
+CREATE TABLE series_key_aliases (old_key TEXT PRIMARY KEY, new_key TEXT NOT NULL);
+CREATE TABLE series_key_tombstones (key TEXT PRIMARY KEY);
 -- Story arcs (arcs.py, contract §3.3): a serial plays to its arc's end and stops (Decision 067).
 -- next_arc is the series' following arc whose first part is recommendable, offered, never started.
 CREATE TABLE arcs (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, title TEXT, parts INTEGER NOT NULL,
@@ -252,6 +256,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     counts["scripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script IS NOT NULL").fetchone()[0]
     counts["aliases"] = d.execute("SELECT COUNT(*) FROM episode_aliases").fetchone()[0]
     counts["tombstones"] = d.execute("SELECT COUNT(*) FROM episode_tombstones").fetchone()[0]
+    counts["seriesAliases"] = d.execute("SELECT COUNT(*) FROM series_key_aliases").fetchone()[0]
+    counts["seriesTombstones"] = d.execute("SELECT COUNT(*) FROM series_key_tombstones").fetchone()[0]
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES, "forwarding": fwd,
             "listenShelves": SH.listen_shelves(
@@ -285,26 +291,32 @@ def write_arcs(d):
 
 
 def write_forwarding(d, previous, forwarding_from):
-    """Write episode_aliases and episode_tombstones (forwarding.py), refusing a projection whose
-    forwarding breaks a rule. Returns the manifest's `forwarding`: the base it was computed
-    against (the previous projection's .zz sha256, null on a first publish) and the report."""
+    """Write episode_aliases, episode_tombstones, and their series-key twins (forwarding.py),
+    refusing a projection whose forwarding breaks a rule. Returns the manifest's `forwarding`:
+    the base it was computed against (the previous projection's .zz sha256, null on a first
+    publish), the episode report, and the series report under `series`."""
     served = {r[0] for r in d.execute("SELECT id FROM episodes")}
+    served_series = {r[0] for r in d.execute("SELECT key FROM series")}
     if forwarding_from is not None:
         aliases, tombstones = FW.inherit(forwarding_from, served)
-        report = {"inherited": True}
+        s_aliases, s_tombstones = FW.inherit(forwarding_from["series"], served_series)
+        report, s_report = {"inherited": True}, {"inherited": True}
         base = forwarding_from.get("base")
     else:
         copies = {}
         for eid, aid, url in d.execute("SELECT episode_id, archive_id, url FROM recordings ORDER BY episode_id, rank"):
             copies.setdefault(eid, []).append(FW.copy_key(aid, url))
         aliases, tombstones, report = FW.forward(previous, served, copies)
+        s_aliases, s_tombstones, s_report = FW.forward_series(previous and previous["series"], served_series,
+                                                              FW.series_copies(d))
         base = (previous or {}).get("base")
     bad = FW.violations(aliases, tombstones, served)
+    bad += [f"series {v}" for v in FW.violations(s_aliases, s_tombstones, served_series)]
     if bad:
         raise SystemExit("refusing to publish forwarding ids: " + "; ".join(bad[:5]))
-    FW.write(d, aliases, tombstones)
-    print(json.dumps({"forwarding": report}), file=sys.stderr)
-    return {"base": base, **report}
+    FW.write(d, aliases, tombstones, s_aliases, s_tombstones)
+    print(json.dumps({"forwarding": report, "seriesForwarding": s_report}), file=sys.stderr)
+    return {"base": base, **report, "series": s_report}
 
 
 def served_portraits(s, people):

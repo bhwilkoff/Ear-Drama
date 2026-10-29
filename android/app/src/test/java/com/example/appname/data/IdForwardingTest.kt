@@ -1,5 +1,6 @@
 package com.example.appname.data
 
+import com.example.appname.account.FollowRow
 import com.example.appname.account.HistoryRow
 import com.example.appname.account.QueueState
 import com.example.appname.account.SyncAnswer
@@ -54,6 +55,42 @@ class IdForwardingTest {
         assertEquals("only the row that was owed goes up, under its new id", listOf("jb|1943-11-21"), owed.map { it.episodeId })
         assertEquals("with its own stamp", 5_500L, owed.single().updatedAt)
         assertEquals("it migrates once", 0, user.forward(forwarding))
+    }
+
+    @Test fun `follows move once by the newer stamp, keeping their own`() = runBlocking {
+        val f = IdForwarding(
+            seriesAliases = mapOf("jbp" to "jb", "older" to "suspense", "both" to "twin"),
+            seriesTombstones = setOf("folkweave"),
+        )
+        clock = 5_000; user.setFollowing("jbp", true); user.setFollowing("folkweave", true)
+        clock = 9_000; user.setFollowing("suspense", true); user.setFollowing("twin", false)
+        clock = 1_000; user.setFollowing("older", true)
+        clock = 2_000; user.setFollowing("both", true)
+        user.markUploaded(user.localChanges(all = false))
+        clock = 5_500; user.setFollowing("jbp", true)   // changed again, not yet uploaded
+
+        assertEquals(3, user.forward(f))
+        assertTrue("the follow moved to the new key", user.isFollowing("jb"))
+        assertTrue("an older follow merges into the newer", user.isFollowing("suspense"))
+        assertTrue("a newer unfollow of the new key wins", !user.isFollowing("twin"))
+        assertTrue("a tombstoned key's follow stays: it is the listener's choice", user.isFollowing("folkweave"))
+        assertEquals(listOf("jb", "suspense", "folkweave").sorted(), user.followed().sorted())
+        val owed = user.localChanges(all = false).follows
+        assertEquals("only the follow that was owed goes up, under its new key", listOf("jb"), owed.map { it.seriesId })
+        assertEquals("with its own stamp", 5_500L, owed.single().updatedAt)
+        assertEquals("it migrates once", 0, user.forward(f))
+    }
+
+    @Test fun `a synced follow for the old key lands on the new one`() = runBlocking {
+        clock = 1_000; user.setFollowing("jb", true)
+        user.markUploaded(user.localChanges(all = false))
+        user.applyRemote(
+            SyncAnswer(serverTime = 10, follows = listOf(FollowRow("jbp", following = false, updatedAt = 9_000, device = "web"))),
+            "android",
+        )
+        user.forward(IdForwarding(seriesAliases = mapOf("jbp" to "jb")))
+        assertTrue("another device's later unfollow wins", !user.isFollowing("jb"))
+        assertTrue("a row the Worker sent is not sent back", user.localChanges(all = false).follows.isEmpty())
     }
 
     @Test fun `a synced row for the old id lands on the new one`() = runBlocking {

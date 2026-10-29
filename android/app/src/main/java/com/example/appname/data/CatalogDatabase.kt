@@ -289,18 +289,16 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         )
     }
 
-    suspend fun series(key: String): SeriesRow? = read {
-        queryRaw("SELECT $SERIES_COLUMNS FROM series s WHERE s.key = ?", listOf(key), ::seriesRow).firstOrNull()
-    }
+    /** The series [key] names, or the one it now is when a later catalog moved the key (§3.5). */
+    suspend fun series(key: String): SeriesRow? = read { seriesRowFor(key) }
 
-    /** §5 `seriesPage`: the series and its broadcast seasons, oldest first, undated last. */
+    /** §5 `seriesPage`: the series and its broadcast seasons, oldest first, undated last; a moved key opens the series it now is. */
     suspend fun seriesPage(key: String): SeriesPage? = read {
-        val series = queryRaw("SELECT $SERIES_COLUMNS FROM series s WHERE s.key = ?", listOf(key), ::seriesRow)
-            .firstOrNull() ?: return@read null
+        val series = seriesRowFor(key) ?: return@read null
         val seasons = queryRaw(
             "SELECT season, COUNT(*) FROM episodes WHERE series_key = ? " +
                 "GROUP BY season ORDER BY season IS NULL, season",
-            listOf(key),
+            listOf(series.key),
         ) { SeasonRow(it.textOrNull(0), it.getLong(1).toInt()) }
         SeriesPage(series, seasons)
     }
@@ -334,16 +332,45 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     // --- Episodes ---
 
-    /** §3.5: every alias and tombstone, for the stores that rewrite kept ids; an older catalog has no tombstones. */
+    /**
+     * §3.5: every alias and tombstone, episode and series, for the stores that rewrite kept ids
+     * and keys; a catalog older than tombstones or series forwarding has none of them.
+     */
     suspend fun forwarding(): IdForwarding = read {
         val aliases = queryRaw("SELECT old_id, new_id FROM episode_aliases") { it.getText(0) to it.getText(1) }.toMap()
-        val tombstones = if ("id" in queryRaw("PRAGMA table_info(episode_tombstones)") { it.getText(1) }) {
+        val tombstones = if (hasColumn("episode_tombstones", "id")) {
             queryRaw("SELECT id FROM episode_tombstones") { it.getText(0) }.toSet()
         } else {
             emptySet()
         }
-        IdForwarding(aliases, tombstones)
+        val seriesAliases = if (hasColumn("series_key_aliases", "old_key")) {
+            queryRaw("SELECT old_key, new_key FROM series_key_aliases") { it.getText(0) to it.getText(1) }.toMap()
+        } else {
+            emptyMap()
+        }
+        val seriesTombstones = if (hasColumn("series_key_tombstones", "key")) {
+            queryRaw("SELECT key FROM series_key_tombstones") { it.getText(0) }.toSet()
+        } else {
+            emptySet()
+        }
+        IdForwarding(aliases, tombstones, seriesAliases, seriesTombstones)
     }
+
+    private fun hasColumn(table: String, column: String): Boolean =
+        column in queryRaw("PRAGMA table_info($table)") { it.getText(1) }
+
+    private fun seriesRowFor(key: String): SeriesRow? {
+        val row = { k: String ->
+            queryRaw("SELECT $SERIES_COLUMNS FROM series s WHERE s.key = ?", listOf(k), ::seriesRow).firstOrNull()
+        }
+        return row(key) ?: resolveSeries(key).takeIf { it != key }?.let(row)
+    }
+
+    /** §3.5: a series key that changed forwards to its new one; a catalog before series forwarding has none. */
+    private fun resolveSeries(key: String): String =
+        if (!hasColumn("series_key_aliases", "old_key")) key
+        else queryRaw("SELECT new_key FROM series_key_aliases WHERE old_key = ?", listOf(key)) { it.getText(0) }
+            .firstOrNull() ?: key
 
     /** §3.5: an id that changed forwards to its new one. */
     private fun resolve(id: String): String =

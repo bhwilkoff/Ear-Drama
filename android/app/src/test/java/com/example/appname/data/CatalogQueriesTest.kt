@@ -82,6 +82,17 @@ class CatalogQueriesTest {
         assertTrue(f.isGone("sus|taken-down"))
         assertEquals("an unknown id is kept", "sus|1999-01-01", f.resolve("sus|1999-01-01"))
         assertFalse(f.isGone("suspense|sorry-wrong-number"))
+        assertEquals("series keys forward too", "suspense", f.resolveSeries("suspence"))
+        assertTrue(f.isSeriesGone("folkweave"))
+        assertEquals("an unknown key is kept", "nope", f.resolveSeries("nope"))
+    }
+
+    @Test fun `a moved series key opens the series it now is`() = runBlocking {
+        val page = db.seriesPage("suspence")
+        assertEquals("suspense", page?.series?.key)
+        assertTrue("with its seasons", page?.seasons?.isNotEmpty() == true)
+        assertEquals("suspense", db.series("suspence")?.key)
+        assertNull("control: a tombstoned key is not served", db.seriesPage("folkweave"))
     }
 
     @Test fun `episodeDetail forwards an alias`() = runBlocking {

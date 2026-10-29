@@ -846,6 +846,11 @@
     const body = $('show-body');
     const scope = r.p.get('season');
     load(body, () => API.seriesPage(r.key), (s) => {
+      if (s.key !== r.key) {   // a moved series key (contract §3.5): the address names the series it now is
+        const p = new URLSearchParams(r.p);
+        p.set('series', s.key);
+        history.replaceState(null, '', `?${p}${location.hash}`);
+      }
       setTitle(s.name);
       const following = Store.isFollowing(s.key);
       const followBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': String(following) },

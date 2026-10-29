@@ -84,6 +84,37 @@ check("control: a tombstoned id served again",
 check("control: an aliased id that is served", any(v.startswith("served") for v in FW.violations(ok, set(), {"a", "b"})), True)
 check("control: an id both aliased and tombstoned", any(v.startswith("both") for v in FW.violations(ok, {"a"}, {"b"})), True)
 
+# --- series keys: more than half of the recordings, never a tie (contract §3.5) ------------
+sh = {K(1): {"jb"}, K(2): {"jb"}, K(3): {"other"}, K(4): {"jb", "other"}}
+check("series: the series holding more than half of the recordings is the successor",
+      FW.series_successor({K(1), K(2), K(3)}, sh), "jb")
+check("series: control, exactly half is no successor", FW.series_successor({K(1), K(3)}, sh), None)
+check("series: control, a plurality short of half is no successor",
+      FW.series_successor({K(1), K(3), K(8), K(9)}, sh), None)
+check("series: the denominator counts recordings no longer served anywhere",
+      FW.series_successor({K(1), K(2), K(7), K(8), K(9)}, sh), None)
+check("series: a recording two series hold counts for each", FW.series_successor({K(4), K(3)}, sh), "other")
+check("series: control, no recordings is no successor", FW.series_successor(set(), sh), None)
+
+s_served = {"jackbenny", "suspense", "split1"}
+s_copies = {"jackbenny": {K(1), K(2)}, "suspense": {K(5)}, "split1": {K(7)}}
+sp = prev({"jb", "suspense", "tubetalk", "gone", "y"},
+          {"jb": {K(1), K(2)}, "suspense": {K(5)}, "tubetalk": {K(6), K(7), K(8)}, "gone": {K(9)}, "y": {K(5)}},
+          aliases={"jbp": "jb", "older": "gone", "split1": "tubetalk"}, tombstones={"taken", "suspense"})
+sa, st, sr = FW.forward_series(sp, s_served, s_copies)
+check("series: a key that left forwards to the series holding its recordings", sa.get("jb"), "jackbenny")
+check("series: a split with no majority is tombstoned", ("tubetalk" in st, "tubetalk" in sa), (True, False))
+check("series: a chain collapses (jbp -> jb -> jackbenny)", sa.get("jbp"), "jackbenny")
+check("series: an alias whose end is tombstoned is tombstoned", ("older" in st, "older" in sa), (True, False))
+check("series: a tombstone carries forward", "taken" in st, True)
+check("series: a key served again sheds its tombstone", "suspense" in st, False)
+check("series: a key served again sheds its alias", "split1" in sa, False)
+check("series: a merge into a key already served (y -> suspense)", sa.get("y"), "suspense")
+check("series: the report counts what left", (sr["left"], sr["aliased"], sr["tombstoned"], sr["returned"]),
+      (4, 2, 2, 2))
+check("series: forward_series breaks no rule", FW.violations(sa, st, s_served), [])
+check("series: a first publish forwards nothing", FW.forward_series(None, s_served, s_copies)[:2], ({}, set()))
+
 # --- inherit: the clean-only projection takes the served one's --------------------------
 src = {"aliases": {"a": "clean-ep", "u": "unclaimed-ep"}, "tombstones": {"t"}}
 check("an alias to an episode the narrower projection serves is kept", FW.inherit(src, {"clean-ep"})[0], {"a": "clean-ep"})
@@ -107,7 +138,7 @@ with tempfile.TemporaryDirectory() as t:
 
 
 # --- end to end: two builds, the second after a parse fix --------------------------------
-def research(path, rows):
+def research(path, rows, series=(("jb", "The Jack Benny Program"),)):
     d = sqlite3.connect(path)
     d.executescript("""
     CREATE TABLE series (key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks);
@@ -118,10 +149,11 @@ def research(path, rows):
     CREATE TABLE people (id, name, birth, death);
     CREATE TABLE sponsors (series_key, otrr_idp, sponsor, start, end, source);
     """)
-    d.execute("INSERT INTO series VALUES ('jb','The Jack Benny Program','OTR-Comedy',NULL,0,NULL,NULL,NULL)")
+    for key, name in series:
+        d.execute("INSERT INTO series VALUES (?,?,'OTR-Comedy',NULL,0,NULL,NULL,NULL)", (key, name))
     for eid, date, files, state in rows:
         d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (eid, "jb", date, "filename", None, "Show", None, state, "rec_orphan_unclaimed", "work_none_found",
+                  (eid, eid.split("|")[0], date, "filename", None, "Show", None, state, "rec_orphan_unclaimed", "work_none_found",
                    None, None, None, 0))
         for rank, f in enumerate(files):
             d.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?)",
@@ -160,19 +192,58 @@ with tempfile.TemporaryDirectory() as t:
           (con.execute("SELECT COUNT(*) FROM episode_aliases").fetchone()[0],
            con.execute("SELECT COUNT(*) FROM episode_tombstones").fetchone()[0]), (0, 0))
     con.close()
-    mem = sqlite3.connect(":memory:")
-    mem.execute("CREATE TABLE episodes (id TEXT)")
-    mem.execute("CREATE TABLE recordings (episode_id, rank, archive_id, url)")
-    real_forward = FW.forward
-    FW.forward = lambda *_: ({"a": "b", "b": "c"}, set(), {})
-    try:
-        B.write_forwarding(mem, None, None)
-        refused = False
-    except SystemExit:
-        refused = True
-    finally:
-        FW.forward = real_forward
-    check("control: forwarding that breaks a rule refuses the build", refused, True)
+
+    # A series key that leaves: "jbp" filed apart, then folded into "jb" by a later parse.
+    s_before = before + [("jbp|1946-01-06", "1946-01-06", ["jbp 46-01-06.mp3"], "keep_unclaimed"),
+                         ("jbp|1946-01-13", "1946-01-13", ["jbp 46-01-13.mp3"], "keep_unclaimed"),
+                         ("tt|2011-12-01", "2011-12-01", ["tt a.mp3"], "keep_unclaimed"),
+                         ("tt|2012-03-01", "2012-03-01", ["tt b.mp3"], "keep_unclaimed")]
+    s_after = before + [("jb|1946-01-06", "1946-01-06", ["jbp 46-01-06.mp3"], "keep_unclaimed"),
+                        ("jb|1946-01-13", "1946-01-13", ["jbp 46-01-13.mp3"], "keep_unclaimed"),
+                        ("tt201112|2011-12-01", "2011-12-01", ["tt a.mp3"], "keep_unclaimed"),
+                        ("tt201203|2012-03-01", "2012-03-01", ["tt b.mp3"], "keep_unclaimed")]
+    research(os.path.join(t, "s1.sqlite"), s_before, (("jb", "The Jack Benny Program"), ("jbp", "JBP"), ("tt", "Tube")))
+    research(os.path.join(t, "s2.sqlite"), s_after,
+             (("jb", "The Jack Benny Program"), ("tt201112", "2011-12"), ("tt201203", "2012-03")))
+    B.build(os.path.join(t, "s1.sqlite"), os.path.join(t, "q1.sqlite"), scripts={})
+    m = B.build(os.path.join(t, "s2.sqlite"), os.path.join(t, "q2.sqlite"), scripts={},
+                previous=FW.open_projection(os.path.join(t, "q1.sqlite")))
+    con = sqlite3.connect(os.path.join(t, "q2.sqlite"))
+    check("built: a series key folded into another forwards to it",
+          dict(con.execute("SELECT old_key, new_key FROM series_key_aliases")), {"jbp": "jb"})
+    check("built: a series split in two halves is tombstoned",
+          [r[0] for r in con.execute("SELECT key FROM series_key_tombstones")], ["tt"])
+    con.close()
+    check("built: the manifest counts series forwarding", (m["counts"]["seriesAliases"], m["counts"]["seriesTombstones"]),
+          (1, 1))
+    check("built: the manifest reports series forwarding", (m["forwarding"]["series"]["left"],
+                                                            m["forwarding"]["series"]["aliased"]), (2, 1))
+    B.build(os.path.join(t, "s2.sqlite"), os.path.join(t, "q2c.sqlite"), scripts={}, clean_only=True,
+            forwarding_from=FW.open_projection(os.path.join(t, "q2.sqlite")))
+    con = sqlite3.connect(os.path.join(t, "q2c.sqlite"))
+    check("built: the clean-only projection inherits the series tombstones (it serves no unclaimed series)",
+          ([r[0] for r in con.execute("SELECT key FROM series_key_tombstones")],
+           con.execute("SELECT COUNT(*) FROM series_key_aliases").fetchone()[0]), (["tt"], 0))
+    con.close()
+
+    def refused_with(episodes, series):
+        mem = sqlite3.connect(":memory:")
+        mem.execute("CREATE TABLE episodes (id TEXT, series_key TEXT)")
+        mem.execute("CREATE TABLE series (key TEXT)")
+        mem.execute("CREATE TABLE recordings (episode_id, rank, archive_id, url)")
+        real_forward, real_series = FW.forward, FW.forward_series
+        FW.forward = lambda *_: (episodes, set(), {})
+        FW.forward_series = lambda *_: (series, set(), {})
+        try:
+            B.write_forwarding(mem, None, None)
+            return False
+        except SystemExit:
+            return True
+        finally:
+            FW.forward, FW.forward_series = real_forward, real_series
+    check("control: episode forwarding that breaks a rule refuses the build", refused_with({"a": "b", "b": "c"}, {}), True)
+    check("control: series forwarding that breaks a rule refuses the build", refused_with({}, {"a": "b", "b": "c"}), True)
+    check("forwarding that breaks no rule builds", refused_with({}, {}), False)
 
 # --- the real artifact --------------------------------------------------------------------
 REAL = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
@@ -181,6 +252,8 @@ if os.path.exists(REAL):
     r = FW.read_projection(con)
     con.close()
     check("real: the published forwarding breaks no rule", FW.violations(r["aliases"], r["tombstones"], r["served"])[:3], [])
+    check("real: the published series forwarding breaks no rule",
+          FW.violations(r["series"]["aliases"], r["series"]["tombstones"], r["series"]["served"])[:3], [])
 
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

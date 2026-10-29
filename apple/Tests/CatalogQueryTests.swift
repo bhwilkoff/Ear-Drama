@@ -159,6 +159,8 @@ enum Fixture {
                   32, 1500.0, "AFRS", 1])
         try insert("INSERT INTO episode_aliases VALUES (?, ?)", ["suspense|old-slug", "suspense|1943-05-25"])
         try insert("INSERT INTO episode_tombstones VALUES (?)", ["suspense|taken-down"])
+        try insert("INSERT INTO series_key_aliases VALUES (?, ?)", ["suspence", "suspense"])
+        try insert("INSERT INTO series_key_tombstones VALUES (?)", ["folkweave"])
         // One measured episode (contract §3.1); every other row is NULL, as unmeasured.
         try insert("UPDATE episodes SET loudness_i = ?, loudness_tp = ? WHERE id = ?",
                    [-15.0, -6.0, "suspense|1943-05-25"])
@@ -405,6 +407,21 @@ struct CatalogQueryTests {
         #expect(f.isGone("suspense|taken-down"))
         #expect(f.resolve("suspense|1999-01-01") == "suspense|1999-01-01", "an unknown id is kept")
         #expect(!f.isGone("suspense|old-slug"))
+        #expect(f.resolveSeries("suspence") == "suspense", "series keys forward too")
+        #expect(f.isSeriesGone("folkweave"))
+        #expect(f.resolveSeries("nope") == "nope", "an unknown key is kept")
+    }
+
+    /// §3.5: a follow or series link made before a parse moved its key opens
+    /// the series it now is, under the new key.
+    @Test func aMovedSeriesKeyOpensTheSeriesItNowIs() throws {
+        let db = try Fixture.open()
+        let page = try #require(db.seriesPage(key: "suspence"))
+        #expect(page.series.key == "suspense")
+        #expect(!page.episodes.isEmpty, "with its episodes")
+        #expect(db.series(keys: ["suspence"]).map(\.key) == ["suspense"])
+        #expect(db.seriesPage(key: "folkweave") == nil, "control: a tombstoned key is not served")
+        #expect(db.resolveSeries("suspense") == "suspense")
     }
 
     @Test func aliasesForwardOldIDs() throws {

@@ -26,6 +26,8 @@ object CatalogFixture {
         "CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT)",
         "CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL)",
         "CREATE TABLE episode_tombstones (id TEXT PRIMARY KEY)",
+        "CREATE TABLE series_key_aliases (old_key TEXT PRIMARY KEY, new_key TEXT NOT NULL)",
+        "CREATE TABLE series_key_tombstones (key TEXT PRIMARY KEY)",
         "CREATE VIRTUAL TABLE episodes_fts USING fts5(title, series, people, transcript, content='', " +
             "tokenize='unicode61', detail=column)",
         "CREATE INDEX episodes_series ON episodes (series_key, air_date)",
@@ -156,6 +158,8 @@ object CatalogFixture {
             c.execSQL("INSERT INTO credits VALUES ('sus|1943-05-25', 'p2', 'host', NULL)")
             c.execSQL("INSERT INTO episode_aliases VALUES ('suspense|sorry-wrong-number', 'sus|1943-05-25')")
             c.execSQL("INSERT INTO episode_tombstones VALUES ('sus|taken-down')")
+            c.execSQL("INSERT INTO series_key_aliases VALUES ('suspence', 'suspense')")
+            c.execSQL("INSERT INTO series_key_tombstones VALUES ('folkweave')")
             // One measured episode; every other row is NULL, as unmeasured.
             c.execSQL("UPDATE episodes SET loudness_i = -15.0, loudness_tp = -6.0 WHERE id = 'sus|1943-05-25'")
             // One transcript passed the gate; the other failed it (searchable, never

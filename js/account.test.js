@@ -378,6 +378,39 @@ test('forwarded ids: stored rows move once, by the newer stamp; synced rows forw
   eq(Store.queue().map(x => x.id).join(), 'jb|1943-11-21', 'a synced queue forwards too');
 });
 
+test('forwarded series keys: follows move once, by the newer stamp; synced follows forward as they land', () => {
+  fresh();
+  const f = API.forwardingOf({}, [], { jbp: 'jb', older: 'suspense', both: 'twin' }, ['folkweave']);
+  Store.toggleFollow({ key: 'jbp', name: 'JBP' });
+  Store.toggleFollow({ key: 'folkweave', name: 'Folkweave' });
+  Store.toggleFollow({ key: 'suspense', name: 'Suspense' });
+  Store.toggleFollow({ key: 'twin', name: 'Twin' });
+  Store.toggleFollow({ key: 'twin', name: 'Twin' });   // unfollowed, and after `both` below was followed
+  const s = JSON.parse(localStorage.getItem('ed.stamps'));
+  s.f.older = { at: s.f.suspense.at - 5000, on: 1, dirty: 0 };   // an older follow, never uploaded
+  s.f.both = { at: s.f.twin.at - 5000, on: 1, dirty: 1 };
+  localStorage.setItem('ed.stamps', JSON.stringify(s));
+  localStorage.setItem('ed.follows', JSON.stringify([...Store.follows(), { key: 'older', name: 'Older' },
+                                                     { key: 'both', name: 'Both' }]));
+  const before = JSON.parse(localStorage.getItem('ed.stamps')).f.jbp;
+
+  assert(Store.forward(f) > 0, 'something moved');
+  const keys = Store.follows().map(x => x.key);
+  assert(keys.includes('jb') && !keys.includes('jbp'), 'the follow moved to the new key');
+  eq(JSON.parse(localStorage.getItem('ed.stamps')).f.jb.at, before.at, 'and keeps its own stamp');
+  eq(JSON.parse(localStorage.getItem('ed.stamps')).f.jbp, undefined, 'the old key\'s stamp is gone');
+  eq(JSON.stringify(Store.stubs().series), '["jb"]', 'the moved follow is a stub the index draws again');
+  eq(keys.filter(k => k === 'suspense').length, 1, 'an older follow merges into the newer one');
+  assert(!keys.includes('older'), 'and leaves');
+  assert(!keys.includes('twin') && !keys.includes('both'), 'a newer unfollow of the new key wins');
+  assert(keys.includes('folkweave'), 'a tombstoned key\'s follow stays: it is the person\'s choice');
+  eq(Store.forward(f), 0, 'it migrates once');
+
+  Store.applyRemote({ follows: [{ series_id: 'jbp', following: false, updated_at: Date.now() + 9000 }] });
+  assert(!Store.follows().some(x => x.key === 'jb' || x.key === 'jbp'), 'another device\'s row for the old key lands on the new one');
+  eq(JSON.parse(localStorage.getItem('ed.stamps')).f.jbp, undefined, 'never under the old key');
+});
+
 test('API.forwarding reads aliases and tombstones once; a catalog without tombstones has none', async () => {
   const served = { 'index/aliases.json': { a: 'b' } };
   const get = async (p) => { if (p in served) return served[p]; throw new API.DataError('missing', p); };
@@ -389,6 +422,45 @@ test('API.forwarding reads aliases and tombstones once; a catalog without tombst
   eq(API.forwardingOf({ a: 5 }, []).resolve('a'), 'a', 'only a string target resolves');
   eq(API.forwardingOf({}, ['t']).gone('t'), true, 'a tombstoned id is gone');
   eq(API.forwardingOf(null, null).resolve('a'), 'a', 'a malformed file forwards nothing');
+  const sf = API.forwardingOf({}, [], { jbp: 'jb', n: 3 }, ['folkweave']);
+  eq(sf.resolveSeries('jbp'), 'jb', 'a series alias resolves');
+  eq(sf.resolveSeries('jb'), 'jb', 'an unknown key is kept');
+  eq(sf.resolveSeries('n'), 'n', 'only a string target resolves');
+  eq(sf.resolveSeries('toString'), 'toString', 'an inherited name is not a series alias');
+  eq(sf.seriesGone('folkweave'), true, 'a tombstoned key is gone');
+  eq(sf.resolve('jbp'), 'jbp', 'series and episode forwarding are kept apart');
+  eq(API.forwardingOf({ a: 'b' }, []).resolveSeries('a'), 'a', 'a catalog before series forwarding forwards no key');
+});
+
+// Registered last: Sync.start keeps the card builder it is given for the rest of the page.
+test('hydrate draws every stub, past one batch: a forwarding can leave 200 history rows to draw', async () => {
+  fresh();
+  const stubs = Array.from({ length: 200 }, (_, i) => ({ id: `s|${String(i).padStart(3, '0')}`, at: 1000 - i }));
+  localStorage.setItem('ed.history', JSON.stringify(stubs));
+  localStorage.setItem('ed.queue', JSON.stringify([{ id: 'q|1' }, { id: 's|000' }, { id: 'q|none' }]));
+  localStorage.setItem('ed.follows', JSON.stringify([{ key: 's', name: null }]));
+  const real = { detail: API.episodeDetail, index: API.seriesIndex };
+  const asked = [];
+  API.episodeDetail = async (id) => {
+    asked.push(id);
+    return id === 'q|none' ? null : { id, series: id.split('|')[0], title: `T ${id}`, recordings: [{ url: `https://a/${id}.mp3` }] };
+  };
+  API.seriesIndex = async () => ({ byKey: new Map([['s', { key: 's', name: 'Stubs' }]]) });
+  let draws = 0;
+  Sync.onChange((k) => { if (k === 'changed') draws++; });
+  Sync.start({ card: (d, name) => ({ id: d.id, title: d.title, series: d.series, seriesName: name, url: d.recordings[0].url }) });
+  try {
+    await Sync.hydrate();
+  } finally {
+    API.episodeDetail = real.detail; API.seriesIndex = real.index;
+  }
+  eq(JSON.stringify(Store.stubs().episodes), '["q|none"]', 'every stub with a card is drawn; one the catalog lacks waits');
+  eq(Store.history().length, 200, 'no row lost');
+  eq(Store.history()[199].title, 'T s|199', 'the last row too');
+  eq(Store.history()[0].at, 1000, 'each row keeps its own time');
+  eq(asked.length, 202, 'each stub is asked for once');
+  eq(Store.follows()[0].name, 'Stubs', 'a series stub is drawn from the index');
+  eq(draws, 4, 'drawn as each batch of 60 lands');
 });
 
 (async () => {

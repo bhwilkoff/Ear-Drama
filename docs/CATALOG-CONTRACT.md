@@ -373,6 +373,52 @@ served, the rest kept under a corrected date or series); 85 tombstoned, every
 one now hidden under its corrected id (82 post-1972, 3 by other audit rules);
 the clean-only projection 0 aliases and the same 85 tombstones.
 
+**Series keys forward the same way.** A series key is stored too: every
+follow, every series link and deep link (`/series/{key}`), and the Worker's
+follow rows. 237 of the C1 rebuild's 899 episode aliases changed series key.
+
+| Table | Columns | Meaning |
+|---|---|---|
+| `series_key_aliases` | `old_key` TEXT PK, `new_key` TEXT | a series key this projection no longer serves, and the served series it now is |
+| `series_key_tombstones` | `key` TEXT PK | a series key that left with no successor |
+
+Every series key the live projection served and this one does not gets
+exactly one row: an **alias** to the served series that now holds **more than
+half** of its recordings (the distinct archive.org item plus file of every
+copy of every episode it served, the same recording identity as above), else a
+**tombstone**. More than half, because a follow is a choice of one program:
+forwarded to a series holding less than half of what was followed, it most
+likely names a different program (a split, or a bag of one-offs filed apart),
+and a wrong program is worse than a dead follow; a majority is also never a
+tie. The denominator is every recording the series served, not only those
+still served somewhere, so a series mostly taken down is not forwarded on the
+strength of its remainder. Cumulative, chains collapse, a key served again
+sheds both, the clean-only projection inherits them, and the same six guards
+hold, each seen red. `manifest.json` counts `counts.seriesAliases` and
+`counts.seriesTombstones`, and `forwarding.series` is the series report (the
+same keys as the episode one). `publish_diff.py` refuses a publish in which a
+series key left with neither row. The web projection publishes
+`data/index/series-aliases.json` (only aliases to a series it serves) and
+`data/index/series-tombstones.json`.
+
+**Clients resolve a series key in the same one place** as an episode id: an
+aliased key reads as its `new_key`, a tombstoned key is gone, any other
+unknown key is kept. A follow under a moved key merges into the new key's by
+the newer stamp, keeping its own stamp and pending state (never uploaded as
+new); a tombstoned key's follow stays (it is the person's choice; it simply
+has no new episodes). A series page, a series deep link, and a Worker follow
+row each resolve through it. Downloads need no series rewrite: a download's
+series is read from its episode id (the key before its `|`), which forwards
+above.
+
+MEASURED 2026-10-28, the same pair of builds: 46 served series keys left; 20
+aliased (every one onto a series holding all of its recordings: 139 of 139 for
+"Ron Bowser John Dunning Project Information Please" onto Information
+Please), 26 tombstoned (24 with none of their recordings served anywhere; the
+largest split, "Tube Talk", has at most 4 of its 26 in any one series, "The Big
+Broadcast" 1 of its 20). Every threshold above 4 of 26 (15 %) gives these
+same rows; more than half is the rule because it is the one with a reason.
+
 ## 4. The web projection (Pages)
 
 Cut from the served projection, never built separately. *Layout to measure*;
@@ -388,6 +434,9 @@ the starting shape, Archive Watch's:
   projection serves) and `data/index/tombstones.json` (sorted ids): §3.5's
   forwarding. An alias to an episode the web does not serve (the public-web
   gate) is left out, so on the web that id is simply not served.
+- `data/index/series-aliases.json` (`{old_key: new_key}`, only aliases to a
+  series this projection serves) and `data/index/series-tombstones.json`
+  (sorted keys): §3.5's series forwarding, gated the same way.
 - `data/people/{shard}.json`: `withPerson` (§5), sharded as the episodes
   are but by the person id: `{id: [name, birth, death, art, credits]}`
   (`fields.person`), each credit `[id, date, title, num, series, role,

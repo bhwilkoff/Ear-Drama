@@ -194,6 +194,21 @@ def violations(out):
             v.setdefault("a tombstoned id is not listed", []).append(t)
     if tombs != sorted(set(tombs)):
         v["tombstones are sorted and unique"] = [len(tombs)]
+    # The same for series keys: an alias ends at an indexed series; a forwarded or tombstoned key is not indexed.
+    sp = os.path.join(out, "index", "series-aliases.json")
+    s_fwd = load(out, "index", "series-aliases.json") if os.path.exists(sp) else {}
+    stp = os.path.join(out, "index", "series-tombstones.json")
+    s_tombs = load(out, "index", "series-tombstones.json") if os.path.exists(stp) else []
+    for o, n in sorted(s_fwd.items()):
+        if n not in index:
+            v.setdefault("every series alias ends at an indexed series", []).append(o)
+        if o in index:
+            v.setdefault("an aliased series key is not indexed", []).append(o)
+    for t in s_tombs:
+        if t in index:
+            v.setdefault("a tombstoned series key is not indexed", []).append(t)
+    if s_tombs != sorted(set(s_tombs)):
+        v["series tombstones are sorted and unique"] = [len(s_tombs)]
     lines = " ".join(load(out, "manifest.json")["rightsLines"].values()).lower()
     if "public domain" in lines:
         v["no rights line says public domain"] = [lines]
@@ -270,6 +285,8 @@ with tempfile.TemporaryDirectory() as tmp:
         c.executemany("INSERT INTO episode_aliases VALUES (?,?)",
                       [("suspense|old-slug", "suspense|1943-05-25"), ("suspense|1921-02-24", "suspense|1944-02-24")])
         c.execute("INSERT INTO episode_tombstones VALUES ('suspense|gone')")
+        c.executemany("INSERT INTO series_key_aliases VALUES (?,?)", [("suspence", "suspense"), ("gated", "nowhere")])
+        c.execute("INSERT INTO series_key_tombstones VALUES ('folkweave')")
     out = os.path.join(tmp, "web")
     m = W.build(served, out)
     check("gate closed by default", m["cleanOnly"], True)
@@ -367,6 +384,21 @@ with tempfile.TemporaryDirectory() as tmp:
           ["suspense|1943-05-25"])
     W.dump(os.path.join(out, "index", "aliases.json"), {})
     W.dump(os.path.join(out, "index", "tombstones.json"), [])
+    check("series-aliases.json: only to a series the web serves", load(out, "index", "series-aliases.json"),
+          {"suspence": "suspense"})
+    check("series-tombstones.json carries the served projection's", load(out, "index", "series-tombstones.json"),
+          ["folkweave"])
+    W.dump(os.path.join(out, "index", "series-aliases.json"), {"old-a": "nowhere", "mrsorrowful": "suspense"})
+    W.dump(os.path.join(out, "index", "series-tombstones.json"), ["speeches"])
+    got = violations(out)
+    check("control: a series alias to an unindexed series is caught",
+          got.get("every series alias ends at an indexed series"), ["old-a"])
+    check("control: an aliased series key still indexed is caught",
+          got.get("an aliased series key is not indexed"), ["mrsorrowful"])
+    check("control: a tombstoned series key still indexed is caught",
+          got.get("a tombstoned series key is not indexed"), ["speeches"])
+    W.dump(os.path.join(out, "index", "series-aliases.json"), {"suspence": "suspense"})
+    W.dump(os.path.join(out, "index", "series-tombstones.json"), ["folkweave"])
 
     # Broken controls: a stray shard id, a misplaced id, and a leaked unclaimed row must each be caught.
     sh = W.shard_of("suspense|1943-05-25") + ".json"

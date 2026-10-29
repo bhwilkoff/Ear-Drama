@@ -353,11 +353,11 @@ struct SeriesScreen: View {
                 .navigationTitle(page.series.name)
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
-                        FollowButton(key: key)
+                        FollowButton(key: page.series.key)
                         SeriesDownloadMenu(page: page)
                     }
                 }
-                .sensoryFeedback(Haptic.selection.feedback, trigger: follows.isFollowing(key))
+                .sensoryFeedback(Haptic.selection.feedback, trigger: follows.isFollowing(page.series.key))
             }
         }
         #if os(iOS)

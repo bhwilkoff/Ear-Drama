@@ -337,4 +337,40 @@ moves ids needs nothing more: the next publish forwards them. Never hand-write
 an alias; fix the parse and let the recording decide. Never reuse an id for a
 different broadcast. A client rewrite keeps each row's own stamp and is never
 uploaded as new, so a device on an older catalog is not overwritten by one on
-a newer catalog. Series keys do not forward yet (follows are series keys).
+a newer catalog. Series keys forward too (015).
+
+## 015 — A series key that leaves forwards to the series holding more than half of its recordings, else a tombstone
+*Date: 2026-10-28*
+
+Every publish forwards series keys the way 014 forwards episode ids
+(`forwarding.forward_series`, tables `series_key_aliases` and
+`series_key_tombstones`, contract §3.5): a key the live projection served and
+this one does not gets an alias to the served series now holding more than half
+of the distinct recordings (archive.org item plus file) of every episode it
+served, or a tombstone. Cumulative, chains collapse, a key served again sheds
+both, the clean-only projection inherits them, the builder refuses a broken
+forwarding, and `publish_diff.py` refuses a key that left with neither. Every
+client resolves a key in the same one place as an episode id and rewrites the
+follows it kept, once, by the newer stamp.
+
+**Why**: a series key is the person's data too: their follows, the Worker's
+follow rows, every series link they shared. 237 of the C1 rebuild's 899 episode
+aliases changed series key, and 46 served keys left outright; without this,
+each one is a follow that silently stops and a link that opens nothing. The
+owner, 2026-10-28: *"Let's just get everything set up the way that we want it
+to be. We don't have to worry about current users, but we do have to worry
+about building for the future."* More than half, not a plurality: a follow is a
+choice of one program, and a series that leaves by splitting ("Tube Talk" into
+one series per month) has no single successor; forwarding it to the biggest
+fragment would name a different program, which is worse than a dead follow.
+The denominator is every recording the series served, so a series mostly taken
+down is not forwarded on its remainder.
+
+**How to apply**: measured on the same pair of builds as 014: 46 keys left, 20
+aliased (each onto a series holding all of its recordings, the largest 139 of
+139 onto Information Please), 26 tombstoned (24 with no recording served
+anywhere; "Tube Talk" at most 4 of 26 in one series, "The Big Broadcast" 1 of
+20). Any threshold above 15 % gives the same rows today; if a future parse
+produces a borderline split, the rule stays at more than half and the split is
+a tombstone. Downloads need no series rewrite: their series is read from the
+episode id, which 014 forwards.

@@ -7,7 +7,7 @@
 #            restore the transcript cache (transcripts-latest, written by
 #            catalog-transcripts.yml; missing = none searchable or shown),
 #            fetch the live projection (catalog-latest), build the served
-#            projection forwarding every id the live one served and this one
+#            projection forwarding every id and series key the live one served and this one
 #            does not (contract §3.5: an alias, or a tombstone), the clean-only
 #            projection taking the same forwarding, and the web projection,
 #            run the contract tests over the real
@@ -229,7 +229,7 @@ jobs:
           python3 tools/build_projection.py --out out/publish "${prev[@]}" "${loud[@]}" | tail -3
           python3 tools/build_projection.py --clean-only --out out/publish-clean \
             --forwarding-from out/publish/ear-drama.sqlite "${loud[@]}" | tail -3
-          echo "forwarding: $(python3 -c "import json;m=json.load(open('out/publish/manifest.json'));print(m['counts']['aliases'], 'aliases,', m['counts']['tombstones'], 'tombstones;', m['forwarding'])")"
+          echo "forwarding: $(python3 -c "import json;m=json.load(open('out/publish/manifest.json'));c=m['counts'];print(c['aliases'], 'aliases,', c['tombstones'], 'tombstones,', c['seriesAliases'], 'series aliases,', c['seriesTombstones'], 'series tombstones;', m['forwarding'])")"
           echo "loudness rows: $(python3 -c "import json;print(json.load(open('out/publish/manifest.json'))['counts']['loudness'])")"
           echo "transcripts shown / searchable: $(python3 -c "import json;c=json.load(open('out/publish/manifest.json'))['counts'];print(c['transcripts'], '/', c['transcriptsSearchable'])")"
           # The public-web gate: one flag, opened only by the repository variable.

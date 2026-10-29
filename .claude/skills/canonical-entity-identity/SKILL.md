@@ -103,6 +103,18 @@ correct. And when two distinct records share a title and year, their
 pages must differ (name the source item in `<title>`), or the search
 engine picks its own canonical and drops one.
 
+**A parent key forwards too, by a majority of its children.** Follows,
+subscriptions, and collection links store the parent's key (a series,
+a show, an album), and a parse fix that moves children moves parents:
+Ear Drama's first id fix moved 984 episode ids and 46 series keys
+(catalog DECISIONS 015). Forward a departed parent to the parent that
+now holds MORE THAN HALF of its children's identities (the recording,
+never a title), counted against everything it held, else tombstone it.
+A plurality is wrong: a parent that left by splitting (one series filed
+per month) has no successor, and forwarding a follow to the largest
+fragment names a different thing. Same guards, same cumulative carry,
+same one resolver per client as the child ids.
+
 ## Consumption rules (where identity bugs actually bite)
 
 - **Never reverse-parse a composite ID.** `id.substringBefore('-')`
