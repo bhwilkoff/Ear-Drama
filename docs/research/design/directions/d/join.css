@@ -1,0 +1,20 @@
+/* Direction D's making screens are D2b-2's prototype (directions/record/), unchanged
+   but for what joins them to the rest of D: text on a hue block takes the on-genre
+   tokens (4.5:1 in both modes), and dark mode keeps the block in its full hue, as
+   D's boards do. */
+[data-hue="drama"] { --on-hue: var(--color-on-genre-drama); }
+[data-hue="mystery"] { --on-hue: var(--color-on-genre-mystery); }
+[data-hue="scifi"] { --on-hue: var(--color-on-genre-scifi); }
+[data-hue="western"] { --on-hue: var(--color-on-genre-western); }
+[data-hue="comedy"] { --on-hue: var(--color-on-genre-comedy); }
+[data-hue="news"] { --on-hue: var(--color-on-genre-news); }
+[data-hue="documentary"] { --on-hue: var(--color-on-genre-documentary); }
+[data-hue="serial"] { --on-hue: var(--color-on-genre-serial); }
+[data-hue]:not([data-hue="none"]) { --block-bg: var(--hue); --block-fg: var(--on-hue); --block-muted: var(--on-hue); }
+html[data-theme="dark"] [data-hue]:not([data-hue="none"]) { --block-bg: var(--hue); --block-fg: var(--on-hue); --block-muted: var(--on-hue); }
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) [data-hue]:not([data-hue="none"]) { --block-bg: var(--hue); --block-fg: var(--on-hue); --block-muted: var(--on-hue); }
+}
+* { overflow-wrap: normal; word-break: normal; hyphens: manual; }
+/* D's fit rule: nothing scrolls sideways, so the listen-through cast wraps instead of sliding. */
+.lt-cast { flex-wrap: wrap; overflow-x: visible; }

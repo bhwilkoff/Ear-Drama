@@ -1,4 +1,4 @@
-/* A copy of the generated design-tokens block in css/styles.css (2026-10-29), font paths rewritten for the D2 prototypes. */
+/* A copy of the generated design-tokens block in css/styles.css (2026-10-29; re-copied in D2b-3 with the on-genre tokens), font paths rewritten for the D2 prototypes. */
 @font-face { font-family: "Big Shoulders"; src: url("../../../../../fonts/big-shoulders.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: "Public Sans"; src: url("../../../../../fonts/public-sans.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
 @font-face { font-family: "Public Sans"; src: url("../../../../../fonts/public-sans-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
@@ -29,6 +29,14 @@
   --color-genre-news: #44420E;
   --color-genre-documentary: #217500;
   --color-genre-serial: #5D0087;
+  --color-on-genre-drama: #FFFFFF;
+  --color-on-genre-mystery: #FFFFFF;
+  --color-on-genre-scifi: #FFFFFF;
+  --color-on-genre-western: #FFFFFF;
+  --color-on-genre-comedy: #131316;
+  --color-on-genre-news: #FFFFFF;
+  --color-on-genre-documentary: #FFFFFF;
+  --color-on-genre-serial: #FFFFFF;
   --font-display: "Big Shoulders", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -82,6 +90,14 @@ html[data-theme="dark"] {
   --color-genre-news: #CECEC0;
   --color-genre-documentary: #81CB70;
   --color-genre-serial: #AE6DDC;
+  --color-on-genre-drama: #0F0F11;
+  --color-on-genre-mystery: #0F0F11;
+  --color-on-genre-scifi: #0F0F11;
+  --color-on-genre-western: #0F0F11;
+  --color-on-genre-comedy: #0F0F11;
+  --color-on-genre-news: #0F0F11;
+  --color-on-genre-documentary: #0F0F11;
+  --color-on-genre-serial: #0F0F11;
 }
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
@@ -111,14 +127,22 @@ html[data-theme="dark"] {
     --color-genre-news: #CECEC0;
     --color-genre-documentary: #81CB70;
     --color-genre-serial: #AE6DDC;
+    --color-on-genre-drama: #0F0F11;
+    --color-on-genre-mystery: #0F0F11;
+    --color-on-genre-scifi: #0F0F11;
+    --color-on-genre-western: #0F0F11;
+    --color-on-genre-comedy: #0F0F11;
+    --color-on-genre-news: #0F0F11;
+    --color-on-genre-documentary: #0F0F11;
+    --color-on-genre-serial: #0F0F11;
   }
 }
-[data-genre="drama"] { --genre-accent: var(--color-genre-drama); }
-[data-genre="mystery"] { --genre-accent: var(--color-genre-mystery); }
-[data-genre="scifi"] { --genre-accent: var(--color-genre-scifi); }
-[data-genre="western"] { --genre-accent: var(--color-genre-western); }
-[data-genre="comedy"] { --genre-accent: var(--color-genre-comedy); }
-[data-genre="news"] { --genre-accent: var(--color-genre-news); }
-[data-genre="documentary"] { --genre-accent: var(--color-genre-documentary); }
-[data-genre="serial"] { --genre-accent: var(--color-genre-serial); }
+[data-genre="drama"] { --genre-accent: var(--color-genre-drama); --genre-on: var(--color-on-genre-drama); }
+[data-genre="mystery"] { --genre-accent: var(--color-genre-mystery); --genre-on: var(--color-on-genre-mystery); }
+[data-genre="scifi"] { --genre-accent: var(--color-genre-scifi); --genre-on: var(--color-on-genre-scifi); }
+[data-genre="western"] { --genre-accent: var(--color-genre-western); --genre-on: var(--color-on-genre-western); }
+[data-genre="comedy"] { --genre-accent: var(--color-genre-comedy); --genre-on: var(--color-on-genre-comedy); }
+[data-genre="news"] { --genre-accent: var(--color-genre-news); --genre-on: var(--color-on-genre-news); }
+[data-genre="documentary"] { --genre-accent: var(--color-genre-documentary); --genre-on: var(--color-on-genre-documentary); }
+[data-genre="serial"] { --genre-accent: var(--color-genre-serial); --genre-on: var(--color-on-genre-serial); }
 /* end of the copied tokens */

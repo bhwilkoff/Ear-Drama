@@ -10,13 +10,16 @@
 //      (AGENTS.md; tvOS-DESIGN §7.1), with its own negative control;
 //   5. color.genre stops naming exactly the catalog's genre keys, or a genre
 //      mark drops below 3:1 on background, surface, or surfaceAlt in either
-//      mode (Decision 064), with its own negative control.
+//      mode (Decision 064), with its own negative control;
+//   5b. color.onGenre stops naming the same keys as color.genre, or text on a
+//      genre board drops below 4.5:1 in either mode (D2b-3), with its own
+//      negative control.
 //
 //   node tools/test_design_tokens.mjs
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { plan, loadTokens, colors, genres, contrast, webFonts, ROOT } from './design_tokens.mjs';
+import { plan, loadTokens, colors, genres, onGenres, contrast, webFonts, ROOT } from './design_tokens.mjs';
 
 let failed = 0;
 const ok = (cond, msg) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${msg}`); if (!cond) failed++; };
@@ -110,6 +113,25 @@ ok(weakMarks(tokens).length === 0, `every genre mark holds 3:1 on background, su
 const faded = structuredClone(tokens);
 faded.color.genre.drama.light = '#E0E0E4';
 ok(weakMarks(faded).some((w) => w.startsWith('light drama')), 'the genre check catches a pale light-mode drama mark');
+
+// 5b. Text on a genre board (D2b-3): 4.5:1 on its own hue, both modes.
+const weakBoards = (t) => {
+  const hue = Object.fromEntries(genres(t).map((g) => [g.name, g]));
+  const out = [];
+  for (const g of onGenres(t)) for (const mode of ['light', 'dark']) {
+    if (!hue[g.name]) { out.push(`${g.name} has no genre`); continue; }
+    const r = contrast(g[mode], hue[g.name][mode]);
+    if (r < 4.5) out.push(`${mode} ${g.name} ${r.toFixed(2)}:1`);
+  }
+  return out;
+};
+ok(JSON.stringify(onGenres(tokens).map((g) => g.name).sort()) === JSON.stringify(gs.map((g) => g.name).sort()), 'color.onGenre names the same keys as color.genre');
+let lowestBoard = Infinity;
+for (const g of onGenres(tokens)) for (const mode of ['light', 'dark']) lowestBoard = Math.min(lowestBoard, contrast(g[mode], tokens.color.genre[g.name][mode]));
+ok(weakBoards(tokens).length === 0, `text on every genre board holds 4.5:1 (lowest ${lowestBoard.toFixed(2)}:1; under: ${weakBoards(tokens).join('; ') || 'none'})`);
+const whiteComedy = structuredClone(tokens);
+whiteComedy.color.onGenre.comedy.light = '#FFFFFF';
+ok(weakBoards(whiteComedy).some((w) => w.startsWith('light comedy')), 'the board check catches white text on the light comedy board (3.90:1)');
 
 // 6. Every face the tokens name is a file the platform ships (Decision 060),
 //    and only the display levels set the display face, with a negative control.
