@@ -180,12 +180,13 @@ describing."*
 
 ## State
 
-- Phase: D2c (refine D: color, one grammar, show-first pictures), started 2026-10-29.
-  The owner chose D.
-- D2c-1 merged (1.0.106): boards and marks, one lightness band per mode, onBoard text,
-  every pairing checked (docs/research/palette/surfaces.md). Running: D2c-2 show-first picture
-  selection (catalog, show line now 5); W1 open invites and the finished-drama listing
-  (Worker and API). Then D2c-3 rebuilds D on all three with one grammar for every level of
-  content, the three recording modes, the finished-drama listing screens, and the fit gate.
-- The four D questions answered (above). Build batch W1: signed-out invite viewing and the
-  finished-drama listing (Worker and clients).
+- Phase: D2c-3 (D rebuilt as one complete thought), started 2026-10-29.
+- Merged: D2c-1 colors (1.0.106); W1 open invites and the finished listing (1.0.107,
+  Worker deployed 7a515f24); D2c-2 show-first pictures (1.0.108: of 2,036 shows, 37 show,
+  261 star, 1 person, 1,737 board; live after the next cache Release).
+- Running: D2c-3 (one grammar for every level of content, the new colors and picture
+  fields, three recording modes, open invite and finished-drama screens, fit gate);
+  C2 (stage the cache Release with series_art) and W2 (a published production survives its
+  last member's deletion).
+- Next: publish D2c-3 for the owner (one self-contained review page), then D3 builds it on
+  every platform.

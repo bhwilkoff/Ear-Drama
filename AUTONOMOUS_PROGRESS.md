@@ -488,3 +488,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Design tick 8, 2026-10-29, the owner chose D; D2c starts
 - Owner: "D is definitely the right approach ... the color combinations are looking terrible, especially on dark mode. Can you use the tools we built for Human Shaped ... the design is still not uniform for all different levels of content ... images/graphics that show the full 'show' are better than individual contributors."
 - Running: D2c-1 color system with palette_check.py and the Human Shaped notes (Opus); D2c-2 show-first picture selection in the pipeline (Opus). Next: D2c-3 rebuilds D with one grammar for every level of content.
+
+### Design tick 9, 2026-10-29, W1, D2c-1 and D2c-2 merged; D2c-3 running
+- Owner rulings: shows at 5 episodes; invite links show everything signed out; finished dramas listed and credited; three recording modes.
+- D2c-1 (1.0.106): boards and marks in one lightness band per mode, onBoard text Lc 86-90, 0 vibrating pairs; Apple, Android built and tested.
+- W1 (1.0.107): open invite reads and the finished listing; 226 Worker tests, all 166 mutations; deployed 7a515f24 (/v1/plays/finished 200, empty).
+- D2c-2 (1.0.108): show image, then star, then person, then board; Hilltop House's 1914 photo refused by a date rule; 37 / 261 / 1 / 1,737 of 2,036 shows.
+- Running: D2c-3 (Opus), C2 + W2 (Sonnet).
