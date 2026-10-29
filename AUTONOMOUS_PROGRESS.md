@@ -356,3 +356,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Not verified: Android and tvOS on a device; the Top Shelf; Android below 12 (no blur). Not dispatched: TestFlight 1.0.86 waits for a Release launch check on the iPhone, which P8 holds.
 - Seen: on light pages the blurred fill beside a narrow portrait reads as heavy dark bars (design call). The other artwork sources stay closed by RESEARCH §12 V1-V5 (owner's rights questions).
 - Running: P8 (first launch after an install quits), Opus.
+
+### Tick 103, 2026-10-28, P8 merged: the first-launch "quit" is a dropped XCUITest relaunch; 1.0.86 to TestFlight
+- Owner (on V2's blurred bars): "I think you can find better solutions for different aspect ratios of images, then just blurring and black bars. As I said, anything that needs to be designed will require a design skill and you need to either research or build that skill." Rule stamped into AGENT-BRIEF and memory; V3 (artwork-presentation-design skill, then the redesign on all five) running.
+- P8: every logged case is the run's first `app.open(URL)`: XCTest ends the running app and the device starts none (CoreDevice 10004); the app had reached idle. Not an app exit, not a path a TestFlight user takes. Cause on the device side still unseen (16 tries, no recurrence). ios_uitest.py reports it BLIND launch_dropped and now keeps device diagnostics (devicectl on xcodebuild's PATH); test_ios_launch_drop 2/2. Seen on the way, fixed: app_config.DEVELOPER_DIR defaults to Xcode (rc 0; rc 72 with it empty).
+- Release launch check, 1.0.86 build 87, iPhone 12: installed, alive at 5 s and 20 s (pid 7008), crash logs 2 before and after, terminate verified gone. App Store build dispatched upload-only (run 40794744301; store words wait on the owner).
+- CI: 1.0.86 Android Build (the first lintRelease-gated run), Site deploy, Design Tokens green.
+- Not investigated: SiteLinksUITests.testCreditsOpensTheSiteAndComesBack failed once at 4:35 PM (app still foreground after the Safari hand-off); the backboardd memory during XCTest recordings.
