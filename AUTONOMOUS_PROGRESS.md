@@ -410,3 +410,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - First Play release: versionCode 2 (1.0.92) committed to the internal track, "completed" (run 40808816813); the workflow pushed the versionCode (548d2f7).
 - Owner: "Graphics count just as much as photos." No photo-only art rule.
 - Owner: "Make sure all of the github actions are going through. I keep getting lots of errors to my email." 8 failure emails in 3 days: 5 Ear Drama (today's Play setup x2, A1's publish pattern x2, the 1.0.82 tvOS export) each followed by a green run of the same workflow; 3 Archive Watch (Verify playback passed on attempt 3; App Store submit green since). Every Ear Drama workflow's latest run is green.
+
+### Tick 111, 2026-10-28, D1, C2 and M8a merged (1.0.93); loop stopped for a fresh session
+- D1: LOOP-PLAN boxes and Needs Ben rows match the evidence (16 changed). C2: workflow-health and retry-infra-failures on; transcripts moved off the publish's window.
+- M8a: most of the invite client existed (batch 1, 2026-10-24); the placeholder "OWNER:" consent before upload is gone, Publish gated by one pinned constant per platform, tvOS plays productions. Owner: "Consent at publish only." (Decision 072). Worker tests and 99 mutations on the merged tree.
+- Owner step: `cd worker && npx wrangler deploy` (the live Worker still demands consent on upload, so invite uploads fail until it runs).
+- Owner: "Are we being as economical with tokens on this loop as we can be?" No; rules added to AGENT-BRIEF and LOOP-PLAN (grep before briefing, Sonnet by default, fresh session about every ten ticks). The loop stops here for a fresh session.
+- Next for the loop: M10 (parity audit and human-shaped review; Release zero-warning builds recorded on every platform), the Worker's publish refusing the placeholder consent version (owner ruling), Listen-through's red button under On Air (owner ruling), station-slot forwarding (owner ruling).
