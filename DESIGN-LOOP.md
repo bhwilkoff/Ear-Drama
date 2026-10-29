@@ -183,7 +183,8 @@ describing."*
 - Phase: D2c (refine D: color, one grammar, show-first pictures), started 2026-10-29.
   The owner chose D.
 - Running: D2c-1 color system with the Human Shaped tools; D2c-2 show-first picture
-  selection (catalog). Then D2c-3 rebuilds D on both with one grammar for every level of
-  content, and the fit gate.
+  selection (catalog, show line now 5); W1 open invites and the finished-drama listing
+  (Worker and API). Then D2c-3 rebuilds D on all three with one grammar for every level of
+  content, the three recording modes, the finished-drama listing screens, and the fit gate.
 - The four D questions answered (above). Build batch W1: signed-out invite viewing and the
   finished-drama listing (Worker and clients).
