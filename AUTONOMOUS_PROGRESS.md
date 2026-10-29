@@ -429,3 +429,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - P11: the owner's CC0 words (cc0-2026-10-29) served by the Worker and shown before Publish on web, Apple, Android; placeholder consents refused; Publish only when the Worker can reach archive.org. Station and evening slots follow aliases (contract 8).
 - Merged tree after both: Worker 101 mutations; web PASS (shell v49); tokens; 13 design rules; catalog 30/30; macOS 204; iOS and tvOS 0 warnings; Android lint clean. Worker deployed (b7f2ef05), /v1/health 200; GET /consent needs auth, so the live text was not read (tests cover it).
 - Running: P13 (every performer consents to their own recording; the Worker refuses publish without the archive account; "Use this take" and the Cast error color).
+
+### Tick 114, 2026-10-29, P13 and F3 merged (1.0.96, 1.0.97); both stores; loop stopped on owner steps
+- P13: every performer consents to their own recording; the director sees who has agreed; Publish waits for all; the Worker refuses publish without the archive account (deployed 50f5c931). "Use this take" ink outline; the Cast error color.
+- The Worker's mutation runner counted a broken suite as every mutation caught; the unmutated suite now must pass first (seen both ways).
+- F3: the consent words render as a lead and four list items on every platform, words unchanged; web shots read.
+- 1.0.97: iPhone 12 Release launch check passed; App Store upload succeeded (run 40903611427); Play internal released (run 40903616979).
+- Stopped: nothing running; the backlog waits on the owner (archive.org account and keys for Publish and P12; the take-down email; device play gates).
