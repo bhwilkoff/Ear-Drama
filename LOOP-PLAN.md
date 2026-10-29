@@ -489,5 +489,9 @@ works elsewhere, and checks again.
 
 Feedback from play sessions goes here, newest first, and the next tick takes it.
 
+- 2026-10-28: *"Graphics count just as much as photos."* A person's served image
+  (Wikidata P18 with evidence) stays whether it is a photograph, cartoon, plaque or
+  title card; no photo-only rule in art_policy.
+
 - 2026-10-28: be proactive: look for things to fix and design while building (see Feature batches).
 - 2026-10-28: "You are claiming things without verification all over the place": verify a device's state (lease file, a frame) before reporting it.
