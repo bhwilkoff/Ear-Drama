@@ -377,3 +377,10 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Dispatched: catalog publish with the date fix (run 40800038849); App Store upload of 1.0.87 (run 40798680295) after its iPhone 12 Release launch check.
 - Not done: old episode ids leave without forwarding (episode_aliases is never filled): 984 ids from the date fix. Owner ruling on priority.
 - Running: V4 (focal points for small crops).
+
+### Tick 106, 2026-10-28, V4 merged: small crops find the face (1.0.88)
+- Owner: "Let's just get everything set up the way that we want it to be. We don't have to worry about current users, but we do have to worry about building for the future." A1 (episode id forwarding) started.
+- V4: Apple Vision face boxes computed once in the pipeline (2,422 of 2,453 served portraits; 36/36 by eye on a face); every small crop on all five uses them. Frames read: Naish's 32 px cast face is his face, not the title lettering; Jack Benny's tile his face, not his chest. Merged tree: catalog 28/28, web tests; main had not moved under the clients since V4's base.
+- The staged catalog-2026-10-28 now carries V4's file (sizes and faces): 106,276 members, order identical, only people_wd/files.json.gz differs; checksums OK; the cutter's dry run passes. Still the owner's command (the permission check).
+- Live: the date-fix publish (run 40800038849) serves 107,369 episodes, as predicted.
+- Seen, owner calls: some served "portraits" are not photographs of the person (a plaque, a 1924 cartoon, a guitar, a theatre bill); Life With Luigi's title-card frame. Seen, no ruling: test_discover_corpus should SKIP without the otrr cache; the web lock-screen artwork is not face-cropped.
