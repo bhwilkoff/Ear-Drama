@@ -417,3 +417,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Owner step: `cd worker && npx wrangler deploy` (the live Worker still demands consent on upload, so invite uploads fail until it runs).
 - Owner: "Are we being as economical with tokens on this loop as we can be?" No; rules added to AGENT-BRIEF and LOOP-PLAN (grep before briefing, Sonnet by default, fresh session about every ten ticks). The loop stops here for a fresh session.
 - Next for the loop: M10 (parity audit and human-shaped review; Release zero-warning builds recorded on every platform), the Worker's publish refusing the placeholder consent version (owner ruling), Listen-through's red button under On Air (owner ruling), station-slot forwarding (owner ruling).
+
+### Tick 112, 2026-10-29, the owner's four answers; Worker deployed
+- Owner: "1. You can deploy the worker just fine. 2. Yes. 3. Red means recording. Research a better color and use it. 4. Let's refine the text and use it."
+- Worker deployed from main (wrangler, version bfa576b2; no D1 migrations pending); /v1/health 200. Invite uploads no longer demand consent live.
+- Consent words drafted from Decision 059, the owner's AI-training warning, research 08c §6.4 and the under-13 rule; shown to the owner; P11 ships them (Worker text, version cc0-2026-10-29; clients show the served text; Publish only when the Worker can reach archive.org) and makes station/evening slots follow aliases.
+- V5 (Opus): red means recording; research and apply a primary-action color through the tokens.
