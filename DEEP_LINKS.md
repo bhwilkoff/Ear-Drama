@@ -47,7 +47,10 @@ The records: Play's app signing key for
 `app.eardrama` has SHA-256
 `F0:A8:CF:0F:A7:99:7F:EA:06:DB:98:2D:87:47:1A:EE:04:DB:D2:21:60:0B:71:48:C3:AC:27:FA:CB:90:16:1E`
 (SHA-1 `20:2E:10:A0:1F:EB:58:43:50:FA:74:8C:AE:DB:65:D1:2F:19:C6:B1`); the
-upload key's fingerprint joins it once an upload keystore exists. The
+upload key (made 2026-10-28, `~/keystores/eardrama-upload.jks`, password in the
+Keychain) has SHA-256
+`6E:9C:A5:D2:63:CA:74:05:C4:01:06:E7:F3:17:8F:90:92:1C:D9:7E:68:46:29:2C:02:36:AD:87:20:8F:81:8A`
+(SHA-1 `02:24:E3:15:EA:5A:8E:32:73:C6:57:5D:3B:0F:93:58:60:3E:2B:54`). The
 Apple team is `L2G756LY8N`.
 
 ## Per-platform wiring
