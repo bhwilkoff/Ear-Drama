@@ -191,8 +191,12 @@ jobs:
           # never a build that silently forwards nothing.
           mkdir -p live
           if out=$(gh release view catalog-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
-            case " $out " in
-              *" ear-drama.sqlite.zz "*" manifest.json "*|*" manifest.json "*" ear-drama.sqlite.zz "*)
+            # Each name is matched on its own: a pattern holding both shares one space between
+            # adjacent names and never matched "ear-drama.sqlite.zz manifest.json" (2026-10-28).
+            both=no
+            case " $out " in *" ear-drama.sqlite.zz "*) case " $out " in *" manifest.json "*) both=yes ;; esac ;; esac
+            case "$both" in
+              yes)
                 bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber \
                   -p manifest.json -p ear-drama.sqlite.zz
                 want=$(python3 -c "import json;print(json.load(open('live/manifest.json'))['sha256']['zz'])")
