@@ -445,3 +445,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - P14 (1.0.100): the Worker's cron uploads each publish job as eardrama-<production id> in opensource_audio, one file per line, metadata from data, CC0; backoff, redaction, idempotent; P12 replace/remove on the Worker. Merged tree: Worker 197 tests, all 132 mutations. Migration 0004 applied remote; deployed 22e8b003 (cron */5); no jobs yet, nothing on archive.org.
 - P15 (1.0.101): clients show queued/uploading/published (link)/failed (reason, Publish again); Replace and Remove on lines. Web shots read. iPhone 12 launch check passed; App Store upload (run 40925856611) and Play internal versionCode 4 (run 40925862693) succeeded.
 - Next: P16 (per-line archive state, Open part on published, removal reason starts empty); owner calls on account deletion vs archive lines and an Ear Drama collection.
+
+### Tick 117, 2026-10-29, owner rulings on archive.org; labels live (1.0.102)
+- Owner: "Account deletion should definitely not remove their recordings from already submitted works ... And community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org". PLAYS-DESIGN P14 answered.
+- Labels approved by the owner and shipped in the Worker (deployed 7cc2820e): title suffix "(Ear Drama recording)", subject Ear Drama / audio drama / eardrama.org, a one-sentence factual description with the script's source, language eng. Pinned by the first-publish test (seen red on the old metadata).
+- Unexplained: one Worker run failed 2 tests right after a test edit; four later runs clean. Watch for it.
