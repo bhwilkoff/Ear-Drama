@@ -236,6 +236,27 @@ open class DownloadStore(
         saveIndex()
     }
 
+    /**
+     * Contract §3.5: a download kept under an id the catalog moved is re-keyed to the id it
+     * now is; its file keeps its name. When the new id already has its own download, the
+     * moved one is a second copy and goes. A tombstoned id's download stays: the file plays.
+     */
+    fun forward(forwarding: IdForwarding) = synchronized(lock) {
+        var changed = false
+        for (old in _records.value.keys.sorted()) {
+            val new = forwarding.resolve(old)
+            val r = _records.value[old] ?: continue
+            if (new == old) continue
+            if (_records.value.containsKey(new)) {
+                remove(old)
+            } else {
+                _records.value = _records.value - old + (new to r.copy(episodeId = new))
+                changed = true
+            }
+        }
+        if (changed) saveIndex()
+    }
+
     /** Every download, gone. The files go first and unconditionally: they are what the listener asked to reclaim. */
     fun removeAll() = synchronized(lock) {
         transport.cancelAll()

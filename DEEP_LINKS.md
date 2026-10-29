@@ -14,7 +14,7 @@ prefix lists, and a flat structure makes the lists short.
 | Resource | URL shape | Owner |
 |---|---|---|
 | Series | `https://eardrama.org/series/{key}` | All; web routes via `?series={key}` (`&season=`) |
-| Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards |
+| Episode | `https://eardrama.org/episode/{percent-encoded id}` | All; web routes via `?item={id}`; an aliased id forwards, a tombstoned one says it is no longer in the catalog (CATALOG-CONTRACT §3.5) |
 | Person | `https://eardrama.org/person/{percent-encoded person id}` | All; web routes via `?person={id}` (`&order=newest`), forwarded by `404.html` (WEB-DESIGN §4.14); `eardrama://person/{id}` is its twin. The apps open it on the person's page; they emit no person link yet |
 | Search | `https://eardrama.org/search?q=` | All; web routes via `?view=search&q=`; the apps open Search with the query filled in (`+` reads as a space, as `URLSearchParams` reads it) |
 | Library | `https://eardrama.org/library` | All; web routes via `?view=library`; the apps open the Library tab |

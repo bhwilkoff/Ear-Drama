@@ -5,6 +5,8 @@
     python3 tools/build_projection.py --db PATH --out DIR
     python3 tools/build_projection.py --loudness .cache/loudness.json.gz   # fill loudness_i, loudness_tp
     python3 tools/build_projection.py --transcripts .cache/transcripts.json.gz   # FTS text, has_transcript
+    python3 tools/build_projection.py --previous live/ear-drama.sqlite.zz   # forward the ids that left (§3.5)
+    python3 tools/build_projection.py --clean-only --forwarding-from out/publish/ear-drama.sqlite
 
 Reads the full research database (build_db.py, then enrich_db.py) and writes
 `ear-drama.sqlite`, its raw-DEFLATE `ear-drama.sqlite.zz`, and `manifest.json`.
@@ -36,6 +38,7 @@ import art_policy as AP
 import episode_scripts as ES
 from audit_audio_rights import pd_published_year
 import arcs as ARCS
+import forwarding as FW
 
 SCHEMA_VERSION = 1
 SERVED = ("keep_clean", "keep_unclaimed")
@@ -75,7 +78,10 @@ CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death 
 CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, height INTEGER,
     license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
+-- Forwarding ids (forwarding.py, contract §3.5): an id that left forwards to the served episode
+-- now holding its default copy, or is tombstoned when none does; cumulative across publishes.
 CREATE TABLE episode_aliases (old_id TEXT PRIMARY KEY, new_id TEXT NOT NULL);
+CREATE TABLE episode_tombstones (id TEXT PRIMARY KEY);
 -- Story arcs (arcs.py, contract §3.3): a serial plays to its arc's end and stops (Decision 067).
 -- next_arc is the series' following arc whose first part is recommendable, offered, never started.
 CREATE TABLE arcs (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, title TEXT, parts INTEGER NOT NULL,
@@ -118,14 +124,18 @@ def download_url(archive_id, file):
                                                        urllib.parse.quote(file, safe="/"))
 
 
-def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=None):
+def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=None, previous=None,
+          forwarding_from=None):
     """`loudness` is the measurement cache (measure_loudness.py), id -> result; only
     a usable measurement of the episode's default copy URL is published.
     `transcripts` is the transcript cache (fetch_transcripts.py), id -> entry: a text
     of the default copy's own transcript is indexed for search, and `has_transcript` and
     `transcript_url` set, only where the gate passes: what Search finds, Detail can show.
     `scripts` is the castable bundle (episode_scripts.load_bundle), id -> entry; None reads
-    plays/castable-scripts.json. An episode's `script` is set only where episode_scripts links one."""
+    plays/castable-scripts.json. An episode's `script` is set only where episode_scripts links one.
+    `previous` is forwarding.read_projection of the live projection: every id it served that
+    this build does not is aliased or tombstoned (§3.5). `forwarding_from` is the same read of
+    a wider projection built from the same database, whose forwarding a clean-only one takes."""
     loudness = loudness or {}
     transcripts = transcripts or {}
     if os.path.exists(dst):
@@ -227,6 +237,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     d.executemany("UPDATE series SET downloads = ? WHERE key = ?",
                   [(n, k) for k, n in SH.browse_downloads(series_dl, recommendable).items()])
     write_arcs(d)
+    fwd = write_forwarding(d, previous, forwarding_from)
     d.executescript(INDEXES)
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
               for t in ("episodes", "recordings", "series", "people", "credits", "art", "arcs", "arc_parts")}
@@ -239,8 +250,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     counts["transcripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE has_transcript = 1").fetchone()[0]
     counts["transcriptsSearchable"] = searchable
     counts["scripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script IS NOT NULL").fetchone()[0]
+    counts["aliases"] = d.execute("SELECT COUNT(*) FROM episode_aliases").fetchone()[0]
+    counts["tombstones"] = d.execute("SELECT COUNT(*) FROM episode_tombstones").fetchone()[0]
     meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES,
+            "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES, "forwarding": fwd,
             "listenShelves": SH.listen_shelves(
                 d.execute("SELECT id, series_key, air_date, num, no_recommend, title FROM episodes"),
                 {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")},
@@ -269,6 +282,29 @@ def write_arcs(d):
         d.executemany("INSERT INTO arc_parts VALUES (?,?,?)",
                       [(eid, a["id"], i) for i, eid in enumerate(a["parts"], 1)])
     print(json.dumps({"arcs": {k: report[k] for k in report}}), file=sys.stderr)
+
+
+def write_forwarding(d, previous, forwarding_from):
+    """Write episode_aliases and episode_tombstones (forwarding.py), refusing a projection whose
+    forwarding breaks a rule. Returns the manifest's `forwarding`: the base it was computed
+    against (the previous projection's .zz sha256, null on a first publish) and the report."""
+    served = {r[0] for r in d.execute("SELECT id FROM episodes")}
+    if forwarding_from is not None:
+        aliases, tombstones = FW.inherit(forwarding_from, served)
+        report = {"inherited": True}
+        base = forwarding_from.get("base")
+    else:
+        copies = {}
+        for eid, aid, url in d.execute("SELECT episode_id, archive_id, url FROM recordings ORDER BY episode_id, rank"):
+            copies.setdefault(eid, []).append(FW.copy_key(aid, url))
+        aliases, tombstones, report = FW.forward(previous, served, copies)
+        base = (previous or {}).get("base")
+    bad = FW.violations(aliases, tombstones, served)
+    if bad:
+        raise SystemExit("refusing to publish forwarding ids: " + "; ".join(bad[:5]))
+    FW.write(d, aliases, tombstones)
+    print(json.dumps({"forwarding": report}), file=sys.stderr)
+    return {"base": base, **report}
 
 
 def served_portraits(s, people):
@@ -332,7 +368,22 @@ def main():
     ap.add_argument("--clean-only", action="store_true")
     ap.add_argument("--loudness", help="measure_loudness.py cache (.json or .json.gz); absent = columns NULL")
     ap.add_argument("--transcripts", help="fetch_transcripts.py cache (.json.gz); absent = none searchable or shown")
+    ap.add_argument("--previous", help="the live projection (.sqlite or .zz) whose ids this one forwards; absent = "
+                                       "a first publish, nothing to forward")
+    ap.add_argument("--forwarding-from", help="a projection built from the same database whose forwarding this one "
+                                              "takes (the clean-only build takes the served one's)")
     a = ap.parse_args()
+    for flag in ("previous", "forwarding_from"):
+        if getattr(a, flag) and not os.path.exists(getattr(a, flag)):
+            raise SystemExit(f"--{flag.replace('_', '-')} {getattr(a, flag)} does not exist")
+    previous = forwarding_from = None
+    if a.previous:
+        previous = FW.open_projection(a.previous)
+        previous["base"] = sha256(a.previous) if a.previous.endswith(".zz") else None
+    if a.forwarding_from:
+        forwarding_from = FW.open_projection(a.forwarding_from)
+        with open(os.path.join(os.path.dirname(a.forwarding_from), "manifest.json")) as f:
+            forwarding_from["base"] = (json.load(f).get("forwarding") or {}).get("base")
     os.makedirs(a.out, exist_ok=True)
     db = os.path.join(a.out, "ear-drama.sqlite")
     if a.loudness and not os.path.exists(a.loudness):
@@ -340,7 +391,8 @@ def main():
     if a.transcripts and not os.path.exists(a.transcripts):
         raise SystemExit(f"--transcripts {a.transcripts} does not exist (omit the flag to build without transcripts)")
     meta = build(a.db, db, a.clean_only, load_loudness(a.loudness) if a.loudness else None,
-                 T.load(a.transcripts) if a.transcripts else None)
+                 T.load(a.transcripts) if a.transcripts else None, previous=previous,
+                 forwarding_from=forwarding_from)
     floor = 1_000 if a.clean_only else MIN_EPISODES
     if meta["counts"]["episodes"] < floor:
         raise SystemExit(f"refusing to publish: {meta['counts']['episodes']} episodes is below the floor of {floor}")

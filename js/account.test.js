@@ -337,6 +337,60 @@ test('deleting the account clears the tokens and the account state, only once th
   eq(Store.hasPending(), true, 'the listening stays here, unsent');
 });
 
+// Contract §3.5. Registered last: Store keeps the forwarding it was given for the rest of the page.
+test('forwarded ids: stored rows move once, by the newer stamp; synced rows forward as they land', () => {
+  fresh();
+  const f = API.forwardingOf({ 'jb|1921-03-11': 'jb|1943-11-21', 'jb|old-slug': 'jb|1944-01-02', 'q|old': 'q|new' },
+                             ['jb|gone']);
+  Store.addHistory({ id: 'jb|1921-03-11', title: 'No. 4', date: '1921-03-11', url: 'https://a/benny.mp3' });
+  Store.savePosition('jb|1921-03-11', 600, 1800);
+  Store.addHistory({ id: 'jb|1944-01-02', title: 'Kept', url: 'https://a/kept.mp3' });
+  Store.savePosition('jb|1944-01-02', 300, 1800);
+  const s = JSON.parse(localStorage.getItem('ed.stamps'));
+  s.h['jb|old-slug'] = { at: s.h['jb|1944-01-02'].at - 5000, del: 0, dirty: 0 };   // an older row, never uploaded
+  localStorage.setItem('ed.stamps', JSON.stringify(s));
+  Store.addHistory({ id: 'jb|gone', title: 'Gone', url: 'https://a/gone.mp3' });
+  Store.enqueue({ id: 'q|old', title: 'Old', url: 'https://a/q.mp3' });
+  Store.enqueue({ id: 'jb|gone', title: 'Gone', url: 'https://a/gone.mp3' });
+  Store.enqueue({ id: 'q|new', title: 'New', url: 'https://a/q.mp3' });
+  const before = JSON.parse(localStorage.getItem('ed.stamps')).h['jb|1921-03-11'];
+
+  assert(Store.forward(f) > 0, 'something moved');
+  eq(Store.position('jb|1943-11-21').t, 600, 'the position moved to the new id');
+  eq(Store.position('jb|1921-03-11'), null, 'and left the old one');
+  const h = Store.history();
+  assert(!h.some(x => x.id === 'jb|1921-03-11'), 'the old id left the history');
+  eq(JSON.stringify(Store.stubs().episodes), '["jb|1943-11-21"]', 'the moved row is a stub the catalog draws again');
+  const after = JSON.parse(localStorage.getItem('ed.stamps')).h;
+  eq(after['jb|1943-11-21'].at, before.at, 'the row keeps its own stamp (a rewrite is not a listen)');
+  eq(after['jb|old-slug'], undefined, 'an older moved row is dropped');
+  eq(Store.position('jb|1944-01-02').t, 300, 'and the newer row it merged into wins');
+  eq(Store.queue().map(x => x.id).join(), 'q|new', 'the queue maps, dedupes, and drops a tombstoned id');
+  assert(h.some(x => x.id === 'jb|gone'), 'history keeps a tombstoned id: it is the person\'s record');
+  eq(Store.forward(f), 0, 'it migrates once');
+
+  Store.applyRemote({
+    history: [{ episode_id: 'jb|1921-03-11', position: 900, duration: 1800, deleted: false, updated_at: Date.now() + 9000 }],
+    queue: { items: ['jb|1921-03-11', 'jb|gone', 'jb|1943-11-21'], updated_at: Date.now() + 9000 },
+  });
+  eq(Store.position('jb|1943-11-21').t, 900, 'another device\'s row for the old id lands on the new one');
+  eq(Store.position('jb|1921-03-11'), null, 'never under the old id');
+  eq(Store.queue().map(x => x.id).join(), 'jb|1943-11-21', 'a synced queue forwards too');
+});
+
+test('API.forwarding reads aliases and tombstones once; a catalog without tombstones has none', async () => {
+  const served = { 'index/aliases.json': { a: 'b' } };
+  const get = async (p) => { if (p in served) return served[p]; throw new API.DataError('missing', p); };
+  const f = API.forwardingOf(await get('index/aliases.json'), []);
+  eq(f.resolve('a'), 'b', 'an alias resolves');
+  eq(f.resolve('c'), 'c', 'an unknown id is kept (it may be from a newer catalog)');
+  eq(f.gone('c'), false, 'and is not gone');
+  eq(API.forwardingOf({}, ['t']).resolve('toString'), 'toString', 'an inherited name is not an alias');
+  eq(API.forwardingOf({ a: 5 }, []).resolve('a'), 'a', 'only a string target resolves');
+  eq(API.forwardingOf({}, ['t']).gone('t'), true, 'a tombstoned id is gone');
+  eq(API.forwardingOf(null, null).resolve('a'), 'a', 'a malformed file forwards nothing');
+});
+
 (async () => {
   let passed = 0; let failed = 0;
   for (const { name, fn } of tests) {

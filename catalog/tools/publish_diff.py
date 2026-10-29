@@ -7,7 +7,9 @@
 
 Prints, as Markdown, every count and byte total in the two manifests side by
 side; with the databases, which episode ids came and went and why each one
-left (aliased to a new id, now hidden by the audit, or gone without either);
+left (aliased to a new id, tombstoned because it is now hidden by the audit,
+tombstoned with no successor, or gone without either, which refuses the publish:
+contract §3.5);
 with the research databases, the episode count per rights state.
 
 The guard: when the new manifest has fewer episodes than the published one by
@@ -92,6 +94,8 @@ def id_changes(old_db, new_db, research, tmpdir):
     o, n = open_db(old_db, tmpdir), open_db(new_db, tmpdir)
     old_ids, new_ids = ids_of(o), ids_of(n)
     aliases = dict(n.execute("SELECT old_id, new_id FROM episode_aliases"))
+    has_tombs = n.execute("SELECT 1 FROM sqlite_master WHERE name = 'episode_tombstones'").fetchone()
+    tombs = {r[0] for r in n.execute("SELECT id FROM episode_tombstones")} if has_tombs else set()
     o.close()
     n.close()
     added, removed = new_ids - old_ids, old_ids - new_ids
@@ -100,12 +104,14 @@ def id_changes(old_db, new_db, research, tmpdir):
         r = open_db(research, tmpdir)
         states = {i: (s, b) for i, s, b in r.execute("SELECT id, state, rec_bucket FROM episodes")}
         r.close()
-    why = {"aliased": [], "hidden": [], "unexplained": []}
+    why = {"aliased": [], "hidden": [], "tombstoned": [], "unexplained": []}
     for i in sorted(removed):
         if aliases.get(i) in new_ids:
             why["aliased"].append(i)
-        elif i in states and not states[i][0].startswith("keep_"):
+        elif i in tombs and i in states and not states[i][0].startswith("keep_"):
             why["hidden"].append(f"{i} ({states[i][0]}: {states[i][1]})")
+        elif i in tombs:
+            why["tombstoned"].append(i)
         else:
             why["unexplained"].append(i)
     return added, removed, why, bool(research)
@@ -149,6 +155,7 @@ def main():
     out += table("Counts", counts_of(old), counts_of(new))
     out += table("Bytes", flat((old or {}).get("bytes")), flat(new.get("bytes")))
 
+    unforwarded = False
     with tempfile.TemporaryDirectory() as tmp:
         research_kept = None
         if a.old_research and a.research and os.path.exists(a.old_research) and os.path.exists(a.research):
@@ -160,18 +167,22 @@ def main():
         if a.old_db and a.new_db and os.path.exists(a.old_db):
             added, removed, why, judged = id_changes(a.old_db, a.new_db, a.research, tmp)
             out += [f"**Episode ids**: {len(added):,} added, {len(removed):,} removed "
-                    f"({len(why['aliased']):,} aliased to a new id, {len(why['hidden']):,} now hidden by the audit, "
-                    f"{len(why['unexplained']):,} {'gone without either' if judged else 'not judged (no research database)'}).", ""]
-            for k in ("hidden", "unexplained"):
+                    f"({len(why['aliased']):,} aliased to a new id, {len(why['hidden']):,} tombstoned as now hidden "
+                    f"by the audit{'' if judged else ' (not judged: no research database)'}, "
+                    f"{len(why['tombstoned']):,} tombstoned with no successor, "
+                    f"{len(why['unexplained']):,} neither aliased nor tombstoned).", ""]
+            for k in ("hidden", "tombstoned", "unexplained"):
                 if why[k]:
                     out += [f"First {k}: " + ", ".join(why[k][:10]), ""]
-            if judged and why["unexplained"]:
-                # Report, not a gate: contract §9.6 wants every leaving id aliased or taken down,
-                # and an id that leaves silently breaks a saved history or share link.
-                print(f"::warning::{len(why['unexplained'])} episode ids left the {a.label} with no alias "
-                      f"and no hide (contract §9.6)")
+            if why["unexplained"]:
+                # A gate (contract §3.5, §9.6): an id that leaves with neither breaks every saved
+                # history, queue, download, and share link that names it.
+                out += [f"**Refused**: {len(why['unexplained']):,} episode ids left with no alias and no tombstone.", ""]
+                print(f"::error::{len(why['unexplained'])} episode ids left the {a.label} with no alias and no "
+                      f"tombstone (contract §3.5); not publishing")
+                unforwarded = True
 
-    verdict = 0
+    verdict = 1 if unforwarded else 0
     if a.research_floor is not None and research_kept:
         # Not policy but plumbing: a rebuild from a half-restored cache serves far fewer rows than
         # the snapshot it was restored with, and this catches that even on a first publish.

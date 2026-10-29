@@ -34,7 +34,7 @@ def manifest(path, episodes, clean, clean_only=False):
     return path
 
 
-def db(path, ids, aliases=(), states=None, deflate=False):
+def db(path, ids, aliases=(), states=None, deflate=False, tombstones=None):
     raw = path + ".raw" if deflate else path
     c = sqlite3.connect(raw)
     c.execute("CREATE TABLE episodes (id TEXT, state TEXT, rec_bucket TEXT)")
@@ -43,6 +43,9 @@ def db(path, ids, aliases=(), states=None, deflate=False):
                   [(i, (states or {}).get(i, ("keep_clean", "rec_gov_work"))[0],
                     (states or {}).get(i, ("keep_clean", "rec_gov_work"))[1]) for i in ids])
     c.executemany("INSERT INTO episode_aliases VALUES (?,?)", aliases)
+    if tombstones is not None:
+        c.execute("CREATE TABLE episode_tombstones (id TEXT)")
+        c.executemany("INSERT INTO episode_tombstones VALUES (?)", [(i,) for i in tombstones])
     c.commit()
     c.close()
     if deflate:
@@ -83,17 +86,25 @@ with tempfile.TemporaryDirectory() as t:
     run("--old-manifest", old, "--new-manifest", ok, "--summary", summary)
     check("the summary file gets the same Markdown", "what this publish changes" in open(summary).read(), True)
 
-    o = db(os.path.join(t, "old.sqlite.zz"), ["a", "b", "c", "d"], deflate=True)
-    n = db(os.path.join(t, "new.sqlite"), ["a", "b2", "e"], aliases=[("b", "b2")])
+    o = db(os.path.join(t, "old.sqlite.zz"), ["a", "b", "c", "d", "f"], deflate=True)
+    n = db(os.path.join(t, "new.sqlite"), ["a", "b2", "e"], aliases=[("b", "b2")], tombstones=["c", "f"])
     r = db(os.path.join(t, "research.sqlite"), ["a", "b2", "c", "e"],
            states={"c": ("hide_claim", "rec_takedown")})
     rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", o, "--new-db", n, "--research", r)
-    check("ids: aliased, hidden, and unexplained are told apart",
-          "2 added, 3 removed (1 aliased to a new id, 1 now hidden by the audit, 1 gone without either)" in out, True)
+    check("ids: aliased, hidden, tombstoned, and unforwarded are told apart",
+          "2 added, 4 removed (1 aliased to a new id, 1 tombstoned as now hidden by the audit, "
+          "1 tombstoned with no successor, 1 neither aliased nor tombstoned)" in out, True)
     check("a hidden id names its state", "c (hide_claim: rec_takedown)" in out, True)
-    check("control: an id gone without alias or hide is a warning", "::warning::1 episode ids left" in out, True)
-    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", o, "--new-db", n)
-    check("without the research database, removals are not judged", "not judged" in out, True)
+    check("control: an id gone with neither alias nor tombstone refuses the publish",
+          (rc, "::error::1 episode ids left" in out), (1, True))
+    n2 = db(os.path.join(t, "new2.sqlite"), ["a", "b2", "e"], aliases=[("b", "b2")], tombstones=["c", "d", "f"])
+    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", o, "--new-db", n2, "--research", r)
+    check("every id that left forwarded: the publish passes", rc, 0)
+    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", o, "--new-db", n2)
+    check("without the research database, hides are not judged", "not judged" in out, True)
+    n3 = db(os.path.join(t, "new3.sqlite"), ["a", "b2", "e"], aliases=[("b", "b2")])
+    rc, out = run("--old-manifest", old, "--new-manifest", ok, "--old-db", o, "--new-db", n3)
+    check("control: a projection from before tombstones forwards only its aliases", rc, 1)
 
     restored = db(os.path.join(t, "restored.sqlite"), [str(i) for i in range(20)])
     full = db(os.path.join(t, "full.sqlite"), [str(i) for i in range(19)])

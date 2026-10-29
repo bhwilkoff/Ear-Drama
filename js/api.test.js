@@ -344,6 +344,38 @@ test('withPerson: years from the people row only', () => {
   assertEq(API.lifeYears(null, null), null, 'control: no facts, no line');
 });
 
+test('episodeDetail forwards a moved id (contract §3.5); a tombstoned or unknown one is not served', async () => {
+  const real = globalThis.fetch;
+  const files = {
+    // getJSON keeps the first manifest a page reads, so this one carries the person test's fields too.
+    'manifest.json': { shard: { mask: 0xfff }, fields: { detail: ['series', 'date', 'title', 'recordings', 'credits'],
+      recording: ['url'], credit: ['name'], person: ['name', 'birth', 'death', 'art', 'credits'],
+      personCredit: ['id', 'date', 'title', 'num', 'series', 'role', 'character'],
+      people: ['id', 'name', 'episodes', 'art'] } },
+    'index/aliases.json': { 'jb|1921-03-11': 'jb|1943-11-21' },
+    'index/tombstones.json': ['jb|gone'],
+    [`episodes/${API.shardOf('jb|1943-11-21')}.json`]: { 'jb|1943-11-21': ['jb', '1943-11-21', 'Show', [['u']], []] },
+  };
+  let reads = 0;
+  globalThis.fetch = async (url) => {
+    const path = String(url).replace(/^.*?\/data\//, '');
+    if (path.startsWith('index/')) reads++;
+    if (!(path in files)) return { ok: false, status: 404 };
+    return { ok: true, status: 200, json: async () => files[path] };
+  };
+  try {
+    const d = await API.episodeDetail('jb|1921-03-11');
+    assertEq(d && d.id, 'jb|1943-11-21', 'the old id opens the episode it now is, under its new id');
+    assertEq(await API.episodeDetail('jb|gone'), null, 'a tombstoned id is not served');
+    assertEq(await API.episodeDetail('jb|1999-01-01'), null, 'control: an unknown id is not served either');
+    const f = await API.forwarding();
+    assertEq(f.gone('jb|gone'), true, 'the tombstones are read');
+    assertEq(reads, 2, 'aliases and tombstones are read once a page');
+  } finally {
+    globalThis.fetch = real;
+  }
+});
+
 test('withPerson and searchPeople read the person shards the builder writes', async () => {
   const real = globalThis.fetch;
   const files = {

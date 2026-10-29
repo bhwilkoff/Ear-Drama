@@ -201,6 +201,14 @@ final class ListeningQueue {
         onChange?()
     }
 
+    /// Forwarding (`IDForwarding`): the same queue under the ids it now has,
+    /// its stamp and dirty flag kept.
+    func replaceItemsKeepingStamp(_ next: [String]) {
+        items = next
+        save()
+        onChange?()
+    }
+
     func markSynced(_ sent: QueueState) {
         if let updatedAt, updatedAt.millis <= sent.updatedAt { dirty = false }
         save()

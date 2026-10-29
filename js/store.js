@@ -217,7 +217,7 @@ const Store = (() => {
     let fol = follows();
     let changed = 0;
     for (const r of (remote && remote.history) || []) {
-      const id = r.episode_id;
+      const id = fid(r.episode_id);
       const old = hist.find(x => x.id === id);
       const localAt = s.h[id] ? s.h[id].at : Math.max((pos[id] && pos[id].at) || 0, (old && old.at) || 0);
       if (!(r.updated_at > localAt)) continue;
@@ -248,7 +248,7 @@ const Store = (() => {
     if (rq && Array.isArray(rq.items) && rq.updated_at > (s.q ? s.q.at : 0)) {
       changed++;
       const known = new Map([...hist, ...queue()].filter(x => x.url || x.title).map(x => [x.id, x]));
-      q = rq.items.map(id => known.has(id) ? card(known.get(id)) : { id });
+      q = forwardQueue(rq.items.map(fid).map(id => known.has(id) ? card(known.get(id)) : { id }));
       s.q = { at: rq.updated_at, dirty: 0 };
     }
     saveStamps(s);
@@ -259,6 +259,58 @@ const Store = (() => {
       if (q) write(KEYS.queue, q);
     }
     return changed;
+  }
+
+  /* ---- Forwarding ids (contract §3.5; API.forwarding is the one resolver) ---- */
+  let fwd = null;
+  const fid = (id) => (fwd ? fwd.resolve(id) : id);
+  function forwardQueue(items) {
+    const seen = new Set();
+    const cards = new Map(items.filter(x => x.url || x.title).map(x => [x.id, x]));
+    return items.map(x => (fid(x.id) === x.id ? x : cards.get(fid(x.id)) || { id: fid(x.id) }))
+      .filter(x => !(fwd && fwd.gone(x.id)) && !seen.has(x.id) && seen.add(x.id));
+  }
+
+  /**
+   * Rewrites every stored episode id that moved to the id it now is, once. A moved row merges
+   * into the new id's by the newer stamp, keeps its own stamp and dirty flag (a rewrite is not a
+   * listen, so it is never uploaded as new: the Worker's old-id rows are forwarded by each reader),
+   * and becomes a stub the catalog draws again. A tombstoned id leaves the queue; history keeps it.
+   * Later Worker rows (applyRemote) are forwarded as they land. Returns how many ids it rewrote.
+   */
+  function forward(f) {
+    if (f) fwd = f;
+    if (!fwd) return 0;
+    const s = stamps();
+    const pos = read(KEYS.positions, {});
+    let hist = history();
+    const rowAt = (id) => { const r = hist.find(x => x.id === id); return (r && r.at) || 0; };
+    const when = (id) => (s.h[id] ? s.h[id].at : Math.max((pos[id] && pos[id].at) || 0, rowAt(id)));
+    let moved = 0;
+    for (const id of new Set([...Object.keys(pos), ...Object.keys(s.h), ...hist.map(x => x.id)])) {
+      const n = fid(id);
+      if (n === id) continue;
+      moved++;
+      if (when(id) > when(n)) {
+        if (s.h[id]) s.h[n] = s.h[id]; else delete s.h[n];
+        if (pos[id]) pos[n] = pos[id]; else delete pos[n];
+        const row = hist.find(x => x.id === id);
+        if (row) hist = hist.filter(x => x.id !== n).map(x => (x.id === id ? { id: n, at: row.at } : x));
+      }
+      delete s.h[id];
+      delete pos[id];
+      hist = hist.filter(x => x.id !== id);
+    }
+    const q = queue();
+    const fq = forwardQueue(q);
+    const queueMoved = fq.length !== q.length || fq.some((x, i) => x.id !== q[i].id);
+    if (moved) {
+      saveStamps(s);
+      write(KEYS.positions, pos);
+      write(KEYS.history, hist);
+    }
+    if (queueMoved) write(KEYS.queue, fq);
+    return moved + (queueMoved ? 1 : 0);
   }
 
   /** Episodes and series that arrived from the Worker without a card. */
@@ -292,5 +344,5 @@ const Store = (() => {
 
   return { position, savePosition, resumeAt, progress, history, addHistory, clearHistory, inProgress,
            queue, enqueue, dequeue, moveInQueue, inQueue, follows, isFollowing, toggleFollow, rate, setRate,
-           onChange, card, syncUpload, markSynced, hasPending, applyRemote, stubs, fillCards, forgetSync };
+           onChange, card, syncUpload, markSynced, hasPending, applyRemote, stubs, fillCards, forgetSync, forward };
 })();

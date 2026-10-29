@@ -300,3 +300,41 @@ Left for the owner: Charlie Chan; Frank Watanabe and the Honorable Archie (no
 source found); The Goon Show's Fu Manchu parody (exempted); Jungle Jim's
 wartime slurs in titles; coon songs and "darkies" in record titles; Blue Coal
 Minstrels; Al Jolson's "Mammy".
+
+## 014 — An id that leaves the catalog forwards, permanently: an alias by its recording, else a tombstone
+*Date: 2026-10-28*
+
+Every publish compares the new served projection with the one live on
+`catalog-latest` (`catalog/tools/forwarding.py`, `build_projection.py
+--previous`). Each id the live one served and the new one does not gets an
+alias to the served episode now holding its default copy, matched by
+archive.org item and file name, or a tombstone when no served episode holds
+it. Aliases and tombstones are cumulative, chains collapse, an id served again
+sheds both, and the build, the diff, and the publish lock each refuse what
+breaks that (contract §3.5). Every client resolves through them in one place
+and rewrites what it stored once.
+
+**Why**: an episode id is the person's data, not ours: it sits in their
+history, their place in an episode, their queue, their downloads, the rows
+their other devices sync, and every link they shared. A parse fix changes ids
+(C1, 2026-10-28: 984 served ids left when "43-11-21" stopped reading as
+1921-03-11), and the `episode_aliases` table that was meant to catch this had
+never been filled, so each fix would have silently broken those records. The
+owner, 2026-10-28: *"Let's just get everything set up the way that we want it
+to be. We don't have to worry about current users, but we do have to worry
+about building for the future."* So this is the permanent mechanism, run on
+every publish, not a one-off migration. The recording is the identity because
+it is the one thing a parse fix does not change: a title guess would forward a
+listener to a different broadcast, which is worse than a dead link. A
+tombstone, unlike a missing id, tells a client the id is gone for good, so it
+can drop it from a queue; an id a client merely does not know may come from a
+newer catalog than the one it holds and is kept.
+
+**How to apply**: measured on the C1 rebuild against the pre-fix rebuild (same
+cache, PYTHONHASHSEED=0): 984 ids left, 899 aliased onto 895 episodes, 85
+tombstoned (all now hidden under their corrected ids). A pipeline change that
+moves ids needs nothing more: the next publish forwards them. Never hand-write
+an alias; fix the parse and let the recording decide. Never reuse an id for a
+different broadcast. A client rewrite keeps each row's own stamp and is never
+uploaded as new, so a device on an older catalog is not overwritten by one on
+a newer catalog. Series keys do not forward yet (follows are series keys).

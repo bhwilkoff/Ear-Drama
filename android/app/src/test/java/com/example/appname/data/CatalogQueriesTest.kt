@@ -76,6 +76,14 @@ class CatalogQueriesTest {
         }
     }
 
+    @Test fun `forwarding reads every alias and tombstone`() = runBlocking {
+        val f = db.forwarding()
+        assertEquals("sus|1943-05-25", f.resolve("suspense|sorry-wrong-number"))
+        assertTrue(f.isGone("sus|taken-down"))
+        assertEquals("an unknown id is kept", "sus|1999-01-01", f.resolve("sus|1999-01-01"))
+        assertFalse(f.isGone("suspense|sorry-wrong-number"))
+    }
+
     @Test fun `episodeDetail forwards an alias`() = runBlocking {
         assertEquals("sus|1943-05-25", db.episodeDetail("suspense|sorry-wrong-number")?.episode?.id)
     }

@@ -69,6 +69,8 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory, Configur
             container.catalog.initialize()
             container.catalog.refreshIfStale()
         }
+        // Each catalog swap (seed or download) may move ids the listener kept (contract §3.5).
+        appScope.launch { container.catalog.dbVersion.collect { if (it > 0) container.forwardStored() } }
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader =

@@ -305,21 +305,45 @@ const API = (() => {
     return { ...d, art: artOf(d.art), episodes };
   }
 
-  let aliasesP = null;
-  function aliases() {
-    if (!aliasesP) aliasesP = getJSON('index/aliases.json').catch(() => ({}));
-    return aliasesP;
+  /**
+   * Forwarding ids (contract §3.5), the one place the web resolves an episode id: `resolve(id)`
+   * is the id it now is (itself when it never moved), `gone(id)` is true when it left with no
+   * successor. Any other id this catalog does not serve may come from a newer one, and is kept.
+   */
+  function forwardingOf(aliases, tombstones) {
+    const map = aliases && typeof aliases === 'object' && !Array.isArray(aliases) ? aliases : {};
+    const dead = new Set(Array.isArray(tombstones) ? tombstones : []);
+    return {
+      resolve: (id) => (Object.prototype.hasOwnProperty.call(map, id) && typeof map[id] === 'string' ? map[id] : id),
+      gone: (id) => dead.has(id),
+    };
+  }
+  let forwardingP = null;
+  /** Read once a page; a catalog older than tombstones has none, and a failed read is tried again next time. */
+  function forwarding(get = getJSON) {
+    if (!forwardingP) {
+      const missingOk = (fallback) => (e) => { if (e && e.kind === 'missing') return fallback; throw e; };
+      forwardingP = Promise.all([get('index/aliases.json').catch(missingOk({})),
+                                 get('index/tombstones.json').catch(missingOk([]))])
+        .then(([a, t]) => forwardingOf(a, t))
+        .catch((e) => { forwardingP = null; throw e; });
+    }
+    return forwardingP;
   }
 
-  /** Detail for one episode, with alias forwarding. Null when the catalog does not serve it. */
+  /** Detail for one episode, its id forwarded (§3.5). Null when the catalog does not serve it. */
   async function episodeDetail(id) {
     const m = await manifest();
-    const look = async (eid) => (await getJSON(`episodes/${shardOf(eid, m.shard.mask)}.json`))[eid];
+    // A shard with no served id is not published; the id may still forward to one that is.
+    const look = async (eid) => (await getJSON(`episodes/${shardOf(eid, m.shard.mask)}.json`).catch(e => {
+      if (e && e.kind === 'missing') return {};
+      throw e;
+    }))[eid];
     let rec = await look(id);
     let resolved = id;
     if (!rec) {
-      const fwd = (await aliases())[id];
-      if (fwd) { rec = await look(fwd); resolved = fwd; }
+      const fwd = (await forwarding().catch(() => forwardingOf())).resolve(id);
+      if (fwd !== id) { rec = await look(fwd); resolved = fwd; }
     }
     if (!rec) return null;
     const f = m.fields;
@@ -1139,6 +1163,7 @@ const API = (() => {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
+    forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,
     transcript, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,

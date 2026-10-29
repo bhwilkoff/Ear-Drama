@@ -14,7 +14,8 @@ Layout (every row positional; fields are only ever appended):
     index/series.json             the gatekeeper: every served series
     index/listen.json             Listen shelves, by rule from data (recommendAnd applied)
     index/days/MM-DD.json         This Day in Radio (recommendAnd applied)
-    index/aliases.json            old episode id -> new id
+    index/aliases.json            old episode id -> new id (contract §3.5), only to an id this projection serves
+    index/tombstones.json         episode ids that left with no successor, sorted (§3.5)
     series/{key}.json             one series page: seasons, episodes oldest first (R1)
     episodes/{shard}.json         Detail, shard = FNV-1a(id) & SHARD_MASK, as 3 hex digits
     search/terms/{p}.json         word -> delta-coded doc numbers, by the word's first two characters
@@ -192,6 +193,8 @@ def build(src, out, include_unclaimed=False, transcripts=None):
             del eps[e[0]]   # an episode whose series is not served is not served
     aliases = {o: n for o, n in s.execute("SELECT old_id, new_id FROM episode_aliases") if n in eps}
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    tombstones = sorted(r[0] for r in s.execute("SELECT id FROM episode_tombstones")) \
+        if "episode_tombstones" in tables else []
     item_downloads = dict(s.execute("SELECT archive_id, downloads FROM items")) if "items" in tables else {}
     series_dl = SH.series_downloads(((e[1], recs[e[0]][0][1]) for e in eps.values()), item_downloads)
     popular = SH.browse_downloads(series_dl, {e[1] for e in eps.values() if e[10] is None})
@@ -268,6 +271,7 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         dump(os.path.join(out, "index", "days", f"{md}.json"), {"fields": DAY_FIELDS, "rows": [
             [e[0], e[2], e[5], e[1], e[7], recs[e[0]][0][0], series[e[1]][1]] + lt(e[0]) for e in rows]})
     dump(os.path.join(out, "index", "aliases.json"), aliases)
+    dump(os.path.join(out, "index", "tombstones.json"), tombstones)
 
     # withPerson: per-person shards, every served credit, oldest first (R1).
     person_credits = {}

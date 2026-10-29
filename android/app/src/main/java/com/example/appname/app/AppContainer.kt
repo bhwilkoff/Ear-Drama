@@ -73,6 +73,13 @@ class AppContainer(context: Context, scope: CoroutineScope) {
             ),
             KeystoreSessionStore(File(context.noBackupFilesDir, "account.bin")),
         )
-        Accounts(worker, SyncEngine(worker, user, device), device, scope)
+        Accounts(worker, SyncEngine(worker, user, device, forwarding = { catalog.db?.forwarding() }), device, scope)
+    }
+
+    /** Contract §3.5: every store that keeps episode ids rewrites the ones the open catalog moved. */
+    suspend fun forwardStored() {
+        val forwarding = catalog.db?.forwarding() ?: return
+        user.forward(forwarding)
+        downloads.forward(forwarding)
     }
 }

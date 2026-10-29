@@ -334,6 +334,17 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
     // --- Episodes ---
 
+    /** §3.5: every alias and tombstone, for the stores that rewrite kept ids; an older catalog has no tombstones. */
+    suspend fun forwarding(): IdForwarding = read {
+        val aliases = queryRaw("SELECT old_id, new_id FROM episode_aliases") { it.getText(0) to it.getText(1) }.toMap()
+        val tombstones = if ("id" in queryRaw("PRAGMA table_info(episode_tombstones)") { it.getText(1) }) {
+            queryRaw("SELECT id FROM episode_tombstones") { it.getText(0) }.toSet()
+        } else {
+            emptySet()
+        }
+        IdForwarding(aliases, tombstones)
+    }
+
     /** §3.5: an id that changed forwards to its new one. */
     private fun resolve(id: String): String =
         if (queryRaw("SELECT 1 FROM episodes WHERE id = ?", listOf(id)) { 1 }.isNotEmpty()) id
