@@ -1,0 +1,1140 @@
+[
+ {
+  "label": "D2b-3 (before)",
+  "modes": {
+   "light": {
+    "pairs": [
+     {
+      "fg": "text",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "body",
+      "wcagMin": 15.17,
+      "lcMin": 91.7,
+      "lcMax": 105.1,
+      "fail": 0
+     },
+     {
+      "fg": "textMuted",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "caption",
+      "wcagMin": 5.4,
+      "lcMin": 69.2,
+      "lcMax": 82.7,
+      "fail": 0
+     },
+     {
+      "fg": "link",
+      "bg": "background|surface",
+      "kind": "caption",
+      "wcagMin": 5.16,
+      "lcMin": 71.3,
+      "lcMax": 77.8,
+      "fail": 0
+     },
+     {
+      "fg": "secondary",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 5.16,
+      "lcMin": 71.3,
+      "lcMax": 77.8,
+      "fail": 0
+     },
+     {
+      "fg": "onSecondary",
+      "bg": "secondary",
+      "kind": "caption",
+      "wcagMin": 5.67,
+      "lcMin": 83.1,
+      "lcMax": 83.1,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 15.17,
+      "lcMin": 91.7,
+      "lcMax": 105.1,
+      "fail": 0
+     },
+     {
+      "fg": "onPrimary",
+      "bg": "primary",
+      "kind": "body",
+      "wcagMin": 18.54,
+      "lcMin": 107.2,
+      "lcMax": 107.2,
+      "fail": 0
+     },
+     {
+      "fg": "record",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 6.38,
+      "lcMin": 75.8,
+      "lcMax": 82.3,
+      "fail": 0
+     },
+     {
+      "fg": "onRecord",
+      "bg": "record",
+      "kind": "body",
+      "wcagMin": 7.01,
+      "lcMin": 87.4,
+      "lcMax": 87.4,
+      "fail": 0
+     },
+     {
+      "fg": "print",
+      "bg": "background|surface",
+      "kind": "edged",
+      "wcagMin": 1.07,
+      "lcMin": 0,
+      "lcMax": 8.2,
+      "fail": 0
+     },
+     {
+      "fg": "board.{g}",
+      "bg": "background|surface",
+      "kind": "field",
+      "wcagMin": 3.55,
+      "lcMin": 59.8,
+      "lcMax": 94.5,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "display",
+      "wcagMin": 4.54,
+      "lcMin": 36.9,
+      "lcMax": 98.5,
+      "fail": 1
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "caption",
+      "wcagMin": 4.54,
+      "lcMin": 36.9,
+      "lcMax": 98.5,
+      "fail": 1
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "mark",
+      "wcagMin": 4.54,
+      "lcMin": 36.9,
+      "lcMax": 98.5,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}@0.3",
+      "bg": "board.{g}",
+      "kind": "trace",
+      "wcagMin": 1.63,
+      "lcMin": 13.3,
+      "lcMax": 21.6,
+      "fail": 2
+     },
+     {
+      "fg": "print",
+      "bg": "board.{g}",
+      "kind": "mount",
+      "wcagMin": 3.33,
+      "lcMin": 60.0,
+      "lcMax": 86.7,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "board.{g}",
+      "kind": "refused",
+      "wcagMin": 1.6,
+      "lcMin": 8.5,
+      "lcMax": 36.9,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "body",
+      "wcagMin": 4.54,
+      "lcMin": 36.9,
+      "lcMax": 98.5,
+      "fail": 1
+     },
+     {
+      "fg": "genre.{g}",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 3.19,
+      "lcMin": 52.8,
+      "lcMax": 94.5,
+      "fail": 0
+     },
+     {
+      "fg": "onGenre.{g}",
+      "bg": "genre.{g}",
+      "kind": "display",
+      "wcagMin": 4.54,
+      "lcMin": 36.9,
+      "lcMax": 98.5,
+      "fail": 1
+     }
+    ],
+    "fails": [
+     "onBoard.{g} on board.comedy: Lc 36.9 < 45",
+     "onBoard.{g} on board.comedy: Lc 36.9 < 60",
+     "onBoard.{g}@0.3 on board.comedy: Lc 13.3 < 15",
+     "onBoard.{g}@0.3 on board.serial: Lc 15.0 < 15",
+     "onBoard.{g} on board.comedy: Lc 36.9 < 75",
+     "onGenre.{g} on genre.comedy: Lc 36.9 < 45",
+     "band board: L spread 0.230 > 0.04",
+     "band board: C spread 0.100 > 0.04",
+     "band board: text Lc spread 61.6 > 10",
+     "band board: 2 text colors on the set: #131316, #FFFFFF",
+     "band genre: L spread 0.230 > 0.13",
+     "band genre: C spread 0.100 > 0.07",
+     "apart board.drama vs record: 18.5 < 20",
+     "apart genre.drama vs record: 18.5 < 20"
+    ],
+    "neighbors": {
+     "board": {
+      "normal": 21.6,
+      "protan": 8.4,
+      "deutan": 8.4,
+      "tritan": 10.2,
+      "vibrating": 1
+     },
+     "genre": {
+      "normal": 21.6,
+      "protan": 8.4,
+      "deutan": 8.4,
+      "tritan": 10.2,
+      "vibrating": 1
+     }
+    },
+    "apart": [
+     {
+      "a": "board.drama",
+      "b": "record",
+      "min": 18.5
+     },
+     {
+      "a": "genre.drama",
+      "b": "record",
+      "min": 18.5
+     },
+     {
+      "a": "board.{g}",
+      "b": "record",
+      "min": 18.5
+     },
+     {
+      "a": "genre.{g}",
+      "b": "secondary",
+      "min": 14.3
+     },
+     {
+      "a": "genre.{g}",
+      "b": "warning",
+      "min": 11.5
+     },
+     {
+      "a": "genre.{g}",
+      "b": "error",
+      "min": 13.3
+     },
+     {
+      "a": "genre.{g}",
+      "b": "success",
+      "min": 11.3
+     },
+     {
+      "a": "board.{g}",
+      "b": "claudeClay",
+      "min": 14.0
+     }
+    ],
+    "bands": {
+     "board": {
+      "L": [
+       0.37,
+       0.6
+      ],
+      "C": [
+       0.09,
+       0.19
+      ],
+      "textLc": [
+       36.9,
+       98.5
+      ]
+     },
+     "genre": {
+      "L": [
+       0.37,
+       0.6
+      ],
+      "C": [
+       0.09,
+       0.19
+      ],
+      "textLc": null
+     }
+    }
+   },
+   "dark": {
+    "pairs": [
+     {
+      "fg": "text",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "body",
+      "wcagMin": 14.0,
+      "lcMin": 96.8,
+      "lcMax": 99.1,
+      "fail": 0
+     },
+     {
+      "fg": "textMuted",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "caption",
+      "wcagMin": 9.03,
+      "lcMin": 68.7,
+      "lcMax": 70.9,
+      "fail": 0
+     },
+     {
+      "fg": "link",
+      "bg": "background|surface",
+      "kind": "caption",
+      "wcagMin": 8.57,
+      "lcMin": 61.3,
+      "lcMax": 62.2,
+      "fail": 0
+     },
+     {
+      "fg": "secondary",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 7.46,
+      "lcMin": 54.7,
+      "lcMax": 55.5,
+      "fail": 0
+     },
+     {
+      "fg": "onSecondary",
+      "bg": "secondary",
+      "kind": "caption",
+      "wcagMin": 7.95,
+      "lcMin": 57.0,
+      "lcMax": 57.0,
+      "fail": 1
+     },
+     {
+      "fg": "primary",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 14.0,
+      "lcMin": 96.8,
+      "lcMax": 99.1,
+      "fail": 0
+     },
+     {
+      "fg": "onPrimary",
+      "bg": "primary",
+      "kind": "body",
+      "wcagMin": 17.13,
+      "lcMin": 97.9,
+      "lcMax": 97.9,
+      "fail": 0
+     },
+     {
+      "fg": "record",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 4.12,
+      "lcMin": 32.5,
+      "lcMax": 33.3,
+      "fail": 0
+     },
+     {
+      "fg": "onRecord",
+      "bg": "record",
+      "kind": "body",
+      "wcagMin": 4.66,
+      "lcMin": 35.9,
+      "lcMax": 35.9,
+      "fail": 1
+     },
+     {
+      "fg": "print",
+      "bg": "background|surface",
+      "kind": "edged",
+      "wcagMin": 1.23,
+      "lcMin": 0,
+      "lcMax": 0,
+      "fail": 0
+     },
+     {
+      "fg": "board.{g}",
+      "bg": "background|surface",
+      "kind": "field",
+      "wcagMin": 5.03,
+      "lcMin": 38.3,
+      "lcMax": 77.8,
+      "fail": 16
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "display",
+      "wcagMin": 5.49,
+      "lcMin": 41.4,
+      "lcMax": 78.3,
+      "fail": 1
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "caption",
+      "wcagMin": 5.49,
+      "lcMin": 41.4,
+      "lcMax": 78.3,
+      "fail": 3
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "mark",
+      "wcagMin": 5.49,
+      "lcMin": 41.4,
+      "lcMax": 78.3,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}@0.3",
+      "bg": "board.{g}",
+      "kind": "trace",
+      "wcagMin": 1.69,
+      "lcMin": 15.1,
+      "lcMax": 28.9,
+      "fail": 0
+     },
+     {
+      "fg": "print",
+      "bg": "board.{g}",
+      "kind": "mount",
+      "wcagMin": 4.1,
+      "lcMin": 36.9,
+      "lcMax": 73.8,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "board.{g}",
+      "kind": "refused",
+      "wcagMin": 1.38,
+      "lcMin": 19.8,
+      "lcMax": 59.2,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "body",
+      "wcagMin": 5.49,
+      "lcMin": 41.4,
+      "lcMax": 78.3,
+      "fail": 5
+     },
+     {
+      "fg": "genre.{g}",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 4.49,
+      "lcMin": 36.9,
+      "lcMax": 77.8,
+      "fail": 0
+     },
+     {
+      "fg": "onGenre.{g}",
+      "bg": "genre.{g}",
+      "kind": "display",
+      "wcagMin": 5.49,
+      "lcMin": 41.4,
+      "lcMax": 78.3,
+      "fail": 1
+     }
+    ],
+    "fails": [
+     "onSecondary on secondary: Lc 57.0 < 60",
+     "board.{g} on background: glare: Lc 61.5 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 60.7 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 57.9 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 57.0 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 77.0 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 76.1 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 45.0 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 44.2 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 77.8 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 76.9 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 75.9 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 75.0 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 64.4 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 63.6 > 30 against the dark ground",
+     "board.{g} on background: glare: Lc 39.2 > 30 against the dark ground",
+     "board.{g} on surface: glare: Lc 38.3 > 30 against the dark ground",
+     "onBoard.{g} on board.serial: Lc 41.4 < 45",
+     "onBoard.{g} on board.mystery: Lc 59.6 < 60",
+     "onBoard.{g} on board.western: Lc 47.2 < 60",
+     "onBoard.{g} on board.serial: Lc 41.4 < 60",
+     "onBoard.{g} on board.drama: Lc 63.1 < 75",
+     "onBoard.{g} on board.mystery: Lc 59.6 < 75",
+     "onBoard.{g} on board.western: Lc 47.2 < 75",
+     "onBoard.{g} on board.documentary: Lc 65.8 < 75",
+     "onBoard.{g} on board.serial: Lc 41.4 < 75",
+     "onGenre.{g} on genre.serial: Lc 41.4 < 45",
+     "band board: L spread 0.203 > 0.04",
+     "band board: C spread 0.052 > 0.04",
+     "band board: text Lc spread 36.9 > 10",
+     "band genre: L spread 0.203 > 0.13",
+     "apart board.western vs claudeClay: 10.4 < 12"
+    ],
+    "neighbors": {
+     "board": {
+      "normal": 21.8,
+      "protan": 10.4,
+      "deutan": 9.7,
+      "tritan": 11.2,
+      "vibrating": 3
+     },
+     "genre": {
+      "normal": 21.8,
+      "protan": 10.4,
+      "deutan": 9.7,
+      "tritan": 11.2,
+      "vibrating": 3
+     }
+    },
+    "apart": [
+     {
+      "a": "board.drama",
+      "b": "record",
+      "min": 25.7
+     },
+     {
+      "a": "genre.drama",
+      "b": "record",
+      "min": 25.7
+     },
+     {
+      "a": "board.{g}",
+      "b": "record",
+      "min": 25.6
+     },
+     {
+      "a": "genre.{g}",
+      "b": "secondary",
+      "min": 14.9
+     },
+     {
+      "a": "genre.{g}",
+      "b": "warning",
+      "min": 15.4
+     },
+     {
+      "a": "genre.{g}",
+      "b": "error",
+      "min": 11.1
+     },
+     {
+      "a": "genre.{g}",
+      "b": "success",
+      "min": 10.3
+     },
+     {
+      "a": "board.{g}",
+      "b": "claudeClay",
+      "min": 10.4
+     }
+    ],
+    "bands": {
+     "board": {
+      "L": [
+       0.65,
+       0.853
+      ],
+      "C": [
+       0.118,
+       0.17
+      ],
+      "textLc": [
+       41.4,
+       78.3
+      ]
+     },
+     "genre": {
+      "L": [
+       0.65,
+       0.853
+      ],
+      "C": [
+       0.118,
+       0.17
+      ],
+      "textLc": null
+     }
+    }
+   }
+  }
+ },
+ {
+  "label": "design-tokens.json",
+  "modes": {
+   "light": {
+    "pairs": [
+     {
+      "fg": "text",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "body",
+      "wcagMin": 15.17,
+      "lcMin": 91.7,
+      "lcMax": 105.1,
+      "fail": 0
+     },
+     {
+      "fg": "textMuted",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "caption",
+      "wcagMin": 5.4,
+      "lcMin": 69.2,
+      "lcMax": 82.7,
+      "fail": 0
+     },
+     {
+      "fg": "link",
+      "bg": "background|surface",
+      "kind": "caption",
+      "wcagMin": 5.16,
+      "lcMin": 71.3,
+      "lcMax": 77.8,
+      "fail": 0
+     },
+     {
+      "fg": "secondary",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 5.16,
+      "lcMin": 71.3,
+      "lcMax": 77.8,
+      "fail": 0
+     },
+     {
+      "fg": "onSecondary",
+      "bg": "secondary",
+      "kind": "caption",
+      "wcagMin": 5.67,
+      "lcMin": 83.1,
+      "lcMax": 83.1,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 15.17,
+      "lcMin": 91.7,
+      "lcMax": 105.1,
+      "fail": 0
+     },
+     {
+      "fg": "onPrimary",
+      "bg": "primary",
+      "kind": "body",
+      "wcagMin": 18.54,
+      "lcMin": 107.2,
+      "lcMax": 107.2,
+      "fail": 0
+     },
+     {
+      "fg": "record",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 6.38,
+      "lcMin": 75.8,
+      "lcMax": 82.3,
+      "fail": 0
+     },
+     {
+      "fg": "onRecord",
+      "bg": "record",
+      "kind": "body",
+      "wcagMin": 7.01,
+      "lcMin": 87.4,
+      "lcMax": 87.4,
+      "fail": 0
+     },
+     {
+      "fg": "print",
+      "bg": "background|surface",
+      "kind": "edged",
+      "wcagMin": 1.07,
+      "lcMin": 0,
+      "lcMax": 8.2,
+      "fail": 0
+     },
+     {
+      "fg": "board.{g}",
+      "bg": "background|surface",
+      "kind": "field",
+      "wcagMin": 5.65,
+      "lcMin": 74.2,
+      "lcMax": 83.7,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "display",
+      "wcagMin": 6.21,
+      "lcMin": 85.8,
+      "lcMax": 88.7,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "caption",
+      "wcagMin": 6.21,
+      "lcMin": 85.8,
+      "lcMax": 88.7,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "mark",
+      "wcagMin": 6.21,
+      "lcMin": 85.8,
+      "lcMax": 88.7,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}@0.3",
+      "bg": "board.{g}",
+      "kind": "trace",
+      "wcagMin": 1.87,
+      "lcMin": 18.9,
+      "lcMax": 21.3,
+      "fail": 0
+     },
+     {
+      "fg": "print",
+      "bg": "board.{g}",
+      "kind": "mount",
+      "wcagMin": 5.3,
+      "lcMin": 74.1,
+      "lcMax": 76.9,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "board.{g}",
+      "kind": "refused",
+      "wcagMin": 2.67,
+      "lcMin": 19.4,
+      "lcMax": 22.5,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "body",
+      "wcagMin": 6.21,
+      "lcMin": 85.8,
+      "lcMax": 88.7,
+      "fail": 0
+     },
+     {
+      "fg": "genre.{g}",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 4.05,
+      "lcMin": 60.2,
+      "lcMax": 90.2,
+      "fail": 0
+     },
+     {
+      "fg": "onGenre.{g}",
+      "bg": "genre.{g}",
+      "kind": "display",
+      "wcagMin": 4.95,
+      "lcMin": 79.1,
+      "lcMax": 94.7,
+      "fail": 0
+     }
+    ],
+    "fails": [],
+    "neighbors": {
+     "board": {
+      "normal": 13.4,
+      "protan": 2.7,
+      "deutan": 2.4,
+      "tritan": 4.3,
+      "vibrating": 0
+     },
+     "genre": {
+      "normal": 18.4,
+      "protan": 6.5,
+      "deutan": 5.8,
+      "tritan": 7.6,
+      "vibrating": 0
+     }
+    },
+    "apart": [
+     {
+      "a": "board.drama",
+      "b": "record",
+      "min": 21.2
+     },
+     {
+      "a": "genre.drama",
+      "b": "record",
+      "min": 20.7
+     },
+     {
+      "a": "board.{g}",
+      "b": "record",
+      "min": 15.8
+     },
+     {
+      "a": "genre.{g}",
+      "b": "secondary",
+      "min": 11.1
+     },
+     {
+      "a": "genre.{g}",
+      "b": "warning",
+      "min": 13.5
+     },
+     {
+      "a": "genre.{g}",
+      "b": "error",
+      "min": 13.8
+     },
+     {
+      "a": "genre.{g}",
+      "b": "success",
+      "min": 13.9
+     },
+     {
+      "a": "board.{g}",
+      "b": "claudeClay",
+      "min": 22.3
+     }
+    ],
+    "bands": {
+     "board": {
+      "L": [
+       0.479,
+       0.481
+      ],
+      "C": [
+       0.084,
+       0.111
+      ],
+      "textLc": [
+       85.8,
+       88.7
+      ]
+     },
+     "genre": {
+      "L": [
+       0.42,
+       0.545
+      ],
+      "C": [
+       0.084,
+       0.135
+      ],
+      "textLc": null
+     }
+    }
+   },
+   "dark": {
+    "pairs": [
+     {
+      "fg": "text",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "body",
+      "wcagMin": 14.0,
+      "lcMin": 96.8,
+      "lcMax": 99.1,
+      "fail": 0
+     },
+     {
+      "fg": "textMuted",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "caption",
+      "wcagMin": 9.03,
+      "lcMin": 68.7,
+      "lcMax": 70.9,
+      "fail": 0
+     },
+     {
+      "fg": "link",
+      "bg": "background|surface",
+      "kind": "caption",
+      "wcagMin": 8.57,
+      "lcMin": 61.3,
+      "lcMax": 62.2,
+      "fail": 0
+     },
+     {
+      "fg": "secondary",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 8.57,
+      "lcMin": 61.3,
+      "lcMax": 62.2,
+      "fail": 0
+     },
+     {
+      "fg": "onSecondary",
+      "bg": "secondary",
+      "kind": "caption",
+      "wcagMin": 9.13,
+      "lcMin": 63.3,
+      "lcMax": 63.3,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 14.0,
+      "lcMin": 96.8,
+      "lcMax": 99.1,
+      "fail": 0
+     },
+     {
+      "fg": "onPrimary",
+      "bg": "primary",
+      "kind": "body",
+      "wcagMin": 17.13,
+      "lcMin": 97.9,
+      "lcMax": 97.9,
+      "fail": 0
+     },
+     {
+      "fg": "record",
+      "bg": "background|surface",
+      "kind": "mark",
+      "wcagMin": 4.12,
+      "lcMin": 32.5,
+      "lcMax": 33.3,
+      "fail": 0
+     },
+     {
+      "fg": "onRecord",
+      "bg": "record",
+      "kind": "body",
+      "wcagMin": 4.66,
+      "lcMin": 35.9,
+      "lcMax": 35.9,
+      "fail": 1
+     },
+     {
+      "fg": "print",
+      "bg": "background|surface",
+      "kind": "edged",
+      "wcagMin": 1.23,
+      "lcMin": 0,
+      "lcMax": 0,
+      "fail": 0
+     },
+     {
+      "fg": "board.{g}",
+      "bg": "background|surface",
+      "kind": "field",
+      "wcagMin": 1.61,
+      "lcMin": 0,
+      "lcMax": 9.1,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "display",
+      "wcagMin": 8.99,
+      "lcMin": 88.7,
+      "lcMax": 90.4,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "caption",
+      "wcagMin": 8.99,
+      "lcMin": 88.7,
+      "lcMax": 90.4,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "mark",
+      "wcagMin": 8.99,
+      "lcMin": 88.7,
+      "lcMax": 90.4,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}@0.3",
+      "bg": "board.{g}",
+      "kind": "trace",
+      "wcagMin": 2.17,
+      "lcMin": 18.5,
+      "lcMax": 19.9,
+      "fail": 0
+     },
+     {
+      "fg": "print",
+      "bg": "board.{g}",
+      "kind": "mount",
+      "wcagMin": 1.31,
+      "lcMin": 0,
+      "lcMax": 0,
+      "fail": 0
+     },
+     {
+      "fg": "primary",
+      "bg": "board.{g}",
+      "kind": "refused",
+      "wcagMin": 8.99,
+      "lcMin": 88.7,
+      "lcMax": 90.4,
+      "fail": 0
+     },
+     {
+      "fg": "onBoard.{g}",
+      "bg": "board.{g}",
+      "kind": "body",
+      "wcagMin": 8.99,
+      "lcMin": 88.7,
+      "lcMax": 90.4,
+      "fail": 0
+     },
+     {
+      "fg": "genre.{g}",
+      "bg": "background|surface|surfaceAlt",
+      "kind": "mark",
+      "wcagMin": 5.39,
+      "lcMin": 43.9,
+      "lcMax": 69.6,
+      "fail": 0
+     },
+     {
+      "fg": "onGenre.{g}",
+      "bg": "genre.{g}",
+      "kind": "display",
+      "wcagMin": 6.59,
+      "lcMin": 48.2,
+      "lcMax": 70.7,
+      "fail": 0
+     }
+    ],
+    "fails": [],
+    "neighbors": {
+     "board": {
+      "normal": 12.0,
+      "protan": 2.0,
+      "deutan": 2.0,
+      "tritan": 3.6,
+      "vibrating": 0
+     },
+     "genre": {
+      "normal": 18.6,
+      "protan": 7.0,
+      "deutan": 5.3,
+      "tritan": 8.7,
+      "vibrating": 0
+     }
+    },
+    "apart": [
+     {
+      "a": "board.drama",
+      "b": "record",
+      "min": 31.2
+     },
+     {
+      "a": "genre.drama",
+      "b": "record",
+      "min": 27.5
+     },
+     {
+      "a": "board.{g}",
+      "b": "record",
+      "min": 28.5
+     },
+     {
+      "a": "genre.{g}",
+      "b": "secondary",
+      "min": 12.7
+     },
+     {
+      "a": "genre.{g}",
+      "b": "warning",
+      "min": 11.4
+     },
+     {
+      "a": "genre.{g}",
+      "b": "error",
+      "min": 11.6
+     },
+     {
+      "a": "genre.{g}",
+      "b": "success",
+      "min": 12.6
+     },
+     {
+      "a": "board.{g}",
+      "b": "claudeClay",
+      "min": 32.4
+     }
+    ],
+    "bands": {
+     "board": {
+      "L": [
+       0.369,
+       0.371
+      ],
+      "C": [
+       0.065,
+       0.09
+      ],
+      "textLc": [
+       88.7,
+       90.4
+      ]
+     },
+     "genre": {
+      "L": [
+       0.69,
+       0.814
+      ],
+      "C": [
+       0.07,
+       0.135
+      ],
+      "textLc": null
+     }
+    }
+   }
+  }
+ }
+]

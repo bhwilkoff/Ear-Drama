@@ -69,6 +69,12 @@ show whole on the print ground; none occur in this sample.
 
 ## Color and contrast
 
+*Superseded in D2c-1 (`docs/research/palette/surfaces.md`, Decision 064):
+boards now draw in `color.board`, one lightness band per mode, with one
+on-board color (`color.onBoard`) for everything on them; `color.onGenre`
+is the text on a mark used as a fill. Shots: `../../img/d2c-1/`. What
+follows is D2b-3's record.*
+
 New tokens, `color.onGenre` in `design-tokens.json`: the text color on
 each genre board, white or ink, whichever holds 4.5:1 (lowest 4.54:1,
 light science fiction). Light comedy is the one ink board (white was

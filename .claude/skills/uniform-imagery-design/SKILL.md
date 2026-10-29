@@ -152,10 +152,8 @@ after converting to gray (Rec. 709 weights: 0.2126, 0.7152, 0.0722).
   separates a white-ground halftone from a white page.
 - **One radius pair**: the card radius outside, 4 inside. A circle only
   for a person's face.
-- **Text on the board** must pass contrast for its size: the genre hues
-  are checked at 3:1 (large text only); a name below 18.66 px bold
-  needs 4.5:1, so either set it large or add on-genre text tokens.
-  Never text on the photograph.
+- **Text on the board** takes the board's one on-board color (§7), never
+  a per-board choice of white or ink. Never text on the photograph.
 
 ### 4. Minimum size
 
@@ -177,6 +175,48 @@ initials still reads as one set; a wall with gray boxes does not.
 Change the ground, not the photograph: no dimming, no inversion. The
 print ground lifts to a dark gray so a black-background portrait keeps
 its edge; the hairline flips to paper.
+
+### 7. Color on surfaces: boards and marks are two tokens
+
+Graded pictures read as one set only if what they are mounted on does
+too. A color set tuned for **marks** (a 10 px legend key, 3:1 on the
+page) is the wrong set for **boards** (a block the size of a card that
+carries words): drawn large, its lightness differences become the
+loudest thing on the screen, and in dark mode a mark bright enough to
+read on black becomes a lamp beside the page's text. Ear Drama's D2b-3
+did exactly this (owner, 2026-10-29: *"the color combinations are
+looking terrible, especially on dark mode"*), and the measurements
+named it: dark boards spread from OKLCH L 0.65 to 0.85 and glared at
+APCA Lc 38 to 78 against the page; light boards spread L 0.37 to 0.60
+and needed two text colors. So:
+
+1. **A board token and a mark token per genre, same hue.** The board is
+   the deep, quiet tone that a tile, hero or play block stands on; the
+   mark is the small square, strip or face. Never draw a board in the
+   mark color.
+2. **One lightness band per mode for the boards** (OKLCH L spread at
+   most 0.04, chroma close), so a grid of boards reads as a set of
+   book spines and no neighbor outshines another. Yellow cannot sit in a
+   deep band without going olive; move it toward gold (hue about 82),
+   not toward a lighter board.
+3. **Dark-mode boards are surfaces, never lamps**: at most APCA Lc 30
+   against the page (Ear Drama's sit at L 0.37, Lc 0 to 9), deeper than
+   the marks, with the page's own text color on them.
+4. **One color on every board**: name, facts, run strip (the empty years
+   at 30%), a typographic card's edge, and any button, which takes that
+   color as its fill. At least 4.5:1 and APCA Lc 75. No ink button, no
+   blue link, no second text color on a board.
+5. **Marks keep a lightness stagger** (spread about 0.12) because they
+   sit side by side in charts and legends, and color-blind viewers
+   separate them by lightness; boards in one band cannot (CVD ΔE00 about
+   2), which is why every board carries its name in words.
+6. **Measure the pairs the screens draw**, not the palette: list every
+   ground, board, text, mark and button pairing, then check WCAG and
+   APCA for each, CIEDE2000 between neighbors, Machado color-blind
+   separation, and distance from the reserved colors (recording red,
+   wayfinding blue, status colors). Ear Drama's tool:
+   `docs/research/palette/measure/palette_check.py --surfaces
+   pairings.json <tokens>`; the token test holds the board rules.
 
 ## Where each step runs
 
@@ -301,7 +341,7 @@ beside halftones. After: one family. What the sheet showed:
 
 Open questions for the owner (D2b-3 builds against the defaults): the
 `art.grade` contract field; whether derivatives on an image CDN replace
-hot-linked Commons files; on-genre text tokens for names on the boards.
+hot-linked Commons files. (The on-board text tokens landed in D2c-1, §7.)
 
 ## See also
 

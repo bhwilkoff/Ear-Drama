@@ -66,12 +66,76 @@ export function genres(t) {
     .map(([name, v]) => ({ name, light: v.light, dark: v.dark }));
 }
 
-// The text color set on each genre board: [{ name, light, dark }], same keys as
-// genres(); web only until a native board consumes it (D2b-3).
-export function onGenres(t) {
-  return Object.entries((t.color && t.color.onGenre) || {})
-    .filter(([name]) => !name.startsWith('$'))
-    .map(([name, v]) => ({ name, light: v.light, dark: v.dark }));
+const group = (t, key) => Object.entries((t.color && t.color[key]) || {})
+  .filter(([name]) => !name.startsWith('$'))
+  .map(([name, v]) => ({ name, light: v.light, dark: v.dark }));
+
+// The text color set on a genre mark used as a fill (a part's initial on its
+// face): [{ name, light, dark }], same keys as genres(). Web only until a native
+// surface consumes it (D2b-3).
+export function onGenres(t) { return group(t, 'onGenre'); }
+
+// The genre boards (D2c-1): the large block in the genre's hue, one lightness
+// band per mode, and the one color everything on a board takes. Same keys as
+// genres(); web only until a native board consumes them (D3).
+export function boards(t) { return group(t, 'board'); }
+export function onBoards(t) { return group(t, 'onBoard'); }
+
+// ---- perceptual measures the token test uses (D2c-1) ----------------------
+const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+
+// OKLCH lightness, chroma, hue (Ottosson 2020).
+export function oklch(h) {
+  const [r, g, b] = rgb(h).map(lin);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return { L, C: Math.hypot(A, B), h: ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360 };
+}
+
+// APCA 0.0.98G-4g lightness contrast, |Lc| of text (or a mark) on a ground.
+export function apca(txt, bg) {
+  const y = (h) => { const [r, g, b] = rgb(h).map((v) => v / 255); return 0.2126729 * r ** 2.4 + 0.7151522 * g ** 2.4 + 0.0721750 * b ** 2.4; };
+  const clamp = (v) => (v > 0.022 ? v : v + (0.022 - v) ** 1.414);
+  const yt = clamp(y(txt)), yb = clamp(y(bg));
+  if (Math.abs(yb - yt) < 0.0005) return 0;
+  const out = yb > yt ? Math.max(0, (yb ** 0.56 - yt ** 0.57) * 1.14 - 0.027) : Math.min(0, (yb ** 0.65 - yt ** 0.62) * 1.14 + 0.027);
+  return Math.abs(out * 100);
+}
+
+// CIEDE2000 color difference (Sharma, Wu and Dalal 2005).
+export function deltaE(h1, h2) {
+  const lab = (h) => {
+    const [r, g, b] = rgb(h).map(lin);
+    const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+    const y = 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
+    const z = (0.0193339 * r + 0.1191920 * g + 0.9503041 * b) / 1.08883;
+    const f = (v) => (v > 216 / 24389 ? Math.cbrt(v) : (24389 / 27 * v + 16) / 116);
+    return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+  };
+  const rad = Math.PI / 180;
+  const [L1, a1, b1] = lab(h1), [L2, a2, b2] = lab(h2);
+  const Cb = (Math.hypot(a1, b1) + Math.hypot(a2, b2)) / 2;
+  const G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7)));
+  const a1p = (1 + G) * a1, a2p = (1 + G) * a2;
+  const C1 = Math.hypot(a1p, b1), C2 = Math.hypot(a2p, b2);
+  const hp = (b, a) => ((Math.atan2(b, a) / rad) + 360) % 360;
+  const h1p = hp(b1, a1p), h2p = hp(b2, a2p);
+  let dh = 0;
+  if (C1 * C2 !== 0) { dh = h2p - h1p; if (dh > 180) dh -= 360; else if (dh < -180) dh += 360; }
+  const dH = 2 * Math.sqrt(C1 * C2) * Math.sin((dh / 2) * rad);
+  const Lb = (L1 + L2) / 2, Cbp = (C1 + C2) / 2;
+  let hb = h1p + h2p;
+  if (C1 * C2 !== 0) hb = Math.abs(h1p - h2p) <= 180 ? hb / 2 : (hb < 360 ? (hb + 360) / 2 : (hb - 360) / 2);
+  const T = 1 - 0.17 * Math.cos((hb - 30) * rad) + 0.24 * Math.cos(2 * hb * rad) + 0.32 * Math.cos((3 * hb + 6) * rad) - 0.20 * Math.cos((4 * hb - 63) * rad);
+  const dth = 30 * Math.exp(-(((hb - 275) / 25) ** 2));
+  const Rc = 2 * Math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7));
+  const Sl = 1 + (0.015 * (Lb - 50) ** 2) / Math.sqrt(20 + (Lb - 50) ** 2), Sc = 1 + 0.045 * Cbp, Sh = 1 + 0.015 * Cbp * T;
+  const Rt = -Math.sin(2 * dth * rad) * Rc;
+  return Math.sqrt(((L2 - L1) / Sl) ** 2 + ((C2 - C1) / Sc) ** 2 + (dH / Sh) ** 2 + Rt * ((C2 - C1) / Sc) * (dH / Sh));
 }
 
 const WEIGHT = {
@@ -119,6 +183,8 @@ function webVars(t, mode) {
     ...colors(t).map((c) => `--color-${kebab(c.name)}: ${c[mode].toUpperCase()};`),
     ...genres(t).map((g) => `--color-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
     ...onGenres(t).map((g) => `--color-on-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
+    ...boards(t).map((g) => `--color-board-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
+    ...onBoards(t).map((g) => `--color-on-board-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
   ];
 }
 
@@ -154,8 +220,17 @@ function webStyles(t) {
   const dark = ['  color-scheme: dark;', ...webVars(t, 'dark').map((l) => '  ' + l)];
   out.push('html[data-theme="dark"] {', ...dark, '}');
   out.push('@media (prefers-color-scheme: dark) {', '  html:not([data-theme="light"]) {', ...dark.map((l) => '  ' + l), '  }', '}');
-  const on = new Set(onGenres(t).map((g) => g.name));
-  for (const g of genres(t)) out.push(`[data-genre="${g.name}"] { --genre-accent: var(--color-genre-${kebab(g.name)});${on.has(g.name) ? ` --genre-on: var(--color-on-genre-${kebab(g.name)});` : ''} }`);
+  // Per genre: the mark (--genre-accent) and the text on it (--genre-on-accent);
+  // the board (--genre-board) and the one color on it (--genre-on).
+  const has = (list) => new Set(list.map((g) => g.name));
+  const on = has(onGenres(t)), bd = has(boards(t)), onb = has(onBoards(t));
+  for (const g of genres(t)) {
+    const k = kebab(g.name);
+    out.push(`[data-genre="${g.name}"] { --genre-accent: var(--color-genre-${k});`
+      + (on.has(g.name) ? ` --genre-on-accent: var(--color-on-genre-${k});` : '')
+      + (bd.has(g.name) ? ` --genre-board: var(--color-board-${k});` : '')
+      + (onb.has(g.name) ? ` --genre-on: var(--color-on-board-${k});` : '') + ' }');
+  }
   return out;
 }
 

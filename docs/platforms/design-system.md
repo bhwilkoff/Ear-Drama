@@ -37,13 +37,31 @@ brand color for content meaning or a semantic color for chrome. Add a
 domain-specific semantic color to `color.semantic` in the JSON, and the
 generator carries it to every platform.
 
-**Genre hues** (`color.genre`, Decision 064) are a third group, content
-only: one mark per catalog genre key (`catalog/tools/genres.py`), each
-held at 3:1 on background, surface, and surfaceAlt in both modes by the
-token test. The generator writes them as `--color-genre-<key>` plus a
-`[data-genre]` rule on the web, `Color.genreDrama` and
-`Color.genre(_:)` on Apple, `GenreDramaLight`/`Dark` and
-`genre_drama` on Android, and `GenreDramaBrush` on Windows. On Air's
+**Genre color** (Decision 064) is a third group, content only, and it is
+**two tokens per genre with one hue** (D2c-1). The **mark**
+(`color.genre`) is the small square, strip or face: one per catalog
+genre key (`catalog/tools/genres.py`), held at 3:1 on background,
+surface, and surfaceAlt in both modes, with a lightness stagger so marks
+side by side stay apart for color-blind viewers. The **board**
+(`color.board`) is the block a tile, hero or play block stands on: every
+board in one OKLCH lightness band per mode (L 0.48 light, 0.37 dark), and
+in dark mode a deep surface that never reads brighter than APCA Lc 30
+against the page. **Everything on a board takes one color**
+(`color.onBoard`): name, facts, run strip, a card's edge, and a button as
+its fill; never an ink button, a blue link or a second text color on a
+board. `color.onGenre` is the text on a mark used as a fill (a part's
+initial). Never draw a board in the mark color. The values come from
+`docs/research/palette/measure/boards.json`
+(`palette_check.py --boards`); every pairing the screens draw is listed
+in `pairings.json` and measured by `palette_check.py --surfaces`
+(`docs/research/palette/surfaces.md`), and the token test's §5c holds
+the board rules. The generator writes marks as `--color-genre-<key>`
+on the web, `Color.genreDrama` and `Color.genre(_:)` on Apple,
+`GenreDramaLight`/`Dark` and `genre_drama` on Android, and
+`GenreDramaBrush` on Windows; boards and their text are web only
+(`--color-board-<key>`, `--color-on-board-<key>`) until a native board
+ships (D3). A `[data-genre]` element gets `--genre-accent` (mark),
+`--genre-on-accent`, `--genre-board`, and `--genre-on` (on board). On Air's
 roles (owner, 2026-10-29: *"Red means recording."*): ink `primary`
 (the text color as a fill) for the primary action (Play and Pause,
 Listen through, Listen live, the progress line, the on-air marker);

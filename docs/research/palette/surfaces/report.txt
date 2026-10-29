@@ -1,0 +1,213 @@
+==============================================================================
+D2b-3 (before)  (tokens-d2b-3.json)
+==============================================================================
+
+-- light: pairings --
+  PASS  body    text on background|surface|surfaceAlt: WCAG min 15.17, APCA Lc 91.7-105.1   (every page and panel)
+  PASS  caption textMuted on background|surface|surfaceAlt: WCAG min 5.40, APCA Lc 69.2-82.7   (row subtitles, counts, axes)
+  PASS  caption link on background|surface: WCAG min 5.16, APCA Lc 71.3-77.8   (All 80, Browse, the back link)
+  PASS  mark    secondary on background|surface: WCAG min 5.16, APCA Lc 71.3-77.8   (the segmented control's edge and the selected tab)
+  PASS  caption onSecondary on secondary: WCAG min 5.67, APCA Lc 83.1-83.1   (the selected segment (a 16 px semibold label of one word))
+  PASS  mark    primary on background|surface|surfaceAlt: WCAG min 15.17, APCA Lc 91.7-105.1   (Play, the progress line, the mini player's button)
+  PASS  body    onPrimary on primary: WCAG min 18.54, APCA Lc 107.2-107.2   (Play's label)
+  PASS  mark    record on background|surface: WCAG min 6.38, APCA Lc 75.8-82.3   (the record button)
+  PASS  body    onRecord on record: WCAG min 7.01, APCA Lc 87.4-87.4   (Start recording)
+  PASS  edged   print on background|surface: WCAG min 1.07, APCA Lc 0.0-8.2   (a face or picture's print ground on the page; its 1 px print edge, not the fill, separates it)
+  PASS  field   board.{g} on background|surface: WCAG min 3.55, APCA Lc 59.8-94.5   (a show tile, a series hero, a play block on the page)
+  FAIL  display onBoard.{g} on board.{g}: WCAG min 4.54, APCA Lc 36.9-98.5  [1 of 8 fail]   (the show's name on its board)
+          comedy       #131316 on #8D8300 (board.comedy): Lc 36.9 < 45
+  FAIL  caption onBoard.{g} on board.{g}: WCAG min 4.54, APCA Lc 36.9-98.5  [1 of 8 fail]   (years, counts, kicker and episode line on a board)
+          comedy       #131316 on #8D8300 (board.comedy): Lc 36.9 < 60
+  PASS  mark    onBoard.{g} on board.{g}: WCAG min 4.54, APCA Lc 36.9-98.5   (the run strip's bars and the typographic card's edge)
+  FAIL  trace   onBoard.{g}@0.3 on board.{g}: WCAG min 1.63, APCA Lc 13.3-21.6  [2 of 8 fail]   (the run strip's empty years)
+          comedy       #686107 on #8D8300 (board.comedy): Lc 13.3 < 15
+          serial       #8E4CAB on #5D0087 (board.serial): Lc 15.0 < 15
+  PASS  mount   print on board.{g}: WCAG min 3.33, APCA Lc 60.0-86.7   (the graded picture mounted on its board)
+  PASS  refused primary on board.{g}: WCAG min 1.60, APCA Lc 8.5-36.9   (an ink button set on a board: refused by rule (a button on a board takes onBoard), reported only)
+  FAIL  body    onBoard.{g} on board.{g}: WCAG min 4.54, APCA Lc 36.9-98.5  [1 of 8 fail]   (a 16 px line on a board (the playbill hero))
+          comedy       #131316 on #8D8300 (board.comedy): Lc 36.9 < 75
+  PASS  mark    genre.{g} on background|surface|surfaceAlt: WCAG min 3.19, APCA Lc 52.8-94.5   (legend keys, the decade field, the day's stacked years, timelines, the cast fingerprint)
+  FAIL  display onGenre.{g} on genre.{g}: WCAG min 4.54, APCA Lc 36.9-98.5  [1 of 8 fail]   (a part's initial on its face (17 px or larger, bold display))
+          comedy       #131316 on #8D8300 (genre.comedy): Lc 36.9 < 45
+
+-- light: neighbors (CIEDE2000, normal and Machado 2009 at full severity) --
+  PASS  board    normal 21.6 (mystery/serial), protan 8.4 (western/documentary), deutan 8.4 (mystery/serial), tritan 10.2 (scifi/documentary)   vibrating pairs: 1 [('drama', 'documentary')]   (boards side by side in a grid of tiles)
+  PASS  genre    normal 21.6 (mystery/serial), protan 8.4 (western/documentary), deutan 8.4 (mystery/serial), tritan 10.2 (scifi/documentary)   vibrating pairs: 1 [('drama', 'documentary')]   (marks side by side: the day's years, the field, the cast fingerprint)
+
+-- light: bands (OKLCH lightness and chroma across a set) --
+  FAIL  board    L 0.37-0.60 (spread 0.230), C 0.090-0.190 (spread 0.100), text Lc 36.9-98.5, text colors 2  [L spread 0.230 > 0.04; C spread 0.100 > 0.04; text Lc spread 61.6 > 10; 2 text colors on the set: #131316, #FFFFFF]
+  FAIL  genre    L 0.37-0.60 (spread 0.230), C 0.090-0.190 (spread 0.100)  [L spread 0.230 > 0.13; C spread 0.100 > 0.07]
+
+-- light: kept apart (CIEDE2000) --
+  FAIL  board.drama vs record: min 18.5 (board.drama / record, needs 20)   (red means recording; drama is the most common board)
+  FAIL  genre.drama vs record: min 18.5 (genre.drama / record, needs 20)   (the drama mark beside the record button in the recorder)
+  PASS  board.{g} vs record: min 18.5 (board.drama / record, needs 15)   (no board reads as a record button)
+  PASS  genre.{g} vs secondary: min 14.3 (genre.mystery / secondary, needs 10)   (a genre mark never reads as wayfinding)
+  PASS  genre.{g} vs warning: min 11.5 (genre.western / warning, needs 10)   (nor as a warning)
+  PASS  genre.{g} vs error: min 13.3 (genre.western / error, needs 10)   (nor as an error)
+  PASS  genre.{g} vs success: min 11.3 (genre.documentary / success, needs 10)   (nor as success)
+  PASS  board.{g} vs claudeClay: min 14.0 (board.western / claudeClay, needs 12)   (Human Shaped lesson 3: stay out of the cream-and-clay default)
+
+  light: 14 failure(s)
+
+-- dark: pairings --
+  PASS  body    text on background|surface|surfaceAlt: WCAG min 14.00, APCA Lc 96.8-99.1   (every page and panel)
+  PASS  caption textMuted on background|surface|surfaceAlt: WCAG min 9.03, APCA Lc 68.7-70.9   (row subtitles, counts, axes)
+  PASS  caption link on background|surface: WCAG min 8.57, APCA Lc 61.3-62.2   (All 80, Browse, the back link)
+  PASS  mark    secondary on background|surface: WCAG min 7.46, APCA Lc 54.7-55.5   (the segmented control's edge and the selected tab)
+  FAIL  caption onSecondary on secondary: WCAG min 7.95, APCA Lc 57.0-57.0  [1 of 1 fail]   (the selected segment (a 16 px semibold label of one word))
+                       #06141B on #5AB4D6 (secondary): Lc 57.0 < 60
+  PASS  mark    primary on background|surface|surfaceAlt: WCAG min 14.00, APCA Lc 96.8-99.1   (Play, the progress line, the mini player's button)
+  PASS  body    onPrimary on primary: WCAG min 17.13, APCA Lc 97.9-97.9   (Play's label)
+  PASS  mark    record on background|surface: WCAG min 4.12, APCA Lc 32.5-33.3   (the record button)
+  KNOWN  body    onRecord on record: WCAG min 4.66, APCA Lc 35.9-35.9  [1 of 1 fail]   (Start recording)
+                       #120708 on #E3384B (record): Lc 35.9 < 75  [accepted: Decision 064 accepts the dark record button at 4.66:1 (APCA Lc 36); its label is short and the red is the icon ground]
+  PASS  edged   print on background|surface: WCAG min 1.23, APCA Lc 0.0-0.0   (a face or picture's print ground on the page; its 1 px print edge, not the fill, separates it)
+  FAIL  field   board.{g} on background|surface: WCAG min 5.03, APCA Lc 38.3-77.8  [16 of 16 fail]   (a show tile, a series hero, a play block on the page)
+          drama        #FF91C3 on #0F0F11 (background): glare: Lc 61.5 > 30 against the dark ground
+          drama        #FF91C3 on #19191C (surface): glare: Lc 60.7 > 30 against the dark ground
+          mystery      #8DACFA on #0F0F11 (background): glare: Lc 57.9 > 30 against the dark ground
+          mystery      #8DACFA on #19191C (surface): glare: Lc 57.0 > 30 against the dark ground
+          scifi        #16E3F2 on #0F0F11 (background): glare: Lc 77.0 > 30 against the dark ground
+          scifi        #16E3F2 on #19191C (surface): glare: Lc 76.1 > 30 against the dark ground
+          western      #D97E37 on #0F0F11 (background): glare: Lc 45.0 > 30 against the dark ground
+          western      #D97E37 on #19191C (surface): glare: Lc 44.2 > 30 against the dark ground
+          comedy       #E2D32B on #0F0F11 (background): glare: Lc 77.8 > 30 against the dark ground
+          comedy       #E2D32B on #19191C (surface): glare: Lc 76.9 > 30 against the dark ground
+          news         #CECEC0 on #0F0F11 (background): glare: Lc 75.9 > 30 against the dark ground
+          news         #CECEC0 on #19191C (surface): glare: Lc 75.0 > 30 against the dark ground
+          documentary  #81CB70 on #0F0F11 (background): glare: Lc 64.4 > 30 against the dark ground
+          documentary  #81CB70 on #19191C (surface): glare: Lc 63.6 > 30 against the dark ground
+          serial       #AE6DDC on #0F0F11 (background): glare: Lc 39.2 > 30 against the dark ground
+          serial       #AE6DDC on #19191C (surface): glare: Lc 38.3 > 30 against the dark ground
+  FAIL  display onBoard.{g} on board.{g}: WCAG min 5.49, APCA Lc 41.4-78.3  [1 of 8 fail]   (the show's name on its board)
+          serial       #0F0F11 on #AE6DDC (board.serial): Lc 41.4 < 45
+  FAIL  caption onBoard.{g} on board.{g}: WCAG min 5.49, APCA Lc 41.4-78.3  [3 of 8 fail]   (years, counts, kicker and episode line on a board)
+          mystery      #0F0F11 on #8DACFA (board.mystery): Lc 59.6 < 60
+          western      #0F0F11 on #D97E37 (board.western): Lc 47.2 < 60
+          serial       #0F0F11 on #AE6DDC (board.serial): Lc 41.4 < 60
+  PASS  mark    onBoard.{g} on board.{g}: WCAG min 5.49, APCA Lc 41.4-78.3   (the run strip's bars and the typographic card's edge)
+  PASS  trace   onBoard.{g}@0.3 on board.{g}: WCAG min 1.69, APCA Lc 15.1-28.9   (the run strip's empty years)
+  PASS  mount   print on board.{g}: WCAG min 4.10, APCA Lc 36.9-73.8   (the graded picture mounted on its board)
+  PASS  refused primary on board.{g}: WCAG min 1.38, APCA Lc 19.8-59.2   (an ink button set on a board: refused by rule (a button on a board takes onBoard), reported only)
+  FAIL  body    onBoard.{g} on board.{g}: WCAG min 5.49, APCA Lc 41.4-78.3  [5 of 8 fail]   (a 16 px line on a board (the playbill hero))
+          drama        #0F0F11 on #FF91C3 (board.drama): Lc 63.1 < 75
+          mystery      #0F0F11 on #8DACFA (board.mystery): Lc 59.6 < 75
+          western      #0F0F11 on #D97E37 (board.western): Lc 47.2 < 75
+          documentary  #0F0F11 on #81CB70 (board.documentary): Lc 65.8 < 75
+          serial       #0F0F11 on #AE6DDC (board.serial): Lc 41.4 < 75
+  PASS  mark    genre.{g} on background|surface|surfaceAlt: WCAG min 4.49, APCA Lc 36.9-77.8   (legend keys, the decade field, the day's stacked years, timelines, the cast fingerprint)
+  FAIL  display onGenre.{g} on genre.{g}: WCAG min 5.49, APCA Lc 41.4-78.3  [1 of 8 fail]   (a part's initial on its face (17 px or larger, bold display))
+          serial       #0F0F11 on #AE6DDC (genre.serial): Lc 41.4 < 45
+
+-- dark: neighbors (CIEDE2000, normal and Machado 2009 at full severity) --
+  PASS  board    normal 21.8 (news/documentary), protan 10.4 (comedy/documentary), deutan 9.7 (mystery/serial), tritan 11.2 (mystery/documentary)   vibrating pairs: 3 [('drama', 'scifi'), ('drama', 'documentary'), ('western', 'serial')]   (boards side by side in a grid of tiles)
+  PASS  genre    normal 21.8 (news/documentary), protan 10.4 (comedy/documentary), deutan 9.7 (mystery/serial), tritan 11.2 (mystery/documentary)   vibrating pairs: 3 [('drama', 'scifi'), ('drama', 'documentary'), ('western', 'serial')]   (marks side by side: the day's years, the field, the cast fingerprint)
+
+-- dark: bands (OKLCH lightness and chroma across a set) --
+  FAIL  board    L 0.65-0.85 (spread 0.203), C 0.118-0.170 (spread 0.052), text Lc 41.4-78.3, text colors 1  [L spread 0.203 > 0.04; C spread 0.052 > 0.04; text Lc spread 36.9 > 10]
+  FAIL  genre    L 0.65-0.85 (spread 0.203), C 0.118-0.170 (spread 0.052)  [L spread 0.203 > 0.13]
+
+-- dark: kept apart (CIEDE2000) --
+  PASS  board.drama vs record: min 25.7 (board.drama / record, needs 20)   (red means recording; drama is the most common board)
+  PASS  genre.drama vs record: min 25.7 (genre.drama / record, needs 20)   (the drama mark beside the record button in the recorder)
+  PASS  board.{g} vs record: min 25.6 (board.western / record, needs 15)   (no board reads as a record button)
+  PASS  genre.{g} vs secondary: min 14.9 (genre.scifi / secondary, needs 10)   (a genre mark never reads as wayfinding)
+  PASS  genre.{g} vs warning: min 15.4 (genre.comedy / warning, needs 10)   (nor as a warning)
+  PASS  genre.{g} vs error: min 11.1 (genre.western / error, needs 10)   (nor as an error)
+  PASS  genre.{g} vs success: min 10.3 (genre.documentary / success, needs 10)   (nor as success)
+  FAIL  board.{g} vs claudeClay: min 10.4 (board.western / claudeClay, needs 12)   (Human Shaped lesson 3: stay out of the cream-and-clay default)
+
+  dark: 32 failure(s)
+==============================================================================
+design-tokens.json  (../../../../design-tokens.json)
+==============================================================================
+
+-- light: pairings --
+  PASS  body    text on background|surface|surfaceAlt: WCAG min 15.17, APCA Lc 91.7-105.1   (every page and panel)
+  PASS  caption textMuted on background|surface|surfaceAlt: WCAG min 5.40, APCA Lc 69.2-82.7   (row subtitles, counts, axes)
+  PASS  caption link on background|surface: WCAG min 5.16, APCA Lc 71.3-77.8   (All 80, Browse, the back link)
+  PASS  mark    secondary on background|surface: WCAG min 5.16, APCA Lc 71.3-77.8   (the segmented control's edge and the selected tab)
+  PASS  caption onSecondary on secondary: WCAG min 5.67, APCA Lc 83.1-83.1   (the selected segment (a 16 px semibold label of one word))
+  PASS  mark    primary on background|surface|surfaceAlt: WCAG min 15.17, APCA Lc 91.7-105.1   (Play, the progress line, the mini player's button)
+  PASS  body    onPrimary on primary: WCAG min 18.54, APCA Lc 107.2-107.2   (Play's label)
+  PASS  mark    record on background|surface: WCAG min 6.38, APCA Lc 75.8-82.3   (the record button)
+  PASS  body    onRecord on record: WCAG min 7.01, APCA Lc 87.4-87.4   (Start recording)
+  PASS  edged   print on background|surface: WCAG min 1.07, APCA Lc 0.0-8.2   (a face or picture's print ground on the page; its 1 px print edge, not the fill, separates it)
+  PASS  field   board.{g} on background|surface: WCAG min 5.65, APCA Lc 74.2-83.7   (a show tile, a series hero, a play block on the page)
+  PASS  display onBoard.{g} on board.{g}: WCAG min 6.21, APCA Lc 85.8-88.7   (the show's name on its board)
+  PASS  caption onBoard.{g} on board.{g}: WCAG min 6.21, APCA Lc 85.8-88.7   (years, counts, kicker and episode line on a board)
+  PASS  mark    onBoard.{g} on board.{g}: WCAG min 6.21, APCA Lc 85.8-88.7   (the run strip's bars and the typographic card's edge)
+  PASS  trace   onBoard.{g}@0.3 on board.{g}: WCAG min 1.87, APCA Lc 18.9-21.3   (the run strip's empty years)
+  PASS  mount   print on board.{g}: WCAG min 5.30, APCA Lc 74.1-76.9   (the graded picture mounted on its board)
+  PASS  refused primary on board.{g}: WCAG min 2.67, APCA Lc 19.4-22.5   (an ink button set on a board: refused by rule (a button on a board takes onBoard), reported only)
+  PASS  body    onBoard.{g} on board.{g}: WCAG min 6.21, APCA Lc 85.8-88.7   (a 16 px line on a board (the playbill hero))
+  PASS  mark    genre.{g} on background|surface|surfaceAlt: WCAG min 4.05, APCA Lc 60.2-90.2   (legend keys, the decade field, the day's stacked years, timelines, the cast fingerprint)
+  PASS  display onGenre.{g} on genre.{g}: WCAG min 4.95, APCA Lc 79.1-94.7   (a part's initial on its face (17 px or larger, bold display))
+
+-- light: neighbors (CIEDE2000, normal and Machado 2009 at full severity) --
+  PASS  board    normal 13.4 (drama/serial), protan 2.7 (mystery/serial), deutan 2.4 (mystery/serial), tritan 4.3 (scifi/documentary)   vibrating pairs: 0   (boards side by side in a grid of tiles)
+  PASS  genre    normal 18.4 (mystery/serial), protan 6.5 (comedy/documentary), deutan 5.8 (mystery/serial), tritan 7.6 (drama/western)   vibrating pairs: 0   (marks side by side: the day's years, the field, the cast fingerprint)
+
+-- light: bands (OKLCH lightness and chroma across a set) --
+  PASS  board    L 0.48-0.48 (spread 0.002), C 0.084-0.111 (spread 0.027), text Lc 85.8-88.7, text colors 1
+  PASS  genre    L 0.42-0.55 (spread 0.125), C 0.084-0.135 (spread 0.051)
+
+-- light: kept apart (CIEDE2000) --
+  PASS  board.drama vs record: min 21.2 (board.drama / record, needs 20)   (red means recording; drama is the most common board)
+  PASS  genre.drama vs record: min 20.7 (genre.drama / record, needs 20)   (the drama mark beside the record button in the recorder)
+  PASS  board.{g} vs record: min 15.8 (board.western / record, needs 15)   (no board reads as a record button)
+  PASS  genre.{g} vs secondary: min 11.1 (genre.mystery / secondary, needs 10)   (a genre mark never reads as wayfinding)
+  PASS  genre.{g} vs warning: min 13.5 (genre.western / warning, needs 10)   (nor as a warning)
+  PASS  genre.{g} vs error: min 13.8 (genre.western / error, needs 10)   (nor as an error)
+  PASS  genre.{g} vs success: min 13.9 (genre.documentary / success, needs 10)   (nor as success)
+  PASS  board.{g} vs claudeClay: min 22.3 (board.western / claudeClay, needs 12)   (Human Shaped lesson 3: stay out of the cream-and-clay default)
+
+  light: 0 failure(s)
+
+-- dark: pairings --
+  PASS  body    text on background|surface|surfaceAlt: WCAG min 14.00, APCA Lc 96.8-99.1   (every page and panel)
+  PASS  caption textMuted on background|surface|surfaceAlt: WCAG min 9.03, APCA Lc 68.7-70.9   (row subtitles, counts, axes)
+  PASS  caption link on background|surface: WCAG min 8.57, APCA Lc 61.3-62.2   (All 80, Browse, the back link)
+  PASS  mark    secondary on background|surface: WCAG min 8.57, APCA Lc 61.3-62.2   (the segmented control's edge and the selected tab)
+  PASS  caption onSecondary on secondary: WCAG min 9.13, APCA Lc 63.3-63.3   (the selected segment (a 16 px semibold label of one word))
+  PASS  mark    primary on background|surface|surfaceAlt: WCAG min 14.00, APCA Lc 96.8-99.1   (Play, the progress line, the mini player's button)
+  PASS  body    onPrimary on primary: WCAG min 17.13, APCA Lc 97.9-97.9   (Play's label)
+  PASS  mark    record on background|surface: WCAG min 4.12, APCA Lc 32.5-33.3   (the record button)
+  KNOWN  body    onRecord on record: WCAG min 4.66, APCA Lc 35.9-35.9  [1 of 1 fail]   (Start recording)
+                       #120708 on #E3384B (record): Lc 35.9 < 75  [accepted: Decision 064 accepts the dark record button at 4.66:1 (APCA Lc 36); its label is short and the red is the icon ground]
+  PASS  edged   print on background|surface: WCAG min 1.23, APCA Lc 0.0-0.0   (a face or picture's print ground on the page; its 1 px print edge, not the fill, separates it)
+  PASS  field   board.{g} on background|surface: WCAG min 1.61, APCA Lc 0.0-9.1   (a show tile, a series hero, a play block on the page)
+  PASS  display onBoard.{g} on board.{g}: WCAG min 8.99, APCA Lc 88.7-90.4   (the show's name on its board)
+  PASS  caption onBoard.{g} on board.{g}: WCAG min 8.99, APCA Lc 88.7-90.4   (years, counts, kicker and episode line on a board)
+  PASS  mark    onBoard.{g} on board.{g}: WCAG min 8.99, APCA Lc 88.7-90.4   (the run strip's bars and the typographic card's edge)
+  PASS  trace   onBoard.{g}@0.3 on board.{g}: WCAG min 2.17, APCA Lc 18.5-19.9   (the run strip's empty years)
+  PASS  mount   print on board.{g}: WCAG min 1.31, APCA Lc 0.0-0.0   (the graded picture mounted on its board)
+  PASS  refused primary on board.{g}: WCAG min 8.99, APCA Lc 88.7-90.4   (an ink button set on a board: refused by rule (a button on a board takes onBoard), reported only)
+  PASS  body    onBoard.{g} on board.{g}: WCAG min 8.99, APCA Lc 88.7-90.4   (a 16 px line on a board (the playbill hero))
+  PASS  mark    genre.{g} on background|surface|surfaceAlt: WCAG min 5.39, APCA Lc 43.9-69.6   (legend keys, the decade field, the day's stacked years, timelines, the cast fingerprint)
+  PASS  display onGenre.{g} on genre.{g}: WCAG min 6.59, APCA Lc 48.2-70.7   (a part's initial on its face (17 px or larger, bold display))
+
+-- dark: neighbors (CIEDE2000, normal and Machado 2009 at full severity) --
+  PASS  board    normal 12.0 (drama/serial), protan 2.0 (mystery/serial), deutan 2.0 (mystery/serial), tritan 3.6 (scifi/documentary)   vibrating pairs: 0   (boards side by side in a grid of tiles)
+  PASS  genre    normal 18.6 (western/news), protan 7.0 (comedy/documentary), deutan 5.3 (drama/news), tritan 8.7 (drama/western)   vibrating pairs: 0   (marks side by side: the day's years, the field, the cast fingerprint)
+
+-- dark: bands (OKLCH lightness and chroma across a set) --
+  PASS  board    L 0.37-0.37 (spread 0.002), C 0.065-0.090 (spread 0.026), text Lc 88.7-90.4, text colors 1
+  PASS  genre    L 0.69-0.81 (spread 0.124), C 0.070-0.135 (spread 0.065)
+
+-- dark: kept apart (CIEDE2000) --
+  PASS  board.drama vs record: min 31.2 (board.drama / record, needs 20)   (red means recording; drama is the most common board)
+  PASS  genre.drama vs record: min 27.5 (genre.drama / record, needs 20)   (the drama mark beside the record button in the recorder)
+  PASS  board.{g} vs record: min 28.5 (board.western / record, needs 15)   (no board reads as a record button)
+  PASS  genre.{g} vs secondary: min 12.7 (genre.mystery / secondary, needs 10)   (a genre mark never reads as wayfinding)
+  PASS  genre.{g} vs warning: min 11.4 (genre.comedy / warning, needs 10)   (nor as a warning)
+  PASS  genre.{g} vs error: min 11.6 (genre.western / error, needs 10)   (nor as an error)
+  PASS  genre.{g} vs success: min 12.6 (genre.documentary / success, needs 10)   (nor as success)
+  PASS  board.{g} vs claudeClay: min 32.4 (board.western / claudeClay, needs 12)   (Human Shaped lesson 3: stay out of the cream-and-clay default)
+
+  dark: 0 failure(s)
+
+wrote ../surfaces/report.json
+
+46 surface check(s) failed across 2 token file(s)
