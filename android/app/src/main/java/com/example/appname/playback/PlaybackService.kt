@@ -22,6 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 
 /**
  * The Media3 library service (foregroundServiceType mediaPlayback). It wraps
@@ -42,6 +44,7 @@ class PlaybackService : MediaLibraryService() {
     private var session: MediaLibrarySession? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    @OptIn(UnstableApi::class)
     override fun onCreate() {
         super.onCreate()
         val container = (application as AppNameApplication).container
@@ -139,6 +142,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         /** The car's play request: the same queue the phone's Play button builds (R3), resumed where it stopped. */
+        @OptIn(UnstableApi::class)
         override fun onSetMediaItems(
             mediaSession: MediaSession,
             controller: MediaSession.ControllerInfo,

@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.appname.navigation.SiteLinks
+import androidx.core.net.toUri
 
 /** ANDROID-DESIGN §4.11a: the site pages, names only; a Custom Tab opens each, a TV shows the address. */
 @Composable
@@ -19,7 +20,7 @@ fun SiteLinkRows() {
     SiteLinks.PAGES.forEach { (name, url) ->
         ListItem(
             modifier = if (television) Modifier else Modifier.clickable(onClickLabel = "Open $name") {
-                runCatching { CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, Uri.parse(url)) }
+                runCatching { CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context, url.toUri()) }
             },
             headlineContent = { Text(name) },
             supportingContent = if (television) ({ Text(url.removePrefix("https://").trimEnd('/')) }) else null,

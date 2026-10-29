@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 /** What the player screens draw. */
 data class NowPlaying(
@@ -408,7 +409,7 @@ class PlaybackEngine(
      * the device, so it shows with no network (a portrait is a URL to fetch).
      */
     private fun mediaItem(row: EpisodeRow, source: PlaybackSource, face: Face?, card: Boolean, copyUrl: String): MediaItem {
-        val uri = if (source.isLocal) Uri.fromFile(java.io.File(source.location)) else Uri.parse(source.location)
+        val uri = if (source.isLocal) Uri.fromFile(java.io.File(source.location)) else source.location.toUri()
         row.lengthSeconds?.takeIf { it > 0 }?.let { lengthsUs[uri.toString()] = (it * 1_000_000).toLong() }
         return mediaItem(row, uri, source.isLocal, face, card, copyUrl)
     }
@@ -417,7 +418,7 @@ class PlaybackEngine(
         .setMediaId(row.id)
         .setUri(uri)
         // A Cast receiver plays the catalog copy even when this phone plays the downloaded file (CastRoute.Items).
-        .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(Uri.parse(copyUrl)).build())
+        .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(copyUrl.toUri()).build())
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(row.title ?: row.airDate ?: row.seriesName)

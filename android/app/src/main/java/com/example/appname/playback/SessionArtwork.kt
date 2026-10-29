@@ -14,6 +14,8 @@ import com.example.appname.ui.theme.BrandTextLight
 import com.example.appname.ui.theme.BrandTextMutedLight
 import com.example.appname.ui.theme.genreColor
 import java.io.ByteArrayOutputStream
+import androidx.core.net.toUri
+import androidx.core.graphics.createBitmap
 
 /**
  * The media session's picture is the one Now Playing draws (Decision 069):
@@ -22,13 +24,13 @@ import java.io.ByteArrayOutputStream
  */
 object SessionArtwork {
     fun apply(builder: MediaMetadata.Builder, row: EpisodeRow, face: Face?): MediaMetadata.Builder {
-        if (face != null) return builder.setArtworkUri(android.net.Uri.parse(face.art.url(500)))
+        if (face != null) return builder.setArtworkUri(face.art.url(500).toUri())
         return builder.setArtworkData(cardPng(row.seriesName, row.airDate?.take(4), row.seriesGenre),
             MediaMetadata.PICTURE_TYPE_FRONT_COVER)
     }
 
     fun cardPng(name: String, line: String?, genre: String?, side: Int = 512): ByteArray {
-        val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(side, side)
         val canvas = Canvas(bitmap)
         canvas.drawColor(BrandSurfaceAltLight.toArgb())
         val band = Paint().apply { color = (genreColor(genre, dark = false) ?: BrandBorderLight).toArgb() }

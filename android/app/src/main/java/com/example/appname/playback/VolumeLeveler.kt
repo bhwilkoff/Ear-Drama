@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.audiofx.DynamicsProcessing
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import androidx.core.content.edit
 
 /**
  * Decision 067: volume is leveled on the device as it plays, never from a
@@ -40,7 +41,7 @@ class VolumeLeveler(context: Context) {
 
     fun set(on: Boolean) {
         _on.value = on
-        prefs.edit().putBoolean(KEY, on).apply()
+        prefs.edit { putBoolean(KEY, on) }
         effect?.enabled = on
     }
 
