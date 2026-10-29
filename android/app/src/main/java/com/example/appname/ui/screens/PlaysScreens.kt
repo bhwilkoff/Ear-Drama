@@ -44,6 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -337,18 +338,22 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
     }
     var syncError by remember { mutableStateOf<String?>(null) }
     var shareError by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(link?.pid, me) {
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(link?.pid, me, lifecycle) {
         if (link == null || me == null) return@LaunchedEffect
-        while (true) {
-            try {
-                sharing.refresh(id)
-                syncError = null
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                syncError = PlaysShare.line(e)
+        // Re-read on every return to the screen and while it shows, never in the background (§11.7 rule 7).
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    sharing.refresh(id)
+                    syncError = null
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    syncError = PlaysShare.line(e)
+                }
+                delay(20_000)
             }
-            delay(20_000)
         }
     }
 
@@ -459,7 +464,6 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit)
                 },
             )
         }
-        sheet?.let { ConsentDialog(it) }
         if (confirmingDelete) DeleteProductionDialog(production, onDismiss = { confirmingDelete = false }, onDeleted = onBack)
     }
 }

@@ -49,7 +49,8 @@ export const PLAYS_ANONYMOUS_TABLES = ["play_orphan_objects"];
  * The CC0 consent (Decision 059). The version id is what a person agreed to;
  * the words are the owner's to write and approve, and until then the text is
  * this marked placeholder, never invented copy. Changing the words means a new
- * version id, and a performer must consent again before the next upload.
+ * version id, and every performer must consent again before the play is
+ * published. Uploading a take to the members needs no consent (Decision 072).
  */
 export const CONSENT_VERSION = "cc0-placeholder-1";
 export const CONSENT_TEXT = "OWNER: the CC0 consent words are pending the owner's approval (Decision 059).";
@@ -403,10 +404,8 @@ async function uploadTake(auth, request, env, p, takeId, now) {
   if (!part) return problem(422, "no_such_line");
   if (meta.part !== undefined && meta.part !== part) return problem(422, "line_is_another_part", part);
   if (!isClaimant(await partRows(env, p.id), part, auth.userId, now)) return problem(403, "not_your_claim");
-  const consent = await env.DB.prepare("SELECT 1 FROM play_consents WHERE user_id = ?1 AND production_id = ?2 AND version = ?3")
-    .bind(auth.userId, p.id, CONSENT_VERSION)
-    .first();
-  if (!consent) return problem(403, "consent_required", CONSENT_VERSION);
+  // No CC0 consent here (Decision 072): a take on the Worker reaches only this
+  // production's members. The consent is asked before publishing, which goes beyond them.
   // A take the bleed check flagged holds the device voice, which is never stored (§5 rule 2, §8 rule 3).
   if (meta.bleed === true) return problem(422, "bleed_flagged");
 

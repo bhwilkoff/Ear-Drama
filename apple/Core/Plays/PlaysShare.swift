@@ -1,4 +1,3 @@
-#if os(iOS) || os(macOS)
 import Foundation
 
 /// Shared plays, phase 2 (LOOP-PLAN M8, PLAYS-DESIGN §11.7): a production on
@@ -10,10 +9,21 @@ import Foundation
 /// Nothing here decides a claim; it asks and shows the answer. Takes are
 /// recorded on this device exactly as phase 1 records them, then uploaded:
 /// only the chosen take of each line of a part this person holds, never one
-/// the bleed check flagged (it holds the device voice, §5), and only after the
-/// person agrees to the consent at the version the Worker names. The consent's
-/// words are the Worker's (the owner's), shown as they arrive.
+/// the bleed check flagged (it holds the device voice, §5). A take reaches only
+/// the members, so uploading asks no consent (Decision 072); the CC0 consent
+/// comes before Publish, and both wait for the owner's words. The Apple TV
+/// compiles only the parts that read a record (§11.7 rule 12).
 enum PlaysShare {
+    /// TODO(M8-consent-screen): Publish sends the play beyond its members, so
+    /// it waits for the CC0 consent screen, whose words are the owner's
+    /// (Decisions 059 and 072, PLAYS-DESIGN §11.7 rule 6). Flip only with it.
+    static let publishOpen = false
+
+    /// Publish for the director of a complete play, once the consent screen ships (rule 9).
+    static func canPublish(_ rec: SharedRecord, _ script: PlayScript, _ me: String?, open: Bool = publishOpen) -> Bool {
+        open && me != nil && rec.director == me && rec.archive == nil && complete(rec, script)
+    }
+
     nonisolated struct CastLine: Codable, Equatable, Sendable {
         let id: String
         let part: String
@@ -52,6 +62,7 @@ enum PlaysShare {
             && script.speechLineIDs.allSatisfy { rec.chosen[$0] != nil }
     }
 
+    #if os(iOS) || os(macOS)
     /// The local record follows the Worker's parts: only this person's live
     /// claim records here (so the phase 1 recorder opens for it); done and
     /// silent come across with the performer's name; anyone else's claim is
@@ -106,22 +117,20 @@ enum PlaysShare {
     }
 
     nonisolated struct UploadResult: Equatable, Sendable {
-        enum Stop: Equatable, Sendable { case consent, uploadsOff }
+        enum Stop: Equatable, Sendable { case uploadsOff }
         var sent = 0
         var flagged = 0
         var stopped: Stop?
         var error: PlaysRefusal?
     }
 
-    /// Uploads this person's pending takes. `agree` is asked before the first
-    /// upload, and again whenever the Worker's version moves on; it answers
-    /// true when the person agreed.
+    /// Uploads this person's pending takes to the members (Decision 072: no
+    /// consent is asked; `GET /consent` is read only for the owner's switch).
     static func upload(api: any PlaysTransport, store: ProductionStore, local: Production, script: PlayScript,
-                       rec: SharedRecord, me: String?,
-                       agree: (PlaysConsent) async -> Bool) async -> UploadResult {
+                       rec: SharedRecord, me: String?) async -> UploadResult {
         var result = UploadResult(flagged: flagged(local, script, rec, me))
         let send = pending(local, script, rec, me)
-        guard !send.isEmpty, var link = store.share(local.id) else { return result }
+        guard !send.isEmpty, let link = store.share(local.id) else { return result }
         guard uploadsOpen(rec) else {
             result.stopped = .uploadsOff
             return result
@@ -132,15 +141,6 @@ enum PlaysShare {
                 result.stopped = .uploadsOff
                 return result
             }
-            if link.consented != consent.version {
-                guard await agree(consent) else {
-                    result.stopped = .consent
-                    return result
-                }
-                try await api.agree(link.pid, version: consent.version)
-                link.consented = consent.version
-                try store.setShare(local.id, link)
-            }
             for t in send {
                 let bytes = try store.readTake(local.id, file: t.file)
                 do {
@@ -149,10 +149,6 @@ enum PlaysShare {
                 } catch {
                     let r = PlaysRefusal.from(error)
                     if r.code == "take_exists" { continue }
-                    if r.code == "consent_required" {
-                        link.consented = nil
-                        try? store.setShare(local.id, link)
-                    }
                     throw r
                 }
             }
@@ -284,6 +280,7 @@ enum PlaysShare {
         }
         return rows.sorted { when($0) > when($1) }
     }
+    #endif
 
     // MARK: Invite links (DEEP_LINKS.md): the token rides the fragment, so it never reaches a server log
 
@@ -369,4 +366,3 @@ enum PlaysShare {
         return t.isEmpty ? nil : t
     }
 }
-#endif

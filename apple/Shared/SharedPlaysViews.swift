@@ -8,7 +8,8 @@ import SwiftUI
 // MARK: - The cast sheet's sharing rows
 
 /// Above the parts: Share, or for a shared production Invite, Upload, People,
-/// Publish, and the facts the Worker gives.
+/// and the facts the Worker gives. Publish waits for the consent screen
+/// (`PlaysShare.canPublish`, TODO(M8-consent-screen)).
 struct SharedProductionSection: View {
     let production: Production
     let script: PlayScript
@@ -70,9 +71,9 @@ struct SharedProductionSection: View {
         }
         if rec.archive != nil || shared.queued.contains(rec.id) {
             Text("Queued for archive.org").foregroundStyle(Color.brandTextMuted)
-        } else if rec.director == me, PlaysShare.complete(rec, script) {
+        } else if PlaysShare.canPublish(rec, script, me) {
             Button {
-                Task { await shared.publish(production.id, store: plays.store) }
+                Task { await shared.publish(production.id, store: plays.store, script: script) }
             } label: {
                 Label("Publish", systemImage: "tray.and.arrow.up")
             }
@@ -216,43 +217,6 @@ struct SharedPartRow: View {
         Task {
             await shared.act(production.id, part: part.id, action: nil, store: plays.store)
             if plays.store.production(production.id)?.state(of: part.id).status == .recording { open(part.id) }
-        }
-    }
-}
-
-// MARK: - The consent (Decision 059)
-
-extension View {
-    /// The Worker's consent words, exactly as they arrive, with I Agree and
-    /// Not Now; the app writes none of them (§11.7 rule 6).
-    func sharedPlaysConsent() -> some View { modifier(ConsentSheet()) }
-}
-
-private struct ConsentSheet: ViewModifier {
-    @Environment(SharedPlays.self) private var shared
-
-    func body(content: Content) -> some View {
-        content.sheet(item: Binding(get: { shared.asking }, set: { if $0 == nil { shared.answerConsent(false) } })) { consent in
-            NavigationStack {
-                ScrollView {
-                    Text(verbatim: consent.text)
-                        .font(TypeRamp.body)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Spacing.s4)
-                        .textSelection(.enabled)
-                }
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("I Agree") { shared.answerConsent(true) }
-                    }
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Not Now") { shared.answerConsent(false) }
-                    }
-                }
-            }
-            #if os(macOS)
-            .frame(minWidth: 420, minHeight: 360)
-            #endif
         }
     }
 }

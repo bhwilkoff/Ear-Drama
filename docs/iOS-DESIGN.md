@@ -423,11 +423,13 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   the button disabled, shown before anyone records; **People** (a
   sheet: display names, "You" and "Director" as tags, **Report** with
   a reason Picker and an optional note, **Block** after "You will no
-  longer hear their takes."); the director's **Publish** once complete,
-  then "Queued for archive.org"; "N takes are hidden from you." when the
-  Worker hides some. The consent is a sheet: the Worker's text as it
-  arrives (`Text(verbatim:)`), **I Agree** and **Not Now**. Opening a
-  shared cast sheet fetches the other members' chosen takes into
+  longer hear their takes."); "Queued for archive.org" when the record
+  has a job; "N takes are hidden from you." when the Worker hides some.
+  No consent sheet and no **Publish** until the consent screen ships
+  (`PlaysShare.publishOpen`, TODO(M8-consent-screen), Decision 072);
+  uploading asks no consent. Opening a shared cast sheet, pulling to
+  refresh, and the app returning to the foreground (`scenePhase`) re-read
+  the record (PLAYS-DESIGN §11.7 rule 7). Opening a shared cast sheet fetches the other members' chosen takes into
   `takes/` (never overwriting a file), so Listen Through is phase 1's.
   A read-along line voiced by someone else has **Report Take** in its
   context menu. Refusals are `PlaysShare.line`, the web's strings.

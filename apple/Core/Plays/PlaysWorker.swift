@@ -1,4 +1,3 @@
-#if os(iOS) || os(macOS)
 import Foundation
 
 // Shared plays, phase 2 (PLAYS-DESIGN §11.7; docs/WORKER.md "Shared plays"):
@@ -412,4 +411,3 @@ struct WorkerPlays: PlaysTransport {
                                                   json: JoinClass(code: code, display_name: displayName)))
     }
 }
-#endif

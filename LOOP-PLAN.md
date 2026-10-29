@@ -427,9 +427,13 @@ continue on the other.
 
 ### M8. Plays, phase 2: invite links and classes
 
-- [~] (Worker side built, Decision 066, 171 tests; no client yet) Invite-only
+- [~] (Worker side built, Decision 066; clients on web, iPhone, iPad, Mac,
+      and Android, batch 1 2026-10-24 and M8a 2026-10-28; Apple TV plays
+      back and reports; never run against a deployed Worker) Invite-only
       productions by link through the Worker; roles claimed and
       recorded across devices; report, block, and filter (guideline 1.2).
+      Uploads need no consent and Publish waits for the consent screen
+      (Decision 072, TODO(M8-consent-screen)).
 - [ ] The consent screen with the CC0 warning (059); the words go to the owner
       before the screen ships.
 - [ ] Uploads to archive.org through the Ear Drama account, credits from data.

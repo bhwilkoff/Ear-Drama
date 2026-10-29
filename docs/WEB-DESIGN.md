@@ -306,16 +306,19 @@ web app follows today.
     of mine or as director. Below, on my claim, **Upload N takes** (while a take waits) and
     **Done with this part**, with one line under them: "Uploads are off."
     while the record's `uploads` is false (the button disabled), or the
-    bleed warning when a chosen take is flagged. The consent appears in
-    place, as its own block, the Worker's words in a `pre-line` paragraph,
-    I agree and Not now. Then Listen through (it first fetches the other
+    bleed warning when a chosen take is flagged. Uploading asks no consent
+    (Decision 072). Then Listen through (it first fetches the other
     members' chosen takes, then is §4.10's), "N takes are hidden from you."
-    when the Worker hides any, Publish for the director once complete
-    ("Queued for archive.org" after), then **People** (Report opens an inline
+    when the Worker hides any; no Publish and no consent block until the
+    consent screen ships (`PlaysShare.PUBLISH_OPEN`, TODO(M8-consent-screen);
+    "Queued for archive.org" still shows on a record that has a job); then
+    **People** (Report opens an inline
     form with a reason select and a note; Block asks with `confirm`), Invite
     for the director (the link in a read-only field, Share link through
     `shareTarget`, "Works for N days."), and Delete production (this
-    browser's copy only).
+    browser's copy only). Showing the tab again (`visibilitychange`)
+    redraws a shared production unless a take records or something plays,
+    so parts recorded elsewhere arrive (PLAYS-DESIGN §11.7 rule 7).
   - **Another member's part** (`?production=&part=`) is read-along with a
     Take button (plays that take in its own `<audio>`) and Report per line.
   - **An invite** arrives as `/invite#{token}` (forwarded by `404.html` as

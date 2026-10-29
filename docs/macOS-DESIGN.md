@@ -150,10 +150,11 @@ only here:
   Export appears whenever the play is complete.
 - **§4.5a A shared ear drama** is `docs/iOS-DESIGN.md` §4.12a (PLAYS-DESIGN
   §11.7, binding: the same verbs and words on every platform) in the
-  production's window: Share, Invite, Upload, People, and Publish sit in
-  the cast sheet's sidebar above the parts; a part's Done with This Part,
-  Release, and Open Part are in its row's menu and on right-click; the
-  consent and People are sheets on the window. The invitation shows in
+  production's window: Share, Invite, Upload, and People sit in the cast
+  sheet's sidebar above the parts (Publish joins them only when the consent
+  screen ships, Decision 072); a part's Done with This Part, Release, and
+  Open Part are in its row's menu and on right-click; People is a sheet on
+  the window. Coming back to the app re-reads the record. The invitation shows in
   Library's Ear dramas in the main window, and Open or Take Part opens
   the production's own window.
 

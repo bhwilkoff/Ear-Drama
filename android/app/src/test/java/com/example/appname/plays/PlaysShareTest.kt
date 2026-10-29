@@ -26,14 +26,16 @@ import org.junit.Test
  *  - `candidates` ignoring takes on the Worker (drop `!in onServer`) -> `pending leaves out a take the Worker already has`
  *  - `upload` ignoring the record's `uploads` (drop `uploadsOpen`)  -> `uploads off in the record stops before the upload endpoint`
  *  - `upload` ignoring GET /consent's `uploads`                    -> `uploads off in the consent stops before the upload endpoint`
- *  - `upload` ignoring a declined consent (drop `if (!agree)`)     -> `declining the consent sends nothing`
- *  - consent compared to null, not to the version                  -> `a new consent version is asked again`
  *  - `mirror` treating anyone's claim as this person's             -> `another person's claim is open here`
  *  - `isToken` accepting any length                                -> `invite tokens`
  *  - DeepLink.parse without its `invite` branch                    -> DeepLinkTest `an invite link ...`
  *  - `libraryRows` listing a shared production twice               -> `library rows merge the device and the Worker`
  *  - a changed line in `line`                                      -> `refusals read as one line each`
  *  - `importTake` overwriting an existing file                     -> `an imported take is never overwritten`
+ *
+ * 2026-10-28 (Decision 072), each seen to fail once:
+ *  - `PUBLISH_OPEN = true`                                         -> `Publish waits for the consent screen`
+ *  - `upload` calling `api.agree` before sending                   -> `uploading to the members asks no consent`
  */
 class PlaysShareTest {
     private val script = fixtureScript()
@@ -144,7 +146,7 @@ class PlaysShareTest {
         val store = MemoryShareStore()
         val api = FakeApi()
         val p = linked(store)
-        val result = PlaysShare.upload(api, store, p, script, record(uploads = false), me) { true }
+        val result = PlaysShare.upload(api, store, p, script, record(uploads = false), me)
         assertEquals(PlaysShare.Stop.UploadsOff, result.stopped)
         assertEquals(0, result.sent)
         assertEquals("the upload endpoint is never called", 0, api.count("upload"))
@@ -155,62 +157,38 @@ class PlaysShareTest {
         val store = MemoryShareStore()
         val api = FakeApi(Consent("v1", "words", uploads = false))
         val p = linked(store)
-        var asked = 0
-        val result = PlaysShare.upload(api, store, p, script, record(uploads = true), me) { asked++; true }
+        val result = PlaysShare.upload(api, store, p, script, record(uploads = true), me)
         assertEquals(PlaysShare.Stop.UploadsOff, result.stopped)
         assertEquals(0, api.count("upload"))
-        assertEquals(0, asked)
     }
 
-    @Test fun `declining the consent sends nothing`() = runBlocking {
+    @Test fun `uploading to the members asks no consent`() = runBlocking {
         val store = MemoryShareStore()
         val api = FakeApi()
         val p = linked(store)
-        var asked = 0
-        val result = PlaysShare.upload(api, store, p, script, record(), me) { c ->
-            asked++
-            assertEquals("the Worker's words, as they arrive", "The owner's words.", c.text)
-            false
-        }
-        assertEquals(PlaysShare.Stop.Consent, result.stopped)
-        assertEquals(1, asked)
-        assertEquals(0, api.count("upload"))
-        assertEquals(0, api.count("agree"))
-        assertNull("nothing is remembered", store.share(p.id)!!.consented)
-    }
-
-    @Test fun `consent is asked before the first upload and remembered`() = runBlocking {
-        val store = MemoryShareStore()
-        val api = FakeApi()
-        val p = linked(store)
-        var asked = 0
-        val first = PlaysShare.upload(api, store, p, script, record(), me) { asked++; true }
+        val first = PlaysShare.upload(api, store, p, script, record(), me)
         assertEquals(5, first.sent)
-        assertEquals(1, asked)
-        assertTrue("agreeing came before the first take", api.calls.indexOf("agree v1") in 0 until api.calls.indexOfFirst { it.startsWith("upload") })
-        assertEquals("v1", store.share(p.id)!!.consented)
-        val again = PlaysShare.upload(api, store, p, script, record(), me) { asked++; true }
-        assertEquals("the same version is not asked twice", 1, asked)
-        assertEquals(5, again.sent)
+        assertEquals("no consent is agreed to (Decision 072)", 0, api.calls.count { it.startsWith("agree") })
+        assertNull(store.share(p.id)!!.consented)
     }
 
-    @Test fun `a new consent version is asked again`() = runBlocking {
-        val store = MemoryShareStore()
-        val api = FakeApi(Consent("v2", "new words", true))
-        val p = linked(store, consented = "v1")
-        var asked: String? = null
-        val result = PlaysShare.upload(api, store, p, script, record(), me) { asked = it.version; true }
-        assertEquals("v2", asked)
-        assertEquals(5, result.sent)
-        assertEquals("v2", store.share(p.id)!!.consented)
-        assertEquals(1, api.count("agree v2"))
+    @Test fun `Publish waits for the consent screen`() {
+        val parts = Relay.order(script).associate { it.raw to SharedPart("done", userId = me) }
+        val chosen = script.speechLineIDs.associateWith { "t-$it" }
+        val done = record(parts = parts, chosen = chosen)
+        assertTrue("the fixture is complete", PlaysShare.complete(done, script))
+        assertFalse("TODO(M8-consent-screen): shut until the owner approves the words", PlaysShare.PUBLISH_OPEN)
+        assertFalse(PlaysShare.canPublish(done, script, me))
+        assertTrue("control: the director once open", PlaysShare.canPublish(done, script, me, open = true))
+        assertFalse("control: never a member", PlaysShare.canPublish(done, script, "someone-else", open = true))
+        assertFalse("control: never twice", PlaysShare.canPublish(done.copy(archive = SharedArchive("pending_owner_account")), script, me, open = true))
     }
 
     @Test fun `an upload carries the take's fields and its audio`() = runBlocking {
         val store = MemoryShareStore()
         val api = FakeApi()
         val p = linked(store, consented = "v1")
-        PlaysShare.upload(api, store, p, script, record(), me) { true }
+        PlaysShare.upload(api, store, p, script, record(), me)
         val (id, bytes, meta) = api.uploaded.first { it.first == "t-L0003" }
         assertEquals("t-L0003", id)
         assertEquals(listOf<Byte>(9, 9), bytes.toList())
@@ -225,7 +203,7 @@ class PlaysShareTest {
         val store = MemoryShareStore()
         val api = FakeApi()
         val p = linked(store, consented = "v1", flaggedLine = "L0009")
-        val result = PlaysShare.upload(api, store, p, script, record(), me) { true }
+        val result = PlaysShare.upload(api, store, p, script, record(), me)
         assertEquals(4, result.sent)
         assertEquals(1, result.flagged)
         assertFalse(api.uploaded.any { it.first == "t-L0009" })

@@ -353,20 +353,14 @@ describe("takes", () => {
     expect((await upload(director, p.id, "no-such-line")).status).toBe(422);
   });
 
-  it("need the CC0 consent, at the current version, first", async () => {
+  it("need no CC0 consent, since only the members hear them (Decision 072)", async () => {
     const s = await person("t-consent");
     const p = await createProduction(s);
     await claim(s, p.id, firstPart);
+    expect(await env.DB.prepare("SELECT 1 FROM play_consents WHERE user_id = ?1").bind(s.user_id).first()).toBeNull();
     const r = await upload(s, p.id, linesFor(firstPart)[0]);
-    expect(r.status).toBe(403);
-    expect(await r.json()).toEqual({ error: "consent_required", detail: CONSENT_VERSION });
-    await env.DB.prepare("INSERT INTO play_consents (user_id, production_id, version, consented_at) VALUES (?1, ?2, 'cc0-old', 1)")
-      .bind(s.user_id, p.id)
-      .run();
-    expect((await upload(s, p.id, linesFor(firstPart)[0])).status).toBe(403);
+    expect(r.status, await r.clone().text()).toBe(201);
     expect((await consent(s, p.id, "cc0-old")).status).toBe(409);
-    expect((await consent(s, p.id)).status).toBe(204);
-    expect((await upload(s, p.id, linesFor(firstPart)[0])).status).toBe(201);
   });
 
   it("are refused when the bleed check found the device voice in them", async () => {

@@ -109,6 +109,7 @@ private struct RouteDestinations_tvOS: ViewModifier {
             case .surprise: SurpriseScreen_tvOS()
             }
         }
+        .navigationDestination(for: SharedPlayRoute.self) { SharedPlayScreen_tvOS(route: $0) }
     }
 }
 
@@ -709,6 +710,7 @@ private struct LibraryScreen_tvOS: View {
                             }
                         }
                     }
+                    SharedEarDramasSection_tvOS()
                     Section {
                         AccountRow()
                         SiteLinkRows()

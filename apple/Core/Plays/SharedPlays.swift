@@ -3,7 +3,7 @@ import Foundation
 
 /// The screens' side of shared plays (PLAYS-DESIGN §11.7): the Worker's record
 /// of each shared production on this device, the invitation being looked at,
-/// the person's classes, and the consent being asked. Every verb is
+/// and the person's classes. Every verb is
 /// `PlaysShare`'s; this only keeps what the Worker answered and the one line
 /// a refusal shows.
 @Observable
@@ -16,15 +16,12 @@ final class SharedPlays {
     private(set) var classRefusal: String?
     private(set) var invitation: InviteView?
     private(set) var invitationRefusal: String?
-    /// The consent the Worker named, while the person reads it.
-    private(set) var asking: PlaysConsent?
     private(set) var lastInvite: [String: MadeInvite] = [:]
     private(set) var queued: Set<String> = []
     private(set) var busy: Set<String> = []
 
     @ObservationIgnored let api: any PlaysTransport
     @ObservationIgnored private let me: () -> String?
-    @ObservationIgnored private var answer: CheckedContinuation<Bool, Never>?
 
     init(api: any PlaysTransport = WorkerPlays(api: .shared), me: @escaping () -> String? = { APIClient.shared.storedSession()?.userId }) {
         self.api = api
@@ -85,19 +82,17 @@ final class SharedPlays {
               let rec = records[pid] else { return }
         busy.insert(localID)
         defer { busy.remove(localID) }
-        let result = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: rec, me: me()) {
-            await self.ask($0)
-        }
+        let result = await PlaysShare.upload(api: api, store: store, local: local, script: script, rec: rec, me: me())
         refusals[localID] = switch result.stopped {
         case .uploadsOff: PlaysShare.line(PlaysRefusal.code("uploads_off"))
-        case .consent: nil
         case nil: result.error.map(PlaysShare.line)
         }
         if result.sent > 0 { await refresh(localID, store: store, script: script) }
     }
 
-    func publish(_ localID: String, store: ProductionStore) async {
-        guard let pid = store.share(localID)?.pid else { return }
+    func publish(_ localID: String, store: ProductionStore, script: PlayScript) async {
+        guard let pid = store.share(localID)?.pid, let rec = records[pid],
+              PlaysShare.canPublish(rec, script, me()) else { return }
         await run(localID) {
             _ = try await self.api.publish(pid)
             self.queued.insert(pid)
@@ -117,22 +112,6 @@ final class SharedPlays {
     func block(_ localID: String, store: ProductionStore, userID: String, script: PlayScript) async {
         await run(localID) { try await self.api.block(userID) }
         await refresh(localID, store: store, script: script)
-    }
-
-    // MARK: The consent (Decision 059): the Worker's words, I agree or Not now
-
-    private func ask(_ consent: PlaysConsent) async -> Bool {
-        await withCheckedContinuation { continuation in
-            answer?.resume(returning: false)
-            answer = continuation
-            asking = consent
-        }
-    }
-
-    func answerConsent(_ agreed: Bool) {
-        asking = nil
-        answer?.resume(returning: agreed)
-        answer = nil
     }
 
     // MARK: Library: remote productions, the invitation, classes

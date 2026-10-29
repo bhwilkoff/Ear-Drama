@@ -892,3 +892,42 @@ offered (WEB-DESIGN §7.2a, and §5.8's standing "audio is never cached").
 - Not verified on a device: no real run was downloaded by the agent (tests use
   fixtures), and nothing was heard.
 
+
+---
+
+## 072: Invite-only takes need an account, not the CC0 consent; the consent screen and Publish wait for the owner's words
+
+*Date: 2026-10-28*
+
+A take uploaded to the Worker is heard only by the production's members, so
+uploading it asks for an account and nothing more. The CC0 consent, with
+its warning, is asked before anything goes beyond the members, which today
+means Publish. Until the owner approves the consent words, no app shows a
+consent screen or offers Publish: one constant per platform,
+`TODO(M8-consent-screen)` (web `PlaysShare.PUBLISH_OPEN`, Apple
+`PlaysShare.publishOpen`, Android `PlaysShare.PUBLISH_OPEN`), is `false` and
+pinned by a test.
+
+**Why**: Decision 059's consent is about publishing ("contributions are
+dedicated CC0 and uploaded to archive.org"), and its words are the owner's
+to approve (LOOP-PLAN M8: "the words go to the owner before the screen
+ships"). Batch 1 (2026-10-24) asked for that consent before every upload and
+showed the Worker's "OWNER:" placeholder as the screen, so a person could
+agree to words nobody had written, and a member could not send a take to
+the people who invited them without signing away rights to strangers.
+Batch M8a's brief (2026-10-28): "Do NOT ship, write or invent: the consent
+screen with the CC0 warning ... Gate anything that would publish beyond the
+invitees behind a clearly named TODO for that screen."
+
+**How to apply**:
+- The Worker's `uploadTake` checks no consent (`worker/test/plays.test.js`,
+  "need no CC0 consent"; the mutation "upload demands the CC0 consent").
+  `publish` still needs every performer's consent at the current version.
+- The clients' upload path never calls `GET /consent`'s `agree`; it reads
+  `GET /consent` only for the owner's `uploads` switch.
+- When the owner approves the words: set `CONSENT_TEXT` and a new
+  `CONSENT_VERSION` in `worker/src/plays.js`, build the screen from
+  PLAYS-DESIGN §11.7 rule 6, and flip the three constants with their tests.
+- Owner to confirm: that a take shared with invitees only is outside 059's
+  consent. If not, uploads wait for the screen too (one line in
+  `uploadTake`).

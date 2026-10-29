@@ -92,10 +92,10 @@ class SharedPlays(
         return rec
     }
 
-    suspend fun upload(localId: String, script: PlayScript, agree: suspend (Consent) -> Boolean): PlaysShare.UploadResult {
+    suspend fun upload(localId: String, script: PlayScript): PlaysShare.UploadResult {
         val rec = _records.value[localId] ?: refresh(localId)
         val local = store.production(localId) ?: throw PlaysException("not_found")
-        val result = withContext(io) { PlaysShare.upload(api, store, local, script, rec, me(), agree) }
+        val result = withContext(io) { PlaysShare.upload(api, store, local, script, rec, me()) }
         refresh(localId)
         return result
     }
@@ -106,8 +106,10 @@ class SharedPlays(
         return withContext(io) { PlaysShare.bringHome(api, store, localId, rec, script, me()) }
     }
 
-    suspend fun publish(localId: String): PublishAnswer {
+    suspend fun publish(localId: String, script: PlayScript): PublishAnswer {
         val pid = linkOf(localId)?.pid ?: throw PlaysException("not_found")
+        val rec = _records.value[localId] ?: refresh(localId)
+        if (!PlaysShare.canPublish(rec, script, me())) throw PlaysException("consent_missing")
         val answer = api.publish(pid)
         refresh(localId)
         return answer
