@@ -95,5 +95,9 @@ surfaces; the owner plays it on devices; their feedback opens the next round.
 ## State
 
 - Phase: D1 (research), started 2026-10-29.
-- Running: D1a, D1b, D1c.
+- Running: D1b, D1c. D1a merged (docs/research/design/D1a-finding.md): 67.6% of
+  "series" are single uploads; shows-first, run strips, a wall of faces, a movable
+  date, a decade-by-genre map. Seen for the build backlog: Escape dated 1921 (another
+  date misparse), Bud Collyer as two people, Browse offering "Has a script (0)",
+  detective shows wearing a supporting actress's face (owner ruling).
 - Waiting on the owner: nothing yet (the D2 gate comes next).
