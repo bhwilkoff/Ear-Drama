@@ -43,6 +43,8 @@ function eq(a, b, name) {
 }
 const test = (name, fn) => results.push([name, fn]);
 
+const CONSENT_TEXT = fs.readFileSync(path.join(__dirname, '..', 'worker', 'src', 'plays.js'), 'utf8').match(/CONSENT_TEXT = `([^`]*)`/)[1];
+
 /* ---- Fixtures ---- */
 
 function line(id, role, kind = 'speech', text = 'words') {
@@ -300,6 +302,17 @@ test('Library\'s Ear dramas: this browser\'s, then the shared ones not opened he
   eq(rows.filter(r => r.pid === 'pid-1').map(r => r.local && r.local.id), [local.id], 'a shared one here is listed once');
   eq(rows.filter(r => !r.local).map(r => r.pid), ['pid-far'], 'the remote one');
   ok(rows.some(r => r.local && r.local.id === solo.id && r.pid === null), 'an unshared one stays');
+});
+
+test('the served consent words become a lead and a list, none changed', () => {
+  const b = S.consentBlocks(CONSENT_TEXT);
+  eq(b.filter(x => x.kind === 'lead').length, 1, 'one lead');
+  eq(b.filter(x => x.kind === 'item').length, 4, 'four items');
+  eq(b[0].kind, 'lead', 'the lead comes first');
+  eq(b.map(x => (x.kind === 'item' ? '- ' : '') + x.text).join('\n'), CONSENT_TEXT, 'words unchanged');
+  const plain = S.consentBlocks('One thing.\nAnother thing.');
+  eq(plain.map(x => x.kind), ['para', 'para'], 'text without "- " lines is paragraphs');
+  eq(S.consentBlocks('').length, 0, 'empty text is nothing');
 });
 
 test('refusals read as one line each', () => {

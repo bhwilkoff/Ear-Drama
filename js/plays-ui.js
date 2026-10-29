@@ -562,7 +562,7 @@ const PlaysUI = (() => {
             catch (err) { console.error(err); line.textContent = S.line(err); agree.disabled = false; }
           } }, 'I agree to publish my recording under CC0.');
           const later = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { dismissedConsent.add(pid); slot.remove(); } }, 'Not now');
-          slot.append(h.el('p', { class: 'consent-text' }, c.text), h.el('div', { class: 'actions' }, agree), h.el('div', { class: 'actions' }, later), line);
+          slot.append(consentView(c.text), h.el('div', { class: 'actions' }, agree), h.el('div', { class: 'actions' }, later), line);
           return;
         }
         const waiting = S.waitingOn(rec);
@@ -583,13 +583,29 @@ const PlaysUI = (() => {
     return box;
   }
 
+  /** The served consent words as a lead and a list, none changed. */
+  function consentView(text) {
+    const wrap = h.el('div', { class: 'consent-text' });
+    let ul = null;
+    for (const b of S.consentBlocks(text)) {
+      if (b.kind === 'item') {
+        if (!ul) { ul = h.el('ul', { class: 'consent-list' }); wrap.append(ul); }
+        ul.append(h.el('li', {}, b.text));
+      } else {
+        ul = null;
+        wrap.append(h.el('p', { class: b.kind === 'lead' ? 'body-strong' : '' }, b.text));
+      }
+    }
+    return wrap;
+  }
+
   /** The CC0 consent (rule 6): the Worker's words exactly as served, then I agree or Not now. */
   function consentSheet(c, onAgree) {
     const d = h.el('dialog', { class: 'account-sheet consent-sheet', 'aria-labelledby': 'consent-h' });
     d.addEventListener('close', () => d.remove());
     d.append(
       h.el('h2', { id: 'consent-h', class: 'section-header' }, 'Publish'),
-      h.el('p', { class: 'consent-text' }, c.text),
+      consentView(c.text),
       h.el('div', { class: 'actions' },
         h.el('button', { type: 'button', class: 'btn btn-primary', onclick: () => { d.close(); onAgree(); } }, 'I agree to publish my recording under CC0.')),
       h.el('div', { class: 'actions' },

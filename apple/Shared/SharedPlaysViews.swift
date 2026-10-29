@@ -83,7 +83,7 @@ struct SharedProductionSection: View {
             Text("Queued for archive.org").foregroundStyle(Color.brandTextMuted)
         } else if PlaysShare.needsMyConsent(rec, script, me) {
             if let consent, consent.publishes == true, !notNow {
-                Text(consent.text).font(TypeRamp.body)
+                ConsentWords(text: consent.text)
                 Button("I agree to publish my recording under CC0.") {
                     Task { await shared.agree(production.id, store: plays.store, script: script, consent: consent) }
                 }
@@ -581,6 +581,31 @@ struct ClassesSection: View {
 }
 // MARK: - The CC0 consent (PLAYS-DESIGN §11.7 rule 6)
 
+/// The served consent words as a lead and a bulleted list, none changed.
+struct ConsentWords: View {
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            ForEach(Array(ConsentText.blocks(text).enumerated()), id: \.offset) { _, block in
+                switch block.kind {
+                case .lead:
+                    Text(block.text).font(TypeRamp.bodyStrong)
+                case .paragraph:
+                    Text(block.text).font(TypeRamp.body)
+                case .item:
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
+                        Text("•").accessibilityHidden(true)
+                        Text(block.text)
+                    }
+                    .font(TypeRamp.body)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// The Worker's words exactly as served, then the agreement or Not Now.
 struct ConsentSheet: View {
     let consent: PlaysConsent
@@ -590,8 +615,7 @@ struct ConsentSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                Text(consent.text)
-                    .font(TypeRamp.body)
+                ConsentWords(text: consent.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
             }
