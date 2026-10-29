@@ -182,7 +182,8 @@ describing."*
 
 - Phase: D2c (refine D: color, one grammar, show-first pictures), started 2026-10-29.
   The owner chose D.
-- Running: D2c-1 color system with the Human Shaped tools; D2c-2 show-first picture
+- D2c-1 merged (1.0.106): boards and marks, one lightness band per mode, onBoard text,
+  every pairing checked (docs/research/palette/surfaces.md). Running: D2c-2 show-first picture
   selection (catalog, show line now 5); W1 open invites and the finished-drama listing
   (Worker and API). Then D2c-3 rebuilds D on all three with one grammar for every level of
   content, the three recording modes, the finished-drama listing screens, and the fit gate.
