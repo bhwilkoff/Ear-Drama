@@ -94,11 +94,14 @@ surfaces; the owner plays it on devices; their feedback opens the next round.
 
 ## State
 
-- Phase: D2 (synthesis), started 2026-10-29; D1 done (three reports merged).
-- Running: D2 (skill catalog-experience-design and three clickable directions);
-  build batches S1 (share pages) and Q1 (catalog and display defects from the audits).
-  D1b: 65.5% of episodes carry no credit, network or sponsor; design for the bare page.
-- Owner rulings collected for D2: what a signed-out invitee may see (title, part,
-  who is in); whether finished dramas are listed and credited on Ear Drama's own
-  pages; a detective show's face (lead vs a supporting actress).
-- Waiting on the owner: nothing yet (the D2 gate comes next).
+- Phase: D2 done 2026-10-29; **owner gate**: pick a direction or a mix.
+- D2 merged: `.claude/skills/catalog-experience-design/`, `docs/research/design/D2-directions.md`,
+  prototypes in `docs/research/design/directions/` (A Almanac, B Company, C Sleeve);
+  review page https://claude.ai/artifact/6DN7R3qkhgMnbJ2EXeKKYZ.
+- Waiting on the owner: the direction (or mix) and the show line (10 or 5 episodes);
+  That night on Detail; whose face leads (data order or a billing rule); what a
+  signed-out invitee sees; whether finished dramas are listed and credited.
+- Buildable now whatever the pick (the skill's shared rules): shows first with the
+  counted tail, core years, the event line, three faces then grouped credits,
+  copies by what differs, parts in minutes.
+- Running: Q1 (catalog and display defects). S1 (share pages) merged and live.
