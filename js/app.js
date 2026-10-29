@@ -1661,6 +1661,10 @@
     const r = parseRoute();
     if (r.view === 'library') renderLibrary(r);
   });
+  // Contract §3.5: ids the catalog moved are rewritten once, and their cards drawn again.
+  API.forwarding().then((f) => {
+    if (Store.forward(f)) Sync.hydrate().catch(e => console.error('forwarded cards', e));
+  }).catch(() => {});
 
   /* ================================================================
      BOOT

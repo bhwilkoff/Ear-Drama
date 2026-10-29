@@ -106,6 +106,21 @@ final class ListeningHistory {
 
     func saveSyncState() { trimAndSave() }
 
+    /// Forwarding (`IDForwarding`): `old`'s row becomes `new`'s when it is the
+    /// newer, with its stamp and pending state; `old` is then gone. Not saved
+    /// here; the caller saves once.
+    func rekey(_ old: String, to new: String) {
+        guard old != new else { return }
+        if let mine = stamp(for: old), mine > (stamp(for: new) ?? .distantPast) {
+            entries[new] = entries[old]
+            removals[new] = entries[old] == nil ? removals[old] : nil
+            if pending.contains(old) { pending.insert(new) } else { pending.remove(new) }
+        }
+        entries[old] = nil
+        removals[old] = nil
+        pending.remove(old)
+    }
+
     private func changed(_ id: String) {
         removals[id] = nil
         pending.insert(id)

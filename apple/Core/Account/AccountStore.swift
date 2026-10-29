@@ -29,6 +29,9 @@ final class AccountStore {
     @ObservationIgnored private let queue: ListeningQueue
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let device: String
+    /// The open catalog's forwarding ids (contract §3.5): another device's rows
+    /// may name an id this catalog moved, and land under the id it now is.
+    @ObservationIgnored var forwarding: () -> IDForwarding = { IDForwarding() }
 
     private enum Key {
         static let since = "account.since"
@@ -120,6 +123,9 @@ final class AccountStore {
             history.apply(down.history)
             follows.apply(down.follows)
             queue.apply(down.queue, afterMerge: merged)
+            let forwarding = forwarding()
+            history.forward(forwarding)
+            queue.forward(forwarding)
             defaults.set(NSNumber(value: down.serverTime), forKey: Key.since)
             let now = Date()
             lastSync = now

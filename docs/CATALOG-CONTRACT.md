@@ -25,7 +25,7 @@ field here; it never computes one.
 | Asset | Host | For | Notes |
 |---|---|---|---|
 | `ear-drama.sqlite.zz` | GitHub Release, rolling tag `catalog-latest` (`https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/ear-drama.sqlite.zz`) | Apple and Android apps | the served projection (§3), raw DEFLATE (`zlib.compressobj(9, DEFLATED, -15)`), built by `catalog/tools/build_projection.py`; MEASURED 2026-10-22 on a rebuild from the 2026-10-21 caches: 26.2 MB compressed, 127 MB on disk, 116,380 episodes (clean-only: 1.0 MB, 5.4 MB, 14,670) |
-| `manifest.json` | the same Release | every native client, tooling | the served projection's: `schemaVersion`, `generatedAt`, `cleanOnly`, row counts, `rightsLines`, `listenShelves` (§5.1), bytes, sha256 of the `.zz`; uploaded after the `.zz` it vouches for |
+| `manifest.json` | the same Release | every native client, tooling | the served projection's: `schemaVersion`, `generatedAt`, `cleanOnly`, row counts, `rightsLines`, `listenShelves` (§5.1), `forwarding` (§3.5), bytes, sha256 of the `.zz`; uploaded after the `.zz` it vouches for |
 | `data/manifest.json` | GitHub Pages | web, smart-TV web, Roku | the web projection's own manifest (counts, field names, shard math, rights lines, `listenShelves` cut to the web's own served rows (§5.1), bytes); not the site's `/manifest.json`, which is the web app manifest |
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
 | `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw |
@@ -281,10 +281,68 @@ projection (32.55 to 32.49 MB) and 3 KB off the clean-only seed (1.266 to
 
 ### 3.5 Forwarding ids
 
-`episode_aliases (old_id, new_id)`. 79,612 episodes in the 2026-10-21 snapshot
-have no date, and their ids come from a title slug or an archive file path that
-can change when parsing improves. When an id changes, the old one forwards; a
-saved history, queue, or share link never breaks (`canonical-entity-identity`).
+An episode id is a stored string in every person's history, queue, downloads,
+synced rows, and every share and deep link. It changes when parsing improves: a
+dated id carries a date a parse fix can correct (C1, 2026-10-28: "Jack Benny
+Show, The 43-11-21" had been read as 1921-03-11), and 79,612 undated ids in the
+2026-10-21 snapshot come from a title slug or a file path. So the old id
+forwards, permanently (catalog DECISIONS 014, `canonical-entity-identity`).
+
+| Table | Columns | Meaning |
+|---|---|---|
+| `episode_aliases` | `old_id` TEXT PK, `new_id` TEXT | an id this projection no longer serves, and the served episode it now is |
+| `episode_tombstones` | `id` TEXT PK | an id that left with no successor: it will not come back as itself |
+
+**Built on every publish** (`catalog/tools/forwarding.py`, called by
+`build_projection.py --previous`): the build reads the projection live on
+`catalog-latest`, and every id that projection served and this one does not
+gets exactly one row:
+
+- an **alias** to the served episode that now holds its default copy (rank 0),
+  matched by recording identity, the archive.org item plus the file name read
+  back from the served URL, never by title. When no served episode holds the
+  default copy, or several do, the episode holding the most of the old id's
+  copies (among those holders) is the successor, and a tie is none;
+- else a **tombstone** (a takedown, a hide, a recording no longer served).
+
+Both are **cumulative**: the live projection's aliases and tombstones are
+carried into the new one. **Chains collapse**: an alias whose target left this
+build takes that target's fate, so `a -> b` then `b -> c` publishes `a -> c`,
+and `a` is tombstoned when `b` is. An id **served again** (a parse change
+reverted, a takedown restored) sheds its alias or tombstone. The clean-only
+projection (`--forwarding-from` the served one) takes the same rows, keeping an
+alias only when its target is one it serves. `manifest.json` counts
+`counts.aliases` and `counts.tombstones` and records `forwarding`: `base`, the
+sha256 of the live `.zz` it was computed against (null on a first publish), and
+the build's report (`left`, `aliased`, `tombstoned`, carried, `returned`).
+
+**Guards**, each seen red (`catalog/tests/test_forwarding.py`, also run over
+the real artifacts by the publish workflow): no alias ends at an id that is not
+served (`missing`), no alias target is itself aliased (`chain`), no cycle, no
+aliased id is served, no id is both aliased and tombstoned, and no tombstoned id
+is served (`tombstone served`). The builder refuses a projection that breaks
+one. `publish_diff.py` refuses a publish in which any id left with neither row,
+and the publish job refuses when `forwarding.base` is not the sha256 of what
+is live under the lock (another publish landed in between).
+
+**Clients resolve in one place** each (the web's `js/api.js` with `js/store.js`,
+Apple's `Core/Catalog/IDForwarding.swift`, Android's `data/IdForwarding.kt`):
+an aliased id reads as its `new_id`; a tombstoned id is gone; any other unknown
+id is kept, since it may come from a newer catalog than this device holds (a
+synced row, a link from a newer app). Every stored id is rewritten on read, once:
+history and positions merge into the new id by the newer stamp, the queue maps
+and drops tombstoned ids, downloads re-key (their files keep their names). A
+rewrite keeps each row's own stamp and is not uploaded; every device resolves
+the Worker's rows for itself, so a device on an older catalog is never
+overwritten by one on a newer catalog. Deep links, Universal and App Links, and
+rows synced from other devices go through the same resolution.
+
+MEASURED 2026-10-28, the C1 parse fix rebuilt from the same cache
+(PYTHONHASHSEED=0) and forwarded against the pre-fix rebuild: 984 served ids
+left; 899 aliased onto 895 episodes (633 into an id the old projection already
+served, the rest kept under a corrected date or series); 85 tombstoned, every
+one now hidden under its corrected id (82 post-1972, 3 by other audit rules);
+the clean-only projection 0 aliases and the same 85 tombstones.
 
 ## 4. The web projection (Pages)
 
@@ -297,6 +355,10 @@ the starting shape, Archive Watch's:
 - `data/episodes/{shard}.json`: Detail fields, sharded by a stable hash of the
   episode id (FNV-1a, positions append-only), one shard per Detail view.
 - `data/tonight.json` and `data/stations.json`: the Stations section (§8).
+- `data/index/aliases.json` (`{old_id: new_id}`, only aliases to an id this
+  projection serves) and `data/index/tombstones.json` (sorted ids): §3.5's
+  forwarding. An alias to an episode the web does not serve (the public-web
+  gate) is left out, so on the web that id is simply not served.
 - `data/people/{shard}.json`: `withPerson` (§5), sharded as the episodes
   are but by the person id: `{id: [name, birth, death, art, credits]}`
   (`fields.person`), each credit `[id, date, title, num, series, role,
@@ -460,8 +522,10 @@ Two jobs:
   (`PROJECTION=`) and `test_web_projection.py` (`WEB_PROJECTION=`) over the real
   artifacts, and prints what the publish changes (`catalog/tools/publish_diff.py`:
   counts and bytes against the live manifest, episodes per rights state against
-  the restored snapshot, and which ids left and why: aliased, now hidden, or
-  neither, the last a warning per §9.6).
+  the restored snapshot, and which ids left and why: aliased, tombstoned as now
+  hidden, tombstoned, or neither, the last refusing the publish per §3.5). It
+  reads the live projection before it builds, so the served projection forwards
+  every id the live one served (§3.5).
 - **publish**, holding `catalog-writers`, the one concurrency group every
   catalog writer shares (`cancel-in-progress: false`): re-reads the live
   `manifest.json` from `catalog-latest` and `data/manifest.json` from Pages,
@@ -586,6 +650,7 @@ and has a negative control:
 4. Every `no_recommend` episode is absent from every shelf, evening, and station.
 5. Every web shard id is in the series index (the gatekeeper).
 6. Every id that left the catalog since the last publish is either aliased or
-   in `takedowns.json`. Reported by `catalog/tools/publish_diff.py` on every
-   publish (a takedown shows as a hidden row with its bucket); a warning, not a
-   gate, until aliases are written for undated ids.
+   tombstoned (§3.5), and the forwarding breaks no §3.5 guard. Refused by
+   `catalog/tools/publish_diff.py` on every publish (a takedown shows as a
+   tombstoned hidden row with its bucket); `catalog/tests/test_forwarding.py`
+   runs over the real artifacts.

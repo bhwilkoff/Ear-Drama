@@ -26,6 +26,11 @@ final class CatalogStore {
     var loadKey: Int { state == .ready ? generation : -1 }
 
     @ObservationIgnored private var database: CatalogDatabase?
+    /// The open catalog's forwarding ids (contract §3.5), read on every open.
+    @ObservationIgnored private(set) var forwarding = IDForwarding()
+    /// Called on the main actor after each open, seed or download, so every
+    /// store that keeps episode ids rewrites the ones that moved.
+    @ObservationIgnored var onForwarding: ((IDForwarding) -> Void)?
     @ObservationIgnored private let refresher: CatalogRefreshService
     @ObservationIgnored private let monitor = NWPathMonitor()
     @ObservationIgnored private var started = false
@@ -74,6 +79,8 @@ final class CatalogStore {
         database = db
         isSeed = seed
         state = .ready
+        forwarding = db.forwarding()
+        onForwarding?(forwarding)
         return true
     }
 

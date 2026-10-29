@@ -158,6 +158,7 @@ enum Fixture {
             """, ["suspense|1943-05-25", 1, "afrs_box", "https://archive.org/download/afrs_box/sorry%20afrs.mp3",
                   32, 1500.0, "AFRS", 1])
         try insert("INSERT INTO episode_aliases VALUES (?, ?)", ["suspense|old-slug", "suspense|1943-05-25"])
+        try insert("INSERT INTO episode_tombstones VALUES (?)", ["suspense|taken-down"])
         // One measured episode (contract §3.1); every other row is NULL, as unmeasured.
         try insert("UPDATE episodes SET loudness_i = ?, loudness_tp = ? WHERE id = ?",
                    [-15.0, -6.0, "suspense|1943-05-25"])
@@ -362,6 +363,15 @@ struct CatalogQueryTests {
         let detail = try #require(older.episodeDetail(id: "suspense|1943-05-25"))
         #expect(detail.episode.loudnessI == nil)
         #expect(detail.credits.count == 2)
+    }
+
+    /// §3.5: the stores read every alias and tombstone in one value.
+    @Test func forwardingReadsAliasesAndTombstones() throws {
+        let f = try Fixture.open().forwarding()
+        #expect(f.resolve("suspense|old-slug") == "suspense|1943-05-25")
+        #expect(f.isGone("suspense|taken-down"))
+        #expect(f.resolve("suspense|1999-01-01") == "suspense|1999-01-01", "an unknown id is kept")
+        #expect(!f.isGone("suspense|old-slug"))
     }
 
     @Test func aliasesForwardOldIDs() throws {

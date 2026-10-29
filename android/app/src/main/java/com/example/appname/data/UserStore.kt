@@ -214,6 +214,52 @@ class UserStore private constructor(private val connection: SQLiteConnection, pr
         }
     }
 
+    /**
+     * Contract §3.5: rewrites every kept episode id the catalog moved, once. A moved
+     * progress row merges into the new id's by the newer `updated_at` and keeps its own
+     * stamp and dirty flag (a rewrite is not a listen, so it is never uploaded as new; each
+     * device forwards the Worker's old-id rows for itself). The queue maps, drops a
+     * tombstoned id, and keeps its stamp. A tombstoned id's progress stays: it is the
+     * listener's record. Returns how many ids moved.
+     */
+    suspend fun forward(forwarding: IdForwarding): Int {
+        var moved = 0
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val rows = connection.prepare("SELECT episode_id, updated_at FROM progress").use { stmt ->
+                    buildList { while (stmt.step()) add(stmt.getText(0) to stmt.getLong(1)) }
+                }
+                val at = rows.toMap().toMutableMap()
+                for ((old, oldAt) in rows) {
+                    val new = forwarding.resolve(old)
+                    if (new == old) continue
+                    moved++
+                    if (oldAt > (at[new] ?: Long.MIN_VALUE)) {
+                        execText("DELETE FROM progress WHERE episode_id = ?", new)
+                        execText("UPDATE progress SET episode_id = ? WHERE episode_id = ?", new, old)
+                        at[new] = oldAt
+                    } else {
+                        execText("DELETE FROM progress WHERE episode_id = ?", old)
+                    }
+                }
+                readQueue()?.let { q ->
+                    val next = forwarding.forward(q.items)
+                    if (next != q.items) {
+                        putQueue(next, q.updatedAt, q.dirty)
+                        moved++
+                    }
+                }
+            }
+        }
+        if (moved > 0) _changes.value += 1
+        return moved
+    }
+
+    private fun execText(sql: String, vararg texts: String) = connection.prepare(sql).use { stmt ->
+        texts.forEachIndexed { i, t -> stmt.bindText(i + 1, t) }
+        stmt.step()
+    }
+
     private fun keepLocal(local: Pair<Long, Boolean>?, remoteAt: Long, remoteDevice: String?, device: String): Boolean {
         val (localAt, dirty) = local ?: return false
         if (!dirty) return false

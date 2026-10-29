@@ -57,6 +57,16 @@ struct EarDramaApp: App {
         }
         _downloads = State(initialValue: downloads)
         #endif
+        // Contract §3.5: every store that keeps episode ids rewrites the ones the
+        // catalog moved, on each catalog open and after each sync.
+        catalog.onForwarding = { [weak history, weak queue] forwarding in
+            history?.forward(forwarding)
+            queue?.forward(forwarding)
+            #if os(iOS) || os(macOS)
+            downloads.forward(forwarding)
+            #endif
+        }
+        account.forwarding = { [weak catalog] in catalog?.forwarding ?? IDForwarding() }
         #if os(iOS)
         CarPlayServices.catalog = catalog
         CarPlayServices.player = player

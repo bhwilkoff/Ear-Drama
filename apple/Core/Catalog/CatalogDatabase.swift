@@ -304,6 +304,19 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         (rows("SELECT new_id FROM episode_aliases WHERE old_id = ?", [.text(id)]) { $0.text(0) }.first ?? nil) ?? id
     }
 
+    /// Every alias and tombstone (§3.5), for the stores that rewrite kept ids.
+    /// A catalog published before tombstones has none.
+    func forwarding() -> IDForwarding {
+        var f = IDForwarding()
+        for (old, new) in rows("SELECT old_id, new_id FROM episode_aliases", [], { ($0.text(0), $0.text(1)) }) {
+            if let old, let new { f.aliases[old] = new }
+        }
+        if Self.columnExists(handle, table: "episode_tombstones", column: "id") {
+            f.tombstones = Set(rows("SELECT id FROM episode_tombstones", [], { $0.text(0) }).compactMap { $0 })
+        }
+        return f
+    }
+
     /// `episodeDetail(id)`: the row, its credits joined to people, and every
     /// recording in rank order (rank 0 is the default copy).
     func episodeDetail(id rawID: String) -> EpisodeDetail? {

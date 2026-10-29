@@ -180,6 +180,20 @@ def violations(out):
                 v.setdefault("a date row is its doc's own row, in its year", []).append(f"{f}:{n}")
     if os.path.isdir(dd) and dated != sum(1 for r in docs if r[2]):
         v["every dated doc is in its year once"] = [dated]
+    # Forwarding ids (contract §3.5): an alias ends at a listed id; a forwarded or tombstoned id is not listed.
+    fwd = load(out, "index", "aliases.json") if os.path.exists(os.path.join(out, "index", "aliases.json")) else {}
+    tp = os.path.join(out, "index", "tombstones.json")
+    tombs = load(out, "index", "tombstones.json") if os.path.exists(tp) else []
+    for o, n in sorted(fwd.items()):
+        if n not in listed:
+            v.setdefault("every alias ends at a listed episode", []).append(o)
+        if o in listed:
+            v.setdefault("an aliased id is not listed", []).append(o)
+    for t in tombs:
+        if t in listed:
+            v.setdefault("a tombstoned id is not listed", []).append(t)
+    if tombs != sorted(set(tombs)):
+        v["tombstones are sorted and unique"] = [len(tombs)]
     lines = " ".join(load(out, "manifest.json")["rightsLines"].values()).lower()
     if "public domain" in lines:
         v["no rights line says public domain"] = [lines]
@@ -252,6 +266,10 @@ with tempfile.TemporaryDirectory() as tmp:
     raw, served = os.path.join(tmp, "raw.sqlite"), os.path.join(tmp, "served.sqlite")
     fixture(raw)
     B.build(raw, served)
+    with sqlite3.connect(served) as c:   # forwarding as the served projection publishes it (contract §3.5)
+        c.executemany("INSERT INTO episode_aliases VALUES (?,?)",
+                      [("suspense|old-slug", "suspense|1943-05-25"), ("suspense|1921-02-24", "suspense|1944-02-24")])
+        c.execute("INSERT INTO episode_tombstones VALUES ('suspense|gone')")
     out = os.path.join(tmp, "web")
     m = W.build(served, out)
     check("gate closed by default", m["cleanOnly"], True)
@@ -335,6 +353,20 @@ with tempfile.TemporaryDirectory() as tmp:
     W.dump(os.path.join(broken, "people", psh), {"p1": p1[:3] + [p1[4]]})
     check("control: a person row missing a field is caught",
           "p1" in violations(broken).get("person rows have the published fields", []), True)
+
+    check("aliases: only to an episode the web serves (an unclaimed target stays off with the gate closed)",
+          load(out, "index", "aliases.json"), {"suspense|old-slug": "suspense|1943-05-25"})
+    check("tombstones.json carries the served projection's tombstones", load(out, "index", "tombstones.json"),
+          ["suspense|gone"])
+    W.dump(os.path.join(out, "index", "aliases.json"), {"old-a": "nowhere|1950-01-01", "suspense|1949-09-15": "suspense|1943-05-25"})
+    W.dump(os.path.join(out, "index", "tombstones.json"), ["suspense|1943-05-25"])
+    got = violations(out)
+    check("control: an alias to an unlisted id is caught", got.get("every alias ends at a listed episode"), ["old-a"])
+    check("control: an aliased id still listed is caught", got.get("an aliased id is not listed"), ["suspense|1949-09-15"])
+    check("control: a tombstoned id still listed is caught", got.get("a tombstoned id is not listed"),
+          ["suspense|1943-05-25"])
+    W.dump(os.path.join(out, "index", "aliases.json"), {})
+    W.dump(os.path.join(out, "index", "tombstones.json"), [])
 
     # Broken controls: a stray shard id, a misplaced id, and a leaked unclaimed row must each be caught.
     sh = W.shard_of("suspense|1943-05-25") + ".json"

@@ -1,5 +1,6 @@
 package com.example.appname.account
 
+import com.example.appname.data.IdForwarding
 import com.example.appname.data.LocalChanges
 import com.example.appname.data.UserStore
 import java.io.IOException
@@ -27,6 +28,8 @@ class SyncEngine(
     private val worker: WorkerApi,
     private val user: UserStore,
     private val device: String,
+    /** The open catalog's (contract §3.5): another device's rows may name an id it moved. */
+    private val forwarding: suspend () -> IdForwarding? = { null },
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val lock = Mutex()
@@ -54,6 +57,7 @@ class SyncEngine(
             val since = worker.account.value?.takeIf { it.userId == start.userId }?.cursor ?: return@withLock false
             val answer = worker.read(since)
             user.applyRemote(answer, device)
+            forwarding()?.let { user.forward(it) }
             worker.update(start.userId) { it.copy(cursor = answer.serverTime, lastSyncAt = now(), lastError = null) }
             true
         } catch (e: CancellationException) {

@@ -10,7 +10,8 @@ nonisolated struct DownloadRecord: Codable, Hashable, Sendable, Identifiable {
         case queued, downloading, downloaded, failed
     }
 
-    let episodeID: String
+    /// Rewritten only by forwarding (contract §3.5); `fileName` keeps the old stem.
+    var episodeID: String
     var title: String
     var seriesName: String
     /// The recording the file came from (the catalog's rank 0 when it began).
@@ -254,6 +255,27 @@ final class DownloadStore {
         deleteFiles(of: r)
         lastPublish[r.token] = nil
         saveIndex()
+    }
+
+    /// Forwarding (contract §3.5): a download kept under an id the catalog moved
+    /// is re-keyed to the id it now is; its file keeps its name. When the new id
+    /// already has its own download, the moved one is a second copy and goes.
+    /// A tombstoned id's download stays: the file still plays.
+    func forward(_ forwarding: IDForwarding) {
+        var changed = false
+        for old in records.keys.sorted() {
+            let new = forwarding.resolve(old)
+            guard new != old, var record = records[old] else { continue }
+            if records[new] != nil {
+                remove(old)
+                continue
+            }
+            records[old] = nil
+            record.episodeID = new
+            records[new] = record
+            changed = true
+        }
+        if changed { saveIndex() }
     }
 
     /// Every download, gone. The files go first and unconditionally: they are

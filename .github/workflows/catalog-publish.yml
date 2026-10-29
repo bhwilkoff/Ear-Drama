@@ -6,8 +6,11 @@
 #            written by catalog-loudness.yml; missing = columns left NULL),
 #            restore the transcript cache (transcripts-latest, written by
 #            catalog-transcripts.yml; missing = none searchable or shown),
-#            build the served and clean-only projections
-#            and the web projection, run the contract tests over the real
+#            fetch the live projection (catalog-latest), build the served
+#            projection forwarding every id the live one served and this one
+#            does not (contract §3.5: an alias, or a tombstone), the clean-only
+#            projection taking the same forwarding, and the web projection,
+#            run the contract tests over the real
 #            artifacts, build tonight.json (Tonight in 19xx, contract §8:
 #            restore the measured evenings from radiologs-latest, fetch only
 #            the window's missing newspaper logs, politely and capped, and
@@ -17,7 +20,8 @@
 #            would change.
 #   publish  holds `catalog-writers`, the one lock every catalog writer shares,
 #            for a few minutes. Re-reads what is published NOW, refuses a
-#            shrink past the floor or a change to a published evening, uploads
+#            shrink past the floor, a forwarding computed against a catalog
+#            that is no longer live, or a change to a published evening, uploads
 #            ear-drama.sqlite.zz + tonight.json + manifest.json to the rolling
 #            Release `catalog-latest` and the grown evening cache to
 #            `radiologs-latest`, and deploys the site with the web projection
@@ -179,15 +183,53 @@ jobs:
             exit 1
           fi
 
+      - name: Fetch the live projection (the ids this publish forwards)
+        run: |
+          # Contract §3.5: every id the live projection serves that this build does not is
+          # aliased or tombstoned, so the live one is read before the build. No Release is a
+          # first publish (nothing to forward); one that exists and cannot be read is an error,
+          # never a build that silently forwards nothing.
+          mkdir -p live
+          if out=$(gh release view catalog-latest -R "$REPO" --json assets --jq '[.assets[].name] | join(" ")' 2>&1); then
+            case " $out " in
+              *" ear-drama.sqlite.zz "*" manifest.json "*|*" manifest.json "*" ear-drama.sqlite.zz "*)
+                bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber \
+                  -p manifest.json -p ear-drama.sqlite.zz
+                want=$(python3 -c "import json;print(json.load(open('live/manifest.json'))['sha256']['zz'])")
+                got=$(sha256sum live/ear-drama.sqlite.zz | cut -d' ' -f1)
+                if [ "$got" != "$want" ]; then
+                  echo "::error::live ear-drama.sqlite.zz is $got; its manifest vouches for $want"
+                  exit 1
+                fi
+                echo "forwarding against the live projection, sha256 $got" ;;
+              *)
+                # The same emergency the publish job names: only a recorded reason republishes over it.
+                if [ -z "$SHRINK_REASON" ]; then
+                  echo "::error::catalog-latest exists without ear-drama.sqlite.zz and manifest.json (assets: $out); dispatch with a shrink_reason to republish over it"
+                  exit 1
+                fi
+                echo "::warning::catalog-latest has no readable projection; forwarding nothing for the recorded reason: $SHRINK_REASON" ;;
+            esac
+          elif printf '%s' "$out" | grep -q "release not found"; then
+            echo "no catalog-latest Release yet: a first publish forwards nothing"
+          else
+            echo "::error::could not read catalog-latest: $out"
+            exit 1
+          fi
+
       - name: Build the served, clean-only, and web projections
         working-directory: catalog
         run: |
           set -euo pipefail
+          prev=()
+          if [ -s ../live/ear-drama.sqlite.zz ]; then prev=(--previous ../live/ear-drama.sqlite.zz); fi
           loud=()
           if [ -s out/loudness.json.gz ]; then loud=(--loudness out/loudness.json.gz); fi
           if [ -s out/transcripts.json.gz ]; then loud+=(--transcripts out/transcripts.json.gz); fi
-          python3 tools/build_projection.py --out out/publish "${loud[@]}" | tail -3
-          python3 tools/build_projection.py --clean-only --out out/publish-clean "${loud[@]}" | tail -3
+          python3 tools/build_projection.py --out out/publish "${prev[@]}" "${loud[@]}" | tail -3
+          python3 tools/build_projection.py --clean-only --out out/publish-clean \
+            --forwarding-from out/publish/ear-drama.sqlite "${loud[@]}" | tail -3
+          echo "forwarding: $(python3 -c "import json;m=json.load(open('out/publish/manifest.json'));print(m['counts']['aliases'], 'aliases,', m['counts']['tombstones'], 'tombstones;', m['forwarding'])")"
           echo "loudness rows: $(python3 -c "import json;print(json.load(open('out/publish/manifest.json'))['counts']['loudness'])")"
           echo "transcripts shown / searchable: $(python3 -c "import json;c=json.load(open('out/publish/manifest.json'))['counts'];print(c['transcripts'], '/', c['transcriptsSearchable'])")"
           # The public-web gate: one flag, opened only by the repository variable.
@@ -213,6 +255,8 @@ jobs:
           PROJECTION=out/publish/ear-drama.sqlite SOURCE=out/radio-catalog.sqlite python3 tests/test_projection_art.py
           WEB_PROJECTION=out/web python3 tests/test_web_projection.py
           PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_stations.py
+          PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_forwarding.py
+          PROJECTION=out/publish-clean/ear-drama.sqlite python3 tests/test_forwarding.py
 
       - name: Restore the measured evenings (radiologs-latest)
         id: radiologs
@@ -297,16 +341,8 @@ jobs:
 
       - name: What this publish changes (against what is live; read-only)
         run: |
-          mkdir -p live
-          if out=$(gh release view catalog-latest -R "$REPO" --json tagName 2>&1); then
-            bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber \
-              -p manifest.json -p ear-drama.sqlite.zz
-          elif printf '%s' "$out" | grep -q "release not found"; then
-            echo "no catalog-latest Release yet: first publish"
-          else
-            echo "::error::could not read catalog-latest: $out"
-            exit 1
-          fi
+          # live/ is what the forwarding was computed against (the fetch above). An id that
+          # left with neither an alias nor a tombstone refuses the publish (contract §3.5).
           python3 catalog/tools/publish_diff.py --label "Served catalog" \
             --old-manifest live/manifest.json --new-manifest catalog/out/publish/manifest.json \
             --old-db live/ear-drama.sqlite.zz --new-db catalog/out/publish/ear-drama.sqlite \
@@ -395,6 +431,12 @@ jobs:
           python3 catalog/tools/publish_diff.py --label "Web projection" \
             --old-manifest live/web-manifest.json --new-manifest built/web/manifest.json \
             --max-shrink "$MAX_SHRINK" --reason "$SHRINK_REASON" --summary "$GITHUB_STEP_SUMMARY"
+
+      - name: The forwarding was computed against what is live now (contract §3.5)
+        run: |
+          # A publish that landed between this run's build and this lock retired ids this
+          # build never saw; uploading over it would leave them unforwarded.
+          python3 catalog/tools/forwarding.py check-base --live live/manifest.json --built built/publish/manifest.json
 
       - name: A published evening never changes (contract §8)
         if: hashFiles('built/publish/tonight.json') != ''

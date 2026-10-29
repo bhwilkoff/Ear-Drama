@@ -52,6 +52,21 @@ class SyncEngineTest {
         assertNotNull(api.account.value!!.lastSyncAt)
     }
 
+    @Test fun `a pulled row for an id the catalog moved lands on the id it now is`() = runBlocking {
+        val api = WorkerApi(fake.client, fake.config, MemorySessionStore(fake.account())) { clock }
+        val forwarding = com.example.appname.data.IdForwarding(mapOf("jb|1921-03-11" to "jb|1943-11-21"))
+        val sync = SyncEngine(api, user, "android", forwarding = { forwarding }) { clock }
+        fake.answer = SyncAnswer(
+            serverTime = 9_000,
+            history = listOf(HistoryRow("jb|1921-03-11", position = 900.0, duration = 1800.0, updatedAt = 8_000, device = "web")),
+            queue = QueueState(listOf("jb|1921-03-11"), 8_000, "web"),
+        )
+        assertTrue(sync.sync())
+        assertEquals(900_000L, user.progress("jb|1943-11-21")?.positionMs)
+        assertNull(user.progress("jb|1921-03-11"))
+        assertEquals(listOf("jb|1943-11-21"), user.queue())
+    }
+
     @Test fun `a merge that fails stays pending and is retried`() = runBlocking {
         user.save("sus|1943-01-07", 600_000, 1_800_000)
         val (api, sync) = engine(fake.account(mergePending = true))
