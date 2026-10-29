@@ -36,6 +36,9 @@ touches. Your brief adds the feature's goal, decisions, and acceptance tests.
   also runs any client suite that reads that file (`git grep` its name).
 - Worker: `cd worker && npm ci && npm test && npm run test:mutations`. Never
   deploy, never create cloud resources.
+- A changed workflow step is RUN before it merges: extract its `run:` script and
+  execute it under a fake `gh`/`curl` on the real inputs it will see (A1's live
+  check was never run and failed both publishes on 2026-10-28).
 - Every guard you add is broken once and seen to fail. `tools/test_us_english.py`.
 - Tests never pin real catalog contents: fixtures, or shape-only real checks.
 

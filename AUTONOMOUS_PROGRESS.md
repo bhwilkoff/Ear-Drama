@@ -392,3 +392,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - The owner ran both pending commands on one line; the cutter refused on argument count and nothing was created (checked: no Release, keystore or secret). Each command needs its own line.
 - Owner call (A1 seen): a published station or evening slot whose episode id moved becomes a gap; contract §8 says a published slot never changes. Recommend: forward kept slots through the aliases.
 - Running: A2 (series keys forward; watchOS history; sync hydrate; test_web.sh final line; ia_lib .gz).
+
+### Tick 108, 2026-10-28, sizes and faces live; Play uploads but cannot release
+- The owner cut catalog-2026-10-28 (5 assets digest-matched) and ran tools/setup_play_upload_key.sh (upload key SHA-256 6E:9C:...:8A, recorded in DEEP_LINKS.md; five secrets).
+- Both catalog publishes after A1 failed in its new live-projection step: one case pattern needed a space on each side of each asset name, and adjacent names share one. Fixed (each name matched alone; checked on the logged string, both refusals kept, the step run under a fake gh). Run 40805865659 succeeded. Live, read from catalog-latest's database: art 2,166 rows, all sized, 2,141 with a face box; forwarding base recorded, 0 left. AGENT-BRIEF: a changed workflow step is run under a fake gh before it merges.
+- Play: the first run failed in android-actions/setup-android (sdkmanager licenses); play-release.yml now builds on the runner's SDK like android-build.yml. The second run built and signed a 14 MB bundle, uploaded it, set internal to versionCode 2, and the commit returned 403 "The caller does not have permission": the service account needs "Release apps to testing tracks" on Ear Drama in Play Console (owner).
