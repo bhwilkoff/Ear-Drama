@@ -14,6 +14,9 @@ nonisolated struct DownloadRecord: Codable, Hashable, Sendable, Identifiable {
     var episodeID: String
     var title: String
     var seriesName: String
+    /// The series' key, stored when the download is made from the episode's own series field
+    /// and forwarded like a follow (contract §3.5); never read back out of `episodeID`.
+    var seriesKey: String
     /// The recording the file came from (the catalog's rank 0 when it began).
     var remoteURL: URL
     var fileName: String
@@ -27,9 +30,6 @@ nonisolated struct DownloadRecord: Codable, Hashable, Sendable, Identifiable {
     var token: String
 
     var id: String { episodeID }
-    /// Episode ids carry the series key before their `|` (Route's rule), so a
-    /// series' downloads are found from the index as it already is.
-    var seriesKey: String { DownloadRecord.seriesKey(of: episodeID) }
     var isActive: Bool { state == .queued || state == .downloading }
     var fraction: Double? {
         expectedBytes > 0 ? min(1, Double(receivedBytes) / Double(expectedBytes)) : nil
@@ -37,7 +37,31 @@ nonisolated struct DownloadRecord: Codable, Hashable, Sendable, Identifiable {
 }
 
 extension DownloadRecord {
-    nonisolated static func seriesKey(of episodeID: String) -> String {
+    private enum CodingKeys: String, CodingKey {
+        case episodeID, title, seriesName, seriesKey, remoteURL, fileName, state
+        case receivedBytes, expectedBytes, addedAt, token
+    }
+
+    /// A record written before the key was stored has none: it reads the key out of its id
+    /// once, here, and the next forward and save make it stored.
+    nonisolated init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        episodeID = try c.decode(String.self, forKey: .episodeID)
+        title = try c.decode(String.self, forKey: .title)
+        seriesName = try c.decode(String.self, forKey: .seriesName)
+        seriesKey = try c.decodeIfPresent(String.self, forKey: .seriesKey)
+            ?? Self.legacySeriesKey(of: episodeID)
+        remoteURL = try c.decode(URL.self, forKey: .remoteURL)
+        fileName = try c.decode(String.self, forKey: .fileName)
+        state = try c.decode(State.self, forKey: .state)
+        receivedBytes = try c.decodeIfPresent(Int64.self, forKey: .receivedBytes) ?? 0
+        expectedBytes = try c.decodeIfPresent(Int64.self, forKey: .expectedBytes) ?? 0
+        addedAt = try c.decode(Date.self, forKey: .addedAt)
+        token = try c.decode(String.self, forKey: .token)
+    }
+
+    /// Only for a record with no stored key (see `init(from:)`).
+    nonisolated static func legacySeriesKey(of episodeID: String) -> String {
         String(episodeID.split(separator: "|", maxSplits: 1).first ?? Substring(episodeID))
     }
 }
@@ -47,14 +71,17 @@ nonisolated struct DownloadRequest: Hashable, Sendable {
     let episodeID: String
     let title: String
     let seriesName: String
+    let seriesKey: String
     let url: URL
     /// Bitrate times length, when the catalog knows both.
     let estimatedBytes: Int64?
 
-    init(episodeID: String, title: String, seriesName: String, url: URL, estimatedBytes: Int64? = nil) {
+    init(episodeID: String, title: String, seriesName: String, seriesKey: String, url: URL,
+         estimatedBytes: Int64? = nil) {
         self.episodeID = episodeID
         self.title = title
         self.seriesName = seriesName
+        self.seriesKey = seriesKey
         self.url = url
         self.estimatedBytes = estimatedBytes
     }
@@ -67,7 +94,8 @@ nonisolated struct DownloadRequest: Hashable, Sendable {
             estimate = Int64((Double(kbps) * 125 * seconds).rounded())
         }
         self.init(episodeID: detail.episode.id, title: detail.episode.displayTitle,
-                  seriesName: detail.episode.seriesName, url: recording.url, estimatedBytes: estimate)
+                  seriesName: detail.episode.seriesName, seriesKey: detail.episode.seriesKey,
+                  url: recording.url, estimatedBytes: estimate)
     }
 }
 
@@ -212,15 +240,17 @@ final class DownloadStore {
     func download(_ detail: EpisodeDetail) {
         guard let recording = detail.defaultRecording else { return }
         download(episodeID: detail.episode.id, title: detail.episode.displayTitle,
-                 seriesName: detail.episode.seriesName, url: recording.url)
+                 seriesName: detail.episode.seriesName, seriesKey: detail.episode.seriesKey, url: recording.url)
     }
 
-    func download(episodeID: String, title: String, seriesName: String, url: URL, now: Date = Date()) {
+    func download(episodeID: String, title: String, seriesName: String, seriesKey: String, url: URL,
+                  now: Date = Date()) {
         if let existing = records[episodeID], existing.state != .failed { return }
         if let stale = records[episodeID] { deleteFiles(of: stale) }
         let ext = url.pathExtension.isEmpty ? "mp3" : url.pathExtension.lowercased()
         let record = DownloadRecord(
-            episodeID: episodeID, title: title, seriesName: seriesName, remoteURL: url,
+            episodeID: episodeID, title: title, seriesName: seriesName, seriesKey: seriesKey,
+            remoteURL: url,
             fileName: "\(Self.fileStem(episodeID)).\(ext)", state: .queued, addedAt: now,
             token: UUID().uuidString)
         records[episodeID] = record
@@ -232,8 +262,8 @@ final class DownloadStore {
     /// after the last so the Downloads place keeps the order it was asked in.
     func download(_ plan: DownloadPlan, now: Date = Date()) {
         for (i, r) in plan.requests.enumerated() {
-            download(episodeID: r.episodeID, title: r.title, seriesName: r.seriesName, url: r.url,
-                     now: now.addingTimeInterval(Double(i) / 1000))
+            download(episodeID: r.episodeID, title: r.title, seriesName: r.seriesName, seriesKey: r.seriesKey,
+                     url: r.url, now: now.addingTimeInterval(Double(i) / 1000))
         }
     }
 
@@ -273,6 +303,13 @@ final class DownloadStore {
             records[old] = nil
             record.episodeID = new
             records[new] = record
+            changed = true
+        }
+        for (id, var record) in records {
+            let key = forwarding.resolveSeries(record.seriesKey)
+            guard key != record.seriesKey else { continue }
+            record.seriesKey = key
+            records[id] = record
             changed = true
         }
         if changed { saveIndex() }

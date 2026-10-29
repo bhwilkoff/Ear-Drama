@@ -137,11 +137,18 @@ class DownloadForwardingTest {
     @Test fun `a download is re-keyed and its file keeps its name`() {
         val store = DownloadStore(dir, NoTransport()) { 0L }
         val url = "https://archive.org/download/PDP_JackBenny/Jack%20Benny%20Show,%20The%2043-11-21.mp3"
-        store.download("jb|1921-03-11", "No. 4", "The Jack Benny Program", url)
-        store.download("q|old", "Old", "Q", url)
-        store.download("q|new", "New", "Q", url)
+        store.download("jb|1921-03-11", "No. 4", "The Jack Benny Program", "jbp", url)
+        store.download("q|old", "Old", "Q", "q", url)
+        store.download("q|new", "New", "Q", "q", url)
         val fileName = store.record("jb|1921-03-11")!!.fileName
-        store.forward(IdForwarding(mapOf("jb|1921-03-11" to "jb|1943-11-21", "q|old" to "q|new")))
+        store.forward(
+            IdForwarding(
+                mapOf("jb|1921-03-11" to "jb|1943-11-21", "q|old" to "q|new"),
+                seriesAliases = mapOf("jbp" to "jb"),
+            ),
+        )
+        assertEquals("the series key forwards like a follow", "jb", store.record("jb|1943-11-21")?.seriesKey)
+        assertTrue(store.hasDownloads("jb") && !store.hasDownloads("jbp"))
         assertNull(store.record("jb|1921-03-11"))
         assertEquals("the file keeps its name", fileName, store.record("jb|1943-11-21")?.fileName)
         assertEquals("jb|1943-11-21", store.record("jb|1943-11-21")?.episodeId)

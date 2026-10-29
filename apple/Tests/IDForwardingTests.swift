@@ -134,11 +134,14 @@ struct DownloadForwardingTests {
     @Test func aDownloadIsReKeyedAndItsFileKeepsItsName() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("dl-fwd-\(UUID().uuidString)")
         let store = DownloadStore(directory: dir, transport: FakeTransport())
-        store.download(episodeID: "jb|1921-03-11", title: "No. 4", seriesName: "The Jack Benny Program", url: url)
-        store.download(episodeID: "q|old", title: "Old", seriesName: "Q", url: url)
-        store.download(episodeID: "q|new", title: "New", seriesName: "Q", url: url)
+        store.download(episodeID: "jb|1921-03-11", title: "No. 4", seriesName: "The Jack Benny Program", seriesKey: "jbp", url: url)
+        store.download(episodeID: "q|old", title: "Old", seriesName: "Q", seriesKey: "q", url: url)
+        store.download(episodeID: "q|new", title: "New", seriesName: "Q", seriesKey: "q", url: url)
         let fileName = try #require(store.record(for: "jb|1921-03-11")?.fileName)
-        store.forward(IDForwarding(aliases: ["jb|1921-03-11": "jb|1943-11-21", "q|old": "q|new"]))
+        store.forward(IDForwarding(aliases: ["jb|1921-03-11": "jb|1943-11-21", "q|old": "q|new"],
+                                   seriesAliases: ["jbp": "jb"]))
+        #expect(store.record(for: "jb|1943-11-21")?.seriesKey == "jb", "the series key forwards like a follow")
+        #expect(store.hasDownloads(inSeries: "jb") && !store.hasDownloads(inSeries: "jbp"))
         #expect(store.record(for: "jb|1921-03-11") == nil)
         #expect(store.record(for: "jb|1943-11-21")?.fileName == fileName, "the file keeps its name")
         #expect(store.record(for: "jb|1943-11-21")?.episodeID == "jb|1943-11-21")
