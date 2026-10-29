@@ -721,7 +721,7 @@ The owner's answers in §9 hold on the server, word for word:
 | P4 | Who reads reports, how they arrive, and how fast they are answered (guideline 1.2 asks for timely action and a published contact) | Reports wait in D1 with status `open`; nothing notifies anyone, and nothing auto-hides a take for everyone |
 | P5 | The privacy policy that covers school consent for students under 13 | `SCHOOL_CONSENT_POLICY` unset: no school consent can be recorded, so no under-13 class takes a student |
 | P6 | The Ear Drama archive.org account and its keys | Answered 2026-10-29: keys given; the uploader runs once both are Worker secrets (Decision 073) |
-| P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | No, their lines stay, uncredited; items go in Community Audio |
+| P14 | Does deleting an account remove that person's lines from the item? An Ear Drama collection on archive.org? | Answered by the owner 2026-10-29: "Account deletion should definitely not remove their recordings from already submitted works" (lines stay, uncredited); "community audio is just fine, as long as we are doing a good job of labeling the ear dramas within archive.org" |
 | P7 | The 7-day claim lapse (C6 and C7 are answered, §9) | Applied as the default |
 | P8 | Do classes own productions (a class member joins without an invite)? | No: classes are a roster only; every production is invite-only |
 
