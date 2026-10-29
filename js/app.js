@@ -16,8 +16,9 @@
  * The names before 068 (listen, series, radio, plays) are rewritten in place.
  *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
  *   /invite#{TOKEN}, #invite={TOKEN}  an ear drama invite, shown in Library's Ear dramas (§4.10a)
- * Path twins (/series/{key}, /episode/{id}, /search?q=) are forwarded into
- * these by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
+ * Path twins (/series/{key}, /episode/{id}) are static pages with link previews that hand
+ * a person to these (catalog/tools/build_share_pages.py); the router also reads the path
+ * form itself and the web shares it. Other twins (/search?q=) are forwarded by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
  *
  * Every list has loading, empty, error, and offline states (stateBox).
  * Lists and shelves come from the catalog's data only; no copy is written here
@@ -332,7 +333,7 @@
   ================================================================ */
 
   function parseRoute() {
-    const p = new URLSearchParams(location.search);
+    const p = API.pathQuery(location.pathname) || new URLSearchParams(location.search);
     if (p.get('item')) return { view: 'episode', id: p.get('item'), p };
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
     if (p.get('person')) return { view: 'person', id: p.get('person'), p };
@@ -863,7 +864,7 @@
       });
       const shareBtn = el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${s.name}` },
         icon('share'), 'Share');
-      shareBtn.addEventListener('click', () => share(s.name, `?series=${encodeURIComponent(s.key)}`));
+      shareBtn.addEventListener('click', () => share(s.name, API.shareLink('series', s.key)));
 
       const undated = s.episodes.some(e => !e.date);
       const scopes = [['', 'All'], ...s.seasons.map(x => [x, x]), ...(undated ? [['undated', 'Undated']] : [])];
@@ -948,7 +949,7 @@
       });
       const shareBtn = el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${title}` },
         icon('share'), 'Share');
-      shareBtn.addEventListener('click', () => share(`${title} (${d.date || 'undated'})`, `?item=${encodeURIComponent(d.id)}`));
+      shareBtn.addEventListener('click', () => share(`${title} (${d.date || 'undated'})`, API.shareLink('episode', d.id)));
 
       // An undated episode with no network or credits is most of the catalog: its one line of
       // facts carries "Undated", and the number is not repeated when it already names the episode.

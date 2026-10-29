@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Assemble the Pages site: everything the repo root served when Pages read
 # main, minus the app sources and the pipeline (not the website), plus the web
-# projection under /data/ and the castable plays beside it. Shared by
+# projection under /data/ and the castable plays beside it, and the share
+# pages (catalog/tools/build_share_pages.py). Shared by
 # catalog-publish.yml (fresh projection) and site-deploy.yml (the last one).
 #
 #     bash tools/assemble_site.sh <web projection dir> <output dir>
@@ -15,6 +16,9 @@ rsync -a --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='
 cp -R "$web" "$out/data"
 mkdir -p "$out/data/plays"
 cp catalog/plays/castable-scripts.json "$out/data/plays/"
+# A real page at every served /series/{key} and /episode/{id}, so a preview bot reads a 200 with a
+# card; a path it does not write stays with 404.html.
+python3 catalog/tools/build_share_pages.py "$web" "$out"
 # .nojekyll is empty by design: it must exist, not have size.
 test -e "$out/.nojekyll" || { echo "::error::$out/.nojekyll is missing; not deploying"; exit 1; }
 for f in index.html 404.html CNAME manifest.json css/styles.css js/app.js \

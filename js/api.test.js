@@ -526,6 +526,18 @@ test('cropBlobURL draws the face square into the canvas, or keeps the plain URL'
   assertEq(await API.cropBlobURL(wide, 500, env(true)), null, 'control: nothing to crop');
 });
 
+test('path links route to the app query; shared links are the path form (DEEP_LINKS.md)', () => {
+  assertEq(API.pathQuery('/series/gunsmoke').get('series'), 'gunsmoke');
+  assertEq(API.pathQuery('/episode/gunsmoke%7C1954-01-30').get('item'), 'gunsmoke|1954-01-30');
+  assertEq(API.pathQuery('/episode/a%7Cb/').get('item'), 'a|b', 'trailing slash');
+  assertEq(API.pathQuery('/'), null);
+  assertEq(API.pathQuery('/person/x'), null);
+  assertEq(API.pathQuery('/series/%E0%A4%A'), null, 'malformed escape');
+  assertEq(API.shareLink('series', 'a b'), '/series/a%20b');
+  assertEq(API.shareLink('episode', 'gunsmoke|1954-01-30'), '/episode/gunsmoke%7C1954-01-30');
+  assertEq(API.pathQuery(API.shareLink('episode', 'x|y z')).get('item'), 'x|y z', 'round trip');
+});
+
 // --- RUNNER ----------------------------------------------------------
 
 async function run() {

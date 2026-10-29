@@ -157,6 +157,22 @@ const API = (() => {
     const a = artAspect(art);
     return a !== null && a > wideAspect ? 'wide' : 'upright';
   }
+  /** The app's query for a path link (DEEP_LINKS.md): /series/{key} is ?series=, /episode/{id} is ?item=,
+      the id percent-decoded once; null for any other path or a malformed escape. The router tries this
+      first and falls back to the address's own query, so old ?series= links keep working. */
+  function pathQuery(pathname) {
+    const m = /^\/(series|episode)\/(.+?)\/?$/.exec(pathname || '');
+    if (!m) return null;
+    let id;
+    try { id = decodeURIComponent(m[2]); } catch { return null; }
+    return new URLSearchParams({ [m[1] === 'series' ? 'series' : 'item']: id });
+  }
+
+  /** The one link people share for a series or an episode: the path the apps share and the static page serves. */
+  function shareLink(kind, id) {
+    return `/${kind === 'series' ? 'series' : 'episode'}/${encodeURIComponent(id)}`;
+  }
+
   /** The square a small slot (a tile, a cast face) shows, as {x, y, w, h} normalized to the
       image (contract §3.3a, WEB-DESIGN §6.4): around the published face box, the face about half
       the square and at most 4x zoom; without a face the largest square at 50% across and 20%
@@ -1178,7 +1194,7 @@ const API = (() => {
 
   return {
     rooms, plays, isOffline, offlineLine,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL, pathQuery, shareLink,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
