@@ -11,8 +11,8 @@ import AppKit
 
 extension Color {
     // Brand: UI chrome only, never content meaning.
-    nonisolated static let brandPrimary = Color.tokenPair(light: 0xB0152F, dark: 0xE3384B)
-    nonisolated static let brandOnPrimary = Color.tokenPair(light: 0xFFFFFF, dark: 0x120708)
+    nonisolated static let brandPrimary = Color.tokenPair(light: 0x131316, dark: 0xF2F2F4)
+    nonisolated static let brandOnPrimary = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
     nonisolated static let brandBackground = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
     nonisolated static let brandSurface = Color.tokenPair(light: 0xF4F4F5, dark: 0x19191C)
     nonisolated static let brandSurfaceAlt = Color.tokenPair(light: 0xE8E8EB, dark: 0x232327)
@@ -22,6 +22,8 @@ extension Color {
     nonisolated static let brandSecondary = Color.tokenPair(light: 0x0B6E99, dark: 0x5AB4D6)
     nonisolated static let brandOnSecondary = Color.tokenPair(light: 0xFFFFFF, dark: 0x06141B)
     nonisolated static let brandLink = Color.tokenPair(light: 0x0B6E99, dark: 0x6CC0E0)
+    nonisolated static let brandRecord = Color.tokenPair(light: 0xB0152F, dark: 0xE3384B)
+    nonisolated static let brandOnRecord = Color.tokenPair(light: 0xFFFFFF, dark: 0x120708)
 
     // Semantic: content meaning only, never chrome.
     nonisolated static let semanticSuccess = Color.tokenPair(light: 0x1D7A4A, dark: 0x5CC593)

@@ -339,7 +339,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   then each genre station from `stations.json` (`ApiClient.stations()`,
   `radio/Stations.kt`), one `ListItem` each with the station's name
   (`titleMedium`), what is on now (series, then title), and a trailing
-  "Listen live" (the live-red button; "Listening live" outlined in red
+  "Listen live" (the ink play button; "Listening live" outlined in ink
   while on, which pauses). Tonight's row carries "Starts at" / "Ended at"
   outside the evening, so the evening's header no longer does. A genre
   station tunes in through the same `LiveRadio` with the next twelve
@@ -358,7 +358,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   its programs survives. Each row leads with its
   local time (`bodySmall`, tabular) and the paper's Eastern time beneath
   it ("7:00 PM ET" alone where the two agree). The slot on the air says
-  "Now", takes the `surfaceVariant` container and the red edge (§6.1a), and is marked selected
+  "Now", takes the `surfaceVariant` container and the ink edge (§6.1a), and is marked selected
   for TalkBack, repainted every 15 seconds from the file's instants. A
   surviving slot opens its episode ("Open episode") and has a trailing
   Play that plays it from its start (§4.8); a gap is muted, not
@@ -550,21 +550,25 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   `colorScheme.primary` by default, so `Theme.kt` puts the brand's blue
   `secondary` in M3's `primary` and `secondary` slots (and a sixth of it
   over the ground in the two container slots): the selected
-  `NavigationBar` item, chips, every filled button that is not live,
-  spinners, and the download bar follow it with no override. Links and
-  the TV focus ring take `OnAir.colors.link`. Red (the brand `primary`)
-  is only for what is live, set by hand through `OnAir.colors.live`
-  (`liveButtonColors()` on a filled button): Play and Pause on the player
-  and the mini player, Play on Detail, the progress line and the
-  scrubber (the player's and a play's mix), the slot on the air (a 4 dp
-  leading edge), Listen live and Listening live, Start recording, the
-  record control, and "Your line" while the microphone is live. M3's
-  `tertiary` holds the red too, so no default component reaches it, and
+  `NavigationBar` item, chips, every filled button that is not the
+  primary action, spinners, and the download bar follow it with no
+  override. Links and the TV focus ring take `OnAir.colors.link`. Ink
+  (the brand `primary`) is the primary action, set by hand through
+  `OnAir.colors.play` (`playButtonColors()` on a filled button): Play
+  and Pause on the player and the mini player, Play on Detail, Listen
+  through, the progress line and the scrubber (the player's and a play's
+  mix), the slot on the air (a 4 dp leading edge), and Listen live and
+  Listening live. Red (the brand `record`) means recording and nothing
+  else (owner, 2026-10-29: *"Red means recording."*), through
+  `OnAir.colors.record` (`recordButtonColors()`): Start recording, the
+  record control, and "Your line" while the microphone is open. M3's
+  `tertiary` holds the red, so no default component reaches it, and
   dynamic color never changes `OnAir`. Genre hues are content: a series
   row's 4 dp leading mark (`OnAir.genre(key)`, the border color for a key
   the palette does not name), never a button, a tab, or a link. Tab icons
-  are unchanged. `ColorRolesTest` fails on the red reached any other way,
-  on a red M3 `primary`, and on a token genre with no mark.
+  are unchanged. `ColorRolesTest` fails on the red reached any other way
+  or outside `RecordingScreen.kt`, on a non-blue M3 `primary`, and on a
+  token genre with no mark.
 - **§6.2 Six type levels** (`AppTypography`, `ui/theme/Type.kt`):
   `displaySmall`, `headlineSmall`, `titleMedium`, `bodyMedium`,
   `labelMedium`, `bodySmall` with tabular figures. `displaySmall` and

@@ -77,7 +77,7 @@ import com.example.appname.ui.LocalOnline
 import com.example.appname.ui.OFFLINE_LINE
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.rememberHaptics
-import com.example.appname.ui.liveButtonColors
+import com.example.appname.ui.playButtonColors
 import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import androidx.compose.foundation.layout.Row
@@ -345,8 +345,8 @@ private fun StationRow(
                     OutlinedButton(
                         onClick = onStop,
                         modifier = modifier.semantics { stateDescription = "On" },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.live),
-                        border = BorderStroke(1.dp, OnAir.colors.live),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.play),
+                        border = BorderStroke(1.dp, OnAir.colors.play),
                     ) {
                         Icon(Icons.Filled.Sensors, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -359,7 +359,7 @@ private fun StationRow(
                     Button(
                         onClick = onListen,
                         modifier = modifier.semantics { contentDescription = "Listen live to $name" },
-                        colors = liveButtonColors(),
+                        colors = playButtonColors(),
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
@@ -429,13 +429,13 @@ private fun SlotRow(
         television -> Modifier.focusable()
         else -> Modifier
     }
-    val liveEdge = OnAir.colors.live
+    val liveEdge = OnAir.colors.play
     ListItem(
         modifier = modifier
             .tvFocusMark()
             .then(action)
             .semantics { selected = isNow }
-            // The slot on the air wears the live red as its leading edge (§6.1a, the web's slot-now).
+            // The slot on the air wears the primary ink as its leading edge (§6.1a, the web's slot-now).
             .then(
                 if (isNow) {
                     Modifier.drawWithContent {

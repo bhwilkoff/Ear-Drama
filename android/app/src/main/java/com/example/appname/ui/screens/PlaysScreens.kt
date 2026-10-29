@@ -92,7 +92,7 @@ import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.OnAir
-import com.example.appname.ui.liveButtonColors
+import com.example.appname.ui.playButtonColors
 import com.example.appname.ui.theme.Spacing
 import java.io.File
 import kotlinx.coroutines.Job
@@ -624,7 +624,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
                         Icon(
                             if (playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (playing) "Pause" else "Play",
-                            tint = OnAir.colors.live,
+                            tint = OnAir.colors.play,
                         )
                     }
                 }
@@ -636,13 +636,13 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
                         onValueChange = { position = it; mix.seek(it.toInt()) },
                         valueRange = 0f..duration,
                         modifier = Modifier.semantics { contentDescription = "Position"; stateDescription = clock },
-                        colors = SliderDefaults.colors(thumbColor = OnAir.colors.live, activeTrackColor = OnAir.colors.live),
+                        colors = SliderDefaults.colors(thumbColor = OnAir.colors.play, activeTrackColor = OnAir.colors.play),
                     )
                 } else {
                     LinearProgressIndicator(
                         progress = { (position / duration).coerceIn(0f, 1f) },
                         modifier = Modifier.fillMaxWidth().semantics { stateDescription = clock },
-                        color = OnAir.colors.live,
+                        color = OnAir.colors.play,
                     )
                 }
             }
@@ -670,7 +670,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
                         mixing = false
                     }
                 }
-            }, colors = liveButtonColors()) {
+            }, colors = playButtonColors()) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Text(if (production.isFinished) "Play" else "Listen through", Modifier.padding(start = Spacing.S2.dp))
             }
@@ -690,7 +690,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
                         }
                     }
                 }
-            }, colors = liveButtonColors()) {
+            }, colors = playButtonColors()) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Text("Listen through", Modifier.padding(start = Spacing.S2.dp))
             }

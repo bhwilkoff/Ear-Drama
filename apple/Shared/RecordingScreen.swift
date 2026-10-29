@@ -61,9 +61,10 @@ struct RecordingScreen: View {
                     Task { await begin(echoCancelled: false) }
                 } label: {
                     Label("Start Recording", systemImage: "mic")
+                        .foregroundStyle(Color.brandOnRecord)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color.brandPrimary)
+                .tint(Color.brandRecord)
                 .keyboardShortcut(.defaultAction)
             case .microphoneDenied:
                 Text("Ear Drama needs the microphone to record your part.")
@@ -187,7 +188,7 @@ struct RecordingScreen: View {
         case .listening:
             Label("Your line", systemImage: "mic.fill")
                 .font(TypeRamp.bodyStrong)
-                .foregroundStyle(Color.semanticError)
+                .foregroundStyle(Color.brandRecord)
         default:
             if let previous = Relay.cueLines(before: line.id, in: session.script, runUp: false).last {
                 ScriptLineText(line: previous).opacity(0.6)
@@ -327,7 +328,7 @@ private struct RecordButton: View {
             Label(listening ? "Stop" : "Record", systemImage: listening ? "stop.circle.fill" : "record.circle")
                 .labelStyle(.iconOnly)
                 .font(.system(size: 64))
-                .foregroundStyle(Color.semanticError)
+                .foregroundStyle(Color.brandRecord)
         }
         .buttonStyle(.borderless)
         .padShortcut(.space, modifiers: [])

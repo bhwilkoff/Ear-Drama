@@ -496,7 +496,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   their own sound while the room plays on, and Play catches them up to
   where the host is now (`AudioPlayer.isHeld`, `SharePlayRoom.follow`); a
   held member handed the room takes it from where the room is. The control is chrome, so it takes the tint, never the
-  live red.
+  primary ink.
   - **The rules are the Worker's, ported, not re-derived.**
     `RoomProtocol` (`apple/Core/ListenTogether/RoomProtocol.swift`, no
     import) ports `worker/src/room-protocol.js`: the arbiter, the host's
@@ -529,10 +529,15 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§6.1a Color roles (Decision 064, On Air).** The root tint is
   `Color.brandSecondary` (blue), so links, the selected tab, toggles,
   and every button that is not Play take it, and `AccentColor` is the
-  same blue. Red (`Color.brandPrimary`) is set with `.tint` only on what
-  is live: Play and Pause, Listen live, Start recording, the scrubber,
-  and the progress line in a row. Genre hues are content: the series
-  row's leading genre mark, never chrome.
+  same blue. Ink (`Color.brandPrimary`) is set with `.tint` on the
+  primary action: Play and Pause, Listen Through, Listen live, the
+  scrubber, and the progress line in a row; a prominent ink button
+  sets its label in `brandOnPrimary`. Red (`Color.brandRecord`) means
+  recording and nothing else (owner, 2026-10-29: *"Red means
+  recording."*): Start Recording (label in `brandOnRecord`), the record
+  control, and "Your line" while the microphone is open;
+  `tools/test_apple_design_rules.py` fails on it anywhere else. Genre
+  hues are content: the series row's leading genre mark, never chrome.
 - **§6.2 Six type levels** (`TypeRamp`) over the system text styles,
   so Dynamic Type works and nothing truncates a title. The page title
   and section header set the bundled Big Shoulders Bold at their

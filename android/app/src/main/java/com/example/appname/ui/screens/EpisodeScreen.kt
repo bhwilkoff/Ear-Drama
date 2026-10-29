@@ -56,7 +56,7 @@ import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.formatLength
 import com.example.appname.ui.rememberCatalogQuery
-import com.example.appname.ui.liveButtonColors
+import com.example.appname.ui.playButtonColors
 import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
@@ -143,7 +143,7 @@ fun EpisodeScreen(
                         onClick = { container.playback.play(row) },
                         enabled = d.recordings.isNotEmpty(),
                         modifier = Modifier.padding(Spacing.S4.dp).focusRequester(play).tvFocusMark(),
-                        colors = liveButtonColors(),
+                        colors = playButtonColors(),
                         contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)

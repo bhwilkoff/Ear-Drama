@@ -535,9 +535,13 @@ web app follows today.
   `styles.css` names a color. Brand chrome and genre accents never mix
   (R12): genres reach the page only through `data-genre` and
   `--genre-accent`, which the generator sets per catalog genre key.
-- **§6.1a Color roles (Decision 064, On Air).** Red (`--color-primary`)
-  is only for what is live: Play, the progress line, the slot on the air
-  now, Listen live, and Start recording (the microphone is live). Blue
+- **§6.1a Color roles (Decision 064, On Air).** Ink (`--color-primary`,
+  `.btn-primary`, `.icon-btn-primary`) is the primary action: Play and
+  Pause, Listen through, Listen live, the progress line, and the slot on
+  the air now. Red (`--color-record`, `.btn-record`) means recording and
+  nothing else (owner, 2026-10-29: *"Red means recording."*): Start
+  recording, the record button, and "Your line" while the microphone is
+  open. Blue
   does the wayfinding: `--color-link` for links and the focus ring;
   `--color-secondary` for the selected tab and sidebar item, a pressed
   toggle, a checked control, the loading spinner, and every filled

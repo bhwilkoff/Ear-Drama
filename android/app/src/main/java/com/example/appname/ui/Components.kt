@@ -128,10 +128,15 @@ private fun RetryMessage(text: String, modifier: Modifier) {
     }
 }
 
-/** A filled button for what is live (Play, Listen live, Start recording): On Air's red (§6.1a). */
+/** A filled button for the primary action (Play, Listen through, Listen live): On Air's ink (§6.1a). */
 @Composable
-fun liveButtonColors(): ButtonColors =
-    ButtonDefaults.buttonColors(containerColor = OnAir.colors.live, contentColor = OnAir.colors.onLive)
+fun playButtonColors(): ButtonColors =
+    ButtonDefaults.buttonColors(containerColor = OnAir.colors.play, contentColor = OnAir.colors.onPlay)
+
+/** The filled Start recording button: red, which means recording and nothing else (§6.1a). */
+@Composable
+fun recordButtonColors(): ButtonColors =
+    ButtonDefaults.buttonColors(containerColor = OnAir.colors.record, contentColor = OnAir.colors.onRecord)
 
 /** The one way on from an empty state: a verb and what it does. */
 data class EmptyAction(val label: String, val onClick: () -> Unit)
