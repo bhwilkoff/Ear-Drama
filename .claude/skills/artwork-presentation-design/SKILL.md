@@ -108,7 +108,11 @@ Archival photographs have their own edges, borders and tone. Show them
 as objects: a hairline rule (the border token) or a thin mat in the
 surface color, a small corner radius (the control radius, never a pill),
 no drop shadow, no tint overlay, no filter. The loading placeholder is
-the box itself in the surface color, at exactly the image's size.
+the box itself in the surface color, at exactly the image's size. In a
+repeated slot where many pictures must read as one set (a face wall, a
+show tile), the mount, the edge and a neutral monochrome grade come
+from `uniform-imagery-design`; the page about the picture keeps it as
+it is.
 
 ### 7. A dominant-color field is a ground, not a fill
 
@@ -175,9 +179,18 @@ the minority is where a design breaks.
 - **Per-device face detection over a shared catalog**.
 - **Text over an uncontrolled photograph**, or a gradient scrim to
   rescue it.
-- **A filter or tint for mood** (sepia, duotone) over a historical
-  photograph: it changes the evidence. A duotone is a brand device for
-  images you own.
+- **A filter or tint for mood** (sepia, duotone, a color wash) over a
+  historical photograph: it adds a hue the scene never had. A duotone is
+  a brand device for images you own (Spotify's was applied to photos
+  the artists supplied). *Revised 2026-10-29 (D2b-1):* a **neutral
+  monochrome grade with bounded levels** is not this anti-pattern. It is
+  allowed in repeated slots, never on the page about the picture, and
+  `uniform-imagery-design` holds the rule and its limits. Why: the
+  archive's own guidance approves processing for access copies while
+  masters stay untouched (FADGI), IIIF makes `gray` a standard
+  rendering, and AP and NPPA allow toning within normal limits; the
+  harms the sources name (colorization, retouching, generated detail,
+  the original hidden) are all still refused.
 - **A placeholder that looks like content** (silhouette, stock).
 
 ## Worked example: Ear Drama (2026-10-28)

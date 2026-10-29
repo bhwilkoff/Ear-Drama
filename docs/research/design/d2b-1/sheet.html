@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uniform Imagery Sheet</title>
+<link rel="stylesheet" href="../directions/shared/tokens.css">
+<style>
+  /* D2b-1 contact sheet: 40 served portraits through the app's size steps and crop formula,
+     before (today's crops) and after (uniform-imagery-design). ?view=tiles|wall&phase=before|after|duotone&theme=dark */
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--color-background); color: var(--color-text); font-family: var(--font-body); padding: 16px; }
+  h1 { font: var(--type-section-header-weight) var(--type-section-header-size)/1.2 var(--font-display); margin: 0 0 4px; text-transform: uppercase; letter-spacing: .02em; }
+  .sub { font-size: var(--type-caption-size); color: var(--color-text-muted); margin: 0 0 12px; }
+  .grid { display: grid; gap: 8px; }
+  .tiles { grid-template-columns: repeat(3, 1fr); }
+  .wall { grid-template-columns: repeat(4, 1fr); gap: 12px 8px; }
+  .why { display: block; font-size: 10px; line-height: 1.2; color: var(--color-text-muted); font-family: var(--font-mono); margin-top: 2px; }
+
+  /* the crop window: the image scaled to 1/w of the slot and shifted (contract 3.3a) */
+  .win { position: relative; overflow: hidden; aspect-ratio: 1; width: 100%; }
+  .win img { position: absolute; display: block; }
+  .win img.fit { position: static; width: 100%; height: 100%; object-fit: contain; }
+  .win img.fit.inscribed { width: 70.7%; height: 70.7%; margin: 14.6%; }
+
+  /* BEFORE: today's tiles (V4): full-color crop, no matte, the letter tile when not cropped */
+  .b-tile .win { border-radius: var(--radius-control); background: var(--color-surface); }
+  .b-tile .name { font-size: var(--type-caption-size); font-weight: 600; margin-top: 4px; line-height: 1.25; }
+  .letter { position: absolute; inset: 0; display: grid; place-items: center; font: 700 44px var(--font-display); color: var(--color-on-primary); background: var(--genre-accent, var(--color-text-muted)); }
+  .b-wall .win { border-radius: 50%; background: var(--color-surface); }
+  .wname { font-size: 11px; line-height: 1.25; margin-top: 4px; text-align: center; overflow-wrap: normal; }
+
+  /* AFTER: the mount. A board in the genre hue (people: the neutral surface), the print inset on it,
+     graded to one tone, a hairline edge, the name on the board, never on the photograph. */
+  .a-tile { border-radius: var(--radius-card); background: var(--genre-accent, var(--color-surface-alt)); padding: 6px 6px 8px; }
+  .a-tile .win { border-radius: 4px; background: var(--print-ground); box-shadow: 0 0 0 1px var(--print-edge); }
+  .a-tile .name { color: var(--board-text, var(--color-text)); font: 700 15px/1.05 var(--font-display); text-transform: uppercase; margin-top: 6px; min-height: 2.1em; letter-spacing: .01em; }
+  .a-tile .card { position: absolute; inset: 0; display: flex; align-items: flex-end; padding: 8px; font: 700 20px/1 var(--font-display); text-transform: uppercase; color: var(--board-text, var(--color-text)); background: var(--genre-accent, var(--color-surface-alt)); box-shadow: inset 0 0 0 1px var(--board-text, var(--color-border)); }
+  .a-wall .win { border-radius: 50%; background: var(--print-ground); box-shadow: 0 0 0 1px var(--print-edge); }
+  .a-wall .initial { position: absolute; inset: 0; display: grid; place-items: center; font: 700 30px var(--font-display); color: var(--color-text-muted); background: var(--color-surface); }
+  [data-genre] { --board-text: #FFFFFF; }
+  .a-tile .why { color: var(--board-text, var(--color-text-muted)); opacity: .85; }
+  :root { --print-ground: #EDEDED; --print-edge: rgba(19,19,22,.18); }
+  html[data-theme="dark"] [data-genre] { --board-text: #0F0F11; }
+  html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242,242,244,.16); }
+  svg.defs { position: absolute; width: 0; height: 0; }
+</style>
+<script src="data.js"></script>
+</head>
+<body>
+<svg class="defs" aria-hidden="true"><defs id="defs"></defs></svg>
+<h1 id="title"></h1>
+<p class="sub" id="sub"></p>
+<div id="grid" class="grid"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'tiles', phase = q.get('phase') || 'after';
+if (q.get('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+const STEPS = [120, 330, 500, 960];
+const DPR = 2;                        // ask for what a 2x phone asks for
+const MIN_TILE = 96;                  // below this a whole, uncropped picture is unreadable: letter or card
+const url = (p, px) => p.url + '?width=' + (STEPS.find((s) => s >= px) || 960);
+const initial = (n) => n.replace(/^[^A-Za-z]+/, '')[0];
+
+document.getElementById('title').textContent = { tiles: 'Show tiles', wall: 'Face wall' }[view] + ' · ' + phase;
+document.getElementById('sub').textContent = {
+  before: 'Today: full-color crop at the face box, no mount.',
+  after: 'One grade, one mount, one edge; originals stay on Detail.',
+  duotone: 'Rejected: a genre duotone over the photograph.',
+}[phase];
+
+const defs = document.getElementById('defs');
+function filterFor(i, p, duo) {
+  const id = 'g' + i;
+  const [k, o] = p.grade;
+  const fn = (v) => `<feFuncR type="linear" slope="${k}" intercept="${o}"/><feFuncG type="linear" slope="${k}" intercept="${o}"/><feFuncB type="linear" slope="${k}" intercept="${o}"/>`;
+  let body = `<feColorMatrix type="saturate" values="0"/><feComponentTransfer>${fn()}</feComponentTransfer>`;
+  if (duo) {
+    const hex = getComputedStyle(document.documentElement).getPropertyValue('--color-genre-' + (p.genre || 'mystery')).trim();
+    const c = [1, 3, 5].map((j) => parseInt(hex.slice(j, j + 2), 16) / 255);
+    body += `<feComponentTransfer>${['R', 'G', 'B'].map((ch, j) => `<feFunc${ch} type="table" tableValues="${(c[j] * 0.35).toFixed(3)} ${(0.97).toFixed(3)}"/>`).join('')}</feComponentTransfer>`;
+  }
+  defs.insertAdjacentHTML('beforeend', `<filter id="${id}" color-interpolation-filters="sRGB">${body}</filter>`);
+  return `url(#${id})`;
+}
+
+function cropImg(p, slot, filter) {
+  const c = p.crop;
+  const img = document.createElement('img');
+  img.alt = '';
+  img.referrerPolicy = 'no-referrer';
+  if (!c) { img.className = 'fit'; img.src = url(p, slot * DPR); }
+  else {
+    img.src = url(p, slot * DPR / c.w);
+    Object.assign(img.style, { width: 100 / c.w + '%', height: 100 / c.h + '%', left: -c.x / c.w * 100 + '%', top: -c.y / c.h * 100 + '%' });
+  }
+  if (filter) img.style.filter = filter;
+  return img;
+}
+
+const grid = document.getElementById('grid');
+grid.classList.add(view === 'wall' ? 'wall' : 'tiles');
+const slot = view === 'wall' ? 76 : 103;
+window.SHEET.forEach((p, i) => {
+  const cell = document.createElement('div');
+  if (p.genre) cell.dataset.genre = p.genre;
+  const win = document.createElement('div');
+  win.className = 'win';
+  const label = p.show || p.name;
+  const tooSmall = p.cropPx !== null && p.cropPx < slot;     // more than 2x upscale on a 2x screen
+  if (phase === 'before') {
+    cell.className = view === 'wall' ? 'b-wall' : 'b-tile';
+    if (p.crop) win.appendChild(cropImg(p, slot));
+    else if (view !== 'wall') win.insertAdjacentHTML('beforeend', `<div class="letter">${initial(label)}</div>`);
+  } else {
+    cell.className = view === 'wall' ? 'a-wall' : 'a-tile';
+    const filter = filterFor(i, p, phase === 'duotone');
+    const a = p.w / p.h;
+    const graphic = !p.face && a >= 0.9;      // square or wide with no face: a page, a cartoon, a scene; shown whole
+    if (tooSmall || (graphic && slot < MIN_TILE / 2)) {
+      win.insertAdjacentHTML('beforeend', view === 'wall' ? `<div class="initial">${initial(p.name)}</div>` : `<div class="card">${label}</div>`);
+    } else if (graphic) {
+      const img = cropImg({ ...p, crop: null }, slot, filter);
+      if (view === 'wall') img.classList.add('inscribed');
+      win.appendChild(img);
+    } else win.appendChild(cropImg(p, slot, filter));
+  }
+  cell.appendChild(win);
+  const nm = document.createElement('div');
+  nm.className = view === 'wall' ? 'wname' : 'name';
+  nm.textContent = view === 'wall' ? p.name : label;
+  cell.appendChild(nm);
+  const why = document.createElement('span');
+  why.className = 'why';
+  why.textContent = `${i + 1} ${p.why} ${p.w}x${p.h}`;
+  if (view === 'wall') why.style.textAlign = 'center';
+  cell.appendChild(why);
+  grid.appendChild(cell);
+});
+</script>
+</body>
+</html>
