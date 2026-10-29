@@ -116,8 +116,13 @@ PATTERNS = [
         r"(?:[ _-]+(?P<title>[A-Za-z].*))?$")),
     # "GrandOleOpry05-10-58", "ThisIsTheStory-ACzechEarForAmericanMusic05-24-47" (M-D-YY last)
     #   [GrandOleOpryOtr, AFRS items]
+    #   The month starts after a non-digit: "Jack Benny Show, The 43-11-21" is not 3-11-21 (1921)
     ("F4b_mmddyy_last", re.compile(
-        r"^(?P<head>[A-Za-z].*?)[ _-]?(?P<mm>0?[1-9]|1[0-2])-(?P<dd>[0-3]?\d)-(?P<yy>[2-7]\d)$")),
+        r"^(?P<head>[A-Za-z].*?)[ _-]?(?<!\d)(?P<mm>0?[1-9]|1[0-2])-(?P<dd>[0-3]?\d)-(?P<yy>[2-7]\d)$")),
+    # "Jack Benny Show, The 43-11-21" (YY-MM-DD last, no title; disjoint from F4b, whose first
+    #   field is a month)   [PDP_JackBenny]
+    ("F10c_yymmdd_last", re.compile(
+        r"^(?P<head>[A-Za-z].*?)[ _-]+(?P<yy>[2-7]\d)-(?P<mm>0[1-9]|1[0-2])-(?P<dd>0[1-9]|[12]\d|3[01])$")),
     # "481209TheSisters" (glued YYMMDD first, no series)   [Half-Hours_With_Rosalind]
     ("F7b_glued_yymmdd_first", re.compile(
         r"^(?P<yy>[2-7]\d)(?P<mm>0[1-9]|1[0-2])(?P<dd>0[1-9]|[12]\d|3[01])[ _-]*(?P<title>[A-Za-z].*)$")),
@@ -187,7 +192,7 @@ def _date(g, fam):
 LEAD_TRACK = re.compile(r"^(\d{1,4})[ ._-]+(?=[A-Za-z])")
 _NEED_DATE = ("F7c_yymmdd_num_title", "F4b_mmddyy_last", "F0_otrr_v2", "F0b_camel_yymmdd_num", "F2_yymmdd", "F2b_series_yymmdd_title", "F1d_camel_glued",
               "F7_date_first", "F1e_series_date_title", "F1g_num_then_date", "F2c_yymmdd_80s",
-              "F7b_glued_yymmdd_first", "F10_iso_date_last")
+              "F7b_glued_yymmdd_first", "F10_iso_date_last", "F10c_yymmdd_last")
 # A title is something a person could read as one. Junk stems that are not:
 # "UIUC_Archives_1306005_0913_B", "vvl_4005_Audio_file", "05", "Track 3", "DA9363~1"   [MEASURED 2026-10-19]
 _JUNK_TITLE = re.compile(r"^(track|audio|file|disc|disk|side|part|untitled|unknown|new recording|tape|reel|record(ing)?|"

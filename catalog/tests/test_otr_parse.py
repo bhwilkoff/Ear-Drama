@@ -5,6 +5,9 @@ Broken controls, 2026-10-19, each run against a mutated copy of otr_parse.py (RA
     F10b guesses M-D when both are <= 12      40/41
     F13 keeps the leading track number        40/41
     junk titles ("Audio file") kept          40/41
+Broken controls, 2026-10-28:
+    F4b without the digit boundary            the 43-11-21 row and the "48" control fail
+    no F10c (YY-MM-DD last)                    both Jack Benny rows fail
 """
 import os
 import sys
@@ -48,6 +51,9 @@ EXPECT = [
     ("Hydrolysis.mp3", None, None, None, "Hydrolysis"),                                           # [bbcmyword]
     # a leading track number is not the broadcast's number: the title identifies it
     ("003_Grave_Robber.mp3", None, None, None, "Grave Robber"),                                   # [Believe_It_Or_Not]
+    # YY-MM-DD last with no title (2026-10-28): F4b once read the "3-11-21" inside it as 1921-03-11, number 4
+    ("Jack Benny Show, The 43-11-21.mp3", "Jack Benny Show, The", "1943-11-21", None, None),     # [PDP_JackBenny]
+    ("Jack Benny Show, The 40-01-14.mp3", "Jack Benny Show, The", "1940-01-14", None, None),
 ]
 # Controls for the 2026-10-19 families: what must NOT be read.
 CONTROLS = [
@@ -57,6 +63,8 @@ CONTROLS = [
     ("30.mp3", "title", None),                                 # a bare number is nothing
     ("Intro.mp3", "title", None),                              # a one-word junk title
     ("UIUC_Archives_1306005_0913_B.mp3", "title", None),       # an archive's shelf mark is not a title
+    ("Jack Benny Show, The 48-11-21.mp3", "num", None),        # the "4" of "48" is not an episode number
+    ("Some Show 12-10-45.mp3", "date", "1945-12-10"),          # M-D-YY last is still F4b
 ]
 NO_DATE = ["UIUC_Archives_1306005_1470_B.mp3", "Dimension X 011 Zero Hour.mp3"]
 

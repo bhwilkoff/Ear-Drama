@@ -80,6 +80,9 @@ env:
   # 2026-10-22 audit 116,380, -4.5%).
   RESEARCH_FLOOR: '0.10'
   SHRINK_REASON: ${{ inputs.shrink_reason }}
+  # Set iteration in build_db/enrich follows the hash seed: two builds from one
+  # cache differed in 105 episodes' network/star and 29 credits (C1, 2026-10-28).
+  PYTHONHASHSEED: '0'
 
 jobs:
   build:
@@ -99,7 +102,9 @@ jobs:
         run: |
           # Never `|| true` a restore: with nothing restored, build_db builds
           # from nothing (docs/CI-FLEET.md section 3).
-          tag=$(gh release list -R "$REPO" --limit 100 --json tagName \
+          # --exclude-drafts: tools/cut_catalog_release.sh builds a new one as a draft
+          # and publishes it only once every asset matches its checksum.
+          tag=$(gh release list -R "$REPO" --limit 100 --exclude-drafts --json tagName \
             --jq '[.[].tagName | select(test("^catalog-[0-9]{4}-[0-9]{2}-[0-9]{2}$"))] | sort | last // empty')
           if [ -z "$tag" ]; then
             echo "::error::no dated catalog Release (catalog-YYYY-MM-DD) to restore from"

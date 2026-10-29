@@ -49,6 +49,39 @@ The publish step reads caches; it does not harvest. New harvests reach the apps
 when someone cuts a new dated Release (database, `harvest-cache.tar.xz`,
 `SHA256SUMS`), which the next run picks up.
 
+## Cutting a new cache Release (`tools/cut_catalog_release.sh`)
+
+The owner runs the cut and the dispatch; an agent stages the folder. Build the
+folder from the newest dated Release, never from a working `.cache/`, which drifts:
+
+    gh release download catalog-2026-10-21 -R bhwilkoff/Ear-Drama -D old
+    (cd old && shasum -a 256 -c SHA256SUMS)
+    mkdir cache && xz -dc old/harvest-cache.tar.xz | tar -x -C cache
+    cp <each changed harvest file> cache/<its path>      # only what the harvest changed
+    xz -dc old/harvest-cache.tar.xz | tar -t > order.txt
+    COPYFILE_DISABLE=1 tar -c -n --no-xattrs --no-mac-metadata --uid 0 --gid 0 --uname root --gname root \
+      -f - -C cache -T order.txt | xz -9 -T0 > staged/harvest-cache.tar.xz
+
+Then prove the change is only what you meant: list both tarballs (`tar -tv`), diff
+the names and sizes, and `diff -rq` the unpacked trees. Rebuild from each cache
+(`build_db`, the enrich steps, `build_projection`) and compare the databases.
+Copy the unchanged assets byte for byte, write `staged/SHA256SUMS` (`shasum -a
+256` of every asset) and `staged/NOTES.md` (the release notes: what changed and
+how it was checked). Then:
+
+    bash tools/cut_catalog_release.sh --dry-run staged catalog-YYYY-MM-DD
+    bash tools/cut_catalog_release.sh staged catalog-YYYY-MM-DD
+    gh workflow run catalog-publish.yml -R bhwilkoff/Ear-Drama
+
+The script checks everything before it writes: every asset listed in `SHA256SUMS`
+and matching it, both `.xz` files whole, each asset under 2 GiB, the tag in the
+`catalog-YYYY-MM-DD` form, newer than every dated Release, and absent as a
+Release, a draft and a git tag. It never overwrites: it refuses `--clobber`,
+builds the Release as a draft (the workflow restores with `--exclude-drafts`),
+checks each uploaded asset's size and sha256 against GitHub's digest, and only
+then publishes it. On a failure the draft stays; delete it on the Releases page
+and run it again. Guard: `tests/test_cut_catalog_release.py`.
+
 ## Run
 
     python3 tools/harvest_ia.py --workers 4      # archive.org: ~12,171 items, ~3-4 h
