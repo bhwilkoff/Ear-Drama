@@ -55,8 +55,8 @@ jobs:
   measure:
     runs-on: ubuntu-latest
     timeout-minutes: 260
-    # Two measure runs never overlap (they would plan the same copies). The
-    # schedule's 6 hours sits above the 260-minute wall, so this rarely waits.
+    # Two measure runs never overlap (they would plan the same copies); with no
+    # schedule, a second dispatch waits for the first.
     concurrency:
       group: catalog-loudness-measure
       cancel-in-progress: false
