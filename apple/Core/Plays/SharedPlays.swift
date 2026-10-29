@@ -18,6 +18,8 @@ final class SharedPlays {
     private(set) var invitationRefusal: String?
     private(set) var lastInvite: [String: MadeInvite] = [:]
     private(set) var queued: Set<String> = []
+    /// Lines removed from the archive.org item in this run, as "pid line"; the record carries no per-line state.
+    private(set) var removed: Set<String> = []
     private(set) var busy: Set<String> = []
 
     @ObservationIgnored let api: any PlaysTransport
@@ -107,6 +109,24 @@ final class SharedPlays {
         await run(localID) {
             _ = try await PlaysShare.publish(api: self.api, store: store, localID: localID, pid: pid, consent: consent)
             self.queued.insert(pid)
+        }
+        await refresh(localID, store: store, script: script)
+    }
+
+    /// Publish again after a failure: the director's agreement stands, so the Worker is simply asked again.
+    func publishAgain(_ localID: String, store: ProductionStore, script: PlayScript) async {
+        guard let pid = store.share(localID)?.pid, let rec = records[pid],
+              PlaysShare.canPublishAgain(rec, me()) else { return }
+        await run(localID) { _ = try await self.api.publish(pid) }
+        await refresh(localID, store: store, script: script)
+    }
+
+    /// Remove a line from the published item (P12): "withdrawn" for a performer's own, a report reason for the director's.
+    func removeLine(_ localID: String, lineID: String, reason: String, store: ProductionStore) async {
+        guard let pid = store.share(localID)?.pid else { return }
+        await run(localID) {
+            try await self.api.removeLine(pid, lineID: lineID, reason: reason)
+            self.removed.insert("\(pid) \(lineID)")
         }
     }
 

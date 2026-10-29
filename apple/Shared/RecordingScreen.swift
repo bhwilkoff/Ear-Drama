@@ -9,6 +9,8 @@ import SwiftUI
 struct RecordingScreen: View {
     let productionID: String
     let part: PartID
+    /// Replacing one line of a finished part (P12): the recorder opens on it.
+    var startLine: String?
     var dismissWhenDone = false
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AudioPlayer.self) private var player
@@ -123,7 +125,7 @@ struct RecordingScreen: View {
         let session = RecordingSession(production: production, script: script, part: part, store: plays.store,
                                        audio: audio, voice: SystemStandInVoice())
         self.session = session
-        index = firstUnrecorded(session)
+        index = startLine.flatMap { id in session.lines.firstIndex { $0.id == id } } ?? firstUnrecorded(session)
         await session.begin(echoCancelled: echoCancelled)
     }
 

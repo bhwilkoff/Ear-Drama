@@ -483,7 +483,7 @@ const PlaysUI = (() => {
     });
 
     const mineBox = h.el('div', { class: 'share-box' });
-    if (S.myParts(rec, me).length) {
+    if (S.ownParts(rec, me).length) {
       const todo = S.pending(local, script, rec, me);
       const flagged = todo.filter(t => t.bleed).length;
       const ready = todo.length - flagged;
@@ -502,7 +502,7 @@ const PlaysUI = (() => {
       const voiced = S.myParts(rec, me).every(part => !C.isSpeaking(part) || C.linesFor(script, part).every(l => rec.chosen[l.id]));
       const done = h.el('button', { type: 'button', class: 'btn', disabled: ready > 0 || !voiced, onclick: () =>
         act(done, () => Promise.all(S.myParts(rec, me).map(part => API.plays.partAction(pid, part, 'done')))) }, 'Done with this part');
-      mineBox.append(h.el('div', { class: 'actions' }, ready ? up : null, done), status);
+      mineBox.append(h.el('div', { class: 'actions' }, ready ? up : null, S.myParts(rec, me).length ? done : null), status);
       if (!open) status.textContent = S.line({ code: 'uploads_off' });
       else if (flagged) status.textContent = S.line({ code: 'bleed_flagged' });
     }
@@ -511,8 +511,75 @@ const PlaysUI = (() => {
       h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' }, rows),
       line, mineBox,
       sharedListen(rec, local, script, pid, me, rerender),
+      ...[changeBox(rec, script, pid, me, id)].filter(Boolean),
       peopleBox(rec, me, p, pid, rerender),
       h.el('div', { class: 'actions' }, deleteButton(p)));
+  }
+
+  /** The archive.org job in essential words (rule 9): quiet while waiting, the item's link, or the Worker's reason with Publish again. */
+  function archiveLine(arch, rec, me, pid, rerender) {
+    if (arch.kind === 'published') {
+      return h.el('p', { class: 'caption', role: 'status' },
+        arch.url ? h.el('a', { href: arch.url, target: '_blank', rel: 'noopener' }, arch.text) : arch.text);
+    }
+    if (arch.kind === 'waiting') return h.el('p', { class: 'caption', role: 'status' }, arch.text);
+    const box = h.el('div', { class: 'archive-failed' }, h.el('p', { class: 'caption refusal', role: 'alert' }, arch.text));
+    if (S.canPublishAgain(rec, me)) {
+      const again = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        again.disabled = true;
+        try { await API.plays.publish(pid); rerender(); } catch (err) {
+          console.error(err);
+          box.append(h.el('p', { class: 'caption refusal', role: 'alert' }, S.line(err)));
+          again.disabled = false;
+        }
+      } }, 'Publish again');
+      box.append(h.el('div', { class: 'actions' }, again));
+    }
+    return box;
+  }
+
+  /** Removed in this visit; the record carries no per-line archive state. */
+  const removedHere = new Set();
+  /** Replace or remove a line on the archive.org item (P12, rule 13). */
+  function changeBox(rec, script, pid, me, id) {
+    const items = S.changeableLines(rec, script, me);
+    if (!items.length) return null;
+    const ul = h.el('ul', { class: 'cast-list change-list' });
+    for (const it of items) {
+      const key = `${pid} ${it.line.id}`;
+      const row = h.el('li', { class: 'change-row' }, lineView(it.line));
+      if (removedHere.has(key)) {
+        row.append(h.el('p', { class: 'caption', role: 'status' }, 'Removed'));
+        ul.append(row);
+        continue;
+      }
+      const acts = h.el('div', { class: 'take-row' });
+      const fail = h.el('p', { class: 'caption refusal', role: 'alert' });
+      let reason = null;
+      if (it.replace) {
+        acts.append(h.el('a', { class: 'btn', href: `?production=${encodeURIComponent(id)}&part=${encodeURIComponent(C.linePart(it.line))}&line=${encodeURIComponent(it.line.id)}` }, 'Replace'));
+      }
+      if (it.reason) {
+        reason = h.el('select', { class: 'field-input', 'aria-label': 'Reason for removing' },
+          REASONS.map(([v, label]) => h.el('option', { value: v }, label)));
+        acts.append(reason);
+      }
+      const rm = h.el('button', { type: 'button', class: 'btn btn-destructive', onclick: async () => {
+        if (!confirm('Remove this line from archive.org?')) return;
+        rm.disabled = true;
+        fail.textContent = '';
+        try {
+          await API.plays.removeLine(pid, it.line.id, reason ? reason.value : 'withdrawn');
+          removedHere.add(key);
+          h.announce('Line removed');
+          row.replaceChildren(lineView(it.line), h.el('p', { class: 'caption', role: 'status' }, 'Removed'));
+        } catch (err) { console.error(err); fail.textContent = S.line(err); rm.disabled = false; }
+      } }, 'Remove');
+      acts.append(rm);
+      row.append(acts, fail);
+      ul.append(row);
+    }
+    return h.el('details', { class: 'block change-lines' }, h.el('summary', { class: 'section-header' }, rec.director === me ? 'Lines' : 'Your lines'), ul);
   }
 
   /**
@@ -542,8 +609,9 @@ const PlaysUI = (() => {
       box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
         : `${num.format(rec.hidden_takes)} takes are hidden from you.`));
     }
-    if (rec.archive) {
-      box.append(h.el('p', { class: 'caption', role: 'status' }, 'Queued for archive.org'));
+    const arch = S.archiveStatus(rec);
+    if (arch) {
+      box.append(archiveLine(arch, rec, me, pid, rerender));
     } else if (S.canPublish(rec, script, me) || S.needsMyConsent(rec, script, me)) {
       const slot = h.el('div');
       box.append(slot);
@@ -876,7 +944,7 @@ const PlaysUI = (() => {
 
   /* ---- A part: recording it, or reading along ---- */
 
-  async function renderPart(body, my, id, part) {
+  async function renderPart(body, my, id, part, lineId) {
     const key = `${id} ${part}`;
     if (rec && rec.key === key) { paintRecording(); return; }
     body.replaceChildren(h.stateBox('loading'));
@@ -893,6 +961,7 @@ const PlaysUI = (() => {
     $('plays-h').textContent = title;
     const back = h.el('a', { class: 'eyebrow-link section-header', href: `?production=${encodeURIComponent(id)}` }, p.title);
     const link = store.share(id);
+    let replacing = false;
     if (link && canShare()) {
       let remote = null;
       try { remote = await API.plays.get(link.pid); } catch (err) { console.error(err); }
@@ -901,15 +970,17 @@ const PlaysUI = (() => {
         const me = API.account.state().user_id;
         const local = await S.follow(store, id, remote, me);
         if (my !== token) return;
-        if (!S.isMine(remote, part, me)) { sharedReadAlong(body, back, local, script, part, remote, link.pid, my); return; }
+        replacing = !!lineId && S.ownParts(remote, me).includes(part) && S.published(remote)
+          && C.linesFor(script, part).some(l => l.id === lineId);
+        if (!S.isMine(remote, part, me) && !replacing) { sharedReadAlong(body, back, local, script, part, remote, link.pid, my); return; }
       }
     }
-    if (C.stateOf(store.production(id), part).status !== 'recording') {
+    if (!replacing && C.stateOf(store.production(id), part).status !== 'recording') {
       body.replaceChildren(back, h.el('ol', { class: 'read-along' },
         C.linesFor(script, part).map(l => h.el('li', {}, lineView(l)))));
       return;
     }
-    rec = { key, id, part, script, s: null, index: 0, headphones: false, back };
+    rec = { key, id, part, script, s: null, index: 0, headphones: false, back, line: replacing ? lineId : null };
     paintRecording();
   }
 
@@ -957,7 +1028,7 @@ const PlaysUI = (() => {
       onChange: () => { if (rec === r) paintRecording(); },
     });
     rec.s = s;
-    rec.index = Math.max(0, s.lines.findIndex(l => !C.usableTake(p, l.id)));
+    rec.index = Math.max(0, s.lines.findIndex(l => rec.line ? l.id === rec.line : !C.usableTake(p, l.id)));
     s.begin();
     paintRecording();
   }
@@ -1185,7 +1256,7 @@ const PlaysUI = (() => {
     const id = r.p.get('production');
     const part = r.p.get('part');
     if (!(id && part && rec && rec.key === `${id} ${part}`)) leave();
-    if (id && part) return renderPart(body, my, id, part);
+    if (id && part) return renderPart(body, my, id, part, r.p.get('line'));
     if (id) return renderProduction(body, my, id);
     return renderScript(body, my, r.p.get('play'));
   }

@@ -423,8 +423,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   the button disabled, shown before anyone records; **People** (a
   sheet: display names, "You" and "Director" as tags, **Report** with
   a reason Picker and an optional note, **Block** after "You will no
-  longer hear their takes."); "Queued for archive.org" when the record
-  has a job; "N takes are hidden from you." when the Worker hides some.
+  longer hear their takes."); the archive.org job as PLAYS-DESIGN rule 9 words it (a quiet line, **On archive.org** as a `Link`, or the reason with **Publish Again**); once published a "Your Lines" (director: "Lines") section whose **Replace** pushes the recorder on that line and whose **Remove** asks with a `confirmationDialog` (rule 13); "N takes are hidden from you." when the Worker hides some.
   **Publish** opens a sheet (`ConsentSheet`) with the Worker's consent
   words and "I agree to publish my recording under CC0." / "Not Now", and
   is offered only while `GET /consent` says `publishes`, else "Publishing

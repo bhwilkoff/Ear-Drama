@@ -20,6 +20,8 @@ import Testing
 //   DeepLink.isToken without its length: the invite-link test fails.
 //   libraryRows listing a remote production already here: the Library test fails.
 //   line() losing the singular "1 line still needs a take.": the line test fails.
+// 2026-10-29 (P15), each seen to fail once:
+//   archiveLine() never answering "published": the archive-job test fails (1 failed of 211).
 
 // MARK: - Fixtures
 
@@ -93,6 +95,7 @@ private final class StubWorker: PlaysTransport {
     var agreed: [String] = []
     var published: [String] = []
     var uploaded: [String] = []
+    var removedLines: [String] = []
     var audioFetched: [String] = []
     var audio: [String: Data] = [:]
 
@@ -125,6 +128,7 @@ private final class StubWorker: PlaysTransport {
         published.append(pid)
         return PublishJob(status: "pending_owner_account")
     }
+    func removeLine(_ pid: String, lineID: String, reason: String) async throws { removedLines.append("\(lineID) \(reason)") }
     func report(_ pid: String, takeID: String?, userID: String?, reason: ReportReason, note: String?) async throws {}
     func block(_ userID: String) async throws {}
     func classes() async throws -> PlayClasses { throw unused }
@@ -238,6 +242,62 @@ struct PlaysSharePendingTests {
         #expect(job.status == "pending_owner_account")
         #expect(api.agreed == ["cc0-x"] && api.published == ["P1"])
         #expect(store.share(local.id)?.consented == "cc0-x")
+    }
+
+    @Test func theArchiveJobIsToldTruthfully() {
+        var rec = mollyIsMine()
+        #expect(PlaysShare.archiveLine(rec) == nil)
+        rec.archive = .init(status: "queued")
+        #expect(PlaysShare.archiveLine(rec) == .waiting("Queued for archive.org"))
+        rec.archive = .init(status: "uploading")
+        #expect(PlaysShare.archiveLine(rec) == .waiting("Uploading to archive.org"))
+        rec.archive = .init(status: "published", url: "https://archive.org/details/eardrama-p1")
+        #expect(PlaysShare.archiveLine(rec) == .published(URL(string: "https://archive.org/details/eardrama-p1")))
+        rec.archive = .init(status: "failed", reason: "archive.org refused the file (403)")
+        #expect(PlaysShare.archiveLine(rec) == .failed("archive.org refused the file (403)"))
+        #expect(PlaysShare.canPublishAgain(rec, me))
+        #expect(!PlaysShare.canPublishAgain(rec, "user-bo"))
+        rec.archive = .init(status: "published")
+        #expect(!PlaysShare.canPublishAgain(rec, me))
+    }
+
+    @Test func aPerformerReplacesOrRemovesTheirOwnLinesAndTheDirectorRemovesAny() throws {
+        let script = shareScript()
+        var rec = mollyIsMine()
+        rec.director = "user-bo"
+        rec.parts = [molly.rawValue: .init(status: .done, performer: "Me", userID: me),
+                     fibber.rawValue: .init(status: .done, performer: "Bo", userID: "user-bo"),
+                     "sound": .init(status: .silent)]
+        rec.chosen = Dictionary(uniqueKeysWithValues: script.speechLineIDs.map { ($0, "t-\($0)") })
+        rec.archive = .init(status: "published", url: "u")
+        let mine = PlaysShare.changeableLines(rec, script, me)
+        #expect(mine.map(\.id) == ["L1", "L4", "L6"] && mine.allSatisfy { $0.replace && !$0.needsReason })
+        let director = PlaysShare.changeableLines(rec, script, "user-bo")
+        #expect(director.count == 5)
+        #expect(director.filter(\.replace).map(\.id) == ["L2", "L5"] && director.filter(\.needsReason).count == 3)
+        rec.archive = .init(status: "queued")
+        #expect(PlaysShare.changeableLines(rec, script, me).isEmpty)
+        #expect(PlaysShare.ownParts(rec, me).isEmpty)
+        rec.archive = .init(status: "published")
+        #expect(PlaysShare.ownParts(rec, me) == [molly])
+    }
+
+    @Test func aReplacementTakeIsPendingOnAFinishedPartOnceThePlayIsPublished() throws {
+        let script = shareScript()
+        let store = temporaryStore()
+        let local = try sharedProduction(store, script, [sharedTake("t-new", line: "L4", part: molly)])
+        var rec = mollyIsMine(takes: [serverTake("t-L4", line: "L4", part: molly, user: me)])
+        rec.parts[molly.rawValue] = .init(status: .done, performer: "Me", userID: me)
+        #expect(PlaysShare.pending(local, script, rec, me).isEmpty)
+        rec.archive = .init(status: "published")
+        #expect(PlaysShare.pending(local, script, rec, me).map(\.id) == ["t-new"])
+    }
+
+    @Test func removingALineAsksTheWorkerWithTheReason() async throws {
+        let api = StubWorker(mollyIsMine())
+        try await api.removeLine("P1", lineID: "L4", reason: "withdrawn")
+        #expect(api.removedLines == ["L4 withdrawn"])
+        #expect(PlaysShare.line(PlaysRefusal.code("removed_by_director")) == "The director removed this line.")
     }
 
     @Test func publishIsRefusedWhileTheWorkerCannotReachArchive() async throws {

@@ -79,7 +79,9 @@ struct SharedProductionSection: View {
             Text(rec.hiddenTakes == 1 ? "1 take is hidden from you." : "\(rec.hiddenTakes) takes are hidden from you.")
                 .foregroundStyle(Color.brandTextMuted)
         }
-        if rec.archive != nil || shared.queued.contains(rec.id) {
+        if let line = PlaysShare.archiveLine(rec) {
+            archiveRow(line, rec)
+        } else if shared.queued.contains(rec.id) {
             Text("Queued for archive.org").foregroundStyle(Color.brandTextMuted)
         } else if PlaysShare.needsMyConsent(rec, script, me) {
             if let consent, consent.publishes == true, !notNow {
@@ -110,6 +112,24 @@ struct SharedProductionSection: View {
         }
     }
 
+    /// The archive.org job in essential words (rule 9): quiet while it waits, the item's link
+    /// (the system opens it), or the Worker's reason with Publish Again.
+    @ViewBuilder private func archiveRow(_ line: PlaysShare.ArchiveLine, _ rec: SharedRecord) -> some View {
+        switch line {
+        case let .waiting(text):
+            Text(verbatim: text).foregroundStyle(Color.brandTextMuted)
+        case let .published(url):
+            if let url { Link("On archive.org", destination: url) } else { Text("On archive.org") }
+        case let .failed(reason):
+            Label(reason, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
+            if PlaysShare.canPublishAgain(rec, shared.userID) {
+                Button("Publish Again") {
+                    Task { await shared.publishAgain(production.id, store: plays.store, script: script) }
+                }
+            }
+        }
+    }
+
     /// Upload N Takes; while the owner's switch is off, the warning stands in
     /// its place before anyone records (§11.7 rule 5).
     @ViewBuilder private func uploadRow(_ rec: SharedRecord, me: String?) -> some View {
@@ -127,6 +147,76 @@ struct SharedProductionSection: View {
             if PlaysShare.flagged(production, script, rec, me) > 0 {
                 Label(PlaysShare.line(PlaysRefusal.code("bleed_flagged")), systemImage: "exclamationmark.triangle")
                     .foregroundStyle(Color.semanticWarning)
+            }
+        }
+    }
+}
+
+// MARK: - Replace or remove a published line (P12, PLAYS-DESIGN §11.7 rule 13)
+
+private struct Removal: Identifiable {
+    var change: PlaysShare.Change
+    var reason: String
+    var id: String { change.id }
+}
+
+/// A performer's own lines of a published play offer Replace and Remove; the director's
+/// every line offers Remove, and the director picks the reason. Removing asks first with
+/// the system's confirmation; the action takes the error color, never red.
+struct ChangeLinesSection: View {
+    let production: Production
+    let script: PlayScript
+    let rec: SharedRecord
+    let replace: (PartID, String) -> Void
+    @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @State private var removing: Removal?
+
+    var body: some View {
+        let items = PlaysShare.changeableLines(rec, script, shared.userID)
+        if !items.isEmpty {
+            Section(rec.director == shared.userID ? "Lines" : "Your Lines") {
+                ForEach(items) { item in
+                    VStack(alignment: .leading, spacing: Spacing.s2) {
+                        ScriptLineText(line: item.line)
+                        if shared.removed.contains("\(rec.id) \(item.id)") {
+                            Text("Removed").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+                        } else {
+                            HStack(spacing: Spacing.s4) {
+                                if item.replace {
+                                    Button("Replace") { replace(item.line.part, item.id) }
+                                }
+                                remove(item)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+            }
+            .disabled(shared.busy.contains(production.id))
+            .confirmationDialog("Remove this line from archive.org?",
+                                isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                                titleVisibility: .visible) {
+                Button("Remove", role: .destructive) {
+                    guard let r = removing else { return }
+                    Task { await shared.removeLine(production.id, lineID: r.change.id, reason: r.reason, store: plays.store) }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func remove(_ item: PlaysShare.Change) -> some View {
+        if item.needsReason {
+            Menu {
+                ForEach(ReportReason.allCases) { reason in
+                    Button(reason.title) { removing = Removal(change: item, reason: reason.rawValue) }
+                }
+            } label: {
+                Text("Remove").foregroundStyle(Color.semanticError)
+            }
+        } else {
+            Button { removing = Removal(change: item, reason: "withdrawn") } label: {
+                Text("Remove").foregroundStyle(Color.semanticError)
             }
         }
     }

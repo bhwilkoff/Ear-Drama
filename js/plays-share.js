@@ -27,6 +27,13 @@ const PlaysShare = (() => {
   };
   const recordingPart = (rec) => Object.keys(rec.parts).find(k => rec.parts[k].status === 'recording') || null;
   const myParts = (rec, me) => Object.keys(rec.parts).filter(k => isMine(rec, k, me));
+  const published = (rec) => !!rec && !!rec.archive && rec.archive.status === 'published';
+  /**
+   * The parts whose takes this person may send: the part they record now, and, once the
+   * item is on archive.org, the parts they finished, whose lines they may replace (P12).
+   */
+  const ownParts = (rec, me) => Object.keys(rec.parts).filter(k => isMine(rec, k, me)
+    || (published(rec) && !!me && rec.parts[k].status === 'done' && rec.parts[k].user_id === me));
   /** The owner's switch (Decision 066, P1): false until the take store exists. */
   const uploadsOpen = (rec) => !!rec && rec.uploads !== false;
   /** Any open part may be taken while no part records (C7). */
@@ -64,7 +71,7 @@ const PlaysShare = (() => {
   function pending(local, script, rec, me) {
     const onServer = new Set(rec.takes.map(t => t.id));
     const out = [];
-    for (const part of myParts(rec, me)) {
+    for (const part of ownParts(rec, me)) {
       for (const l of C.linesFor(script, part)) {
         const t = C.chosenTake(local, l.id);
         if (t && !onServer.has(t.id)) out.push(t);
@@ -110,7 +117,7 @@ const PlaysShare = (() => {
       }
       // The person's own choice of take wins on the Worker too.
       const fresh = await api.get(link.pid);
-      for (const part of myParts(fresh, me)) {
+      for (const part of ownParts(fresh, me)) {
         for (const l of C.linesFor(script, part)) {
           const mine = local.chosen[l.id];
           if (mine && fresh.chosen[l.id] !== mine && fresh.takes.some(t => t.id === mine)) await api.choose(link.pid, mine);
@@ -130,7 +137,7 @@ const PlaysShare = (() => {
    */
   function mergedChosen(local, script, rec, me) {
     const out = { ...rec.chosen };
-    for (const part of myParts(rec, me)) {
+    for (const part of ownParts(rec, me)) {
       for (const l of C.linesFor(script, part)) if (local.chosen[l.id]) out[l.id] = local.chosen[l.id];
     }
     return out;
@@ -183,6 +190,37 @@ const PlaysShare = (() => {
     if (!consent || consent.publishes !== true) throw { code: 'publish_waits' };
     await api.agree(pid, consent.version);
     if (store && local) await store.setShare(local.id, { pid, consented: consent.version });
+  }
+
+
+  /**
+   * What the record says about the archive.org job, in essential words (rule 9): a quiet line
+   * while it waits, the item's link once published, the Worker's reason after a failure.
+   */
+  function archiveStatus(rec) {
+    const a = rec && rec.archive;
+    if (!a) return null;
+    if (a.status === 'published') return { kind: 'published', text: 'On archive.org', url: a.url || null };
+    if (a.status === 'failed') return { kind: 'failed', text: a.reason || 'Publishing failed.' };
+    return { kind: 'waiting', text: a.status === 'uploading' ? 'Uploading to archive.org' : 'Queued for archive.org' };
+  }
+  /** Publish again, after a failure: the director's agreement stands, so the Worker is asked again. */
+  const canPublishAgain = (rec, me) => !!me && rec.director === me && !!rec.archive && rec.archive.status === 'failed';
+
+  /**
+   * The lines of a published play this person may change (P12): a performer's own (Replace, Remove);
+   * for the director every line with a take (Remove, with a reason unless it is their own).
+   */
+  function changeableLines(rec, script, me) {
+    if (!published(rec) || !me) return [];
+    const own = new Set(ownParts(rec, me));
+    const out = [];
+    for (const l of script.lines) {
+      if (l.kind !== 'speech' || !rec.chosen[l.id]) continue;
+      if (own.has(C.linePart(l))) out.push({ line: l, replace: true, reason: false });
+      else if (rec.director === me) out.push({ line: l, replace: false, reason: true });
+    }
+    return out;
   }
 
   /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is `consent.publishes`. */
@@ -277,6 +315,10 @@ const PlaysShare = (() => {
     audio_mismatch: 'A take could not be read.',
     bleed_flagged: 'A take holds the device voice. Re-take it with headphones.',
     publish_waits: PUBLISH_WAITS,
+    publishing_unavailable: PUBLISH_WAITS,
+    not_your_take: 'This line is not yours to change.',
+    removed_by_director: 'The director removed this line.',
+    not_published: 'This play is not on archive.org yet.',
     consent_version_mismatch: 'The consent changed. Read it again.',
     not_your_claim: 'This part is not yours to record.',
     not_your_part: 'Only its performer or the director can open this part.',
@@ -338,7 +380,7 @@ const PlaysShare = (() => {
   }
 
   return {
-    consentBlocks, PUBLISH_WAITS, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
+    consentBlocks, PUBLISH_WAITS, archiveStatus, canPublishAgain, changeableLines, published, ownParts, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
     upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, line,
   };
 })();

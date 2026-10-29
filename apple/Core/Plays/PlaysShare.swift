@@ -81,6 +81,57 @@ enum PlaysShare {
         rec.parts.keys.sorted().map(PartID.init(rawValue:)).filter { isMine(rec, $0, me) }
     }
 
+    static func published(_ rec: SharedRecord?) -> Bool { rec?.archive?.status == "published" }
+
+    /// The parts whose takes this person may send: the part they record now, and, once the
+    /// item is on archive.org, the parts they finished, whose lines they may replace (P12).
+    static func ownParts(_ rec: SharedRecord, _ me: String?) -> [PartID] {
+        rec.parts.keys.sorted().map(PartID.init(rawValue:)).filter {
+            isMine(rec, $0, me) || (published(rec) && me != nil && rec.part($0).status == .done && rec.part($0).userID == me)
+        }
+    }
+
+    /// What the record says about the archive.org job, in essential words (rule 9).
+    enum ArchiveLine: Equatable {
+        case waiting(String)
+        case published(URL?)
+        case failed(String)
+    }
+
+    static func archiveLine(_ rec: SharedRecord) -> ArchiveLine? {
+        guard let a = rec.archive else { return nil }
+        switch a.status {
+        case "published": return .published(a.url.flatMap(URL.init(string:)))
+        case "failed": return .failed(a.reason ?? "Publishing failed.")
+        case "uploading": return .waiting("Uploading to archive.org")
+        default: return .waiting("Queued for archive.org")
+        }
+    }
+
+    /// Publish again, after a failure: the director's agreement stands, so the Worker is asked again.
+    static func canPublishAgain(_ rec: SharedRecord, _ me: String?) -> Bool {
+        me != nil && rec.director == me && rec.archive?.status == "failed"
+    }
+
+    /// A line of a published play this person may change (P12): their own (Replace, Remove), or,
+    /// for the director, another's (Remove, with a reason).
+    struct Change: Identifiable, Equatable {
+        var line: ScriptLine
+        var replace: Bool
+        var needsReason: Bool
+        var id: String { line.id }
+    }
+
+    static func changeableLines(_ rec: SharedRecord, _ script: PlayScript, _ me: String?) -> [Change] {
+        guard published(rec), me != nil else { return [] }
+        let own = Set(ownParts(rec, me))
+        return script.lines.compactMap { l in
+            guard l.kind == .speech, rec.chosen[l.id] != nil else { return nil }
+            if own.contains(l.part) { return Change(line: l, replace: true, needsReason: false) }
+            return rec.director == me ? Change(line: l, replace: false, needsReason: true) : nil
+        }
+    }
+
     /// The owner's switch (Decision 066, P1): false until the take store exists.
     static func uploadsOpen(_ rec: SharedRecord?) -> Bool { rec != nil && rec?.uploads != false }
 
@@ -134,7 +185,7 @@ enum PlaysShare {
     private static func chosenOfMine(_ local: Production, _ script: PlayScript, _ rec: SharedRecord,
                                      _ me: String?) -> [Take] {
         let onServer = Set(rec.takes.map(\.id))
-        return myParts(rec, me).flatMap { part in
+        return ownParts(rec, me).flatMap { part in
             script.lines(for: part).compactMap { local.chosenTake(for: $0.id) }.filter { !onServer.contains($0.id) }
         }
     }
@@ -188,7 +239,7 @@ enum PlaysShare {
             }
             // The person's own choice of take wins on the Worker too.
             let fresh = try await api.get(link.pid)
-            for part in myParts(fresh, me) {
+            for part in ownParts(fresh, me) {
                 for line in script.lines(for: part) {
                     if let mine = local.chosen[line.id], fresh.chosen[line.id] != mine, fresh.takes.contains(where: { $0.id == mine }) {
                         _ = try await api.choose(link.pid, takeID: mine)
@@ -207,7 +258,7 @@ enum PlaysShare {
     /// no longer shows (blocked, reported) has none.
     static func mergedChosen(_ local: Production, _ script: PlayScript, _ rec: SharedRecord, _ me: String?) -> [String: String] {
         var out = rec.chosen
-        for part in myParts(rec, me) {
+        for part in ownParts(rec, me) {
             for line in script.lines(for: part) {
                 if let mine = local.chosen[line.id] { out[line.id] = mine }
             }
@@ -344,6 +395,10 @@ enum PlaysShare {
         "audio_mismatch": "A take could not be read.",
         "bleed_flagged": "A take holds the device voice. Re-take it with headphones.",
         "publish_waits": publishWaits,
+        "publishing_unavailable": publishWaits,
+        "not_your_take": "This line is not yours to change.",
+        "removed_by_director": "The director removed this line.",
+        "not_published": "This play is not on archive.org yet.",
         "consent_version_mismatch": "The consent changed. Read it again.",
         "not_your_claim": "This part is not yours to record.",
         "not_your_part": "Only its performer or the director can open this part.",

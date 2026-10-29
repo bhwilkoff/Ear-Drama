@@ -109,6 +109,13 @@ struct SharedPlayScreen_tvOS: View {
                 } else {
                     Text(PlaysShare.line(PlaysRefusal.code("revision_mismatch"))).foregroundStyle(Color.brandTextMuted)
                 }
+                if let archive = PlaysShare.archiveLine(rec) {
+                    switch archive {
+                    case let .waiting(text): Text(verbatim: text).foregroundStyle(Color.brandTextMuted)
+                    case .published: Text("On archive.org").foregroundStyle(Color.brandTextMuted)
+                    case let .failed(reason): Text(verbatim: reason).foregroundStyle(Color.semanticError)
+                    }
+                }
                 if rec.hiddenTakes > 0 {
                     Text(rec.hiddenTakes == 1 ? "1 take is hidden from you." : "\(rec.hiddenTakes) takes are hidden from you.")
                         .foregroundStyle(Color.brandTextMuted)

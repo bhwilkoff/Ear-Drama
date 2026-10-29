@@ -106,7 +106,7 @@ private enum class Preflight { Ready, MicrophoneDenied, NeedsHeadphones }
  * moves on, the arrow keys move by line (§7).
  */
 @Composable
-fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
+fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, startLine: String? = null) {
     val container = LocalAppContainer.current
     val plays = container.plays
     val context = LocalContext.current
@@ -153,7 +153,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit) {
             },
         )
         session = s
-        index = s.lines.indexOfFirst { production.usableTake(it.id) == null }.coerceAtLeast(0)
+        index = (if (startLine != null) s.lines.indexOfFirst { it.id == startLine } else s.lines.indexOfFirst { production.usableTake(it.id) == null }).coerceAtLeast(0)
         scope.launch { s.begin(echoCancelled) }
     }
 

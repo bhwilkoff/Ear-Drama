@@ -21,6 +21,9 @@
  *   canClaim() allowing a claim while a part records: "any open part" fails.
  *   mergedChosen() starting from local.chosen: "a hidden take" fails (it would still play).
  *   inviteToken() without the 43-character check: "invite tokens" fails.
+ * 2026-10-29 (P15), each seen to fail once:
+ *   archiveStatus() never answering "published": "the archive.org job is told truthfully" fails.
+ *   mergedChosen() reading myParts() instead of ownParts(): "a replacement take is sent" fails (the Worker's old choice wins).
  */
 'use strict';
 const fs = require('node:fs');
@@ -313,6 +316,54 @@ test('the served consent words become a lead and a list, none changed', () => {
   const plain = S.consentBlocks('One thing.\nAnother thing.');
   eq(plain.map(x => x.kind), ['para', 'para'], 'text without "- " lines is paragraphs');
   eq(S.consentBlocks('').length, 0, 'empty text is nothing');
+});
+
+test('the archive.org job is told truthfully: waiting, linked, or failed with the Worker\'s reason', () => {
+  const at = (a) => S.archiveStatus(record({ archive: a }));
+  eq(S.archiveStatus(record()), null, 'no job, no line');
+  eq(at({ status: 'queued' }).text, 'Queued for archive.org', 'queued');
+  eq(at({ status: 'uploading' }).text, 'Uploading to archive.org', 'uploading');
+  eq(at({ status: 'queued' }).kind, 'waiting', 'a quiet line');
+  eq(at({ status: 'published', url: 'https://archive.org/details/eardrama-x' }), { kind: 'published', text: 'On archive.org', url: 'https://archive.org/details/eardrama-x' }, 'published links the item');
+  eq(at({ status: 'failed', reason: 'archive.org refused the file (403)' }), { kind: 'failed', text: 'archive.org refused the file (403)' }, 'the Worker\'s reason, verbatim');
+  eq(S.canPublishAgain(record({ archive: { status: 'failed' } }), ME), true, 'the director publishes again after a failure');
+  eq(S.canPublishAgain(record({ archive: { status: 'failed' } }), THEM), false, 'a member does not');
+  eq(S.canPublishAgain(record({ archive: { status: 'published' } }), ME), false, 'not once published');
+});
+
+test('replace and remove (P12): a performer\'s own lines, the director\'s every line', () => {
+  const script = fixtureScript();
+  const chosen = {};
+  for (const id of C.speechLineIDs(script)) chosen[id] = `t-${id}`;
+  const parts = { [MOLLY]: { status: 'done', performer: 'Me', user_id: ME }, [FIBBER]: { status: 'done', performer: 'Them', user_id: THEM },
+                  'role:DOC': { status: 'done', user_id: THEM }, sound: { status: 'silent' }, directions: { status: 'silent' } };
+  const pub = record({ parts, chosen, director: THEM, archive: { status: 'published', url: 'u' } });
+  const mine = S.changeableLines(pub, script, ME);
+  eq(mine.map(i => i.line.id), ['L0003', 'L0006'], 'a performer sees their own lines only');
+  ok(mine.every(i => i.replace && !i.reason), 'Replace and Remove, no reason asked');
+  const all = S.changeableLines(pub, script, THEM);
+  eq(all.length, 4, 'the director sees every spoken line');
+  ok(all.filter(i => i.replace).length === 2 && all.filter(i => i.reason).length === 2, 'Replace on their own, a reason for another\'s');
+  eq(S.changeableLines({ ...pub, archive: { status: 'queued' } }, script, ME), [], 'nothing before the item is published');
+  eq(S.changeableLines(pub, script, 'stranger'), [], 'a stranger changes nothing');
+  eq(S.ownParts(pub, ME), [MOLLY], 'a finished part is theirs to send again once published');
+  eq(S.ownParts({ ...pub, archive: null }, ME), [], 'not before');
+});
+
+test('a replacement take is sent and the Worker\'s old choice does not overwrite it', async () => {
+  const { script, store, local } = await sharedLocal();
+  const chosen = {};
+  for (const id of C.speechLineIDs(script)) chosen[id] = `t-${id}`;
+  const parts = { ...record().parts, [MOLLY]: { status: 'done', performer: 'Me', user_id: ME } };
+  const rec = record({ parts, chosen, archive: { status: 'published', url: 'u' } });
+  const api = stubApi({ rec });
+  const todo = S.pending(local, script, rec, ME);
+  ok(todo.length > 0, 'the new takes are pending on a finished part');
+  const r = await S.upload({ api, store, local, script, rec, me: ME });
+  ok(r.sent > 0 && !r.error, 'sent');
+  const merged = S.mergedChosen(store.production(local.id), script, rec, ME);
+  eq(merged['L0003'], store.production(local.id).chosen['L0003'], 'this person\'s new choice stands until uploaded');
+  eq(S.line({ code: 'removed_by_director' }), 'The director removed this line.', 'a removed line says so');
 });
 
 test('refusals read as one line each', () => {

@@ -501,8 +501,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     **Publish** (rule 9) opens an `AlertDialog` with the Worker's consent
     words and "I agree to publish my recording under CC0." / "Not now", and
     is offered only while `GET /consent` says `publishes`, else "Publishing
-    opens when the Ear Drama archive account is connected."; a record with a
-    job still says "Queued for archive.org". The record is re-read every
+    opens when the Ear Drama archive account is connected."; the archive.org job reads as PLAYS-DESIGN rule 9 (a quiet line, **On archive.org** opened with `LocalUriHandler`, or the reason with **Publish again**); once published, "Your lines" (director: "Lines") rows with **Replace** (the recorder route with a `line`) and **Remove** (an `AlertDialog`, error color, rule 13). The record is re-read every
     20 s while the screen is started and at once on every return to it
     (`repeatOnLifecycle(STARTED)`), never in the background. "N takes are hidden from you." stands under Listen.
   - Listen through fetches the other members' chosen takes into the
