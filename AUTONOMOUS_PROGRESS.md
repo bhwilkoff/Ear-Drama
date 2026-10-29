@@ -467,3 +467,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Waiting on the owner: the direction or mix, and four questions (DESIGN-LOOP State). Running: Q1.
 - Q1 merged (1.0.104): catalog run_all 31/31, web PASS, macOS 211. Catalog publish 40941332239 live: 107,190 episodes; forwarding's first live departures: 191 left, 173 aliased, 18 tombstoned (every one accounted for); series 1 aliased, 1 tombstoned. Side effect to clean: a 0.29 s copy on Johnny Dollar 1955-08-29.
 - The design loop stops at the owner gate (D2 directions); nothing running.
+
+### Design tick 4, 2026-10-29, the owner's D2 feedback; D2b starts
+- Owner: "I like elements of all three. Overall, I think the visual approach of The Company makes the most sense ... I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac ... I also don't think we have gotten even close on the Record a Line designs ... Can you create a cohesive design based upon this feedback?"
+- DESIGN-LOOP gains the feedback and D2b. Running: D2b-1 uniform imagery skill (Opus), D2b-2 Record a Line research and prototype (Opus). Next: D2b-3 direction D from both, with a fit gate at 320-430 px.
