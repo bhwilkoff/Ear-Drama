@@ -128,6 +128,26 @@ def stem_key(name):
     return re.sub(r"_(64kb|128kb|vbr|sample)$", "", s, flags=re.I)
 
 
+MIN_KBPS = 8   # no audio file the catalog serves is slower than this
+
+
+def sane_length(f, others):
+    """A length the file's own size cannot hold ("107185.94" s in 4.1 MB, the VBR header of a file with no
+    seek table) is unmeasured: the same recording's derivative, if archive.org measured that one
+    plausibly, gives it, else it is left empty. Nothing is estimated from the size."""
+    size, length = f.get("size"), seconds(f.get("length"))
+    try:
+        if not (size and length and int(size) * 8 / length / 1000 < MIN_KBPS):
+            return f
+        for o in others:
+            ol = seconds(o.get("length"))
+            if ol and o.get("size") and int(o["size"]) * 8 / ol / 1000 >= MIN_KBPS:
+                return dict(f, length=o["length"])
+    except (ValueError, TypeError):
+        return f
+    return dict(f, length="")
+
+
 def pick_files(files):
     """One playable file per stem: the uploaded MP3 when there is one (92% are VBR MP3
     and archive.org derives only Ogg from them, MEASURED), else the best derivative."""
@@ -139,7 +159,7 @@ def pick_files(files):
     out = []
     for st, fs in by.items():
         fs.sort(key=lambda f: (PLAYABLE[f["format"]], f.get("source") != "original", -(bitrate_kbps(f) or 0)))
-        out.append(fs[0])
+        out.append(sane_length(fs[0], fs[1:]))
     return out
 
 
@@ -209,12 +229,20 @@ def median_length(recs):
     return statistics.median([r["length_s"] for r in recs if r["length_s"]] or [0]) or None
 
 
+OVERLONG_RATIO = 2.5   # a copy this many times the median of 3+ is a several-episode file, not this episode
+
+
 def order_recordings(recs):
     """The default copy first (catalog DECISIONS 007): a complete copy before a partial
     one (under 60% of the episode's median length), then the domestic broadcast before
     an AFRS/AFRTS or rehearsal variant, then OTRR's copy, then the higher measured
-    bitrate. A fragment of the domestic broadcast never beats a whole AFRS disc."""
+    bitrate. A fragment of the domestic broadcast never beats a whole AFRS disc.
+    A copy over OVERLONG_RATIO times the median, among three or more, is dropped: an archive
+    item that holds five serial parts in one 73-minute file named for the first
+    ("YTJD 1955-10-03 231 The Macormack Matter.mp3") is not a version of that 15-minute part."""
     med = median_length(recs)
+    if med and len(recs) >= 3:
+        recs[:] = [r for r in recs if not (r["length_s"] and r["length_s"] > OVERLONG_RATIO * med)]
     for r in recs:
         r["partial"] = bool(med and r["length_s"] and r["length_s"] < 0.6 * med)
     recs.sort(key=lambda r: (r["partial"], bool(r["variant"]), not r["otrr"], -(r["kbps"] or 0)))
@@ -481,7 +509,7 @@ def item_full_date(it):
 # For measuring each identity step's effect on a full build (the report's ablation table):
 # RADIO_SKIP=logs,uiuc,learn,newfamilies,fallbacks turns those steps off.
 SKIP = set(filter(None, os.environ.get("RADIO_SKIP", "").split(",")))
-NEW_FAMILIES = ("F2c_", "F7b_", "F7c_", "F4b_", "F10_", "F10b_", "F11", "F12_", "F13_", "F14_", "F1h_")
+NEW_FAMILIES = ("F2c_", "F2d_", "F7b_", "F7c_", "F4b_", "F10_", "F10b_", "F11", "F12_", "F13_", "F14_", "F1h_")
 
 
 def first_parse(f, it, ident, n_audio, uiuc):
@@ -852,6 +880,10 @@ def main():
         for f in chosen:
             stats["files"] += 1
             p, date_source, idt, uiuc_row = first_parse(f, it, ident, n_audio, uiuc)
+            if p["date"] and date_source in ("filename", "filename_alt") and P.is_upload_stamp(p["date"], it.get("publicdate")):
+                idt.setdefault("disagree", []).append({"upload_date_not_broadcast": p["date"]})
+                p, date_source = dict(p, date=None, decade=None), None
+                stats["upload_stamp_dates_dropped"] += 1
             files.append({"f": f, "p": p, "date_source": date_source, "idt": idt, "uiuc": uiuc_row,
                           "ident": ident, "item_series": isr, "item_title": it.get("title"),
                           "orow": otrr_by_file.get((ident, f["name"])), "colls": colls, "d": d, "it": it,
@@ -1171,7 +1203,9 @@ def main():
     bucket_count = collections.Counter()
     for ep in episodes.values():
         recs = ep["recordings"]
+        n_copies = len(recs)
         order_recordings(recs)
+        stats["copies_overlong_dropped"] += n_copies - len(recs)
         med = median_length(recs)
         j = A.judge(ep, ctx)
         state_count[j["state"]] += 1

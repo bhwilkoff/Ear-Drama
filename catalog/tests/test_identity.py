@@ -263,5 +263,21 @@ check("default copy: domestic, OTRR first, then AFRS, fragment last", got,
 check("control: bitrate never outranks the domestic copy",
       B.order_recordings([copy("afrs", 1740, "AFRS", kbps=256), copy("domestic", 1740, kbps=32)])[0]["name"], "domestic")
 
+# A compilation file is not a copy of one episode (Q1, 2026-10-29): five serial parts in one 73-minute file.
+arc = [copy("a", 875, otrr=True), copy("b", 875), copy("c", 4365, kbps=320), copy("d", 877)]
+check("overlong: a copy 5x the median of 4 is dropped", sorted(r["name"] for r in B.order_recordings(arc)), ["a", "b", "d"])
+two = [copy("short", 875), copy("long", 4365)]
+check("control: with two copies nothing is called overlong", len(B.order_recordings(two)), 2)
+check("control: 2x the median stays", len(B.order_recordings([copy("a", 900), copy("b", 900), copy("c", 1800)])), 3)
+
+# A length the size cannot hold (Space Patrol 1952-10-04: 107,185.94 s in 4.1 MB) is unmeasured.
+bad = {"name": "x.mp3", "format": "VBR MP3", "size": "4104364", "length": "107185.94"}
+ogg = {"name": "x.ogg", "format": "Ogg Vorbis", "size": "4096871", "length": "451.71"}
+check("length: an impossible length takes the derivative's measured one", B.sane_length(bad, [ogg])["length"], "451.71")
+check("length: with no good derivative it is left empty", B.sane_length(bad, [])["length"], "")
+good = {"name": "y.mp3", "format": "VBR MP3", "size": "11048085", "length": "456.72"}
+check("control: a plausible length is untouched", B.sane_length(good, [ogg]), good)
+check("control: no size, no judgement", B.sane_length({"length": "99999"}, [ogg])["length"], "99999")
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

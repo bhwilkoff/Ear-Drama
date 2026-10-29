@@ -8,6 +8,9 @@ Broken controls, 2026-10-19, each run against a mutated copy of otr_parse.py (RA
 Broken controls, 2026-10-28:
     F4b without the digit boundary            the 43-11-21 row and the "48" control fail
     no F10c (YY-MM-DD last)                    both Jack Benny rows fail
+Broken controls, 2026-10-29: no F2d family   the YTJD row fails (series 'YTJD - 550829', no date)
+    F7 without (?!\\d) after the date   004-24-1-1437.mp3 (a Hijri year 1437) reads as 1924-01-14
+    is_upload_stamp absent (the pre-fix otr_parse.py)   the test errors on the missing function
 """
 import os
 import sys
@@ -53,6 +56,10 @@ EXPECT = [
     ("003_Grave_Robber.mp3", None, None, None, "Grave Robber"),                                   # [Believe_It_Or_Not]
     # YY-MM-DD last with no title (2026-10-28): F4b once read the "3-11-21" inside it as 1921-03-11, number 4
     ("Jack Benny Show, The 43-11-21.mp3", "Jack Benny Show, The", "1943-11-21", None, None),     # [PDP_JackBenny]
+    # " - " between series, date, number and title (2026-10-29): F5 read "YTJD - 550829" as the series and dated the file by 231
+    ("YTJD_-_550829_-_231_-_The_TransPacific_Matter_Aud1_-_Gerald_Mohr_(OTR).mp3", "YTJD", "1955-08-29", 231,
+     "The TransPacific Matter Aud1 - Gerald Mohr (OTR)"),
+    ("44-03-26017StrangerInTheHouse..mp3", None, "1944-03-26", None, "017StrangerInTheHouse"),    # a glued 3-digit number is not a Hijri year
     ("Jack Benny Show, The 40-01-14.mp3", "Jack Benny Show, The", "1940-01-14", None, None),
 ]
 # Controls for the 2026-10-19 families: what must NOT be read.
@@ -66,7 +73,13 @@ CONTROLS = [
     ("Jack Benny Show, The 48-11-21.mp3", "num", None),        # the "4" of "48" is not an episode number
     ("Some Show 12-10-45.mp3", "date", "1945-12-10"),          # M-D-YY last is still F4b
 ]
-NO_DATE = ["UIUC_Archives_1306005_1470_B.mp3", "Dimension X 011 Zero Hour.mp3"]
+# An upload day in the name is not a broadcast date (2026-10-29, Q1): "otrt-9-25-21" on an item
+# uploaded 2021-09-25 read as 1921 and made Escape's earliest episode.
+UPLOAD_STAMPS = [("1921-09-25", "2021-09-25 20:03:20", True), ("1923-08-19", "2023-08-19 19:20:37", True),
+                 ("1947-10-29", "2021-09-25 20:03:20", False),    # a real broadcast date on a later upload
+                 ("1943-11-21", "2025-04-05 10:00:00", False),    # the 21st of a month, not the year 2021
+                 ("1921-09-25", None, False)]
+NO_DATE = ["004-24-1-1437.mp3", "UIUC_Archives_1306005_1470_B.mp3", "Dimension X 011 Zero Hour.mp3"]
 
 
 def main():
@@ -85,11 +98,15 @@ def main():
         if P.parse(name)[field] != want:
             failed += 1
             print(f"FAIL (control) {name}: {field}={P.parse(name)[field]!r}")
+    for date, pub, want in UPLOAD_STAMPS:
+        if P.is_upload_stamp(date, pub) != want:
+            failed += 1
+            print(f"FAIL upload stamp {date} {pub}")
     tag = P.parse_album_tag("04/26/52, episode 1")
     if tag != {"date": "1952-04-26", "num": 1}:
         failed += 1
         print(f"FAIL album tag {tag}")
-    n = len(EXPECT) + len(NO_DATE) + len(CONTROLS) + 1
+    n = len(EXPECT) + len(NO_DATE) + len(CONTROLS) + len(UPLOAD_STAMPS) + 1
     print(f"{n - failed}/{n} passed")
     sys.exit(1 if failed else 0)
 

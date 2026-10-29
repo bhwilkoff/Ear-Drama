@@ -374,3 +374,37 @@ anywhere; "Tube Talk" at most 4 of 26 in one series, "The Big Broadcast" 1 of
 produces a borderline split, the rule stays at more than half and the split is
 a tombstone. Downloads need no series rewrite: their series is read from the
 episode id, which 014 forwards.
+
+## 016 — A fact the source contradicts itself on is not shown; a name's digits are not a broadcast date
+
+Q1 audit fixes (2026-10-29), each a builder rule with a fixture test.
+(1) A date in a file name that is the item's own upload day (`otrt-9-25-21` on an item
+uploaded 2021-09-25) is dropped, never read as 1921 (`otr_parse.is_upload_stamp`); a date
+glued to more digits (`004-24-1-1437`, a Hijri year) is not a date. (2) `series - YYMMDD -
+NNN - title` is its own family (F2d): F5 had read the YYMMDD as part of the series name and
+dated the file by its number. (3) Two ids matched to one Wikidata person on a birth or death
+date are one person in the served catalog (`build_projection.same_person`); a name-and-
+occupation match alone never merges (Walter Brennan Jr.). (4) A length the file's size cannot
+hold (under 8 kbps) is unmeasured: the same recording's derivative gives it, else it is
+empty. (5) A copy over 2.5 times the median of three or more is a several-episode file and
+is not listed as a copy. (6) A title naming another sponsor of its series shows no sponsor.
+(7) A Goldin cast string with an unclosed parenthesis, a trailing `;` or a hedge
+("possibly") is split per person, and an OTRR role that is the character the same person's
+cast row names is dropped.
+
+**Why**: each was a fact a listener can see and a reader can check: Escape's earliest
+episode read 1921; Space Patrol ran 29 hr 46 min (archive.org's own record says 107,185.94 s
+for a 4.1 MB file and 451.71 s for its Ogg); Jack Benny's "First show for Jell-O" named
+General Tire; Johnny Dollar 1955-10-03 listed a 73-minute five-part file and two copies of
+the 1955-08-29 episode; Bud Collyer was credited twice on 1,099 episodes. None is a rights
+call and nothing is hidden: it is no longer asserted. Left as the source has them, reported
+and not corrected: OTRRpedia's own names with a nickname in parentheses ("Richard (Dick)
+Aurandt", 563 episodes; "Alan Reed (aka Teddy Bergman)", 481) are 980 of the 1,043 episodes
+D1b counted as Goldin fragments; OTRRpedia's General Tire run (1934-04-06 to 1934-10-28)
+overlaps Jell-O's start.
+
+**How to apply**: measured against the main checkout's caches, served episodes 107,369 to
+107,190 (179 fewer, 0.17 %; MAX_SHRINK is 2 %): 191 ids left, 12 appeared, 166 of the
+departures are Johnny Dollar number-only episodes now filed under the date their file names
+carry. 1,311 copies dropped as overlong, 21 impossible lengths removed, 11 upload-day dates
+dropped, 51 fewer people, 63 episodes with a Goldin fragment credit down to 6.

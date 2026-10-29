@@ -118,6 +118,21 @@ check("sponsor_for: a run's exclusive end is the next run's start", SP.sponsor_f
 check("sponsor_for: overlapping runs are both named", SP.sponsor_for(runs, "s", "1948-07-01"), "B / C")
 check("control: no date, no sponsor", (SP.sponsor_for(runs, "s", None), SP.sponsor_for(runs, "s", "1948")), (None, None))
 check("control: another series has none", SP.sponsor_for(runs, "t", "1943-05-05"), None)
+_pd = sqlite3.connect(":memory:")
+_pd.executescript("""CREATE TABLE people (id, name, birth, death);
+CREATE TABLE people_wikidata (person_id, qid, basis, credited_episodes);
+INSERT INTO people VALUES ('otrr:1173', 'Clayton ''Bud'' Collyer', '1908-06-18', '1969-09-08'), ('otrr:50704', 'Bud Collyer', NULL, NULL),
+  ('otrr:713', 'Walter Brennan', '1894-07-25', '1974-09-21'), ('otrr:11999', 'Walter Brennan Jr.', NULL, NULL);
+INSERT INTO people_wikidata VALUES ('otrr:1173', 'Q1', 'name+birth_day+death_day', 1152), ('otrr:50704', 'Q1', 'name+death_day', 1283),
+  ('otrr:713', 'Q2', 'name+birth_day+death_day', 29), ('otrr:11999', 'Q2', 'name+occupation+unique', 2);""")
+check("same_person: two ids on one Wikidata person, both matched on a date, are one (the one with a birth date stands)",
+      B.same_person(_pd), {"otrr:50704": "otrr:1173"})
+check("control: a name-and-occupation match alone is never merged", "otrr:11999" in B.same_person(_pd), False)
+jb = {"j": [("1934-04-06", "1934-10-28", False, "General Tire"), ("1936-10-04", "1942-05-31", False, "Jell-O")]}
+check("sponsor_for: a title naming another sponsor of the series shows none",
+      (SP.sponsor_for(jb, "j", "1934-10-14", "First show for Jell-O - part 1"), SP.sponsor_for(jb, "j", "1934-10-14", "Grocery Store Owner")),
+      (None, "General Tire"))
+check("control: a title naming the run's own sponsor keeps it", SP.sponsor_for(jb, "j", "1934-06-01", "The General Tire Hour"), "General Tire")
 check("genre: OTRR's first mappable label", G.genre_of(["Horror", "Mystery", "Science Fiction"]), ("mystery", "otrrpedia"))
 check("genre: a serial queues by arc", G.genre_of(["Action", "Super Hero", "Youth", "Adventure", "Serial"]),
       ("serial", "otrrpedia"))
