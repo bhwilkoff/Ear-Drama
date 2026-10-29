@@ -194,7 +194,7 @@ run actually PRODUCED:
 - **KILLED**: cancelled with publish steps skipped
 - **FAILED**: red (reported, but GitHub already emailed about it)
 - **DROPPED**: displaced in the queue before any step ran, at run OR job granularity
-- **STALE**: the schedule stopped firing (absence needs its own verdict)
+- **STALE**: the schedule stopped firing (absence needs its own verdict; urgent, since no run exists to email about)
 - **SILENT**: no yield line at all, which is its own problem
 - **DRAINED**: genuinely finished its backlog (informational)
 
@@ -218,8 +218,8 @@ The rules that took iteration to get right:
 **The auditor never fails.** Reporters never fail (D107). A workflow going red says "I could not do
 my job", and the auditor did its job the moment it looked. Failing it to signal somebody else's
 problem is a category error, and an alert channel that cries wolf is one the owner mutes. So
-`audit_workflow_health.py` exits 0 whenever the audit ran, and the urgent findings (BROKEN and
-KILLED, the classes nothing else alerts for) go to **one self-closing GitHub issue** through
+`audit_workflow_health.py` exits 0 whenever the audit ran, and the urgent findings (BROKEN,
+KILLED and STALE, the classes nothing else alerts for) go to **one self-closing GitHub issue** through
 `tools/report_workflow_health.py`:
 
 - nothing urgent: any open "Workflow health: attention needed" issue is closed with a note;

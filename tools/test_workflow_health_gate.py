@@ -30,7 +30,7 @@ CASES = [
     ("KILLED, no newer dispatch",         [("KILLED", "x", "boom", False)], 1),
     ("BROKEN, no newer dispatch",         [("BROKEN", "x", "boom", False)], 1),
     ("DROPPED is never urgent",           [("DROPPED", "x", "q", False)],   0),
-    ("STALE is never urgent",             [("STALE", "x", "q", False)],     0),
+    ("STALE is urgent: no run exists to email", [("STALE", "x", "q", False)],   1),
     ("SILENT is never urgent",            [("SILENT", "x", "q", False)],    0),
     # The ones that must never regress: neither a deferred finding nor a
     # merely-reported FAILED may silence a real urgent one beside it.
@@ -59,6 +59,7 @@ REPORTER_CASES = [
     ("reporter: in-flight beside a real BROKEN",
      [("KILLED", f"a — {FIX_IN_FLIGHT}"), ("BROKEN", "b green, 0 items")], 1),
     ("reporter: FAILED is never raised", [("FAILED", "x boom")], 0),
+    ("reporter: STALE is raised", [("STALE", "x last completed run was 90h ago")], 1),
 ]
 for name, found, want in REPORTER_CASES:
     got = len(split(found)[0])

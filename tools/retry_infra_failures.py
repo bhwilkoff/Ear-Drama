@@ -361,5 +361,16 @@ def main() -> int:
     return 0
 
 
+def run() -> int:
+    # A sweep that cannot read the run list (a 5xx, a dropped connection) heals
+    # on the next tick, 30 minutes on. Going red would email the owner about the
+    # very kind of transient this sweeper exists to absorb.
+    try:
+        return main()
+    except RuntimeError as exc:
+        print(f"::warning::sweep skipped, gh failed ({exc}); the next tick tries again")
+        return 0
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run())

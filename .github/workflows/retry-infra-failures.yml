@@ -1,4 +1,6 @@
-# (Workflow/incident names in comments refer to Archive Watch, the origin repo.)
+# (Incident names in comments refer to Archive Watch, the origin repo.)
+# Enabled for Ear Drama 2026-10-28 (C2): catalog-publish and catalog-transcripts are
+# the scheduled runs it guards.
 # Actions' hosted-runner fleet sometimes refuses to start our jobs — "The job was not
 # acquired by Runner of type hosted even after multiple attempts". Not one step of ours
 # runs; the run just fails ~15 minutes later. The 2026-08-06 Actions major outage took
@@ -11,10 +13,8 @@
 name: Retry infrastructure failures
 
 on:
-  # DORMANT BY DEFAULT — uncomment once this repo has scheduled workflows
-  # of its own to guard (see docs/CI-FLEET.md).
-  # schedule:
-  # - cron: "*/30 * * * *"
+  schedule:
+  - cron: "7,37 * * * *"      # twice an hour, off :00 and :30 where crons pile up
   workflow_dispatch:
     inputs:
       lookback_hours:
@@ -45,4 +45,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           LOOKBACK_HOURS: ${{ github.event.inputs.lookback_hours || '12' }}
           DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+          # A run is re-run at most once: attempt 2 is never swept again.
+          MAX_ATTEMPTS: '2'
         run: python3 tools/retry_infra_failures.py

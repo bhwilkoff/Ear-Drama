@@ -57,8 +57,9 @@
   face boxes, cut by the owner); 107,369 episodes served after the Jack Benny
   date fix. Daily scheduled publish is green. Research database and caches:
   `catalog/README.md`.
-- **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml`
-  schedules are still commented out. `www.eardrama.org` now answers (301) and
+- **Open infrastructure**: `workflow-health.yml` (daily) and
+  `retry-infra-failures.yml` (twice an hour) are scheduled as of C2; the
+  first scheduled runs are unobserved. `www.eardrama.org` now answers (301) and
   the apex serves.
 - **Owner steps**: the "Needs Ben" table in `LOOP-PLAN.md` (only the take-down
   email, the CarPlay entitlement, the archive.org account, store words, and

@@ -326,7 +326,7 @@ The clients read one published plane and re-derive nothing
       publish the evenings and the genre channels on the one clock.
 - [x] (genres.py, tick 14; 69% of served episodes) Genres mapped from data (archive.org subjects, log genres, Wikidata) to
       the new hue set; never from a reading of the title.
-- [~] (missing: `workflow-health.yml` and `retry-infra-failures.yml` still have their schedules commented out;
+- [x] (C2, 2026-10-28: `workflow-health.yml` daily 07:13 UTC and `retry-infra-failures.yml` at :07 and :37 are on;
       catalog-publish runs daily on cron, six scheduled successes 2026-10-23 to 2026-10-28, and catalog-transcripts is on cron)
       The catalog workflows on a schedule, with `workflow-health.yml` and
       `retry-infra-failures.yml` on (`ci-fleet-engineering`).

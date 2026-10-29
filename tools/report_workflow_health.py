@@ -40,8 +40,8 @@ TITLE = "Workflow health: attention needed"
 LABEL = "workflow-health"
 # Findings that nothing else alerts for. A FAILED run already emails through
 # GitHub; a BROKEN one (green, produced nothing) and a KILLED one (cancelled,
-# publish skipped) do not.
-URGENT = ("BROKEN", "KILLED")
+# publish skipped) do not, and neither does a schedule that stopped firing (STALE).
+URGENT = ("BROKEN", "KILLED", "STALE")
 
 
 def gh(*args, check=True):
@@ -122,8 +122,9 @@ def main() -> int:
         return 0
 
     body = ["These are the failures **nothing else alerts for**: a run that was",
-            "green but produced nothing, or one cancelled with its publish steps",
-            "skipped. GitHub emails about ordinary failures already.", "",
+            "green but produced nothing, one cancelled with its publish steps",
+            "skipped, or a schedule that has gone quiet. GitHub emails about",
+            "ordinary failures already.", "",
             "| severity | workflow |", "|---|---|"]
     body += [f"| **{sev}** | {what} |" for sev, what in urgent]
     other = [f for f in found if f not in urgent]
