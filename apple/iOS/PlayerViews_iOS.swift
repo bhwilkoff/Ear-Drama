@@ -58,7 +58,16 @@ struct PlayerSheet_iOS: View {
             VStack(spacing: Spacing.s6) {
                 Spacer(minLength: 0)
                 if let item = player.item {
+                    // R11a: full width, no taller than 44 % of the sheet, so Play stays on the first screen.
                     NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network)
+                        .containerRelativeFrame([.horizontal, .vertical]) { length, axis in
+                            axis == .vertical ? length * 0.44 : length - 2 * Spacing.s4
+                        }
+                        .accessibilityIdentifier("now-playing-art")
+                    // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
+                    if let credit = item.face?.art.credit {
+                        ArtCredit(credit: credit, evidence: item.face?.art.evidence)
+                    }
                     VStack(spacing: Spacing.s2) {
                         Text(item.episode.seriesName)
                             .font(TypeRamp.body)

@@ -14,7 +14,7 @@ nonisolated struct Artwork: Hashable, Sendable {
     var evidence: URL? = nil
 
     /// Commons' standard thumbnail steps; any other width is refused upstream.
-    static let steps = [120, 330, 500]
+    static let steps = [120, 330, 500, 960]
 
     /// The one image helper: the smallest standard width covering `pixels`.
     func url(pixels: Double) -> URL {

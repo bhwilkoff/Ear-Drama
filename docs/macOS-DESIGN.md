@@ -39,7 +39,11 @@ Mac uses the same Core, so the same code holds them:
   on Detail; **R11** typographic rows with served art (Decision 069: the
   shared `ArtTile` on rows that mix series, `FaceFigure` beside the series
   and Detail headings, `CreditFace` on cast lines, the series' tile in the
-  transport bar, and the system Now Playing artwork, as iOS-DESIGN R11); **R12** brand is chrome only;
+  transport bar, and the system Now Playing artwork, as iOS-DESIGN R11);
+  **R11a** faces lead, as iOS-DESIGN R11a: the series page, Detail, and a
+  person's page open with the 320 pt `FaceHero` band, the Mac's rows keep
+  the 40 pt tile, and an evening's aired slot leads with its tile;
+  **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).
 - **R15 and Decision 067**: volume leveled on the device by the shared
