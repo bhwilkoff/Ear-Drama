@@ -13,7 +13,7 @@ import Testing
 //     the owner's-switch test fails (4 issues: consent read, take sent).
 //   upload asking only when `consented` is nil: the consent test fails (v2 never asked).
 // 2026-10-28 (Decision 072), each seen to fail once:
-//   publishOpen = true: the Publish gate test fails.
+//   publish() ignoring `publishes`: the refusal test fails.
 //   upload calling api.agree before sending: the no-consent test fails.
 //   SharedListen.production keeping a take the cache lacks: the TV plan test fails.
 //   mirror keeping another person's claim as recording: the mirror test fails.
@@ -88,9 +88,10 @@ private func sharedProduction(_ store: ProductionStore, _ script: PlayScript, _ 
 
 private final class StubWorker: PlaysTransport {
     var rec: SharedRecord
-    var consentAnswer = PlaysConsent(version: "v1", text: "OWNER: placeholder words", uploads: true)
+    var consentAnswer = PlaysConsent(version: "v1", text: "the Worker's words", uploads: true, publishes: true)
     var consentCalls = 0
     var agreed: [String] = []
+    var published: [String] = []
     var uploaded: [String] = []
     var audioFetched: [String] = []
     var audio: [String: Data] = [:]
@@ -120,7 +121,10 @@ private final class StubWorker: PlaysTransport {
     func joinByInvite(_ token: String, part: PartID, displayName: String?) async throws -> SharedRecord { rec }
     func claim(_ pid: String, part: PartID) async throws -> SharedRecord { rec }
     func partAction(_ pid: String, part: PartID, action: String) async throws -> SharedRecord { rec }
-    func publish(_ pid: String) async throws -> PublishJob { throw unused }
+    func publish(_ pid: String) async throws -> PublishJob {
+        published.append(pid)
+        return PublishJob(status: "pending_owner_account")
+    }
     func report(_ pid: String, takeID: String?, userID: String?, reason: ReportReason, note: String?) async throws {}
     func block(_ userID: String) async throws {}
     func classes() async throws -> PlayClasses { throw unused }
@@ -184,22 +188,41 @@ struct PlaysSharePendingTests {
         #expect(api.uploaded == ["t-a", "t-b"] && api.agreed.isEmpty)
     }
 
-    @Test func publishWaitsForTheConsentScreen() {
+    @Test func publishIsTheDirectorsOnceComplete() {
         let script = shareScript()
         var rec = mollyIsMine()
         rec.director = me
         rec.parts = Dictionary(uniqueKeysWithValues: Relay.order(script).map { ($0.rawValue, .init(status: .done, userID: me)) })
         rec.chosen = Dictionary(uniqueKeysWithValues: script.speechLineIDs.map { ($0, "t-\($0)") })
         #expect(PlaysShare.complete(rec, script))
-        // TODO(M8-consent-screen): shut until the owner approves the words.
-        #expect(!PlaysShare.publishOpen)
-        #expect(!PlaysShare.canPublish(rec, script, me))
-        // Controls: offered to the director once open, never to anyone else or twice.
-        #expect(PlaysShare.canPublish(rec, script, me, open: true))
-        #expect(!PlaysShare.canPublish(rec, script, "user-bo", open: true))
+        #expect(PlaysShare.canPublish(rec, script, me))
+        #expect(!PlaysShare.canPublish(rec, script, "user-bo"))
         var queued = rec
         queued.archive = .init(status: "pending_owner_account")
-        #expect(!PlaysShare.canPublish(queued, script, me, open: true))
+        #expect(!PlaysShare.canPublish(queued, script, me))
+    }
+
+    @Test func publishAgreesAtTheServedVersionThenQueues() async throws {
+        let store = temporaryStore()
+        let local = try sharedProduction(store, shareScript(), [])
+        let api = StubWorker(mollyIsMine())
+        let words = PlaysConsent(version: "cc0-x", text: "words", uploads: true, publishes: true)
+        let job = try await PlaysShare.publish(api: api, store: store, localID: local.id, pid: "P1", consent: words)
+        #expect(job.status == "pending_owner_account")
+        #expect(api.agreed == ["cc0-x"] && api.published == ["P1"])
+        #expect(store.share(local.id)?.consented == "cc0-x")
+    }
+
+    @Test func publishIsRefusedWhileTheWorkerCannotReachArchive() async throws {
+        let store = temporaryStore()
+        let local = try sharedProduction(store, shareScript(), [])
+        let api = StubWorker(mollyIsMine())
+        let words = PlaysConsent(version: "cc0-x", text: "words", uploads: true, publishes: false)
+        await #expect(throws: (any Error).self) {
+            _ = try await PlaysShare.publish(api: api, store: store, localID: local.id, pid: "P1", consent: words)
+        }
+        #expect(api.agreed.isEmpty && api.published.isEmpty)
+        #expect(PlaysShare.line(PlaysRefusal.code("publish_waits")) == "Publishing opens when the Ear Drama archive account is connected.")
     }
 
     @Test func theTakesFieldsGoAsTheWorkerReadsThem() throws {

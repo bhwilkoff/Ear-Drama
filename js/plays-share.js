@@ -10,7 +10,7 @@
  * uploaded: only the chosen take of each line of a part this person holds,
  * never one the bleed check flagged (it holds the device voice, §5). A take
  * reaches only the members, so uploading asks no consent (Decision 072); the
- * CC0 consent comes before Publish, and both wait for the owner's words.
+ * CC0 consent comes before Publish, and Publish waits for the Worker to reach archive.org.
  */
 const PlaysShare = (() => {
   'use strict';
@@ -33,12 +33,8 @@ const PlaysShare = (() => {
   const canClaim = (rec, part) => !recordingPart(rec) && (!rec.parts[part] || rec.parts[part].status === 'open');
   /** Speaking lines with no chosen take this person can see. */
   const unvoiced = (rec, script) => C.speechLineIDs(script).filter(id => !rec.chosen[id]);
-  /**
-   * TODO(M8-consent-screen): Publish sends the play beyond its members, so it
-   * waits for the CC0 consent screen, whose words are the owner's (Decisions
-   * 059 and 072, PLAYS-DESIGN §11.7 rule 6). Flip only with that screen.
-   */
-  const PUBLISH_OPEN = false;
+  /** The one line shown while the Worker cannot upload to archive.org (P6). */
+  const PUBLISH_WAITS = 'Publishing opens when the Ear Drama archive account is connected.';
   const complete = (rec, script) => !recordingPart(rec)
     && Object.values(rec.parts).every(s => s.status === 'done' || s.status === 'silent')
     && unvoiced(rec, script).length === 0;
@@ -175,9 +171,20 @@ const PlaysShare = (() => {
     return add.length;
   }
 
-  /** Publish for the director of a complete play, only once the consent screen ships (rule 9). */
-  const canPublish = (rec, script, me, open = PUBLISH_OPEN) =>
-    open && !!me && rec.director === me && !rec.archive && complete(rec, script);
+  /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is `consent.publishes`. */
+  const canPublish = (rec, script, me) => !!me && rec.director === me && !rec.archive && complete(rec, script);
+
+  /**
+   * Publish after the consent screen (rule 6, Decisions 059 and 072): the agreement at the
+   * version the Worker served is recorded, then the job is queued. `consent` is what
+   * `GET /consent` returned for the screen just shown.
+   */
+  async function publishPlay({ api, store, local, pid, consent }) {
+    if (!consent || consent.publishes !== true) throw { code: 'publish_waits' };
+    await api.agree(pid, consent.version);
+    if (store && local) await store.setShare(local.id, { pid, consented: consent.version });
+    return api.publish(pid);
+  }
 
   /** "Share this production": the Worker makes the record; the caller directs it. */
   async function share({ api, store, local, script, displayName }) {
@@ -255,7 +262,7 @@ const PlaysShare = (() => {
     unsupported_audio: 'A take could not be read.',
     audio_mismatch: 'A take could not be read.',
     bleed_flagged: 'A take holds the device voice. Re-take it with headphones.',
-    consent_required: 'Agree to the consent before uploading.',
+    publish_waits: PUBLISH_WAITS,
     consent_version_mismatch: 'The consent changed. Read it again.',
     not_your_claim: 'This part is not yours to record.',
     not_your_part: 'Only its performer or the director can open this part.',
@@ -304,7 +311,7 @@ const PlaysShare = (() => {
   }
 
   return {
-    PUBLISH_OPEN, canPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
+    PUBLISH_WAITS, canPublish, publishPlay, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
     upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, line,
   };
 })();

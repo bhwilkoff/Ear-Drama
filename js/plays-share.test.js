@@ -14,7 +14,7 @@
  *   upload() without the uploadsOpen check: "uploads off" fails (the upload endpoint is called).
  *   upload() asking consent only when none is stored (`!link.consented`): "a new consent version" fails.
  * 2026-10-28 (Decision 072):
- *   PUBLISH_OPEN = true: "Publish waits for the consent screen" fails.
+ *   publishes ignored: "refused while the Worker cannot reach archive.org" fails.
  *   upload() calling api.agree() before sending: "asks no consent" fails.
  *   pending() keeping flagged takes in `send`: "a flagged take is never uploaded" fails.
  *   mirror() keeping another person's claim as recording: "the mirror" fails.
@@ -172,22 +172,36 @@ test('uploading to the members asks no consent (Decision 072)', async () => {
   const r = await S.upload({ api, store, local, script, rec: record(), me: ME });
   eq(r.sent, 2, 'both takes sent');
   eq(api.calls.filter(c => c[0] === 'agree').length, 0, 'no consent agreed');
-  ok(!/\.agree\(/.test(fs.readFileSync(path.join(__dirname, 'plays-share.js'), 'utf8')), 'the upload path calls no agree()');
+  ok(!/\.agree\(/.test(S.upload.toString()), 'the upload path calls no agree()');
 });
 
-test('Publish waits for the consent screen (TODO(M8-consent-screen))', () => {
+test('Publish is the director\'s, once complete; the consent is recorded at the Worker\'s version before it queues', async () => {
   const script = fixtureScript();
-  eq(S.PUBLISH_OPEN, false, 'the gate is shut until the owner approves the words');
   const parts = {};
   for (const k of Object.keys(record().parts)) parts[k] = { status: 'done', user_id: ME };
   const chosen = {};
   for (const id of C.speechLineIDs(script)) chosen[id] = `t-${id}`;
   const done = record({ parts, chosen });
   ok(S.complete(done, script), 'the fixture is complete');
-  eq(S.canPublish(done, script, ME), false, 'not offered while the gate is shut');
-  eq(S.canPublish(done, script, ME, true), true, 'CONTROL: offered to the director once open');
-  eq(S.canPublish(done, script, THEM, true), false, 'CONTROL: never to a member');
-  eq(S.canPublish({ ...done, archive: { status: 'pending_owner_account' } }, script, ME, true), false, 'CONTROL: not twice');
+  eq(S.canPublish(done, script, ME), true, 'offered to the director of a complete play');
+  eq(S.canPublish(done, script, THEM), false, 'never to a member');
+  eq(S.canPublish({ ...done, archive: { status: 'pending_owner_account' } }, script, ME), false, 'not twice');
+  eq(S.canPublish(record(), script, ME), false, 'not while incomplete');
+  const calls = [];
+  const api = { agree: async (pid, v) => { calls.push(['agree', pid, v]); }, publish: async (pid) => { calls.push(['publish', pid]); return { status: 'pending_owner_account' }; } };
+  await S.publishPlay({ api, pid: 'pid-1', consent: { version: 'cc0-2026-10-29', text: 'words', publishes: true } });
+  eq(calls, [['agree', 'pid-1', 'cc0-2026-10-29'], ['publish', 'pid-1']], 'agree at the served version, then publish');
+});
+
+test('Publish is refused while the Worker cannot reach archive.org, and says so in one line', async () => {
+  const calls = [];
+  const api = { agree: async () => { calls.push('agree'); }, publish: async () => { calls.push('publish'); } };
+  let err = null;
+  try { await S.publishPlay({ api, pid: 'pid-1', consent: { version: 'v', text: 'w', publishes: false } }); } catch (e) { err = e; }
+  eq(err && err.code, 'publish_waits', 'refused');
+  eq(calls, [], 'nothing recorded or queued');
+  eq(S.line(err), 'Publishing opens when the Ear Drama archive account is connected.', 'the one essential line');
+  ok(!('PUBLISH_OPEN' in S), 'the owner-words gate is gone');
 });
 
 test('a flagged take is never uploaded (§5), and an uploaded one is not sent twice', async () => {

@@ -6,7 +6,7 @@ import relaySource from "../src/plays-relay.js?raw";
 import MANIFEST from "../src/castable-manifest.json";
 import { manifestFor } from "../src/plays-manifest.js";
 import { CLAIM_TTL_MS, DIRECTIONS, SOUND, isSpeaking } from "../src/plays-relay.js";
-import { CONSENT_TEXT, CONSENT_VERSION, MAX_TAKES_PER_LINE, normalizeClassCode } from "../src/plays.js";
+import { CONSENT_TEXT, CONSENT_VERSION, MAX_TAKES_PER_LINE, consentApproved, normalizeClassCode } from "../src/plays.js";
 import { nameRefusal } from "../src/plays-names.js";
 import { MAX_TAKE_BYTES, MAX_TAKE_SECONDS, readTakeAudio } from "../src/plays-audio.js";
 import {
@@ -577,11 +577,28 @@ describe("display names (the deny list)", () => {
 });
 
 describe("the CC0 consent (Decision 059)", () => {
-  it("is a version id with the owner's words still a marked placeholder", async () => {
+  it("serves the owner's words at their version, and says whether archive.org can be reached", async () => {
     const s = await person("c-get");
     const r = await (await call("GET", "/v1/plays/consent", { token: s.access_token })).json();
-    expect(r).toEqual({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: true });
-    expect(CONSENT_TEXT.startsWith("OWNER:")).toBe(true);
+    expect(r).toEqual({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: true, publishes: false });
+    expect(CONSENT_VERSION).toBe("cc0-2026-10-29");
+    expect(CONSENT_TEXT).toBe(
+      [
+        "Publishing puts this play on the Internet Archive.",
+        "- Your recording will be public. You can replace it with a new take or remove it later, but copies others have already made can't be called back.",
+        "- You dedicate it to the public domain (CC0). Anyone may copy, change, or sell it, for any purpose and without credit, including training AI and cloning voices.",
+        "- It must be your own live voice: no synthetic or cloned voices, and no imitating a real person.",
+        "- You're 13 or older, or your teacher has recorded your school's consent.",
+      ].join("\n"),
+    );
+    const on = await (await call("GET", "/v1/plays/consent", { token: s.access_token, envOverride: { IA_ACCESS: "key" } })).json();
+    expect(on.publishes).toBe(true);
+  });
+
+  it("never counts a consent recorded at a version whose text is the owner's placeholder", () => {
+    expect(consentApproved(CONSENT_VERSION)).toBe(true);
+    expect(consentApproved("cc0-placeholder-1")).toBe(false);
+    expect(consentApproved("never-served")).toBe(false);
   });
 
   it("is recorded per person per production, with its version", async () => {

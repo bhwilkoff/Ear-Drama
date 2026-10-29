@@ -498,8 +498,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     once its takes are up. **People** lists members with "You" and
     "Director" tags, and Report (reason list and an optional note) and
     Block (confirm: "You will no longer hear their takes.") for the rest.
-    **Publish** is not offered until the consent screen ships
-    (`PlaysShare.PUBLISH_OPEN`, TODO(M8-consent-screen)); a record with a
+    **Publish** (rule 9) opens an `AlertDialog` with the Worker's consent
+    words and "I agree to publish my recording under CC0." / "Not now", and
+    is offered only while `GET /consent` says `publishes`, else "Publishing
+    opens when the Ear Drama archive account is connected."; a record with a
     job still says "Queued for archive.org". The record is re-read every
     20 s while the screen is started and at once on every return to it
     (`repeatOnLifecycle(STARTED)`), never in the background. "N takes are hidden from you." stands under Listen.

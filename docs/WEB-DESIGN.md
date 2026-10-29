@@ -309,9 +309,12 @@ web app follows today.
     bleed warning when a chosen take is flagged. Uploading asks no consent
     (Decision 072). Then Listen through (it first fetches the other
     members' chosen takes, then is §4.10's), "N takes are hidden from you."
-    when the Worker hides any; no Publish and no consent block until the
-    consent screen ships (`PlaysShare.PUBLISH_OPEN`, TODO(M8-consent-screen);
-    "Queued for archive.org" still shows on a record that has a job); then
+    when the Worker hides any; Publish (director, complete play) opens a modal
+    `<dialog>` with the Worker's consent words and "I agree to publish my
+    recording under CC0." / "Not now", and is offered only while `GET
+    /consent` says `publishes`, else "Publishing opens when the Ear Drama
+    archive account is connected." ("Queued for archive.org" shows on a
+    record that has a job); then
     **People** (Report opens an inline
     form with a reason select and a note; Block asks with `confirm`), Invite
     for the director (the link in a read-only field, Share link through

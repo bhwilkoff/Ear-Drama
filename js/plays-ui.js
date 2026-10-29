@@ -518,7 +518,7 @@ const PlaysUI = (() => {
   /**
    * Listen through any time (rule 7, C5): the other members' chosen takes come
    * into this browser first, then phase 1's listen-through plays the takes and
-   * reads the open lines live. Publish waits for the consent screen (S.canPublish).
+   * reads the open lines live. Publish asks the consent first (consentSheet).
    */
   function sharedListen(rec, local, script, pid, me, rerender) {
     let box;
@@ -544,15 +544,39 @@ const PlaysUI = (() => {
     if (rec.archive) {
       box.append(h.el('p', { class: 'caption', role: 'status' }, 'Queued for archive.org'));
     } else if (S.canPublish(rec, script, me)) {
-      const line = h.el('p', { class: 'caption refusal', role: 'alert' });
-      const pub = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
-        pub.disabled = true;
-        line.textContent = '';
-        try { await API.plays.publish(pid); rerender(); } catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
-      } }, 'Publish');
-      box.append(h.el('div', { class: 'actions' }, pub), line);
+      const slot = h.el('div');
+      box.append(slot);
+      API.plays.consent().then((c) => {
+        if (c.publishes !== true) {
+          slot.append(h.el('p', { class: 'caption', role: 'status' }, S.PUBLISH_WAITS));
+          return;
+        }
+        const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+        const pub = h.el('button', { type: 'button', class: 'btn', onclick: () => consentSheet(c, async () => {
+          pub.disabled = true;
+          line.textContent = '';
+          try { await S.publishPlay({ api: API.plays, store, local, pid, consent: c }); rerender(); }
+          catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
+        }) }, 'Publish');
+        slot.append(h.el('div', { class: 'actions' }, pub), line);
+      }).catch((err) => console.error(err));
     }
     return box;
+  }
+
+  /** The CC0 consent (rule 6): the Worker's words exactly as served, then I agree or Not now. */
+  function consentSheet(c, onAgree) {
+    const d = h.el('dialog', { class: 'account-sheet consent-sheet', 'aria-labelledby': 'consent-h' });
+    d.addEventListener('close', () => d.remove());
+    d.append(
+      h.el('h2', { id: 'consent-h', class: 'section-header' }, 'Publish'),
+      h.el('p', { class: 'consent-text' }, c.text),
+      h.el('div', { class: 'actions' },
+        h.el('button', { type: 'button', class: 'btn btn-primary', onclick: () => { d.close(); onAgree(); } }, 'I agree to publish my recording under CC0.')),
+      h.el('div', { class: 'actions' },
+        h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => d.close() }, 'Not now')));
+    document.body.append(d);
+    d.showModal();
   }
 
   /** The people in a production, by display name only: Invite for the director; Report and Block for everyone else (rules 2, 8). */

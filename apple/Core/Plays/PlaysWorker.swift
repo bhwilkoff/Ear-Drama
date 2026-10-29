@@ -131,6 +131,7 @@ nonisolated struct PlaysConsent: Codable, Equatable, Sendable, Identifiable {
     var version: String
     var text: String
     var uploads: Bool?
+    var publishes: Bool?
     var id: String { version }
 }
 

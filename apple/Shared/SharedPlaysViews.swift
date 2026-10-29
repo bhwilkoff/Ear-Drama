@@ -8,8 +8,7 @@ import SwiftUI
 // MARK: - The cast sheet's sharing rows
 
 /// Above the parts: Share, or for a shared production Invite, Upload, People,
-/// and the facts the Worker gives. Publish waits for the consent screen
-/// (`PlaysShare.canPublish`, TODO(M8-consent-screen)).
+/// and the facts the Worker gives. Publish asks the CC0 consent first (`ConsentSheet`).
 struct SharedProductionSection: View {
     let production: Production
     let script: PlayScript
@@ -19,6 +18,8 @@ struct SharedProductionSection: View {
     @State private var naming = false
     @State private var name = ""
     @State private var people = false
+    @State private var consent: PlaysConsent?
+    @State private var asking = false
 
     var body: some View {
         if account.status != .unavailable {
@@ -51,6 +52,14 @@ struct SharedProductionSection: View {
             .sheet(isPresented: $people) {
                 PeopleSheet(production: production, script: script)
             }
+            .task { consent = await shared.consent() }
+            .sheet(isPresented: $asking) {
+                if let consent {
+                    ConsentSheet(consent: consent) {
+                        Task { await shared.publish(production.id, store: plays.store, script: script, consent: consent) }
+                    }
+                }
+            }
         }
     }
 
@@ -72,10 +81,14 @@ struct SharedProductionSection: View {
         if rec.archive != nil || shared.queued.contains(rec.id) {
             Text("Queued for archive.org").foregroundStyle(Color.brandTextMuted)
         } else if PlaysShare.canPublish(rec, script, me) {
-            Button {
-                Task { await shared.publish(production.id, store: plays.store, script: script) }
-            } label: {
-                Label("Publish", systemImage: "tray.and.arrow.up")
+            if consent?.publishes == true {
+                Button {
+                    asking = true
+                } label: {
+                    Label("Publish", systemImage: "tray.and.arrow.up")
+                }
+            } else if consent != nil {
+                Text(PlaysShare.publishWaits).foregroundStyle(Color.brandTextMuted)
             }
         }
     }
@@ -547,6 +560,44 @@ struct ClassesSection: View {
             Button("Join") { Task { await shared.joinClass(code) } }
             Button("Cancel", role: .cancel) {}
         }
+    }
+}
+// MARK: - The CC0 consent (PLAYS-DESIGN §11.7 rule 6)
+
+/// The Worker's words exactly as served, then the agreement or Not Now.
+struct ConsentSheet: View {
+    let consent: PlaysConsent
+    let onAgree: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(consent.text)
+                    .font(TypeRamp.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("Publish")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Not Now") { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    dismiss()
+                    onAgree()
+                } label: {
+                    Text("I agree to publish my recording under CC0.").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding()
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 420, minHeight: 420)
+        #endif
     }
 }
 #endif

@@ -90,11 +90,14 @@ final class SharedPlays {
         if result.sent > 0 { await refresh(localID, store: store, script: script) }
     }
 
-    func publish(_ localID: String, store: ProductionStore, script: PlayScript) async {
+    /// The Worker's consent words and whether it can reach archive.org; nil when it cannot be read.
+    func consent() async -> PlaysConsent? { try? await api.consent() }
+
+    func publish(_ localID: String, store: ProductionStore, script: PlayScript, consent: PlaysConsent) async {
         guard let pid = store.share(localID)?.pid, let rec = records[pid],
               PlaysShare.canPublish(rec, script, me()) else { return }
         await run(localID) {
-            _ = try await self.api.publish(pid)
+            _ = try await PlaysShare.publish(api: self.api, store: store, localID: localID, pid: pid, consent: consent)
             self.queued.insert(pid)
         }
     }

@@ -649,10 +649,12 @@ Listen shelves are not a file: they ride in the manifests as `listenShelves`
 - **Window**: from yesterday through 13 days ahead of the build's UTC date,
   keyed `YYYY-MM-DD`; a client reads the key for the person's own date.
 - **Never changes**: each build merges onto the file published now; a day
-  already in it keeps its evening, network, and slots. The one change a
-  kept day can take is a withdrawal: an episode the served projection no
-  longer serves becomes a gap with `withheld: true`. `build_evenings.py
-  kept` refuses any other change under the publish lock.
+  already in it keeps its evening, network, and slots. A kept day's slot may
+  change in two ways only: a withdrawal (an episode the served projection no
+  longer serves becomes a gap with `withheld: true`), and an id that moved,
+  whose episode id is rewritten to its alias in `episode_aliases` (§3.5;
+  owner, 2026-10-29: "Yes"), at the same instants. A tombstoned id stays a
+  gap. `build_evenings.py kept` refuses any other change under the publish lock.
 - **Served only**: a slot is filled only by an episode the served projection
   holds and recommends (`recommendAnd`); the pick's coverage counts only
   those. The web's copy is the same evenings with each episode the web
@@ -706,10 +708,13 @@ Listen shelves are not a file: they ride in the manifests as `listenShelves`
   three missed runs). The guard requires every station on the air at the build
   and reaching three days ahead.
 - **Never changes**: each build keeps every published slot still running or
-  ahead exactly as it is and appends after the last. The one change a kept slot
-  can take is a withdrawal: its episode no longer served, it becomes
-  `withheld` with the same instants, so the clock never moves.
-  `build_stations.py kept` refuses any other change under the publish lock.
+  ahead exactly as it is and appends after the last. A kept slot may change in
+  two ways only, each with the same instants so the clock never moves: a
+  withdrawal (its episode no longer served, it becomes `withheld`), and an id
+  that moved, whose episode id is rewritten to its alias in `episode_aliases`
+  (§3.5; owner, 2026-10-29: "Yes"), taking that episode's series and title. A
+  tombstoned id has no alias and stays a withheld gap. `build_stations.py kept`
+  refuses any other change under the publish lock.
 - **The web's copy** (`build_stations.py web`) is the same schedules with each
   episode the web projection does not serve withheld; a station left with
   nothing to play is not offered there.

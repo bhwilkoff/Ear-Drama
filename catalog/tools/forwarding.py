@@ -42,6 +42,30 @@ def copy_key(archive_id, url):
     return archive_id, urllib.parse.unquote(file)
 
 
+def episode_forwards(db_path):
+    """{old id: the episode it forwards to, as a schedule slot carries it} for every alias in the
+    projection whose target is served and recommendable. A tombstoned id is not here: it
+    stays a gap (contract §8). Empty when the projection is missing or has no alias table."""
+    if not db_path or not os.path.exists(db_path):
+        return {}
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        if "episode_aliases" not in tables_of(con):
+            return {}
+        out = {}
+        for old, new, series, title in con.execute(
+                "SELECT a.old_id, e.id, s.name, e.title FROM episode_aliases a "
+                "JOIN episodes e ON e.id = a.new_id JOIN series s ON s.key = e.series_key "
+                "WHERE e.no_recommend IS NULL AND a.old_id NOT IN (SELECT id FROM episodes)"):
+            ep = {"id": new, "series": series}
+            if title:
+                ep["title"] = title
+            out[old] = ep
+        return out
+    finally:
+        con.close()
+
+
 def tables_of(con):
     return {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 

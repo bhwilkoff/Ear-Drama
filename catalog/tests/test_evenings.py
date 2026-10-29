@@ -310,6 +310,27 @@ check("withdrawal: an episode taken down after publishing leaves its published d
       ("1948-10-23", True))
 check("withdrawal: the guard accepts a withdrawal as the one allowed change", B.changed_days(pub, taken, "2026-10-22"), [])
 
+# a moved id: the kept slot follows the alias (contract §3.5, §8); a tombstoned id stays a gap
+fwd = {"suspense|1948-10-23": {"id": "suspense|1947-10-09", "series": "Suspense", "title": "The Man Who Liked Dickens"}}
+not_old = lambda eid: eid != "suspense|1948-10-23"  # noqa: E731
+moved = B.keep_published(B.tonight(*B.window(dt.date(2026, 10, 23)), pool), copy.deepcopy(pub), "2026-10-22",
+                         served=not_old, forward=fwd)
+ms = moved["days"]["2026-10-23"]["slots"][0]
+check("alias: a moved id's slot follows it at the same instants",
+      (ms["episode"], ms.get("withheld"), ms["et_start"], ms["et_end"]),
+      (fwd["suspense|1948-10-23"], None, pub["days"]["2026-10-23"]["slots"][0]["et_start"],
+       pub["days"]["2026-10-23"]["slots"][0]["et_end"]))
+check("alias: the guard accepts following an alias", B.changed_days(pub, moved, "2026-10-22", fwd), [])
+check("control: without the alias the same change is refused", "2026-10-23" in B.changed_days(pub, moved, "2026-10-22"), True)
+wrong = copy.deepcopy(moved)
+wrong["days"]["2026-10-23"]["slots"][0]["episode"]["id"] = "suspense|1947-10-16"
+check("broken: a slot rewritten to anything but its alias is refused", B.changed_days(pub, wrong, "2026-10-22", fwd),
+      ["2026-10-23"])
+tomb = B.keep_published(B.tonight(*B.window(dt.date(2026, 10, 23)), pool), copy.deepcopy(pub), "2026-10-22",
+                        served=not_old, forward={})
+check("alias: a tombstoned id (no alias) stays a withheld gap",
+      tomb["days"]["2026-10-23"]["slots"][0].get("withheld"), True)
+
 # the web's file: the same evenings, the web projection's own shards decide
 web = os.path.join(tmp, "web")
 os.makedirs(os.path.join(web, "episodes"))

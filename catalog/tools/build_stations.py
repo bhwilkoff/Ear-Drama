@@ -30,6 +30,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, os.path.dirname(__file__))
+from forwarding import episode_forwards  # noqa: E402
 from genres import GENRES, NAMES  # noqa: E402
 from shelves import MIN_SERIES, front_matter  # noqa: E402
 
@@ -145,23 +146,30 @@ def extend(slots, pool, until, start):
     return slots
 
 
-def withhold(slots, served):
+def withhold(slots, served, forward=None):
     """A slot whose episode `served` refuses keeps its time and length and loses its
     episode (`withheld: true`): unclaimed recordings are removed on request, and the
-    clock never moves for it."""
+    clock never moves for it. An id that moved (`forward`, contract §3.5) follows its
+    alias instead, unless the station already airs the target; a tombstoned id is a gap."""
     out = []
+    airing = {s["episode"]["id"] for s in slots if s.get("episode") and served(s["episode"]["id"])}
     for s in slots:
         ep = s.get("episode")
         if ep and not served(ep["id"]):
-            s = {k: v for k, v in s.items() if k != "episode"}
-            s["withheld"] = True
+            to = (forward or {}).get(ep["id"])
+            if to and to["id"] not in airing:
+                airing.add(to["id"])
+                s = dict(s, episode=dict(to))
+            else:
+                s = {k: v for k, v in s.items() if k != "episode"}
+                s["withheld"] = True
         out.append(s)
     return out
 
 
-def build(pool_by_genre, now, previous=None, served=None):
+def build(pool_by_genre, now, previous=None, served=None, forward=None):
     """The stations file for a build at `now`: each published slot still running or
-    ahead is kept as it is (withheld when no longer served); new slots follow until
+    ahead is kept as it is (withheld when no longer served, or following its id's alias); new slots follow until
     the window reaches `now + AHEAD`. A first publish starts on the hour."""
     old = {s["genre"]: s for s in (previous or {}).get("stations", [])}
     first = now.replace(minute=0, second=0, microsecond=0)
@@ -170,7 +178,7 @@ def build(pool_by_genre, now, previous=None, served=None):
         pool = pool_by_genre.get(g)
         kept = [s for s in old.get(g, {}).get("slots", []) if parse(s["utc_end"]) > now - BEHIND]
         if served:
-            kept = withhold(kept, served)
+            kept = withhold(kept, served, forward)
         if not pool and not kept:
             continue
         slots = extend(kept, pool or [], now + AHEAD, first)
@@ -238,9 +246,10 @@ def violations(doc, served_ids=None, recommended_ids=None, now=None):
     return bad
 
 
-def changed(old, new):
+def changed(old, new, forward=None):
     """Published slots (still running or ahead at the new build) the new file would
-    change, beyond a withdrawal. Empty is the never-change rule holding."""
+    change, beyond a withdrawal or an id following its alias. Empty is the never-change
+    rule holding."""
     now = parse(new["generatedAt"])
     by_genre = {s["genre"]: s["slots"] for s in new.get("stations", [])}
     bad = []
@@ -251,7 +260,8 @@ def changed(old, new):
             w = got.get(s["utc_start"])
             if w is None or w["utc_end"] != s["utc_end"]:
                 bad.append((st["genre"], s["utc_start"], "moved"))
-            elif w.get("episode") and w["episode"]["id"] != (s.get("episode") or {}).get("id"):
+            elif w.get("episode") and w["episode"]["id"] != (s.get("episode") or {}).get("id") and \
+                    w["episode"]["id"] != ((forward or {}).get((s.get("episode") or {}).get("id")) or {}).get("id"):
                 bad.append((st["genre"], s["utc_start"], "replaced"))
     return bad
 
@@ -303,6 +313,7 @@ def main():
     a = sub.add_parser("kept")
     a.add_argument("--old", required=True)
     a.add_argument("--new", required=True)
+    a.add_argument("--projection", default=PROJECTION, help="the projection whose aliases a slot may follow")
     a = sub.add_parser("check")
     a.add_argument("--file", required=True)
     args = ap.parse_args()
@@ -310,7 +321,8 @@ def main():
         now = _now(args.now)
         old = json.load(open(args.previous)) if args.previous and os.path.exists(args.previous) else {}
         rec = served_from(PROJECTION)
-        doc = build(pools(PROJECTION), now, old, served=lambda i: i in rec)
+        fwd = {k: v for k, v in episode_forwards(PROJECTION).items() if v["id"] in rec}
+        doc = build(pools(PROJECTION), now, old, served=lambda i: i in rec, forward=fwd)
         bad = violations(doc, served_ids=rec, recommended_ids=rec, now=now)
         write(doc, args.out)
         kept = sum(1 for st in old.get("stations", []) for s in st["slots"] if parse(s["utc_end"]) > now - BEHIND)
@@ -328,7 +340,7 @@ def main():
         return 0
     if args.cmd == "kept":
         old = json.load(open(args.old)) if os.path.exists(args.old) else {}
-        bad = changed(old, json.load(open(args.new)))
+        bad = changed(old, json.load(open(args.new)), episode_forwards(args.projection))
         print(f"published station slots changed: {len(bad)}" + (f"; {bad[:5]}" if bad else ""))
         return 1 if bad else 0
     if args.cmd == "check":

@@ -34,7 +34,7 @@ import org.junit.Test
  *  - `importTake` overwriting an existing file                     -> `an imported take is never overwritten`
  *
  * 2026-10-28 (Decision 072), each seen to fail once:
- *  - `PUBLISH_OPEN = true`                                         -> `Publish waits for the consent screen`
+ *  - `publish` ignoring `Consent.publishes`                        -> `Publish waits while the Worker cannot reach archive`
  *  - `upload` calling `api.agree` before sending                   -> `uploading to the members asks no consent`
  */
 class PlaysShareTest {
@@ -86,7 +86,7 @@ class PlaysShareTest {
         }
         override suspend fun audio(pid: String, takeId: String): ByteArray { log("audio $takeId"); return byteArrayOf(1, 2, 3) }
         override suspend fun choose(pid: String, takeId: String): SharedRecord { log("choose $takeId"); return record() }
-        override suspend fun publish(pid: String) = error("not used")
+        override suspend fun publish(pid: String): PublishAnswer { log("publish"); return PublishAnswer("pending_owner_account") }
         override suspend fun report(pid: String, takeId: String?, userId: String?, reason: String, note: String?) = error("not used")
         override suspend fun block(userId: String) = error("not used")
         override suspend fun classes() = error("not used")
@@ -172,16 +172,38 @@ class PlaysShareTest {
         assertNull(store.share(p.id)!!.consented)
     }
 
-    @Test fun `Publish waits for the consent screen`() {
+    @Test fun `Publish is the director's once complete`() {
         val parts = Relay.order(script).associate { it.raw to SharedPart("done", userId = me) }
         val chosen = script.speechLineIDs.associateWith { "t-$it" }
         val done = record(parts = parts, chosen = chosen)
         assertTrue("the fixture is complete", PlaysShare.complete(done, script))
-        assertFalse("TODO(M8-consent-screen): shut until the owner approves the words", PlaysShare.PUBLISH_OPEN)
-        assertFalse(PlaysShare.canPublish(done, script, me))
-        assertTrue("control: the director once open", PlaysShare.canPublish(done, script, me, open = true))
-        assertFalse("control: never a member", PlaysShare.canPublish(done, script, "someone-else", open = true))
-        assertFalse("control: never twice", PlaysShare.canPublish(done.copy(archive = SharedArchive("pending_owner_account")), script, me, open = true))
+        assertTrue(PlaysShare.canPublish(done, script, me))
+        assertFalse("never a member", PlaysShare.canPublish(done, script, "someone-else"))
+        assertFalse("never twice", PlaysShare.canPublish(done.copy(archive = SharedArchive("pending_owner_account")), script, me))
+    }
+
+    @Test fun `Publish waits while the Worker cannot reach archive`() = runBlocking {
+        val store = MemoryShareStore()
+        val api = FakeApi()
+        val p = linked(store)
+        val sharing = SharedPlays(api, store, { me }, { listOf(script) })
+        val closed = Consent("cc0-x", "words", uploads = true, publishes = false)
+        val refused = runCatching { sharing.publish(p.id, script, closed) }.exceptionOrNull()
+        assertEquals("publish_waits", (refused as? PlaysException)?.code)
+        assertEquals("nothing agreed or queued", 0, api.calls.count { it.startsWith("agree") || it == "publish" })
+        assertEquals("Publishing opens when the Ear Drama archive account is connected.", PlaysShare.line(PlaysException("publish_waits")))
+    }
+
+    @Test fun `Publish agrees at the served version, then queues`() = runBlocking {
+        val store = MemoryShareStore()
+        val api = FakeApi()
+        val p = linked(store)
+        val parts = Relay.order(script).associate { it.raw to SharedPart("done", userId = me) }
+        api.fresh = record(parts = parts, chosen = script.speechLineIDs.associateWith { "t-$it" })
+        val sharing = SharedPlays(api, store, { me }, { listOf(script) })
+        sharing.publish(p.id, script, Consent("cc0-x", "words", uploads = true, publishes = true))
+        assertEquals(listOf("agree cc0-x", "publish"), api.calls.filter { it.startsWith("agree") || it == "publish" })
+        assertEquals("cc0-x", store.share(p.id)!!.consented)
     }
 
     @Test fun `an upload carries the take's fields and its audio`() = runBlocking {

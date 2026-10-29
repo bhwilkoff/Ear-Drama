@@ -446,22 +446,24 @@ jobs:
         if: hashFiles('built/publish/tonight.json') != ''
         run: |
           # Re-read under the lock: every day already in the live tonight.json keeps
-          # its evening and slots; only a withdrawal (a withheld episode) may differ.
+          # its evening and slots; only a withdrawal (a withheld episode) or an id following its alias may differ.
           if [ "${{ steps.live.outputs.release }}" = "yes" ] && \
              gh release view catalog-latest -R "$REPO" --json assets --jq '.assets[].name' | grep -qx tonight.json; then
             bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber -p tonight.json
           fi
-          python3 catalog/tools/build_evenings.py kept --old live/tonight.json --new built/publish/tonight.json
+          python3 catalog/tools/build_evenings.py kept --old live/tonight.json --new built/publish/tonight.json \
+            --projection built/publish/ear-drama.sqlite
 
       - name: A published station slot never changes (contract §8)
         run: |
           # Re-read under the lock: every slot still running or ahead keeps its
-          # time and episode; only a withdrawal (a withheld slot) may differ.
+          # time and episode; only a withdrawal (a withheld slot) or an id following its alias may differ.
           if [ "${{ steps.live.outputs.release }}" = "yes" ] && \
              gh release view catalog-latest -R "$REPO" --json assets --jq '.assets[].name' | grep -qx stations.json; then
             bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber -p stations.json
           fi
-          python3 catalog/tools/build_stations.py kept --old live/stations.json --new built/publish/stations.json
+          python3 catalog/tools/build_stations.py kept --old live/stations.json --new built/publish/stations.json \
+            --projection built/publish/ear-drama.sqlite
 
       - name: Upload to the rolling Release catalog-latest
         run: |

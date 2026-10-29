@@ -52,8 +52,19 @@ export const PLAYS_ANONYMOUS_TABLES = ["play_orphan_objects"];
  * version id, and every performer must consent again before the play is
  * published. Uploading a take to the members needs no consent (Decision 072).
  */
-export const CONSENT_VERSION = "cc0-placeholder-1";
-export const CONSENT_TEXT = "OWNER: the CC0 consent words are pending the owner's approval (Decision 059).";
+export const CONSENT_VERSION = "cc0-2026-10-29";
+export const CONSENT_TEXT = `Publishing puts this play on the Internet Archive.
+- Your recording will be public. You can replace it with a new take or remove it later, but copies others have already made can't be called back.
+- You dedicate it to the public domain (CC0). Anyone may copy, change, or sell it, for any purpose and without credit, including training AI and cloning voices.
+- It must be your own live voice: no synthetic or cloned voices, and no imitating a real person.
+- You're 13 or older, or your teacher has recorded your school's consent.`;
+
+/** Every version ever served, so a consent recorded at a placeholder never counts (Decision 059). */
+const CONSENT_TEXTS = {
+  "cc0-placeholder-1": "OWNER: the CC0 consent words are pending the owner's approval (Decision 059).",
+  [CONSENT_VERSION]: CONSENT_TEXT,
+};
+export const consentApproved = (version) => typeof CONSENT_TEXTS[version] === "string" && !CONSENT_TEXTS[version].startsWith("OWNER:");
 
 export const INVITE_DEFAULT_DAYS = 7;
 export const INVITE_MAX_DAYS = 30;
@@ -524,10 +535,10 @@ async function publish(auth, env, p, now) {
   const held = chosen.filter((t) => flagged.has(t.id)).map((t) => t.id);
   if (held.length) return problem(409, "reported_take", held);
   const performers = [...new Set(chosen.map((t) => t.user_id))];
-  const { results: agreed } = await env.DB.prepare("SELECT user_id FROM play_consents WHERE production_id = ?1 AND version = ?2")
+  const { results: agreed } = await env.DB.prepare("SELECT user_id, version FROM play_consents WHERE production_id = ?1 AND version = ?2")
     .bind(p.id, CONSENT_VERSION)
     .all();
-  const ok = new Set(agreed.map((r) => r.user_id));
+  const ok = new Set(agreed.filter((r) => consentApproved(r.version)).map((r) => r.user_id));
   const missing = performers.filter((u) => !ok.has(u));
   if (missing.length) return problem(409, "consent_missing", missing);
   const takeIds = chosen.map((t) => t.id);
@@ -712,7 +723,7 @@ export async function handlePlays(url, request, env, auth) {
   const now = Date.now();
   const [a, b, c, d, e] = seg;
 
-  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKES });
+  if (a === "consent" && !b && m === "GET") return json({ version: CONSENT_VERSION, text: CONSENT_TEXT, uploads: !!env.TAKES, publishes: !!env.IA_ACCESS });
   if (a === "invites" && b === "view" && !c && m === "POST") return viewInvite(auth, request, env, now);
   if (a === "invites" && b === "claim" && !c && m === "POST") return claimByInvite(auth, request, env, now);
   if (a === "reports" && !b && m === "POST") return report(auth, request, env, now);

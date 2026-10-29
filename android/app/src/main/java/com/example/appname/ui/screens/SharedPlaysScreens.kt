@@ -2,6 +2,8 @@ package com.example.appname.ui.screens
 
 import android.content.Context
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -34,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -137,7 +140,9 @@ class SharedSheet(
         }
     }
 
-    fun publish() = run { sharing.publish(id, script) }
+    suspend fun consent(): com.example.appname.plays.Consent? = sharing.consent()
+
+    fun publish(consent: com.example.appname.plays.Consent) = run { sharing.publish(id, script, consent) }
 
     fun block(userId: String) = run { sharing.block(id, userId) }
 
@@ -252,8 +257,24 @@ fun LazyListScope.sharedCastRows(
     }
     if (PlaysShare.canPublish(rec, sheet.script, me)) {
         item(key = "publish") {
-            Button(onClick = sheet::publish, enabled = !sheet.busy, modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-                Text("Publish")
+            val consent by produceState<com.example.appname.plays.Consent?>(null) { value = sheet.consent() }
+            var asking by remember { mutableStateOf(false) }
+            val words = consent
+            if (words != null && words.publishes) {
+                Button(onClick = { asking = true }, enabled = !sheet.busy, modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+                    Text("Publish")
+                }
+                if (asking) {
+                    AlertDialog(
+                        onDismissRequest = { asking = false },
+                        title = { Text("Publish") },
+                        text = { Text(words.text, Modifier.verticalScroll(rememberScrollState())) },
+                        confirmButton = { TextButton(onClick = { asking = false; sheet.publish(words) }) { Text("I agree to publish my recording under CC0.") } },
+                        dismissButton = { TextButton(onClick = { asking = false }) { Text("Not now") } },
+                    )
+                }
+            } else if (words != null) {
+                Text(PlaysShare.PUBLISH_WAITS, Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }
