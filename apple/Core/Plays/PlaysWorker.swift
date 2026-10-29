@@ -44,9 +44,13 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         var userID: String
         var displayName: String?
         var director: Bool
+        /// Holds a chosen take, so consents for their own recording (Decision 059).
+        var performer: Bool?
+        /// Agreed to publish at the Worker's current consent version.
+        var consented: Bool?
         var id: String { userID }
 
-        enum CodingKeys: String, CodingKey { case userID = "user_id", displayName = "display_name", director }
+        enum CodingKeys: String, CodingKey { case userID = "user_id", displayName = "display_name", director, performer, consented }
     }
 
     struct Archive: Codable, Equatable, Sendable {

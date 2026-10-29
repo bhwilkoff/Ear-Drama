@@ -39,6 +39,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -437,7 +438,11 @@ private fun TakeRow(number: Int, take: Take, chosen: Boolean, busy: Boolean, onP
         if (chosen) {
             Icon(Icons.Filled.CheckCircle, contentDescription = "Chosen", tint = MaterialTheme.colorScheme.primary)
         } else {
-            TextButton(onClick = onChoose, enabled = !busy) { Text("Use this take") }
+            OutlinedButton(
+                onClick = onChoose,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.play),
+            ) { Text("Use this take") }
         }
     }
 }

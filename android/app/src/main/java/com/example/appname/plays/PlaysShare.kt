@@ -55,6 +55,10 @@ data class SharedMember(
     @SerialName("user_id") val userId: String,
     @SerialName("display_name") val displayName: String? = null,
     val director: Boolean = false,
+    /** Holds a chosen take, so consents for their own recording (Decision 059). */
+    val performer: Boolean = false,
+    /** Agreed to publish at the Worker's current consent version. */
+    val consented: Boolean = false,
 )
 
 @Serializable
@@ -214,6 +218,17 @@ object PlaysShare {
     /** Publish for the director of a complete play (rule 9). Whether the Worker can upload is [Consent.publishes]. */
     fun canPublish(rec: SharedRecord, script: PlayScript, me: String?): Boolean =
         isDirector(rec, me) && rec.archive == null && complete(rec, script)
+
+    fun performers(rec: SharedRecord): List<SharedMember> = rec.members.filter { it.performer }
+
+    /** A performer who is not the director, in a complete play, who has not agreed yet. */
+    fun needsMyConsent(rec: SharedRecord, script: PlayScript, me: String?): Boolean =
+        me != null && rec.archive == null && rec.director != me && complete(rec, script) &&
+            performers(rec).any { it.userId == me && !it.consented }
+
+    /** The performers other than the director who have not agreed: Publish waits on them. */
+    fun waitingOn(rec: SharedRecord): List<SharedMember> =
+        performers(rec).filter { it.userId != rec.director && !it.consented }
 
     /**
      * The local record follows the Worker's parts: only this person's live claim

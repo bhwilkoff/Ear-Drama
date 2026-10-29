@@ -520,6 +520,7 @@ const PlaysUI = (() => {
    * into this browser first, then phase 1's listen-through plays the takes and
    * reads the open lines live. Publish asks the consent first (consentSheet).
    */
+  const dismissedConsent = new Set();
   function sharedListen(rec, local, script, pid, me, rerender) {
     let box;
     if (S.inStep(local, script, rec, me)) {
@@ -543,22 +544,40 @@ const PlaysUI = (() => {
     }
     if (rec.archive) {
       box.append(h.el('p', { class: 'caption', role: 'status' }, 'Queued for archive.org'));
-    } else if (S.canPublish(rec, script, me)) {
+    } else if (S.canPublish(rec, script, me) || S.needsMyConsent(rec, script, me)) {
       const slot = h.el('div');
       box.append(slot);
       API.plays.consent().then((c) => {
         if (c.publishes !== true) {
-          slot.append(h.el('p', { class: 'caption', role: 'status' }, S.PUBLISH_WAITS));
+          if (rec.director === me) slot.append(h.el('p', { class: 'caption', role: 'status' }, S.PUBLISH_WAITS));
           return;
         }
         const line = h.el('p', { class: 'caption refusal', role: 'alert' });
-        const pub = h.el('button', { type: 'button', class: 'btn', onclick: () => consentSheet(c, async () => {
+        if (rec.director !== me) {
+          if (dismissedConsent.has(pid)) return;
+          const agree = h.el('button', { type: 'button', class: 'btn btn-primary', onclick: async () => {
+            agree.disabled = true;
+            line.textContent = '';
+            try { await S.agreeToPublish({ api: API.plays, store, local, pid, consent: c }); rerender(); }
+            catch (err) { console.error(err); line.textContent = S.line(err); agree.disabled = false; }
+          } }, 'I agree to publish my recording under CC0.');
+          const later = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { dismissedConsent.add(pid); slot.remove(); } }, 'Not now');
+          slot.append(h.el('p', { class: 'consent-text' }, c.text), h.el('div', { class: 'actions' }, agree), h.el('div', { class: 'actions' }, later), line);
+          return;
+        }
+        const waiting = S.waitingOn(rec);
+        const pub = h.el('button', { type: 'button', class: 'btn', disabled: waiting.length > 0, onclick: () => consentSheet(c, async () => {
           pub.disabled = true;
           line.textContent = '';
           try { await S.publishPlay({ api: API.plays, store, local, pid, consent: c }); rerender(); }
           catch (err) { console.error(err); line.textContent = S.line(err); pub.disabled = false; }
         }) }, 'Publish');
-        slot.append(h.el('div', { class: 'actions' }, pub), line);
+        const agreed = h.el('ul', { class: 'cast-list agreed-list', 'aria-label': 'Agreed to publish' },
+          S.performers(rec).map(m => h.el('li', { class: 'cast-row' },
+            h.el('span', { class: 'body-strong' }, m.display_name || 'No name'),
+            h.el('span', { class: m.consented ? 'take-chosen' : 'caption', role: 'img', 'aria-label': m.consented ? 'Agreed' : 'Not yet' },
+              m.consented ? svg('check') : '\u25CB'))));
+        slot.append(agreed, h.el('div', { class: 'actions' }, pub), line);
       }).catch((err) => console.error(err));
     }
     return box;

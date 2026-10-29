@@ -764,3 +764,4 @@ html.tv .account-row { display: none; }
 .seek:disabled, #np-speed:disabled { opacity: 0.5; }
 html.tv .np-together { display: none; }
 .np-remote[hidden], html.tv .np-remote { display: none; }
+.agreed-list .cast-row { justify-content: space-between; align-items: center; }

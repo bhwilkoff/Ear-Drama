@@ -100,6 +100,13 @@ def red_means_recording(files):
     return not outside and rec.count("Color.brandRecord") >= 3
 
 
+def secondary_action_is_ink(files):
+    """Decision 064: Use This Take is an action, not wayfinding: an ink outline."""
+    t = files.get("apple/Shared/RecordingScreen.swift", "")
+    i = t.find('Button("Use This Take")')
+    return i != -1 and ".buttonStyle(.bordered)" in t[i:i + 200] and ".tint(Color.brandPrimary)" in t[i:i + 200]
+
+
 def library_empty_keeps_navigation(text, struct):
     """iOS-DESIGN §7.4, tvOS-DESIGN §7.3a: an empty Library is the empty state
     at the head of the list, with Account and the site pages still under it."""
@@ -156,6 +163,9 @@ def main():
           swift["apple/Shared/RecordingScreen.swift"].replace(
               ".font(.system(size: 64))\n                .foregroundStyle(Color.brandRecord)",
               ".font(.system(size: 64))\n                .foregroundStyle(Color.semanticError)")}),
+        ("Use This Take is an ink outline", secondary_action_is_ink, swift,
+         {**swift, "apple/Shared/RecordingScreen.swift":
+          swift["apple/Shared/RecordingScreen.swift"].replace("                                .tint(Color.brandPrimary)\n", "", 1)}),
         ("an empty Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen"), detail,
          detail.replace("                List {\n                    if empty {",

@@ -202,6 +202,33 @@ struct PlaysSharePendingTests {
         #expect(!PlaysShare.canPublish(queued, script, me))
     }
 
+    @Test func eachPerformerAgreesForTheirOwnRecordingAndPublishWaitsOnThem() async throws {
+        let script = shareScript()
+        var rec = mollyIsMine()
+        rec.director = me
+        rec.parts = Dictionary(uniqueKeysWithValues: Relay.order(script).map { ($0.rawValue, .init(status: .done, userID: me)) })
+        rec.chosen = Dictionary(uniqueKeysWithValues: script.speechLineIDs.map { ($0, "t-\($0)") })
+        rec.members = [
+            .init(userID: me, displayName: "Me", director: true, performer: true, consented: false),
+            .init(userID: "user-bo", displayName: "Bo", director: false, performer: true, consented: false),
+            .init(userID: "user-quiet", displayName: nil, director: false, performer: false, consented: false),
+        ]
+        #expect(PlaysShare.performers(rec).map(\.userID) == [me, "user-bo"])
+        #expect(PlaysShare.needsMyConsent(rec, script, "user-bo"))
+        #expect(!PlaysShare.needsMyConsent(rec, script, me))
+        #expect(!PlaysShare.needsMyConsent(rec, script, "user-quiet"))
+        #expect(PlaysShare.waitingOn(rec).map(\.userID) == ["user-bo"])
+        rec.members[1].consented = true
+        #expect(!PlaysShare.needsMyConsent(rec, script, "user-bo"))
+        #expect(PlaysShare.waitingOn(rec).isEmpty)
+        let store = temporaryStore()
+        let local = try sharedProduction(store, shareScript(), [])
+        let api = StubWorker(mollyIsMine())
+        let words = PlaysConsent(version: "cc0-x", text: "words", uploads: true, publishes: true)
+        try await PlaysShare.agree(api: api, store: store, localID: local.id, pid: "P1", consent: words)
+        #expect(api.agreed == ["cc0-x"] && api.published.isEmpty)
+    }
+
     @Test func publishAgreesAtTheServedVersionThenQueues() async throws {
         let store = temporaryStore()
         let local = try sharedProduction(store, shareScript(), [])
@@ -408,13 +435,14 @@ struct PlaysShareLineTests {
                    "sampleRate":48000,"capture":"direct","heard":{},"loudness":null,"peak":0.1,"bleed":false,
                    "user_id":"u1","audio":"/v1/x"}],
          "chosen":{"L1":"t1"},"roomTone":[],"listenedThrough":false,"director":"u1",
-         "members":[{"user_id":"u1","display_name":null,"director":true}],
+         "members":[{"user_id":"u1","display_name":null,"director":true,"performer":true,"consented":false}],
          "next":null,"hidden_takes":2,"archive":null,"uploads":false,"server_time":9}
         """#
         let rec = try JSONDecoder().decode(SharedRecord.self, from: Data(json.utf8))
         #expect(rec.part(molly).userID == "u1" && rec.part(.sound).status == .open)
         #expect(rec.takes.first?.userID == "u1" && rec.hiddenTakes == 2 && rec.uploads == false)
         #expect(rec.members.first?.director == true && rec.members.first?.displayName == nil)
+        #expect(rec.members.first?.performer == true && rec.members.first?.consented == false)
         #expect(!PlaysShare.uploadsOpen(rec) && !PlaysShare.uploadsOpen(nil))
     }
 }

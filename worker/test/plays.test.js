@@ -628,20 +628,38 @@ describe("publishing: the archive.org upload, queued only", () => {
   it("queues a job whose status waits on the owner's archive.org account, and calls no one", async () => {
     const { director, p } = await complete("pub-ok");
     const before = fetchSpy.mock.calls.length;
-    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token });
+    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token, envOverride: { IA_ACCESS: "key" } });
     expect(r.status).toBe(201);
     const job = await r.json();
     expect(job.status).toBe("pending_owner_account");
     expect(job.take_ids.length).toBe(cast.filter(([, part]) => isSpeaking(part)).length);
     expect(fetchSpy.mock.calls.length).toBe(before);
-    const again = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token });
+    const again = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token, envOverride: { IA_ACCESS: "key" } });
     expect(again.status).toBe(200);
     expect((await record(director, p.id)).archive.status).toBe("pending_owner_account");
   });
 
+  it("answers 503 and queues nothing while the archive account is unset", async () => {
+    const { director, p } = await complete("pub-503");
+    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token });
+    expect(r.status).toBe(503);
+    expect((await r.json()).error).toBe("publishing_unavailable");
+    expect(await env.DB.prepare("SELECT 1 FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first()).toBeNull();
+  });
+
+  it("shows each member whether they perform and have agreed at the current version", async () => {
+    const { director, p } = await complete("pub-flags");
+    const other = await person("pub-flags-2");
+    await env.DB.prepare("INSERT INTO play_members (production_id, user_id, joined_at) VALUES (?1, ?2, ?3)").bind(p.id, other.user_id, Date.now()).run();
+    const flags = async (viewer) => Object.fromEntries((await record(viewer, p.id)).members.map((m) => [m.user_id, [m.performer, m.consented]]));
+    expect(await flags(other)).toEqual({ [director.user_id]: [true, true], [other.user_id]: [false, false] });
+    await env.DB.prepare("UPDATE play_consents SET version = 'cc0-old' WHERE production_id = ?1").bind(p.id).run();
+    expect((await flags(director))[director.user_id]).toEqual([true, false]);
+  });
+
   it("refuses an unfinished production", async () => {
     const { director, p } = await recording("pub-open");
-    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token });
+    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token, envOverride: { IA_ACCESS: "key" } });
     expect(r.status).toBe(409);
     expect((await r.json()).error).toBe("incomplete");
   });
@@ -650,14 +668,14 @@ describe("publishing: the archive.org upload, queued only", () => {
     const { director, p } = await complete("pub-dir");
     const other = await person("pub-other");
     await env.DB.prepare("INSERT INTO play_members (production_id, user_id, joined_at) VALUES (?1, ?2, ?3)").bind(p.id, other.user_id, Date.now()).run();
-    expect((await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: other.access_token })).status).toBe(403);
+    expect((await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: other.access_token, envOverride: { IA_ACCESS: "key" } })).status).toBe(403);
   });
 
   it("holds back while a chosen take is reported", async () => {
     const { director, p } = await complete("pub-rep");
     const take = await env.DB.prepare("SELECT id FROM play_takes WHERE production_id = ?1 AND chosen = 1 LIMIT 1").bind(p.id).first();
     expect((await call("POST", "/v1/plays/reports", { token: director.access_token, body: { production_id: p.id, take_id: take.id, reason: "other" } })).status).toBe(201);
-    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token });
+    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token, envOverride: { IA_ACCESS: "key" } });
     expect(r.status).toBe(409);
     expect(await r.json()).toEqual({ error: "reported_take", detail: [take.id] });
   });
@@ -665,7 +683,7 @@ describe("publishing: the archive.org upload, queued only", () => {
   it("needs every performer's consent at the current version", async () => {
     const { director, p } = await complete("pub-consent");
     await env.DB.prepare("UPDATE play_consents SET version = 'cc0-old' WHERE production_id = ?1").bind(p.id).run();
-    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token });
+    const r = await call("POST", `/v1/plays/productions/${p.id}/publish`, { token: director.access_token, envOverride: { IA_ACCESS: "key" } });
     expect(r.status).toBe(409);
     expect(await r.json()).toEqual({ error: "consent_missing", detail: [director.user_id] });
   });

@@ -22,7 +22,31 @@ enum PlaysShare {
         me != nil && rec.director == me && rec.archive == nil && complete(rec, script)
     }
 
+    /// Members who hold a chosen take: each consents for their own recording (Decision 059).
+    static func performers(_ rec: SharedRecord) -> [SharedRecord.Member] {
+        rec.members.filter { $0.performer == true }
+    }
+
+    /// A performer who is not the director, in a complete play, who has not agreed yet.
+    static func needsMyConsent(_ rec: SharedRecord, _ script: PlayScript, _ me: String?) -> Bool {
+        guard let me, rec.archive == nil, rec.director != me, complete(rec, script) else { return false }
+        return performers(rec).contains { $0.userID == me && $0.consented != true }
+    }
+
+    /// The performers other than the director who have not agreed: Publish waits on them.
+    static func waitingOn(_ rec: SharedRecord) -> [SharedRecord.Member] {
+        performers(rec).filter { $0.userID != rec.director && $0.consented != true }
+    }
+
     #if os(iOS) || os(macOS)
+    /// A performer's own agreement at the version the Worker served; nothing is queued.
+    static func agree(api: any PlaysTransport, store: ProductionStore, localID: String, pid: String,
+                      consent: PlaysConsent) async throws {
+        guard consent.publishes == true else { throw PlaysRefusal.code("publish_waits") }
+        try await api.agree(pid, version: consent.version)
+        try store.setShare(localID, ProductionShare(pid: pid, consented: consent.version))
+    }
+
     /// Publish after the consent screen (rule 6, Decisions 059 and 072): the agreement at the
     /// version the Worker served is recorded, then the job is queued.
     static func publish(api: any PlaysTransport, store: ProductionStore, localID: String, pid: String,

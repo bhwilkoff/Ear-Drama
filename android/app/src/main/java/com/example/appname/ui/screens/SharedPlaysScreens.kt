@@ -15,8 +15,10 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -58,6 +60,7 @@ import com.example.appname.plays.SharedRecord
 import com.example.appname.ui.AccountRow
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.SectionHeader
+import com.example.appname.ui.playButtonColors
 import com.example.appname.ui.shareLink
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.Spacing
@@ -143,6 +146,8 @@ class SharedSheet(
     suspend fun consent(): com.example.appname.plays.Consent? = sharing.consent()
 
     fun publish(consent: com.example.appname.plays.Consent) = run { sharing.publish(id, script, consent) }
+
+    fun agree(consent: com.example.appname.plays.Consent) = run { sharing.agree(id, consent) }
 
     fun block(userId: String) = run { sharing.block(id, userId) }
 
@@ -255,13 +260,40 @@ fun LazyListScope.sharedCastRows(
     items(rec.members, key = { "member:" + it.userId }) { member ->
         PersonRow(member.displayName, member.userId == me, member.director, sheet, member.userId)
     }
+    if (PlaysShare.needsMyConsent(rec, sheet.script, me)) {
+        item(key = "agree") {
+            val consent by produceState<com.example.appname.plays.Consent?>(null) { value = sheet.consent() }
+            var notNow by remember { mutableStateOf(false) }
+            val words = consent
+            if (words != null && words.publishes && !notNow) {
+                Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                    Text(words.text, style = MaterialTheme.typography.bodyMedium)
+                    Button(onClick = { sheet.agree(words) }, enabled = !sheet.busy, colors = playButtonColors()) {
+                        Text("I agree to publish my recording under CC0.")
+                    }
+                    TextButton(onClick = { notNow = true }) { Text("Not now") }
+                }
+            }
+        }
+    }
     if (PlaysShare.canPublish(rec, sheet.script, me)) {
         item(key = "publish") {
             val consent by produceState<com.example.appname.plays.Consent?>(null) { value = sheet.consent() }
             var asking by remember { mutableStateOf(false) }
             val words = consent
             if (words != null && words.publishes) {
-                Button(onClick = { asking = true }, enabled = !sheet.busy, modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+                PlaysShare.performers(rec).forEach { m ->
+                    ListItem(
+                        headlineContent = { Text(m.displayName ?: "No name") },
+                        trailingContent = {
+                            Icon(
+                                if (m.consented) Icons.Filled.CheckCircle else Icons.Outlined.Circle,
+                                contentDescription = if (m.consented) "Agreed" else "Not yet",
+                            )
+                        },
+                    )
+                }
+                Button(onClick = { asking = true }, enabled = !sheet.busy && PlaysShare.waitingOn(rec).isEmpty(), modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
                     Text("Publish")
                 }
                 if (asking) {

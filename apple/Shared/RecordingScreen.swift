@@ -223,6 +223,8 @@ struct RecordingScreen: View {
                                 .foregroundStyle(Color.brandSecondary)
                         } else {
                             Button("Use This Take") { session.choose(take) }
+                                .buttonStyle(.bordered)
+                                .tint(Color.brandPrimary)
                                 .disabled(session.isBusy)
                         }
                     }

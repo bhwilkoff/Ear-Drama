@@ -162,6 +162,11 @@ async function recordFor(env, p, userId, now) {
     env.DB.prepare("SELECT status, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first(),
   ]);
   const hidden = await hiddenFrom(env, userId, p.id);
+  const { results: agreed } = await env.DB.prepare("SELECT user_id, version FROM play_consents WHERE production_id = ?1 AND version = ?2")
+    .bind(p.id, CONSENT_VERSION)
+    .all();
+  const consented = new Set(consentApproved(CONSENT_VERSION) ? agreed.map((r) => r.user_id) : []);
+  const performers = new Set(takes.filter((t) => t.chosen).map((t) => t.user_id));
   const names = Object.fromEntries(members.map((m) => [m.user_id, m.display_name]));
   const parts = {};
   for (const { id } of castParts(p.cast)) {
@@ -190,7 +195,13 @@ async function recordFor(env, p, userId, now) {
     roomTone: [],
     listenedThrough: false,
     director: p.user_id,
-    members: members.map((m) => ({ user_id: m.user_id, display_name: m.display_name, director: m.user_id === p.user_id })),
+    members: members.map((m) => ({
+      user_id: m.user_id,
+      display_name: m.display_name,
+      director: m.user_id === p.user_id,
+      performer: performers.has(m.user_id),
+      consented: consented.has(m.user_id),
+    })),
     next: next(p.cast, rows, now),
     hidden_takes: takes.length - visible.length,
     archive: job ? { status: job.status, created_at: job.created_at } : null,
@@ -519,6 +530,7 @@ async function consent(auth, request, env, p, now) {
 /** POST /v1/plays/productions/:id/publish: queues the archive.org upload; calls nothing. */
 async function publish(auth, env, p, now) {
   if (p.user_id !== auth.userId) return problem(403, "director_only");
+  if (!env.IA_ACCESS) return problem(503, "publishing_unavailable");
   const job = await env.DB.prepare("SELECT status, take_ids, created_at FROM play_archive_jobs WHERE production_id = ?1").bind(p.id).first();
   if (job) return json({ status: job.status, take_ids: JSON.parse(job.take_ids), created_at: job.created_at });
   const left = incomplete(p.cast, await partRows(env, p.id), await chosenLines(env, p.id), now);
