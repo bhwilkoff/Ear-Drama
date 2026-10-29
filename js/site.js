@@ -6,7 +6,7 @@
 
 // OWNER: set the address take-down requests go to (the same one registered
 // with the U.S. Copyright Office for the designated agent, if they match).
-const TAKEDOWN_EMAIL = 'takedown@example.invalid';
+const TAKEDOWN_EMAIL = 'ben@learningischange.com';
 
 (function () {
   'use strict';
