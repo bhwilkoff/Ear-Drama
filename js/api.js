@@ -178,6 +178,28 @@ const API = (() => {
     return { x: left / a, y: top, w: s / a, h: s };
   }
 
+  /** The face-cropped square for the lock screen (Media Session), as an object URL, or null
+      to keep the uncropped file. A canvas can only be read back from a CORS fetch; the final
+      Commons host sends access-control-allow-origin: * but its Special:FilePath redirect hops
+      may not, so a refused fetch (or no crop, no canvas) returns null and the caller keeps the
+      plain URL. `env` is for tests. */
+  async function cropBlobURL(art, size, env = {}) {
+    const r = cropRect(art);
+    const url = artURL(art, size / (r ? r.w : 1));
+    if (!r || !url) return null;
+    try {
+      const doFetch = env.fetch || fetch;
+      const resp = await doFetch(url, { mode: 'cors' });
+      if (!resp.ok) return null;
+      const bmp = await (env.createImageBitmap || createImageBitmap)(await resp.blob());
+      const c = env.canvas ? env.canvas() : Object.assign(document.createElement('canvas'), { width: size, height: size });
+      const g = c.getContext('2d');
+      g.drawImage(bmp, r.x * bmp.width, r.y * bmp.height, r.w * bmp.width, r.h * bmp.height, 0, 0, size, size);
+      const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.9));
+      return blob ? (env.createObjectURL || URL.createObjectURL)(blob) : null;
+    } catch { return null; }
+  }
+
   /* ---- The verbs (contract §5) ---- */
 
   const manifest = () => getJSON('manifest.json');
@@ -1115,7 +1137,7 @@ const API = (() => {
 
   return {
     rooms, plays, isOffline, offlineLine,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,

@@ -220,17 +220,19 @@ private struct SlotRow: View {
     let detail: EpisodeDetail?
     let isNow: Bool
     let play: (EpisodeDetail) -> Void
+    @ScaledMetric(relativeTo: .body) private var firstLineInset: CGFloat = 14
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
             if let detail {
                 NavigationLink(value: Route.episode(detail.episode.id)) {
+                    let inset = firstLineInset
                     HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
                         time
                         // R11a: an aired slot leads with its series' tile, its top on the first line.
                         ArtTile(name: detail.episode.seriesName, genre: detail.episode.seriesGenre,
                                 face: detail.episode.seriesFace)
-                            .alignmentGuide(.firstTextBaseline) { $0[.top] + 14 }
+                            .alignmentGuide(.firstTextBaseline) { $0[.top] + inset }
                         VStack(alignment: .leading, spacing: Spacing.s1) {
                             Text(slot.playableEpisode?.series ?? detail.episode.seriesName)
                                 .font(TypeRamp.bodyStrong)
