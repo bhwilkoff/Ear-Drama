@@ -484,3 +484,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - D2b-3 merged (1.0.105): direction D, 18 screens. Reviewing its frames found two of the owner's named problems still present (an event line wrapping onto "· Roma Wines"; a second Share in the Play row) that the fit gate had passed. Fixed (separator at a fact's end; one Share) and the gate now checks both (seen red on the old code and on three more rows); 0 problems at 320-1440, light and dark.
 - Review page https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB. Multi-file attaches failed about half the time; the owner: "You clearly need to take a different approach." Published as one self-contained file (images as data URIs). Lesson in memory.
 - The loop stops at the gate.
+
+### Design tick 8, 2026-10-29, the owner chose D; D2c starts
+- Owner: "D is definitely the right approach ... the color combinations are looking terrible, especially on dark mode. Can you use the tools we built for Human Shaped ... the design is still not uniform for all different levels of content ... images/graphics that show the full 'show' are better than individual contributors."
+- Running: D2c-1 color system with palette_check.py and the Human Shaped notes (Opus); D2c-2 show-first picture selection in the pipeline (Opus). Next: D2c-3 rebuilds D with one grammar for every level of content.
