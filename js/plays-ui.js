@@ -420,14 +420,14 @@ const PlaysUI = (() => {
     }
     manage.append(deleteButton(p));
 
-    body.replaceChildren(
+    body.replaceChildren(...[
       playBoard(script, p.title, 'Ear drama', [progressLine(p, script)]),
       listenThrough(p, script, rerender),
       recording ? null : h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer),
       h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards),
       refusal,
       shareBox(p, script, rerender),
-      manage);
+      manage].filter(Boolean));
     boardHeading(true);
   }
 

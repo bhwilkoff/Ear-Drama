@@ -80,6 +80,12 @@ then
   fail=1; failed+=("stylesheet braces")
 fi
 
+# The site deploy runs this too; without it here, a .replaceChildren(null) passed every local
+# run and failed the deploy (D3-6, 2026-10-30).
+if ! python3 tools/test_js_null_children.py; then
+  fail=1; failed+=("null children")
+fi
+
 if [ "$fail" -ne 0 ]; then
   echo "FAIL: ${#failed[@]} failing (${failed[*]}); $n suites run, then the parse and brace checks"
   exit 1

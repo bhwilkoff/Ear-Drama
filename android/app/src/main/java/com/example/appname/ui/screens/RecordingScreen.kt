@@ -29,6 +29,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -286,7 +287,7 @@ private fun Prompter(
         Text("No lines in this part.", Modifier.padding(Spacing.S6.dp), style = MaterialTheme.typography.bodyMedium)
         return
     }
-    var rate by remember { mutableStateOf(session.standInRate) }
+    var rate by remember { mutableFloatStateOf(session.standInRate) }
     val levels = remember { mutableStateListOf<Float>() }
     var seconds by remember { mutableIntStateOf(0) }
     val listening = phase is Phase.Listening
