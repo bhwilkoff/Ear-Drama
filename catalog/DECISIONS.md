@@ -454,9 +454,10 @@ item at all.
 *Date: 2026-10-29*
 
 Of the shows that would be led by the same person's portrait (017's star and person kinds), they
-keep one. A marked role (the title role, Star, Host) wins only when that show holds at least half
-as many of their credited episodes as their biggest show; otherwise the show with the most of their
-episodes wins; then the highest share; then the series key. Every other show is decided again without
+keep one, by this order: a show whose title holds their full name (the Jack Benny Program); then a
+marked role (the title role, Star, Host) in a show holding at least half as many of their credited
+episodes as their biggest show; then the show with the most of their episodes; then the highest share;
+then the series key. Every other show is decided again without
 them (its next candidate, else the typographic card), and `series.star` follows. A show's own image is
 never affected and never counts.
 
@@ -469,10 +470,13 @@ the plain "marked first" rule gave Webb to the 7.
 most one show" (seen failing on the pre-rule projection: 51) and the unit cases in
 `tests/test_projection_art.py`. MEASURED on the 2026-10-28 caches (10,641 shows): 82 shows changed their
 star, 53 lost their picture to the card; by kind before and after: star 309 to 255 (with 019), person 1 to 1, show
-49 to 49, none 10,282 to 10,336. Webb leads Dragnet, Conrad Gunsmoke (Escape falls to Paul Frees),
-Superman keeps Bud Collyer, The Whistler Marvin Miller, Perry Mason John Larkin. Known cost: the main show
-of a star can lose them to a sibling program with a marked role that holds at least half their
-episodes (Jack Benny Program, 950 episodes, loses Benny to The Grape Nuts Program, 735).
+49 to 49, none 10,282 to 10,336 (floor and own-work only). Webb leads Dragnet, Conrad Gunsmoke (Escape falls to Paul Frees),
+Superman keeps Bud Collyer, The Whistler Marvin Miller, Perry Mason John Larkin. The named-show rule was
+added after the first measure gave Jack Benny to The Grape Nuts Program (735 episodes, Host marked) and left the
+Jack Benny Program (950) to Eddie Anderson; with it the star counts are star 258, person 1, show 49, none
+10,333, Benny leads the Jack Benny Program, and The Grape Nuts Program falls to Eddie "Rochester" Anderson.
+It also gives Mel Blanc the Mel Blanc Show, Dinah Shore her show, Walter Winchell, Frances Langford and
+Charlie Ruggles theirs, and Boris Karloff the Karloff Collection (16 shows changed against the floor-only rule).
 
 
 ## 019 — An own-work license the picture's own date contradicts is not served

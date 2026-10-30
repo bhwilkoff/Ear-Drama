@@ -350,25 +350,36 @@ def _heard(credited, pid):
     return sum(1 for creds in credited.values() if any(p == pid and role in ON_AIR for p, role in creds))
 
 
-def _claim(shows, pid, key, biggest):
-    """How strongly a person is identified with one show: a marked role first, but only when the
-    show holds at least MARK_FLOOR of the episodes of their biggest show (Jack Webb's seven
-    episodes of Pete Kelly's Blues, where Pete Kelly is the title role, do not outweigh his
-    474 of Dragnet); then the most episodes; then the highest share; then the series key."""
+def _claim(shows, pid, key, biggest, named):
+    """How strongly a person is identified with one show, best first: a show named for them
+    (its title holds their full name: the Jack Benny Program), then a marked role in a show
+    holding at least MARK_FLOOR of the episodes of their biggest show (Jack Webb's seven
+    episodes of Pete Kelly's Blues, where Pete Kelly is the title role, do not outweigh his 474
+    of Dragnet), then the most episodes, then the highest share, then the series key."""
     credited, marked = shows[key]
     n = _heard(credited, pid)
-    return (not (pid in marked and n >= MARK_FLOOR * biggest), -n, -(n / len(credited) if credited else 1.0), key)
+    return (key not in named, not (pid in marked and n >= MARK_FLOOR * biggest), -n,
+            -(n / len(credited) if credited else 1.0), key)
 
 
 MARK_FLOOR = 0.5
 
 
-def assign_faces(shows, portrait_people, sitelinks=None):
+def names_person(person_name, series_name):
+    """True when the series' title holds the person's full name (two words at least)."""
+    p = _nt(person_name)
+    return len(re.findall(r"[A-Za-z0-9]+", re.sub(r"\(.*?\)", " ", person_name or ""))) >= 2 and len(p) >= 6 \
+        and p in _nt(series_name)
+
+
+def assign_faces(shows, portrait_people, sitelinks=None, names=None, titles=None):
     """{series key: series_face result or None} with each person the face of at most one show
     (owner, 2026-10-29: "Yes" to one face per star). Of the shows a person would lead, they keep
     the one they are most identified with (`_claim`, ties by series key); every other show is
     decided again without them, so it falls to its next candidate or to no face.
-    shows: {series key: (credited, marked)}, the arguments series_face takes."""
+    shows: {series key: (credited, marked)}, the arguments series_face takes;
+    names: {person id: name}, titles: {series key: name}, for the show named for its star."""
+    names, titles = names or {}, titles or {}
     out, barred = {}, {k: set() for k in shows}
     while True:
         out = {k: series_face(c, portrait_people - barred[k], m, sitelinks) for k, (c, m) in shows.items()}
@@ -380,7 +391,8 @@ def assign_faces(shows, portrait_people, sitelinks=None):
         for pid, keys in leads.items():
             if len(keys) > 1:
                 biggest = max(_heard(shows[k][0], pid) for k in keys)
-                keep = min(keys, key=lambda k: _claim(shows, pid, k, biggest))
+                named = {k for k in keys if names_person(names.get(pid), titles.get(k))}
+                keep = min(keys, key=lambda k: _claim(shows, pid, k, biggest, named))
                 for k in keys:
                     if k != keep:
                         barred[k].add(pid)

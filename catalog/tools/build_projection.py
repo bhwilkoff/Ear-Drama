@@ -184,7 +184,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     face_of = {sk: AP.series_face(credited_by_series.get(sk, {}), faces, marks.get(sk, ()), sitelinks)
                for sk in show_images}
     face_of.update(AP.assign_faces({sk: (credited_by_series.get(sk, {}), marks.get(sk, ()))
-                                    for sk in served_series if sk not in show_images}, faces, sitelinks))
+                                    for sk in served_series if sk not in show_images}, faces, sitelinks,
+                                   people_rows, names))
     stars = {sk: f[0] for sk, f in face_of.items() if f}
     # The series' picture (contract section 3.3a): its show image, else its star's portrait.
     file_ids = {AP.image_url(r[0]): i for i, r in enumerate(portraits["rows"], 1)}

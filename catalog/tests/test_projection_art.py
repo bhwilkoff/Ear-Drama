@@ -453,6 +453,21 @@ check("one face: a show with no one left has none",
       AP.assign_faces({"a": (gun, ()), "b": (gun, ())}, {"conrad"}, {})["b"], None)
 check("one face: a tie goes to the first series key",
       [k for k, f in AP.assign_faces({"b": (gun, ()), "a": (gun, ())}, {"conrad"}, {}).items() if f], ["a"])
+benny = {f"b{i}": [("jack", "host")] for i in range(5)}
+grape = {f"n{i}": [("jack", "host")] for i in range(9)}
+check("one face: a show named for the star beats a bigger show and a marked role",
+      [k for k, f in AP.assign_faces({"jackbennyprogram": (benny, ()), "grapenuts": (grape, {"jack"})}, {"jack"}, {},
+                                     {"jack": "Jack Benny"}, {"jackbennyprogram": "Jack Benny Program",
+                                                              "grapenuts": "The Grape Nuts Program"}).items() if f],
+      ["jackbennyprogram"])
+check("control: with no name in the title the marked, bigger show keeps the star",
+      [k for k, f in AP.assign_faces({"jackbennyprogram": (benny, ()), "grapenuts": (grape, {"jack"})}, {"jack"}, {},
+                                     {"jack": "Jack Benny"}, {"jackbennyprogram": "Radio Hour",
+                                                              "grapenuts": "The Grape Nuts Program"}).items() if f],
+      ["grapenuts"])
+check("names_person: a surname alone is no full name", AP.names_person("Benny", "The Benny Goodman Show"), False)
+check("control: two words of a title are the person's name", AP.names_person("Jack Benny", "The Jack Benny Program"), True)
+check("control: two people's names do not cross", AP.names_person("Jack Webb", "The Jack Benny Program"), False)
 check("control: two stars of different shows both keep theirs",
       sorted(f[0] for f in AP.assign_faces({"gun": (gun, ()), "oth": ({f"x{i}": [("other", "cast")] for i in range(3)}, ())},
                                            pool, {}).values() if f), ["conrad", "other"])

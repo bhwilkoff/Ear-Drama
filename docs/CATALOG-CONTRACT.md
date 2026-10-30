@@ -272,7 +272,8 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
   3. `person`: `series.star` by the heard-most rule (`credits:heard-most`).
   **One face per star** (owner, 2026-10-29): a person is the picture of at most one
   show (a show's own image is unaffected and never counts). Of the shows 2 and 3
-  would give them, they keep one: a marked role wins only when that show holds at
+  would give them, they keep one: a show whose title holds their full name (the Jack
+  Benny Program) beats every other; then a marked role, only when that show holds at
   least half as many of their credited episodes as their biggest show (Jack Webb's
   seven episodes of Pete Kelly's Blues, the title role, do not outweigh his 474 of
   Dragnet); otherwise the show with most of their episodes; then the highest share;
