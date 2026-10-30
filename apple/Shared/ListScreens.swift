@@ -82,9 +82,20 @@ struct ListenScreen: View {
                 }
                 if !following.isEmpty {
                     Section("Following") {
-                        ForEach(following) { row in
-                            NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: Spacing.s3) {
+                                ForEach(following) { row in
+                                    NavigationLink(value: Route.series(row.key)) { ShowTile(series: row) }
+                                        .buttonStyle(.plain)
+                                }
+                            }
+                            .sharesNameHeight()
+                            .padding(.horizontal, Spacing.s4)
+                            .padding(.vertical, Spacing.s2)
                         }
+                        .scrollIndicators(.hidden)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                     }
                 }
                 ForEach(shelves) { shelf in
@@ -578,7 +589,7 @@ struct PersonScreen: View {
                         Section {
                             ForEach(group.episodes) { item in
                                 NavigationLink(value: Route.episode(item.id)) {
-                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                                    EpisodeRowLabel(episode: item.episode, showSeries: true, note: item.rolesLine)
                                 }
                                 .playContextMenu(item.id)
                             }

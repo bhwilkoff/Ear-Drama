@@ -92,7 +92,7 @@ enum Fixture {
     static func make(rightsLines: [String: String]? = RightsDisplay.contract,
                      clearNoRecommend: Bool = false, dropLoudness: Bool = false,
                      dropTranscript: Bool = false, listenShelves: String? = nil, dropArt: Bool = false,
-                     episodeRows: [Ep]? = nil,
+                     dropPicture: Bool = false, episodeRows: [Ep]? = nil,
                      seriesRows: [(key: String, name: String, genre: String?, first: String?, last: String?, networks: String?)]? = nil
     ) throws -> URL {
         let episodes = episodeRows ?? Self.episodes
@@ -183,6 +183,7 @@ enum Fixture {
             UPDATE people SET portrait = 1 WHERE id = 'p1';
             UPDATE people SET portrait = 2 WHERE id = 'p3';
             UPDATE series SET star = 'p1' WHERE key = 'suspense';
+            UPDATE series SET picture = 1, picture_kind = 'star' WHERE key = 'suspense';
             UPDATE episodes SET star = 'p1' WHERE id = 'suspense|1943-05-25';
             UPDATE episodes SET star = 'p3' WHERE id = 'suspense|1942-10-20';
             """)
@@ -195,6 +196,9 @@ enum Fixture {
             INSERT INTO arc_parts VALUES ('suspense|1943-05-25', 'suspense|arc|b', 1);
             INSERT INTO arc_parts VALUES ('suspense|lost', 'suspense|arc|b', 2);
             """)
+        if dropPicture {
+            try exec("ALTER TABLE series DROP COLUMN picture; ALTER TABLE series DROP COLUMN picture_kind;")
+        }
         if dropArt {
             // An older catalog: no portraits, and no arcs.
             try exec("DROP TABLE art; ALTER TABLE people DROP COLUMN portrait; ALTER TABLE series DROP COLUMN star; "
@@ -214,9 +218,10 @@ enum Fixture {
     static func open(rightsLines: [String: String]? = RightsDisplay.contract,
                      clearNoRecommend: Bool = false, dropLoudness: Bool = false,
                      dropTranscript: Bool = false, listenShelves: String? = nil,
-                     dropArt: Bool = false) throws -> CatalogDatabase {
+                     dropArt: Bool = false, dropPicture: Bool = false) throws -> CatalogDatabase {
         let url = try make(rightsLines: rightsLines, clearNoRecommend: clearNoRecommend, dropLoudness: dropLoudness,
-                           dropTranscript: dropTranscript, listenShelves: listenShelves, dropArt: dropArt)
+                           dropTranscript: dropTranscript, listenShelves: listenShelves, dropArt: dropArt,
+                           dropPicture: dropPicture)
         return try #require(CatalogDatabase(path: url.path))
     }
 }
@@ -290,6 +295,69 @@ struct CatalogQueryTests {
         #expect(star.art.face == Artwork.FaceBox(x: 0.3, y: 0.1, w: 0.4, h: 0.3), "the projection's box is read")
         let hitch = try #require(db.episodeDetail(id: "suspense|1942-10-20"))
         #expect(hitch.credits.first { $0.personID == "p3" }?.art?.face == nil, "NULL is no box")
+    }
+
+    /// WEB-DESIGN §6.4b's golden cases, the same as js/api.test.js "grammar: the title block ...".
+    @Test func theGrammarsDecisionsKeepTheWebsGoldenCases() throws {
+        let mono: [(String, String, Int)] = [
+            ("The Shadow", "S", 104), ("Lux Radio Theatre", "LR", 82), ("X Minus One", "XM", 66),
+            ("The Adventures of Sam Spade", "AS", 82), ("Mr. and Mrs. North", "MM", 55), ("Wild West", "WW", 53), ("Jack Johnson", "JJ", 91), ("El Dorado", "D", 104),
+            ("The \"Lone Ranger\"", "LR", 82), ("2000 Plus", "P", 104), ("1949", "1", 104), ("", "", 104),
+        ]
+        for (name, m, size) in mono {
+            #expect(Grammar.monogram(name) == m, "monogram of \(name)")
+            #expect(Grammar.blockSize(m) == size, "block size of \(m)")
+        }
+        #expect(Grammar.nameStep("Hopalong Cassidy") == 0, "eight letters keep the size")
+        #expect(Grammar.nameStep("Extraordinary Tales") == 1, "a word past 10 letters steps down once")
+        #expect(Grammar.nameStep("Supercalifragilistic") == 2, "past 14, twice")
+        let url = try #require(URL(string: "https://x/A.jpg"))
+        func at(_ w: Int?, _ h: Int?, _ face: String?) -> Artwork {
+            Artwork(url: url, width: w, height: h, face: Artwork.FaceBox(face))
+        }
+        func kind(_ art: Artwork?, _ slot: Double) -> String {
+            switch Grammar.windowFill(art, slot: slot) {
+            case .crop: "crop"
+            case .whole: "whole"
+            case .block: "block"
+            }
+        }
+        #expect(kind(at(600, 800, "0.4,0.1,0.2,0.15"), 200) == "crop", "a face crop 240 px tall fills a 200 px window")
+        #expect(kind(at(600, 800, "0.4,0.1,0.2,0.15"), 300) == "block", "control: the same crop is under the floor at 300")
+        #expect(kind(at(1000, 500, nil), 200) == "whole", "a wide picture with no face is drawn whole")
+        #expect(kind(at(300, 150, nil), 400) == "block", "control: its short side under half the window is a block")
+        #expect(kind(at(nil, nil, nil), 48) == "block", "control: an unknown size is a block")
+        #expect(kind(nil, 48) == "block", "control: no picture is a block")
+        #expect(Grammar.eventParts(["1947", nil, "CBS", " ", "30"]) == ["1947 \u{00B7}", "CBS \u{00B7}", "30"],
+                "each separator stays with the fact before it; empty facts drop out")
+        #expect(Grammar.eventParts([]).isEmpty, "control: no facts, no line")
+        let span = try #require(Grammar.runSpan(first: "1947-03-01", last: "1952"))
+        #expect(abs(span.from - 17.0 / 33) < 1e-9 && abs(span.to - 23.0 / 33) < 1e-9, "1947 to 1952 on the 1930-1962 axis")
+        let clamped = try #require(Grammar.runSpan(first: "1925", last: "1970"))
+        #expect(clamped.from == 0 && clamped.to == 1, "clamped to the axis")
+        let one = try #require(Grammar.runSpan(first: "1940", last: nil))
+        #expect(abs(one.to - one.from - 1.0 / 33) < 1e-9, "a single year is one year wide")
+        #expect(Grammar.runSpan(first: nil, last: nil) == nil, "control: undated is the baseline alone")
+        #expect(Grammar.gradeOf(at(10, 10, nil)) == .identity, "no published grade: the identity levels")
+        var graded = at(10, 10, nil)
+        graded.grade = .init(k: 1.1, o: -0.05)
+        #expect(Grammar.gradeOf(graded) == .init(k: 1.1, o: -0.05), "a published grade replaces it")
+        #expect(Grammar.dateBlock(date: "1947-03-09", number: 4) == ("Mar 1947", "9"))
+        #expect(Grammar.dateBlock(date: "1947-03", number: nil) == ("1947", "Mar"))
+        #expect(Grammar.dateBlock(date: "1947", number: nil) == ("", "1947"))
+        #expect(Grammar.dateBlock(date: nil, number: 12) == ("No.", "12"), "an undated numbered episode")
+        #expect(Grammar.dateBlock(date: nil, number: nil) == ("", ""), "control: nothing to say")
+    }
+
+    @Test func aSeriesPictureIsReadWhereTheCatalogCarriesIt() throws {
+        let db = try Fixture.open()
+        let suspense = try #require(db.series(key: "suspense"))
+        #expect(suspense.picture?.url.lastPathComponent == "Agnes_Moorehead.jpg" && suspense.pictureKind == "star")
+        #expect(try #require(db.episodeDetail(id: "suspense|1943-05-25")).episode.seriesPicture == suspense.picture)
+        let older = try Fixture.open(dropPicture: true)
+        #expect(older.series(key: "suspense")?.picture == nil, "control: a catalog without series.picture opens with none")
+        #expect(older.series(key: "suspense")?.windowArt == older.series(key: "suspense")?.face?.art,
+                "the window falls back to the star's portrait there")
     }
 
     @Test func anOlderCatalogWithoutArtStillOpens() throws {

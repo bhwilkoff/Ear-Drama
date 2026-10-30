@@ -15,7 +15,10 @@
 //      genre board drops below 4.5:1 in either mode (D2b-3), with its own
 //      negative control;
 //   5c. the boards (one band, one text color, no glare, drama apart from red);
-//   5d. the print mount (a ground apart from the page, a hairline edge).
+//   5d. the print mount (a ground apart from the page, a hairline edge);
+//   5e. every native platform (Swift, Compose, Android resources) carries every
+//      board, onBoard, onGenre and print token as its own name (D3-1), with
+//      its own negative control.
 //
 //   node tools/test_design_tokens.mjs
 
@@ -227,6 +230,39 @@ negP('a print ground the color of the page', (t) => { t.color.print.ground.light
 negP('a pale print ground in dark mode', (t) => { t.color.print.ground.dark = '#EDEDED'; }, 'dark print ground glares');
 negP('an edge too faint to see', (t) => { t.color.print.edge.opacity.light = 0.03; }, 'light: edge on the page');
 negP('an edge drawn as a frame', (t) => { t.color.print.edge.opacity.dark = 0.6; }, 'dark: edge opacity');
+
+// 5e. The D3 grammar's colors reach every native platform by name, not only the web.
+const P = (k) => k[0].toUpperCase() + k.slice(1);
+const nativeWants = (t) => {
+  const keys = (list) => list.map((g) => g.name);
+  const ob = keys(onBoards(t)), bd = keys(boards(t)), og = keys(onGenres(t));
+  return {
+    'apple/Core/Design.swift': [...bd.map((k) => `static let board${P(k)} =`), ...ob.map((k) => `static let onBoard${P(k)} =`),
+      ...og.map((k) => `static let onGenre${P(k)} =`), 'static func board(_ key: String?)', 'static func onBoard(_ key: String?)',
+      'static let printGround =', 'static let printEdge ='],
+    Color: [...bd.flatMap((k) => [`val Board${P(k)}Light =`, `val Board${P(k)}Dark =`]), ...ob.map((k) => `val OnBoard${P(k)}Dark =`),
+      ...og.map((k) => `val OnGenre${P(k)}Light =`), 'fun boardColor(', 'fun onBoardColor(', 'val PrintGroundDark =', 'val PrintEdgeLight ='],
+    'colors.xml': [...bd.map((k) => `name="board_${k}"`), ...ob.map((k) => `name="on_board_${k}"`), 'name="print_ground"', 'name="print_edge"'],
+  };
+};
+const nativeGaps = (files, t) => {
+  const out = [];
+  const want = nativeWants(t);
+  const found = new Set();
+  for (const f of files) {
+    const k = Object.keys(want).find((w) => f.path.endsWith(w) || (w === 'Color' && f.path.endsWith('/ui/theme/Color.kt')));
+    if (!k) continue;
+    found.add(k);
+    for (const needle of want[k]) if (!f.text.includes(needle)) out.push(`${f.path} lacks ${needle}`);
+  }
+  for (const k of Object.keys(want)) if (!found.has(k)) out.push(`no ${k} target`);
+  return out;
+};
+const nativeFiles = results.map((r) => ({ path: r.path, text: r.current || '' }));
+const ng = nativeGaps(nativeFiles, tokens);
+ok(ng.length === 0, `every native platform names every board, onBoard, onGenre and print token (gaps: ${ng.slice(0, 4).join('; ') || 'none'})`);
+const dropped = nativeFiles.map((f) => ({ path: f.path, text: f.text.replace(/.*(boardComedy|BoardComedy|board_comedy).*\n/g, '') }));
+ok(nativeGaps(dropped, tokens).filter((g) => /omedy/.test(g)).length >= 3, 'the native check catches the comedy board missing from Swift, Compose and the resources');
 
 // 6. Every face the tokens name is a file the platform ships (Decision 060),
 //    and only the display levels set the display face, with a negative control.

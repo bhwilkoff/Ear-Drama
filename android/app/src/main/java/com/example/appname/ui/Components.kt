@@ -243,11 +243,11 @@ fun seriesYears(row: SeriesRow): String? {
 }
 
 /**
- * An episode row: the air date leads (R1), then the title; the series name
- * only where the list mixes series. Tapping opens Detail; the trailing
- * button plays.
+ * An episode row (R11b, the one grammar): the date block leads (R1) in a list of one series, the
+ * series' window where the list mixes series; then the title, the sub line (the series and date
+ * where series mix, then [supporting]), the length, and Play. Tapping opens Detail; long press
+ * opens the queue menu.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EpisodeListItem(
     row: EpisodeRow,
@@ -261,44 +261,28 @@ fun EpisodeListItem(
     quote: String? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val date = formatAirDate(row.airDate)
     val title = episodeTitle(row)
-    val second = listOfNotNull(
-        row.seriesName.takeIf { showSeries },
-        formatLength(row.lengthSeconds),
-        supporting,
-    ).joinToString(" · ").ifEmpty { null }
+    val length = formatLength(row.lengthSeconds)
+    val date = formatAirDate(row.airDate)
     Box {
-    ListItem(
-        modifier = modifier.tvFocusMark().combinedClickable(
-            onClickLabel = "Open episode",
-            onClick = onOpen,
-            onLongClickLabel = "Queue options",
+        GrammarRow(
+            title = title,
+            visual = { m ->
+                if (showSeries) PictureWindow(row.seriesWindowArt, row.seriesName, row.seriesGenre, m)
+                else DateBlock(row.airDate, row.num, row.seriesGenre, m)
+            },
+            onOpen = onOpen,
+            modifier = modifier,
+            sub = if (showSeries) listOf(row.seriesName, date ?: "Undated", supporting) else listOf(supporting),
+            length = length,
+            onPlay = onPlay,
+            playDescription = "Play $title",
+            description = listOfNotNull(title, row.seriesName.takeIf { showSeries }, date ?: "Undated", supporting, length)
+                .joinToString(", "),
             onLongClick = { menuOpen = true },
-        ),
-        // Decision 069: a row that mixes series leads with its series' tile; a series page's rows do not.
-        leadingContent = if (showSeries) {
-            { ArtTile(row.seriesName, row.seriesGenre, row.seriesFace) }
-        } else null,
-        overlineContent = date?.takeIf { title != it }?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
-        headlineContent = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        supportingContent = if (second == null && quote == null) null else {
-            {
-                Column {
-                    if (second != null) Text(second, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (quote != null) {
-                        Text(quote, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurface)
-                    }
-                }
-            }
-        },
-        trailingContent = {
-            IconButton(onClick = onPlay) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Play $title")
-            }
-        },
-    )
-    QueueMenu(row.id, menuOpen, { menuOpen = false }, inQueueList)
+            quote = quote,
+        )
+        QueueMenu(row.id, menuOpen, { menuOpen = false }, inQueueList)
     }
 }
 
@@ -323,29 +307,15 @@ fun PersonListItem(row: PersonRow, onOpen: () -> Unit) {
 
 fun episodeCount(n: Int): String = "%,d %s".format(n, if (n == 1) "episode" else "episodes")
 
-/**
- * A series row: the name and one line of years and count, behind the genre's
- * 4 dp leading mark (ANDROID-DESIGN §6.1a, the web's genre edge and Apple's
- * mark). The mark is content, never chrome; a genre the palette does not name
- * takes the border color.
- */
+/** A series row (R11b): its window, the name, and the years and count as an event line. */
 @Composable
 fun SeriesListItem(row: SeriesRow, onOpen: () -> Unit) {
-    val second = listOfNotNull(seriesYears(row), "${row.episodes} episodes").joinToString(" · ")
-    ListItem(
-        modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open series", onClick = onOpen),
-        // The tile carries the genre hue the 4 dp mark used to (Decision 069).
-        leadingContent = { ArtTile(row.name, row.genre, row.face) },
-        headlineContent = {
-            Column {
-                Text(row.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    second,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
+    GrammarRow(
+        title = row.name,
+        visual = { m -> PictureWindow(row.windowArt, row.name, row.genre, m) },
+        onOpen = onOpen,
+        sub = listOf(seriesYears(row), episodeCount(row.episodes)),
+        openLabel = "Open series",
     )
 }
 

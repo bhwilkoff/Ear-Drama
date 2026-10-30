@@ -77,13 +77,13 @@ export function onGenres(t) { return group(t, 'onGenre'); }
 
 // The genre boards (D2c-1): the large block in the genre's hue, one lightness
 // band per mode, and the one color everything on a board takes. Same keys as
-// genres(); web only until a native board consumes them (D3).
+// genres(); emitted on every platform (D3-1).
 export function boards(t) { return group(t, 'board'); }
 export function onBoards(t) { return group(t, 'onBoard'); }
 
 // The print mount (D2c-3): the ground a contained picture sits on and the hairline
 // edge around every picture window, the edge as a color at an opacity per mode.
-// Web only until a native window consumes them (D3).
+// Emitted on every platform (D3-1).
 export function printMount(t) {
   const p = t.color && t.color.print;
   if (!p) return null;
@@ -336,28 +336,52 @@ function appleDesign(t) {
     L.push('        }');
     L.push('    }');
   }
+  // The boards (D2c-1) and the one color on them, the text on a genre mark used as a fill,
+  // and the print mount (D2c-3): the D3 grammar's native colors.
+  const lookup = (prefix, list, doc, fallback) => {
+    if (!list.length) return;
+    L.push('');
+    for (const g of list) L.push(`    nonisolated static let ${prefix}${pascal(g.name)} = Color.tokenPair(light: 0x${hex6(g.light)}, dark: 0x${hex6(g.dark)})`);
+    L.push(`    /// ${doc}`);
+    L.push(`    nonisolated static func ${prefix}(_ key: String?) -> Color {`);
+    L.push('        switch key {');
+    for (const g of list) L.push(`        case "${g.name}": ${prefix}${pascal(g.name)}`);
+    L.push(`        default: ${fallback}`);
+    L.push('        }');
+    L.push('    }');
+  };
+  lookup('onGenre', onGenres(t), 'Text on a genre mark used as a fill (a part\'s initial); the page text for a key the palette does not name.', 'brandText');
+  lookup('board', boards(t), 'A genre\'s board, the block a tile or head stands on; the neutral surfaceAlt for a show with no genre.', 'brandSurfaceAlt');
+  lookup('onBoard', onBoards(t), 'The one color everything on a board takes; the page text on the neutral board.', 'brandText');
+  const pm = printMount(t);
+  if (pm) {
+    L.push('');
+    L.push('    // The print mount: the ground a contained picture sits on, and the hairline edge around every window.');
+    L.push(`    nonisolated static let printGround = Color.tokenPair(light: 0x${hex6(pm.ground.light)}, dark: 0x${hex6(pm.ground.dark)})`);
+    L.push(`    nonisolated static let printEdge = Color.tokenPair(light: 0x${hex6(pm.edge.light)}, dark: 0x${hex6(pm.edge.dark)}, lightAlpha: ${pm.edge.opacity.light}, darkAlpha: ${pm.edge.opacity.dark})`);
+  }
   L.push('');
-  L.push('    nonisolated private static func tokenPair(light: UInt32, dark: UInt32) -> Color {');
+  L.push('    nonisolated private static func tokenPair(light: UInt32, dark: UInt32, lightAlpha: CGFloat = 1, darkAlpha: CGFloat = 1) -> Color {');
   L.push('        #if canImport(UIKit)');
   L.push('        Color(uiColor: UIColor { traits in');
-  L.push('            platformColor(traits.userInterfaceStyle == .dark ? dark : light)');
+  L.push('            traits.userInterfaceStyle == .dark ? platformColor(dark, darkAlpha) : platformColor(light, lightAlpha)');
   L.push('        })');
   L.push('        #else');
   L.push('        Color(nsColor: NSColor(name: nil) { appearance in');
-  L.push('            platformColor(appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)');
+  L.push('            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? platformColor(dark, darkAlpha) : platformColor(light, lightAlpha)');
   L.push('        })');
   L.push('        #endif');
   L.push('    }');
   L.push('');
   L.push('    #if canImport(UIKit)');
-  L.push('    nonisolated private static func platformColor(_ v: UInt32) -> UIColor {');
+  L.push('    nonisolated private static func platformColor(_ v: UInt32, _ alpha: CGFloat) -> UIColor {');
   L.push('        UIColor(red: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,');
-  L.push('                blue: CGFloat(v & 0xFF) / 255, alpha: 1)');
+  L.push('                blue: CGFloat(v & 0xFF) / 255, alpha: alpha)');
   L.push('    }');
   L.push('    #else');
-  L.push('    nonisolated private static func platformColor(_ v: UInt32) -> NSColor {');
+  L.push('    nonisolated private static func platformColor(_ v: UInt32, _ alpha: CGFloat) -> NSColor {');
   L.push('        NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,');
-  L.push('                blue: CGFloat(v & 0xFF) / 255, alpha: 1)');
+  L.push('                blue: CGFloat(v & 0xFF) / 255, alpha: alpha)');
   L.push('    }');
   L.push('    #endif');
   L.push('}');
@@ -464,6 +488,32 @@ function androidColor(t, pkg) {
       L.push(`val Genre${pascal(g.name)}Dark = Color(${argb(g.dark)})`);
     }
   }
+  const kt = (title, prefix, fn, list, fallback) => {
+    if (!list.length) return;
+    L.push('');
+    L.push(`// --- ${title} ---`);
+    for (const g of list) {
+      L.push(`val ${prefix}${pascal(g.name)}Light = Color(${argb(g.light)})`);
+      L.push(`val ${prefix}${pascal(g.name)}Dark = Color(${argb(g.dark)})`);
+    }
+    L.push(`fun ${fn}(key: String?, dark: Boolean): Color = when (key) {`);
+    for (const g of list) L.push(`    "${g.name}" -> if (dark) ${prefix}${pascal(g.name)}Dark else ${prefix}${pascal(g.name)}Light`);
+    L.push(`    else -> if (dark) ${fallback}Dark else ${fallback}Light`);
+    L.push('}');
+  };
+  kt('ON-GENRE: text on a genre mark used as a fill; the page text for an unnamed key', 'OnGenre', 'onGenreColor', onGenres(t), 'BrandText');
+  kt('BOARDS (D2c-1): the block a tile or head stands on; surfaceAlt for a show with no genre', 'Board', 'boardColor', boards(t), 'BrandSurfaceAlt');
+  kt('ON-BOARD: the one color everything on a board takes; the page text on the neutral board', 'OnBoard', 'onBoardColor', onBoards(t), 'BrandText');
+  const pm = printMount(t);
+  if (pm) {
+    const a8 = (h, a) => `0x${Math.round(a * 255).toString(16).padStart(2, '0').toUpperCase()}${hex6(h)}`;
+    L.push('');
+    L.push('// --- PRINT MOUNT (D2c-3): the ground a contained picture sits on; the hairline edge around every window ---');
+    L.push(`val PrintGroundLight = Color(${argb(pm.ground.light)})`);
+    L.push(`val PrintGroundDark = Color(${argb(pm.ground.dark)})`);
+    L.push(`val PrintEdgeLight = Color(${a8(pm.edge.light, pm.edge.opacity.light)})`);
+    L.push(`val PrintEdgeDark = Color(${a8(pm.edge.dark, pm.edge.opacity.dark)})`);
+  }
   L.push('');
   L.push('// --- SEMANTIC tokens (content only, never chrome) ---');
   L.push('// Read them through AppSemantics (Theme.kt), never through colorScheme, so');
@@ -534,6 +584,12 @@ function androidColorsXml(t, mode) {
     '    <!-- The launcher icon\'s ground is the icon master\'s red in both modes (branding/icon-master.svg). -->',
     `    <color name="icon_background">#FF${hex6((b.record || b.primary).light)}</color>`,
     ...genres(t).map((g) => `    <color name="genre_${g.name}">#FF${hex6(g[mode])}</color>`),
+    ...boards(t).map((g) => `    <color name="board_${g.name}">#FF${hex6(g[mode])}</color>`),
+    ...onBoards(t).map((g) => `    <color name="on_board_${g.name}">#FF${hex6(g[mode])}</color>`),
+    ...(printMount(t) ? [
+      `    <color name="print_ground">#FF${hex6(printMount(t).ground[mode])}</color>`,
+      `    <color name="print_edge">#${Math.round(printMount(t).edge.opacity[mode] * 255).toString(16).padStart(2, '0').toUpperCase()}${hex6(printMount(t).edge[mode])}</color>`,
+    ] : []),
     '</resources>',
     '',
   ].join('\n');

@@ -39,7 +39,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let hasScript: Bool
     private let hasArcs: Bool
     /// Every series' genre and face, read once: rows that mix series draw a tile from it.
-    private let seriesLook: [String: (genre: String?, face: Face?)]
+    private let seriesLook: [String: SeriesLook]
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
     let rightsLines: [String: String]
     /// `meta.listenShelves` (contract §5.1), or nil for a catalog that predates it.
@@ -82,7 +82,9 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         hasArcs = Self.columnExists(h, table: "arcs", column: "next_arc")
             && Self.columnExists(h, table: "arc_parts", column: "part")
         seriesLook = Self.loadSeriesLook(h, withFaces: art && Self.columnExists(h, table: "series", column: "star"),
-                                         faceColumn: face)
+                                         faceColumn: face,
+                                         withPicture: art && Self.columnExists(h, table: "series", column: "picture")
+                                             && Self.columnExists(h, table: "series", column: "picture_kind"))
         rightsLines = Self.publishedRightsLines(h) ?? RightsDisplay.contract
         publishedShelves = Self.metaText(h, key: "listenShelves").flatMap(PublishedShelf.parse)
         guard let version = Self.schemaVersion(h), version >= Self.minimumSchemaVersion else {
@@ -152,27 +154,42 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         return String(cString: c)
     }
 
-    private static func loadSeriesLook(_ h: OpaquePointer, withFaces: Bool,
-                                       faceColumn: Bool) -> [String: (genre: String?, face: Face?)] {
-        let sql = withFaces ? """
-            SELECT s.key, s.genre, p.name, a.url, a.width, a.height, a.credit, a.evidence_url,
-            \(faceColumn ? "a.face" : "NULL") FROM series s
-            LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait
-            """ : "SELECT key, genre, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM series"
+    /// Every series' genre, star face and picture (contract §3.3a). The picture columns are read
+    /// only where `series.picture` exists, so an older catalog opens with every picture nil.
+    nonisolated struct SeriesLook: Sendable {
+        var genre: String?
+        var face: Face?
+        var picture: Artwork?
+        var pictureKind: String?
+    }
+
+    private static func loadSeriesLook(_ h: OpaquePointer, withFaces: Bool, faceColumn: Bool,
+                                       withPicture: Bool) -> [String: SeriesLook] {
+        let faceSelect = withFaces ? "p.name, a.url, a.width, a.height, a.credit, a.evidence_url, \(faceColumn ? "a.face" : "NULL")"
+            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL"
+        let faceJoin = withFaces ? "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait" : ""
+        let pictureSelect = withPicture
+            ? "pa.url, pa.width, pa.height, pa.credit, pa.evidence_url, \(faceColumn ? "pa.face" : "NULL"), s.picture_kind"
+            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL"
+        let pictureJoin = withPicture ? "LEFT JOIN art pa ON pa.id = s.picture" : ""
+        let sql = "SELECT s.key, s.genre, \(faceSelect), \(pictureSelect) FROM series s \(faceJoin) \(pictureJoin)"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(h, sql, -1, &stmt, nil) == SQLITE_OK else { return [:] }
         defer { sqlite3_finalize(stmt) }
-        var out: [String: (genre: String?, face: Face?)] = [:]
+        var out: [String: SeriesLook] = [:]
         let text = { (i: Int32) in sqlite3_column_text(stmt, i).map { String(cString: $0) } }
         let int = { (i: Int32) in sqlite3_column_type(stmt, i) == SQLITE_NULL ? nil : Int(sqlite3_column_int64(stmt, i)) }
         while sqlite3_step(stmt) == SQLITE_ROW {
             guard let key = text(0) else { continue }
-            var face: Face?
+            var look = SeriesLook(genre: text(1))
             if let name = text(2), let art = artwork(url: text(3), width: int(4), height: int(5), credit: text(6),
                                                     evidence: text(7), face: text(8)) {
-                face = Face(name: name, art: art)
+                look.face = Face(name: name, art: art)
             }
-            out[key] = (text(1), face)
+            look.picture = artwork(url: text(9), width: int(10), height: int(11), credit: text(12),
+                                   evidence: text(13), face: text(14))
+            look.pictureKind = look.picture == nil ? nil : text(15)
+            out[key] = look
         }
         return out
     }
@@ -682,7 +699,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let key = row.text(0) ?? ""
         return SeriesRow(key: key, name: row.text(1) ?? "", genre: row.text(2),
                          firstDate: row.text(3), lastDate: row.text(4), networks: networks,
-                         episodeCount: row.int(6) ?? 0, face: seriesLook[key]?.face)
+                         episodeCount: row.int(6) ?? 0, face: seriesLook[key]?.face,
+                         picture: seriesLook[key]?.picture, pictureKind: seriesLook[key]?.pictureKind)
     }
 
     private func decodeEpisode(_ row: Row) -> EpisodeRow {
@@ -692,7 +710,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                           airDate: row.text(3), season: row.text(4), number: row.int(5), title: row.text(6),
                           lengthSeconds: row.double(7), rights: row.text(8) ?? "unclaimed",
                           rightsBasis: row.text(9), network: row.text(10),
-                          seriesGenre: look?.genre, seriesFace: look?.face)
+                          seriesGenre: look?.genre, seriesFace: look?.face,
+                          seriesPicture: look?.picture)
     }
 
     // MARK: - Statement plumbing

@@ -52,7 +52,10 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   portraits, and the system Now Playing square center on the published
   face, as iOS-DESIGN R11a (V4), a wide picture without one left
   uncropped; the Top Shelf carries faces (§9.3), handed over as a URL that
-  tvOS crops itself, so a wide face there is not yet anchored; **R12** brand is chrome only; **R13** shelves by rule.
+  tvOS crops itself, so a wide face there is not yet anchored; **R11b** one grammar, as iOS-DESIGN R11b (owner, 2026-10-29: *"the design is still not uniform for all different levels of content (some with images, some without, some with more information, some with less). We need to a design approach that evens out all of the inconsistencies and make the app look like one complete thought."*; `catalog-experience-design` rule 11; D3-1): the same
+  `apple/Shared/Grammar.swift` components at the ten-foot sizes (a 300 pt
+  tile window, 29 pt floor for the facts), and focus scales the whole
+  tile (`.buttonStyle(.card)`'s lift), never the window alone; **R12** brand is chrome only; **R13** shelves by rule.
 - **R14** lean-back is bounded: the sleep timer ends a session, and what
   plays next is Decision 067's: a part of a story arc (contract §3.3) is followed by the arc's next part, automatically; at the arc's last part playback stops and the series' next story is offered as a "Next story" action, never started. Anything the person queued plays after an arc's last part, as after any episode. Outside an arc: one episode, then the queue, then stop. A live slot follows its clock, never an arc. The action row carries
   "Next story" (`NextStoryButton`) on an arc's last part only.

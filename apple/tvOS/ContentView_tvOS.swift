@@ -136,7 +136,7 @@ private struct EpisodeCard_tvOS: View {
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 HStack(spacing: Spacing.s3) {
-                    ArtTile(name: episode.seriesName, genre: episode.seriesGenre, face: episode.seriesFace, size: 64)
+                    PictureWindow(art: episode.seriesWindowArt, name: episode.seriesName, genre: episode.seriesGenre, side: 64)
                     Text(episode.seriesName)
                         .font(TypeRamp.caption)
                         .foregroundStyle(Color.brandTextMuted)
@@ -153,31 +153,15 @@ private struct EpisodeCard_tvOS: View {
     }
 }
 
-/// A followed series as a typographic card, the episode card's size.
+/// A followed series as the grammar's tile (R11b): focus scales the whole tile through the card style.
 private struct SeriesCard_tvOS: View {
     let series: SeriesRow
 
     var body: some View {
         NavigationLink(value: Route.series(series.key)) {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                ArtTile(name: series.name, genre: series.genre, face: series.face, size: 64)
-                Spacer(minLength: 0)
-                Text(series.name)
-                    .font(TypeRamp.bodyStrong)
-                    .foregroundStyle(Color.brandText)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Text(verbatim: series.metaLine)
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
-                    .lineLimit(1)
-            }
-            .padding(Spacing.s6)
-            .frame(width: 420, height: 236, alignment: .topLeading)
-            .background(Color.brandSurface)
+            ShowTile(series: series)
         }
         .buttonStyle(.card)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -191,9 +175,10 @@ private struct SeriesShelf_tvOS: View {
                 .font(TypeRamp.sectionHeader)
                 .foregroundStyle(Color.brandText)
             ScrollView(.horizontal) {
-                LazyHStack(spacing: 40) {
+                HStack(alignment: .top, spacing: 40) {
                     ForEach(series) { SeriesCard_tvOS(series: $0) }
                 }
+                .sharesNameHeight()
                 .padding(.vertical, Spacing.s6)
             }
             .scrollClipDisabled()
@@ -399,7 +384,7 @@ private struct PersonScreen_tvOS: View {
                         Section(group.seriesName) {
                             ForEach(group.episodes) { item in
                                 NavigationLink(value: Route.episode(item.id)) {
-                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                                    EpisodeRowLabel(episode: item.episode, showSeries: true, note: item.rolesLine)
                                 }
                             }
                         }

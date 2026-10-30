@@ -56,27 +56,100 @@ extension Color {
         }
     }
 
-    nonisolated private static func tokenPair(light: UInt32, dark: UInt32) -> Color {
+    nonisolated static let onGenreDrama = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreMystery = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreScifi = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreWestern = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreComedy = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreNews = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreDocumentary = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    nonisolated static let onGenreSerial = Color.tokenPair(light: 0xFFFFFF, dark: 0x0F0F11)
+    /// Text on a genre mark used as a fill (a part's initial); the page text for a key the palette does not name.
+    nonisolated static func onGenre(_ key: String?) -> Color {
+        switch key {
+        case "drama": onGenreDrama
+        case "mystery": onGenreMystery
+        case "scifi": onGenreScifi
+        case "western": onGenreWestern
+        case "comedy": onGenreComedy
+        case "news": onGenreNews
+        case "documentary": onGenreDocumentary
+        case "serial": onGenreSerial
+        default: brandText
+        }
+    }
+
+    nonisolated static let boardDrama = Color.tokenPair(light: 0x86426F, dark: 0x5F2A4D)
+    nonisolated static let boardMystery = Color.tokenPair(light: 0x375C9B, dark: 0x223F6F)
+    nonisolated static let boardScifi = Color.tokenPair(light: 0x006A79, dark: 0x004854)
+    nonisolated static let boardWestern = Color.tokenPair(light: 0x8B492A, dark: 0x623018)
+    nonisolated static let boardComedy = Color.tokenPair(light: 0x795700, dark: 0x543B00)
+    nonisolated static let boardNews = Color.tokenPair(light: 0x615D53, dark: 0x424038)
+    nonisolated static let boardDocumentary = Color.tokenPair(light: 0x296E38, dark: 0x154C22)
+    nonisolated static let boardSerial = Color.tokenPair(light: 0x684D92, dark: 0x473368)
+    /// A genre's board, the block a tile or head stands on; the neutral surfaceAlt for a show with no genre.
+    nonisolated static func board(_ key: String?) -> Color {
+        switch key {
+        case "drama": boardDrama
+        case "mystery": boardMystery
+        case "scifi": boardScifi
+        case "western": boardWestern
+        case "comedy": boardComedy
+        case "news": boardNews
+        case "documentary": boardDocumentary
+        case "serial": boardSerial
+        default: brandSurfaceAlt
+        }
+    }
+
+    nonisolated static let onBoardDrama = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardMystery = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardScifi = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardWestern = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardComedy = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardNews = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardDocumentary = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    nonisolated static let onBoardSerial = Color.tokenPair(light: 0xFFFFFF, dark: 0xF2F2F4)
+    /// The one color everything on a board takes; the page text on the neutral board.
+    nonisolated static func onBoard(_ key: String?) -> Color {
+        switch key {
+        case "drama": onBoardDrama
+        case "mystery": onBoardMystery
+        case "scifi": onBoardScifi
+        case "western": onBoardWestern
+        case "comedy": onBoardComedy
+        case "news": onBoardNews
+        case "documentary": onBoardDocumentary
+        case "serial": onBoardSerial
+        default: brandText
+        }
+    }
+
+    // The print mount: the ground a contained picture sits on, and the hairline edge around every window.
+    nonisolated static let printGround = Color.tokenPair(light: 0xEDEDED, dark: 0x2A2A2E)
+    nonisolated static let printEdge = Color.tokenPair(light: 0x131316, dark: 0xF2F2F4, lightAlpha: 0.18, darkAlpha: 0.16)
+
+    nonisolated private static func tokenPair(light: UInt32, dark: UInt32, lightAlpha: CGFloat = 1, darkAlpha: CGFloat = 1) -> Color {
         #if canImport(UIKit)
         Color(uiColor: UIColor { traits in
-            platformColor(traits.userInterfaceStyle == .dark ? dark : light)
+            traits.userInterfaceStyle == .dark ? platformColor(dark, darkAlpha) : platformColor(light, lightAlpha)
         })
         #else
         Color(nsColor: NSColor(name: nil) { appearance in
-            platformColor(appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light)
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? platformColor(dark, darkAlpha) : platformColor(light, lightAlpha)
         })
         #endif
     }
 
     #if canImport(UIKit)
-    nonisolated private static func platformColor(_ v: UInt32) -> UIColor {
+    nonisolated private static func platformColor(_ v: UInt32, _ alpha: CGFloat) -> UIColor {
         UIColor(red: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,
-                blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+                blue: CGFloat(v & 0xFF) / 255, alpha: alpha)
     }
     #else
-    nonisolated private static func platformColor(_ v: UInt32) -> NSColor {
+    nonisolated private static func platformColor(_ v: UInt32, _ alpha: CGFloat) -> NSColor {
         NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,
-                blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+                blue: CGFloat(v & 0xFF) / 255, alpha: alpha)
     }
     #endif
 }

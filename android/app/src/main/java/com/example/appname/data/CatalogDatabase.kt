@@ -81,19 +81,33 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             "part" in queryRaw("PRAGMA table_info(arc_parts)") { it.getText(1) }
     }
 
-    /** Every series' genre and face, read once: rows that mix series draw a tile from it. */
-    private val seriesLook: Map<String, Pair<String?, Face?>> by lazy {
-        val faces = hasArt && "star" in queryRaw("PRAGMA table_info(series)") { it.getText(1) }
-        val sql = if (faces) {
-            "SELECT s.key, s.genre, p.name, $artColumns FROM series s " +
-                "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait"
-        } else "SELECT key, genre, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM series"
+    /** Every series' genre, face and picture, read once: rows that mix series draw a tile from it. */
+    private val seriesLook: Map<String, SeriesLook> by lazy {
+        val cols = queryRaw("PRAGMA table_info(series)") { it.getText(1) }
+        val faces = hasArt && "star" in cols
+        // §3.3a series.picture: an art id; an older catalog has no column, and its picture is null.
+        val pictures = hasArt && "picture" in cols
+        val face = if (hasArt && "face" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }) "ap.face" else "NULL"
+        val sql = "SELECT s.key, s.genre, " +
+            (if (faces) "p.name, $artColumns, " else "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
+            (if (pictures) "ap.url, ap.width, ap.height, ap.credit, ap.evidence_url, $face, s.picture_kind " else
+                "NULL, NULL, NULL, NULL, NULL, NULL, NULL ") +
+            "FROM series s " +
+            (if (faces) "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait " else "") +
+            (if (pictures) "LEFT JOIN art ap ON ap.id = s.picture" else "")
         queryRaw(sql) { st ->
             val art = artwork(st, 3)
             val name = st.textOrNull(2)
-            st.getText(0) to (st.textOrNull(1) to if (art != null && name != null) Face(name, art) else null)
+            st.getText(0) to SeriesLook(
+                genre = st.textOrNull(1),
+                face = if (art != null && name != null) Face(name, art) else null,
+                picture = artwork(st, 9),
+                pictureKind = st.textOrNull(15),
+            )
         }.toMap()
     }
+
+    private class SeriesLook(val genre: String?, val face: Face?, val picture: Artwork?, val pictureKind: String?)
 
     private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
         Artwork(
@@ -683,7 +697,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         firstDate = st.textOrNull(3),
         lastDate = st.textOrNull(4),
         episodes = st.getLong(5).toInt(),
-        face = seriesLook[st.getText(0)]?.second,
+        face = seriesLook[st.getText(0)]?.face,
+        picture = seriesLook[st.getText(0)]?.picture,
+        pictureKind = seriesLook[st.getText(0)]?.pictureKind,
     )
 
     private fun episodeRow(st: SQLiteStatement) = EpisodeRow(
@@ -695,8 +711,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         num = if (st.isNull(5)) null else st.getLong(5).toInt(),
         title = st.textOrNull(6),
         lengthSeconds = if (st.isNull(7)) null else st.getDouble(7),
-        seriesGenre = seriesLook[st.getText(1)]?.first,
-        seriesFace = seriesLook[st.getText(1)]?.second,
+        seriesGenre = seriesLook[st.getText(1)]?.genre,
+        seriesFace = seriesLook[st.getText(1)]?.face,
+        seriesPicture = seriesLook[st.getText(1)]?.picture,
     )
 
     private fun SQLiteStatement.textOrNull(i: Int): String? = if (isNull(i)) null else getText(i)

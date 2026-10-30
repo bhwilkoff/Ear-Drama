@@ -641,6 +641,78 @@ web app follows today.
   8 px edge, at least 200 px tall, 240 px from 768 px): the designed
   fallback, never a gray box. A play's row in Browse and Search leads
   with its tile (the title's letter; plays carry no genre).
+- **§6.4b One grammar for every level of content** (owner, 2026-10-29:
+  *"the design is still not uniform for all different levels of content
+  (some with images, some without, some with more information, some with
+  less). We need to a design approach that evens out all of the
+  inconsistencies and make the app look like one complete thought."*;
+  then *"Yes to both"*, build D everywhere; `catalog-experience-design`
+  rule 11, `uniform-imagery-design` §2 to §7; D3-1). The shared text for
+  every platform (iOS-, macOS-, tvOS- and ANDROID-DESIGN R11b). Each
+  object has one skeleton of fixed slots; richer data fills more slots
+  and never adds, moves or resizes one. Where it amends §6.4 and §6.4a,
+  this rule wins.
+  - **The window** is one square slot (a circle for a person), radius 4
+    inside the card's 12, on the print ground (`color.print.ground`) with
+    a 1 px hairline (`color.print.edge`). It holds the series' `picture`
+    (contract §3.3a: the show's own image, then its star, then the person
+    heard most; `pictureKind` is never said on a tile), cropped by
+    `cropRect`, or, when the picture is wide with no face, drawn whole
+    inside a 6 % inset on the ground. Below the size floor (the crop's
+    pixel height under the slot's points; a whole picture whose short
+    side is under half the slot) or with no picture, the window holds the
+    **title block**: the monogram (the initials of the first two words
+    that start with a letter, skipping the, a, an, of, and, in, on, to,
+    for, el, la, le, de, der, die; else the first letter or digit) set in
+    Big Shoulders as an outline (no fill, a 1.4 px stroke) in the board's
+    onBoard color, on the board, its baseline at 93 % and its start at 9 %
+    of the window, sized `min(104, floor(86 / sum(w)))` hundredths of
+    the window where w is 0.76 for M, 0.78 for W, 0.45 for J, 0.27 for I or 1, else 0.50 (the advances of the bundled Big Shoulders Bold, the widest cut any platform ships, measured 2026-10-30),
+    plus 0.02 per letter; the window's hairline is onBoard at 32 %. The
+    name is never drawn twice.
+  - **The grade** (`uniform-imagery-design` §2): every picture in a
+    window is neutral monochrome (Rec. 709 luminance) then the linear
+    levels `k * v + o` in sRGB. The projection does not yet publish
+    `art.grade` (contract §3.3a follow-up), so every platform applies the
+    documented default, the identity levels (`k` 1, `o` 0) after the
+    monochrome; a published grade replaces it with no client change in
+    shape. Web: one SVG filter (`feColorMatrix saturate 0`, then
+    `feComponentTransfer` linear) with `color-interpolation-filters`
+    sRGB.
+  - **The show tile**: on the genre's board (`color.board`; the neutral
+    `surfaceAlt` with the page text for a show with no genre), padding
+    6 px (10 px at the foot), and in order: the window; the name (L2 in
+    Big Shoulders, upper case, balanced; a name whose longest word passes
+    10 letters steps down to L3's size, past 14 to L5's, never a broken
+    word); the **run strip** (18 px, 1930 to 1962 on one fixed axis, in
+    onBoard: the axis's baseline at 30 %, and the years from the first to
+    the last broadcast as a solid bar; an undated show is the baseline
+    alone); the facts (the years, else "Undated"; then the count of
+    episodes), each on its own line. Tiles in one grid row share their
+    slot tracks (CSS `subgrid`), so every mark in a row sits on one line.
+    The strip shows the span, not the surviving episodes by year: the
+    projection carries no per-year counts yet (contract follow-up).
+  - **The row**: 64 px whatever it carries, a 48 px visual, the title
+    (L3), the sub line (L5, muted, an event line), the length (L6), and
+    Play (36 px). The visual is the date block (the month in small caps
+    over the day in Big Shoulders, on the series' board; an undated
+    numbered episode says "No." over its number) in a list of one
+    series, and the series' window in a list that mixes series or lists
+    series. A missing sub line centers the title in the same height. R1
+    holds: the date leads, in the visual.
+  - **The head board** (series, episode, ear drama): the board with the
+    window (96 px, 128 from 600 px, 176 from 1024), the kicker (L5, upper
+    case, tracked), the name (L1 in Big Shoulders, stepping down like the
+    tile's), the facts, and the run strip full width (56 px) under both.
+    Built in D3-1; the pages adopt it in D3-3.
+  - **The event line**: facts joined by " · ", each separator kept with
+    the fact before it, so a line may end on a dot and never opens with
+    one.
+  - **Color**: everything on a board takes its one onBoard color; marks
+    (the strip on the page, legend keys, a part's face) take the genre
+    hue (`color.genre`); no stripe on a card's edge (the 3 px genre edge
+    of §6.4a and the 8 px edge of the typographic card retire with the
+    head board in D3-3). Red still means recording.
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline

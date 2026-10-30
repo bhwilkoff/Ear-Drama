@@ -18,6 +18,8 @@ data class Artwork(
     val evidence: String? = null,
     /** Where a small crop centers (contract §3.3a), computed once in the pipeline. */
     val face: FaceBox? = null,
+    /** Published `[k, o]` levels (not yet in the projection); null takes the identity default. */
+    val grade: List<Double>? = null,
 ) {
     /**
      * The square a small slot (a row tile, a cast face) shows, normalized to the image
@@ -101,7 +103,14 @@ data class SeriesRow(
     val episodes: Int,
     /** The series' star and portrait (§3.3a), or null: its art is then the typographic card. */
     val face: Face? = null,
-)
+    /** The series' own window picture (§3.3a `series.picture`), or null: its window is then the title block. */
+    val picture: Artwork? = null,
+    /** What the picture is (read, never shown on a tile). */
+    val pictureKind: String? = null,
+) {
+    /** What the window draws: the published picture, else the star's portrait an older catalog carries. */
+    val windowArt: Artwork? get() = picture ?: face?.art
+}
 
 /** The light columns of `episodes` a list row shows; never `detail_json`. */
 data class EpisodeRow(
@@ -116,9 +125,12 @@ data class EpisodeRow(
     /** The series' genre and face, so a row that mixes series can draw its tile. */
     val seriesGenre: String? = null,
     val seriesFace: Face? = null,
+    val seriesPicture: Artwork? = null,
     /** Set only on Search's transcript matches: the shown transcript's own URL, where the snippet is read. */
     val transcriptUrl: String? = null,
-)
+) {
+    val seriesWindowArt: Artwork? get() = seriesPicture ?: seriesFace?.art
+}
 
 /** One broadcast season of a series page; [season] is null for undated episodes. */
 data class SeasonRow(val season: String?, val episodes: Int)

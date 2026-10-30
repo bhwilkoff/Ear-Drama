@@ -285,6 +285,13 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.sqlite.bundled.jvm)
+    // Grammar renders (GrammarRenderTest, opt-in): Compose on the JVM through Robolectric native graphics.
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.core)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.test.core)
 
     androidTestImplementation(libs.junit.ext)
     androidTestImplementation(libs.espresso.core)

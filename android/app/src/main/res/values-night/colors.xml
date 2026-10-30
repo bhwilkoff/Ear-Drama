@@ -15,4 +15,22 @@
     <color name="genre_news">#FFB4B3B3</color>
     <color name="genre_documentary">#FF7CB45A</color>
     <color name="genre_serial">#FFAA87DE</color>
+    <color name="board_drama">#FF5F2A4D</color>
+    <color name="board_mystery">#FF223F6F</color>
+    <color name="board_scifi">#FF004854</color>
+    <color name="board_western">#FF623018</color>
+    <color name="board_comedy">#FF543B00</color>
+    <color name="board_news">#FF424038</color>
+    <color name="board_documentary">#FF154C22</color>
+    <color name="board_serial">#FF473368</color>
+    <color name="on_board_drama">#FFF2F2F4</color>
+    <color name="on_board_mystery">#FFF2F2F4</color>
+    <color name="on_board_scifi">#FFF2F2F4</color>
+    <color name="on_board_western">#FFF2F2F4</color>
+    <color name="on_board_comedy">#FFF2F2F4</color>
+    <color name="on_board_news">#FFF2F2F4</color>
+    <color name="on_board_documentary">#FFF2F2F4</color>
+    <color name="on_board_serial">#FFF2F2F4</color>
+    <color name="print_ground">#FF2A2A2E</color>
+    <color name="print_edge">#29F2F2F4</color>
 </resources>

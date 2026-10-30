@@ -276,22 +276,164 @@
       el('span', { class: 'type-card-name' }, name || ''), line ? el('span', { class: 'caption' }, line) : null);
   }
 
+  /* ---- The grammar (WEB-DESIGN §6.4b): one skeleton per object, whatever it carries ---- */
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs, ...kids) {
+    const n = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== null && v !== undefined) n.setAttribute(k, v);
+    kids.forEach(c => n.append(c instanceof Node ? c : document.createTextNode(String(c))));
+    return n;
+  }
+  /** The picture's grade as one SVG filter per distinct grade: monochrome, then k * v + o in sRGB. */
+  const gradeIds = new Map();
+  function gradeFilter(art) {
+    const { k, o } = API.gradeOf(art);
+    const key = `${k}_${o}`;
+    if (gradeIds.has(key)) return gradeIds.get(key);
+    const id = `grade-${gradeIds.size}`;
+    let defs = document.getElementById('grade-defs');
+    if (!defs) {
+      defs = svgEl('svg', { id: 'grade-defs', width: 0, height: 0, 'aria-hidden': 'true', style: 'position:absolute' }, svgEl('defs'));
+      document.body.append(defs);
+    }
+    const lin = (ch) => svgEl(ch, { type: 'linear', slope: k, intercept: o });
+    defs.firstChild.append(svgEl('filter', { id, 'color-interpolation-filters': 'sRGB' },
+      svgEl('feColorMatrix', { type: 'saturate', values: '0' }),
+      svgEl('feComponentTransfer', {}, lin('feFuncR'), lin('feFuncG'), lin('feFuncB'))));
+    gradeIds.set(key, id);
+    return id;
+  }
+  /** The title block: the name's monogram as an outline in the board's onBoard color. */
+  function titleBlock(name) {
+    const m = API.monogram(name);
+    return svgEl('svg', { class: 'g-block', viewBox: '0 0 100 100', 'aria-hidden': 'true' },
+      svgEl('text', { x: 9, y: 93, 'font-size': API.blockSize(m) }, m));
+  }
+  /** Fills a window with the series' picture (crop or whole, graded) or the title block. */
+  function fillWindow(win, s, slot) {
+    const pic = s && (s.picture !== undefined ? s.picture : s.art);
+    const fill = API.windowFill(pic, slot);
+    win.replaceChildren();
+    win.dataset.genre = (s && s.genre) || '';
+    const block = () => { win.dataset.fill = 'block'; win.replaceChildren(titleBlock(s && s.name)); };
+    if (fill.kind === 'block') return block();
+    const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
+    const r = fill.kind === 'crop' ? fill.rect : null;
+    const pct = (v) => `${+(v * 100).toFixed(2)}%`;
+    const img = el('img', { src: API.artURL(pic, (r ? slot / r.w : slot) * dpr), alt: '', loading: 'lazy', decoding: 'async',
+      style: `filter: url(#${gradeFilter(pic)})${r ? `; width: ${pct(1 / r.w)}; height: ${pct(1 / r.h)}; left: ${pct(-r.x / r.w)}; top: ${pct(-r.y / r.h)}` : ''}` });
+    img.addEventListener('error', block);
+    win.dataset.fill = fill.kind;
+    win.append(img);
+  }
+  /** The window (one square slot): from the series when it is in hand, else from the index by key. */
+  function pictureWindow(s, slot) {
+    const win = el('span', { class: 'g-window', 'aria-hidden': 'true', dataset: { slot: String(slot) } });
+    if (s && (s.picture !== undefined || !s.key)) fillWindow(win, s, slot);
+    else {
+      fillWindow(win, { name: s && s.name, genre: s && s.genre }, slot);
+      if (s && s.key) win.dataset.series = s.key;
+    }
+    return win;
+  }
+  /** The run strip: the years from the first to the last broadcast on the fixed 1930 to 1962 axis. */
+  function runStrip(first, last, cls = 'g-strip', h = 18) {
+    const span = API.runSpan(first, last);
+    return svgEl('svg', { class: cls, viewBox: `0 0 100 ${h}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' },
+      svgEl('line', { class: 'g-axis', x1: 0, y1: h - 0.5, x2: 100, y2: h - 0.5 }),
+      span ? svgEl('rect', { x: (span.from * 100).toFixed(2), y: h - 15, width: ((span.to - span.from) * 100).toFixed(2), height: 15 }) : null);
+  }
+  /** An event line: the facts joined by " · ", each separator kept with the fact before it. */
+  function eventLine(facts, cls = 'caption') {
+    const parts = API.eventParts(facts);
+    if (!parts.length) return null;
+    return el('span', { class: `g-event ${cls}` }, ...parts.flatMap((p, i) => [i ? ' ' : null, el('span', {}, p.replace(/ \u00b7$/, '\u00a0\u00b7'))]));
+  }
+  /** The show tile: window, name, run strip, facts, on the genre's board. */
+  function showTile(s) {
+    const eps = typeof s.episodes === 'number' ? s.episodes : null;
+    return el('li', { class: 'g-tile-li' },
+      el('a', { class: 'g-tile', href: `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
+        pictureWindow(s, 200),
+        el('span', { class: 'g-name', dataset: { step: String(API.nameStep(s.name)) } }, s.name),
+        runStrip(s.first, s.last),
+        el('span', { class: 'g-facts caption' }, el('span', {}, years(s.first, s.last) || 'Undated'),
+          eps !== null ? el('span', {}, plural(eps, 'episode', 'episodes')) : null)));
+  }
+  /** The head board (series, episode, ear drama): the window, the kicker, the name, the facts, and
+      the run strip full width under both. Built in D3-1; the pages adopt it in D3-3. */
+  function headBoard({ series, kicker, name, facts, first, last }) {
+    const slot = typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches ? 176
+      : typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 128 : 96;
+    return el('header', { class: 'g-head', dataset: { genre: (series && series.genre) || '' } },
+      pictureWindow(series, slot),
+      el('div', { class: 'g-head-text' },
+        kicker ? el('span', { class: 'g-kicker caption' }, kicker) : null,
+        el('h1', { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) }, tabindex: '-1' }, name),
+        eventLine(facts || [], 'caption g-head-facts')),
+      runStrip(first, last, 'g-strip g-head-strip', 56));
+  }
+  /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
+      broken at its hyphens. */
+  function factDate(iso) { return iso ? iso.replace(/-/g, '\u2011') : null; }
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  /** The date block: the month and year in small caps over the day, on the series' board; an undated
+      numbered episode says "No." over its number. */
+  function dateBlock(ep, genre, key) {
+    const d = ep.date || '';
+    const [y, mo, day] = [d.slice(0, 4), +d.slice(5, 7) || 0, +d.slice(8, 10) || 0];
+    let small = '', big = '';
+    if (day && mo) { small = `${MON[mo - 1]} \u2019${y.slice(2)}`; big = String(day); }
+    else if (mo) { small = `\u2019${y.slice(2)}`; big = MON[mo - 1]; }
+    else if (y) { big = y; }
+    else if (ep.num !== null && ep.num !== undefined) { small = 'No.'; big = String(ep.num); }
+    const b = el('span', { class: 'g-date', 'aria-hidden': 'true', dataset: { genre: genre || '' } },
+      el('span', { class: 'g-date-small' }, small), el('span', { class: 'g-date-big', dataset: { len: String(big.length) } }, big));
+    if (!genre && key) b.dataset.series = key;
+    return b;
+  }
+  /** Fills windows and date blocks that know only their series key, from the series index. */
+  let gPending = false;
+  function paintGrammar() {
+    if (gPending) return;
+    gPending = true;
+    queueMicrotask(() => {
+      gPending = false;
+      const nodes = [...document.querySelectorAll('.g-window[data-series]:not([data-done]), .g-date[data-series]:not([data-done])')];
+      if (!nodes.length) return;
+      nodes.forEach(n => { n.dataset.done = '1'; });
+      API.seriesIndex().then(({ byKey }) => nodes.forEach(n => {
+        const s = byKey.get(n.dataset.series);
+        if (!s) return;
+        if (n.classList.contains('g-window')) fillWindow(n, s, +n.dataset.slot || 48);
+        else n.dataset.genre = s.genre || '';
+      })).catch(() => nodes.forEach(n => { delete n.dataset.done; }));
+    });
+  }
+  new MutationObserver(paintGrammar).observe(document.body, { childList: true, subtree: true });
+
   /* ---- Rows and cards ---- */
 
-  /** An episode row: date first (R1), then title; the series when the list mixes series. */
-  function episodeRow(ep, { showSeries = false, note = null } = {}) {
+  /** An episode row (§6.4b): the visual (the date block in one series' list, the series' window where
+      series mix; R1, the date leads), the title, the sub line, the length, Play. */
+  function episodeRow(ep, { showSeries = false, note = null, genre = null } = {}) {
     const progress = Store.progress(ep.id);
-    const sub = [showSeries ? ep.seriesName : null, note, fmtLength(ep.length)].filter(Boolean).join(' · ');
-    const link = el('a', { class: `ep-link${showSeries ? ' has-art' : ''}`, href: `?item=${encodeURIComponent(ep.id)}` },
-      showSeries ? artTile({ key: ep.series, name: ep.seriesName }) : null,
-      el('span', { class: 'ep-date tabular' }, ep.date || 'Undated'),
-      el('span', { class: 'ep-title body-strong' }, epTitle(ep)),
-      sub ? el('span', { class: 'ep-sub caption' }, sub) : null,
-      progress > 0 ? el('span', { class: 'ep-progress', 'aria-hidden': 'true' },
-        el('span', { style: null, dataset: { p: String(Math.round(progress * 100)) } })) : null);
-    const row = el('li', { class: 'ep-row' }, link,
+    const dateText = ep.date && (ep.date.length === 10 ? fmtLongDate(ep.date) : ep.date);
+    const sub = eventLine(showSeries ? [ep.seriesName, factDate(ep.date) || 'Undated', note] : [note]);
+    const len = fmtLength(ep.length);
+    const link = el('a', { class: 'ep-link g-link', href: `?item=${encodeURIComponent(ep.id)}`,
+                           'aria-label': [epTitle(ep), showSeries ? ep.seriesName : null, dateText || 'Undated', note, len].filter(Boolean).join(', ') },
+      showSeries ? pictureWindow({ key: ep.series, name: ep.seriesName }, 48) : dateBlock(ep, genre, ep.series),
+      el('span', { class: 'g-text' },
+        el('span', { class: 'ep-title body-strong' }, epTitle(ep)),
+        sub ? el('span', { class: 'ep-sub' }, sub) : null,
+        progress > 0 ? el('span', { class: 'ep-progress', 'aria-hidden': 'true' },
+          el('span', { style: null, dataset: { p: String(Math.round(progress * 100)) } })) : null));
+    const row = el('li', { class: 'ep-row g-row' }, link,
+      len ? el('span', { class: 'g-len tabular', 'aria-hidden': 'true' }, len) : null,
       ep.url ? el('button', {
-        type: 'button', class: 'icon-btn', 'aria-label': `Play ${epTitle(ep)}, ${ep.date || 'undated'}`,
+        type: 'button', class: 'icon-btn g-play', 'aria-label': `Play ${epTitle(ep)}, ${ep.date || 'undated'}`,
         onclick: () => Player.load({ ...ep, title: epTitle(ep) }),
       }, icon('play')) : null);
     return row;
@@ -307,25 +449,21 @@
     root.querySelectorAll('.ep-progress > span[data-p]').forEach(s => { s.style.width = `${s.dataset.p}%`; });
   }
 
-  function seriesCard(s) {
-    return el('li', {},
-      el('a', { class: 'series-card', href: `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
-        artTile(s),
-        el('span', { class: 'body-strong series-card-name' }, s.name),
-        el('span', { class: 'caption' }, seriesMeta(s))));
-  }
   function shelf(title, items, idBase) {
     const h = el('h2', { class: 'section-header', id: `${idBase}-h` }, title);
-    const ul = el('ul', { class: 'rail', 'aria-labelledby': `${idBase}-h` });
-    items.forEach(s => ul.append(seriesCard(s)));
+    const ul = el('ul', { class: 'rail g-rail', 'aria-labelledby': `${idBase}-h` });
+    items.forEach(s => ul.append(showTile(s)));
     return el('section', { class: 'shelf' }, h, ul);
   }
+  /** A series in a list (§6.4b's row): its window, the name, an event line of its facts. */
   function seriesRow(s) {
-    return el('li', { class: 'series-row' },
-      el('a', { href: `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
-        artTile(s),
-        el('span', { class: 'series-row-text' }, el('span', { class: 'body-strong' }, s.name),
-          el('span', { class: 'caption' }, seriesMeta(s)))));
+    const sub = eventLine([s.networks, years(s.first, s.last) || 'Undated',
+      s.episodes ? plural(s.episodes, 'episode', 'episodes') : null]);
+    return el('li', { class: 'series-row g-row' },
+      el('a', { class: 'g-link', href: `?series=${encodeURIComponent(s.key)}` },
+        pictureWindow(s, 48),
+        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, s.name),
+          sub ? el('span', { class: 'ep-sub' }, sub) : null)));
   }
 
   /* ================================================================
@@ -749,11 +887,13 @@
     return [PlaysCore.authorLine(script), plural(parts, 'part', 'parts')].filter(Boolean).join(' · ');
   }
   function playRow(script) {
-    return el('li', { class: 'series-row ear-drama-only' },
-      el('a', { href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: '' } },
-        artTile({ name: script.title }),
-        el('span', { class: 'series-row-text' }, el('span', { class: 'body-strong' }, script.title),
-          el('span', { class: 'caption' }, playMeta(script)))));
+    const sub = eventLine([PlaysCore.authorLine(script),
+      plural(PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')]);
+    return el('li', { class: 'series-row g-row ear-drama-only' },
+      el('a', { class: 'g-link', href: `?play=${encodeURIComponent(script.id)}` },
+        pictureWindow({ name: script.title, picture: null }, 48),
+        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, script.title),
+          sub ? el('span', { class: 'ep-sub' }, sub) : null)));
   }
   /** The plays, or none when the file does not load: Browse and Search still list the series. */
   const castable = () => API.castableScripts().catch((err) => { console.error(err); return []; });
@@ -889,7 +1029,7 @@
         const eps = v === 'undated' ? s.episodes.filter(e => !e.date)
           : v ? s.episodes.filter(e => e.season === v) : s.episodes;
         countLine.textContent = plural(eps.length, 'episode', 'episodes');
-        listBox.replaceChildren(eps.length ? episodeList(eps) : stateBox('empty', { text: 'No episodes in this season.' }));
+        listBox.replaceChildren(eps.length ? episodeList(eps, { genre: s.genre }) : stateBox('empty', { text: 'No episodes in this season.' }));
       };
 
       const meta = el('p', { class: 'caption' }, seriesMeta({ ...s, episodes: s.episodes.length }));
@@ -1067,7 +1207,7 @@
               el('span', { class: 'caption' }, plural(g.episodes.length, 'episode', 'episodes'))),
             (() => {
               const ul = el('ul', { class: 'ep-list' });
-              g.episodes.forEach(e => ul.append(episodeRow({ ...e, seriesName: name }, { note: rolesLine(e.roles) })));
+              g.episodes.forEach(e => ul.append(episodeRow({ ...e, seriesName: name }, { note: rolesLine(e.roles), genre: s ? s.genre : null })));
               paintProgress(ul);
               return ul;
             })()));
@@ -1274,7 +1414,7 @@
   /** The line where the words are said, verbatim from the automatic transcript; nothing when it does not load. */
   async function quoteInto(ep, row, words) {
     const quote = el('span', { class: 'ep-quote caption' });
-    row.querySelector('.ep-link').append(quote);
+    row.querySelector('.g-text').append(quote);
     try {
       const d = await API.episodeDetail(ep.id);
       const text = d && d.transcript ? await API.transcript(d.transcript) : null;
