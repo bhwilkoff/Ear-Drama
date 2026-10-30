@@ -447,20 +447,19 @@ private struct SeriesScreen_tvOS: View {
             case let .some(.some(page)):
                 List {
                     Section {
-                        HStack(alignment: .top, spacing: Spacing.s6) {
-                            if let face = page.series.face { FaceFigure(face: face, height: 250) }
-                            VStack(alignment: .leading, spacing: Spacing.s2) {
-                                Text(page.series.name).font(TypeRamp.pageTitle)
-                                Text(verbatim: page.series.metaLine)
-                                    .font(TypeRamp.caption)
-                                    .foregroundStyle(Color.brandTextMuted)
-                            }
-                        }
-                        .focusable(false)
+                        HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
+                                  art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
+                                  facts: SeriesHead.facts(page.series), showsCredit: true)
+                            .listRowBackground(Color.clear)
+                        // Follow is the first focus stop; only the focused control is bright.
                         let on = follows.isFollowing(page.series.key)
-                        Button { follows.toggle(page.series.key) } label: {
-                            Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
+                        ActionRow {
+                            Button { follows.toggle(page.series.key) } label: {
+                                Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
+                            }
+                            .pageAction(primary: true)
                         }
+                        .listRowBackground(Color.clear)
                     }
                     ForEach(page.seasons) { season in
                         Section(season.season ?? "Undated") {
@@ -546,6 +545,8 @@ private struct EpisodeScreen_tvOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @State private var detail: EpisodeDetail??
+    @State private var show: SeriesRow?
+    @State private var creditsOpen = false
     @State private var transcriptOpen = false
     @FocusState private var playFocused: Bool
 
@@ -559,33 +560,36 @@ private struct EpisodeScreen_tvOS: View {
         }
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
-            detail = .some(await catalog.episodeDetail(id))
+            let loaded = await catalog.episodeDetail(id)
+            if let loaded { show = await catalog.series([loaded.episode.seriesKey]).first }
+            detail = .some(loaded)
         }
     }
 
     private func content(_ detail: EpisodeDetail) -> some View {
         let episode = detail.episode
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
+        let lead = Grammar.leadPicture(series: show, credits: detail.credits, star: detail.star)
+        let genre = show?.genre ?? episode.seriesGenre
+        let onAir = Grammar.onAirOf(detail.credits)
         return ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: Spacing.s8) {
-                HStack(alignment: .top, spacing: Spacing.s8) {
-                    if let face = detail.starFace { FaceFigure(face: face, height: 300) }
-                    VStack(alignment: .leading, spacing: Spacing.s3) {
-                        Text(episode.seriesName)
-                            .font(TypeRamp.bodyStrong)
-                            .foregroundStyle(Color.brandTextMuted)
-                        Text(episode.displayTitle)
-                            .font(TypeRamp.pageTitle)
-                            .foregroundStyle(Color.brandText)
-                        Text(verbatim: [AirDate.display(episode.airDate), episode.network, detail.sponsor,
-                                        episode.durationText].compactMap { $0 }.joined(separator: " · "))
-                            .font(TypeRamp.tabular)
-                            .foregroundStyle(Color.brandTextMuted)
-                    }
+                HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
+                          first: show?.firstDate, last: show?.lastDate,
+                          facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
+                          link: .series(episode.seriesKey), showsCredit: true)
+
+                VStack(alignment: .leading, spacing: Spacing.s2) {
+                    Text(episode.displayTitle)
+                        .font(TypeRamp.pageTitle)
+                        .foregroundStyle(Color.brandText)
+                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate, network: episode.network, sponsor: detail.sponsor,
+                                                          length: episode.durationText, season: episode.season,
+                                                          title: episode.title, number: episode.number))
                 }
                 .accessibilityElement(children: .combine)
 
-                HStack(spacing: Spacing.s6) {
+                ActionRow {
                     // tvOS auto-focuses Play on Detail (an inversion of the
                     // iOS rule, which never steals focus).
                     Button {
@@ -598,13 +602,10 @@ private struct EpisodeScreen_tvOS: View {
                     } label: {
                         Label("Play", systemImage: "play.fill")
                     }
-                    .tint(Color.brandPrimary)
+                    .pageAction(primary: true)
                     .focused($playFocused)
                     .disabled(detail.recordings.isEmpty)
                     QueueToggleButton(episodeID: episode.id)
-                    NavigationLink(value: Route.series(episode.seriesKey)) {
-                        Label("Series", systemImage: "square.stack")
-                    }
                     if episode.transcriptURL != nil {
                         Button {
                             transcriptOpen = true
@@ -613,40 +614,52 @@ private struct EpisodeScreen_tvOS: View {
                         }
                     }
                 }
-                .focusSection()
 
                 if !catalog.isOnline { OfflineNotice() }
 
+                if !onAir.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.s3) {
+                        Text("On the air").font(TypeRamp.sectionHeader)
+                        OnAirFaces(credits: onAir, genre: genre)
+                        PictureCredit(arts: onAir.map(\.art), slot: 72)
+                    }
+                    .focusSection()
+                }
+
                 // withPerson (§4.11): every credited name is a focus stop that pushes the person.
-                VStack(alignment: .leading, spacing: Spacing.s6) {
-                    ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
-                        let faces = group.credits.contains { $0.art != nil }
-                        VStack(alignment: .leading, spacing: Spacing.s2) {
-                            Text(group.role).font(TypeRamp.bodyStrong)
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 520), alignment: .leading)],
-                                      alignment: .leading, spacing: Spacing.s3) {
-                                ForEach(group.credits) { credit in
-                                    NavigationLink(value: Route.person(credit.personID)) {
-                                        HStack(spacing: Spacing.s3) {
-                                            // Decision 069: portraits on cast lines; the slot stays so names align.
-                                            if faces { CreditFace(art: credit.art, size: 64) }
-                                            Text(credit.line).font(TypeRamp.body)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
+                if !detail.credits.isEmpty {
+                    VStack(alignment: .leading, spacing: Spacing.s6) {
+                        Button {
+                            creditsOpen.toggle()
+                        } label: {
+                            HStack {
+                                Text("Cast and credits").font(TypeRamp.bodyStrong)
+                                Spacer(minLength: 0)
+                                Text(verbatim: detail.credits.count.formatted())
+                                    .font(TypeRamp.caption)
+                                    .foregroundStyle(Color.brandTextMuted)
+                                Image(systemName: creditsOpen ? "chevron.up" : "chevron.down")
+                            }
+                        }
+                        if creditsOpen {
+                            ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
+                                VStack(alignment: .leading, spacing: Spacing.s2) {
+                                    Text(group.role).font(TypeRamp.bodyStrong)
+                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 520), alignment: .leading)],
+                                              alignment: .leading, spacing: Spacing.s3) {
+                                        ForEach(group.credits) { credit in
+                                            NavigationLink(value: Route.person(credit.personID)) {
+                                                Text(credit.line).font(TypeRamp.body)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                            }
+                                            .disabled(credit.personID.isEmpty)
                                         }
                                     }
-                                    .disabled(credit.personID.isEmpty)
                                 }
                             }
                         }
                     }
-                }
-                .focusSection()
-                ForEach(detail.owedCredits, id: \.personID) { credit in
-                    if let line = credit.art?.credit {
-                        Text(verbatim: "\(credit.name): \(line)")
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                    }
+                    .focusSection()
                 }
 
                 if detail.recordings.count > 1 {
@@ -683,7 +696,7 @@ private struct VersionsSection_tvOS: View {
     var body: some View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         VStack(alignment: .leading, spacing: Spacing.s4) {
-            Text("Versions").font(TypeRamp.sectionHeader)
+            Text("Recordings").font(TypeRamp.sectionHeader)
             ForEach(detail.recordings.sorted { $0.rank < $1.rank }) { recording in
                 Button {
                     play(detail.episode.id, recording: recording, presentPlayer: true)

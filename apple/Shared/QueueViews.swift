@@ -29,9 +29,10 @@ struct QueueToggleButton: View {
         Button {
             if queued { queue.remove(episodeID) } else { queue.add(episodeID) }
         } label: {
-            Label(queued ? "In queue" : "Add to queue",
-                  systemImage: queued ? "text.badge.checkmark" : "text.badge.plus")
+            ActionLabel(title: queued ? "In queue" : "Add to queue",
+                        systemImage: queued ? "text.badge.checkmark" : "text.badge.plus")
         }
+        .pageAction()
         #if !os(tvOS)
         .sensoryFeedback(Haptic.light.feedback, trigger: queued)
         #endif

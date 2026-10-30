@@ -52,6 +52,11 @@ Mac uses the same Core, so the same code holds them:
   `apple/Shared/Grammar.swift` components, the pointer's hover lifting a
   tile's board, never a stripe;
   **R11c** Home and Browse as iOS-DESIGN R11c (owner, 2026-10-29: *"Having more shows is better, so 5."* and *"I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac."*; D3-2): shows are series of five or more episodes, the day board and its years strip, that night's tiles, Most downloaded, and Browse's count line, decade by genre field (beside the grid, always regular width) and tile grid; tiles hover-lift, the grid is reachable by keyboard;
+  **R11d** series and episode pages in direction D, as iOS-DESIGN R11d
+  (WEB-DESIGN §6.4d): the head board, one button row that never wraps
+  apart, On the air as round faces that lift on hover, Cast and credits
+  folded; the toolbar keeps the series' download menu, the menu bar and
+  keyboard commands are unchanged;
   **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).

@@ -126,6 +126,32 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `ShowTile`; Browse and every series list draw `GrammarRow`. The 56 pt
   `ArtTile` and the genre's 3 pt edge on rows retire with them.
 - **R11c Home and Browse** (owner, 2026-10-29: *"Having more shows is better, so 5."* and *"I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac."*; D3-2; WEB-DESIGN §6.4c is the shared text). A show is a series of at least five episodes (`ShowLine.isShow`); tiles in shelves and grids are shows only, and the rest are single recordings, counted and reached by a link that lists them in the same grid. Home, top to bottom, each section only with data: Continue listening, Following, the day board ("This day in radio", the date, the count, a years strip stacked by genre in the mark colors on the fixed axis from 1930, the selected year outlined, default the peak; a tap on the strip selects the year; a legend of the genres seen), that night's show tiles (six, then "All N shows that night" in place; each tile's facts are the episode title and length and it opens the episode; the single recordings counted on the right), and Most downloaded (12 show tiles, "All N shows" opens Browse). Most heard voices and New ear dramas are not built (no published list). Browse keeps every filter and sort and replaces the list with a count line ("N shows", and "N single recordings" as a plain link), the decade by genre field (a square per cell sized by `ShowLine.fieldSide`, the count under it, "N with no genre" only when above zero; a cell applies its genre and decade; counts are over the shows passing the other filters), and a grid of `ShowTile` headed by the sort ("A to Z", "Most downloaded first", "Most episodes", "Oldest first"), paged by 60. The field sits beside the grid at regular width and above it on iPhone. Plays are title-block tiles (author and parts).
+- **R11d Series and episode pages in direction D** (owner, 2026-10-29:
+  *"an item with a picture, without one, rich or sparse, renders in the
+  same structure"*; *"a share button that goes to the next line instead of
+  being next to the other buttons"*; D3-3; the shared text is WEB-DESIGN
+  §6.4d). It retires `FaceHero` (the print, the plate) and the typographic
+  head on these two pages. **The series page** is `HeadBoard` (kicker: the
+  genre, then the networks; name; facts: the years or "Undated", then the
+  episodes; the run strip), one `ActionRow` (Follow, Share), the picture's
+  credit when its license asks and the window shows it, then the seasons
+  and episodes as before. **The episode page** is the `HeadBoard` of its
+  show (a link to the series; the show's name is the line under the
+  page's own title), led by `Grammar.leadPicture`, then the episode's
+  title, its event line (`Grammar.episodeFacts`), one `ActionRow` (Play,
+  Add to queue, Download while there is nothing to show of it, Share), a
+  long action ("Start an ear drama") and the download's progress on their
+  own rows, **On the air** (`Grammar.onAirOf`: round 72 pt
+  `PictureWindow`s over the name and the character, six at most, a face
+  with no picture the title block, a name that has a page opens it), "Cast
+  and credits" folded in a `DisclosureGroup`, then the recordings and the
+  rights line. A section with nothing in it is not drawn. **A button row
+  never wraps apart**: an `HStack` inside `ViewThatFits`; when the labels
+  do not fit, the secondary buttons fold to 44 pt icons (the title kept
+  as the accessibility label) and the primary takes the room. At regular
+  width the page keeps a 720 pt column (`ReadableColumn`) and the board
+  spans it. The rules are golden-tested in `PagesRulesTests` with the
+  web's cases.
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the

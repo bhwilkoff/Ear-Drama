@@ -512,18 +512,24 @@ struct SeriesScreen: View {
                 EmptyState("Series not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 List {
-                    if let face = page.series.face {
-                        Section {
-                            FaceHero(face: face, genre: page.series.genre, facts: page.series.metaLine)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
-                                .listRowBackground(Color.clear)
+                    Section {
+                        HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
+                                  art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
+                                  facts: SeriesHead.facts(page.series), showsCredit: true)
+                            .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        ActionRow {
+                            FollowButton(key: page.series.key).pageAction(primary: true)
+                            ShareLink(item: SiteLinks.series(page.series.key), subject: Text(page.series.name)) {
+                                ActionLabel(title: "Share", systemImage: "square.and.arrow.up")
+                            }
+                            .pageAction()
+                            .help("Share")
                         }
-                    } else {
-                        Section {
-                            Text(verbatim: page.series.metaLine)
-                                .font(TypeRamp.caption)
-                                .foregroundStyle(Color.brandTextMuted)
-                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                     ForEach(page.seasons) { season in
                         Section {
@@ -538,10 +544,10 @@ struct SeriesScreen: View {
                         }
                     }
                 }
+                .modifier(ReadableColumn())
                 .navigationTitle(page.series.name)
                 .toolbar {
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        FollowButton(key: page.series.key)
+                    ToolbarItem(placement: .primaryAction) {
                         SeriesDownloadMenu(page: page)
                     }
                 }
@@ -549,7 +555,7 @@ struct SeriesScreen: View {
             }
         }
         #if os(iOS)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         #endif
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
@@ -573,6 +579,7 @@ struct EpisodeScreen: View {
     @State private var transcriptOpen = false
     #endif
     @State private var detail: EpisodeDetail??
+    @State private var show: SeriesRow?
 
     var body: some View {
         Group {
@@ -587,7 +594,9 @@ struct EpisodeScreen: View {
         }
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
-            detail = .some(await catalog.episodeDetail(id))
+            let loaded = await catalog.episodeDetail(id)
+            if let loaded { show = await catalog.series([loaded.episode.seriesKey]).first }
+            detail = .some(loaded)
         }
         .task { await plays.load() }
     }
@@ -596,49 +605,63 @@ struct EpisodeScreen: View {
         let episode = detail.episode
         let isCurrent = player.item?.episode.id == episode.id
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
+        let lead = Grammar.leadPicture(series: show, credits: detail.credits, star: detail.star)
+        let genre = show?.genre ?? episode.seriesGenre
+        let onAir = Grammar.onAirOf(detail.credits)
+        let downloadState = downloads.record(for: episode.id)?.state
+        let rowInsets = EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4)
         return List {
-            if let face = detail.starFace {
-                Section {
-                    FaceHero(face: face, genre: episode.seriesGenre)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
-                        .listRowBackground(Color.clear)
-                }
-            }
             Section {
-                HStack(alignment: .top, spacing: Spacing.s3) {
-                    VStack(alignment: .leading, spacing: Spacing.s2) {
-                        NavigationLink(value: Route.series(episode.seriesKey)) {
-                            Text(episode.seriesName)
-                                .font(TypeRamp.body)
-                                .foregroundStyle(Color.brandLink)
-                        }
-                        Text(episode.displayTitle)
-                            .font(TypeRamp.sectionHeader)
-                            .foregroundStyle(Color.brandText)
-                        Text(verbatim: factsLine(detail))
-                            .font(TypeRamp.tabular)
-                            .foregroundStyle(Color.brandTextMuted)
-                    }
+                HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
+                          first: show?.firstDate, last: show?.lastDate,
+                          facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
+                          link: .series(episode.seriesKey), showsCredit: true)
+                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                VStack(alignment: .leading, spacing: Spacing.s1) {
+                    Text(episode.displayTitle)
+                        .font(TypeRamp.pageTitle)
+                        .foregroundStyle(Color.brandText)
+                        .accessibilityAddTraits(.isHeader)
+                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate, network: episode.network, sponsor: detail.sponsor,
+                                                          length: episode.durationText, season: episode.season,
+                                                          title: episode.title, number: episode.number))
                 }
-                .padding(.vertical, Spacing.s2)
+                .listRowInsets(rowInsets)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
 
-                Button {
-                    if isCurrent { player.togglePlayPause() } else { play(episode.id) }
-                } label: {
-                    Label(isCurrent && player.isPlaying ? "Pause" : "Play",
-                          systemImage: isCurrent && player.isPlaying ? "pause.fill" : "play.fill")
-                        .font(TypeRamp.bodyStrong)
-                        // A List row draws a Label's icon in the app tint, not the button's.
-                        .foregroundStyle(detail.recordings.isEmpty ? Color.brandTextMuted : Color.brandPrimary)
+                ActionRow {
+                    Button {
+                        if isCurrent { player.togglePlayPause() } else { play(episode.id) }
+                    } label: {
+                        Label(isCurrent && player.isPlaying ? "Pause" : "Play",
+                              systemImage: isCurrent && player.isPlaying ? "pause.fill" : "play.fill")
+                    }
+                    .pageAction(primary: true)
+                    .disabled(detail.recordings.isEmpty)
+                    QueueToggleButton(episodeID: episode.id)
+                    if downloadState == nil { DownloadControl(detail: detail) }
+                    ShareLink(item: SiteLinks.episode(episode.id), subject: Text(episode.displayTitle)) {
+                        ActionLabel(title: "Share", systemImage: "square.and.arrow.up")
+                    }
+                    .pageAction()
+                    .help("Share")
                 }
-                .tint(Color.brandPrimary)
-                .disabled(detail.recordings.isEmpty)
-                QueueToggleButton(episodeID: episode.id)
-                DownloadControl(detail: detail)
+                .listRowInsets(rowInsets)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+
                 // Decision 068: an episode linked to a castable script this bundle holds.
                 if let id = detail.script, let script = plays.script(id) {
                     StartEarDramaButton(script: script)
+                        .pageAction()
+                        .listRowInsets(rowInsets)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
+                if downloadState != nil { DownloadControl(detail: detail) }
                 if let url = episode.transcriptURL {
                     Button {
                         #if os(macOS)
@@ -658,36 +681,48 @@ struct EpisodeScreen: View {
                 }
             }
 
-            ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
-                let faces = group.credits.contains { $0.art != nil }
-                Section(group.role) {
-                    ForEach(group.credits) { credit in
-                        // withPerson (§4.13): a credited name pushes the person's page.
-                        NavigationLink(value: Route.person(credit.personID)) {
-                            HStack(spacing: Spacing.s2) {
-                                if faces { CreditFace(art: credit.art) }
-                                Text(credit.line).font(TypeRamp.body)
-                            }
-                        }
-                        .disabled(credit.personID.isEmpty)
-                    }
+            if !onAir.isEmpty {
+                Section {
+                    OnAirFaces(credits: onAir, genre: genre)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    PictureCredit(arts: onAir.map(\.art), slot: 72)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                } header: {
+                    Text("On the air")
                 }
             }
-            // CC BY / BY-SA portraits carry their credit (Decision 069); the heading's face already does.
-            let owed = detail.owedCredits
-            if !owed.isEmpty {
+
+            if !detail.credits.isEmpty {
                 Section {
-                    ForEach(owed, id: \.personID) { credit in
-                        if let art = credit.art, let line = art.credit {
-                            LabeledContent(credit.name) { ArtCredit(credit: line, evidence: art.evidence) }
+                    DisclosureGroup {
+                        ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
+                            Text(group.role)
                                 .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                            ForEach(group.credits) { credit in
+                                // withPerson (§4.13): a credited name pushes the person's page.
+                                NavigationLink(value: Route.person(credit.personID)) {
+                                    Text(credit.line).font(TypeRamp.body)
+                                }
+                                .disabled(credit.personID.isEmpty)
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Cast and credits").font(TypeRamp.bodyStrong)
+                            Spacer(minLength: 0)
+                            Text(verbatim: detail.credits.count.formatted())
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
                         }
                     }
                 }
             }
 
             if detail.recordings.count > 1 {
-                Section("Versions") {
+                Section("Recordings") {
                     ForEach(detail.recordings) { recording in
                         Button {
                             play(episode.id, recording: recording)
@@ -707,28 +742,14 @@ struct EpisodeScreen: View {
                 }
             }
         }
+        .modifier(ReadableColumn())
         .navigationTitle(episode.displayTitle)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                // The https twin, never the file (iOS-DESIGN §4.4, DEEP_LINKS.md).
-                ShareLink(item: SiteLinks.episode(episode.id), subject: Text(episode.displayTitle)) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-                .help("Share")
-            }
-        }
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $transcriptOpen) {
             if let url = episode.transcriptURL { TranscriptSheet_iOS(url: url) }
         }
         #endif
-    }
-
-    private func factsLine(_ detail: EpisodeDetail) -> String {
-        let e = detail.episode
-        return [AirDate.display(e.airDate), e.network, detail.sponsor, e.durationText]
-            .compactMap { $0 }.joined(separator: " · ")
     }
 }
 

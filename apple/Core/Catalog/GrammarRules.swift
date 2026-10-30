@@ -86,6 +86,43 @@ nonisolated enum Grammar {
     /// documented identity default.
     static func gradeOf(_ art: Artwork?) -> Artwork.Grade { art?.grade ?? .identity }
 
+    /// The picture that leads an episode's head board (WEB-DESIGN §6.4d, the web's `API.leadPicture`):
+    /// the show's own image when the series picture is of the show, else the episode's star (the
+    /// credit the row names, else the first cast with a picture), else the series' picture, else nil.
+    static func leadPicture(series: SeriesRow?, credits: [Credit], star: String?) -> Artwork? {
+        if let picture = series?.picture, series?.pictureKind == "show" { return picture }
+        let cast = credits.filter { $0.art != nil && ($0.role ?? "cast") == "cast" }
+        let pick = star.flatMap { star in cast.first { $0.personID == star } } ?? cast.first
+        return pick?.art ?? series?.picture
+    }
+
+    /// Who is "On the air": the cast in billing order, each person once, at most `limit`.
+    static func onAirOf(_ credits: [Credit], limit: Int = 6) -> [Credit] {
+        var seen = Set<String>()
+        var out: [Credit] = []
+        for credit in credits where (credit.role ?? "cast") == "cast" {
+            let key = credit.personID.isEmpty ? credit.name : credit.personID
+            if !seen.insert(key).inserted { continue }
+            out.append(credit)
+            if out.count >= limit { break }
+        }
+        return out
+    }
+
+    /// The facts of an episode's event line: its date (or Undated), network, sponsor, length,
+    /// season, and its number when the title does not already say it. `date` and `length` arrive
+    /// formatted.
+    static func episodeFacts(date: String?, network: String?, sponsor: String?, length: String?,
+                             season: String?, title: String?, number: Int?) -> [String] {
+        let named = !(title ?? "").isEmpty
+        let facts: [String?] = [
+            (date ?? "").isEmpty ? "Undated" : date, network, sponsor, length,
+            (season ?? "").isEmpty ? nil : "Season \(season ?? "")",
+            named ? number.map { "No. \($0)" } : nil,
+        ]
+        return facts.compactMap { $0 }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
     /// The date block's two lines: the month and year over the day; an undated numbered episode
     /// says "No." over its number.
     static func dateBlock(date: String?, number: Int?) -> (small: String, big: String) {
