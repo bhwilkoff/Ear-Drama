@@ -220,4 +220,13 @@ describing."*
   sections; Android rows carry no network; web player lacks queue and share verbs.
 - Enforced now (.claude/hooks/device-guard.py): no simulators, no unmuted Chrome, the runbook
   section before device commands. webdrive.Browser is muted by default.
+- 2026-10-30 afternoon: D3 is built. D3-5 Library, D3-6 Create (three modes), D3-fix2, P-3
+  titles, the tap-tier and seek fixes, and D3-7 invite/dramas/share are merged. Device bench:
+  iPad, Pixel, and Ben Bedroom (lease atv). Waiting on the next ship: branch
+  worktree-agent-ade95e0af07854150 (the stall watchdog on all three players: 30 s with no new
+  bytes while wanting data goes through LoadRecovery; dae2f06, 9c3f7ca, d31ce15; checks green,
+  not yet seen on a device). Merge it, then verify once.
+- Next: D4 (human-shaped review, parity audit, the owner plays on devices). Token rules are in
+  memory (loop_token_economy): Sonnet agents, one at a time on overlapping code, verify once per
+  ship.
 - Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
