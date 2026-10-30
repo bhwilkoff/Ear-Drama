@@ -100,7 +100,13 @@ fi
 draft_note="the draft $tag stays on $REPO; nothing restores from a draft. Delete it on the Releases page, then run this again"
 bash "$HERE/gh_retry.sh" gh release create "$tag" -R "$REPO" --draft --title "Catalog ${tag#catalog-}" \
   --notes-file "$dir/NOTES.md" || die "creating the draft failed; if it was made, $draft_note"
-n=$(gh api "repos/$REPO/releases" --paginate --jq '.[].tag_name' 2>&1 | grep -cxF "$tag")
+# GitHub's Release list can lag a create by a few seconds (2026-10-29: the count ran
+# at once, read 0, and stranded a good draft), so it is asked again before refusing.
+for try in 1 2 3 4 5 6 7 8 9 10; do
+  n=$(gh api "repos/$REPO/releases" --paginate --jq '.[].tag_name' 2>&1 | grep -cxF "$tag")
+  [ "$n" = 0 ] || break
+  sleep "${CUT_LIST_WAIT:-3}"
+done
 [ "$n" = 1 ] || die "found $n Releases named $tag after creating one; $draft_note"
 for f in "${assets[@]}"; do
   bash "$HERE/gh_retry.sh" gh release upload "$tag" -R "$REPO" "$dir/$f" || die "uploading $f failed; $draft_note"

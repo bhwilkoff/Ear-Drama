@@ -23,13 +23,19 @@ printf '%s\n' "$*" >> "$st/calls"
 case "$1 $2" in
   "api repos/"*)
     case "$2" in
-      */releases) cat "$st/releases" ;;
+      */releases)
+        if [ -s "$st/pending" ]; then
+          c=$(( $(cat "$st/lag" 2>/dev/null || echo 0) - 1 ))
+          if [ "$c" -le 0 ]; then cat "$st/pending" >> "$st/releases"; : > "$st/pending"; else echo "$c" > "$st/lag"; fi
+        fi
+        cat "$st/releases" ;;
       */git/ref/tags/*)
         t=${2##*/}
         if grep -qxF "$t" "$st/gitrefs"; then echo '{"ref":"refs/tags/'"$t"'"}'; exit 0; fi
         echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;;
     esac ;;
-  "release create") echo "$3" >> "$st/releases" ;;
+  "release create")
+    if [ -n "${FAKE_LAG:-}" ]; then echo "$3" > "$st/pending"; echo "$FAKE_LAG" > "$st/lag"; else echo "$3" >> "$st/releases"; fi ;;
   "release upload")
     for a in "$@"; do [ -f "$a" ] && p="$a"; done
     sum=$( (sha256sum "$p" 2>/dev/null || shasum -a 256 "$p") | awk '{print $1}')
@@ -151,6 +157,11 @@ _, b, st, d = setup()
 rc, out, calls = run(b, st, d, TAG, env_extra={"FAKE_CORRUPT": "1"})
 check("a corrupted upload is refused", rc != 0 and "sha256" in out, out)
 check("a corrupted upload stays a draft", not os.path.exists(os.path.join(st, "published")), calls)
+
+# 9b. GitHub's Release list lags the create (2026-10-29: read 0 at once, stranded a good draft).
+_, b, st, d = setup()
+rc, out, calls = run(b, st, d, TAG, env_extra={"FAKE_LAG": "3", "CUT_LIST_WAIT": "0"})
+check("a lagging Release list is asked again, then the run publishes", rc == 0 and os.path.exists(os.path.join(st, "published")), out)
 
 # 10. Static: no line of the script uploads with --clobber.
 with open(SCRIPT) as f:
