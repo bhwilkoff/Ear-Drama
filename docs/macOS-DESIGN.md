@@ -51,6 +51,7 @@ Mac uses the same Core, so the same code holds them:
   **R11b** one grammar, as iOS-DESIGN R11b (owner, 2026-10-29: *"the design is still not uniform for all different levels of content (some with images, some without, some with more information, some with less). We need to a design approach that evens out all of the inconsistencies and make the app look like one complete thought."*; `catalog-experience-design` rule 11; D3-1): the same
   `apple/Shared/Grammar.swift` components, the pointer's hover lifting a
   tile's board, never a stripe;
+  **R11c** Home and Browse as iOS-DESIGN R11c (owner, 2026-10-29: *"Having more shows is better, so 5."* and *"I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac."*; D3-2): shows are series of five or more episodes, the day board and its years strip, that night's tiles, Most downloaded, and Browse's count line, decade by genre field (beside the grid, always regular width) and tile grid; tiles hover-lift, the grid is reachable by keyboard;
   **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).

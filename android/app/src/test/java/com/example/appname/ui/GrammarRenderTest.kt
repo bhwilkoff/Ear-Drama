@@ -155,6 +155,56 @@ class GrammarRenderTest {
         GrammarRow("Dimension X", { m -> PictureWindow(tiny, "Dimension X", "scifi", m) }, {}, sub = listOf("1950–1951", "50 episodes"), openLabel = "Open series")
     }
 
+    private data class Bc(val date: String, val genre: String)
+
+    private val dayRows: List<Bc> = buildList {
+        val per = mapOf(
+            1930 to listOf("drama"), 1934 to listOf("mystery", "drama"), 1938 to listOf("comedy", "comedy", "drama"),
+            1941 to listOf("western", "scifi", "serial", "news"),
+            1944 to List(9) { "drama" } + List(6) { "mystery" } + List(4) { "comedy" } + listOf("documentary", "serial", ""),
+            1947 to listOf("mystery", "scifi", "", "drama"), 1952 to listOf("drama", "western"), 1958 to listOf("news"),
+        )
+        per.forEach { (y, gs) -> gs.forEach { add(Bc("$y-10-29", it)) } }
+    }
+
+    @Test fun dayBoard() = shoot("home-day") {
+        val years = com.example.appname.data.dayYears(dayRows, { it.date }, { it.genre })
+        DayBoard("October 29", years, years.peak, onSelect = {})
+        SectionHeading("October 29, 1944") {
+            androidx.compose.material3.Text("12 single recordings", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        TileGrid(
+            listOf(shelfA[0], shelfA[2], shelfB[0], shelfB[3], shelfB[4], shelfB[5]).mapIndexed { i, s ->
+                TileSpec("n$i", s, facts = listOf("Sorry, Wrong Number", "30 min"), openLabel = "Open episode", onOpen = {})
+            },
+        )
+        TextLink("All 14 shows that night", onClick = {}, modifier = Modifier.padding(horizontal = 16.dp))
+    }
+
+    @Test fun browseField() = shoot("browse-field") {
+        val shows = buildList {
+            fun n(g: String?, y: String?, k: Int) = repeat(k) { add(com.example.appname.data.FieldShow(g, y)) }
+            n("drama", "1925", 3); n("drama", "1934", 40); n("drama", "1946", 98); n("drama", "1953", 20); n("drama", "1962", 5)
+            n("mystery", "1936", 12); n("mystery", "1947", 60); n("comedy", "1938", 30); n("comedy", "1948", 55)
+            n("western", "1950", 25); n("scifi", "1951", 9); n("news", "1942", 1); n(null, "1945", 7)
+        }
+        val field = com.example.appname.data.decadeField(shows)
+        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.material3.Text("2,036 shows", style = MaterialTheme.typography.titleMedium)
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+            TextLink("7,189 single recordings", onClick = {})
+        }
+        SectionHeading("By decade and genre") {
+            androidx.compose.material3.Text("7 with no genre", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DecadeFieldView(field, "drama", 1940, onCell = { _, _ -> }, modifier = Modifier.padding(horizontal = 16.dp))
+        androidx.compose.material3.Text("A to Z", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(16.dp))
+        TileGrid(
+            (shelfA + shelfB).mapIndexed { i, s -> TileSpec("g$i", s, onOpen = {}) } +
+                TileSpec("p", SeriesRow("play:x", "The Importance of Being Earnest", null, null, null, 0), facts = listOf("Oscar Wilde", "6 parts"), onOpen = {}),
+        )
+    }
+
     @Test fun head() = shoot("headboard") {
         HeadBoard("Suspense", "mystery", portrait, "Series", listOf("1942–1962", "CBS", "944 episodes"), "1942-06-17", "1962-09-30")
         HeadBoard("Counterrevolutionary Hour", null, null, "Series", listOf("1950"), "1950-01-01", "1951-01-01", Modifier.padding(top = 12.dp))

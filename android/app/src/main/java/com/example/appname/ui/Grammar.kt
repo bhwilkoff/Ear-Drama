@@ -292,12 +292,29 @@ fun rememberNameHeight(names: List<String>, width: Dp): Dp {
     }
 }
 
-private val TileWidth = 152.dp
+/** Each name's height at [width], one per name, so a grid row can share its tallest. */
+@Composable
+fun rememberNameHeights(names: List<String>, width: Dp): List<Dp> {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val typography = MaterialTheme.typography
+    return remember(names, width, typography, density) {
+        val px = with(density) { width.roundToPx() }
+        names.map { n ->
+            with(density) {
+                measurer.measure(nameText(n), nameStyle(nameStep(n), typography), constraints = Constraints(maxWidth = px)).size.height.toDp()
+            }
+        }
+    }
+}
+
+const val TILE_WIDTH_DP = 152
+private val TileWidth = TILE_WIDTH_DP.dp
 private val TileWidthTv = 200.dp
 private val TilePad = 6.dp
 
 /** The width a tile's window and name have inside its padding. */
-private fun innerWidth(width: Dp) = width - TilePad * 2
+fun innerWidth(width: Dp) = width - TilePad * 2
 
 /**
  * The show tile: on the genre's board (the neutral surface for no genre), the window, the name,
@@ -311,6 +328,8 @@ fun ShowTile(
     modifier: Modifier = Modifier,
     width: Dp = TileWidth,
     nameHeight: Dp? = null,
+    facts: List<String>? = null,
+    openLabel: String = "Open series",
 ) {
     val on = onBoard(row.genre)
     val style = nameStyle(nameStep(row.name), MaterialTheme.typography)
@@ -320,7 +339,7 @@ fun ShowTile(
             .tvFocusMark()
             .clip(RoundedCornerShape(12.dp))
             .background(board(row.genre))
-            .clickable(onClickLabel = "Open series", onClick = onOpen)
+            .clickable(onClickLabel = openLabel, onClick = onOpen)
             .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp),
     ) {
         PictureWindow(row.windowArt, row.name, row.genre, Modifier.fillMaxWidth().height(innerWidth(width)))
@@ -333,8 +352,9 @@ fun ShowTile(
                 .then(if (nameHeight != null) Modifier.height(nameHeight) else Modifier),
         )
         RunStrip(row.firstDate, row.lastDate, on, Modifier.padding(top = Spacing.S1.dp))
-        Text(seriesYears(row) ?: "Undated", style = MaterialTheme.typography.labelMedium, color = on)
-        Text(episodeCount(row.episodes), style = MaterialTheme.typography.labelMedium, color = on)
+        (facts ?: listOf(seriesYears(row) ?: "Undated", episodeCount(row.episodes))).forEach {
+            Text(it, style = MaterialTheme.typography.labelMedium, color = on)
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 package com.example.appname.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -54,5 +55,49 @@ class GrammarTest {
     @Test fun `the grade is the identity until one is published`() {
         assertEquals("no published grade: the identity levels", Grade(1.0, 0.0), gradeOf(at(10, 10, null)))
         assertEquals("a published grade replaces it", Grade(1.1, -0.05), gradeOf(Artwork("u", grade = listOf(1.1, -0.05))))
+    }
+
+    private data class Broadcast(val id: String, val date: String?, val title: String, val series: String)
+    private data class Show(val genre: String, val episodes: Int)
+
+    /** The golden cases of js/api.test.js "home and browse: ..." (WEB-DESIGN §6.4c). */
+    @Test fun `home and browse - the show line, the day by year, the night, the decade field`() {
+        assertTrue("five episodes is a show", isShow(5))
+        assertFalse("control: four is a single recording", isShow(4))
+        assertFalse("control: no count is not a show", isShow(null))
+        val rows = listOf(
+            Broadcast("a|1944-10-29", "1944-10-29", "Beloved Enemy", "a"),
+            Broadcast("a2|1944-10-29", "1944-10-29", "Beloved  enemy!", "a"),
+            Broadcast("b|1944-10-29", "1944-10-29", "On Train", "b"),
+            Broadcast("c|1944-10-29", "1944-10-29", "Odd One", "c"),
+            Broadcast("d|1938-10-29", "1938-10-29", "Early", "d"),
+            Broadcast("e|", null, "No date", "d"),
+        )
+        val sr = mapOf("a" to Show("drama", 40), "b" to Show("comedy", 9), "c" to Show("", 2), "d" to Show("drama", 6))
+        val dy = dayYears(rows, { it.date }, { sr.getValue(it.series).genre })
+        assertEquals("broadcasts per year, an undated row left off the strip", listOf(1938 to 1, 1944 to 4), dy.years.map { it.year to it.total })
+        assertEquals("the peak year is the one with most", 1944, dy.peak)
+        assertEquals("the count is what the strip holds", 5, dy.count)
+        assertEquals("a year stacked by genre, no genre as the empty key", mapOf("drama" to 2, "comedy" to 1, "" to 1), dy.years[1].genres)
+        assertEquals("the legend lists genres seen, in the fixed order, never the empty one", listOf("drama", "comedy"), dy.genres)
+        val tie = listOf(Broadcast("x", "1940-01-01", "x", "d"), Broadcast("y", "1941-01-01", "y", "d"))
+        assertEquals("control: a tie goes to the earlier year", 1940, dayYears(tie, { it.date }, { "" }).peak)
+        val night = nightShows(rows.filter { (it.date ?: "").startsWith("1944") }, { it.title }, { sr[it.series]?.episodes })
+        assertEquals("a copy under the same title folds once; a single is not a show", listOf("a|1944-10-29", "b|1944-10-29"), night.shows.map { it.id })
+        assertEquals("singles are counted", 1, night.singles)
+        val f = decadeField(
+            listOf(
+                FieldShow("drama", "1944-01-01"), FieldShow("drama", "1949"), FieldShow("comedy", "1951"),
+                FieldShow("", "1950"), FieldShow("news", null),
+            ),
+        )
+        assertEquals("decades from the first year", listOf(1940, 1950), f.decades)
+        assertEquals("a cell counts its shows", 2, f.count("drama", 1940))
+        assertEquals("no genre and no first year are counted, not drawn", 2, f.none)
+        assertEquals("rows only for genres that have a cell", listOf("drama", "comedy"), f.genres)
+        assertEquals("the biggest cell is the full side", 32, fieldSide(98, 98))
+        assertEquals("a one-show cell keeps the floor", 6, fieldSide(1, 98))
+        assertEquals("control: an empty cell draws nothing", 0, fieldSide(0, 98))
+        assertEquals("area carries the count (the square root)", 23, fieldSide(49, 98))
     }
 }

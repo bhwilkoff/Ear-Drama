@@ -247,6 +247,69 @@ const API = (() => {
     const c = (v) => Math.min(hi, Math.max(lo, v));
     return { from: (c(a) - lo) / n, to: (c(Math.max(a, b)) - lo + 1) / n };
   }
+  /* ---- Home and Browse (WEB-DESIGN §6.4c): the rules every platform mirrors ---- */
+
+  /** A show is a series of at least this many episodes (owner, 2026-10-29); the rest are single recordings, counted. */
+  const SHOW_MIN = 5;
+  const isShow = (episodes) => (episodes || 0) >= SHOW_MIN;
+  /** The genre order of every stacked mark and legend. A series with no genre stacks last, in no hue. */
+  const genreOrder = ['drama', 'mystery', 'comedy', 'serial', 'western', 'scifi', 'documentary', 'news'];
+  /** One day's broadcasts by year: [{ year, total, genres: {genre: n} }] oldest first, the year with the
+      most (the earlier on a tie) as `peak`, the count and the genres seen in genreOrder. `genreOf(row)` is
+      a genre or ''. Rows without a four-digit year are not on the strip. */
+  function dayYears(rows, genreOf) {
+    const by = new Map();
+    for (const r of rows) {
+      const y = r.date && /^\d{4}/.test(r.date) ? +r.date.slice(0, 4) : null;
+      if (y === null) continue;
+      const g = genreOf(r) || '';
+      const o = by.get(y) || { year: y, total: 0, genres: {} };
+      o.total++; o.genres[g] = (o.genres[g] || 0) + 1;
+      by.set(y, o);
+    }
+    const years = [...by.values()].sort((a, b) => a.year - b.year);
+    let peak = null;
+    for (const y of years) if (peak === null || y.total > peak.total) peak = y;
+    const seen = new Set(years.flatMap(y => Object.keys(y.genres)));
+    return { years, peak: peak && peak.year, count: years.reduce((a, y) => a + y.total, 0),
+             genres: genreOrder.filter(g => seen.has(g)) };
+  }
+  /** One night's rows as shows: a show's first row of the night only (the same title the same night folded
+      once), singles counted and left out. `seriesOf(row)` gives { episodes } or null. */
+  function nightShows(rows, seriesOf) {
+    const norm = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const seen = new Set(), shows = [];
+    let singles = 0;
+    for (const r of rows) {
+      const s = seriesOf(r);
+      if (!s || !isShow(s.episodes)) { singles++; continue; }
+      const k = norm(r.title);
+      if (seen.has(k)) continue;
+      seen.add(k); shows.push(r);
+    }
+    return { shows, singles };
+  }
+  /** Browse's decade by genre field: the shows per cell, decades in order. A show with no genre or no
+      first year is counted in `none` and left off the field. */
+  function decadeField(shows) {
+    const cell = new Map(), decades = new Set();
+    let none = 0;
+    for (const s of shows) {
+      if (!s.genre || !s.first || !/^\d{4}/.test(s.first)) { none++; continue; }
+      const d = Math.floor(+s.first.slice(0, 4) / 10) * 10;
+      decades.add(d);
+      const k = `${s.genre}|${d}`;
+      cell.set(k, (cell.get(k) || 0) + 1);
+    }
+    const ds = [...decades].sort((a, b) => a - b);
+    const genres = genreOrder.filter(g => ds.some(d => cell.has(`${g}|${d}`)));
+    const max = Math.max(0, ...cell.values());
+    return { decades: ds, genres, count: (g, d) => cell.get(`${g}|${d}`) || 0, max, none };
+  }
+  /** A cell's mark side: the square root of its share of the biggest cell (so area carries the
+      count), 6 to 32 units, 0 for an empty cell. */
+  const fieldSide = (n, max) => (n > 0 && max > 0 ? Math.max(6, Math.round(32 * Math.sqrt(n / max))) : 0);
+
   /** The grade a picture takes (uniform-imagery-design §2): monochrome, then `k * v + o`. The
       projection does not publish art.grade yet, so this is the documented identity default. */
   const DEFAULT_GRADE = { k: 1, o: 0 };
@@ -319,12 +382,12 @@ const API = (() => {
   }
 
   /** This Day in Radio: the day file for the person's own month and day, through the contract's query. */
-  async function thisDay(date = new Date(), get = getJSON) {
+  async function thisDay(date = new Date(), get = getJSON, limit = SHELF_LIMIT) {
     const month = date.getMonth() + 1, day = date.getDate();
     const md = `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     try {
       const d = await get(`index/days/${md}.json`);
-      return onThisDay(rowsOf(d.fields, d.rows), month, day);
+      return onThisDay(rowsOf(d.fields, d.rows), month, day, limit);
     } catch (e) {
       if (e.kind === 'missing') return [];
       throw e;
@@ -1293,7 +1356,7 @@ const API = (() => {
   return {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
-    monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, gradeOf, pathQuery, shareLink,
+    monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,

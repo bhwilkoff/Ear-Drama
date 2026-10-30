@@ -282,7 +282,36 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             binds += "${it + 9}-12-31"
             binds += "$it-01-01"
         }
+        filter.showLine?.let { where.append(if (it) " AND s.episodes >= $SHOW_MIN" else " AND s.episodes < $SHOW_MIN") }
         return where.toString() to binds
+    }
+
+    /** How many shows and how many single recordings the filter's genre, decade and network select. */
+    suspend fun seriesCounts(filter: BrowseFilter): Pair<Int, Int> = read {
+        val (clause, binds) = facetClause(filter.copy(showLine = null))
+        queryRaw(
+            "SELECT COALESCE(SUM(s.episodes >= $SHOW_MIN), 0), COALESCE(SUM(s.episodes < $SHOW_MIN), 0) " +
+                "FROM series s WHERE 1 = 1$clause",
+            binds,
+        ) { it.getLong(0).toInt() to it.getLong(1).toInt() }.first()
+    }
+
+    /** Every show under [network], as the decade field counts it (genre and decade are the field's own axes). */
+    suspend fun fieldShows(network: String? = null): List<FieldShow> = read {
+        val (clause, binds) = facetClause(BrowseFilter(network = network, showLine = true))
+        queryRaw("SELECT s.genre, s.first_date FROM series s WHERE 1 = 1$clause", binds) {
+            FieldShow(it.textOrNull(0), it.textOrNull(1))
+        }
+    }
+
+    /** Every dated broadcast that aired on this month and day, any year, oldest first, with no limit (Home's day board). */
+    suspend fun dayRows(monthDay: String): List<EpisodeRow> = read {
+        queryRaw(
+            "SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE e.air_date GLOB '$FULL_DATE' " +
+                "AND substr(e.air_date, 6, 5) = ?$RECOMMEND_AND ORDER BY e.air_date, e.id",
+            listOf(monthDay),
+            ::episodeRow,
+        )
     }
 
     /** §5 `seriesBrowse`: the listener drives it, so no `recommendAnd`. */

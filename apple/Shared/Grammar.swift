@@ -254,6 +254,8 @@ extension View {
 struct ShowTile: View {
     let series: SeriesRow
     var width: CGFloat = Self.defaultWidth
+    /// The facts lines when the tile says something other than the run and the episode count.
+    var facts: [String]? = nil
     @Environment(\.sharedNameHeight) private var sharedNameHeight
     #if os(macOS)
     @State private var hovering = false
@@ -282,8 +284,12 @@ struct ShowTile: View {
                 .frame(maxWidth: .infinity, minHeight: sharedNameHeight, maxHeight: sharedNameHeight, alignment: .topLeading)
             RunStrip(first: series.firstDate, last: series.lastDate, genre: series.genre)
             VStack(alignment: .leading, spacing: 0) {
-                Text(verbatim: series.yearSpan ?? "Undated")
-                Text(verbatim: series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes")
+                if let facts {
+                    ForEach(Array(facts.enumerated()), id: \.offset) { Text(verbatim: $0.element).lineLimit(2) }
+                } else {
+                    Text(verbatim: series.yearSpan ?? "Undated")
+                    Text(verbatim: series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes")
+                }
             }
             .font(TypeRamp.caption)
             .foregroundStyle(ink)

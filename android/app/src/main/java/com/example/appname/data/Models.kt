@@ -313,6 +313,8 @@ data class BrowseFilter(
     /** The first year of a decade, 1940 for the 1940s. */
     val decade: Int? = null,
     val sort: SeriesSort = SeriesSort.Name,
+    /** True: only shows (the show line, `isShow`); false: only single recordings; null: both. */
+    val showLine: Boolean? = null,
 )
 
 /** Series browse's orders (WEB-DESIGN §4.3) with its labels; Popular is Browse's default (ANDROID-DESIGN §4.2). */

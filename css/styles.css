@@ -459,6 +459,42 @@ select {
 .g-tile .g-strip { align-self: end; padding: 0 4px; box-sizing: content-box; width: calc(100% - 8px); }
 .g-facts { display: flex; flex-direction: column; padding: 0 4px; color: inherit; }
 
+/* Home and Browse (WEB-DESIGN §6.4c): tiles in a grid whose rows share their slot tracks, the day board, the decade field. */
+.nw { white-space: nowrap; }
+.g-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 0 var(--space-3); grid-auto-rows: auto; margin-bottom: var(--space-3); }
+.g-grid > .g-tile-li { margin-bottom: var(--space-3); }
+.g-tile-li, .g-tile, .g-name, .g-facts > span { min-width: 0; }
+.g-day { margin-bottom: var(--space-6); padding: var(--space-4); border-radius: var(--radius-card); background: var(--color-surface-alt); }
+.g-day-date { margin: 0 0 var(--space-1); }
+.g-years-wrap { margin-top: var(--space-3); }
+.g-years { display: block; width: 100%; height: 64px; overflow: visible; }
+.g-yr { cursor: pointer; outline: none; }
+.g-yr-hit { fill: transparent; }
+.g-yr-bar { fill: var(--genre-accent); }
+.g-yr-bar[data-genre=""] { fill: var(--color-text-muted); }
+.g-yr-zero { fill: var(--color-text-muted); opacity: 0.5; }
+.g-yr-sel { fill: none; stroke: var(--color-text); stroke-width: 1.5px; vector-effect: non-scaling-stroke; display: none; }
+.g-yr[aria-checked="true"] .g-yr-sel, .g-yr:focus-visible .g-yr-sel { display: inline; }
+.g-axis-labels { display: flex; justify-content: space-between; margin-top: var(--space-1); }
+.g-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.g-legend li, .g-field-label { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.g-legend i, .g-field-label i { width: 10px; height: 10px; border-radius: 2px; background: var(--genre-accent); flex: none; }
+.g-count { font-family: var(--font-display); font-weight: var(--type-section-header-weight); font-size: var(--type-section-header-size); }
+#browse-count { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-3); }
+.g-browse { display: block; }
+.g-field-sec { margin-bottom: var(--space-6); }
+.g-field { display: grid; grid-template-columns: minmax(0, 96px) repeat(var(--n), minmax(0, 1fr)); align-items: end; gap: var(--space-2) 0; }
+.g-field-label { white-space: normal; align-items: center; }
+.g-field-head { text-align: center; }
+.g-field-cell { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; min-height: 44px; color: inherit; text-decoration: none; border-radius: 4px; }
+a.g-field-cell:hover { background: var(--color-surface-alt); }
+.g-field-cell[aria-current="true"] { outline: 2px solid var(--color-text); outline-offset: 1px; }
+.g-field-mark { display: block; background: var(--genre-accent); border-radius: 2px; }
+@media (min-width: 1024px) {
+  .g-browse.has-field { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+  .g-browse.has-field .g-field-sec { position: sticky; top: var(--space-4); margin-bottom: 0; }
+}
+
 /* The head board: built in D3-1, adopted by the pages in D3-3. */
 .g-head {
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3);
@@ -637,7 +673,9 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin-bottom: var(--space-3); }
 .filter { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .filter select { width: 100%; }
-.filter-check { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); align-self: end; cursor: pointer; }
+.filter-check { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); align-self: end; padding: 0 var(--space-2); cursor: pointer;
+  border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-background); }
+.filter-check:has(input:checked) { border-color: var(--color-text); background: var(--color-surface-alt); }
 .filter-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--color-secondary); }
 @media (min-width: 768px) { .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
