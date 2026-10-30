@@ -86,7 +86,7 @@ html.tv [tabindex]:not([tabindex="-1"]):focus {
 
 /* A series card lifts as well as rings: the focused card is the one bright
    thing in its row (§3.2). */
-html.tv .series-card {
+html.tv .g-tile {
   transition: transform 120ms ease-out;
   transform-origin: center center;
   /* scrollIntoView clears the unscaled box; the margin also clears the lift
@@ -98,9 +98,8 @@ html.tv .ep-link,
 html.tv .btn,
 html.tv .nav-item { scroll-margin: 32px; }
 
-html.tv .series-card:focus {
+html.tv .g-tile:focus {
   transform: scale(1.05);
-  background: var(--color-surface-alt);
   z-index: 5;   /* the lifted card must sit above its neighbors */
 }
 
@@ -174,13 +173,7 @@ html.tv .rail {
   scrollbar-width: none;
 }
 
-html.tv .series-card {
-  min-height: 168px;
-  padding: 20px 24px;
-}
-
-html.tv .ep-link {
-  grid-template-columns: 200px minmax(0, 1fr);
+html.tv .g-link {
   padding: 16px 12px;
 }
 
