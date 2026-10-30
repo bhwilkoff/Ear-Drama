@@ -303,6 +303,30 @@ const PlaysShare = (() => {
     try { if (token) sessionStorage.setItem(INVITE_KEY, token); else sessionStorage.removeItem(INVITE_KEY); } catch { /* this page only */ }
   }
 
+  /* ---- A finished drama's playable copy on archive.org ---- */
+
+  const MP3_ORDER = ['VBR MP3', '128Kbps MP3', '64Kbps MP3', 'MP3'];
+  const LINE_FILE = /^\d{3,}-/;
+  const LINE_RANK = ['mp3', 'flac', 'wav'];
+  const extOf = (n) => (String(n).split('.').pop() || '').toLowerCase();
+  function pickAudio(files, id) {
+    const ok = files.filter(f => !f.private && !/(^|\/)history\//.test(f.name || '') && !/~\d+~$/.test(f.name || ''));
+    const href = (f) => `https://archive.org/download/${encodeURIComponent(id)}/${f.name.split('/').map(encodeURIComponent).join('/')}`;
+    const whole = ok.filter(f => !LINE_FILE.test(f.name));
+    for (const fmt of MP3_ORDER) {
+      const f = whole.find(x => x.format === fmt);
+      if (f) return { whole: href(f) };
+    }
+    const byLine = new Map();
+    for (const f of ok.filter(x => LINE_FILE.test(x.name) && LINE_RANK.includes(extOf(x.name)))) {
+      const key = f.name.replace(/\.[^.]+$/, '');
+      const had = byLine.get(key);
+      if (!had || LINE_RANK.indexOf(extOf(f.name)) < LINE_RANK.indexOf(extOf(had.name))) byLine.set(key, f);
+    }
+    const lines = [...byLine.keys()].sort().map(k => href(byLine.get(k)));
+    return lines.length ? { lines } : null;
+  }
+
   /* ---- One plain line for each refusal (AGENTS.md: a refusal, a warning, or a fact) ---- */
 
   const LINES = {
@@ -381,6 +405,6 @@ const PlaysShare = (() => {
 
   return {
     consentBlocks, PUBLISH_WAITS, archiveStatus, canPublishAgain, changeableLines, published, ownParts, canPublish, publishPlay, performers, needsMyConsent, waitingOn, agreeToPublish, castSheet, isMine, recordingPart, myParts, uploadsOpen, canClaim, unvoiced, complete, mirror, follow, pending, metaOf,
-    upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, line,
+    upload, mergedChosen, missingHere, inStep, bringHome, share, join, localFor, scriptFor, libraryRows, inviteLink, inviteToken, pendingInvite, holdInvite, pickAudio, line,
   };
 })();

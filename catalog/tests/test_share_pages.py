@@ -72,6 +72,8 @@ def run(control=None):
         fixture(web)
         if control == "credited-image":
             S.free_image = lambda art: f"{art[0]}?width=1200" if art and art[0] else None
+        if control == "guess-name":
+            S.performers = lambda credits: [c.get("name") or c["part"] for c in credits or []]
         if control == "no-escape":
             S.html.escape = lambda s, quote=True: s
         c = S.build(web, site, "https://eardrama.org")
@@ -114,6 +116,22 @@ def run(control=None):
         check("an id with a slash is left to 404.html",
               not os.path.exists(os.path.join(site, "episode", "weird")) and c["skipped"] == 1, str(c))
         check("counts", (c["series"], c["episodes"], c["forwards"], c["tombstones"]) == (3, 4, 2, 2), str(c))
+        fin = {"productions": [
+            {"id": "pid1", "script_id": "s", "title": "The <Pilot>", "credits": [
+                {"part": "A", "name": "Pat"}, {"part": "B", "name": ""}, {"part": "C", "name": "Pat"}, {"part": "D", "name": "Sam"}]},
+            {"id": "pid2", "script_id": "s", "title": "Silent", "credits": [{"part": "A", "name": ""}]},
+            {"id": "a/b", "script_id": "s", "title": "Slash", "credits": []}]}
+        S.build_plays(site, "https://eardrama.org", fin)
+        dp = read(site, "drama", "pid1")
+        check("drama page: title escaped, from data", "<title>The &lt;Pilot&gt; | Ear Drama</title>" in dp, dp[:200])
+        check("drama page: credits are the chosen names, each once", 'content="Performed by Pat, Sam"' in dp)
+        check("drama page: canonical and hand-off", 'href="https://eardrama.org/drama/pid1"' in dp and 'location.replace("/?drama=pid1")' in dp)
+        check("drama page: no image", "og:image" not in dp)
+        check("an uncredited drama has no performers line", "og:description" not in read(site, "drama", "pid2"))
+        check("a drama id with a slash is left to 404.html", not os.path.exists(os.path.join(site, "drama", "a")))
+        iv = read(site, "invite", "")
+        check("invite page: a fixed card, hands the fragment to the app", "#invite=" in iv and "/?view=invite" in iv and "og:title" in iv)
+        check("invite page carries no token", "x-invite" not in iv)
         return failed
 
 
@@ -122,7 +140,7 @@ if __name__ == "__main__":
         run(sys.argv[2])
         sys.exit(1 if failed else 0)
     run()
-    for control in ("credited-image", "no-escape"):
+    for control in ("credited-image", "no-escape", "guess-name"):
         r = subprocess.run([sys.executable, __file__, "--control", control], capture_output=True, text=True)
         ran += 1
         if r.returncode == 0:

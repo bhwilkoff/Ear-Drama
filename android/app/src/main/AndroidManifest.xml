@@ -60,6 +60,7 @@
                 <data android:pathPrefix="/series/"/>
                 <data android:pathPrefix="/episode/"/>
                 <data android:pathPrefix="/person/"/>
+                <data android:pathPrefix="/drama/"/>
                 <data android:path="/search"/>
                 <data android:path="/library"/>
                 <data android:path="/library/"/>

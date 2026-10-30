@@ -156,25 +156,71 @@ def build(web, site, origin):
     return counts
 
 
+def performers(credits):
+    """The chosen names of a finished drama's performers, once each, in credit order. A part with no
+    name (a deleted account) is not a performer and is never replaced with a guess."""
+    seen = []
+    for c in credits or []:
+        n = (c.get("name") or "").strip()
+        if n and n not in seen:
+            seen.append(n)
+    return seen
+
+
+def build_plays(site, origin, finished):
+    """`/invite` and `/drama/{pid}`. An invite's token rides the fragment, which no bot is sent, so
+    its card says only what every invitation is; a finished drama's card is its title and the names
+    its performers chose, from the Worker's /finished answer."""
+    origin = origin.rstrip("/")
+    q = lambda s: urllib.parse.quote(s, safe="")
+    d = os.path.join(site, "invite")
+    os.makedirs(d, exist_ok=True)
+    forward = '<script>var t=location.hash.slice(1);location.replace("/?view=invite"+(t?"#invite="+t:""))</script>'
+    with open(os.path.join(d, "index.html"), "w", encoding="utf-8") as f:
+        f.write(page("Ear drama invitation | Ear Drama", "The play, its parts, and the takes so far.",
+                     f"{origin}/invite", None, None, '<p><a href="/">Ear Drama</a></p>').replace("</head>", forward + "</head>", 1))
+    n = 0
+    for p in (finished or {}).get("productions", []):
+        pid = p.get("id")
+        if not path_safe(pid) or not p.get("title"):
+            continue
+        names = performers(p.get("credits"))
+        desc = ("Performed by " + ", ".join(names)) if names else None
+        write(site, "drama", pid, page(f"{p['title']} | Ear Drama", desc, f"{origin}/drama/{q(pid)}", None,
+                                       f"/?drama={q(pid)}",
+                                       f'<p><a href="/?drama={q(pid)}">{html.escape(p["title"])} on Ear Drama</a></p>'))
+        n += 1
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("web")
     ap.add_argument("site")
     ap.add_argument("--origin", default=None)
+    ap.add_argument("--finished", default=None, help="the Worker's /finished answer, saved as JSON")
     a = ap.parse_args()
     origin = a.origin
     if not origin:
         cname = os.path.join(os.path.dirname(__file__), "..", "..", "CNAME")
         origin = "https://" + open(cname).read().strip()
     c = build(a.web, a.site, origin)
+    finished = None
+    if a.finished and os.path.exists(a.finished):
+        try:
+            with open(a.finished, encoding="utf-8") as f:
+                finished = json.load(f)
+        except ValueError:
+            print("::warning::the finished listing is not JSON; no drama pages", file=sys.stderr)
+    dramas = build_plays(a.site, origin, finished)
     files = nbytes = 0
-    for kind in ("series", "episode"):
+    for kind in ("series", "episode", "drama", "invite"):
         for root, _, fs in os.walk(os.path.join(a.site, kind)):
             for f in fs:
                 files += 1
                 nbytes += os.path.getsize(os.path.join(root, f))
     print(f"share pages: {c['series']} series, {c['episodes']} episodes, {c['forwards']} forwards, "
-          f"{c['tombstones']} tombstones, {c['skipped']} left to 404.html; {files} files, {nbytes} bytes")
+          f"{c['tombstones']} tombstones, {dramas} finished dramas, {c['skipped']} left to 404.html; {files} files, {nbytes} bytes")
     if c["series"] == 0 or c["episodes"] == 0:
         print("::error::no share pages written", file=sys.stderr)
         sys.exit(1)

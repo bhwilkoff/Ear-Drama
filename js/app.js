@@ -15,7 +15,8 @@
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * The names before 068 (listen, series, radio, plays) are rewritten in place.
  *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
- *   /invite#{TOKEN}, #invite={TOKEN}  an ear drama invite, shown in Library's Ear dramas (§4.10a)
+ *   /invite#{TOKEN}, #invite={TOKEN}  an ear drama invite, its own page (?view=invite; §4.10a)
+ *   ?drama={id}                       a finished ear drama (/drama/{id})
  * Path twins (/series/{key}, /episode/{id}) are static pages with link previews that hand
  * a person to these (catalog/tools/build_share_pages.py); the router also reads the path
  * form itself and the web shares it. Other twins (/search?q=) are forwarded by 404.html. Harness doors: ?mute=1, ?door_seconds=n.
@@ -36,11 +37,11 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'plays', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'plays', 'invite', 'drama', 'search', 'library'];
   const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', search: 'search',
-                    library: 'library' };
+                    library: 'library', invite: 'invite' };
   const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'stations',
-                   surprise: 'surprise', plays: 'browse', search: 'search', library: 'library' };
+                   surprise: 'surprise', plays: 'browse', invite: 'home', drama: 'browse', search: 'search', library: 'library' };
   /** Decision 068's renames: an old ?view= opens the new section, and the address is rewritten. */
   const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'browse' };
   const PAGE = 60;
@@ -490,6 +491,7 @@
     if (p.get('item')) return { view: 'episode', id: p.get('item'), p };
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
     if (p.get('person')) return { view: 'person', id: p.get('person'), p };
+    if (p.get('drama')) return { view: 'drama', id: p.get('drama'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
     const old = p.get('view');
     if (RENAMED[old]) {
@@ -513,9 +515,9 @@
       a.classList.toggle('active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
-    if (r.view !== 'plays') PlaysUI.leave();
+    if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, plays: renderPlays, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, plays: renderPlays, invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
@@ -535,12 +537,12 @@
     TogetherUI.open(code);
   }
 
-  /** An ear drama invite (DEEP_LINKS.md, PLAYS-DESIGN §11.7 rule 3): held for this tab, cleared from the address, shown in Library's Ear dramas. */
+  /** An ear drama invite (DEEP_LINKS.md, PLAYS-DESIGN §11.7 rule 3): held for this tab, cleared from the address, shown on its own page. */
   function takeInviteLink() {
     const tok = PlaysShare.inviteToken(location);
     if (!tok) return;
     PlaysShare.holdInvite(tok);
-    history.replaceState(null, '', '?view=library&tab=dramas');
+    history.replaceState(null, '', '?view=invite');
   }
 
   function setTitle(...parts) { document.title = [...parts.filter(Boolean), 'Ear Drama'].join(' · '); }
@@ -582,10 +584,10 @@
     const homeBox = el('div');
     body.append(homeBox);
     load(homeBox, async () => {
-      const [rows, idx] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(),
-        API.manifest().then(m => { manifest = m; })]);
-      return { rows, idx };
-    }, ({ rows, idx }) => {
+      const [rows, idx, , dramas] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(),
+        API.manifest().then(m => { manifest = m; }), PlaysUI.newDramas(playsHelpers).catch((e) => { console.error(e); return null; })]);
+      return { rows, idx, dramas };
+    }, ({ rows, idx, dramas }) => {
       const shows = idx.rows.filter(s => API.isShow(s.episodes));
       if (!rows.length && !shows.length) {
         homeBox.append(stateBox('empty', { text: 'Nothing in the catalog yet.' }));
@@ -601,6 +603,7 @@
         homeBox.append(el('section', { class: 'shelf' },
           el('div', { class: 'block-head' }, h, el('a', { class: 'caption', href: '?view=browse' }, `All ${num.format(shows.length)} shows`)), ul));
       }
+      if (dramas) homeBox.append(dramas);
     });
   }
 
@@ -995,6 +998,15 @@
 
   function renderBrowse(r) {
     setTitle('Browse');
+    const scope = r.p.get('scope') === 'dramas' ? 'dramas' : 'shows';
+    const scopeBar = $('browse-scope');
+    scopeBar.replaceChildren(...[['shows', 'Shows', '?view=browse'], ['dramas', 'Ear dramas', '?view=browse&scope=dramas']].map(([k, label, href]) =>
+      el('button', { type: 'button', 'aria-pressed': String(scope === k), onclick: () => { if (scope !== k) navigate(href); } }, label)));
+    $('browse-filters').hidden = scope === 'dramas';
+    if (scope === 'dramas') {
+      PlaysUI.renderDramas($('browse-body'), $('browse-count'), playsHelpers);
+      return;
+    }
     const kind = ['series', 'plays'].includes(r.p.get('kind')) ? r.p.get('kind') : '';
     const f = { kind, script: r.p.get('script') === '1', genre: r.p.get('genre') || '', decade: r.p.get('decade') || '',
                 network: r.p.get('network') || '', sort: r.p.get('sort') || 'popular', singles: r.p.get('singles') === '1' };
@@ -1603,9 +1615,17 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine };
+  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine, showTile, share };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
+  }
+  function renderInvite() {
+    setTitle('Invitation');
+    PlaysUI.renderInvite($('invite-body'), playsHelpers);
+  }
+  function renderDrama(r) {
+    setTitle('Ear drama');
+    PlaysUI.renderDrama($('drama-body'), playsHelpers, r.id);
   }
 
   /* ================================================================
