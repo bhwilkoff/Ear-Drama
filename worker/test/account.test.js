@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { call, env, installProviderKeys, signIn } from "./helpers.js";
 import { OTHER_PERSON_COLUMNS, USER_TABLES } from "../src/account.js";
 import { ANONYMOUS_TABLES as ROOM_TABLES } from "../src/rooms.js";
-import { PLAYS_ANONYMOUS_TABLES, sweepPlays } from "../src/plays.js";
+import { DELETED_PERSON, PLAYS_ANONYMOUS_TABLES, sweepPlays } from "../src/plays.js";
 import { claimByInvite, consent, createProduction, firstPart, invite, linesFor, record, upload } from "./plays-helpers.js";
 
 const ANONYMOUS_TABLES = [...ROOM_TABLES, ...PLAYS_ANONYMOUS_TABLES];
@@ -66,7 +66,7 @@ let partnerCount = 0;
 
 /**
  * Gives `s` a row in every plays table: a production it directs (with an
- * invite, a claim, a consent, a take, and a queued upload), a report and a
+ * invite, a claim, a consent, and a take; another with a queued upload), a report and a
  * block, a class it teaches with a school consent, and a class it joined.
  * Its partner is another account, made here, so a second account's rows can
  * be checked untouched without the two reporting each other.
@@ -79,10 +79,10 @@ async function fillPlays(s) {
   expect(mine.status).toBe(200);
   expect((await consent(s, p.id)).status).toBe(204);
   expect((await upload(s, p.id, linesFor(firstPart)[0])).status).toBe(201);
-  await env.DB.prepare(
-    "INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at) VALUES (?1, ?2, 'pending_owner_account', '[]', 1, 1)",
-  )
-    .bind(p.id, s.user_id)
+  // A second production of theirs that was submitted: its job keeps it past their deletion.
+  const filed = await createProduction(s);
+  await env.DB.prepare("INSERT INTO play_archive_jobs (production_id, user_id, status, take_ids, created_at, updated_at) VALUES (?1, ?2, 'queued', '[]', 1, 1)")
+    .bind(filed.id, s.user_id)
     .run();
   // A report and a block, both about the partner, in the partner's production.
   const theirs = await createProduction(partner);
@@ -101,7 +101,7 @@ async function fillPlays(s) {
   expect(sc.status).toBe(201);
   const other = await (await call("POST", "/v1/plays/classes", { token: partner.access_token, body: { name: "Drama club" } })).json();
   expect((await call("POST", "/v1/plays/classes/join", { token: s.access_token, body: { code: other.code } })).status).toBe(200);
-  return { production: p, partner, theirs };
+  return { production: p, filed, partner, theirs };
 }
 
 async function fill(s) {
@@ -194,6 +194,36 @@ describe("account deletion (App Store 5.1.1(v))", () => {
     expect(rec.director).toBe(actor.user_id);
     expect(rec.takes.map((t) => t.id)).toEqual([up.takeId]);
     expect((await objectsIn(p.id)).length).toBe(1);
+  });
+
+  it("a submitted production stays when its only member deletes their account; an unsubmitted one goes", async () => {
+    const s = await signIn("del-submitted");
+    const { production, filed } = await fillPlays(s);
+    const taken = await env.DB.prepare("SELECT COUNT(*) AS n FROM play_takes WHERE production_id = ?1").bind(filed.id).first();
+    await env.DB.prepare(
+      "INSERT INTO play_takes (production_id, id, user_id, line_id, part, file, object_key, content_type, bytes, frames, sample_rate, capture, created, uploaded_at, chosen) " +
+        "VALUES (?1, 'T1', ?2, 'L1', 'P', 'T1.wav', ?3, 'audio/wav', 1, 1, 48000, 'direct', 0, 1, 1)",
+    )
+      .bind(filed.id, s.user_id, `plays/${filed.id}/T1`)
+      .run();
+    await env.TAKES.put(`plays/${filed.id}/T1`, new Uint8Array(4));
+    expect(taken.n).toBe(0);
+    expect((await call("DELETE", "/v1/account", { token: s.access_token })).status).toBe(200);
+    expect(await env.DB.prepare("SELECT id FROM play_productions WHERE id = ?1").bind(production.id).first()).toBeNull();
+    expect((await env.DB.prepare("SELECT user_id FROM play_productions WHERE id = ?1").bind(filed.id).first()).user_id).toBe(DELETED_PERSON);
+    expect((await env.DB.prepare("SELECT user_id FROM play_archive_jobs WHERE production_id = ?1").bind(filed.id).first()).user_id).toBe(DELETED_PERSON);
+    expect((await env.DB.prepare("SELECT user_id FROM play_takes WHERE production_id = ?1").bind(filed.id).first()).user_id).toBe(DELETED_PERSON);
+    expect(await objectsIn(filed.id)).toEqual([`plays/${filed.id}/T1`]);
+    expect(await env.DB.prepare("SELECT 1 FROM identities WHERE user_id = ?1 OR user_id = ?2").bind(s.user_id, DELETED_PERSON).first()).toBeNull();
+  });
+
+  it("the deleted-person row is no one's account: it has no identity and no session", async () => {
+    const s = await signIn("del-nobody");
+    await fillPlays(s);
+    await call("DELETE", "/v1/account", { token: s.access_token });
+    for (const t of ["identities", "sessions"]) {
+      expect((await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${t} WHERE user_id = ?1`).bind(DELETED_PERSON).first()).n, t).toBe(0);
+    }
   });
 
   it("CONTROL: a production nobody else is in goes with its director", async () => {
