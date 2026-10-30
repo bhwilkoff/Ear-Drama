@@ -42,6 +42,14 @@ nonisolated struct PartState: Codable, Equatable, Sendable {
     var performer: String?
 }
 
+/// What one line of a run through did: the take the line had before the run
+/// (nil for none) and every take the run made for it, for Discard the run.
+nonisolated struct RunNote: Equatable, Sendable {
+    let lineID: String
+    let prior: String?
+    var takes: [String]
+}
+
 /// The production record (`Plays/<id>/production.json`, §6): who took which
 /// part, every take and what it heard, the chosen take per line, and the state
 /// the mix was rendered from.
@@ -107,6 +115,24 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
         let gone = unusedTakes
         let ids = Set(gone.map(\.id))
         takes.removeAll { ids.contains($0.id) }
+        return gone
+    }
+
+    /// Discards a run: every take it made is removed and each line goes back to the take it had
+    /// before, when that take still exists. Returns the removed takes so the store deletes their
+    /// files (§8 rule 5: only the person's own act removes a take).
+    mutating func discardRun(_ run: [RunNote]) -> [Take] {
+        let ids = Set(run.flatMap(\.takes))
+        let gone = takes.filter { ids.contains($0.id) }
+        takes.removeAll { ids.contains($0.id) }
+        for note in run {
+            if let prior = note.prior, takes.contains(where: { $0.id == prior }) {
+                chosen[note.lineID] = prior
+            } else {
+                chosen[note.lineID] = nil
+            }
+        }
+        if !gone.isEmpty { listenedThrough = false }
         return gone
     }
 

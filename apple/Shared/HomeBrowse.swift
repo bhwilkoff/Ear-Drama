@@ -90,9 +90,10 @@ struct TileLink<Value: Hashable>: View {
     let series: SeriesRow
     var width: CGFloat = ShowTile.defaultWidth
     var facts: [String]? = nil
+    var castScript: PlayScript? = nil
 
     var body: some View {
-        NavigationLink(value: value) { ShowTile(series: series, width: width, facts: facts) }
+        NavigationLink(value: value) { ShowTile(series: series, width: width, facts: facts, castScript: castScript) }
             #if os(tvOS)
             .buttonStyle(.card)
             #else

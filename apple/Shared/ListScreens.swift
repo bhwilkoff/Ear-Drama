@@ -363,7 +363,8 @@ struct SeriesBrowseScreen: View {
         case let .play(script):
             TileLink(value: PlayRoute.script(script.id), series: Self.tileRow(script), width: width,
                      facts: [script.authorLine, countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts")]
-                         .filter { !$0.isEmpty })
+                         .filter { !$0.isEmpty },
+                     castScript: script)
         }
     }
 
@@ -473,9 +474,10 @@ struct SeriesBrowseScreen: View {
         }
     }
 
-    /// A play on the show tile: no picture, no genre, no run (plays carry none).
+    /// A play on the show tile: no picture and no run (plays carry none); it stands on the drama
+    /// board, whose name is never said, and its cast fingerprint is its mark.
     private static func tileRow(_ script: PlayScript) -> SeriesRow {
-        SeriesRow(key: script.id, name: script.title, genre: nil, firstDate: nil, lastDate: nil, networks: [], episodeCount: 0)
+        SeriesRow(key: script.id, name: script.title, genre: PlayScript.boardGenre, firstDate: nil, lastDate: nil, networks: [], episodeCount: 0)
     }
 
     private func clear() { kind = nil; hasScript = false; genre = nil; network = nil; decade = nil }

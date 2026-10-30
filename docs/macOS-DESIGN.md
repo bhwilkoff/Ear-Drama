@@ -159,6 +159,15 @@ only here:
   prominent; Start Recording needs an account and offers the same
   sign-in buttons in the window; Listen Through runs live at any time;
   Export appears whenever the play is complete.
+- **§4.5b Making a part** is `docs/iOS-DESIGN.md` §4.12b (D3-6; owner ruling 4,
+  quoted there) in the production's window: the same head board, part cards,
+  three modes and native segmented control. The window is wide, so the scene
+  stands between the left rail "In this scene" and the right rail with this
+  line's aids and the keys. Keys (the Recording menu, kept as `.commands` and
+  `FocusedValues`): Space records, stops or pauses a run; Return keeps (Keep N
+  takes in a run's review); R records again; up and down arrows (left and right
+  in the dock) move by line, and in Line by line the selection. Run-up keeps
+  Shift-Command-R. Nothing opens the microphone at launch.
 - **§4.5a A shared ear drama** is `docs/iOS-DESIGN.md` §4.12a (PLAYS-DESIGN
   §11.7, binding: the same verbs and words on every platform) in the
   production's window: Share, Invite, Upload, and People sit in the cast

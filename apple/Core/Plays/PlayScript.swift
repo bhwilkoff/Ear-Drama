@@ -215,6 +215,45 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     var speechLineIDs: [String] { lines.filter { $0.kind == .speech }.map(\.id) }
 }
 
+/// A play stands on the drama board and its parts take the part marks
+/// (direction D, D3-6). Scripts carry no genre, so no genre is ever named.
+nonisolated extension PlayScript {
+    static let boardGenre = "drama"
+    /// The first seven speaking parts, largest first, in this order; every other part is neutral.
+    static let partHues = ["mystery", "scifi", "western", "serial", "documentary", "comedy", "news"]
+
+    /// A part's mark color key, or nil (directions, sound, and the eighth speaking part on).
+    func partHue(_ part: PartID) -> String? {
+        guard part.isSpeaking else { return nil }
+        let speaking = castParts.filter { $0.id.isSpeaking }
+        guard let i = speaking.firstIndex(where: { $0.id == part }), i < Self.partHues.count else { return nil }
+        return Self.partHues[i]
+    }
+
+    /// Each speaking part's share of the speaking lines, largest first: the cast fingerprint.
+    var castShares: [CastShare] {
+        let speaking = castParts.filter { $0.id.isSpeaking }
+        let total = Double(speaking.reduce(0) { $0 + $1.lineCount })
+        guard total > 0 else { return [] }
+        return speaking.map { CastShare(part: $0.id, share: Double($0.lineCount) / total) }
+    }
+
+    /// Where a part speaks: `bins` equal runs of the script, each the share of its lines the part speaks.
+    func presence(of part: PartID, bins: Int = 24) -> [Double] {
+        guard bins > 0, !lines.isEmpty else { return [] }
+        let n = lines.count
+        return (0..<bins).map { i in
+            let run = lines[(i * n / bins)..<((i + 1) * n / bins)]
+            return run.isEmpty ? 0 : Double(run.filter { $0.part == part }.count) / Double(run.count)
+        }
+    }
+}
+
+nonisolated struct CastShare: Equatable, Sendable {
+    let part: PartID
+    let share: Double
+}
+
 nonisolated struct CastPart: Identifiable, Hashable, Sendable {
     let id: PartID
     let lineCount: Int

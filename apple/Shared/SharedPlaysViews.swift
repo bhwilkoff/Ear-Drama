@@ -268,63 +268,55 @@ struct SharedPartRow: View {
         let state = rec.part(part.id)
         let me = shared.userID
         let mine = PlaysShare.isMine(rec, part.id, me)
-        HStack(spacing: Spacing.s3) {
-            Button { open(part.id) } label: {
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    Text(verbatim: part.title).font(TypeRamp.bodyStrong).foregroundStyle(Color.brandText)
-                    Text(verbatim: status(state, mine: mine))
-                        .font(TypeRamp.caption)
-                        .foregroundStyle(Color.brandTextMuted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .accessibilityElement(children: .combine)
+        PartCard(script: script, part: part, holder: holder(state), recorded: state.status == .done,
+                 who: who(state, mine: mine), current: mine && state.status == .recording,
+                 onOpen: { open(part.id) }) {
             if mine {
-                Button("Record") { open(part.id) }.buttonStyle(.borderedProminent)
-                Menu {
-                    Button("Done with This Part") { act("done") }
-                        .disabled(!PlaysShare.pending(production, script, rec, me).filter { $0.part == part.id }.isEmpty)
-                    Button("Release") { act("release") }
-                } label: {
-                    Image(systemName: "ellipsis.circle").accessibilityLabel("More")
+                HStack(spacing: Spacing.s2) {
+                    Button("Record") { open(part.id) }.buttonStyle(.play(.ink))
+                    Menu {
+                        Button("Done with This Part") { act("done") }
+                            .disabled(!PlaysShare.pending(production, script, rec, me).filter { $0.part == part.id }.isEmpty)
+                        Button("Release") { act("release") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").accessibilityLabel("More")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
             } else if PlaysShare.canClaim(rec, part.id) {
-                if !part.id.isSpeaking {
-                    Button("Leave Silent") { act("silent") }.buttonStyle(.bordered)
-                }
-                if rec.next == part.id.rawValue {
-                    Button("Take Part") { claim() }.buttonStyle(.borderedProminent)
-                } else {
-                    Button("Take Part") { claim() }.buttonStyle(.bordered)
+                HStack(spacing: Spacing.s2) {
+                    if !part.id.isSpeaking {
+                        Button("Leave silent") { act("silent") }.buttonStyle(.play(.way))
+                    }
+                    Button("Take part") { claim() }.buttonStyle(.play(rec.next == part.id.rawValue ? .ink : .way))
                 }
             } else if [.done, .silent].contains(state.status), state.userID == me || rec.director == me {
-                Menu {
-                    Button("Open Part") { act("reopen") }
-                } label: {
-                    Image(systemName: "ellipsis.circle").accessibilityLabel("More")
-                }
-                .menuStyle(.borderlessButton)
-                .disabled(PlaysShare.recordingPart(rec) != nil)
-                .fixedSize()
+                Button("Open part") { act("reopen") }
+                    .buttonStyle(.play(.way))
+                    .disabled(PlaysShare.recordingPart(rec) != nil)
             }
         }
         .disabled(shared.busy.contains(production.id))
     }
 
-    private func status(_ state: SharedRecord.Part, mine: Bool) -> String {
-        let lines = part.lineCount == 1 ? "1 line" : "\(part.lineCount) lines"
-        let name = state.performer.map { " · \($0)" } ?? ""
+    private func holder(_ state: SharedRecord.Part) -> PartHolder {
         switch state.status {
-        case .open: return lines
+        case .open: .deviceVoice
+        case .recording, .done: .person(state.performer)
+        case .silent: .silent
+        }
+    }
+
+    private func who(_ state: SharedRecord.Part, mine: Bool) -> String {
+        let name = state.performer
+        switch state.status {
+        case .open: return "Open"
         case .recording where mine:
             let missing = Relay.missingLines(part.id, in: production, script: script).count
-            return "\(part.lineCount - missing) of \(lines) recorded\(name)"
-        case .recording: return "Recording\(name)"
-        case .done: return "Recorded\(name)"
+            return "\(name ?? "You") \u{00B7} \(part.lineCount - missing) of \(part.lineCount)"
+        case .recording: return name.map { "\($0) \u{00B7} recording" } ?? "Recording"
+        case .done: return name.map { "\($0) \u{00B7} recorded" } ?? "Recorded"
         case .silent: return "Left silent"
         }
     }

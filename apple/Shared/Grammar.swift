@@ -236,6 +236,36 @@ struct RunStrip: View {
     }
 }
 
+// MARK: - The cast fingerprint
+
+/// A play's mark where a show has its run strip (D3-6): one bar, each speaking part a segment whose
+/// width is its share of the play's lines, largest first, a 1 pt gap between. On a board every segment
+/// takes the board's one ink; off a board each takes its part's mark.
+struct CastFingerprint: View {
+    let script: PlayScript
+    /// The board the bar stands on; nil draws the part marks.
+    var onBoard: String? = nil
+    var height: CGFloat = 12
+
+    var body: some View {
+        let shares = script.castShares
+        GeometryReader { geo in
+            let gap: CGFloat = 1
+            let usable = max(0, geo.size.width - gap * CGFloat(max(0, shares.count - 1)))
+            HStack(spacing: gap) {
+                ForEach(Array(shares.enumerated()), id: \.offset) { _, share in
+                    Rectangle()
+                        .fill(onBoard.map { Color.onBoard($0) } ?? Color.genre(script.partHue(share.part)) ?? Color.brandTextMuted)
+                        .frame(width: usable * CGFloat(share.share))
+                }
+            }
+            .frame(width: geo.size.width, height: height, alignment: .leading)
+        }
+        .frame(height: height)
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - The show tile
 
 private struct NameHeightKey: PreferenceKey {
@@ -279,6 +309,8 @@ struct ShowTile: View {
     var width: CGFloat = Self.defaultWidth
     /// The facts lines when the tile says something other than the run and the episode count.
     var facts: [String]? = nil
+    /// A play: its cast fingerprint stands where the run strip would.
+    var castScript: PlayScript? = nil
     @Environment(\.sharedNameHeight) private var sharedNameHeight
     #if os(macOS)
     @State private var hovering = false
@@ -305,7 +337,11 @@ struct ShowTile: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { Color.clear.preference(key: NameHeightKey.self, value: $0.size.height) })
                 .frame(maxWidth: .infinity, minHeight: sharedNameHeight, maxHeight: sharedNameHeight, alignment: .topLeading)
-            RunStrip(first: series.firstDate, last: series.lastDate, genre: series.genre, years: series.yearCounts)
+            if let castScript {
+                CastFingerprint(script: castScript, onBoard: series.genre, height: 18)
+            } else {
+                RunStrip(first: series.firstDate, last: series.lastDate, genre: series.genre, years: series.yearCounts)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 if let facts {
                     ForEach(Array(facts.enumerated()), id: \.offset) { Text(verbatim: $0.element).lineLimit(2) }
@@ -329,7 +365,7 @@ struct ShowTile: View {
         #endif
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(series.name)
-        .accessibilityValue(series.metaLine)
+        .accessibilityValue(castScript != nil ? (facts ?? []).joined(separator: ", ") : series.metaLine)
     }
 }
 
@@ -559,6 +595,10 @@ struct HeadBoard: View {
     /// episode's board is itself the link to its show).
     var genreKey: String? = nil
     var kickerRest: String? = nil
+    /// An ear drama's author facts, a line under the name.
+    var credits: String? = nil
+    /// A play: its cast fingerprint stands in the mark slot where a show has its run strip.
+    var castScript: PlayScript? = nil
     @Environment(AppStore.self) private var store
     /// The picture's credit, under the board, when its license asks and the window shows it.
     var showsCredit = false
@@ -617,12 +657,19 @@ struct HeadBoard: View {
                         .font(GrammarType.headName(step: Grammar.nameStep(name)))
                         .multilineTextAlignment(.leading)
                         .minimumScaleFactor(0.6)
+                    if let credits, !credits.isEmpty {
+                        Text(verbatim: credits).font(TypeRamp.caption.weight(.semibold))
+                    }
                     EventLine(facts: facts, color: ink)
                 }
                 .foregroundStyle(ink)
                 Spacer(minLength: 0)
             }
-            RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years)
+            if let castScript {
+                CastFingerprint(script: castScript, onBoard: genre, height: Self.stripHeight(forWidth: width) / 3)
+            } else {
+                RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years)
+            }
         }
         .padding(Spacing.s4)
         .frame(maxWidth: .infinity, alignment: .leading)
