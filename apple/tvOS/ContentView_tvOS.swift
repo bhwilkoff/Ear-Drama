@@ -214,16 +214,23 @@ private struct ListenScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @Environment(FollowedSeries.self) private var follows
-    @State private var shelves: [Shelf]?
+    @Environment(AppStore.self) private var app
+    @State private var day: HomeDay?
+    @State private var top: [SeriesRow] = []
+    @State private var loaded = false
     @State private var continuing: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
+    @State private var allNight = false
+
+    private static let nightFirst = 6
+    private static let topCount = 12
 
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
-            } else if let shelves {
-                if shelves.isEmpty && continuing.isEmpty && following.isEmpty {
+            } else if loaded {
+                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 } else {
                     ScrollView(.vertical) {
@@ -234,7 +241,23 @@ private struct ListenScreen_tvOS: View {
                             if !following.isEmpty {
                                 SeriesShelf_tvOS(title: "Following", series: following)
                             }
-                            ForEach(shelves) { ShelfRow_tvOS(title: $0.rule.title, episodes: $0.episodes) }
+                            if let day, let peak = day.years.peak {
+                                DayBoard(model: day, selected: .constant(peak), interactive: false)
+                                    .padding(.horizontal, 60)
+                                night(day, peak)
+                            }
+                            if !top.isEmpty {
+                                VStack(alignment: .leading, spacing: Spacing.s4) {
+                                    SectionHead(title: "Most downloaded") {
+                                        Button("All \(top.count.formatted()) shows") { app.selectResettingPrevious(.browse) }
+                                    }
+                                    .padding(.horizontal, 60)
+                                    TileShelf_tvOS(items: Array(top.prefix(Self.topCount))) { row in
+                                        TileLink(value: Route.series(row.key), series: row)
+                                    }
+                                }
+                                .focusSection()
+                            }
                         }
                         .padding(.vertical, 60)
                     }
@@ -245,7 +268,11 @@ private struct ListenScreen_tvOS: View {
         }
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
-            shelves = await catalog.listenShelves()
+            let loadedDay = await HomeDay.load(catalog)
+            top = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: .popular)
+                .filter { ShowLine.isShow($0.episodeCount) }
+            day = loadedDay.years.years.isEmpty ? nil : loadedDay
+            loaded = true
         }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
@@ -254,6 +281,46 @@ private struct ListenScreen_tvOS: View {
             following = await catalog.series(follows.followedKeys)
         }
     }
+
+    @ViewBuilder private func night(_ day: HomeDay, _ year: Int) -> some View {
+        let night = day.night(year)
+        if !night.shows.isEmpty {
+            VStack(alignment: .leading, spacing: Spacing.s4) {
+                SectionHead(title: day.nightHeading(year)) {
+                    if night.singles > 0 { Text(verbatim: countText(night.singles, "single recording", "single recordings")) }
+                }
+                .padding(.horizontal, 60)
+                TileShelf_tvOS(items: allNight ? night.shows : Array(night.shows.prefix(Self.nightFirst))) { show in
+                    TileLink(value: Route.episode(show.episode.id), series: show.series, facts: show.facts)
+                }
+                if night.shows.count > Self.nightFirst {
+                    Button(allNight ? "Fewer shows" : "All \(night.shows.count.formatted()) shows that night") {
+                        allNight.toggle()
+                    }
+                    .padding(.horizontal, 60)
+                }
+            }
+            .focusSection()
+        }
+    }
+}
+
+/// A shelf of show tiles in one row, each sharing the shelf's name height.
+private struct TileShelf_tvOS<Item: Identifiable, Tile: View>: View {
+    let items: [Item]
+    @ViewBuilder let tile: (Item) -> Tile
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(alignment: .top, spacing: 40) {
+                ForEach(items) { tile($0) }
+            }
+            .sharesNameHeight()
+            .padding(.horizontal, 60)
+            .padding(.vertical, Spacing.s6)
+        }
+        .scrollClipDisabled()
+    }
 }
 
 // MARK: - Browse (was Series; the TV lists no plays, PLAYS-DESIGN §6)
@@ -261,39 +328,107 @@ private struct ListenScreen_tvOS: View {
 private struct SeriesBrowseScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @State private var series: [SeriesRow]?
+    @State private var fieldBase: [SeriesRow] = []
     @State private var genres: [String] = []
     @State private var genre: String?
+    @State private var decade: Int?
     @State private var sort: SeriesSort = .popular
+    @State private var singles = false
+    @State private var shown = BrowseScreenPage.size
 
-    private struct Key: Hashable { let genre: String?; let sort: SeriesSort; let load: Int }
+    private struct Key: Hashable { let genre: String?; let decade: Int?; let sort: SeriesSort; let load: Int }
+
+    private var heading: String {
+        switch sort {
+        case .popular: "Most downloaded first"
+        case .name: "A to Z"
+        case .episodes: "Most episodes"
+        case .firstAired: "Oldest first"
+        }
+    }
 
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                List {
-                    if !genres.isEmpty {
-                        Picker("Genre", selection: $genre) {
-                            Text("Any genre").tag(String?.none)
-                            ForEach(genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
-                        }
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: Spacing.s6) {
+                        filters
+                        results(series)
                     }
-                    Picker("Sort", selection: $sort) {
-                        ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    ForEach(series) { row in
-                        NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
-                    }
+                    .padding(.horizontal, 60)
+                    .padding(.vertical, 60)
                 }
             } else {
                 ProgressView()
             }
         }
         .task(id: catalog.loadKey) { genres = await catalog.browseFacets().genres }
-        .task(id: Key(genre: genre, sort: sort, load: catalog.loadKey)) {
+        .task(id: Key(genre: genre, decade: decade, sort: sort, load: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
-            series = await catalog.seriesBrowse(genre: genre, network: nil, decade: nil, sort: sort)
+            series = await catalog.seriesBrowse(genre: genre, network: nil, decade: decade, sort: sort)
+        }
+        .task(id: Key(genre: nil, decade: nil, sort: sort, load: catalog.loadKey)) {
+            guard catalog.state == .ready else { return }
+            fieldBase = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: sort)
+        }
+        .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) { shown = BrowseScreenPage.size }
+    }
+
+    private var filters: some View {
+        HStack(spacing: Spacing.s6) {
+            if !genres.isEmpty {
+                Picker("Genre", selection: $genre) {
+                    Text("Any genre").tag(String?.none)
+                    ForEach(genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
+                }
+            }
+            Picker("Sort", selection: $sort) {
+                ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            if genre != nil || decade != nil {
+                Button("Clear") { genre = nil; decade = nil }
+            }
+        }
+    }
+
+    @ViewBuilder private func results(_ all: [SeriesRow]) -> some View {
+        let shows = all.filter { ShowLine.isShow($0.episodeCount) }
+        let lesser = all.filter { !ShowLine.isShow($0.episodeCount) }
+        let listed = singles ? lesser : shows
+        let field = ShowLine.decadeField(fieldBase.filter { ShowLine.isShow($0.episodeCount) }
+            .map { (genre: $0.genre, first: $0.firstDate) })
+        HStack(alignment: .firstTextBaseline) {
+            Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
+                 : countText(shows.count, "show", "shows"))
+                .font(TypeRamp.bodyStrong)
+            Spacer()
+            if singles || !lesser.isEmpty {
+                Button(singles ? countText(shows.count, "show", "shows")
+                       : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
+            }
+        }
+        if !field.genres.isEmpty {
+            GenreField(field: field, genre: genre, decade: decade) { g, d in genre = g; decade = d }
+                .focusSection()
+        }
+        if field.none > 0 {
+            Text(verbatim: "\(field.none.formatted()) with no genre")
+                .font(TypeRamp.caption)
+                .foregroundStyle(Color.brandTextMuted)
+        }
+        SectionHead(title: heading) { EmptyView() }
+        if listed.isEmpty {
+            EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
+                       action: .init(title: "Clear Filters") { genre = nil; decade = nil })
+        } else {
+            ShowGrid(items: Array(listed.prefix(shown))) { row, width in
+                TileLink(value: Route.series(row.key), series: row, width: width)
+            }
+            if listed.count > shown {
+                Button("Show more") { shown += BrowseScreenPage.size }
+            }
         }
     }
 }

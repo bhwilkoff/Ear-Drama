@@ -154,6 +154,13 @@ final class CatalogStore {
         await run { $0.randomEpisode() } ?? nil
     }
 
+    /// Every surviving broadcast on this calendar day in any year, oldest first (Home's day board).
+    func dayEpisodes(today: Date = Date(), calendar: Calendar = .current) async -> [EpisodeRow] {
+        let parts = calendar.dateComponents([.month, .day], from: today)
+        let rule = ShelfRule.onThisDay(month: parts.month ?? 1, day: parts.day ?? 1)
+        return await run { $0.shelf(rule, limit: 100_000) } ?? []
+    }
+
     /// The Listen tab: the catalog's published shelves on the person's own
     /// calendar date (`CatalogDatabase.listenShelves`).
     func listenShelves(today: Date = Date(), calendar: Calendar = .current) async -> [Shelf] {

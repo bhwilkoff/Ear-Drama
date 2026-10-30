@@ -155,3 +155,100 @@ nonisolated enum PictureGrade {
         "\(url.absoluteString)|\(grade.k)|\(grade.o)" as NSString
     }
 }
+
+// Home and Browse's decisions (WEB-DESIGN §6.4c, R11c): the web's `isShow`, `dayYears`,
+// `nightShows`, `decadeField` and `fieldSide`, with the same golden cases (HomeBrowseRulesTests).
+
+nonisolated enum ShowLine {
+    /// A show is a series of at least this many episodes (owner, 2026-10-29: "Having more shows is
+    /// better, so 5."); the rest are single recordings, counted.
+    static let showMin = 5
+    static func isShow(_ episodes: Int?) -> Bool { (episodes ?? 0) >= showMin }
+
+    /// The genre order of every stacked mark and legend; a series with no genre stacks last, in no hue.
+    static let genreOrder = ["drama", "mystery", "comedy", "serial", "western", "scifi", "documentary", "news"]
+
+    struct Year: Equatable {
+        let year: Int
+        var total: Int
+        var genres: [String: Int]
+    }
+
+    struct Day: Equatable {
+        let years: [Year]
+        let peak: Int?
+        let count: Int
+        let genres: [String]
+    }
+
+    private static func year(_ date: String?) -> Int? {
+        guard let date, date.count >= 4, date.prefix(4).allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        return Int(date.prefix(4))
+    }
+
+    /// One day's broadcasts by year, oldest first; the year with most (the earlier on a tie) is the
+    /// peak. A row without a four-digit year is not on the strip; no genre stacks under "".
+    static func dayYears<R>(_ rows: [R], date: (R) -> String?, genre: (R) -> String?) -> Day {
+        var by: [Int: Year] = [:]
+        for row in rows {
+            guard let y = year(date(row)) else { continue }
+            let g = genre(row) ?? ""
+            var entry = by[y] ?? Year(year: y, total: 0, genres: [:])
+            entry.total += 1
+            entry.genres[g, default: 0] += 1
+            by[y] = entry
+        }
+        let years = by.values.sorted { $0.year < $1.year }
+        var peak: Year?
+        for y in years where peak == nil || y.total > peak!.total { peak = y }
+        let seen = Set(years.flatMap { $0.genres.keys })
+        return Day(years: years, peak: peak?.year, count: years.reduce(0) { $0 + $1.total },
+                   genres: genreOrder.filter(seen.contains))
+    }
+
+    /// One night's rows as shows: a show's first row of the night only (the same title folded once),
+    /// singles counted and left out. `episodes` is the row's series' episode count, nil when unknown.
+    static func nightShows<R>(_ rows: [R], title: (R) -> String?, episodes: (R) -> Int?) -> (shows: [R], singles: Int) {
+        func normal(_ t: String?) -> String {
+            String((t ?? "").lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) })
+        }
+        var seen = Set<String>(), shows: [R] = []
+        var singles = 0
+        for row in rows {
+            guard isShow(episodes(row)) else { singles += 1; continue }
+            if seen.insert(normal(title(row))).inserted { shows.append(row) }
+        }
+        return (shows, singles)
+    }
+
+    struct DecadeField: Equatable {
+        let decades: [Int]
+        let genres: [String]
+        let cells: [String: Int]
+        let max: Int
+        let none: Int
+        func count(_ genre: String, _ decade: Int) -> Int { cells["\(genre)|\(decade)"] ?? 0 }
+    }
+
+    /// Browse's decade by genre field: the shows per cell, decades in order. A show with no genre or
+    /// no first year is counted in `none` and left off the field.
+    static func decadeField(_ shows: [(genre: String?, first: String?)]) -> DecadeField {
+        var cells: [String: Int] = [:], decades = Set<Int>()
+        var none = 0
+        for s in shows {
+            guard let g = s.genre, !g.isEmpty, let y = year(s.first) else { none += 1; continue }
+            let d = y / 10 * 10
+            decades.insert(d)
+            cells["\(g)|\(d)", default: 0] += 1
+        }
+        let ds = decades.sorted()
+        let genres = genreOrder.filter { g in ds.contains { cells["\(g)|\($0)"] != nil } }
+        return DecadeField(decades: ds, genres: genres, cells: cells, max: cells.values.max() ?? 0, none: none)
+    }
+
+    /// A cell's mark side: the square root of its share of the biggest cell (so area carries the
+    /// count), 6 to 32 points, 0 for an empty cell.
+    static func fieldSide(_ n: Int, max: Int) -> Int {
+        n > 0 && max > 0 ? Swift.max(6, Int((32 * (Double(n) / Double(max)).squareRoot()).rounded())) : 0
+    }
+}

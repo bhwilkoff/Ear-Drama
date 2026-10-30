@@ -61,15 +61,24 @@ struct ListenScreen: View {
     @Environment(ListeningHistory.self) private var history
     @Environment(AppStore.self) private var store
     @Environment(FollowedSeries.self) private var follows
-    @State private var shelves: [Shelf]?
+    @State private var day: HomeDay?
+    @State private var top: [SeriesRow] = []
+    @State private var loaded = false
     @State private var continuing: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
+    @State private var year: Int?
+    @State private var allNight = false
+
+    private static let nightFirst = 6
+    private static let topCount = 12
+
+    private var selectedYear: Int? { year ?? day?.years.peak }
 
     var body: some View {
         List {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
-            } else if let shelves {
+            } else if loaded {
                 if !continuing.isEmpty {
                     Section("Continue listening") {
                         ForEach(continuing) { episode in
@@ -98,17 +107,27 @@ struct ListenScreen: View {
                         .listRowBackground(Color.clear)
                     }
                 }
-                ForEach(shelves) { shelf in
-                    Section(shelf.rule.title) {
-                        ForEach(shelf.episodes) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .playContextMenu(episode.id)
+                if let day, let selected = selectedYear {
+                    Section {
+                        DayBoard(model: day, selected: Binding(get: { selected }, set: { year = $0; allNight = false }))
+                            .gridRow()
+                    }
+                    nightSection(day, selected)
+                }
+                if !top.isEmpty {
+                    Section {
+                        ShowGrid(items: Array(top.prefix(Self.topCount))) { row, width in
+                            TileLink(value: Route.series(row.key), series: row, width: width)
+                        }
+                        .gridRow()
+                    } header: {
+                        SectionHead(title: "Most downloaded") {
+                            Button("All \(top.count.formatted()) shows") { store.selectResettingPrevious(.browse) }
+                                .buttonStyle(.borderless)
                         }
                     }
                 }
-                if shelves.isEmpty && continuing.isEmpty && following.isEmpty {
+                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 }
             } else {
@@ -126,7 +145,13 @@ struct ListenScreen: View {
         #endif
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
-            shelves = await catalog.listenShelves()
+            let loadedDay = await HomeDay.load(catalog)
+            let shows = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: .popular)
+                .filter { ShowLine.isShow($0.episodeCount) }
+            day = loadedDay.years.years.isEmpty ? nil : loadedDay
+            top = shows
+            year = nil
+            loaded = true
         }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
@@ -134,6 +159,38 @@ struct ListenScreen: View {
         .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
             following = await catalog.series(follows.followedKeys)
         }
+    }
+
+    @ViewBuilder private func nightSection(_ day: HomeDay, _ selected: Int) -> some View {
+        let night = day.night(selected)
+        if !night.shows.isEmpty {
+            let shown = allNight ? night.shows : Array(night.shows.prefix(Self.nightFirst))
+            Section {
+                ShowGrid(items: shown) { show, width in
+                    TileLink(value: Route.episode(show.episode.id), series: show.series, width: width, facts: show.facts)
+                }
+                .gridRow()
+                if night.shows.count > Self.nightFirst {
+                    Button(allNight ? "Fewer shows" : "All \(night.shows.count.formatted()) shows that night") {
+                        allNight.toggle()
+                    }
+                    .buttonStyle(.borderless)
+                    .font(TypeRamp.caption)
+                }
+            } header: {
+                SectionHead(title: day.nightHeading(selected)) {
+                    if night.singles > 0 { Text(verbatim: countText(night.singles, "single recording", "single recordings")) }
+                }
+            }
+        }
+    }
+}
+
+private extension View {
+    func gridRow() -> some View {
+        listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
     }
 }
 
@@ -148,7 +205,12 @@ enum BrowseKind: String, CaseIterable, Hashable {
 struct SeriesBrowseScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(PlaysLibrary.self) private var plays
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
     @State private var series: [SeriesRow]?
+    /// The same list with the genre and decade filters off: the field counts over it (R11c).
+    @State private var fieldBase: [SeriesRow] = []
     @State private var facets: (genres: [String], networks: [String], decades: [Int]) = ([], [], [])
     @State private var kind: BrowseKind?
     @State private var hasScript = false
@@ -158,9 +220,25 @@ struct SeriesBrowseScreen: View {
     @State private var network: String?
     @State private var decade: Int?
     @State private var sort: SeriesSort = .popular
+    @State private var singles = false
+    @State private var shown = BrowseScreenPage.size
 
     private struct Filter: Hashable {
         let genre: String?, network: String?, decade: Int?, sort: SeriesSort, generation: Int
+    }
+
+    private struct PageKey: Hashable {
+        let genre: String?, network: String?, decade: Int?, sort: SeriesSort, kind: BrowseKind?, hasScript: Bool, singles: Bool
+    }
+
+    private enum Item: Identifiable {
+        case show(SeriesRow), play(PlayScript)
+        var id: String {
+            switch self {
+            case let .show(row): "s|" + row.key
+            case let .play(script): "p|" + script.id
+            }
+        }
     }
 
     /// A play carries no genre, network, or decade, so those narrow to series;
@@ -175,6 +253,22 @@ struct SeriesBrowseScreen: View {
     private var showsPlays: Bool { kind != .series && genre == nil && network == nil && decade == nil }
     private var shownPlays: [PlayScript] { showsPlays ? plays.scripts : [] }
     private var isFiltered: Bool { kind != nil || hasScript || genre != nil || network != nil || decade != nil }
+    private var regular: Bool {
+        #if os(iOS)
+        sizeClass != .compact
+        #else
+        true
+        #endif
+    }
+
+    private var heading: String {
+        switch sort {
+        case .popular: "Most downloaded first"
+        case .name: "A to Z"
+        case .episodes: "Most episodes"
+        case .firstAired: "Oldest first"
+        }
+    }
 
     /// One List for every state, as Home and Library: swapping scroll views
     /// under the bar lost the large title (seen on an iPhone 12, 2026-10-24).
@@ -183,12 +277,10 @@ struct SeriesBrowseScreen: View {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                ForEach(shownSeries(series)) { row in
-                    NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
-                }
-                ForEach(shownPlays) { script in
-                    NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
-                }
+                results(series)
+                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             } else {
                 SkeletonRows()
             }
@@ -213,6 +305,87 @@ struct SeriesBrowseScreen: View {
             guard catalog.state == .ready else { return }
             series = await catalog.seriesBrowse(genre: genre, network: network, decade: decade, sort: sort)
         }
+        .task(id: Filter(genre: nil, network: network, decade: nil, sort: sort, generation: catalog.loadKey)) {
+            guard catalog.state == .ready else { return }
+            fieldBase = await catalog.seriesBrowse(genre: nil, network: network, decade: nil, sort: sort)
+        }
+        .onChange(of: PageKey(genre: genre, network: network, decade: decade, sort: sort, kind: kind,
+                              hasScript: hasScript, singles: singles)) { shown = BrowseScreenPage.size }
+    }
+
+    @ViewBuilder private func results(_ all: [SeriesRow]) -> some View {
+        let listed = shownSeries(all)
+        let shows = listed.filter { ShowLine.isShow($0.episodeCount) }
+        let lesser = listed.filter { !ShowLine.isShow($0.episodeCount) }
+        let items: [Item] = (singles ? lesser : shows).map(Item.show) + (singles ? [] : shownPlays.map(Item.play))
+        let field = ShowLine.decadeField(shownSeries(fieldBase).filter { ShowLine.isShow($0.episodeCount) }
+            .map { (genre: $0.genre, first: $0.firstDate) })
+        VStack(alignment: .leading, spacing: Spacing.s4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
+                     : countText(shows.count, "show", "shows"))
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.brandText)
+                Spacer(minLength: Spacing.s3)
+                if singles || !lesser.isEmpty {
+                    Button(singles ? countText(shows.count, "show", "shows")
+                           : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
+                        .buttonStyle(.borderless)
+                        .font(TypeRamp.caption)
+                        .lineLimit(1)
+                }
+            }
+            if regular {
+                HStack(alignment: .top, spacing: Spacing.s6) {
+                    fieldColumn(field).fixedSize(horizontal: true, vertical: false)
+                    grid(items).frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+            } else {
+                fieldColumn(field)
+                grid(items)
+            }
+        }
+    }
+
+    @ViewBuilder private func fieldColumn(_ field: ShowLine.DecadeField) -> some View {
+        if !field.genres.isEmpty || field.none > 0 {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                if !field.genres.isEmpty {
+                    GenreField(field: field, genre: genre, decade: decade) { g, d in genre = g; decade = d }
+                }
+                if field.none > 0 {
+                    Text(verbatim: "\(field.none.formatted()) with no genre")
+                        .font(TypeRamp.caption)
+                        .foregroundStyle(Color.brandTextMuted)
+                }
+            }
+        }
+    }
+
+    private func grid(_ items: [Item]) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s3) {
+            SectionHead(title: heading) { EmptyView() }
+            ShowGrid(items: Array(items.prefix(shown))) { item, width in
+                switch item {
+                case let .show(row):
+                    TileLink(value: Route.series(row.key), series: row, width: width)
+                case let .play(script):
+                    TileLink(value: PlayRoute.script(script.id), series: Self.tileRow(script), width: width,
+                             facts: [script.authorLine, countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts")]
+                                 .filter { !$0.isEmpty })
+                }
+            }
+            if items.count > shown {
+                Button("Show more") { shown += BrowseScreenPage.size }
+                    .buttonStyle(.borderless)
+                    .font(TypeRamp.caption)
+            }
+        }
+    }
+
+    /// A play on the show tile: no picture, no genre, no run (plays carry none).
+    private static func tileRow(_ script: PlayScript) -> SeriesRow {
+        SeriesRow(key: script.id, name: script.title, genre: nil, firstDate: nil, lastDate: nil, networks: [], episodeCount: 0)
     }
 
     private func clear() { kind = nil; hasScript = false; genre = nil; network = nil; decade = nil }
@@ -251,10 +424,10 @@ struct SeriesBrowseScreen: View {
                         ForEach(facets.networks, id: \.self) { Text($0).tag(String?.some($0)) }
                     }
                 }
-                Toggle("Has a script", isOn: $hasScript)
-                    .toggleStyle(.button)
-                    .buttonBorderShape(.capsule)
-                    .tint(hasScript ? Color.brandSecondary : Color.brandTextMuted)
+                Button { hasScript.toggle() } label: { chipLabel("Has a script", on: hasScript) }
+                    .buttonStyle(.plain)
+                    .fixedSize()
+                    .accessibilityAddTraits(hasScript ? .isSelected : [])
                 // An order, not a filter: never filled, never cleared (Archive Watch §4.2a).
                 chip("Sort: \(sort.title)", on: false) {
                     Picker("Sort", selection: $sort) {
@@ -272,16 +445,20 @@ struct SeriesBrowseScreen: View {
         Menu {
             content()
         } label: {
-            Text(verbatim: title)
-                .font(TypeRamp.caption)
-                .padding(.horizontal, Spacing.s3)
-                .padding(.vertical, Spacing.s1)
-                .foregroundStyle(on ? Color.brandOnSecondary : Color.brandText)
-                .background(on ? Color.brandSecondary : Color.brandSurface, in: Capsule())
+            chipLabel(title, on: on)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .fixedSize()
+    }
+
+    private func chipLabel(_ title: String, on: Bool) -> some View {
+        Text(verbatim: title)
+            .font(TypeRamp.caption)
+            .padding(.horizontal, Spacing.s3)
+            .padding(.vertical, Spacing.s1)
+            .foregroundStyle(on ? Color.brandOnSecondary : Color.brandText)
+            .background(on ? Color.brandSecondary : Color.brandSurface, in: Capsule())
     }
 }
 
