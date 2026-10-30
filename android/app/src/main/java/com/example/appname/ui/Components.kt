@@ -185,6 +185,17 @@ fun CenteredBox(modifier: Modifier = Modifier, content: @Composable () -> Unit) 
     ) { content() }
 }
 
+/** An empty Library section's one line: what it would hold, a fact and never an invitation (§4.6). */
+@Composable
+fun SectionCaption(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+    )
+}
+
 @Composable
 fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     Text(

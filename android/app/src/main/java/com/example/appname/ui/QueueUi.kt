@@ -92,8 +92,10 @@ fun QueueToggle(episodeId: String, modifier: Modifier = Modifier) {
 /** Library's Queue section: swipe a row away to remove it; long-press for Move up, Move down, Remove. */
 @OptIn(ExperimentalMaterial3Api::class)
 fun LazyListScope.queueSection(rows: List<EpisodeRow>, onOpen: (String) -> Unit, onPlay: (EpisodeRow) -> Unit) {
-    if (rows.isEmpty()) return
     item(key = "queue-h") { SectionHeader("Queue") }
+    if (rows.isEmpty()) {
+        item(key = "queue-empty") { SectionCaption("Episodes you add play in this order, after the one that is playing.") }
+    }
     items(rows.size, key = { "q:" + rows[it].id }) { i ->
         val row = rows[i]
         val container = LocalAppContainer.current

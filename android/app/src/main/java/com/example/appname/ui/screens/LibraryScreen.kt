@@ -4,7 +4,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import com.example.appname.ui.ShowShelf
+import com.example.appname.ui.SectionCaption
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -96,6 +104,21 @@ fun LibraryScreen(
         )
     }
     val downloadRecords by container.downloads.records.collectAsState()
+    var unfollowing by remember { mutableStateOf<SeriesRow?>(null) }
+    val scope = rememberCoroutineScope()
+    unfollowing?.let { row ->
+        AlertDialog(
+            onDismissRequest = { unfollowing = null },
+            title = { Text("Unfollow ${row.name}?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch { container.user.setFollowing(row.key, false) }
+                    unfollowing = null
+                }) { Text("Unfollow") }
+            },
+            dismissButton = { TextButton(onClick = { unfollowing = null }) { Text("Cancel") } },
+        )
+    }
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
             val empty = library.queued.isEmpty() && library.inProgress.isEmpty() && library.finished.isEmpty() &&
@@ -111,42 +134,46 @@ fun LibraryScreen(
                 if (empty) {
                     item(key = "empty") { EmptyMessage("Nothing played yet.", action = EmptyAction("Browse", onBrowse)) }
                 }
+                item(key = "progress-h") { SectionHeader("Continue") }
+                if (library.inProgress.isEmpty()) {
+                    item(key = "progress-empty") { SectionCaption("Episodes you stop partway through wait here.") }
+                }
+                items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->
+                    EpisodeListItem(
+                        row,
+                        showSeries = true,
+                        onOpen = { onOpenEpisode(row.id) },
+                        onPlay = { container.playback.play(row) },
+                        supporting = "${formatClock(p.positionMs)} of ${formatClock(p.durationMs)}",
+                    )
+                }
                 queueSection(
                     library.queued,
                     onOpen = onOpenEpisode,
                     onPlay = { container.playback.play(it) },
                 )
-                if (library.inProgress.isNotEmpty()) {
-                    item(key = "progress-h") { SectionHeader("In progress") }
-                    items(library.inProgress, key = { "p:" + it.first.id }) { (row, p) ->
-                        EpisodeListItem(
-                            row,
-                            showSeries = true,
-                            onOpen = { onOpenEpisode(row.id) },
-                            onPlay = { container.playback.play(row) },
-                            supporting = "${formatClock(p.positionMs)} of ${formatClock(p.durationMs)}",
-                        )
+                item(key = "following-h") { SectionHeader("Following") }
+                if (library.following.isEmpty()) {
+                    item(key = "following-empty") { SectionCaption("Series you follow appear here.") }
+                } else {
+                    item(key = "following") {
+                        ShowShelf(library.following, onOpen = { onOpenSeries(it.key) }, onLongClick = { unfollowing = it })
                     }
+                }
+                item(key = "history-h") { SectionHeader("History") }
+                if (library.finished.isEmpty()) {
+                    item(key = "history-empty") { SectionCaption("Episodes you finish appear here, newest first.") }
+                }
+                items(library.finished, key = { "f:" + it.id }) { row ->
+                    EpisodeListItem(
+                        row,
+                        showSeries = true,
+                        onOpen = { onOpenEpisode(row.id) },
+                        onPlay = { container.playback.play(row) },
+                    )
                 }
                 downloadsSection(downloadRecords, container.downloads.totalBytes, onOpen = onOpenDownloads)
-                if (library.finished.isNotEmpty()) {
-                    item(key = "finished-h") { SectionHeader("Played") }
-                    items(library.finished, key = { "f:" + it.id }) { row ->
-                        EpisodeListItem(
-                            row,
-                            showSeries = true,
-                            onOpen = { onOpenEpisode(row.id) },
-                            onPlay = { container.playback.play(row) },
-                        )
-                    }
-                }
-                if (library.following.isNotEmpty()) {
-                    item(key = "following-h") { SectionHeader("Following") }
-                    items(library.following, key = { "s:" + it.key }) { row ->
-                        SeriesListItem(row, onOpen = { onOpenSeries(row.key) })
-                    }
-                }
-                earDramasSection(dramaRows, invitation, withClasses, onOpenProduction)
+                earDramasSection(dramaRows, invitation, withClasses, onOpenProduction, recordsHere = !television)
                 siteLinksItem()
             }
         }
