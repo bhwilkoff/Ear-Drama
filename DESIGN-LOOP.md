@@ -209,4 +209,15 @@ describing."*
   devices only: a D3-1 simulator wedged the Mac (owner: "We never use simulators").
 - Owner calls open from D3-1: one Big Shoulders cut (web's woff2 is narrower than the native
   TTF); Android's Play button (36 dp filled circle) vs web's plain icon.
+- 2026-10-30 midday: merged on main (unpushed until checks pass): P-2 (portraits past the size
+  floor via one-face depicts photos, owner-approved; display titles; per-year counts), D3-3 (series
+  and episode pages, head board), D3-fix (A to Z letter jump, short decade headers, run strips from
+  real years, Android long dates, genre link), D3-4 (Now Playing and mini player). Next: push
+  1.0.112, publish the catalog, run scratchpad suite/run.sh (iPad, Pixel, Movie Room ATV, iPad tap
+  tier with a glass frame for the XCTest passcode prompt).
+- D3 left: (5) Library, (6) Create with the three recording modes, (7) invite, finished dramas,
+  share pages; then D4. Leftovers: Apple long dates; Now Playing's On the air and That night
+  sections; Android rows carry no network; web player lacks queue and share verbs.
+- Enforced now (.claude/hooks/device-guard.py): no simulators, no unmuted Chrome, the runbook
+  section before device commands. webdrive.Browser is muted by default.
 - Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
