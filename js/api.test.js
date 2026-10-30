@@ -106,6 +106,25 @@ test('grammar: the title block, the type step, the window, the event line and th
   assertEq(JSON.stringify(API.gradeOf({ grade: [1.1, -0.05] })), JSON.stringify({ k: 1.1, o: -0.05 }), 'a published grade replaces it');
 });
 
+test('browse and rows: A to Z letters, the histogram strip, the bare undated row (WEB-DESIGN 6.4c golden cases)', () => {
+  assertEq(API.azLetter('The Shadow'), 'T', 'a letter');
+  assertEq(API.azLetter('\u00c9clair'), 'E', 'an accent folds');
+  assertEq(API.azLetter('2000 Plus'), '#', 'a number goes under #');
+  assertEq(API.azLetter('"Quoted"'), '#', 'a symbol goes under #');
+  assertEq(JSON.stringify(API.azLetters(['Zero', '10 Days', 'Adam', 'Alan'])), JSON.stringify(['#', 'A', 'Z']), 'only letters with shows, # first');
+  assertEq(JSON.stringify(API.azLetters(['Adam'])), JSON.stringify(['A']), 'control: no # when no number');
+  const bars = API.runBars([1938, 1, 0, 4]);
+  assertEq(bars.length, 2, 'a year with no episode draws nothing');
+  assertEq(bars[0].h, 0.25, '1 of the peak 4');
+  assertEq(bars[1].h, 1, 'the peak year is full height');
+  assert(Math.abs(bars[1].from - 10 / 33) < 1e-9, '1940 on the 1930 to 1962 axis');
+  assertEq(API.runBars(null), null, 'control: no histogram, the span draws');
+  assertEq(API.runBars([1940, 0, 0]), null, 'control: all zero is no histogram');
+  assertEq(API.undatedBare({ date: null, num: null }), true, 'neither a date nor a number');
+  assertEq(API.undatedBare({ date: null, num: 7 }), false, 'control: a number keeps its block');
+  assertEq(API.undatedBare({ date: '1943-05-25', num: null }), false, 'control: a date keeps its block');
+});
+
 test('series and episode pages: the lead picture, who is on the air, the event line (WEB-DESIGN §6.4d golden cases)', () => {
   const art = (u) => ({ url: u, width: 600, height: 800 });
   const credits = [{ person: 'a', name: 'A', role: 'cast', art: null }, { person: 'b', name: 'B', role: 'cast', art: art('b') },

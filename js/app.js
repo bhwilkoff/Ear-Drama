@@ -338,10 +338,12 @@
     return win;
   }
   /** The run strip: the years from the first to the last broadcast on the fixed 1930 to 1962 axis. */
-  function runStrip(first, last, cls = 'g-strip', h = 18) {
-    const span = API.runSpan(first, last);
+  function runStrip(first, last, cls = 'g-strip', h = 18, years = null) {
+    const bars = API.runBars(years), span = bars ? null : API.runSpan(first, last);
     return svgEl('svg', { class: cls, viewBox: `0 0 100 ${h}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' },
       svgEl('line', { class: 'g-axis', x1: 0, y1: h - 0.5, x2: 100, y2: h - 0.5 }),
+      ...(bars || []).map(b => svgEl('rect', { x: (b.from * 100).toFixed(2), y: (h - 1 - (h - 3) * b.h).toFixed(2),
+        width: ((b.to - b.from) * 100).toFixed(2), height: ((h - 3) * b.h + 0.5).toFixed(2) })),
       span ? svgEl('rect', { x: (span.from * 100).toFixed(2), y: h - 15, width: ((span.to - span.from) * 100).toFixed(2), height: 15 }) : null);
   }
   /** An event line: the facts joined by " · ", each separator kept with the fact before it. */
@@ -359,7 +361,7 @@
       el('a', { class: 'g-tile', href: href || `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
         pictureWindow(s, 200),
         el('span', { class: 'g-name', dataset: { step: String(API.nameStep(s.name)) } }, s.name),
-        runStrip(s.first, s.last),
+        runStrip(s.first, s.last, 'g-strip', 18, s.years),
         el('span', { class: 'g-facts caption' }, ...lines.filter(Boolean).map(t => el('span', {}, t)))));
   }
   /** The head board (series, episode, ear drama): the window, the kicker, the name, the facts, and
@@ -370,7 +372,11 @@
     return typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches ? 176
       : typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 128 : 96;
   }
-  function headBoard({ series, kicker, name, facts, first, last, picture, href = null }) {
+  /** The head board's strip: taller where there is room to read the histogram. */
+  function headStripH() {
+    return typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 40 : 32;
+  }
+  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null }) {
     const slot = headSlot();
     const lead = picture === undefined ? series : { ...series, picture };
     const nm = { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) } };
@@ -378,10 +384,10 @@
                                        dataset: { genre: (series && series.genre) || '' } },
       pictureWindow(lead, slot),
       el('div', { class: 'g-head-text' },
-        kicker ? el('span', { class: 'g-kicker caption' }, kicker) : null,
+        kicker ? el('span', { class: 'g-kicker caption' }, ...[].concat(kicker)) : null,
         href ? el('p', nm, name) : el('h1', { ...nm, tabindex: '-1' }, name),
         eventLine(facts || [], 'caption g-head-facts')),
-      runStrip(first, last, 'g-strip g-head-strip', 18));
+      runStrip(first, last, 'g-strip g-head-strip', headStripH(), years));
   }
   /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
       broken at its hyphens. */
@@ -433,7 +439,7 @@
     const len = fmtLength(ep.length);
     const link = el('a', { class: 'ep-link g-link', href: `?item=${encodeURIComponent(ep.id)}`,
                            'aria-label': [epTitle(ep), showSeries ? ep.seriesName : null, dateText || 'Undated', note, len].filter(Boolean).join(', ') },
-      showSeries ? pictureWindow({ key: ep.series, name: ep.seriesName }, 48) : dateBlock(ep, genre, ep.series),
+      showSeries || API.undatedBare(ep) ? pictureWindow({ key: ep.series, name: ep.seriesName, ...(genre ? { genre } : {}) }, 48) : dateBlock(ep, genre, ep.series),
       el('span', { class: 'g-text' },
         el('span', { class: 'ep-title body-strong' }, epTitle(ep)),
         sub ? el('span', { class: 'ep-sub' }, sub) : null,
@@ -1075,14 +1081,36 @@
       const tileOf = (s) => (s.kind === 'plays'
         ? showTile({ key: s.key, name: s.name, genre: '', first: null, picture: null }, { href: `?play=${encodeURIComponent(s.key)}`, facts: [s.author, plural(PlaysCore.castParts(s.script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')] })
         : showTile(s));
+      const az = f.sort === 'name';
+      const letters = az ? API.azLetters(list.map(key)) : [];
+      const seenLetter = new Set();
       const page = () => {
-        list.slice(shown, shown + PAGE).forEach(s => grid.append(tileOf(s)));
+        list.slice(shown, shown + PAGE).forEach(s => {
+          const li = tileOf(s);
+          if (az) {
+            const l = API.azLetter(key(s));
+            if (!seenLetter.has(l)) { seenLetter.add(l); li.id = `az-${l === '#' ? 'num' : l}`; }
+          }
+          grid.append(li);
+        });
         shown += PAGE;
         if (shown >= list.length) more.remove();
       };
       more.addEventListener('click', page);
       page();
-      const results = el('section', { class: 'g-results' }, sectionHead(SORT_TITLE[f.sort] || SORT_TITLE.popular), grid, shown < list.length ? more : null);
+      const letterBar = letters.length > 1 ? el('nav', { class: 'g-az', 'aria-label': 'Jump to a letter' },
+        ...letters.map(l => {
+          const id = `az-${l === '#' ? 'num' : l}`;
+          const a = el('a', { class: 'g-az-link tabular', href: `#${id}`, 'aria-label': l === '#' ? 'Numbers and symbols' : `Shows starting with ${l}` }, l);
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            while (!document.getElementById(id) && shown < list.length) page();
+            const t = document.getElementById(id);
+            if (t) { t.scrollIntoView({ block: 'start' }); const k = t.querySelector('a'); if (k) k.focus({ preventScroll: true }); }
+          });
+          return a;
+        })) : null;
+      const results = el('section', { class: 'g-results' }, sectionHead(SORT_TITLE[f.sort] || SORT_TITLE.popular), letterBar, grid, shown < list.length ? more : null);
       body.append(el('div', { class: `g-browse${fieldBox ? ' has-field' : ''}` }, fieldBox, results));
     });
   }
@@ -1164,8 +1192,10 @@
         listBox.replaceChildren(eps.length ? episodeList(eps, { genre: s.genre }) : stateBox('empty', { text: 'No episodes in this season.' }));
       };
 
-      const head = headBoard({ series: s, kicker: [genre, s.networks].filter(Boolean).join(' \u00b7 '), name: s.name,
-        facts: [years(s.first, s.last) || 'Undated', plural(s.episodes.length, 'episode', 'episodes')], first: s.first, last: s.last });
+      const genreLink = genre && s.genre ? el('a', { class: 'g-kicker-link', href: `?view=browse&genre=${encodeURIComponent(s.genre)}`,
+        'aria-label': `Browse ${genre}` }, genre) : genre;
+      const head = headBoard({ series: s, kicker: [genreLink, s.networks ? `${genreLink ? ' \u00b7 ' : ''}${s.networks}` : null].filter(Boolean), name: s.name,
+        facts: [years(s.first, s.last) || 'Undated', plural(s.episodes.length, 'episode', 'episodes')], first: s.first, last: s.last, years: s.years });
       body.append(...[head, el('div', { class: 'actions actions-one' }, followBtn, shareBtn), pictureCredit([s.picture])].filter(Boolean));
       if (scopes.length > 2) body.append(seg);
       body.append(countLine, listBox);
@@ -1226,7 +1256,7 @@
       const head = headBoard({ series: showName, href: `?series=${encodeURIComponent(d.series)}`,
         kicker: genre || 'Show', name: seriesName,
         facts: [s && years(s.first, s.last) || 'Undated', s ? plural(s.episodes.length, 'episode', 'episodes') : null],
-        first: s && s.first, last: s && s.last });
+        first: s && s.first, last: s && s.last, years: s && s.years });
       const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
       body.append(...[head,
         el('h1', { class: 'view-heading ep-heading', id: 'episode-h', tabindex: '-1' }, title),

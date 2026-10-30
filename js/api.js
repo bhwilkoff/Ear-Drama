@@ -247,6 +247,36 @@ const API = (() => {
     const c = (v) => Math.min(hi, Math.max(lo, v));
     return { from: (c(a) - lo) / n, to: (c(Math.max(a, b)) - lo + 1) / n };
   }
+  /** The strip's bars from the run histogram ([first year, count, count, ...], contract §3.3): one per
+      year on the fixed axis, each bar's height its count over the show's busiest year; a year with no
+      episode draws nothing; a year off the axis is held at the nearest edge. Null when the show has
+      no histogram (the caller falls back to the first-to-last span). */
+  function runBars(years) {
+    if (!Array.isArray(years) || years.length < 2 || !Number.isFinite(+years[0])) return null;
+    const [lo, hi] = RUN_AXIS, n = hi - lo + 1, counts = years.slice(1).map(Number);
+    const peak = Math.max(...counts);
+    if (!(peak > 0)) return null;
+    const by = new Map();
+    counts.forEach((c, i) => {
+      if (!(c > 0)) return;
+      const slot = Math.min(hi, Math.max(lo, +years[0] + i)) - lo;
+      by.set(slot, (by.get(slot) || 0) + c);
+    });
+    const top = Math.max(...by.values());
+    return [...by].sort((a, b) => a[0] - b[0]).map(([slot, c]) => ({ from: slot / n, to: (slot + 1) / n, h: c / top }));
+  }
+  /** An episode with neither a date nor a number: its row's leading slot shows the series' window. */
+  const undatedBare = (ep) => !(ep.date && /^\d{4}/.test(ep.date)) && (ep.num === null || ep.num === undefined);
+  /** Browse's A to Z letter: the sort key's first letter without accents, A to Z, else "#". */
+  function azLetter(key) {
+    const c = String(key || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().charAt(0).toUpperCase();
+    return c >= 'A' && c <= 'Z' ? c : '#';
+  }
+  /** The letters that have shows, "#" first (the sort puts numbers and symbols before A). */
+  function azLetters(keys) {
+    const have = new Set(keys.map(azLetter));
+    return ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter(l => have.has(l));
+  }
   /* ---- Series and episode pages (WEB-DESIGN §6.4d): the rules every platform mirrors ---- */
 
   /** The picture that leads an episode's head board: the show's own image when the series picture is
@@ -1388,7 +1418,7 @@ const API = (() => {
   return {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
-    monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
+    monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
     manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
