@@ -354,14 +354,14 @@
   }
   /** The show tile: window, name, run strip, facts, on the genre's board. `facts` replaces the two
       default facts (Home's night tiles say the episode, not the run); `href` replaces the series link. */
-  function showTile(s, { href = null, facts = null } = {}) {
+  function showTile(s, { href = null, facts = null, mark = null } = {}) {
     const eps = typeof s.episodes === 'number' ? s.episodes : null;
     const lines = facts || [years(s.first, s.last) || 'Undated', eps !== null ? plural(eps, 'episode', 'episodes') : null];
     return el('li', { class: 'g-tile-li' },
       el('a', { class: 'g-tile', href: href || `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
         pictureWindow(s, 200),
         el('span', { class: 'g-name', dataset: { step: String(API.nameStep(s.name)) } }, s.name),
-        runStrip(s.first, s.last, 'g-strip', 18, s.years),
+        mark || runStrip(s.first, s.last, 'g-strip', 18, s.years),
         el('span', { class: 'g-facts caption' }, ...lines.filter(Boolean).map(t => el('span', {}, t)))));
   }
   /** The head board (series, episode, ear drama): the window, the kicker, the name, the facts, and
@@ -376,7 +376,7 @@
   function headStripH() {
     return typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 40 : 32;
   }
-  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null }) {
+  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null, mark = null }) {
     const slot = headSlot();
     const lead = picture === undefined ? series : { ...series, picture };
     const nm = { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) } };
@@ -387,7 +387,7 @@
         kicker ? el('span', { class: 'g-kicker caption' }, ...[].concat(kicker)) : null,
         href ? el('p', nm, name) : el('h1', { ...nm, tabindex: '-1' }, name),
         eventLine(facts || [], 'caption g-head-facts')),
-      runStrip(first, last, 'g-strip g-head-strip', headStripH(), years));
+      mark || runStrip(first, last, 'g-strip g-head-strip', headStripH(), years));
   }
   /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
       broken at its hyphens. */
@@ -976,7 +976,7 @@
       plural(PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')]);
     return el('li', { class: 'series-row g-row ear-drama-only' },
       el('a', { class: 'g-link', href: `?play=${encodeURIComponent(script.id)}` },
-        pictureWindow({ name: script.title, picture: null }, 48),
+        pictureWindow({ name: script.title, picture: null, genre: PlaysUI.BOARD }, 48),
         el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, script.title),
           sub ? el('span', { class: 'ep-sub' }, sub) : null)));
   }
@@ -1079,7 +1079,7 @@
       let shown = 0;
       const more = el('button', { type: 'button', class: 'btn btn-ghost' }, 'Show more');
       const tileOf = (s) => (s.kind === 'plays'
-        ? showTile({ key: s.key, name: s.name, genre: '', first: null, picture: null }, { href: `?play=${encodeURIComponent(s.key)}`, facts: [s.author, plural(PlaysCore.castParts(s.script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')] })
+        ? showTile({ key: s.key, name: s.name, genre: PlaysUI.BOARD, first: null, picture: null }, { href: `?play=${encodeURIComponent(s.key)}`, facts: [s.author, plural(PlaysCore.castParts(s.script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')], mark: PlaysUI.fingerprint(s.script) })
         : showTile(s));
       const az = f.sort === 'name';
       const letters = az ? API.azLetters(list.map(key)) : [];
@@ -1601,7 +1601,7 @@
      PLAYS (js/plays-ui.js draws them with these helpers)
   ================================================================ */
 
-  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce };
+  const playsHelpers = { el, icon, stateBox, problem, setTitle, navigate, announce, headBoard, eventLine };
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }

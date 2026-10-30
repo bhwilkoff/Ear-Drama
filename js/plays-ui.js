@@ -20,6 +20,8 @@ const PlaysUI = (() => {
   let h = null;
   let store = null;
   let token = 0;
+  /** The name typed on the cast sheet, kept for this visit. */
+  let performerName = '';
   /** The open recording: { key, s: RecordingSession, index }. */
   let rec = null;
   /** The listen-through's rendered mix, kept for this page only: { id, from, url }. */
@@ -43,6 +45,8 @@ const PlaysUI = (() => {
     prev: 'M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z',
     next: 'M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z',
     check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
+    pause: 'M7 5h4v14H7zm6 0h4v14h-4z',
+    down: 'M12 16l6-6-1.4-1.4-4.6 4.6-4.6-4.6L6 10z',
     warn: 'M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z',
   };
   function svg(name, cls) {
@@ -193,13 +197,89 @@ const PlaysUI = (() => {
       h.navigate(`?production=${encodeURIComponent(local.id)}`);
     } catch (err) { console.error(err); status.textContent = S.line(err); }
   }
+  /* ---- Direction D's making pieces (WEB-DESIGN §4.10b): the board, the fingerprint, faces ---- */
+
+  /** Every castable script is a play: it stands on the drama board (its genre is never named). */
+  const BOARD = 'drama';
+  const speakingParts = (script) => C.castParts(script).filter(x => C.isSpeaking(x.id));
+  const hueOf = (script, part) => C.partHue(script, part) || 'none';
+
+  /** The cast fingerprint: each speaking part's share of the play's lines, largest first. */
+  function fingerprint(script, cls = '') {
+    const parts = speakingParts(script);
+    const el = (tag, attrs, ...kids) => {
+      const n = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+      n.append(...kids);
+      return n;
+    };
+    return el('span', { class: `pl-print ${cls}`.trim(), role: 'img', 'aria-label': parts.length === 1 ? '1 part' : `${num.format(parts.length)} parts, largest first` },
+      ...parts.map(x => el('i', { 'data-hue': hueOf(script, x.id), style: `flex: ${x.lineCount} 1 0` })));
+  }
+
+  /** Where a part speaks: 24 bars across the script, each its share of the part's lines there. */
+  const BINS = 24;
+  function presence(script, part) {
+    const counts = new Array(BINS).fill(0);
+    const n = script.lines.length || 1;
+    script.lines.forEach((l, i) => { if (C.linePart(l) === part) counts[Math.min(BINS - 1, Math.floor(i * BINS / n))] += 1; });
+    const max = Math.max(1, ...counts);
+    return h.el('span', { class: 'pl-presence', dataset: { hue: hueOf(script, part) }, 'aria-hidden': 'true' },
+      counts.map(c => h.el('i', c ? { style: `height: ${Math.max(3, Math.round(18 * c / max))}px` } : { class: 'z' })));
+  }
+
+  /** Who a line or a part is heard as: its performer's name, "Recorded", or the device voice (§5 rule 3). */
+  function heardAs(p, script, part, lineID = null) {
+    const st = C.stateOf(p, part);
+    const human = lineID ? !!C.usableTake(p, lineID) : C.linesFor(script, part).some(l => C.usableTake(p, l.id));
+    if (!human) return C.isSpeaking(part) ? 'Device voice' : 'Open';
+    return st.performer || 'Recorded';
+  }
+
+  /** A part's face: a performer is a filled circle on the part's mark; the device voice a dashed ring. */
+  function face(script, part, { who = null, voice = false, ok = false, size = '', live = false, now = false } = {}) {
+    const f = h.el('span', { class: `pl-face${voice ? ' voice' : ''}${size ? ` ${size}` : ''}${live ? ' live' : ''}${now ? ' now' : ''}`,
+                             dataset: { hue: hueOf(script, part) }, 'aria-hidden': 'true' });
+    if (voice) f.append(svg('wave'));
+    else f.append(((who || C.partTitle(part)).trim().charAt(0) || '?').toUpperCase());
+    if (ok) f.append(h.el('span', { class: 'ok' }, svg('check')));
+    return f;
+  }
+
+  /** The head board of a play or a production: the title block on the drama board, the fingerprint as its mark. */
+  function playBoard(script, name, kicker, facts) {
+    return h.headBoard({ series: { name, genre: BOARD, picture: null }, kicker, name, facts,
+                         mark: fingerprint(script, 'g-head-strip pl-print-head') });
+  }
+  const kindOf = (script) => (script.kind === 'radio' ? 'Radio play' : 'Stage play');
+
+  /** The page's own heading gives way to the head board's. */
+  function boardHeading(on) {
+    const ph = $('plays-h');
+    const had = document.activeElement === ph;
+    ph.hidden = on;
+    if (on && had) { const b = $('plays-body').querySelector('h1'); if (b) b.focus({ preventScroll: true }); }
+  }
+
+  /** A part card: face, name, length, where it speaks, then who holds it and its one action. */
+  function partCard(script, part, { who = null, voice = false, ok = false, mine = false, status = null, href = null, actions = null } = {}) {
+    const name = h.el('span', { class: 'pl-part-name' }, part.title);
+    return h.el('li', { class: `pl-part${mine ? ' mine' : ''}`, dataset: status ? { status } : {} },
+      h.el('span', { class: 'pl-part-head' }, face(script, part.id, { who, voice, ok, size: 'sm' }),
+        href ? h.el('a', { class: 'pl-part-link', href }, name) : name),
+      h.el('span', { class: 'caption tabular pl-part-len' }, lines(part.lineCount)),
+      presence(script, part.id),
+      status ? h.el('span', { class: 'caption pl-part-who' }, status) : h.el('span', { class: 'pl-part-who' }),
+      actions && actions.childNodes.length ? actions : h.el('span', { class: 'pl-part-hold' }));
+  }
+
   /* ---- Start an ear drama (§2.1): a play's page and Surprise both offer it ---- */
 
-  function startButton(script, helpers) {
+  function startButton(script, helpers, { primary = false } = {}) {
     h = h || helpers;
     const box = helpers.el('span', { class: 'start-drama' });
     const error = helpers.el('span', { class: 'caption refusal', role: 'alert' });
-    const start = helpers.el('button', { type: 'button', class: 'btn btn-accent', onclick: async () => {
+    const start = helpers.el('button', { type: 'button', class: primary ? 'btn btn-primary' : 'btn btn-accent', onclick: async () => {
       start.disabled = true;
       try {
         await openStore();
@@ -216,7 +296,7 @@ const PlaysUI = (() => {
     return box;
   }
 
-  /* ---- A play: its rights and parts ---- */
+  /* ---- A play: its head board, its parts, its rights ---- */
 
   async function renderScript(body, my, id) {
     body.replaceChildren(h.stateBox('loading'));
@@ -235,18 +315,17 @@ const PlaysUI = (() => {
     }
     h.setTitle(script.title);
     $('plays-h').textContent = script.title;
-    const author = C.authorFacts(script);
-    const facts = [script.year ? String(script.year) : null, C.lengthLine(script)].filter(Boolean).join(' · ');
+    const parts = speakingParts(script);
     body.replaceChildren(
-      h.el('div', { class: 'page-head' }, author ? h.el('p', { class: 'body' }, author) : null,
-        h.el('p', { class: 'caption tabular play-facts' }, facts), rightsLine(script)),
-      h.el('div', { class: 'actions ear-drama-only' }, startButton(script, h)),
+      playBoard(script, script.title, kindOf(script),
+        [C.authorFacts(script), script.year ? String(script.year) : null, `${num.format(parts.length)}\u00a0${parts.length === 1 ? 'part' : 'parts'}`, lines(script.lines.length).replace(' ', '\u00a0')]),
+      h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true })),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
-        h.el('ul', { class: 'part-list', 'aria-labelledby': 'play-parts-h' },
-          C.castParts(script).map(part => h.el('li', { class: 'part-row' },
-            h.el('span', { class: 'body' }, part.title),
-            h.el('span', { class: 'tabular caption' }, lines(part.lineCount)))))));
+        h.el('ul', { class: 'pl-grid', 'aria-labelledby': 'play-parts-h' },
+          C.castParts(script).map(part => partCard(script, part)))),
+      rightsLine(script));
+    boardHeading(true);
   }
 
   /* ---- The cast sheet (§2.2-2.5) ---- */
@@ -295,34 +374,40 @@ const PlaysUI = (() => {
     const recording = C.current(p, script);
     const partHref = (part) => `?production=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}`;
 
-    const rows = C.castParts(script).map(part => {
+    // One name for every Take part on the sheet (the prototype's "Recording as"), optional as before.
+    const performer = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', id: 'pl-performer',
+                                      placeholder: 'Your name', value: performerName });
+    performer.addEventListener('input', () => { performerName = performer.value; });
+    const cards = C.castParts(script).map(part => {
       const st = C.stateOf(p, part.id);
-      const actions = h.el('div', { class: 'cast-actions' });
+      const actions = h.el('div', { class: 'pl-part-acts' });
       if (st.status === 'recording') {
-        actions.append(h.el('a', { class: 'btn btn-accent', href: partHref(part.id) }, 'Record'));
+        actions.append(h.el('a', { class: 'btn btn-primary', href: partHref(part.id) }, 'Record'));
       } else if (st.status === 'open' && !recording) {
-        const name = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name',
-                                     placeholder: 'Your name', 'aria-label': `Your name, optional, for ${part.title}` });
         const form = h.el('form', { class: 'take-form', onsubmit: (e) => {
           e.preventDefault();
-          if (apply(cur => C.take(cur, script, part.id, name.value))) h.navigate(partHref(part.id));
-        } }, name, h.el('button', { type: 'submit', class: part.id === next ? 'btn btn-accent' : 'btn' }, 'Take part'));
+          if (apply(cur => C.take(cur, script, part.id, performer.value))) h.navigate(partHref(part.id));
+        } }, h.el('button', { type: 'submit', class: part.id === next ? 'btn btn-primary' : 'btn btn-way',
+                              'aria-label': `Take part: ${part.title}` }, 'Take part'));
         if (!C.isSpeaking(part.id)) {
-          form.append(h.el('button', { type: 'button', class: 'btn', onclick: () => {
+          form.append(h.el('button', { type: 'button', class: 'btn btn-way', onclick: () => {
             if (apply(cur => C.leaveSilent(cur, script, part.id))) rerender();
           } }, 'Leave silent'));
         }
         actions.append(form);
       } else if (st.status === 'done' || st.status === 'silent') {
-        actions.append(h.el('button', { type: 'button', class: 'btn', disabled: !!recording, onclick: () => {
+        actions.append(h.el('button', { type: 'button', class: 'btn btn-way', disabled: !!recording, onclick: () => {
           if (apply(cur => C.reopen(cur, script, part.id))) h.navigate(partHref(part.id));
         } }, 'Open part'));
       }
-      return h.el('li', { class: 'cast-row', dataset: { status: st.status } },
-        h.el('a', { class: 'cast-main', href: partHref(part.id) },
-          h.el('span', { class: 'body-strong' }, part.title),
-          h.el('span', { class: 'caption' }, partStatus(p, script, part))),
-        actions.childNodes.length ? actions : null);
+      const held = st.status === 'recording' || st.status === 'done';
+      const kept = part.lineCount - C.missingLines(p, script, part.id).length;
+      const who = st.performer || null;
+      const status = st.status === 'recording' ? `${who || 'Recording'} · ${num.format(kept)} of ${num.format(part.lineCount)}`
+        : st.status === 'done' ? (who ? `${who} · recorded` : 'Recorded')
+          : st.status === 'silent' ? 'Left silent' : heardAs(p, script, part.id);
+      return partCard(script, part, { who, voice: !held, ok: st.status === 'done', mine: st.status === 'recording',
+                                      status, href: partHref(part.id), actions });
     });
 
     const manage = h.el('div', { class: 'actions' });
@@ -336,12 +421,14 @@ const PlaysUI = (() => {
     manage.append(deleteButton(p));
 
     body.replaceChildren(
-      h.el('p', { class: 'caption cast-progress' }, progressLine(p, script)),
-      h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' }, rows),
-      refusal,
+      playBoard(script, p.title, 'Ear drama', [progressLine(p, script)]),
       listenThrough(p, script, rerender),
+      recording ? null : h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer),
+      h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards),
+      refusal,
       shareBox(p, script, rerender),
       manage);
+    boardHeading(true);
   }
 
   function deleteButton(p) {
@@ -1042,30 +1129,61 @@ const PlaysUI = (() => {
     return 'Recording did not start.';
   }
 
+  /** The recorder's top slot: close, the part over the play, and the lines kept. */
+  function recTop(title, sub, count) {
+    return h.el('div', { class: 'pl-top' },
+      h.el('a', { class: 'icon-btn', href: rec.back.getAttribute('href'), 'aria-label': `Close, back to ${sub}` }, svg('down')),
+      h.el('div', { class: 'pl-top-t' }, h.el('h1', { class: 'pl-top-part', tabindex: '-1' }, title), h.el('p', { class: 'caption pl-top-play' }, sub)),
+      count ? h.el('span', { class: 'pl-top-count tabular' }, count) : h.el('span'));
+  }
+
   function paintRecording() {
     if (!rec) return;
     const body = $('plays-body');
     const s = rec.s;
     const failed = failure(s);
+    const title = C.partTitle(rec.part);
+    const play = rec.back.textContent;
+    boardHeading(true);
+    clearInterval(rec.clock);
     if (!s || !s.started) {
-      body.replaceChildren(rec.back, startScreen(failed));
+      body.replaceChildren(h.el('div', { class: 'pl-rec pl-rec-pre' }, recTop(title, play, ''), startScreen(failed)));
       return;
     }
     if (s.phase.kind === 'roomTone') {
-      body.replaceChildren(rec.back, h.el('div', { class: 'rec-start', role: 'status' },
-        h.el('p', { class: 'body-strong' }, 'Quiet, please. Recording the room.'),
-        h.el('p', { class: 'view-heading tabular countdown' }, String(s.phase.secondsLeft))));
+      body.replaceChildren(h.el('div', { class: 'pl-rec pl-rec-pre' }, recTop(title, play, ''),
+        h.el('div', { class: 'pl-pre', role: 'status' },
+          h.el('p', { class: 'body-strong' }, 'Quiet, please. Recording the room.'),
+          h.el('p', { class: 'pl-countdown tabular' }, String(s.phase.secondsLeft)))));
       return;
     }
-    // A repaint keeps the keyboard where it was: the one record control stays focused.
-    const onRecord = document.activeElement && document.activeElement.classList.contains('record-btn');
-    body.replaceChildren(rec.back, prompter(s, failed));
-    if (onRecord) { const b = body.querySelector('.record-btn'); if (b) b.focus({ preventScroll: true }); }
+    // A repaint keeps the keyboard where it was: the control that had focus keeps it.
+    const had = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null;
+    follow(s);
+    body.replaceChildren(recorder(s, failed, title, play));
+    if (had) { const b = body.querySelector(`[data-act="${had}"]:not(:disabled)`); if (b) b.focus({ preventScroll: true }); }
+    if (s.phase.kind === 'listening') {
+      const t0 = Date.now();
+      const out = body.querySelector('.pl-rec-time');
+      rec.clock = setInterval(() => {
+        const sec = Math.floor((Date.now() - t0) / 1000);
+        if (out) out.textContent = `Recording ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+      }, 500);
+    }
+  }
+
+  /** During a run the recorder follows the play: the line on screen is the part's next line. */
+  function follow(s) {
+    const id = s.phase.lineID;
+    if (!id || !(s.run || s.phase.kind === 'listening')) return;
+    const at = s.script.lines.findIndex(l => l.id === id);
+    const next = s.lines.findIndex(l => s.script.lines.findIndex(x => x.id === l.id) >= at);
+    if (next >= 0) rec.index = next;
   }
 
   /** Headphones only (PLAYS-DESIGN §4.3): the web cannot see the audio route, so the person says. */
   function startScreen(failed) {
-    const box = h.el('div', { class: 'rec-start' }, svg('headphones', 'rec-icon'));
+    const box = h.el('div', { class: 'pl-pre' }, svg('headphones', 'pl-pre-icon'));
     if (!LiveAudio.supported()) {
       box.append(h.el('p', { class: 'body' }, 'This browser cannot record.'));
       return box;
@@ -1074,92 +1192,287 @@ const PlaysUI = (() => {
       const avail = API.account.available();
       box.append(
         h.el('p', { class: 'body' }, 'Recording needs an account.'),
-        h.el('button', { type: 'button', class: 'btn btn-accent', disabled: !(avail.apple || avail.google), onclick: () => {
+        h.el('button', { type: 'button', class: 'btn btn-primary', disabled: !(avail.apple || avail.google), onclick: () => {
           AccountUI.openSheet();
           const sheet = document.querySelector('dialog.account-sheet');
           if (sheet) sheet.addEventListener('close', () => paintRecording(), { once: true });
         } }, 'Sign in'));
       return box;
     }
-    const start = h.el('button', { type: 'button', class: 'btn btn-record', disabled: !rec.headphones,
+    const start = h.el('button', { type: 'button', class: 'btn btn-record pl-go', disabled: !rec.headphones,
                                    onclick: () => startRecording() }, svg('mic', 'i-inline'), 'Start recording');
     const check = h.el('input', { type: 'checkbox', id: 'rec-headphones', checked: rec.headphones,
                                   onchange: () => { rec.headphones = check.checked; start.disabled = !check.checked; } });
     box.append(
-      h.el('p', { class: 'body' }, 'Headphones only. This browser cannot tell whether they are on.'),
-      h.el('label', { class: 'check', for: 'rec-headphones' }, check, h.el('span', { class: 'body' }, 'My headphones are on')),
+      h.el('h2', { class: 'pl-pre-h' }, 'Headphones on'),
+      h.el('p', { class: 'body pl-pre-why' }, 'This browser cannot tell whether they are on.'),
+      h.el('label', { class: 'pl-check', for: 'rec-headphones' }, check, h.el('span', { class: 'body-strong' }, 'My headphones are on')),
       start);
     if (failed) box.append(h.el('p', { class: 'caption refusal', role: 'alert' }, failed));
     return box;
   }
 
-  function prompter(s, failed) {
+  const MODE_LABEL = { run: 'Run through', lines: 'Line by line', step: 'Step' };
+  const secs = (t) => `${(t.frames / t.sampleRate).toFixed(1)} s`;
+
+  /** A script line in the scene: the speaker's face, name and who it is heard as, then the words. */
+  function sceneLine(s, line, cls, playing = false) {
+    const part = C.linePart(line);
+    const heard = heardAs(s.production, s.script, part, line.id);
+    const voice = heard === 'Device voice';
+    return h.el('div', { class: `pl-ln ${cls}`.trim(), dataset: { hue: hueOf(s.script, part) } },
+      face(s.script, part, { who: C.stateOf(s.production, part).performer, voice, size: 'sm', now: playing }),
+      h.el('div', { class: 'pl-ln-body' },
+        h.el('p', { class: 'pl-ln-who' }, h.el('span', {}, line.role || C.partTitle(part)), h.el('span', { class: 'pl-tag' }, heard)),
+        lineWords(line, 'pl-say')));
+  }
+
+  /** The words of a line, its printed directions apart (§3); nothing rewritten. */
+  function lineWords(line, cls) {
+    const text = h.el('p', { class: cls });
+    if (line.kind === 'speech') {
+      (line.parts || []).forEach((piece, i) => {
+        if (i) text.append(' ');
+        const words = C.pieceText(piece);
+        text.append(C.pieceKind(piece) === 'say' ? words : h.el('span', { class: 'line-aside' }, `(${words})`));
+      });
+    } else text.append(h.el('span', { class: 'line-aside' }, line.source || ''));
+    return text;
+  }
+
+  /** The takes of a line as numbered choices: the chosen one filled; choosing never deletes (§8 rule 5). */
+  function takeChoices(s, line, busy) {
+    const takes = C.takesFor(s.production, line.id);
+    if (!takes.length) return null;
+    return h.el('span', { class: 'pl-takes', role: 'group', 'aria-label': 'Takes' }, takes.map((t, i) => {
+      const on = s.production.chosen[line.id] === t.id;
+      return h.el('button', { type: 'button', class: `pl-take-n${on ? ' on' : ''}`, 'aria-pressed': String(on), disabled: busy,
+                              'aria-label': `Take ${i + 1}`, onclick: () => s.choose(t) }, String(i + 1));
+    }));
+  }
+
+  /** Your line's box: your part's board; dashed red while armed, solid red while the microphone is open. */
+  function mineBox(s, line, head, busy) {
+    const ph = s.phase;
+    const listening = ph.kind === 'listening' && ph.lineID === line.id;
+    const armed = ph.kind === 'cue' && !listening && (s.run || C.cueLines(s.script, line.id, true).some(c => c.id === ph.lineID));
+    const review = ph.kind === 'review' && ph.lineID === line.id;
+    const chosen = C.chosenTake(s.production, line.id);
+    let pill = takeChoices(s, line, busy);
+    if (armed) pill = h.el('span', { class: 'pl-pill redo' }, h.el('span', { class: 'dot' }), 'Next');
+    if (listening) pill = h.el('span', { class: 'pl-pill red pl-rec-time', role: 'status' }, h.el('span', { class: 'dot' }), 'Recording 0:00');
+    const box = h.el('div', { class: `pl-mine${armed ? ' armed' : ''}${listening ? ' on' : ''}`, dataset: { hue: hueOf(s.script, s.part) } },
+      h.el('p', { class: 'pl-mine-who' }, h.el('span', {}, head), pill),
+      lineWords(line, 'pl-mine-say'));
+    if (chosen && (review || ph.kind === 'idle')) {
+      box.append(h.el('div', { class: 'pl-take' },
+        h.el('button', { type: 'button', class: 'pl-play-dot', disabled: busy, 'aria-label': 'Play the take', onclick: () => s.playTake(chosen) }, svg('play')),
+        h.el('span', { class: 'pl-take-len tabular' }, secs(chosen))));
+    }
+    if (chosen && chosen.bleed) {
+      box.append(h.el('p', { class: 'pl-warn', role: 'alert' }, svg('warn'),
+        'The microphone heard the device voice. Re-take this line with headphones.'));
+    }
+    return box;
+  }
+
+  /** Step and Run through: the line before, the cue card, your line, the next line. */
+  function stage(s, line, busy) {
+    const all = s.script.lines;
+    const k = all.findIndex(l => l.id === line.id);
+    const ph = s.phase;
+    const playingID = ph.kind === 'cue' ? ph.lineID : null;
+    let cue = C.cueLines(s.script, line.id)[0] || null;
+    if (playingID && playingID !== line.id && (!cue || playingID !== cue.id)) cue = all.find(l => l.id === playingID) || cue;
+    const out = [];
+    const ci = cue ? all.findIndex(l => l.id === cue.id) : k;
+    const before = all.slice(0, ci).filter(l => l.kind === 'speech').pop();
+    if (before) out.push(sceneLine(s, before, 'past'));
+    if (cue) out.push(h.el('div', { class: `pl-cue${playingID === cue.id ? ' on' : ''}` }, sceneLine(s, cue, '', playingID === cue.id)));
+    out.push(mineBox(s, line, `${C.partTitle(s.part)} · You`, busy));
+    const after = all.slice(k + 1).find(l => l.kind === 'speech');
+    if (after) out.push(sceneLine(s, after, 'next'));
+    return out;
+  }
+
+  /** Line by line: every line of the part; the one selected opens in place with its cue. */
+  function lineList(s, busy) {
+    return h.el('ol', { class: 'pl-lx-list' }, s.lines.map((line, i) => {
+      if (i === rec.index) {
+        const listening = s.phase.kind === 'listening' && s.phase.lineID === line.id;
+        const cue = C.cueLines(s.script, line.id)[0];
+        return h.el('li', { class: 'pl-lx sel' },
+          cue ? h.el('div', { class: `pl-cue${s.phase.kind === 'cue' && s.phase.lineID === cue.id ? ' on' : ''}` }, sceneLine(s, cue, '')) : null,
+          mineBox(s, line, `Line ${num.format(i + 1)}`, busy),
+          h.el('div', { class: 'pl-lx-acts' },
+            listening
+              ? h.el('button', { type: 'button', class: 'btn btn-record', dataset: { act: 'stop' }, onclick: () => s.stopListening() }, svg('stop', 'i-inline'), 'Stop')
+              : h.el('button', { type: 'button', class: 'btn btn-record', dataset: { act: 'record' }, disabled: busy, onclick: () => s.record(line.id) }, svg('mic', 'i-inline'), 'Record'),
+            cue ? h.el('button', { type: 'button', class: 'btn btn-way', dataset: { act: 'cue' }, disabled: busy, onclick: () => s.playCue(line.id) }, svg('play', 'i-inline'), 'Cue') : null));
+      }
+      const t = C.chosenTake(s.production, line.id);
+      const n = t ? C.takesFor(s.production, line.id).findIndex(x => x.id === t.id) + 1 : 0;
+      const st = !t ? h.el('span', { class: 'pl-lx-st' }, 'Not yet')
+        : t.bleed ? h.el('span', { class: 'pl-lx-st warn' }, svg('warn'), 'Re-take')
+          : h.el('span', { class: 'pl-lx-st kept' }, svg('check'), `Take ${n}`);
+      return h.el('li', {}, h.el('button', { type: 'button', class: 'pl-lx', disabled: busy, onclick: () => { rec.index = i; paintRecording(); } },
+        h.el('span', { class: 'pl-lx-n tabular' }, String(i + 1)), lineWords(line, 'pl-lx-say'), st));
+    }));
+  }
+
+  /** After a run: the takes it made, each heard with its cue; keep them all, or record any again. */
+  function runReview(s) {
+    const takes = s.runTakes();
+    return [
+      h.el('h2', { class: 'section-header' }, `This run · ${takes.length === 1 ? '1 take' : `${num.format(takes.length)} takes`}`),
+      h.el('ol', { class: 'pl-rv-list' }, takes.map(t => {
+        const line = s.script.lines.find(l => l.id === t.lineID);
+        const n = s.lines.findIndex(l => l.id === t.lineID) + 1;
+        return h.el('li', { class: 'pl-rv' },
+          h.el('p', { class: 'caption tabular' }, `Line ${num.format(n)}`),
+          lineWords(line, 'pl-say'),
+          t.bleed ? h.el('p', { class: 'pl-warn', role: 'alert' }, svg('warn'), 'The microphone heard the device voice. Re-take this line with headphones.') : null,
+          h.el('div', { class: 'pl-take' },
+            h.el('button', { type: 'button', class: 'pl-play-dot', 'aria-label': `Play line ${n} with its cue`, onclick: () => s.playWithCue(t) }, svg('play')),
+            h.el('span', { class: 'pl-take-len tabular' }, secs(t)),
+            h.el('button', { type: 'button', class: 'btn btn-again', dataset: { act: 'again' }, onclick: () => s.record(t.lineID) },
+              h.el('span', { class: 'dot' }), 'Again')));
+      })),
+    ];
+  }
+
+  function aids(s, line, busy) {
+    const speed = h.el('select', { class: 'pl-aid', 'aria-label': 'Device voice speed', disabled: busy, onchange: (e) => { s.standInRate = Number(e.target.value); } },
+      [['0.8', 'Slower'], ['1', 'Normal'], ['1.2', 'Faster']].map(([v, label]) =>
+        h.el('option', { value: v, selected: Number(v) === s.standInRate }, label)));
+    return [
+      h.el('button', { type: 'button', class: 'pl-aid', disabled: busy, onclick: () => s.record(line.id, true) }, 'Run-up'),
+      h.el('button', { type: 'button', class: 'pl-aid', disabled: busy, onclick: () => s.hearItRead(line.id) }, 'Hear it read'),
+      speed,
+    ];
+  }
+
+  const KEYS = {
+    step: [['Space', 'Record or stop'], ['Return', 'Keep'], ['R', 'Again'], ['← →', 'Line']],
+    run: [['Space', 'Start or pause'], ['Return', 'Keep the run']],
+    lines: [['↑ ↓', 'Line'], ['Space', 'Record or stop']],
+  };
+
+  function dock(s, line, busy) {
+    const ph = s.phase;
+    const keep = () => { if (rec.index + 1 < s.lines.length) move(1); else paintRecording(); };
+    if (s.mode === 'step' && ph.kind === 'review') {
+      const t = C.chosenTake(s.production, line.id);
+      return h.el('div', { class: 'pl-dock three' },
+        h.el('button', { type: 'button', class: 'btn btn-again', dataset: { act: 'again' }, onclick: () => s.record(line.id) }, h.el('span', { class: 'dot' }), 'Again'),
+        h.el('button', { type: 'button', class: 'btn btn-way', dataset: { act: 'with-cue' }, disabled: !t, onclick: () => s.playWithCue(t) }, svg('play', 'i-inline'), 'With cue'),
+        h.el('button', { type: 'button', class: 'btn btn-primary', dataset: { act: 'keep' }, onclick: () => { s.phase = { kind: 'idle' }; keep(); } }, svg('check', 'i-inline'), 'Keep'));
+    }
+    if (s.mode === 'run' && ph.kind === 'runReview') {
+      const n = s.runTakes().length;
+      return h.el('div', { class: 'pl-dock two' },
+        h.el('button', { type: 'button', class: 'btn btn-way', dataset: { act: 'discard' }, onclick: () => s.discardRun() }, 'Discard the run'),
+        h.el('button', { type: 'button', class: 'btn btn-primary', dataset: { act: 'keep' }, onclick: () => s.keepRun() },
+          svg('check', 'i-inline'), n === 1 ? 'Keep 1 take' : `Keep ${num.format(n)} takes`));
+    }
+    const round = (act, cls, icon, label, onclick, disabled = false) => h.el('div', { class: 'pl-ctr' },
+      h.el('button', { type: 'button', class: `pl-recbtn ${cls}`.trim(), dataset: { act }, 'aria-label': label, disabled, onclick }, svg(icon)),
+      h.el('span', { class: 'pl-lab', 'aria-hidden': 'true' }, label));
+    const listening = ph.kind === 'listening';
+    if (s.mode === 'run') {
+      const taken = s.run ? s.run.takes.length : 0;
+      const center = !s.run ? round('record', '', 'mic', 'From here', () => s.runThrough(line.id), busy)
+        : listening ? round('pause', 'stop', 'stop', 'Stop', () => s.pause())
+          : round('pause', 'ink', 'pause', 'Pause', () => s.pause());
+      return h.el('div', { class: 'pl-dock' },
+        h.el('div', { class: 'pl-side caption tabular' }, s.run ? (taken === 1 ? '1 taken' : `${num.format(taken)} taken`) : ''),
+        center, h.el('div', { class: 'pl-side' }));
+    }
+    const center = listening ? round('stop', 'stop', 'stop', 'Stop', () => s.stopListening())
+      : ph.kind === 'cue' ? round('record', 'armed', 'mic', 'Next', null, true)
+        : round('record', '', 'mic', 'Record', () => s.record(line.id), busy);
+    return h.el('div', { class: 'pl-dock' },
+      h.el('div', { class: 'pl-side' }, h.el('button', { type: 'button', class: 'icon-btn', dataset: { act: 'prev' }, 'aria-label': 'Previous line',
+        disabled: rec.index === 0 || busy, onclick: () => move(-1) }, svg('prev'))),
+      center,
+      h.el('div', { class: 'pl-side' }, h.el('button', { type: 'button', class: 'icon-btn', dataset: { act: 'next' }, 'aria-label': 'Next line',
+        disabled: rec.index + 1 >= s.lines.length || busy, onclick: () => move(1) }, svg('next'))));
+  }
+
+  /** The parts near the line, with who each is heard as: the strip under the mode on a phone, the left rail on a desktop. */
+  function partnersNear(s, line) {
+    const all = s.script.lines;
+    const k = all.findIndex(l => l.id === line.id);
+    const seen = [];
+    const near = all.map((l, i) => [l, Math.abs(i - k)]).filter(([, d]) => d <= 24).sort((a, b) => a[1] - b[1]);
+    for (const [l] of near) {
+      const part = C.linePart(l);
+      if (l.kind === 'speech' && part !== s.part && !seen.includes(part)) seen.push(part);
+    }
+    return seen.slice(0, 6);
+  }
+
+  function recorder(s, failed, title, play) {
     const all = s.lines;
     if (!all.length) return h.stateBox('empty', { text: 'No lines in this part.' });
     rec.index = Math.min(Math.max(0, rec.index), all.length - 1);
     const line = all[rec.index];
     const busy = s.isBusy();
-    const listening = s.phase.kind === 'listening' && s.phase.lineID === line.id;
+    const locked = busy || !!s.run;
+    const missing = C.missingLines(s.production, s.script, s.part).length;
+    const kept = all.length - missing;
+    const listeningID = s.phase.kind === 'listening' ? s.phase.lineID : null;
 
-    const cue = h.el('div', { class: 'cue' });
-    if (s.phase.kind === 'cue') {
-      const cueLine = s.script.lines.find(l => l.id === s.phase.lineID);
-      if (s.phase.deviceVoice) cue.append(h.el('p', { class: 'caption device-voice' }, svg('wave', 'i-inline'), 'Device voice'));
-      if (cueLine) cue.append(lineView(cueLine));
-    } else if (s.phase.kind === 'listening') {
-      cue.append(h.el('p', { class: 'body-strong your-line' }, svg('mic', 'i-inline'), 'Your line'));
-    } else {
-      const prev = C.cueLines(s.script, line.id, false).pop();
-      if (prev) cue.append(lineView(prev, 'line-dim'));
-    }
+    const strip = h.el('div', { class: 'pl-strip', dataset: { hue: hueOf(s.script, s.part) }, role: 'img',
+                                'aria-label': `${num.format(kept)} of ${lines(all.length)} kept`,
+                                style: `gap: ${all.length > 150 ? 0 : all.length > 60 ? 1 : 2}px` },
+      all.map((l, i) => {
+        const t = C.chosenTake(s.production, l.id);
+        const cls = i === rec.index ? `c${listeningID === l.id ? ' rec-on' : ''}` : t && !t.bleed ? 'k' : t ? 'f' : '';
+        return h.el('i', cls ? { class: cls } : {});
+      }));
 
-    const takes = C.takesFor(s.production, line.id);
-    const takeList = h.el('ul', { class: 'takes', 'aria-label': 'Takes' });
-    if (C.chosenTake(s.production, line.id)?.bleed) {
-      takeList.append(h.el('li', { class: 'caption bleed' }, svg('warn', 'i-inline'),
-        'The microphone heard the device voice. Re-take this line with headphones.'));
-    }
-    takes.forEach((t, i) => {
-      const chosen = s.production.chosen[line.id] === t.id;
-      takeList.append(h.el('li', { class: 'take-row' },
-        h.el('button', { type: 'button', class: 'btn btn-ghost', disabled: busy, onclick: () => s.playTake(t) },
-          svg('play', 'i-inline'), `Take ${i + 1}`),
-        h.el('span', { class: 'tabular caption' }, `${(t.frames / t.sampleRate).toFixed(1)} s`),
-        chosen ? h.el('span', { class: 'take-chosen', role: 'img', 'aria-label': 'Chosen' }, svg('check'))
-          : h.el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => s.choose(t) }, 'Use this take')));
-    });
+    const mode = h.el('div', { class: 'pl-mode', role: 'radiogroup', 'aria-label': 'Recording mode' },
+      C.MODES.map(m => h.el('label', { class: s.mode === m ? 'on' : '' },
+        h.el('input', { type: 'radio', name: 'rec-mode', value: m, checked: s.mode === m, disabled: locked,
+                        onchange: () => { if (s.setMode(m)) h.announce(MODE_LABEL[m]); } }),
+        MODE_LABEL[m])));
 
-    const recordBtn = h.el('button', {
-      type: 'button', class: `record-btn${listening ? ' is-listening' : ''}`, disabled: busy && !listening,
-      'aria-label': listening ? 'Stop' : 'Record', onclick: () => recordOrStop(),
-    }, svg(listening ? 'stop' : 'record'));
-    const speed = h.el('select', { 'aria-label': 'Device voice speed', onchange: (e) => { s.standInRate = Number(e.target.value); } },
-      [['0.8', 'Slower'], ['1', 'Normal'], ['1.2', 'Faster']].map(([v, label]) =>
-        h.el('option', { value: v, selected: Number(v) === s.standInRate }, label)));
-    const missing = C.isSpeaking(s.part) ? C.missingLines(s.production, s.script, s.part).length : 0;
+    const partners = partnersNear(s, line);
+    const who = (part) => heardAs(s.production, s.script, part);
+    const opp = h.el('div', { class: 'pl-opp', 'aria-label': 'Opposite you' }, partners.slice(0, 2).map(part =>
+      h.el('span', { class: 'pl-opp-p' }, face(s.script, part, { who: C.stateOf(s.production, part).performer, voice: who(part) === 'Device voice', size: 'xs' }),
+        h.el('b', {}, C.partTitle(part)), h.el('span', { class: 'pl-muted' }, who(part)))));
+
+    const scene = h.el('div', { class: 'pl-scene', 'aria-live': 'polite' });
+    if (s.mode === 'run' && s.phase.kind === 'runReview') scene.append(...runReview(s));
+    else if (s.mode === 'lines') scene.append(lineList(s, busy));
+    else scene.append(...stage(s, line, busy));
+
+    const rail = h.el('aside', { class: 'pl-rail l', 'aria-label': 'In this scene' },
+      h.el('h2', { class: 'pl-rail-h' }, 'In this scene'),
+      h.el('div', { class: 'pl-r1' }, face(s.script, s.part, { who: C.stateOf(s.production, s.part).performer, size: 'lg', live: !!listeningID }),
+        h.el('span', {}, h.el('span', { class: 'pl-r1-nm' }, C.partTitle(s.part)), h.el('span', { class: 'caption pl-muted' }, 'You'))),
+      partners.map(part => h.el('div', { class: 'pl-r1' }, face(s.script, part, { who: C.stateOf(s.production, part).performer, voice: who(part) === 'Device voice', size: 'lg' }),
+        h.el('span', {}, h.el('span', { class: 'pl-r1-nm' }, C.partTitle(part)), h.el('span', { class: 'caption pl-muted' }, who(part))))));
+
+    const side = h.el('div', { class: 'pl-aside' },
+      s.mode === 'run' ? null : h.el('div', { class: 'pl-aids' }, aids(s, line, busy)),
+      h.el('dl', { class: 'pl-keys' }, KEYS[s.mode].flatMap(([k, v]) => [h.el('dt', {}, h.el('kbd', {}, k)), h.el('dd', {}, v)])));
+
     const refusal = h.el('p', { class: 'caption refusal', role: 'alert' }, failed || '');
+    const done = h.el('div', { class: 'pl-done' },
+      h.el('button', { type: 'button', class: 'btn', disabled: locked || missing > 0, onclick: () => finishPart() }, 'Done with this part'),
+      missing ? h.el('p', { class: 'caption' }, missing === 1 ? '1 line to go' : `${num.format(missing)} lines to go`) : null,
+      refusal);
 
-    return h.el('div', { class: 'prompter' },
-      cue,
-      h.el('div', { class: 'line-now' }, lineView(line, 'line-large')),
-      rec.index + 1 < all.length ? lineView(all[rec.index + 1], 'line-dim') : null,
-      takeList,
-      h.el('div', { class: 'rec-controls' },
-        h.el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Previous line', disabled: rec.index === 0 || busy,
-                         onclick: () => move(-1) }, svg('prev')),
-        recordBtn,
-        h.el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Next line', disabled: rec.index + 1 >= all.length || busy,
-                         onclick: () => move(1) }, svg('next'))),
-      h.el('div', { class: 'rec-secondary' },
-        h.el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => s.record(line.id, true) }, 'Run-up'),
-        h.el('button', { type: 'button', class: 'btn', disabled: busy, onclick: () => s.hearItRead(line.id) }, 'Hear it read'),
-        speed,
-        h.el('button', { type: 'button', class: 'btn', onclick: () => move(1),
-                         disabled: busy || !s.production.chosen[line.id] || rec.index + 1 >= all.length }, 'Keep')),
-      h.el('div', { class: 'rec-done' },
-        h.el('button', { type: 'button', class: 'btn', disabled: busy || missing > 0, onclick: () => finishPart() }, 'Done with this part'),
-        missing ? h.el('p', { class: 'caption' }, missing === 1 ? '1 line to go' : `${num.format(missing)} lines to go`) : null,
-        refusal));
+    return h.el('div', { class: 'pl-rec', dataset: { mode: s.mode } },
+      recTop(title, play, `${num.format(kept)} of ${num.format(all.length)}`),
+      strip,
+      h.el('div', { class: 'pl-mode-row' }, mode),
+      opp, rail, scene, side,
+      s.mode === 'lines' ? h.el('div', { class: 'pl-dock-none' }) : dock(s, line, busy),
+      done);
   }
 
   function move(step) {
@@ -1168,9 +1481,16 @@ const PlaysUI = (() => {
     paintRecording();
   }
 
+  /** Space: the mode's one control (record or stop; in a run, start or pause). */
   function recordOrStop() {
     const s = rec && rec.s;
     if (!s || !s.started) return;
+    if (s.mode === 'run') {
+      if (s.phase.kind === 'runReview') return;
+      if (s.run) s.pause();
+      else if (!s.isBusy()) s.runThrough(s.lines[rec.index].id);
+      return;
+    }
     if (s.phase.kind === 'listening') s.stopListening();
     else if (!s.isBusy()) s.record(s.lines[rec.index].id);
   }
@@ -1187,7 +1507,7 @@ const PlaysUI = (() => {
     try {
       store.update(C.finish(store.production(id), script, part));
     } catch (err) {
-      const r = document.querySelector('.rec-done .refusal');
+      const r = document.querySelector('.pl-done .refusal');
       if (r) r.textContent = err instanceof C.Refusal ? C.refusalText(err) : String(err.message || err);
       return;
     }
@@ -1195,18 +1515,22 @@ const PlaysUI = (() => {
     h.navigate(`?production=${encodeURIComponent(id)}`, true);
   }
 
-  /* Space records or stops, Return keeps, the arrow keys move by line (§7). Captured
-     before the player's own keys, which would otherwise start an episode. */
+  /* Space records, stops, or pauses; Return keeps; R records again; the arrow keys move by line (§7).
+     Captured before the player's own keys, which would otherwise start an episode. */
   window.addEventListener('keydown', (e) => {
     if (!rec || !rec.s || !rec.s.started || e.metaKey || e.ctrlKey || e.altKey) return;
     if ($('view-plays').hidden) return;
     const t = e.target;
-    if (t.closest && t.closest('input, select, textarea, [contenteditable="true"]')) return;
+    if (t.closest && t.closest('input:not([type="radio"]), select, textarea, [contenteditable="true"]')) return;
     const s = rec.s;
+    const press = (act) => { const b = document.querySelector(`.pl-rec [data-act="${act}"]`); if (b && !b.disabled) b.click(); };
     if (e.key === ' ') recordOrStop();
-    else if (e.key === 'Enter' && !t.closest('button, a')) { if (!s.isBusy() && s.production.chosen[s.lines[rec.index].id]) move(1); }
-    else if (e.key === 'ArrowLeft') { if (!s.isBusy()) move(-1); }
-    else if (e.key === 'ArrowRight') { if (!s.isBusy()) move(1); }
+    else if (e.key === 'Enter' && !t.closest('button, a')) press('keep');
+    else if (e.key === 'r' || e.key === 'R') press('again');
+    else if (e.key === 'ArrowLeft' && s.mode === 'step') { if (!s.isBusy()) move(-1); }
+    else if (e.key === 'ArrowRight' && s.mode === 'step') { if (!s.isBusy()) move(1); }
+    else if (e.key === 'ArrowUp' && s.mode === 'lines' && !t.closest('[role="radiogroup"]')) { if (!s.isBusy()) move(-1); }
+    else if (e.key === 'ArrowDown' && s.mode === 'lines' && !t.closest('[role="radiogroup"]')) { if (!s.isBusy()) move(1); }
     else return;
     e.preventDefault();
     e.stopPropagation();
@@ -1215,6 +1539,7 @@ const PlaysUI = (() => {
   /* ---- The router's doors ---- */
 
   function leave() {
+    if (rec) clearInterval(rec.clock);
     if (rec && rec.s) rec.s.end();
     rec = null;
     if (listen) listen.end();
@@ -1253,6 +1578,7 @@ const PlaysUI = (() => {
     const my = ++token;
 
     const body = $('plays-body');
+    $('plays-h').hidden = false;
     const id = r.p.get('production');
     const part = r.p.get('part');
     if (!(id && part && rec && rec.key === `${id} ${part}`)) leave();
@@ -1261,5 +1587,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, renderMine: (body, helpers) => { watchAccount(); return renderMine(body, helpers); }, startButton, leave };
+  return { render, renderMine: (body, helpers) => { watchAccount(); return renderMine(body, helpers); }, startButton, leave, fingerprint, BOARD };
 })();

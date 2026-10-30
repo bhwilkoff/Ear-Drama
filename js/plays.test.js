@@ -455,7 +455,7 @@ function fakeAudio(room, leaky) {
     endCapture() { const c = captured; captured = zeros(0); return { samples: c, sampleRate: 48000 }; },
     startMeter() { room.metered = room.speaker = null; },
     stopMeter() { return leaky && room.speaker ? 1 : 0; },
-    async playTake() {},
+    async playTake() {}, stopPlayback() {},
     async toTakeRate(c) { return c; },
   };
 }
@@ -676,6 +676,170 @@ test('the service worker treats the castable scripts as data and ships the plays
                    'js/plays-session.js', 'js/plays-ui.js', 'js/plays-worklet.js']) {
     ok(ctx.__shell.includes(f), `${f} is in the shell`);
   }
+});
+
+/* ---- The three recording modes (owner ruling 4, D3-6) ---- */
+
+test('a part\'s face color: the seven largest speaking parts in a fixed order, the rest neutral (golden on every platform)', () => {
+  const script = fixtureScript();
+  eq(['MOLLY', 'FIBBER', 'DOC'].map(n => C.partHue(script, C.role(n))), ['mystery', 'scifi', 'western'], 'the fixture, largest first');
+  eq([C.partHue(script, C.DIRECTIONS), C.partHue(script, C.SOUND)], ['', ''], 'directions and sound stand on neutral');
+  const rodney = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog/plays/castable-scripts.json'), 'utf8'))
+    .scripts.find(s => s.id === 'gut-28051');
+  if (rodney) {
+    eq(['URIAH', 'RODNEY', 'MCKEEN', 'FRANKLIN', 'PRUDENCE', 'RUTLEDGE', 'TOM', 'ANNOUNCER'].map(n => C.partHue(rodney, C.role(n))),
+      ['mystery', 'scifi', 'western', 'serial', 'documentary', 'comedy', 'news', ''], 'Caesar Rodney\'s Ride: the eighth part is neutral');
+  }
+});
+
+test('a run plan starts at the line\'s cue and stops after the part\'s last line', () => {
+  const script = fixtureScript();
+  let p = C.newProduction(script);
+  p = C.addTake(p, take('f2', 'L0002', C.role('FIBBER'), 100));
+  const plan = C.runPlan(p, script, C.role('MOLLY'), 'L0006');
+  eq(plan.map(e => [e.lineID, e.source]), [['L0005', 'voice'], ['L0006', 'mine'], ['L0007', 'mine'], ['L0008', 'voice'],
+    ['L0009', 'mine'], ['L0010', 'voice'], ['L0011', 'mine']], 'DOC\'s cue first, the unrecorded sound skipped, the part\'s lines its own');
+  eq(C.runPlan(p, script, C.role('MOLLY'), 'L0003').slice(0, 2).map(e => [e.lineID, e.source]), [['L0002', 'take'], ['L0003', 'mine']],
+    'a cue with a human take plays the take');
+  eq(C.runPlan(p, script, C.role('FIBBER'), 'L0008').map(e => e.lineID).pop(), 'L0010', 'nothing plays after the part\'s last line');
+  for (const e of plan.filter(x => x.source === 'voice')) eq(Object.keys(e).sort(), ['lineID', 'part', 'source', 'text'], `${e.lineID}: words only`);
+  eq(C.runPlan(p, script, C.role('MOLLY'), 'nope'), [], 'an unknown line plans nothing');
+});
+
+test('discarding a run removes its takes and puts each line back on the take it had', () => {
+  const script = fixtureScript();
+  let p = C.newProduction(script);
+  p = C.addTake(p, take('old', 'L0003', C.role('MOLLY'), 100));
+  p = C.addTake(p, take('r1', 'L0003', C.role('MOLLY'), 100));
+  p = C.addTake(p, take('r2', 'L0006', C.role('MOLLY'), 100));
+  p = C.addTake(p, take('r3', 'L0006', C.role('MOLLY'), 100));
+  const { production, gone } = C.discardRun(p, [{ lineID: 'L0003', prior: 'old', takes: ['r1'] }, { lineID: 'L0006', prior: null, takes: ['r2', 'r3'] }]);
+  eq(gone.map(t => t.id).sort(), ['r1', 'r2', 'r3'], 'every take the run made goes');
+  eq(production.takes.map(t => t.id), ['old'], 'the take from before the run stays');
+  eq(production.chosen, { L0003: 'old' }, 'each line is back where it was');
+});
+
+/** A device voice that reads until it is cancelled, so a run can be paused mid-cue. */
+function waitingVoice() {
+  let release = null;
+  const v = {
+    spoken: [],
+    speak(text) { v.spoken.push(text); return new Promise((r) => { release = r; v.waiting = true; }); },
+    cancel() { v.waiting = false; if (release) { const r = release; release = null; r(false); } },
+    finish() { v.waiting = false; if (release) { const r = release; release = null; r(true); } },
+    waiting: false,
+  };
+  return v;
+}
+const tick = () => new Promise(r => setImmediate(r));
+
+async function modeSession(voice, part = C.role('MOLLY')) {
+  const script = fixtureScript();
+  const backend = PlayStore.memoryBackend();
+  const store = PlayStore.open(backend);
+  await store.load();
+  let p = await store.create(script);
+  p = C.take(p, script, part, '');
+  await store.save(p);
+  const phases = [];
+  const s = RecordingSession.create({ production: p, script, part, store, audio: fakeAudio({ speaker: null }, false), voice,
+                                      sleep: async () => {}, onChange: (x) => phases.push(x.phase.kind) });
+  await s.begin();
+  return { s, store, backend, script, phases };
+}
+
+test('Run through records every line of the part in one pass and opens its review; Discard the run deletes the files', async () => {
+  const voice = signatureVoice({ speaker: null });
+  const { s, store, backend, phases } = await modeSession(voice);
+  ok(s.setMode('run'), 'the mode can be set while nothing plays');
+  await s.runThrough('L0003');
+  eq(s.phase.kind, 'runReview', 'the run ends on its review');
+  eq(s.runTakes().map(t => t.lineID), ['L0003', 'L0006', 'L0007', 'L0009', 'L0011'], 'every line of the part has a take from the run');
+  eq(voice.rendered.length, 4, 'the open parts between were read live (FIBBER twice, DOC, FIBBER), the cue before the first line too');
+  ok(phases.includes('cue') && phases.includes('listening'), 'cues and listening alternate');
+  ok(!s.setMode('step'), 'the mode holds while a run is under review');
+  const files = (await backend.keys(`${s.production.id}/takes/`)).length;
+  eq(files, 5, 'one take file per line');
+  await s.discardRun();
+  eq(s.phase.kind, 'idle', 'back to ready');
+  eq((await backend.keys(`${s.production.id}/takes/`)).length, 0, 'the run\'s files are gone');
+  eq(store.production(s.production.id).chosen, {}, 'no line keeps a run take');
+  s.end();
+});
+
+test('Keep N takes keeps the run; Again in the review re-records one line and returns to the review', async () => {
+  const { s, store } = await modeSession(signatureVoice({ speaker: null }));
+  s.setMode('run');
+  await s.runThrough('L0009');
+  eq(s.runTakes().map(t => t.lineID), ['L0009', 'L0011'], 'a run from a later line records from there');
+  const first = s.runTakes()[0].id;
+  await s.record('L0009');
+  eq(s.phase.kind, 'runReview', 'Again returns to the run\'s review');
+  ok(s.runTakes()[0].id !== first, 'the review shows the new take');
+  s.keepRun();
+  const p = store.production(s.production.id);
+  eq(Object.keys(p.chosen).sort(), ['L0009', 'L0011'], 'the run\'s lines keep their takes');
+  eq(p.takes.length, 3, 'the superseded take stays until the person discards unused takes (§8 rule 5)');
+  eq(s.run, null, 'the run is over');
+  s.end();
+});
+
+test('Pause ends a run mid-cue and opens the review of what it took', async () => {
+  const voice = waitingVoice();
+  const { s } = await modeSession(voice);
+  s.setMode('run');
+  const running = s.runThrough('L0003');
+  await tick();
+  ok(voice.waiting && s.phase.kind === 'cue' && s.phase.run, 'FIBBER\'s cue is being read');
+  ok(!s.setMode('lines'), 'the mode control is disabled while the run plays');
+  voice.finish();
+  for (let i = 0; i < 20 && !voice.waiting; i++) await tick();
+  ok(voice.waiting, 'after the first line, the next open part is read');
+  s.pause();
+  await running;
+  eq(s.phase.kind, 'runReview', 'Pause opens the review');
+  eq(s.runTakes().map(t => t.lineID), ['L0003'], 'the review holds the one line taken');
+  s.end();
+});
+
+test('Pause before any line is taken goes back to ready', async () => {
+  const voice = waitingVoice();
+  const { s } = await modeSession(voice);
+  s.setMode('run');
+  const running = s.runThrough('L0003');
+  await tick();
+  s.pause();
+  await running;
+  eq([s.phase.kind, s.run], ['idle', null], 'nothing to review');
+  s.end();
+});
+
+test('Line by line ends on the line, ready; Step ends on the take\'s review', async () => {
+  const { s } = await modeSession(signatureVoice({ speaker: null }));
+  s.setMode('lines');
+  await s.record('L0006');
+  eq(s.phase.kind, 'idle', 'Line by line: the line is ready to record again');
+  ok(s.production.chosen.L0006, 'the take is the line\'s');
+  s.setMode('step');
+  await s.record('L0007');
+  eq([s.phase.kind, s.phase.lineID], ['review', 'L0007'], 'Step: the take waits for Keep or Again');
+  ok(!s.setMode('bogus'), 'only the three modes');
+  s.end();
+});
+
+test('Cue and With cue play and keep nothing', async () => {
+  const voice = signatureVoice({ speaker: null });
+  const { s, backend } = await modeSession(voice);
+  s.setMode('lines');
+  await s.playCue('L0006');
+  eq(voice.rendered.length, 1, 'DOC\'s line was read');
+  eq((await backend.keys(`${s.production.id}/takes/`)).length, 0, 'no take was written');
+  await s.record('L0006');
+  const before = (await backend.keys(`${s.production.id}/`)).length;
+  await s.playWithCue(C.chosenTake(s.production, 'L0006'));
+  eq((await backend.keys(`${s.production.id}/`)).length, before, 'With cue writes nothing');
+  eq(s.phase.kind, 'idle', 'back where it was');
+  s.end();
 });
 
 (async () => {

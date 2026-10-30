@@ -245,6 +245,64 @@ const PlaysCore = (() => {
     return plan;
   }
 
+  /**
+   * Run through (owner ruling 4, 2026-10-29): the play from the chosen line's cue to the
+   * part's last line. The part's own lines are recorded as they come; every other line is a
+   * usable human take where one exists, a speaking line without one is read live by the
+   * device voice (words only, never audio, §5), and unrecorded directions and sound are
+   * skipped, as in the listen plan.
+   */
+  function runPlan(p, script, part, fromLineID) {
+    const at = script.lines.findIndex(l => l.id === fromLineID);
+    if (at < 0) return [];
+    const cue = cueLines(script, fromLineID)[0];
+    const start = cue ? script.lines.findIndex(l => l.id === cue.id) : at;
+    const plan = [];
+    for (const line of script.lines.slice(start)) {
+      const who = linePart(line);
+      const t = who === part ? null : usableTake(p, line.id);
+      if (who === part) plan.push({ lineID: line.id, part: who, source: 'mine' });
+      else if (t) plan.push({ lineID: line.id, part: who, source: 'take', take: t });
+      else if (line.kind === 'speech') plan.push({ lineID: line.id, part: who, source: 'voice', text: spokenText(line) });
+    }
+    let last = plan.length - 1;
+    while (last >= 0 && plan[last].source !== 'mine') last -= 1;
+    return plan.slice(0, last + 1);
+  }
+
+  /**
+   * Discard the run: every take the run made is removed and each line goes back to the
+   * take it had before (§8 rule 5 holds: only the person's own act removes a take).
+   * `run` is [{ lineID, prior, takes }]; returns the takes so the store deletes their files.
+   */
+  function discardRun(p, run) {
+    const ids = new Set(run.flatMap(e => e.takes));
+    const gone = p.takes.filter(t => ids.has(t.id));
+    const next = clone(p);
+    next.takes = next.takes.filter(t => !ids.has(t.id));
+    for (const e of run) {
+      if (e.prior && next.takes.some(t => t.id === e.prior)) next.chosen[e.lineID] = e.prior;
+      else delete next.chosen[e.lineID];
+    }
+    if (gone.length) next.listenedThrough = false;
+    return { production: next, gone };
+  }
+
+  /**
+   * A part's face color (direction D): the first seven speaking parts, largest first, take
+   * the seven marks in a fixed order; the rest, and directions and sound, stand on neutral.
+   * Apple's PlayScript.partHue and Android's partHue return the same names.
+   */
+  const PART_HUES = ['mystery', 'scifi', 'western', 'serial', 'documentary', 'comedy', 'news'];
+  function partHue(script, part) {
+    if (!isSpeaking(part)) return '';
+    const i = castParts(script).filter(x => isSpeaking(x.id)).findIndex(x => x.id === part);
+    return i >= 0 && i < PART_HUES.length ? PART_HUES[i] : '';
+  }
+
+  /** The recording modes (owner ruling 4), in the order the control shows them. */
+  const MODES = ['run', 'lines', 'step'];
+
   /** "12 parts · 840 lines": a play's length, from its own lines. */
   function lengthLine(script) {
     const parts = castParts(script).filter(x => isSpeaking(x.id)).length;
@@ -587,7 +645,7 @@ const PlaysCore = (() => {
     newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
-    cueLines, refusalText, listenPlan, lengthLine, authorFacts,
+    cueLines, refusalText, listenPlan, runPlan, discardRun, PART_HUES, partHue, MODES, lengthLine, authorFacts,
     MixFailure, gain, buildTimeline, renderMix,
     integratedLoudness, samplePeak, rms, thresholdFor, LineEndDetector, lineWindow, CueMeter,
     wavHeader, pcmBytes, encodeWav, decodeWav,
