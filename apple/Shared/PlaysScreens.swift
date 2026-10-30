@@ -63,30 +63,6 @@ struct StartEarDramaButton: View {
     }
 }
 
-/// An opened invitation heads Library (iOS-DESIGN §4.6): it is waiting on the
-/// person, so it is not left below the settled sections.
-struct LibraryInvitation: View {
-    @Environment(AppStore.self) private var app
-    #if os(macOS)
-    @Environment(\.openWindow) private var openWindow
-    #endif
-
-    var body: some View {
-        if let token = app.pendingInvite {
-            InvitationSection(token: token, open: open)
-        }
-    }
-
-    private func open(_ production: Production) {
-        #if os(macOS)
-        openWindow(id: ProductionWindow_macOS.id, value: production.id)
-        #else
-        app.selectedTab = .library
-        app.push(PlayRoute.production(production.id))
-        #endif
-    }
-}
-
 /// Library's Ear dramas (iOS-DESIGN §4.6, §4.12a): the productions on this
 /// device and, signed in, the shared ones not opened here, then Classes.
 struct EarDramasSection: View {

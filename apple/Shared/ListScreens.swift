@@ -1150,7 +1150,6 @@ struct LibraryScreen: View {
                     if catalog.state == .unavailable {
                         CatalogUnavailableView()
                     }
-                    LibraryInvitation()
                     if empty {
                         Section {
                             EmptyState("Nothing played yet", systemImage: "books.vertical",
