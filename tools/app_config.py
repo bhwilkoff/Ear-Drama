@@ -55,9 +55,9 @@ PLAY_REPORTS_BUCKET = ""                          # e.g. "pubsite_prod_rev_0978.
 # one device per kind. A manifest (tools/bench.py) overrides it when present.
 DEVICES = {
     "iphone":  "00008101-000339320188801E",  # iPhone 12 (owner 2026-10-24: "use the iPhone 12 for live testing")
-    "ipad":    None,      # devicectl udid
+    "ipad":    "00008103-0019388E3CF1001E",  # iPad Pro 12.9 (5th gen), paired; the iPhone 12 stand-in when it is off
     "appletv": None,      # devicectl udid (paired over the network)
-    "android": None,      # adb serial
+    "android": "adb-3B211JEKB14516-4M5scf._adb-tls-connect._tcp",  # Pixel 8a over wireless debugging (mdns name)
     "mac":     "local",   # the Mac this runs on
     "windows": None,      # hostname or IP for SSH; see winbox.py
     "web":     "local",   # a local Chrome driven over CDP
@@ -115,7 +115,9 @@ HOOK_EMPTY_LIBRARY = "APP_EMPTY_LIBRARY"
 # and section, so it does not move when parsing improves. (Ivanhoe, chosen first, is
 # a project still being recorded and has no audio yet.)
 QA_ITEM_ID = "librivox8944|s1"
-QA_ITEM_RX = r"Inferno I"
+# OCR reads the condensed display face's capital I as "|", "l" or "1" (Android, 2026-10-30);
+# the lookahead keeps Inferno II from passing for I.
+QA_ITEM_RX = r"Inferno [I|l1](?![I|l1])"
 
 # --- Doors are muted and time-bounded by default ------------------------------
 # A harness that plays media on someone's television is in their living room. A

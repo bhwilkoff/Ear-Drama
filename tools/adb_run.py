@@ -42,6 +42,7 @@ import argparse
 import os
 import re
 import subprocess
+import shlex
 import sys
 import time
 from pathlib import Path
@@ -185,8 +186,11 @@ def launch(dev, extras, deep_link=None):
                 "-d", deep_link, PKG]
     else:
         args = ["shell", "am", "start", "-n", f"{PKG}/{ACTIVITY}"]
+    # adb shell joins its arguments into one device shell line, so an unquoted value
+    # is split there: "librivox8944|s1" piped into a command named s1 and the app was
+    # asked for "librivox8944", which is not an episode.
     for k, (kind, v) in full.items():
-        args += [f"--{kind}", k, v]
+        args += [f"--{kind}", k, shlex.quote(str(v))]
     r = adbs(dev, *args, timeout=90)
     if "Error" in (r.stdout + r.stderr) or "Exception" in (r.stdout + r.stderr):
         sys.exit(f"launch failed: {r.stdout[-300:]} {r.stderr[-300:]}")
