@@ -58,6 +58,14 @@ const M = [
   ["failed object deletion forgotten", "src/plays.js", "    } catch {\n      failed.push(...chunk);\n    }", "    } catch {}"],
   ["sweep skips orphans", "src/plays.js", "  const failed = new Set(await deleteObjects(env, keys));", "  const failed = new Set(keys);"],
   ["director deletion drops the cast", "src/plays.js", "WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1)", "WHERE 0"],
+  // A submitted production outlives its members' deletions (owner, 2026-10-29)
+  ["submitted takes deleted with their performer", "src/plays.js", "UPDATE play_takes SET user_id = ?2 WHERE user_id = ?1 AND production_id IN (${submitted})", "UPDATE play_takes SET user_id = ?2 WHERE 0"],
+  ["submitted parts deleted with their performer", "src/plays.js", "UPDATE play_parts SET user_id = ?2 WHERE user_id = ?1 AND production_id IN (${submitted})", "UPDATE play_parts SET user_id = ?2 WHERE 0"],
+  ["submitted production passes to a member", "src/plays.js", "UPDATE play_productions SET user_id = ?2 WHERE user_id = ?1 AND id IN (${submitted})", "UPDATE play_productions SET user_id = ?2 WHERE 0"],
+  ["submitted job deleted with its director", "src/plays.js", 'env.DB.prepare("UPDATE play_archive_jobs SET user_id = ?2 WHERE user_id = ?1").bind(userId, DELETED_PERSON),', ""],
+  ["deleted person row never made", "src/plays.js", 'env.DB.prepare("INSERT OR IGNORE INTO users (id, created_at) VALUES (?2, 0)").bind(userId, DELETED_PERSON),', ""],
+  ["item credits keep the deleted name", "src/plays.js", "\"UPDATE play_archive_jobs SET credits = NULL WHERE status = 'published' AND production_id IN (SELECT production_id FROM play_takes WHERE user_id = ?1)\",", "\"UPDATE play_archive_jobs SET credits = credits WHERE 0\","],
+  ["every production counts as submitted", "src/plays.js", 'const submitted = "SELECT production_id FROM play_archive_jobs";', 'const submitted = "SELECT id FROM play_productions";'],
   ["any script is castable", "src/plays.js", '  if (!entry) return problem(422, "not_castable");\n', ""],
   ["any revision is castable", "src/plays.js", '  if (body.script_revision !== entry.revision) return problem(409, "revision_mismatch", entry.revision);\n', ""],
   ["cast sheet trusted", "src/plays.js", '  if ((await castHash(cast)) !== entry.cast) return problem(422, "cast_mismatch");\n', ""],
@@ -151,7 +159,6 @@ const M = [
   ["anyone removes", "src/plays.js", '  if (!performer && p.user_id !== auth.userId) return problem(403, "not_your_take");\n', ""],
   ["removal reason unchecked", "src/plays.js", '  if (!REMOVE_REASONS.includes(reason)) return problem(400, "bad_request", `reason is one of ${REMOVE_REASONS.join(", ")}`);\n', ""],
   ["replacement never sent", "src/plays.js", "  if (replacing) stmts.push(replaceStatement(env, p.id, replacing, takeId, audio.type, now));\n", ""],
-  ["job lost with the director", "src/plays.js", '"WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_productions p WHERE p.id = play_archive_jobs.production_id AND p.user_id <> ?1)"', '"WHERE 0 AND ?1 IS NOT NULL"'],
   // Plays that need no account (plays-open.js, owner 2026-10-29)
   ["open reads need an account", "src/index.js", "  if (isOpenRoute(pathname, method)) {", "  if (false && isOpenRoute(pathname, method)) {"],
   ["open routes take writes", "src/plays-open.js", '  method === "GET" &&\n  (pathname === "/v1/plays/finished"', '  (pathname === "/v1/plays/finished"'],

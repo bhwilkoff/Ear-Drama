@@ -722,8 +722,15 @@ The owner's answers in §9 hold on the server, word for word:
   teacher records the school's consent, and that record is refused until the
   owner names the privacy policy's version that covers school consent.
 - **Deletion** (Decision 063) removes every row, the person's take audio in
-  the bucket, and their classes; a production with others in it passes to the
-  member who joined first, with their takes.
+  the bucket, and their classes. A **submitted production** (its publish is
+  queued or done) survives any member's deletion (owner, 2026-10-29: "Account
+  deletion should definitely not remove their recordings from already submitted
+  works"): its listing, takes, audio and archive.org item stay, the deleted
+  person's part goes uncredited (the item's credits are rewritten), and
+  directorship passes to no one, so nobody new gains director rights; the
+  remaining performers keep control of their own lines. An unsubmitted
+  production with others in it passes to the member who joined first, with
+  their takes, and one nobody else is in goes with its last member.
 
 ### §11.6 Open owner items
 

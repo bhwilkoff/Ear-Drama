@@ -8,6 +8,7 @@ import { call, env, installProviderKeys, signIn } from "./helpers.js";
 import { castOf, catalog, consent, flac, newTakeId, wav } from "./plays-helpers.js";
 import { castParts, isSpeaking, linesOf } from "../src/plays-relay.js";
 import MANIFEST from "../src/castable-manifest.json";
+import { DELETED_PERSON } from "../src/plays.js";
 import {
   ARCHIVE_CRON,
   CC0_URL,
@@ -505,10 +506,78 @@ describe("replacing or removing a published take (P12)", () => {
     expect((await job(p.id)).status).toBe("published");
   });
 
-  it("when the director deletes their account, the job passes with the production and its performers keep these controls", async () => {
+  it("when the director deletes their account, the production stays directed by no one and its performers keep their own controls", async () => {
     const { director, her, p } = await published("rm-del");
+    const dirLine = linesOf(cast, speaking[0])[0];
     expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
-    expect((await job(p.id)).user_id).toBe(her.user_id);
+    expect((await job(p.id)).user_id).toBe(DELETED_PERSON);
     expect((await remove(her, p.id, herLines()[0])).status).toBe(202);
+    expect((await remove(her, p.id, dirLine)).status).toBe(403);
+  });
+});
+
+describe("a published production outlives its members' accounts (owner, 2026-10-29)", () => {
+  const takeUsers = async (pid) =>
+    (await env.DB.prepare("SELECT DISTINCT user_id FROM play_takes WHERE production_id = ?1").bind(pid).all()).results.map((r) => r.user_id).sort();
+  const listed = (pid) => call("GET", `/v1/plays/finished/${pid}`);
+  const audio = async (pid) => (await env.TAKES.list({ prefix: `plays/${pid}/` })).objects.length;
+
+  it("a performer's deletion keeps the listing, the takes, the audio and the item; their part goes uncredited", async () => {
+    const { director, her, p } = await published("surv-her");
+    const lines = (await files(p.id)).length;
+    const objects = await audio(p.id);
+    const item = fake.items.get(identifierFor(p.id));
+    const partsOf = async () => (await env.DB.prepare("SELECT part, user_id FROM play_parts WHERE production_id = ?1 ORDER BY part").bind(p.id).all()).results;
+    const partsBefore = await partsOf();
+    expect((await (await listed(p.id)).json()).credits).toContainEqual({ part: herPart, name: "Zoë" });
+    expect((await call("DELETE", "/v1/account", { token: her.access_token })).status).toBe(200);
+    const body = await (await listed(p.id)).json();
+    expect(body.credits).toContainEqual({ part: herPart, name: "" });
+    expect(body.credits.some((c) => c.name === "Zoë")).toBe(false);
+    expect((await files(p.id)).length).toBe(lines);
+    expect(await audio(p.id)).toBe(objects);
+    expect(await takeUsers(p.id)).toEqual([DELETED_PERSON, director.user_id].sort());
+    expect((await partsOf()).map((r) => r.part)).toEqual(partsBefore.map((r) => r.part));
+    expect((await partsOf()).find((r) => r.part === herPart).user_id).toBe(DELETED_PERSON);
+    expect((await job(p.id)).status).toBe("published");
+    expect((await job(p.id)).credits).toBeNull();
+    await drain(p.id);
+    expect(item.meta.credits).not.toContain("Zoë");
+    expect(item.meta.creator).toEqual(["Pat"]);
+    expect(item.files.size).toBe(lines);
+  });
+
+  it("the director's deletion keeps it too, and no remaining member becomes the director", async () => {
+    const { director, her, p } = await published("surv-dir");
+    const lines = (await files(p.id)).length;
+    expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
+    expect((await listed(p.id)).status).toBe(200);
+    expect((await files(p.id)).length).toBe(lines);
+    const rec = await record(her, p.id);
+    expect(rec.director).toBe(DELETED_PERSON);
+    expect(rec.members.some((m) => m.name === "Pat")).toBe(false);
+    expect((await env.DB.prepare("SELECT user_id FROM play_productions WHERE id = ?1").bind(p.id).first()).user_id).toBe(DELETED_PERSON);
+  });
+
+  it("when everyone has deleted their account the production, its takes and its item remain", async () => {
+    const { director, her, p } = await published("surv-all");
+    const lines = (await files(p.id)).length;
+    const objects = await audio(p.id);
+    expect((await call("DELETE", "/v1/account", { token: her.access_token })).status).toBe(200);
+    expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
+    expect(await takeUsers(p.id)).toEqual([DELETED_PERSON]);
+    expect(await audio(p.id)).toBe(objects);
+    expect((await listed(p.id)).status).toBe(200);
+    expect((await files(p.id)).length).toBe(lines);
+    expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM play_members WHERE production_id = ?1").bind(p.id).first()).n).toBe(0);
+  });
+
+  it("CONTROL: an unpublished production still goes with its last member", async () => {
+    const { director, her, p } = await complete("surv-ctl");
+    expect((await call("DELETE", "/v1/account", { token: her.access_token })).status).toBe(200);
+    expect((await call("DELETE", "/v1/account", { token: director.access_token })).status).toBe(200);
+    expect(await env.DB.prepare("SELECT 1 FROM play_productions WHERE id = ?1").bind(p.id).first()).toBeNull();
+    expect(await takeUsers(p.id)).toEqual([]);
+    expect(await audio(p.id)).toBe(0);
   });
 });

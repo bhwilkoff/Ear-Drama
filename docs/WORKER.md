@@ -130,8 +130,17 @@ person's columns from D1's own foreign keys (`user_id`, and any other column
 that references `users`), so `OTHER_PERSON_COLUMNS` in `account.js` must name
 each column that is not `user_id`.
 
-For shared plays, deletion first hands each production with anyone else in it
-to the member who joined first (their takes stay), then deletes the audio of
+For shared plays, a **submitted production** (it has an archive job) survives
+any member's deletion (owner, 2026-10-29: "Account deletion should definitely
+not remove their recordings from already submitted works"). The person's takes,
+parts, directorship and job move to one `deleted-account` row (`DELETED_PERSON`
+in `plays.js`) that has no identity or session, so no one can sign in as it and
+no remaining member gains director rights; their member row goes, so their part
+reads uncredited in the listing, and a published item's credits are cleared so
+the uploader rewrites them without the name. The listing, takes, audio and
+archive.org item stay. Any other production with anyone else in it goes to the
+member who joined first (their takes stay); one nobody else is in goes with them.
+Then deletion deletes the audio of
 every take that is losing its row from the TAKES bucket. An object the bucket
 fails to delete is queued in `play_orphan_objects` (a key names a production
 and a take, never a person) and the hourly sweep retries it; the rows go

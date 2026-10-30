@@ -849,23 +849,39 @@ export async function handlePlays(url, request, env, auth) {
 /* ---- Account deletion and the sweep ---- */
 
 /**
- * Before an account's rows go (account.js): its productions with anyone else
- * in them pass to the member who joined first, and the audio of every take
- * that is about to lose its row is deleted from the bucket. A failed object
+ * The row a submitted production's deleted people become. It has no identity
+ * or session, so no one can sign in as it and nobody gains rights through it.
+ */
+export const DELETED_PERSON = "deleted-account";
+
+/**
+ * Before an account's rows go (account.js). A submitted production (it has an
+ * archive job) survives any member's deletion (owner, 2026-10-29: "Account
+ * deletion should definitely not remove their recordings from already
+ * submitted works"): the person's takes, parts, directorship and job move to
+ * DELETED_PERSON, their member row goes so no name is credited, and a published
+ * item's credits are queued to be rewritten. Directorship passes to no one.
+ * Every other production of theirs with anyone else in it passes to the member
+ * who joined first; one nobody else is in goes with them. Then the audio of
+ * every take about to lose its row is deleted from the bucket. A failed object
  * deletion is queued in play_orphan_objects for the sweep, never left behind
  * unindexed. Returns statements for the deletion batch.
  */
 export async function playsBeforeDeletion(env, userId) {
+  const submitted = "SELECT production_id FROM play_archive_jobs";
+  await env.DB.batch([
+    env.DB.prepare("INSERT OR IGNORE INTO users (id, created_at) VALUES (?2, 0)").bind(userId, DELETED_PERSON),
+    env.DB.prepare(
+      "UPDATE play_archive_jobs SET credits = NULL WHERE status = 'published' AND production_id IN (SELECT production_id FROM play_takes WHERE user_id = ?1)",
+    ).bind(userId),
+    env.DB.prepare(`UPDATE play_takes SET user_id = ?2 WHERE user_id = ?1 AND production_id IN (${submitted})`).bind(userId, DELETED_PERSON),
+    env.DB.prepare(`UPDATE play_parts SET user_id = ?2 WHERE user_id = ?1 AND production_id IN (${submitted})`).bind(userId, DELETED_PERSON),
+    env.DB.prepare(`UPDATE play_productions SET user_id = ?2 WHERE user_id = ?1 AND id IN (${submitted})`).bind(userId, DELETED_PERSON),
+    env.DB.prepare("UPDATE play_archive_jobs SET user_id = ?2 WHERE user_id = ?1").bind(userId, DELETED_PERSON),
+  ]);
   await env.DB.prepare(
     "UPDATE play_productions SET user_id = (SELECT m.user_id FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1 ORDER BY m.joined_at, m.user_id LIMIT 1) " +
       "WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1)",
-  )
-    .bind(userId)
-    .run();
-  // A published production's job passes with it, so its performers can still replace or remove their takes (P12).
-  await env.DB.prepare(
-    "UPDATE play_archive_jobs SET user_id = (SELECT p.user_id FROM play_productions p WHERE p.id = play_archive_jobs.production_id) " +
-      "WHERE user_id = ?1 AND EXISTS (SELECT 1 FROM play_productions p WHERE p.id = play_archive_jobs.production_id AND p.user_id <> ?1)",
   )
     .bind(userId)
     .run();
