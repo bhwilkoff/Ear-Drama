@@ -60,3 +60,36 @@ struct HomeBrowseRulesTests {
         #expect(ShowLine.fieldSide(49, max: 98) == 23, "area carries the count (the square root)")
     }
 }
+
+struct BrowseLayoutTests {
+    private func plan(_ width: CGFloat, decades: Int = 6) -> BrowseLayout.Plan {
+        BrowseLayout.plan(width: width, decades: decades, tileMin: 160)
+    }
+
+    @Test func theFieldSitsBesideTheGridOnlyWhenTheGridKeepsThreeColumns() {
+        let wide = plan(1590)
+        #expect(wide.sideBySide && wide.fieldWidth == 312 && wide.gridWidth == 1254 && wide.columns == 7, "1590: \(wide)")
+        let ipad = plan(1180)
+        #expect(ipad.sideBySide && ipad.gridWidth == 844 && ipad.columns == 4, "1180: \(ipad)")
+        let split = plan(820)
+        #expect(!split.sideBySide && split.gridWidth == 820 && split.columns == 4, "820: \(split)")
+        let phone = plan(390)
+        #expect(!phone.sideBySide && phone.columns == 2, "390: \(phone)")
+        let small = plan(320)
+        #expect(!small.sideBySide && small.columns == 1, "320: \(small)")
+    }
+
+    @Test func everyPlanFitsItsWidth() {
+        for w: CGFloat in [1590, 1180, 820, 390, 320] {
+            let p = plan(w)
+            let used = p.sideBySide ? p.fieldWidth + BrowseLayout.sideGap + p.gridWidth : p.gridWidth
+            #expect(used <= w, "the field and the grid together are at most \(w) wide, got \(used)")
+            let row = CGFloat(p.columns) * p.tileWidth + BrowseLayout.gap * CGFloat(p.columns - 1)
+            #expect(row <= p.gridWidth + 0.001, "a row of \(p.columns) tiles fits \(p.gridWidth)")
+        }
+    }
+
+    @Test func noDecadesNeverMakesAField() {
+        #expect(!plan(1590, decades: 0).sideBySide)
+    }
+}

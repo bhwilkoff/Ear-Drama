@@ -252,3 +252,45 @@ nonisolated enum ShowLine {
         n > 0 && max > 0 ? Swift.max(6, Int((32 * (Double(n) / Double(max)).squareRoot()).rounded())) : 0
     }
 }
+
+/// Browse's layout from the width of its column alone (R11c): the field beside the grid when the grid
+/// keeps at least three columns, else stacked above it. Nothing here reads a child, so a wide child
+/// can never widen the column that holds it.
+nonisolated enum BrowseLayout {
+    #if os(tvOS)
+    static let labelWidth: CGFloat = 220, cellWidth: CGFloat = 64
+    #else
+    static let labelWidth: CGFloat = 96, cellWidth: CGFloat = 36
+    #endif
+    static let gap: CGFloat = 12
+    static let sideGap: CGFloat = 24
+    static let sideMinColumns = 3
+
+    struct Plan: Equatable {
+        let sideBySide: Bool
+        let fieldWidth: CGFloat
+        let gridWidth: CGFloat
+        let columns: Int
+        let tileWidth: CGFloat
+    }
+
+    static func fieldWidth(decades: Int) -> CGFloat { labelWidth + cellWidth * CGFloat(decades) }
+
+    /// How many tiles of at least `tileMin` fit a row of `width`, one at least.
+    static func columns(width: CGFloat, tileMin: CGFloat) -> Int {
+        max(1, Int(((width + gap) / (tileMin + gap)).rounded(.down)))
+    }
+
+    static func tileWidth(width: CGFloat, columns: Int) -> CGFloat {
+        max(1, (width - gap * CGFloat(columns - 1)) / CGFloat(columns))
+    }
+
+    static func plan(width: CGFloat, decades: Int, tileMin: CGFloat) -> Plan {
+        let field = fieldWidth(decades: decades)
+        let beside = decades > 0 && width - field - sideGap >= CGFloat(sideMinColumns) * tileMin + gap * CGFloat(sideMinColumns - 1)
+        let grid = beside ? width - field - sideGap : width
+        let cols = columns(width: grid, tileMin: tileMin)
+        return Plan(sideBySide: beside, fieldWidth: field, gridWidth: grid, columns: cols,
+                    tileWidth: tileWidth(width: grid, columns: cols))
+    }
+}

@@ -108,8 +108,10 @@ struct TileLink<Value: Hashable>: View {
 /// computed from the measured width so no row is lazy: a tile that has not loaded cannot report.
 struct ShowGrid<Item: Identifiable, Tile: View>: View {
     let items: [Item]
+    /// A width the caller already knows (Browse's plan); nil measures it.
+    var fixedWidth: CGFloat? = nil
     @ViewBuilder let tile: (Item, CGFloat) -> Tile
-    @State private var width: CGFloat = 0
+    @State private var measured: CGFloat = 0
 
     private struct Chunk: Identifiable {
         let items: [Item]
@@ -117,18 +119,21 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
     }
 
     var body: some View {
-        let gap: CGFloat = Spacing.s3
-        let columns = max(1, Int((width + gap) / (ShowTile.defaultWidth + gap)))
-        let tileWidth = max(1, (width - gap * CGFloat(columns - 1)) / CGFloat(columns))
+        let width = fixedWidth ?? measured
+        let gap = BrowseLayout.gap
+        let columns = BrowseLayout.columns(width: width, tileMin: ShowTile.defaultWidth)
+        let tileWidth = BrowseLayout.tileWidth(width: width, columns: columns)
         let chunks = stride(from: 0, to: items.count, by: columns).map {
             Chunk(items: Array(items[$0..<min($0 + columns, items.count)]))
         }
         VStack(alignment: .leading, spacing: gap) {
             // The width comes from a view that holds no content, so nothing drawn below can change
             // what is measured (a row's disclosure chevron once fed back and widened it without end).
-            Color.clear
-                .frame(maxWidth: .infinity, minHeight: 1, maxHeight: 1)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            if fixedWidth == nil {
+                Color.clear
+                    .frame(maxWidth: .infinity, minHeight: 1, maxHeight: 1)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
+            }
             if width > 0 {
                 ForEach(chunks) { chunk in
                     HStack(alignment: .top, spacing: gap) {
@@ -139,7 +144,7 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: fixedWidth ?? .infinity, alignment: .topLeading)
     }
 }
 
@@ -293,10 +298,11 @@ struct GenreField: View {
     let decade: Int?
     let pick: (String, Int) -> Void
 
+    private let cell = BrowseLayout.cellWidth, label = BrowseLayout.labelWidth
     #if os(tvOS)
-    private let cell: CGFloat = 64, label: CGFloat = 220, unit: CGFloat = 2
+    private let unit: CGFloat = 2
     #else
-    private let cell: CGFloat = 36, label: CGFloat = 96, unit: CGFloat = 1
+    private let unit: CGFloat = 1
     #endif
 
     var body: some View {
