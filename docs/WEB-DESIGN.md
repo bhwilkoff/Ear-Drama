@@ -359,6 +359,39 @@ web app follows today.
     the episode player pauses when it starts. Reaching its end without
     seeking forward finishes the play; Export downloads the WAV.
   - `?mute=1` silences the device voice, the cues, and the mix.
+- **§4.10c The invitation and the finished ear dramas** (D3-7, 2026-10-30;
+  owner rulings 2 and 3, 2026-10-29: *"On an invite link, they should be able
+  to see everything. They just can't contribute until they sign in."* and
+  *"Finished ear dramas should definitely be listed and credited. Why else
+  would we record them?"*). Code: the open reads in `js/plays-ui.js`
+  (`renderInvite`, `renderDrama`, `renderDramas`, `newDramas`), the Worker's
+  four GET routes through `API.plays.openInvite`, `openInviteAudio`,
+  `finished`, `finishedOne` (no account); gate `tools/web_fit_invite.py`.
+  - **The invitation** (`?view=invite`, under Home): the production's
+    skeleton. The head board (kicker "Ear drama · in progress", the title,
+    "Directed by" and "N of M parts taken"), Listen through, the parts as the
+    cast sheet draws them (face, lines, presence, who holds it), and a play
+    control on every held part that plays its chosen takes. Signed out it is
+    all there. **Take part** is the only thing that asks for an account: it
+    says "Taking a part needs an account." and opens the sign-in sheet at that
+    tap. Signed in, a name field ("Recording as") sits above the parts and
+    Take part joins. Never a wall, never a dialog before the page. A revoked
+    or expired link says "This invitation has ended."
+  - **Finished ear dramas** are Browse's second scope beside Shows (a
+    segmented control; the filters belong to Shows and hide), and Home's
+    **New ear dramas** shelf after Most downloaded (absent when there are
+    none). Newest first, the Worker's stated order. A tile is the show tile:
+    the title on the drama board, the voice strip as its mark, the names
+    performers chose (three, then "and N more") and the month published.
+  - **A finished drama's page** (`?drama=`): the board, **Play**
+    (the item's derivative MP3 from archive.org's metadata, picked by format
+    and never a private file, played in the site's own player; "The audio is
+    still being prepared." while there is none), View on archive.org, Share, and the Cast as a
+    bill. A part with no chosen name shows the part alone; a name is never
+    guessed.
+  - **Link previews** are static pages from data only (`/invite`, one fixed
+    card; `/drama/{id}`, the title and "Performed by" the chosen names), with
+    no image.
 - **§4.10a Shared ear dramas** (PLAYS-DESIGN §11.7 is binding on the verbs
   and words; this is the web's idiom). Code: `js/plays-share.js` (no DOM,
   the Worker's record mirrored into this browser's production) and the shared

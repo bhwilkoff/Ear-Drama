@@ -10,9 +10,9 @@ final class InviteUITests: DeviceTestCase {
         let app = launch(["APP_DOOR_SECONDS": "60"])
         sleep(3)
         app.open(URL(string: "eardrama://invite#\(token)")!)
-        XCTAssertTrue(text(app, matching: "^Invitation").waitForExistence(timeout: 15), "Invitation leads Library")
-        // Signed out it asks for an account; signed in it reads the invite from the Worker.
-        XCTAssertTrue(text(app, matching: "Sign in to join|does not work|could not be reached|Not available yet")
+        XCTAssertTrue(text(app, matching: "^Invitation").waitForExistence(timeout: 15), "the Invitation page")
+        // Signed out it shows the whole play and asks for an account only at Take Part.
+        XCTAssertTrue(text(app, matching: "Take Part|Sign in to join|does not work|could not be reached|Not available yet")
             .waitForExistence(timeout: 15), "the invitation's state")
         XCTAssertFalse(text(app, matching: "^Consent|I Agree").exists, "no consent screen (Decision 072)")
         shot(app, "invite-opened")

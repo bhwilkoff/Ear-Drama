@@ -6,6 +6,10 @@ import java.io.IOException
 import java.net.URLEncoder
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.Serializable
 
 // Plays that need no account (owner, 2026-10-29; docs/WORKER.md "Open reads"): an invite link
@@ -121,5 +125,122 @@ class OpenPlaysApi(private val worker: WorkerApi) {
 
     companion object {
         const val INVITE_HEADER = "x-invite"
+    }
+}
+
+/** What the open screens decide from the Worker's answers; pure, so a JVM test holds the rules. */
+object OpenPlaysView {
+    /** Newest published first, ties by id descending: the Worker's stated order, kept if a page arrives shuffled. */
+    fun newestFirst(plays: List<FinishedPlay>): List<FinishedPlay> =
+        plays.sortedWith(compareByDescending<FinishedPlay> { it.publishedAt }.thenByDescending { it.id })
+
+    /** The performers' chosen names, once each, in script order. A removed account's empty name is never shown or replaced. */
+    fun names(play: FinishedPlay): List<String> =
+        play.credits.map { it.name.trim() }.filter { it.isNotEmpty() }.distinct()
+
+    /** The tile's credit line: the first [max] names, then how many more. Null when no one is credited. */
+    fun creditLine(play: FinishedPlay, max: Int = 3): String? {
+        val all = names(play)
+        if (all.isEmpty()) return null
+        val shown = all.take(max).joinToString(", ")
+        return if (all.size > max) "$shown +${all.size - max}" else shown
+    }
+
+    /** The takes to play, in the script's order ([lineOrder]); a part's own takes when [part] is given. Takes the script does not know follow in the Worker's order. */
+    fun playOrder(invite: OpenInvite, lineOrder: List<String>, part: String? = null): List<OpenTake> {
+        val rank = lineOrder.withIndex().associate { it.value to it.index }
+        return invite.takes
+            .filter { part == null || it.part == part }
+            .withIndex()
+            .sortedWith(compareBy({ rank[it.value.lineID] ?: Int.MAX_VALUE }, { it.index }))
+            .map { it.value }
+    }
+
+    /** "October 2026" for a publish time, in UTC so every device reads one date. */
+    fun published(millis: Long): String? =
+        if (millis <= 0) null
+        else java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneOffset.UTC)
+            .format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy", java.util.Locale.US))
+
+    /** A part that has a take to hear. */
+    fun hearable(invite: OpenInvite, part: String): Boolean = invite.takes.any { it.part == part }
+}
+
+/** Picks the file a finished drama plays from archive.org's `/metadata/<item>` answer (internet-archive-source section 4). */
+object ArchivePick {
+    /** The item id: the last path segment of the item's page. */
+    fun itemId(archiveUrl: String): String? =
+        archiveUrl.substringBefore('?').trimEnd('/').substringAfterLast('/').takeIf { it.isNotEmpty() && "://" !in it }
+
+    /**
+     * The `/download/` URL of an MP3 the item holds: never a private file or an old revision, a whole-play
+     * file before a numbered per-line one, then by name. Null while no MP3 derivative exists yet.
+     */
+    fun pick(item: String, metadata: String): String? {
+        val files = try {
+            ShareJson.parseToJsonElement(metadata).jsonObject["files"]?.jsonArray
+        } catch (e: Exception) {
+            null
+        } ?: return null
+        val names = files.mapNotNull { f ->
+            val o = f.jsonObject
+            val name = o["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val format = o["format"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val private = o["private"]?.jsonPrimitive?.contentOrNull == "true"
+            name.takeIf { !private && "MP3" in format.uppercase() && !name.startsWith("history/") && !name.contains("~") }
+        }
+        val whole = names.filter { !Regex("^\\d{4}-").containsMatchIn(it) }.sorted()
+        val name = whole.firstOrNull() ?: names.sorted().firstOrNull() ?: return null
+        return "https://archive.org/download/$item/" + name.split('/').joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+    }
+}
+
+/** What a drama's Listen can do: the answer is cached on the list for the session. */
+sealed interface DramaAudio {
+    data object Checking : DramaAudio
+    data class Ready(val url: String) : DramaAudio
+    /** archive.org holds no MP3 yet (derivatives are made later). */
+    data object Deriving : DramaAudio
+    data object Failed : DramaAudio
+}
+
+/** The finished ear dramas for Home's shelf and Browse's scope, read with no account. */
+class FinishedList(private val api: OpenPlaysApi, private val metadata: suspend (String) -> String = { error("no metadata reader") }) {
+    private val audio = mutableMapOf<String, DramaAudio>()
+
+    /** The drama's playable file, looked up once per session and kept in memory; a failed lookup is tried again. */
+    suspend fun audioFor(play: FinishedPlay): DramaAudio {
+        audio[play.id]?.let { return it }
+        val item = ArchivePick.itemId(play.archiveUrl) ?: return DramaAudio.Failed
+        val found = try {
+            ArchivePick.pick(item, metadata(item))?.let { DramaAudio.Ready(it) } ?: DramaAudio.Deriving
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return DramaAudio.Failed
+        }
+        if (found is DramaAudio.Ready) audio[play.id] = found
+        return found
+    }
+
+    sealed interface State {
+        data object Loading : State
+        data class Ready(val plays: List<FinishedPlay>) : State
+        data class Failed(val offline: Boolean) : State
+    }
+
+    private val _state = kotlinx.coroutines.flow.MutableStateFlow<State>(State.Loading)
+    val state: kotlinx.coroutines.flow.StateFlow<State> = _state
+
+    suspend fun load() {
+        _state.value = try {
+            State.Ready(OpenPlaysView.newestFirst(api.finished(limit = 50).productions))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: PlaysException) {
+            State.Failed(e.kind == PlaysException.Kind.Offline)
+        } catch (e: Exception) {
+            State.Failed(false)
+        }
     }
 }

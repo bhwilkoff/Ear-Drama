@@ -27,6 +27,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -109,7 +112,18 @@ fun SeriesBrowseScreen(
     /** A genre the series page asked Browse to filter to; [onGenreRequestHandled] clears it. */
     genreRequest: String? = null,
     onGenreRequestHandled: () -> Unit = {},
+    /** Home's "All" asked for the Ear dramas scope; [onDramasRequestHandled] clears it. */
+    dramasRequest: Boolean = false,
+    onDramasRequestHandled: () -> Unit = {},
+    onOpenDrama: (String) -> Unit = {},
 ) {
+    var dramas by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(dramasRequest) {
+        if (dramasRequest) {
+            dramas = true
+            onDramasRequestHandled()
+        }
+    }
     var kind by rememberSaveable { mutableStateOf<BrowseKind?>(null) }
     var hasScript by rememberSaveable { mutableStateOf(false) }
     val allPlays = rememberCastablePlays()
@@ -123,6 +137,7 @@ fun SeriesBrowseScreen(
         if (genreRequest != null) {
             kind = null; hasScript = false; decade = null; network = null; singles = false
             genre = genreRequest
+            dramas = false
             onGenreRequestHandled()
         }
     }
@@ -155,7 +170,21 @@ fun SeriesBrowseScreen(
         SeriesSort.FirstAired -> "Oldest first"
     }
     Scaffold(topBar = { TopAppBar(title = { Text("Browse") }) }) { padding ->
-        LoadableContent(series, Modifier.padding(padding)) { rows ->
+      Column(Modifier.padding(padding)) {
+        if (!isTv) {
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+                listOf(false to "Shows", true to "Ear dramas").forEachIndexed { i, (isDramas, label) ->
+                    SegmentedButton(
+                        selected = dramas == isDramas,
+                        onClick = { if (dramas != isDramas) { dramas = isDramas; haptics(Haptic.Selection) } },
+                        shape = SegmentedButtonDefaults.itemShape(i, 2),
+                    ) { Text(label) }
+                }
+            }
+        }
+        if (dramas && !isTv) {
+            EarDramasScope(onOpenDrama, Modifier.weight(1f))
+        } else LoadableContent(series, Modifier.weight(1f)) { rows ->
             val gridState = rememberLazyGridState()
             val nearEnd by remember {
                 derivedStateOf {
@@ -396,6 +425,7 @@ fun SeriesBrowseScreen(
                 }
             }
         }
+      }
     }
 }
 

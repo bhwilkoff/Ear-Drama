@@ -27,6 +27,10 @@ sealed interface Route : NavKey {
     @Serializable data class Script(val id: String) : Route
     /** A production's cast sheet. */
     @Serializable data class Production(val id: String) : Route
+    /** The invitation page for the token the session holds (never in the key: a token is not saved state). */
+    @Serializable data object Invitation : Route
+    /** A finished ear drama's page. */
+    @Serializable data class Drama(val id: String) : Route
     /** One part being recorded, line by line; [part] is the raw `PartID`. [line] set: replacing that one line on a published play (P12). */
     @Serializable data class Recording(val production: String, val part: String, val line: String? = null) : Route
 }

@@ -148,11 +148,6 @@ const PlaysUI = (() => {
     }
     if (my !== token) return;
     const out = [];
-    if (S.pendingInvite()) {
-      const inv = await inviteBox(my);
-      if (my !== token) return;
-      out.push(inv);
-    }
     let remote = [];
     if (canShare()) {
       try { remote = (await API.plays.list()).productions || []; } catch (err) { console.error(err); }
@@ -815,78 +810,6 @@ const PlaysUI = (() => {
       } }, 'Invite');
       box.append(h.el('div', { class: 'actions' }, inv), slot, line);
     }
-    return box;
-  }
-
-  /* ---- An invite link (rule 3, DEEP_LINKS.md): joining takes the person's tap, signed in ---- */
-
-  const inviteStatus = (pt) => ({ recording: 'Recording', done: 'Recorded', silent: 'Left silent' })[pt.status] || lines(pt.lineCount);
-
-  async function inviteBox(my) {
-    const tok = S.pendingInvite();
-    const box = h.el('section', { class: 'block invite', 'aria-labelledby': 'invite-h' },
-      h.el('h2', { class: 'section-header', id: 'invite-h' }, 'Invitation'));
-    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
-    const dismiss = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
-      S.holdInvite(null);
-      box.remove();
-    } }, 'Not now');
-    if (!API.plays.available()) {
-      box.append(h.el('p', { class: 'caption' }, 'Not available yet.'), h.el('div', { class: 'actions' }, dismiss));
-      return box;
-    }
-    if (!API.account.signedIn()) {
-      box.append(h.el('div', { class: 'actions' },
-        h.el('button', { type: 'button', class: 'btn btn-primary', onclick: signIn }, 'Sign in to join'), dismiss));
-      return box;
-    }
-    let inv;
-    try { inv = await API.plays.viewInvite(tok); } catch (err) {
-      console.error(err);
-      line.textContent = S.line(err);
-      box.append(line, h.el('div', { class: 'actions' }, dismiss));
-      return box;
-    }
-    if (my !== token) return box;
-    const script = S.scriptFor(await API.castableScripts().catch(() => []), inv.scriptID, inv.scriptRevision);
-    box.append(h.el('p', { class: 'body-strong' }, inv.title));
-    const busy = inv.parts.some(pt => pt.status === 'recording');
-    const ul = h.el('ul', { class: 'cast-list', 'aria-label': 'Parts' });
-    for (const pt of inv.parts) {
-      const row = h.el('li', { class: 'cast-row', dataset: { status: pt.status } },
-        h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, C.partTitle(pt.id)),
-          h.el('span', { class: 'caption' }, inviteStatus(pt))));
-      if (pt.status === 'open' && !busy && script && !inv.member) {
-        const name = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', maxlength: '40',
-                                     placeholder: 'Your name', 'aria-label': `Your name, optional, for ${C.partTitle(pt.id)}` });
-        const go = h.el('button', { type: 'submit', class: pt.id === inv.next ? 'btn btn-accent' : 'btn' }, 'Take part');
-        row.append(h.el('div', { class: 'cast-actions' }, h.el('form', { class: 'take-form', onsubmit: async (e) => {
-          e.preventDefault();
-          go.disabled = true;
-          line.textContent = '';
-          try {
-            const { local } = await S.join({ api: API.plays, store, token: tok, part: pt.id, displayName: name.value, script });
-            S.holdInvite(null);
-            h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
-          } catch (err) { console.error(err); line.textContent = S.line(err); go.disabled = false; }
-        } }, name, go)));
-      }
-      ul.append(row);
-    }
-    box.append(ul, line);
-    if (!script) line.textContent = S.line({ code: 'revision_mismatch' });
-    const acts = h.el('div', { class: 'actions' });
-    if (inv.member && script) {
-      acts.append(h.el('button', { type: 'button', class: 'btn', onclick: async () => {
-        try {
-          const local = await S.localFor(store, inv.id, script);
-          S.holdInvite(null);
-          h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
-        } catch (err) { console.error(err); line.textContent = S.line(err); }
-      } }, 'Open'));
-    }
-    acts.append(dismiss);
-    box.append(acts);
     return box;
   }
 
@@ -1555,7 +1478,349 @@ const PlaysUI = (() => {
 
   /* ---- The router's doors ---- */
 
+  /* ---- Open reads (owner 2026-10-29): an invitation and the finished ear dramas, no account ---- */
+
+  /** Plays chosen takes one after another; a take is fetched when its turn comes. */
+  function takePlayer(fetchBytes, onChange) {
+    let run = 0;
+    let audio = null;
+    let url = null;
+    const clear = () => {
+      if (audio) { audio.pause(); audio = null; }
+      if (url) { URL.revokeObjectURL(url); url = null; }
+    };
+    const stop = () => { run += 1; clear(); onChange(null); };
+    async function play(ids, label) {
+      stop();
+      const mine = run;
+      if (typeof Player !== 'undefined') Player.pause();
+      onChange(label);
+      try {
+        for (const id of ids) {
+          const got = await fetchBytes(id);
+          if (mine !== run) return;
+          if (typeof got === 'string') audio = new Audio(got);
+          else { url = URL.createObjectURL(new Blob([got], { type: 'audio/wav' })); audio = new Audio(url); }
+          audio.muted = muted;
+          await new Promise((done) => { audio.onended = done; audio.onerror = done; audio.play().catch(done); });
+          clear();
+          if (mine !== run) return;
+        }
+      } catch (err) { console.error(err); }
+      if (mine === run) onChange(null);
+    }
+    return { play, stop };
+  }
+  let openPlayer = null;
+  function stopOpen() { if (openPlayer) openPlayer.stop(); openPlayer = null; }
+
+  const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' });
+  /** The Worker stores milliseconds; a seconds value is read as seconds. */
+  const publishedOn = (t) => (t ? shortDate.format(new Date(t > 1e11 ? t : t * 1000)) : null);
+  /** The names performers chose, once each, in credit order. A part with no name is no performer. */
+  const creditNames = (d) => {
+    const out = [];
+    for (const c of d.credits || []) {
+      const n = (c.name || '').trim();
+      if (n && !out.includes(n)) out.push(n);
+    }
+    return out;
+  };
+  const namesLine = (names, max = 3) => (names.length > max
+    ? `${names.slice(0, max).join(', ')} and ${names.length - max} more`
+    : names.length === 2 ? names.join(' and ') : names.join(', '));
+
+  /** A finished drama as a tile in the show tile's grammar: the title on the drama board, the voice strip as its mark. */
+  function dramaTile(d, scripts) {
+    const script = scripts.find(s => s.id === d.script_id);
+    const names = creditNames(d);
+    const mark = script ? fingerprint(script) : null;
+    return h.showTile({ key: d.id, name: d.title, genre: BOARD, first: null, picture: null },
+      { href: `?drama=${encodeURIComponent(d.id)}`, mark, facts: [names.length ? namesLine(names) : null, publishedOn(d.published_at)] });
+  }
+
+  /** Finished ear dramas, newest first: `{ rows, next }`. A failed read of the plays leaves the tiles without their strip. */
+  async function finishedPage(cursor) {
+    const [got, scripts] = await Promise.all([API.plays.finished({ limit: 24, cursor }), API.castableScripts().catch(() => [])]);
+    return { rows: got.productions || [], next: got.next_cursor || null, scripts };
+  }
+
+  /** Home's shelf: null when there is nothing to show (no empty shelf on Home). */
+  async function newDramas(helpers) {
+    h = helpers;
+    if (!API.plays.available()) return null;
+    let page;
+    try { page = await finishedPage(); } catch (err) { console.error(err); return null; }
+    if (!page.rows.length) return null;
+    const ul = h.el('ul', { class: 'rail g-rail', 'aria-labelledby': 'dramas-h' });
+    page.rows.slice(0, 12).forEach(d => ul.append(dramaTile(d, page.scripts)));
+    return h.el('section', { class: 'shelf' },
+      h.el('div', { class: 'block-head' }, h.el('h2', { class: 'section-header', id: 'dramas-h' }, 'New ear dramas'),
+        h.el('a', { class: 'caption', href: '?view=browse&scope=dramas' }, 'All')), ul);
+  }
+
+  /** Browse's third scope. */
+  async function renderDramas(body, countLine, helpers) {
+    h = helpers;
+    const my = ++token;
+    countLine.replaceChildren();
+    const draw = async () => {
+      body.replaceChildren(h.stateBox('loading'));
+      if (!API.plays.available()) { body.replaceChildren(h.stateBox('empty', { text: 'Not available yet.' })); return; }
+      let page;
+      try { page = await finishedPage(); } catch (err) { if (my === token) failBox(body, err, draw); return; }
+      if (my !== token) return;
+      if (!page.rows.length) { body.replaceChildren(h.stateBox('empty', { text: 'No finished ear dramas yet.' })); return; }
+      const ul = h.el('ul', { class: 'g-grid', 'aria-label': 'Newest first' });
+      const add = (rows) => rows.forEach(d => ul.append(dramaTile(d, page.scripts)));
+      add(page.rows);
+      const more = h.el('div', { class: 'actions' });
+      let next = page.next;
+      const paintCount = (n) => countLine.replaceChildren(...[
+        h.el('span', { class: 'g-count nw' }, next ? 'Newest first' : n === 1 ? '1 ear drama' : `${num.format(n)} ear dramas`),
+        next ? null : h.el('span', { class: 'caption nw' }, 'Newest first')].filter(Boolean));
+      let shown = page.rows.length;
+      paintCount(shown);
+      const button = h.el('button', { type: 'button', class: 'btn', onclick: async () => {
+        button.disabled = true;
+        try {
+          const got = await finishedPage(next);
+          if (my !== token) return;
+          next = got.next;
+          shown += got.rows.length;
+          got.rows.forEach(d => ul.append(dramaTile(d, got.scripts)));
+          paintCount(shown);
+          if (!next) more.replaceChildren(); else button.disabled = false;
+        } catch (err) { console.error(err); button.disabled = false; }
+      } }, 'Show more');
+      if (next) more.append(button);
+      body.replaceChildren(ul, more);
+    };
+    await draw();
+  }
+
+  /** The cast as a bill: each part, the name its performer chose, a play control for a part with takes. */
+  function billRows(script, parts, play) {
+    return h.el('ul', { class: 'cast-list', 'aria-label': 'Cast' }, parts.map(pt => {
+      const who = pt.name || null;
+      return h.el('li', { class: 'cast-row' },
+        script ? face(script, pt.part, { who, size: 'sm' }) : null,
+        h.el('div', { class: 'cast-main' }, h.el('span', { class: 'body-strong' }, C.partTitle(pt.part)),
+          who ? h.el('span', { class: 'caption' }, who) : null),
+        play ? play(pt) : null);
+    }));
+  }
+
+  /** The playable copy of a finished drama's archive.org item, from its metadata (cached for the page's life).
+      A published item holds one file per line (`0042-HAMLET.wav`) and each has derivatives, so a numbered file is
+      never mistaken for the whole play: a whole-play MP3 wins (catalog order), else the numbered files in order
+      (MP3, then FLAC, then WAV for each); null while nothing is playable yet. Never a private file or an old revision. */
+  const audioFiles = new Map();
+  async function archiveAudio(itemUrl) {
+    const id = String(itemUrl || '').split('/').filter(Boolean).pop();
+    if (!id) return null;
+    if (audioFiles.has(id)) return audioFiles.get(id);
+    const resp = await fetch(`https://archive.org/metadata/${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(20000) });
+    if (!resp.ok) throw new Error(`metadata ${resp.status}`);
+    const got = S.pickAudio((await resp.json()).files || [], id);
+    audioFiles.set(id, got);
+    return got;
+  }
+
+  /** A finished ear drama's page: the board with its credits, Listen, and the bill. */
+  async function renderDrama(body, helpers, pid) {
+    h = helpers;
+    watchAccount();
+    lastDraw = null;
+    stopOpen();
+    const my = ++token;
+    const heading = $('drama-h');
+    heading.hidden = false;
+    body.replaceChildren(h.stateBox('loading'));
+    let d;
+    let script = null;
+    try {
+      let scripts;
+      [d, scripts] = await Promise.all([API.plays.finishedOne(pid), API.castableScripts().catch(() => [])]);
+      script = scripts.find(s => s.id === d.script_id) || null;
+    } catch (err) {
+      if (my !== token) return;
+      if (err && err.status === 404) body.replaceChildren(h.stateBox('empty', { text: 'This ear drama is not listed.' }));
+      else failBox(body, err, () => renderDrama(body, helpers, pid));
+      return;
+    }
+    if (my !== token) return;
+    h.setTitle(d.title);
+    const names = creditNames(d);
+    const facts = [publishedOn(d.published_at), names.length ? namesLine(names, 4) : null];
+    const board = script ? playBoard(script, d.title, `Ear drama · ${kindOf(script)}`, facts)
+      : h.headBoard({ series: { name: d.title, genre: BOARD, picture: null }, kicker: 'Ear drama', name: d.title, facts });
+    const listen = h.el('span', { class: 'drama-listen' });
+    const acts = h.el('div', { class: 'actions' }, listen,
+      h.el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${d.title}`,
+                       onclick: () => h.share(d.title, `/drama/${encodeURIComponent(d.id)}`) }, h.icon('share'), 'Share'));
+    const waiting = () => { if (my === token) listen.replaceChildren(h.el('span', { class: 'caption', dataset: { state: 'preparing' } }, 'The audio is still being prepared.')); };
+    archiveAudio(d.archive_url).then((file) => {
+      if (my !== token) return;
+      if (!file) { waiting(); return; }
+      const button = h.el('button', { type: 'button', class: 'btn btn-primary' });
+      const paint = (on) => button.replaceChildren(svg(on ? 'stop' : 'play', 'i-inline'), on ? 'Stop' : 'Play');
+      paint(false);
+      if (file.whole) {
+        button.addEventListener('click', () => {
+          Player.load({ id: `drama|${d.id}`, title: d.title, series: 'ear-drama', seriesName: 'Ear drama', url: file.whole, length: null }, { arc: false });
+        });
+      } else {
+        let player = null;
+        button.addEventListener('click', () => {
+          if (player) { player.stop(); player = null; paint(false); return; }
+          player = takePlayer(async (u) => u, (label) => { if (!label && player) { player = null; } paint(!!label); });
+          openPlayer = player;
+          player.play(file.lines, 'drama');
+        });
+      }
+      listen.replaceChildren(button);
+    }).catch((err) => { console.error(err); waiting(); });
+    body.replaceChildren(...[board, acts,
+      d.credits && d.credits.length ? h.el('section', { class: 'block', 'aria-labelledby': 'bill-h' },
+        h.el('h2', { class: 'section-header', id: 'bill-h' }, 'Cast'), billRows(script, d.credits)) : null,
+      d.archive_url ? h.el('p', { class: 'caption' }, h.el('a', { href: d.archive_url, target: '_blank', rel: 'noopener' }, 'View on archive.org')) : null,
+      script ? rightsLine(script) : null].filter(Boolean));
+    heading.hidden = true;
+    const hd = body.querySelector('h1');
+    if (hd && document.activeElement === heading) hd.focus({ preventScroll: true });
+  }
+
+  /** An invitation: everything is shown signed out; only claiming a part asks for an account. */
+  async function renderInvite(body, helpers) {
+    h = helpers;
+    watchAccount();
+    sharedShown = null;
+    lastDraw = () => renderInvite(body, helpers);
+    stopOpen();
+    const my = ++token;
+    const heading = $('invite-h');
+    heading.hidden = false;
+    const say = (text) => body.replaceChildren(h.stateBox('empty', { text }));
+    if (!API.plays.available()) { say('Not available yet.'); return; }
+    const tok = S.pendingInvite();
+    if (!tok) { say('This invitation link is not complete.'); return; }
+    body.replaceChildren(h.stateBox('loading'));
+    let inv;
+    let script = null;
+    try {
+      const [got, scripts] = await Promise.all([API.plays.openInvite(tok), API.castableScripts().catch(() => [])]);
+      inv = got;
+      script = S.scriptFor(scripts, inv.scriptID, inv.scriptRevision) || null;
+    } catch (err) {
+      if (my !== token) return;
+      if (err && err.kind === 'gone') say('This invitation has ended.');
+      else if (err && (err.status === 404 || err.kind === 'missing')) say('This invitation was not found.');
+      else failBox(body, err, lastDraw);
+      return;
+    }
+    if (my !== token) return;
+    let member = false;
+    if (API.account.signedIn()) {
+      try { member = !!(await API.plays.viewInvite(tok)).member; } catch (err) { console.error(err); }
+      if (my !== token) return;
+    }
+    h.setTitle(inv.title);
+    const line = h.el('p', { class: 'caption refusal', role: 'alert' });
+    const busy = inv.parts.some(pt => pt.status === 'recording');
+    const taken = inv.parts.filter(pt => pt.status !== 'open').length;
+    const director = (inv.members || []).find(m => m.director);
+    const facts = [director && director.name ? `Directed by ${director.name}` : null,
+                   `${num.format(taken)} of ${num.format(inv.parts.length)} parts taken`];
+    const board = script ? playBoard(script, inv.title, 'Ear drama · in progress', facts)
+      : h.headBoard({ series: { name: inv.title, genre: BOARD, picture: null }, kicker: 'Ear drama · in progress', name: inv.title, facts });
+
+    const takeIDs = (part) => {
+      if (!script) return [];
+      return C.linesFor(script, part).map(l => inv.chosen && inv.chosen[l.id]).filter(Boolean);
+    };
+    const allIDs = script ? script.lines.map(l => inv.chosen && inv.chosen[l.id]).filter(Boolean) : [];
+    const buttons = new Map();
+    const listenBtn = h.el('button', { type: 'button', class: 'btn btn-primary' });
+    openPlayer = takePlayer(id => API.plays.openInviteAudio(tok, id), (label) => {
+      listenBtn.replaceChildren(svg(label === 'all' ? 'stop' : 'play', 'i-inline'), label === 'all' ? 'Stop' : 'Listen through');
+      for (const [part, b] of buttons) {
+        const on = label === part;
+        b.replaceChildren(svg(on ? 'stop' : 'play'));
+        b.setAttribute('aria-label', `${on ? 'Stop' : 'Play'} ${b.dataset.who}’s takes`);
+      }
+    });
+    const player = openPlayer;
+    listenBtn.append(svg('play', 'i-inline'), 'Listen through');
+    listenBtn.disabled = !allIDs.length;
+    let playing = null;
+    const toggle = (label, ids) => {
+      if (playing === label) { player.stop(); playing = null; return; }
+      playing = label;
+      player.play(ids, label).then(() => { if (playing === label) playing = null; });
+    };
+    listenBtn.addEventListener('click', () => toggle('all', allIDs));
+
+    const performer = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', maxlength: '40',
+                                      id: 'pl-performer', placeholder: 'Your name' });
+    const signedIn = API.account.signedIn();
+    const cards = (script ? C.castParts(script) : inv.parts.map(pt => ({ id: pt.id, lineCount: pt.lineCount, title: C.partTitle(pt.id) })))
+      .map(part => {
+        const pt = inv.parts.find(x => x.id === part.id) || { id: part.id, status: 'open', lineCount: part.lineCount };
+        const who = pt.performer || null;
+        const state = { recording: 'Recording', done: 'Recorded', silent: 'Left silent' }[pt.status] || 'Open';
+        const status = who ? `${who} · ${state}` : state;
+        const acts = h.el('div', { class: 'pl-part-acts' });
+        const ids = takeIDs(part.id);
+        if (ids.length) {
+          const b = h.el('button', { type: 'button', class: 'pl-play-dot', dataset: { who: who || part.title },
+                                     'aria-label': `Play ${who || part.title}’s takes`, onclick: () => toggle(part.id, ids) }, svg('play'));
+          buttons.set(part.id, b);
+          acts.append(b);
+        }
+        if (pt.status === 'open' && !busy && !member) {
+          acts.append(h.el('button', { type: 'button', class: part.id === inv.next ? 'btn btn-primary' : 'btn btn-way',
+            'aria-label': `Take part: ${part.title}`, onclick: async (e) => {
+              line.textContent = '';
+              if (!signedIn) { line.textContent = 'Taking a part needs an account.'; signIn(); return; }
+              if (!script) { line.textContent = S.line({ code: 'revision_mismatch' }); return; }
+              const go = e.currentTarget;
+              go.disabled = true;
+              try {
+                await openStore();
+                const { local } = await S.join({ api: API.plays, store, token: tok, part: part.id, displayName: performer.value, script });
+                S.holdInvite(null);
+                h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
+              } catch (err) { console.error(err); line.textContent = S.line(err); go.disabled = false; }
+            } }, 'Take part'));
+        }
+        if (script) return partCard(script, part, { who, voice: !who, ok: pt.status === 'done', status, actions: acts });
+        return h.el('li', { class: 'pl-part', dataset: { status } },
+          h.el('span', { class: 'pl-part-name' }, part.title), h.el('span', { class: 'caption pl-part-who' }, status), acts);
+      });
+    const acts = h.el('div', { class: 'actions' }, listenBtn);
+    if (member && script) {
+      acts.append(h.el('button', { type: 'button', class: 'btn btn-way', onclick: async () => {
+        try {
+          await openStore();
+          const local = await S.localFor(store, inv.id, script);
+          S.holdInvite(null);
+          h.navigate(`?production=${encodeURIComponent(local.id)}`, true);
+        } catch (err) { console.error(err); line.textContent = S.line(err); }
+      } }, 'Open'));
+    }
+    body.replaceChildren(...[board, acts,
+      signedIn && !member && inv.parts.some(pt => pt.status === 'open') && !busy
+        ? h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer) : null,
+      h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards), line,
+      script ? rightsLine(script) : null].filter(Boolean));
+    heading.hidden = true;
+    const hd = body.querySelector('h1');
+    if (hd && document.activeElement === heading) hd.focus({ preventScroll: true });
+  }
+
   function leave() {
+    stopOpen();
     if (rec) clearInterval(rec.clock);
     if (rec && rec.s) rec.s.end();
     rec = null;
@@ -1604,5 +1869,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, renderMine: (body, helpers) => { watchAccount(); return renderMine(body, helpers); }, startButton, leave, fingerprint, BOARD };
+  return { render, renderInvite, renderDrama, renderDramas, newDramas, renderMine: (body, helpers) => { watchAccount(); return renderMine(body, helpers); }, startButton, leave, fingerprint, BOARD };
 })();

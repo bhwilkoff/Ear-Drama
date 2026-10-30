@@ -13,6 +13,8 @@ import com.example.appname.data.DownloadStore
 import com.example.appname.data.UserStore
 import com.example.appname.data.WorkManagerDownloadTransport
 import com.example.appname.playback.PlaybackEngine
+import com.example.appname.plays.FinishedList
+import com.example.appname.plays.OpenPlaysApi
 import com.example.appname.plays.PlaysApi
 import com.example.appname.plays.PlaysLibrary
 import com.example.appname.plays.SharedPlays
@@ -21,6 +23,8 @@ import com.example.appname.together.EngineRoomPlayer
 import com.example.appname.together.ListenTogether
 import com.example.appname.together.RoomsApi
 import com.example.appname.ui.isTelevision
+import io.ktor.client.request.get
+import io.ktor.client.statement.bodyAsText
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +62,12 @@ class AppContainer(context: Context, scope: CoroutineScope) {
             { accounts.account.value?.userId },
             { plays.load(); (plays.state.value as? PlaysLibrary.State.Ready)?.scripts.orEmpty() },
         )
+    }
+
+    /** Plays that need no account: an invite read and the finished ear dramas (owner, 2026-10-29). */
+    val openPlays: OpenPlaysApi by lazy { OpenPlaysApi(accounts.worker) }
+    val finished: FinishedList by lazy {
+        FinishedList(openPlays) { item -> api.client.get("https://archive.org/metadata/$item").bodyAsText() }
     }
 
     /** Optional sign-in and sync (DECISIONS 057, 063), on the one Ktor client. */

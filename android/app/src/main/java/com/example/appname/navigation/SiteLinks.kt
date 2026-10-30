@@ -17,6 +17,8 @@ object SiteLinks {
 
     fun series(key: String): String = ROOT + "series/" + component(key)
 
+    fun drama(id: String): String = ROOT + "drama/" + component(id)
+
     private const val UNRESERVED = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()"
 
     /**

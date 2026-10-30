@@ -16,8 +16,11 @@ sealed interface InboxRequest {
     /** A Listen Together invitation: the sheet opens with [code] filled in; joining waits for Join. */
     data class Room(val code: String) : InboxRequest
 
-    /** A shared ear drama's invitation (PLAYS-DESIGN §11.7): Library's Ear dramas opens with it held. */
+    /** A shared ear drama's invitation (PLAYS-DESIGN §11.7): its page opens with the token held, signed in or not. */
     data class Invite(val token: String) : InboxRequest
+
+    /** A finished ear drama's page (DEEP_LINKS.md `drama/{pid}`). */
+    data class Drama(val pid: String) : InboxRequest
 
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest

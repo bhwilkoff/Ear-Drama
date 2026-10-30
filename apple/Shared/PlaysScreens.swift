@@ -100,7 +100,7 @@ struct EarDramasSection: View {
 
     var body: some View {
         let rows = PlaysShare.libraryRows(plays.store, remote: account.isSignedIn ? shared.remote : [])
-        if rows.isEmpty && app.pendingInvite == nil {
+        if rows.isEmpty {
             Section("Ear dramas") { SectionCaption("Ear dramas you record or join appear here.") }
         } else if !rows.isEmpty {
             Section("Ear dramas") {

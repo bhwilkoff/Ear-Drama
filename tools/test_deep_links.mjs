@@ -68,8 +68,9 @@ const cases = [
   ['/search', '?q=sorry', '', '/?view=search&q=sorry'],
   ['/library', '', '', '/?view=library'],
   ['/library/', '', '', '/?view=library'],
-  ['/invite', '', `#${token}`, `/?view=library&tab=dramas#invite=${token}`],
-  ['/invite/', '', `#${token}`, `/?view=library&tab=dramas#invite=${token}`],
+  ['/drama/abc123', '', '', '/?drama=abc123'],
+  ['/invite', '', `#${token}`, `/?view=invite#invite=${token}`],
+  ['/invite/', '', `#${token}`, `/?view=invite#invite=${token}`],
 ];
 for (const [p, s, h, want] of cases) {
   const got = forward(p, s, h);

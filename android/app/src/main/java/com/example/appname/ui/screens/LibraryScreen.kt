@@ -74,7 +74,6 @@ fun LibraryScreen(
     val signedIn = account != null
     val links by sharing.links.collectAsState()
     val remote by sharing.remote.collectAsState()
-    val held by sharing.invite.collectAsState()
     // Shared productions and classes are the Worker's; a TV plays back only (PLAYS-DESIGN §11.7).
     LaunchedEffect(account?.userId, television) {
         if (television) return@LaunchedEffect
@@ -88,7 +87,6 @@ fun LibraryScreen(
     val dramaRows = remember(productions, links, remote, television) {
         if (television) emptyList() else PlaysShare.libraryRows(container.plays.store, remote)
     }
-    val invitation = if (television) null else held
     val withClasses = signedIn && !television
     val lists by rememberCatalogQuery(watchUser = true) { db ->
         val progress = container.user.inProgress(limit = 100)
@@ -122,7 +120,7 @@ fun LibraryScreen(
     Scaffold(topBar = { TopAppBar(title = { Text("Library") }) }) { padding ->
         LoadableContent(lists, Modifier.padding(padding)) { library ->
             val empty = library.queued.isEmpty() && library.inProgress.isEmpty() && library.finished.isEmpty() &&
-                library.following.isEmpty() && downloadRecords.isEmpty() && dramaRows.isEmpty() && invitation == null
+                library.following.isEmpty() && downloadRecords.isEmpty() && dramaRows.isEmpty()
             // On a TV the D-pad starts on the first row (§9.2), or on an empty Library's Browse (§7.1a).
             val firstRow = remember { FocusRequester() }
             if (!empty) ClaimTvFocus(firstRow, Unit)
@@ -173,7 +171,7 @@ fun LibraryScreen(
                     )
                 }
                 downloadsSection(downloadRecords, container.downloads.totalBytes, onOpen = onOpenDownloads)
-                earDramasSection(dramaRows, invitation, withClasses, onOpenProduction, recordsHere = !television)
+                earDramasSection(dramaRows, withClasses, onOpenProduction, recordsHere = !television)
                 siteLinksItem()
             }
         }

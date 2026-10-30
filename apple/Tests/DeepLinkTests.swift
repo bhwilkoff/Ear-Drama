@@ -23,6 +23,17 @@ struct DeepLinkTests {
         #expect(parse("https://eardrama.org/episode/a%2Fb%7C1") == .episode("a/b|1"))
     }
 
+    @Test func aDramaLinkAndItsTwinOpenTheFinishedDrama() {
+        #expect(parse("eardrama://drama/P1abc") == .drama("P1abc"))
+        #expect(parse("https://eardrama.org/drama/P1abc") == .drama("P1abc"))
+        #expect(parse("https://eardrama.org/drama/") == nil)
+        #expect(parse("https://example.com/drama/P1abc") == nil)
+        let app = AppStore()
+        app.post(.drama("P1abc"))
+        #expect(app.drainInbox().isEmpty)
+        #expect(app.paths[app.selectedTab]?.count == 1)
+    }
+
     @Test func aPersonLinkOpensThePerson() {
         #expect(parse("https://eardrama.org/person/agnes-moorehead") == .person("agnes-moorehead"))
         #expect(parse("eardrama://person/orson%20welles") == .person("orson welles"))

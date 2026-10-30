@@ -375,6 +375,19 @@ test('refusals read as one line each', () => {
   ok(!/not_next/.test(fs.readFileSync(path.join(__dirname, 'plays-share.js'), 'utf8')), 'no strict relay order is left');
 });
 
+test('a finished drama\'s audio: a whole-play MP3, else the numbered line files in order, never a private file', () => {
+  const f = (name, format, extra = {}) => ({ name, format, ...extra });
+  const line1 = [f('0002-OAK.wav', 'WAV'), f('0001-EBEN.wav', 'WAV'), f('0001-EBEN.flac', 'Flac'), f('0001-EBEN.mp3', 'VBR MP3'),
+                 f('0003-X.wav', 'WAV', { private: true }), f('history/files/0004-Y.wav~1~', 'WAV')];
+  const got = S.pickAudio(line1, 'item');
+  eq(got.lines.map(u => u.split('/').pop()), ['0001-EBEN.mp3', '0002-OAK.wav'], 'numbered files in order, best format each, no private or old revision');
+  ok(!got.whole, 'a numbered MP3 is never the whole play');
+  const whole = S.pickAudio([...line1, f('play_64kb.mp3', '64Kbps MP3'), f('play.mp3', 'VBR MP3')], 'item');
+  eq(whole.whole, 'https://archive.org/download/item/play.mp3', 'a whole-play MP3 wins, in the catalog\'s order');
+  eq(S.pickAudio([f('item_meta.xml', 'Metadata')], 'item'), null, 'nothing playable yet is null');
+  eq(S.pickAudio([f('play.mp3', 'VBR MP3', { private: true })], 'item'), null, 'a private file is never picked');
+});
+
 (async () => {
   for (const [name, fn] of results) {
     try { await fn(); } catch (e) { failures++; console.log(`FAIL ${name}: ${e.stack || e}`); }
