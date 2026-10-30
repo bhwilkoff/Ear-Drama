@@ -495,3 +495,8 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - W1 (1.0.107): open invite reads and the finished listing; 226 Worker tests, all 166 mutations; deployed 7a515f24 (/v1/plays/finished 200, empty).
 - D2c-2 (1.0.108): show image, then star, then person, then board; Hilltop House's 1914 photo refused by a date rule; 37 / 261 / 1 / 1,737 of 2,036 shows.
 - Running: D2c-3 (Opus), C2 + W2 (Sonnet).
+
+### Design tick 10, 2026-10-29, D2c-3 merged (1.0.109); review page updated
+- One grammar of fixed slots (catalog-experience-design rule 11); title blocks for the 85% of shows with no picture; rich and bare pages gate-checked to share one layout; the new colors and picture fields; three recording modes; signed-out invite, finished dramas, A to Z. Fit gate 29 screens, 0 problems; I read the dark frames (Home, Browse, episodes, series, invite, dramas) before merging.
+- Review page republished as one self-contained file (2.8 MB, 46 frames), first try.
+- Running: C2, W2. Owner calls: build D everywhere; one face per star.

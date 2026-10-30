@@ -180,13 +180,12 @@ describing."*
 
 ## State
 
-- Phase: D2c-3 (D rebuilt as one complete thought), started 2026-10-29.
-- Merged: D2c-1 colors (1.0.106); W1 open invites and the finished listing (1.0.107,
-  Worker deployed 7a515f24); D2c-2 show-first pictures (1.0.108: of 2,036 shows, 37 show,
-  261 star, 1 person, 1,737 board; live after the next cache Release).
-- Running: D2c-3 (one grammar for every level of content, the new colors and picture
-  fields, three recording modes, open invite and finished-drama screens, fit gate);
-  C2 (stage the cache Release with series_art) and W2 (a published production survives its
-  last member's deletion).
-- Next: publish D2c-3 for the owner (one self-contained review page), then D3 builds it on
-  every platform.
+- Phase: D2c done 2026-10-29 (1.0.109); **owner gate**: build D everywhere (D3)?
+- Review page (updated): https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
+- Merged: D2c-1 colors (1.0.106), W1 (1.0.107, deployed), D2c-2 pictures (1.0.108),
+  D2c-3 one grammar (1.0.109: catalog-experience-design rule 11; title blocks; three
+  recording modes; invite, finished dramas, A to Z shelf; 29 screens, fit gate 0 problems).
+- Open owner calls: build D everywhere; one face per star (William Conrad leads both
+  Gunsmoke and Escape).
+- Running: C2 (stage the cache Release with series_art) and W2 (a published production
+  survives its last member's deletion).
