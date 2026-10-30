@@ -170,6 +170,16 @@ initial (on the surface or the genre hue) are members of the set, drawn
 with the same radius, edge and board as a picture. A wall where 10% are
 initials still reads as one set; a wall with gray boxes does not.
 
+In a repeated slot whose object already carries its name in a fixed
+slot (a show tile, a face), the fallback is the **title block**: the
+initial cut large in the display face in the on-board color, cropped by
+the window like wood type, with the window's hairline, in the same
+window the picture would fill. The name stays in its own slot, so it is
+never drawn twice and never moves (`catalog-experience-design` rule 11,
+D2c-3). The typographic card with the name set large stays the
+fallback where the window is the only label (a share card, a lock
+screen).
+
 ### 6. Dark mode
 
 Change the ground, not the photograph: no dimming, no inversion. The

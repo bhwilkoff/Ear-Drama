@@ -1,6 +1,6 @@
 ---
 name: catalog-experience-design
-description: Use when designing how a LARGE, UNEVENLY DESCRIBED catalog (tens of thousands of items you did not author, most of them sparse) is found, listened to or watched, made from, and shared, on any platform. Carries the rule that the sparse record is the common record and is designed first; the coverage test for what earns a place in a list row versus Detail; drawing the line between the real works and the long tail of uploads; when shelves, timelines and calendars, faces, run strips, and decade-by-genre fields each fit; what to surface and how to rank it (data rules shown as the rule, chance inside a chosen scope, never engagement bait); the event line, liner-notes credits, copies named by what differs; the making flow as a cast sheet and a call sheet; share pages and cards made only of facts; and the anti-patterns the Ear Drama audit found. Triggers on browse, list row, metadata in rows, detail page, "too much metadata", "only lists", shelves vs, carousel, discovery, home screen, catalog overview, facets, timeline, calendar view, people grid, face wall, sparkline, run of a series, sparse records, empty fields, long tail, uploads, single recordings, now playing, credits, versions, copies, share card, link preview, invite page, premiere page.
+description: Use when designing how a LARGE, UNEVENLY DESCRIBED catalog (tens of thousands of items you did not author, most of them sparse) is found, listened to or watched, made from, and shared, on any platform. Carries the rule that the sparse record is the common record and is designed first; the coverage test for what earns a place in a list row versus Detail; drawing the line between the real works and the long tail of uploads; when shelves, timelines and calendars, faces, run strips, and decade-by-genre fields each fit; what to surface and how to rank it (data rules shown as the rule, chance inside a chosen scope, never engagement bait); the event line, liner-notes credits, copies named by what differs; the making flow as a cast sheet and a call sheet; share pages and cards made only of facts; one grammar of fixed slots for every level of content (the bare object designed first, the title block in the picture window, slots that collapse by rule, rich and bare pages checked to share one skeleton); and the anti-patterns the Ear Drama audit found. Triggers on browse, list row, metadata in rows, detail page, "too much metadata", "only lists", shelves vs, carousel, discovery, home screen, catalog overview, facets, timeline, calendar view, people grid, face wall, sparkline, run of a series, sparse records, empty fields, long tail, uploads, single recordings, now playing, credits, versions, copies, share card, link preview, invite page, premiere page, uniform design, fixed slots, sparse vs rich, no picture, fallback tile, title block, card-edge stripe.
 ---
 
 # Catalog experience design
@@ -199,7 +199,97 @@ a two-episode undated series), at 375 px and 1440 px, and look at the
 PNGs. Then count: what share of the catalog gets the bare page? That
 page is the product.
 
-## Per-platform idiom
+### 11. One grammar for every level of content
+
+Rule 1 says design the bare record first. This rule says how the bare
+and the rich record become **one design**, so a wall where most objects
+have no picture and a page where most fields are absent still read as
+one complete thought (owner, 2026-10-29: *"the design is still not
+uniform for all different levels of content (some with images, some
+without, some with more information, some with less)"*). Five parts:
+
+1. **Every object type has one skeleton of fixed slots.** Write it down
+   as an ordered list: each slot has a place, a size, and the data that
+   fills it. A show tile is *window, name, mark, facts*; a row is
+   *visual, title, sub, length, action*; a Detail page is *head board,
+   title, event line, actions*, then its optional sections in a fixed
+   order. A richer record fills more slots; it never adds a slot, moves
+   one, or resizes one.
+2. **The window is always there, and the bare window is designed
+   first.** The window is the picture slot, one shape and size per
+   object type (square for a work, a circle for a person). It holds the
+   best picture by a stated rule (the work's own image, then its star,
+   then the person heard most), else the **title block**: the object's
+   initial cut large in the display face, in the board's one on-board
+   color, cropped by the window's edge like a block of wood type, with
+   the window's hairline. Design the title block before the picture
+   fill, because it is most of the wall (Ear Drama: 85% of shows). A
+   picture tile is then the same object with a picture added: the name,
+   mark and facts never move. Never draw the name twice in one object
+   (the window is not a second label), never a gray box, never a
+   generic icon.
+3. **Every slot collapses by a written rule, one of two.** Inside an
+   object of fixed size (a tile in a grid row, a row in a list, a head
+   board) a missing value **holds its slot**: an undated run is the
+   strip's flat baseline with "Undated" in the facts, a missing sub line
+   leaves the title centered in a row of the same height. On a page, an
+   optional **section** (On the air, That night, Cast and credits) is
+   removed **whole**, heading, gap and all, and the sections after it
+   close up in their fixed order. Never a heading with nothing under it,
+   never a half-height object, never a slot that is present on one tile
+   and missing on its neighbor. In a grid, tiles in a row share their
+   slot tracks (CSS subgrid; a SwiftUI `Grid` row; Compose's
+   `SubcomposeLayout` or fixed line counts), so a one-line name and a
+   three-line name still put both marks on one line.
+4. **Rich and bare pages share one skeleton, and a check proves it.**
+   The slots above the first optional section sit at the same left,
+   width and spacing on the richest and the barest real record, and
+   each fixed-size slot has the same size. Mark the slots in the markup
+   (`data-slot`) and compare them mechanically on both records at every
+   width (Ear Drama: `shoot.mjs --fit` compares episode-rich with
+   episode-bare, series-rich with series-sparse, the production with its
+   invitation and the finished drama).
+5. **Picture kinds get one treatment, and the kind is said only where
+   it changes what a person understands.** A show's own image, its
+   star and the person heard most go through the same crop, grade and
+   mount in the same window. A tile says nothing about which kind it is
+   (the name is the label); a window that leads a page with a person
+   names them nearby, because a face without a name reads as the show's
+   own picture: Now Playing under the picture, a Detail page first in
+   its On the air row, directly under the head board (a caption inside
+   the head would be a slot only some pages fill). Wide graphics (a logo, a title
+   card) sit whole on the print ground inside the same window.
+
+And for color, one system across all of it
+(`uniform-imagery-design` §7): objects stand on **boards** (one band
+per mode), everything on a board takes the one on-board color, and
+**marks** (strips, legend keys, small faces) carry the genre and part
+hues. A hue is never said by a stripe on a card's edge (an accent border
+on one side of a card, Human Shaped's AI-design anti-pattern D6): that
+is decoration standing in for a designed object. Say it with the board
+itself, or with a mark that carries meaning (the part's face, its
+strip).
+
+**Ear Drama worked example (D2c-3, 2026-10-29).** Shows of five or more
+episodes: 2,036; 37 lead with the show's own image, 261 with a star, 1
+with the person heard most, 1,737 with the title block (contract
+§3.3a). 65.5% of episodes carry no credit, network or sponsor. The
+grammar, as `docs/research/design/directions/d/` draws it:
+
+| Object | Slots, in order | Fixed | Collapses |
+|---|---|---|---|
+| Show tile | window (square) · name (display caps, row-aligned) · run strip · facts (years, then count) | all four, aligned across the row | undated: the strip's baseline, "Undated" in facts |
+| Person | window (circle) · name · episodes heard | all three | no portrait: the title block in a circle |
+| Ear drama tile | window (the play's title block) · title · voice strip · facts (credits by chosen names, the date) | all four | none: every finished drama has all four |
+| Row | visual (48 px: date block, "No." block, picture or title block) · title · sub (guest, show) · length · play | 64 px tall | no sub: the title centers |
+| Series hero | board: window · kicker (genre, network) · name · facts · run strip | all | undated: baseline and "Undated" |
+| Episode page | head board (window · show name · show facts) · title · event line · actions · On the air · That night · booklet | the first four | On the air, That night, Cast and credits whole |
+| Production, invitation, finished drama | head board (window · kind · title · credits · facts · voice strip) · actions · the cast bill · rights | the head and the bill | nothing: a signed-out invitee sees every slot |
+
+The window's fill on Detail and Now Playing follows the same order as the
+tile's, with one step for an episode: the show's own image, then the
+episode's star (heard in it), then the show's star, then the title block.
+
 
 Same verbs, native idiom (`cross-platform-parity-discipline`). What
 changes per platform is how the overviews are drawn:
@@ -253,6 +343,13 @@ changes per platform is how the overviews are drawn:
   (D1c §3.2).
 - **Links that preview as nothing** (404 to every crawler) (D1c §3.1).
 - **Offering a choice that yields zero rows** ("Has a script (0)").
+- **A tile that changes shape with its data** (D2c-1): the name under the
+  picture on one tile and inside an outlined box on its neighbor, a run
+  strip on some tiles and not others, so a wall of 85% boards reads as
+  two designs (rule 11).
+- **A card-edge stripe to say a hue** (`border-top: 6px solid`, a 4 px
+  left edge on a cue card): decoration instead of a designed object
+  (rule 11; Human Shaped anti-pattern D6).
 
 ## Worked example: Ear Drama's three directions (2026-10-29)
 

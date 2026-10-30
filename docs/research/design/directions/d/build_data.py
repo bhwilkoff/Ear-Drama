@@ -1,18 +1,30 @@
-"""Direction D's build step: the series facts the shared sample lacks, and the tonal grade for every
-picture D draws in a repeated slot, measured as uniform-imagery-design proposes (the 500 px Commons
-thumbnail, inside the crop the slot shows; one linear map on luminance, k in [1.0, 1.6]).
+"""Direction D's build step (D2c-3): the series facts the shared sample lacks, the picture that leads each
+show (contract section 3.3a: series.picture, picture_kind show/star/person, picture_source), the run of
+every show D draws, and the tonal grade for every picture D draws in a repeated slot, measured as
+uniform-imagery-design proposes (the 500 px Commons thumbnail, inside the crop the slot shows; one linear
+map on luminance, k in [1.0, 1.6]).
 
-python3 build_data.py <cacheDir>
-Reads ../shared/sample.js and eardrama.org/data/index/series.json (cached in cacheDir with the thumbnails);
-writes data.js (window.EDD). The grade formula is d2b-1/grade.py's, unchanged."""
-import json, os, sys, re, urllib.request, hashlib, time
+python3 build_data.py <cacheDir> <ear-drama.sqlite>
+The database is a projection built by catalog/tools/build_projection.py with the D2c-2 picture columns
+(read only; the live eardrama.org index did not carry them yet on 2026-10-29). Reads ../shared/sample.js.
+Writes data.js (window.EDD). The grade formula is d2b-1/grade.py's, unchanged."""
+import collections
+import hashlib
+import json
+import os
+import sqlite3
+import sys
+import time
+import urllib.request
+
 import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CACHE = sys.argv[1]
+CACHE, DB = sys.argv[1], sys.argv[2]
 os.makedirs(os.path.join(CACHE, 't500'), exist_ok=True)
 UA = {'User-Agent': 'EarDrama-design-research/1.0 (ben@learningischange.com)'}
+SHOW_LINE = 5  # owner, 2026-10-29: "Having more shows is better, so 5."
 
 
 def get(url, fn):
@@ -31,34 +43,66 @@ def get(url, fn):
 
 src = open(os.path.join(HERE, '..', 'shared', 'sample.js')).read()
 ED = json.loads(src[src.index('{'):src.rstrip().rstrip(';').rindex('}') + 1])
-F = json.load(open(get('https://eardrama.org/data/manifest.json', 'manifest.json')))['fields']
-idx = json.load(open(get('https://eardrama.org/data/index/series.json', 'series.json')))
-S = {r[0]: dict(zip(idx['fields'], r)) for r in idx['rows']}
+db = sqlite3.connect(f'file:{DB}?mode=ro', uri=True)
 
-# The series D names outside the sample's own series records: a day's rows, the same-night rows,
-# the evening's slots, Search. Only the projection's fields; the art array becomes an object.
-keys = {r['series'] for r in ED['day']['rows']} | {r['series'] for r in ED['sameNight'] + ED['sameNightBare']}
-keys |= {'escape', 'gunsmoke', 'dinahshoreshow', 'burnsandallen', 'jackbennyprogram', 'whistler'}
+# The shows D draws: the most downloaded (recomputed at the show line of 5), the day's and the nights'
+# rows, the evening's slots, Search, Library, the series pages, and Browse A to Z from B for a wall that is
+# mostly boards (the catalog's real share).
+top = [k for (k,) in db.execute(
+    'SELECT key FROM series WHERE episodes >= ? AND downloads IS NOT NULL ORDER BY downloads DESC LIMIT 24', (SHOW_LINE,))]
+az = [k for (k,) in db.execute(
+    "SELECT key FROM series WHERE episodes >= ? AND sort_name >= 'b' ORDER BY sort_name LIMIT 24", (SHOW_LINE,))]
+keys = set(top) | set(az) | {r['series'] for r in ED['day']['rows']} | {r['series'] for r in ED['sameNight'] + ED['sameNightBare']}
+keys |= {'escape', 'gunsmoke', 'dinahshoreshow', 'burnsandallen', 'jackbennyprogram', 'whistler', 'suspense', 'dragnet',
+         'ourmissbrooks', 'xminusone', ED['sparse']['key'], ED['bareSeries']['key']}
 for ev in [ED['evening']] + ED['evening']['years']:
     for s in ev['slots']:
         if s.get('episode'):
             keys.add(s['episode']['id'].split('|')[0])
+
+people = {}
+def person(pid):
+    if pid and pid not in people:
+        r = db.execute('SELECT name FROM people WHERE id = ?', (pid,)).fetchone()
+        people[pid] = r[0] if r else None
+    return people.get(pid)
+
 series = {}
 for k in sorted(keys):
-    s = S.get(k)
-    if not s:
+    r = db.execute('SELECT s.name, s.genre, s.first_date, s.last_date, s.episodes, s.networks, s.downloads, s.star, '
+                   's.picture_kind, s.picture_source, a.url, a.width, a.height, a.face, a.evidence_url '
+                   'FROM series s LEFT JOIN art a ON a.id = s.picture WHERE s.key = ?', (k,)).fetchone()
+    if not r:
         continue
-    art = dict(zip(F['art'], s['art'])) if s.get('art') else None
-    series[k] = {'name': s['name'], 'genre': s['genre'], 'star': s['star'], 'art': art,
-                 'episodes': s['episodes'], 'first': s['first'], 'last': s['last']}
+    name, genre, first, last, n, nets, dl, star, kind, psrc, url, w, h, face, ev = r
+    years = sorted(int(d[:4]) for (d,) in db.execute(
+        'SELECT air_date FROM episodes WHERE series_key = ? AND air_date IS NOT NULL', (k,)))
+    hist = dict(sorted(collections.Counter(years).items()))
+    core = [years[int(0.05 * (len(years) - 1))], years[int(0.95 * (len(years) - 1))]] if years else None
+    pic = None
+    if url:
+        pic = {'url': url, 'width': w, 'height': h, 'face': [float(v) for v in face.split(',')] if face else None,
+               'evidence': ev, 'kind': kind, 'source': psrc, 'who': person(star) if kind in ('star', 'person') else None}
+    series[k] = {'name': name, 'genre': genre or '', 'first': first, 'last': last, 'episodes': n,
+                 'networks': ', '.join(json.loads(nets)) if nets else None, 'downloads': dl,
+                 'picture': pic, 'hist': hist, 'core': core, 'dated': len(years)}
+
+# The counts the screens state: the show line at 5 (2,036 shows), the tail, and the pictures' kinds.
+shows = db.execute('SELECT count(*) FROM series WHERE episodes >= ?', (SHOW_LINE,)).fetchone()[0]
+tiers = {'shows': shows,
+         'singles': db.execute('SELECT count(*) FROM series WHERE episodes = 1').fetchone()[0],
+         'small': db.execute('SELECT count(*) FROM series WHERE episodes BETWEEN 2 AND ?', (SHOW_LINE - 1,)).fetchone()[0]}
+kinds = dict(db.execute('SELECT coalesce(picture_kind, "board"), count(*) FROM series WHERE episodes >= ? GROUP BY 1', (SHOW_LINE,)))
+field = [{'genre': g, 'decade': int(d), 'shows': c} for g, d, c in db.execute(
+    "SELECT genre, substr(first_date, 1, 3) || '0', count(*) FROM series WHERE episodes >= ? AND genre IS NOT NULL AND genre != '' "
+    'AND first_date IS NOT NULL GROUP BY 1, 2', (SHOW_LINE,)) if 1920 <= int(d) <= 1960]
+unsorted = db.execute("SELECT count(*) FROM series WHERE episodes >= ? AND (genre IS NULL OR genre = '')", (SHOW_LINE,)).fetchone()[0]
 
 # Every picture D draws in a repeated slot.
 arts = {}
 def add(a):
     if a and a.get('url'):
         arts[a['url']] = a
-for s in ED['popular']:
-    add(s.get('art'))
 for p in ED['faces']:
     add(p.get('art'))
 for c in ED['suspenseRich']['credits']:
@@ -67,7 +111,7 @@ for e in ED['suspense']['season']:
     for f in e.get('faces') or []:
         add(f.get('art'))
 for s in series.values():
-    add(s['art'])
+    add(s['picture'])
 
 WIDE = 1.15
 def crop_rect(w, h, f):
@@ -78,12 +122,12 @@ def crop_rect(w, h, f):
         return None
     full = min(a, 1)
     cl = lambda v, lo, hi: min(hi, max(lo, v))
-    s, left, top = full, 0.5 * (a - full), 0.2 * (1 - full)
+    s, left, top_ = full, 0.5 * (a - full), 0.2 * (1 - full)
     if f:
         s = cl(2 * max(f[2] * a, f[3]), full / 4, full)
         left = cl((f[0] + f[2] / 2) * a - s / 2, 0, a - s)
-        top = cl(f[1] + f[3] / 2 - s / 2, 0, 1 - s)
-    return dict(x=left / a, y=top, w=s / a, h=s)
+        top_ = cl(f[1] + f[3] / 2 - s / 2, 0, 1 - s)
+    return dict(x=left / a, y=top_, w=s / a, h=s)
 
 T0, T1, KMIN, KMAX = 0.04, 0.96, 1.0, 1.6
 grades = {}
@@ -117,11 +161,14 @@ for url, a in sorted(arts.items()):
     crop_px = round((c['h'] if c else 1) * a['height']) if a['height'] else None
     grades[url] = {'k': round(k, 3), 'o': round(o, 3), 'tone': tone, 'cropPx': crop_px}
 
-out = {'generatedFrom': ED['generatedAt'], 'series': series, 'grades': grades}
+out = {'generatedFrom': db.execute("SELECT value FROM meta WHERE key = 'generatedAt'").fetchone()[0].strip('"'),
+       'showLine': SHOW_LINE, 'tiers': tiers, 'kinds': kinds, 'field': field, 'fieldUnsorted': unsorted,
+       'top': top, 'az': az, 'series': series, 'grades': grades}
 open(os.path.join(HERE, 'data.js'), 'w').write(
-    '/* Built by build_data.py: series facts from eardrama.org/data/index/series.json and the measured grade '
-    '(uniform-imagery-design) per picture. */\nwindow.EDD = ' + json.dumps(out, separators=(',', ':')) + ';\n')
+    '/* Built by build_data.py from a projection with the D2c-2 picture columns: series facts, the picture that '
+    'leads each show (contract 3.3a), runs, and the measured grade (uniform-imagery-design) per picture. */\n'
+    'window.EDD = ' + json.dumps(out, separators=(',', ':'), ensure_ascii=False) + ';\n')
 n = len(grades)
-print(f'{len(series)} series, {n} pictures graded: '
-      f"{sum(1 for g in grades.values() if g['k'] == 1.0)} identity, {sum(1 for g in grades.values() if g['k'] == KMAX)} at the cap; "
-      f"tones {dict((t, sum(1 for g in grades.values() if g['tone'] == t)) for t in ('mono', 'sepia', 'color'))}")
+drawn = collections.Counter((s['picture'] or {}).get('kind', 'board') for s in series.values())
+print(f'{len(series)} series ({dict(drawn)} drawn); shows {shows}, kinds {kinds}; {n} pictures graded: '
+      f"{sum(1 for g in grades.values() if g['k'] == 1.0)} identity, {sum(1 for g in grades.values() if g['k'] == KMAX)} at the cap")

@@ -7,7 +7,13 @@
 //   - text overflows its box (past its block's edge, or clipped by an ancestor);
 //   - a row of buttons (.acts, .dock, .pb-actions, .done-act, .aids, .opts) wraps to a second line;
 //   - a button's label wraps;
-//   - a heading or display name ends on a stray word (its last line under a quarter of its widest).
+//   - a heading or display name ends on a stray word (its last line under a quarter of its widest);
+//   - (D2c-3) a card-edge stripe: one border side 3 px or more, or an offset inset shadow (Human Shaped D6);
+//   - (D2c-3) a slot that jumps, goes missing or changes its window's size among the tiles or faces of one
+//     grid row; a list row without its 48 px visual or under 64 px;
+//   - (D2c-3) a slot jump between a rich and a bare variant of one skeleton (PAIRS below): every slot both
+//     carry must keep its left, its width, its gap above (to the slot before it), and, for fixed slots, its
+//     height. Run with --fit over all screens; pairs whose screens were not named are skipped.
 // --break loads every screen with ?break=1, the negative control: every check must fire.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -24,10 +30,54 @@ const D = '/docs/research/design/directions/d/';
 const SCREENS = [
   ['home', 'index.html'], ['browse', 'index.html'], ['series-rich', 'index.html'], ['series-sparse', 'index.html'],
   ['episode-rich', 'index.html'], ['episode-bare', 'index.html'], ['now-playing', 'index.html'], ['search', 'index.html'],
-  ['stations', 'index.html'], ['library', 'index.html'], ['production', 'index.html'],
-  ['pick', 'record.html'], ['part', 'record.html'], ['ready', 'record.html'], ['recording', 'record.html'],
-  ['review', 'record.html'], ['done', 'record.html'], ['listen', 'record.html'],
+  ['stations', 'index.html'], ['library', 'index.html'], ['production', 'index.html'], ['shelf', 'index.html'],
+  ['invite', 'index.html'], ['invite-join', 'index.html'], ['dramas', 'index.html'], ['drama', 'index.html'],
+  ['pick', 'record.html'], ['part', 'record.html'], ['preflight', 'record.html'], ['ready', 'record.html'],
+  ['recording', 'record.html'], ['review', 'record.html'], ['run', 'record.html'], ['run-recording', 'record.html'],
+  ['run-review', 'record.html'], ['lines', 'record.html'], ['lines-recording', 'record.html'], ['done', 'record.html'],
+  ['listen', 'record.html'],
 ];
+// The rich and bare variants of one skeleton, and the recorder's three modes.
+const PAIRS = [['episode-rich', 'episode-bare'], ['series-rich', 'series-sparse'], ['production', 'invite'], ['production', 'drama'],
+  ['ready', 'run'], ['ready', 'lines'], ['ready', 'run-review']];
+const FIXED = new Set(['window', 'mark', 'acts', 'top', 'strip', 'mode']);
+const SLOTS = `(() => {
+  const d = document.getElementById('f') ? document.getElementById('f').contentDocument : document;
+  const out = [];
+  for (const s of d.querySelectorAll('[data-slot]')) {
+    if (s.closest('.tiles, .wall, .rows, .bill, .tile, .face, .ed-mini, .cr, .guest, .lx-list') && !s.matches('.bill')) continue;
+    if (!s.getClientRects().length) continue;
+    const r = s.getBoundingClientRect();
+    out.push({ slot: s.dataset.slot, left: r.left, width: r.width, top: r.top + d.defaultView.scrollY, height: r.height });
+  }
+  return out;
+})()`;
+function compare(a, b) {
+  const bad = [];
+  const gapAbove = (list, i) => {
+    // The gap to the lowest slot above it that shares its columns: what it closes up to.
+    const x = list[i];
+    let floor = null;
+    for (let j = i - 1; j >= 0; j--) {
+      const y = list[j];
+      if (y.left < x.left + x.width && x.left < y.left + y.width && y.top + y.height <= x.top + 1) floor = Math.max(floor ?? -Infinity, y.top + y.height);
+    }
+    return floor === null ? x.top : x.top - floor;
+  };
+  const by = (list) => new Map(list.map((x, i) => [x.slot, { ...x, gap: gapAbove(list, i) }]));
+  const A = by(a), B = by(b);
+  for (const [k, x] of A) {
+    const y = B.get(k);
+    if (!y) continue;
+    const off = [];
+    if (Math.abs(x.left - y.left) > 1.5) off.push('left');
+    if (Math.abs(x.width - y.width) > 1.5) off.push('width');
+    if (Math.abs(x.gap - y.gap) > 2) off.push(`gap above ${Math.round(x.gap)} vs ${Math.round(y.gap)}`);
+    if (FIXED.has(k) && Math.abs(x.height - y.height) > 1.5) off.push(`height ${Math.round(x.height)} vs ${Math.round(y.height)}`);
+    if (off.length) bad.push(`slot ${k}: ${off.join(', ')}`);
+  }
+  return bad;
+}
 const names = rest.length ? SCREENS.filter(([s]) => rest.includes(s)) : SCREENS;
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
@@ -65,7 +115,8 @@ const CHECK = `(() => {
     if (!el || !t.textContent.trim() || el.closest('svg, script, style, title') || !shown(el)) continue;
     const box = blockOf(el); const br = box.getBoundingClientRect();
     const L = br.left + box.clientLeft - 1, R = br.left + box.clientLeft + box.clientWidth + 1;
-    const re = /\\S+/g; let m;
+    // A word is what lies between spaces and hyphens: "true-born" may turn its line at the hyphen.
+    const re = /[^\\s\\-‐–]+/g; let m;
     while ((m = re.exec(t.textContent))) {
       const rg = d.createRange(); rg.setStart(t, m.index); rg.setEnd(t, m.index + m[0].length);
       const rs = [...rg.getClientRects()].filter((x) => x.width > 0.5);
@@ -89,7 +140,7 @@ const CHECK = `(() => {
     const rr = row.getBoundingClientRect();
     if (r.some((x) => x.right > rr.right + 1)) bad.push('button row overflows: ' + label(row));
   }
-  for (const b of d.querySelectorAll('.btn, .seg a, .chip, .aid, .pill')) {
+  for (const b of d.querySelectorAll('.btn, .seg a, .seg label, .chip, .aid, .pill')) {
     if (!shown(b)) continue;
     const w2 = d.createTreeWalker(b, NodeFilter.SHOW_TEXT); const tops = new Set(); let x;
     while ((x = w2.nextNode())) { if (!x.textContent.trim()) continue; const rg = d.createRange(); rg.selectNodeContents(x); for (const r of rg.getClientRects()) if (r.width > 1) tops.add(Math.round(r.top / 3)); }
@@ -115,6 +166,43 @@ const CHECK = `(() => {
       if (x && x.left - bl < 2) { bad.push('line opens on a separator: ' + label(box)); break; }
     }
   }
+  // D2c-3: a card-edge stripe (one thick border, or an offset inset shadow) says a hue by decoration (Human Shaped D6).
+  for (const el of d.querySelectorAll('body *')) {
+    if (el.closest('svg') || !shown(el)) continue;
+    const cs = win.getComputedStyle(el);
+    const sides = ['Top', 'Right', 'Bottom', 'Left'].map((s) => ({ w: parseFloat(cs['border' + s + 'Width']) || 0, st: cs['border' + s + 'Style'] }));
+    const thick = sides.filter((x) => x.w >= 3 && x.st !== 'none'), thin = sides.filter((x) => x.w < 1 || x.st === 'none');
+    if (thick.length === 1 && thin.length === 3) { bad.push('card-edge stripe: ' + label(el)); continue; }
+    if (cs.boxShadow && cs.boxShadow !== 'none') for (const part of cs.boxShadow.split(/,(?![^(]*\\))/)) {
+      if (!/inset/.test(part)) continue;
+      const [x, y, b] = (part.replace(/rgba?\\([^)]*\\)/, '').match(/-?[\\d.]+px/g) || []).map(parseFloat);
+      if ((Math.abs(x) >= 3 || Math.abs(y) >= 3) && !b) { bad.push('card-edge stripe (shadow): ' + label(el)); break; }
+    }
+  }
+  // D2c-3: objects in one grid row share their slots: every tile or face in a row has each slot, at one top,
+  // and windows of one size (catalog-experience-design rule 11).
+  for (const g of d.querySelectorAll('.tiles, .wall')) {
+    if (!shown(g)) continue;
+    const rows = new Map();
+    for (const t of g.children) { if (!shown(t)) continue; const k = Math.round(t.getBoundingClientRect().top); if (!rows.has(k)) rows.set(k, []); rows.get(k).push(t); }
+    for (const ts of rows.values()) {
+      const names = new Set(); ts.forEach((t) => t.querySelectorAll(':scope > [data-slot]').forEach((s) => names.add(s.dataset.slot)));
+      for (const nm of names) {
+        const rs = ts.map((t) => t.querySelector(':scope > [data-slot="' + nm + '"]')).map((s) => (s && shown(s) ? s.getBoundingClientRect() : null));
+        if (rs.some((x) => !x)) { bad.push('a slot missing in a row: ' + nm + ' in ' + label(g)); continue; }
+        if (Math.max(...rs.map((x) => x.top)) - Math.min(...rs.map((x) => x.top)) > 1.5) bad.push('a slot jumps in a row: ' + nm + ' in ' + label(g));
+        if (nm === 'window' && Math.max(...rs.map((x) => x.height)) - Math.min(...rs.map((x) => x.height)) > 1.5) bad.push('windows differ in a row: ' + label(g));
+      }
+    }
+  }
+  // Every list row keeps its 48 px visual and its 64 px height, whatever it carries.
+  for (const r of d.querySelectorAll('.rows > li > .row')) {
+    if (!shown(r)) continue;
+    const v = r.querySelector(':scope > [data-slot="visual"]');
+    const vr = v && shown(v) ? v.getBoundingClientRect() : null;
+    if (!vr || Math.abs(vr.width - 48) > 1 || Math.abs(vr.height - 48) > 1) bad.push('a row without its 48 px visual: ' + label(r));
+    if (r.getBoundingClientRect().height < 63.5) bad.push('a row under 64 px: ' + label(r));
+  }
   // One Share per screen: the owner saw a second one fall onto its own line.
   const shares = [...d.querySelectorAll('[aria-label="Share"]')].filter(shown);
   if (shares.length > 1) bad.push(shares.length + ' Share controls on one screen');
@@ -126,7 +214,8 @@ const chrome = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chro
   '--headless=new', '--disable-gpu', '--hide-scrollbars', '--mute-audio', `--remote-debugging-port=${dbg}`,
   `--user-data-dir=${mkdtempSync(join(tmpdir(), 'd2b3-shoot-'))}`, '--window-size=1440,1000', 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let ok = 0, failures = 0, failedScreens = 0;
+let ok = 0, failures = 0, failedScreens = 0, pairsChecked = 0;
+const slotsOf = {};
 try {
   let targets;
   for (let i = 0; i < 60 && !targets; i++) {
@@ -167,6 +256,7 @@ try {
         await sleep(300);
         const bad = await evalJS(CHECK);
         if (bad.length) { screenBad += bad.length; console.log(`FIT ${name} ${w}${suffix}: ${bad.join(' | ')}`); }
+        (slotsOf[name] = slotsOf[name] || {})[w] = await evalJS(SLOTS);
       }
       await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
       await send('Page.navigate', { url });
@@ -174,6 +264,7 @@ try {
       await settle('document');
       const bad = await evalJS(CHECK);
       if (bad.length) { screenBad += bad.length; console.log(`FIT ${name} 1440${suffix}: ${bad.join(' | ')}`); }
+      (slotsOf[name] = slotsOf[name] || {})[1440] = await evalJS(SLOTS);
       failures += screenBad; if (screenBad) failedScreens++;
       ok++;
       continue;
@@ -194,10 +285,18 @@ try {
     ok++;
     console.log(name, 'ok', h, fullH);
   }
+  if (fit) for (const [a, b] of PAIRS) {
+    if (!slotsOf[a] || !slotsOf[b]) continue;
+    pairsChecked++;
+    for (const w of [320, 375, 390, 430, 1440]) {
+      const bad = compare(slotsOf[a][w], slotsOf[b][w]);
+      if (bad.length) { failures += bad.length; console.log(`SLOTS ${a} vs ${b} ${w}${suffix}: ${bad.join(' | ')}`); }
+    }
+  }
   ws.close();
 } finally {
   chrome.kill('SIGTERM');
   server.close();
-  console.log(fit ? `fit-checked ${ok} of ${names.length} screens${dark ? ' (dark)' : ''}: ${failures} problems on ${failedScreens} screens` : `shot ${ok} of ${names.length}`);
+  console.log(fit ? `fit-checked ${ok} of ${names.length} screens${dark ? ' (dark)' : ''}: ${failures} problems on ${failedScreens} screens; ${pairsChecked} rich and bare pairs compared` : `shot ${ok} of ${names.length}`);
   if (fit && failures) process.exitCode = 1;
 }

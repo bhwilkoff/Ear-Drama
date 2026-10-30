@@ -1,166 +1,205 @@
 # Direction D: one cohesive design
 
-*D2b-3, 2026-10-29. Open `index.html?s=home` (screens: `home`, `browse`,
-`series-rich`, `series-sparse`, `episode-rich`, `episode-bare`,
-`now-playing`, `search`, `stations`, `library`, `production`) and
-`record.html?s=pick` for making (`pick`, `part`, `ready`, `recording`,
-`review`, `done`, `listen`); add `&theme=dark` for dark. Shots:
-`../../img/d2b-3/<screen>-<375|1440>[-dark].png`.*
+*D2c-3, 2026-10-29. Open `index.html?s=home` (screens: `home`, `browse`,
+`shelf`, `series-rich`, `series-sparse`, `episode-rich`, `episode-bare`,
+`now-playing`, `search`, `stations`, `library`, `production`, `invite`,
+`invite-join`, `dramas`, `drama`) and `record.html?s=pick` for making
+(`pick`, `part`, `preflight`, `ready`, `recording`, `review`, `run`,
+`run-recording`, `run-review`, `lines`, `lines-recording`, `done`,
+`listen`); add `&theme=dark` for dark. Shots:
+`../../img/d2c-3/<screen>-<375|1440>[-dark].png`. Earlier rounds:
+`../../img/d2b-3/` (D as first drawn) and `../../img/d2c-1/` (D on the
+board tokens).*
 
-The owner on D2: *"Overall, I think the visual approach of The Company
-makes the most sense. Images of people and of the shows themselves are the
-most appealing for any user to use as a way of browsing and selecting items
-... I like the bulky blocks and colors of The Sleeve and I like the data
-visualization options of the Almanac. Overall, formatting and fitting
-things together could use some work on all three (a share button that goes
-to the next line instead of being next to the other buttons, poor word
-wrapping, etc.). In particular, the 'Start an ear drama' on the Company
-design is exactly what we are trying to avoid (undifferentiated/undesigned
-lists of text without any visuals or colors whatsoever)."*
+## What D2c-3 changed, and why
 
-Skills followed: `catalog-experience-design` (rows, event line, booklet,
-copies, two tiers, That night), `uniform-imagery-design` (crop, grade,
-mount, floor, originals on Detail), `artwork-presentation-design` (slot
-shapes, the typographic card), `mobile-first-density-design` (six type
-levels, one canonical cell, 375 first), and Decision 064 (ink for Play,
-Listen live and Listen through; blue for every other control; red only in
-the recorder; genre hues are content). The shell is Decision 068's,
-unchanged.
+The owner on D2c-1's frames: *"the design is still not uniform for all
+different levels of content (some with images, some without, some with
+more information, some with less). We need to a design approach that
+evens out all of the inconsistencies and make the app look like one
+complete thought ... make sure the colors are working together instead of
+against each other and that all of the rough edges have been smoothed out
+with better design."*
 
-## The design in one paragraph
+What was wrong, measured on the D2c-1 frames: a tile with a picture put
+the show's name under the picture, a tile without one put it inside an
+outlined box in the picture's place, so one wall held two objects; a run
+strip appeared on some tiles and not others, so the facts sat at
+different heights; a bare episode opened on a 2:1 board and a rich one on
+three loose portraits, so the two pages did not share a single slot; the
+cast bill, the cue card and the next part said their hue with a 4 to 6 px
+stripe on one edge (Human Shaped's anti-pattern D6). And the data is
+mostly bare: of 2,036 shows (the show line is now 5, the owner's ruling),
+37 lead with the show's own image, 261 with a star, 1 with the person
+heard most, and 1,737 (85%) with nothing; 65.5% of episodes carry no
+credit, network or sponsor.
 
-Every list is pictures on colored boards. A show is one **tile**: a board
-in its genre hue, the show's star graded to one neutral gray and mounted
-on it, the name in display capitals on the board below the picture, a
-run strip in the board's own text color, and its core years and count. A
-person is a **graded circle**. A show without a picture, or with one too
-small for the slot, is the same board with its name set in the picture's
-place, so a wall where a third are names still reads as one set. Big
-**boards** head every series, episode, station and production; data that
-the catalog really carries is drawn as marks: the run strip, the day's
-years stacked by genre, the evening as a timeline, the decade-by-genre
-field, the part fingerprint. Rows that are not tiles carry a visual too: a
-date block in the genre hue (or the log number on an undated show), a
-guest's face, a hatched block for a slot that does not survive.
+So the grammar is written first, as `catalog-experience-design` rule 11
+(generic, with this as its worked example), and every surface follows it:
 
-## What D takes, and what it drops
+1. **One skeleton of fixed slots per object.** A show tile is *window,
+   name, mark, facts*; a person is *window, name, episodes*; an ear drama
+   tile is *window, title, voice strip, credits and date*; a row is
+   *visual, title, sub, length, play*; a head board (series, episode,
+   production, invitation, finished drama) is *window, kicker, name,
+   credits, facts, mark*. Richer data fills more slots; it never adds,
+   moves or resizes one.
+2. **The window is always there, and the bare window is designed first.**
+   It holds the picture that leads (contract §3.3a: the show's own image,
+   then its star, then the person heard most; on an episode, the show's
+   own image, then the episode's star), graded and mounted
+   (`uniform-imagery-design`), or a wide graphic whole on the print
+   ground, or the **title block**: the show's monogram (the initials of
+   its first two words that start with a letter) cut large in Big
+   Shoulders, outlined in the board's one on-board color, standing on the
+   window's foot like a block of wood type. The name is never drawn twice;
+   it stays in its own slot, so a picture tile is the same object with a
+   picture added. Browse's A to Z (`shelf`, the catalog as it is: 5 of 24
+   with a picture) is the test that the bare wall reads as intended.
+3. **Slots collapse by a written rule.** Inside a tile, a row or a head
+   board a missing value holds its slot: an undated show draws the run
+   strip's flat baseline and says "Undated" where its years would be; a
+   row without a sub line keeps its 64 px and centers the title. On a
+   page an optional section (On the air, That night, Heard most, Cast and
+   credits) goes whole and the sections after it close up in a fixed
+   order. Tiles and faces in one grid row share their slot tracks (CSS
+   `subgrid`), so a one-line name and a three-line name put both marks
+   on one line.
+4. **Rich and bare pages share one skeleton**, and the fit gate proves it
+   (below): the rich episode and the 1945 news file, Suspense and Stay
+   Tuned For Terror, the production in progress and its invitation and
+   the finished drama, and the recorder in each of its three modes.
+5. **Picture kinds get one treatment.** Show, star and person go through
+   the same crop, grade and mount. A tile says nothing about the kind (its
+   name is its label); Now Playing names a person under the picture, and
+   an episode page names them first in On the air, directly under the
+   head board that shows them.
 
-| From | Takes | Drops, and why |
-|---|---|---|
-| **B, The Company** | Faces as the way in: the Most heard wall on Home, Heard most on a series, On the air under Now Playing, a guest's face in the log, Voices as a Browse scope and a Search group; three faces on Detail. | The text-only lists ("Start an ear drama", the shows list with a 56 px thumb and two lines of gray): every list is now tiles, faces or blocked rows. The print-as-tile grid with no mount, which made a color snapshot, a sepia halftone and a typographic card three different objects. |
-| **C, The Sleeve** | Bulky genre boards as structure: the series hero, the bare episode's card, the production poster, the play blocks; display capitals; the booklet behind one control; copies named by what differs. | One feature per screen: Home is a page of real lists again (the day, faces, shows), because the Sleeve's four covers held four items. The very large display size: D stays inside the six levels (the board name is L1, 28 px), the bulk comes from full-width blocks. |
-| **A, The Almanac** | The day's years strip (now stacked by genre, from the series index), That night on the radio on Detail and Now Playing (shows first, copies folded, the tail counted), the run strip on every tile and as the series scope, the decade-by-genre field, the evening as Stations. | The log of text rows as the main list, the field as tinted cells with ink numbers (a cell's tint failed AA under its number at the high counts): D's field draws a genre square sized by the count and sets the number in muted text below it. |
-| **D2b-2, Record a Line** | The whole making flow, as designed: play blocks with the cast fingerprint, the playbill, the duet recorder, red only while armed or recording. | Nothing redesigned. Joined only where it had to be (`join.css`): text on a hue block takes the new on-genre tokens, dark mode keeps blocks at full hue as D's boards do, and the listen-through cast rail wraps instead of scrolling sideways. |
+## Color (D2c-1's system, applied everywhere)
 
-## The pictures (uniform-imagery-design, measured)
+Objects stand on **boards** (`color.board`, one lightness band per mode;
+neutral `surfaceAlt` for the 834 shows with no genre); everything on a
+board takes **onBoard**: the name, facts, run strip, the title block's
+outline, the window's inner hairline. **Marks** (`color.genre`) are only
+small: legend keys, the decade field's squares, the day's stacked years,
+the evening's slots, a part's face, the cast fingerprint, the cue's
+streamer. Pictures sit on the **print mount**, now tokens:
+`color.print.ground` (`#EDEDED` / `#2A2A2E`) and `color.print.edge` (the
+text color at 18% / 16%), emitted as `--color-print-ground` and
+`--color-print-edge`; `tools/test_design_tokens.mjs` §5d holds them (a
+ground at least 3 CIEDE2000 from the page, no dark glare over Lc 30, an
+edge of at most 0.3 opacity seen at 1.3:1 on the page and the ground and
+1.15:1 on every board), each rule with a negative control seen to fail.
+The edge stripes are gone: the bill, the part card, the cue card, the
+listen-through's current line and the next part say their hue with the
+part's face; your line's box in the recorder is your part's board with
+its one on-board color (no tints), and the red edge outside it appears
+only while the microphone is armed or open. Red still means recording
+and nothing else (Decision 064).
 
-`build_data.py` is the skill's proposed pipeline step run on this
-prototype: it reads the 500 px Commons thumbnail of every picture D draws
-in a repeated slot (127 of them), measures luminance inside the crop the
-slot shows, and writes `[k, o]`, the tone class and the crop's side in
-source pixels to `data.js`. Result: 45 identity grades, 3 at the 1.6 cap,
-79 stretched; 93 monochrome, 11 sepia, 23 color. The page applies each as
-one SVG filter in sRGB (saturate 0, then the linear map); Detail and Now
-Playing show the originals ungraded. The floor (`cropPx >= slot`) sends 6
-of 127 to the typographic card at the 160 px tile (Jack Benny's 174 by 333
-portrait is why Jack Benny Program and Grape Nuts Program are cards) and
-none at the 76 px face or 48 px row. Wide pictures without a face would
-show whole on the print ground; none occur in this sample.
+## Making: three recording modes (owner ruling 4)
 
-## Color and contrast
+One native control, a segmented radio group under the part strip
+(`UISegmentedControl` / `Picker(.segmented)`, Material `SegmentedButton`,
+a radio group on the web), holds its place in every state and is
+disabled while the microphone is armed or open. The states are D2b-2's
+(Ready, Cue playing, Your turn, Recording, Review, Kept, and every
+refusal in its §4); the mode changes only what follows a take.
 
-*Superseded in D2c-1 (`docs/research/palette/surfaces.md`, Decision 064):
-boards now draw in `color.board`, one lightness band per mode, with one
-on-board color (`color.onBoard`) for everything on them; `color.onGenre`
-is the text on a mark used as a fill. Shots: `../../img/d2c-1/`. What
-follows is D2b-3's record.*
+- **Run through** (`run`, `run-recording`, `run-review`): the play plays
+  straight through from the chosen line, other parts in their human takes
+  or the live device voice; your next line waits armed (the dashed red
+  edge and "Next"), the microphone opens on it as it comes and the
+  line-end detector closes it; the transport is ink Pause until the
+  microphone opens (then the red Stop). Pausing ends the run and opens its
+  review: the run's takes, each played with its cue, any one recorded
+  Again, then **Keep 3 takes** (ink) or Discard the run.
+- **Line by line** (`lines`, `lines-recording`): every line of your part
+  in order with its state (`✓ Take 2` or "Not yet"); tap any line to open
+  it with its cue above, then Record (red) or hear the Cue (blue).
+- **Step** (`ready`, `recording`, `review`): each cue waits for a tap;
+  Keep lands on the next line's Ready rather than playing its cue.
 
-New tokens, `color.onGenre` in `design-tokens.json`: the text color on
-each genre board, white or ink, whichever holds 4.5:1 (lowest 4.54:1,
-light science fiction). Light comedy is the one ink board (white was
-3.90:1). The generator emits them for the web (`--color-on-genre-*`, and
-`--genre-on` beside `--genre-accent` under `[data-genre]`);
-`tools/test_design_tokens.mjs` checks the keys, the 4.5:1, and catches
-white on light comedy as its negative control. Apple, Android and Windows
-emission waits for the first native board (D3). The print ground and edge
-(`#EDEDED` / `#2A2A2E`) are still prototype CSS; they should become tokens
-with D3.
+## New screens from the rulings
 
-**The near-magenta risk.** Light drama `#B42575` and record `#B0152F`
-are 39 apart in CIELAB (dark: `#FF91C3` and `#E3384B`, 47), about 36
-degrees of hue: distinct side by side, but the same family, and drama is
-the most common board (every Gutenberg play but the comedies is drama).
-D holds the line by shape and place, not hue: red is only ever the round
-record control with its microphone and label, inside the recorder; drama
-is never a part hue there (the recorder's rule); no drama board is ever a
-circle or sits in the recorder's dock. If the owner wants more distance,
-move drama toward violet (about hue 340), not record.
+- **The invitation, signed out** (`invite`; ruling 2): the same page as
+  the production, every slot filled: the play, who directs, the parts,
+  who holds each, and their takes playable (a play control per held
+  part); Listen through plays it all. The only ask for an account is at
+  **Take part** (`invite-join`: "Taking a part needs an account." and the
+  two sign-ins of Decision 057).
+- **The finished ear dramas** (`dramas`, a third Browse scope, and New ear
+  dramas on Home; ruling 3): newest first, each a tile in the show tile's
+  grammar with the voice strip as its mark and the performers credited by
+  their chosen names. The six are fixtures on real castable plays, cast
+  with D1c's fixture names (Pat, Sam, Ada, and others); no real person.
+- **A finished ear drama's page** (`drama`): the production's skeleton
+  with the credits in the head board, Listen, and the bill as credits.
 
 ## Fit, checked mechanically
 
-`shoot.mjs --fit` lays every screen out at 320, 375, 390 and 430 px
-(through an iframe) and at 1440 px, light and dark, and fails on a page
-that scrolls sideways, a word broken inside itself, text past its box or
-clipped, a button row that wraps, a button label that wraps, and a heading
-whose last line is a stray word. Words never break (`word-break`,
-`hyphens` off); headings balance; secondary buttons drop their labels to
-icons under 600 px so Play, Queue and Share always share a row. The
-negative control, `--break`, was run and every check fired (63 sideways,
-2 broken words, 786 overflows, 20 wrapped rows, 52 wrapped labels, 50
-stray words); then every screen passed. It caught real defects on the
-way: show-card names at 28 px overflowing ("MUSIC DEPRECIATION"),
-five-column tiles inside a two-column page at 1440, and the listen-through
-cast rail scrolling sideways. Looking at the PNGs caught three it cannot
-see: nested links that pushed every play button to its own line, a Listen
-live label inherited into invisibility on a neutral board, and a separator
-dot stranded at the end of a wrapped fact line (each dot now travels with
-the fact after it; tile facts sit on their own lines).
+`shoot.mjs --fit` lays out every screen (29) at 320, 375, 390 and 430 px
+and at 1440 px, light and dark, and fails on everything D2b-3's gate
+caught (sideways scroll, a broken word, overflowing or clipped text, a
+wrapped button row or label, a stray last word, a line opening on a
+separator dot, two Share controls) plus D2c-3's: a card-edge stripe (one
+border side of 3 px or more, or an offset inset shadow), a slot that goes
+missing, jumps or changes its window's size within one grid row, a list
+row without its 48 px visual or under 64 px, and a slot jump between the
+variants of one skeleton (each common slot's left, width and gap above,
+and the height of fixed slots: window, mark, actions, the recorder's top,
+strip and mode control). Result: 29 of 29 screens at 0 problems, light
+and dark, 7 pairs compared at every width. The negative control
+(`--break`) fired every check: 2,063 problems on all 29 screens,
+including 100 card-edge stripes, 60 slot jumps and 60 missing slots in a
+row, 17 window-size mismatches, 125 rows without their visual, and slot
+jumps in the episode, production and recorder pairs. The separator-dot
+check is the one the control does not exercise. On the way it caught:
+long single words ("Bauerngeselchtes", "Introduction") widening a tile
+past its column, and the 38-part fingerprint of King Henry VI doing the
+same (both now step down by rule), a title-block SVG sizing its window
+at 150 px, and the Listen through and Invite row overflowing at 320 px.
+Looking at the PNGs caught what it cannot: monograms with M or W cut by
+the window (now sized from letter widths, capped so a capital stands
+inside), the finished drama's full voice strip drawn as a wall of light
+blocks (now 24 px), and the series log jammed against Follow at 1440.
+
+## The data
+
+`build_data.py <cache> <ear-drama.sqlite>` reads a projection built with
+the D2c-2 picture columns (the live `eardrama.org` index did not carry
+`picture` yet; this one was built from the main checkout's caches and read
+only), and writes `data.js`: the 146 shows D draws with `picture` (url,
+size, face box, kind, source, the person's name), the run (`hist`,
+`core`) from every dated episode, the counts at the show line of 5
+(2,036 shows, 7,189 single recordings, 834 with no genre), the decade
+field, the 24 most downloaded, Browse's A to Z from B, and the measured
+grade of all 143 pictures (55 identity, 3 at the cap).
 
 ## Open questions for the owner
 
-1. **That night on Detail.** D puts it on Detail and Now Playing as tiles
-   (95% of dated episodes share a night). It needs the `sameDay(id)` verb.
-2. **Whose face leads.** D uses data order on Detail (The Black Curtain
-   opens on Hans Conried, then Cary Grant) and the published-guest rule in
-   logs (not heard on a quarter of the season). The same star leads two
-   shows (William Conrad on Gunsmoke and Escape; Jack Benny on two), so a
-   billing rule would also decide which tile gets which face.
-3. **What a signed-out invitee sees.** The production page shows title,
-   author, recording dates, the cast by chosen names and the voice strip;
-   whether takes play before joining is still Decision 072's question.
-4. **Whether finished dramas are listed** on Ear Drama's own pages, and
-   credited by chosen names. D draws one production at its own link and
-   lists none.
-5. **Show line 10 or 5.** D's counts use 10 (1,374 shows; 7,189 single
-   recordings).
+1. **The monogram.** Two initials ("BR" for Babe Ruth Collection, "XM"
+   for X Minus One) make a wall of title blocks read as a type specimen
+   rather than a run of one letter; A to Z still repeats its letter in
+   the first place. A single initial is the alternative.
+2. **Where finished ear dramas live.** D puts them in Browse (a third
+   scope beside Shows and Voices) and on Home (New ear dramas). Decision
+   068's shell is unchanged.
+3. **Run through's review.** D asks for review after the run (pause, then
+   hear and keep). Keeping every take as it lands, with review optional,
+   is the faster alternative.
 
-## Pipeline work D needs
+## Pipeline work D needs (carried from D2b-3, still open)
 
-- **`art.grade`** per picture: `[k, o]`, tone class and crop side in
-  pixels, from the faces phase's 500 px read (`build_data.py` is the
-  formula); clients apply it, never measure.
-- **`sameDay(id)`**: the night's other broadcasts, shows first, copies of
-  one broadcast folded (the 1944 day lists Gildersleeve three times across
-  re-uploads, and the 1945 news broadcast twice); D folds by title in the
-  client only for the prototype.
-- **Run histograms** (`hist`, `core`) on every show row, not only the
-  sample's 24; and the day's per-year genre counts.
-- **Display titles**: file-name titles ("Ep004 Dodge City Killer",
-  "Hanson's Ghost (406)") and series names that are uploads
-  ("Afrs053-ThisIsTheStory-...").
-- **The role map**: credit roles to On the air, Writing, Production, so
-  "the man in black" and "commercial spokesperson" group the same way on
-  every platform.
-- **A genre for every series a tile shows**: 477 shows have none and
-  would be neutral boards; and `subjects` on the castable plays so a play
-  can be more than drama or comedy.
+`art.grade` per picture; `sameDay(id)`; run histograms on every show row;
+display titles for file-name titles and upload-named series; the role
+map; a genre for the 834 shows with none (they draw on the neutral
+board).
 
 ## What the prototype does not show
 
-Surprise (a reason-bearing draw inside a chosen scope) and the Voices
-scope of Browse were not drawn. Library is a fixture (the sample holds no
-personal data): two Continue listening rows, the D2b-2 production in
-progress, six followed shows. Search's episode rows are Gunsmoke's sampled
-episodes standing in for a credit match on "Conrad". Nothing was tried on
-a device, at ten feet, with VoiceOver or TalkBack, or at the largest text
-sizes.
+Surprise and the Voices scope of Browse; Library is a fixture; Search's
+episode rows are Gunsmoke's sampled episodes standing in for a credit
+match. Nothing was tried on a device, at ten feet, with VoiceOver or
+TalkBack, or at the largest text sizes; subgrid's native equivalents
+(SwiftUI `Grid`, Compose) are named in the skill, not built.
