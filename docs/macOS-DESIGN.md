@@ -52,7 +52,7 @@ Mac uses the same Core, so the same code holds them:
   `apple/Shared/Grammar.swift` components, the pointer's hover lifting a
   tile's board, never a stripe;
   **R11c** Home and Browse as iOS-DESIGN R11c (owner, 2026-10-29: *"Having more shows is better, so 5."* and *"I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac."*; D3-2): shows are series of five or more episodes, the day board and its years strip, that night's tiles, Most downloaded, and Browse's count line, decade by genre field (beside the grid, always regular width) and tile grid; tiles hover-lift, the grid is reachable by keyboard;
-  **R11d** series and episode pages in direction D, as iOS-DESIGN R11d
+**R11e** Browse's A to Z jump (owner, 2026-10-30: *"We are building for each specific platform. It has to look good and use native design and apis on the given platform."*; *"Yes, add a letter jump"*): a row of letter buttons (`LetterRow`) under the decade field scrolls the List to a letter's section; the rest as iOS-DESIGN R11e.   **R11d** series and episode pages in direction D, as iOS-DESIGN R11d
   (WEB-DESIGN §6.4d): the head board, one button row that never wraps
   apart, On the air as round faces that lift on hover, Cast and credits
   folded; the toolbar keeps the series' download menu, the menu bar and

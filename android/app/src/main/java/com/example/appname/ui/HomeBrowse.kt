@@ -244,7 +244,7 @@ fun DecadeFieldView(
         Row(Modifier.fillMaxWidth()) {
             Spacer(Modifier.width(LabelWidth))
             field.decades.forEach { d ->
-                Text("${d}s", style = t.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text("\u2019${(d % 100).toString().padStart(2, '0')}s", style = t.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
             }
         }
         field.genres.forEach { g ->

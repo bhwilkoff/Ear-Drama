@@ -205,6 +205,7 @@ enum BrowseKind: String, CaseIterable, Hashable {
 struct SeriesBrowseScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(AppStore.self) private var store
     @State private var series: [SeriesRow]?
     /// The same list with the genre and decade filters off: the field counts over it (R11c).
     @State private var fieldBase: [SeriesRow] = []
@@ -263,11 +264,17 @@ struct SeriesBrowseScreen: View {
     /// One List for every state, as Home and Library: swapping scroll views
     /// under the bar lost the large title (seen on an iPhone 12, 2026-10-24).
     var body: some View {
+        ScrollViewReader { proxy in
+            browseList(proxy)
+        }
+    }
+
+    private func browseList(_ proxy: ScrollViewProxy) -> some View {
         List {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                results(series)
+                results(series, proxy: proxy)
                     .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -281,6 +288,18 @@ struct SeriesBrowseScreen: View {
                            action: .init(title: "Clear Filters") { clear() })
             }
         }
+        #if os(iOS)
+        .modifier(SectionIndex(visible: sort == .name))
+        .overlay(alignment: .trailing) {
+            if #unavailable(iOS 26), sort == .name, let series {
+                let letters = azLetters(itemsOf(series))
+                if letters.count > 1 {
+                    LetterRail(letters: letters) { proxy.scrollTo("az-\($0)", anchor: .top) }
+                        .padding(.trailing, 2)
+                }
+            }
+        }
+        #endif
         .modifier(TopBar { chips })
         .navigationTitle("Browse")
         #if os(iOS)
@@ -291,6 +310,11 @@ struct SeriesBrowseScreen: View {
             scripted = await catalog.scriptedSeries()
         }
         .task { await plays.load() }
+        .onChange(of: store.pendingBrowseGenre, initial: true) { _, g in
+            guard let g else { return }
+            clear(); genre = g
+            store.pendingBrowseGenre = nil
+        }
         .task(id: Filter(genre: genre, network: network, decade: decade, sort: sort, generation: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
             series = await catalog.seriesBrowse(genre: genre, network: network, decade: decade, sort: sort)
@@ -303,11 +327,77 @@ struct SeriesBrowseScreen: View {
                               hasScript: hasScript, singles: singles)) { shown = BrowseScreenPage.size }
     }
 
-    @ViewBuilder private func results(_ all: [SeriesRow]) -> some View {
+    private func itemsOf(_ all: [SeriesRow]) -> [Item] {
         let listed = shownSeries(all)
         let shows = listed.filter { ShowLine.isShow($0.episodeCount) }
         let lesser = listed.filter { !ShowLine.isShow($0.episodeCount) }
-        let items: [Item] = (singles ? lesser : shows).map(Item.show) + (singles ? [] : shownPlays.map(Item.play))
+        return (singles ? lesser : shows).map(Item.show) + (singles ? [] : shownPlays.map(Item.play))
+    }
+
+    private func azKey(_ item: Item) -> String {
+        switch item {
+        case let .show(row): row.sortName ?? row.name
+        case let .play(script): script.title
+        }
+    }
+
+    private func azLetters(_ items: [Item]) -> [String] { Grammar.azLetters(items.map(azKey)) }
+
+    /// The shown items by A to Z letter, each group in the catalog's order; a play joins its letter by title.
+    private func azGroups(_ items: [Item]) -> [(letter: String, items: [Item])] {
+        var by: [String: [Item]] = [:]
+        for item in items { by[Grammar.azLetter(azKey(item)), default: []].append(item) }
+        return azLetters(items).map { l in
+            var group = by[l] ?? []
+            if group.contains(where: { if case .play = $0 { true } else { false } }) {
+                group.sort { azKey($0).localizedCaseInsensitiveCompare(azKey($1)) == .orderedAscending }
+            }
+            return (l, group)
+        }
+    }
+
+    @ViewBuilder private func tileView(_ item: Item, width: CGFloat) -> some View {
+        switch item {
+        case let .show(row):
+            TileLink(value: Route.series(row.key), series: row, width: width)
+        case let .play(script):
+            TileLink(value: PlayRoute.script(script.id), series: Self.tileRow(script), width: width,
+                     facts: [script.authorLine, countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts")]
+                         .filter { !$0.isEmpty })
+        }
+    }
+
+    /// A to Z: one List section per letter, each tile row its own lazy row, so the system's index
+    /// (or the rail) can scroll to a letter's first row.
+    @ViewBuilder private func azSections(_ items: [Item]) -> some View {
+        let columns = BrowseLayout.columns(width: columnWidth, tileMin: ShowTile.defaultWidth)
+        let tileWidth = BrowseLayout.tileWidth(width: columnWidth, columns: columns)
+        ForEach(azGroups(items), id: \.letter) { group in
+            let rows = stride(from: 0, to: group.items.count, by: columns).map { Array(group.items[$0..<min($0 + columns, group.items.count)]) }
+            Section {
+                ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                    HStack(alignment: .top, spacing: BrowseLayout.gap) {
+                        ForEach(row) { tileView($0, width: tileWidth) }
+                    }
+                    .frame(width: columnWidth, alignment: .leading)
+                    .sharesNameHeight()
+                    .id(i == 0 ? "az-\(group.letter)" : "az-\(group.letter)-\(i)")
+                }
+            } header: {
+                Text(verbatim: group.letter)
+                    .font(TypeRamp.sectionHeader)
+                    .foregroundStyle(Color.brandText)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            .sectionIndexLabelIfAvailable(group.letter)
+        }
+    }
+
+    @ViewBuilder private func results(_ all: [SeriesRow], proxy: ScrollViewProxy) -> some View {
+        let listed = shownSeries(all)
+        let shows = listed.filter { ShowLine.isShow($0.episodeCount) }
+        let lesser = listed.filter { !ShowLine.isShow($0.episodeCount) }
+        let items = itemsOf(all)
         let field = ShowLine.decadeField(shownSeries(fieldBase).filter { ShowLine.isShow($0.episodeCount) }
             .map { (genre: $0.genre, first: $0.firstDate) })
         let plan = BrowseLayout.plan(width: columnWidth, decades: field.decades.count, tileMin: ShowTile.defaultWidth)
@@ -333,7 +423,12 @@ struct SeriesBrowseScreen: View {
                                 .multilineTextAlignment(.trailing)
                         }
                     }
-                    if plan.sideBySide {
+                    if sort == .name && !items.isEmpty {
+                        fieldColumn(field)
+                        #if os(macOS)
+                        LetterRow(letters: azLetters(items)) { proxy.scrollTo("az-\($0)", anchor: .top) }
+                        #endif
+                    } else if plan.sideBySide {
                         HStack(alignment: .top, spacing: BrowseLayout.sideGap) {
                             fieldColumn(field).frame(width: plan.fieldWidth, alignment: .topLeading)
                             grid(items, width: plan.gridWidth)
@@ -346,6 +441,7 @@ struct SeriesBrowseScreen: View {
                 .frame(width: columnWidth, alignment: .topLeading)
             }
         }
+        if sort == .name, columnWidth > 0, !items.isEmpty { azSections(items) }
     }
 
     @ViewBuilder private func fieldColumn(_ field: ShowLine.DecadeField) -> some View {
@@ -367,14 +463,7 @@ struct SeriesBrowseScreen: View {
         VStack(alignment: .leading, spacing: Spacing.s3) {
             SectionHead(title: heading) { EmptyView() }
             ShowGrid(items: Array(items.prefix(shown)), fixedWidth: gridWidth) { item, width in
-                switch item {
-                case let .show(row):
-                    TileLink(value: Route.series(row.key), series: row, width: width)
-                case let .play(script):
-                    TileLink(value: PlayRoute.script(script.id), series: Self.tileRow(script), width: width,
-                             facts: [script.authorLine, countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts")]
-                                 .filter { !$0.isEmpty })
-                }
+                tileView(item, width: width)
             }
             if items.count > shown {
                 Button("Show more") { shown += BrowseScreenPage.size }
@@ -481,6 +570,31 @@ private struct TopBar<Bar: View>: ViewModifier {
     }
 }
 
+#if os(iOS)
+/// The system's section index on iOS 26 and later (iPhone and iPad), shown while Browse sorts A to Z;
+/// before 26 the rail takes its place.
+private struct SectionIndex: ViewModifier {
+    let visible: Bool
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) {
+            content.listSectionIndexVisibility(visible ? .visible : .hidden)
+        } else {
+            content
+        }
+    }
+}
+#endif
+
+private extension View {
+    @ViewBuilder func sectionIndexLabelIfAvailable(_ letter: String) -> some View {
+        #if os(iOS)
+        if #available(iOS 26, *) { sectionIndexLabel(Text(verbatim: letter)) } else { self }
+        #else
+        self
+        #endif
+    }
+}
+
 // MARK: - Series page
 
 /// The web's Follow / Following toggle (iOS-DESIGN §4.3). Its state is the
@@ -516,7 +630,9 @@ struct SeriesScreen: View {
                     Section {
                         HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
                                   art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
-                                  facts: SeriesHead.facts(page.series), showsCredit: true)
+                                  years: page.series.yearCounts,
+                                  facts: SeriesHead.facts(page.series), genreKey: page.series.genre,
+                                  kickerRest: page.series.networks.joined(separator: " \u{00B7} "), showsCredit: true)
                             .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
@@ -614,7 +730,7 @@ struct EpisodeScreen: View {
         return List {
             Section {
                 HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
-                          first: show?.firstDate, last: show?.lastDate,
+                          first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
                           facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
                           link: .series(episode.seriesKey), showsCredit: true)
                     .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))

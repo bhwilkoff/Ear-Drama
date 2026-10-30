@@ -76,6 +76,57 @@ fun runSpan(first: String?, last: String?): RunSpan? {
     return RunSpan((c(a) - lo).toDouble() / n, (c(maxOf(a, b)) - lo + 1).toDouble() / n)
 }
 
+/** One bar of the run strip: its span on the axis and its height (0..1) against the busiest year. */
+data class RunBar(val from: Double, val to: Double, val height: Double)
+
+/**
+ * The strip's bars from the run histogram (`series.year_counts`: the first year, then one count
+ * per year): a bar per year on the fixed axis, its height the count over the busiest year; a year
+ * with no episode draws nothing; a year off the axis is held at the nearest edge. Null when the
+ * show has no histogram (the strip then draws the first-to-last span).
+ */
+fun runBars(years: List<Int>?): List<RunBar>? {
+    if (years == null || years.size < 2) return null
+    val counts = years.drop(1)
+    if (counts.none { it > 0 }) return null
+    val (lo, hi) = RUN_AXIS
+    val n = (hi - lo + 1).toDouble()
+    val bySlot = sortedMapOf<Int, Int>()
+    counts.forEachIndexed { i, c ->
+        if (c > 0) {
+            val slot = minOf(hi, maxOf(lo, years[0] + i)) - lo
+            bySlot[slot] = (bySlot[slot] ?: 0) + c
+        }
+    }
+    val top = bySlot.values.max().toDouble()
+    return bySlot.map { (slot, c) -> RunBar(slot / n, (slot + 1) / n, c / top) }
+}
+
+/** Parses `series.year_counts` ("1932,3,12,0,4"); null when absent or malformed. */
+fun parseYearCounts(text: String?): List<Int>? {
+    if (text.isNullOrEmpty()) return null
+    val parts = text.split(",").map { it.trim().toIntOrNull() }
+    if (parts.size < 2 || parts.any { it == null }) return null
+    return parts.filterNotNull()
+}
+
+/** An episode with neither a date nor a number: its row's leading slot shows the series' window. */
+fun undatedBare(date: String?, num: Int?): Boolean =
+    !(date != null && Regex("^\\d{4}").containsMatchIn(date)) && num == null
+
+/** Browse's A to Z letter: the sort key's first letter without accents, A to Z, else "#". */
+fun azLetter(key: String?): String {
+    val c = java.text.Normalizer.normalize(key.orEmpty().trim(), java.text.Normalizer.Form.NFD)
+        .firstOrNull()?.uppercaseChar()
+    return if (c != null && c in 'A'..'Z') c.toString() else "#"
+}
+
+/** The letters that have shows, "#" first (the sort puts numbers and symbols before A). */
+fun azLetters(keys: List<String?>): List<String> {
+    val have = keys.mapTo(HashSet()) { azLetter(it) }
+    return (listOf("#") + ('A'..'Z').map { it.toString() }).filter { it in have }
+}
+
 private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 /**

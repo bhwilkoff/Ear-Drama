@@ -144,6 +144,11 @@ nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     /// most; nil on a catalog that predates `series.picture`. `pictureKind` is never said on a tile.
     var picture: Artwork? = nil
     var pictureKind: String? = nil
+    /// The run histogram (`series.year_counts`): the first year, then one count per year; nil where
+    /// the catalog has none, and the strip draws the first-to-last span.
+    var yearCounts: [Int]? = nil
+    /// The key the A to Z order sorts on, for Browse's letter index; nil where the catalog has none.
+    var sortName: String? = nil
 
     var id: String { key }
 

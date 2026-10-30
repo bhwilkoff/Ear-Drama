@@ -335,6 +335,7 @@ private struct SeriesBrowseScreen_tvOS: View {
     @State private var sort: SeriesSort = .popular
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
+    @Environment(AppStore.self) private var store
 
     private struct Key: Hashable { let genre: String?; let decade: Int?; let sort: SeriesSort; let load: Int }
 
@@ -352,13 +353,15 @@ private struct SeriesBrowseScreen_tvOS: View {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                ScrollView(.vertical) {
-                    VStack(alignment: .leading, spacing: Spacing.s6) {
-                        filters
-                        results(series)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical) {
+                        VStack(alignment: .leading, spacing: Spacing.s6) {
+                            filters
+                            results(series, proxy: proxy)
+                        }
+                        .padding(.horizontal, 60)
+                        .padding(.vertical, 60)
                     }
-                    .padding(.horizontal, 60)
-                    .padding(.vertical, 60)
                 }
             } else {
                 ProgressView()
@@ -374,6 +377,11 @@ private struct SeriesBrowseScreen_tvOS: View {
             fieldBase = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: sort)
         }
         .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) { shown = BrowseScreenPage.size }
+        .onChange(of: store.pendingBrowseGenre, initial: true) { _, g in
+            guard let g else { return }
+            genre = g; decade = nil
+            store.pendingBrowseGenre = nil
+        }
     }
 
     private var filters: some View {
@@ -393,7 +401,7 @@ private struct SeriesBrowseScreen_tvOS: View {
         }
     }
 
-    @ViewBuilder private func results(_ all: [SeriesRow]) -> some View {
+    @ViewBuilder private func results(_ all: [SeriesRow], proxy: ScrollViewProxy) -> some View {
         let shows = all.filter { ShowLine.isShow($0.episodeCount) }
         let lesser = all.filter { !ShowLine.isShow($0.episodeCount) }
         let listed = singles ? lesser : shows
@@ -422,6 +430,21 @@ private struct SeriesBrowseScreen_tvOS: View {
         if listed.isEmpty {
             EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
                        action: .init(title: "Clear Filters") { genre = nil; decade = nil })
+        } else if sort == .name {
+            // A to Z: a row of letters focus can reach, then each letter's tiles, drawn as they scroll in.
+            let letters = Grammar.azLetters(listed.map { $0.sortName ?? $0.name })
+            let groups = Dictionary(grouping: listed) { Grammar.azLetter($0.sortName ?? $0.name) }
+            LetterRow(letters: letters) { proxy.scrollTo("az-\($0)", anchor: .top) }
+            LazyVStack(alignment: .leading, spacing: Spacing.s6) {
+                ForEach(letters, id: \.self) { l in
+                    VStack(alignment: .leading, spacing: Spacing.s3) {
+                        Text(verbatim: l).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).id("az-\(l)")
+                        ShowGrid(items: groups[l] ?? []) { row, width in
+                            TileLink(value: Route.series(row.key), series: row, width: width)
+                        }
+                    }
+                }
+            }
         } else {
             ShowGrid(items: Array(listed.prefix(shown))) { row, width in
                 TileLink(value: Route.series(row.key), series: row, width: width)
@@ -449,7 +472,9 @@ private struct SeriesScreen_tvOS: View {
                     Section {
                         HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
                                   art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
-                                  facts: SeriesHead.facts(page.series), showsCredit: true)
+                                  years: page.series.yearCounts,
+                                  facts: SeriesHead.facts(page.series), genreKey: page.series.genre,
+                                  kickerRest: page.series.networks.joined(separator: " \u{00B7} "), showsCredit: true)
                             .listRowBackground(Color.clear)
                         // Follow is the first focus stop; only the focused control is bright.
                         let on = follows.isFollowing(page.series.key)
@@ -575,7 +600,7 @@ private struct EpisodeScreen_tvOS: View {
         return ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: Spacing.s8) {
                 HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
-                          first: show?.firstDate, last: show?.lastDate,
+                          first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
                           facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
                           link: .series(episode.seriesKey), showsCredit: true)
 

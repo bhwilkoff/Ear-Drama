@@ -21,7 +21,7 @@ struct EpisodeRowLabel: View {
 
     var body: some View {
         GrammarRow(
-            visual: showSeries
+            visual: showSeries || Grammar.undatedBare(date: episode.airDate, number: episode.number)
                 ? .window(episode.seriesWindowArt, name: episode.seriesName, genre: episode.seriesGenre)
                 : .date(episode.airDate, number: episode.number, genre: episode.seriesGenre),
             title: episode.displayTitle,
