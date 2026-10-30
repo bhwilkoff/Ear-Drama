@@ -67,7 +67,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ia_lib import CACHE, OUT, write_json  # noqa: E402
 from harvest_ext_commons import template_class  # noqa: E402
-from art_policy import face_text  # noqa: E402
+from art_policy import face_count, face_text  # noqa: E402
 
 DIR = os.path.join(CACHE, "people_wd")
 DB = os.path.join(OUT, "radio-catalog.sqlite")
@@ -471,7 +471,7 @@ CREATE TABLE people_art (
   person_id TEXT, qid TEXT, file TEXT, found_via TEXT,
   license_class TEXT, usable INTEGER, template TEXT, obligations TEXT,
   author TEXT, date_field TEXT, source_links TEXT,
-  evidence_url TEXT, thumb_url TEXT, width INTEGER, height INTEGER, face TEXT, own_work INTEGER,
+  evidence_url TEXT, thumb_url TEXT, width INTEGER, height INTEGER, face TEXT, own_work INTEGER, faces INTEGER,
   PRIMARY KEY (person_id, file)
 );
 CREATE TABLE people_art_meta (k TEXT PRIMARY KEY, v TEXT);
@@ -518,9 +518,9 @@ def main():
                              OBLIGATIONS.get(cls), fv.get("author"), fv.get("date_field"),
                              json.dumps(fv.get("source_links") or []), page, thumb,
                              fv.get("width"), fv.get("height"), face_text(fv.get("face")),
-                             int(bool(fv.get("own_work")))))
+                             int(bool(fv.get("own_work"))), face_count(fv)))
     con.executemany("INSERT INTO people_wikidata VALUES (" + ",".join("?" * 15) + ")", wd_rows)
-    con.executemany("INSERT OR IGNORE INTO people_art VALUES (" + ",".join("?" * 17) + ")", art_rows)
+    con.executemany("INSERT OR IGNORE INTO people_art VALUES (" + ",".join("?" * 18) + ")", art_rows)
     rep = report(people, res, ents, art_rows)
     con.executemany("INSERT INTO people_art_meta VALUES (?,?)",
                     [("built", time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())),

@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_projection as B
 import genres as G
 import sponsors as SP
+from sort_name import sort_name
 
 ran = failed = 0
 
@@ -69,6 +70,9 @@ def fixture(path):
 
 
 # --- pure functions --------------------------------------------------------------
+check("year_counts: per year from the first to the last", B.year_counts(["1940-01-01", "1942-05-01", "1940-02-02"]),
+      "1940,2,0,1")
+check("control: undated episodes have no histogram", B.year_counts([None, None]), None)
 check("season: fall opens a season", B.season("1949-10-06"), "1949-50")
 check("season: spring closes the season before", B.season("1950-04-13"), "1949-50")
 check("season: September is the first month", B.season("1949-09-01"), "1949-50")
@@ -148,6 +152,20 @@ def violations(db):
     """The contract's checks over every row of a built projection: name -> offending rows."""
     c = sqlite3.connect(db)
     out = {name: c.execute(sql).fetchone()[0] for name, sql in CONTRACT.items()}
+    cols = {r[1] for r in c.execute("PRAGMA table_info(series)")}
+    if {"raw_name", "year_counts"} <= cols:   # D3 display names and run histograms (contract section 3.3)
+        dated = dict(c.execute("SELECT series_key, COUNT(*) FROM episodes WHERE air_date IS NOT NULL GROUP BY 1"))
+        bad_hist = bad_name = 0
+        for key, name, raw, sort, hist in c.execute("SELECT key, name, raw_name, sort_name, year_counts FROM series"):
+            n = [int(v) for v in hist.split(",")] if hist else None
+            if (sum(n[1:]) if n else 0) != dated.get(key, 0) or (n and (n[1] == 0 or n[-1] == 0)):
+                bad_hist += 1
+            if raw == name or sort != sort_name(name):
+                bad_name += 1
+        out["a series' run histogram counts its dated episodes, first and last years non-zero"] = bad_hist
+        out["a raw name only where it differs, and sort_name follows the display name"] = bad_name
+        out["a raw title only where it differs"] = c.execute(
+            "SELECT COUNT(*) FROM episodes WHERE raw_title IS NOT NULL AND raw_title = title").fetchone()[0]
     c.close()
     return {k: v for k, v in out.items() if v}
 
@@ -175,6 +193,8 @@ with tempfile.TemporaryDirectory() as tmp:
           c.execute("SELECT COUNT(*) FROM episodes_fts WHERE episodes_fts MATCH 'people:moorehead'").fetchone()[0], 1)
     check("series genre stored with its source", c.execute("SELECT genre, genre_source FROM series WHERE key = 'suspense'").fetchone(),
           ("mystery", "otrrpedia"))
+    check("run histogram: the first dated year, then one count a year",
+          c.execute("SELECT year_counts FROM series WHERE key = 'suspense'").fetchone()[0], "1943,1,0,0,0,0,0,1")
     check("series sort_name is computed once in the pipeline (stored)",
           c.execute("SELECT sort_name FROM series WHERE key = 'suspense'").fetchone()[0], "suspense")
     check("the rights lines are published, never 'public domain'",
