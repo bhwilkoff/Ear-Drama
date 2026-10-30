@@ -1634,17 +1634,21 @@
     if (kind === 'load' || kind === 'error' || kind === 'state' || kind === 'sleep-fired') {
       $('mini-title').textContent = epTitle(cur);
       $('np-title').textContent = epTitle(cur);
-      $('np-series').textContent = cur.seriesName || '';
-      $('np-series').setAttribute('href', `?series=${encodeURIComponent(cur.series || '')}`);
-      $('np-meta').textContent = [cur.date ? fmtLongDate(cur.date) : 'Undated', cur.network].filter(Boolean).join(' · ');
+      const line = eventLine([cur.seriesName, factDate(cur.date) || 'Undated', cur.network], 'caption tabular');
+      const first = line && line.firstChild;
+      if (first && cur.seriesName) {
+        first.replaceChildren(el('a', { class: 'np-series', href: `?series=${encodeURIComponent(cur.series || '')}` }, cur.seriesName), '\u00a0\u00b7');
+      }
+      $('np-meta').replaceChildren(...(line ? [line] : []));
       const err = kind === 'error' && Player.error;
       const errText = API.isOffline() ? 'You are offline.' : 'This recording did not load.';
-      $('mini-meta').textContent = err ? errText
-        : room.inRoom ? `Listening together · ${room.members}` : [cur.seriesName, cur.date].filter(Boolean).join(' · ');
+      const miniLine = err ? errText : room.inRoom ? `Listening together · ${room.members}` : null;
+      const miniFacts = eventLine([cur.seriesName, factDate(cur.date) || 'Undated'], '');
+      $('mini-meta').replaceChildren(...(miniLine ? [miniLine] : miniFacts ? [miniFacts] : []));
       $('mini-meta').classList.toggle('is-error', !!err);
       if (err) announce(errText);
     }
-    if (kind === 'load') { paintTranscriptLink(cur); paintPlayerArt(cur); }
+    if (kind === 'load') { paintTranscriptLink(cur); paintPlayerArt(cur); paintMiniWindow(cur); }
     if (!seeking) {
       seekEl.max = String(Math.floor(d));
       seekEl.value = String(Math.floor(t));
@@ -1675,27 +1679,29 @@
   }
   Player.onChange(paintPlayer);
 
-  /** Now Playing's picture and the lock screen's (§5.6): the episode's face, else the series',
-      else the series' typographic card, the same art on both. */
+  /** The mini player's window: the show's own picture through the grammar's window fill. */
+  function paintMiniWindow(cur) {
+    $('mini-window').replaceChildren(pictureWindow({ key: cur.series, name: cur.seriesName }, 48));
+  }
+  /** Now Playing's picture (D3-4): the show's picture, else its star's, else the title block,
+      through the grammar's window fill at the size floor; the lock screen gets the same picture. */
   let lockArtURL = null;
   function paintPlayerArt(cur) {
     const box = $('np-art');
     box.replaceChildren();
     Player.setArtwork(null);
-    Promise.all([API.episodeDetail(cur.id).catch(() => null), API.seriesIndex().catch(() => null)]).then(([d, idx]) => {
+    API.seriesIndex().catch(() => null).then((idx) => {
       if (!Player.current || Player.current.id !== cur.id) return;
-      const s = idx && idx.byKey.get(cur.series || (d && d.series));
-      const face = (d && d.star && d.credits.find(c => c.person === d.star && c.art)) || null;
-      const art = face ? face.art : s && s.art;
-      if (art) {
-        const np = shapedImage(art, Math.round(360 * Math.min(API.artAspect(art) || 0.8, 1)), (face ? face.name : s.star) || '');
-        np.classList.add('np-face');
-        np.setAttribute('aria-hidden', 'true');
-        box.append(np);
+      const s = (idx && idx.byKey.get(cur.series)) || { key: cur.series, name: cur.seriesName, genre: '' };
+      const win = el('span', { class: 'g-window np-window', 'aria-hidden': 'true', dataset: { slot: '360' } });
+      fillWindow(win, s, 360);
+      box.append(win);
+      const pic = s.picture !== undefined ? s.picture : s.art;
+      if (win.dataset.fill !== 'block' && pic) {
         // Shown larger than a page's head, so a credited portrait carries its credit here too (Decision 069).
-        if (art.credit) box.append(el('a', { class: 'caption face-credit np-credit', href: art.evidence, rel: 'noopener', target: '_blank' }, art.credit));
-        Player.setArtwork([{ src: API.artURL(art, 500), sizes: '500x500', type: 'image/jpeg' }]);
-        API.cropBlobURL(art, 500).then(url => {
+        if (pic.credit) box.append(el('a', { class: 'caption face-credit np-credit', href: pic.evidence, rel: 'noopener', target: '_blank' }, pic.credit));
+        Player.setArtwork([{ src: API.artURL(pic, 500), sizes: '500x500', type: 'image/jpeg' }]);
+        API.cropBlobURL(pic, 500).then(url => {
           if (!url) return;
           if (lockArtURL) URL.revokeObjectURL(lockArtURL);
           lockArtURL = url;
@@ -1703,11 +1709,11 @@
         });
         return;
       }
-      const name = (s && s.name) || cur.seriesName;
+      const name = s.name || cur.seriesName;
       if (!name) return;
-      const line = s ? [years(s.first, s.last), s.networks].filter(Boolean).join(' · ') : null;
-      const card = typeCard({ name, line, genre: s && s.genre });
-      card.setAttribute('aria-hidden', 'true');
+      const line = s.first !== undefined ? [years(s.first, s.last), s.networks].filter(Boolean).join(' · ') : null;
+      const card = typeCard({ name, line, genre: s.genre });
+      card.hidden = true;
       box.append(card);
       const png = cardImage(card, name, line);
       if (png) {

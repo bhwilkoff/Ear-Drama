@@ -583,9 +583,16 @@ web app follows today.
     a role group with any portrait keeps the slot on every line, so names
     align. Credits owed by those portraits follow the list, one caption,
     each linked to its Commons file page.
-  - **Now Playing** shows the episode's star, else the series' star, else
-    the series' typographic card, full width and square (§6.4a); §5.6
-    sends the same art to the lock screen.
+  - **Now Playing** (D3-4) leads with the grammar's window at its largest
+    slot (360 px, no taller than 44 % of the screen): the show's picture,
+    else its star's, else the title block, cropped on the face and held to
+    the size floor (`API.windowFill`); a credit the picture owes is
+    captioned under it. The episode title and the event line (show, date,
+    network; the show name links to its page) come next. §5.6 sends the
+    same picture to the lock screen. The mini player is the grammar's row
+    in small: a 40 px window, the title, the event line (show, date).
+    On a phone the options row is speed beside the sleep timer, every
+    other verb on its own row, so no pair wraps apart (320 to 430 px).
   - **Small crops center on the published face** (amended 2026-10-28,
     V4; `artwork-presentation-design` rules 4 and 5: a crop only in small
     repeated slots, at a focal point computed once in the pipeline). Only
