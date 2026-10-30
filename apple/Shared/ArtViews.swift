@@ -280,32 +280,24 @@ struct TypeCard: View {
     }
 }
 
-/// Now Playing's picture: the episode's face, else the series', else its card.
-/// The bound is a square, `side` when given, else as large as the frame it is offered
-/// (iOS-DESIGN R11a: full width, bounded so Play stays on the first screen). A portrait is
-/// drawn whole at its own aspect and its box shrinks to it, centered; a card fills the square.
+/// Now Playing's picture (D3-4): the grammar's window at the largest square it is offered, `side`
+/// when given (iOS-DESIGN R11a: full width, bounded so Play stays on the first screen). The show's
+/// picture, else its star's, else the title block, cropped on the face and held to the size floor.
 struct NowPlayingArt: View {
     let episode: EpisodeRow
     let face: Face?
-    var line: String? = nil
     var side: CGFloat? = nil
 
+    /// The picture Now Playing and the lock screen share.
+    static func art(_ episode: EpisodeRow, _ face: Face?) -> Artwork? { episode.seriesWindowArt ?? face?.art }
+
     var body: some View {
-        Color.clear
-            .aspectRatio(1, contentMode: .fit)
-            .overlay {
-                if let face {
-                    GeometryReader { geo in
-                        let box = face.art.fitted(in: geo.size)
-                        ShapedArt(art: face.art)
-                            .frame(width: box.width, height: box.height)
-                            .frame(width: geo.size.width, height: geo.size.height)
-                    }
-                } else {
-                    TypeCard(name: episode.seriesName, line: line, genre: episode.seriesGenre)
-                }
-            }
-            .frame(width: side, height: side)
-            .accessibilityHidden(true)
+        GeometryReader { geo in
+            let s = side ?? min(geo.size.width, geo.size.height)
+            PictureWindow(art: Self.art(episode, face), name: episode.seriesName, genre: episode.seriesGenre, side: s)
+                .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .frame(width: side, height: side)
+        .accessibilityHidden(true)
     }
 }

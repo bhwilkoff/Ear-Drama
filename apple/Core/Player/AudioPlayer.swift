@@ -510,21 +510,21 @@ final class AudioPlayer {
 
     // MARK: - Now Playing and remote commands
 
-    /// The lock screen's picture is the one Now Playing draws (Decision 069):
-    /// the portrait at Commons' 500 step, else the typographic card.
+    /// The lock screen's picture is the one Now Playing draws (Decision 069, D3-4):
+    /// the show's picture, else its star's, at Commons' 500 step, else the typographic card.
     private func loadArtwork(for item: Item?) {
         artwork = nil
         guard let item else { return }
         let id = item.episode.id
         Task { [weak self] in
             var image: CGImage?
-            if let face = item.face,
-               let (data, response) = try? await URLSession.shared.data(from: face.art.url(pixels: 500)),
+            if let art = item.episode.seriesWindowArt ?? item.face?.art,
+               let (data, response) = try? await URLSession.shared.data(from: art.url(pixels: 500)),
                (response as? HTTPURLResponse)?.statusCode == 200,
                let source = CGImageSourceCreateWithData(data as CFData, nil) {
                 image = CGImageSourceCreateImageAtIndex(source, 0, nil)
                 // The system shows a square: hand it the one centered on the published face (R11a).
-                if let whole = image, let cut = face.art.squareCrop(width: whole.width, height: whole.height) {
+                if let whole = image, let cut = art.squareCrop(width: whole.width, height: whole.height) {
                     image = whole.cropping(to: CGRect(x: cut.x, y: cut.y, width: cut.side, height: cut.side)) ?? whole
                 }
             }

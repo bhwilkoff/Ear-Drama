@@ -40,6 +40,8 @@ Mac uses the same Core, so the same code holds them:
   shared `ArtTile` on rows that mix series, `FaceFigure` beside the series
   and Detail headings, `CreditFace` on cast lines, the series' tile in the
   transport bar, and the system Now Playing artwork, as iOS-DESIGN R11);
+  *D3-4: the transport bar's tile is the grammar's `PictureWindow` (40 pt, the show's picture, else
+  its star's, else the title block) and its text is the title over an `EventLine`.*
   **R11a** faces lead, as iOS-DESIGN R11a: the series page, Detail, and a
   person's page open with `FaceHero` (the print beside its label inside
   276 x 240 pt, or the plate for a wide picture, at most 320 pt tall; no

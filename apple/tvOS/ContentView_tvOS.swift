@@ -731,23 +731,17 @@ private struct NowPlaying_tvOS: View {
             if let item = player.item {
                 HStack(alignment: .bottom, spacing: Spacing.s8) {
                     VStack(alignment: .leading, spacing: Spacing.s2) {
-                        NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network, side: 400)
+                        NowPlayingArt(episode: item.episode, face: item.face, side: 400)
                         // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
-                        if let credit = item.face?.art.credit {
-                            ArtCredit(credit: credit, evidence: item.face?.art.evidence)
+                        if let art = NowPlayingArt.art(item.episode, item.face), let credit = art.credit {
+                            ArtCredit(credit: credit, evidence: art.evidence)
                         }
                     }
                     VStack(alignment: .leading, spacing: Spacing.s3) {
-                        Text(item.episode.seriesName)
-                            .font(TypeRamp.sectionHeader)
-                            .foregroundStyle(Color.brandTextMuted)
                         Text(item.episode.displayTitle)
                             .font(TypeRamp.pageTitle)
                             .foregroundStyle(Color.brandText)
-                        Text(verbatim: [AirDate.display(item.episode.airDate), item.episode.network]
-                            .compactMap { $0 }.joined(separator: " · "))
-                            .font(TypeRamp.tabular)
-                            .foregroundStyle(Color.brandTextMuted)
+                        EventLine(facts: [item.episode.seriesName, AirDate.display(item.episode.airDate), item.episode.network])
                     }
                     .accessibilityElement(children: .combine)
                 }

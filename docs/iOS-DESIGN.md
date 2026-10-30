@@ -70,6 +70,13 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   published face (R11a).
   *Amended by R11a: `FaceHero` replaces `FaceFigure` on the series page,
   Detail, and a person's page; the tile is 56 pt; Now Playing is full width.*
+- **R11c Now Playing in design D (D3-4)**: the sheet leads with `NowPlayingArt`, the grammar's
+  `PictureWindow` at the largest square the sheet offers (full width, at most 44 % tall): the
+  show's picture, else its star's, else the title block, face crop and size floor. The title (L1)
+  and the `EventLine` (show, date, network) follow, leading-aligned. The mini player is the
+  grammar's `GrammarRow` (window, title, event line) beside the play toggle. The lock screen
+  (`MPMediaItemArtwork`) gets the same picture. Every verb stays: transport, speed, sleep, AirPlay
+  route picker, level, Listen Together, transcript, next story. A credited picture carries its credit.
 - **R11a Faces lead** (owner, 2026-10-28: *"Portraits should show wherever they are useful or joyful (overall the visuals are not highlighted yet on the app)."* and *"The visual pass should be for all artwork. We want the app to be as visual as possible."*) (WEB-DESIGN §6.4a is the shared text).
   The only art served with evidence is a person's portrait; other image
   classes wait on the owner's V2 to V5. **The box takes the picture's

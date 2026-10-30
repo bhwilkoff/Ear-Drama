@@ -92,17 +92,14 @@ struct TransportBar_macOS: View {
             Divider()
             HStack(spacing: Spacing.s6) {
                 if let item = player.item {
-                    // The art Now Playing and the system's Now Playing show (Decision 069).
-                    ArtTile(name: item.episode.seriesName, genre: item.episode.seriesGenre, face: item.face)
+                    // The picture the system's Now Playing shows (Decision 069, D3-4): the grammar's window.
+                    PictureWindow(art: NowPlayingArt.art(item.episode, item.face), name: item.episode.seriesName,
+                                  genre: item.episode.seriesGenre, side: 40)
                     VStack(alignment: .leading, spacing: 0) {
                         Text(item.episode.displayTitle)
                             .font(TypeRamp.bodyStrong)
                             .lineLimit(1)
-                        Text(verbatim: [item.episode.seriesName, AirDate.display(item.episode.airDate)]
-                            .joined(separator: " · "))
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                            .lineLimit(1)
+                        EventLine(facts: [item.episode.seriesName, AirDate.display(item.episode.airDate)])
                     }
                     .frame(minWidth: 160, maxWidth: 280, alignment: .leading)
                     .accessibilityElement(children: .combine)
