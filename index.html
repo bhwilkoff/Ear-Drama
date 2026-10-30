@@ -148,6 +148,7 @@
   <section id="player" class="player" aria-label="Player" hidden>
     <div class="player-progress" aria-hidden="true"><div id="mini-progress"></div></div>
     <div class="player-row">
+      <span id="mini-window" class="mini-window"></span>
       <button type="button" id="mini-open" class="player-title" aria-label="Open player">
         <span id="mini-title" class="body-strong"></span>
         <span id="mini-meta" class="caption"></span>
@@ -197,9 +198,8 @@
         </button>
       </div>
       <div id="np-art" class="np-art"></div>
-      <a id="np-series" class="np-series section-header" href="#"></a>
       <h2 id="np-title" class="view-heading"></h2>
-      <p id="np-meta" class="caption tabular"></p>
+      <p id="np-meta" class="np-meta"></p>
       <label for="np-seek" class="sr-only">Position</label>
       <input id="np-seek" class="seek" type="range" min="0" max="0" step="1" value="0">
       <div class="np-times tabular caption"><span id="np-pos">0:00</span><span id="np-left">0:00</span></div>

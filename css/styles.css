@@ -654,19 +654,16 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .page-head.has-face > .actions { margin-top: var(--space-3); }
 .photo-credits a { color: var(--color-link); }
 
-/* Now Playing's picture (§6.4a): full width, square, and no taller than 44 % of the screen, so
-   Play stays on a phone's first screen; the face whole over its wash, else the typographic card. */
+/* Now Playing's picture (D3-4): the grammar's window, square and no taller than 44 % of the screen,
+   so Play stays on a phone's first screen; the show's picture, its star's, else the title block. */
 .np-art:empty { display: none; }
 .np-credit { display: block; margin-top: var(--space-1); text-align: center; }
 .np-art { margin-bottom: var(--space-3); }
-.np-art { container-type: inline-size; }
-.np-art .type-card { width: min(100%, 44vh); width: min(100%, 44dvh); aspect-ratio: 1; margin: 0 auto; border-radius: var(--radius-card); }
-/* The bound is a square no taller than 44 % of the screen; the picture's box shrinks to its shape. */
-.np-face {
-  width: calc(min(100vw - 48px, 44vh) * min(var(--a), 1)); height: calc(min(100vw - 48px, 44vh) / max(var(--a), 1));
-  width: calc(min(100cqi, 44dvh) * min(var(--a), 1)); height: calc(min(100cqi, 44dvh) / max(var(--a), 1));
-  margin: 0 auto;
-}
+.np-art .np-window { width: min(100%, 44vh); width: min(100%, 44dvh); margin: 0 auto; border-radius: var(--radius-card); }
+.np-meta { margin: 0; text-align: left; }
+.np-series { color: var(--color-link); text-decoration: none; }
+.mini-window { flex: none; width: 40px; height: 40px; margin-right: var(--space-2); }
+.mini-window > .g-window { width: 40px; height: 40px; }
 .type-card {
   display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-1);
   width: min(200px, 52vw); aspect-ratio: 1; padding: var(--space-4);
@@ -849,6 +846,7 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .player-progress { height: 2px; background: var(--color-surface-alt); }
 .player-progress > div { height: 100%; width: 0; background: var(--color-primary); }
 .player-row { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4); }
+.player-title .g-event { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .player-title {
   flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start;
   min-height: var(--tap); justify-content: center; border: 0; background: none; text-align: left; cursor: pointer;
@@ -866,7 +864,6 @@ a.slot-main:hover .body-strong { text-decoration: underline; }
 .now-playing::backdrop { background: var(--color-text); opacity: 0.4; }
 .np-inner { display: flex; flex-direction: column; gap: var(--space-2); max-width: 520px; margin: 0 auto; padding: var(--space-4); }
 .np-top { display: flex; justify-content: flex-start; margin-bottom: var(--space-4); }
-.np-series { text-decoration: none; color: var(--color-link); }
 .seek { width: 100%; margin-top: var(--space-4); accent-color: var(--color-primary); min-height: var(--tap); }
 .np-times { display: flex; justify-content: space-between; }
 .np-controls { display: flex; justify-content: center; align-items: center; gap: var(--space-6); margin: var(--space-4) 0; }
@@ -978,3 +975,12 @@ html.tv .account-row { display: none; }
 html.tv .np-together { display: none; }
 .np-remote[hidden], html.tv .np-remote { display: none; }
 .agreed-list .cast-row { justify-content: space-between; align-items: center; }
+
+/* Now Playing's options on a phone: speed beside the sleep timer on one row, every other verb its own
+   full row, so no pair wraps apart (D3-4). */
+@media (max-width: 599px) {
+  .np-options { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr); align-items: end; }
+  .np-options .np-together, .np-options #np-transcript, .np-options .np-remote { grid-column: 1 / -1; justify-self: start; }
+  .np-options .sleep-btn { min-width: 0; }
+  .np-options .sleep-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

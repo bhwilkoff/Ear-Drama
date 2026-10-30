@@ -13,18 +13,11 @@ struct MiniPlayer_iOS: View {
                 Button {
                     store.isPlayerPresented = true
                 } label: {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(item.episode.displayTitle)
-                            .font(TypeRamp.bodyStrong)
-                            .foregroundStyle(Color.brandText)
-                            .lineLimit(1)
-                        Text(item.episode.seriesName)
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
+                    GrammarRow(visual: .window(item.episode.seriesWindowArt ?? item.face?.art,
+                                               name: item.episode.seriesName, genre: item.episode.seriesGenre),
+                               title: item.episode.displayTitle,
+                               sub: [item.episode.seriesName, AirDate.display(item.episode.airDate)])
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Now playing: \(item.episode.displayTitle), \(item.episode.seriesName)")
@@ -59,28 +52,23 @@ struct PlayerSheet_iOS: View {
                 Spacer(minLength: 0)
                 if let item = player.item {
                     // R11a: full width, no taller than 44 % of the sheet, so Play stays on the first screen.
-                    NowPlayingArt(episode: item.episode, face: item.face, line: item.episode.network)
+                    NowPlayingArt(episode: item.episode, face: item.face)
                         .containerRelativeFrame([.horizontal, .vertical]) { length, axis in
                             axis == .vertical ? length * 0.44 : length - 2 * Spacing.s4
                         }
                         .accessibilityIdentifier("now-playing-art")
                     // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
-                    if let credit = item.face?.art.credit {
-                        ArtCredit(credit: credit, evidence: item.face?.art.evidence)
+                    if let art = NowPlayingArt.art(item.episode, item.face), let credit = art.credit {
+                        ArtCredit(credit: credit, evidence: art.evidence)
                     }
-                    VStack(spacing: Spacing.s2) {
-                        Text(item.episode.seriesName)
-                            .font(TypeRamp.body)
-                            .foregroundStyle(Color.brandTextMuted)
+                    VStack(alignment: .leading, spacing: Spacing.s2) {
                         Text(item.episode.displayTitle)
                             .font(TypeRamp.pageTitle)
                             .foregroundStyle(Color.brandText)
-                            .multilineTextAlignment(.center)
-                        Text(verbatim: [AirDate.display(item.episode.airDate), item.episode.network]
-                            .compactMap { $0 }.joined(separator: " · "))
-                            .font(TypeRamp.tabular)
-                            .foregroundStyle(Color.brandTextMuted)
+                            .multilineTextAlignment(.leading)
+                        EventLine(facts: [item.episode.seriesName, AirDate.display(item.episode.airDate), item.episode.network])
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityElement(children: .combine)
                 } else {
                     EmptyState("Nothing playing", systemImage: "play.slash")

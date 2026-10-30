@@ -289,4 +289,18 @@ class GrammarRenderTest {
             genreLink = com.example.appname.ui.GenreLink("Mystery", "CBS") {})
         HeadBoard("Counterrevolutionary Hour", null, null, "Series", listOf("1950"), "1950-01-01", "1951-01-01", Modifier.padding(top = 12.dp))
     }
+
+    @Composable private fun nowPlaying(art: Artwork?, name: String, genre: String?) {
+        androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 24.dp)) {
+            NowPlayingArt(art, name, genre, maxSide = 360.dp)
+            androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
+            androidx.compose.material3.Text("Sorry, Wrong Number", style = MaterialTheme.typography.headlineSmall)
+            EventLine(listOf(name, "May 25, 1943"))
+        }
+        GrammarRow("Sorry, Wrong Number", { m -> PictureWindow(art, name, genre, m) }, {}, sub = listOf(name, "May 25, 1943"), openLabel = "Open player")
+    }
+
+    @Test fun nowPlayingPortrait() = shoot("nowplaying-portrait") { nowPlaying(portrait, "Suspense", "mystery") }
+    @Test fun nowPlayingWide() = shoot("nowplaying-wide") { nowPlaying(wide, "The Adventures of Sherlock Holmes", "mystery") }
+    @Test fun nowPlayingBlock() = shoot("nowplaying-block") { nowPlaying(null, "Lux Radio Theatre", "drama") }
 }

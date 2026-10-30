@@ -67,6 +67,9 @@ import com.example.appname.data.Transcript
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.example.appname.ui.ArtCredit
+import com.example.appname.ui.EventLine
+import com.example.appname.ui.GrammarRow
+import com.example.appname.ui.PictureWindow
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.Loadable
@@ -103,23 +106,16 @@ fun MiniPlayer(onExpand: () -> Unit) {
                     color = OnAir.colors.play,
                 )
             }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClickLabel = "Open player", onClick = onExpand)
-                    .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        now.problem ?: episode.seriesName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (now.failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                GrammarRow(
+                    title = title,
+                    visual = { m -> PictureWindow(episode.seriesWindowArt, episode.seriesName, episode.seriesGenre, m) },
+                    onOpen = onExpand,
+                    modifier = Modifier.weight(1f),
+                    sub = if (now.problem != null) listOf(now.problem) else listOf(episode.seriesName, formatAirDate(episode.airDate)),
+                    description = "Now playing: $title, ${episode.seriesName}",
+                    openLabel = "Open player",
+                )
                 // A guest's Play and Pause are their own (Decision 067): pause holds, play catches up.
                 PlayPauseButton(now, engine, filled = false, enabled = true)
             }
@@ -183,27 +179,23 @@ fun PlayerSheet(
         ) {
             // R11a: full width, no taller than 44 % of the screen, so Play stays on the first screen.
             val shown = (face as? Loadable.Ready)?.value ?: episode.seriesFace
+            val art = episode.seriesWindowArt ?: shown?.art
             NowPlayingArt(
-                episode.seriesName, episode.seriesGenre, episode.airDate?.take(4), shown,
+                art, episode.seriesName, episode.seriesGenre,
                 maxSide = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } * 0.44f,
             )
             // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
-            shown?.art?.credit?.let { ArtCredit(it, shown.art.evidence) }
+            art?.credit?.let { ArtCredit(it, art.evidence) }
             Spacer(Modifier.height(Spacing.S3.dp))
-            Text(
-                episode.seriesName,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                episodeTitle(episode),
-                style = MaterialTheme.typography.headlineSmall,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.tvFocusMark().clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
-            )
-            formatAirDate(episode.airDate)?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.fillMaxWidth()) {
+                Text(
+                    episodeTitle(episode),
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.tvFocusMark().clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
+                )
+                EventLine(listOf(episode.seriesName, formatAirDate(episode.airDate)))
             }
             now.problem?.let { problem ->
                 Text(

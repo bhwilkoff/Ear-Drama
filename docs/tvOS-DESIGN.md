@@ -231,9 +231,9 @@ The only shapes; a new one needs a new rule.
   and `.spokenAudio` session and remote commands as on iOS
   (`docs/iOS-DESIGN.md` §5.1, §5.4, §5.5).
 - **§5.2 Now Playing is full screen** (`NowPlaying_tvOS`): the episode's
-  art at 400 pt (its star, else the series', else the series'
-  typographic card, Decision 069), then the series, the title at
-  page-title size, date and network; a
+  picture at 400 pt (D3-4: the grammar's `PictureWindow`, the show's
+  picture, else its star's, else the title block, Decision 069), then the
+  title at page-title size over an `EventLine` (show, date, network); a
   progress bar with elapsed and remaining time; back 15 s, Play,
   forward 30 s, speed, the sleep timer, the system's audio output
   picker (`AVRoutePickerView`, `RoutePicker_tvOS`: the TV's own speakers,
