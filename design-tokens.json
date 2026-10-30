@@ -67,7 +67,7 @@
       "serial":       { "light": "#FFFFFF", "dark": "#F2F2F4" }
     },
     "print": {
-      "$about": "The mount a picture sits in (uniform-imagery-design section 3, D2c-3): the print ground shows wherever a contained graphic leaves room in its window, so it is the mount's paper and never 'the space the image did not cover'; the edge is the 1 px hairline around every picture window, the text color at a fixed opacity so it reads on the page and on any board. Web only until a native window consumes them (D3).",
+      "$about": "The mount a picture sits in (uniform-imagery-design section 3, D2c-3): the print ground shows wherever a contained graphic leaves room in its window, so it is the mount's paper and never 'the space the image did not cover'; the edge is the 1 px hairline around every picture window, the text color at a fixed opacity so it reads on the page and on any board. Emitted on every platform (D3-1): CSS variables, Color.printGround and printEdge in Swift, PrintGround and PrintEdge in Compose.",
       "ground": { "light": "#EDEDED", "dark": "#2A2A2E" },
       "edge":   { "light": "#131316", "dark": "#F2F2F4", "opacity": { "light": 0.18, "dark": 0.16 } }
     }
