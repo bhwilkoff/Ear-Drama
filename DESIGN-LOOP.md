@@ -199,4 +199,11 @@ describing."*
   P-1 had one face per star measured, uncommitted. Both resumed in place 2026-10-30. P-1 adds a
   floor: a marked title role wins only on a show holding at least half the person's episodes on
   their biggest show (Jack Webb stays with Dragnet).
+- 2026-10-30: P-1 merged and live (one face per star; a show named for its star first, then a
+  marked role at or above the floor; 19 implausible own-work portraits refused; build_db
+  deterministic). D3-1 merged (004f5b4): the grammar on all five platforms, Apple not yet
+  seen on a device. Running: D3-2 (Home and Browse with the A to Z shelf). Briefs say real
+  devices only: a D3-1 simulator wedged the Mac (owner: "We never use simulators").
+- Owner calls open from D3-1: one Big Shoulders cut (web's woff2 is narrower than the native
+  TTF); Android's Play button (36 dp filled circle) vs web's plain icon.
 - Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
