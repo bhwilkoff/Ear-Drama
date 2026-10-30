@@ -218,14 +218,25 @@ class ATV:
         r = self._run(f"launch_app={bundle}", timeout=40)
         return r.returncode == 0
 
-    def turn_off_verified(self, settle=4):
-        """Power off and READ IT BACK. (ok, state)."""
+    def turn_off_verified(self, tries=3, polls=4):
+        """Power off, POLLED like wake, and READ IT BACK from the TV. (ok, state).
+        A turn_off the TV has not honored yet is sent again; the last state read is
+        reported if it never goes off."""
         if not self.available:
             return False, self.why_unavailable()
-        self._run("turn_off", timeout=40)
-        time.sleep(settle)
-        state = self.power_state()
-        return state == "off", state or "unknown"
+        state = None
+        for attempt in range(tries):
+            try:
+                self._run("turn_off", timeout=40)
+            except subprocess.SubprocessError as e:
+                print(f"[atv] turn_off failed: {e}")
+            for _ in range(polls):
+                time.sleep(3)
+                state = self.power_state()
+                if state == "off":
+                    return True, "off"
+            print(f"[atv] TV still {state or 'unknown'} after turn_off (attempt {attempt + 1})")
+        return False, state or "unknown"
 
 
 # ── a launch that survives the bench's known failure modes ───────────────────
