@@ -350,16 +350,17 @@
     if (!parts.length) return null;
     return el('span', { class: `g-event ${cls}` }, ...parts.flatMap((p, i) => [i ? ' ' : null, el('span', {}, p.replace(/ \u00b7$/, '\u00a0\u00b7'))]));
   }
-  /** The show tile: window, name, run strip, facts, on the genre's board. */
-  function showTile(s) {
+  /** The show tile: window, name, run strip, facts, on the genre's board. `facts` replaces the two
+      default facts (Home's night tiles say the episode, not the run); `href` replaces the series link. */
+  function showTile(s, { href = null, facts = null } = {}) {
     const eps = typeof s.episodes === 'number' ? s.episodes : null;
+    const lines = facts || [years(s.first, s.last) || 'Undated', eps !== null ? plural(eps, 'episode', 'episodes') : null];
     return el('li', { class: 'g-tile-li' },
-      el('a', { class: 'g-tile', href: `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
+      el('a', { class: 'g-tile', href: href || `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
         pictureWindow(s, 200),
         el('span', { class: 'g-name', dataset: { step: String(API.nameStep(s.name)) } }, s.name),
         runStrip(s.first, s.last),
-        el('span', { class: 'g-facts caption' }, el('span', {}, years(s.first, s.last) || 'Undated'),
-          eps !== null ? el('span', {}, plural(eps, 'episode', 'episodes')) : null)));
+        el('span', { class: 'g-facts caption' }, ...lines.filter(Boolean).map(t => el('span', {}, t)))));
   }
   /** The head board (series, episode, ear drama): the window, the kicker, the name, the facts, and
       the run strip full width under both. Built in D3-1; the pages adopt it in D3-3. */
@@ -562,53 +563,121 @@
     const follows = Store.follows();
     if (follows.length) body.append(shelf('Following', follows, 'follow'));
 
-    // The catalog's listenShelves, in its order (contract §5.1).
+    // The day board and the night, then the most downloaded shows (WEB-DESIGN §6.4c).
     const today = new Date();
-    const shelvesBox = el('div');
-    body.append(shelvesBox);
-    load(shelvesBox, async () => {
-      const [d] = await Promise.all([API.listenShelves(today), API.manifest().then(m => { manifest = m; })]);
-      return d;
-    }, (shelves) => {
-      if (!shelves.length) {
-        shelvesBox.append(stateBox('empty', { text: 'Nothing in the catalog yet.' }));
+    const homeBox = el('div');
+    body.append(homeBox);
+    load(homeBox, async () => {
+      const [rows, idx] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(),
+        API.manifest().then(m => { manifest = m; })]);
+      return { rows, idx };
+    }, ({ rows, idx }) => {
+      const shows = idx.rows.filter(s => API.isShow(s.episodes));
+      if (!rows.length && !shows.length) {
+        homeBox.append(stateBox('empty', { text: 'Nothing in the catalog yet.' }));
         return;
       }
-      shelves.forEach((s, i) => {
-        if (s.rule === 'onThisDay') {
-          shelvesBox.append(episodeShelf('This day in radio', s.rows, 'day', monthDay.format(today)));
-        } else if (s.rule === 'mostDownloaded') {
-          shelvesBox.append(episodeShelf('Most downloaded', s.rows, 'popular'));
-        } else if (s.rule === 'genreFirsts') {
-          shelvesBox.append(episodeShelf(genreLabel(s.genre), s.rows, `genre-${i}`));
-        } else {
-          shelvesBox.append(shelf(genreLabel(s.genre), s.series, `genre-${i}`));
-        }
-      });
+      if (rows.length) homeBox.append(dayAndNight(rows, idx, today));
+      if (shows.length) {
+        const key = s => s.sortName || s.name;
+        const top = [...shows].sort(API.byDownloads((a, b) => key(a).localeCompare(key(b), 'en', { sensitivity: 'base' }))).slice(0, 12);
+        const h = el('h2', { class: 'section-header', id: 'popular-h' }, 'Most downloaded');
+        const ul = el('ul', { class: 'rail g-rail', 'aria-labelledby': 'popular-h' });
+        top.forEach(s => ul.append(showTile(s)));
+        homeBox.append(el('section', { class: 'shelf' },
+          el('div', { class: 'block-head' }, h, el('a', { class: 'caption', href: '?view=browse' }, `All ${num.format(shows.length)} shows`)), ul));
+      }
     });
   }
 
-  function genreLabel(g) { return (manifest && manifest.genreNames && manifest.genreNames[g]) || g; }
-
-  /** An episode shelf: the first six rows, then the rest on request. */
-  function episodeShelf(title, rows, idBase, aside) {
+  /** The day board (the years this date was on the air, stacked by genre) and the night picked on it. */
+  function dayAndNight(rows, idx, today) {
+    const dy = API.dayYears(rows, (r) => (idx.byKey.get(r.series) || {}).genre);
     const box = el('div');
-    const first = 6;
-    const list = episodeList(rows.slice(0, first), { showSeries: true });
-    box.append(list);
-    if (rows.length > first) {
-      const more = el('button', { type: 'button', class: 'btn btn-ghost' }, `Show all ${num.format(rows.length)}`);
-      more.addEventListener('click', () => {
-        rows.slice(first).forEach(e => list.append(episodeRow(e, { showSeries: true })));
-        paintProgress(list);
-        more.remove();
-      });
-      box.append(more);
+    if (!dy.years.length) return box;
+    const first = Math.min(1930, dy.years[0].year), last = Math.max(dy.years[dy.years.length - 1].year, first + 1);
+    const W = (last - first + 1) * 10, H = 64, top = Math.max(...dy.years.map(y => y.total));
+    const byYear = new Map(dy.years.map(y => [y.year, y]));
+    const night = el('section', { class: 'block g-night' });
+    const axisSel = el('span', {}, '');
+    const svg = svgEl('svg', { class: 'g-years', viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none', role: 'radiogroup',
+      'aria-label': `Surviving broadcasts on ${monthDay.format(today)} by year` });
+    const bars = new Map();
+    for (let y = first; y <= last; y++) {
+      const x = (y - first) * 10, o = byYear.get(y);
+      if (!o) { svg.append(svgEl('rect', { class: 'g-yr-zero', x, y: H - 1, width: 8, height: 1 })); continue; }
+      const g = svgEl('g', { class: 'g-yr', role: 'radio', 'aria-checked': 'false', tabindex: '-1', 'data-year': y,
+        'aria-label': `${y}, ${plural(o.total, 'broadcast', 'broadcasts')}` });
+      g.append(svgEl('rect', { class: 'g-yr-hit', x: x - 1, y: 0, width: 10, height: H }));
+      let t = H;
+      for (const k of [...API.genreOrder, '']) {
+        const n = o.genres[k]; if (!n) continue;
+        const h = (n / top) * (H - 4);
+        t -= h;
+        g.append(svgEl('rect', { class: 'g-yr-bar', 'data-genre': k, x, y: t.toFixed(1), width: 8, height: h.toFixed(1) }));
+      }
+      g.append(svgEl('rect', { class: 'g-yr-sel', x: x - 1.5, y: (t - 1.5).toFixed(1), width: 11, height: (H - t + 1.5).toFixed(1), rx: 1 }));
+      bars.set(y, g);
+      svg.append(g);
     }
-    const h = el('h2', { class: 'section-header', id: `${idBase}-h` }, title);
-    return el('section', { class: 'block', 'aria-labelledby': `${idBase}-h` },
-      aside ? el('div', { class: 'block-head' }, h, el('span', { class: 'caption' }, aside)) : h, box);
+    const select = (y, focus) => {
+      bars.forEach((g, k) => { g.setAttribute('aria-checked', String(k === y)); g.setAttribute('tabindex', k === y ? '0' : '-1'); });
+      axisSel.textContent = String(y);
+      paintNight(y);
+      if (focus) bars.get(y).focus();
+    };
+    const ys = [...bars.keys()];
+    svg.addEventListener('click', (e) => {
+      const g = e.target.closest('.g-yr');
+      if (g) select(+g.dataset.year);
+    });
+    svg.addEventListener('keydown', (e) => {
+      const g = e.target.closest('.g-yr');
+      if (!g) return;
+      const i = ys.indexOf(+g.dataset.year);
+      const next = { ArrowRight: ys[i + 1], ArrowDown: ys[i + 1], ArrowLeft: ys[i - 1], ArrowUp: ys[i - 1], Home: ys[0], End: ys[ys.length - 1] }[e.key];
+      if (next !== undefined) { e.preventDefault(); select(next, true); }
+      else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); select(ys[i]); }
+    });
+    const facts = [plural(dy.count, 'surviving broadcast', 'surviving broadcasts'), plural(dy.years.length, 'year', 'years')];
+    const board = el('section', { class: 'g-day', 'aria-labelledby': 'day-h' },
+      el('p', { class: 'g-kicker caption' }, 'This day in radio'),
+      el('h2', { class: 'view-heading g-day-date', id: 'day-h' }, monthDay.format(today)),
+      el('p', { class: 'caption' }, el('span', { class: 'nw' }, `${facts[0]} ·`), ' ', el('span', { class: 'nw' }, facts[1])),
+      el('div', { class: 'g-years-wrap' }, svg,
+        el('div', { class: 'g-axis-labels caption tabular', 'aria-hidden': 'true' }, el('span', {}, String(first)), axisSel, el('span', {}, String(last)))),
+      el('ul', { class: 'g-legend caption' }, ...dy.genres.map(g =>
+        el('li', { dataset: { genre: g } }, el('i', { 'aria-hidden': 'true' }), genreLabel(g)))));
+    const paintNight = (y) => {
+      const ofYear = rows.filter(r => r.date && r.date.startsWith(String(y)));
+      const nt = API.nightShows(ofYear, (r) => idx.byKey.get(r.series));
+      const all = nt.shows;
+      const draw = (n) => {
+        const ul = el('ul', { class: 'g-grid' });
+        all.slice(0, n).forEach(r => {
+          const s = idx.byKey.get(r.series);
+          ul.append(showTile(s, { href: `?item=${encodeURIComponent(r.id)}`, facts: [epTitle(r), fmtLength(r.length)] }));
+        });
+        return ul;
+      };
+      const h = el('h2', { class: 'section-header', id: 'night-h' }, `${monthDay.format(today)}, ${y}`);
+      night.replaceChildren(el('div', { class: 'block-head' }, h,
+        nt.singles ? el('span', { class: 'caption' }, plural(nt.singles, 'single recording', 'single recordings')) : null));
+      if (!all.length) return;
+      let list = draw(6);
+      night.append(list);
+      if (all.length > 6) {
+        const more = el('button', { type: 'button', class: 'btn btn-ghost' }, `All ${num.format(all.length)} shows that night`);
+        more.addEventListener('click', () => { const next = draw(all.length); list.replaceWith(next); list = next; more.remove(); });
+        night.append(more);
+      }
+    };
+    box.append(board, night);
+    select(dy.peak);
+    return box;
   }
+
+  function genreLabel(g) { return (manifest && manifest.genreNames && manifest.genreNames[g]) || g; }
 
   /* ================================================================
      RADIO: Tonight in 19xx on the one clock (R9, R10, R14; contract §8)
@@ -869,12 +938,14 @@
   /* Browse lists series and plays together (WEB-DESIGN §4.3). A play's record carries no genre,
      decade, or network, so any of those narrows to series; "Has a script" keeps what carries one:
      the plays, and a series with an episode that links one (its index row's `scripts`). */
-  function browseFilter(rows, f, skip) {
-    return rows.filter(s => (skip === 'kind' || !f.kind || s.kind === f.kind)
-      && (skip === 'script' || !f.script || s.hasScript)
-      && (skip === 'genre' || !f.genre || s.genre === f.genre)
-      && (skip === 'decade' || !f.decade || decadeOf(s) === f.decade)
-      && (skip === 'network' || !f.network || networksOf(s).includes(f.network)));
+  function browseFilter(rows, f, ...skips) {
+    const on = (k) => !skips.includes(k);
+    return rows.filter(s => (on('kind') ? !f.kind || s.kind === f.kind : true)
+      && (s.kind === 'plays' || !!f.singles === !API.isShow(s.episodes))
+      && (on('script') ? !f.script || s.hasScript : true)
+      && (on('genre') ? !f.genre || s.genre === f.genre : true)
+      && (on('decade') ? !f.decade || decadeOf(s) === f.decade : true)
+      && (on('network') ? !f.network || networksOf(s).includes(f.network) : true));
   }
 
   /** A castable script as a Browse row (contract: castable-scripts.json, read through API). */
@@ -910,7 +981,7 @@
     setTitle('Browse');
     const kind = ['series', 'plays'].includes(r.p.get('kind')) ? r.p.get('kind') : '';
     const f = { kind, script: r.p.get('script') === '1', genre: r.p.get('genre') || '', decade: r.p.get('decade') || '',
-                network: r.p.get('network') || '', sort: r.p.get('sort') || 'popular' };
+                network: r.p.get('network') || '', sort: r.p.get('sort') || 'popular', singles: r.p.get('singles') === '1' };
     const body = $('browse-body');
     $('f-sort').value = f.sort;
     $('f-script').checked = f.script;
@@ -949,25 +1020,62 @@
       };
       list.sort(sorters[f.sort] || sorters.popular);
       const plays = list.filter(s => s.kind === 'plays').length;
-      $('browse-count').textContent = [list.length - plays ? plural(list.length - plays, 'series', 'series') : null,
-        plays ? plural(plays, 'play', 'plays') : null].filter(Boolean).join(' · ') || plural(0, 'series', 'series');
+      const series = list.length - plays;
+      const here = (over) => {
+        const p = new URLSearchParams({ view: 'browse' });
+        const v = { ...f, ...over };
+        for (const k of ['kind', 'genre', 'decade', 'network', 'sort']) if (v[k] && !(k === 'sort' && v[k] === 'popular')) p.set(k, v[k]);
+        if (v.script) p.set('script', '1');
+        if (v.singles) p.set('singles', '1');
+        return `?${p}`;
+      };
+      const other = browseFilter(rows, { ...f, singles: !f.singles }).filter(s => s.kind === 'series').length;
+      const countLine = $('browse-count');
+      countLine.replaceChildren(...[
+        el('span', { class: 'g-count nw' }, plural(series, f.singles ? 'single recording' : 'show', f.singles ? 'single recordings' : 'shows')),
+        plays ? el('span', { class: 'caption nw' }, plural(plays, 'play', 'plays')) : null,
+        other ? el('a', { class: 'caption nw', href: here({ singles: !f.singles }) },
+          f.singles ? plural(other, 'show', 'shows') : plural(other, 'single recording', 'single recordings')) : null].filter(Boolean));
+
+      const fld = API.decadeField(browseFilter(rows, f, 'genre', 'decade').filter(s => s.kind === 'series'));
+      const sectionHead = (title, right) => el('div', { class: 'block-head' }, el('h2', { class: 'section-header' }, title), right);
+      const fieldBox = fld.genres.length ? el('section', { class: 'g-field-sec', 'aria-label': 'Shows by decade and genre' },
+        sectionHead('By decade and genre', fld.none ? el('span', { class: 'caption' }, `${num.format(fld.none)} with no genre or date`) : null),
+        el('div', { class: 'g-field', role: 'grid', style: `--n: ${fld.decades.length}` },
+          el('span', { class: 'g-field-corner' }),
+          ...fld.decades.map(d => el('span', { class: 'g-field-head caption tabular', role: 'columnheader', 'aria-label': `${d}s` }, `\u2019${String(d % 100).padStart(2, '0')}s`)),
+          ...fld.genres.flatMap(g => [
+            el('span', { class: 'g-field-label caption', dataset: { genre: g } }, el('i', { 'aria-hidden': 'true' }), el('span', {}, genreLabel(g))),
+            ...fld.decades.map(d => {
+              const n = fld.count(g, d), side = API.fieldSide(n, fld.max);
+              if (!n) return el('span', { class: 'g-field-cell', role: 'gridcell' });
+              const on = f.genre === g && f.decade === String(d);
+              return el('a', { class: 'g-field-cell', role: 'gridcell', dataset: { genre: g }, href: here({ genre: g, decade: String(d) }),
+                'aria-label': `${genreLabel(g)}, ${d}s: ${plural(n, 'show', 'shows')}`, 'aria-current': on ? 'true' : null },
+                el('span', { class: 'g-field-mark', style: `width: ${side}px; height: ${side}px` }), el('span', { class: 'caption tabular' }, String(n)));
+            })]))) : null;
+
       if (!list.length) {
         const clear = f.sort === 'popular' ? '?view=browse' : `?view=browse&sort=${encodeURIComponent(f.sort)}`;
         body.append(stateBox('empty', { text: 'Nothing matches these filters.', action: { label: 'Clear filters', href: clear } }));
         return;
       }
-      const ul = el('ul', { class: 'series-list' });
-      body.append(ul);
+      const SORT_TITLE = { popular: 'Most downloaded first', name: 'A to Z', count: 'Most episodes', first: 'Oldest first' };
+      const grid = el('ul', { class: 'g-grid', 'aria-label': SORT_TITLE[f.sort] || SORT_TITLE.popular });
       let shown = 0;
       const more = el('button', { type: 'button', class: 'btn btn-ghost' }, 'Show more');
+      const tileOf = (s) => (s.kind === 'plays'
+        ? showTile({ key: s.key, name: s.name, genre: '', first: null, picture: null }, { href: `?play=${encodeURIComponent(s.key)}`, facts: [s.author, plural(PlaysCore.castParts(s.script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')] })
+        : showTile(s));
       const page = () => {
-        list.slice(shown, shown + PAGE).forEach(s => ul.append(s.kind === 'plays' ? playRow(s.script) : seriesRow(s)));
+        list.slice(shown, shown + PAGE).forEach(s => grid.append(tileOf(s)));
         shown += PAGE;
         if (shown >= list.length) more.remove();
       };
       more.addEventListener('click', page);
       page();
-      if (shown < list.length) body.append(more);
+      const results = el('section', { class: 'g-results' }, sectionHead(SORT_TITLE[f.sort] || SORT_TITLE.popular), grid, shown < list.length ? more : null);
+      body.append(el('div', { class: `g-browse${fieldBox ? ' has-field' : ''}` }, fieldBox, results));
     });
   }
 
@@ -978,6 +1086,7 @@
       if (v && !(k === 'sort' && v === 'popular')) p.set(k, v);
     }
     if ($('f-script').checked) p.set('script', '1');
+    if (new URLSearchParams(location.search).get('singles') === '1') p.set('singles', '1');
     navigate(`?${p}`, true);
   });
 

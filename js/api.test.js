@@ -106,6 +106,40 @@ test('grammar: the title block, the type step, the window, the event line and th
   assertEq(JSON.stringify(API.gradeOf({ grade: [1.1, -0.05] })), JSON.stringify({ k: 1.1, o: -0.05 }), 'a published grade replaces it');
 });
 
+test('home and browse: the show line, the day by year, the night, the decade field (WEB-DESIGN §6.4c golden cases)', () => {
+  assertEq(API.isShow(5), true, 'five episodes is a show');
+  assertEq(API.isShow(4), false, 'control: four is a single recording');
+  assertEq(API.isShow(null), false, 'control: no count is not a show');
+  const rows = [
+    { id: 'a|1944-10-29', date: '1944-10-29', title: 'Beloved Enemy', series: 'a' },
+    { id: 'a2|1944-10-29', date: '1944-10-29', title: 'Beloved  enemy!', series: 'a' },
+    { id: 'b|1944-10-29', date: '1944-10-29', title: 'On Train', series: 'b' },
+    { id: 'c|1944-10-29', date: '1944-10-29', title: 'Odd One', series: 'c' },
+    { id: 'd|1938-10-29', date: '1938-10-29', title: 'Early', series: 'd' },
+    { id: 'e|', date: null, title: 'No date', series: 'd' }];
+  const sr = { a: { genre: 'drama', episodes: 40 }, b: { genre: 'comedy', episodes: 9 }, c: { genre: '', episodes: 2 }, d: { genre: 'drama', episodes: 6 } };
+  const dy = API.dayYears(rows, (r) => sr[r.series].genre);
+  assertEq(JSON.stringify(dy.years.map(y => [y.year, y.total])), JSON.stringify([[1938, 1], [1944, 4]]), 'broadcasts per year, an undated row left off the strip');
+  assertEq(dy.peak, 1944, 'the peak year is the one with most');
+  assertEq(dy.count, 5, 'the count is what the strip holds');
+  assertEq(JSON.stringify(dy.years[1].genres), JSON.stringify({ drama: 2, comedy: 1, '': 1 }), 'a year stacked by genre, no genre as the empty key');
+  assertEq(JSON.stringify(dy.genres), JSON.stringify(['drama', 'comedy']), 'the legend lists genres seen, in the fixed order, never the empty one');
+  assertEq(API.dayYears([{ date: '1940-01-01', title: 'x', series: 'd' }, { date: '1941-01-01', title: 'y', series: 'd' }], () => '').peak, 1940, 'control: a tie goes to the earlier year');
+  const night = API.nightShows(rows.filter(r => (r.date || '').startsWith('1944')), (r) => sr[r.series]);
+  assertEq(JSON.stringify(night.shows.map(r => r.id)), JSON.stringify(['a|1944-10-29', 'b|1944-10-29']), 'a copy under the same title folds once; a single is not a show');
+  assertEq(night.singles, 1, 'singles are counted');
+  const f = API.decadeField([{ genre: 'drama', first: '1944-01-01' }, { genre: 'drama', first: '1949' }, { genre: 'comedy', first: '1951' },
+    { genre: '', first: '1950' }, { genre: 'news', first: null }]);
+  assertEq(JSON.stringify(f.decades), JSON.stringify([1940, 1950]), 'decades from the first year');
+  assertEq(f.count('drama', 1940), 2, 'a cell counts its shows');
+  assertEq(f.none, 2, 'no genre and no first year are counted, not drawn');
+  assertEq(JSON.stringify(f.genres), JSON.stringify(['drama', 'comedy']), 'rows only for genres that have a cell');
+  assertEq(API.fieldSide(98, 98), 32, 'the biggest cell is the full side');
+  assertEq(API.fieldSide(1, 98), 6, 'a one-show cell keeps the floor');
+  assertEq(API.fieldSide(0, 98), 0, 'control: an empty cell draws nothing');
+  assertEq(API.fieldSide(49, 98), 23, 'area carries the count (the square root)');
+});
+
 test('transcript fetches the URL once, as text, and never caches a failure (DECISIONS 058)', async () => {
   const real = globalThis.fetch;
   const seen = [];

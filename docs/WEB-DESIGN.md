@@ -641,6 +641,43 @@ web app follows today.
   8 px edge, at least 200 px tall, 240 px from 768 px): the designed
   fallback, never a gray box. A play's row in Browse and Search leads
   with its tile (the title's letter; plays carry no genre).
+- **§6.4c Home and Browse in direction D** (owner, 2026-10-29: *"Having
+  more shows is better, so 5."*; *"I like the bulky blocks and colors of
+  The Sleeve and I like the data visualization options of the Almanac."*;
+  D3-2; the shared text for iOS-, macOS-, tvOS- and ANDROID-DESIGN R11c).
+  Amends §4.3 (Browse's list) and §4.1 (Home's shelves); where it differs,
+  this rule wins. **A show is a series of at least 5 episodes**
+  (`API.isShow`); a shorter one is a single recording, counted and listed
+  behind its own link, never in a shelf. **Home**: Continue listening and
+  Following as before; the **day board** (neutral `surfaceAlt`: the kicker
+  "This day in radio", the date, the count of surviving broadcasts and
+  years, a strip of that date's broadcasts by year, each bar stacked by
+  genre in the genre marks in a fixed order, the selected year outlined,
+  and a legend of the genres seen); **that night** (the selected year,
+  the peak by default, picked by a radio group of bars: tap, or arrow keys
+  with one tab stop): show tiles for the shows on the air that night, a
+  copy under the same title folded once, each tile's facts the episode and
+  its length, six and then "All N shows that night", the single recordings
+  counted as a fact; **Most downloaded**: 12 show tiles in a rail, "All N
+  shows" to Browse. The catalog's episode shelves (onThisDay rows,
+  mostDownloaded rows, genreFirsts) no longer draw on Home; their genre
+  work is Browse's field. **Browse**: every filter and sort stays; a count
+  line ("2,036 shows", then "8,605 single recordings" as a link); the
+  **decade by genre field** (a square per cell in the genre mark, its side
+  the square root of the cell's share of the biggest, 6 to 32 px, the
+  count beneath, each cell a link applying genre and decade, counts over
+  the shows passing the other filters; "N with no genre or date" is a
+  fact); the results as a tile grid whose rows share their slot tracks
+  (`subgrid`), headed by the sort ("Most downloaded first", "A to Z",
+  "Most episodes", "Oldest first"); A to Z is the `shelf` of the
+  prototype, the catalog as it is (most of it title blocks). From 1024 px
+  the field sits beside the grid. The rules are `API.isShow`, `dayYears`,
+  `nightShows`, `decadeField`, `fieldSide`, golden-tested in
+  `js/api.test.js` and mirrored on every platform. Fit: no sideways
+  scroll, no overflow, no broken word at 320, 375, 390 and 430 px, light
+  and dark (checked in headless Chrome with a control that fails on a
+  62-letter name). "Has a script" is a bordered control like the selects,
+  filled when on (iPad Pro frame, 2026-10-30: it drew as bare text).
 - **§6.4b One grammar for every level of content** (owner, 2026-10-29:
   *"the design is still not uniform for all different levels of content
   (some with images, some without, some with more information, some with
