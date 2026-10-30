@@ -28,7 +28,12 @@ final class DownloadsPlaceUITests: DeviceTestCase {
         let rm = app.buttons["Remove Download"]
         XCTAssertTrue(rm.waitForExistence(timeout: 3), "swipe action")
         rm.tap()
-        XCTAssertTrue(app.staticTexts["No downloads"].waitForExistence(timeout: 10), "removed; the place is empty")
+        // Another test's downloads may still be listed (2026-10-30: a series download's two
+        // episodes), so the check is that this episode left, not that the place is empty.
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: episode)
+        waitForExpectations(timeout: 10)
+        XCTAssertFalse(episode.exists, "removed; the episode left the place")
         shot(app, "03-removed")
     }
 }

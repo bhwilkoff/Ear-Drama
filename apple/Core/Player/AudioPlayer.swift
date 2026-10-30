@@ -210,13 +210,21 @@ final class AudioPlayer {
         let asset = AVURLAsset(url: source.url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.audioTimePitchAlgorithm = .timeDomain
+        let serial = ObjectIdentifier(playerItem).hashValue & 0xFFF
+        diag("open #\(serial) \(source.isLocal ? "local" : "net") rank \(recording.rank) start \(start.map { Int($0) } ?? -1) rate \(rate ?? 0)")
         itemStatusObservation = playerItem.observe(\.status, options: [.new]) { @Sendable [weak self] observed, _ in
+            let status = observed.status.rawValue
+            let detail = Self.diagnoses && observed.status == .failed ? Self.diagnosis(observed) : ""
+            Task { @MainActor in self?.diag("status #\(serial) \(status) \(detail)") }
             let failed = observed.status == .failed
             let message = observed.error?.localizedDescription
             var problem = Connectivity.playerProblem(observed.error)
             if failed, Self.diagnoses { problem += " " + Self.diagnosis(observed) }
             let ready = observed.status == .readyToPlay
+            let observedID = ObjectIdentifier(observed)
             Task { @MainActor in
+                // A late report from an item a retry already replaced must not replace the retry.
+                guard let current = self?.player.currentItem, ObjectIdentifier(current) == observedID else { return }
                 if ready { self?.recovery?.loaded() }
                 guard failed else { return }
                 print("[AudioPlayer] item failed: \(message ?? "unknown")")
@@ -244,6 +252,7 @@ final class AudioPlayer {
         }
         let step = plan.failed(jitter: Double.random(in: 0.5...1.5))
         recovery = plan
+        diag("step \(step) elapsed \(Int(elapsed))")
         let token = loadToken
         switch step {
         case .giveUp:
@@ -363,7 +372,14 @@ final class AudioPlayer {
 
     private func seekExactly(to seconds: Double) {
         elapsed = seconds
-        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+        diag("seek \(Int(seconds)) item \(player.currentItem?.status.rawValue ?? -1)")
+        player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { @Sendable [weak self] finished in
+            Task { @MainActor in
+                guard let self, Self.diagnoses else { return }
+                let now = self.player.currentTime().seconds
+                self.diag("seeked \(Int(seconds)) finished \(finished) now \(now.isFinite ? Int(now) : -1)")
+            }
+        }
         publishNowPlaying()
     }
 
@@ -442,7 +458,7 @@ final class AudioPlayer {
     private func tick() {
         let now = Date()
         let seconds = player.currentTime().seconds
-        if seconds.isFinite { elapsed = seconds }
+        elapsed = LoadRecovery.clock(reading: seconds, itemFailed: player.currentItem?.status == .failed, shown: elapsed)
         if let d = player.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
         if Self.diagnoses { diagLine = diagnosisLine() }
 
@@ -461,6 +477,7 @@ final class AudioPlayer {
     }
 
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
+        diag("tcs \(status.rawValue) \(player.reasonForWaitingToPlay?.rawValue ?? "")")
         isPlaying = status != .paused
         isBuffering = status == .waitingToPlayAtSpecifiedRate
         if status == .paused { saveProgress() }
@@ -518,6 +535,15 @@ final class AudioPlayer {
         #endif
     }()
 
+    @ObservationIgnored private var diagEvents: [String] = []
+    private func diag(_ event: String) {
+        guard Self.diagnoses else { return }
+        let line = String(format: "%.1f ", Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1000)) + event
+        print("[PlaybackDiag] \(line)")
+        diagEvents.append(line)
+        if diagEvents.count > 10 { diagEvents.removeFirst() }
+    }
+
     private func diagnosisLine() -> String {
         let status: String
         switch player.timeControlStatus {
@@ -531,7 +557,7 @@ final class AudioPlayer {
             let t = r.timeRangeValue
             return "\(Int(t.start.seconds))+\(Int(t.duration.seconds))"
         }.joined(separator: ",")
-        return "diag \(status) rate \(player.rate) item \(item.status.rawValue) keepUp \(item.isPlaybackLikelyToKeepUp) empty \(item.isPlaybackBufferEmpty) t \(Int(item.currentTime().seconds)) dur \(Int(item.duration.seconds.isFinite ? item.duration.seconds : -1)) loaded [\(ranges)]"
+        return diagEvents.joined(separator: " | ") + " || diag \(status) rate \(player.rate) item \(item.status.rawValue) keepUp \(item.isPlaybackLikelyToKeepUp) empty \(item.isPlaybackBufferEmpty) t \(Int(item.currentTime().seconds)) dur \(Int(item.duration.seconds.isFinite ? item.duration.seconds : -1)) loaded [\(ranges)]"
     }
 
     nonisolated static func diagnosis(_ item: AVPlayerItem) -> String {

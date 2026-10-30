@@ -16,8 +16,10 @@ final class SeekUITests: DeviceTestCase {
             guard app.sliders["Position"].waitForExistence(timeout: 30) else {
                 XCTFail("no player for \(id)"); continue
             }
+            // The clock shows the resume point before the item is ready, so wait for it to move.
             let started = Date()
-            while elapsed(app) == 0, Date().timeIntervalSince(started) < 30 { usleep(250_000) }
+            let first = elapsed(app)
+            while elapsed(app) <= first, Date().timeIntervalSince(started) < 45 { usleep(250_000) }
             print("SEEK START \(id) clock moving after \(String(format: "%.1f", Date().timeIntervalSince(started)))s")
             let remaining = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '-'")).firstMatch
             print("SEEK DURATION \(id) remaining label \(remaining.exists ? remaining.label : "none") at clock \(elapsed(app))")
@@ -30,8 +32,9 @@ final class SeekUITests: DeviceTestCase {
                 app.sliders["Position"].adjust(toNormalizedSliderPosition: target)
                 sleep(6)
                 let a = elapsed(app); sleep(3); let b = elapsed(app)
+                let diag = app.staticTexts["PlaybackDiag"]
+                print("SEEK DIAG \(id) at \(target) clock \(a)->\(b): \(diag.exists ? diag.label : "no diag")")
                 if b <= a {
-                    let diag = app.staticTexts["PlaybackDiag"]
                     print("SEEK STALL \(id) at \(target): \(diag.exists ? diag.label : "no diag")")
                     shot(app, "stall-\(id.prefix(10))-\(target)")
                     sleep(10)
