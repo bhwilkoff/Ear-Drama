@@ -1,23 +1,17 @@
-/* Direction D: The Company's pictures, The Sleeve's boards, The Almanac's data.
-   uniform-imagery-design (one crop, one gray grade, one mount on the genre hue),
-   catalog-experience-design, mobile-first-density-design; On Air (Decision 064). */
+/* Direction D, D2c-3: one grammar for every level of content (catalog-experience-design rule 11).
+   Objects stand on boards (--genre-board, one band per mode) and everything on a board takes
+   --genre-on; marks (strips, legend keys, a part's face) carry the hues; pictures sit in one window
+   with the print mount (--color-print-ground, --color-print-edge). No card-edge stripes. */
 
-/* Fit rules: a word never breaks inside itself; headings balance; text in a
-   paragraph avoids a stray last word. The fit gate (shoot.mjs --fit) checks them. */
+/* Fit rules: a word never breaks inside itself; headings balance; text avoids a stray last word.
+   The fit gate (shoot.mjs --fit) checks them. */
 * { overflow-wrap: normal; word-break: normal; hyphens: manual; }
 h1, h2, h3, .board-name, .tile-name, .chip-board { text-wrap: balance; }
-p, .tile-sub, .row-sub { text-wrap: pretty; }
+p, .tile-facts, .row-sub { text-wrap: pretty; }
 .nw { white-space: nowrap; }
 img { display: block; }
-
-/* The print ground and edge (uniform-imagery-design §3); proposed as tokens. */
-:root { --print-ground: #EDEDED; --print-edge: rgba(19, 19, 22, 0.18); --page-pad: var(--space-4); }
-html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 244, 0.16); }
-@media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 244, 0.16); } }
-[data-genre=""], .neutral { --genre-accent: var(--color-surface-alt); --genre-board: var(--color-surface-alt); --genre-on: var(--color-text); }
-/* D2c-1 (Decision 064, docs/research/palette/surfaces.md): a block that carries words is a BOARD (--genre-board, one
-   lightness band per mode, deeper and quieter in dark); a small square or strip is a MARK (--genre-accent). Everything
-   on a board takes the one on-board color (--genre-on): names, facts, run strips, a card's edge, a button. */
+:root { --page-pad: var(--space-4); --win-r: 4px; }
+[data-genre=""], .neutral { --genre-accent: var(--color-text-muted); --genre-board: var(--color-surface-alt); --genre-on: var(--color-text); }
 
 .ed-main { padding-bottom: 168px; }
 .page-h { margin: var(--space-2) 0 var(--space-4); }
@@ -26,77 +20,80 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .sec-h h2 { min-width: 0; }
 .sec-h .l5, .sec-h a { flex: none; white-space: nowrap; }
 .more { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+.kicker { font: 600 var(--type-caption-size)/1.2 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; }
 
-/* ---- Pictures: one crop rule, one grade, one edge ---- */
-.pic { position: relative; display: block; overflow: hidden; aspect-ratio: 1; width: 100%; background: var(--print-ground);
-  border-radius: 4px; box-shadow: 0 0 0 1px var(--print-edge); }
-.pic img { position: absolute; max-width: none; }
-.pic.contain img { inset: 0; width: 100%; height: 100%; object-fit: contain; }
-.pic.round { border-radius: 50%; }
-.initial { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; width: 100%; border-radius: 50%;
-  background: var(--color-surface); color: var(--color-text-muted); font: 700 var(--type-page-title-size)/1 var(--font-display);
-  box-shadow: 0 0 0 1px var(--color-border); }
-.initial.sq { border-radius: var(--radius-control); background: var(--genre-board); color: var(--genre-on); box-shadow: none; }
-.original { display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--print-edge); background: var(--print-ground); max-width: 100%; height: auto; }
+/* ---- The window: one slot, three fills (the picture, a wide graphic whole, the title block) ---- */
+.win { position: relative; display: block; overflow: hidden; aspect-ratio: 1; width: 100%; align-self: start; border-radius: var(--win-r);
+  background: var(--color-print-ground); box-shadow: 0 0 0 1px var(--color-print-edge); }
+.win img { position: absolute; max-width: none; }
+.win.contain img { inset: 6%; width: 88%; height: 88%; object-fit: contain; }
+.win.round { border-radius: 50%; }
+/* The title block: the initial cut large in the display face, cropped by the window like wood type,
+   on the object's own board, in the one on-board color. */
+.win.tb { background: var(--genre-board, var(--color-surface-alt)); color: var(--genre-on, var(--color-text));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent); }
+.win svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.win.tb text { font-family: var(--font-display); font-weight: 700; fill: none; stroke: currentColor; stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
+.win.round.tb { background: var(--color-surface); color: var(--color-text-muted); box-shadow: inset 0 0 0 1px var(--color-border); }
+.tile .win.tb, .head .win.tb { box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 32%, transparent); }
 
-/* ---- The board: a block in the genre hue (The Sleeve), names in on-board text ---- */
+/* ---- The board (an object), and the head board (series, episode, ear drama) ---- */
 .board { background: var(--genre-board); color: var(--genre-on); border-radius: var(--radius-card); padding: var(--space-4); min-width: 0; }
 .board a:not(.btn) { color: inherit; }
-.board .kicker { font: 600 var(--type-caption-size)/1.2 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; }
 .board-name { font: 700 var(--type-page-title-size)/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; margin: 6px 0 4px; }
-.board .facts { font-size: var(--type-caption-size); }
-.board .bars rect.b, .tile .bars rect.b { fill: var(--genre-on); }
-.board .bars rect.z, .tile .bars rect.z { fill: var(--genre-on); opacity: 0.3; }
-.board .bars rect.b.dim, .tile .bars rect.b.dim { opacity: 0.5; }
+.board .facts, .board .credits { font-size: var(--type-caption-size); line-height: 1.35; }
+.board .credits { font-weight: 600; margin-bottom: 2px; }
+.board svg rect.b, .tile svg rect.b { fill: var(--genre-on); }
+.board svg rect.z, .tile svg rect.z { fill: var(--genre-on); opacity: 0.3; }
+.board svg rect.b.dim, .tile svg rect.b.dim { opacity: 0.5; }
 .board .axis { display: flex; justify-content: space-between; font: var(--type-caption-size)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; margin-top: 4px; }
-.hero { padding: var(--space-6) var(--space-4) var(--space-4); }
-.hero .board-name { font-size: var(--type-page-title-size); }
-.hero .run { margin-top: var(--space-4); }
-.hero .run svg { width: 100%; height: 56px; }
+.head { display: grid; grid-template-columns: 96px minmax(0, 1fr); grid-template-areas: "win text" "mark mark"; column-gap: var(--space-4); align-items: start; }
+.head > .win { grid-area: win; }
+.head > .head-text { grid-area: text; min-width: 0; }
+.head > .head-mark { grid-area: mark; margin-top: var(--space-4); }
+.head > .head-mark svg { width: 100%; height: 56px; }
+.head .board-name { margin-bottom: 6px; }
 
-/* A neutral board (the day, a station): the page's own surface, the data in the genre hues */
-.board.neutral .bars rect.b { fill: var(--genre-accent); }
+/* ---- The tile: window, name, mark, facts. Tiles in a row share their slot tracks (subgrid), so a
+   one-line name and a three-line name put both marks on one line. ---- */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-3); row-gap: 0; }
+.tile { grid-row: span 4; display: grid; grid-template-rows: subgrid; row-gap: 6px; margin-bottom: var(--space-3);
+  padding: 6px 6px 10px; border-radius: var(--radius-card); background: var(--genre-board); color: var(--genre-on); min-width: 0; }
+.tile-name { font: 700 var(--type-section-header-size)/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; padding: 4px 4px 0; align-self: start; }
+.tile-mark { padding: 0 4px; align-self: end; }
+.tile-mark svg { width: 100%; height: 18px; }
+.tile-facts { font-size: var(--type-caption-size); line-height: 1.3; padding: 0 4px; align-self: start; }
+.tile-facts > span { display: block; }
 
-/* ---- The show tile: one canonical cell (mobile-first-density-design §3) ---- */
-.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-.tile { display: flex; flex-direction: column; gap: 6px; padding: 6px 6px 10px; border-radius: var(--radius-card);
-  background: var(--genre-board); color: var(--genre-on); min-width: 0; }
-.tile-name { font: 700 var(--type-section-header-size)/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; padding: 2px 4px 0; }
-.tile-sub { font-size: var(--type-caption-size); line-height: 1.3; padding: 0 4px; }
-.tile .bars { padding: 0 4px; }
-.tile .bars svg { width: 100%; height: 18px; }
-.tile .card { display: flex; align-items: flex-end; aspect-ratio: 1; width: 100%; padding: 10px; border-radius: 4px;
-  box-shadow: inset 0 0 0 1px var(--genre-on); font: 700 var(--type-section-header-size)/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
-.tile .card span { min-width: 0; }
-
-/* ---- The face wall (The Company), graded circles on the print ground ---- */
-.wall { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4) var(--space-2); }
+/* ---- The person: window (circle), name, episodes; a row of faces shares its tracks too ---- */
+.wall { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--space-2); row-gap: 0; }
 .wall.row6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.face { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; min-width: 0; color: var(--color-text); }
-.face .pic, .face .initial { width: 100%; max-width: 88px; }
-.face .nm { font-size: var(--type-caption-size); font-weight: 600; line-height: 1.25; }
+.face { grid-row: span 3; display: grid; grid-template-rows: subgrid; row-gap: 6px; justify-items: center; text-align: center; margin-bottom: var(--space-4); min-width: 0; color: var(--color-text); }
+.face .win { max-width: 88px; }
+.face .nm { font-size: var(--type-caption-size); font-weight: 600; line-height: 1.25; align-self: start; }
 .face .n { font: var(--type-caption-size)/1 var(--font-mono); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 
-/* ---- Rows: every row carries a visual (a face, a tile, a strip or a genre block) ---- */
+/* ---- Rows: a 48 px visual, the body, the length, play; 64 px whatever they carry ---- */
 .rows { border-top: 1px solid var(--color-border); }
-.row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto 36px; align-items: center; gap: var(--space-3); padding: 10px 0;
+.row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto 36px; align-items: center; gap: var(--space-3); min-height: 64px; padding: 8px 0;
   border-bottom: 1px solid var(--color-border); color: var(--color-text); }
-.row.noplay { grid-template-columns: 48px minmax(0, 1fr) auto; }
-.row .vis { width: 48px; }
+.row.noplay { grid-template-columns: 48px minmax(0, 1fr) auto 36px; }
+.vis { display: block; width: 48px; height: 48px; }
 .row-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .row-title { font-weight: 600; }
 .row-sub { font-size: var(--type-caption-size); color: var(--color-text-muted); }
 .row-len { font: var(--type-caption-size)/1 var(--font-mono); color: var(--color-text-muted); white-space: nowrap; }
-.guest { display: flex; align-items: center; gap: 6px; font-size: var(--type-caption-size); color: var(--color-text-muted); }
-.guest .pic { width: 24px; flex: none; }
-.dblock { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--radius-control);
+.guest { display: flex; align-items: center; gap: 6px; }
+.guest .win { width: 24px; flex: none; }
+.dblock { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--win-r);
   background: var(--genre-board); color: var(--genre-on); line-height: 1; }
 .dblock b { font: 700 var(--type-section-header-size)/1 var(--font-display); }
 .dblock i { font: 600 11px/1 var(--font-body); font-style: normal; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 2px; }
-.hatch { display: block; width: 48px; height: 48px; border-radius: var(--radius-control); border: 1px dashed var(--color-text-muted);
+.hatch { border-radius: var(--win-r); box-shadow: inset 0 0 0 1px var(--color-border);
   background: repeating-linear-gradient(135deg, transparent 0 5px, var(--color-border) 5px 6px); }
-.progress { height: 3px; border-radius: 2px; background: var(--color-border); margin-top: 6px; }
+.progress { display: block; height: 3px; border-radius: 2px; background: var(--color-border); margin-top: 6px; }
 .progress span { display: block; height: 100%; border-radius: 2px; background: var(--color-primary); }
+.mini-vis { width: 40px; flex: none; }
 
 /* ---- Actions: one row that never wraps (On Air: ink primary, blue for the rest) ---- */
 .acts { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--space-2); margin-top: var(--space-4); min-width: 0; }
@@ -105,24 +102,28 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .icon-btn.way { border: 1.5px solid var(--color-border); }
 .chip-board { display: inline-block; padding: 6px 10px 5px; border-radius: var(--radius-control); background: var(--genre-board); color: var(--genre-on);
   font: 700 var(--type-section-header-size)/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
-.seg { display: flex; gap: 0; border: 1.5px solid var(--color-border); border-radius: var(--radius-control); padding: 2px; width: max-content; max-width: 100%; }
-.seg a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 16px; border-radius: 6px; color: var(--color-secondary); font-weight: 600; white-space: nowrap; }
+.seg { display: flex; border: 1.5px solid var(--color-border); border-radius: var(--radius-control); padding: 2px; width: max-content; max-width: 100%; }
+.seg a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 6px; color: var(--color-secondary); font-weight: 600; white-space: nowrap; }
 .seg a.on { background: var(--color-secondary); color: var(--color-on-secondary); }
 .count-line { margin: var(--space-3) 0 var(--space-4); display: flex; flex-wrap: wrap; gap: 4px var(--space-3); align-items: baseline; }
 
-/* ---- The day (The Almanac): years stacked by genre ---- */
-.day .board-name { font-size: var(--type-page-title-size); }
+/* ---- The day and the evening (data on the page's surface, the marks in genre hues) ---- */
+.day { background: var(--color-surface); border-radius: var(--radius-card); padding: var(--space-4); }
+.day .l1 { margin: 6px 0 4px; }
+.day .facts { font-size: var(--type-caption-size); }
 .yrs { margin-top: var(--space-4); }
 .yrs svg { width: 100%; height: 64px; overflow: visible; }
+.yrs rect.z { fill: var(--color-border); }
 .yrs rect.sel { stroke: var(--color-text); stroke-width: 1.5; fill: none; }
+.day .axis, .tl .axis { display: flex; justify-content: space-between; font: var(--type-caption-size)/1.3 var(--font-mono); color: var(--color-text-muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: var(--space-3); font-size: var(--type-caption-size); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .legend i { width: 10px; height: 10px; border-radius: 2px; background: var(--genre-accent); }
 
 /* ---- The decade-by-genre field: a square per cell, sized by its count ---- */
-.field { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 40px); gap: 4px 4px; align-items: center; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) repeat(5, 40px); gap: 4px; align-items: center; }
 .field .fh { font: var(--type-caption-size)/1 var(--font-mono); color: var(--color-text-muted); text-align: center; }
-.field .fl { display: flex; align-items: center; gap: 8px; font-size: var(--type-caption-size); font-weight: 600; line-height: 1.15; min-width: 0; }
+.field .fl { display: flex; align-items: center; gap: 8px; font-size: var(--type-caption-size); font-weight: 600; line-height: 1.15; min-width: 0; color: var(--color-text); }
 .field .fl i { flex: none; width: 10px; height: 10px; border-radius: 2px; background: var(--genre-accent); }
 .field .fc { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 52px; gap: 2px; color: var(--color-text); }
 .field .fc .sq { background: var(--genre-accent); border-radius: 3px; }
@@ -132,30 +133,31 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 .top { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--space-3); }
 .back { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 600; }
 .back svg { width: 20px; height: 20px; }
-.faces3 { display: flex; flex-wrap: nowrap; gap: var(--space-2); align-items: flex-end; margin-bottom: var(--space-4); }
-.faces3 figure { min-width: 0; flex: 0 1 auto; }
-.faces3 figcaption { font-size: var(--type-caption-size); color: var(--color-text-muted); margin-top: 4px; }
-.ep-h1 { margin: var(--space-3) 0 var(--space-2); }
+.ep-h1 { margin: var(--space-4) 0 var(--space-2); }
 .event { color: var(--color-text-muted); }
-.booklet { margin-top: var(--space-6); border-top: 1px solid var(--color-border); }
+.booklet { margin-top: var(--space-8); border-top: 1px solid var(--color-border); }
 .booklet details { border-bottom: 1px solid var(--color-border); }
 .booklet summary { display: flex; align-items: center; justify-content: space-between; min-height: 52px; cursor: pointer; font-weight: 600; list-style: none; }
 .booklet summary::-webkit-details-marker { display: none; }
 .booklet summary .l5 { font-weight: 400; }
 .cr-h { font: 600 var(--type-caption-size)/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-muted); margin: var(--space-3) 0 var(--space-2); }
 .cr { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 4px var(--space-3); align-items: center; padding: 4px 0; }
-.cr .pic, .cr .initial { width: 32px; }
-.cr .initial { font-size: 15px; }
-.cr > span:not(.initial):not(.pic) { display: block; min-width: 0; }
+.cr > span:not(.win) { display: block; min-width: 0; }
 .cr > span > span { display: block; }
+.cp { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); padding: 6px 0; }
 .rights { margin-top: var(--space-4); font-size: var(--type-caption-size); color: var(--color-text-muted); }
-.bare-card { aspect-ratio: 2 / 1; max-height: 240px; display: flex; flex-direction: column; justify-content: flex-end; }
-.bare-card .board-name { font-size: var(--type-page-title-size); }
 
-/* ---- Now Playing ---- */
+/* ---- Now Playing: one square stage; the picture whole on the print ground, or the title block ---- */
 .np { max-width: 560px; margin: 0 auto; padding: var(--space-2) var(--page-pad) 64px; }
 .np-art { display: flex; flex-direction: column; align-items: center; margin: var(--space-2) 0 var(--space-4); }
-.np-art figcaption { font-size: var(--type-caption-size); color: var(--color-text-muted); margin-top: 6px; }
+.stage { display: flex; align-items: center; justify-content: center; width: min(100%, 320px); aspect-ratio: 1; border-radius: var(--radius-card);
+  background: var(--color-print-ground); box-shadow: 0 0 0 1px var(--color-print-edge); overflow: hidden; }
+.stage-pic { display: block; max-width: 100%; max-height: 100%; height: 100%; }
+.stage-pic img { width: 100%; height: 100%; object-fit: contain; }
+.stage.tb { background: var(--genre-board); color: var(--genre-on); }
+.stage.tb svg { width: 100%; height: 100%; }
+.stage.tb text { font-family: var(--font-display); font-weight: 700; fill: none; stroke: currentColor; stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
+.np-art figcaption { font-size: var(--type-caption-size); color: var(--color-text-muted); margin-top: 8px; }
 .scrub { height: 4px; border-radius: 2px; background: var(--color-border); margin-top: var(--space-6); position: relative; }
 .scrub span { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--color-primary); }
 .scrub span::after { content: ""; position: absolute; right: -7px; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-primary); }
@@ -174,32 +176,26 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 /* ---- Stations: the evening as a timeline ---- */
 .tl { margin-top: var(--space-4); }
 .tl svg { width: 100%; height: 28px; }
-.tl rect.on { fill: var(--genre-accent); }
+.tl rect.on { fill: var(--genre-accent, var(--color-text-muted)); }
 .tl rect.known { fill: none; stroke: var(--color-text-muted); stroke-dasharray: 3 2; }
 .tl rect.gap { fill: var(--color-border); }
-.tl .axis { display: flex; justify-content: space-between; font: var(--type-caption-size)/1.3 var(--font-mono); color: var(--color-text-muted); margin-top: 4px; }
 .evenings { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
 .evening { display: block; padding: var(--space-3) var(--space-4); border-radius: var(--radius-card); background: var(--color-surface); color: var(--color-text); }
 .evening .tl { margin-top: var(--space-2); }
 .evening .tl svg { height: 18px; }
 
-/* ---- Library and the shared production ---- */
-.makes { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
-.pface { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; flex: none;
-  background: var(--hue); color: var(--on-hue); font: 700 17px/1 var(--font-display); }
+/* ---- The ear drama: the cast bill. A part's hue is its face (a mark), never a stripe. ---- */
+.pface { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; flex: none;
+  background: var(--hue); color: var(--on-hue); font: 700 19px/1 var(--font-display); }
 .pface.voice { background: transparent; border: 2px dashed var(--hue); color: var(--hue); }
-.pface.voice svg { width: 18px; height: 18px; }
-.cast-row { display: flex; gap: 6px; margin-top: var(--space-3); }
-.cast-row .pface { box-shadow: 0 0 0 2px var(--genre-board); }
-.bill { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-.bill li { border-radius: var(--radius-card); background: var(--color-surface); border-top: 6px solid var(--hue); padding: var(--space-3); display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pface.voice svg { width: 20px; height: 20px; }
+.bill { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+.bill li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); min-height: 68px;
+  padding: var(--space-3); border-radius: var(--radius-card); background: var(--color-surface); min-width: 0; }
+.bill-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .bill .part { font: 700 var(--type-section-header-size)/1 var(--font-display); letter-spacing: 0.02em; }
-.bill .by { display: flex; align-items: center; gap: 8px; font-size: var(--type-caption-size); min-width: 0; }
-.bill .by span { min-width: 0; }
-.vstrip { display: flex; gap: 1px; height: 22px; margin-top: var(--space-4); }
-.vstrip i { flex: 1; background: var(--genre-on); border-radius: 1px; }
-
-/* Part hues (as the recorder's): drama's magenta is never a part hue. */
+.bill .by { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; font-size: var(--type-caption-size); }
+.bill .take { min-height: 40px; padding: 0 12px; }
 [data-hue="mystery"] { --hue: var(--color-genre-mystery); --on-hue: var(--color-on-genre-mystery); }
 [data-hue="scifi"] { --hue: var(--color-genre-scifi); --on-hue: var(--color-on-genre-scifi); }
 [data-hue="western"] { --hue: var(--color-genre-western); --on-hue: var(--color-on-genre-western); }
@@ -208,13 +204,25 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
 [data-hue="comedy"] { --hue: var(--color-genre-comedy); --on-hue: var(--color-on-genre-comedy); }
 [data-hue="news"] { --hue: var(--color-genre-news); --on-hue: var(--color-on-genre-news); }
 
+/* The sign-in sheet: the only place the invitation asks for an account (owner ruling 2). */
+.scrim { position: fixed; inset: 0; z-index: 4; background: color-mix(in srgb, var(--color-background) 55%, transparent); }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--color-background); border-top: 1px solid var(--color-border);
+  border-radius: var(--radius-card) var(--radius-card) 0 0; padding: var(--space-6) var(--space-4) var(--space-8); display: flex; flex-direction: column; gap: var(--space-2); }
+.sheet-h { font: 700 var(--type-page-title-size)/1 var(--font-display); letter-spacing: 0.02em; }
+.sheet-acts { flex-direction: column; align-items: stretch; }
+.sheet-acts .btn { width: 100%; }
+
 /* ---- Wider screens ---- */
 @media (min-width: 600px) {
   .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .wall { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .wall.row6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .bill { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bill { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .acts .lab-wide { display: inline; }
+  .head { grid-template-columns: 128px minmax(0, 1fr); }
+}
+@media (min-width: 768px) {
+  .sheet { left: 236px; right: 16px; bottom: 16px; border-radius: var(--radius-card); border: 1px solid var(--color-border); max-width: 520px; margin: 0 auto; }
 }
 @media (min-width: 1024px) {
   .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
@@ -223,14 +231,28 @@ html[data-theme="dark"] { --print-ground: #2A2A2E; --print-edge: rgba(242, 242, 
   .wall { grid-template-columns: repeat(8, minmax(0, 1fr)); }
   .two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-8); align-items: start; }
   .two > .sec:first-child, .two > div > .sec:first-child { margin-top: 0; }
+  .two > .sec { margin-top: var(--space-6); }
+  .head { grid-template-columns: 176px minmax(0, 1fr); padding: var(--space-6); }
   .detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); align-items: start; }
-  .detail .booklet { margin-top: 0; }
+  .detail .head { grid-template-columns: 120px minmax(0, 1fr); padding: var(--space-4); }
+  .detail-side > .sec:first-child { margin-top: 0; }
+  .detail-side > .booklet:first-child { margin-top: 0; }
   .evenings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .makes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bill { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .np { max-width: 1100px; }
   .np-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); align-items: center; }
   .np-art { margin: 0; }
+  .stage { width: 400px; }
   .field { grid-template-columns: minmax(0, 1fr) repeat(5, 48px); }
   .browse-two .shows-sec { order: -1; margin-top: 0; }
 }
+
+/* A name whose longest word would not fit steps down one level, never breaking a word (fit rule). */
+.tile-name.long { font-size: var(--type-body-size); }
+.tile-name.xlong { font-size: var(--type-caption-size); letter-spacing: 0.02em; }
+.board-name.long { font-size: var(--type-section-header-size); }
+.board-name.xlong { font-size: var(--type-body-size); }
+/* Under 360 px: three faces to a row (a long name never pushes its column), the run time leaves the Listen button. */
+@media (max-width: 359px) { .wall { grid-template-columns: repeat(3, minmax(0, 1fr)); } .acts .dur { display: none; } }
+.head > .head-mark svg.vs { height: 24px; }
+@media (min-width: 1024px) { .acts + .two { margin-top: var(--space-6); } }

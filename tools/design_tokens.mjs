@@ -81,6 +81,26 @@ export function onGenres(t) { return group(t, 'onGenre'); }
 export function boards(t) { return group(t, 'board'); }
 export function onBoards(t) { return group(t, 'onBoard'); }
 
+// The print mount (D2c-3): the ground a contained picture sits on and the hairline
+// edge around every picture window, the edge as a color at an opacity per mode.
+// Web only until a native window consumes them (D3).
+export function printMount(t) {
+  const p = t.color && t.color.print;
+  if (!p) return null;
+  for (const mode of ['light', 'dark']) {
+    hex6(p.ground[mode]); hex6(p.edge[mode]);
+    const a = p.edge.opacity && p.edge.opacity[mode];
+    if (!(a > 0 && a <= 1)) throw new Error(`design-tokens.json: color.print.edge.opacity.${mode} must be in (0, 1]`);
+  }
+  return p;
+}
+// An opaque stand-in for the edge over a ground (what the eye sees), for the test.
+export function edgeOver(t, mode, ground) {
+  const p = printMount(t), a = p.edge.opacity[mode], e = rgb(p.edge[mode]), g = rgb(ground);
+  return toHex(e.map((v, i) => v * a + g[i] * (1 - a)));
+}
+const rgba = (h, a) => { const [r, g, b] = rgb(h); return `rgba(${r}, ${g}, ${b}, ${a})`; };
+
 // ---- perceptual measures the token test uses (D2c-1) ----------------------
 const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
 
@@ -185,6 +205,10 @@ function webVars(t, mode) {
     ...onGenres(t).map((g) => `--color-on-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
     ...boards(t).map((g) => `--color-board-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
     ...onBoards(t).map((g) => `--color-on-board-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
+    ...(printMount(t) ? [
+      `--color-print-ground: ${printMount(t).ground[mode].toUpperCase()};`,
+      `--color-print-edge: ${rgba(printMount(t).edge[mode], printMount(t).edge.opacity[mode])};`,
+    ] : []),
   ];
 }
 

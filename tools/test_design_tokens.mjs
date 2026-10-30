@@ -13,13 +13,15 @@
 //      mode (Decision 064), with its own negative control;
 //   5b. color.onGenre stops naming the same keys as color.genre, or text on a
 //      genre board drops below 4.5:1 in either mode (D2b-3), with its own
-//      negative control.
+//      negative control;
+//   5c. the boards (one band, one text color, no glare, drama apart from red);
+//   5d. the print mount (a ground apart from the page, a hairline edge).
 //
 //   node tools/test_design_tokens.mjs
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { plan, loadTokens, colors, genres, onGenres, boards, onBoards, oklch, apca, deltaE, contrast, webFonts, ROOT } from './design_tokens.mjs';
+import { plan, loadTokens, colors, genres, onGenres, boards, onBoards, printMount, edgeOver, oklch, apca, deltaE, contrast, webFonts, ROOT } from './design_tokens.mjs';
 
 let failed = 0;
 const ok = (cond, msg) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${msg}`); if (!cond) failed++; };
@@ -188,6 +190,43 @@ neg('a lighter board breaking the band', (t) => { t.color.board.comedy.light = '
 neg('a second text color on the boards', (t) => { t.color.onBoard.comedy.light = '#131316'; }, 'text colors on the boards');
 neg('a drama board in recording red', (t) => { t.color.board.drama.light = '#B0152F'; }, 'drama board is');
 neg('white text on a pale board', (t) => { t.color.board.news.light = '#CECEC0'; }, 'light news: text');
+
+// 5d. The print mount (D2c-3, uniform-imagery-design §3): per mode,
+//   - the print ground stands apart from the page (CIEDE2000 3 or more), so a
+//     contained picture's room reads as the mount's paper, and in dark mode it
+//     stays a surface, never a lamp (APCA Lc 30 or less on the page);
+//   - the edge is a hairline: an opacity of at most 0.3, visible at 1.3:1 or
+//     more on the page and on the ground, and 1.15:1 on every board.
+//   Each rule has its own negative control below.
+const printProblems = (t) => {
+  const out = [];
+  let p;
+  try { p = printMount(t); } catch (e) { return [e.message]; }
+  if (!p) return ['color.print is missing'];
+  const br = t.color.brand;
+  for (const mode of ['light', 'dark']) {
+    const e = deltaE(p.ground[mode], br.background[mode]);
+    if (e < 3) out.push(`${mode}: print ground is ${e.toFixed(1)} from the page (needs 3)`);
+    if (mode === 'dark' && apca(p.ground[mode], br.background[mode]) > 30) out.push(`dark print ground glares: Lc ${apca(p.ground[mode], br.background[mode]).toFixed(1)} > 30`);
+    if (p.edge.opacity[mode] > 0.3) out.push(`${mode}: edge opacity ${p.edge.opacity[mode]} is a frame, not a hairline`);
+    for (const [name, g, min] of [['the page', br.background[mode], 1.3], ['the print ground', p.ground[mode], 1.3],
+      ...boards(t).map((b) => [`the ${b.name} board`, b[mode], 1.15])]) {
+      const r = contrast(edgeOver(t, mode, g), g);
+      if (r < min) out.push(`${mode}: edge on ${name} is ${r.toFixed(2)}:1 (needs ${min}:1)`);
+    }
+  }
+  return out;
+};
+const pp = printProblems(tokens);
+ok(pp.length === 0, `the print mount holds: a ground apart from the page, no dark glare, a hairline edge seen on the page, the ground and every board (problems: ${pp.join('; ') || 'none'})`);
+const negP = (name, edit, expect) => {
+  const t = structuredClone(tokens); edit(t);
+  ok(printProblems(t).some((p) => p.includes(expect)), `the print check catches ${name}`);
+};
+negP('a print ground the color of the page', (t) => { t.color.print.ground.light = t.color.brand.background.light; }, 'light: print ground is');
+negP('a pale print ground in dark mode', (t) => { t.color.print.ground.dark = '#EDEDED'; }, 'dark print ground glares');
+negP('an edge too faint to see', (t) => { t.color.print.edge.opacity.light = 0.03; }, 'light: edge on the page');
+negP('an edge drawn as a frame', (t) => { t.color.print.edge.opacity.dark = 0.6; }, 'dark: edge opacity');
 
 // 6. Every face the tokens name is a file the platform ships (Decision 060),
 //    and only the display levels set the display face, with a negative control.

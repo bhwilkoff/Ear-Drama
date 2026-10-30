@@ -1,4 +1,4 @@
-/* A copy of the generated design-tokens block in css/styles.css (2026-10-29; re-copied in D2b-3 with the on-genre tokens, and in D2c-1 with the board tokens), font paths rewritten for the D2 prototypes. */
+/* A copy of the generated design-tokens block in css/styles.css (2026-10-29; re-copied in D2b-3 with the on-genre tokens, and in D2c-1 with the board tokens, and in D2c-3 with the print mount), font paths rewritten for the D2 prototypes. */
 @font-face { font-family: "Big Shoulders"; src: url("../../../../../fonts/big-shoulders.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: "Public Sans"; src: url("../../../../../fonts/public-sans.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
 @font-face { font-family: "Public Sans"; src: url("../../../../../fonts/public-sans-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
@@ -53,6 +53,8 @@
   --color-on-board-news: #FFFFFF;
   --color-on-board-documentary: #FFFFFF;
   --color-on-board-serial: #FFFFFF;
+  --color-print-ground: #EDEDED;
+  --color-print-edge: rgba(19, 19, 22, 0.18);
   --font-display: "Big Shoulders", "Arial Narrow", system-ui, sans-serif;
   --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -130,6 +132,8 @@ html[data-theme="dark"] {
   --color-on-board-news: #F2F2F4;
   --color-on-board-documentary: #F2F2F4;
   --color-on-board-serial: #F2F2F4;
+  --color-print-ground: #2A2A2E;
+  --color-print-edge: rgba(242, 242, 244, 0.16);
 }
 @media (prefers-color-scheme: dark) {
   html:not([data-theme="light"]) {
@@ -183,6 +187,8 @@ html[data-theme="dark"] {
     --color-on-board-news: #F2F2F4;
     --color-on-board-documentary: #F2F2F4;
     --color-on-board-serial: #F2F2F4;
+    --color-print-ground: #2A2A2E;
+    --color-print-edge: rgba(242, 242, 244, 0.16);
   }
 }
 [data-genre="drama"] { --genre-accent: var(--color-genre-drama); --genre-on-accent: var(--color-on-genre-drama); --genre-board: var(--color-board-drama); --genre-on: var(--color-on-board-drama); }
