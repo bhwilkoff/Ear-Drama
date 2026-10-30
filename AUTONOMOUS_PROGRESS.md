@@ -502,3 +502,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Running: C2, W2. Owner calls: build D everywhere; one face per star.
 - W2 merged (1.0.110) and deployed (7dd9e948). C2 staged catalog-2026-10-29 (series_art added; rebuild: 44 series stars and 84 pictures change, episodes unchanged; build_db nondeterminism measured locally). Loop stopped: D3 go, one face per star, and the Release command wait on the owner.
 - The owner cut catalog-2026-10-29 (the cutter's count raced GitHub's list once; fixed af31ac5 with a lag test); publish 40986788849 live with picture fields. Found live: Boston Blackie's new lead image File:Kollmar.jpg is a 2019 "photograph I took" of a man who died in 1971, an implausible own-work license. Recorded for the build loop.
+
+### Design tick 11, 2026-10-29, D3 starts
+- Owner: "Yes to both" (build D everywhere; one face per star). DESIGN-LOOP gains the D3 order.
+- Running: D3-1 the shared grammar and tokens on every platform (Opus); P-1 one face per star, the implausible own-work rule (File:Kollmar.jpg), deterministic build_db (Sonnet).
