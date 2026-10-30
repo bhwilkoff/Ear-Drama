@@ -106,3 +106,97 @@ fun gradeOf(art: Artwork?): Grade {
     val g = art?.grade
     return if (g != null && g.size == 2) Grade(g[0], g[1]) else DEFAULT_GRADE
 }
+
+// Home and Browse (WEB-DESIGN §6.4c, ANDROID-DESIGN R11c): the rules every platform mirrors.
+
+/** A show is a series of at least this many episodes (owner, 2026-10-29); the rest are single recordings, counted. */
+const val SHOW_MIN = 5
+
+fun isShow(episodes: Int?): Boolean = (episodes ?: 0) >= SHOW_MIN
+
+/** The genre order of every stacked mark and legend; a series with no genre stacks last, in no hue. */
+val GENRE_ORDER = listOf("drama", "mystery", "comedy", "serial", "western", "scifi", "documentary", "news")
+
+/** One year of a day's broadcasts: [genres] maps a genre (empty for none) to its count. */
+data class DayYear(val year: Int, val total: Int, val genres: Map<String, Int>)
+
+data class DayYears(val years: List<DayYear>, val peak: Int?, val count: Int, val genres: List<String>)
+
+private val YEAR_PREFIX = Regex("^\\d{4}")
+
+private fun yearOf(date: String?): Int? = if (date != null && YEAR_PREFIX.containsMatchIn(date)) date.take(4).toInt() else null
+
+/**
+ * One day's broadcasts by year, oldest first; the year with the most (the earlier on a tie) is the
+ * peak; the legend is the genres seen in [GENRE_ORDER]. Rows without a four-digit year are not on
+ * the strip.
+ */
+fun <R> dayYears(rows: List<R>, dateOf: (R) -> String?, genreOf: (R) -> String?): DayYears {
+    val by = sortedMapOf<Int, MutableMap<String, Int>>()
+    for (r in rows) {
+        val y = yearOf(dateOf(r)) ?: continue
+        val g = genreOf(r) ?: ""
+        val m = by.getOrPut(y) { linkedMapOf() }
+        m[g] = (m[g] ?: 0) + 1
+    }
+    val years = by.map { (y, m) -> DayYear(y, m.values.sum(), m) }
+    var peak: DayYear? = null
+    for (y in years) if (peak == null || y.total > peak.total) peak = y
+    val seen = years.flatMap { it.genres.keys }.toSet()
+    return DayYears(years, peak?.year, years.sumOf { it.total }, GENRE_ORDER.filter { it in seen })
+}
+
+data class Night<R>(val shows: List<R>, val singles: Int)
+
+private val NON_ALNUM = Regex("[^a-z0-9]+")
+
+/**
+ * One night's rows as shows: the first row of a title only (the same title the same night folds
+ * once); rows of a series under the show line are counted as singles and left out. [episodesOf] is
+ * the row's series episode count, or null for none.
+ */
+fun <R> nightShows(rows: List<R>, titleOf: (R) -> String?, episodesOf: (R) -> Int?): Night<R> {
+    val seen = HashSet<String>()
+    val shows = ArrayList<R>()
+    var singles = 0
+    for (r in rows) {
+        if (!isShow(episodesOf(r))) { singles++; continue }
+        if (!seen.add((titleOf(r) ?: "").lowercase().replace(NON_ALNUM, ""))) continue
+        shows.add(r)
+    }
+    return Night(shows, singles)
+}
+
+/** A show as the field sees it: its genre and the date it first aired. */
+data class FieldShow(val genre: String?, val first: String?)
+
+/** Browse's decade by genre field: the shows per cell, decades in order; [none] shows are counted, not drawn. */
+class DecadeField(
+    val decades: List<Int>,
+    val genres: List<String>,
+    private val cells: Map<Pair<String, Int>, Int>,
+    val max: Int,
+    val none: Int,
+) {
+    fun count(genre: String, decade: Int): Int = cells[genre to decade] ?: 0
+}
+
+fun decadeField(shows: List<FieldShow>): DecadeField {
+    val cells = HashMap<Pair<String, Int>, Int>()
+    val decades = sortedSetOf<Int>()
+    var none = 0
+    for (s in shows) {
+        val y = yearOf(s.first)
+        if (s.genre.isNullOrEmpty() || y == null) { none++; continue }
+        val d = Math.floorDiv(y, 10) * 10
+        decades.add(d)
+        cells.merge(s.genre to d, 1, Int::plus)
+    }
+    val ds = decades.toList()
+    val genres = GENRE_ORDER.filter { g -> ds.any { (g to it) in cells } }
+    return DecadeField(ds, genres, cells, cells.values.maxOrNull() ?: 0, none)
+}
+
+/** A cell's mark side in dp: the square root of its share of the biggest cell, 6 to 32; 0 for an empty cell. */
+fun fieldSide(n: Int, max: Int): Int =
+    if (n > 0 && max > 0) maxOf(6, Math.round(32 * Math.sqrt(n.toDouble() / max)).toInt()) else 0
