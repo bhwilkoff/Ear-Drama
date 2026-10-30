@@ -18,13 +18,13 @@ import androidx.core.net.toUri
 import androidx.core.graphics.createBitmap
 
 /**
- * The media session's picture is the one Now Playing draws (Decision 069):
- * the face's portrait at Commons' 500 step, else the series' typographic card
+ * The media session's picture is the one Now Playing draws (Decision 069, D3-4):
+ * the show's picture, else the face's portrait, at Commons' 500 step, else the series' typographic card
  * painted to a PNG (the name and one line on the genre band, light palette).
  */
 object SessionArtwork {
     fun apply(builder: MediaMetadata.Builder, row: EpisodeRow, face: Face?): MediaMetadata.Builder {
-        if (face != null) return builder.setArtworkUri(face.art.url(500).toUri())
+        if (face != null) return builder.setArtworkUri((row.seriesWindowArt ?: face.art).url(500).toUri())
         return builder.setArtworkData(cardPng(row.seriesName, row.airDate?.take(4), row.seriesGenre),
             MediaMetadata.PICTURE_TYPE_FRONT_COVER)
     }

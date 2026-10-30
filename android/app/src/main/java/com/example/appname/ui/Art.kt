@@ -269,21 +269,14 @@ fun TypeCard(name: String, line: String?, genre: String?, modifier: Modifier = M
 }
 
 /**
- * Now Playing's picture: the episode's face, else the series', else the series' typographic card.
- * The bound is a square, full width and no taller than [maxSide] (R11a: Play stays on the first
- * screen); a portrait is drawn whole at its own aspect and its box shrinks to it, centered.
+ * Now Playing's picture (D3-4): the grammar's window at a square no taller than [maxSide] (R11a:
+ * Play stays on the first screen), full width otherwise. The show's picture, else its star's,
+ * else the title block, cropped on the face and held to the size floor.
  */
 @Composable
-fun NowPlayingArt(seriesName: String, genre: String?, line: String?, face: Face?, maxSide: Dp = 200.dp) {
-    BoxWithConstraints(
-        Modifier.fillMaxWidth().heightIn(max = maxSide).aspectRatio(1f).clearAndSetSemantics {},
-        contentAlignment = Alignment.Center,
-    ) {
-        if (face != null) {
-            val (w, h) = fittedSize(face.art, maxWidth, maxHeight)
-            ShapedArt(face.art, Modifier.width(w).height(h))
-        } else {
-            TypeCard(seriesName, line, genre, Modifier.fillMaxSize())
-        }
+fun NowPlayingArt(art: Artwork?, seriesName: String, genre: String?, maxSide: Dp = 200.dp) {
+    BoxWithConstraints(Modifier.fillMaxWidth().clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+        val side = minOf(maxWidth, maxSide)
+        PictureWindow(art, seriesName, genre, Modifier.size(side))
     }
 }

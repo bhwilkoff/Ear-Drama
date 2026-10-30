@@ -78,7 +78,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   own aspect and its box shrinks to it, centered; a card fills the
   square; an owed credit is under it. A row's `ArtTile` is 56 dp and a cast
   line's `CreditFace` 32 dp; an evening's aired slot leads with its series'
-  tile. **Small crops center on the published face** (V4, WEB-DESIGN §6.4
+  tile. **Now Playing (D3-4)** draws the grammar's `PictureWindow` at the
+  44 % bound (the show's picture, else its star's, else the title block), then the title
+  and an `EventLine`; the mini player is a `GrammarRow`; the media session's artwork is the same picture. **Small crops center on the published face** (V4, WEB-DESIGN §6.4
   is the shared text): the tile and `CreditFace` show the square
   `Artwork.cropRect` picks around `Artwork.face` (the contract §3.3a
   formula: the face about half the square, at most 4x zoom), drawn as
