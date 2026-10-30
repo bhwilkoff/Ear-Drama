@@ -97,6 +97,7 @@ struct TileLink<Value: Hashable>: View {
             .buttonStyle(.card)
             #else
             .buttonStyle(.plain)
+            .navigationLinkIndicatorVisibility(.hidden)
             #endif
     }
 }
@@ -123,17 +124,22 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
             Chunk(items: Array(items[$0..<min($0 + columns, items.count)]))
         }
         VStack(alignment: .leading, spacing: gap) {
+            // The width comes from a view that holds no content, so nothing drawn below can change
+            // what is measured (a row's disclosure chevron once fed back and widened it without end).
+            Color.clear
+                .frame(maxWidth: .infinity, minHeight: 1, maxHeight: 1)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
             if width > 0 {
                 ForEach(chunks) { chunk in
                     HStack(alignment: .top, spacing: gap) {
                         ForEach(chunk.items) { tile($0, tileWidth) }
                     }
+                    .frame(width: width, alignment: .leading)
                     .sharesNameHeight()
                 }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 1, alignment: .topLeading)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
