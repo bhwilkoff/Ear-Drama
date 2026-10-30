@@ -25,6 +25,14 @@ import XCTest
         return all.first(where: { $0.isHittable }) ?? all.last ?? app.buttons[id]
     }
 
+    /// A section by name: the tab bar on an iPhone, the sidebar on an iPad, where there is no tab
+    /// bar and each section is a cell labeled with its name (iPad Pro, 2026-10-30).
+    func openTab(_ app: XCUIApplication, _ name: String) {
+        let bar = app.tabBars.buttons[name]
+        if bar.exists { bar.tap(); return }
+        app.cells.matching(NSPredicate(format: "label == %@", name)).firstMatch.tap()
+    }
+
     /// First element anywhere whose label matches the regex.
     func text(_ app: XCUIApplication, matching rx: String) -> XCUIElement {
         app.descendants(matching: .any)

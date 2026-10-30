@@ -36,7 +36,7 @@ final class SeriesDownloadUITests: DeviceTestCase {
         shot(app, "01-prompt")
         confirm(app, "Download")
 
-        app.tabBars.buttons["Library"].tap()
+        openTab(app, "Library")
         let row = app.cells.containing(NSPredicate(format: "label CONTAINS 'Downloads'")).firstMatch
         var n = 0
         while !row.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 8 { app.swipeUp(); n += 1 }

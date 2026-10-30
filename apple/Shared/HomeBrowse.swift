@@ -100,6 +100,7 @@ struct TileLink<Value: Hashable>: View {
             .buttonStyle(.plain)
             .navigationLinkIndicatorVisibility(.hidden)
             #endif
+            .accessibilityIdentifier("show-tile")
     }
 }
 
