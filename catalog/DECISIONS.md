@@ -521,3 +521,64 @@ rows, 49 episodes, 3 people and 4 series differed).
 every table (about 20 minutes, so not in `run_all.sh`); run it after touching `build_db.py` or
 `enrich_db.py`. Sorted: `build_db.build_registry` (names), `enrich_db.SeriesMap.by_dates`, the OTRR
 program loop, a series' networks.
+
+
+## 021 — A portrait under the size floor gives way to a larger file of the same person showing one face
+
+*Date: 2026-10-30*
+
+A person's portrait is still their own image (Wikidata P18) of the most permissive class, unless it fills
+less than the largest window a client draws (`art_policy.LARGEST_SLOT`, 300: tvOS's show tile; `fill_px` is
+the crop height every client's `windowFill` compares). Then a file of the same person that shows one face
+and fills more is served, the one that fills most, an own image before a stand-in. A stand-in may be a file
+whose Structured Data depicts the person, only when the detector read exactly one confident face on it, it
+passes every other check `served` makes, and the person has a served own image. A group never replaces a
+portrait, and nobody gains a face this way.
+
+**Why**: the size floor (uniform-imagery-design §4) draws the title block under it, so the Jack Benny Program,
+led by Jack Benny, drew "JB" on every tile: his own image, JackBenny1958Cropped.jpg, is 174 x 333 and its crop
+147 px. NBC's 1938 photograph of him alone (1139 x 1479, a depicts file) fills 513. A depicts file was refused
+because it is often a group (DECISIONS 069 in the app log); one face is the evidence that this one is not,
+and the depicts statement is on the image's own record (owner 2026-10-21). Ranking by size alone was tried and
+refused: it gave David Rose a photograph of him with three soldiers and Rod Cameron a theater program.
+
+**How to apply**: `art_policy.pick`, `alternate`, `crop_rect`, `fill_px`, `face_count`; `people_art.faces`
+(`enrich_people_art.py`); guard: `floor_misses` in `tests/test_projection_art.py` (seen failing on the
+projection built before the rule: 12 people) and the fixture's controls. MEASURED on the 2026-10-29 caches:
+12 of 2,155 portraits change, every one checked by eye a single, right person (Jack Benny, Gracie Allen,
+Marian Jordan, Parkyakarkus, Jan Miner, Ona Munson, Charles Winninger, Bennett Cerf, Fay Wray, Ben Hecht,
+George du Maurier, Gene Roddenberry). Led shows drawing the title block: at a 200 window 22 to 21, at 300
+50 to 48 (the Jack Benny Program and Hilltop House). The rest have no larger file: 17 of the 22 at 200 would
+fill if the clients' crop widened toward the largest square instead of the title block, a client rule.
+
+
+## 022 — Display titles and names are derived from the data, and never reorder a series
+
+*Date: 2026-10-30*
+
+`episodes.title` and `series.name` are the display forms (`titles.display_title`, `display_name`); the
+source's are kept in `raw_title` and `raw_name` where they differ, and search indexes both. Beyond the
+2026-10-22 rules: a leading episode code (EP001, #257), a leading zero-padded number or run of numbers,
+a duration (14m42s), a " - " part that is a code (32-22, xxxx) or a first part that is a lone number,
+and the series' own name (two words or more, at the start before a separator or as a part) are stripped
+where words remain. An all-capitals title takes the case the catalog's own mixed-case titles write each
+word in (articles and short joining words lower), and a run-together word of ten letters or more is split
+only when every piece is a word at least three titles spell on their own (three letters or more, a listed
+two-letter word, never an acronym, never two short words in a row) and exactly one fewest-piece split exists.
+A series whose order would change with a leading number dropped keeps the 2026-10-22 rules: with no date and
+no number, "03 - Mrs. Hudson" is what lists it third. `sort_name` is the display name's key.
+
+**Why**: the owner's catalog rule, no AI-written copy: a title is the source's words, so the rules only remove
+and recase, and every word out is a word the raw title spelled. Upload habits put "EP001 TARZANSFIRSTBIRTHDAY",
+"0005 - The Babe Ruth Collection - Harry The Hat - 32-22 - 14m42s" and "01 The Hobbit" on screen and at the
+top of A to Z. A larger dictionary split real words ("BEAUTIES" to "Beau Ties", "CORSICAN" to "COR sic an",
+"POSTTOASTIES" to "Post to as Ties"); each limit above is one of those refusals.
+
+**How to apply**: `titles.py` (`Words` is built once per build from every title and name; no client
+re-derives); `build_projection.py`; guards `tests/test_titles.py` (fixture vocabulary; four mutations seen
+failing) and the contract checks in `tests/test_projection.py`. MEASURED on the 2026-10-29 caches: 3,125 of
+107,190 served titles change beyond the 2026-10-22 rules (45 by a split), 902 of 10,641 series names, 41
+series (794 episodes) keep the older rules for their order, and 116 all-capitals titles keep a long word
+whole. Arcs: 451 to 455, the four new ones parts whose leading numbers had hidden a shared name ("Epilogue
+Chapter 1, 2"). Known residue: a brand split on proven words ("MAYFIELD" to "May Field"), and a series named
+for its work drops that name ("The Magic Flute - Mozart" to "Mozart").

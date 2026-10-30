@@ -102,10 +102,48 @@ def evidence_url(file):
     return FILE_PAGE + urllib.parse.quote(file.replace(" ", "_"))
 
 
+# A file whose Structured Data depicts the person may stand in for their own image when it fills
+# a larger window: the detector read exactly one confident face on it, so it is not the group a
+# depicts file often is (Jack Benny's own image is 174 x 333; NBC's 1938 photograph of him alone,
+# a depicts file, is 1139 x 1479). Only for a person who has a served own image: it changes which
+# picture of them is shown, never who has one.
+ALTERNATE_VIA = "commons:depicts"
+FACE_CONFIDENCE = 0.5   # harvest_people_wikidata.MIN_FACE_CONFIDENCE
+
+
+def face_count(facts):
+    """How many confident faces the detector read on a file ({"faces": [[x, y, w, h, conf]]}),
+    or None when it was not read."""
+    faces = (facts or {}).get("faces")
+    if faces is None:
+        return None
+    return sum(1 for f in faces if (list(f) + [1.0])[4] >= FACE_CONFIDENCE)
+
+
+def alternate(basis, cls, usable, found_via, author, own_work=False, date_field=None, died=None, faces=None):
+    """True when a depicts file may stand in for this person's own image: every check `served`
+    makes, on a file showing one face."""
+    return (found_via == ALTERNATE_VIA and faces == 1
+            and served(basis, cls, usable, SERVED_VIA, author, own_work, date_field, died))
+
+
 def pick(rows):
-    """The one portrait per person: the most permissive class, then the file name.
-    rows: (file, cls, template, author) already passing `served`."""
-    return min(rows, key=lambda r: (PREFER[r[1]], r[0])) if rows else None
+    """The one portrait per person: the most permissive class of their own image, then the file
+    name; unless it is under the size floor (it fills less than LARGEST_SLOT) and a file showing
+    one face fills more, when the one of those that fills most (up to LARGEST_SLOT) is taken, then
+    an own image before a stand-in, the class, the name. A group never replaces a portrait: David
+    Rose's other own image is him among three soldiers.
+    rows: (file, cls, template, author[, own image, fill_px, faces]) already passing `served` or
+    `alternate`; a row without the last three is an own image of unknown size and faces."""
+    if not rows:
+        return None
+    full = [tuple(r) + (True, 0, None)[len(r) - 4:] for r in rows]
+    own = [r for r in full if r[4]]
+    base = min(own or full, key=lambda r: (PREFER[r[1]], r[0]))
+    fill = lambda r: min(r[5] or 0, LARGEST_SLOT)
+    better = [r for r in full if r[6] == 1 and fill(r) > fill(base)]
+    best = min(better, key=lambda r: (-fill(r), not r[4], PREFER[r[1]], r[0])) if better else base
+    return rows[full.index(best)]
 
 
 # ---------------------------------------------------------------- whose face a show wears
@@ -156,6 +194,50 @@ def face_text(box):
 def face_list(text):
     """`art.face` as the web's [x, y, w, h], or None."""
     return [float(v) for v in text.split(",")] if text else None
+
+
+# ---------------------------------------------------------------- the size floor
+
+# The largest square window a client fills with a person's or a show's picture: tvOS's show
+# tile (apple/Shared/Grammar.swift SeriesTile.defaultWidth 312, less its 12 of padding). The
+# web's tile is 200, Android TV's 200 dp less its padding, a head board at most 176.
+LARGEST_SLOT = 300
+WIDE_ASPECT = 1.15
+
+
+def crop_rect(width, height, face):
+    """The crop square every client draws (contract section 3.3a `cropRect`, golden cases in
+    js/api.test.js), as (x, y, w, h) normalized to the image, or None: an unknown size, or a
+    wide picture with no face (drawn whole)."""
+    if not (width and height and width > 0 and height > 0):
+        return None
+    a = width / height
+    f = face if face and len(face) == 4 else None
+    if not f and a > WIDE_ASPECT:
+        return None
+    full = min(a, 1.0)
+    clamp = lambda v, lo, hi: min(hi, max(lo, v))
+    s, left, top = full, 0.5 * (a - full), 0.2 * (1 - full)
+    if f:
+        s = clamp(2 * max(f[2] * a, f[3]), full / 4, full)
+        left = clamp((f[0] + f[2] / 2) * a - s / 2, 0, a - s)
+        top = clamp(f[1] + f[3] / 2 - s / 2, 0, 1 - s)
+    return (left / a, top, s / a, s)
+
+
+def fill_px(width, height, face):
+    """The pixels a window gets from the picture, the number every client's `windowFill`
+    compares with its slot (uniform-imagery-design section 4): the crop's height in pixels, or
+    for a wide picture drawn whole twice its short side; 0 for an unknown size."""
+    if not (width and height and width > 0 and height > 0):
+        return 0
+    r = crop_rect(width, height, face)
+    return 2 * min(width, height) if r is None else r[3] * height
+
+
+def fills(width, height, face, slot=LARGEST_SLOT):
+    """True when the picture fills a window of `slot` points instead of the title block."""
+    return fill_px(width, height, face) >= slot
 
 
 # ---------------------------------------------------------------- the picture that leads a show

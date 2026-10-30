@@ -31,7 +31,7 @@ from genres import genre_of
 import shelves as SH
 import sponsors as SP
 from sort_name import sort_name
-from titles import display_title
+import titles as TI
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
@@ -64,12 +64,12 @@ SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
     networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER,
-    picture INTEGER, picture_kind TEXT, picture_source TEXT);
+    picture INTEGER, picture_kind TEXT, picture_source TEXT, raw_name TEXT, year_counts TEXT);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
     gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT, star TEXT,
-    script TEXT, sponsor TEXT);
+    script TEXT, sponsor TEXT, raw_title TEXT);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
@@ -123,6 +123,20 @@ def season(air_date):
     y, m = int(air_date[:4]), int(air_date[5:7])
     start = y if m >= 9 else y - 1
     return f"{start}-{(start + 1) % 100:02d}"
+
+
+def year_counts(dates):
+    """A series' run histogram (contract section 3.3): its served episodes per broadcast year, as
+    "first year,count,count,...", one count per year from the first dated year to the last, 0 for a
+    year with none; None when no episode is dated. "1932,3,40,0,12" is 3 in 1932 and 12 in 1935."""
+    years = [int(d[:4]) for d in dates or () if d and d[:4].isdigit()]
+    if not years:
+        return None
+    lo, hi = min(years), max(years)
+    n = [0] * (hi - lo + 1)
+    for y in years:
+        n[y - lo] += 1
+    return ",".join(map(str, [lo] + n))
 
 
 def download_url(archive_id, file):
@@ -210,6 +224,19 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             recs_by_ep.setdefault(row[0], []).append(row)
 
     sponsor_runs = SP.load(s)
+    # Display titles and names (titles.py): one vocabulary from every title and name, so a
+    # run-together word is split only into words the catalog itself spells on their own.
+    words = TI.Words([TI.clean(t) for (t,) in s.execute("SELECT title FROM episodes") if t] +
+                     [TI.clean(n) for n in names.values() if n])
+    by_series_eps = {}
+    for eid, sk, air, num, title in s.execute("SELECT id, series_key, air_date, num, title FROM episodes"):
+        if eid in served:
+            by_series_eps.setdefault(sk, []).append((eid, air, num, title))
+    display = {}
+    for sk in sorted(by_series_eps):
+        display.update(TI.series_titles(by_series_eps[sk], names.get(sk), words))
+    shown_name = {k: TI.display_name(n, words) for k, n in names.items()}
+    years_of = {}
     per_series = {}
     searchable = 0
     for (eid, sk, air, dsrc, num, title, aka, state, rb, wb, nr, net, nsrc) in s.execute(
@@ -233,25 +260,30 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
-        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
-            eid, sk, air, dsrc, season(air), num, display_title(title), aka, recs[0][6],
+        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+            eid, sk, air, dsrc, season(air), num, display[eid], aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
-            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), SP.sponsor_for(sponsor_runs, sk, air, title)))
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), SP.sponsor_for(sponsor_runs, sk, air, title),
+            title if display[eid] != title else None))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
-                  (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display_title(title), title, aka) if x)),
-                   names.get(sk, ""),
+                  (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display[eid], title, aka) if x)),
+                   " ".join(dict.fromkeys(x for x in (shown_name.get(sk), names.get(sk)) if x)),
                    " ".join(n for _, n, _, _ in credits), text if shown else ""))
         per_series[sk] = per_series.get(sk, 0) + 1
+        if air:
+            years_of.setdefault(sk, []).append(air)
 
     for key, name, re_genre, otrr_genres, lv, first, last, nets in s.execute(
             "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
             pic = pictures.get(key, (None, None, None))
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                      (key, name, genre, gsrc, first, last, nets, per_series[key], stars.get(key), sort_name(name),
-                       None) + pic)
+            shown_as = shown_name.get(key) or name
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (key, shown_as, genre, gsrc, first, last, nets, per_series[key], stars.get(key),
+                       sort_name(shown_as), None) + pic + (name if shown_as != name else None,
+                                                           year_counts(years_of.get(key))))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
@@ -445,15 +477,22 @@ def served_portraits(s, people, same=None):
     dated = "a.date_field" if "date_field" in cols else "NULL"
     wcols = {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")}
     died = "w.death" if "death" in wcols else "NULL"
-    for pid, file, cls, usable, via, author, template, basis, own_work, when, died in s.execute(
+    faces = "a.faces" if "faces" in cols else "NULL"
+    stand_ins = {}
+    for pid, file, cls, usable, via, author, template, basis, own_work, when, died, n in s.execute(
             f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis, "
-            f"{own}, {dated}, {died} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+            f"{own}, {dated}, {died}, {faces} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
         pid = (same or {}).get(pid, pid)
-        if pid in people and AP.served(basis, cls, usable, via, author, own_work, when, died):
-            by_person.setdefault(pid, []).append((file, cls, template, author))
+        if pid not in people:
+            continue
+        px = AP.fill_px(*dims.get(file, (None, None)), AP.face_list(focus.get(file)))
+        if AP.served(basis, cls, usable, via, author, own_work, when, died):
+            by_person.setdefault(pid, []).append((file, cls, template, author, True, px, n))
+        elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n):
+            stand_ins.setdefault(pid, []).append((file, cls, template, author, False, px, n))
     ids = {}
     for pid in sorted(by_person):
-        file, cls, template, author = AP.pick(by_person[pid])
+        file, cls, template, author = AP.pick(by_person[pid] + stand_ins.get(pid, []))[:4]
         if file not in ids:
             out["rows"].append((file, cls, template, author) + dims.get(file, (None, None)) + (focus.get(file),))
             ids[file] = len(out["rows"])

@@ -17,7 +17,9 @@ publishing NULL for every face; face_text accepting a box off its image. Seen to
 2026-10-29 (D2c-2, show-first pictures): show_served ignoring the identity (a title-only match),
 the license class, the size floor, television, or a date after the run; series_identity calling
 a title alone or a television item an identity; the builder serving every series_art row;
-series_face ignoring the marks or the marked share (a one-season host).
+series_face ignoring the marks or the marked share (a one-season host). Seen to fail on 2026-10-30
+(the size floor, catalog DECISIONS 021): floor_misses over the projection built before the rule (12
+people); the builder never taking a stand-in; retrace accepting a stand-in that shows a group.
 """
 import json
 import os
@@ -109,13 +111,52 @@ def retrace(projection, source):
     own = "a.own_work" if "own_work" in cols else "0"
     dated = "a.date_field" if "date_field" in cols else "NULL"
     died = "w.death" if "death" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
-    for pid, file, cls, usable, via, author, basis, own_work, when, died in s.execute(
+    faces = "a.faces" if "faces" in cols else "NULL"
+    stand_ins, owners = set(), set()
+    for pid, file, cls, usable, via, author, basis, own_work, when, died, n in s.execute(
             f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, w.basis, {own}, "
-            f"{dated}, {died} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+            f"{dated}, {died}, {faces} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
         if AP.served(basis, cls, usable, via, author, own_work, when, died):
             ok.add((pid, AP.evidence_url(file)))
+            owners.add(pid)
+        elif AP.alternate(basis, cls, usable, via, author, own_work, when, died, n):
+            stand_ins.add((pid, AP.evidence_url(file)))
     s.close()
+    ok |= {(pid, ev) for pid, ev in stand_ins if pid in owners}   # a stand-in only for a person with an own image
     return sorted(published - ok) + retrace_shows(projection, source)
+
+
+def floor_misses(projection, source, slot=AP.LARGEST_SLOT):
+    """The people whose published portrait fills less of a `slot` window than another file of
+    theirs the predicate serves and that shows one face (uniform-imagery-design section 4: under
+    the floor every client draws the title block): [(person, published file page, better page)]."""
+    p = sqlite3.connect(projection)
+    published = {pid: (ev, AP.fill_px(w, h, AP.face_list(f))) for pid, ev, w, h, f in p.execute(
+        "SELECT p.id, a.evidence_url, a.width, a.height, a.face FROM people p JOIN art a ON a.id = p.portrait")}
+    p.close()
+    s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
+    cols = {r[1] for r in s.execute("PRAGMA table_info(people_art)")}
+    if not {"width", "height", "face", "faces", "own_work", "date_field"} <= cols:
+        s.close()
+        return []
+    died = "w.death" if "death" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
+    owners, rows = set(), []
+    for pid, file, cls, usable, via, author, basis, own_work, when, died, w, h, f, n in s.execute(
+            "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, w.basis, a.own_work, "
+            f"a.date_field, {died}, a.width, a.height, a.face, a.faces FROM people_art a "
+            "JOIN people_wikidata w ON w.person_id = a.person_id ORDER BY a.person_id, a.file"):
+        own = AP.served(basis, cls, usable, via, author, own_work, when, died)
+        owners |= {pid} if own else set()
+        if pid in published and n == 1 and (own or AP.alternate(basis, cls, usable, via, author, own_work, when,
+                                                                 died, n)):
+            rows.append((pid, file, AP.fill_px(w, h, AP.face_list(f))))
+    s.close()
+    out = []
+    for pid, file, px in rows:
+        ev, now = published[pid]
+        if pid in owners and min(px, slot) > min(now, slot):
+            out.append((pid, ev, AP.evidence_url(file)))
+    return out
 
 
 def retrace_shows(projection, source):
@@ -179,6 +220,41 @@ check("credit: the LA Times archive is CC BY 4.0", AP.credit("cc_by", "LATimes U
 check("control: a public-domain image owes no credit", AP.credit("pd_us", "PD-US-no notice", "NBC"), None)
 check("pick: the most permissive class first",
       AP.pick([("b.jpg", "cc_by", "cc-by-2.0", "X"), ("a.jpg", "pd_us", "PD-US", None)])[0], "a.jpg")
+
+# The size floor (uniform-imagery-design section 4); the crop square is js/api.test.js's golden cases.
+near = lambda r: r and tuple(round(v, 4) for v in r)
+check("crop: wide, small face: zoomed onto it", near(AP.crop_rect(1000, 500, [0.5, 0.2, 0.1, 0.2])), (0.45, 0.1, 0.2, 0.4))
+check("crop: tall: around the face", near(AP.crop_rect(500, 1000, [0.3, 0.25, 0.4, 0.2])), (0.1, 0.15, 0.8, 0.4))
+check("crop: a tiny face: at most 4x", near(AP.crop_rect(1000, 1000, [0.5, 0.5, 0.01, 0.01])),
+      (0.38, 0.38, 0.25, 0.25))
+check("crop: upright without a face keeps the top", near(AP.crop_rect(500, 1000, None)), (0.0, 0.1, 1.0, 0.5))
+check("control: a wide picture without a face is not cropped", AP.crop_rect(1000, 500, None), None)
+check("control: an unknown size has no crop", AP.crop_rect(None, None, [0.1, 0.1, 0.2, 0.2]), None)
+BENNY_1958 = (174, 333, [0.4306, 0.1418, 0.4231, 0.2211])   # JackBenny1958Cropped.jpg
+check("fill: Jack Benny's own image fills 147 px", round(AP.fill_px(*BENNY_1958)), 147)
+check("fills: under the floor of a 200 window", AP.fills(*BENNY_1958, 200), False)
+check("control: a 1139 x 1479 photograph of one face fills it",
+      AP.fills(1139, 1479, [0.369, 0.1708, 0.225, 0.1734], 200), True)
+check("fill: a wide picture drawn whole is twice its short side", AP.fill_px(300, 150, None), 300)
+check("control: an unknown size fills nothing", AP.fill_px(None, 400, None), 0)
+check("face count: confident faces only", AP.face_count({"faces": [[0, 0, .1, .1, .9], [0, 0, .1, .1, .3]]}), 1)
+check("control: a file the detector never read has no count", AP.face_count({}), None)
+check("alternate: a one-face depicts file with every served check",
+      AP.alternate("name+birth_day", "pd_us", 1, "commons:depicts", None, faces=1), True)
+check("control: a depicts file of a group is no alternate",
+      AP.alternate("name+birth_day", "pd_us", 1, "commons:depicts", None, faces=2), False)
+check("control: an alternate passes the person match too",
+      AP.alternate(AP.UNDATED_BASIS, "pd_us", 1, "commons:depicts", None, faces=1), False)
+check("control: an unread face count is no alternate",
+      AP.alternate("name+birth_day", "pd_us", 1, "commons:depicts", None, faces=None), False)
+OWN = ("JackBenny1958Cropped.jpg", "pd_us", "PD-US", None, True, 147, 2)
+NBC = ("Jack Benny (1938 NBC Photo).jpg", "pd_us", "PD-US-no-notice", "NBC", False, 513, 1)
+check("pick: under the floor, a one-face file that fills more wins", AP.pick([OWN, NBC])[0], NBC[0])
+check("control: an own image that fills the window stays", AP.pick([OWN[:5] + (300, 1), NBC])[0], OWN[0])
+check("control: a group never replaces a portrait", AP.pick([OWN, NBC[:6] + (3,)])[0], OWN[0])
+check("pick: of two that fill, the own image before a stand-in",
+      AP.pick([("z.jpg", "cc_by", "cc-by", "X", True, 400, 1), OWN, NBC])[0], "z.jpg")
+check("control: a smaller one when nothing larger is served", AP.pick([OWN])[0], OWN[0])
 check("url: spaces become underscores, the rest is quoted", AP.image_url("Jack Benny (1938 NBC Photo).jpg"),
       "https://commons.wikimedia.org/wiki/Special:FilePath/Jack_Benny_%281938_NBC_Photo%29.jpg")
 
@@ -283,6 +359,48 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: the contract catches a dropped credit", sorted(violations(dst)),
           ["an image owes a credit exactly when its license does"])
     check("control: retrace catches an undated match's portrait", retrace(dst, src), [("p2", AP.evidence_url("Mary.jpg"))])
+
+
+# The size floor in the builder: a person's own image under the floor gives way to a one-face
+# file of theirs that fills more; a group never does, and nobody gains a face from a stand-in.
+with tempfile.TemporaryDirectory() as tmp:
+    src, dst = (os.path.join(tmp, n) for n in ("src.sqlite", "out.sqlite"))
+    fixture(src)
+    d = sqlite3.connect(src)
+    for col in ("width", "height", "face", "faces", "own_work", "date_field"):
+        d.execute(f"ALTER TABLE people_art ADD COLUMN {col}")
+    d.execute("UPDATE people_art SET width = 174, height = 333, face = '0.4306,0.1418,0.4231,0.2211', faces = 2, "
+              "own_work = 0 WHERE file = 'Jack Benny 1938.jpg'")
+    d.execute("UPDATE people_art SET width = 1139, height = 1479, face = '0.369,0.1708,0.225,0.1734', faces = NULL, "
+              "own_work = 0 WHERE file = 'Benny and Allen.jpg'")
+    d.execute("INSERT INTO people_art (person_id, qid, file, found_via, license_class, usable, template, author, "
+              "width, height, face, faces, own_work) VALUES ('p4', 'Qp4', 'Dennis alone.jpg', 'commons:depicts', "
+              "'pd_us', 1, 'PD-US', NULL, 900, 1200, '0.4,0.2,0.2,0.2', 1, 0)")
+    d.commit()
+    d.close()
+    B.build(src, dst)
+    worn = lambda: dict(sqlite3.connect(dst).execute(
+        "SELECT p.id, a.evidence_url FROM people p JOIN art a ON a.id = p.portrait"))
+    check("control: a depicts file the detector never read does not replace an own image",
+          worn()["p1"], AP.evidence_url("Jack Benny 1938.jpg"))
+    d = sqlite3.connect(src)
+    d.execute("UPDATE people_art SET faces = 1 WHERE file = 'Benny and Allen.jpg'")
+    d.commit()
+    d.close()
+    check("control: the floor guard catches the smaller own image",
+          floor_misses(dst, src), [("p1", AP.evidence_url("Jack Benny 1938.jpg"), AP.evidence_url("Benny and Allen.jpg"))])
+    B.build(src, dst)
+    check("floor: a one-face file that fills more stands in for an own image under the floor",
+          worn()["p1"], AP.evidence_url("Benny and Allen.jpg"))
+    check("control: a stand-in gives no face to a person without an own image", "p4" in worn(), False)
+    check("floor: the guard holds", floor_misses(dst, src), [])
+    check("floor: retrace accepts the stand-in", retrace(dst, src), [])
+    d = sqlite3.connect(src)
+    d.execute("UPDATE people_art SET faces = 3 WHERE file = 'Benny and Allen.jpg'")
+    d.commit()
+    d.close()
+    check("control: retrace refuses a stand-in that shows a group",
+          retrace(dst, src), [("p1", AP.evidence_url("Benny and Allen.jpg"))])
 
 
 # A portrait's own size is published, so a client lays the face out by its shape before the
@@ -544,6 +662,8 @@ if os.path.exists(real):
         check("contract holds on the real artifact", violations(real), {})
         if os.path.exists(source):
             check("retrace holds on the real artifact", retrace(real, source)[:5], [])
+            check("no portrait is under the floor while a larger one-face file of theirs is served",
+                  floor_misses(real, source)[:5], [])
     else:
         print("  SKIP  real artifact predates the art table")
 elif os.environ.get("PROJECTION"):

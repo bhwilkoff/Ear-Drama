@@ -64,8 +64,10 @@ SHELF_SERIES = 12
 # scripts: how many of the series' served episodes carry a castable script (episode_scripts.py).
 # picture: the series' leading picture (contract §3.3a: the show's own image, else its star's portrait,
 # as an art array), pictureKind ("show", "star", "person") and pictureSource; all null for the board.
+# years: the run histogram (contract section 3.3 `series.year_counts`) over the web's own episodes, as
+# [first year, count, count, ...], one count per year to the last dated one; null when none is dated.
 SERIES_FIELDS = ["key", "name", "genre", "first", "last", "episodes", "networks", "star", "art", "sortName", "scripts",
-                 "downloads", "picture", "pictureKind", "pictureSource"]
+                 "downloads", "picture", "pictureKind", "pictureSource", "years"]
 # A served image (art_policy.py): url takes ?width=; credit is set only where the license requires one.
 ART_FIELDS = ["url", "width", "height", "credit", "evidence", "face"]
 # li, ltp: the default copy's loudness (LUFS) and true peak (dBTP), DECISIONS 061; null when unmeasured.
@@ -213,6 +215,8 @@ def build(src, out, include_unclaimed=False, transcripts=None):
     for k, row in series.items():
         row.append(popular.get(k))
         row.extend(series_pic.get(k, (None, None, None)))
+        hist = P.year_counts([e[2] for e in by_series[k]])
+        row.append([int(v) for v in hist.split(",")] if hist else None)
     arc_rows = {}
     if {"arcs", "arc_parts"} <= tables:
         for aid, sk, eid in s.execute("SELECT a.id, a.series_key, p.episode_id FROM arcs a JOIN arc_parts p "
@@ -245,7 +249,7 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         dump(os.path.join(out, "series", f"{key}.json"), {
             "key": key, "name": meta[1], "genre": meta[2], "first": meta[3], "last": meta[4],
             "networks": meta[6], "star": meta[7], "art": meta[8], "picture": meta[12], "pictureKind": meta[13],
-            "pictureSource": meta[14], "seasons": seasons, "fields": EPISODE_FIELDS,
+            "pictureSource": meta[14], "years": meta[15], "seasons": seasons, "fields": EPISODE_FIELDS,
             "episodes": [[e[0], e[2], e[3], e[4], e[5], e[8], e[7], recs[e[0]][0][0]] + lt(e[0]) for e in rows]})
 
     # Detail shards.

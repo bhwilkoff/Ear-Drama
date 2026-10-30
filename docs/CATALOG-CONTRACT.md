@@ -69,7 +69,8 @@ many copies survive.
 | `season` | TEXT | broadcast season, `1949-50`, computed in the pipeline (Decision 058); NULL when undated |
 | `run_id` | TEXT | the dated run it belongs to, with that run's kind (R2) |
 | `num` | INTEGER | log number, when a log gives one |
-| `title` | TEXT | display title |
+| `title` | TEXT | display title, computed once by `catalog/tools/titles.py` (catalog DECISIONS 022): upload numbering, codes, durations and the series' own name stripped where words remain, an all-capitals title set in the catalog's own case, a run-together word split only into words the catalog spells on their own; a series whose undated order rests on its leading numbers keeps them. No client re-derives it |
+| `raw_title` | TEXT | the title as the source wrote it, only where it differs from `title`; NULL otherwise. Search indexes both |
 | `aka` | TEXT | alternate titles (AFRS retitlings), JSON array |
 | `length_s` | REAL | the default copy's measured length |
 | `rights` | TEXT | `clean` or `unclaimed` (§6) |
@@ -149,11 +150,22 @@ none on the web), never as a skip. Segment times are never estimated.
 
 ### 3.3 `series`, `runs`, `people`, `credits`, `art`, `arcs`
 
-- `series`: `key`, `name`, `genre` (one of the eight, §5.5), `first_date`,
+- `series`: `key`, `name` (the display name, `titles.display_name`: the same rules as a title, with no
+  series to drop, so "01 The Hobbit" is "The Hobbit"; `raw_name` is the source's name where it
+  differs, else NULL), `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
   the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below),
   `downloads` (below), `picture`, `picture_kind`, `picture_source` (§3.3a; all
-  three NULL together).
+  three NULL together), `year_counts` (below).
+- **`series.year_counts`** (and `years` on the web series index and series page, as a number
+  array): the run histogram, the series' served episodes per broadcast year, as text "first
+  year,count,count,..." with one count per year from the first dated year to the last, 0 for a
+  year with none ("1932,3,12,0,4" is 3 in 1932 and 4 in 1935); NULL when no served episode is
+  dated. Each output counts its own rows, so the clean-only web counts what it serves. The run
+  strip draws these years instead of a first-to-last span; none re-derives it.
+  `build_projection.year_counts`; guarded in `tests/test_projection.py` (the counts sum to the
+  dated episodes, the first and last years are not 0). MEASURED 2026-10-30 on the 2026-10-29
+  caches: 4,202 of 10,641 series carry one, 35.8 KB of text in all, the longest 123 characters.
 - **`series.downloads`** (and `downloads` on the web series index): Browse's
   "Popular" key, the series' `mostDownloaded` sum (§5.1, Decision 067):
   archive.org's own download counts over the distinct items holding its
@@ -171,6 +183,7 @@ none on the web), never as a skip. Segment times are never estimated.
 - **`series.sort_name`** (and `sortName` on the web series index, `sort_name`
   on a castable script): the A-to-Z key, computed once by
   `catalog/tools/sort_name.py` and golden-tested in `tests/test_sort_name.py`.
+  It is the key of the display `name`, so a name that lost its track number sorts by its words.
   Accents dropped, leading non-alphanumerics skipped (`"Banjos`, `: CARL`,
   `? Jiminy`), then one leading article (The, A, An), then case-folded; digits
   sort before letters. Every client sorts Browse A to Z by it and falls back
@@ -231,7 +244,14 @@ shows cannot be the uploader's (Richard Kollmar died in 1971; File:Kollmar.jpg,
 show image dated after the death of the earliest-dying person the program's record
 marks (`art_policy.implausible_own_work`; `own_work` is read from the file page by
 `enrich_people_art.own_work`, the death from `people_wikidata`). One portrait per
-person, the most permissive class first. Library of
+person, the most permissive class first, unless it is under the size floor: when it fills less
+than the largest window a client draws (`art_policy.LARGEST_SLOT`, 300, tvOS's show tile; the
+pixels `fill_px` counts are the ones every client's `windowFill` compares) and a file of the same
+person showing one face (the detector's confident faces, `people_art.faces`) fills more, the one
+of those that fills most is served, an own image before a stand-in. A stand-in may be a file whose
+Structured Data depicts the person (`commons:depicts`) only when it shows one face and passes every
+other check, and only for a person who has a served own image: it changes which picture of them is
+shown, never who has one (catalog DECISIONS 021). A group never replaces a portrait. Library of
 Congress "no known restrictions" and Smithsonian CC0 photographs are not served
 (V2, V4, the owner's). MEASURED 2026-10-24 on the 121,907-episode build: 2,344
 images, 2,364 people, 305 series with a star, 24,894 episodes with one.
