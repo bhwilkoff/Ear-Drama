@@ -33,6 +33,17 @@ final class RecordingSession {
             case .step: "Step"
             }
         }
+
+        static let key = "recorder.mode"
+
+        /// The person's last mode on this device; Run through the first time.
+        static func remembered(in defaults: UserDefaults = .standard) -> Mode {
+            defaults.string(forKey: key).flatMap(Mode.init(rawValue:)) ?? .run
+        }
+
+        func remember(in defaults: UserDefaults = .standard) {
+            defaults.set(rawValue, forKey: Self.key)
+        }
     }
 
     /// The run on screen (Run through): the line it started at and what it took.

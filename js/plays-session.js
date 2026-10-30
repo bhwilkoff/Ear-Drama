@@ -20,6 +20,7 @@ const RecordingSession = (() => {
     let finishListening = null;
     let ended = false;
     let runToken = 0;
+    let cancelled = false;
 
     const s = {
       phase: { kind: 'idle' },
@@ -35,9 +36,12 @@ const RecordingSession = (() => {
       mode: 'step',
       /** The run on screen (Run through): its first line and the takes it made. */
       run: null,
+      /** The microphone's recent loudness (0..1), newest last, for the level meter while a line records. */
+      levels: [],
+      onLevel: null,
     };
 
-    const set = (phase) => { s.phase = phase; onChange(s); };
+    const set = (phase) => { if (phase.kind !== 'cue') cancelled = false; s.phase = phase; onChange(s); };
     s.isBusy = () => ['roomTone', 'cue', 'listening'].includes(s.phase.kind);
 
     /** Changes the store's current record, never a stale copy. */
@@ -49,6 +53,9 @@ const RecordingSession = (() => {
 
     function hear(chunk) {
       if (!finishListening || !detector) return;
+      s.levels.push(Math.min(1, C.rms(chunk) * 12));
+      if (s.levels.length > 48) s.levels.splice(0, s.levels.length - 48);
+      if (s.onLevel) s.onLevel(s.levels);
       const event = detector.feed(chunk);
       if (event && event.type === 'end') stop();
     }
@@ -90,7 +97,7 @@ const RecordingSession = (() => {
     };
 
     /** Plays cue lines (a human take where one exists, the device voice live where not); what each was. */
-    async function playCues(cues, threshold, live = () => !ended) {
+    async function playCues(cues, threshold, live = () => !ended && !cancelled) {
       const heard = {};
       let bleed = false;
       for (const cue of cues) {
@@ -118,6 +125,7 @@ const RecordingSession = (() => {
     async function listenAndKeep(lineID, heard, bleed) {
       await announce();
       if (ended) return null;
+      s.levels = [];
       set({ kind: 'listening', run: !!s.run, lineID });
       detector = new C.LineEndDetector(audio.sampleRate, roomToneRMS);
       await new Promise((resolve) => {
@@ -165,8 +173,10 @@ const RecordingSession = (() => {
     s.record = async (lineID, runUp = false) => {
       if (!s.started || s.isBusy() || ended) return;
       const prior = s.production.chosen[lineID] || null;
+      cancelled = false;
       const { heard, bleed } = await playCues(C.cueLines(script, lineID, runUp), C.thresholdFor(roomToneRMS));
       if (ended) return;
+      if (cancelled) { set({ kind: s.run ? 'runReview' : 'idle' }); return; }
       const t = await listenAndKeep(lineID, heard, bleed);
       if (ended || s.phase.kind === 'failed') return;
       if (s.run) {
@@ -216,6 +226,14 @@ const RecordingSession = (() => {
       else { voice.cancel(); audio.stopPlayback(); }
     };
 
+    /** Cancel while a cue plays outside a run: the cue stops and nothing is recorded. */
+    s.cancel = () => {
+      if (s.phase.kind !== 'cue' || s.run) return;
+      cancelled = true;
+      voice.cancel();
+      audio.stopPlayback();
+    };
+
     /** Keep N takes: the run's takes stay their lines' chosen ones. */
     s.keepRun = () => {
       if (!s.run || s.phase.kind !== 'runReview') return;
@@ -253,6 +271,7 @@ const RecordingSession = (() => {
       const back = s.phase;
       await playCues(C.cueLines(script, t.lineID), C.thresholdFor(roomToneRMS));
       if (ended) return;
+      if (cancelled) { settle(back); return; }
       set({ kind: 'cue', run: !!s.run, lineID: t.lineID, deviceVoice: false });
       await audio.playTake(await store.readTake(s.production.id, t.file));
       settle(back);

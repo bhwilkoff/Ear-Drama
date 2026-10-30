@@ -1,5 +1,7 @@
 package com.example.appname.plays
 
+import android.content.Context
+import androidx.core.content.edit
 import java.util.UUID
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
@@ -26,7 +28,23 @@ class RecordingSession(
     private val announce: suspend () -> Unit = {},
 ) {
     /** Run through, Line by line, or Step (owner ruling 4); only what follows a take differs. */
-    enum class Mode { Run, Lines, Step }
+    enum class Mode {
+        Run, Lines, Step;
+
+        companion object {
+            private const val PREFS = "recorder"
+            private const val KEY = "mode"
+
+            /** The person's last mode on this device; Run through the first time. */
+            fun remembered(context: Context): Mode =
+                context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
+                    ?.let { name -> entries.firstOrNull { it.name == name } } ?: Run
+        }
+
+        fun remember(context: Context) {
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(KEY, name) }
+        }
+    }
 
     /** The run on screen (Run through): its first line, and per line the take it had and the takes the run made. */
     data class RunState(val from: String, val takes: List<RunNote>)

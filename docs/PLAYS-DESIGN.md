@@ -186,7 +186,14 @@ Every platform does the same seven things, in its own idiom.
      line opens it under its cue to record it or record it again, and the
      take leaves the line ready to record again.
    The mode control is the platform's native segmented control, disabled
-   while a cue plays, the microphone is open, or a run is on screen.
+   while a cue plays, the microphone is open, or a run is on screen. The
+   recorder opens in Run through the first time, then in the person's last
+   mode, kept on that device and never synced (web `localStorage`, Apple
+   `UserDefaults`, Android `SharedPreferences`; D3-fix2, 2026-10-30). While
+   a Step or Line by line cue plays, the one round control reads Cancel (Space
+   on a keyboard): the cue stops and nothing is recorded. While the
+   microphone is open the line's box carries a live level meter, bars in the
+   record color on the surface, newest at the right.
    - *Replaced*: "**Record line by line.** The previous line plays ... and
      mark the take they like."
 5. **Pass the phone.** "Done with this part" returns to the cast sheet, which
