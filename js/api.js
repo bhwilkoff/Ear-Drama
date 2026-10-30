@@ -247,6 +247,38 @@ const API = (() => {
     const c = (v) => Math.min(hi, Math.max(lo, v));
     return { from: (c(a) - lo) / n, to: (c(Math.max(a, b)) - lo + 1) / n };
   }
+  /* ---- Series and episode pages (WEB-DESIGN §6.4d): the rules every platform mirrors ---- */
+
+  /** The picture that leads an episode's head board: the show's own image when the series picture is
+      of the show, else the episode's star (the credit the row names, else the first cast with a
+      picture), else the series' picture, else none (the title block). */
+  function leadPicture(series, credits, star) {
+    const s = series || {};
+    if (s.picture && s.pictureKind === 'show') return s.picture;
+    const cast = (credits || []).filter(c => c && c.art && (c.role || 'cast') === 'cast');
+    const pick = (star && cast.find(c => c.person === star)) || cast[0];
+    return pick ? pick.art : (s.picture || null);
+  }
+  /** Who is "On the air": the cast in billing order, each person once, at most `limit`. */
+  function onAirOf(credits, limit = 6) {
+    const seen = new Set(), out = [];
+    for (const c of credits || []) {
+      if ((c.role || 'cast') !== 'cast') continue;
+      const k = c.person || c.name;
+      if (seen.has(k)) continue;
+      seen.add(k); out.push(c);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+  /** The facts of an episode's event line: its date (or Undated), network, sponsor, length, season,
+      and its number when the title does not already say it. `date` and `length` arrive formatted. */
+  function episodeFacts(d, date, length) {
+    return [date || 'Undated', d.network, d.sponsor, length, d.season ? `Season ${d.season}` : null,
+            d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null]
+      .filter(x => x !== null && x !== undefined && String(x).trim() !== '');
+  }
+
   /* ---- Home and Browse (WEB-DESIGN §6.4c): the rules every platform mirrors ---- */
 
   /** A show is a series of at least this many episodes (owner, 2026-10-29); the rest are single recordings, counted. */
@@ -1357,7 +1389,7 @@ const API = (() => {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople,

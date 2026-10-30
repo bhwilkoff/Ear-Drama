@@ -106,6 +106,23 @@ test('grammar: the title block, the type step, the window, the event line and th
   assertEq(JSON.stringify(API.gradeOf({ grade: [1.1, -0.05] })), JSON.stringify({ k: 1.1, o: -0.05 }), 'a published grade replaces it');
 });
 
+test('series and episode pages: the lead picture, who is on the air, the event line (WEB-DESIGN §6.4d golden cases)', () => {
+  const art = (u) => ({ url: u, width: 600, height: 800 });
+  const credits = [{ person: 'a', name: 'A', role: 'cast', art: null }, { person: 'b', name: 'B', role: 'cast', art: art('b') },
+                   { person: 'c', name: 'C', role: 'cast', art: art('c') }, { person: 'd', name: 'D', role: 'writer', art: art('d') },
+                   { person: 'b', name: 'B', role: 'cast', art: art('b') }];
+  assertEq(API.leadPicture({ picture: art('show'), pictureKind: 'show' }, credits, 'c').url, 'show', 'a show picture leads over any star');
+  assertEq(API.leadPicture({ picture: art('s'), pictureKind: 'star' }, credits, 'c').url, 'c', 'a star picture on the series gives way to the episode\'s star');
+  assertEq(API.leadPicture({ picture: art('s'), pictureKind: 'star' }, credits, null).url, 'b', 'no star named: the first cast with a picture');
+  assertEq(API.leadPicture({ picture: art('s'), pictureKind: 'star' }, [{ role: 'writer', art: art('w') }], null).url, 's', 'control: a writer is not a lead; the series picture');
+  assertEq(API.leadPicture({}, [], null), null, 'control: nothing to show is the title block');
+  assertEq(API.onAirOf(credits).map(c => c.person).join(), 'a,b,c', 'cast in billing order, once each, no writers');
+  assertEq(API.onAirOf(credits, 2).length, 2, 'at most the limit');
+  assertEq(JSON.stringify(API.episodeFacts({ network: 'CBS', sponsor: null, season: '1943-44', title: 'T', num: 4 }, 'Jun 17, 1943', '30 min')),
+    JSON.stringify(['Jun 17, 1943', 'CBS', '30 min', 'Season 1943-44', 'No. 4']), 'the event line, in order');
+  assertEq(JSON.stringify(API.episodeFacts({ title: null, num: 4 }, null, null)), JSON.stringify(['Undated']), 'control: an undated bare file says only so; a number already naming it is not repeated');
+});
+
 test('home and browse: the show line, the day by year, the night, the decade field (WEB-DESIGN §6.4c golden cases)', () => {
   assertEq(API.isShow(5), true, 'five episodes is a show');
   assertEq(API.isShow(4), false, 'control: four is a single recording');

@@ -348,7 +348,7 @@
   function eventLine(facts, cls = 'caption') {
     const parts = API.eventParts(facts);
     if (!parts.length) return null;
-    return el('span', { class: `g-event ${cls}` }, ...parts.flatMap((p, i) => [i ? ' ' : null, el('span', {}, p.replace(/ \u00b7$/, '\u00a0\u00b7'))]));
+    return el('span', { class: `g-event ${cls}` }, ...parts.flatMap((p, i) => [i ? ' ' : null, el('span', {}, p.replace(/ \u00b7$/, '\u00a0\u00b7').replace(/(\d)-(?=\d)/g, '$1\u2011'))]));
   }
   /** The show tile: window, name, run strip, facts, on the genre's board. `facts` replaces the two
       default facts (Home's night tiles say the episode, not the run); `href` replaces the series link. */
@@ -363,17 +363,25 @@
         el('span', { class: 'g-facts caption' }, ...lines.filter(Boolean).map(t => el('span', {}, t)))));
   }
   /** The head board (series, episode, ear drama): the window, the kicker, the name, the facts, and
-      the run strip full width under both. Built in D3-1; the pages adopt it in D3-3. */
-  function headBoard({ series, kicker, name, facts, first, last }) {
-    const slot = typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches ? 176
+      the run strip full width under both. `picture` replaces the series' own (an episode leads with
+      its star); `href` makes the whole board the link to the show, its name a paragraph under the
+      page's own h1. */
+  function headSlot() {
+    return typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches ? 176
       : typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 128 : 96;
-    return el('header', { class: 'g-head', dataset: { genre: (series && series.genre) || '' } },
-      pictureWindow(series, slot),
+  }
+  function headBoard({ series, kicker, name, facts, first, last, picture, href = null }) {
+    const slot = headSlot();
+    const lead = picture === undefined ? series : { ...series, picture };
+    const nm = { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) } };
+    return el(href ? 'a' : 'header', { class: `g-head${href ? ' g-head-link' : ''}`, ...(href ? { href } : {}),
+                                       dataset: { genre: (series && series.genre) || '' } },
+      pictureWindow(lead, slot),
       el('div', { class: 'g-head-text' },
         kicker ? el('span', { class: 'g-kicker caption' }, kicker) : null,
-        el('h1', { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) }, tabindex: '-1' }, name),
+        href ? el('p', nm, name) : el('h1', { ...nm, tabindex: '-1' }, name),
         eventLine(facts || [], 'caption g-head-facts')),
-      runStrip(first, last, 'g-strip g-head-strip', 56));
+      runStrip(first, last, 'g-strip g-head-strip', 18));
   }
   /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
       broken at its hyphens. */
@@ -1094,10 +1102,26 @@
      SERIES PAGE
   ================================================================ */
 
+  /** A button whose label gives way to its icon on a narrow row; the label is always its accessible name. */
+  function iconBtn(cls, ic, label, extra = {}) {
+    return el('button', { type: 'button', class: `btn btn-fold ${cls}`, 'aria-label': label, ...extra },
+      icon(ic), el('span', { class: 'btn-lab' }, label));
+  }
+  /** The credit a license asks for, linked to the file page, for each picture shown. */
+  function pictureCredit(arts) {
+    const owed = [...new Map(arts.filter(a => a && a.credit && API.windowFill(a, headSlot()).kind !== 'block')
+      .map(a => [a.evidence, a])).values()];
+    return owed.length ? el('p', { class: 'caption photo-credits' }, 'Picture: ',
+      ...owed.flatMap((a, i) => [i ? ' \u00b7 ' : '', el('a', { href: a.evidence, rel: 'noopener', target: '_blank' }, a.credit)])) : null;
+  }
+
   function renderShow(r) {
     const body = $('show-body');
     const scope = r.p.get('season');
-    load(body, () => API.seriesPage(r.key), (s) => {
+    load(body, async () => {
+      const s = await API.seriesPage(r.key);
+      return { s, genre: await genreName(s.genre).catch(() => null) };
+    }, ({ s, genre }) => {
       if (s.key !== r.key) {   // a moved series key (contract §3.5): the address names the series it now is
         const p = new URLSearchParams(r.p);
         p.set('series', s.key);
@@ -1105,7 +1129,7 @@
       }
       setTitle(s.name);
       const following = Store.isFollowing(s.key);
-      const followBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': String(following) },
+      const followBtn = el('button', { type: 'button', class: 'btn btn-follow', 'aria-pressed': String(following) },
         following ? 'Following' : 'Follow');
       followBtn.addEventListener('click', () => {
         const on = Store.toggleFollow({ ...s, episodes: s.episodes.length });
@@ -1113,8 +1137,7 @@
         followBtn.textContent = on ? 'Following' : 'Follow';
         announce(on ? `Following ${s.name}` : `Stopped following ${s.name}`);
       });
-      const shareBtn = el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${s.name}` },
-        icon('share'), 'Share');
+      const shareBtn = iconBtn('btn-ghost', 'share', 'Share', { 'aria-label': `Share ${s.name}` });
       shareBtn.addEventListener('click', () => share(s.name, API.shareLink('series', s.key)));
 
       const undated = s.episodes.some(e => !e.date);
@@ -1141,17 +1164,9 @@
         listBox.replaceChildren(eps.length ? episodeList(eps, { genre: s.genre }) : stateBox('empty', { text: 'No episodes in this season.' }));
       };
 
-      const meta = el('p', { class: 'caption' }, seriesMeta({ ...s, episodes: s.episodes.length }));
-      const head = el('header', { class: `page-head${s.art ? ' has-face' : ' as-card'}`, dataset: { genre: s.genre || '' } },
-        el('div', { class: 'page-head-text' },
-          el('h1', { class: 'view-heading', id: 'show-h', tabindex: '-1' }, s.name), meta),
-        el('div', { class: 'actions' }, followBtn, shareBtn));
-      if (s.art) head.prepend(faceFigure(head, s.art, s.star));
-      if (s.genre) {
-        genreName(s.genre).then(n => meta.prepend(el('a', { href: `?view=browse&genre=${encodeURIComponent(s.genre)}` }, n),
-          ' · '));
-      }
-      body.append(head);
+      const head = headBoard({ series: s, kicker: [genre, s.networks].filter(Boolean).join(' \u00b7 '), name: s.name,
+        facts: [years(s.first, s.last) || 'Undated', plural(s.episodes.length, 'episode', 'episodes')], first: s.first, last: s.last });
+      body.append(...[head, el('div', { class: 'actions actions-one' }, followBtn, shareBtn), pictureCredit([s.picture])].filter(Boolean));
       if (scopes.length > 2) body.append(seg);
       body.append(countLine, listBox);
       drawEpisodes(scope || '');
@@ -1169,11 +1184,12 @@
       if (!d) throw new API.DataError('missing', r.id);
       const s = await API.seriesPage(d.series).catch(() => null);
       const lines = await Promise.all([API.rightsLine(d.rights, d.rightsBasis), API.manifest()]);
+      const genre = s && s.genre ? await genreName(s.genre).catch(() => null) : null;
       // Decision 068: an episode whose row links a castable script can become an ear drama,
       // when this browser's copy of the castable file holds that script (contract §3.1).
       const script = d.script && !onTV() ? (await castable()).find(x => x.id === d.script) || null : null;
-      return { d, s, rightsLine: lines[0], m: lines[1], script };
-    }, ({ d, s, rightsLine, m, script }) => {
+      return { d, s, genre, rightsLine: lines[0], m: lines[1], script };
+    }, ({ d, s, genre, rightsLine, m, script }) => {
       if (d.id !== r.id) history.replaceState(null, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
       const title = epTitle(d);
@@ -1185,45 +1201,58 @@
                             li: chosen === 0 ? d.li : null, ltp: chosen === 0 ? d.ltp : null });
 
       const resume = Store.resumeAt(d.id, d.recordings[0].length || d.length);
-      const playBtn = el('button', { type: 'button', class: 'btn btn-primary' }, icon('play'),
+      const playBtn = el('button', { type: 'button', class: 'btn btn-primary btn-play' }, icon('play'),
         resume ? `Resume at ${fmtClock(resume)}` : 'Play');
       playBtn.addEventListener('click', () => Player.load(card()));
       const queued = Store.inQueue(d.id);
-      const queueBtn = el('button', { type: 'button', class: 'btn', 'aria-pressed': String(queued) },
-        icon(queued ? 'queued' : 'queue'), queued ? 'In queue' : 'Add to queue');
+      const queueLabel = (on) => [icon(on ? 'queued' : 'queue'), el('span', { class: 'btn-lab' }, on ? 'In queue' : 'Add to queue')];
+      const queueBtn = el('button', { type: 'button', class: 'btn btn-fold', 'aria-pressed': String(queued),
+                                      'aria-label': queued ? 'In queue' : 'Add to queue' }, ...queueLabel(queued));
       queueBtn.addEventListener('click', () => {
         const on = !Store.inQueue(d.id);
         if (on) Store.enqueue(card()); else Store.dequeue(d.id);
-        queueBtn.replaceChildren(icon(on ? 'queued' : 'queue'), on ? 'In queue' : 'Add to queue');
+        queueBtn.replaceChildren(...queueLabel(on));
+        queueBtn.setAttribute('aria-label', on ? 'In queue' : 'Add to queue');
         queueBtn.setAttribute('aria-pressed', String(on));
         announce(on ? 'Added to queue' : 'Removed from queue');
       });
-      const shareBtn = el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${title}` },
-        icon('share'), 'Share');
+      const shareBtn = iconBtn('btn-ghost', 'share', 'Share', { 'aria-label': `Share ${title}` });
       shareBtn.addEventListener('click', () => share(`${title} (${d.date || 'undated'})`, API.shareLink('episode', d.id)));
 
-      // An undated episode with no network or credits is most of the catalog: its one line of
-      // facts carries "Undated", and the number is not repeated when it already names the episode.
-      const facts = [d.date ? null : 'Undated', d.network, d.sponsor, fmtLength(d.length), d.season ? `Season ${d.season}` : null,
-                     d.title && d.num !== null && d.num !== undefined ? `No. ${d.num}` : null].filter(Boolean).join(' · ');
-      const star = d.star ? d.credits.find(c => c.person === d.star && c.art) : null;
-      const head = el('header', { class: `page-head${star ? ' has-face' : ''}`, dataset: { genre: (s && s.genre) || '' } },
-        el('div', { class: 'page-head-text' },
-        el('a', { class: 'section-header eyebrow-link', href: `?series=${encodeURIComponent(d.series)}` }, seriesName),
-        el('h1', { class: 'view-heading', id: 'episode-h', tabindex: '-1' }, title),
-        d.date ? el('p', { class: 'body' }, fmtLongDate(d.date)) : null,
-        facts ? el('p', { class: 'caption' }, facts) : null,
-        d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null),
-        el('div', { class: 'actions' }, playBtn, queueBtn, shareBtn,
-          script ? PlaysUI.startButton(script, playsHelpers) : null));
-      if (star) head.prepend(faceFigure(head, star.art, star.name));
-      body.append(head);
+      // An undated episode with no network or credits is most of the catalog: its event line says
+      // "Undated" and nothing more, in the same structure as a rich one.
+      const lead = API.leadPicture(s, d.credits, d.star);
+      const showName = { key: d.series, name: seriesName, genre: (s && s.genre) || '', picture: lead };
+      const head = headBoard({ series: showName, href: `?series=${encodeURIComponent(d.series)}`,
+        kicker: genre || 'Show', name: seriesName,
+        facts: [s && years(s.first, s.last) || 'Undated', s ? plural(s.episodes.length, 'episode', 'episodes') : null],
+        first: s && s.first, last: s && s.last });
+      const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
+      body.append(...[head,
+        el('h1', { class: 'view-heading ep-heading', id: 'episode-h', tabindex: '-1' }, title),
+        eventLine(API.episodeFacts(d, d.date ? fmtLongDate(d.date) : null, fmtLength(d.length)), 'caption g-event-line'),
+        d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null,
+        el('div', { class: 'actions actions-one' }, playBtn, queueBtn, shareBtn),
+        startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : null,
+        pictureCredit([lead])].filter(Boolean));
 
       // R16: the automatic transcript, only where the gate passed (the row's `transcript`
       // is null otherwise), fetched from archive.org the first time it is opened.
       if (d.transcript) body.append(transcriptBlock(d.transcript));
 
       if (d.credits.length) {
+        const air = API.onAirOf(d.credits);
+        if (air.length) {
+          body.append(el('section', { class: 'block', 'aria-labelledby': 'air-h' },
+            el('h2', { class: 'section-header', id: 'air-h' }, 'On the air'),
+            el('ul', { class: 'g-faces' }, ...air.map(c => el('li', { class: 'g-face-li' },
+              el(c.person ? 'a' : 'span', { class: 'g-face', ...(c.person ? { href: `?person=${encodeURIComponent(c.person)}` } : {}) },
+                pictureWindow({ name: c.name, genre: (s && s.genre) || '', picture: c.art }, 72),
+                el('span', { class: 'g-face-name caption' }, c.name),
+                c.character ? el('span', { class: 'g-face-role caption' }, `as ${c.character}`) : null))))));
+          const owed = pictureCredit(air.map(c => c.art).filter(a => a && API.windowFill(a, 72).kind !== 'block'));
+          if (owed) body.append(owed);
+        }
         const groups = new Map();
         d.credits.forEach(c => {
           const role = c.role || 'cast';
@@ -1233,25 +1262,16 @@
         const order = [...groups.keys()].sort((a, b) => (b === 'cast') - (a === 'cast'));
         const dl = el('dl', { class: 'credits' });
         order.forEach(role => {
-          const faces = groups.get(role).some(c => c.art);
           dl.append(el('div', { class: 'credit' },
             el('dt', { class: 'caption' }, role.charAt(0).toUpperCase() + role.slice(1)),
             groups.get(role).map(c => {
-              const slot = faces ? el('span', { class: 'face-sm', 'aria-hidden': 'true' }) : null;
-              if (c.art) putImage(slot, c.art, 32, '');
               // withPerson: a credited name opens the person's page (§4.14).
               const name = c.person ? el('a', { class: 'eyebrow-link', href: `?person=${encodeURIComponent(c.person)}` }, c.name) : c.name;
-              return el('dd', { class: `body${faces ? ' with-face' : ''}` }, slot,
-                el('span', {}, name, c.character ? el('span', { class: 'caption' }, ` as ${c.character}`) : null));
+              return el('dd', { class: 'body' }, el('span', {}, name, c.character ? el('span', { class: 'caption' }, ` as ${c.character}`) : null));
             })));
         });
-        // CC BY and BY-SA portraits carry their credit (Decision 069); the header's face already does.
-        const owed = [...new Map(d.credits.filter(c => c.art && c.art.credit && c !== star)
-          .map(c => [c.person, c])).values()];
-        body.append(el('section', { class: 'block', 'aria-labelledby': 'credits-h' },
-          el('h2', { class: 'section-header', id: 'credits-h' }, 'Cast and credits'), dl,
-          owed.length ? el('p', { class: 'caption photo-credits' }, owed.flatMap((c, i) => [i ? ' · ' : '',
-            `${c.name}: `, el('a', { href: c.art.evidence, rel: 'noopener', target: '_blank' }, c.art.credit)])) : null));
+        body.append(el('details', { class: 'booklet' },
+          el('summary', {}, 'Cast and credits', el('span', { class: 'caption' }, String(d.credits.length))), dl));
       }
 
       const fs = el('fieldset', { class: 'versions' },
