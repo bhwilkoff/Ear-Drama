@@ -32,6 +32,7 @@ DEFAULT_SUITES="js/api.test.js
   tools/test_pulse_charts.mjs
   tools/test_pulse_render.mjs
   tools/test_design_tokens.mjs
+  tools/test_no_edge_stripes.mjs
   tools/test_sw.mjs
   tools/test_deep_links.mjs"
 
@@ -78,6 +79,12 @@ sys.exit(1 if bad else 0)
 PY
 then
   fail=1; failed+=("stylesheet braces")
+fi
+
+# The site deploy runs this too; without it here, a .replaceChildren(null) passed every local
+# run and failed the deploy (D3-6, 2026-10-30).
+if ! python3 tools/test_js_null_children.py; then
+  fail=1; failed+=("null children")
 fi
 
 if [ "$fail" -ne 0 ]; then

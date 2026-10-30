@@ -100,6 +100,7 @@ struct TileLink<Value: Hashable>: View {
             .buttonStyle(.plain)
             .navigationLinkIndicatorVisibility(.hidden)
             #endif
+            .accessibilityIdentifier("show-tile")
     }
 }
 
@@ -232,13 +233,23 @@ struct YearStrip: View {
 struct GenreLegend: View {
     let genres: [String]
 
+    #if os(tvOS)
+    private let column: CGFloat = 270, mark: CGFloat = 20
+    #else
+    private let column: CGFloat = 112, mark: CGFloat = 10
+    #endif
+
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: Spacing.s2, alignment: .leading)],
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: column), spacing: Spacing.s2, alignment: .leading)],
                   alignment: .leading, spacing: Spacing.s1) {
             ForEach(genres, id: \.self) { g in
                 HStack(spacing: Spacing.s1) {
-                    Rectangle().fill(genreFill(g)).frame(width: 10, height: 10)
+                    Rectangle().fill(genreFill(g)).frame(width: mark, height: mark)
+                    #if os(tvOS)
+                    Text(verbatim: GenreDisplay.name(g)).lineLimit(2)
+                    #else
                     Text(verbatim: GenreDisplay.name(g)).lineLimit(1).minimumScaleFactor(0.8)
+                    #endif
                 }
             }
         }

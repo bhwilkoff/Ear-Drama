@@ -1,15 +1,17 @@
 import XCTest
 
 final class BrowseUITests: DeviceTestCase {
+    /// The first show tile's name. Not `cells.firstMatch`: on the iPad that is the sidebar's Home,
+    /// and in design D the first List row is the count line, the same under every sort.
     private func firstRow(_ app: XCUIApplication) -> String {
-        app.cells.firstMatch.staticTexts.firstMatch.label
+        app.buttons.matching(identifier: "show-tile").firstMatch.label
     }
 
     func testFilterChipAndSort() throws {
         let app = launch(["APP_START_TAB": "browse", "APP_DOOR_SECONDS": "120"])
         let kind = app.buttons["Kind"]
         XCTAssertTrue(kind.waitForExistence(timeout: 30), "Kind chip")
-        XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 30), "series rows")
+        XCTAssertTrue(app.buttons.matching(identifier: "show-tile").firstMatch.waitForExistence(timeout: 30), "show tiles")
         shot(app, "01-browse")
 
         kind.tap()

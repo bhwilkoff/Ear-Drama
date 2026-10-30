@@ -14,7 +14,7 @@ const Store = (() => {
   'use strict';
 
   const KEYS = { positions: 'ed.positions', history: 'ed.history', queue: 'ed.queue', follows: 'ed.follows',
-                 rate: 'ed.rate', stamps: 'ed.stamps' };
+                 rate: 'ed.rate', stamps: 'ed.stamps', recMode: 'ed.recmode' };
   const MAX_HISTORY = 200;
   const MAX_POSITIONS = 500;
   const MAX_STAMPS = 1500;
@@ -143,6 +143,9 @@ const Store = (() => {
 
   function rate() { return Number(read(KEYS.rate, 1)) || 1; }
   function setRate(r) { write(KEYS.rate, r); }
+  /** The recorder's last mode on this device; Run through until the person picks another. */
+  function recorderMode() { const m = read(KEYS.recMode, 'run'); return ['run', 'lines', 'step'].includes(m) ? m : 'run'; }
+  function setRecorderMode(m) { write(KEYS.recMode, m); }
 
   function onChange(fn) { listeners.add(fn); }
 
@@ -363,6 +366,6 @@ const Store = (() => {
   }
 
   return { position, savePosition, resumeAt, progress, history, addHistory, clearHistory, inProgress,
-           queue, enqueue, dequeue, moveInQueue, inQueue, follows, isFollowing, toggleFollow, rate, setRate,
+           queue, enqueue, dequeue, moveInQueue, inQueue, follows, isFollowing, toggleFollow, rate, setRate, recorderMode, setRecorderMode,
            onChange, card, syncUpload, markSynced, hasPending, applyRemote, stubs, fillCards, forgetSync, forward };
 })();

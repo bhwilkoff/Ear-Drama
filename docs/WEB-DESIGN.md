@@ -248,7 +248,8 @@ web app follows today.
     the largest open part's button is ink, the others blue (C7, owner 2026-10-23: any order, largest suggested);
     sound and directions may "Leave silent"; a finished part offers "Open
     part" only while no part records. A refusal is one line in the error
-    color. Below: Listen through, any time (§2.6, C5): until every
+    color. Below: Listen through, any time (§2.6, C5), with no heading
+    above its button (it said the same thing twice): until every
     speaking line is human, one Listen through / Stop button runs
     `ListenThrough` (`js/plays-session.js`), the current line shown as the
     teleprompter draws it, labeled "Device voice" when `speechSynthesis`
@@ -712,8 +713,8 @@ web app follows today.
   the print, the plate and Now Playing by drawn width at the screen's
   density.
   With no face, a series page's head is drawn as its typographic card
-  (the name, the facts, Follow and Share on the surface with the genre's
-  8 px edge, at least 200 px tall, 240 px from 768 px): the designed
+  (the name, the facts, Follow and Share on the genre's board, no edge
+  stripe, at least 200 px tall, 240 px from 768 px): the designed
   fallback, never a gray box. A play's row in Browse and Search leads
   with its tile (the title's letter; plays carry no genre).
 - **§6.4b One grammar for every level of content** (owner, 2026-10-29:

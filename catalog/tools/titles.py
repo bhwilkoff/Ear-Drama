@@ -66,6 +66,7 @@ MIN_PIECE = 3
 # not "summer we en").
 SHORT = {"an", "as", "at", "be", "by", "do", "go", "he", "in", "is", "it", "me", "my", "no", "of", "on", "or",
          "so", "to", "up", "us", "we"}
+HUMP_TOKEN = re.compile(r"\b([A-Za-z]{4,}?)([A-Z][a-z]{3,})\b")   # one hump: "barbershopQuartet"
 MIN_USES = 3           # a piece is a word of the catalog's when this many titles spell it on its own
 
 
@@ -99,7 +100,7 @@ class Words:
     across distinct titles and names, and the case the mixed-case ones write it in."""
 
     def __init__(self, texts):
-        self.uses, forms = {}, {}
+        self.uses, forms, self.spelled = {}, {}, set()
         for t in sorted(set(x for x in texts if x)):
             if " " not in t.strip():
                 continue
@@ -109,6 +110,7 @@ class Words:
                 k = w.casefold()
                 self.uses[k] = self.uses.get(k, 0) + 1
             if mixed:   # a title's first word is capitalized whatever it is, so it says nothing
+                self.spelled.update(w.casefold() for w in found)
                 for w in set(found[1:]):
                     forms.setdefault(w.casefold(), {}).setdefault(w, 0)
                     forms[w.casefold()][w] += 1
@@ -128,6 +130,8 @@ class Words:
     def split(self, w):
         """The one fewest-piece split of a run-together word into known words, or None."""
         s = w.casefold()
+        if s in self.spelled:
+            return None
         n = len(s)
         best = [None] * (n + 1)   # (pieces, ways, split) for s[:i]
         best[0] = (0, 1, [])
@@ -145,9 +149,31 @@ class Words:
         if best[n] is None or best[n][1] != 1 or best[n][0] < 2:
             return None
         parts = best[n][2]
+        parts = self._whole(parts)
+        if len(parts) < 2:
+            return None
         if any(len(x) < MIN_PIECE and len(y) < MIN_PIECE for x, y in zip(parts, parts[1:])):
             return None   # "POSTTOASTIES" is not "post to as ties": two short words in a row prove nothing
         return parts
+
+    def _whole(self, parts):
+        """Pieces a mixed-case title spells joined stay joined ("may field" is the name "Mayfield")."""
+        out, i = [], 0
+        while i < len(parts):
+            j = next((j for j in range(len(parts), i + 1, -1) if "".join(parts[i:j]) in self.spelled), None)
+            out.append("".join(parts[i:j]) if j else parts[i])
+            i = j or i + 1
+        return out
+
+    def hump(self, m):
+        """A token with one lower-to-capital hump, split only when both halves are words the catalog
+        uses on their own, four letters or more, and the whole is not a word it spells twice."""
+        a, b = m.group(1), m.group(2)
+        if not (a[-1].islower() and self.known(a) and self.known(b)):
+            return m.group()
+        if self.uses.get((a + b).casefold(), 0) >= 2:
+            return m.group()
+        return a + " " + b
 
     def cased(self, w, first):
         k = w.casefold()
@@ -209,6 +235,8 @@ def display_title(raw, series=None, words=None):
     t = _strip_codes(t, series)
     if words is not None and LETTER.search(t) and not re.search(r"[a-z]", t):
         t = _recase(t, words)
+    elif words is not None:
+        t = HUMP_TOKEN.sub(words.hump, t)
     return t or raw.strip()
 
 
@@ -235,6 +263,9 @@ def series_titles(episodes, series_name, words):
     order that was only alphabetical ("Vanishing Point - Azure Blue") carries nothing to keep."""
     old = {e: clean(t) if t else t for e, _a, _n, t in episodes}
     new = {e: display_title(t, series_name, words) for e, _a, _n, t in episodes}
+    bare = {e: display_title(t, None, words) for e, _a, _n, t in episodes}
+    if sum(1 for e in new if new[e] != bare[e]) < 2:
+        new = bare   # a name said once is part of the title ("The Magic Flute - Mozart"), not a repeated prefix
     rows = [(e, a, n) for e, a, n, _t in episodes]
     if _order(rows, new) == _order(rows, old):
         return new

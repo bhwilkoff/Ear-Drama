@@ -518,8 +518,35 @@ nonisolated enum GenreDisplay {
     }
 }
 
-/// Air dates are `YYYY-MM-DD` strings (R1: the date is the identity). Shown
-/// as the stored digits so a column of dates aligns in tabular figures.
+/// Air dates are `YYYY`, `YYYY-MM` or `YYYY-MM-DD` strings (R1: the date is the
+/// identity, kept at the precision the catalog has). `stored` is the digits, for
+/// a column of tabular figures; `display` is the system's long form of the same
+/// precision (a year stays a year, a month a month).
 nonisolated enum AirDate {
-    static func display(_ date: String?) -> String { date ?? "Undated" }
+    static func stored(_ date: String?) -> String { date ?? "Undated" }
+
+    static func display(_ date: String?, locale: Locale = .current) -> String {
+        guard let date, !date.isEmpty else { return "Undated" }
+        return long(date, locale: locale) ?? date
+    }
+
+    static func long(_ date: String, locale: Locale = .current) -> String? {
+        let parts = date.split(separator: "-", omittingEmptySubsequences: false).map { Int($0) }
+        guard (1...3).contains(parts.count), parts.allSatisfy({ $0 != nil }),
+              let year = parts[0], date.prefix(4).count == 4 else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .gmt
+        var wanted = DateComponents(calendar: calendar, timeZone: .gmt, year: year, month: 1, day: 1)
+        if parts.count > 1 { wanted.month = parts[1] }
+        if parts.count > 2 { wanted.day = parts[2] }
+        guard let day = calendar.date(from: wanted),
+              calendar.dateComponents([.year, .month, .day], from: day).month == wanted.month else { return nil }
+        var style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: .gmt)
+        switch parts.count {
+        case 1: style = style.year()
+        case 2: style = style.month(.wide).year()
+        default: style = style.weekday(.wide).month(.wide).day().year()
+        }
+        return day.formatted(style)
+    }
 }

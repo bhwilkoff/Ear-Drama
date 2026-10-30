@@ -842,6 +842,50 @@ test('Cue and With cue play and keep nothing', async () => {
   s.end();
 });
 
+test('Cancel while a Step cue plays stops the cue and records nothing', async () => {
+  const voice = waitingVoice();
+  const { s, backend } = await modeSession(voice);
+  s.setMode('step');
+  const going = s.record('L0003');
+  await tick();
+  eq(s.phase.kind, 'cue', 'the cue is playing');
+  s.cancel();
+  await going;
+  eq(s.phase.kind, 'idle', 'back to ready');
+  eq((await backend.keys(`${s.production.id}/takes/`)).length, 0, 'nothing was recorded');
+  const again = s.record('L0003');
+  await tick();
+  eq(s.phase.kind, 'cue', 'the next record plays its cue again (the cancel did not stick)');
+  s.cancel();
+  await again;
+  s.end();
+});
+
+test('Cancel does nothing inside a run', async () => {
+  const voice = waitingVoice();
+  const { s } = await modeSession(voice);
+  s.setMode('run');
+  const running = s.runThrough('L0003');
+  await tick();
+  s.cancel();
+  eq(voice.waiting, true, 'the run\'s cue is still playing');
+  s.pause();
+  await running;
+  s.end();
+});
+
+test('The level meter follows the microphone while a line records', async () => {
+  const { s } = await modeSession(signatureVoice({ speaker: null }));
+  const seen = [];
+  let loudest = 0;
+  s.onLevel = (l) => { seen.push(l.length); loudest = Math.max(loudest, l[l.length - 1]); };
+  await s.record('L0006');
+  ok(seen.length > 5, 'a level for every chunk heard');
+  ok(s.levels.length <= 48 && s.levels.every(v => v >= 0 && v <= 1), 'bounded, newest last, 0 to 1');
+  ok(loudest > 0.5, 'the tone reads loud');
+  s.end();
+});
+
 (async () => {
   for (const [name, fn] of results) {
     const before = failures;

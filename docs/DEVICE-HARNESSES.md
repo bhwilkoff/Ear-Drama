@@ -378,9 +378,10 @@ lessons from Archive Watch's iPhone audit:
   screenshot` of the device, never by asking the owner; capture the glass
   during the first 60 s of a run to see the prompt. The passcode is the owner's
   step, once per device.
-- `--only` takes `EarDramaUITests/<Class>/<test>`; a filter that matches
-  nothing prints "Executed 0 tests" and `ios_uitest.py` reports
-  `no_tests_ran`. That run proved nothing.
+- `--only` takes `<Class>/<test>`; the tool adds the `EarDramaUITests/`
+  prefix itself, so passing it ran nothing. A filter that matches nothing
+  prints "Executed 0 tests" and `ios_uitest.py` reports `no_tests_ran`.
+  That run proved nothing.
 - Run with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` while
   `xcode-select -p` points at CommandLineTools: Xcode's own diagnostics call
   `xcrun devicectl` and fail without it.

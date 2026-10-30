@@ -119,9 +119,28 @@ same("order: a reading ordered by its numbers keeps them", series_titles(reading
 dated = [("d1", "1940-01-01", None, "03 - Athelney Jones"), ("d2", "1940-01-08", None, "01 - Mrs. Hudson")]
 same("control: a dated series loses the numbers", series_titles(dated, "A Reading", W),
      {"d1": "Athelney Jones", "d2": "Mrs. Hudson"})
-alpha = [("v1", None, None, "Vanishing Point - Zebra"), ("v2", None, None, "Apple")]
+alpha = [("v1", None, None, "Vanishing Point - Zebra"), ("v2", None, None, "Vanishing Point - Yak"),
+         ("v3", None, None, "Apple")]
 same("control: an order that was only alphabetical carries nothing", series_titles(alpha, "Vanishing Point", W),
-     {"v1": "Zebra", "v2": "Apple"})
+     {"v1": "Zebra", "v2": "Yak", "v3": "Apple"})
+
+# P-3 (2026-10-30). Each seen failing before its fix; the controls are what must not change.
+H = Words([f"{w} {n}" for w in ("barbershop", "Quartet", "Mayfield", "Cigarettes", "May", "Field", "Mac", "Arthur",
+                                "MacArthur") for n in ("One", "Two", "Three") if (w, n) != ("Mayfield", "Two")
+                                and not (w == "Mayfield" and n == "Three")] + ["Gen MacArthur Speaks"])
+check("Ouvenir barbershopQuartet", "Ouvenir barbershop Quartet", words=H)      # both halves proved
+check("ArbershopQuartet barbershopQuartet", "ArbershopQuartet barbershop Quartet", words=H)  # "Arbershop" is no word: left whole
+check("Souvenir ZzzzzQuartet", "Souvenir ZzzzzQuartet", words=H)                # an unproved half: left whole
+check("General MacArthur", "General MacArthur", words=H)                       # the catalog spells the whole
+check("iPhone Quartet", "iPhone Quartet", words=H)
+check("MAYFIELDCIGARETTES", "Mayfield Cigarettes", words=H)                    # "may field" stays "Mayfield": a title spells it whole
+same("residue: a name the catalog spells whole is not split", H.split("mayfield"), None)
+M = [("m1", None, None, "The Magic Flute - Mozart")]
+same("residue: a series name said once is part of the title", series_titles(M, "Magic Flute", W),
+     {"m1": "The Magic Flute - Mozart"})
+M2 = M + [("m2", None, None, "The Magic Flute - Part Two")]
+same("control: a name repeated on two episodes is a prefix", series_titles(M2, "Magic Flute", W),
+     {"m1": "Mozart", "m2": "Part Two"})
 
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

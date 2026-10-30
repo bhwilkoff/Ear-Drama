@@ -46,7 +46,7 @@ function boot(env = {}) {
   const docListeners = {};
   const ctx = vm.createContext({
     console, Math, Number, Date, JSON, Object, Promise, Set, Map, URL, URLSearchParams,
-    setInterval, clearInterval, setTimeout, clearTimeout, location: { href: 'http://localhost/' },
+    setInterval, clearInterval, setTimeout: env.setTimeout || setTimeout, clearTimeout, location: { href: 'http://localhost/' },
     document: { getElementById: () => audio, documentElement: { classList: { contains: () => false } },
                 addEventListener: (t, fn) => { (docListeners[t] ||= []).push(fn); } },
     window: { addEventListener() {} },
@@ -101,6 +101,40 @@ test('a speed kept from an older build lands on the nearest choice', () => {
   assertEq(Store.rate(), 1.25);
   Player.setRate('nonsense');
   assertEq(Store.rate(), 1);
+});
+
+test('a copy that fails to load is retried once with jitter, then the next copy in rank order, then the error', () => {
+  const waits = [];
+  const later = [];
+  const { Player, audio } = boot({ setTimeout: (fn, ms) => { waits.push(ms); later.push(fn); return 0; } });
+  const errors = [];
+  Player.onChange((k) => { if (k === 'error') errors.push(k); });
+  const failNow = () => { audio.error = { code: 2 }; audio.fire('error'); while (later.length) later.shift()(); };
+  Player.load({ ...ep, alts: ['https://archive.org/download/x/b.mp3', 'https://archive.org/download/x/c.mp3'] });
+  failNow();
+  assertEq(audio.src, ep.url, 'the same copy is tried once more');
+  assertEq(waits.length, 1, 'after a wait');
+  assertEq(waits[0] >= 500 && waits[0] <= 1500, true, 'one second, jittered');
+  failNow();
+  assertEq(audio.src, 'https://archive.org/download/x/b.mp3', 'then the next copy');
+  failNow(); failNow();
+  assertEq(audio.src, 'https://archive.org/download/x/c.mp3', 'then the one after it');
+  assertEq(errors.length, 0, 'no error is shown while copies remain');
+  failNow(); failNow();
+  assertEq(errors.length, 1, 'with none left, the error is surfaced');
+});
+
+test('a copy that loaded earns its next failure a retry', () => {
+  const later = [];
+  const { Player, audio } = boot({ setTimeout: (fn) => { later.push(fn); return 0; } });
+  Player.load(ep);
+  audio.fire('error'); audio.fire('error');
+  later.splice(0).forEach(fn => fn());
+  audio.fire('loadedmetadata');
+  let shown = 0;
+  Player.onChange((k) => { if (k === 'error') shown++; });
+  audio.fire('error');
+  assertEq(shown, 0, 'a seek that fails after playback began is retried, not shown');
 });
 
 test('the position saves every 5 s while playing, and on pause', () => {
@@ -323,14 +357,16 @@ test('control: no leveling on iPhone or iPad, where a page\'s audio graph stops 
 
 test('control: a copy refused with CORS plays again without it, unleveled', async () => {
   const log = { contexts: 0, sources: [], edges: [] };
-  const { audio, Player } = boot({ AudioContext: fakeAudioContext(log, 'suspended') });
+  const { audio, Player } = boot({ AudioContext: fakeAudioContext(log, 'suspended'), setTimeout: () => 0 });
   audio.removeAttribute = function (a) { if (a === 'crossorigin') delete this.crossOrigin; };
   Player.load(ep);
   audio.fire('error');
   assertEq([audio.crossOrigin, Player.error], [undefined, null], 'retried plain, not an error');
   audio.error = { code: 4 };
   audio.fire('error');
-  assertEq(Player.error !== null, true, 'a second failure is the recording\'s');
+  assertEq(Player.error, null, 'the recording\'s first failure is retried once');
+  audio.fire('error');
+  assertEq(Player.error !== null, true, 'its second failure, with no other copy, is shown');
 });
 
 function assert(cond, msg) { if (!cond) throw new Error(msg || 'assertion failed'); }

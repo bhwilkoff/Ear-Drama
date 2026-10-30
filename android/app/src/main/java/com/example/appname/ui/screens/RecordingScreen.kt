@@ -29,6 +29,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -125,6 +126,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
                 }
             },
         )
+        s.setMode(RecordingSession.Mode.remembered(context))
         session = s
         index = (if (startLine != null) s.lines.indexOfFirst { it.id == startLine } else s.lines.indexOfFirst { production.usableTake(it.id) == null }).coerceAtLeast(0)
         scope.launch { s.begin(echoCancelled) }
@@ -277,6 +279,7 @@ private fun Prompter(
     haptics: (Haptic) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val phase by session.phase.collectAsState()
     val production by session.production.collectAsState()
     val mode by session.mode.collectAsState()
@@ -286,7 +289,7 @@ private fun Prompter(
         Text("No lines in this part.", Modifier.padding(Spacing.S6.dp), style = MaterialTheme.typography.bodyMedium)
         return
     }
-    var rate by remember { mutableStateOf(session.standInRate) }
+    var rate by remember { mutableFloatStateOf(session.standInRate) }
     val levels = remember { mutableStateListOf<Float>() }
     var seconds by remember { mutableIntStateOf(0) }
     val listening = phase is Phase.Listening
@@ -355,7 +358,7 @@ private fun Prompter(
     )
     val actions = RecorderActions(
         onClose = onClose,
-        onMode = { if (session.setMode(it)) haptics(Haptic.Selection) },
+        onMode = { if (session.setMode(it)) { it.remember(context); haptics(Haptic.Selection) } },
         onSelect = { onIndex(it); haptics(Haptic.Selection) },
         onMove = { step -> if (!session.isBusy) onIndex(at + step) },
         onRecord = { primary() },

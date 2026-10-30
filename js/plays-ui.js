@@ -420,14 +420,14 @@ const PlaysUI = (() => {
     }
     manage.append(deleteButton(p));
 
-    body.replaceChildren(
+    body.replaceChildren(...[
       playBoard(script, p.title, 'Ear drama', [progressLine(p, script)]),
       listenThrough(p, script, rerender),
       recording ? null : h.el('label', { class: 'pl-as', for: 'pl-performer' }, h.el('span', { class: 'body' }, 'Recording as'), performer),
       h.el('ul', { class: 'pl-grid', 'aria-label': 'Parts' }, cards),
       refusal,
       shareBox(p, script, rerender),
-      manage);
+      manage].filter(Boolean));
     boardHeading(true);
   }
 
@@ -689,8 +689,7 @@ const PlaysUI = (() => {
           rerender();
         } catch (err) { console.error(err); status.textContent = S.line(err); go.disabled = false; }
       } }, svg('play', 'i-inline'), 'Listen through');
-      box = h.el('section', { class: 'block listen', 'aria-labelledby': 'listen-through-h' },
-        h.el('h2', { class: 'section-header', id: 'listen-through-h' }, 'Listen through'), go, status);
+      box = h.el('section', { class: 'block listen', 'aria-label': 'Listen through' }, go, status);
     }
     if (rec.hidden_takes) {
       box.append(h.el('p', { class: 'caption' }, rec.hidden_takes === 1 ? '1 take is hidden from you.'
@@ -941,8 +940,7 @@ const PlaysUI = (() => {
    * without seeking ahead finishes the play, and Export is offered.
    */
   function listenThrough(p, script, rerender) {
-    const box = h.el('section', { class: 'block listen', 'aria-labelledby': 'listen-through-h' },
-      h.el('h2', { class: 'section-header', id: 'listen-through-h' }, 'Listen through'));
+    const box = h.el('section', { class: 'block listen', 'aria-label': 'Listen through' });
     if (!C.isComplete(p, script)) {
       liveListen(box, p, script);
       return box;
@@ -1114,6 +1112,7 @@ const PlaysUI = (() => {
       announce: async () => h.announce('Your line'),
       onChange: () => { if (rec === r) paintRecording(); },
     });
+    if (typeof Store !== 'undefined') s.setMode(Store.recorderMode());
     rec.s = s;
     rec.index = Math.max(0, s.lines.findIndex(l => rec.line ? l.id === rec.line : !C.usableTake(p, l.id)));
     s.begin();
@@ -1251,6 +1250,22 @@ const PlaysUI = (() => {
     }));
   }
 
+  /** The microphone's loudness while a line records: bars drawn in place, no repaint of the page. */
+  function levelMeter(s) {
+    const bars = Array.from({ length: 40 }, () => h.el('i'));
+    const meter = h.el('div', { class: 'pl-meter', 'aria-hidden': 'true' }, bars);
+    const draw = (levels) => {
+      const shown = levels.slice(-40);
+      bars.forEach((b, i) => {
+        const v = shown[i - (40 - shown.length)];
+        b.style.height = `${Math.max(3, Math.round(28 * (v || 0)))}px`;
+      });
+    };
+    s.onLevel = draw;
+    draw(s.levels);
+    return meter;
+  }
+
   /** Your line's box: your part's board; dashed red while armed, solid red while the microphone is open. */
   function mineBox(s, line, head, busy) {
     const ph = s.phase;
@@ -1264,6 +1279,7 @@ const PlaysUI = (() => {
     const box = h.el('div', { class: `pl-mine${armed ? ' armed' : ''}${listening ? ' on' : ''}`, dataset: { hue: hueOf(s.script, s.part) } },
       h.el('p', { class: 'pl-mine-who' }, h.el('span', {}, head), pill),
       lineWords(line, 'pl-mine-say'));
+    if (listening) box.append(levelMeter(s));
     if (chosen && (review || ph.kind === 'idle')) {
       box.append(h.el('div', { class: 'pl-take' },
         h.el('button', { type: 'button', class: 'pl-play-dot', disabled: busy, 'aria-label': 'Play the take', onclick: () => s.playTake(chosen) }, svg('play')),
@@ -1353,7 +1369,7 @@ const PlaysUI = (() => {
   }
 
   const KEYS = {
-    step: [['Space', 'Record or stop'], ['Return', 'Keep'], ['R', 'Again'], ['← →', 'Line']],
+    step: [['Space', 'Record, stop or cancel'], ['Return', 'Keep'], ['R', 'Again'], ['← →', 'Line']],
     run: [['Space', 'Start or pause'], ['Return', 'Keep the run']],
     lines: [['↑ ↓', 'Line'], ['Space', 'Record or stop']],
   };
@@ -1389,7 +1405,7 @@ const PlaysUI = (() => {
         center, h.el('div', { class: 'pl-side' }));
     }
     const center = listening ? round('stop', 'stop', 'stop', 'Stop', () => s.stopListening())
-      : ph.kind === 'cue' ? round('record', 'armed', 'mic', 'Next', null, true)
+      : ph.kind === 'cue' ? round('cancel', 'ink', 'stop', 'Cancel', () => s.cancel())
         : round('record', '', 'mic', 'Record', () => s.record(line.id), busy);
     return h.el('div', { class: 'pl-dock' },
       h.el('div', { class: 'pl-side' }, h.el('button', { type: 'button', class: 'icon-btn', dataset: { act: 'prev' }, 'aria-label': 'Previous line',
@@ -1435,7 +1451,7 @@ const PlaysUI = (() => {
     const mode = h.el('div', { class: 'pl-mode', role: 'radiogroup', 'aria-label': 'Recording mode' },
       C.MODES.map(m => h.el('label', { class: s.mode === m ? 'on' : '' },
         h.el('input', { type: 'radio', name: 'rec-mode', value: m, checked: s.mode === m, disabled: locked,
-                        onchange: () => { if (s.setMode(m)) h.announce(MODE_LABEL[m]); } }),
+                        onchange: () => { if (s.setMode(m)) { h.announce(MODE_LABEL[m]); if (typeof Store !== 'undefined') Store.setRecorderMode(m); } } }),
         MODE_LABEL[m])));
 
     const partners = partnersNear(s, line);
@@ -1492,6 +1508,7 @@ const PlaysUI = (() => {
       return;
     }
     if (s.phase.kind === 'listening') s.stopListening();
+    else if (s.phase.kind === 'cue') s.cancel();
     else if (!s.isBusy()) s.record(s.lines[rec.index].id);
   }
 
