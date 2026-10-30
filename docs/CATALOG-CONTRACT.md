@@ -223,7 +223,15 @@ class is one above; the PERSON was matched on a date (OTRRpedia's birth or death
 agreeing with Wikidata's; the undated one-namesake rule, about 1 in 30 wrong, is
 not served, RESEARCH §12 V1); the file is the person's own Wikidata image (P18),
 never a "depicts" file (often a group); and a license that needs credit has an
-author. One portrait per person, the most permissive class first. Library of
+author, and the file is not an own work its own date contradicts: a license the
+uploader gave (`{{self|...}}`, PD-self, PD-user, or a Creative Commons license on a
+file whose source is `{{own}}`) on a file dated after the death of the person it
+shows cannot be the uploader's (Richard Kollmar died in 1971; File:Kollmar.jpg,
+"a photograph I took of Richard Kollmar", is dated 2019). The same rule refuses a
+show image dated after the death of the earliest-dying person the program's record
+marks (`art_policy.implausible_own_work`; `own_work` is read from the file page by
+`enrich_people_art.own_work`, the death from `people_wikidata`). One portrait per
+person, the most permissive class first. Library of
 Congress "no known restrictions" and Smithsonian CC0 photographs are not served
 (V2, V4, the owner's). MEASURED 2026-10-24 on the 121,907-episode build: 2,344
 images, 2,364 people, 305 series with a star, 24,894 episodes with one.
@@ -262,6 +270,17 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
      (`wikipedia:sitelinks`). Among either, the highest share of credited episodes
      x `1 + ln(1 + Wikipedias with an article about the person)`; ties by id.
   3. `person`: `series.star` by the heard-most rule (`credits:heard-most`).
+  **One face per star** (owner, 2026-10-29): a person is the picture of at most one
+  show (a show's own image is unaffected and never counts). Of the shows 2 and 3
+  would give them, they keep one: a show whose title holds their full name (the Jack
+  Benny Program) beats every other; then a marked role, only when that show holds at
+  least half as many of their credited episodes as their biggest show (Jack Webb's
+  seven episodes of Pete Kelly's Blues, the title role, do not outweigh his 474 of
+  Dragnet); otherwise the show with most of their episodes; then the highest share;
+  then the series key. Every other show is decided again without them: its next
+  candidate, else the typographic card. `series.star` follows the picture.
+  `art_policy.assign_faces`; guarded by the contract query "a person's portrait
+  leads at most one show" in `tests/test_projection_art.py`.
   `picture` is that person's portrait for `star` and `person`. All NULL: the
   typographic card. `art_policy.series_face`; the harvest is
   `harvest_series_art.py` (`.cache/series_art/`), the evidence tables

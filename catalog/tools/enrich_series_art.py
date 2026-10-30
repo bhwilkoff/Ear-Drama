@@ -38,7 +38,7 @@ DROP TABLE IF EXISTS wikipedia_sitelinks;
 CREATE TABLE series_art (
   series_key TEXT, qid TEXT, file TEXT, source TEXT, identity TEXT,
   license_class TEXT, template TEXT, author TEXT, width INTEGER, height INTEGER, face TEXT,
-  categories TEXT, date_field TEXT, served INTEGER, evidence_url TEXT,
+  categories TEXT, date_field TEXT, served INTEGER, evidence_url TEXT, own_work INTEGER,
   PRIMARY KEY (series_key, file)
 );
 CREATE TABLE series_marks (series_key TEXT, person_id TEXT, character TEXT, PRIMARY KEY (series_key, person_id));
@@ -72,8 +72,12 @@ def candidates(qid, cat, items, depicts, trackd):
     return rows
 
 
-def series_art_rows(con, items, depicts, files, trackd):
+def series_art_rows(con, items, depicts, files, trackd, marks=()):
     import enrich_people_art as P
+    deaths = {}
+    if "people_wikidata" in {r[0] for r in con.execute("SELECT name FROM sqlite_master")}:
+        deaths = AP.earliest_death((k, d) for k, pid, _c in marks for (d,) in con.execute(
+            "SELECT death FROM people_wikidata WHERE person_id = ? AND death IS NOT NULL", (pid,)))
     nets = {k: json.loads(n) if n else [] for k, n in con.execute("SELECT key, networks FROM series")}
     run = AP.run_dates(con)
     wd = _rj(os.path.join(CACHE, "wikidata", "items.json.gz"), {})
@@ -93,10 +97,11 @@ def series_art_rows(con, items, depicts, files, trackd):
             cats = fv.get("categories") or []
             cls = fv.get("class", "unread")
             served = AP.show_served(identity, src, cls, fv.get("author"), fv.get("width"), fv.get("height"), f, cats,
-                                    fv.get("date_field"), *reversed(run.get(key, (None, None))))
+                                    fv.get("date_field"), *reversed(run.get(key, (None, None))),
+                                    bool(fv.get("own_work")), deaths.get(key))
             rows.append((key, qid, f, src, identity, cls, fv.get("template"), fv.get("author"),
                          fv.get("width"), fv.get("height"), AP.face_text(fv.get("face")), json.dumps(cats), fv.get("date_field"),
-                         int(served), AP.evidence_url(f)))
+                         int(served), AP.evidence_url(f), int(bool(fv.get("own_work")))))
     return rows
 
 
@@ -135,9 +140,9 @@ def write(con):
     trackd = _rj(os.path.join(CACHE, "commons", "files.json.gz"), {})
     con.executescript(SCHEMA)
     tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
-    art = series_art_rows(con, items, depicts, files, trackd) if {"series_wikidata", "series"} <= tables else []
-    con.executemany("INSERT OR IGNORE INTO series_art VALUES (" + ",".join("?" * 15) + ")", art)
     marks = mark_rows(con) if {"series", "people"} <= tables else []   # a fixture without them marks none
+    art = series_art_rows(con, items, depicts, files, trackd, marks) if {"series_wikidata", "series"} <= tables else []
+    con.executemany("INSERT OR IGNORE INTO series_art VALUES (" + ",".join("?" * 16) + ")", art)
     con.executemany("INSERT INTO series_marks VALUES (?,?,?)", marks)
     con.executemany("INSERT INTO wikipedia_sitelinks VALUES (?,?)", sorted(sitelinks.items()))
     con.commit()

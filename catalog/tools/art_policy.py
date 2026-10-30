@@ -57,13 +57,40 @@ def credit(cls, template, author):
     return f"{author.strip()}, {name}" if name else None
 
 
-def served(basis, cls, usable, found_via, author):
+def year_of(text):
+    """The year a date as Wikidata or Commons writes it begins with ('1971-08-03'), or None."""
+    m = re.match(r"\s*(\d{4})", text or "")
+    return int(m.group(1)) if m else None
+
+
+def implausible_own_work(own_work, date_field, died):
+    """True when a picture its page calls the uploader's own work (a {{self}} license, {{own}}
+    as its source) is dated after the death of the person it is of: Richard Kollmar died in 1971
+    and File:Kollmar.jpg is "a photograph I took of Richard Kollmar", dated 2019. An uploader's
+    word is not evidence (evidence-gated-catalog-curation), and here the word contradicts itself.
+    date_field is the file page's own date; died is the year or date of the person's death."""
+    fy, dy = file_year(date_field), year_of(str(died)) if died else None
+    return bool(own_work and fy and dy and fy > dy)
+
+
+def earliest_death(rows):
+    """{series key: the earliest death year} of the people the program's record marks.
+    rows: (series key, death as Wikidata writes it) pairs."""
+    out = {}
+    for key, death in rows:
+        y = year_of(death)
+        if y:
+            out[key] = min(y, out.get(key, y))
+    return out
+
+
+def served(basis, cls, usable, found_via, author, own_work=False, date_field=None, died=None):
     """True when this (person match, file) may leave the pipeline."""
     if not usable or cls not in PREFER or found_via != SERVED_VIA or not dated_match(basis):
         return False
     if cls in NEEDS_CREDIT and NO_AUTHOR.match(author or ""):
         return False
-    return True
+    return not implausible_own_work(own_work, date_field, died)
 
 
 def image_url(file):
@@ -217,11 +244,11 @@ def run_dates(con):
 
 
 def show_served(identity, source, cls, author, width, height, file, categories=(), date_field=None,
-                last_date=None, first_date=None):
+                last_date=None, first_date=None, own_work=False, died=None):
     """True when this (series match, file) may lead the show: the match is more than a title,
     the file came from one of the show's own records, its license class is one portraits are
     served under (credited when required), it is big enough for a show tile, its own page does
-    not say it is from television, and its own date (its page's date field, else a year in its
+    not say it is from television, is not an own work dated after its star's death (served), and its own date (its page's date field, else a year in its
     name) lies inside the run (YEAR_SLACK either side): Bob Barker's 1958 headshot is the TV
     Truth or Consequences, and a 1914 photograph of the Hill Top House hotel, reached through a
     Commons depicts statement, predates the soap opera's first broadcast (1939)."""
@@ -231,6 +258,8 @@ def show_served(identity, source, cls, author, width, height, file, categories=(
         return False
     if not width or not height or min(width, height) < SHOW_MIN_SIDE:
         return False
+    if implausible_own_work(own_work, date_field, died):
+        return False   # died: the earliest death among the people the program's record marks
     fy, last, first = file_year(date_field) or file_year(file), file_year(last_date), file_year(first_date)
     if fy and last and fy > last + YEAR_SLACK:
         return False
@@ -314,3 +343,59 @@ def series_face(credited, portrait_people, marked=(), sitelinks=None):
         return best(known), "star", "wikipedia:sitelinks"
     pid = series_star(credited, portrait_people)
     return (pid, "person", "credits:heard-most") if pid else None
+
+
+def _heard(credited, pid):
+    """How many of a show's credited episodes the person is heard on."""
+    return sum(1 for creds in credited.values() if any(p == pid and role in ON_AIR for p, role in creds))
+
+
+def _claim(shows, pid, key, biggest, named):
+    """How strongly a person is identified with one show, best first: a show named for them
+    (its title holds their full name: the Jack Benny Program), then a marked role in a show
+    holding at least MARK_FLOOR of the episodes of their biggest show (Jack Webb's seven
+    episodes of Pete Kelly's Blues, where Pete Kelly is the title role, do not outweigh his 474
+    of Dragnet), then the most episodes, then the highest share, then the series key."""
+    credited, marked = shows[key]
+    n = _heard(credited, pid)
+    return (key not in named, not (pid in marked and n >= MARK_FLOOR * biggest), -n,
+            -(n / len(credited) if credited else 1.0), key)
+
+
+MARK_FLOOR = 0.5
+
+
+def names_person(person_name, series_name):
+    """True when the series' title holds the person's full name (two words at least)."""
+    p = _nt(person_name)
+    return len(re.findall(r"[A-Za-z0-9]+", re.sub(r"\(.*?\)", " ", person_name or ""))) >= 2 and len(p) >= 6 \
+        and p in _nt(series_name)
+
+
+def assign_faces(shows, portrait_people, sitelinks=None, names=None, titles=None):
+    """{series key: series_face result or None} with each person the face of at most one show
+    (owner, 2026-10-29: "Yes" to one face per star). Of the shows a person would lead, they keep
+    the one they are most identified with (`_claim`, ties by series key); every other show is
+    decided again without them, so it falls to its next candidate or to no face.
+    shows: {series key: (credited, marked)}, the arguments series_face takes;
+    names: {person id: name}, titles: {series key: name}, for the show named for its star."""
+    names, titles = names or {}, titles or {}
+    out, barred = {}, {k: set() for k in shows}
+    while True:
+        out = {k: series_face(c, portrait_people - barred[k], m, sitelinks) for k, (c, m) in shows.items()}
+        leads = {}
+        for k, f in out.items():
+            if f:
+                leads.setdefault(f[0], []).append(k)
+        moved = False
+        for pid, keys in leads.items():
+            if len(keys) > 1:
+                biggest = max(_heard(shows[k][0], pid) for k in keys)
+                named = {k for k in keys if names_person(names.get(pid), titles.get(k))}
+                keep = min(keys, key=lambda k: _claim(shows, pid, k, biggest, named))
+                for k in keys:
+                    if k != keep:
+                        barred[k].add(pid)
+                        moved = True
+        if not moved:
+            return out
