@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -486,10 +487,18 @@ fun GrammarRow(
     }
 }
 
+/** The head board's window side: 96 dp, 128 from 600 dp wide, 176 from 1024. */
+@Composable
+fun headSlot(): Dp {
+    val window = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
+    return if (window >= 1024.dp) 176.dp else if (window >= 600.dp) 128.dp else 96.dp
+}
+
 /**
  * The head board (series, episode, ear drama): the board with the window (96 dp, 128 from 600 dp
  * wide, 176 from 1024), the kicker, the name, the facts, and the run strip full width (56 dp)
- * under both. Built for D3-3, which adopts it in the pages.
+ * under both. A series page names it as its heading; an episode page passes [onOpen] (the board
+ * is the link to its show) and its own title is the heading.
  */
 @Composable
 fun HeadBoard(
@@ -501,13 +510,15 @@ fun HeadBoard(
     first: String?,
     last: String?,
     modifier: Modifier = Modifier,
+    onOpen: (() -> Unit)? = null,
 ) {
     val on = onBoard(genre)
-    val window = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() }
-    val side = if (window >= 1024.dp) 176.dp else if (window >= 600.dp) 128.dp else 96.dp
+    val side = headSlot()
     val t = MaterialTheme.typography
     Column(
-        modifier.fillMaxWidth().background(board(genre)).padding(Spacing.S4.dp),
+        modifier.fillMaxWidth().background(board(genre))
+            .then(if (onOpen != null) Modifier.tvFocusMark().clickable(onClickLabel = "Open series", onClick = onOpen) else Modifier)
+            .padding(Spacing.S4.dp),
         verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
@@ -516,7 +527,12 @@ fun HeadBoard(
                 if (kicker != null) {
                     Text(kicker.uppercase(), style = t.labelMedium.copy(letterSpacing = 1.sp), color = on)
                 }
-                Text(nameText(name), style = nameStyle(nameStep(name), t, headL1 = true), color = on)
+                Text(
+                    nameText(name),
+                    style = nameStyle(nameStep(name), t, headL1 = true),
+                    color = on,
+                    modifier = if (onOpen == null) Modifier.semantics { heading() } else Modifier,
+                )
                 EventLine(facts, color = on)
             }
         }

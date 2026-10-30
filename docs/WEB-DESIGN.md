@@ -641,43 +641,6 @@ web app follows today.
   8 px edge, at least 200 px tall, 240 px from 768 px): the designed
   fallback, never a gray box. A play's row in Browse and Search leads
   with its tile (the title's letter; plays carry no genre).
-- **§6.4c Home and Browse in direction D** (owner, 2026-10-29: *"Having
-  more shows is better, so 5."*; *"I like the bulky blocks and colors of
-  The Sleeve and I like the data visualization options of the Almanac."*;
-  D3-2; the shared text for iOS-, macOS-, tvOS- and ANDROID-DESIGN R11c).
-  Amends §4.3 (Browse's list) and §4.1 (Home's shelves); where it differs,
-  this rule wins. **A show is a series of at least 5 episodes**
-  (`API.isShow`); a shorter one is a single recording, counted and listed
-  behind its own link, never in a shelf. **Home**: Continue listening and
-  Following as before; the **day board** (neutral `surfaceAlt`: the kicker
-  "This day in radio", the date, the count of surviving broadcasts and
-  years, a strip of that date's broadcasts by year, each bar stacked by
-  genre in the genre marks in a fixed order, the selected year outlined,
-  and a legend of the genres seen); **that night** (the selected year,
-  the peak by default, picked by a radio group of bars: tap, or arrow keys
-  with one tab stop): show tiles for the shows on the air that night, a
-  copy under the same title folded once, each tile's facts the episode and
-  its length, six and then "All N shows that night", the single recordings
-  counted as a fact; **Most downloaded**: 12 show tiles in a rail, "All N
-  shows" to Browse. The catalog's episode shelves (onThisDay rows,
-  mostDownloaded rows, genreFirsts) no longer draw on Home; their genre
-  work is Browse's field. **Browse**: every filter and sort stays; a count
-  line ("2,036 shows", then "8,605 single recordings" as a link); the
-  **decade by genre field** (a square per cell in the genre mark, its side
-  the square root of the cell's share of the biggest, 6 to 32 px, the
-  count beneath, each cell a link applying genre and decade, counts over
-  the shows passing the other filters; "N with no genre or date" is a
-  fact); the results as a tile grid whose rows share their slot tracks
-  (`subgrid`), headed by the sort ("Most downloaded first", "A to Z",
-  "Most episodes", "Oldest first"); A to Z is the `shelf` of the
-  prototype, the catalog as it is (most of it title blocks). From 1024 px
-  the field sits beside the grid. The rules are `API.isShow`, `dayYears`,
-  `nightShows`, `decadeField`, `fieldSide`, golden-tested in
-  `js/api.test.js` and mirrored on every platform. Fit: no sideways
-  scroll, no overflow, no broken word at 320, 375, 390 and 430 px, light
-  and dark (checked in headless Chrome with a control that fails on a
-  62-letter name). "Has a script" is a bordered control like the selects,
-  filled when on (iPad Pro frame, 2026-10-30: it drew as bare text).
 - **§6.4b One grammar for every level of content** (owner, 2026-10-29:
   *"the design is still not uniform for all different levels of content
   (some with images, some without, some with more information, some with
@@ -740,8 +703,9 @@ web app follows today.
   - **The head board** (series, episode, ear drama): the board with the
     window (96 px, 128 from 600 px, 176 from 1024), the kicker (L5, upper
     case, tracked), the name (L1 in Big Shoulders, stepping down like the
-    tile's), the facts, and the run strip full width (56 px) under both.
-    Built in D3-1; the pages adopt it in D3-3.
+    tile's), the facts, and the run strip full width under both (18 px
+    until per-year counts are published, then 56). Built in D3-1; the series
+    and episode pages adopt it in §6.4d.
   - **The event line**: facts joined by " · ", each separator kept with
     the fact before it, so a line may end on a dot and never opens with
     one.
@@ -750,6 +714,76 @@ web app follows today.
     hue (`color.genre`); no stripe on a card's edge (the 3 px genre edge
     of §6.4a and the 8 px edge of the typographic card retire with the
     head board in D3-3). Red still means recording.
+- **§6.4c Home and Browse in direction D** (owner, 2026-10-29: *"Having
+  more shows is better, so 5."*; *"I like the bulky blocks and colors of
+  The Sleeve and I like the data visualization options of the Almanac."*;
+  D3-2; the shared text for iOS-, macOS-, tvOS- and ANDROID-DESIGN R11c).
+  Amends §4.3 (Browse's list) and §4.1 (Home's shelves); where it differs,
+  this rule wins. **A show is a series of at least 5 episodes**
+  (`API.isShow`); a shorter one is a single recording, counted and listed
+  behind its own link, never in a shelf. **Home**: Continue listening and
+  Following as before; the **day board** (neutral `surfaceAlt`: the kicker
+  "This day in radio", the date, the count of surviving broadcasts and
+  years, a strip of that date's broadcasts by year, each bar stacked by
+  genre in the genre marks in a fixed order, the selected year outlined,
+  and a legend of the genres seen); **that night** (the selected year,
+  the peak by default, picked by a radio group of bars: tap, or arrow keys
+  with one tab stop): show tiles for the shows on the air that night, a
+  copy under the same title folded once, each tile's facts the episode and
+  its length, six and then "All N shows that night", the single recordings
+  counted as a fact; **Most downloaded**: 12 show tiles in a rail, "All N
+  shows" to Browse. The catalog's episode shelves (onThisDay rows,
+  mostDownloaded rows, genreFirsts) no longer draw on Home; their genre
+  work is Browse's field. **Browse**: every filter and sort stays; a count
+  line ("2,036 shows", then "8,605 single recordings" as a link); the
+  **decade by genre field** (a square per cell in the genre mark, its side
+  the square root of the cell's share of the biggest, 6 to 32 px, the
+  count beneath, each cell a link applying genre and decade, counts over
+  the shows passing the other filters; "N with no genre or date" is a
+  fact); the results as a tile grid whose rows share their slot tracks
+  (`subgrid`), headed by the sort ("Most downloaded first", "A to Z",
+  "Most episodes", "Oldest first"); A to Z is the `shelf` of the
+  prototype, the catalog as it is (most of it title blocks). From 1024 px
+  the field sits beside the grid. The rules are `API.isShow`, `dayYears`,
+  `nightShows`, `decadeField`, `fieldSide`, golden-tested in
+  `js/api.test.js` and mirrored on every platform. Fit: no sideways
+  scroll, no overflow, no broken word at 320, 375, 390 and 430 px, light
+  and dark (checked in headless Chrome with a control that fails on a
+  62-letter name). "Has a script" is a bordered control like the selects,
+  filled when on (iPad Pro frame, 2026-10-30: it drew as bare text).
+- **§6.4d Series and episode pages in direction D** (owner, 2026-10-29:
+  *"an item with a picture, without one, rich or sparse, renders in the
+  same structure"*; *"a share button that goes to the next line instead of
+  being next to the other buttons"*; D3-3; the shared text for iOS-,
+  macOS-, tvOS- and ANDROID-DESIGN R11d). Amends §4.4 and §4.5 and retires
+  the print, the plate and the typographic-card head of §6.4a on these two
+  pages; where it differs, this rule wins. **The series page** is the head
+  board (kicker: the genre, then the networks; name; facts: the years or
+  "Undated", then the count of episodes; the run strip), then one button
+  row (Follow, Share), the picture's credit when its license asks and the
+  window shows it, the season scope, and the episode list. **The episode
+  page** is the head board of its show (a link to the series; its name a
+  paragraph under the page's own h1), led by `API.leadPicture` (the show's
+  own image; else the episode's star; else the first cast with a picture;
+  else the series' picture; else the title block), then the episode's title
+  (the h1), its **event line** (`API.episodeFacts`: the date, else
+  "Undated"; the network, sponsor, length, season, and its number when the
+  title does not say it), one button row (Play, Add to queue, Share), the
+  "Start an ear drama" row only where a castable script exists, **On the
+  air** (`API.onAirOf`: the cast in billing order, each once, at most 6,
+  each a 72 px round window over the name and the character; a face with
+  no picture is the title block), "Cast and credits" folded (the full
+  grouped list), then the recordings and the rights line. A section with
+  nothing in it is not drawn and the sections after it close up; no slot is
+  moved by a rich page or a bare one. **A button row never wraps apart**:
+  one flex row without wrap, Play and Follow taking the room, and Add to
+  queue and Share folding to their icons (44 px, the label kept as the
+  accessible name) when the row is under 480 px; a long action ("Start an
+  ear drama") has its own row. The head board's strip is 18 px until the
+  projection carries per-year counts (then 56 px, as in the prototype).
+  Rules golden-tested in `js/api.test.js`; fit checked at 320, 375, 390 and
+  430 px, light and dark, by `tools/web_fit_actions.py` (a control with the
+  row allowed to wrap fails it: the share button drops a line).
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline

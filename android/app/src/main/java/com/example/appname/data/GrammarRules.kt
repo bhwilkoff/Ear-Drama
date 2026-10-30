@@ -200,3 +200,46 @@ fun decadeField(shows: List<FieldShow>): DecadeField {
 /** A cell's mark side in dp: the square root of its share of the biggest cell, 6 to 32; 0 for an empty cell. */
 fun fieldSide(n: Int, max: Int): Int =
     if (n > 0 && max > 0) maxOf(6, Math.round(32 * Math.sqrt(n.toDouble() / max)).toInt()) else 0
+/**
+ * The picture that leads an episode's head board: the show's own image when the series picture is of
+ * the show, else the episode's star (the credit the row names, else the first cast with a picture),
+ * else the series' picture, else none (the title block).
+ */
+fun leadPicture(series: SeriesRow?, credits: List<Credit>, star: String?): Artwork? {
+    val own = series?.picture
+    if (own != null && series.pictureKind == "show") return own
+    val cast = credits.filter { it.art != null && (it.role ?: "cast") == "cast" }
+    val pick = (if (star != null) cast.firstOrNull { it.personId == star } else null) ?: cast.firstOrNull()
+    return pick?.art ?: own
+}
+
+/** Who is "On the air": the cast in billing order, each person once, at most [limit]. */
+fun onAirOf(credits: List<Credit>, limit: Int = 6): List<Credit> {
+    val seen = HashSet<String>()
+    val out = ArrayList<Credit>()
+    for (c in credits) {
+        if ((c.role ?: "cast") != "cast") continue
+        if (!seen.add(c.personId.ifEmpty { c.name })) continue
+        out += c
+        if (out.size >= limit) break
+    }
+    return out
+}
+
+/**
+ * The facts of an episode's event line: its date (or Undated), network, sponsor, length, season, and
+ * its number when the title does not already say it. [date] and [length] arrive formatted.
+ */
+fun episodeFacts(
+    network: String?,
+    sponsor: String?,
+    season: String?,
+    title: String?,
+    num: Int?,
+    date: String?,
+    length: String?,
+): List<String> = listOf(
+    date ?: "Undated", network, sponsor, length,
+    season?.let { "Season $it" },
+    if (!title.isNullOrEmpty() && num != null) "No. $num" else null,
+).filterNotNull().filter { it.trim().isNotEmpty() }

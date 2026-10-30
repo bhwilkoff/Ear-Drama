@@ -25,6 +25,17 @@ fun ShareAction(title: String, url: String, modifier: Modifier = Modifier) {
     }
 }
 
+/** Share as one of a page's action row: its label folds to the icon with the row, kept as the accessible name. */
+@Composable
+fun ShareButton(title: String, url: String, folded: Boolean, modifier: Modifier = Modifier) {
+    if (LocalIsTelevision.current) return
+    val context = LocalContext.current
+    FoldButton(
+        Icons.Filled.Share, "Share", folded, { context.shareLink(title, url) }, modifier,
+        description = "Share $title",
+    )
+}
+
 fun Context.shareLink(title: String, url: String) {
     val send = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"

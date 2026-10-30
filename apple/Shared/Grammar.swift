@@ -142,6 +142,7 @@ struct PictureWindow: View {
     let name: String
     let genre: String?
     let side: CGFloat
+    var round = false
     @Environment(\.displayScale) private var scale
     @State private var failed = false
 
@@ -150,7 +151,14 @@ struct PictureWindow: View {
         ZStack {
             switch fill {
             case .block:
-                TitleBlock(name: name, genre: genre)
+                if round {
+                    ZStack {
+                        Color.board(genre)
+                        TitleBlock(name: name, genre: genre).padding(side * 0.15)
+                    }
+                } else {
+                    TitleBlock(name: name, genre: genre)
+                }
             case let .crop(r):
                 Color.printGround
                 if let art { crop(art, r) }
@@ -160,10 +168,14 @@ struct PictureWindow: View {
             }
         }
         .frame(width: side, height: side)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .clipShape(round ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 4)))
         .overlay {
-            RoundedRectangle(cornerRadius: 4)
-                .strokeBorder(fill == .block ? Color.onBoard(genre).opacity(0.32) : Color.printEdge, lineWidth: 1)
+            let edge = fill == .block ? Color.onBoard(genre).opacity(0.32) : Color.printEdge
+            if round {
+                Circle().strokeBorder(edge, lineWidth: 1)
+            } else {
+                RoundedRectangle(cornerRadius: 4).strokeBorder(edge, lineWidth: 1)
+            }
         }
         .onChange(of: art?.url) { failed = false }
         .accessibilityHidden(true)
@@ -313,7 +325,7 @@ struct ShowTile: View {
 // MARK: - The event line
 
 /// Lines of fragments that wrap between fragments only.
-private struct FlowLayout: Layout {
+struct FlowLayout: Layout {
     var spacing: CGFloat = 4
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
@@ -529,13 +541,34 @@ struct HeadBoard: View {
     let first: String?
     let last: String?
     var facts: [String?] = []
+    /// Makes the board the link to the show; its name is then a line under the page's own title.
+    var link: Route? = nil
+    /// The picture's credit, under the board, when its license asks and the window shows it.
+    var showsCredit = false
     @State private var width: CGFloat = 0
 
-    private var windowSide: CGFloat { width >= 1024 ? 176 : width >= 600 ? 128 : 96 }
+    static func side(forWidth width: CGFloat) -> CGFloat { width >= 1024 ? 176 : width >= 600 ? 128 : 96 }
+    private var windowSide: CGFloat { Self.side(forWidth: width) }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            if let link {
+                NavigationLink(value: link) { board }
+                    #if os(tvOS)
+                    .buttonStyle(.card)
+                    #else
+                    .buttonStyle(.plain)
+                    #endif
+            } else {
+                board
+            }
+            if showsCredit { PictureCredit(arts: [art], slot: windowSide) }
+        }
+    }
+
+    private var board: some View {
         let ink = Color.onBoard(genre)
-        VStack(alignment: .leading, spacing: Spacing.s3) {
+        return VStack(alignment: .leading, spacing: Spacing.s3) {
             HStack(alignment: .top, spacing: Spacing.s4) {
                 PictureWindow(art: art, name: name, genre: genre, side: windowSide)
                 VStack(alignment: .leading, spacing: Spacing.s1) {

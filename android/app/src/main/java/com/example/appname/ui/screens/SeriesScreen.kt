@@ -1,10 +1,13 @@
 package com.example.appname.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -27,33 +30,42 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.appname.data.DisplayVocabulary
+import com.example.appname.data.SeriesRow
 import com.example.appname.navigation.SiteLinks
+import com.example.appname.ui.ActionRow
 import com.example.appname.ui.ClaimTvFocus
-import com.example.appname.ui.SeriesDownloadAction
-import com.example.appname.ui.ShareAction
-import com.example.appname.ui.tvFocusMark
-import kotlinx.coroutines.launch
 import com.example.appname.ui.EmptyMessage
+import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.Haptic
-import com.example.appname.ui.rememberHaptics
+import com.example.appname.ui.HeadBoard
+import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
-import com.example.appname.ui.Loadable
-import com.example.appname.ui.EpisodeListItem
-import com.example.appname.ui.Meta
+import com.example.appname.ui.PictureCredit
+import com.example.appname.ui.SeriesDownloadAction
+import com.example.appname.ui.ShareButton
+import com.example.appname.ui.episodeCount
+import com.example.appname.ui.headSlot
 import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.seasonLabel
 import com.example.appname.ui.seriesYears
-import com.example.appname.ui.FaceHero
-import androidx.compose.foundation.layout.Box
 import com.example.appname.ui.theme.Spacing
+import com.example.appname.ui.tvFocusMark
+import kotlinx.coroutines.launch
 
-/** A series page (§4.3): Follow and Share, its broadcast seasons as a segmented scope (not a push), episodes oldest first (R1). */
+/**
+ * A series page (§4.3, R11d): the head board, one button row (Follow, Share), the picture's credit
+ * when its license asks, its broadcast seasons as a segmented scope (not a push), episodes oldest
+ * first (R1).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit) {
@@ -95,7 +107,6 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                             seasonIds = seasonIds.takeIf { ready.seasons.size > 1 },
                         )
                     }
-                    ready?.series?.let { ShareAction(it.name, SiteLinks.series(it.key)) }
                 },
             )
         },
@@ -109,73 +120,83 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
             val firstRow = remember { FocusRequester() }
             val rows = (episodes as? Loadable.Ready)?.value.orEmpty()
             ClaimTvFocus(firstRow, rows.firstOrNull()?.id)
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-                seriesPage.series.face?.let { face ->
-                    item(key = "face") {
-                        FaceHero(
-                            face, seriesPage.series.genre,
-                            Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp, bottom = Spacing.S2.dp),
-                            facts = listOfNotNull(seriesYears(seriesPage.series), "${seriesPage.series.episodes} episodes").joinToString(" · "),
-                        )
-                    }
-                } ?: item(key = "meta") {
-                    val years = seriesYears(seriesPage.series)
-                    Meta(
-                        listOfNotNull(years, "${seriesPage.series.episodes} episodes").joinToString(" · "),
-                        Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
-                    )
-                }
-                item(key = "follow") {
+            val series = seriesPage.series
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize(), contentPadding = padding) {
                     // §4.3: the web's Follow and Following; the store is the one sync carries (§2.3).
                     val on = (following as? Loadable.Ready)?.value == true
-                    val toggle: () -> Unit = {
+                    seriesHead(series, on) {
                         haptics(Haptic.Selection)
                         scope.launch { container.user.setFollowing(seriesKey, !on) }
                     }
-                    val modifier = Modifier.padding(horizontal = Spacing.S4.dp).tvFocusMark()
-                    if (on) {
-                        FilledTonalButton(onClick = toggle, modifier = modifier) {
-                            Icon(Icons.Filled.Check, contentDescription = null)
-                            Text("Following", Modifier.padding(start = Spacing.S2.dp))
-                        }
-                    } else {
-                        OutlinedButton(onClick = toggle, modifier = modifier) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
-                            Text("Follow", Modifier.padding(start = Spacing.S2.dp))
-                        }
-                    }
-                }
-                if (seriesPage.seasons.size > 1) {
-                    item(key = "seasons") {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = Spacing.S4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
-                        ) {
-                            items(seriesPage.seasons, key = { it.season ?: "\u0000undated" }) { s ->
-                                FilterChip(
-                                    selected = s.season == season,
-                                    onClick = {
-                                        if (s.season != season) haptics(Haptic.Selection)
-                                        picked = s.season
-                                        pickedAny = true
-                                    },
-                                    label = { Text(seasonLabel(s.season)) },
-                                    modifier = Modifier.tvFocusMark(),
-                                )
+                    if (seriesPage.seasons.size > 1) {
+                        item(key = "seasons") {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = Spacing.S4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
+                            ) {
+                                items(seriesPage.seasons, key = { it.season ?: "\u0000undated" }) { s ->
+                                    FilterChip(
+                                        selected = s.season == season,
+                                        onClick = {
+                                            if (s.season != season) haptics(Haptic.Selection)
+                                            picked = s.season
+                                            pickedAny = true
+                                        },
+                                        label = { Text(seasonLabel(s.season)) },
+                                        modifier = Modifier.tvFocusMark(),
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                items(rows, key = { it.id }) { row ->
-                    EpisodeListItem(
-                        row,
-                        showSeries = false,
-                        onOpen = { onOpenEpisode(row.id) },
-                        onPlay = { container.playback.play(row) },
-                        modifier = if (row.id == rows.first().id) Modifier.focusRequester(firstRow) else Modifier,
-                    )
+                    items(rows, key = { it.id }) { row ->
+                        EpisodeListItem(
+                            row,
+                            showSeries = false,
+                            onOpen = { onOpenEpisode(row.id) },
+                            onPlay = { container.playback.play(row) },
+                            modifier = if (row.id == rows.first().id) Modifier.focusRequester(firstRow) else Modifier,
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+/** The series page down to the picture's credit: the head board, then the one button row. */
+fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, toggle: () -> Unit) {
+    item(key = "head") {
+        HeadBoard(
+            name = series.name,
+            genre = series.genre,
+            art = series.windowArt,
+            kicker = (listOfNotNull(series.genre?.let { DisplayVocabulary.genreName(it) }) + series.networks)
+                .joinToString(" · ").ifEmpty { null },
+            facts = listOf(seriesYears(series) ?: "Undated", episodeCount(series.episodes)),
+            first = series.firstDate,
+            last = series.lastDate,
+        )
+    }
+    item(key = "follow") {
+        ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
+            val grow = Modifier.weight(1f).tvFocusMark()
+            if (following) {
+                FilledTonalButton(onClick = toggle, modifier = grow) {
+                    Icon(Icons.Filled.Check, contentDescription = null)
+                    Text("Following", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
+                }
+            } else {
+                OutlinedButton(onClick = toggle, modifier = grow) {
+                    Icon(Icons.Filled.Add, contentDescription = null)
+                    Text("Follow", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
+                }
+            }
+            ShareButton(series.name, SiteLinks.series(series.key), fit.folded)
+        }
+    }
+    item(key = "credit") {
+        PictureCredit(listOf(series.windowArt), headSlot(), Modifier.padding(horizontal = Spacing.S4.dp))
     }
 }

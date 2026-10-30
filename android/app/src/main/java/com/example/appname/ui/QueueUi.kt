@@ -74,19 +74,18 @@ fun QueueMenu(episodeId: String, open: Boolean, onDismiss: () -> Unit, inQueueLi
 
 /** Detail's toggle, the web's "Add to queue" / "In queue" (`aria-pressed`). */
 @Composable
-fun QueueToggle(episodeId: String, modifier: Modifier = Modifier) {
+fun QueueToggle(episodeId: String, folded: Boolean, modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
     val scope = rememberCoroutineScope()
     val changes by container.user.changes.collectAsState()
     val queued by produceState(false, changes) { value = episodeId in container.user.queue() }
-    OutlinedButton(
-        onClick = { scope.launch { if (queued) container.queue.remove(episodeId) else container.queue.add(episodeId) } },
-        modifier = modifier.tvFocusMark(),
-        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-    ) {
-        Icon(if (queued) Icons.Filled.Check else Icons.Filled.Add, contentDescription = null)
-        Text(if (queued) "In queue" else "Add to queue")
-    }
+    FoldButton(
+        if (queued) Icons.Filled.Check else Icons.Filled.Add,
+        if (queued) "In queue" else "Add to queue",
+        folded,
+        { scope.launch { if (queued) container.queue.remove(episodeId) else container.queue.add(episodeId) } },
+        modifier,
+    )
 }
 
 /** Library's Queue section: swipe a row away to remove it; long-press for Move up, Move down, Remove. */

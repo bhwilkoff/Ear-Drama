@@ -20,8 +20,9 @@ struct DownloadControl: View {
         switch downloads.record(for: id)?.state {
         case nil:
             Button { downloads.download(detail) } label: {
-                Label("Download", systemImage: "arrow.down.circle")
+                ActionLabel(title: "Download", systemImage: "arrow.down.circle")
             }
+            .pageAction()
             .disabled(detail.defaultRecording == nil)
         case .queued, .downloading:
             HStack(spacing: Spacing.s3) {

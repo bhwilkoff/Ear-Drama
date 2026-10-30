@@ -1,11 +1,14 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.foundation.clickable
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FormatQuote
@@ -31,37 +34,49 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.appname.data.DisplayVocabulary
+import com.example.appname.data.EpisodeDetail
+import com.example.appname.data.Progress
 import com.example.appname.data.Recording
+import com.example.appname.data.SeriesRow
 import com.example.appname.data.Transcript
+import com.example.appname.data.episodeFacts
+import com.example.appname.data.leadPicture
+import com.example.appname.data.onAirOf
 import com.example.appname.navigation.SiteLinks
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import com.example.appname.ui.ArtCredit
+import com.example.appname.ui.ActionRow
+import com.example.appname.ui.CastAndCredits
 import com.example.appname.ui.ClaimTvFocus
-import com.example.appname.ui.CreditFace
-import com.example.appname.ui.FaceHero
-import com.example.appname.ui.DownloadControl
-import com.example.appname.ui.QueueToggle
+import com.example.appname.ui.DownloadButton
 import com.example.appname.ui.EmptyMessage
+import com.example.appname.ui.EventLine
+import com.example.appname.ui.HeadBoard
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.Meta
+import com.example.appname.ui.OnTheAir
+import com.example.appname.ui.PictureCredit
+import com.example.appname.ui.QueueToggle
 import com.example.appname.ui.SectionHeader
-import com.example.appname.ui.ShareAction
-import com.example.appname.ui.detailFacts
+import com.example.appname.ui.ShareButton
+import com.example.appname.ui.episodeCount
 import com.example.appname.ui.episodeShareTitle
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.formatAirDate
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.formatLength
-import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.headSlot
 import com.example.appname.ui.playButtonColors
-import com.example.appname.ui.tvFocusMark
-import com.example.appname.ui.theme.OnAir
+import com.example.appname.ui.rememberCatalogQuery
+import com.example.appname.ui.seriesYears
 import com.example.appname.ui.theme.Spacing
+import com.example.appname.ui.tvFocusMark
 
-/** Episode Detail (§4.4): series, title, date, facts, Play, Share, credits, versions in rank order, the rights line. */
+/**
+ * Episode Detail (§4.4, R11d): the head board of its show, the episode's title and event line, one
+ * button row, the ear drama row where a script exists, On the air, Cast and credits folded, the
+ * recordings in rank order, the rights line.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodeScreen(
@@ -77,7 +92,8 @@ fun EpisodeScreen(
     val detail by rememberCatalogQuery(id, watchUser = true) { db ->
         db.episodeDetail(id)?.let { it to container.user.progress(it.episode.id) }
     }
-    val shown = (detail as? Loadable.Ready)?.value?.first?.episode
+    val shownSeries = (detail as? Loadable.Ready)?.value?.first?.episode?.seriesKey
+    val seriesState by rememberCatalogQuery(shownSeries) { db -> shownSeries?.let { db.series(it) } }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -86,9 +102,6 @@ fun EpisodeScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                },
-                actions = {
-                    shown?.let { ShareAction(episodeShareTitle(it), SiteLinks.episode(it.id)) }
                 },
             )
         },
@@ -100,120 +113,148 @@ fun EpisodeScreen(
             }
             val (d, progress) = loaded
             val row = d.episode
-            val pad = Modifier.padding(horizontal = Spacing.S4.dp)
             // On a TV the D-pad starts on Play (§9.2, tvOS-DESIGN §6.2).
             val play = remember { FocusRequester() }
             ClaimTvFocus(play, row.id)
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-                // §4.4, the web's order: the series, the title, the date, then the facts.
-                d.starFace?.let { face ->
-                    // R11a: the episode's star leads the page, with whose face it is.
-                    item(key = "face") {
-                        FaceHero(face, row.seriesGenre, Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp))
-                    }
-                }
-                item(key = "head") {
-                    Text(
-                        row.seriesName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = OnAir.colors.link,
-                        modifier = Modifier
-                            .tvFocusMark()
-                            .clickable(onClickLabel = "Open series") { onOpenSeries(row.seriesKey) }
-                            .padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize(), contentPadding = padding) {
+                    episodeHead(
+                        d = d,
+                        series = (seriesState as? Loadable.Ready)?.value,
+                        progress = progress,
+                        playFocus = play,
+                        onPlay = { container.playback.play(row) },
+                        onOpenSeries = onOpenSeries,
+                        onOpenPerson = onOpenPerson,
+                        onOpenTranscript = onOpenTranscript,
+                        queue = { folded -> QueueToggle(row.id, folded) },
+                        share = { folded -> ShareButton(episodeShareTitle(row), SiteLinks.episode(row.id), folded) },
+                        download = { folded -> DownloadButton(d, folded) },
+                        earDrama = plays.firstOrNull { it.id == d.script }?.let { script ->
+                            @Composable { StartEarDramaButton(script, onOpenProduction) }
+                        },
                     )
-                    Text(
-                        episodeTitle(row),
-                        style = MaterialTheme.typography.displaySmall,
-                        modifier = pad.semantics { heading() },
-                    )
-                    formatAirDate(row.airDate)?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = pad,
-                        )
-                    }
-                    detailFacts(d)?.let { Meta(it, pad) }
-                }
-                item(key = "play") {
-                    val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
-                    Button(
-                        onClick = { container.playback.play(row) },
-                        enabled = d.recordings.isNotEmpty(),
-                        modifier = Modifier.padding(Spacing.S4.dp).focusRequester(play).tvFocusMark(),
-                        colors = playButtonColors(),
-                        contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                    ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                        Text(if (resume != null) "Resume at ${formatClock(resume.positionMs)}" else "Play")
-                    }
-                }
-                item(key = "queue") { QueueToggle(row.id, Modifier.padding(horizontal = Spacing.S4.dp)) }
-                item(key = "download") { DownloadControl(d) }
-                // Decision 068: an episode linked to a castable script this bundle holds; none on a TV.
-                plays.firstOrNull { it.id == d.script }?.let { script ->
-                    item(key = "ear-drama") {
-                        Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-                            StartEarDramaButton(script, onOpenProduction)
+                    if (d.recordings.size > 1) {
+                        item(key = "versions-h") { SectionHeader("Versions") }
+                        items(d.recordings, key = { "r${it.rank}" }) { rec ->
+                            VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
+                        }
+                    } else {
+                        d.recordings.firstOrNull()?.let { rec ->
+                            val notes = recordingNotes(rec)
+                            if (notes.isNotEmpty()) {
+                                item(key = "only-copy") {
+                                    Meta(notes.joinToString(" · "), Modifier.padding(horizontal = Spacing.S4.dp))
+                                }
+                            }
                         }
                     }
-                }
-                if (d.transcriptUrl != null) {
-                    item(key = "transcript") {
-                        OutlinedButton(
-                            onClick = { onOpenTranscript(row.id) },
-                            modifier = Modifier.padding(horizontal = Spacing.S4.dp).tvFocusMark(),
-                            contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                        ) {
-                            Icon(Icons.Filled.FormatQuote, contentDescription = null)
-                            Text(Transcript.LABEL)
+                    d.rightsLine?.let { line ->
+                        item(key = "rights") {
+                            Meta(line, Modifier.padding(Spacing.S4.dp))
                         }
-                    }
-                }
-                if (d.credits.isNotEmpty()) {
-                    item(key = "credits-h") { SectionHeader("Cast and credits") }
-                    // A person can hold two roles on one broadcast; the credit's position is its identity here.
-                    val faces = d.credits.any { it.art != null }
-                    itemsIndexed(d.credits, key = { i, _ -> "c$i" }) { _, c ->
-                        // withPerson (§4.15): a credited name opens the person's page.
-                        ListItem(
-                            modifier = Modifier.tvFocusMark()
-                                .clickable(onClickLabel = "Open ${c.name}", onClick = { onOpenPerson(c.personId) }),
-                            leadingContent = if (faces) { { CreditFace(c.art) } } else null,
-                            headlineContent = { Text(c.name) },
-                            supportingContent = listOfNotNull(c.character, c.role).joinToString(" · ")
-                                .ifEmpty { null }?.let { { Text(it) } },
-                        )
-                    }
-                }
-                // CC BY / BY-SA portraits carry their credit; the heading's face already does.
-                itemsIndexed(d.owedCredits, key = { i, _ -> "owed$i" }) { _, c ->
-                    val art = c.art ?: return@itemsIndexed
-                    Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)) {
-                        Meta(c.name)
-                        ArtCredit(art.credit ?: "", art.evidence)
-                    }
-                }
-                if (d.recordings.size > 1) {
-                    item(key = "versions-h") { SectionHeader("Versions") }
-                    items(d.recordings, key = { "r${it.rank}" }) { rec ->
-                        VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
-                    }
-                } else {
-                    d.recordings.firstOrNull()?.let { rec ->
-                        val notes = recordingNotes(rec)
-                        if (notes.isNotEmpty()) item(key = "only-copy") { Meta(notes.joinToString(" · "), pad) }
-                    }
-                }
-                d.rightsLine?.let { line ->
-                    item(key = "rights") {
-                        Meta(line, Modifier.padding(Spacing.S4.dp))
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * The episode page down to its credits: every slot is drawn in the same order whether the episode
+ * is rich or bare, and a section with nothing in it is not drawn.
+ */
+fun LazyListScope.episodeHead(
+    d: EpisodeDetail,
+    series: SeriesRow?,
+    progress: Progress?,
+    playFocus: FocusRequester,
+    onPlay: () -> Unit,
+    onOpenSeries: (String) -> Unit,
+    onOpenPerson: (String) -> Unit,
+    onOpenTranscript: (String) -> Unit,
+    queue: @Composable RowScope.(Boolean) -> Unit,
+    share: @Composable RowScope.(Boolean) -> Unit,
+    download: @Composable RowScope.(Boolean) -> Unit,
+    earDrama: (@Composable () -> Unit)?,
+) {
+    val row = d.episode
+    val genre = series?.genre ?: row.seriesGenre
+    val lead = leadPicture(series, d.credits, d.star)
+    item(key = "head") {
+        HeadBoard(
+            name = row.seriesName,
+            genre = genre,
+            art = lead,
+            kicker = genre?.let { DisplayVocabulary.genreName(it) } ?: "Show",
+            facts = listOf(series?.let { seriesYears(it) } ?: "Undated", series?.let { episodeCount(it.episodes) }),
+            first = series?.firstDate,
+            last = series?.lastDate,
+            onOpen = { onOpenSeries(row.seriesKey) },
+        )
+    }
+    item(key = "title") {
+        Text(
+            episodeTitle(row),
+            style = MaterialTheme.typography.displaySmall,
+            modifier = Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S3.dp).semantics { heading() },
+        )
+        EventLine(
+            episodeFacts(d.network, d.sponsor, row.season, row.title, row.num, formatAirDate(row.airDate), formatLength(row.lengthSeconds)),
+            Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp),
+        )
+    }
+    item(key = "actions") {
+        val resume = progress?.takeIf { !it.finished && it.positionMs > 0 }
+        ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp), foldBelow = 600.dp) { fit ->
+            Button(
+                onClick = onPlay,
+                enabled = d.recordings.isNotEmpty(),
+                modifier = Modifier.weight(1f).focusRequester(playFocus).tvFocusMark(),
+                colors = playButtonColors(),
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            ) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Text(
+                    if (resume == null) "Play" else if (fit.tight) "Resume" else "Resume at ${formatClock(resume.positionMs)}",
+                    maxLines = 1,
+                )
+            }
+            queue(fit.folded)
+            share(fit.folded)
+            download(fit.folded)
+        }
+    }
+    // Decision 068: an episode linked to a castable script this bundle holds; none on a TV.
+    if (earDrama != null) {
+        item(key = "ear-drama") {
+            Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) { earDrama() }
+        }
+    }
+    item(key = "credit") {
+        PictureCredit(listOf(lead), headSlot(), Modifier.padding(horizontal = Spacing.S4.dp))
+    }
+    if (d.transcriptUrl != null) {
+        item(key = "transcript") {
+            OutlinedButton(
+                onClick = { onOpenTranscript(row.id) },
+                modifier = Modifier.padding(horizontal = Spacing.S4.dp).tvFocusMark(),
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            ) {
+                Icon(Icons.Filled.FormatQuote, contentDescription = null)
+                Text(Transcript.LABEL)
+            }
+        }
+    }
+    val air = onAirOf(d.credits)
+    if (air.isNotEmpty()) {
+        item(key = "air") { OnTheAir(air, genre, onOpenPerson) }
+        item(key = "air-credit") {
+            PictureCredit(air.map { it.art }.filter { it?.evidence != lead?.evidence || it?.evidence == null }, 72.dp, Modifier.padding(horizontal = Spacing.S4.dp))
+        }
+    }
+    if (d.credits.isNotEmpty()) {
+        item(key = "credits") { CastAndCredits(d.credits, onOpenPerson) }
     }
 }
 

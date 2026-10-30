@@ -100,4 +100,37 @@ class GrammarTest {
         assertEquals("control: an empty cell draws nothing", 0, fieldSide(0, 98))
         assertEquals("area carries the count (the square root)", 23, fieldSide(49, 98))
     }
+
+    @Test fun `series and episode pages - the lead picture, who is on the air, the event line`() {
+        fun art(u: String) = Artwork(u, 600, 800)
+        fun credit(person: String, role: String, art: Artwork?) = Credit(person, person.uppercase(), role, null, art)
+        fun show(kind: String?, picture: Artwork?) = SeriesRow("k", "K", null, null, null, 1, picture = picture, pictureKind = kind)
+        val credits = listOf(
+            credit("a", "cast", null), credit("b", "cast", art("b")), credit("c", "cast", art("c")),
+            credit("d", "writer", art("d")), credit("b", "cast", art("b")),
+        )
+        assertEquals("a show picture leads over any star", "show", leadPicture(show("show", art("show")), credits, "c")?.url)
+        assertEquals("a star picture on the series gives way to the episode's star", "c", leadPicture(show("star", art("s")), credits, "c")?.url)
+        assertEquals("no star named: the first cast with a picture", "b", leadPicture(show("star", art("s")), credits, null)?.url)
+        assertEquals("control: a writer is not a lead; the series picture", "s", leadPicture(show("star", art("s")), listOf(credit("w", "writer", art("w"))), null)?.url)
+        assertNull("control: nothing to show is the title block", leadPicture(show(null, null), emptyList(), null))
+        assertEquals("cast in billing order, once each, no writers", listOf("a", "b", "c"), onAirOf(credits).map { it.personId })
+        assertEquals("at most the limit", 2, onAirOf(credits, 2).size)
+        assertEquals(
+            "the event line, in order",
+            listOf("Jun 17, 1943", "CBS", "30 min", "Season 1943-44", "No. 4"),
+            episodeFacts("CBS", null, "1943-44", "T", 4, "Jun 17, 1943", "30 min"),
+        )
+        assertEquals(
+            "control: an undated bare file says only so; a number already naming it is not repeated",
+            listOf("Undated"),
+            episodeFacts(null, null, null, null, 4, null, null),
+        )
+    }
+
+    @Test fun `series networks read from the published array`() {
+        assertEquals(listOf("CBS", "NBC"), CatalogDatabase.networkList("[\"CBS\", \"\", \"NBC\"]"))
+        assertEquals("control: malformed is none", emptyList<String>(), CatalogDatabase.networkList("CBS"))
+        assertEquals("control: null is none", emptyList<String>(), CatalogDatabase.networkList(null))
+    }
 }

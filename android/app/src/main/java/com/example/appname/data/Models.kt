@@ -107,6 +107,8 @@ data class SeriesRow(
     val picture: Artwork? = null,
     /** What the picture is (read, never shown on a tile). */
     val pictureKind: String? = null,
+    /** `series.networks`, in published order. */
+    val networks: List<String> = emptyList(),
 ) {
     /** What the window draws: the published picture, else the star's portrait an older catalog carries. */
     val windowArt: Artwork? get() = picture ?: face?.art
