@@ -500,3 +500,4 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - One grammar of fixed slots (catalog-experience-design rule 11); title blocks for the 85% of shows with no picture; rich and bare pages gate-checked to share one layout; the new colors and picture fields; three recording modes; signed-out invite, finished dramas, A to Z. Fit gate 29 screens, 0 problems; I read the dark frames (Home, Browse, episodes, series, invite, dramas) before merging.
 - Review page republished as one self-contained file (2.8 MB, 46 frames), first try.
 - Running: C2, W2. Owner calls: build D everywhere; one face per star.
+- W2 merged (1.0.110) and deployed (7dd9e948). C2 staged catalog-2026-10-29 (series_art added; rebuild: 44 series stars and 84 pictures change, episodes unchanged; build_db nondeterminism measured locally). Loop stopped: D3 go, one face per star, and the Release command wait on the owner.

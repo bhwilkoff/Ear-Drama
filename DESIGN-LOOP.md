@@ -187,5 +187,11 @@ describing."*
   recording modes; invite, finished dramas, A to Z shelf; 29 screens, fit gate 0 problems).
 - Open owner calls: build D everywhere; one face per star (William Conrad leads both
   Gunsmoke and Escape).
-- Running: C2 (stage the cache Release with series_art) and W2 (a published production
-  survives its last member's deletion).
+- W2 merged (1.0.110, Worker 7dd9e948). C2 staged build/catalog-release-2026-10-29 (dry run passes;
+  only series_art added); the owner runs `bash tools/cut_catalog_release.sh
+  build/catalog-release-2026-10-29 catalog-2026-10-29`, then `gh workflow run catalog-publish.yml`.
+- Follow-ups for the build loop: build_db is not deterministic across two local builds of one
+  cache (about 400 credit and 74 network rows move; CI pins PYTHONHASHSEED, local runs do not);
+  a submitted production whose director deleted their account has no director, so a reported
+  line there can only be handled by Ear Drama's own moderation (none yet).
+- Nothing running; the loop stops at the gate.
