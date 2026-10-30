@@ -89,6 +89,22 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   faces. The Media3 session hands the system a URL
   (`artworkUri`), which it crops itself. Every box is sized from the published
   aspect, so nothing shifts when an image lands.
+- **R11b One grammar** (owner, 2026-10-29: *"the design is still not uniform for all different levels of content (some with images, some without, some with more information, some with less). We need to a design approach that evens out all of the inconsistencies and make the app look like one complete thought."*; `catalog-experience-design` rule 11; D3-1); WEB-DESIGN §6.4b is the shared text, and
+  where it amends R11 and R11a it wins. `ui/Grammar.kt` holds one
+  composable per object, phone and TV alike: `PictureWindow` (the square
+  slot on `PrintGround` with the `PrintEdge` hairline; the series'
+  `picture` cropped by `Art.cropRect`, graded by a `ColorMatrix`
+  (saturation 0, then scale `k` and offset `o * 255`) as Coil's color
+  filter, the identity levels until the projection publishes
+  `art.grade`; else `TitleBlock`, the monogram drawn with
+  `TextStyle(drawStyle = Stroke)` in onBoard), `ShowTile` (window, name,
+  `RunStrip`, facts, on `boardColor`; the names in one shelf take the
+  tallest name's height, so every strip sits on one line), `GrammarRow`
+  (64 dp, a 48 dp visual: `DateBlock` in a series' own list, the
+  series' window where series mix; title, sub, length, Play),
+  `HeadBoard` and `EventLine` (a `FlowRow` that keeps each " ·" with the
+  fact before it). Home's shelves draw `ShowTile`; Browse and every
+  series list draw `GrammarRow`; on TV the focused tile scales whole.
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order
   (contract §5.1; the same list and titles on every platform): This day

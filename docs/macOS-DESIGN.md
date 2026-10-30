@@ -48,6 +48,9 @@ Mac uses the same Core, so the same code holds them:
   tile, `CreditFace`, and the system Now Playing square center on the
   published face, as iOS-DESIGN R11a (V4), a wide picture without one
   left uncropped;
+  **R11b** one grammar, as iOS-DESIGN R11b (owner, 2026-10-29: *"the design is still not uniform for all different levels of content (some with images, some without, some with more information, some with less). We need to a design approach that evens out all of the inconsistencies and make the app look like one complete thought."*; `catalog-experience-design` rule 11; D3-1): the same
+  `apple/Shared/Grammar.swift` components, the pointer's hover lifting a
+  tile's board, never a stripe;
   **R12** brand is chrome only;
   **R13** shelves are the catalog's `meta.listenShelves`, in order
   (`docs/iOS-DESIGN.md` R13).

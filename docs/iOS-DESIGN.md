@@ -108,6 +108,23 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   Sizes: each box asks `Artwork.url(pixels:)` for its drawn width at the
   screen's scale (Commons' 120, 330, 500, 960); every box is sized from the
   published aspect, so nothing shifts when an image lands.
+- **R11b One grammar** (owner, 2026-10-29: *"the design is still not uniform for all different levels of content (some with images, some without, some with more information, some with less). We need to a design approach that evens out all of the inconsistencies and make the app look like one complete thought."*; `catalog-experience-design` rule 11; D3-1); WEB-DESIGN §6.4b is the shared text, and
+  where it amends R11 and R11a it wins. `apple/Shared/Grammar.swift`
+  holds one component per object for iOS, iPadOS, macOS and tvOS:
+  `PictureWindow` (the square slot on `Color.printGround` with the
+  `printEdge` hairline; the series' `picture` cropped by
+  `Artwork.cropRect`, graded at decode in Core by `PictureGrade`,
+  `CIColorControls` saturation 0 then `CIColorMatrix` in sRGB, the
+  identity levels until the projection publishes `art.grade`; else
+  `TitleBlock`, the monogram as an outlined Core Text path in onBoard),
+  `ShowTile` (window, name, `RunStrip`, facts, on `Color.board(_:)`;
+  names in one shelf share the tallest name's height, so every strip
+  sits on one line), `GrammarRow` (64 pt, a 48 pt visual: `DateBlock`
+  in a series' own list, the series' window where series mix; title,
+  sub, length, Play), `HeadBoard` and `EventLine` (a flow layout that
+  keeps each " ·" with the fact before it). Home's shelves draw
+  `ShowTile`; Browse and every series list draw `GrammarRow`. The 56 pt
+  `ArtTile` and the genre's 3 pt edge on rows retire with them.
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the
