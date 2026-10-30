@@ -7,7 +7,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -29,7 +36,11 @@ import coil3.request.ImageResult
 import coil3.request.SuccessResult
 import coil3.decode.DataSource
 import com.example.appname.data.Artwork
+import com.example.appname.data.EpisodeDetail
+import com.example.appname.data.EpisodeRow
 import com.example.appname.data.FaceBox
+import com.example.appname.ui.screens.episodeHead
+import com.example.appname.ui.screens.seriesHead
 import com.example.appname.data.SeriesRow
 import com.example.appname.ui.theme.AppTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -204,6 +215,72 @@ class GrammarRenderTest {
                 TileSpec("p", SeriesRow("play:x", "The Importance of Being Earnest", null, null, null, 0), facts = listOf("Oscar Wilde", "6 parts"), onOpen = {}),
         )
     }
+
+    private val credited = Artwork("https://x/portrait-credit.jpg", 500, 667, credit = "A. Photographer, CC BY-SA 3.0", evidence = "https://commons.example/File:A.jpg", face = FaceBox(0.4f, 0.25f, 0.2f, 0.15f))
+
+    private val richSeries = SeriesRow(
+        "sus", "Suspense", "mystery", "1942-06-17", "1962-09-30", 944,
+        picture = credited, pictureKind = "show", networks = listOf("CBS", "NBC"),
+    )
+    private val sparseSeries = SeriesRow("hr", "Counterrevolutionary Hour", null, null, null, 3)
+
+    private fun person(id: String, name: String, role: String?, character: String?, art: Artwork?) =
+        com.example.appname.data.Credit(id, name, role, character, art)
+
+    private val richEpisode = EpisodeDetail(
+        episode = EpisodeRow("sus|1943-05-25", "sus", "Suspense", "1943-05-25", "1942-43", 4, "Sorry, Wrong Number", 1800.0, seriesGenre = "mystery"),
+        rights = "", rightsBasis = null, network = "CBS", noRecommend = null,
+        credits = listOf(
+            person("agnes", "Agnes Moorehead", "cast", "Mrs. Stevenson", portrait),
+            person("ann", "Ann Shepherd", "cast", null, credited),
+            person("hans", "Hans Conried", "cast", "The Operator, a long character name", null),
+            person("wr", "Lucille Fletcher", "writer", null, null),
+            person("dir", "William Spier", "director", null, null),
+        ),
+        recordings = listOf(com.example.appname.data.Recording(1, "sus-1943", "https://x/a.mp3", "mp3", 128, 1800.0, null, false)),
+        detailJson = null, sponsor = "Roma Wines", star = "agnes",
+    )
+    private val bareEpisode = EpisodeDetail(
+        episode = EpisodeRow("hr|", "hr", "Counterrevolutionary Hour", null, null, null, null, null),
+        rights = "", rightsBasis = null, network = null, noRecommend = null,
+        credits = emptyList(),
+        recordings = listOf(com.example.appname.data.Recording(1, "hr-1", "https://x/a.mp3", "mp3", 64, null, null, false)),
+        detailJson = null,
+    )
+
+    @Composable private fun Frame(width: androidx.compose.ui.unit.Dp, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
+        androidx.compose.foundation.layout.Box(Modifier.width(width).height(if (width > 400.dp) 1300.dp else 900.dp)) {
+            androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize(), content = content)
+        }
+    }
+
+    private fun seriesPage(name: String, s: SeriesRow, width: androidx.compose.ui.unit.Dp = 412.dp, following: Boolean = false) = shoot(name) {
+        Frame(width) { seriesHead(s, following) {} }
+    }
+
+    private fun episodePage(name: String, d: EpisodeDetail, s: SeriesRow, width: androidx.compose.ui.unit.Dp = 412.dp, resume: Long = 0) = shoot(name) {
+        Frame(width) {
+            episodeHead(
+                d = d, series = s,
+                progress = if (resume > 0) com.example.appname.data.Progress(d.episode.id, resume, 1800000, false) else null,
+                playFocus = androidx.compose.ui.focus.FocusRequester(),
+                onPlay = {}, onOpenSeries = {}, onOpenPerson = {}, onOpenTranscript = {},
+                queue = { f -> FoldButton(Icons.Filled.Add, "Add to queue", f, {}) },
+                share = { f -> ShareButton("Sorry, Wrong Number", "https://eardrama.org/x", f) },
+                download = { f -> FoldButton(Icons.Outlined.Download, "Download", f, {}) },
+                earDrama = null,
+            )
+        }
+    }
+
+    @Test fun seriesRich() = seriesPage("series-rich", richSeries)
+    @Test fun seriesSparse() = seriesPage("series-sparse", sparseSeries)
+    @Test fun seriesRich320() = seriesPage("series-rich-320", richSeries, 320.dp)
+    @Test fun seriesFollowing() = seriesPage("series-following", richSeries, following = true)
+    @Test fun episodeRich() = episodePage("ep-rich", richEpisode, richSeries, resume = 754000)
+    @Test fun episodeBare() = episodePage("ep-bare", bareEpisode, sparseSeries)
+    @Test fun episodeRich320() = episodePage("ep-rich-320", richEpisode, richSeries, 320.dp, resume = 754000)
+    @Test fun episodeBare320() = episodePage("ep-bare-320", bareEpisode, sparseSeries, 320.dp)
 
     @Test fun head() = shoot("headboard") {
         HeadBoard("Suspense", "mystery", portrait, "Series", listOf("1942–1962", "CBS", "944 episodes"), "1942-06-17", "1962-09-30")

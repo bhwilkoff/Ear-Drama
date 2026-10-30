@@ -106,6 +106,34 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   fact before it). Home's shelves draw `ShowTile`; Browse and every
   series list draw `GrammarRow`; on TV the focused tile scales whole.
 - **R11c Home and Browse** (owner, 2026-10-29: *"Having more shows is better, so 5."* and *"I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac."*; D3-2; WEB-DESIGN §6.4c is the shared text). A show is a series of at least 5 episodes (`isShow`, `SHOW_MIN`); tiles in shelves and grids are shows only, and the rest are single recordings, counted and reachable by a link that lists them in the same tile grid. The rules are pure functions in `data/GrammarRules.kt` with the web's golden cases in `GrammarTest` (`isShow`, `dayYears`, `nightShows`, `decadeField`, `fieldSide`, `GENRE_ORDER`). Home, top to bottom, each section only with data: Continue listening and Following (kept), the day board (`DayBoard` in `ui/HomeBrowse.kt`: kicker "This day in radio", the big date, "N surviving broadcasts · N years", a bar per year stacked by genre in the genre mark colors on a fixed axis from 1930 to the last year, the selected year outlined with its label, a tap selects a year, peak year by default, a legend of the genres seen; every broadcast of the day, no limit of 20), the selected night as show tiles (first 6, then "All N shows that night" in place; each tile's facts are the episode title and length and it opens the episode; "N single recordings" at the heading's right as a plain fact), and Most downloaded (12 show tiles, then "All N shows" to Browse). Most heard voices and New ear dramas are not built (the data and the Worker are missing). Browse keeps every filter and sort as they were, then shows a count line ("2,036 shows" and, as a plain link, "7,189 single recordings"), the decade by genre field (`DecadeFieldView`: a square per cell in the genre's mark color sized by `fieldSide`, the count under it, "N with no genre" only when above 0, each non-empty cell applies its genre and decade; the other filters count, genre and decade do not), then a `LazyVerticalGrid` of show tiles (a play is a title-block tile with author and parts). The section heading names the sort, "A to Z" for A to Z. From 840 dp wide the field sits beside the grid; on phones it sits above. The field cells and the year bars carry TalkBack labels.
+- **R11d Series and episode pages in direction D** (owner, 2026-10-29:
+  *"an item with a picture, without one, rich or sparse, renders in the
+  same structure"*; *"a share button that goes to the next line instead of
+  being next to the other buttons"*; D3-3); WEB-DESIGN §6.4d is the shared
+  text and where it differs this wins. It amends §4.3 and §4.4 and retires
+  `FaceHero` on these two pages. **Series:** `HeadBoard` (kicker: the genre
+  name, then `series.networks` joined by " · "; the name as the page's
+  heading; facts: the years or "Undated", then the episode count; the run
+  strip), then one button row (Follow, Share), the picture's credit when
+  its license asks and the window shows it (`PictureCredit`), the season
+  scope, the episodes. **Episode:** the head board of its show (the board
+  is the link to the series; its name is not a heading), led by
+  `leadPicture`; the episode's title as the heading; the event line
+  (`episodeFacts`); one button row (Play, Add to queue, Share, Download);
+  "Start an ear drama" on its own row where a castable script exists;
+  Automatic transcript; On the air (`onAirOf`: round 72 dp windows of up to
+  six cast, name and character beneath, a tap opens the person, the title
+  block where there is no picture); Cast and credits folded; recordings;
+  the rights line. A section with nothing in it is not drawn. **A button
+  row never wraps apart:** `ActionRow` is a `Row`, never a `FlowRow`;
+  Play and Follow take the room (`weight`), and the secondary buttons fold
+  to 48 dp icons (`FoldButton`, the label kept as the content description)
+  under 480 dp (600 dp on the episode row, which carries four), the Resume
+  label shortens under 360 dp. The pages sit in a 720 dp column on a
+  tablet. On a TV Play takes the default focus and Share is absent.
+  Rules golden-tested in `GrammarTest`; the row's fit at 320 to 599 dp by
+  `PageActionsFitTest` (its control, a `FlowRow`, must fail); renders by
+  `GrammarRenderTest` with `GRAMMAR_RENDER_DIR`.
 - **R12** brand colors are chrome; dynamic color is off by default.
 - **R13** shelves are the catalog's `meta.listenShelves`, in order
   (contract §5.1; the same list and titles on every platform): This day

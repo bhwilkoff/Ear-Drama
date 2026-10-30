@@ -8,6 +8,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
 
 /**
  * The query verbs of docs/CATALOG-CONTRACT.md §5 over the served projection,
@@ -90,8 +93,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val face = if (hasArt && "face" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }) "ap.face" else "NULL"
         val sql = "SELECT s.key, s.genre, " +
             (if (faces) "p.name, $artColumns, " else "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
-            (if (pictures) "ap.url, ap.width, ap.height, ap.credit, ap.evidence_url, $face, s.picture_kind " else
-                "NULL, NULL, NULL, NULL, NULL, NULL, NULL ") +
+            (if (pictures) "ap.url, ap.width, ap.height, ap.credit, ap.evidence_url, $face, s.picture_kind, " else
+                "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
+            (if ("networks" in cols) "s.networks " else "NULL ") +
             "FROM series s " +
             (if (faces) "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait " else "") +
             (if (pictures) "LEFT JOIN art ap ON ap.id = s.picture" else "")
@@ -103,11 +107,18 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 face = if (art != null && name != null) Face(name, art) else null,
                 picture = artwork(st, 9),
                 pictureKind = st.textOrNull(15),
+                networks = networkList(st.textOrNull(16)),
             )
         }.toMap()
     }
 
-    private class SeriesLook(val genre: String?, val face: Face?, val picture: Artwork?, val pictureKind: String?)
+    private class SeriesLook(
+        val genre: String?,
+        val face: Face?,
+        val picture: Artwork?,
+        val pictureKind: String?,
+        val networks: List<String>,
+    )
 
     private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
         Artwork(
@@ -146,6 +157,12 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
 
         /** `series.networks` as JSON SQLite can walk; a NULL or malformed value is no network. */
         private const val NETWORKS_JSON = "CASE WHEN json_valid(s.networks) THEN s.networks ELSE '[]' END"
+
+        /** `series.networks` (a JSON array of names); a NULL or malformed value is none. */
+        fun networkList(json: String?): List<String> = runCatching {
+            Json.parseToJsonElement(json ?: return emptyList()).jsonArray
+                .mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) }
+        }.getOrDefault(emptyList())
 
         /** R1: oldest first, undated last, then the log number, then the title. */
         private const val OLDEST_FIRST = "e.air_date IS NULL, COALESCE(e.air_date, ''), " +
@@ -729,6 +746,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         face = seriesLook[st.getText(0)]?.face,
         picture = seriesLook[st.getText(0)]?.picture,
         pictureKind = seriesLook[st.getText(0)]?.pictureKind,
+        networks = seriesLook[st.getText(0)]?.networks.orEmpty(),
     )
 
     private fun episodeRow(st: SQLiteStatement) = EpisodeRow(

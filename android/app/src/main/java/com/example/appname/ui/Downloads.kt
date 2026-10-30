@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,55 +65,46 @@ import com.example.appname.ui.theme.Spacing
 @Composable
 fun byteText(bytes: Long): String = Formatter.formatShortFileSize(LocalContext.current, bytes)
 
-/** Episode Detail's download row: Download, progress with Cancel, Downloaded with Remove, or failed with Try Again. */
+/**
+ * Episode Detail's download button, one of the action row's: Download, progress with Cancel,
+ * Downloaded with Remove, or failed with Try Again. Only the idle state keeps a label, and it folds
+ * to its icon with the row.
+ */
 @Composable
-fun DownloadControl(detail: EpisodeDetail, modifier: Modifier = Modifier) {
+fun DownloadButton(detail: EpisodeDetail, folded: Boolean, modifier: Modifier = Modifier) {
     val downloads = LocalAppContainer.current.downloads
     val records by downloads.records.collectAsState()
     val id = detail.episode.id
     val record = records[id]
     val start = { downloads.download(detail, episodeTitle(detail.episode)) }
-    Row(
-        modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
-    ) {
-        when (record?.state) {
-            null -> OutlinedButton(onClick = start, enabled = detail.recordings.isNotEmpty(), modifier = Modifier.tvFocusMark()) {
-                Icon(Icons.Outlined.Download, contentDescription = null)
-                Text("Download", Modifier.padding(start = Spacing.S2.dp))
-            }
-            DownloadRecord.State.Queued, DownloadRecord.State.Downloading -> {
-                DownloadProgress(record, Modifier.weight(1f))
-                IconButton(onClick = { downloads.cancel(id) }, modifier = Modifier.tvFocusMark()) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Cancel Download")
+    when (record?.state) {
+        null -> FoldButton(
+            Icons.Outlined.Download, "Download", folded, start,
+            modifier, enabled = detail.recordings.isNotEmpty(),
+        )
+        DownloadRecord.State.Queued, DownloadRecord.State.Downloading -> {
+            val fraction = record.fraction
+            IconButton(onClick = { downloads.cancel(id) }, modifier = modifier.size(48.dp).tvFocusMark()) {
+                if (fraction != null) {
+                    CircularProgressIndicator(progress = { fraction }, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 }
-            }
-            DownloadRecord.State.Downloaded -> {
-                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    "Downloaded · ${byteText(record.receivedBytes)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Cancel Download",
+                    modifier = Modifier.size(12.dp),
                 )
-                IconButton(onClick = { downloads.remove(id) }, modifier = Modifier.tvFocusMark()) {
-                    Icon(Icons.Outlined.Delete, contentDescription = "Remove Download")
-                }
             }
-            DownloadRecord.State.Failed -> {
-                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = AppSemantics.colors.error)
-                Text(
-                    "Download failed",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = AppSemantics.colors.error,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = start, modifier = Modifier.tvFocusMark()) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null)
-                    Text("Try Again", Modifier.padding(start = Spacing.S2.dp))
-                }
-            }
+        }
+        DownloadRecord.State.Downloaded -> IconButton(
+            onClick = { downloads.remove(id) },
+            modifier = modifier.size(48.dp).tvFocusMark(),
+        ) {
+            Icon(Icons.Filled.CheckCircle, contentDescription = "Remove Download, ${byteText(record.receivedBytes)}")
+        }
+        DownloadRecord.State.Failed -> IconButton(onClick = start, modifier = modifier.size(48.dp).tvFocusMark()) {
+            Icon(Icons.Outlined.Refresh, contentDescription = "Download failed. Try Again", tint = AppSemantics.colors.error)
         }
     }
 }
