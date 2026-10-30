@@ -582,3 +582,28 @@ series (794 episodes) keep the older rules for their order, and 116 all-capitals
 whole. Arcs: 451 to 455, the four new ones parts whose leading numbers had hidden a shared name ("Epilogue
 Chapter 1, 2"). Known residue: a brand split on proven words ("MAYFIELD" to "May Field"), and a series named
 for its work drops that name ("The Magic Flute - Mozart" to "Mozart").
+
+
+## 023 — A display rule never deletes a letter, splits a spelled name, or drops a name said once
+
+*Date: 2026-10-30*
+
+Amends 022. On the iPad two Barbershop Quartet episodes read "ArbershopQuartet barbershopQuartet" and "Ouvenir
+barbershopQuartet". The rules did not strip those letters: the archive.org files are named
+`ArbershopQuartet_barbershopQuartet.mp3` and `Ouvenir_barbershopQuartet.mp3` (the item's own metadata title
+reads "arbershop Quartet"), so the missing "B" and "S" are the source's and `raw_title` equals `title`. What the
+rules owe the reader is only what the dictionary proves. Three changes: (1) a token with one lower-to-capital
+hump is split when both halves (four letters or more) are words at least three titles spell on their own and
+the whole is not spelled twice ("barbershopQuartet" waits for a third title to spell "barbershop"; "MacArthur"
+stays whole); (2) a run-together split keeps joined any pieces a mixed-case title spells joined ("MAYFIELDCIGARETTES"
+to "Mayfield Cigarettes", not "May Field Cigarettes"); (3) a series name is stripped from a title only when two
+or more of that series' episodes carry it, so "The Magic Flute - Mozart" under the one-episode series "Magic
+Flute" keeps its words.
+
+**Why**: the owner's catalog rule, no invented words: a rule may remove and recase, and every word out is a word
+the raw title spelled. "Mozart" lost the work; "May Field" split a name a title spells whole.
+
+**How to apply**: `titles.py` (`Words.hump`, `Words._whole`, `Words.spelled`, `series_titles`); guard
+`tests/test_titles.py` (five cases seen failing on the 022 code). MEASURED on the 2026-10-29 caches: 676 of
+121,907 episode titles change from the 022 build (570 humps split, 106 series names kept) and 64 series names
+(humps); no schema change, so no client change, and the apps see it with the next cache Release and catalog publish.

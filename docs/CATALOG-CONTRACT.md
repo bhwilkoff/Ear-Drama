@@ -69,7 +69,7 @@ many copies survive.
 | `season` | TEXT | broadcast season, `1949-50`, computed in the pipeline (Decision 058); NULL when undated |
 | `run_id` | TEXT | the dated run it belongs to, with that run's kind (R2) |
 | `num` | INTEGER | log number, when a log gives one |
-| `title` | TEXT | display title, computed once by `catalog/tools/titles.py` (catalog DECISIONS 022): upload numbering, codes, durations and the series' own name stripped where words remain, an all-capitals title set in the catalog's own case, a run-together word split only into words the catalog spells on their own; a series whose undated order rests on its leading numbers keeps them. No client re-derives it |
+| `title` | TEXT | display title, computed once by `catalog/tools/titles.py` (catalog DECISIONS 022): upload numbering, codes, durations and the series' own name stripped where words remain, an all-capitals title set in the catalog's own case, a run-together word or one-hump token split only into words the catalog spells on their own (never a name a title spells whole), the series name stripped only where two or more of its episodes carry it (catalog DECISIONS 023); a series whose undated order rests on its leading numbers keeps them. No client re-derives it |
 | `raw_title` | TEXT | the title as the source wrote it, only where it differs from `title`; NULL otherwise. Search indexes both |
 | `aka` | TEXT | alternate titles (AFRS retitlings), JSON array |
 | `length_s` | REAL | the default copy's measured length |
