@@ -743,7 +743,7 @@ struct EpisodeScreen: View {
                         .font(TypeRamp.pageTitle)
                         .foregroundStyle(Color.brandText)
                         .accessibilityAddTraits(.isHeader)
-                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate, network: episode.network, sponsor: detail.sponsor,
+                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network, sponsor: detail.sponsor,
                                                           length: episode.durationText, season: episode.season,
                                                           title: episode.title, number: episode.number))
                 }

@@ -25,7 +25,7 @@ struct EpisodeRowLabel: View {
                 ? .window(episode.seriesWindowArt, name: episode.seriesName, genre: episode.seriesGenre)
                 : .date(episode.airDate, number: episode.number, genre: episode.seriesGenre),
             title: episode.displayTitle,
-            sub: showSeries ? [episode.seriesName, AirDate.display(episode.airDate), note] : [note],
+            sub: showSeries ? [episode.seriesName, AirDate.stored(episode.airDate), note] : [note],
             quote: quote,
             length: episode.durationText,
             progress: history.progress(for: episode.id),

@@ -43,6 +43,8 @@ const Player = (() => {
   let lastSave = 0;
   let sleepTimer = null;
   let lastError = null;
+  let recovery = null;      // a failed load: one jittered retry, then the next copy in rank order, then the error
+  const RETRY_S = 1;
   let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
   let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
@@ -64,6 +66,7 @@ const Player = (() => {
     fired = false;
     interrupted = false;
     lastError = null;
+    recovery = { alts: (ep.alts || []).filter(u => u !== ep.url), retried: false, token: (recovery ? recovery.token : 0) + 1, play: autoplay };
     if (!audio.paused) pausing = true;
     // The copy is fetched with CORS only when it may be leveled: a copy fetched without it
     // would play silent through the graph (attachLeveler waits for one fetched with it).
@@ -76,6 +79,7 @@ const Player = (() => {
     audio.defaultPlaybackRate = nearestSpeed(Store.rate());
     const at = startAt !== null ? startAt : Store.resumeAt(ep.id, ep.length);
     audio.addEventListener('loadedmetadata', () => {
+      if (recovery) recovery.retried = false;
       if (at) audio.currentTime = at;
       audio.playbackRate = nearestSpeed(Store.rate());
     }, { once: true });
@@ -333,9 +337,37 @@ const Player = (() => {
       emit('level');
       return;
     }
+    if (recover()) return;
     lastError = audio.error;
     emit('error');
   });
+
+  /** A copy that would not load: the same one again after RETRY_S with jitter, then the next copy in rank order. */
+  function recover() {
+    if (!current || !recovery) return false;
+    const r = recovery;
+    let url = current.url;
+    let wait = 0;
+    if (!r.retried) {
+      r.retried = true;
+      wait = RETRY_S * 1000 * (0.5 + Math.random());
+    } else {
+      url = r.alts.shift();
+      if (!url) return false;
+      r.retried = false;
+      current = { ...current, url };
+    }
+    const at = audio.currentTime || 0;
+    const wasPlaying = r.play || !audio.paused;
+    setTimeout(() => {
+      if (!recovery || recovery.token !== r.token) return;
+      audio.src = url;
+      audio.addEventListener('loadedmetadata', () => { if (at) audio.currentTime = at; }, { once: true });
+      if (wasPlaying) play();
+      emit('load');
+    }, wait);
+    return true;
+  }
   audio.addEventListener('ended', () => {
     if (current && isFinite(audio.duration)) Store.savePosition(current.id, audio.duration, audio.duration);
     if (sleep && sleep.kind === 'end') { fireSleep(); return; }

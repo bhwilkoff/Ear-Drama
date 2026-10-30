@@ -212,6 +212,7 @@ class PlaybackEngine(
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) recovery?.second?.loaded()
             if (playbackState == Player.STATE_ENDED) {
                 saveNow()
                 itemEnded(sleep.onItemEnded())
@@ -275,8 +276,48 @@ class PlaybackEngine(
         override fun onPlayerError(error: PlaybackException) {
             val offline = error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
                 error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
-            _state.value = _state.value.copy(failed = true, offline = offline, isPlaying = false)
+            scope.launch {
+                if (!recover()) {
+                    _state.value = _state.value.copy(failed = true, offline = offline, isPlaying = false)
+                }
+            }
         }
+    }
+
+    /** The failed item's recovery: the episode's id and the plan for its copies. */
+    private var recovery: Pair<String, LoadRecovery>? = null
+
+    /**
+     * One retry of the same copy after a jittered wait, then the next copy in rank order, then
+     * the error (resilient-media-streaming). False when nothing is left to try.
+     */
+    private suspend fun recover(): Boolean {
+        val p = playerOrNull ?: return false
+        val index = p.currentMediaItemIndex
+        val row = episodes.getOrNull(index) ?: return false
+        val url = urls.getOrNull(index) ?: return false
+        var plan = recovery?.takeIf { it.first == row.id && it.second.current == url }?.second
+        if (plan == null) {
+            val ranked = catalog.awaitDb()?.episodeDetail(row.id)?.recordings?.map { it.url }.orEmpty()
+            plan = LoadRecovery(url, ranked)
+            recovery = row.id to plan
+        }
+        val at = p.currentPosition.coerceAtLeast(0)
+        val next = when (val step = plan.failed(kotlin.random.Random.nextDouble(0.5, 1.5))) {
+            LoadRecovery.Step.GiveUp -> return false
+            is LoadRecovery.Step.Retry -> {
+                delay((step.seconds * 1000).toLong())
+                url
+            }
+            is LoadRecovery.Step.Fallback -> step.url
+        }
+        if (playerOrNull?.currentMediaItemIndex != index || episodes.getOrNull(index)?.id != row.id) return true
+        urls = urls.toMutableList().also { it[index] = next }
+        p.replaceMediaItem(index, mediaItem(row, next, card = index == 0))
+        p.seekTo(index, at)
+        p.prepare()
+        p.play()
+        return true
     }
 
     /**
@@ -329,6 +370,7 @@ class PlaybackEngine(
         saveNow()
         episodes = items.map { it.first }
         urls = items.map { it.second }
+        recovery = null
         resumeSaved = true
         playsQueue = queue
         lastFactor = 1f
@@ -601,6 +643,7 @@ class PlaybackEngine(
         ensureSession()
         saveNow()
         episodes = listOf(row)
+        recovery = null
         offer = null
         urls = listOf(url)
         playsQueue = false

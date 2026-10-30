@@ -130,6 +130,7 @@ struct RecordingScreen: View {
         player.pause()
         let session = RecordingSession(production: production, script: script, part: part, store: plays.store,
                                        audio: audio, voice: SystemStandInVoice())
+        session.setMode(.remembered())
         self.session = session
         index = startLine.flatMap { id in session.lines.firstIndex { $0.id == id } } ?? firstUnrecorded(session)
         await session.begin(echoCancelled: echoCancelled)
@@ -216,7 +217,7 @@ struct RecorderView: View {
 
     private func column(_ current: ScriptLine, controls: RecordingControls, aids: Bool) -> some View {
         VStack(spacing: Spacing.s3) {
-            Picker("Mode", selection: Binding(get: { session.mode }, set: { session.setMode($0) })) {
+            Picker("Mode", selection: Binding(get: { session.mode }, set: { if session.setMode($0) { $0.remember() } })) {
                 ForEach(RecordingSession.Mode.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)

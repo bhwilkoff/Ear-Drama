@@ -726,9 +726,11 @@
   let live = null;
   let liveTimer = null;
 
+  /** The other copies of an episode in rank order: what the player tries when the chosen one will not load. */
+  const altsOf = (d, chosen = 0) => d.recordings.filter((_, i) => i !== chosen).map(r => r.url);
   function cardOf(d, seriesName) {
     return { id: d.id, title: epTitle(d), series: d.series, seriesName, date: d.date, network: d.network || null,
-             url: d.recordings[0].url, length: d.recordings[0].length || d.length, li: d.li, ltp: d.ltp };
+             alts: altsOf(d), url: d.recordings[0].url, length: d.recordings[0].length || d.length, li: d.li, ltp: d.ltp };
   }
 
   function stopLive() {
@@ -1226,7 +1228,7 @@
       setTitle(title, d.date, seriesName);
       let chosen = 0;
       const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date, network: d.network || null,
-                            url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length,
+                            alts: altsOf(d, chosen), url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length,
                             // The measurement belongs to the default copy only.
                             li: chosen === 0 ? d.li : null, ltp: chosen === 0 ? d.ltp : null });
 
@@ -1669,8 +1671,10 @@
       if (scripts.length) {
         const script = pickOf(scripts);
         picks.append(pickBox('A play',
-          el('a', { class: 'pick-title body-strong', href: `?play=${encodeURIComponent(script.id)}` }, script.title),
-          el('p', { class: 'caption' }, playMeta(script)),
+          el('div', { class: 'pick-play' },
+            pictureWindow({ name: script.title, picture: null, genre: PlaysUI.BOARD }, 64),
+            el('div', {}, el('a', { class: 'pick-title body-strong', href: `?play=${encodeURIComponent(script.id)}` }, script.title),
+              el('p', { class: 'caption' }, playMeta(script)))),
           el('div', { class: 'actions' }, PlaysUI.startButton(script, playsHelpers))));
       }
       if (!picks.children.length) { body.append(stateBox('empty', { text: 'Nothing to pick from yet.' })); return; }

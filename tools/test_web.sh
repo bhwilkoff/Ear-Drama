@@ -32,6 +32,7 @@ DEFAULT_SUITES="js/api.test.js
   tools/test_pulse_charts.mjs
   tools/test_pulse_render.mjs
   tools/test_design_tokens.mjs
+  tools/test_no_edge_stripes.mjs
   tools/test_sw.mjs
   tools/test_deep_links.mjs"
 

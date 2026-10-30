@@ -176,6 +176,32 @@ final class AudioPlayer {
         nextStory = nil
         arcRead = nil
 
+        loadToken += 1
+        recovery = LoadRecovery(chosen: recording, among: detail.recordings)
+        loadContext = LoadContext(detail: detail, rate: rate)
+        open(recording, detail: detail, start: offset ?? history.resumePosition(for: detail.episode.id, length: duration), rate: rate)
+        publishNowPlaying()
+        onTransport(.loaded(detail.episode.id))
+        onRoomChange()
+
+        dequeue(detail.episode.id)
+        playsQueue = queue
+        refreshUpNext()
+        if queue { readArc(detail.episode.id) }
+    }
+
+    /// What a recovery needs to reload the same episode.
+    private struct LoadContext {
+        let detail: EpisodeDetail
+        let rate: Float?
+    }
+    @ObservationIgnored private var recovery: LoadRecovery?
+    @ObservationIgnored private var loadContext: LoadContext?
+    /// Bumps on every load and stop, so a late retry for an older item does nothing.
+    @ObservationIgnored private var loadToken = 0
+
+    /// Puts one recording on the player, at `start`, playing at `rate` (nil: paused).
+    private func open(_ recording: Recording, detail: EpisodeDetail, start: Double?, rate: Float?) {
         let source = Self.source(episodeID: detail.episode.id, recording: recording, localFile: localFile)
         isLocal = source.isLocal
         // Archive VBR MP3s often lack a Xing/VBRI table, so AVFoundation's quick
@@ -189,31 +215,51 @@ final class AudioPlayer {
             let message = observed.error?.localizedDescription
             var problem = Connectivity.playerProblem(observed.error)
             if failed, Self.diagnoses { problem += " " + Self.diagnosis(observed) }
+            let ready = observed.status == .readyToPlay
             Task { @MainActor in
+                if ready { self?.recovery?.loaded() }
                 guard failed else { return }
                 print("[AudioPlayer] item failed: \(message ?? "unknown")")
-                self?.errorMessage = problem
-                self?.isPlaying = false
+                self?.itemFailed(problem)
             }
         }
         player.replaceCurrentItem(with: playerItem)
         player.isMuted = isMuted
         player.volume = 1
         level(playerItem)
-        if let start = offset ?? history.resumePosition(for: detail.episode.id, length: duration) {
+        if let start {
             elapsed = start
             player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
         }
         player.defaultRate = speed
         if let rate { player.playImmediately(atRate: rate) } else { player.pause() }
-        publishNowPlaying()
-        onTransport(.loaded(detail.episode.id))
-        onRoomChange()
+    }
 
-        dequeue(detail.episode.id)
-        playsQueue = queue
-        refreshUpNext()
-        if queue { readArc(detail.episode.id) }
+    /// One retry after a jittered wait, then the next recording in rank order, then the error.
+    private func itemFailed(_ problem: String) {
+        isPlaying = false
+        guard var plan = recovery, let context = loadContext else {
+            errorMessage = problem
+            return
+        }
+        let step = plan.failed(jitter: Double.random(in: 0.5...1.5))
+        recovery = plan
+        let token = loadToken
+        switch step {
+        case .giveUp:
+            errorMessage = problem
+        case .retry(let delay):
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                guard let self, token == self.loadToken else { return }
+                self.open(plan.current, detail: context.detail, start: self.elapsed > 0 ? self.elapsed : nil, rate: context.rate)
+            }
+        case .fallback(let next):
+            item = Item(episode: context.detail.episode, recording: next, face: context.detail.face)
+            duration = next.lengthSeconds ?? context.detail.episode.lengthSeconds
+            open(next, detail: context.detail, start: elapsed > 0 ? elapsed : nil, rate: context.rate)
+            publishNowPlaying()
+        }
     }
 
     /// Whether this item plays the queue after it (a Radio slot and a room do not).
@@ -366,6 +412,8 @@ final class AudioPlayer {
 
     /// Stops and forgets the current item (the end of a door, or Close).
     func stop() {
+        loadToken += 1
+        recovery = nil
         saveProgress()
         player.pause()
         player.replaceCurrentItem(with: nil)

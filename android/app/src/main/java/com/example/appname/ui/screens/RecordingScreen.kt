@@ -126,6 +126,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
                 }
             },
         )
+        s.setMode(RecordingSession.Mode.remembered(context))
         session = s
         index = (if (startLine != null) s.lines.indexOfFirst { it.id == startLine } else s.lines.indexOfFirst { production.usableTake(it.id) == null }).coerceAtLeast(0)
         scope.launch { s.begin(echoCancelled) }
@@ -278,6 +279,7 @@ private fun Prompter(
     haptics: (Haptic) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val phase by session.phase.collectAsState()
     val production by session.production.collectAsState()
     val mode by session.mode.collectAsState()
@@ -356,7 +358,7 @@ private fun Prompter(
     )
     val actions = RecorderActions(
         onClose = onClose,
-        onMode = { if (session.setMode(it)) haptics(Haptic.Selection) },
+        onMode = { if (session.setMode(it)) { it.remember(context); haptics(Haptic.Selection) } },
         onSelect = { onIndex(it); haptics(Haptic.Selection) },
         onMove = { step -> if (!session.isBusy) onIndex(at + step) },
         onRecord = { primary() },

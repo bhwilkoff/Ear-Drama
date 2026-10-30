@@ -126,7 +126,7 @@ private struct EpisodeCard_tvOS: View {
     var body: some View {
         NavigationLink(value: Route.episode(episode.id)) {
             VStack(alignment: .leading, spacing: Spacing.s2) {
-                Text(verbatim: AirDate.display(episode.airDate))
+                Text(verbatim: AirDate.stored(episode.airDate))
                     .font(TypeRamp.tabular)
                     .foregroundStyle(Color.brandTextMuted)
                 Text(episode.displayTitle)
@@ -608,7 +608,7 @@ private struct EpisodeScreen_tvOS: View {
                     Text(episode.displayTitle)
                         .font(TypeRamp.pageTitle)
                         .foregroundStyle(Color.brandText)
-                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate, network: episode.network, sponsor: detail.sponsor,
+                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network, sponsor: detail.sponsor,
                                                           length: episode.durationText, season: episode.season,
                                                           title: episode.title, number: episode.number))
                 }

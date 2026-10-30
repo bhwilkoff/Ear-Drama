@@ -672,9 +672,12 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .type-card {
   display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-1);
   width: min(200px, 52vw); aspect-ratio: 1; padding: var(--space-4);
-  border-radius: var(--radius-card); border-left: 8px solid var(--genre-accent);
-  background: var(--color-surface-alt); color: var(--color-text);
+  border-radius: var(--radius-card);
+  background: var(--genre-board, var(--color-surface-alt)); color: var(--genre-on, var(--color-text));
 }
+.type-card .caption { color: inherit; }
+.pick-play { display: flex; align-items: center; gap: var(--space-3); }
+.pick-play > .g-window { width: 64px; flex: none; }
 .type-card-name { font-family: var(--type-page-title-family); font-size: var(--type-page-title-size); font-weight: var(--type-page-title-weight); line-height: 1.15; overflow-wrap: anywhere; }
 
 /* ---- Radio: an evening's schedule on the one clock (R9, R10) ---- */
@@ -968,6 +971,9 @@ select.pl-aid { padding-right: 8px; }
 .pl-recbtn.ink { background: var(--color-primary); color: var(--color-on-primary); box-shadow: none; }
 .pl-recbtn:disabled { cursor: default; }
 .pl-recbtn:disabled:not(.armed) { opacity: 0.4; }
+.pl-meter { display: flex; align-items: center; gap: 2px; height: 32px; margin-top: var(--space-2); padding: 0 var(--space-3);
+  background: var(--color-surface); border-radius: var(--radius-control); }
+.pl-meter i { flex: 1 1 0; min-width: 0; max-width: 3px; height: 3px; border-radius: 2px; background: var(--color-record); }
 .pl-done { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-6); }
 .pl-done .btn { width: 100%; }
 
