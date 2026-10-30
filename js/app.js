@@ -10,7 +10,7 @@
  *   ?series={key}&season={1948-49|undated}       a series page
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
- *   ?view=library&tab=queue|history|following|dramas    Library (this device)
+ *   ?view=library&tab=continue|queue|following|history|dramas    Library (this device)
  *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
  *                                     an ear drama (js/plays-ui.js; this browser only)
  * The names before 068 (listen, series, radio, plays) are rewritten in place.
@@ -1525,18 +1525,30 @@
   ================================================================ */
 
   const BROWSE = { label: 'Browse', href: '?view=browse' };
+  const LIBRARY_TABS = ['continue', 'queue', 'following', 'history', 'dramas'];
+  /** An empty section says what it would hold (WEB-DESIGN §4.7); a fact, not an invitation. */
+  const LIBRARY_EMPTY = {
+    continue: 'Episodes you stop partway through wait here.',
+    queue: 'Episodes you add play in this order, after the one that is playing.',
+    following: 'Series you follow appear here.',
+    history: 'Episodes you play appear here, newest first.',
+  };
   function renderLibrary(r) {
     setTitle('Library');
     AccountUI.paintRow($('account-row'));
     TogetherUI.paintRow($('together-row'));
-    const tab = ['queue', 'history', 'following', 'dramas'].includes(r.p.get('tab')) ? r.p.get('tab') : 'queue';
+    const tab = LIBRARY_TABS.includes(r.p.get('tab')) ? r.p.get('tab') : 'continue';
     document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
     const body = $('library-body');
     body.replaceChildren();
-    if (tab === 'queue') {
+    if (tab === 'continue') {
+      const c = Store.inProgress(100);
+      if (!c.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.continue, action: BROWSE })); return; }
+      body.append(episodeList(c, { showSeries: true }));
+    } else if (tab === 'queue') {
       const q = Store.queue();
-      if (!q.length) { body.append(stateBox('empty', { text: 'Nothing queued.', action: BROWSE })); return; }
+      if (!q.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.queue, action: BROWSE })); return; }
       const ul = el('ul', { class: 'ep-list' });
       q.forEach((ep, i) => {
         const row = episodeRow(ep, { showSeries: true });
@@ -1555,7 +1567,7 @@
       body.append(ul);
     } else if (tab === 'history') {
       const h = Store.history();
-      if (!h.length) { body.append(stateBox('empty', { text: 'Nothing played yet.', action: BROWSE })); return; }
+      if (!h.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.history, action: BROWSE })); return; }
       body.append(episodeList(h, { showSeries: true }),
         el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => {
           if (confirm('Clear your listening history and resume points on this device?')) { Store.clearHistory(); route(); }
@@ -1564,8 +1576,8 @@
       PlaysUI.renderMine(body, playsHelpers);
     } else {
       const f = Store.follows();
-      if (!f.length) { body.append(stateBox('empty', { text: 'Not following any series.', action: BROWSE })); return; }
-      body.append(el('ul', { class: 'series-list' }, f.map(seriesRow)));
+      if (!f.length) { body.append(stateBox('empty', { text: LIBRARY_EMPTY.following, action: BROWSE })); return; }
+      body.append(el('ul', { class: 'g-grid' }, f.map(showTile)));
     }
   }
   $('library-tabs').addEventListener('click', (e) => {
