@@ -75,6 +75,37 @@ test('art: a small crop is the square around the published face (contract §3.3a
   near(API.cropRect(API.artOf(['https://x/A.jpg', 1000, 500, null, null])), null, 'control: an older catalog without the field');
 });
 
+test('grammar: the title block, the type step, the window, the event line and the strip (WEB-DESIGN §6.4b golden cases)', () => {
+  const mono = [['The Shadow', 'S', 104], ['Lux Radio Theatre', 'LR', 86], ['X Minus One', 'XM', 75],
+    ['The Adventures of Sam Spade', 'AS', 86], ['Mr. and Mrs. North', 'MM', 67], ['El Dorado', 'D', 104],
+    ['The "Lone Ranger"', 'LR', 86], ['2000 Plus', 'P', 104], ['1949', '1', 104], ['', '', 104]];
+  mono.forEach(([name, m, size]) => {
+    assertEq(API.monogram(name), m, `monogram of ${JSON.stringify(name)}`);
+    assertEq(API.blockSize(m), size, `block size of ${JSON.stringify(m)}`);
+  });
+  assertEq(API.nameStep('Hopalong Cassidy'), 0, 'eight letters keep the size');
+  assertEq(API.nameStep('Extraordinary Tales'), 1, 'a word past 10 letters steps down once');
+  assertEq(API.nameStep('Supercalifragilistic'), 2, 'past 14, twice');
+  const at = (w, h, face) => API.artOf(['https://x/A.jpg', w, h, null, null, face]);
+  assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 200).kind, 'crop', 'a face crop 240 px tall fills a 200 px window');
+  assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 300).kind, 'block', 'control: the same crop is under the floor at 300');
+  assertEq(API.windowFill(at(1000, 500, null), 200).kind, 'whole', 'a wide picture with no face is drawn whole');
+  assertEq(API.windowFill(at(300, 150, null), 400).kind, 'block', 'control: its short side under half the window is a block');
+  assertEq(API.windowFill(at(null, null, null), 48).kind, 'block', 'control: an unknown size is a block');
+  assertEq(API.windowFill(null, 48).kind, 'block', 'control: no picture is a block');
+  assertEq(JSON.stringify(API.eventParts(['1947', null, 'CBS', ' ', 30])), JSON.stringify(['1947 \u00b7', 'CBS \u00b7', '30']),
+    'each separator stays with the fact before it; empty facts drop out');
+  assertEq(JSON.stringify(API.eventParts([])), '[]', 'control: no facts, no line');
+  const span = API.runSpan('1947-03-01', '1952');
+  assert(Math.abs(span.from - 17 / 33) < 1e-9 && Math.abs(span.to - 23 / 33) < 1e-9, `1947 to 1952 on the 1930-1962 axis, got ${JSON.stringify(span)}`);
+  assertEq(JSON.stringify(API.runSpan('1925', '1970')), JSON.stringify({ from: 0, to: 1 }), 'clamped to the axis');
+  const one = API.runSpan('1940', null);
+  assert(Math.abs(one.to - one.from - 1 / 33) < 1e-9, 'a single year is one year wide');
+  assertEq(API.runSpan(null, null), null, 'control: undated is the baseline alone');
+  assertEq(JSON.stringify(API.gradeOf(at(10, 10, null))), JSON.stringify({ k: 1, o: 0 }), 'no published grade: the identity levels');
+  assertEq(JSON.stringify(API.gradeOf({ grade: [1.1, -0.05] })), JSON.stringify({ k: 1.1, o: -0.05 }), 'a published grade replaces it');
+});
+
 test('transcript fetches the URL once, as text, and never caches a failure (DECISIONS 058)', async () => {
   const real = globalThis.fetch;
   const seen = [];

@@ -194,6 +194,67 @@ const API = (() => {
     return { x: left / a, y: top, w: s / a, h: s };
   }
 
+  /* ---- The grammar's decisions (WEB-DESIGN §6.4b, catalog-experience-design rule 11) ----
+     The same rules and golden cases on Apple (Grammar.swift) and Android (Grammar.kt). */
+
+  const MONO_STOP = new Set(['the', 'a', 'an', 'of', 'and', '&', 'in', 'on', 'to', 'for', 'el', 'la', 'le', 'de', 'der', 'die']);
+  /** The title block's monogram: the initials of the first two words that start with a letter
+      (articles and short joining words skipped), else the first letter or number. */
+  function monogram(name) {
+    const words = String(name || '').split(/[\s\-\u2013/]+/).map(w => w.replace(/^[^\p{L}\p{N}]+/u, '')).filter(Boolean);
+    const lettered = words.filter(w => /^\p{L}/u.test(w) && !MONO_STOP.has(w.toLowerCase()));
+    const m = lettered.slice(0, 2).map(w => w.charAt(0).toUpperCase()).join('');
+    if (m) return m;
+    const first = String(name || '').match(/[\p{L}\p{N}]/u);
+    return first ? first[0].toUpperCase() : '';
+  }
+  /** The monogram's size in hundredths of the window, so it stands inside it: Big Shoulders
+      capitals are about 0.48 em wide, M and W 0.62, I, J and 1 0.26; at most 104. */
+  function blockSize(m) {
+    const w = [...String(m || '')].reduce((a, c) => a + (/[MW]/.test(c) ? 0.62 : /[IJ1]/.test(c) ? 0.26 : 0.48) + 0.02, 0);
+    return w ? Math.min(104, Math.floor(86 / w)) : 104;
+  }
+  /** A name's type step: 0 as set, 1 one level down (a word past 10 letters), 2 two (past 14). */
+  function nameStep(name) {
+    const L = Math.max(0, ...String(name || '').split(/[\s\-\u2013]+/).map(w => [...w].length));
+    return L > 14 ? 2 : L > 10 ? 1 : 0;
+  }
+  /** What a window of `slot` CSS px holds: {kind: 'crop', rect} around the face, {kind: 'whole'}
+      for a wide picture with no face, or {kind: 'block'} (the title block) for no picture or one
+      under the size floor (uniform-imagery-design §4: the crop's pixel height at least the slot;
+      a whole picture's short side at least half of it). An unknown size is a block. */
+  function windowFill(art, slot) {
+    if (!art || !art.url || !(art.width > 0 && art.height > 0)) return { kind: 'block' };
+    const rect = cropRect(art);
+    if (!rect) return Math.min(art.width, art.height) >= slot / 2 ? { kind: 'whole' } : { kind: 'block' };
+    return rect.h * art.height >= slot ? { kind: 'crop', rect } : { kind: 'block' };
+  }
+  /** An event line's pieces: each fact with the separator kept at its end, so a line may end on a
+      dot and never opens with one. Empty facts drop out. */
+  function eventParts(facts) {
+    const v = (facts || []).filter(x => x !== null && x !== undefined && String(x).trim() !== '').map(String);
+    return v.map((x, i) => (i < v.length - 1 ? `${x} \u00b7` : x));
+  }
+  /** The run strip's fixed axis (WEB-DESIGN §6.4b): every show's strip is the same object. */
+  const RUN_AXIS = [1930, 1962];
+  /** The strip's bar, as fractions of the axis, from the first to the last broadcast year; null
+      when undated (the baseline alone). */
+  function runSpan(first, last) {
+    const y = (d) => (d && /^\d{4}/.test(d) ? +d.slice(0, 4) : null);
+    const a = y(first), b = y(last) ?? a;
+    if (a === null) return null;
+    const [lo, hi] = RUN_AXIS, n = hi - lo + 1;
+    const c = (v) => Math.min(hi, Math.max(lo, v));
+    return { from: (c(a) - lo) / n, to: (c(Math.max(a, b)) - lo + 1) / n };
+  }
+  /** The grade a picture takes (uniform-imagery-design §2): monochrome, then `k * v + o`. The
+      projection does not publish art.grade yet, so this is the documented identity default. */
+  const DEFAULT_GRADE = { k: 1, o: 0 };
+  function gradeOf(art) {
+    const g = art && Array.isArray(art.grade) && art.grade.length === 2 ? art.grade : null;
+    return g ? { k: +g[0], o: +g[1] } : DEFAULT_GRADE;
+  }
+
   /** The face-cropped square for the lock screen (Media Session), as an object URL, or null
       to keep the uncropped file. A canvas can only be read back from a CORS fetch; the final
       Commons host sends access-control-allow-origin: * but its Special:FilePath redirect hops
@@ -225,7 +286,7 @@ const API = (() => {
   function seriesIndex() {
     if (!indexP) {
       indexP = getJSON('index/series.json').then(d => {
-        const rows = rowsOf(d.fields, d.rows).map(r => ({ ...r, art: artOf(r.art) }));
+        const rows = rowsOf(d.fields, d.rows).map(r => ({ ...r, art: artOf(r.art), picture: artOf(r.picture) }));
         return { rows, byKey: new Map(rows.map(r => [r.key, r])) };
       });
       indexP.catch(() => { indexP = null; });
@@ -241,7 +302,7 @@ const API = (() => {
     const d = await get('index/listen.json').catch(e => {
       throw e.kind === 'missing' ? new DataError('error', e.message) : e;
     });
-    return { shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series).map(r => ({ ...r, art: artOf(r.art) })) })) };
+    return { shelves: d.shelves.map(s => ({ ...s, series: rowsOf(d.fields, s.series).map(r => ({ ...r, art: artOf(r.art), picture: artOf(r.picture) })) })) };
   }
 
   const SHELF_LIMIT = 20;
@@ -327,7 +388,7 @@ const API = (() => {
       d = await page(to);
     }
     const episodes = rowsOf(d.fields, d.episodes).map(e => ({ ...e, series: d.key, seriesName: d.name }));
-    return { ...d, art: artOf(d.art), episodes };
+    return { ...d, art: artOf(d.art), picture: artOf(d.picture), episodes };
   }
 
   /**
@@ -1231,7 +1292,8 @@ const API = (() => {
 
   return {
     rooms, plays, isOffline, offlineLine,
-    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL, pathQuery, shareLink,
+    DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
+    monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, gradeOf, pathQuery, shareLink,
     manifest, seriesIndex, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
