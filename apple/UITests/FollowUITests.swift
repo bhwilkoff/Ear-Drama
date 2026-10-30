@@ -15,6 +15,12 @@ final class FollowUITests: DeviceTestCase {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", Fixture.seriesName)).firstMatch
     }
 
+    /// Home has loaded its data: Continue listening exists only with something in progress (none on
+    /// the iPad, 2026-10-30), and the day board follows it whenever the catalog has a day.
+    private func homeLoaded(_ app: XCUIApplication) -> Bool {
+        text(app, matching: "Continue listening|This day in radio").waitForExistence(timeout: 30)
+    }
+
     func testFollowShowsOnHomeThenUnfollow() throws {
         let app = launch(["APP_START_ITEM": Fixture.series, "APP_DOOR_SECONDS": "300"])
         let follow = app.buttons["Follow"]
@@ -27,7 +33,7 @@ final class FollowUITests: DeviceTestCase {
         app.terminate()
 
         let home = launch(["APP_START_TAB": "home", "APP_DOOR_SECONDS": "300"])
-        XCTAssertTrue(home.staticTexts["Continue listening"].waitForExistence(timeout: 30), "Home loaded")
+        XCTAssertTrue(homeLoaded(home), "Home loaded")
         XCTAssertTrue(scrollTo(home.staticTexts["Following"], in: home), "Following on Home")
         let row = seriesRow(home)
         XCTAssertTrue(scrollTo(row, in: home, swipes: 3), "the followed series under Following")
@@ -42,7 +48,7 @@ final class FollowUITests: DeviceTestCase {
         home.terminate()
 
         let after = launch(["APP_START_TAB": "home", "APP_DOOR_SECONDS": "300"])
-        XCTAssertTrue(after.staticTexts["Continue listening"].waitForExistence(timeout: 30), "Home loaded")
+        XCTAssertTrue(homeLoaded(after), "Home loaded")
         XCTAssertFalse(scrollTo(after.staticTexts["Following"], in: after), "Following section gone")
         shot(after, "03-unfollowed")
     }

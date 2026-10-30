@@ -45,6 +45,7 @@ struct PlayerSheet_iOS: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var transcriptOpen = false
+    @State private var sheetSize: CGSize = .zero
 
     var body: some View {
         NavigationStack {
@@ -52,10 +53,12 @@ struct PlayerSheet_iOS: View {
                 Spacer(minLength: 0)
                 if let item = player.item {
                     // R11a: full width, no taller than 44 % of the sheet, so Play stays on the first screen.
+                    // A cap, not a fixed size: on the iPad's form sheet a fixed 44 % pushed the speed,
+                    // sleep, and AirPlay row below the sheet's edge (iPad Pro 12.9, 2026-10-30), so the
+                    // art takes what the controls leave, up to the cap.
                     NowPlayingArt(episode: item.episode, face: item.face)
-                        .containerRelativeFrame([.horizontal, .vertical]) { length, axis in
-                            axis == .vertical ? length * 0.44 : length - 2 * Spacing.s4
-                        }
+                        .frame(maxWidth: max(0, sheetSize.width - 2 * Spacing.s4), maxHeight: sheetSize.height * 0.44)
+                        .layoutPriority(1)
                         .accessibilityIdentifier("now-playing-art")
                     // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
                     if let art = NowPlayingArt.art(item.episode, item.face), let credit = art.credit {
@@ -124,6 +127,7 @@ struct PlayerSheet_iOS: View {
                     .font(TypeRamp.body)
             }
             .padding(Spacing.s6)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { sheetSize = $0 }
             .background(Color.brandBackground)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

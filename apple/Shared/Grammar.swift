@@ -630,5 +630,7 @@ struct HeadBoard: View {
         .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .accessibilityElement(children: genreKey == nil ? .combine : .contain)
+        // Not spoken: tells the tap tier whether the window drew the picture or the title block.
+        .accessibilityIdentifier(Grammar.windowFill(art, slot: Double(windowSide)) == .block ? "head-board-block" : "head-board")
     }
 }
