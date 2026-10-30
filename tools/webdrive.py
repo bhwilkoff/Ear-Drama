@@ -106,10 +106,13 @@ class Browser:
     exercise what a person's browser does.
     """
 
-    def __init__(self, port=9333, profile="/tmp/appname-cdp-profile", headless=True):
+    def __init__(self, port=9333, profile="/tmp/appname-cdp-profile", headless=True, audible=False):
+        # Muted unless a run opts in: a render of Now Playing pressed Play and an
+        # episode played aloud on the owner's Mac (2026-10-30). Ask before audible=True.
         self.proc = subprocess.Popen(
             [CHROME, f"--remote-debugging-port={port}", f"--user-data-dir={profile}",
              "--no-first-run", "--no-default-browser-check",
+             *([] if audible else ["--mute-audio"]),
              "--disable-features=Translate,MediaRouter",
              *(["--headless=new", "--disable-gpu"] if headless else []),
              "--window-size=390,844", "about:blank"],

@@ -370,6 +370,21 @@ python3 tools/ios_scenario.py measure build/qa/ios-... --width-pt 1366
 When a flow needs real taps, XCUITest on the real device is the tool. The
 lessons from Archive Watch's iPhone audit:
 
+- **"Timed out while enabling automation mode"** with Settings → Developer →
+  Enable UI Automation already ON (iPad Pro, 2026-10-30; Archive Watch's
+  `docs/IPAD-DESIGN.md` found it first): iPadOS 27 puts up **"Enter iPad Passcode
+  for XCTest — Enable UI Automation"** on the device and the run waits for a
+  passcode nobody types. Check the setting with a `devicectl device capture
+  screenshot` of the device, never by asking the owner; capture the glass
+  during the first 60 s of a run to see the prompt. The passcode is the owner's
+  step, once per device.
+- `--only` takes `EarDramaUITests/<Class>/<test>`; a filter that matches
+  nothing prints "Executed 0 tests" and `ios_uitest.py` reports
+  `no_tests_ran`. That run proved nothing.
+- Run with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` while
+  `xcode-select -p` points at CommandLineTools: Xcode's own diagnostics call
+  `xcrun devicectl` and fail without it.
+
 - `isHittable` lies at the bottom edge of the screen.
 - A Toggle is exposed as its whole row. Tap at about `dx 0.92`.
 - The iOS 26 search tab replaces the tab bar, so visit it last.
@@ -456,6 +471,12 @@ build/bin/winshot pid:12345 "" out.png --skip-size 800x600 --id-only
 ---
 
 ## Android phone
+
+- **Quote every launch extra.** `adb shell` joins its arguments into one device
+  shell line, so `--es appname_start_item librivox8944|s1` was piped into a
+  command named `s1` and the app opened "librivox8944" ("This episode is not in
+  the catalog", 2026-10-30). `adb_run.py` shlex-quotes values; any hand-written
+  `adb shell am start` must too.
 
 ```bash
 python3 tools/adb_run.py --list
