@@ -176,7 +176,30 @@ data class PlayScript(
 
     val speechLineIDs: List<String> get() = lines.filter { it.kind == ScriptLine.Kind.Speech }.map { it.id }
 
+    /**
+     * A part's face color (direction D): the first seven speaking parts, largest first, take the
+     * seven marks in [PART_HUES] order; the rest, and directions and sound, stand on neutral (null).
+     * The web's and Apple's partHue return the same names.
+     */
+    fun partHue(part: PartID): String? {
+        if (!part.isSpeaking) return null
+        return PART_HUES.getOrNull(castParts.filter { it.id.isSpeaking }.indexOfFirst { it.id == part })
+    }
+
+    /** Where a part speaks: [bins] shares, each the part's lines among the lines of that stretch of the script. */
+    fun presence(part: PartID, bins: Int = PRESENCE_BINS): List<Float> {
+        if (lines.isEmpty()) return List(bins) { 0f }
+        return List(bins) { bin ->
+            val from = bin * lines.size / bins
+            val to = (bin + 1) * lines.size / bins
+            if (to <= from) 0f else lines.subList(from, to).count { it.part == part }.toFloat() / (to - from)
+        }
+    }
+
     companion object {
+        val PART_HUES = listOf("mystery", "scifi", "western", "serial", "documentary", "comedy", "news")
+        const val PRESENCE_BINS = 24
+
         /** "Carlton, Henry Fisk" as Gutenberg files it reads "Henry Fisk Carlton". */
         fun displayName(filed: String): String {
             val pieces = filed.split(",", limit = 2).map { it.trim() }

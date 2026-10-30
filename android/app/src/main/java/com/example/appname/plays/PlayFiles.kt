@@ -257,6 +257,14 @@ class ProductionStore(val root: File) : ShareStore {
         save(kept)
     }
 
+    /** Discard the run (Run through's review): its takes and their files go, each line back to its prior take. */
+    fun discardRun(id: String, run: List<RunNote>) {
+        val production = production(id) ?: return
+        val (kept, gone) = production.discardRun(run)
+        gone.forEach { takeFile(production, it).delete() }
+        save(kept)
+    }
+
     /** Writes a take file that never existed before (takes are never overwritten). */
     fun writeTake(capture: MicrophoneCapture, production: Production, lineID: String): String {
         val name = "$lineID-${shortId()}.${TakeAudio.FILE_EXTENSION}"

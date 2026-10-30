@@ -109,6 +109,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   series list draw `GrammarRow`; on TV the focused tile scales whole.
 - **R11c Home and Browse** (owner, 2026-10-29: *"Having more shows is better, so 5."* and *"I like the bulky blocks and colors of The Sleeve and I like the data visualization options of the Almanac."*; D3-2; WEB-DESIGN §6.4c is the shared text). A show is a series of at least 5 episodes (`isShow`, `SHOW_MIN`); tiles in shelves and grids are shows only, and the rest are single recordings, counted and reachable by a link that lists them in the same tile grid. The rules are pure functions in `data/GrammarRules.kt` with the web's golden cases in `GrammarTest` (`isShow`, `dayYears`, `nightShows`, `decadeField`, `fieldSide`, `GENRE_ORDER`). Home, top to bottom, each section only with data: Continue listening and Following (kept), the day board (`DayBoard` in `ui/HomeBrowse.kt`: kicker "This day in radio", the big date, "N surviving broadcasts · N years", a bar per year stacked by genre in the genre mark colors on a fixed axis from 1930 to the last year, the selected year outlined with its label, a tap selects a year, peak year by default, a legend of the genres seen; every broadcast of the day, no limit of 20), the selected night as show tiles (first 6, then "All N shows that night" in place; each tile's facts are the episode title and length and it opens the episode; "N single recordings" at the heading's right as a plain fact), and Most downloaded (12 show tiles, then "All N shows" to Browse). Most heard voices and New ear dramas are not built (the data and the Worker are missing). Browse keeps every filter and sort as they were, then shows a count line ("2,036 shows" and, as a plain link, "7,189 single recordings"), the decade by genre field (`DecadeFieldView`: a square per cell in the genre's mark color sized by `fieldSide`, the count under it, "N with no genre" only when above 0, each non-empty cell applies its genre and decade; the other filters count, genre and decade do not), then a `LazyVerticalGrid` of show tiles (a play is a title-block tile with author and parts). The section heading names the sort, "A to Z" for A to Z. From 840 dp wide the field sits beside the grid; on phones it sits above. The field cells and the year bars carry TalkBack labels.
 - **R11e Browse's A to Z jump and the D3-fix rules** (owner, 2026-10-30: *"We are building for each specific platform. It has to look good and use native design and apis on the given platform."*; *"Yes, add a letter jump"*). Sorted A to Z, Browse loads every series and a fast-scroll letter rail (`LetterRail`) sits on the trailing edge: a touch or drag jumps with the selection haptic, and TalkBack gets one custom action per letter; on a TV the letters are chips in the filter row. The decade headers read '20s. The episode page writes a full day in the device's long date format (`formatAirDateLong`); a year-only or month-only date stays as precise as the catalog is (R1). an undated, unnumbered episode leads its row with the series' window, never an empty date block; the run strip draws one bar per year from `series.year_counts` (web: `years`), its height the count over the show's busiest year, and falls back to the first-to-last span where the catalog has none; the head board's strip is taller than the tile's; the series page's genre is a link that opens Browse at its root filtered to that genre; an episode with a `script` offers Start an ear drama (not on a TV). The head strip is 40 dp on a phone, 56 from 600 dp.
+- **R11f The three recording modes and D's recorder** (owner ruling 4, 2026-10-29: *"One option should let you record and have the other parts play (either human voices or generated voices for parts that haven't been taken yet) and it should play right through with your opportunity to record your part as it shows up naturally within the Ear Drama script. Another option should allow you to record each line individually or re-record any lines again by tapping them and re-recording. Another option could be a 'wait for tap' to advance through the script as you are describing."*; owner, 2026-10-30: *"It has to look good and use native design and apis on the given platform. There is no reason to degrade one platform in order to make sure everything is uniform across all platforms."*; D3-6; WEB-DESIGN and PLAYS-DESIGN carry the shared text). The recorder (`ui/screens/Recorder.kt`, stateless: `RecorderView` reads a `RecorderUi` and calls a `RecorderActions`; `RecordingScreen` feeds it from `RecordingSession`) has fixed slots that never move between modes or states: the top (close, the part name in the display face over the play title, "K of N" lines kept), the strip (one cell per line of the part: kept in the part's hue, the current one outlined, red while it records; TalkBack says "K of N lines kept"), the mode control, the scene, the dock. The mode control is Material 3's `SingleChoiceSegmentedButtonRow` with "Run through", "Line by line", "Step", the selected segment blue, disabled (and still showing its choice) while the microphone is armed or open and during a run; `RecordingSession.setMode` refuses the same. **Run through**: the play runs from the current line's cue to the part's last line (`Relay.runPlan`), other parts in their human takes or the device voice live, the microphone opening on each of your lines as it comes (the box armed: a dashed red edge and a "Next" pill while the cue plays) and the line-end detector closing it; the dock is the round red "From here", then ink Pause (red Stop while the microphone is open; both pause) with "N taken" beside it; Pause or the last line opens the run's review ("This run · N takes", each take with its cue, its length and Again; Discard the run, blue, deletes the run's takes and files and puts each line back on the take it had; "Keep N takes", ink). **Line by line**: every line of the part in order, with "Take k" and a check or "Not yet"; a tap opens that line in place (its cue above, your line box, then Record, red, and Cue, blue; Stop while recording); no dock. **Step**: each cue waits for a tap: the round red Record (Cancel while the cue plays, Stop while listening), then the take in the box with its take count; Again (a red dot), With cue (blue), Keep (ink), and Keep lands on the next line's Ready without playing its cue. Red means recording only (the round control, the box's recording edge and pill, Again's dot, the strip's current cell while recording); blue is wayfinding (Cue, With cue, Discard the run, Take part, the aids); ink is the action (Keep, Pause, Keep N takes, Record on the cast sheet). Your line box is your part's board (`board.<hue>`, the neutral board when the part has no hue) with its one onBoard color; a part's face is a filled circle in its mark color (`partHue`: the seven largest speaking parts take mystery, scifi, western, serial, documentary, comedy, news in that order, the rest and directions and sound stand on neutral) with the performer's initial, a dashed ring and waveform for the device voice, and a check when recorded. From 840 dp a left rail "In this scene" (the faces of the parts near the line and who holds each) and a right rail "This line" (the aids) flank the scene. The aids row is Step's and Line by line's; every state is a render in `PlaysRenderTest`. The strip, the faces and the take controls carry TalkBack descriptions, "Your line" is spoken before the microphone opens (§4.9), and no cue plays while the microphone is open (`RecordingSession.cancel` and `pause` stop a cue at once).
 - **R11d Series and episode pages in direction D** (owner, 2026-10-29:
   *"an item with a picture, without one, rich or sparse, renders in the
   same structure"*; *"a share button that goes to the next line instead of
@@ -344,20 +345,32 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.9 Ear dramas** (`docs/PLAYS-DESIGN.md` binds what it does;
   `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). No tab
   of their own (Decision 068): a play is a row in Browse and Search, and
-  a person's productions are Library's Ear dramas (§4.6). The play's
-  page shows the author (with born and died years when the record has
-  them), the record's year when it has one, and its length as "N parts
-  · N lines", nothing invented (no rating, no label); then the rights
+  a person's productions are Library's Ear dramas (§4.6). A play stands
+  on the drama board (`PLAY_BOARD`, `board.drama`; the genre is never
+  named on screen), in Browse's tiles and Search's and Surprise's rows
+  as well as its own page (D3-6). The play's page (`playPage`) is
+  `PlayHeadBoard`, the head board with the kicker "Radio play" or "Stage
+  play", the name, the author (with born and died years when the record
+  has them) as the credits, the year when it has one, "N parts" and "N
+  lines", nothing invented, and the cast fingerprint in the mark slot
+  (`CastFingerprint`: one bar, a segment per speaking part by its share
+  of the lines, largest first, 1 px apart, in the board's one onBoard
+  color); then "Start an ear drama" (was "Cast this play"; ink, the
+  primary action), the parts as `PartCard`s in a grid (`PartGrid`: two
+  across, three from 840 dp; a face, the name in the display face, "N
+  lines", the 24-bar `PresenceStrip` in the part's hue), then the rights
   line (the evidence claims verbatim, each linked to its source, then
-  the source by name), "Start an ear drama" (was "Cast this play"), and
-  the parts with line counts. The cast sheet is a `ListItem` per part,
-  largest first, with its one verb in the trailing slot (Decision 067,
-  batch 0b): every open part shows Take part (an `AlertDialog` with an
-  optional name) while no part records, in any order; the part
-  `Relay.next` suggests (the first open one) gets the filled button, the
-  others `OutlinedButton`. Also Leave silent (any open sound or
-  directions part), Record, or a `⋮` menu with Open part; then Listen,
-  then Discard unused takes and Delete production. Listen runs at any
+  the source by name). The cast sheet is the same head board (kicker
+  "Ear drama"), Listen through and the share and invite verbs, then the
+  same part cards with their state as the who line ("You · 5 of 76",
+  "Pat · recorded", "Open", "Left silent") and the verbs in the card
+  (Decision 067, batch 0b): every open part shows Take part (an
+  `AlertDialog` with an optional name) while no part records, in any
+  order; the part `Relay.next` suggests (the first open one) gets the
+  ink button, the others the blue outlined one (`wayColors()`). Also
+  Leave silent (any open sound or directions part), Record (ink), and
+  Open part; the part recording is outlined in ink; then Discard unused
+  takes and Delete production. Listen runs at any
   time: a finished-or-complete play plays the mix; otherwise
   `Relay.listenPlan` runs live, each take from its file and each
   speech line without one read by `TextToSpeech.speak` on a local voice
@@ -371,12 +384,13 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   button; taking a part, reading, and listening need none. Recording asks for the microphone at Start recording,
   checks the route (headphones, or a refusal line with "Record without
   headphones", which turns on echo cancellation and marks the takes
-  `aec`), counts five seconds of room tone, then shows the cue (labeled
-  "Device voice" when the device reads it), "Your line", the line in
-  `headlineSmall`, the next line dim, the takes, one 72 dp record
-  control, Run-up, Hear it read, the device voice's speed, Keep, and
-  Done with this part. Space or the headset key records or stops, Enter
-  keeps, and the arrows move by line. Takes are 24-bit WAV (not FLAC:
+  `aec`), counts five seconds of room tone, then opens the recorder in
+  direction D (R11f): the cue card (labeled "Device voice" when the
+  device reads it), your line on your part's board in `displaySmall`,
+  the lines around it dim, the takes, one 80 dp round control,
+  Run-up, Hear it read, the device voice's speed, and Done with this
+  part. Space or the headset key records, stops or pauses, Enter keeps
+  (a Step review), and the arrows move by line. Takes are 24-bit WAV (not FLAC:
   MediaMuxer has no FLAC container), the mix is AAC in `mix.m4a`, and
   a complete play offers Export, through the share sheet. A device
   voice's PCM is tagged `synthetic`; every writer (`TakeAudio.write`,
@@ -616,7 +630,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   row's 4 dp leading mark (`OnAir.genre(key)`, the border color for a key
   the palette does not name), never a button, a tab, or a link. Tab icons
   are unchanged. `ColorRolesTest` fails on the red reached any other way
-  or outside `RecordingScreen.kt`, on a non-blue M3 `primary`, and on a
+  or outside `RecordingScreen.kt` and `Recorder.kt`, on a non-blue M3 `primary`, and on a
   token genre with no mark.
 - **§6.2 Six type levels** (`AppTypography`, `ui/theme/Type.kt`):
   `displaySmall`, `headlineSmall`, `titleMedium`, `bodyMedium`,

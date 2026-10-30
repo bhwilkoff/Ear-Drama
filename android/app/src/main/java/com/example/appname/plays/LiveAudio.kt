@@ -56,6 +56,9 @@ interface LiveAudio {
     fun beginCapture(onChunk: (FloatArray) -> Unit)
     fun endCapture(): MicrophoneCapture
     fun stop()
+
+    /** Ends the cue now playing (Run through's Pause). */
+    fun stopPlayback() {}
 }
 
 /**
@@ -77,6 +80,7 @@ class DeviceLiveAudio(context: Context) : LiveAudio {
     @Volatile private var running = false
     private var reader: Thread? = null
     @Volatile private var onChunk: ((FloatArray) -> Unit)? = null
+    @Volatile private var playbackStopped = false
     private val lock = Any()
     private val captured = ArrayList<FloatArray>()
 
@@ -130,6 +134,7 @@ class DeviceLiveAudio(context: Context) : LiveAudio {
             is CueAudio.TakeFile -> withContext(Dispatchers.IO) { runCatching { TakeAudio.read(cue.file).first }.getOrNull() }
         } ?: return
         if (samples.isEmpty()) return
+        playbackStopped = false
         val usage = if (echoCancelled) AudioAttributes.USAGE_VOICE_COMMUNICATION else AudioAttributes.USAGE_MEDIA
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
@@ -144,11 +149,15 @@ class DeviceLiveAudio(context: Context) : LiveAudio {
             withContext(Dispatchers.IO) { track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING) }
             // The written audio is still in the track's buffer; wait for it to be heard.
             val deadline = System.currentTimeMillis() + 2_000 + samples.size * 1000L / TakeAudio.SAMPLE_RATE
-            while (track.playbackHeadPosition < samples.size && System.currentTimeMillis() < deadline) delay(20)
+            while (!playbackStopped && track.playbackHeadPosition < samples.size && System.currentTimeMillis() < deadline) delay(20)
         } finally {
             track.stop()
             track.release()
         }
+    }
+
+    override fun stopPlayback() {
+        playbackStopped = true
     }
 
     override fun beginCapture(onChunk: (FloatArray) -> Unit) {

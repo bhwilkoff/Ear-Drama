@@ -31,9 +31,9 @@ class ColorRolesTest {
         assertEquals(setOf("colorScheme.tertiary"), redOutsideTheRoles("tint = MaterialTheme.colorScheme.tertiary"))
     }
 
-    /** Owner, 2026-10-29: "Red means recording." Only the recording screen (and the helper that defines the button) uses it. */
+    /** Owner, 2026-10-29: "Red means recording." Only the recording screen and its views in Recorder.kt (and the helper that defines the button) use it. */
     @Test fun `the record red appears only where recording happens`() {
-        val found = sources.filter { it.name != "RecordingScreen.kt" && it.parentFile?.name != "theme" }
+        val found = sources.filter { it.name !in setOf("RecordingScreen.kt", "Recorder.kt") && it.parentFile?.name != "theme" }
             .associate { it.name to recordRole(it.readText()).minus(if (it.name == "Components.kt") setOf("OnAir.colors.record", "OnAir.colors.onRecord", "recordButtonColors()") else emptySet()) }
             .filterValues { it.isNotEmpty() }
         assertEquals(emptyMap<String, Set<String>>(), found)

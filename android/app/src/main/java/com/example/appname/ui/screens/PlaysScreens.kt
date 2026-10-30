@@ -1,5 +1,6 @@
 package com.example.appname.ui.screens
 
+import com.example.appname.ui.wayColors
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.clickable
@@ -81,7 +82,17 @@ import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
 import com.example.appname.plays.Relay
 import com.example.appname.ui.AccountRow
-import com.example.appname.ui.ArtTile
+import androidx.compose.foundation.layout.Box
+import com.example.appname.ui.ActionRow
+import com.example.appname.ui.lineCountText
+import com.example.appname.ui.GrammarRow
+import com.example.appname.ui.Holder
+import com.example.appname.ui.PLAY_BOARD
+import com.example.appname.ui.PartCard
+import com.example.appname.ui.PartGrid
+import com.example.appname.ui.PictureWindow
+import com.example.appname.ui.PlayHeadBoard
+import com.example.appname.ui.holderOf
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
@@ -136,17 +147,12 @@ fun playsMatching(scripts: List<PlayScript>, query: String): List<PlayScript> {
 @Composable
 fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
     val speaking = script.castParts.count { it.id.isSpeaking }
-    ListItem(
-        // R11a: a play's row leads with its tile, the title's letter (plays carry no genre).
-        leadingContent = { ArtTile(script.title, null, null) },
-        headlineContent = { Text(script.title, style = MaterialTheme.typography.titleMedium) },
-        supportingContent = {
-            Text(
-                listOf(script.authorLine, "$speaking parts").filter { it.isNotEmpty() }.joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        modifier = Modifier.clickable(onClickLabel = "Open play", onClick = onOpen).tvFocusMark(),
+    GrammarRow(
+        title = script.title,
+        visual = { m -> PictureWindow(null, script.title, PLAY_BOARD, m) },
+        onOpen = onOpen,
+        sub = listOf(script.authorLine.ifEmpty { null }, "$speaking parts"),
+        openLabel = "Open play",
     )
 }
 
@@ -157,7 +163,7 @@ fun StartEarDramaButton(script: PlayScript, onOpenProduction: (String) -> Unit) 
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-        Button(onClick = {
+        Button(colors = playButtonColors(), onClick = {
             scope.launch {
                 runCatching { plays.create(script) }
                     .onSuccess { onOpenProduction(it.id) }
@@ -261,32 +267,38 @@ fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> U
             if (state !is PlaysLibrary.State.Loading) EmptyMessage("This play is not on this device.", Modifier.padding(padding))
             return@Scaffold
         }
-        val pad = Modifier.padding(horizontal = Spacing.S4.dp)
+        val television = LocalIsTelevision.current
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            item(key = "head") {
-                Column(pad, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-                    Text(script.title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-                    if (script.authorLine.isNotEmpty()) Text(script.authorWithYears, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        listOfNotNull(script.year?.toString(), script.lengthLine).joinToString(" \u00b7 "),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    RightsLine(script)
-                    if (!LocalIsTelevision.current) StartEarDramaButton(script, onOpenProduction)
-                }
-            }
-            item(key = "parts-h") { SectionHeader("Parts") }
-            items(script.castParts, key = { "part:" + it.id.raw }) { part ->
-                ListItem(
-                    headlineContent = { Text(part.title) },
-                    trailingContent = { Text(lineCount(part.lineCount), style = MaterialTheme.typography.bodySmall) },
-                )
-            }
+            playPage(script, television, onOpenProduction)
         }
     }
 }
 
-private fun lineCount(n: Int) = if (n == 1) "1 line" else "$n lines"
+/**
+ * A play's page in direction D (ANDROID-DESIGN \u00a74.9a): the head board on the drama board with the
+ * cast fingerprint in its mark slot, the one action, the parts as cards with their presence
+ * strips, then the rights line. A TV records nothing, so it offers no start.
+ */
+fun LazyListScope.playPage(
+    script: PlayScript,
+    television: Boolean,
+    onOpenProduction: (String) -> Unit,
+    start: @Composable () -> Unit = { StartEarDramaButton(script, onOpenProduction) },
+) {
+    item(key = "head") { PlayHeadBoard(script, kicker = if (script.kind == "stage") "Stage play" else "Radio play") }
+    if (!television) {
+        item(key = "actions") {
+            ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { start() }
+        }
+    }
+    item(key = "parts-h") { SectionHeader("Parts") }
+    item(key = "parts") {
+        PartGrid(script.castParts) { part, modifier -> PartCard(script, part, Holder.DeviceVoice, recorded = false, modifier = modifier) }
+    }
+    item(key = "rights") { Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S4.dp)) { RightsLine(script) } }
+}
+
+private fun lineCount(n: Int) = lineCountText(n)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -383,6 +395,10 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
             if (rec == null) emptyMap() else PlaysShare.pending(production, script, rec, me).groupingBy { it.part.raw }.eachCount()
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+            item(key = "head") { PlayHeadBoard(script, kicker = "Ear drama", title = production.title) }
+            item(key = "listen") {
+                Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet) }
+            }
             if (!television && link == null) {
                 item(key = "share") {
                     ShareEntry(
@@ -415,23 +431,27 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
                 syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
                 sharedCastRows(sheet, rec, me, pendingByPart, onRecord, onReplace)
             }
-            if (link == null) items(script.castParts, key = { "part:" + it.id.raw }) { part ->
-                CastRow(
-                    part = part,
-                    state = production.state(part.id),
-                    status = partStatus(part, production, script),
-                    isNext = part.id == next,
-                    canTake = current == null,
-                    canReopen = current == null,
-                    onRecord = { onRecord(part.id) },
-                    onTake = { taking = part.id },
-                    onLeaveSilent = { apply { Relay.leaveSilent(part.id, it, script) } },
-                    onReopen = { if (apply { Relay.reopen(part.id, it, script) }) haptics(Haptic.Selection) },
-                )
+            if (link == null) {
+                item(key = "parts-h") { SectionHeader("Parts") }
+                item(key = "parts") {
+                    PartGrid(script.castParts) { part, modifier ->
+                        CastRow(
+                            script = script,
+                            part = part,
+                            production = production,
+                            modifier = modifier,
+                            isNext = part.id == next,
+                            canTake = current == null,
+                            canReopen = current == null,
+                            onRecord = { onRecord(part.id) },
+                            onTake = { taking = part.id },
+                            onLeaveSilent = { apply { Relay.leaveSilent(part.id, it, script) } },
+                            onReopen = { if (apply { Relay.reopen(part.id, it, script) }) haptics(Haptic.Selection) },
+                        )
+                    }
+                }
             }
             refusal?.let { item(key = "refusal") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
-            item(key = "listen-h") { SectionHeader("Listen") }
-            item(key = "listen") { ListenThrough(production, script, sheet) }
             if (rec != null && rec.hiddenTakes > 0) {
                 item(key = "hidden") {
                     Text(
@@ -468,23 +488,24 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
     }
 }
 
-private fun partStatus(part: CastPart, production: Production, script: PlayScript): String {
+/** The who line of a part card: who holds it and how far it is, or that it is open or left silent. */
+internal fun partWho(part: CastPart, production: Production, script: PlayScript): String {
     val state = production.state(part.id)
-    val lines = lineCount(part.lineCount)
-    val name = state.performer?.let { " · $it" } ?: ""
     return when (state.status) {
-        PartState.Status.Open -> lines
-        PartState.Status.Recording -> "${part.lineCount - Relay.missingLines(part.id, production, script).size} of $lines recorded$name"
-        PartState.Status.Done -> "Recorded$name"
+        PartState.Status.Open -> "Open"
+        PartState.Status.Recording ->
+            "You · ${part.lineCount - Relay.missingLines(part.id, production, script).size} of ${part.lineCount}"
+        PartState.Status.Done -> state.performer?.let { "$it · recorded" } ?: "Recorded"
         PartState.Status.Silent -> "Left silent"
     }
 }
 
+/** A part's card on the cast sheet, with the verbs this part has now (Record, Take part, Open part, Leave silent). */
 @Composable
-private fun CastRow(
+internal fun CastRow(
+    script: PlayScript,
     part: CastPart,
-    state: PartState,
-    status: String,
+    production: Production,
     isNext: Boolean,
     canTake: Boolean,
     canReopen: Boolean,
@@ -492,34 +513,37 @@ private fun CastRow(
     onTake: () -> Unit,
     onLeaveSilent: () -> Unit,
     onReopen: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        headlineContent = { Text(part.title, style = MaterialTheme.typography.titleMedium) },
-        supportingContent = { Text(status, style = MaterialTheme.typography.labelMedium) },
-        trailingContent = {
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
-                when (state.status) {
-                    PartState.Status.Recording -> Button(onClick = onRecord) { Text("Record") }
-                    PartState.Status.Open -> {
-                        if (!part.id.isSpeaking) OutlinedButton(onClick = onLeaveSilent) { Text("Leave silent") }
-                        if (canTake) {
-                            if (isNext) Button(onClick = onTake) { Text("Take part") } else OutlinedButton(onClick = onTake) { Text("Take part") }
-                        }
-                    }
-                    PartState.Status.Done, PartState.Status.Silent -> {
-                        var open by remember { mutableStateOf(false) }
-                        IconButton(onClick = { open = true }, enabled = canReopen) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "More for ${part.title}")
-                        }
-                        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                            DropdownMenuItem(text = { Text("Open part") }, onClick = { open = false; onReopen() })
-                        }
+    val state = production.state(part.id)
+    val full = Modifier.fillMaxWidth()
+    PartCard(
+        script = script,
+        part = part,
+        holder = holderOf(production, part.id),
+        recorded = state.status == PartState.Status.Done,
+        modifier = modifier,
+        who = partWho(part, production, script),
+        highlight = state.status == PartState.Status.Recording,
+    ) {
+        when (state.status) {
+            PartState.Status.Recording -> Button(onClick = onRecord, modifier = full, colors = playButtonColors()) { Text("Record") }
+            PartState.Status.Open -> {
+                if (canTake) {
+                    if (isNext) {
+                        Button(onClick = onTake, modifier = full, colors = playButtonColors()) { Text("Take part") }
+                    } else {
+                        OutlinedButton(onClick = onTake, modifier = full, colors = wayColors()) { Text("Take part") }
                     }
                 }
+                if (!part.id.isSpeaking) OutlinedButton(onClick = onLeaveSilent, modifier = full, colors = wayColors()) { Text("Leave silent") }
             }
-        },
-    )
+            PartState.Status.Done, PartState.Status.Silent ->
+                OutlinedButton(onClick = onReopen, enabled = canReopen, modifier = full, colors = wayColors()) { Text("Open part") }
+        }
+    }
 }
+
 
 @Composable
 private fun TakePartDialog(part: PartID, onDismiss: () -> Unit, onTake: (String) -> Unit) {
