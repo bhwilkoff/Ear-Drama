@@ -86,7 +86,9 @@ struct DownloadsSection: View {
 
     var body: some View {
         let records = downloads.records
-        if !records.isEmpty {
+        if records.isEmpty {
+            Section("Downloads") { SectionCaption("Downloaded episodes play with no network.") }
+        } else {
             Section {
                 NavigationLink(value: DownloadsRoute.place) {
                     LabeledContent {
