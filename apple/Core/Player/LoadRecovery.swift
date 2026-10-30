@@ -32,6 +32,14 @@ nonisolated struct LoadRecovery: Sendable {
         tried = []
     }
 
+    /// The clock the player keeps while it reads `reading` off the item. A failed item reads 0 s,
+    /// which is not where the person was, so the retry would open the recording from the start
+    /// (iPad seek test, 2026-10-30).
+    static func clock(reading: Double, itemFailed: Bool, shown: Double) -> Double {
+        guard reading.isFinite, !itemFailed else { return shown }
+        return reading
+    }
+
     /// The current recording failed. `jitter` is a factor around 1 (0.5...1.5 in the player).
     mutating func failed(jitter: Double) -> Step {
         if !retried {

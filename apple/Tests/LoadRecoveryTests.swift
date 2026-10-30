@@ -60,6 +60,20 @@ struct LoadRecoveryTests {
         #expect(plan.failed(jitter: 1) == .retry(after: LoadRecovery.retryDelay), "a seek that fails after playback began is retried too")
     }
 
+    /// iPad 2026-10-30: an item failed (-1008) after a seek to 0.8; a failed item reads 0 s, the
+    /// half-second tick took that as the clock, and the retry opened the recording from the start.
+    @Test func aFailedItemsZeroClockIsNotWhereTheRetryResumes() {
+        var shown = 0.0
+        // The fake item: plays from the resume point, the person seeks, then it fails.
+        let ticks: [(reading: Double, failed: Bool)] = [(820, false), (821, false), (1400, false), (0, true), (0, true)]
+        for tick in ticks { shown = LoadRecovery.clock(reading: tick.reading, itemFailed: tick.failed, shown: shown) }
+        #expect(shown == 1400, "the retry opens where the person was")
+        // A stall is not a failure: the clock holds and nothing asks the plan for a step.
+        shown = LoadRecovery.clock(reading: 1400, itemFailed: false, shown: shown)
+        #expect(shown == 1400)
+        #expect(LoadRecovery.clock(reading: .nan, itemFailed: false, shown: 1400) == 1400)
+    }
+
     @Test func aLoneRecordingIsRetriedOnceThenGivenUp() {
         let all = [recording(0)]
         var plan = LoadRecovery(chosen: all[0], among: all)
