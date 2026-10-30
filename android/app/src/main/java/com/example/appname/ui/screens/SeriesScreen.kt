@@ -44,6 +44,7 @@ import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.Haptic
+import com.example.appname.ui.GenreLink
 import com.example.appname.ui.HeadBoard
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
@@ -68,7 +69,7 @@ import kotlinx.coroutines.launch
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit) {
+fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenGenre: (String) -> Unit = {}) {
     val container = LocalAppContainer.current
     val haptics = rememberHaptics()
     val page by rememberCatalogQuery(key) { db -> db.seriesPage(key) }
@@ -125,7 +126,7 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
                 LazyColumn(Modifier.widthIn(max = 720.dp).fillMaxSize(), contentPadding = padding) {
                     // §4.3: the web's Follow and Following; the store is the one sync carries (§2.3).
                     val on = (following as? Loadable.Ready)?.value == true
-                    seriesHead(series, on) {
+                    seriesHead(series, on, onOpenGenre = onOpenGenre) {
                         haptics(Haptic.Selection)
                         scope.launch { container.user.setFollowing(seriesKey, !on) }
                     }
@@ -166,7 +167,7 @@ fun SeriesScreen(key: String, onBack: () -> Unit, onOpenEpisode: (String) -> Uni
 }
 
 /** The series page down to the picture's credit: the head board, then the one button row. */
-fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, toggle: () -> Unit) {
+fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, onOpenGenre: (String) -> Unit = {}, toggle: () -> Unit) {
     item(key = "head") {
         HeadBoard(
             name = series.name,
@@ -177,6 +178,12 @@ fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, toggle: () -
             facts = listOf(seriesYears(series) ?: "Undated", episodeCount(series.episodes)),
             first = series.firstDate,
             last = series.lastDate,
+            years = series.yearCounts,
+            genreLink = series.genre?.let { g ->
+                DisplayVocabulary.genreName(g)?.let { name ->
+                    GenreLink(name, series.networks.joinToString(" \u00b7 ")) { onOpenGenre(g) }
+                }
+            },
         )
     }
     item(key = "follow") {

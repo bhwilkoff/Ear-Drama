@@ -133,4 +133,32 @@ class GrammarTest {
         assertEquals("control: malformed is none", emptyList<String>(), CatalogDatabase.networkList("CBS"))
         assertEquals("control: null is none", emptyList<String>(), CatalogDatabase.networkList(null))
     }
+
+    @Test fun `A to Z letters`() {
+        assertEquals("T", azLetter("The Shadow"))
+        assertEquals("an accent folds", "E", azLetter("\u00c9clair"))
+        assertEquals("a number goes under #", "#", azLetter("2000 Plus"))
+        assertEquals("a symbol goes under #", "#", azLetter("\"Quoted\""))
+        assertEquals(listOf("#", "A", "Z"), azLetters(listOf("Zero", "10 Days", "Adam", "Alan")))
+        assertEquals("control: no # when no number", listOf("A"), azLetters(listOf("Adam")))
+    }
+
+    @Test fun `the histogram strip draws real years`() {
+        val bars = runBars(listOf(1938, 1, 0, 4))!!
+        assertEquals("a year with no episode draws nothing", 2, bars.size)
+        assertEquals(0.25, bars[0].height, 1e-9)
+        assertEquals("the peak year is full height", 1.0, bars[1].height, 1e-9)
+        assertEquals(10.0 / 33.0, bars[1].from, 1e-9)
+        assertNull("control: no histogram, the span draws", runBars(null))
+        assertNull("control: all zero is none", runBars(listOf(1940, 0, 0)))
+        assertEquals(listOf(1932, 3, 12, 0, 4), parseYearCounts("1932,3,12,0,4"))
+        assertNull("control: a year alone is none", parseYearCounts("1932"))
+        assertNull(parseYearCounts(null))
+    }
+
+    @Test fun `a bare undated row leads with the window`() {
+        assertTrue(undatedBare(null, null))
+        assertFalse("control: a number keeps its block", undatedBare(null, 7))
+        assertFalse("control: a date keeps its block", undatedBare("1943-05-25", null))
+    }
 }

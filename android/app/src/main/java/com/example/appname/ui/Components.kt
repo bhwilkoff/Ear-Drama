@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.appname.app.AppContainer
+import com.example.appname.data.undatedBare
 import com.example.appname.data.CatalogDatabase
 import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.EpisodeRow
@@ -202,6 +203,21 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
  */
 fun formatAirDate(date: String?): String? = date?.takeIf { it.isNotBlank() }
 
+/**
+ * The episode page's date, as the web writes it: a full day in the device's long date format
+ * ("May 25, 1943"); a year-only or month-only date stays as precise as the catalog is (R1), so it is
+ * shown as stored.
+ */
+fun formatAirDateLong(date: String?, locale: Locale = Locale.getDefault()): String? {
+    val d = formatAirDate(date) ?: return null
+    if (d.length != 10) return d
+    return try {
+        java.time.LocalDate.parse(d).format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(locale))
+    } catch (_: java.time.format.DateTimeParseException) {
+        d
+    }
+}
+
 /** "30 min", or null when the length is unknown (LibriVox chapters are stored as 0). */
 fun formatLength(seconds: Double?): String? =
     seconds?.takeIf { it >= 60 }?.let { "${(it / 60).toInt()} min" }
@@ -268,7 +284,7 @@ fun EpisodeListItem(
         GrammarRow(
             title = title,
             visual = { m ->
-                if (showSeries) PictureWindow(row.seriesWindowArt, row.seriesName, row.seriesGenre, m)
+                if (showSeries || undatedBare(row.airDate, row.num)) PictureWindow(row.seriesWindowArt, row.seriesName, row.seriesGenre, m)
                 else DateBlock(row.airDate, row.num, row.seriesGenre, m)
             },
             onOpen = onOpen,

@@ -109,6 +109,10 @@ data class SeriesRow(
     val pictureKind: String? = null,
     /** `series.networks`, in published order. */
     val networks: List<String> = emptyList(),
+    /** The run histogram (`series.year_counts`): the first year, then one count per year; null where the catalog has none. */
+    val yearCounts: List<Int>? = null,
+    /** The key the A to Z order sorts on, for Browse's letter rail; null where the catalog has none. */
+    val sortName: String? = null,
 ) {
     /** What the window draws: the published picture, else the star's portrait an older catalog carries. */
     val windowArt: Artwork? get() = picture ?: face?.art

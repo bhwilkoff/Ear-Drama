@@ -76,6 +76,7 @@ fun AppRoot(
     var selected by rememberSaveable { mutableStateOf(Tab.Home) }
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var incomingSearch by remember { mutableStateOf<String?>(null) }
+    var browseGenre by remember { mutableStateOf<String?>(null) }
     var roomSheet by rememberSaveable { mutableStateOf(false) }
     var roomCode by rememberSaveable { mutableStateOf("") }
     val haptics = rememberHaptics()
@@ -128,6 +129,13 @@ fun AppRoot(
 
     val openEpisode: (String) -> Unit = { id -> stack.navigateTo(Route.Episode(id)) }
     val openSeries: (String) -> Unit = { key -> stack.navigateTo(Route.Series(key)) }
+    // A series page's genre link: Browse at its root, filtered to that genre.
+    val openGenre: (String) -> Unit = { genre ->
+        val browse = stacks.getValue(Tab.Browse)
+        while (browse.size > 1) browse.removeAt(browse.lastIndex)
+        browseGenre = genre
+        selected = Tab.Browse
+    }
     val openPerson: (String) -> Unit = { id -> stack.navigateTo(Route.Person(id)) }
     val openTranscript: (String) -> Unit = { id -> stack.navigateTo(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
@@ -170,7 +178,10 @@ fun AppRoot(
                                 ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) }, onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse })
                             }
                             entry<Route.SeriesBrowse> {
-                                SeriesBrowseScreen(onOpenSeries = openSeries, onOpenScript = openScript)
+                                SeriesBrowseScreen(
+                                    onOpenSeries = openSeries, onOpenScript = openScript,
+                                    genreRequest = browseGenre, onGenreRequestHandled = { browseGenre = null },
+                                )
                             }
                             entry<Route.Surprise> {
                                 SurpriseScreen(
@@ -203,7 +214,7 @@ fun AppRoot(
                             }
                             entry<Route.Downloads> { DownloadsScreen(onBack = back, onOpenEpisode = openEpisode) }
                             entry<Route.Series> { route ->
-                                SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode)
+                                SeriesScreen(route.key, onBack = back, onOpenEpisode = openEpisode, onOpenGenre = openGenre)
                             }
                             entry<Route.Episode> { route ->
                                 EpisodeScreen(

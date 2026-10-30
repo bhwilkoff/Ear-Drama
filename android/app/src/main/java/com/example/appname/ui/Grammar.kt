@@ -62,6 +62,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +78,7 @@ import com.example.appname.data.eventParts
 import com.example.appname.data.gradeOf
 import com.example.appname.data.monogram
 import com.example.appname.data.nameStep
+import com.example.appname.data.runBars
 import com.example.appname.data.runSpan
 import com.example.appname.data.windowFill
 import com.example.appname.ui.theme.DisplayFontFamily
@@ -222,8 +225,16 @@ fun PictureWindow(art: Artwork?, name: String, genre: String?, modifier: Modifie
  * 1930 to 1962 axis, over a baseline at 30 %; an undated show is the baseline alone.
  */
 @Composable
-fun RunStrip(first: String?, last: String?, color: Color, modifier: Modifier = Modifier, height: Dp = 18.dp) {
-    val span = remember(first, last) { runSpan(first, last) }
+fun RunStrip(
+    first: String?,
+    last: String?,
+    color: Color,
+    modifier: Modifier = Modifier,
+    height: Dp = 18.dp,
+    years: List<Int>? = null,
+) {
+    val bars = remember(years) { runBars(years) }
+    val span = remember(first, last, bars) { if (bars == null) runSpan(first, last) else null }
     Box(
         modifier
             .fillMaxWidth()
@@ -232,7 +243,17 @@ fun RunStrip(first: String?, last: String?, color: Color, modifier: Modifier = M
             .drawWithContent {
                 val line = 1.dp.toPx()
                 drawRect(color.copy(alpha = 0.3f), Offset(0f, size.height - line), Size(size.width, line))
-                if (span != null) {
+                if (bars != null) {
+                    val room = size.height - line - 2.dp.toPx()
+                    bars.forEach { b ->
+                        val h = maxOf(2.dp.toPx(), room * b.height.toFloat())
+                        drawRect(
+                            color,
+                            Offset((b.from * size.width).toFloat(), size.height - line - h),
+                            Size(maxOf(1f, ((b.to - b.from) * size.width).toFloat() - 0.5.dp.toPx()), h),
+                        )
+                    }
+                } else if (span != null) {
                     val top = size.height * 3f / 18f
                     drawRect(
                         color,
@@ -352,7 +373,7 @@ fun ShowTile(
                 .padding(top = Spacing.S2.dp)
                 .then(if (nameHeight != null) Modifier.height(nameHeight) else Modifier),
         )
-        RunStrip(row.firstDate, row.lastDate, on, Modifier.padding(top = Spacing.S1.dp))
+        RunStrip(row.firstDate, row.lastDate, on, Modifier.padding(top = Spacing.S1.dp), years = row.yearCounts)
         (facts ?: listOf(seriesYears(row) ?: "Undated", episodeCount(row.episodes))).forEach {
             Text(it, style = MaterialTheme.typography.labelMedium, color = on)
         }
@@ -511,6 +532,9 @@ fun HeadBoard(
     last: String?,
     modifier: Modifier = Modifier,
     onOpen: (() -> Unit)? = null,
+    years: List<Int>? = null,
+    /** The series page: the kicker's genre is a link that opens Browse filtered to it. */
+    genreLink: GenreLink? = null,
 ) {
     val on = onBoard(genre)
     val side = headSlot()
@@ -524,7 +548,21 @@ fun HeadBoard(
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
             PictureWindow(art, name, genre, Modifier.size(side))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-                if (kicker != null) {
+                if (genreLink != null) {
+                    Row {
+                        Text(
+                            genreLink.name.uppercase(),
+                            style = t.labelMedium.copy(letterSpacing = 1.sp, textDecoration = TextDecoration.Underline),
+                            color = on,
+                            modifier = Modifier
+                                .tvFocusMark()
+                                .clickable(role = Role.Button, onClickLabel = "Browse ${genreLink.name}", onClick = genreLink.onOpen),
+                        )
+                        if (genreLink.rest.isNotEmpty()) {
+                            Text(" \u00b7 " + genreLink.rest.uppercase(), style = t.labelMedium.copy(letterSpacing = 1.sp), color = on)
+                        }
+                    }
+                } else if (kicker != null) {
                     Text(kicker.uppercase(), style = t.labelMedium.copy(letterSpacing = 1.sp), color = on)
                 }
                 Text(
@@ -536,6 +574,10 @@ fun HeadBoard(
                 EventLine(facts, color = on)
             }
         }
-        RunStrip(first, last, on, height = 56.dp)
+        // The histogram needs height to read: 40 dp on a phone, 56 from 600 dp wide.
+        RunStrip(first, last, on, height = if (side >= 128.dp) 56.dp else 40.dp, years = years)
     }
 }
+
+/** The kicker's genre as a link: its [name], the networks after it as [rest], and what opening it does. */
+class GenreLink(val name: String, val rest: String, val onOpen: () -> Unit)

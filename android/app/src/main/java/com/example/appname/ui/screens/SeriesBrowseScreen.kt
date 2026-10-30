@@ -34,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.layout
@@ -53,13 +56,17 @@ import com.example.appname.data.BrowseFilter
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.SeriesRow
 import com.example.appname.data.SeriesSort
+import com.example.appname.data.azLetter
+import com.example.appname.data.azLetters
 import com.example.appname.data.decadeField
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.DecadeFieldView
 import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
+import com.example.appname.ui.LetterRail
 import com.example.appname.ui.Loadable
+import com.example.appname.ui.isTelevision
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.SectionHeading
 import com.example.appname.ui.ShowTile
@@ -73,6 +80,7 @@ import com.example.appname.ui.rememberNameHeights
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.tileLayout
 import com.example.appname.ui.tvFocusMark
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -94,7 +102,13 @@ private enum class BrowseKind(val label: String) { Series("Series"), Plays("Play
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) -> Unit) {
+fun SeriesBrowseScreen(
+    onOpenSeries: (String) -> Unit,
+    onOpenScript: (String) -> Unit,
+    /** A genre the series page asked Browse to filter to; [onGenreRequestHandled] clears it. */
+    genreRequest: String? = null,
+    onGenreRequestHandled: () -> Unit = {},
+) {
     var kind by rememberSaveable { mutableStateOf<BrowseKind?>(null) }
     var hasScript by rememberSaveable { mutableStateOf(false) }
     val allPlays = rememberCastablePlays()
@@ -104,6 +118,16 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
     var sort by rememberSaveable { mutableStateOf(SeriesSort.Popular) }
     var singles by rememberSaveable { mutableStateOf(false) }
     var pages by rememberSaveable(genre, decade, network, sort, singles) { mutableIntStateOf(1) }
+    LaunchedEffect(genreRequest) {
+        if (genreRequest != null) {
+            kind = null; hasScript = false; decade = null; network = null; singles = false
+            genre = genreRequest
+            onGenreRequestHandled()
+        }
+    }
+    val scope = rememberCoroutineScope()
+    val isTv = LocalContext.current.isTelevision()
+    var headerItems by remember { mutableIntStateOf(1) }
     val haptics = rememberHaptics()
     val genres by rememberCatalogQuery(decade, network) { db -> db.genres(decade, network) }
     val decades by rememberCatalogQuery(genre, network) { db -> db.seriesDecades(genre, network) }
@@ -111,7 +135,7 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
     val series by rememberCatalogQuery(genre, decade, network, sort, pages, singles) { db ->
         db.seriesBrowse(
             BrowseFilter(genre = genre, network = network, decade = decade, sort = sort, showLine = !singles),
-            limit = PAGE * pages,
+            limit = if (sort == SeriesSort.Name) Int.MAX_VALUE else PAGE * pages,
         )
     }
     val counts by rememberCatalogQuery(genre, decade, network) { db ->
@@ -164,6 +188,16 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
                     onOpen = { onOpenScript(script.id) },
                 )
             }
+            // A to Z: every letter that has a show; a letter jumps to its first tile.
+            val azKeys = tiles.map { it.series.sortName ?: it.series.name }
+            val letters = if (sort == SeriesSort.Name) azLetters(azKeys) else emptyList()
+            val jumpTo: (String) -> Unit = { l ->
+                val at = azKeys.indexOfFirst { azLetter(it) == l }
+                if (at >= 0) {
+                    val offset = headerItems + 1 + (if (tiles.isEmpty()) 1 else 0)
+                    scope.launch { gridState.scrollToItem(offset + at) }
+                }
+            }
             val filters: @Composable () -> Unit = {
                 LazyRow(
                     modifier = Modifier.focusRequester(chips),
@@ -207,6 +241,16 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
                                 facet.map { it.value to "${it.value} (${number.format(it.series)})" },
                             onChoose = { if (it != network) { network = it; haptics(Haptic.Selection) } },
                         )
+                    }
+                    if (isTv && letters.size > 1) {
+                        items(letters, key = { "az$it" }) { l ->
+                            FilterChip(
+                                selected = false,
+                                onClick = { jumpTo(l); haptics(Haptic.Selection) },
+                                label = { Text(l) },
+                                modifier = Modifier.tvFocusMark(),
+                            )
+                        }
                     }
                     val decadeList = (decades as? Loadable.Ready)?.value.orEmpty()
                     items(decadeList, key = { "d$it" }) { d ->
@@ -269,6 +313,7 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
             }
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val expanded = maxWidth >= 840.dp
+                SideEffect { headerItems = if (expanded) 0 else 1 }
                 val fieldWidth = 380.dp
                 val (cols, tileWidth) = tileLayout(if (expanded) maxWidth - fieldWidth else maxWidth)
                 val heights = rememberNameHeights(tiles.map { it.series.name }, innerWidth(tileWidth))
@@ -344,6 +389,9 @@ fun SeriesBrowseScreen(onOpenSeries: (String) -> Unit, onOpenScript: (String) ->
                             fieldBlock()
                         }
                     }
+                }
+                if (!isTv && letters.size > 1) {
+                    LetterRail(letters, jumpTo, Modifier.align(Alignment.CenterEnd))
                 }
             }
         }

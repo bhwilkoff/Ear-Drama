@@ -95,7 +95,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             (if (faces) "p.name, $artColumns, " else "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
             (if (pictures) "ap.url, ap.width, ap.height, ap.credit, ap.evidence_url, $face, s.picture_kind, " else
                 "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
-            (if ("networks" in cols) "s.networks " else "NULL ") +
+            (if ("networks" in cols) "s.networks, " else "NULL, ") +
+            (if ("year_counts" in cols) "s.year_counts, " else "NULL, ") +
+            (if ("sort_name" in cols) "s.sort_name " else "NULL ") +
             "FROM series s " +
             (if (faces) "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait " else "") +
             (if (pictures) "LEFT JOIN art ap ON ap.id = s.picture" else "")
@@ -108,6 +110,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 picture = artwork(st, 9),
                 pictureKind = st.textOrNull(15),
                 networks = networkList(st.textOrNull(16)),
+                yearCounts = parseYearCounts(st.textOrNull(17)),
+                sortName = st.textOrNull(18),
             )
         }.toMap()
     }
@@ -118,6 +122,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val picture: Artwork?,
         val pictureKind: String?,
         val networks: List<String>,
+        val yearCounts: List<Int>?,
+        val sortName: String?,
     )
 
     private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
@@ -747,6 +753,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         picture = seriesLook[st.getText(0)]?.picture,
         pictureKind = seriesLook[st.getText(0)]?.pictureKind,
         networks = seriesLook[st.getText(0)]?.networks.orEmpty(),
+        yearCounts = seriesLook[st.getText(0)]?.yearCounts,
+        sortName = seriesLook[st.getText(0)]?.sortName,
     )
 
     private fun episodeRow(st: SQLiteStatement) = EpisodeRow(

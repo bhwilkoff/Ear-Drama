@@ -104,7 +104,7 @@ class GrammarRenderTest {
         SeriesRow(key, name, genre, first, last, n, picture = art)
 
     private val shelfA = listOf(
-        series("sus", "Suspense", "mystery", "1942-06-17", "1962-09-30", 944, portrait),
+        series("sus", "Suspense", "mystery", "1942-06-17", "1962-09-30", 944, portrait).copy(yearCounts = listOf(1942, 20, 40, 52, 60, 48, 40, 33, 30, 28, 26, 20, 18, 22, 25, 30, 18, 14, 12, 10, 9)),
         series("holmes", "The Adventures of Sherlock Holmes", "mystery", "1930-10-20", "1950-06-26", 215, wide),
         series("lux", "Lux Radio Theatre", "drama", "1934-10-14", "1955-06-07", 410, null),
         series("dx", "Dimension X", "scifi", null, null, 1, tiny),
@@ -158,6 +158,7 @@ class GrammarRenderTest {
         GrammarRow("Spring Offensive, a title long enough to take two full lines", { m -> one(m, "1950-02", null, "drama") }, {}, sub = listOf("Sponsored by Lux", "CBS", "Remastered"), length = "1 h", onPlay = {})
         GrammarRow("Year only", { m -> one(m, "1948", null, "scifi") }, {}, length = "30 min", onPlay = {})
         GrammarRow("Undated number", { m -> one(m, null, 14, null) }, {}, sub = listOf("Undated"), length = "28 min", onPlay = {})
+        GrammarRow("Undated, unnumbered: the series' window", { m -> PictureWindow(portrait, "Suspense", "mystery", m) }, {}, sub = listOf("Undated"), length = "28 min", onPlay = {})
         GrammarRow("Suspense: Sorry, Wrong Number", { m -> PictureWindow(portrait, "Suspense", "mystery", m) }, {}, sub = listOf("Suspense", "1943-05-25", "Cast as Mrs. Stevenson"), length = "30 min", onPlay = {})
         GrammarRow("Wide picture whole", { m -> PictureWindow(wide, "The Adventures of Sherlock Holmes", "mystery", m) }, {}, sub = listOf("The Adventures of Sherlock Holmes", "Undated"), length = "30 min", onPlay = {})
         GrammarRow("Title block", { m -> PictureWindow(null, "Lux Radio Theatre", "drama", m) }, {}, sub = listOf("Lux Radio Theatre", "1936-06-01"), length = "60 min", onPlay = {})
@@ -283,7 +284,9 @@ class GrammarRenderTest {
     @Test fun episodeBare320() = episodePage("ep-bare-320", bareEpisode, sparseSeries, 320.dp)
 
     @Test fun head() = shoot("headboard") {
-        HeadBoard("Suspense", "mystery", portrait, "Series", listOf("1942–1962", "CBS", "944 episodes"), "1942-06-17", "1962-09-30")
+        HeadBoard("Suspense", "mystery", portrait, "Series", listOf("1942–1962", "CBS", "944 episodes"), "1942-06-17", "1962-09-30",
+            years = listOf(1942, 20, 40, 52, 60, 48, 40, 33, 30, 28, 26, 20, 18, 22, 25, 30, 18, 14, 12, 10, 9),
+            genreLink = com.example.appname.ui.GenreLink("Mystery", "CBS") {})
         HeadBoard("Counterrevolutionary Hour", null, null, "Series", listOf("1950"), "1950-01-01", "1951-01-01", Modifier.padding(top = 12.dp))
     }
 }

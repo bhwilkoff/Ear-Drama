@@ -62,7 +62,7 @@ import com.example.appname.ui.ShareButton
 import com.example.appname.ui.episodeCount
 import com.example.appname.ui.episodeShareTitle
 import com.example.appname.ui.episodeTitle
-import com.example.appname.ui.formatAirDate
+import com.example.appname.ui.formatAirDateLong
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.formatLength
 import com.example.appname.ui.headSlot
@@ -190,6 +190,7 @@ fun LazyListScope.episodeHead(
             facts = listOf(series?.let { seriesYears(it) } ?: "Undated", series?.let { episodeCount(it.episodes) }),
             first = series?.firstDate,
             last = series?.lastDate,
+            years = series?.yearCounts,
             onOpen = { onOpenSeries(row.seriesKey) },
         )
     }
@@ -200,7 +201,7 @@ fun LazyListScope.episodeHead(
             modifier = Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S3.dp).semantics { heading() },
         )
         EventLine(
-            episodeFacts(d.network, d.sponsor, row.season, row.title, row.num, formatAirDate(row.airDate), formatLength(row.lengthSeconds)),
+            episodeFacts(d.network, d.sponsor, row.season, row.title, row.num, formatAirDateLong(row.airDate), formatLength(row.lengthSeconds)),
             Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp),
         )
     }
