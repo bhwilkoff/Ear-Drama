@@ -202,7 +202,10 @@ describing."*
 - 2026-10-30: P-1 merged and live (one face per star; a show named for its star first, then a
   marked role at or above the floor; 19 implausible own-work portraits refused; build_db
   deterministic). D3-1 merged (004f5b4): the grammar on all five platforms, Apple not yet
-  seen on a device. Running: D3-2 (Home and Browse with the A to Z shelf). Briefs say real
+  seen on a device; iPad Pro frames of 1.0.111 read 2026-10-30. D3-2 merged (64c7035): Home's day
+  board and tiles, Browse's decade-by-genre field and tile grid. Running: D3-3 (series and episode
+  pages, head board adopted) and P-2 (portraits that pass the size floor, display titles, per-year
+  counts). Briefs say real
   devices only: a D3-1 simulator wedged the Mac (owner: "We never use simulators").
 - Owner calls open from D3-1: one Big Shoulders cut (web's woff2 is narrower than the native
   TTF); Android's Play button (36 dp filled circle) vs web's plain icon.
