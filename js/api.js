@@ -209,9 +209,9 @@ const API = (() => {
     return first ? first[0].toUpperCase() : '';
   }
   /** The monogram's size in hundredths of the window, so it stands inside it: Big Shoulders
-      capitals are about 0.48 em wide, M and W 0.62, I, J and 1 0.26; at most 104. */
+      capitals are at most 0.50 em wide, M 0.76, W 0.78, J 0.45, I and 1 0.27 (the bundled Bold, the widest cut we ship, measured 2026-10-30); at most 104. */
   function blockSize(m) {
-    const w = [...String(m || '')].reduce((a, c) => a + (/[MW]/.test(c) ? 0.62 : /[IJ1]/.test(c) ? 0.26 : 0.48) + 0.02, 0);
+    const w = [...String(m || '')].reduce((a, c) => a + (c === 'M' ? 0.76 : c === 'W' ? 0.78 : c === 'J' ? 0.45 : /[I1]/.test(c) ? 0.27 : 0.5) + 0.02, 0);
     return w ? Math.min(104, Math.floor(86 / w)) : 104;
   }
   /** A name's type step: 0 as set, 1 one level down (a word past 10 letters), 2 two (past 14). */

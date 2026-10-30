@@ -667,7 +667,7 @@ web app follows today.
     Big Shoulders as an outline (no fill, a 1.4 px stroke) in the board's
     onBoard color, on the board, its baseline at 93 % and its start at 9 %
     of the window, sized `min(104, floor(86 / sum(w)))` hundredths of
-    the window where w is 0.62 for M or W, 0.26 for I, J or 1, else 0.48,
+    the window where w is 0.76 for M, 0.78 for W, 0.45 for J, 0.27 for I or 1, else 0.50 (the advances of the bundled Big Shoulders Bold, the widest cut any platform ships, measured 2026-10-30),
     plus 0.02 per letter; the window's hairline is onBoard at 32 %. The
     name is never drawn twice.
   - **The grade** (`uniform-imagery-design` §2): every picture in a

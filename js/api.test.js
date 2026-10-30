@@ -76,9 +76,9 @@ test('art: a small crop is the square around the published face (contract §3.3a
 });
 
 test('grammar: the title block, the type step, the window, the event line and the strip (WEB-DESIGN §6.4b golden cases)', () => {
-  const mono = [['The Shadow', 'S', 104], ['Lux Radio Theatre', 'LR', 86], ['X Minus One', 'XM', 75],
-    ['The Adventures of Sam Spade', 'AS', 86], ['Mr. and Mrs. North', 'MM', 67], ['El Dorado', 'D', 104],
-    ['The "Lone Ranger"', 'LR', 86], ['2000 Plus', 'P', 104], ['1949', '1', 104], ['', '', 104]];
+  const mono = [['The Shadow', 'S', 104], ['Lux Radio Theatre', 'LR', 82], ['X Minus One', 'XM', 66],
+    ['The Adventures of Sam Spade', 'AS', 82], ['Mr. and Mrs. North', 'MM', 55], ['Wild West', 'WW', 53], ['Jack Johnson', 'JJ', 91], ['El Dorado', 'D', 104],
+    ['The "Lone Ranger"', 'LR', 82], ['2000 Plus', 'P', 104], ['1949', '1', 104], ['', '', 104]];
   mono.forEach(([name, m, size]) => {
     assertEq(API.monogram(name), m, `monogram of ${JSON.stringify(name)}`);
     assertEq(API.blockSize(m), size, `block size of ${JSON.stringify(m)}`);

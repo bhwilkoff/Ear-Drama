@@ -374,12 +374,9 @@
         eventLine(facts || [], 'caption g-head-facts')),
       runStrip(first, last, 'g-strip g-head-strip', 56));
   }
-  const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
-  /** A date as an event line's fact, never broken across lines: "Oct 30, 1930", else as published. */
-  function factDate(iso) {
-    if (!iso) return null;
-    return (iso.length === 10 ? shortDate.format(new Date(`${iso}T00:00:00Z`)) : iso).replace(/ /g, '\u00a0');
-  }
+  /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
+      broken at its hyphens. */
+  function factDate(iso) { return iso ? iso.replace(/-/g, '\u2011') : null; }
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   /** The date block: the month and year in small caps over the day, on the series' board; an undated
       numbered episode says "No." over its number. */
