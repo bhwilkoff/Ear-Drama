@@ -194,4 +194,11 @@ describing."*
   cache (about 400 credit and 74 network rows move; CI pins PYTHONHASHSEED, local runs do not);
   a submitted production whose director deleted their account has no director, so a reported
   line there can only be handled by Ear Drama's own moderation (none yet).
+- catalog-2026-10-29 cut by the owner; publish 40986788849 live: Boston Blackie leads with
+  Richard Kollmar. **Defect found live**: that image (Commons File:Kollmar.jpg) says "photograph
+  I took of Richard Kollmar and his fiancee", self-published, dated 2019; Kollmar died 1971.
+  An own-work license on a picture of someone who died before the file's date cannot be the
+  uploader's (evidence-gated-catalog-curation: an uploader's word is not evidence). Rule for
+  the build loop: refuse own-work licenses whose subject died before the file's date, and
+  measure how many served portraits it removes.
 - Nothing running; the loop stops at the gate.
