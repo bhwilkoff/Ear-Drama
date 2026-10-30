@@ -509,3 +509,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 
 ### Design tick 12, 2026-10-30, the disk filled; resumed
 - Both D3 agents stopped on ENOSPC (no command could run). The owner freed space ("I think all cleanup is done so you can resume work."): 57 GB free. Pruning found no merged, clean worktree to remove (10 remain, each dirty or locked). D3-1 and P-1 resumed in place; P-1 gains the episode floor so Jack Webb keeps Dragnet.
+
+### Design tick 13, 2026-10-30, forced restart; salvaged and resumed
+- The session was force-restarted mid-run. Nothing was lost. D3-1 had committed five commits (native tokens; the web grammar, its golden-tested API and its head board) and left its Apple and Android grammar uncommitted. P-1 had all three items uncommitted and was waiting on a determinism run that the restart killed. Each worktree is saved at refs/salvage/<agent>-20261030. Both agents resumed from their transcripts; P-1 re-runs the determinism check from scratch. CI: every recent run green.
