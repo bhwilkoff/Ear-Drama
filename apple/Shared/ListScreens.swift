@@ -205,9 +205,6 @@ enum BrowseKind: String, CaseIterable, Hashable {
 struct SeriesBrowseScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(PlaysLibrary.self) private var plays
-    #if os(iOS)
-    @Environment(\.horizontalSizeClass) private var sizeClass
-    #endif
     @State private var series: [SeriesRow]?
     /// The same list with the genre and decade filters off: the field counts over it (R11c).
     @State private var fieldBase: [SeriesRow] = []
@@ -222,6 +219,7 @@ struct SeriesBrowseScreen: View {
     @State private var sort: SeriesSort = .popular
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
+    @State private var columnWidth: CGFloat = 0
 
     private struct Filter: Hashable {
         let genre: String?, network: String?, decade: Int?, sort: SeriesSort, generation: Int
@@ -253,14 +251,6 @@ struct SeriesBrowseScreen: View {
     private var showsPlays: Bool { kind != .series && genre == nil && network == nil && decade == nil }
     private var shownPlays: [PlayScript] { showsPlays ? plays.scripts : [] }
     private var isFiltered: Bool { kind != nil || hasScript || genre != nil || network != nil || decade != nil }
-    private var regular: Bool {
-        #if os(iOS)
-        sizeClass != .compact
-        #else
-        true
-        #endif
-    }
-
     private var heading: String {
         switch sort {
         case .popular: "Most downloaded first"
@@ -320,29 +310,40 @@ struct SeriesBrowseScreen: View {
         let items: [Item] = (singles ? lesser : shows).map(Item.show) + (singles ? [] : shownPlays.map(Item.play))
         let field = ShowLine.decadeField(shownSeries(fieldBase).filter { ShowLine.isShow($0.episodeCount) }
             .map { (genre: $0.genre, first: $0.firstDate) })
+        let plan = BrowseLayout.plan(width: columnWidth, decades: field.decades.count, tileMin: ShowTile.defaultWidth)
         VStack(alignment: .leading, spacing: Spacing.s4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
-                     : countText(shows.count, "show", "shows"))
-                    .font(TypeRamp.bodyStrong)
-                    .foregroundStyle(Color.brandText)
-                Spacer(minLength: Spacing.s3)
-                if singles || !lesser.isEmpty {
-                    Button(singles ? countText(shows.count, "show", "shows")
-                           : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
-                        .buttonStyle(.borderless)
-                        .font(TypeRamp.caption)
-                        .lineLimit(1)
+            // The column's width is read from a view that holds no content and every part below is
+            // sized from it, so nothing drawn can make the body wider than the column.
+            Color.clear
+                .frame(maxWidth: .infinity, minHeight: 1, maxHeight: 1)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { columnWidth = $0 }
+            if columnWidth > 0 {
+                VStack(alignment: .leading, spacing: Spacing.s4) {
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
+                        Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
+                             : countText(shows.count, "show", "shows"))
+                            .font(TypeRamp.bodyStrong)
+                            .foregroundStyle(Color.brandText)
+                        Spacer(minLength: 0)
+                        if singles || !lesser.isEmpty {
+                            Button(singles ? countText(shows.count, "show", "shows")
+                                   : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
+                                .buttonStyle(.borderless)
+                                .font(TypeRamp.caption)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                    if plan.sideBySide {
+                        HStack(alignment: .top, spacing: BrowseLayout.sideGap) {
+                            fieldColumn(field).frame(width: plan.fieldWidth, alignment: .topLeading)
+                            grid(items, width: plan.gridWidth)
+                        }
+                    } else {
+                        fieldColumn(field)
+                        grid(items, width: plan.gridWidth)
+                    }
                 }
-            }
-            if regular {
-                HStack(alignment: .top, spacing: Spacing.s6) {
-                    fieldColumn(field).fixedSize(horizontal: true, vertical: false)
-                    grid(items).frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-            } else {
-                fieldColumn(field)
-                grid(items)
+                .frame(width: columnWidth, alignment: .topLeading)
             }
         }
     }
@@ -362,10 +363,10 @@ struct SeriesBrowseScreen: View {
         }
     }
 
-    private func grid(_ items: [Item]) -> some View {
+    private func grid(_ items: [Item], width gridWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s3) {
             SectionHead(title: heading) { EmptyView() }
-            ShowGrid(items: Array(items.prefix(shown))) { item, width in
+            ShowGrid(items: Array(items.prefix(shown)), fixedWidth: gridWidth) { item, width in
                 switch item {
                 case let .show(row):
                     TileLink(value: Route.series(row.key), series: row, width: width)
