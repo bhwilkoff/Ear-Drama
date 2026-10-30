@@ -124,6 +124,44 @@ test('a copy that fails to load is retried once with jitter, then the next copy 
   assertEq(errors.length, 1, 'with none left, the error is surfaced');
 });
 
+function stallRig() {
+  const later = [];
+  const rig = boot({ setTimeout: (fn) => { later.push(fn); return 0; } });
+  rig.later = later;
+  rig.audio.buffered = { length: 1, end: () => rig.audio.bufEnd || 0 };
+  rig.audio.bufEnd = 0;
+  rig.Player.load({ ...ep, alts: ['https://archive.org/download/x/b.mp3'] });
+  return rig;
+}
+
+test('stall watchdog: no bytes and no movement for 30 s while wanting data starts recovery', () => {
+  const { Player, audio, later } = stallRig();
+  Player.checkStall(0);
+  Player.checkStall(29000);
+  assertEq(later.length, 0, 'not yet');
+  Player.checkStall(30000);
+  assertEq(later.length, 1, 'recovery is scheduled');
+  later.shift()();
+  assertEq(audio.src, ep.url, 'the first step is the same copy again');
+});
+
+test('stall watchdog: a slow trickle of bytes is never killed', () => {
+  const { Player, audio, later } = stallRig();
+  for (let t = 0; t <= 600000; t += 10000) { audio.bufEnd += 0.1; Player.checkStall(t); }
+  assertEq(later.length, 0, 'ten minutes of trickle, no recovery');
+});
+
+test('stall watchdog: a pause is never a stall, and a local file is not either', () => {
+  const { Player, audio, later } = stallRig();
+  audio.pause();
+  for (let t = 0; t <= 600000; t += 10000) Player.checkStall(t);
+  assertEq(later.length, 0, 'paused');
+  const local = stallRig();
+  local.Player.load({ ...ep, url: 'blob:x' });
+  for (let t = 0; t <= 600000; t += 10000) local.Player.checkStall(t);
+  assertEq(local.later.length, 0, 'local');
+});
+
 test('a copy that loaded earns its next failure a retry', () => {
   const later = [];
   const { Player, audio } = boot({ setTimeout: (fn) => { later.push(fn); return 0; } });

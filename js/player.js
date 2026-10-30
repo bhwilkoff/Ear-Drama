@@ -45,6 +45,8 @@ const Player = (() => {
   let lastError = null;
   let recovery = null;      // a failed load: one jittered retry, then the next copy in rank order, then the error
   const RETRY_S = 1;
+  const STALL_S = 30;       // wanted data, no new bytes, no movement for this long: a failed load
+  let watch = { mark: null, since: 0 };
   let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
   let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
@@ -368,6 +370,33 @@ const Player = (() => {
     }, wait);
     return true;
   }
+  const diag = () => /[?&]diag=1\b/.test(location.search || '') || (typeof localStorage !== 'undefined' && localStorage.getItem('ed.diag') === '1');
+  function bufferedEnd() {
+    const b = audio.buffered;
+    return b && b.length ? b.end(b.length - 1) : 0;
+  }
+  /**
+   * The stall watchdog: progress, not elapsed time. A load that wants data (playing, or
+   * loading to play) and whose buffer and clock have both stood still for STALL_S never
+   * fails by itself, so it is handed to recover(). Bytes still arriving, a pause, and a
+   * local file all reset it.
+   */
+  function checkStall(now) {
+    const local = current && /^(blob|file|data):/.test(current.url || '');
+    const wants = !!current && !!recovery && !audio.paused && !audio.ended && !local;
+    const mark = `${audio.currentTime}|${bufferedEnd()}`;
+    if (!wants || mark !== watch.mark) {
+      watch = { mark: wants ? mark : null, since: now };
+      return false;
+    }
+    if (now - watch.since < STALL_S * 1000) return false;
+    watch = { mark: null, since: now };
+    if (diag()) console.log(`[stall] no bytes and no movement for ${STALL_S}s at ${audio.currentTime}: recover`);
+    return recover();
+  }
+  const stallTimer = setInterval(() => checkStall(Date.now()), 5000);
+  if (stallTimer && stallTimer.unref) stallTimer.unref();
+
   audio.addEventListener('ended', () => {
     if (current && isFinite(audio.duration)) Store.savePosition(current.id, audio.duration, audio.duration);
     if (sleep && sleep.kind === 'end') { fireSleep(); return; }
@@ -461,6 +490,7 @@ const Player = (() => {
     get sleep() { return sleep; },
     get fired() { return fired; },
     get error() { return lastError; },
+    checkStall, STALL_S,
     BACK_S, FWD_S, FADE_S, SPEEDS, SAVE_EVERY_MS, REWIND_S, LEVEL, nearestSpeed,
   };
 })();
