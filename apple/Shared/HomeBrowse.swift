@@ -310,7 +310,8 @@ struct GenreField: View {
             GridRow {
                 Color.clear.frame(width: label, height: 1)
                 ForEach(field.decades, id: \.self) { d in
-                    Text(verbatim: "\(d)s")
+                    Text(verbatim: "\u{2019}\(String(format: "%02d", d % 100))s")
+                        .accessibilityLabel("\(d)s")
                         .font(TypeRamp.caption)
                         .foregroundStyle(Color.brandTextMuted)
                         .lineLimit(1)

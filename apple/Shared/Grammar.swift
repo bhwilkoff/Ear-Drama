@@ -206,13 +206,24 @@ struct RunStrip: View {
     let last: String?
     let genre: String?
     var height: CGFloat = 18
+    /// The run histogram (`series.year_counts`): a bar per year, its height the count; the span
+    /// bar draws where the catalog has none.
+    var years: [Int]? = nil
 
     var body: some View {
         GeometryReader { geo in
             let ink = Color.onBoard(genre)
+            let bars = Grammar.runBars(years: years)
             ZStack(alignment: .bottomLeading) {
                 Rectangle().fill(ink.opacity(0.3)).frame(height: 1)
-                if let span = Grammar.runSpan(first: first, last: last) {
+                if let bars {
+                    ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
+                        Rectangle().fill(ink)
+                            .frame(width: max(1, geo.size.width * CGFloat(bar.to - bar.from) - 0.5),
+                                   height: max(2, (height - 3) * CGFloat(bar.height)))
+                            .offset(x: geo.size.width * CGFloat(bar.from), y: -1)
+                    }
+                } else if let span = Grammar.runSpan(first: first, last: last) {
                     Rectangle().fill(ink)
                         .frame(width: geo.size.width * CGFloat(span.to - span.from), height: height * 15 / 18)
                         .offset(x: geo.size.width * CGFloat(span.from))
@@ -294,7 +305,7 @@ struct ShowTile: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { Color.clear.preference(key: NameHeightKey.self, value: $0.size.height) })
                 .frame(maxWidth: .infinity, minHeight: sharedNameHeight, maxHeight: sharedNameHeight, alignment: .topLeading)
-            RunStrip(first: series.firstDate, last: series.lastDate, genre: series.genre)
+            RunStrip(first: series.firstDate, last: series.lastDate, genre: series.genre, years: series.yearCounts)
             VStack(alignment: .leading, spacing: 0) {
                 if let facts {
                     ForEach(Array(facts.enumerated()), id: \.offset) { Text(verbatim: $0.element).lineLimit(2) }
@@ -540,15 +551,29 @@ struct HeadBoard: View {
     let art: Artwork?
     let first: String?
     let last: String?
+    var years: [Int]? = nil
     var facts: [String?] = []
     /// Makes the board the link to the show; its name is then a line under the page's own title.
     var link: Route? = nil
+    /// The genre in the kicker, as a link that opens Browse filtered to it (the series page only: an
+    /// episode's board is itself the link to its show).
+    var genreKey: String? = nil
+    var kickerRest: String? = nil
+    @Environment(AppStore.self) private var store
     /// The picture's credit, under the board, when its license asks and the window shows it.
     var showsCredit = false
     @State private var width: CGFloat = 0
 
     static func side(forWidth width: CGFloat) -> CGFloat { width >= 1024 ? 176 : width >= 600 ? 128 : 96 }
     private var windowSide: CGFloat { Self.side(forWidth: width) }
+    /// The histogram needs height to read: 40 on a phone, 56 on an iPad or Mac, 96 across the room.
+    static func stripHeight(forWidth width: CGFloat) -> CGFloat {
+        #if os(tvOS)
+        96
+        #else
+        width >= 600 ? 56 : 40
+        #endif
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
@@ -572,7 +597,18 @@ struct HeadBoard: View {
             HStack(alignment: .top, spacing: Spacing.s4) {
                 PictureWindow(art: art, name: name, genre: genre, side: windowSide)
                 VStack(alignment: .leading, spacing: Spacing.s1) {
-                    if let kicker {
+                    if let genreKey {
+                        HStack(spacing: 0) {
+                            Button { store.openBrowse(genre: genreKey) } label: {
+                                Text(verbatim: GenreDisplay.name(genreKey).uppercased()).underline()
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Browse \(GenreDisplay.name(genreKey))")
+                            if let kickerRest, !kickerRest.isEmpty { Text(verbatim: " \u{00B7} " + kickerRest.uppercased()) }
+                        }
+                        .font(TypeRamp.caption)
+                        .tracking(1.2)
+                    } else if let kicker {
                         Text(verbatim: kicker.uppercased())
                             .font(TypeRamp.caption)
                             .tracking(1.2)
@@ -586,13 +622,13 @@ struct HeadBoard: View {
                 .foregroundStyle(ink)
                 Spacer(minLength: 0)
             }
-            RunStrip(first: first, last: last, genre: genre, height: 56)
+            RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years)
         }
         .padding(Spacing.s4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.board(genre))
         .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: genreKey == nil ? .combine : .contain)
     }
 }

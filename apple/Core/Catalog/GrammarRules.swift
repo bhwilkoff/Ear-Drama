@@ -81,6 +81,53 @@ nonisolated enum Grammar {
         return ((clamped(a) - Double(runAxis.lo)) / n, (clamped(max(a, b)) - Double(runAxis.lo) + 1) / n)
     }
 
+    /// The strip's bars from the run histogram ("first year, count, count..." as `years`): one per year
+    /// on the fixed axis, each bar's height its count over the busiest year (0...1); a year with no
+    /// episode draws nothing; a year off the axis is held at the nearest edge. nil when the show has
+    /// no histogram, and the strip falls back to the first-to-last span.
+    static func runBars(years: [Int]?) -> [(from: Double, to: Double, height: Double)]? {
+        guard let years, years.count >= 2 else { return nil }
+        let counts = years.dropFirst()
+        guard counts.contains(where: { $0 > 0 }) else { return nil }
+        let n = Double(runAxis.hi - runAxis.lo + 1)
+        var bySlot: [Int: Int] = [:]
+        for (i, c) in counts.enumerated() where c > 0 {
+            let slot = min(runAxis.hi, max(runAxis.lo, years[0] + i)) - runAxis.lo
+            bySlot[slot, default: 0] += c
+        }
+        let top = Double(bySlot.values.max() ?? 1)
+        return bySlot.keys.sorted().map { (Double($0) / n, Double($0 + 1) / n, Double(bySlot[$0] ?? 0) / top) }
+    }
+
+    /// Parses `series.year_counts` ("1932,3,12,0,4"); nil when absent or malformed.
+    static func parseYearCounts(_ text: String?) -> [Int]? {
+        guard let text, !text.isEmpty else { return nil }
+        let parts = text.split(separator: ",").map { Int($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count >= 2, !parts.contains(where: { $0 == nil }) else { return nil }
+        return parts.compactMap { $0 }
+    }
+
+    /// An episode with neither a date nor a number: its row's leading slot shows the series' window
+    /// rather than an empty date block.
+    static func undatedBare(date: String?, number: Int?) -> Bool {
+        let dated = date.map { $0.count >= 4 && $0.prefix(4).allSatisfy { $0.isASCII && $0.isNumber } } ?? false
+        return !dated && number == nil
+    }
+
+    /// Browse's A to Z section letter: the sort key's first letter without accents, A to Z, else "#".
+    static func azLetter(_ key: String) -> String {
+        let c = key.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: .diacriticInsensitive, locale: nil).uppercased().first
+        if let c, c >= "A", c <= "Z" { return String(c) }
+        return "#"
+    }
+
+    /// The letters that have shows, "#" first (the sort puts numbers and symbols before A).
+    static func azLetters(_ keys: [String]) -> [String] {
+        let have = Set(keys.map(azLetter))
+        return (["#"] + "ABCDEFGHIJKLMNOPQRSTUVWXYZ".map(String.init)).filter(have.contains)
+    }
+
     /// The grade a picture takes (uniform-imagery-design §2): monochrome, then `k * v + o`. The
     /// projection does not publish `art.grade` yet, so an `Artwork` carries none and this is the
     /// documented identity default.

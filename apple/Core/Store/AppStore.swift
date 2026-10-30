@@ -92,6 +92,16 @@ final class AppStore {
     /// A deep link's search query, taken once by the Search screen.
     var pendingSearch: String?
 
+    /// A genre the series page asked Browse to filter to, taken once by Browse.
+    var pendingBrowseGenre: String?
+
+    /// Opens Browse filtered to a genre, at its root.
+    func openBrowse(genre: String) {
+        paths[.browse] = NavigationPath()
+        pendingBrowseGenre = genre
+        selectedTab = .browse
+    }
+
     /// The invite opened this session, shown as Library's Invitation until
     /// joined or dropped ("Not now"). Held in memory only.
     var pendingInvite: String?
