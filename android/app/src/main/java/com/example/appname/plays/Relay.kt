@@ -133,4 +133,42 @@ object Relay {
         val last = earlier.lastOrNull() ?: return emptyList()
         return if (last.part == me) emptyList() else listOf(last)
     }
+
+    sealed interface RunEntry {
+        val lineID: String
+        val part: PartID
+
+        /** The performer's own line: the microphone opens on it. */
+        data class Mine(override val lineID: String, override val part: PartID) : RunEntry
+
+        /** A line with a usable human take: the take plays. */
+        data class TakeEntry(override val lineID: String, override val part: PartID, val take: Take) : RunEntry
+
+        /** Text only: the device voice reads it live and it is never rendered to audio (§5). */
+        data class Voice(override val lineID: String, override val part: PartID, val text: String) : RunEntry
+    }
+
+    /**
+     * Run through (owner ruling 4): the play from the chosen line's cue (the previous speech
+     * where another part speaks it, as [cueLines]) to the part's last line, nothing after it.
+     * Unrecorded directions and sound are skipped, as in the listen plan.
+     */
+    fun runPlan(production: Production, script: PlayScript, part: PartID, fromLineID: String): List<RunEntry> {
+        val at = script.lines.indexOfFirst { it.id == fromLineID }
+        if (at < 0) return emptyList()
+        val cue = cueLines(fromLineID, script, runUp = false).firstOrNull()
+        val start = cue?.let { c -> script.lines.indexOfFirst { it.id == c.id } } ?: at
+        val plan = ArrayList<RunEntry>()
+        for (line in script.lines.subList(start, script.lines.size)) {
+            val who = line.part
+            val take = if (who == part) null else production.usableTake(line.id)
+            when {
+                who == part -> plan += RunEntry.Mine(line.id, who)
+                take != null -> plan += RunEntry.TakeEntry(line.id, who, take)
+                line.kind == ScriptLine.Kind.Speech -> plan += RunEntry.Voice(line.id, who, line.spokenText)
+            }
+        }
+        val last = plan.indexOfLast { it is RunEntry.Mine }
+        return plan.take(last + 1)
+    }
 }

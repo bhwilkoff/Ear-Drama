@@ -1,6 +1,6 @@
 /**
- * One performer recording one part, line by line (PLAYS-DESIGN §2.3-2.4), the
- * web's mirror of apple/Core/Plays/RecordingSession.swift: five seconds of room
+ * One performer recording one part (PLAYS-DESIGN §2.3-2.4) in one of the three modes
+ * of owner ruling 4 (Run through, Line by line, Step), the web's mirror of apple/Core/Plays/RecordingSession.swift: five seconds of room
  * tone, then for each line the cue before it (an earlier performer's take
  * where one exists, the device voice live where not), then the microphone
  * until the line ends or the performer presses Stop. Only that window is kept.
@@ -19,6 +19,7 @@ const RecordingSession = (() => {
     let roomToneRMS = 0;
     let finishListening = null;
     let ended = false;
+    let runToken = 0;
 
     const s = {
       phase: { kind: 'idle' },
@@ -30,6 +31,10 @@ const RecordingSession = (() => {
       standInRate: 1,
       started: false,
       lastTakeBleed: false,
+      /** Run through, Line by line, or Step (owner ruling 4); only what follows a take differs. */
+      mode: 'step',
+      /** The run on screen (Run through): its first line and the takes it made. */
+      run: null,
     };
 
     const set = (phase) => { s.phase = phase; onChange(s); };
@@ -84,20 +89,19 @@ const RecordingSession = (() => {
       if (!ended) set({ kind: 'idle' });
     };
 
-    /** Plays the cue, then listens for the line and keeps it as a new take (the line's chosen one). */
-    s.record = async (lineID, runUp = false) => {
-      if (!s.started || s.isBusy() || ended) return;
+    /** Plays cue lines (a human take where one exists, the device voice live where not); what each was. */
+    async function playCues(cues, threshold, live = () => !ended) {
       const heard = {};
       let bleed = false;
-      const threshold = C.thresholdFor(roomToneRMS);
-      for (const cue of C.cueLines(script, lineID, runUp)) {
-        const t = C.chosenTake(s.production, cue.id);
+      for (const cue of cues) {
+        if (!live()) break;
+        const t = C.usableTake(s.production, cue.id);
         if (t) {
-          set({ kind: 'cue', lineID: cue.id, deviceVoice: false });
+          set({ kind: 'cue', run: !!s.run, lineID: cue.id, deviceVoice: false });
           await audio.playTake(await store.readTake(s.production.id, t.file));
           heard[cue.id] = t.id;
         } else {
-          set({ kind: 'cue', lineID: cue.id, deviceVoice: true });
+          set({ kind: 'cue', run: !!s.run, lineID: cue.id, deviceVoice: true });
           audio.startMeter(threshold);
           const read = await voice.speak(C.spokenText(cue), C.linePart(cue), s.standInRate);
           const loud = audio.stopMeter();
@@ -106,11 +110,15 @@ const RecordingSession = (() => {
             if (loud >= C.BLEED_LOUD_FRACTION) bleed = true;
           }
         }
-        if (ended) return;
       }
+      return { heard, bleed };
+    }
+
+    /** Opens the microphone on a line until it ends (or Stop), and keeps the line window as a new take. */
+    async function listenAndKeep(lineID, heard, bleed) {
       await announce();
-      if (ended) return;
-      set({ kind: 'listening', lineID });
+      if (ended) return null;
+      set({ kind: 'listening', run: !!s.run, lineID });
       detector = new C.LineEndDetector(audio.sampleRate, roomToneRMS);
       await new Promise((resolve) => {
         finishListening = resolve;
@@ -119,9 +127,9 @@ const RecordingSession = (() => {
       const cap = audio.endCapture();
       const [from, to] = C.lineWindow(detector.onset, detector.end, cap.samples.length, cap.sampleRate);
       detector = null;
-      if (ended) return;
+      if (ended) return null;
       const kept = { samples: cap.samples.subarray(from, to), sampleRate: cap.sampleRate };
-      if (!kept.samples.length) { set({ kind: 'idle' }); return; }
+      if (!kept.samples.length) return null;
       try {
         const atRate = await audio.toTakeRate(kept);
         const file = await store.writeTake(atRate, s.production, lineID);
@@ -134,11 +142,129 @@ const RecordingSession = (() => {
         if (loudness !== null) take.loudness = loudness;
         mutate(p => C.addTake(p, take));
         s.lastTakeBleed = bleed;
-        set({ kind: 'review', lineID });
+        return take;
       } catch (e) {
         console.error('take', e);
         set({ kind: 'failed', reason: 'save' });
+        return null;
       }
+    }
+
+    /** Remembers a take the run made, with the take its line had before, for Discard the run. */
+    function noteRun(lineID, take, prior) {
+      const entry = s.run.takes.find(e => e.lineID === lineID);
+      if (entry) entry.takes.push(take.id);
+      else s.run.takes.push({ lineID, prior, takes: [take.id] });
+    }
+
+    /**
+     * Step and Line by line: plays the cue, then listens for the line and keeps it as a new
+     * take (the line's chosen one). Step ends on the take's review, Line by line on the line,
+     * ready; Again in a run's review returns to the review.
+     */
+    s.record = async (lineID, runUp = false) => {
+      if (!s.started || s.isBusy() || ended) return;
+      const prior = s.production.chosen[lineID] || null;
+      const { heard, bleed } = await playCues(C.cueLines(script, lineID, runUp), C.thresholdFor(roomToneRMS));
+      if (ended) return;
+      const t = await listenAndKeep(lineID, heard, bleed);
+      if (ended || s.phase.kind === 'failed') return;
+      if (s.run) {
+        if (t) noteRun(lineID, t, prior);
+        set({ kind: 'runReview' });
+      } else if (!t) set({ kind: 'idle' });
+      else set({ kind: s.mode === 'step' ? 'review' : 'idle', lineID });
+    };
+
+    /**
+     * Run through (owner ruling 4): the play runs straight through from the line's cue, other
+     * parts in their human takes or the device voice live, and the microphone opens on each of
+     * this part's lines as it comes; the line-end detector closes it and the play goes on. The
+     * run ends after the part's last line or at Pause, and opens its review.
+     */
+    s.runThrough = async (fromLineID) => {
+      if (!s.started || s.isBusy() || ended || s.run) return;
+      const my = ++runToken;
+      s.run = { from: fromLineID, takes: [] };
+      const live = () => !ended && my === runToken;
+      const threshold = C.thresholdFor(roomToneRMS);
+      let heard = {}, bleed = false;
+      for (const entry of C.runPlan(s.production, script, part, fromLineID)) {
+        if (!live()) break;
+        const line = script.lines.find(l => l.id === entry.lineID);
+        if (entry.source === 'mine') {
+          const prior = s.production.chosen[line.id] || null;
+          const t = await listenAndKeep(line.id, heard, bleed);
+          if (ended || s.phase.kind === 'failed') return;
+          if (t) noteRun(line.id, t, prior);
+          heard = {}; bleed = false;
+        } else {
+          const got = await playCues([line], threshold, live);
+          heard = got.heard; bleed = got.bleed;
+        }
+      }
+      if (ended) return;
+      if (s.run.takes.length) set({ kind: 'runReview' });
+      else { s.run = null; set({ kind: 'idle' }); }
+    };
+
+    /** Pause ends a run; a line being recorded is kept as far as it went. */
+    s.pause = () => {
+      if (!s.run || s.phase.kind === 'runReview') return;
+      runToken += 1;
+      if (s.phase.kind === 'listening') stop();
+      else { voice.cancel(); audio.stopPlayback(); }
+    };
+
+    /** Keep N takes: the run's takes stay their lines' chosen ones. */
+    s.keepRun = () => {
+      if (!s.run || s.phase.kind !== 'runReview') return;
+      s.run = null;
+      set({ kind: 'idle' });
+    };
+
+    /** Discard the run: its takes are deleted and each line goes back to the take it had. */
+    s.discardRun = async () => {
+      if (!s.run || s.phase.kind !== 'runReview') return;
+      const run = s.run.takes;
+      s.run = null;
+      await store.discardRun(s.production.id, run);
+      s.production = store.production(s.production.id) || s.production;
+      set({ kind: 'idle' });
+    };
+
+    /** The takes the run on screen made, in script order, each its line's latest. */
+    s.runTakes = () => (s.run ? s.run.takes.map(e => C.takeById(s.production, e.takes[e.takes.length - 1])).filter(Boolean) : []);
+
+    /** After a playback, back to where it started from (a cue phase is never the place to return to). */
+    const settle = (back) => { if (!ended) set(back.kind === 'cue' || back.kind === 'listening' ? { kind: 'idle' } : back); };
+
+    /** The cue alone, heard before recording a line (Line by line's Cue). */
+    s.playCue = async (lineID) => {
+      if (!s.started || s.isBusy()) return;
+      const back = s.phase;
+      await playCues(C.cueLines(script, lineID), C.thresholdFor(roomToneRMS));
+      settle(back);
+    };
+
+    /** A take heard after its cue, as it will sit in the play (Step's With cue, the run's review). */
+    s.playWithCue = async (t) => {
+      if (!s.started || s.isBusy()) return;
+      const back = s.phase;
+      await playCues(C.cueLines(script, t.lineID), C.thresholdFor(roomToneRMS));
+      if (ended) return;
+      set({ kind: 'cue', run: !!s.run, lineID: t.lineID, deviceVoice: false });
+      await audio.playTake(await store.readTake(s.production.id, t.file));
+      settle(back);
+    };
+
+    /** The mode control: refused while the microphone is armed or open, and during a run. */
+    s.setMode = (mode) => {
+      if (!C.MODES.includes(mode) || s.isBusy() || s.run) return false;
+      s.mode = mode;
+      if (s.phase.kind === 'review') s.phase = { kind: 'idle' };
+      onChange(s);
+      return true;
     };
 
     /** The one control's second press: stop listening now. */
@@ -155,9 +281,10 @@ const RecordingSession = (() => {
 
     s.playTake = async (t) => {
       if (!s.started || s.isBusy()) return;
-      set({ kind: 'cue', lineID: t.lineID, deviceVoice: false });
+      const back = s.phase;
+      set({ kind: 'cue', run: !!s.run, lineID: t.lineID, deviceVoice: false });
       await audio.playTake(await store.readTake(s.production.id, t.file));
-      if (!ended) set({ kind: 'review', lineID: t.lineID });
+      settle(back);
     };
 
     s.choose = (t) => {
@@ -167,6 +294,7 @@ const RecordingSession = (() => {
 
     s.end = () => {
       ended = true;
+      runToken += 1;
       stop();
       voice.cancel();
       audio.stop();

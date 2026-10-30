@@ -463,6 +463,66 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   through `speak` only, never `write`. Export (a `ShareLink`) is there
   whenever the play is complete, and renders the mix first if it is
   missing or stale.
+- **§4.12b Making a part in direction D: three recording modes** (D3-6;
+  `PlaysGrammar.swift`, `RecordingScreen.swift`, `RecordingSession.swift`;
+  binding, and it supersedes §4.12's plain `List` page and single teleprompter
+  where they differ). Owner ruling 4 (2026-10-29): *"One option should let you
+  record and have the other parts play (either human voices or generated voices
+  for parts that haven't been taken yet) and it should play right through with
+  your opportunity to record your part as it shows up naturally within the Ear
+  Drama script. Another option should allow you to record each line individually
+  or re-record any lines again by tapping them and re-recording. Another option
+  could be a 'wait for tap' to advance through the script as you are
+  describing."* Owner rule 2026-10-30: *"It has to look good and use native
+  design and apis on the given platform. There is no reason to degrade one
+  platform in order to make sure everything is uniform across all platforms."*
+  - **Pages.** A play's page and the cast sheet open on `HeadBoard` on the drama
+    board (`PlayScript.boardGenre`; the genre is never named), the kicker "Radio
+    play", "Stage play" or "Ear drama", the author facts, the year when the
+    record has it, "N parts", "N lines", and the cast fingerprint in the mark slot
+    (`CastFingerprint`: one bar, each speaking part a segment as wide as its
+    share of the lines, largest first, in the board's ink). Then the actions
+    row, then `PartCard`s in a grid: a face (`PartFace`: the mark color with the
+    performer's initial; the device voice is the same circle outlined with a
+    waveform; a check badge when recorded), the name in the display face, "N
+    lines", and a 24-bar presence strip in the part's mark. The cast sheet's
+    "who" line is "You · 5 of 76", "Pat · recorded", "Open" or "Left silent".
+    Part marks are `PlayScript.partHue` (the seven largest speaking parts take
+    mystery, scifi, western, serial, documentary, comedy, news; the rest,
+    directions and sound are neutral). No card has a one-sided stripe. Browse's
+    play tiles and Search's rows stand on the drama board too.
+  - **The recorder** keeps its slots fixed in every mode and state: header (part
+    name, play title, "K of N" kept), the strip (one cell per line of the part:
+    kept in the part's mark, the current one outlined, red while it records), the
+    mode control, the scene, the dock. The mode control is the native
+    `Picker(.segmented)` ("Run through", "Line by line", "Step"), disabled
+    while busy and during a run (`RecordingSession.setMode` refuses). The
+    performer's line sits in a box on their part's board with its one on-board
+    color: dashed red edge and "Next" while the cue plays, solid red edge, a red
+    "Recording 0:03" pill and the level meter while the microphone is open.
+  - **Step**: Previous, the round red Record (Cancel while the cue plays, Stop
+    while listening), Next; after a take Again (red dot), With cue (blue), Keep
+    (ink). Keep lands on the next line's Ready; it does not play its cue.
+  - **Run through**: the round red "From here" starts the run at the current
+    line (`runThrough(from:)`): other parts play in their usable takes or the
+    device voice live, the microphone opens on each of the part's lines and the
+    line-end detector closes it. While it plays the dock is ink Pause (red Stop
+    while the microphone is open; both pause) and "N taken". Pausing or finishing
+    opens the review: "This run · N takes", each row Line n, its text, play with
+    its cue, its length and Again, then Discard the run (blue) and Keep N takes
+    (ink). Discard deletes the run's takes and files and puts each line back on
+    the take it had.
+  - **Line by line**: every line of the part with "Take k" or "Not yet"; a tap
+    opens that line in place with its cue above, the line box, Record (red) or
+    Stop, and Cue (blue). No dock. The aids row (Run-up, Hear it read, the
+    device-voice speed) belongs to Step and Line by line only.
+  - **Color** is Decision 064's: ink acts, blue finds the way, red is recording
+    only. Captions are a refusal, a warning or a fact a person cannot see.
+  - **iPad (regular width)** puts the scene between a left rail "In this scene"
+    (the parts near the line and who holds each) and a right rail with this
+    line's aids. The stand-in buffers' lifetime is unchanged (§5 of
+    PLAYS-DESIGN): held for the bleed check, then released; a run creates no new
+    write path. The microphone is asked for at Start Recording, never at launch.
 - **§4.12a A shared ear drama** (phase 2; PLAYS-DESIGN §11.7, binding:
   "The same verbs on the web, iPhone, iPad, Mac, and Android ... Words on
   screen are these, on every platform"). Logic in `PlaysShare`

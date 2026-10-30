@@ -546,6 +546,10 @@ fun HeadBoard(
     years: List<Int>? = null,
     /** The series page: the kicker's genre is a link that opens Browse filtered to it. */
     genreLink: GenreLink? = null,
+    /** An ear drama's credits (its author), one line under the name. */
+    credits: String? = null,
+    /** What stands in the mark slot in place of the run strip (an ear drama's cast fingerprint), given the slot's height. */
+    mark: (@Composable (Dp) -> Unit)? = null,
 ) {
     val on = onBoard(genre)
     val side = headSlot()
@@ -582,11 +586,13 @@ fun HeadBoard(
                     color = on,
                     modifier = if (onOpen == null) Modifier.semantics { heading() } else Modifier,
                 )
+                if (credits != null) Text(credits, style = t.titleMedium, color = on)
                 EventLine(facts, color = on)
             }
         }
         // The histogram needs height to read: 40 dp on a phone, 56 from 600 dp wide.
-        RunStrip(first, last, on, height = if (side >= 128.dp) 56.dp else 40.dp, years = years)
+        val markHeight = if (side >= 128.dp) 56.dp else 40.dp
+        if (mark != null) mark(markHeight) else RunStrip(first, last, on, height = markHeight, years = years)
     }
 }
 

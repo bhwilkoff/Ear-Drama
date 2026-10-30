@@ -29,7 +29,13 @@ protocol LiveAudio: AnyObject {
     /// Microphone chunks, mono at the take rate, delivered on the main actor.
     func beginCapture(_ onChunk: @escaping @MainActor @Sendable ([Float]) -> Void)
     func endCapture() -> MicrophoneCapture
+    /// Ends whatever `play` is playing now, so its call returns (Run through's Pause).
+    func stopPlayback()
     func stop()
+}
+
+extension LiveAudio {
+    func stopPlayback() {}
 }
 
 /// One engine, one clock (research 08a §4.2): a player node for human takes
@@ -40,6 +46,7 @@ final class EngineLiveAudio: LiveAudio {
     private let player = AVAudioPlayerNode()
     private var sink: CaptureSink?
     private var running = false
+    private var pending: PlaybackGate?
 
     init() {
         engine.attach(player)
@@ -83,9 +90,12 @@ final class EngineLiveAudio: LiveAudio {
         }
         guard running, let buffer else { return }
         if !player.isPlaying { player.play() }
+        let gate = PlaybackGate()
+        pending = gate
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            gate.arm(done)
             player.scheduleBuffer(buffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { @Sendable _ in
-                done.resume()
+                gate.finish()
             }
         }
     }
@@ -107,6 +117,11 @@ final class EngineLiveAudio: LiveAudio {
         return MicrophoneCapture(samples: samples, sampleRate: TakeAudio.sampleRate)
     }
 
+    func stopPlayback() {
+        pending?.finish()
+        player.stop()
+    }
+
     func stop() {
         guard running else { return }
         engine.inputNode.removeTap(onBus: 0)
@@ -116,6 +131,33 @@ final class EngineLiveAudio: LiveAudio {
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         #endif
+    }
+}
+
+/// One cue's playback ends once: when the buffer has played, or when Pause stops it first.
+private nonisolated final class PlaybackGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var done: CheckedContinuation<Void, Never>?
+    private var finished = false
+
+    func arm(_ continuation: CheckedContinuation<Void, Never>) {
+        lock.lock()
+        if finished {
+            lock.unlock()
+            continuation.resume()
+        } else {
+            done = continuation
+            lock.unlock()
+        }
+    }
+
+    func finish() {
+        lock.lock()
+        finished = true
+        let continuation = done
+        done = nil
+        lock.unlock()
+        continuation?.resume()
     }
 }
 

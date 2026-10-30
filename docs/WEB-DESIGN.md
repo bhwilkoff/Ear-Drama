@@ -231,17 +231,21 @@ web app follows today.
     locally, copy it into the `data` link's `plays/` folder.
     - *Replaced*: "**The list** (`?view=plays`): "Your plays" ... then
       "Plays you can cast"."
-  - **A play** (`?play=`): the author with the years the record carries,
-    a facts line (the record's year when it has one, then "N parts · N
-    lines"; never an age rating, Decision 067), the rights line, "Start an
-    ear drama" (was "Cast this play"), and its parts
-    largest first with line counts (directions and sound are parts too).
+  - **A play** (`?play=`; D3-6, §4.10b): the head board (the title block
+    on the drama board, kicker "Radio play" or "Stage play", the author
+    with the years the record carries, the record's year when it has one,
+    "N parts", "N lines"; never an age rating, Decision 067; the cast
+    fingerprint in the mark slot), "Start an ear drama" (ink), its parts
+    as part cards largest first (directions and sound are parts too), then
+    the rights line.
     Casting replaces this page in the history with the cast sheet, so the
     depth stays two.
-  - **The cast sheet** (`?production=`): every part with its state. Every
-    open part offers "Take part" while no part records, with an optional
-    name field; the largest open part's button is the accent one, the
-    others plain (C7, owner 2026-10-23: any order, largest suggested);
+  - **The cast sheet** (`?production=`; D3-6, §4.10b): the head board
+    (kicker "Ear drama", "N of M lines recorded"), Listen through, one
+    optional "Recording as" name field, and the part cards, each with its
+    state ("Pat · 12 of 44", "Pat · recorded", "Device voice", "Left
+    silent"). Every open part offers "Take part" while no part records;
+    the largest open part's button is ink, the others blue (C7, owner 2026-10-23: any order, largest suggested);
     sound and directions may "Leave silent"; a finished part offers "Open
     part" only while no part records. A refusal is one line in the error
     color. Below: Listen through, any time (§2.6, C5): until every
@@ -260,20 +264,72 @@ web app follows today.
     a play never shared). Signed in, before anything, the
     headphones refusal. The web cannot see the audio route (Safari lists no
     outputs, and Chrome's labels name devices, not the route in use), so
-    the page says "Headphones only. This browser cannot tell whether they
-    are on." and Start recording stays disabled until the person checks
+    the page says "Headphones on" over "This browser cannot tell whether
+    they are on." and Start recording stays disabled until the person checks
     "My headphones are on", every session (PLAYS-DESIGN §4.3). Start
     recording asks for the microphone then, never earlier
     (`getUserMedia`, `echoCancellation: true`, `autoGainControl` and
     `noiseSuppression` off). Then five seconds of room tone with a
-    countdown, then the teleprompter: the cue line (labeled "Device voice"
-    when the device voice reads it), "Your line" while listening, the line
-    large, the next line dim, the line's takes, one record control,
-    previous and next, Run-up, Hear it read, the device voice's speed,
-    Keep, and Done with this part (enabled when every line of a speaking
-    part has a take). Keys: Space records or stops, Return keeps, the
-    arrow keys move by line. Leaving the page ends the session and stops
-    the microphone.
+    countdown, then the recorder in one of three modes (§4.10b). Done with
+    this part is enabled when every line of a speaking part has a take.
+    Leaving the page ends the session and stops the microphone.
+    - *Replaced*: "then the teleprompter: the cue line ..., one record
+      control, previous and next, Run-up, Hear it read, the device voice's
+      speed, Keep".
+- **§4.10b Making in direction D: three recording modes** (D3-6, 2026-10-30;
+  owner ruling 4, 2026-10-29: *"One option should let you record and have
+  the other parts play (either human voices or generated voices for parts
+  that haven't been taken yet) and it should play right through with your
+  opportunity to record your part as it shows up naturally within the Ear
+  Drama script. Another option should allow you to record each line
+  individually or re-record any lines again by tapping them and
+  re-recording. Another option could be a "wait for tap" to advance
+  through the script as you are describing."*; PLAYS-DESIGN §2.4).
+  - **A play is a board.** Every castable script stands on the drama board
+    (scripts carry no genre; the genre is never named), with the title
+    block in its window and the **cast fingerprint** (each speaking part's
+    share of the lines, largest first, in onBoard, told apart by 1 px gaps)
+    in the mark slot: the play page, the cast sheet, Browse's play tiles
+    and Search's play rows. Picking a play is never a list of plain text.
+  - **A part has a hue**: the seven largest speaking parts take the seven
+    marks in a fixed order (`PlaysCore.partHue`, golden on every platform);
+    the rest, and directions and sound, stand on neutral. A **face** is a
+    filled circle on the mark with the performer's initial, or a dashed ring
+    with a wave for the device voice (never a face, §5 rule 3), a check
+    when the part is recorded. A part card is face, name, "N lines", a
+    presence strip (24 bars across the script), who holds it, its action.
+  - **The recorder's fixed slots**: the top (close, the part over the play,
+    "K of N" kept), the strip (one cell per line: kept in the part's hue,
+    flagged in the warning color, current in ink, red while the microphone
+    is open), the mode control (a native radio group styled as segments:
+    Run through, Line by line, Step; disabled while a cue plays, the
+    microphone is open, or a run is on screen), the two nearest partners
+    with who each is heard as, the scene, the dock. At 1100 px and wider,
+    "In this scene" (faces) on the left and this line's aids and the keys
+    on the right.
+  - **Your line's box** is your part's board with its one on-board color;
+    a dashed red edge and "Next" while the cue plays, a solid red edge and
+    "Recording 0:03" while the microphone is open. The cue card is the
+    surface; the playing speaker's face takes an ink ring, never red.
+  - **Step**: Previous, the round red Record, Next; the take's review is
+    Again (red dot), With cue (blue), Keep (ink); Keep lands on the next
+    line, ready (it does not play its cue). Aids: Run-up, Hear it read, the
+    device voice's speed.
+  - **Run through**: the round red Record labeled "From here" starts the
+    run at the line on screen; the play plays from that line's cue (human
+    takes, the device voice live), the microphone opens on each of your
+    lines and the line-end detector closes it; the dock is ink Pause, red
+    Stop while the microphone is open (both end the run), and "N taken".
+    The review lists the run's takes (each played with its cue, Again on
+    any), then Discard the run (blue: its takes and files are deleted, each
+    line back on its earlier take) or Keep N takes (ink).
+  - **Line by line**: every line of the part with "Take N" or "Not yet";
+    tapping a line opens it in place under its cue, with Record (red) and
+    Cue (blue). The arrow keys move the selection.
+  - Keys: Space records, stops, or pauses; Return keeps; R records again;
+    the arrow keys move by line. Rendered at 320, 375 and 1440 px, light
+    and dark, with fake audio (`tools/webdrive.py`, muted); no button row
+    wraps, nothing overflows (2026-10-30).
   - **Capture is an AudioWorklet writing PCM**, not MediaRecorder: the
     line-end detector reads 20 ms frames as they arrive, the kept window
     (onset less 250 ms to end plus 250 ms) is cut from samples, and every

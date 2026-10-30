@@ -300,11 +300,16 @@ struct RecordingCommands_macOS: Commands {
 
     var body: some Commands {
         CommandMenu("Recording") {
-            Button(recording?.isListening == true ? "Stop" : "Record") { recording?.recordOrStop() }
-                .keyboardShortcut(.space, modifiers: [])
-                .disabled(recording == nil || (recording!.session.isBusy && recording?.isListening != true))
-            Button("Keep and Go to Next Line") { recording?.move(1) }
+            Button(recording?.isListening == true ? "Stop" : recording?.session.run != nil ? "Pause" : "Record") {
+                recording?.recordOrStop()
+            }
+            .keyboardShortcut(.space, modifiers: [])
+            .disabled(recording?.canPress != true)
+            Button("Keep") { recording?.keep() }
                 .keyboardShortcut(.return, modifiers: [])
+                .disabled(recording == nil || (recording!.session.isBusy && recording!.session.run == nil))
+            Button("Again") { recording?.again() }
+                .keyboardShortcut("r", modifiers: [])
                 .disabled(recording == nil || recording!.session.isBusy)
             Divider()
             Button("Previous Line") { recording?.move(-1) }
@@ -318,7 +323,7 @@ struct RecordingCommands_macOS: Commands {
                 if let recording, let line = recording.line { Task { await recording.session.record(line.id, runUp: true) } }
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
-            .disabled(recording == nil || recording!.session.isBusy)
+            .disabled(recording == nil || recording!.session.isBusy || recording!.session.run != nil)
         }
     }
 }

@@ -24,7 +24,7 @@ The device voice is a scene partner, never a performer.
 
 ---
 
-> **Owner, 2026-10-29** (DESIGN-LOOP): an invite link shows everything signed out (the play, parts, who is in, playable takes); claiming and recording need an account. Finished ear dramas are listed and credited on Ear Drama's own pages. Recording has three modes: Run through, Line by line, Step. These supersede any narrower rule below; §11.1, §11.5 and §11.7 rule 3 are rewritten for the first two (Worker side built 2026-10-29: docs/WORKER.md "Open reads"). The recording modes are not yet rewritten into §2 or §4.
+> **Owner, 2026-10-29** (DESIGN-LOOP): an invite link shows everything signed out (the play, parts, who is in, playable takes); claiming and recording need an account. Finished ear dramas are listed and credited on Ear Drama's own pages. Recording has three modes: Run through, Line by line, Step. These supersede any narrower rule below; §11.1, §11.5 and §11.7 rule 3 are rewritten for the first two (Worker side built 2026-10-29: docs/WORKER.md "Open reads"). The recording modes are written into §2.4 (D3-6, 2026-10-30).
 
 ## §1. Why it should exist, and who it touches
 
@@ -151,12 +151,44 @@ Every platform does the same seven things, in its own idiom.
    part, reading along, and listening need none. Then the app checks the
    audio route and asks for headphones (§4.3), records five seconds of room
    tone with a visible countdown, and opens the script at their first scene.
-4. **Record line by line.** The previous line plays, from a human take where
-   one exists and from a live device voice where not, with the speaking
-   character's name and line on screen. Then the device stops and listens
-   for the performer's line, and voice detection ends the take. They can redo
-   any line, hear a run-up from a line or two before it, and mark the take
-   they like.
+4. **Record, in one of three modes** (owner ruling 4, 2026-10-29: *"One
+   option should let you record and have the other parts play (either human
+   voices or generated voices for parts that haven't been taken yet) and it
+   should play right through with your opportunity to record your part as
+   it shows up naturally within the Ear Drama script. Another option should
+   allow you to record each line individually or re-record any lines again
+   by tapping them and re-recording. Another option could be a "wait for
+   tap" to advance through the script as you are describing."*). The
+   engine is one session; the mode changes only what follows a take
+   (`runPlan`, `discardRun`, `partHue`, and the session's `mode`,
+   `runThrough`, `pause`, `keepRun`, `discardRun`, `playCue`,
+   `playWithCue`, the same names on every platform; golden-tested on each).
+   In every mode a cue line plays from a usable human take where one exists
+   and from a live device voice where not (never stored, §5), the speaking
+   character's name and line on screen, then the device listens and voice
+   detection ends the take; every take is a new take, chosen at once.
+   - **Step**: each cue waits for a tap. Record plays the line's cue and
+     listens; the take's review offers Again, With cue (the take after its
+     cue), and Keep, which moves to the next line, ready (it does not play
+     its cue). Run-up (two lines before) and Hear it read stay.
+   - **Run through**: from the line on screen, the play plays straight
+     through from that line's cue to the part's last line: other parts in
+     their human takes or the live device voice, unrecorded directions and
+     sound skipped, and the microphone opens on each of the performer's
+     lines as it comes. Pause (or Stop while the microphone is open) ends
+     the run; a line being recorded is kept as far as it went. The run's
+     takes are written as they land, so nothing is lost if the app closes;
+     the review then plays each with its cue, records any Again, and offers
+     Keep N takes or Discard the run, which deletes the run's takes and
+     files and puts each line back on the take it had (the person's own
+     act, §8 rule 5).
+   - **Line by line**: every line of the part with its state; tapping any
+     line opens it under its cue to record it or record it again, and the
+     take leaves the line ready to record again.
+   The mode control is the platform's native segmented control, disabled
+   while a cue plays, the microphone is open, or a run is on screen.
+   - *Replaced*: "**Record line by line.** The previous line plays ... and
+     mark the take they like."
 5. **Pass the phone.** "Done with this part" returns to the cast sheet, which
    now shows that part as recorded. The next person takes another part and
    hears the first performer's takes where the device voice used to be.

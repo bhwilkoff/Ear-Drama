@@ -1,5 +1,6 @@
 package com.example.appname.ui.screens
 
+import com.example.appname.ui.wayColors
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -62,6 +63,9 @@ import com.example.appname.plays.SharedPart
 import com.example.appname.plays.SharedPlays
 import com.example.appname.plays.SharedRecord
 import com.example.appname.ui.AccountRow
+import com.example.appname.ui.Holder
+import com.example.appname.ui.PartCard
+import com.example.appname.ui.PartGrid
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.playButtonColors
@@ -222,9 +226,13 @@ fun LazyListScope.sharedCastRows(
     if (rec == null) return
     val recordingNow = PlaysShare.recordingPart(rec)
     val director = PlaysShare.isDirector(rec, me)
-    items(sheet.script.castParts, key = { "shared:" + it.id.raw }) { part ->
+    item(key = "shared-parts-h") { SectionHeader("Parts") }
+    item(key = "shared-parts") {
+        PartGrid(sheet.script.castParts) { part, modifier ->
         val state = rec.parts[part.id.raw] ?: SharedPart()
         SharedCastRow(
+            modifier = modifier,
+            script = sheet.script,
             part = part,
             state = state,
             mine = PlaysShare.isMine(rec, part.id.raw, me),
@@ -238,6 +246,7 @@ fun LazyListScope.sharedCastRows(
             sheet = sheet,
             onRecord = { onRecord(part.id) },
         )
+        }
     }
     sheet.error?.let { item(key = "shared-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
     val total = pendingByPart.values.sum()
@@ -421,6 +430,8 @@ private fun ConsentWords(text: String, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SharedCastRow(
+    modifier: Modifier,
+    script: PlayScript,
     part: CastPart,
     state: SharedPart,
     mine: Boolean,
@@ -435,40 +446,39 @@ private fun SharedCastRow(
     onRecord: () -> Unit,
 ) {
     val raw = part.id.raw
-    val lines = if (part.lineCount == 1) "1 line" else "${part.lineCount} lines"
     val name = state.performer?.let { " · $it" }.orEmpty()
     val status = when (state.status) {
         "recording" -> "Recording$name"
         "done" -> "Recorded$name"
         "silent" -> "Left silent"
-        else -> lines
+        else -> "Open"
     }
-    Column {
-        ListItem(
-            headlineContent = { Text(part.title, style = MaterialTheme.typography.titleMedium) },
-            supportingContent = { Text(status, style = MaterialTheme.typography.labelMedium) },
-        )
-        FlowRow(
-            Modifier.padding(horizontal = Spacing.S4.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
-        ) {
-            when (state.status) {
-                "recording" -> if (mine) {
-                    Button(onClick = onRecord, enabled = !busy) { Text("Record") }
-                    OutlinedButton(onClick = { sheet.done(raw) }, enabled = !busy && waiting == 0 && ready) { Text("Done with this part") }
-                    TextButton(onClick = { sheet.release(raw) }, enabled = !busy) { Text("Release") }
+    val full = Modifier.fillMaxWidth()
+    PartCard(
+        script = script,
+        part = part,
+        holder = if (state.status == "recording" || state.status == "done") Holder.Person(state.performer) else Holder.DeviceVoice,
+        recorded = state.status == "done",
+        modifier = modifier,
+        who = status,
+        highlight = state.status == "recording" && mine,
+    ) {
+        when (state.status) {
+            "recording" -> if (mine) {
+                Button(onClick = onRecord, enabled = !busy, modifier = full, colors = playButtonColors()) { Text("Record") }
+                OutlinedButton(onClick = { sheet.done(raw) }, enabled = !busy && waiting == 0 && ready, modifier = full) { Text("Done with this part") }
+                TextButton(onClick = { sheet.release(raw) }, enabled = !busy, modifier = full) { Text("Release") }
+            }
+            "done", "silent" -> if (!recordingElsewhere && (performerIsMe || director)) {
+                OutlinedButton(onClick = { sheet.reopen(raw) }, enabled = !busy, modifier = full, colors = wayColors()) { Text("Open part") }
+            }
+            else -> if (!recordingElsewhere) {
+                if (isNext) {
+                    Button(onClick = { sheet.take(raw) }, enabled = !busy, modifier = full, colors = playButtonColors()) { Text("Take part") }
+                } else {
+                    OutlinedButton(onClick = { sheet.take(raw) }, enabled = !busy, modifier = full, colors = wayColors()) { Text("Take part") }
                 }
-                "done", "silent" -> if (!recordingElsewhere && (performerIsMe || director)) {
-                    OutlinedButton(onClick = { sheet.reopen(raw) }, enabled = !busy) { Text("Open part") }
-                }
-                else -> if (!recordingElsewhere) {
-                    if (isNext) {
-                        Button(onClick = { sheet.take(raw) }, enabled = !busy) { Text("Take part") }
-                    } else {
-                        OutlinedButton(onClick = { sheet.take(raw) }, enabled = !busy) { Text("Take part") }
-                    }
-                    if (!part.id.isSpeaking) OutlinedButton(onClick = { sheet.leaveSilent(raw) }, enabled = !busy) { Text("Leave silent") }
-                }
+                if (!part.id.isSpeaking) OutlinedButton(onClick = { sheet.leaveSilent(raw) }, enabled = !busy, modifier = full, colors = wayColors()) { Text("Leave silent") }
             }
         }
     }

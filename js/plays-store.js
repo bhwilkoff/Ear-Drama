@@ -191,6 +191,15 @@ const PlayStore = (() => {
         await store.save(production);
       },
 
+      /** Discard the run (Run through's review): its takes and their files go, each line back to its prior take. */
+      async discardRun(id, run) {
+        const p = store.production(id);
+        if (!p) return;
+        const { production, gone } = C.discardRun(p, run);
+        for (const t of gone) await backend.remove(takePath(id, t.file)).catch(() => {});
+        await store.save(production);
+      },
+
       /** Writes a take file that never existed before (takes are never overwritten). */
       async writeTake(capture, p, lineID) {
         const file = `${lineID}-${short()}.wav`;

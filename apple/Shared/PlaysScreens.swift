@@ -36,13 +36,16 @@ struct StartEarDramaButton: View {
     @State private var error: String?
 
     var body: some View {
-        Button {
-            start()
-        } label: {
-            Label("Start an ear drama", systemImage: "person.2")
-        }
-        if let error {
-            Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            Button {
+                start()
+            } label: {
+                Label("Start an ear drama", systemImage: "person.2")
+            }
+            .pageAction(primary: true)
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
+            }
         }
     }
 
@@ -167,7 +170,7 @@ struct ScriptRow: View {
     var body: some View {
         // R11a: a play's row leads with its tile, the title's letter (plays carry no genre).
         HStack(alignment: .top, spacing: Spacing.s3) {
-            ArtTile(name: script.title, genre: nil, face: nil)
+            ArtTile(name: script.title, genre: PlayScript.boardGenre, face: nil)
             VStack(alignment: .leading, spacing: Spacing.s1) {
                 Text(verbatim: script.title).font(TypeRamp.bodyStrong)
                 Text(verbatim: [script.authorLine, "\(script.castParts.filter { $0.id.isSpeaking }.count) parts"]
@@ -188,33 +191,36 @@ struct PlayScriptScreen: View {
 
     var body: some View {
         if let script = plays.script(id) {
-            List {
-                Section {
-                    VStack(alignment: .leading, spacing: Spacing.s2) {
-                        Text(verbatim: script.title).font(TypeRamp.sectionHeader)
-                        if !script.authorLineWithYears.isEmpty {
-                            Text(verbatim: script.authorLineWithYears).font(TypeRamp.body)
-                        }
-                        Text(verbatim: [script.year.map(String.init), script.lengthLine].compactMap { $0 }
-                            .joined(separator: " · "))
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                        RightsLine(script: script)
-                    }
-                    StartEarDramaButton(script: script)
-                }
-                Section("Parts") {
-                    ForEach(script.castParts) { part in
-                        PartCountRow(part: part)
-                    }
-                }
-            }
+            ScrollView { PlayPageBody(script: script) }
             .navigationTitle(script.title)
             .task { await plays.load() }
         } else {
             EmptyState("Play not found", systemImage: "questionmark.square.dashed")
                 .task { await plays.load() }
         }
+    }
+}
+
+/// A play's page: the head board, Start an ear drama, the parts, the rights line (D3-6).
+struct PlayPageBody: View {
+    let script: PlayScript
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s4) {
+            HeadBoard(kicker: PlayHead.kicker(script), name: script.title, genre: PlayScript.boardGenre, art: nil,
+                      first: nil, last: nil, facts: PlayHead.facts(script),
+                      credits: script.authorLineWithYears, castScript: script)
+            ActionRow { StartEarDramaButton(script: script) }
+            Text("Parts").font(TypeRamp.sectionHeader)
+            PartGrid {
+                ForEach(script.castParts) { part in
+                    PartCard(script: script, part: part)
+                }
+            }
+            RightsLine(script: script)
+        }
+        .padding(Spacing.s4)
+        .modifier(ReadableColumn())
     }
 }
 
@@ -238,21 +244,6 @@ private struct RightsLine: View {
             }
         }
         .font(TypeRamp.caption)
-    }
-}
-
-private struct PartCountRow: View {
-    let part: CastPart
-
-    var body: some View {
-        HStack {
-            Text(verbatim: part.title)
-            Spacer()
-            Text(part.lineCount == 1 ? "1 line" : "\(part.lineCount) lines")
-                .font(TypeRamp.tabular)
-                .foregroundStyle(Color.brandTextMuted)
-        }
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -314,23 +305,33 @@ struct CastSheet: View {
     var body: some View {
         let rec = shared.record(for: production, in: plays.store)
         List {
-            SharedProductionSection(production: production, script: script)
             Section {
-                ForEach(script.castParts) { part in
-                    if let rec {
-                        SharedPartRow(production: production, script: script, part: part, rec: rec, open: open)
-                    } else {
-                        row(part)
-                    }
-                }
-            } footer: {
-                if let refusal { Text(verbatim: refusal).foregroundStyle(Color.semanticError) }
-            }
-            if let rec, PlaysShare.published(rec) {
-                ChangeLinesSection(production: production, script: script, rec: rec, replace: replace)
+                HeadBoard(kicker: "Ear drama", name: script.title, genre: PlayScript.boardGenre, art: nil, first: nil,
+                          last: nil, facts: PlayHead.facts(script), credits: script.authorLineWithYears, castScript: script)
+                    .padding(.horizontal, Spacing.s4)
+                    .plainRow()
             }
             Section {
                 ListenThrough(production: production, script: script)
+            }
+            SharedProductionSection(production: production, script: script)
+            Section {
+                PartGrid {
+                    ForEach(script.castParts) { part in
+                        if let rec {
+                            SharedPartRow(production: production, script: script, part: part, rec: rec, open: open)
+                        } else {
+                            card(part)
+                        }
+                    }
+                }
+                .padding(.horizontal, Spacing.s4)
+                .plainRow()
+            } footer: {
+                if let refusal { Text(verbatim: refusal).foregroundStyle(Color.semanticError).padding(.horizontal, Spacing.s4) }
+            }
+            if let rec, PlaysShare.published(rec) {
+                ChangeLinesSection(production: production, script: script, rec: rec, replace: replace)
             }
             Section {
                 DeleteProductionButton(production: production)
@@ -343,6 +344,7 @@ struct CastSheet: View {
                 }
             }
         }
+        .listStyle(.plain)
         .alert("Take this part", isPresented: Binding(get: { taking != nil }, set: { if !$0 { taking = nil } })) {
             TextField("Your name", text: $performer)
             Button("Take Part") { take() }
@@ -358,67 +360,11 @@ struct CastSheet: View {
         }
     }
 
-    @ViewBuilder private func row(_ part: CastPart) -> some View {
-        let state = production.state(of: part.id)
-        let next = Relay.next(production, script)
-        HStack(spacing: Spacing.s3) {
-            // Each control in the row is its own button (borderless or bordered),
-            // so a tap on one never fires the others.
-            Button { open(part.id) } label: {
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    Text(verbatim: part.title).font(TypeRamp.bodyStrong).foregroundStyle(Color.brandText)
-                    Text(verbatim: status(part, state))
-                        .font(TypeRamp.caption)
-                        .foregroundStyle(Color.brandTextMuted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.borderless)
-            .accessibilityElement(children: .combine)
-            switch state.status {
-            case .recording:
-                Button("Record") { open(part.id) }.buttonStyle(.borderedProminent)
-            case .open:
-                if !part.id.isSpeaking {
-                    Button("Leave Silent") { apply { try Relay.leaveSilent(part.id, in: $0, script: script) } }
-                        .buttonStyle(.bordered)
-                }
-                if part.id == next {
-                    takeButton(part.id).buttonStyle(.borderedProminent)
-                } else {
-                    takeButton(part.id).buttonStyle(.bordered)
-                }
-            case .done, .silent:
-                Menu {
-                    Button("Open Part") { apply { try Relay.reopen(part.id, in: $0, script: script) } }
-                } label: {
-                    Image(systemName: "ellipsis.circle").accessibilityLabel("More")
-                }
-                .menuStyle(.borderlessButton)
-                .disabled(Relay.current(production, script) != nil)
-                .fixedSize()
-            }
-        }
-    }
-
-    private func takeButton(_ part: PartID) -> some View {
-        Button("Take Part") {
-            performer = ""
-            taking = part
-        }
-    }
-
-    private func status(_ part: CastPart, _ state: PartState) -> String {
-        let lines = part.lineCount == 1 ? "1 line" : "\(part.lineCount) lines"
-        let missing = Relay.missingLines(part.id, in: production, script: script).count
-        let name = state.performer.map { " · \($0)" } ?? ""
-        return switch state.status {
-        case .open: lines
-        case .recording: "\(part.lineCount - missing) of \(lines) recorded\(name)"
-        case .done: "Recorded\(name)"
-        case .silent: "Left silent"
-        }
+    @ViewBuilder private func card(_ part: CastPart) -> some View {
+        LocalPartCard(production: production, script: script, part: part, open: { open(part.id) },
+                      take: { performer = ""; taking = part.id },
+                      leaveSilent: { apply { try Relay.leaveSilent(part.id, in: $0, script: script) } },
+                      reopen: { apply { try Relay.reopen(part.id, in: $0, script: script) } })
     }
 
     private func take() {
@@ -440,6 +386,65 @@ struct CastSheet: View {
             refusal = error.localizedDescription
         }
         return false
+    }
+}
+
+/// One part as the device keeps it: who holds it, how far along, and the verbs that apply.
+struct LocalPartCard: View {
+    let production: Production
+    let script: PlayScript
+    let part: CastPart
+    let open: () -> Void
+    let take: () -> Void
+    let leaveSilent: () -> Void
+    let reopen: () -> Void
+
+    var body: some View {
+        let state = production.state(of: part.id)
+        let next = Relay.next(production, script)
+        PartCard(script: script, part: part, holder: holder(state), recorded: state.status == .done,
+                 who: who(state), current: state.status == .recording, onOpen: open) {
+            switch state.status {
+            case .recording:
+                Button("Record", action: open).buttonStyle(.play(.ink))
+            case .open:
+                HStack(spacing: Spacing.s2) {
+                    if !part.id.isSpeaking {
+                        Button("Leave silent", action: leaveSilent).buttonStyle(.play(.way))
+                    }
+                    Button("Take part", action: take).buttonStyle(.play(part.id == next ? .ink : .way))
+                }
+            case .done, .silent:
+                Button("Open part", action: reopen)
+                    .buttonStyle(.play(.way))
+                    .disabled(Relay.current(production, script) != nil)
+            }
+        }
+    }
+
+    private func holder(_ state: PartState) -> PartHolder {
+        switch state.status {
+        case .open: .deviceVoice
+        case .recording, .done: .person(state.performer)
+        case .silent: .silent
+        }
+    }
+
+    private func who(_ state: PartState) -> String {
+        switch state.status {
+        case .open: "Open"
+        case .recording:
+            "\(state.performer ?? "You") \u{00B7} \(part.lineCount - Relay.missingLines(part.id, in: production, script: script).count) of \(part.lineCount)"
+        case .done: state.performer.map { "\($0) \u{00B7} recorded" } ?? "Recorded"
+        case .silent: "Left silent"
+        }
+    }
+}
+
+extension View {
+    /// A list row that carries its own layout: no insets, no separator, no row background.
+    func plainRow() -> some View {
+        listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
     }
 }
 
@@ -565,15 +570,14 @@ struct ListenThrough: View {
             } else if complete, mix.duration > 0 {
                 transport
             } else {
-                HStack(spacing: Spacing.s4) {
+                ActionRow {
                     Button {
                         if complete { Task { await prepare() } } else { Task { await listenLive() } }
                     } label: {
-                        Label(production.isFinished ? "Play" : "Listen Through", systemImage: "play.fill")
-                            .foregroundStyle(Color.brandPrimary)
+                        Label(production.isFinished ? "Play" : "Listen through", systemImage: "play.fill")
                     }
-                    .tint(Color.brandPrimary)
-                    if complete { export }
+                    .pageAction(primary: true)
+                    if complete { export.pageAction() }
                 }
                 if !complete { PersonalVoiceToggle(live: live) }
             }
@@ -605,7 +609,7 @@ struct ListenThrough: View {
     private var export: some View {
         ShareLink(item: MixExport(store: plays.store, productionID: production.id),
                   preview: SharePreview(production.title)) {
-            Label("Export", systemImage: "square.and.arrow.up")
+            ActionLabel(title: "Export", systemImage: "square.and.arrow.up")
         }
     }
 
@@ -727,21 +731,25 @@ nonisolated struct MixExport: Transferable {
 struct ScriptLineText: View {
     let line: ScriptLine
     var large = false
+    /// The text color on a board (the performer's own line box); nil is the page's.
+    var ink: Color? = nil
+    var showsRole = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s1) {
-            if let role = line.role {
-                Text(verbatim: role).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+            if showsRole, let role = line.role {
+                Text(verbatim: role).font(TypeRamp.caption).foregroundStyle(ink ?? Color.brandTextMuted)
             }
             if line.kind == .speech {
                 spoken
                 .font(large ? TypeRamp.sectionHeader : TypeRamp.body)
+                .foregroundStyle(ink ?? Color.brandText)
                 .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text(verbatim: line.source ?? "")
                     .italic()
                     .font(large ? TypeRamp.sectionHeader : TypeRamp.body)
-                    .foregroundStyle(Color.brandTextMuted)
+                    .foregroundStyle(ink ?? Color.brandTextMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -759,7 +767,7 @@ struct ScriptLineText: View {
         switch part {
         case let .say(words): Text(verbatim: words)
         case let .direction(words), let .mic(words), let .sound(words):
-            Text(verbatim: "(\(words))").italic().foregroundStyle(Color.brandTextMuted)
+            Text(verbatim: "(\(words))").italic().foregroundStyle(ink ?? Color.brandTextMuted)
         }
     }
 }

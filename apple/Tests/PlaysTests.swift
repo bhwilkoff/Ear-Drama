@@ -19,6 +19,17 @@ import Testing
 // Broken control, 2026-10-24: SyntheticAudio.refuse made a no-op: the take,
 //   room-tone, mix, and export guard tests fail (9 issues), each writer
 //   having written the stand-in's samples.
+// Broken controls, 2026-10-30 (D3-6, the three recording modes), each against a mutated copy
+//   of Core/Plays and seen to fail:
+//   Relay.runPlan returning every step to the end of the script (no trim after the part's last
+//   line): the run-plan test fails. Production.discardRun leaving `chosen` alone: the discard-run
+//   test and the Run through test fail. PlayScript.partHue indexing the speaking parts from 1:
+//   the part-hue golden fails. RecordingSession.setMode ignoring `run`: the mode-holds assertions
+//   in the Run through and Pause tests fail. record() ending Line by line on `.review`: the
+//   ending test fails. keepRun clearing nothing: the Keep test fails. playCues using the chosen
+//   take instead of the usable one: the flagged-cue test fails. cancel() not setting its flag:
+//   the cancel test fails. pause() not bumping the token: the Pause tests never finish (the run
+//   plays on), which is how that mutant was seen to fail. All seen on 2026-10-30.
 // The stand-in scan carries its own control (`leakyCaptureIsCaught`): when the
 // microphone hears the stand-in, the scan must find it in the take.
 
@@ -362,6 +373,10 @@ private final class FakeLiveAudio: LiveAudio {
     private var captured: [Float] = []
     private var captures = 0
     private(set) var played: [CueAudio] = []
+    /// While true a cue "plays" until `release()` or `stopPlayback()`, so a run can be paused mid-cue.
+    var hold = false
+    private(set) var waiting = false
+    private var gate: CheckedContinuation<Void, Never>?
 
     init(leaky: Bool) { self.leaky = leaky }
 
@@ -372,7 +387,20 @@ private final class FakeLiveAudio: LiveAudio {
     func play(_ cue: CueAudio) async {
         played.append(cue)
         if case let .standIn(audio) = cue { lastPlayed = audio.samples }
+        if hold {
+            waiting = true
+            await withCheckedContinuation { gate = $0 }
+            waiting = false
+        }
     }
+
+    func release() {
+        let g = gate
+        gate = nil
+        g?.resume()
+    }
+
+    func stopPlayback() { release() }
 
     func beginCapture(_ onChunk: @escaping @MainActor @Sendable ([Float]) -> Void) {
         captures += 1
@@ -713,5 +741,222 @@ struct CastableScriptsFileTests {
             #expect(script.castParts.filter { $0.id.isSpeaking }.count >= 2, "\(script.id) has parts")
             #expect(Set(script.lines.map(\.id)).count == script.lines.count, "\(script.id) line ids are unique")
         }
+    }
+}
+
+// MARK: - The three recording modes (owner ruling 4, D3-6)
+
+/// The mirror of "The three recording modes" block in js/plays.test.js: same names, same fixture.
+struct RecordingModeTests {
+    private func session(audio: FakeLiveAudio = FakeLiveAudio(leaky: false), voice: SignatureVoice = SignatureVoice(),
+                         part: PartID = .role("MOLLY"))
+        async throws -> (session: RecordingSession, store: ProductionStore, script: PlayScript) {
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        var production = try store.create(script)
+        production = try Relay.take(part, performer: nil, in: production, script: script)
+        try store.save(production)
+        let s = RecordingSession(production: production, script: script, part: part, store: store, audio: audio,
+                                 voice: voice, sleep: { _ in }, announce: {})
+        await s.begin(echoCancelled: false)
+        return (s, store, script)
+    }
+
+    private func takeFiles(_ store: ProductionStore, _ s: RecordingSession) -> Int {
+        ((try? FileManager.default.contentsOfDirectory(atPath: store.takesFolder(s.production.id).path)) ?? []).count
+    }
+
+    @Test func aPartsFaceColorTheSevenLargestSpeakingPartsInAFixedOrderTheRestNeutral() throws {
+        let script = fixtureScript()
+        #expect([PartID.role("MOLLY"), .role("FIBBER"), .role("DOC")].map(script.partHue) == ["mystery", "scifi", "western"])
+        #expect([script.partHue(.directions), script.partHue(.sound)] == [nil, nil], "directions and sound stand on neutral")
+        let url = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().appending(path: "catalog/plays/castable-scripts.json")
+        let library = try JSONDecoder().decode(CastableLibrary.self, from: Data(contentsOf: url))
+        let rodney = try #require(library.scripts.first { $0.id == "gut-28051" })
+        let names = ["URIAH", "RODNEY", "MCKEEN", "FRANKLIN", "PRUDENCE", "RUTLEDGE", "TOM", "ANNOUNCER"]
+        #expect(names.map { rodney.partHue(.role($0)) } ==
+                ["mystery", "scifi", "western", "serial", "documentary", "comedy", "news", nil],
+                "Caesar Rodney's Ride: the eighth part is neutral")
+    }
+
+    @Test func theCastFingerprintAndPresenceAreSharesOfTheScript() {
+        let script = fixtureScript()
+        #expect(script.castShares.map(\.part) == [.role("MOLLY"), .role("FIBBER"), .role("DOC")], "largest first")
+        #expect(abs(script.castShares.map(\.share).reduce(0, +) - 1) < 1e-9)
+        #expect(abs(script.castShares[0].share - 5.0 / 9.0) < 1e-9)
+        let presence = script.presence(of: .role("DOC"))
+        #expect(presence.count == 24 && presence.max() == 1 && presence.filter { $0 > 0 }.count == 1)
+    }
+
+    @Test func aRunPlanStartsAtTheLinesCueAndStopsAfterThePartsLastLine() {
+        let script = fixtureScript()
+        var p = Production(script: script)
+        p.add(take("f2", line: "L0002", part: .role("FIBBER"), frames: 100))
+        let plan = Relay.runPlan(p, script, part: .role("MOLLY"), from: "L0006")
+        func kind(_ step: RunStep) -> String {
+            switch step {
+            case .mine: "mine"
+            case .take: "take"
+            case .voice: "voice"
+            }
+        }
+        #expect(plan.map { [$0.lineID, kind($0)] } == [["L0005", "voice"], ["L0006", "mine"], ["L0007", "mine"],
+                                                       ["L0008", "voice"], ["L0009", "mine"], ["L0010", "voice"],
+                                                       ["L0011", "mine"]],
+                "DOC's cue first, the unrecorded sound skipped, the part's lines its own")
+        #expect(Relay.runPlan(p, script, part: .role("MOLLY"), from: "L0003").prefix(2).map { [$0.lineID, kind($0)] } ==
+                [["L0002", "take"], ["L0003", "mine"]], "a cue with a human take plays the take")
+        #expect(Relay.runPlan(p, script, part: .role("FIBBER"), from: "L0008").last?.lineID == "L0010",
+                "nothing plays after the part's last line")
+        #expect(Relay.runPlan(p, script, part: .role("MOLLY"), from: "nope").isEmpty, "an unknown line plans nothing")
+    }
+
+    @Test func discardingARunRemovesItsTakesAndPutsEachLineBackOnTheTakeItHad() {
+        var p = Production(script: fixtureScript())
+        for (id, line) in [("old", "L0003"), ("r1", "L0003"), ("r2", "L0006"), ("r3", "L0006")] {
+            p.add(take(id, line: line, part: .role("MOLLY"), frames: 100))
+        }
+        let gone = p.discardRun([RunNote(lineID: "L0003", prior: "old", takes: ["r1"]),
+                                 RunNote(lineID: "L0006", prior: nil, takes: ["r2", "r3"])])
+        #expect(gone.map(\.id).sorted() == ["r1", "r2", "r3"], "every take the run made goes")
+        #expect(p.takes.map(\.id) == ["old"], "the take from before the run stays")
+        #expect(p.chosen == ["L0003": "old"], "each line is back where it was")
+    }
+
+    @Test func runThroughRecordsEveryLineOfThePartInOnePassAndOpensItsReviewDiscardTheRunDeletesTheFiles() async throws {
+        let voice = SignatureVoice()
+        let (s, store, _) = try await session(voice: voice)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        #expect(s.setMode(.run), "the mode can be set while nothing plays")
+        await s.runThrough(from: "L0003")
+        #expect(s.phase == .runReview, "the run ends on its review")
+        #expect(s.runTakes.map(\.lineID) == ["L0003", "L0006", "L0007", "L0009", "L0011"], "every line of the part has a take")
+        #expect(voice.rendered.count == 4, "the open parts between were read live, the cue before the first line too")
+        #expect(!s.setMode(.step), "the mode holds while a run is under review")
+        #expect(takeFiles(store, s) == 5, "one take file per line")
+        s.discardRun()
+        #expect(s.phase == .idle, "back to ready")
+        #expect(s.run == nil)
+        #expect(takeFiles(store, s) == 0, "the run's files are gone")
+        #expect(store.production(s.production.id)?.chosen == [:], "no line keeps a run take")
+        s.end()
+    }
+
+    @Test func keepNTakesKeepsTheRunAgainInTheReviewReRecordsOneLineAndReturnsToTheReview() async throws {
+        let (s, store, _) = try await session()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.run)
+        await s.runThrough(from: "L0009")
+        #expect(s.runTakes.map(\.lineID) == ["L0009", "L0011"], "a run from a later line records from there")
+        let first = try #require(s.runTakes.first).id
+        await s.record("L0009")
+        #expect(s.phase == .runReview, "Again returns to the run's review")
+        #expect(s.runTakes.first?.id != first, "the review shows the new take")
+        s.keepRun()
+        let p = try #require(store.production(s.production.id))
+        #expect(p.chosen.keys.sorted() == ["L0009", "L0011"], "the run's lines keep their takes")
+        #expect(p.takes.count == 3, "the superseded take stays until the person discards unused takes (§8 rule 5)")
+        #expect(s.run == nil && s.phase == .idle, "the run is over")
+        s.end()
+    }
+
+    @Test func pauseEndsARunMidCueAndOpensTheReviewOfWhatItTook() async throws {
+        let audio = FakeLiveAudio(leaky: false)
+        let (s, store, _) = try await session(audio: audio)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        audio.hold = true
+        s.setMode(.run)
+        let running = Task { await s.runThrough(from: "L0003") }
+        for _ in 0..<200 where !audio.waiting { await Task.yield() }
+        #expect(audio.waiting && s.run != nil, "FIBBER's cue is being read")
+        #expect(!s.setMode(.lines), "the mode control is disabled while the run plays")
+        audio.release()
+        for _ in 0..<500 where !(audio.waiting && audio.played.count == 2) { await Task.yield() }
+        #expect(audio.waiting, "after the first line, the next open part is read")
+        s.pause()
+        await running.value
+        #expect(s.phase == .runReview, "Pause opens the review")
+        #expect(s.runTakes.map(\.lineID) == ["L0003"], "the review holds the one line taken")
+        s.end()
+    }
+
+    @Test func pauseBeforeAnyLineIsTakenGoesBackToReady() async throws {
+        let audio = FakeLiveAudio(leaky: false)
+        let (s, store, _) = try await session(audio: audio)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        audio.hold = true
+        s.setMode(.run)
+        let running = Task { await s.runThrough(from: "L0003") }
+        for _ in 0..<200 where !audio.waiting { await Task.yield() }
+        s.pause()
+        await running.value
+        #expect(s.phase == .idle && s.run == nil, "nothing to review")
+        s.end()
+    }
+
+    @Test func lineByLineEndsOnTheLineReadyStepEndsOnTheTakesReview() async throws {
+        let (s, store, _) = try await session()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.lines)
+        await s.record("L0006")
+        #expect(s.phase == .idle, "Line by line: the line is ready to record again")
+        #expect(s.production.chosen["L0006"] != nil, "the take is the line's")
+        s.setMode(.step)
+        await s.record("L0007")
+        #expect(s.phase == .review(lineID: "L0007"), "Step: the take waits for Keep or Again")
+        s.setMode(.run)
+        #expect(s.phase == .idle, "a mode set from a Step review drops back to idle")
+        s.end()
+    }
+
+    @Test func cueAndWithCuePlayAndKeepNothing() async throws {
+        let voice = SignatureVoice()
+        let (s, store, _) = try await session(voice: voice)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.lines)
+        await s.playCue("L0006")
+        #expect(voice.rendered.count == 1, "DOC's line was read")
+        #expect(takeFiles(store, s) == 0, "no take was written")
+        await s.record("L0006")
+        let before = takeFiles(store, s)
+        let chosen = try #require(s.production.chosenTake(for: "L0006"))
+        await s.playWithCue(chosen)
+        #expect(takeFiles(store, s) == before, "With cue writes nothing")
+        #expect(s.phase == .idle, "back where it was")
+        s.end()
+    }
+
+    @Test func cancelWhileTheCuePlaysStopsItAndRecordsNothing() async throws {
+        let audio = FakeLiveAudio(leaky: false)
+        let (s, store, _) = try await session(audio: audio)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        audio.hold = true
+        let recording = Task { await s.record("L0003") }
+        for _ in 0..<200 where !audio.waiting { await Task.yield() }
+        #expect(audio.waiting && s.phase == .cue(lineID: "L0002", deviceVoice: true), "the cue is playing")
+        s.cancel()
+        await recording.value
+        #expect(s.phase == .idle, "back to ready")
+        #expect(takeFiles(store, s) == 0 && s.production.chosen.isEmpty, "nothing was recorded")
+        s.end()
+    }
+
+    @Test func aFlaggedTakeIsNeverPlayedAsACueTheDeviceVoiceReadsItsLineInstead() async throws {
+        let voice = SignatureVoice()
+        let audio = FakeLiveAudio(leaky: false)
+        let (s, store, script) = try await session(audio: audio, voice: voice)
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var p = try #require(store.production(s.production.id))
+        p.add(take("flagged", line: "L0002", part: .role("FIBBER"), frames: 100, bleed: true))
+        store.update(p)
+        let again = RecordingSession(production: p, script: script, part: .role("MOLLY"), store: store, audio: audio,
+                                     voice: voice, sleep: { _ in }, announce: {})
+        await again.begin(echoCancelled: false)
+        await again.playCue("L0003")
+        #expect(voice.rendered.count == 1, "the flagged take holds the device voice, so the line is read live")
+        if case .take = audio.played.last { Issue.record("a flagged take was played as a cue") }
+        again.end()
+        s.end()
     }
 }

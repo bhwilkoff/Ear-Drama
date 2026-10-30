@@ -52,6 +52,9 @@ data class Take(
     }
 }
 
+/** One line's part in a run (Run through): the take the line had before the run, and every take the run made for it. */
+data class RunNote(val lineID: String, val prior: String?, val takes: List<String>)
+
 /** Where a part stands in the relay. */
 @Serializable
 data class PartState(val status: Status = Status.Open, val performer: String? = null) {
@@ -110,6 +113,21 @@ data class Production(
         val take = take(takeID) ?: return this
         val changed = chosen[take.lineID] != takeID
         return copy(chosen = chosen + (take.lineID to takeID), listenedThrough = listenedThrough && !changed)
+    }
+
+    /**
+     * Discard the run: every take the run made is removed and each line goes back to the take it
+     * had before (§8 rule 5: only the person's own act removes a take). The store deletes the
+     * returned takes' files.
+     */
+    fun discardRun(run: List<RunNote>): Pair<Production, List<Take>> {
+        val ids = run.flatMap { it.takes }.toSet()
+        val gone = takes.filter { it.id in ids }
+        var next = chosen
+        for (note in run) {
+            next = if (note.prior != null && takes.any { it.id == note.prior && it.id !in ids }) next + (note.lineID to note.prior) else next - note.lineID
+        }
+        return copy(takes = takes.filter { it.id !in ids }, chosen = next, listenedThrough = listenedThrough && gone.isEmpty()) to gone
     }
 
     val unusedTakes: List<Take>

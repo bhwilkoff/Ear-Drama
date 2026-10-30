@@ -69,6 +69,7 @@ import com.example.appname.ui.Loadable
 import com.example.appname.ui.isTelevision
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.SectionHeading
+import com.example.appname.ui.PLAY_BOARD
 import com.example.appname.ui.ShowTile
 import com.example.appname.ui.TextLink
 import com.example.appname.ui.TileSpec
@@ -182,7 +183,7 @@ fun SeriesBrowseScreen(
                 val speaking = script.castParts.count { it.id.isSpeaking }
                 TileSpec(
                     "play:" + script.id,
-                    SeriesRow("play:" + script.id, script.title, null, null, null, 0),
+                    SeriesRow("play:" + script.id, script.title, PLAY_BOARD, null, null, 0),
                     facts = listOf(script.authorLine, "$speaking parts").filter { it.isNotEmpty() },
                     openLabel = "Open play",
                     onOpen = { onOpenScript(script.id) },

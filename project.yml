@@ -82,6 +82,7 @@ targets:
     scheme:
       testTargets:
         - EarDramaTests
+        - EarDramaRenderTests
     # The Worker's address and the Google client id (placeholders until the
     # owner fills them; sign-in shows as not available until then).
     configFiles:
@@ -197,12 +198,35 @@ targets:
         excludes:
           # Read by RoomProtocolTests from the source tree, never bundled.
           - "Fixtures/**"
+          # Its own bundle (EarDramaRenderTests): it needs the views.
+          - "Render/**"
       - path: apple/Core
         excludes:
           - "**/*.md"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.CoreTests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+
+  # The views drawn to PNG (D3-6): the play page, the cast sheet and the recorder, through
+  # ImageRenderer, when GRAMMAR_RENDER_DIR is set (TEST_RUNNER_GRAMMAR_RENDER_DIR for
+  # xcodebuild); skipped otherwise. Not hosted in the app, for the reason above: Core, Shared
+  # and the Mac shell compile straight into the bundle.
+  EarDramaRenderTests:
+    type: bundle.unit-test
+    supportedDestinations: [macOS]
+    sources:
+      - path: apple/Tests/Render
+      - path: apple/Core
+        excludes:
+          - "**/*.md"
+      - path: apple/Shared
+      - path: apple/macOS
+      - path: apple/App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.eardrama.RenderTests
         GENERATE_INFOPLIST_FILE: YES
         CODE_SIGNING_ALLOWED: NO
 

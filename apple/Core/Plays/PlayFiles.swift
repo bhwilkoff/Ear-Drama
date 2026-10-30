@@ -195,6 +195,15 @@ final class ProductionStore {
         try save(production)
     }
 
+    /// Discard the run (Run through's review): its takes and their files go, each line back to its prior take.
+    func discardRun(_ id: String, _ run: [RunNote]) throws {
+        guard var production = production(id) else { return }
+        for take in production.discardRun(run) {
+            try? FileManager.default.removeItem(at: takeURL(production, take))
+        }
+        try save(production)
+    }
+
     /// Writes a take file that never existed before (takes are never overwritten).
     func writeTake(_ capture: MicrophoneCapture, production: Production, lineID: String) throws -> String {
         let name = "\(lineID)-\(UUID().uuidString.prefix(8)).\(TakeAudio.fileExtension)"
