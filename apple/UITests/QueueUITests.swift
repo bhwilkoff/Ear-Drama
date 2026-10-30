@@ -1,8 +1,14 @@
 import XCTest
 
 final class QueueUITests: DeviceTestCase {
+    /// The title's row in the Queue section: Continue and History can list the
+    /// same episode above or below it, and only a Queue row carries Move down.
     private func row(_ app: XCUIApplication, _ title: String) -> XCUIElement {
-        app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
+        let header = app.staticTexts["Queue"]
+        let top = header.exists ? header.frame.maxY : 0
+        let matches = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", title)).allElementsBoundByIndex
+        let below = matches.filter { $0.exists && $0.frame.minY >= top }.sorted { $0.frame.minY < $1.frame.minY }
+        return below.first ?? app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", title)).firstMatch
     }
 
     /// Opens Detail for `id` and leaves the episode in the queue, starting clean.

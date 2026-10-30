@@ -63,9 +63,32 @@ struct StartEarDramaButton: View {
     }
 }
 
-/// Library's Ear dramas (iOS-DESIGN §4.6, §4.12a): an opened invitation
-/// first, then the productions on this device and, signed in, the shared ones
-/// not opened here, then Classes.
+/// An opened invitation heads Library (iOS-DESIGN §4.6): it is waiting on the
+/// person, so it is not left below the settled sections.
+struct LibraryInvitation: View {
+    @Environment(AppStore.self) private var app
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
+
+    var body: some View {
+        if let token = app.pendingInvite {
+            InvitationSection(token: token, open: open)
+        }
+    }
+
+    private func open(_ production: Production) {
+        #if os(macOS)
+        openWindow(id: ProductionWindow_macOS.id, value: production.id)
+        #else
+        app.selectedTab = .library
+        app.push(PlayRoute.production(production.id))
+        #endif
+    }
+}
+
+/// Library's Ear dramas (iOS-DESIGN §4.6, §4.12a): the productions on this
+/// device and, signed in, the shared ones not opened here, then Classes.
 struct EarDramasSection: View {
     @Environment(PlaysLibrary.self) private var plays
     @Environment(SharedPlays.self) private var shared
@@ -76,9 +99,6 @@ struct EarDramasSection: View {
     #endif
 
     var body: some View {
-        if let token = app.pendingInvite {
-            InvitationSection(token: token, open: open)
-        }
         let rows = PlaysShare.libraryRows(plays.store, remote: account.isSignedIn ? shared.remote : [])
         if rows.isEmpty && app.pendingInvite == nil {
             Section("Ear dramas") { SectionCaption("Ear dramas you record or join appear here.") }
