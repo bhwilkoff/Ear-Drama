@@ -59,4 +59,12 @@ class DeepLinkTest {
         assertNull("no token opens nothing", DeepLink.parse("eardrama://invite"))
         assertNull("another host is not ours", DeepLink.parse("https://example.org/invite#$token"))
     }
+
+    @Test fun `a finished drama link and its twin open the drama`() {
+        assertEquals(InboxRequest.Drama("P1"), DeepLink.parse("eardrama://drama/P1"))
+        assertEquals(InboxRequest.Drama("P1"), DeepLink.parse("https://eardrama.org/drama/P1"))
+        assertEquals(InboxRequest.Drama("a b"), DeepLink.parse("https://www.eardrama.org/drama/a%20b/"))
+        assertNull("no id opens nothing", DeepLink.parse("https://eardrama.org/drama/"))
+        assertNull("another host is not ours", DeepLink.parse("https://example.org/drama/P1"))
+    }
 }

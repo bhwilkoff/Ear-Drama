@@ -634,6 +634,9 @@ class PlaybackEngine(
         return RoomView(id, url, p.currentPosition.coerceAtLeast(0), playing, p.playbackParameters.speed)
     }
 
+    /** Plays one file that is not an episode of the catalog (a finished ear drama), muted like any other when the harness asks. */
+    fun playFile(row: EpisodeRow, url: String) = playRoomCopy(row, url, 0L, true, 1f)
+
     /**
      * A guest plays the host's exact copy (Archive Watch Decision 143): this
      * one item, nothing queued, at the host's place and speed, never this

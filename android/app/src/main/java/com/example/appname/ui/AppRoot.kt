@@ -37,6 +37,8 @@ import com.example.appname.navigation.Tab
 import com.example.appname.navigation.navigateTo
 import com.example.appname.plays.PartID
 import com.example.appname.ui.screens.EpisodeScreen
+import com.example.appname.ui.screens.DramaScreen
+import com.example.appname.ui.screens.InvitationScreen
 import com.example.appname.ui.screens.LibraryScreen
 import com.example.appname.ui.screens.ListenScreen
 import com.example.appname.ui.screens.MiniPlayer
@@ -77,6 +79,7 @@ fun AppRoot(
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     var incomingSearch by remember { mutableStateOf<String?>(null) }
     var browseGenre by remember { mutableStateOf<String?>(null) }
+    var browseDramas by remember { mutableStateOf(false) }
     var roomSheet by rememberSaveable { mutableStateOf(false) }
     var roomCode by rememberSaveable { mutableStateOf("") }
     val haptics = rememberHaptics()
@@ -116,9 +119,11 @@ fun AppRoot(
                     // A TV plays back only (PLAYS-DESIGN §11.7): it holds nothing and opens nothing.
                     if (!container.isTelevision) {
                         container.sharing.hold(request.token)
-                        selected = Tab.Library
+                        stacks.getValue(selected).navigateTo(Route.Invitation)
                     }
                 }
+                // A TV lists no ear dramas yet (PARITY), so a drama link opens nothing there.
+                is InboxRequest.Drama -> if (!container.isTelevision) stacks.getValue(selected).navigateTo(Route.Drama(request.pid))
                 InboxRequest.EndDoor -> {
                     container.playback.stop()
                     playerOpen = false
@@ -140,6 +145,7 @@ fun AppRoot(
     val openTranscript: (String) -> Unit = { id -> stack.navigateTo(Route.Transcript(id)) }
     val back: () -> Unit = { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
     val openScript: (String) -> Unit = { id -> stack.navigateTo(Route.Script(id)) }
+    val openDrama: (String) -> Unit = { id -> stack.navigateTo(Route.Drama(id)) }
     val openProduction: (String) -> Unit = { id -> stack.navigateTo(Route.Production(id)) }
 
     CompositionLocalProvider(
@@ -175,12 +181,14 @@ fun AppRoot(
                         onBack = back,
                         entryProvider = entryProvider {
                             entry<Route.Listen> {
-                                ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) }, onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse })
+                                ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) }, onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse }, onOpenDrama = openDrama, onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse })
                             }
                             entry<Route.SeriesBrowse> {
                                 SeriesBrowseScreen(
                                     onOpenSeries = openSeries, onOpenScript = openScript,
                                     genreRequest = browseGenre, onGenreRequestHandled = { browseGenre = null },
+                                    dramasRequest = browseDramas, onDramasRequestHandled = { browseDramas = false },
+                                    onOpenDrama = openDrama,
                                 )
                             }
                             entry<Route.Surprise> {
@@ -229,6 +237,14 @@ fun AppRoot(
                             entry<Route.Person> { route ->
                                 PersonScreen(route.id, onBack = back, onOpenEpisode = openEpisode)
                             }
+                            entry<Route.Invitation> {
+                                InvitationScreen(onBack = back, onOpenProduction = { id ->
+                                    // Joining replaces the invitation with the cast sheet: depth stays two.
+                                    if (stack.lastOrNull() == Route.Invitation) stack.removeAt(stack.lastIndex)
+                                    stack.add(Route.Production(id))
+                                })
+                            }
+                            entry<Route.Drama> { route -> DramaScreen(route.id, onBack = back) }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
                                 ScriptScreen(route.id, onBack = back, onOpenProduction = { id ->

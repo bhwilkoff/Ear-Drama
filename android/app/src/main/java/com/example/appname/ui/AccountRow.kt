@@ -80,7 +80,7 @@ fun AccountRow(modifier: Modifier = Modifier) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountSheet(accounts: Accounts, onDismiss: () -> Unit) {
+private fun AccountSheet(accounts: Accounts, onDismiss: () -> Unit, why: String = "Sign in to sync") {
     val activity = LocalActivity.current
     val account by accounts.account.collectAsState()
     val running by accounts.sync.running.collectAsState()
@@ -96,7 +96,7 @@ private fun AccountSheet(accounts: Accounts, onDismiss: () -> Unit) {
         ) {
             val current = account
             if (current == null) {
-                Text("Sign in to sync", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+                Text(why, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
                 notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 if (!television && activity != null) {
                     if (accounts.config.googleReady) {
@@ -155,4 +155,13 @@ private fun syncLine(account: StoredAccount, running: Boolean): String {
     val now = System.currentTimeMillis()
     if (now - at < DateUtils.MINUTE_IN_MILLIS) return "Synced just now"
     return "Synced " + DateUtils.getRelativeTimeSpanString(at, now, DateUtils.MINUTE_IN_MILLIS)
+}
+
+/** The sign-in sheet at the moment a signed-out person acts (taking a part): [why] is the heading. Closes itself once signed in. */
+@Composable
+fun SignInSheet(why: String, onDismiss: () -> Unit) {
+    val accounts = LocalAppContainer.current.accounts
+    val account by accounts.account.collectAsState()
+    LaunchedEffect(account != null) { if (account != null) onDismiss() }
+    AccountSheet(accounts, onDismiss, why)
 }

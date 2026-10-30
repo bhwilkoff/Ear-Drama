@@ -179,23 +179,21 @@ fun StartEarDramaButton(script: PlayScript, onOpenProduction: (String) -> Unit) 
 }
 
 /**
- * Library's Ear dramas (§4.6, §4.16): the held invitation, this device's
+ * Library's Ear dramas (§4.6, §4.16): this device's
  * productions, the shared ones this person is in that the device has not
  * opened, then Classes. None on a TV.
  */
 fun LazyListScope.earDramasSection(
     rows: List<PlaysShare.LibraryRow>,
-    invite: String?,
     classes: Boolean,
     onOpenProduction: (String) -> Unit,
     recordsHere: Boolean = true,
 ) {
-    if (rows.isEmpty() && invite == null && !classes && !recordsHere) return
+    if (rows.isEmpty() && !classes && !recordsHere) return
     item(key = "dramas-h") { SectionHeader("Ear dramas") }
-    if (rows.isEmpty() && invite == null) {
+    if (rows.isEmpty()) {
         item(key = "dramas-empty") { SectionCaption("Ear dramas you record or join appear here.") }
     }
-    if (invite != null) item(key = "invitation") { InvitationItem(invite, onOpenProduction) }
     items(rows, key = { "d:" + (it.local?.id ?: it.pid) }) { row ->
         val production = row.local
         val remote = row.remote

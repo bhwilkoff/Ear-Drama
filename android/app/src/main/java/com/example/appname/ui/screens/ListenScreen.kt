@@ -84,6 +84,8 @@ fun ListenScreen(
     onOpenSeries: (String) -> Unit,
     onSurprise: () -> Unit,
     onBrowse: () -> Unit,
+    onOpenDrama: (String) -> Unit = {},
+    onDramas: () -> Unit = onBrowse,
 ) {
     val container = LocalAppContainer.current
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd")) }
@@ -212,6 +214,7 @@ fun ListenScreen(
                             }
                         }
                     }
+                    item(key = "new-dramas") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
                     if (topShows != null && topShows.shows.isNotEmpty()) {
                         item(key = "top-h") {
                             SectionHeading("Most downloaded") {
