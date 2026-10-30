@@ -784,6 +784,8 @@ web app follows today.
   Rules golden-tested in `js/api.test.js`; fit checked at 320, 375, 390 and
   430 px, light and dark, by `tools/web_fit_actions.py` (a control with the
   row allowed to wrap fails it: the share button drops a line).
+- **§6.4e Browse's A to Z jump and the D3-fix rules** (owner, 2026-10-30: *"We are building for each specific platform. It has to look good and use native design and apis on the given platform."*; *"Yes, add a letter jump"*). While Browse sorts A to Z a `nav` of letter links (`API.azLetters`: only a letter that has shows, "#" first for numbers and symbols) sits over the grid; a link pages in the tiles up to its letter and scrolls there. The decade headers are short ('20s). Every platform: an undated, unnumbered episode leads its row with the series' window, never an empty date block; the run strip draws one bar per year from `series.year_counts` (web: `years`), its height the count over the show's busiest year, and falls back to the first-to-last span where the catalog has none; the head board's strip is taller than the tile's; the series page's genre is a link that opens Browse at its root filtered to that genre; an episode with a `script` offers Start an ear drama (not on a TV). The head strip is 32 px, 40 from 600 px.
+
 - **§6.5 Icons are inline SVG** (R-ICON-1); emoji are never chrome.
 
 ## §7 States, PWA, and offline
