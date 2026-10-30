@@ -56,7 +56,7 @@ PLAY_REPORTS_BUCKET = ""                          # e.g. "pubsite_prod_rev_0978.
 DEVICES = {
     "iphone":  "00008101-000339320188801E",  # iPhone 12 (owner 2026-10-24: "use the iPhone 12 for live testing")
     "ipad":    "00008103-0019388E3CF1001E",  # iPad Pro 12.9 (5th gen), paired; the iPhone 12 stand-in when it is off
-    "appletv": None,      # devicectl udid (paired over the network)
+    "appletv": "00008110-0012616A1E87801E",  # Movie Room Apple TV 4K (3rd gen); owner 2026-10-30: the test TV, "wake freely"
     "android": "adb-3B211JEKB14516-4M5scf._adb-tls-connect._tcp",  # Pixel 8a over wireless debugging (mdns name)
     "mac":     "local",   # the Mac this runs on
     "windows": None,      # hostname or IP for SSH; see winbox.py
