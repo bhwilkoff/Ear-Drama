@@ -82,7 +82,7 @@ import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
-import com.example.appname.ui.ArtTile
+import com.example.appname.ui.PictureWindow
 import com.example.appname.ui.tvFocusMark
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
@@ -458,7 +458,7 @@ private fun SlotRow(
                     eastern?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = muted) }
                 }
                 // R11a: an aired slot leads with its series' tile; a gap has none.
-                detail?.let { ArtTile(it.episode.seriesName, it.episode.seriesGenre, it.episode.seriesFace) }
+                detail?.let { PictureWindow(it.episode.seriesWindowArt, it.episode.seriesName, it.episode.seriesGenre, Modifier.size(48.dp)) }
             }
         },
         headlineContent = {

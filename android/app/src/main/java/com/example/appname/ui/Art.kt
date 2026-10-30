@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -67,7 +68,14 @@ import androidx.core.net.toUri
  * failure; an unknown size keeps the plain top fill crop.
  */
 @Composable
-fun ArtImage(art: Artwork, side: Dp, modifier: Modifier = Modifier, description: String? = null) {
+fun ArtImage(
+    art: Artwork,
+    side: Dp,
+    modifier: Modifier = Modifier,
+    description: String? = null,
+    colorFilter: ColorFilter? = null,
+    onError: (() -> Unit)? = null,
+) {
     val r = art.cropRect()
     if (r == null) {
         if (art.aspectRatio != null) return
@@ -76,6 +84,8 @@ fun ArtImage(art: Artwork, side: Dp, modifier: Modifier = Modifier, description:
             model = art.url(pixels),
             contentDescription = description,
             contentScale = ContentScale.Crop,
+            colorFilter = colorFilter,
+            onError = onError?.let { f -> { _ -> f() } },
             alignment = Alignment.TopCenter,
             modifier = modifier,
         )
@@ -89,6 +99,8 @@ fun ArtImage(art: Artwork, side: Dp, modifier: Modifier = Modifier, description:
             model = art.url(pixels),
             contentDescription = description,
             contentScale = ContentScale.FillBounds,
+            colorFilter = colorFilter,
+            onError = onError?.let { f -> { _ -> f() } },
             modifier = Modifier
                 .wrapContentSize(Alignment.TopStart, unbounded = true)
                 .offset(x = -w * r.x, y = -h * r.y)

@@ -1,20 +1,14 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -24,8 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.SeriesRow
@@ -35,13 +27,10 @@ import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.EpisodeListItem
 import com.example.appname.ui.SectionHeader
-import com.example.appname.ui.episodeTitle
-import com.example.appname.ui.formatAirDate
+import com.example.appname.ui.ShowShelf
 import com.example.appname.ui.rememberCatalogQuery
-import com.example.appname.ui.seriesYears
-import com.example.appname.ui.tvFocusMark
-import com.example.appname.ui.theme.Spacing
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -105,28 +94,25 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit
                 val firstKey = list.first().let { it.key to it.firstCardId }
                 ClaimTvFocus(firstCard, firstKey)
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-                    items(list, key = { it.key }) { shelf ->
-                        SectionHeader(shelf.title)
-                        LazyRow(contentPadding = PaddingValues(horizontal = Spacing.S4.dp)) {
-                            items(shelf.rows, key = { it.id }) { row ->
-                                EpisodeCard(
-                                    row,
-                                    onOpen = { onOpenEpisode(row.id) },
-                                    modifier = if (shelf.key to row.id == firstKey) {
-                                        Modifier.focusRequester(firstCard)
-                                    } else {
-                                        Modifier
-                                    },
-                                )
-                            }
-                            items(shelf.series, key = { "s:" + it.key }) { row ->
-                                SeriesCard(
-                                    row,
-                                    onOpen = { onOpenSeries(row.key) },
-                                    modifier = if (shelf.key to "s:" + row.key == firstKey) {
-                                        Modifier.focusRequester(firstCard)
-                                    } else {
-                                        Modifier
+                    list.forEach { shelf ->
+                        item(key = "h:" + shelf.key) { SectionHeader(shelf.title) }
+                        // R11b: episodes are rows (the series' window, the date, the length, Play); series are tiles.
+                        items(shelf.rows, key = { shelf.key + "|" + it.id }) { row ->
+                            EpisodeListItem(
+                                row,
+                                showSeries = true,
+                                onOpen = { onOpenEpisode(row.id) },
+                                onPlay = { container.playback.play(row) },
+                                modifier = if (shelf.key to row.id == firstKey) Modifier.focusRequester(firstCard) else Modifier,
+                            )
+                        }
+                        if (shelf.series.isNotEmpty()) {
+                            item(key = "s:" + shelf.key) {
+                                ShowShelf(
+                                    shelf.series,
+                                    onOpen = { onOpenSeries(it.key) },
+                                    tileModifier = { row ->
+                                        if (shelf.key to "s:" + row.key == firstKey) Modifier.focusRequester(firstCard) else Modifier
                                     },
                                 )
                             }
@@ -134,61 +120,6 @@ fun ListenScreen(onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit
                     }
                 }
             }
-        }
-    }
-}
-
-/** A followed series as a typographic card: its name, then its years and count. */
-@Composable
-private fun SeriesCard(row: SeriesRow, onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    OutlinedCard(
-        onClick = onOpen,
-        modifier = Modifier.padding(end = Spacing.S3.dp).width(220.dp).tvFocusMark().then(modifier),
-    ) {
-        Column(Modifier.padding(Spacing.S3.dp)) {
-            Text(
-                row.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                minLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                listOfNotNull(seriesYears(row), "${row.episodes} episodes").joinToString(" · "),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-/** A typographic card (R11): date, title, series. No art is invented. */
-@Composable
-private fun EpisodeCard(row: EpisodeRow, onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    OutlinedCard(
-        onClick = onOpen,
-        modifier = Modifier.padding(end = Spacing.S3.dp).width(220.dp).tvFocusMark().then(modifier),
-    ) {
-        Column(Modifier.padding(Spacing.S3.dp)) {
-            formatAirDate(row.airDate)?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text(
-                episodeTitle(row),
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                minLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                row.seriesName,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
         }
     }
 }
