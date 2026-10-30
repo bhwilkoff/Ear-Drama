@@ -442,6 +442,11 @@ select {
 
 /* The show tile: tiles in one shelf share their slot tracks, so every name, strip and fact line sits on one line. */
 .g-rail { grid-template-rows: repeat(4, auto); row-gap: 0; }
+.g-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); grid-auto-rows: auto;
+  column-gap: var(--space-3); row-gap: 0; padding: 0; margin: 0; list-style: none;
+}
+.g-grid > .g-tile-li { margin-bottom: var(--space-3); }
 .g-tile-li { grid-row: span 4; display: grid; grid-template-rows: subgrid; }
 .g-tile {
   grid-row: span 4; display: grid; grid-template-rows: subgrid; row-gap: 6px; padding: 6px 6px 10px;

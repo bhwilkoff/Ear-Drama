@@ -343,6 +343,7 @@ fun innerWidth(width: Dp) = width - TilePad * 2
  * the run strip and the facts, each in its own slot. [nameHeight] is the tallest name in the
  * shelf ([ShowShelf] measures it), so the strips of a row of tiles sit on one line.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ShowTile(
     row: SeriesRow,
@@ -352,6 +353,7 @@ fun ShowTile(
     nameHeight: Dp? = null,
     facts: List<String>? = null,
     openLabel: String = "Open series",
+    onLongClick: (() -> Unit)? = null,
 ) {
     val on = onBoard(row.genre)
     val style = nameStyle(nameStep(row.name), MaterialTheme.typography)
@@ -361,7 +363,12 @@ fun ShowTile(
             .tvFocusMark()
             .clip(RoundedCornerShape(12.dp))
             .background(board(row.genre))
-            .clickable(onClickLabel = openLabel, onClick = onOpen)
+            .combinedClickable(
+                onClickLabel = openLabel,
+                onClick = onOpen,
+                onLongClickLabel = if (onLongClick != null) "Unfollow" else null,
+                onLongClick = onLongClick,
+            )
             .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp),
     ) {
         PictureWindow(row.windowArt, row.name, row.genre, Modifier.fillMaxWidth().height(innerWidth(width)))
@@ -388,12 +395,16 @@ fun ShowShelf(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues(horizontal = Spacing.S4.dp),
     tileModifier: (SeriesRow) -> Modifier = { Modifier },
+    onLongClick: ((SeriesRow) -> Unit)? = null,
 ) {
     val width = if (LocalIsTelevision.current) TileWidthTv else TileWidth
     val nameHeight = rememberNameHeight(rows.map { it.name }, innerWidth(width))
     LazyRow(modifier, contentPadding = contentPadding, horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
         items(rows, key = { "s:" + it.key }) { row ->
-            ShowTile(row, onOpen = { onOpen(row) }, modifier = tileModifier(row), width = width, nameHeight = nameHeight)
+            ShowTile(
+                row, onOpen = { onOpen(row) }, modifier = tileModifier(row), width = width, nameHeight = nameHeight,
+                onLongClick = onLongClick?.let { { it(row) } },
+            )
         }
     }
 }

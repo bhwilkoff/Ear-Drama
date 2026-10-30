@@ -162,12 +162,24 @@ web app follows today.
   does not load. The query is mirrored to the URL. The client never builds
   an index of its own from fetched transcripts: it would search only what
   this browser happened to open.
-- **§4.7 Library** = the account row (§4.11), then Queue, History,
-  Following, and **Ear dramas** (the productions this browser recorded in
-  or joined, newest first, each with "N of M lines recorded" or
-  "Finished", "Shared" for a shared one, then the shared ones this browser
-  has not opened, and Classes, §4.10a; Decision 068), on this device. Clear history asks first.
-  An empty Ear dramas says "No ear dramas yet." and nothing more.
+- **§4.7 Library** = the account row (§4.11), then one segmented scope, in the order the person
+  returns to things: **Continue** (episodes started and not finished), **Queue**, **Following**,
+  **History**, and **Ear dramas** (the productions this browser recorded in or joined, newest
+  first, each with "N of M lines recorded" or "Finished", "Shared" for a shared one, then the
+  shared ones this browser has not opened, and Classes, §4.10a; Decision 068), on this device.
+  Every section draws the one grammar (§6.4b): Continue, Queue and History are rows (the series'
+  window leads where series mix); **Following is show tiles** in a grid (`.g-grid`, subgrid slots so
+  names, strips and facts line up across a row). Queue keeps move up, move down and remove on its
+  rows; Clear history asks first. The four states: every section reads this browser's storage, so
+  there is no loading or offline state of its own (a tile or window whose picture does not load
+  draws its title block); an empty section is one caption that says what it would hold, and the
+  Browse button: "Episodes you stop partway through wait here.", "Episodes you add play in this
+  order, after the one that is playing.", "Series you follow appear here.", "Episodes you play
+  appear here, newest first." An empty Ear dramas says "No ear dramas yet." and nothing more.
+  `tools/web_fit_library.py` shoots every section, empty and full, light and dark, at 320, 375,
+  390 and 430 px and fails on a wrapped button, a sideways scroll, an overflowing tile name, a full
+  section that drew nothing or an empty one with no caption. The tab strip scrolls inside itself
+  (`.segmented-scroll`) when five labels do not fit.
 - **§4.9 Stations** (was Radio, Decision 068: *"collections of ear dramas
   should be stations"*) = the stations row, then Tonight's schedule.
   **The stations row** (R10, contract §8) lists Tonight in 19xx first, then

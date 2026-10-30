@@ -1105,6 +1105,9 @@ struct LibraryScreen: View {
                     && downloads.records.isEmpty && plays.store.productions.isEmpty && app.pendingInvite == nil
                     && (!account.isSignedIn || shared.remote.isEmpty))
                 List {
+                    if catalog.state == .unavailable {
+                        CatalogUnavailableView()
+                    }
                     if empty {
                         Section {
                             EmptyState("Nothing played yet", systemImage: "books.vertical",
@@ -1112,58 +1115,61 @@ struct LibraryScreen: View {
                                 .listRowBackground(Color.clear)
                         }
                     }
-                    if !queued.isEmpty {
-                        Section("Queue") {
-                            ForEach(queued) { episode in
-                                NavigationLink(value: Route.episode(episode.id)) {
-                                    EpisodeRowLabel(episode: episode, showSeries: true)
-                                }
-                                .swipeActions {
-                                    Button(role: .destructive) { queue.remove(episode.id) } label: {
-                                        Label("Remove from queue", systemImage: "trash")
-                                    }
-                                }
-                                .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                    Section("Continue") {
+                        if inProgress.isEmpty {
+                            SectionCaption("Episodes you stop partway through wait here.")
+                        }
+                        ForEach(inProgress) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode, showSeries: true)
                             }
-                            .onMove { source, destination in
-                                var ids = queued.map(\.id)
-                                ids.move(fromOffsets: source, toOffset: destination)
-                                queue.reorder(ids)
-                            }
+                            .swipeActions { removeButton(episode.id) }
+                            .contextMenu { removeButton(episode.id) }
                         }
                     }
-                    if !inProgress.isEmpty {
-                        Section("In progress") {
-                            ForEach(inProgress) { episode in
-                                NavigationLink(value: Route.episode(episode.id)) {
-                                    EpisodeRowLabel(episode: episode, showSeries: true)
-                                }
-                                .swipeActions { removeButton(episode.id) }
-                                .contextMenu { removeButton(episode.id) }
+                    Section("Queue") {
+                        if queued.isEmpty {
+                            SectionCaption("Episodes you add play in this order, after the one that is playing.")
+                        }
+                        ForEach(queued) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .swipeActions {
+                                Button(role: .destructive) { queue.remove(episode.id) } label: {
+                                    Label("Remove from queue", systemImage: "trash")
+                                }
+                            }
+                            .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                        }
+                        .onMove { source, destination in
+                            var ids = queued.map(\.id)
+                            ids.move(fromOffsets: source, toOffset: destination)
+                            queue.reorder(ids)
                         }
                     }
-                    if !following.isEmpty && !Self.emptied {
-                        Section("Following") {
-                            ForEach(following) { row in
-                                NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                    Section("Following") {
+                        if following.isEmpty || Self.emptied {
+                            SectionCaption("Series you follow appear here.")
+                        } else {
+                            FollowingShelf(series: following)
+                        }
+                    }
+                    Section("History") {
+                        if played.isEmpty {
+                            SectionCaption("Episodes you finish appear here, newest first.")
+                        }
+                        ForEach(played) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .swipeActions { removeButton(episode.id) }
+                            .contextMenu { removeButton(episode.id) }
                         }
                     }
                     if !Self.emptied {
                         DownloadsSection()
                         EarDramasSection()
-                    }
-                    if !played.isEmpty {
-                        Section("Played") {
-                            ForEach(played) { episode in
-                                NavigationLink(value: Route.episode(episode.id)) {
-                                    EpisodeRowLabel(episode: episode, showSeries: true)
-                                }
-                                .swipeActions { removeButton(episode.id) }
-                                .contextMenu { removeButton(episode.id) }
-                            }
-                        }
                     }
                     Section { AccountRow() }
                     #if os(iOS)

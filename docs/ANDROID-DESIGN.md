@@ -322,19 +322,21 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   transcript** (`Transcript.LABEL`): each row the episode row with the
   line where the words are said as an italic second supporting line,
   verbatim (`Transcript.snippet`), read from the transcript's own URL.
-- **§4.6 Library** is the account row (§4.11), then In progress (with "position of length"), Downloads
-  (one row, "Downloads" with the episode count and the storage held,
-  opening the Downloads route, `Route.Downloads`: downloads grouped by
-  series, by name, each in the order asked for, a row's Remove or
-  Cancel, a series' Remove that asks first, the storage held and Remove
-  All Downloads, which asks first, at the foot; "No downloads" when
-  empty; iOS-DESIGN §4.8), Played
-  (Apple's word), and Following (the web's last Library scope, §4.7): the
-  followed series, newest follow first, each opening its page. A follow
-  the open catalog does not serve is kept for sync and not listed. Then
-  **Ear dramas** (Decision 068): this device's productions, each with
-  "n of m lines recorded" or "Finished" and a Delete that asks first,
-  opening its cast sheet.
+- **§4.6 Library** (D3-5) is the account row (§4.11), then **Continue** ("position of length"),
+  **Queue** (swipe to remove, long-press for Move up, Move down, Remove), **Following** (a shelf of
+  the grammar's show tiles, `ShowShelf`, newest follow first; a long press offers Unfollow, which
+  asks; a follow the open catalog does not serve is kept for sync and not listed), **History**
+  (what was played to the end), Downloads (one row, "Downloads" with the episode count and the
+  storage held, opening `Route.Downloads`: downloads grouped by series, by name, each in the order
+  asked for, a row's Remove or Cancel, a series' Remove that asks first, the storage held and
+  Remove All Downloads, which asks first, at the foot; "No downloads" when empty; iOS-DESIGN §4.8),
+  and **Ear dramas** (Decision 068): this device's productions, each with "n of m lines recorded"
+  or "Finished" and a Delete that asks first, opening its cast sheet. Continue, Queue and History
+  are grammar rows; every section keeps its header. The four states: loading and the retry
+  message are `LoadableContent`'s; offline is the app-wide "You are offline." line; an empty
+  section is its header and one `SectionCaption` that says what it would hold: "Episodes you stop partway through wait here." (Continue), "Episodes you add play in this order, after the one that is playing." (Queue), "Series you follow appear here." (Following), "Episodes you finish appear here, newest first." (History), "Downloaded episodes play with no network." (Downloads), "Ear dramas you record or join appear here." (Ear dramas). A TV
+  records nothing, so its Library has no Ear dramas header. `GrammarRenderTest` draws the sections
+  empty and full, light and dark. Not seen on a device.
 - **§4.7 The transcript is a route** (`ui/screens/TranscriptScreen.kt`):
   the episode title, then plain selectable text in `bodyMedium`, a
   sentence a line, at most 680 dp wide, fetched from archive.org when

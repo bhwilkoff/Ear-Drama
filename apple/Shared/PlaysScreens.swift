@@ -77,7 +77,9 @@ struct EarDramasSection: View {
             InvitationSection(token: token, open: open)
         }
         let rows = PlaysShare.libraryRows(plays.store, remote: account.isSignedIn ? shared.remote : [])
-        if !rows.isEmpty {
+        if rows.isEmpty && app.pendingInvite == nil {
+            Section("Ear dramas") { SectionCaption("Ear dramas you record or join appear here.") }
+        } else if !rows.isEmpty {
             Section("Ear dramas") {
                 ForEach(rows) { row in
                     if let production = row.local {
@@ -136,11 +138,14 @@ struct ProductionLink: View {
     }
 
     private var label: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            Text(verbatim: production.title).font(TypeRamp.bodyStrong)
-            Text(verbatim: ProductionProgress.line(production, script: plays.castScript(for: production)))
-                .font(TypeRamp.caption)
-                .foregroundStyle(Color.brandTextMuted)
+        HStack(alignment: .top, spacing: Spacing.s3) {
+            ArtTile(name: production.title, genre: nil, face: nil)
+            VStack(alignment: .leading, spacing: Spacing.s1) {
+                Text(verbatim: production.title).font(TypeRamp.bodyStrong)
+                Text(verbatim: ProductionProgress.line(production, script: plays.castScript(for: production)))
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
         }
         .accessibilityElement(children: .combine)
     }

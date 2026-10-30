@@ -841,32 +841,37 @@ private struct LibraryScreen_tvOS: View {
                         EmptyState("Nothing played yet", systemImage: "books.vertical",
                                    action: .init(title: "Browse") { app.selectResettingPrevious(.browse) })
                     }
-                    if !queued.isEmpty {
-                        Section("Queue") {
-                            ForEach(queued) { episode in
-                                NavigationLink(value: Route.episode(episode.id)) {
-                                    EpisodeRowLabel(episode: episode, showSeries: true)
+                    Section("Continue") {
+                        if inProgress.isEmpty {
+                            SectionCaption("Episodes you stop partway through wait here.")
+                        }
+                        ForEach(inProgress) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode, showSeries: true)
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) { history.remove(episode.id) } label: {
+                                    Label("Remove from History", systemImage: "trash")
                                 }
-                                .contextMenu { QueueRowMenu(episodeID: episode.id) }
                             }
                         }
                     }
-                    if !following.isEmpty {
-                        Section("Following") {
-                            ForEach(following) { row in
-                                NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                    Section("Queue") {
+                        if queued.isEmpty {
+                            SectionCaption("Episodes you add play in this order, after the one that is playing.")
+                        }
+                        ForEach(queued) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .contextMenu { QueueRowMenu(episodeID: episode.id) }
                         }
                     }
-                    ForEach(inProgress) { episode in
-                        NavigationLink(value: Route.episode(episode.id)) {
-                            EpisodeRowLabel(episode: episode, showSeries: true)
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) { history.remove(episode.id) } label: {
-                                Label("Remove from History", systemImage: "trash")
-                            }
-                        }
+                    if following.isEmpty {
+                        Section("Following") { SectionCaption("Series you follow appear here.") }
+                    } else {
+                        SeriesShelf_tvOS(title: "Following", series: following)
+                            .listRowBackground(Color.clear)
                     }
                     SharedEarDramasSection_tvOS()
                     Section {

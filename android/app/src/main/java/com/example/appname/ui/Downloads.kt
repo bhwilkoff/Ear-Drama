@@ -128,7 +128,11 @@ private fun DownloadProgress(record: DownloadRecord, modifier: Modifier = Modifi
  * rest of Library (§4.6).
  */
 fun LazyListScope.downloadsSection(records: Map<String, DownloadRecord>, totalBytes: Long, onOpen: () -> Unit) {
-    if (records.isEmpty()) return
+    if (records.isEmpty()) {
+        item(key = "downloads-h") { SectionHeader("Downloads") }
+        item(key = "downloads-empty") { SectionCaption("Downloaded episodes play with no network.") }
+        return
+    }
     item(key = "downloads") {
         val count = if (records.size == 1) "1 episode" else "${records.size} episodes"
         ListItem(

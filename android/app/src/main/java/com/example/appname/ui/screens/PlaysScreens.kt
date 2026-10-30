@@ -87,6 +87,7 @@ import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.tvFocusMark
+import com.example.appname.ui.SectionCaption
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberHaptics
@@ -181,9 +182,13 @@ fun LazyListScope.earDramasSection(
     invite: String?,
     classes: Boolean,
     onOpenProduction: (String) -> Unit,
+    recordsHere: Boolean = true,
 ) {
-    if (rows.isEmpty() && invite == null && !classes) return
+    if (rows.isEmpty() && invite == null && !classes && !recordsHere) return
     item(key = "dramas-h") { SectionHeader("Ear dramas") }
+    if (rows.isEmpty() && invite == null) {
+        item(key = "dramas-empty") { SectionCaption("Ear dramas you record or join appear here.") }
+    }
     if (invite != null) item(key = "invitation") { InvitationItem(invite, onOpenProduction) }
     items(rows, key = { "d:" + (it.local?.id ?: it.pid) }) { row ->
         val production = row.local

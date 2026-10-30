@@ -329,14 +329,22 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   last either way. Each credit on Detail (§4.4) is a `NavigationLink` to
   its person. No bio is written (R13). The Mac uses the same screen in
   its detail column.
-- **§4.6 Library** is Queue, In progress, Following (the followed series,
-  newest follow first, as Home's), Downloads, Played, and **Ear
-  dramas** (the productions on this device, each with its progress line;
-  a production opens its cast sheet, on the Mac its window), on this
-  device. A history row swipes or long-presses to Remove from History.
-  Downloads is one row, "Downloads" with the episode count and the
-  storage they hold, that pushes the Downloads place (§4.8): a bulk
-  download is hundreds of rows, which would bury the rest of Library.
+- **§4.6 Library** (D3-5, one grammar) is **Continue**, **Queue**, **Following**, **History**,
+  Downloads, and **Ear dramas**, then the account row and the site pages. Every section keeps its
+  header, so a section with rows and one without read as one set. Continue, Queue and History are
+  grammar rows (`EpisodeRowLabel`, the series' window leading); **Following is show tiles** in one
+  horizontal shelf (`FollowingShelf`, `ShowTile`, names sharing a height), newest follow first as
+  Home's, with Unfollow on a long press; an Ear dramas row leads with its title's tile
+  (`ArtTile`, as a play's row) over the production's progress line. Queue reorders (Edit,
+  `onMove`), swipes to remove, and keeps its long-press menu; a Continue or History row swipes or
+  long-presses to Remove from History. Downloads is one row, "Downloads" with the episode count and
+  the storage held, that pushes the Downloads place (§4.8): a bulk download is hundreds of rows,
+  which would bury the rest of Library. The four states: loading is the skeleton rows; an
+  unreadable catalog is `CatalogUnavailableView` heading the list; offline is the app-wide
+  "You are offline." line (what is on the device keeps listing); an empty section is a header and
+  one caption (`SectionCaption`) that says what it would hold, never an invitation: "Episodes you stop partway through wait here." (Continue), "Episodes you add play in this order, after the one that is playing." (Queue), "Series you follow appear here." (Following), "Episodes you finish appear here, newest first." (History), "Downloaded episodes play with no network." (Downloads), "Ear dramas you record or join appear here." (Ear dramas). A
+  Library with nothing in any section also heads with "Nothing played yet" and Browse (§7.4). Not
+  yet seen on a device.
 - **§4.7 The transcript** is a sheet (`TranscriptSheet_iOS`,
   `apple/Shared/TranscriptViews.swift`) from Detail or the player, with
   Done. Plain, selectable text at the body size in a 680 pt measure,

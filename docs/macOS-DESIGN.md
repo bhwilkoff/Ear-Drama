@@ -136,7 +136,8 @@ only here:
 - **§4.2 Downloads** are the same background `URLSession`, the same
   series Download menu (in the toolbar), and the same Downloads place
   pushed from Library's row as iOS (`docs/iOS-DESIGN.md` §4.3, §4.6,
-  §4.8); a row's Remove is on right-click. A download is played, never
+  §4.8); a row's Remove is on right-click. Library is iOS's list (§4.6, D3-5): Continue, Queue, Following as a shelf of show
+  tiles (right-click a tile for Unfollow), History, Downloads, Ear dramas, each with its empty caption. A download is played, never
   exported.
 - **§4.3 Stations** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
   the detail column: the same stations row (Tonight, then each genre

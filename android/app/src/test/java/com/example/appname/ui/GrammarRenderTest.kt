@@ -303,4 +303,32 @@ class GrammarRenderTest {
     @Test fun nowPlayingPortrait() = shoot("nowplaying-portrait") { nowPlaying(portrait, "Suspense", "mystery") }
     @Test fun nowPlayingWide() = shoot("nowplaying-wide") { nowPlaying(wide, "The Adventures of Sherlock Holmes", "mystery") }
     @Test fun nowPlayingBlock() = shoot("nowplaying-block") { nowPlaying(null, "Lux Radio Theatre", "drama") }
+
+    private val queueEmpty = "Episodes you add play in this order, after the one that is playing."
+
+    /** Library's sections as the screen composes them (ANDROID-DESIGN 4.6), every section empty. */
+    @Test fun libraryEmpty() = shoot("library-empty") {
+        SectionHeader("Continue"); SectionCaption("Episodes you stop partway through wait here.")
+        SectionHeader("Queue"); SectionCaption(queueEmpty)
+        SectionHeader("Following"); SectionCaption("Series you follow appear here.")
+        SectionHeader("History"); SectionCaption("Episodes you finish appear here, newest first.")
+        SectionHeader("Downloads"); SectionCaption("Downloaded episodes play with no network.")
+        SectionHeader("Ear dramas"); SectionCaption("Ear dramas you record or join appear here.")
+    }
+
+    /** The same sections full: rows and tiles in one grammar. */
+    @Test fun libraryFull() = shoot("library-full") {
+        SectionHeader("Continue")
+        GrammarRow("Sorry, Wrong Number", { m -> PictureWindow(portrait, "Suspense", "mystery", m) }, {},
+            sub = listOf("Suspense", "1943-05-25", "12:04 of 29:30"), length = "30 min", onPlay = {})
+        SectionHeader("Queue")
+        GrammarRow("The Hitch-Hiker", { m -> PictureWindow(null, "Lux Radio Theatre", "drama", m) }, {},
+            sub = listOf("Lux Radio Theatre", "1942-09-02"), length = "29 min", onPlay = {})
+        SectionHeader("Following")
+        ShowShelf(shelfA, onOpen = {})
+        SectionHeader("History")
+        GrammarRow("Spring Offensive", { m -> PictureWindow(wide, "The Adventures of Sherlock Holmes", "mystery", m) }, {},
+            sub = listOf("The Adventures of Sherlock Holmes", "1950-02"), length = "1 h", onPlay = {})
+        SectionHeader("Downloads"); SectionCaption("Downloaded episodes play with no network.")
+    }
 }
