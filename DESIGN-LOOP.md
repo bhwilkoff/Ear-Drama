@@ -180,25 +180,18 @@ describing."*
 
 ## State
 
-- Phase: D2c done 2026-10-29 (1.0.109); **owner gate**: build D everywhere (D3)?
-- Review page (updated): https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
-- Merged: D2c-1 colors (1.0.106), W1 (1.0.107, deployed), D2c-2 pictures (1.0.108),
-  D2c-3 one grammar (1.0.109: catalog-experience-design rule 11; title blocks; three
-  recording modes; invite, finished dramas, A to Z shelf; 29 screens, fit gate 0 problems).
-- Open owner calls: build D everywhere; one face per star (William Conrad leads both
-  Gunsmoke and Escape).
-- W2 merged (1.0.110, Worker 7dd9e948). C2 staged build/catalog-release-2026-10-29 (dry run passes;
-  only series_art added); the owner runs `bash tools/cut_catalog_release.sh
-  build/catalog-release-2026-10-29 catalog-2026-10-29`, then `gh workflow run catalog-publish.yml`.
-- Follow-ups for the build loop: build_db is not deterministic across two local builds of one
-  cache (about 400 credit and 74 network rows move; CI pins PYTHONHASHSEED, local runs do not);
-  a submitted production whose director deleted their account has no director, so a reported
-  line there can only be handled by Ear Drama's own moderation (none yet).
-- catalog-2026-10-29 cut by the owner; publish 40986788849 live: Boston Blackie leads with
-  Richard Kollmar. **Defect found live**: that image (Commons File:Kollmar.jpg) says "photograph
-  I took of Richard Kollmar and his fiancee", self-published, dated 2019; Kollmar died 1971.
-  An own-work license on a picture of someone who died before the file's date cannot be the
-  uploader's (evidence-gated-catalog-curation: an uploader's word is not evidence). Rule for
-  the build loop: refuse own-work licenses whose subject died before the file's date, and
-  measure how many served portraits it removes.
-- Nothing running; the loop stops at the gate.
+- Phase: **D3** (build D on every platform), started 2026-10-29. Owner: "Yes to both"
+  (build D everywhere; one face per star).
+- **One face per star**: a person leads at most one show, the one they are most identified
+  with (a title role first, then the highest share of episodes); every other show they would
+  have led falls to its next picture or its title block.
+- D3 order: (1) the shared grammar and tokens on every platform (board, mark, onBoard, print
+  emitted natively; the tile, title block, row and event line as one component per platform,
+  reading picture / pictureKind); (2) Home and Browse with the A to Z shelf; (3) series and
+  episode pages; (4) Now Playing and the queue; (5) Library; (6) Create with the three
+  recording modes; (7) invite, finished dramas and share pages. One surface per batch, every
+  platform, frames read before merge, merged, pushed, shipped.
+- Running: D3-1 (the grammar and tokens on every platform) and P-1 (pipeline: one face per
+  star; refuse an own-work license on a picture of someone who died before the file's date,
+  e.g. File:Kollmar.jpg; build_db made deterministic locally).
+- Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
