@@ -506,3 +506,6 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 ### Design tick 11, 2026-10-29, D3 starts
 - Owner: "Yes to both" (build D everywhere; one face per star). DESIGN-LOOP gains the D3 order.
 - Running: D3-1 the shared grammar and tokens on every platform (Opus); P-1 one face per star, the implausible own-work rule (File:Kollmar.jpg), deterministic build_db (Sonnet).
+
+### Design tick 12, 2026-10-30, the disk filled; resumed
+- Both D3 agents stopped on ENOSPC (no command could run). The owner freed space ("I think all cleanup is done so you can resume work."): 57 GB free. Pruning found no merged, clean worktree to remove (10 remain, each dirty or locked). D3-1 and P-1 resumed in place; P-1 gains the episode floor so Jack Webb keeps Dragnet.

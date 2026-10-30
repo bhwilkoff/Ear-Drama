@@ -194,4 +194,9 @@ describing."*
 - Running: D3-1 (the grammar and tokens on every platform) and P-1 (pipeline: one face per
   star; refuse an own-work license on a picture of someone who died before the file's date,
   e.g. File:Kollmar.jpg; build_db made deterministic locally).
+- 2026-10-29 night: the disk filled (ENOSPC) and stopped both agents; the owner freed space
+  (57 GB). D3-1 had committed native board/onBoard/onGenre/print tokens (7b99c81, unmerged);
+  P-1 had one face per star measured, uncommitted. Both resumed in place 2026-10-30. P-1 adds a
+  floor: a marked title role wins only on a show holding at least half the person's episodes on
+  their biggest show (Jack Webb stays with Dragnet).
 - Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
