@@ -447,3 +447,73 @@ holder has a portrait, the heard-most rule and share x recognizability each pick
 32 times (raw sitelink counts: 28); the marks make the title role win, and the 25 shows that
 gained a face had none before. Coverage is bounded by Wikidata: 268 of the 2,036 shows match an
 item at all.
+
+
+## 018 — A person is the picture of at most one show
+
+*Date: 2026-10-29*
+
+Of the shows that would be led by the same person's portrait (017's star and person kinds), they
+keep one. A marked role (the title role, Star, Host) wins only when that show holds at least half
+as many of their credited episodes as their biggest show; otherwise the show with the most of their
+episodes wins; then the highest share; then the series key. Every other show is decided again without
+them (its next candidate, else the typographic card), and `series.star` follows. A show's own image is
+never affected and never counts.
+
+**Why**: the owner, 2026-10-29, to "one face per star": "Yes". William Conrad led both Gunsmoke
+and Escape; 51 people led more than one show. The floor is there because a mark is a title role:
+Jack Webb is the title role of Pete Kelly's Blues (7 episodes) and not marked in Dragnet (474), and
+the plain "marked first" rule gave Webb to the 7.
+
+**How to apply**: `art_policy.assign_faces`; guard: the contract query "a person's portrait leads at
+most one show" (seen failing on the pre-rule projection: 51) and the unit cases in
+`tests/test_projection_art.py`. MEASURED on the 2026-10-28 caches (10,641 shows): 82 shows changed their
+star, 53 lost their picture to the card; by kind before and after: star 309 to 255 (with 019), person 1 to 1, show
+49 to 49, none 10,282 to 10,336. Webb leads Dragnet, Conrad Gunsmoke (Escape falls to Paul Frees),
+Superman keeps Bud Collyer, The Whistler Marvin Miller, Perry Mason John Larkin. Known cost: the main show
+of a star can lose them to a sibling program with a marked role that holds at least half their
+episodes (Jack Benny Program, 950 episodes, loses Benny to The Grape Nuts Program, 735).
+
+
+## 019 — An own-work license the picture's own date contradicts is not served
+
+*Date: 2026-10-29*
+
+A portrait (or a show image) whose file page gives the uploader's own license (`{{self|...}}`, PD-self,
+PD-user, or a Creative Commons license with `source={{own}}`) is refused when the file's own date is
+after the death of the person it is of (Wikidata's death; for a show image, the earliest death among
+the people the program's record marks). A public-domain template on a scan the uploader calls their own
+is not an own-work license and is unaffected.
+
+**Why**: File:Kollmar.jpg led Boston Blackie: "a photograph I took of Richard Kollmar and his
+fiancee", `{{self|cc-by-sa-4.0}}`, dated 2019; Kollmar died in 1971. An uploader's word is not
+evidence (`evidence-gated-catalog-curation`), and here the word contradicts itself.
+
+**How to apply**: `art_policy.implausible_own_work`, `enrich_people_art.own_work` (the `own_work`
+column of `people_art` and `series_art`); guard: `retrace` in `tests/test_projection_art.py` (seen failing
+on a projection built before the rule: it lists the removed files) and the unit cases. MEASURED: 177 of
+3,875 person files and 39 of 288 show files are own work; 19 served portraits removed, none replaced, no
+show image (2,174 to 2,155 portraits). Of five checked by eye, all five were period photographs no
+uploader could have taken (Kollmar, Madge Evans and Billy Halop studio portraits, a Dick Elliott television
+still, and Oliver Wakefield's file, a theatre programme page, not a portrait at all). Removed: Audrey Call,
+Billy Halop, Dick Elliott, Don Albert, Eddie Arcaro, Gaylord Carter, Hugo Weisgall, Irve Tunick, Jack
+Wilson, Joan Barton, Ken Carson, Madge Evans, Max Miller, Nathan Van Cleave, Norman Rose, Oliver Wakefield,
+Richard Kollmar, Samson Raphaelson, Yoichi Hiraoka.
+
+
+## 020 — A build's output never depends on the hash seed
+
+*Date: 2026-10-30*
+
+Two builds of one cache under different `PYTHONHASHSEED` values publish the same projection. Wherever
+a set or a count's ties set an order a row can depend on (which spelling names a series alias, which
+series key a Goldin record links through, the order of a series' networks), the order is sorted.
+
+**Why**: CI pins `PYTHONHASHSEED=0`, which hid it; two local builds differed by about 400 credit rows
+and 74 network rows (first run of `tools/check_build_determinism.py`, before the fix: 172 credit
+rows, 49 episodes, 3 people and 4 series differed).
+
+**How to apply**: `tools/check_build_determinism.py [seedA seedB]` runs the whole chain twice and compares
+every table (about 20 minutes, so not in `run_all.sh`); run it after touching `build_db.py` or
+`enrich_db.py`. Sorted: `build_db.build_registry` (names), `enrich_db.SeriesMap.by_dates`, the OTRR
+program loop, a series' networks.

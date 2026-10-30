@@ -276,7 +276,7 @@ def build_registry(re_series, otrr_progs, ptitles, aliases, editorial_named):
         names = names_by_idp[idp]
         main = P.reorder_title(otrr_progs.get(idp) or sorted(names)[0])
         keys = {}
-        for n in names:
+        for n in sorted(names):   # the first spelling to reach a key names it: set order is the hash seed's
             # An alias of one word ("Interviews", "Christmas") names too much; the program's own
             # title may be one word ("Suspense").
             if n != otrr_progs.get(idp) and len(re.findall(r"[A-Za-z0-9]+", P.reorder_title(n))) < 2 and \

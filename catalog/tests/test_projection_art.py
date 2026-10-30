@@ -59,6 +59,8 @@ CONTRACT = {
         "('star', 'person') AND NOT EXISTS (SELECT 1 FROM people p WHERE p.id = s.star AND p.portrait = s.picture)",
     "a show picture comes from one of the show's own records": "SELECT COUNT(*) FROM series WHERE picture_kind = 'show' "
         "AND picture_source NOT IN ({})".format(",".join(f"'{x}'" for x in AP.SHOW_SOURCES)),
+    "a person's portrait leads at most one show": "SELECT COUNT(*) FROM (SELECT star FROM series WHERE picture_kind IN "
+        "('star', 'person') GROUP BY star HAVING COUNT(*) > 1)",
     "every portrait is a published image": "SELECT COUNT(*) FROM people p WHERE portrait IS NOT NULL AND NOT EXISTS "
         "(SELECT 1 FROM art a WHERE a.id = p.portrait)",
     "a series' star wears a portrait": "SELECT COUNT(*) FROM series s WHERE star IS NOT NULL AND NOT EXISTS "
@@ -103,10 +105,14 @@ def retrace(projection, source):
     p.close()
     s = sqlite3.connect(f"file:{source}?mode=ro", uri=True)
     ok = set()
-    for pid, file, cls, usable, via, author, basis in s.execute(
-            "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, w.basis "
-            "FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
-        if AP.served(basis, cls, usable, via, author):
+    cols = {r[1] for r in s.execute("PRAGMA table_info(people_art)")}
+    own = "a.own_work" if "own_work" in cols else "0"
+    dated = "a.date_field" if "date_field" in cols else "NULL"
+    died = "w.death" if "death" in {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")} else "NULL"
+    for pid, file, cls, usable, via, author, basis, own_work, when, died in s.execute(
+            f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, w.basis, {own}, "
+            f"{dated}, {died} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+        if AP.served(basis, cls, usable, via, author, own_work, when, died):
             ok.add((pid, AP.evidence_url(file)))
     s.close()
     return sorted(published - ok) + retrace_shows(projection, source)
@@ -149,6 +155,24 @@ check("control: a usable flag cannot rescue an unserved class", AP.served(DATED,
       False)
 check("served: CC BY with its author", AP.served(DATED, "cc_by", 1, "wikidata:P18", "Alan Light"), True)
 check("control: CC BY with no author to credit", AP.served(DATED, "cc_by_sa", 1, "wikidata:P18", "Unknown"), False)
+# An uploader's word is not evidence: an own-work license dated after the person's death (2026-10-29).
+check("own work: a {{self}} license on a 2019 file of a man who died in 1971 is refused",
+      AP.served(DATED, "cc_by_sa", 1, "wikidata:P18", "Welty07", True, "2019-07-05 14:59:35", "1971-01-07"), False)
+check("control: the same file with no own-work marker is served", AP.served(
+      DATED, "cc_by_sa", 1, "wikidata:P18", "Welty07", False, "2019-07-05 14:59:35", "1971-01-07"), True)
+check("control: an own work dated in the person's lifetime is served", AP.served(
+      DATED, "cc_by_sa", 1, "wikidata:P18", "Welty07", True, "1965-07-05", "1971-01-07"), True)
+check("control: an own work with no date, or a living person, is served",
+      [AP.served(DATED, "pd_release", 1, "wikidata:P18", None, True, None, "1971-01-07"),
+       AP.served(DATED, "pd_release", 1, "wikidata:P18", None, True, "2019", None)], [True, True])
+check("earliest death of the marked people", AP.earliest_death([("a", "1971-01-07"), ("a", "1950"), ("b", None)]),
+      {"a": 1950})
+KOLLMAR = "=={{int:filedesc}}==\n{{Information\n|date=2019-07-05\n|source={{own}}\n|author=[[User:Welty07|Welty07]]\n}}\n{{self|cc-by-sa-4.0}}"
+check("own_work reads a {{self}} license", E.own_work(KOLLMAR), True)
+check("own_work reads PD-self", E.own_work("{{PD-self}}"), True)
+check("control: a PD-US template on a scan its uploader calls own is not an own-work license",
+      E.own_work("|source={{own}}\n|permission=PD-US\n{{PD-US-no notice}}"), False)
+check("own_work: source {{own}} with a Creative Commons license", E.own_work("|source={{own}}\n{{cc-by-sa-4.0}}"), True)
 check("credit: author and versioned license", AP.credit("cc_by_sa", "Cc-by-sa-3.0-de", "Jomarose"), "Jomarose, CC BY-SA 3.0")
 check("credit: the LA Times archive is CC BY 4.0", AP.credit("cc_by", "LATimes UCLA", "Los Angeles Times"),
       "Los Angeles Times, CC BY 4.0")
@@ -369,6 +393,10 @@ check("control: a show image dated before the first broadcast is refused, whatev
 check("show: a year before our first episode but inside the logged run passes",
       AP.show_served(*SHOW[:6], "Ralph Edwards Truth or Consequences 1942.JPG", [], "1942-03-08", "1952-07-29",
                      "1943-12-18"), True)
+check("show: an own-work image dated after the star's death is refused",
+      AP.show_served(*SHOW, own_work=True, date_field="1951", died=1950), False)
+check("control: ...and served when dated before it", AP.show_served(*SHOW, own_work=True, date_field="1951", died=1960),
+      True)
 check("show: a file dated inside the run passes", AP.show_served(*SHOW, date_field="1951", last_date="1952-07-29"), True)
 check("control: an item its own description calls a television program is no identity",
       AP.series_identity(YEARS, ["CBS"], ["CBS"], "1949-1956 CBS television program"), "television")
@@ -405,6 +433,29 @@ check("face: no one covered falls back to the heard-most rule",
 check("face: a marked star of an uncredited series", AP.series_face({}, both, {"morris"}, {}),
       ("morris", "star", "otrrpedia:noted-role"))
 check("control: no portrait, no face", AP.series_face(blackie, set(), {"kollmar"}, {"kollmar": 9}), None)
+
+# One face per star (owner, 2026-10-29): a person leads the one show they are most identified with.
+gun = {f"g{i}": [("conrad", "cast"), ("g" + str(i), "cast")] for i in range(10)}
+esc = {f"s{i}": [("conrad", "host")] for i in range(4)} | {f"t{i}": [("other", "cast")] for i in range(4)}
+trio = {"gun": (gun, ()), "esc": (esc, ())}
+pool = {"conrad", "other"}
+got = AP.assign_faces(trio, pool, {"conrad": 30, "other": 3})
+check("one face: the show a star is heard on most keeps them", got["gun"][0], "conrad")
+check("one face: the other show falls to its next candidate", got["esc"][0], "other")
+esc6 = {f"s{i}": [("conrad", "host")] for i in range(6)} | {f"t{i}": [("other", "cast")] for i in range(4)}
+check("one face: a marked role beats the larger count when it holds half the biggest show's episodes",
+      AP.assign_faces({"gun": (gun, ()), "esc": (esc6, {"conrad"})}, pool, {"conrad": 30, "other": 3})["esc"][0], "conrad")
+check("control: a marked title role in a show with under half the episodes does not take the star (Pete Kelly)",
+      AP.assign_faces({"gun": (gun, ()), "esc": (esc, {"conrad"})}, pool, {"conrad": 30, "other": 3})["gun"][0], "conrad")
+check("one face: ...and the show that lost them, with no one else eligible, has none",
+      AP.assign_faces({"gun": (gun, ()), "esc": (esc6, {"conrad"})}, pool, {"conrad": 30, "other": 3})["gun"], None)
+check("one face: a show with no one left has none",
+      AP.assign_faces({"a": (gun, ()), "b": (gun, ())}, {"conrad"}, {})["b"], None)
+check("one face: a tie goes to the first series key",
+      [k for k, f in AP.assign_faces({"b": (gun, ()), "a": (gun, ())}, {"conrad"}, {}).items() if f], ["a"])
+check("control: two stars of different shows both keep theirs",
+      sorted(f[0] for f in AP.assign_faces({"gun": (gun, ()), "oth": ({f"x{i}": [("other", "cast")] for i in range(3)}, ())},
+                                           pool, {}).values() if f), ["conrad", "other"])
 
 with tempfile.TemporaryDirectory() as tmp:
     src, dst, web = (os.path.join(tmp, n) for n in ("src.sqlite", "out.sqlite", "web"))

@@ -323,10 +323,10 @@ class SeriesMap:
         if len(dates) < min_hits:
             return None, None, None
         hits = collections.Counter()
-        for d in dates:
-            for k in self.by_date.get(d, ()):
+        for d in sorted(dates):   # sets iterate by hash seed; most_common ties break by first count
+            for k in sorted(self.by_date.get(d, ())):
                 hits[k] += 1
-        keys = [k for k, n in hits.most_common() if n >= min_hits
+        keys = [k for k, n in sorted(hits.items(), key=lambda kv: (-kv[1], kv[0])) if n >= min_hits
                 and any(same_name(nm, self.known.get(k) or k) for nm in names)]
         covered = sum(hits[k] for k in keys)
         if keys and covered >= min_share * len(dates):
@@ -523,7 +523,7 @@ def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases
         log_by_idp[r["idp"]].append(r)
     otrr_key = {}
     all_idps = set(progs) | set(log_by_idp)
-    for idp in all_idps:
+    for idp in sorted(all_idps):
         names = [t["title"] for t in (progs.get(idp) or {}).get("titles") or [] if t.get("title")]
         names += sorted({r["program"] for r in log_by_idp.get(idp, []) if r.get("program")})
         dates = [r["date"] for r in log_by_idp.get(idp, []) if r.get("date")]
@@ -747,7 +747,7 @@ def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases
         db.execute("UPDATE series SET otrr_idp=?, networks=?, first_broadcast=?, last_broadcast=?, "
                    "broadcast_span_source=?, genres_otrr=?, sponsors_otrr=? WHERE key=?", (
                        ",".join(sorted(idps_by_key.get(k, ()), key=int)) or None,
-                       json.dumps([n for n, _ in nets.most_common()]) if nets else None,
+                       json.dumps([n for n, _ in sorted(nets.items(), key=lambda kv: (-kv[1], kv[0]))]) if nets else None,
                        span[0], span[1], how, json.dumps(genres) if genres else None,
                        json.dumps(spons) if spons else None, k))
     db.executescript(INDEXES)

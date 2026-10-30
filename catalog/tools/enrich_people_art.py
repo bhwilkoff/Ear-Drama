@@ -335,6 +335,19 @@ def _strip_markup(s):
     return re.sub(r"\s+", " ", s).strip(" ,;")[:200] or None
 
 
+OWN_LICENSE = re.compile(r"\{\{\s*(?:self|pd-self|pd-user)\s*[|}]", re.I)
+OWN_SOURCE = re.compile(r"\|\s*source\s*=\s*(?:\{\{\s*own\s*\}\}|\W*own work)", re.I)
+CC_LICENSE = re.compile(r"\{\{\s*cc-(?:by|zero|0)", re.I)
+
+
+def own_work(text):
+    """True when the uploader's own license is the evidence: a {{self|...}} license, PD-self or
+    PD-user, or a Creative Commons license on a file whose source is {{own}}. A public-domain
+    template on a scan of an old photograph (Richard Quine's film-trailer screenshot, source
+    {{own}}, {{PD-US-no notice}}) is not an own-work license."""
+    return bool(OWN_LICENSE.search(text or "") or (OWN_SOURCE.search(text or "") and CC_LICENSE.search(text or "")))
+
+
 def file_facts(text):
     """Author, date and source links of a Commons file page."""
     def field(*names):
@@ -346,6 +359,7 @@ def file_facts(text):
     src = field("source", "Source")
     return {"author": _strip_markup(field("author", "Author", "photographer", "Photographer", "artist")),
             "date_field": _strip_markup(field("date", "Date")),
+            "own_work": own_work(text),
             "source_links": re.findall(r"https?://[^\s\]|}<]+", src)[:5] if src else [],
             "source_text": _strip_markup(src)}
 
@@ -457,7 +471,7 @@ CREATE TABLE people_art (
   person_id TEXT, qid TEXT, file TEXT, found_via TEXT,
   license_class TEXT, usable INTEGER, template TEXT, obligations TEXT,
   author TEXT, date_field TEXT, source_links TEXT,
-  evidence_url TEXT, thumb_url TEXT, width INTEGER, height INTEGER, face TEXT,
+  evidence_url TEXT, thumb_url TEXT, width INTEGER, height INTEGER, face TEXT, own_work INTEGER,
   PRIMARY KEY (person_id, file)
 );
 CREATE TABLE people_art_meta (k TEXT PRIMARY KEY, v TEXT);
@@ -503,9 +517,10 @@ def main():
             art_rows.append((p["id"], q, fn, via, cls, int(cls in USABLE), fv.get("template"),
                              OBLIGATIONS.get(cls), fv.get("author"), fv.get("date_field"),
                              json.dumps(fv.get("source_links") or []), page, thumb,
-                             fv.get("width"), fv.get("height"), face_text(fv.get("face"))))
+                             fv.get("width"), fv.get("height"), face_text(fv.get("face")),
+                             int(bool(fv.get("own_work")))))
     con.executemany("INSERT INTO people_wikidata VALUES (" + ",".join("?" * 15) + ")", wd_rows)
-    con.executemany("INSERT OR IGNORE INTO people_art VALUES (" + ",".join("?" * 16) + ")", art_rows)
+    con.executemany("INSERT OR IGNORE INTO people_art VALUES (" + ",".join("?" * 17) + ")", art_rows)
     rep = report(people, res, ents, art_rows)
     con.executemany("INSERT INTO people_art_meta VALUES (?,?)",
                     [("built", time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())),

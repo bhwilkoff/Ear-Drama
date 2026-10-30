@@ -180,14 +180,17 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         credited_by_series.setdefault(series_of.get(eid), {})[eid] = [(p, r) for p, _n, r, _c in creds]
     marks, sitelinks = star_evidence(s, same)
     served_series = {series_of[e] for e in served if e in series_of}
+    show_images = served_show_images(s, served_series)
     face_of = {sk: AP.series_face(credited_by_series.get(sk, {}), faces, marks.get(sk, ()), sitelinks)
-               for sk in served_series}
+               for sk in show_images}
+    face_of.update(AP.assign_faces({sk: (credited_by_series.get(sk, {}), marks.get(sk, ()))
+                                    for sk in served_series if sk not in show_images}, faces, sitelinks))
     stars = {sk: f[0] for sk, f in face_of.items() if f}
     # The series' picture (contract section 3.3a): its show image, else its star's portrait.
     file_ids = {AP.image_url(r[0]): i for i, r in enumerate(portraits["rows"], 1)}
     next_id = len(portraits["rows"]) + 1
     pictures = {}
-    for sk, (file, src, cls, template, author, w, h, face) in sorted(served_show_images(s, served_series).items()):
+    for sk, (file, src, cls, template, author, w, h, face) in sorted(show_images.items()):
         url = AP.image_url(file)
         if url not in file_ids:
             d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?)", (
@@ -397,11 +400,18 @@ def served_show_images(s, series_keys):
         return {}
     rows = {}
     run = AP.run_dates(s)
-    for sk, file, src, identity, cls, template, author, w, h, face, cats, when in s.execute(
-            "SELECT series_key, file, source, identity, license_class, template, author, width, height, face, "
-            "categories, date_field FROM series_art"):
+    deaths = {}
+    if {"series_marks", "people_wikidata"} <= tables and "death" in {
+            r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")}:
+        deaths = AP.earliest_death(s.execute(
+            "SELECT m.series_key, w.death FROM series_marks m JOIN people_wikidata w ON w.person_id = m.person_id"))
+    own = "own_work" if "own_work" in {r[1] for r in s.execute("PRAGMA table_info(series_art)")} else "0"
+    for sk, file, src, identity, cls, template, author, w, h, face, cats, when, own_work in s.execute(
+            f"SELECT series_key, file, source, identity, license_class, template, author, width, height, face, "
+            f"categories, date_field, {own} FROM series_art"):
         if sk in series_keys and AP.show_served(identity, src, cls, author, w, h, file, json.loads(cats or "[]"),
-                                                when, *reversed(run.get(sk, (None, None)))):
+                                                when, *reversed(run.get(sk, (None, None))), own_work,
+                                                deaths.get(sk)):
             rows.setdefault(sk, []).append((file, src, cls, template, author, w, h, AP.face_text(AP.face_list(face))))
     names = dict(s.execute("SELECT key, name FROM series"))
     return {sk: AP.pick_show(r, names.get(sk)) for sk, r in rows.items()}
@@ -430,11 +440,15 @@ def served_portraits(s, people, same=None):
     focus = ({f: AP.face_text(AP.face_list(t)) for f, t in
               s.execute("SELECT file, face FROM people_art WHERE face IS NOT NULL")} if "face" in cols else {})
     by_person = {}
-    for pid, file, cls, usable, via, author, template, basis in s.execute(
-            "SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis "
-            "FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
+    own = "a.own_work" if "own_work" in cols else "0"   # a source from before the column: none known
+    dated = "a.date_field" if "date_field" in cols else "NULL"
+    wcols = {r[1] for r in s.execute("PRAGMA table_info(people_wikidata)")}
+    died = "w.death" if "death" in wcols else "NULL"
+    for pid, file, cls, usable, via, author, template, basis, own_work, when, died in s.execute(
+            f"SELECT a.person_id, a.file, a.license_class, a.usable, a.found_via, a.author, a.template, w.basis, "
+            f"{own}, {dated}, {died} FROM people_art a JOIN people_wikidata w ON w.person_id = a.person_id"):
         pid = (same or {}).get(pid, pid)
-        if pid in people and AP.served(basis, cls, usable, via, author):
+        if pid in people and AP.served(basis, cls, usable, via, author, own_work, when, died):
             by_person.setdefault(pid, []).append((file, cls, template, author))
     ids = {}
     for pid in sorted(by_person):
