@@ -4,7 +4,9 @@ import SwiftUI
 // (a List row, a Mac table-like row, a TV card); the words and the order of
 // facts do not: date first, because in radio the date is the identity (R1).
 
-/// `1943-05-25  Sorry, Wrong Number` with series, duration, and progress.
+/// An episode as the grammar's row (R11b): the date block in a list of one series, the series'
+/// window where series mix (the date then leads the sub line), the title, the sub line, the
+/// length, and Play.
 struct EpisodeRowLabel: View {
     let episode: EpisodeRow
     var showSeries = false
@@ -13,71 +15,22 @@ struct EpisodeRowLabel: View {
     /// A transcript match's line, verbatim from the automatic transcript.
     var quote: String? = nil
     @Environment(ListeningHistory.self) private var history
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
 
     var body: some View {
-        HStack(alignment: .top, spacing: Spacing.s3) {
-            // Decision 069: a row that mixes series leads with its series' tile; a series page's rows do not.
-            if showSeries {
-                ArtTile(name: episode.seriesName, genre: episode.seriesGenre, face: episode.seriesFace)
-            }
-            text
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(accessibilityProgress)
-    }
-
-    private var text: some View {
-        VStack(alignment: .leading, spacing: Spacing.s1) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
-                Text(verbatim: AirDate.display(episode.airDate))
-                    .font(TypeRamp.tabular)
-                    .foregroundStyle(Color.brandTextMuted)
-                Text(episode.displayTitle)
-                    .font(TypeRamp.bodyStrong)
-                    .foregroundStyle(Color.brandText)
-                    .multilineTextAlignment(.leading)
-            }
-            HStack(spacing: Spacing.s2) {
-                if showSeries {
-                    Text(episode.seriesName)
-                }
-                if let duration = episode.durationText {
-                    Text(verbatim: duration).monospacedDigit()
-                }
-                if let note {
-                    Text(note)
-                }
-                progressMark
-            }
-            .font(TypeRamp.caption)
-            .foregroundStyle(Color.brandTextMuted)
-            if let quote {
-                Text(verbatim: quote)
-                    .font(TypeRamp.caption)
-                    .italic()
-                    .foregroundStyle(Color.brandText)
-                    .multilineTextAlignment(.leading)
-            }
-        }
-    }
-
-    @ViewBuilder private var progressMark: some View {
-        if let p = history.progress(for: episode.id) {
-            if p >= 1 {
-                Image(systemName: "checkmark.circle.fill")
-                    .accessibilityHidden(true)
-            } else if p > 0 {
-                ProgressView(value: p)
-                    .tint(Color.brandPrimary)
-                    .frame(maxWidth: 60)
-                    .accessibilityHidden(true)
-            }
-        }
-    }
-
-    private var accessibilityProgress: String {
-        guard let p = history.progress(for: episode.id) else { return "" }
-        return p >= 1 ? "Played" : "\(Int(p * 100)) percent played"
+        GrammarRow(
+            visual: showSeries
+                ? .window(episode.seriesWindowArt, name: episode.seriesName, genre: episode.seriesGenre)
+                : .date(episode.airDate, number: episode.number, genre: episode.seriesGenre),
+            title: episode.displayTitle,
+            sub: showSeries ? [episode.seriesName, AirDate.display(episode.airDate), note] : [note],
+            quote: quote,
+            length: episode.durationText,
+            progress: history.progress(for: episode.id),
+            playLabel: "Play \(episode.displayTitle)",
+            onPlay: { PlayEpisodeAction(catalog: catalog, player: player, store: store)(episode.id) })
     }
 }
 
@@ -98,24 +51,16 @@ struct TranscriptHitLabel: View {
     }
 }
 
+/// A series as the grammar's row: its window, the name, an event line of its facts.
 struct SeriesRowLabel: View {
     let series: SeriesRow
 
     var body: some View {
-        HStack(spacing: Spacing.s3) {
-            // The tile carries the genre hue the edge used to (Decision 069).
-            ArtTile(name: series.name, genre: series.genre, face: series.face)
-            VStack(alignment: .leading, spacing: Spacing.s1) {
-                Text(series.name)
-                    .font(TypeRamp.bodyStrong)
-                    .foregroundStyle(Color.brandText)
-                    .multilineTextAlignment(.leading)
-                Text(verbatim: series.metaLine)
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
-            }
-        }
-        .accessibilityElement(children: .combine)
+        GrammarRow(
+            visual: .window(series.windowArt, name: series.name, genre: series.genre),
+            title: series.name,
+            sub: [series.networks.first, series.yearSpan ?? "Undated",
+                  series.episodeCount > 0 ? (series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes") : nil])
     }
 }
 

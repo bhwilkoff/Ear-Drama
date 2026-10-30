@@ -14,6 +14,15 @@ nonisolated struct Artwork: Hashable, Sendable {
     var evidence: URL? = nil
     /// Where a small crop centers (contract §3.3a), computed once in the pipeline.
     var face: FaceBox? = nil
+    /// The picture's published levels (uniform-imagery-design §2); nil until the projection carries `art.grade`.
+    var grade: Grade? = nil
+
+    /// The linear levels `k * v + o` a picture takes after the monochrome, in sRGB.
+    struct Grade: Hashable, Sendable {
+        var k: Double
+        var o: Double
+        static let identity = Grade(k: 1, o: 0)
+    }
 
     /// A face box normalized to the image, origin at its top left: "x,y,w,h" in the projection.
     struct FaceBox: Hashable, Sendable {
@@ -131,8 +140,15 @@ nonisolated struct SeriesRow: Hashable, Sendable, Identifiable {
     let episodeCount: Int
     /// The series' star and portrait (contract §3.3a), or nil: its art is then the typographic card.
     var face: Face? = nil
+    /// The series' own picture (contract §3.3a): its show image, else its star, else the person heard
+    /// most; nil on a catalog that predates `series.picture`. `pictureKind` is never said on a tile.
+    var picture: Artwork? = nil
+    var pictureKind: String? = nil
 
     var id: String { key }
+
+    /// What the window draws: the published picture, else the star's portrait an older catalog carries.
+    var windowArt: Artwork? { picture ?? face?.art }
 
     var yearSpan: String? {
         let first = firstDate.map { String($0.prefix(4)) }
@@ -178,6 +194,8 @@ nonisolated struct EpisodeRow: Hashable, Sendable, Identifiable {
     /// The series' genre and face, so a row that mixes series can draw its tile.
     var seriesGenre: String? = nil
     var seriesFace: Face? = nil
+    var seriesPicture: Artwork? = nil
+    var seriesWindowArt: Artwork? { seriesPicture ?? seriesFace?.art }
 
     /// The episode's display title. A row the pipeline left untitled shows its
     /// log number, then its date, and only then the series name.
