@@ -338,11 +338,11 @@
     return win;
   }
   /** The run strip: the years from the first to the last broadcast on the fixed 1930 to 1962 axis. */
-  function runStrip(first, last, cls = 'g-strip') {
+  function runStrip(first, last, cls = 'g-strip', h = 18) {
     const span = API.runSpan(first, last);
-    return svgEl('svg', { class: cls, viewBox: '0 0 100 18', preserveAspectRatio: 'none', 'aria-hidden': 'true' },
-      svgEl('line', { class: 'g-axis', x1: 0, y1: 17.5, x2: 100, y2: 17.5 }),
-      span ? svgEl('rect', { x: (span.from * 100).toFixed(2), y: 3, width: ((span.to - span.from) * 100).toFixed(2), height: 15 }) : null);
+    return svgEl('svg', { class: cls, viewBox: `0 0 100 ${h}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' },
+      svgEl('line', { class: 'g-axis', x1: 0, y1: h - 0.5, x2: 100, y2: h - 0.5 }),
+      span ? svgEl('rect', { x: (span.from * 100).toFixed(2), y: h - 15, width: ((span.to - span.from) * 100).toFixed(2), height: 15 }) : null);
   }
   /** An event line: the facts joined by " · ", each separator kept with the fact before it. */
   function eventLine(facts, cls = 'caption') {
@@ -360,6 +360,19 @@
         runStrip(s.first, s.last),
         el('span', { class: 'g-facts caption' }, el('span', {}, years(s.first, s.last) || 'Undated'),
           eps !== null ? el('span', {}, plural(eps, 'episode', 'episodes')) : null)));
+  }
+  /** The head board (series, episode, ear drama): the window, the kicker, the name, the facts, and
+      the run strip full width under both. Built in D3-1; the pages adopt it in D3-3. */
+  function headBoard({ series, kicker, name, facts, first, last }) {
+    const slot = typeof matchMedia === 'function' && matchMedia('(min-width: 1024px)').matches ? 176
+      : typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 128 : 96;
+    return el('header', { class: 'g-head', dataset: { genre: (series && series.genre) || '' } },
+      pictureWindow(series, slot),
+      el('div', { class: 'g-head-text' },
+        kicker ? el('span', { class: 'g-kicker caption' }, kicker) : null,
+        el('h1', { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) }, tabindex: '-1' }, name),
+        eventLine(facts || [], 'caption g-head-facts')),
+      runStrip(first, last, 'g-strip g-head-strip', 56));
   }
   const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   /** A date as an event line's fact, never broken across lines: "Oct 30, 1930", else as published. */

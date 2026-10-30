@@ -459,6 +459,25 @@ select {
 .g-tile .g-strip { align-self: end; padding: 0 4px; box-sizing: content-box; width: calc(100% - 8px); }
 .g-facts { display: flex; flex-direction: column; padding: 0 4px; color: inherit; }
 
+/* The head board: built in D3-1, adopted by the pages in D3-3. */
+.g-head {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3);
+  border-radius: var(--radius-card); background: var(--genre-board, var(--color-surface-alt)); color: var(--genre-on, var(--color-text));
+}
+.g-head > .g-window { width: 96px; }
+@media (min-width: 600px) { .g-head > .g-window { width: 128px; } }
+@media (min-width: 1024px) { .g-head > .g-window { width: 176px; } }
+.g-head-text { display: flex; flex-direction: column; justify-content: center; gap: var(--space-1); min-width: 0; }
+.g-kicker { color: inherit; text-transform: uppercase; letter-spacing: 0.08em; }
+.g-head-name {
+  font-family: var(--font-display); font-weight: var(--type-page-title-weight); font-size: var(--type-page-title-size);
+  line-height: 1.05; text-transform: uppercase; text-wrap: balance; overflow-wrap: normal; hyphens: manual;
+}
+.g-head-name[data-step="1"] { font-size: var(--type-section-header-size); }
+.g-head-name[data-step="2"] { font-size: var(--type-body-strong-size); }
+.g-head-facts { color: inherit; }
+.g-head-strip { grid-column: 1 / -1; height: 56px; }
+
 /* The row: 64 px whatever it carries; a 48 px visual, the title, the sub line, the length, Play. */
 .g-row { display: flex; align-items: center; gap: var(--space-2); min-height: 64px; border-bottom: 1px solid var(--color-border); }
 .g-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-3); min-height: 64px; padding: var(--space-2) 0; text-decoration: none; color: inherit; }
