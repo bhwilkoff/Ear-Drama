@@ -42,6 +42,24 @@ Hard-won refinements to the core:
   It was shipped and reverted twice (a 5.6 Mbps floor killed normal Wi-Fi;
   a 0.2 Mbps floor killed slow startup probes); the idle timeout already
   covers dead connections.
+- **Stall watchdog: progress, not elapsed time** (2026-10-30). A real iPad
+  sat at AVPlayerItem status 0 for minutes with no bytes and no error, so
+  nothing recovered it. A load that wants data (playing, or waiting to play,
+  from the network), gained no new bytes, and did not move its position for
+  30 s is treated as failed and goes through LoadRecovery (one jittered
+  retry, the next recording by rank, then the error). A load still receiving
+  bytes is never killed however slow (the precise-timing scan of a
+  headerless VBR MP3 takes 23 s), a deliberate pause never counts, and a
+  local download never does. This is not a throughput floor: any growth
+  resets it. Signals: Apple `loadedTimeRanges` plus the access log's
+  `numberOfBytesTransferred`, with `timeControlStatus` (`StallWatchdog`,
+  `AudioPlayer.watchForStall`); web the buffered end and `currentTime`
+  (`Player.checkStall`); Android Media3 `bufferedPosition`, playback state
+  and `playWhenReady` (`StallWatchdog`, `PlaybackEngine.watchForStall`).
+  Decisions log under `APP_PLAYBACK_DIAG` (Apple), `?diag=1` or
+  `localStorage ed.diag=1` (web), `log.tag.EarDramaDiag DEBUG` (Android).
+  Each platform's test drives a fake clock and a fake loader: no bytes for
+  30 s triggers, a trickle and a pause never do.
 - **Host-wide connection discipline**: hammering one host's MAIN endpoints
   (metadata/images) rate-limits the whole IP and breaks even unrelated
   playback in the household. Cap connections per host, share sessions,

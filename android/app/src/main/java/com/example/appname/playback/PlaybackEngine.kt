@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.RemoteCastPlayer
@@ -88,6 +89,7 @@ class PlaybackEngine(
         const val SKIP_FORWARD_MS = 30_000L
         val SPEEDS = PlayerNumbers.SPEEDS
         private const val SAVE_EVERY_MS = PlayerNumbers.SAVE_EVERY_MS
+        private const val DIAG_TAG = "EarDramaDiag"
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -211,7 +213,10 @@ class PlaybackEngine(
             publish()
         }
 
+        override fun onIsLoadingChanged(isLoading: Boolean) = watchForStall()
+
         override fun onPlaybackStateChanged(playbackState: Int) {
+            watchForStall()
             if (playbackState == Player.STATE_READY) recovery?.second?.loaded()
             if (playbackState == Player.STATE_ENDED) {
                 saveNow()
@@ -221,6 +226,7 @@ class PlaybackEngine(
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            watchForStall()
             if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST && !roomApplying) {
                 onGuestHold?.invoke(!playWhenReady)
             }
@@ -280,6 +286,38 @@ class PlaybackEngine(
                 if (!recover()) {
                     _state.value = _state.value.copy(failed = true, offline = offline, isPlaying = false)
                 }
+            }
+        }
+    }
+
+    private val stallWatch = StallWatchdog()
+    private var watcher: Job? = null
+
+    /**
+     * Wakes the stall watchdog while the player wants data: play-when-ready, buffering, from the
+     * network. It looks once a second and ends when the player no longer wants data. Bytes arriving
+     * (Media3's buffered position) or the playhead moving keep a load alive; a pause never counts.
+     * Diagnostics: `adb shell setprop log.tag.EarDramaDiag DEBUG`.
+     */
+    private fun watchForStall() {
+        if (watcher?.isActive == true) return
+        stallWatch.reset()
+        watcher = scope.launch {
+            while (isActive) {
+                val p = playerOrNull ?: break
+                val network = p.currentMediaItem?.localConfiguration?.uri?.scheme?.startsWith("http") == true
+                val wants = p.playWhenReady && p.playbackState == Player.STATE_BUFFERING && network
+                if (stallWatch.stalled(SystemClock.elapsedRealtime(), wants, p.bufferedPosition, p.currentPosition)) {
+                    if (Log.isLoggable(DIAG_TAG, Log.DEBUG)) {
+                        Log.d(DIAG_TAG, "watchdog: stalled ${StallWatchdog.LIMIT_MS / 1000} s, no bytes, no movement; recovering " +
+                            "(state ${p.playbackState}, loading ${p.isLoading}, buffered ${p.bufferedPosition}, at ${p.currentPosition})")
+                    }
+                    stallWatch.reset()
+                    p.pause()
+                    if (!recover()) _state.value = _state.value.copy(failed = true, isPlaying = false)
+                }
+                if (!p.playWhenReady || p.playbackState == Player.STATE_IDLE || p.playbackState == Player.STATE_ENDED) break
+                delay(1000)
             }
         }
     }
