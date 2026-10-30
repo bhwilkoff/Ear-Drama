@@ -107,6 +107,8 @@ private struct RouteDestinations_tvOS: ViewModifier {
             case let .person(id): PersonScreen_tvOS(id: id)
             case .account: AccountScreen_tvOS()
             case .surprise: SurpriseScreen_tvOS()
+            case let .drama(pid): FinishedDramaScreen(id: pid)
+            case .invitation: EmptyView()
             }
         }
         .navigationDestination(for: SharedPlayRoute.self) { SharedPlayScreen_tvOS(route: $0) }
@@ -221,6 +223,7 @@ private struct ListenScreen_tvOS: View {
     @State private var continuing: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
     @State private var allNight = false
+    @State private var finished = FinishedStore.shared
 
     private static let nightFirst = 6
     private static let topCount = 12
@@ -230,7 +233,7 @@ private struct ListenScreen_tvOS: View {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
-                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty {
+                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && finished.plays.isEmpty {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 } else {
                     ScrollView(.vertical) {
@@ -258,6 +261,18 @@ private struct ListenScreen_tvOS: View {
                                 }
                                 .focusSection()
                             }
+                            if !finished.plays.isEmpty {
+                                VStack(alignment: .leading, spacing: Spacing.s4) {
+                                    SectionHead(title: "New ear dramas") {
+                                        Button("All") { app.openBrowseDramas() }
+                                    }
+                                    .padding(.horizontal, 60)
+                                    TileShelf_tvOS(items: Array(finished.plays.prefix(6))) { play in
+                                        FinishedTile(play: play)
+                                    }
+                                }
+                                .focusSection()
+                            }
                         }
                         .padding(.vertical, 60)
                     }
@@ -266,6 +281,7 @@ private struct ListenScreen_tvOS: View {
                 ProgressView()
             }
         }
+        .task { await finished.load() }
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
             let loadedDay = await HomeDay.load(catalog)
@@ -335,6 +351,7 @@ private struct SeriesBrowseScreen_tvOS: View {
     @State private var sort: SeriesSort = .popular
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
+    @State private var scope: BrowseScope = .shows
     @Environment(AppStore.self) private var store
 
     private struct Key: Hashable { let genre: String?; let decade: Int?; let sort: SeriesSort; let load: Int }
@@ -356,8 +373,16 @@ private struct SeriesBrowseScreen_tvOS: View {
                 ScrollViewReader { proxy in
                     ScrollView(.vertical) {
                         VStack(alignment: .leading, spacing: Spacing.s6) {
-                            filters
-                            results(series, proxy: proxy)
+                            Picker("Browse", selection: $scope) {
+                                ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            if scope == .dramas {
+                                FinishedBrowse()
+                            } else {
+                                filters
+                                results(series, proxy: proxy)
+                            }
                         }
                         .padding(.horizontal, 60)
                         .padding(.vertical, 60)
@@ -379,8 +404,13 @@ private struct SeriesBrowseScreen_tvOS: View {
         .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) { shown = BrowseScreenPage.size }
         .onChange(of: store.pendingBrowseGenre, initial: true) { _, g in
             guard let g else { return }
-            genre = g; decade = nil
+            genre = g; decade = nil; scope = .shows
             store.pendingBrowseGenre = nil
+        }
+        .onChange(of: store.pendingBrowseDramas, initial: true) { _, asked in
+            guard asked else { return }
+            scope = .dramas
+            store.pendingBrowseDramas = false
         }
     }
 

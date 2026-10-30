@@ -4,7 +4,7 @@ import Foundation
 /// Link continuation post the answer to the inbox and never route themselves.
 nonisolated enum DeepLink {
     /// Every `eardrama://` link and its `https://eardrama.org` twin share a path:
-    /// `series/{key}`, `episode/{id}`, `person/{id}`, `search?q=`, `library`,
+    /// `series/{key}`, `episode/{id}`, `person/{id}`, `drama/{pid}`, `search?q=`, `library`,
     /// `invite#{token}`. Anything else (another host, the OAuth callback, an
     /// unknown path) opens nothing, so the app stays where it was.
     static func parse(_ url: URL) -> AppStore.InboxRequest? {
@@ -15,6 +15,7 @@ nonisolated enum DeepLink {
         case "series": return value.map { .series($0) }
         case "episode": return value.map { .episode($0) }
         case "person": return value.map { .person($0) }
+        case "drama": return value.map { .drama($0) }
         case "search":
             // `+` is a space, as the web's URLSearchParams reads it.
             let raw = URLComponents(url: url, resolvingAgainstBaseURL: false)?

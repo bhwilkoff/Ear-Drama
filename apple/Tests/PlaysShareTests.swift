@@ -399,12 +399,12 @@ struct PlaysShareInviteTests {
         #expect(DeepLink.parse(URL(string: "https://eardrama.org/series/fibber")!) == .series("fibber"))
     }
 
-    @Test func anInviteOpensLibraryAndIsHeldUntilDropped() {
+    @Test func anInviteOpensItsOwnPageOnHome() {
         let app = AppStore()
-        app.selectedTab = .home
+        app.selectedTab = .library
         app.post(.invite(token))
         #expect(app.drainInbox().isEmpty)
-        #expect(app.selectedTab == .library && app.pendingInvite == token)
+        #expect(app.selectedTab == .home && app.paths[.home]?.count == 1)
     }
 
     @Test func aClassCodeIsTwoGroupsOfFourAndAnInviteSaysHowLongItWorks() {

@@ -49,6 +49,10 @@ enum Route: Hashable {
     case account
     /// Surprise pushed from Home's toolbar on iPhone (iOS-DESIGN §4.11).
     case surprise
+    /// A finished ear drama's page (DEEP_LINKS.md `drama/{pid}`).
+    case drama(String)
+    /// An invite link's page (DEEP_LINKS.md): readable signed out. Never on a TV.
+    case invitation(String)
 
     /// Episode ids carry the series key and a `|`; series keys never do.
     init(id: String) {
@@ -87,6 +91,8 @@ final class AppStore {
         case person(String)
         /// Search with its query filled in.
         case search(String)
+        /// A finished ear drama, by its production id.
+        case drama(String)
     }
 
     /// A deep link's search query, taken once by the Search screen.
@@ -95,16 +101,21 @@ final class AppStore {
     /// A genre the series page asked Browse to filter to, taken once by Browse.
     var pendingBrowseGenre: String?
 
+    /// Browse's Ear dramas scope, asked for by Home's All; taken once by Browse.
+    var pendingBrowseDramas = false
+
+    func openBrowseDramas() {
+        paths[.browse] = NavigationPath()
+        pendingBrowseDramas = true
+        selectedTab = .browse
+    }
+
     /// Opens Browse filtered to a genre, at its root.
     func openBrowse(genre: String) {
         paths[.browse] = NavigationPath()
         pendingBrowseGenre = genre
         selectedTab = .browse
     }
-
-    /// The invite opened this session, shown as Library's Invitation until
-    /// joined or dropped ("Not now"). Held in memory only.
-    var pendingInvite: String?
 
     func post(_ request: InboxRequest) { inbox.append(request) }
 
@@ -159,9 +170,15 @@ final class AppStore {
             case .play(let id):
                 toPlay.append(id)
             case .invite(let token):
-                pendingInvite = token
-                selectedTab = .library
-                paths[.library] = NavigationPath()
+                #if !os(tvOS)
+                // The Invitation is its own page on Home, readable signed out; the token rides the route.
+                selectedTab = .home
+                var path = NavigationPath()
+                path.append(Route.invitation(token))
+                paths[.home] = path
+                #endif
+            case .drama(let pid):
+                push(Route.drama(pid))
             case .series(let key):
                 push(Route.series(key))
             case .episode(let id):

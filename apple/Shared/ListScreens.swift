@@ -15,6 +15,8 @@ struct RouteDestinations: ViewModifier {
             case let .person(id): PersonScreen(id: id)
             case .account: AccountScreen()
             case .surprise: SurpriseScreen()
+            case let .drama(pid): FinishedDramaScreen(id: pid)
+            case let .invitation(token): InviteScreen(token: token)
             }
         }
         .navigationDestination(for: DownloadsRoute.self) { _ in DownloadsScreen() }
@@ -68,9 +70,11 @@ struct ListenScreen: View {
     @State private var following: [SeriesRow] = []
     @State private var year: Int?
     @State private var allNight = false
+    @State private var finished = FinishedStore.shared
 
     private static let nightFirst = 6
     private static let topCount = 12
+    private static let dramaCount = 6
 
     private var selectedYear: Int? { year ?? day?.years.peak }
 
@@ -127,13 +131,27 @@ struct ListenScreen: View {
                         }
                     }
                 }
-                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty {
+                if !finished.plays.isEmpty {
+                    Section {
+                        ShowGrid(items: Array(finished.plays.prefix(Self.dramaCount))) { play, width in
+                            FinishedTile(play: play, width: width)
+                        }
+                        .gridRow()
+                    } header: {
+                        SectionHead(title: "New ear dramas") {
+                            Button("All") { store.openBrowseDramas() }
+                                .buttonStyle(.borderless)
+                        }
+                    }
+                }
+                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && finished.plays.isEmpty {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 }
             } else {
                 SkeletonRows()
             }
         }
+        .task { await finished.load() }
         .navigationTitle("Home")
         #if os(iOS)
         // iPhone's way to Surprise (iOS-DESIGN §3.1, Archive Watch §2.6: a push).
@@ -221,6 +239,7 @@ struct SeriesBrowseScreen: View {
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
     @State private var columnWidth: CGFloat = 0
+    @State private var scope: BrowseScope = .shows
 
     private struct Filter: Hashable {
         let genre: String?, network: String?, decade: Int?, sort: SeriesSort, generation: Int
@@ -271,7 +290,12 @@ struct SeriesBrowseScreen: View {
 
     private func browseList(_ proxy: ScrollViewProxy) -> some View {
         List {
-            if catalog.state == .unavailable {
+            if scope == .dramas {
+                FinishedBrowse()
+                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            } else if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
                 results(series, proxy: proxy)
@@ -283,7 +307,7 @@ struct SeriesBrowseScreen: View {
             }
         }
         .overlay {
-            if catalog.state != .unavailable, let series, shownSeries(series).isEmpty, shownPlays.isEmpty {
+            if scope == .shows, catalog.state != .unavailable, let series, shownSeries(series).isEmpty, shownPlays.isEmpty {
                 EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
                            action: .init(title: "Clear Filters") { clear() })
             }
@@ -300,7 +324,18 @@ struct SeriesBrowseScreen: View {
             }
         }
         #endif
-        .modifier(TopBar { chips })
+        .modifier(TopBar {
+            VStack(spacing: 0) {
+                Picker("Browse", selection: $scope) {
+                    ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, Spacing.s4)
+                .padding(.vertical, Spacing.s2)
+                .accessibilityIdentifier("browse-scope")
+                if scope == .shows { chips }
+            }
+        })
         .navigationTitle("Browse")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
@@ -312,8 +347,13 @@ struct SeriesBrowseScreen: View {
         .task { await plays.load() }
         .onChange(of: store.pendingBrowseGenre, initial: true) { _, g in
             guard let g else { return }
-            clear(); genre = g
+            clear(); genre = g; scope = .shows
             store.pendingBrowseGenre = nil
+        }
+        .onChange(of: store.pendingBrowseDramas, initial: true) { _, asked in
+            guard asked else { return }
+            scope = .dramas
+            store.pendingBrowseDramas = false
         }
         .task(id: Filter(genre: genre, network: network, decade: decade, sort: sort, generation: catalog.loadKey)) {
             guard catalog.state == .ready else { return }
@@ -1104,7 +1144,7 @@ struct LibraryScreen: View {
                 // The empty state heads the list; the account and the site
                 // pages stay under it, signed in or out (iOS-DESIGN §7.4).
                 let empty = Self.emptied || (inProgress.isEmpty && played.isEmpty && queued.isEmpty && following.isEmpty
-                    && downloads.records.isEmpty && plays.store.productions.isEmpty && app.pendingInvite == nil
+                    && downloads.records.isEmpty && plays.store.productions.isEmpty
                     && (!account.isSignedIn || shared.remote.isEmpty))
                 List {
                     if catalog.state == .unavailable {
