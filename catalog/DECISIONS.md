@@ -683,3 +683,61 @@ placeholder titles, 3,322 rip tags), not facts about the programs.
 `tests/test_reattribute.py`, `tests/test_titles.py`, `tests/test_otr_parse.py`. MEASURED on the 2026-10-29 caches, see the
 audit for the table: series 10,641 to 8,740, episodes 107,190 to 103,027 (3.9%, so the publish needs a `shrink_reason`);
 episode ids that changed are forwarded by recording (`forwarding.py`), no client change. A cache Release is not needed.
+
+
+## 026 — Scope is drama and spoken story; a misspelled or numbered series is the program it spells, by evidence
+
+*Date: 2026-10-31*
+
+Amends 025 (P-7). Owner, 2026-10-31: "Drama and spoken story only." Keep radio drama, comedy, audio plays, readings,
+serials, and the variety and news shows of radio's golden age; withhold university concerts, music sets and lecture
+series, kept in the research database with a reason code. And: "Titles without context don't belong in the app ...
+Never invent." Five rules, each only on evidence a reader can open:
+
+1. **A title that is one word and a number** ("TopSecret15", "Hunting300") is a file name: composed from the series
+   name and date or number, else the episode is withheld (`display_text.readable_title`).
+2. **A series within two letters of one program** ("Top Sercet", "Yours Truly Johny Dollar") joins it
+   (`reattribute.near_program`, `build_db.merge_near_names`) only when exactly one program is that near, the names are
+   spelled with the same words (one joining word may differ: "Murder At Midnight"; "Lux Radio Theater - AU" is another
+   production and stays), and the episodes agree: a title the program has, or every dated episode inside its run, a year
+   either side. Recorded in the episode's `identity.reattributed`. "ABC Radio Workshop" is one letter from "CBS Radio
+   Workshop" and stays: 1953 is outside its 1956-57 run.
+3. **Numbered volumes** ("CBS Mystery Theater Fantasy Selection 1 to 8", "Reel 1, 2") that share a base name become one
+   series (`reattribute.disc_groups`, `build_db.merge_disc_series`; LibriVox projects excluded, each is a work). A base
+   that names a distribution service ("American Armed Forces Radio No 62", "AFRS V Disc 4") is no program and never
+   becomes one: each file moves to the program its own name begins with (`stem_program(loose)`: the program's name leads
+   the file name, hyphenated or behind a shelf code), and the rest of the disc is held back (`series_is_a_numbered_disc`).
+   An undated volume file loses its bare number as identity (two volumes both have a number 1).
+4. **An apostrophe** is restored only from a name a registry spells with it ("The Witch's Tale" for "The Witchs Tale",
+   from the series' recorded names): `display_text.repair_apostrophe`; the same letters, one such spelling, never a guess.
+   Also: an item title whose trailing parenthetical the series name carries on past ("Ray Bradbury: Bradbury Reads
+   Bradbury (Listening Library, 1975)") names the series with the parenthetical dropped (62 series).
+5. **Scope.** `tools/enrich_scope.py` (after `enrich_genres.py`) writes `series_scope(series_key, kind, reason, evidence,
+   items)`; the build withholds the series as `out_of_scope_concert|lecture|music_set`. Never classified: a program a
+   registry names (OTRR, RadioEchoes, the spine), a LibriVox project, a series with a genre label, a series half of whose
+   items' own keywords name a spoken genre, a name with a dramatic word (reading, play, story ...), a series on
+   `editorial/scope_review.json` (a reviewed keep list, each with a reason; none yet). Evidence: *concert*: concert or
+   recital in the name; one performer on every file's ID3 artist with "live" in the name. *lecture*: lecture, symposium,
+   colloquium or convocation in the name; or `content_kind = lecture` on 60% of the episodes (build_db's finding-aid
+   speaker rule). *music set*: archive.org subject keywords (jazz, big band, bluegrass, opera ...) on 60% of the series'
+   own items, or a band, orchestra or choir name with a music collection (`audio_music`, `78rpm`, `etree`); an item that
+   feeds several series is a compilation and is never read. An episode whose own title is a V-Disc is a music record
+   (`out_of_scope_music_record`).
+
+**Why**: the owner's scope and no-invention rules. Every merge is a fact a reader can check in the dates or titles; none
+is a likeness of a name. The 2026-10-31 live sample showed the same upload habit in four more shapes (a file name that
+survived, a typo that made a second show, a disc number that made 93 shows, a garbled uploader name).
+
+**How to apply**: a new scope word goes in `enrich_scope.py` with a fixture in `tests/test_scope.py` and a control; a
+program wrongly caught goes on `editorial/scope_review.json` with its reason, never a looser rule. Guards:
+`tests/test_scope.py`, `tests/test_reattribute.py`, `tests/test_display_text.py` (each seen failing on the 62e7d02 tools;
+the projection guard fails on the live artifact with 37 one-word-and-number titles). MEASURED on the 2026-10-29 caches:
+series 8,763 to 6,980 and episodes 103,077 to 96,397 (6.5%, so the publish needs a `shrink_reason`). Withheld, in
+episodes: lecture 2,017, music set 667, concert 95, V-Disc records 487, numbered discs 3,404 (93 series, about 2,350
+of them V-Discs), uploader grab bags 1,076 to 1,469. Merged: 34 misspelled series (452 files), 21 volume series
+(274 files); 247 disc files moved to their programs by the loose rule (more by the dated rule once hyphenated stems parse); one-word-and-number titles 37 to 0; apostrophes restored on 40
+names. Forwarding against the live projection: 7,670 episode ids left, 744 aliased, 6,926 tombstoned, none neither;
+1,802 series keys left, 50 aliased, 1,752 tombstoned. Station slots: 0 changed against the live `stations.json`.
+Known residue: "Science Fiction 1968" (OTRR names it, so the build does not call it a grab bag) keeps its name;
+"Poetry and Modern Man" (a talk about poetry, kind lecture) and a DJ show that is unlisted music stay or go on the
+data alone.

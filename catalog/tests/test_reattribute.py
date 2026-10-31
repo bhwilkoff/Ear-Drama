@@ -79,5 +79,75 @@ check("control: a junk tag", R.prefer_tag_title("CaseClosed211", "Track 3", "Cas
 check("control: a dated tag is left to the date rules", R.prefer_tag_title("CaseClosed211", "Case Closed 1946-01-12 Show", "CaseClosed211"),
       "CaseClosed211")
 
+# P-7: stem_program on a disc of many programs (loose), hyphenated stems, service words, shelf codes.
+check("loose: a program named at the start, no title or date gate",
+      R.stem_program("AFRS-Proudly-We-Hail-311-This-Mans-Army", {"proudlywehail": "proudlywehail"}, lambda c: set(), None, lambda c: None, loose=True),
+      ("proudlywehail", "prefix", "named"))
+check("loose: a dated hyphenated stem keeps its date apart",
+      R.stem_program("1954-09-19-AFRS-Proudly-We-Hail-311-This-Mans-Army", {"proudlywehail": "proudlywehail"}, lambda c: set(), "1954-09-19", lambda c: None, loose=True),
+      ("proudlywehail", "prefix", "named"))
+check("control: the same stem, not loose, no gate",
+      R.stem_program("AFRS-Proudly-We-Hail-311-This-Mans-Army", {"proudlywehail": "proudlywehail"}, lambda c: set(), None, lambda c: None), None)
+check("loose: a shelf code and a service word are not the program",
+      R.stem_program("317137B-Melody Ranch Radio Shows Gene Autry GA-58", {"melodyranch": "melodyranch"}, lambda c: set(), None, lambda c: None, loose=True),
+      ("melodyranch", "prefix", "named"))
+check("control: loose never names an unknown program",
+      R.stem_program("USAF Wolfman Jack s13 Sep72", {"proudlywehail": "proudlywehail"}, lambda c: set(), None, lambda c: None, loose=True), None)
+
+# P-7: a garbled series name that carries on past the item's title into its parenthetical
+check("item title with a trailing parenthetical",
+      R.name_from_metadata("raybradburybradburyreadsbradburylistening",
+                           [F("Ray Bradbury: Bradbury Reads Bradbury (Listening Library, 1975)")] * 14),
+      ("Ray Bradbury: Bradbury Reads Bradbury", None, R.PAREN_RULE))
+check("control: a parenthetical the key does not carry",
+      R.name_from_metadata("raybradbury", [F("Ray Bradbury: Bradbury Reads Bradbury (Listening Library, 1975)")] * 14), None)
+
+
+# P-7: near_program
+def prog(key, name, n, run=None, titles=()):
+    return {"key": key, "name": name, "n": n, "run": run, "titles": set(titles)}
+
+
+def src(key, name, n, years=(), titles=()):
+    return {"key": key, "name": name, "n": n, "years": list(years), "titles": set(titles)}
+
+
+TS = prog("topsecret", "Top Secret", 31, (1950, 1951, 20), ["confession"])
+check("near: a misspelling whose dates sit in the run", R.near_program(src("topsercet", "Top Sercet", 15, [1950, 1951]), [TS]), ("topsecret", "date"))
+check("near: a title the program has", R.near_program(src("topsercet", "Top Sercet", 2, [], ["confession"]), [TS]), ("topsecret", "title"))
+check("near: a joining word dropped", R.near_program(src("murdermidnight", "Murder Midnight", 2, [1946]),
+                                                     [prog("murderatmidnight", "Murder At Midnight", 102, (1946, 1950, 60))]),
+      ("murderatmidnight", "date"))
+check("control: a date outside the run", R.near_program(src("topsercet", "Top Sercet", 15, [1962]), [TS]), None)
+check("control: no dates and no titles", R.near_program(src("topsercet", "Top Sercet", 15), [TS]), None)
+check("control: two programs this near", R.near_program(src("topsercet", "Top Sercet", 15, [1950]),
+                                                       [TS, prog("topsercot", "Top Sercot", 40, (1950, 1951, 20))]), None)
+check("control: another production (extra words)", R.near_program(src("luxradiotheaterau", "Lux Radio Theater - AU", 47, [1970]),
+                                                                [prog("luxradiotheater", "Lux Radio Theater", 742, (1935, 1972, 500))]), None)
+check("control: a bigger series is never folded into a smaller one", R.near_program(src("topsecret", "Top Secret", 31, [1950]),
+                                                                                   [prog("topsercet", "Top Sercet", 5, (1950, 1951, 5))]), None)
+check("control: different numbers", R.near_program(src("americanarmedforcesradiono16", "American Armed Forces Radio No 16", 20, [1950]),
+                                                  [prog("americanarmedforcesradiono15", "American Armed Forces Radio No 15", 396, (1940, 1960, 90))]), None)
+check("control: a key under nine letters", R.near_program(src("thehood", "The Hood", 1, [1950]), [prog("thefood", "The Food", 9, (1950, 1951, 5))]), None)
+
+# P-7: disc_groups
+NAMES = {"cbsmysterytheaterfantasyselection1": "CBS Mystery Theater Fantasy Selection 1",
+         "cbsmysterytheaterfantasyselection2": "CBS Mystery Theater Fantasy Selection 2",
+         "americanarmedforcesradiono62": "American Armed Forces Radio No 62",
+         "americanarmedforcesradiono63": "American Armed Forces Radio No 63",
+         "classiccrimewiththebritsno6": "Classic Crime With The Brits No 6",
+         "librivox1": "Shakespeare Monologues Collection vol. 1", "librivox2": "Shakespeare Monologues Collection vol. 2",
+         "alcappradioshowqandareel1": "Al Capp Radio Show - Q and A Reel 1",
+         "alcappradioshowqanda": "Al Capp Radio Show - Q and A"}
+G = R.disc_groups(NAMES, skip={"librivox1", "librivox2"})
+check("disc: volumes of one program", G["cbsmysterytheaterfantasy"],
+      ("CBS Mystery Theater Fantasy", ["cbsmysterytheaterfantasyselection1", "cbsmysterytheaterfantasyselection2"], False))
+check("disc: a distribution service is flagged", G["americanarmedforcesradio"][2], True)
+check("disc: a sibling joins the series named for the base", G["alcappradioshowqanda"][1], ["alcappradioshowqanda", "alcappradioshowqandareel1"])
+check("control: one volume alone is no group", "classiccrimewiththebrits" in G, False)
+check("control: LibriVox projects are works of their own", any("shakespeare" in v[0].lower() for v in G.values()), False)
+check("disc_base reads Vol., Volume, Disc, Selection", [R.disc_base(n) for n in ("Foo, Volume 001", "Foo vol. 3", "Foo Disc 4", "Foo")],
+      [("Foo", 1), ("Foo", 3), ("Foo", 4), None])
+
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)
