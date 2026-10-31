@@ -33,6 +33,7 @@ import com.example.appname.ui.ListenTogetherRow
 import com.example.appname.ui.SeriesListItem
 import com.example.appname.plays.PlaysShare
 import com.example.appname.ui.AccountRow
+import com.example.appname.ui.ExportRow
 import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
@@ -127,6 +128,7 @@ fun LibraryScreen(
             LazyColumn(Modifier.fillMaxSize().focusRequester(firstRow), contentPadding = padding) {
                 // §4.11: the account is the first row, above what this device holds.
                 item(key = "account") { AccountRow() }
+                item(key = "export") { ExportRow() }
                 item(key = "together") { ListenTogetherRow(onListenTogether) }
                 // §7.1a: the empty state heads what this device holds; the account and the site pages stay.
                 if (empty) {

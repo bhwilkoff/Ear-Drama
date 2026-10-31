@@ -13,11 +13,14 @@ object DisplayVocabulary {
      * The contract's words, for a catalog that predates `meta.rightsLines`.
      * A catalog that publishes the key is read instead ([CatalogDatabase.rightsLines]).
      */
-    val CONTRACT_RIGHTS_LINES: Map<String, String> = mapOf(
+    val CONTRACT_RIGHTS_LINES: Map<String, String> get() = contractRightsLines(java.time.LocalDate.now().year)
+
+    /** The published-age year is the calendar year minus 100 (audit_audio_rights.py `pd_published_year` + 1); never typed. */
+    fun contractRightsLines(year: Int): Map<String, String> = mapOf(
         "unclaimed" to UNCLAIMED,
         "rec_gov_work" to "Government recording",
         "rec_librivox" to "LibriVox recording",
-        "rec_pd_published_age" to "Published before 1926",
+        "rec_pd_published_age" to "Published before ${year - 100}",
         "rec_cc_corroborated" to "Creative Commons recording",
     )
 

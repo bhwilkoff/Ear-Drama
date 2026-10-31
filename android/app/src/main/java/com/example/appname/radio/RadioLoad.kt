@@ -17,6 +17,9 @@ data class RadioEvening(
     val choices: List<String> = listOf(day.evening),
 ) {
     fun detail(slot: RadioSlot): EpisodeDetail? = slot.playableEpisode?.let { details[it.id] }
+
+    /** The first slot of the evening that plays: what "Listen from the start" opens once the evening has ended. */
+    val firstPlayable: EpisodeDetail? get() = day.slots.firstNotNullOfOrNull { detail(it) }
 }
 
 sealed interface RadioLoad {

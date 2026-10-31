@@ -352,4 +352,6 @@ Closed 2026-10-23: Play / Pause takes no bare key (§5.3), the Go and
 Help menus (§5.5, §5.6), the closing rule (§2.4), Share (§5.7), and the
 player's numbers named once (§5.4).
 
+**E1 rules (2026-10-30, D4 review).** The transport bar carries Add to queue and Share as borderless icon buttons before "On the air"; the Controls menu carries Share Episode beside Add to Queue. Stations after the evening ends: Tonight's button reads Replay. Account carries the Export section (docs/EXPORT.md), shared with iOS.
+
 Bring the next change back to a rule here, or bring a new rule first.

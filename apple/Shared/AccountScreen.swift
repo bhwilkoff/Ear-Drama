@@ -136,6 +136,7 @@ struct AccountScreen: View {
                 }
                 .disabled(account.isWorking)
             }
+            ExportSection()
         }
         .navigationTitle("Account")
         .modifier(DeleteAccountModifier(isPresented: $confirmDelete))

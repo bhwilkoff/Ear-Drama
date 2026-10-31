@@ -398,4 +398,6 @@ The rights line, the transcript label, and volume leveling are as in
 Closed 2026-10-23: a way back to Now Playing (§5.4), Versions on Detail
 (§4.4), and the 29 pt caption floor (§7.1).
 
+**E1 rules (2026-10-30, D4 review).** The player row carries Add to queue (`player-queue`). Share is deliberately absent: tvOS has no share sheet. Export is absent for the same reason (docs/EXPORT.md); the data exports from a phone. Stations after the evening ends: the Tonight card reads "Ended at ..." and "Replay from the start", and pressing it plays the first playable slot and opens Now Playing.
+
 Bring the next change back to a rule here, or bring a new rule first.

@@ -1032,6 +1032,9 @@ private struct NowPlaying_tvOS: View {
                 SpeedMenu()
                 SleepButton()
                 LevelToggle()
+                if let item = player.item {
+                    PlayerQueueButton(episodeID: item.episode.id)
+                }
                 ListenTogetherButton()
                 RoutePicker_tvOS()
                     .frame(width: 80, height: 80)

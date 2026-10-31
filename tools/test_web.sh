@@ -25,6 +25,7 @@ DEFAULT_SUITES="js/api.test.js
   js/plays.test.js
   js/plays-share.test.js
   js/account.test.js
+  js/export.test.js
   js/together.test.js
   tools/test_tv_focus.mjs
   tools/test_tv_ua.mjs

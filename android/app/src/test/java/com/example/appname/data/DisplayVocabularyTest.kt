@@ -3,6 +3,7 @@ package com.example.appname.data
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** docs/CATALOG-CONTRACT.md §5.5, word for word. */
@@ -29,9 +30,19 @@ class DisplayVocabularyTest {
     @Test fun `clean rows name their basis, and an unknown basis shows nothing`() {
         assertEquals("Government recording", DisplayVocabulary.rightsLine("clean", "rec_gov_work"))
         assertEquals("LibriVox recording", DisplayVocabulary.rightsLine("clean", "rec_librivox"))
-        assertEquals("Published before 1926", DisplayVocabulary.rightsLine("clean", "rec_pd_published_age"))
+        assertEquals("Published before 1926", DisplayVocabulary.rightsLine(
+            "clean", "rec_pd_published_age", DisplayVocabulary.contractRightsLines(2026)))
+        assertEquals("Published before 1927", DisplayVocabulary.contractRightsLines(2027)["rec_pd_published_age"])
         assertEquals("Creative Commons recording", DisplayVocabulary.rightsLine("clean", "rec_cc_corroborated"))
         assertNull(DisplayVocabulary.rightsLine("clean", "rec_unknown_basis"))
+    }
+
+    @Test fun `no client source types the rights year`() {
+        val root = java.io.File("src/main/java")
+        val files = root.walkTopDown().filter { it.extension == "kt" }.toList()
+        assertTrue("no sources found from ${java.io.File(".").absolutePath}", files.isNotEmpty())
+        val typed = Regex("Published before [0-9]{4}")
+        files.forEach { assertFalse("${it.name} types the rights year", typed.containsMatchIn(it.readText())) }
     }
 
     @Test fun `the eight genre codes have names and nothing else does`() {

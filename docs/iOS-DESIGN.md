@@ -843,4 +843,6 @@ Closed 2026-10-23: the player's numbers are named once (§5.7), haptics
 go through one mapping (§6.5), and Detail shares the https twin (§4.4). The two empty states that
 explained (Listen, Library) lost their descriptions (§1.6).
 
+**E1 rules (2026-10-30, D4 review).** The player sheet's toolbar carries Add to queue (a toggle) and Share (`ShareLink`), icon only, beside the transcript button; the identifiers `player-queue` and `player-share` are the tests' doors. Stations after the evening ends: Tonight keeps "Ended at ..." and its button reads Replay (the first playable slot, played as an episode). Account carries an Export section: "Export my data" (JSON) and "Export history (CSV)" through `ShareLink`; no upload, no sign-in needed (docs/EXPORT.md). The rights fallback computes its year from the calendar; nothing types it.
+
 Bring the next change back to a rule here, or bring a new rule first.

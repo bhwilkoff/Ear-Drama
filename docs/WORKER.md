@@ -15,8 +15,12 @@ Archive Watch's sign-in never reached its Worker (its sync rides each
 person's own cloud), so the sign-in verification here is new code, written
 to the same rules.
 
-Nothing is deployed. Every step that touches Cloudflare, Apple, or Google is
-the owner's, listed under [Needs Ben](#needs-ben).
+The Worker is deployed at `https://eardrama-api.benwilkoff.workers.dev`
+(`GET /v1/health` answered `{"ok":true}` on 2026-10-30). That proves the code
+is live, not that sign-in works: which of the steps under
+[Needs Ben](#needs-ben) are done (the D1 schema, the Apple and Google ids, the
+secrets) is not recorded in this repository. Every step that touches
+Cloudflare, Apple, or Google is the owner's.
 
 ## Files
 
@@ -640,7 +644,7 @@ never by name.
 
 ## Needs Ben
 
-Each of these is the owner's, in this order. None has been done.
+Each of these is the owner's, in this order. The repository cannot show which are done.
 
 1. **Cloudflare account**: use the account Archive Watch's Worker runs on, or
    a new one. `cd worker && npx wrangler login`.

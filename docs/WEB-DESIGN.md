@@ -999,3 +999,5 @@ web app follows today.
 - **§10.7 Headless Chrome's `--window-size` has a floor near 500 px.** A
   375 px screenshot taken that way is a crop of a wider layout. Set the
   viewport with DevTools' `Emulation.setDeviceMetricsOverride` instead.
+
+**E1 rules (2026-10-30, D4 review).** Stations after the evening ends: the Tonight row keeps "Ended at 9:00 PM" and offers Replay (a primary button, the first playable slot from the top, played as an ordinary episode, never live). Library carries "Export my data" and "Export history (CSV)" as ghost buttons in the account row (`js/export.js`; docs/EXPORT.md). The rights line is read from `rightsLines`, never typed.

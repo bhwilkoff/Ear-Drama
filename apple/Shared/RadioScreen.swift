@@ -134,11 +134,18 @@ private struct StationsSection: View {
         case .after: RadioClock.end(of: slots).map { "Ended at \(RadioClock.clock($0))" }
         case .during: slot.flatMap { evening.detail(for: $0) == nil ? RadioClock.gapNote($0) : nil }
         }
+        let ended = onAir.phase == .after
         return StationRow(name: "Tonight in \(evening.day.year)", genre: nil, slot: slot, note: note,
                           isLive: live.day == evening.day,
-                          canListen: slot.flatMap { evening.detail(for: $0) } != nil) {
+                          canListen: ended ? evening.firstPlayable != nil : slot.flatMap { evening.detail(for: $0) } != nil,
+                          startOver: ended) {
             player.isMuted = store.isMuted
-            live.tuneIn(evening.day, details: evening.details)
+            if ended, let first = evening.firstPlayable {
+                live.stop()
+                player.play(first, from: 0)
+            } else {
+                live.tuneIn(evening.day, details: evening.details)
+            }
         } stop: { stopLive() }
     }
 
@@ -172,6 +179,7 @@ struct StationRow: View {
     let note: String?
     let isLive: Bool
     let canListen: Bool
+    var startOver = false
     let listen: () -> Void
     let stop: () -> Void
 
@@ -204,12 +212,12 @@ struct StationRow: View {
                 .accessibilityHint("Stops listening live")
             } else if canListen {
                 Button(action: listen) {
-                    Label("Listen live", systemImage: "play.fill")
+                    Label(startOver ? "Replay" : "Listen live", systemImage: "play.fill")
                         .foregroundStyle(Color.brandOnPrimary)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.brandPrimary)
-                .accessibilityLabel("Listen live to \(name)")
+                .accessibilityLabel(startOver ? "Replay \(name) from the start" : "Listen live to \(name)")
             }
         }
         .frame(minHeight: 64)

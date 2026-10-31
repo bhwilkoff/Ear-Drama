@@ -647,7 +647,7 @@ like, or ranking of a performance.
 
 Phase 2 makes one production recordable across several devices, by people a
 director invites (LOOP-PLAN M8, Decisions 057 and 059). This section is the
-server side; §11.7 is the apps' side. Nothing is deployed, and every rule
+server side; §11.7 is the apps' side. Every rule
 below is proven by `worker/test/plays.test.js` and `account.test.js`, with a
 deliberate break for each in `worker/test/mutations.mjs`. The endpoints, the
 record's fields, and the schema are in `docs/WORKER.md`, "Shared plays".
