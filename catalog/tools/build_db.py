@@ -28,6 +28,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 import otr_parse as P
 import audit_audio_rights as A
+import reattribute as RA
+import text_defects as TD
 
 # A copy of Archive Watch's shared/editorial/cce_renewals.json (tools/fetch_cce_renewals.py
 # there), so this catalog builds outside that repository.
@@ -800,6 +802,71 @@ def make_schedule_matcher(by_title, by_artist):
     return match
 
 
+UPLOAD_CODE_TITLE = re.compile(r"^\s*\d{5,}\b")
+FALLBACK_HOW = ("file", "dir", "item", "item_title")
+
+
+def program_titles(reg, re_by_key, otrr_rows):
+    """{program key: the A.norm_title of every title the spine or OTRR's log gives it}."""
+    out = collections.defaultdict(set)
+    for k, ss in re_by_key.items():
+        for s in ss:
+            for e in s.get("episodes") or []:
+                nt = A.norm_title(e.get("title"))
+                if len(nt) >= RA.MIN_TITLE_KEY:
+                    out[k].add(nt)
+    for row in otrr_rows:
+        c = reg.idp2c.get(row["idp"])
+        nt = A.norm_title(row.get("title"))
+        if c and len(nt) >= RA.MIN_TITLE_KEY:
+            out[c].add(nt)
+    return out
+
+
+def improve_attribution(recs, reg, target_dates, titles, stats):
+    """Re-attribute and rename (reattribute.py), recording why in each file's `identity`. Only files the
+    registry did not place (how: file, dir, item or item_title) are touched, and only series that are
+    already served keys; a file with no series stays without one."""
+    def run_of(c):
+        years = sorted(int(d[:4]) for d in target_dates.get(c, ()))
+        return (years[0], years[-1], len(years)) if years else None
+
+    for r in recs:
+        if r["orow"] or not r["key"] or r["how"] not in FALLBACK_HOW:
+            continue
+        got = RA.stem_program(r["stem"], reg.k2c, lambda c: titles.get(c, ()), r["date"], run_of)
+        if got and got[0] != r["key"]:
+            c, how, gate = got
+            r["idt"]["reattributed"] = {"from": r["key"], "as": r["raw"], "rule": "file name begins with a known program",
+                                        "gate": gate}
+            r["key"], r["raw"], r["how"] = c, r["stem"], "stem:" + how
+            r["sname"] = reg.display(c, r["stem"])
+            stats["reattributed_by_file_name"] += 1
+            stats["reattributed_gate:" + gate] += 1
+    groups = collections.defaultdict(list)
+    for r in recs:
+        if r["key"] and not r["orow"] and r["how"] in FALLBACK_HOW:
+            groups[r["key"]].append(r)
+    for key in sorted(groups):
+        rs = groups[key]
+        if not TD.series_defects(rs[0]["sname"], key):
+            continue
+        got = RA.name_from_metadata(key, [{"item_title": r["item_title"], "album": r["album"]} for r in rs])
+        if not got:
+            continue
+        name, new_key, why = got
+        target = reg.k2c.get(new_key) if new_key else None
+        for r in rs:
+            if new_key:
+                r["idt"]["reattributed"] = {"from": key, "as": r["raw"], "rule": why}
+                r["key"] = target or new_key
+                r["how"] = "album:registry" if target else "album"
+                r["raw"] = name
+            r["sname"] = reg.display(r["key"], name)
+        stats["renamed_by:" + why] += 1
+        stats["renamed_files_by:" + why] += len(rs)
+
+
 def main():
     t0 = time.time()
     args = sys.argv[1:]
@@ -954,8 +1021,9 @@ def main():
         if p["date"] and tag and tag.get("date") and tag["date"] != p["date"]:
             stats["date_tag_disagrees"] += 1
             idt.setdefault("disagree", []).append({"album_tag": tag["date"]})
-        title = p["title"] or (f.get("title") if isinstance(f.get("title"), str) and
-                               not P.parse(f.get("title") or "")["date"] and P.is_titleish(f.get("title")) else None)
+        title = RA.prefer_tag_title(p["title"], f.get("title"), P.stem(f["name"])) if "tagtitle" not in SKIP else \
+            (p["title"] or (f.get("title") if isinstance(f.get("title"), str) and
+                            not P.parse(f.get("title") or "")["date"] and P.is_titleish(f.get("title")) else None))
         num = p["num"] if p["num"] is not None else (tag or {}).get("num")
         orow = fr["orow"]
         if orow:
@@ -995,6 +1063,7 @@ def main():
                          "title0": p["title"], "num0": num if not orow else None,
                          "date": date, "date_source": date_source, "num": num, "title": title, "aka": p["aka"],
                          "decade": p["decade"], "kind": kind, "idt": idt, "orow": orow, "length": length,
+                         "stem": P.stem(f["name"]), "album": f.get("album"), "item_title": fr["item_title"],
                          "rec": {
             "archive_id": ident, "file": f["name"], "format": f.get("format"), "source": f.get("source"),
             "size": int(f["size"]) if str(f.get("size", "")).isdigit() else None,
@@ -1007,6 +1076,21 @@ def main():
             "transcript": stem_key(f["name"]) in fr["tstems"],
             "url": f"https://archive.org/download/{ident}/{f['name']}"}})
     del files
+
+    # Pass 2b (P-6): a file the registry did not place may still begin with a known program's name, and an
+    # unregistered series may be named by its own item's metadata.
+    if "reattrib" not in SKIP:
+        improve_attribution(recs_out, reg, target_dates, program_titles(reg, re_by_key, otrr_rows), stats)
+
+    # A series whose only name is the item's title and that title is an upload code ("1306005 128 Michael
+    # Fisher Acc") is an uploader's dump, not a program: kept, but held back from the apps (display_text.py).
+    held_back = {}
+    for r in recs_out:
+        if r["key"]:
+            h = held_back.setdefault(r["key"], [0, 0])
+            h[1] += 1
+            h[0] += r["how"] == "item" and bool(UPLOAD_CODE_TITLE.match(r["item_title"] or ""))
+    held_back = {k: "series_named_by_an_upload_code" for k, (c, t) in held_back.items() if c == t}
 
     # Pass 3: OTRR's logs and the spine fill what the names left out.
     if "logs" not in SKIP:
@@ -1229,13 +1313,14 @@ def main():
         ss = re_by_key.get(k) or []
         dates = sorted(e["date"] for e in eps if e["date"])
         db.execute("INSERT INTO series (key, name, genre, first_date, last_date, episodes, is_librivox, "
-                   "foreign_evidence, claim, in_spine, otrr_programs, alias_names) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                   "foreign_evidence, claim, in_spine, otrr_programs, alias_names, display_hold) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             k, reg.display(k, eps[0]["series_name"]), ss[0]["genre"] if ss else None,
             dates[0] if dates else None, dates[-1] if dates else None, len(eps),
             k.startswith("librivox"), json.dumps(series_foreign.get(k)) if k in series_foreign else None,
             json.dumps(claims.get(k) or gov.get(k)) if (k in claims or k in gov) else None, bool(ss),
             json.dumps(sorted(reg.idps[k])) if reg.idps.get(k) else None,
-            json.dumps(sorted(seen_names.get(k) or [])[:50], ensure_ascii=False) if seen_names.get(k) else None))
+            json.dumps(sorted(seen_names.get(k) or [])[:50], ensure_ascii=False) if seen_names.get(k) else None,
+            held_back.get(k)))
     for ak, ck in reg.k2c.items():
         if ck in by_series:
             alias, source = reg.src[ak]

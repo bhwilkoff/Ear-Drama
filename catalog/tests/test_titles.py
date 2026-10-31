@@ -95,7 +95,7 @@ W = Words(["Tarzan Meets The Apes", "His First Birthday", "A Birthday Party", "F
            "Perry's Office", "At Perry's", "Perry's Case"])
 check("EP001 TARZANSFIRSTBIRTHDAY", "Tarzans First Birthday", words=W)
 check("BATTLEWITHTHEAPES", "Battle with the Apes", words=W)
-check("HALVERSON AT PERRY'S OFFICE (OTR)", "Halverson at Perry's Office (OTR)", words=W)
+check("HALVERSON AT PERRY'S OFFICE (OTR)", "Halverson at Perry's Office", words=W)   # a rip tag goes (P-6)
 check("INFERNO XXXI", "Inferno XXXI", words=W)
 # Controls: the refusals.
 check("SUMMERWEEN NIGHTS", "Summerween Nights", words=W)             # "summer we en": "en" is no SHORT word
@@ -141,6 +141,52 @@ same("residue: a series name said once is part of the title", series_titles(M, "
 M2 = M + [("m2", None, None, "The Magic Flute - Part Two")]
 same("control: a name repeated on two episodes is a prefix", series_titles(M2, "Magic Flute", W),
      {"m1": "Mozart", "m2": "Part Two"})
+
+# P-6 (2026-10-31), mechanical cleanup. Each case seen failing before its rule; the controls are what must not change.
+# Rip tags: the uploader's label for the file, never a word of the title.
+check("Hillybilly Feud (OTR)", "Hillybilly Feud")
+check("Pirates Vs Dodgers Broadcast By Red Barber Otr", "Pirates Vs Dodgers Broadcast By Red Barber")
+check("Silent Night 128kbps", "Silent Night")
+check("Silent Night (64 kbps)", "Silent Night")
+check("Silent Night [VBR] mp3", "Silent Night")
+check("Old Time Radio - The Shadow Knows", "The Shadow Knows")
+check("The Shadow Knows - Old Time Radio", "The Shadow Knows")
+check("OTR", "OTR")                                                   # nothing else to read: left
+check("OTRR Special", "OTRR Special")                                  # a different word
+check("Old Time Radio Hour", "Old Time Radio Hour")                    # in the middle of nothing: a title
+check("Rotor Otrio", "Rotor Otrio")
+# Codes: a bracketed shelf code or a letters-and-digits prefix before a colon.
+check("[A1.6] Abbott & Costello (1946-12-05)", "Abbott & Costello (1946-12-05)")
+check("RRT182: Delay On Route by Cloak And Dagger", "Delay On Route by Cloak And Dagger")
+check("CC211: Sherlock Holmes and The Lineup", "Sherlock Holmes and The Lineup")
+check("WWII: The Home Front", "WWII: The Home Front")
+check("B52: Over Hanoi", "B52: Over Hanoi")
+check("The Dameron Matter [Network]", "The Dameron Matter [Network]")      # words in brackets are the source's
+# Doubled punctuation.
+check("To Rent -- Danger", "To Rent - Danger")
+check("Music in - Cocoanuts- - Stay Down Here", "Music in - Cocoanuts - Stay Down Here")
+check("Rest,, Then Go", "Rest, Then Go")
+check("Wait.. What Now", "Wait. What Now")
+check("Gone... Again", "Gone... Again")
+# Case: a title written with no capital, set in the catalog's own case; one word is left alone.
+L = Words(["Case of the Shopkeepers Gun", "The Falcon Takes Over", "Labor Pirates Strike", "Pirates of the Air"])
+check("case of the shopkeepers gun", "Case of the Shopkeepers Gun", words=L)
+check("labor pirates", "Labor Pirates", words=L)
+check("case of the shopkeepers gun", "case of the shopkeepers gun")      # no vocabulary, no change
+check("jbintro", "jbintro", words=L)
+check("thefalcon52 08 31393tcotcarelesscorpse", "thefalcon52 08 31393tcotcarelesscorpse", words=L)   # a run-together code: not dressed up
+same("display_name: a lowercase series name", display_name("de verdwenen koning6", L), "De Verdwenen Koning6")
+check("Sapphire Wants A Vacation 1947 32kb", "Sapphire Wants A Vacation 1947")
+check("Adventures Of Superman Old Time Radio", "Adventures Of Superman")
+check("S01E17 Room at the Bottom [2021-07-02] [b007mdr8] MPEG-4", "S01E17 Room at the Bottom")
+check("Gaver 128kb", "Gaver")
+check("Kbps", "Kbps")
+L2 = Words(["de laatste reis", "een modelzaak", "Een Reis Voor Twee"])   # a title with no capital teaches no case
+check("de laatste reis", "De Laatste Reis", words=L2)
+check("BoldVenture 001.00.00 Tappard Of Pizzaro", "Tappard Of Pizzaro", series="Bold Venture")
+check("BoldVenture", "BoldVenture", series="Bold Venture")                    # nothing else to read: left
+check("BoldVentures 001 Tappard", "BoldVentures 001 Tappard", series="Bold Venture")   # another word
+same("SciFi is a word, not an identifier", __import__("text_defects").series_defects("SciFi"), [])
 
 print(f"{ran - failed}/{ran} passed")
 sys.exit(1 if failed else 0)

@@ -104,7 +104,7 @@ class Words:
         for t in sorted(set(x for x in texts if x)):
             if " " not in t.strip():
                 continue
-            mixed = re.search(r"[a-z]", t) is not None
+            mixed = re.search(r"[a-z]", t) is not None and re.search(r"[A-Z]", t) is not None
             found = WORD.findall(t)
             for w in set(found):
                 k = w.casefold()
@@ -181,6 +181,50 @@ class Words:
         return out[:1].upper() + out[1:] if first else out
 
 
+# P-6 (2026-10-31): what an upload's label puts around the words. Each is removed only when words remain.
+RIP_BRACKET = re.compile(r"\s*[(\[{]\s*(?:OTR|mp3|vbr|old[ -]?time[ -]?radio|\d{2,3}\s?k(?:bps|b)?)\s*[)\]}]", re.I)
+RIP_WORD = re.compile(r"(?<![\w'])(?:OTR|mp3|vbr|kbps|\d{2,3}\s?kb(?:ps)?|MPEG-?4)(?![\w'])", re.I)
+RIP_CODE_BRACKET = re.compile(r"\s*\[(?:rpt\s+)?(?:\d{4}-\d{2}-\d{2}|[a-z]\d{3}[a-z0-9]{4})\]", re.I)
+RIP_EDGE_LEAD = re.compile(r"^old[ -]?time[ -]?radio\s*(?:-+|:)\s*", re.I)
+RIP_EDGE_TAIL = re.compile(r"(?:\s*-+\s*|\s+)old[ -]?time[ -]?radio$", re.I)
+LEAD_SHELF = re.compile(r"^\[[A-Za-z]{0,2}\d[\w.\-]*\]\s*")
+LEAD_TAG_CODE = re.compile(r"^[A-Z]{2,4}\d{2,4}:\s+(?=\S)")
+SPACED_DASHES = re.compile(r"(?<=\S)\s+-{2,}\s+(?=\S)|(?<=\S)-\s+-\s+(?=\S)")
+RUN_PUNCT = re.compile(r"([,;:])\1+|(?<![.\d])\.\.(?![.\d])")
+LONG_WORD = 14   # a lowercase title with a word this long is a file name run together: left as it was
+
+
+def _tidy(t):
+    """Rip tags (OTR, mp3, kbps, VBR, "old time radio" at an edge), shelf and track-tag codes, and doubled
+    punctuation, each only when a letter remains; never a word of the title itself."""
+    def keep(new):
+        new = re.sub(r"\s{2,}", " ", new or "").strip(" -")
+        return new if LETTER.search(new) else None
+
+    for rx in (RIP_BRACKET, RIP_CODE_BRACKET, RIP_WORD, RIP_EDGE_LEAD, RIP_EDGE_TAIL, LEAD_SHELF, LEAD_TAG_CODE):
+        t = keep(rx.sub("", t, count=0 if rx in (RIP_BRACKET, RIP_CODE_BRACKET, RIP_WORD) else 1)) or t
+    t = SPACED_DASHES.sub(" - ", t)
+    t = RUN_PUNCT.sub(lambda m: m.group(1) or ".", t)
+    return re.sub(r"\s{2,}", " ", t).strip()
+
+
+def _lowercase(t, words):
+    """A title or name with no capital letter, in the case the catalog's own titles write each word in; one
+    word, or a word run together, is left as the upload wrote it."""
+    found = WORD.findall(t)
+    if len(found) < 2 or re.search(r"[A-Z]", t) or any(len(w) >= LONG_WORD for w in found):
+        return t
+    first = True
+
+    def piece(m):
+        nonlocal first
+        out = words.cased(m.group(), first)
+        first = False
+        return out
+
+    return WORD.sub(piece, t)
+
+
 def _strip_codes(t, series):
     """Numbering, codes, durations and the series' own name, when words remain."""
     def keep(new):
@@ -203,6 +247,12 @@ def _strip_codes(t, series):
         if words and len(words) < len(parts):
             t = " - ".join(p.strip() for p in words)
     if series and len(_fold(series).split()) >= 2:
+        # the name run together as one token ("BoldVenture 001.00.00 Tappard"): the same words, spaces lost
+        head, _sp, rest = t.partition(" ")
+        if rest and re.sub(r"\W", "", head).casefold() == re.sub(r"\W", "", _fold(series)) and LETTER.search(rest):
+            t = rest.strip()
+            for rule in (LEAD_GROUPS, LEAD_PADDED, LEAD_CODE):
+                t = keep(rule.sub("", t, count=1).strip(" -")) or t
         name = _fold(series)
         m = re.match(r"^((?:the|a|an)\s+)?" + r"\W+".join(map(re.escape, name.split())) + r"(?=\s*[:\-])", t, re.I)
         rest = t[m.end():].lstrip(" :-") if m else ""
@@ -231,12 +281,14 @@ def display_title(raw, series=None, words=None):
     words: the catalog's `Words` (without it, no case changes and nothing is split)."""
     if not raw:
         return raw
-    t = clean(raw)
+    t = _tidy(clean(raw))
     t = _strip_codes(t, series)
     if words is not None and LETTER.search(t) and not re.search(r"[a-z]", t):
         t = _recase(t, words)
     elif words is not None:
         t = HUMP_TOKEN.sub(words.hump, t)
+        if LETTER.search(t) and not re.search(r"[A-Z]", t):
+            t = _lowercase(t, words)
     return t or raw.strip()
 
 
@@ -261,7 +313,7 @@ def series_titles(episodes, series_name, words):
     "03 - Mrs. Hudson" is what puts it third when it has no date and no number, so a series whose
     order would change with a leading number dropped keeps the 2026-10-22 rules (`clean`). An
     order that was only alphabetical ("Vanishing Point - Azure Blue") carries nothing to keep."""
-    old = {e: clean(t) if t else t for e, _a, _n, t in episodes}
+    old = {e: _tidy(clean(t)) if t else t for e, _a, _n, t in episodes}
     new = {e: display_title(t, series_name, words) for e, _a, _n, t in episodes}
     bare = {e: display_title(t, None, words) for e, _a, _n, t in episodes}
     if sum(1 for e in new if new[e] != bare[e]) < 2:
