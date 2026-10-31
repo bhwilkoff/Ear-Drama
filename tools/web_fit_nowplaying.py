@@ -58,9 +58,15 @@ def main():
                 b.ws.call('Emulation.setDeviceMetricsOverride', {'width': w, 'height': 900, 'deviceScaleFactor': 1, 'mobile': True})
                 b.ws.call('Emulation.setEmulatedMedia', {'features': [{'name': 'prefers-color-scheme', 'value': 'dark' if dark else 'light'}]})
                 b.goto(f'http://127.0.0.1:{port}/?item={ITEM}&mute=1', 5)
-                deadline = time.time() + 20
+                # The page reads the live catalog at eardrama.org, so a slow network is not a
+                # layout failure: wait longer, and say "never drew" instead of crashing.
+                deadline = time.time() + 45
                 while time.time() < deadline and not b.js("!!document.querySelector('.btn-play')"):
                     time.sleep(0.5)
+                if not b.js("!!document.querySelector('.btn-play')"):
+                    print(f"BLIND {w} {'dark' if dark else 'light'}: the episode page never drew in 45 s (live catalog unreachable or slow)")
+                    problems += 1
+                    continue
                 b.js("document.querySelector('.btn-play').click()")
                 time.sleep(1.5)
                 b.js("document.getElementById('mini-open').click()")
