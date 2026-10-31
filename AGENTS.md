@@ -399,8 +399,9 @@ State section first, then work.
   warning, or a fact the person cannot discover by looking
   (`mobile-first-density-design` rule 7). *No check yet.*
 - **No AI-written lists or copy in the product.** Lists and blurbs come
-  from data or a human editor (`learning-orientation-design`). *No check
-  yet.*
+  from data or a human editor (`learning-orientation-design`). Raw upload
+  text never shows; a title may be composed from the record's data, never
+  invented (owner 2026-10-31). *No check yet.*
 - **Side doors (feeds, MCP) are findable on the website, never featured
   in the apps.** *No check yet.*
 - **One spelling locale, linted.** *Check: `tools/test_us_english.py`.*
