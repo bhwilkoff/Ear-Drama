@@ -135,6 +135,8 @@ struct PictureCredit: View {
 struct OnAirFaces: View {
     let credits: [Credit]
     let genre: String?
+    /// Where a face opens a page without a navigation stack of its own (Now Playing's sheet).
+    var open: ((Route) -> Void)? = nil
 
     #if os(tvOS)
     private let columns = [GridItem(.adaptive(minimum: 180), spacing: Spacing.s6, alignment: .top)]
@@ -147,6 +149,13 @@ struct OnAirFaces: View {
             ForEach(credits) { credit in
                 if credit.personID.isEmpty {
                     OnAirFace(credit: credit, genre: genre)
+                } else if let open {
+                    Button { open(.person(credit.personID)) } label: { OnAirFace(credit: credit, genre: genre) }
+                        #if os(tvOS)
+                        .buttonStyle(.card)
+                        #else
+                        .buttonStyle(.plain)
+                        #endif
                 } else {
                     NavigationLink(value: Route.person(credit.personID)) {
                         OnAirFace(credit: credit, genre: genre)

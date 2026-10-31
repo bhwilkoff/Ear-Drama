@@ -433,10 +433,10 @@
 
   /** An episode row (§6.4b): the visual (the date block in one series' list, the series' window where
       series mix; R1, the date leads), the title, the sub line, the length, Play. */
-  function episodeRow(ep, { showSeries = false, note = null, genre = null } = {}) {
+  function episodeRow(ep, { showSeries = false, note = null, genre = null, dated = true } = {}) {
     const progress = Store.progress(ep.id);
     const dateText = ep.date && (ep.date.length === 10 ? fmtLongDate(ep.date) : ep.date);
-    const sub = eventLine(showSeries ? [ep.seriesName, factDate(ep.date) || 'Undated', note] : [note]);
+    const sub = eventLine(showSeries ? [ep.seriesName, dated ? factDate(ep.date) || 'Undated' : null, note] : [note]);
     const len = fmtLength(ep.length);
     const link = el('a', { class: 'ep-link g-link', href: `?item=${encodeURIComponent(ep.id)}`,
                            'aria-label': [epTitle(ep), showSeries ? ep.seriesName : null, dateText || 'Undated', note, len].filter(Boolean).join(', ') },
@@ -584,10 +584,11 @@
     const homeBox = el('div');
     body.append(homeBox);
     load(homeBox, async () => {
-      const [rows, idx, , dramas] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(),
-        API.manifest().then(m => { manifest = m; }), PlaysUI.newDramas(playsHelpers).catch((e) => { console.error(e); return null; })]);
-      return { rows, idx, dramas };
-    }, ({ rows, idx, dramas }) => {
+      const [rows, idx, , dramas, voices] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(),
+        API.manifest().then(m => { manifest = m; }), PlaysUI.newDramas(playsHelpers).catch((e) => { console.error(e); return null; }),
+        API.voices(12).catch(() => [])]);
+      return { rows, idx, dramas, voices };
+    }, ({ rows, idx, dramas, voices }) => {
       const shows = idx.rows.filter(s => API.isShow(s.episodes));
       if (!rows.length && !shows.length) {
         homeBox.append(stateBox('empty', { text: 'Nothing in the catalog yet.' }));
@@ -602,6 +603,13 @@
         top.forEach(s => ul.append(showTile(s)));
         homeBox.append(el('section', { class: 'shelf' },
           el('div', { class: 'block-head' }, h, el('a', { class: 'caption', href: '?view=browse' }, `All ${num.format(shows.length)} shows`)), ul));
+      }
+      if (voices.length) {
+        homeBox.append(el('section', { class: 'shelf', 'aria-labelledby': 'voices-h' },
+          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'voices-h' }, 'Most heard voices'),
+            el('a', { class: 'caption', href: '?view=browse&scope=voices' }, 'All voices')),
+          el('ul', { class: 'g-faces-rail' }, ...voices.slice(0, 12).map(p => voiceFace(p))),
+          pictureCredit(voices.slice(0, 12).map(p => p.art))));
       }
       if (dramas) homeBox.append(dramas);
     });
@@ -1001,13 +1009,38 @@
     sel.parentElement.hidden = !counts.size && !current;
   }
 
+  /** A voice: the person's round face (portrait, else monogram), the name, the episodes they are heard in. */
+  function voiceFace(p, genre = '') {
+    return el('li', { class: 'g-face-li' },
+      el('a', { class: 'g-face', href: `?person=${encodeURIComponent(p.id)}` },
+        pictureWindow({ name: p.name, genre, picture: p.art }, 84),
+        el('span', { class: 'g-face-name caption' }, p.name),
+        el('span', { class: 'g-face-count caption tabular' }, plural(p.episodes, 'episode', 'episodes'))));
+  }
+  /** Browse's Voices scope: the published most-heard list (contract §3.3 `voices`), most credited episodes first. */
+  function renderVoices(body, countLine) {
+    countLine.replaceChildren();
+    load(body, () => API.voices(), (rows) => {
+      if (!rows.length) { body.append(stateBox('empty', { text: 'No voices listed yet.' })); return; }
+      countLine.replaceChildren(el('span', { class: 'g-count nw' }, plural(rows.length, 'voice', 'voices')));
+      body.append(el('ul', { class: 'g-faces g-faces-voices', 'aria-label': 'Most heard voices' }, ...rows.map(p => voiceFace(p))));
+      const owed = pictureCredit(rows.map(p => p.art).filter(a => a && API.windowFill(a, 84).kind !== 'block'));
+      if (owed) body.append(owed);
+    });
+  }
+
   function renderBrowse(r) {
     setTitle('Browse');
-    const scope = r.p.get('scope') === 'dramas' ? 'dramas' : 'shows';
+    const scope = ['dramas', 'voices'].includes(r.p.get('scope')) ? r.p.get('scope') : 'shows';
     const scopeBar = $('browse-scope');
-    scopeBar.replaceChildren(...[['shows', 'Shows', '?view=browse'], ['dramas', 'Ear dramas', '?view=browse&scope=dramas']].map(([k, label, href]) =>
+    scopeBar.replaceChildren(...[['shows', 'Shows', '?view=browse'], ['voices', 'Voices', '?view=browse&scope=voices'],
+      ['dramas', 'Ear dramas', '?view=browse&scope=dramas']].map(([k, label, href]) =>
       el('button', { type: 'button', 'aria-pressed': String(scope === k), onclick: () => { if (scope !== k) navigate(href); } }, label)));
-    $('browse-filters').hidden = scope === 'dramas';
+    $('browse-filters').hidden = scope !== 'shows';
+    if (scope === 'voices') {
+      renderVoices($('browse-body'), $('browse-count'));
+      return;
+    }
     if (scope === 'dramas') {
       PlaysUI.renderDramas($('browse-body'), $('browse-count'), playsHelpers);
       return;
@@ -1226,6 +1259,20 @@
      EPISODE DETAIL
   ================================================================ */
 
+  /** "On the air": the credited performers as round faces (portrait, else monogram), each opening the
+      person's page; the credit line a portrait's license asks for follows. Shared by Detail and Now Playing. */
+  function airSection(air, genre, id) {
+    const sec = el('section', { class: 'block', 'aria-labelledby': id },
+      el('h2', { class: 'section-header', id }, 'On the air'),
+      el('ul', { class: 'g-faces' }, ...air.map(c => el('li', { class: 'g-face-li' },
+        el(c.person ? 'a' : 'span', { class: 'g-face', ...(c.person ? { href: `?person=${encodeURIComponent(c.person)}` } : {}) },
+          pictureWindow({ name: c.name, genre, picture: c.art }, 72),
+          el('span', { class: 'g-face-name caption' }, c.name),
+          c.character ? el('span', { class: 'g-face-role caption' }, `as ${c.character}`) : null)))));
+    const owed = pictureCredit(air.map(c => c.art).filter(a => a && API.windowFill(a, 72).kind !== 'block'));
+    return owed ? [sec, owed] : [sec];
+  }
+
   function renderEpisode(r) {
     const body = $('episode-body');
     load(body, async () => {
@@ -1291,17 +1338,7 @@
 
       if (d.credits.length) {
         const air = API.onAirOf(d.credits);
-        if (air.length) {
-          body.append(el('section', { class: 'block', 'aria-labelledby': 'air-h' },
-            el('h2', { class: 'section-header', id: 'air-h' }, 'On the air'),
-            el('ul', { class: 'g-faces' }, ...air.map(c => el('li', { class: 'g-face-li' },
-              el(c.person ? 'a' : 'span', { class: 'g-face', ...(c.person ? { href: `?person=${encodeURIComponent(c.person)}` } : {}) },
-                pictureWindow({ name: c.name, genre: (s && s.genre) || '', picture: c.art }, 72),
-                el('span', { class: 'g-face-name caption' }, c.name),
-                c.character ? el('span', { class: 'g-face-role caption' }, `as ${c.character}`) : null))))));
-          const owed = pictureCredit(air.map(c => c.art).filter(a => a && API.windowFill(a, 72).kind !== 'block'));
-          if (owed) body.append(owed);
-        }
+        if (air.length) body.append(...airSection(air, (s && s.genre) || '', 'air-h'));
         const groups = new Map();
         d.credits.forEach(c => {
           const role = c.role || 'cast';
@@ -1873,7 +1910,8 @@
       $('mini-meta').classList.toggle('is-error', !!err);
       if (err) announce(errText);
     }
-    if (kind === 'load') { paintTranscriptLink(cur); paintPlayerArt(cur); paintMiniWindow(cur); }
+    if (kind === 'load') { paintTranscriptLink(cur); paintPlayerArt(cur); paintMiniWindow(cur); paintPlayerPeople(cur); }
+    paintQueueVerb(cur);
     if (!seeking) {
       seekEl.max = String(Math.floor(d));
       seekEl.value = String(Math.floor(t));
@@ -1904,6 +1942,39 @@
   }
   Player.onChange(paintPlayer);
 
+  /** Now Playing's queue verb, the Detail page's own: add, or take out, the episode that is playing. */
+  function paintQueueVerb(cur) {
+    const on = Store.inQueue(cur.id);
+    const b = $('np-queue');
+    b.replaceChildren(icon(on ? 'queued' : 'queue'), el('span', {}, on ? 'In queue' : 'Add to queue'));
+    b.setAttribute('aria-pressed', String(on));
+  }
+  /** "On the air" and "That night on the radio" under the controls: the credited performers, and the
+      other surviving broadcasts of the same air date (contract §3.3b); each hidden when it has nothing. */
+  function paintPlayerPeople(cur) {
+    const air = $('np-air'), night = $('np-night');
+    air.hidden = night.hidden = true;
+    air.replaceChildren();
+    night.replaceChildren();
+    const live = () => Player.current && Player.current.id === cur.id;
+    Promise.all([API.episodeDetail(cur.id), API.seriesIndex()]).then(([d, idx]) => {
+      if (!d || !live()) return;
+      const cast = API.onAirOf(d.credits);
+      if (!cast.length) return;
+      const s = idx.byKey.get(d.series);
+      air.append(...airSection(cast, (s && s.genre) || '', 'np-air-h'));
+      air.hidden = false;
+    }).catch(() => {});
+    API.sameDay(cur.date, cur.id).then((rows) => {
+      if (!rows.length || !live()) return;
+      const ul = el('ul', { class: 'ep-list' });
+      rows.forEach(e => ul.append(episodeRow(e, { showSeries: true, dated: false, note: e.network })));
+      paintProgress(ul);
+      night.append(el('h2', { class: 'section-header', id: 'np-night-h' }, 'That night on the radio'), ul);
+      night.setAttribute('aria-labelledby', 'np-night-h');
+      night.hidden = false;
+    }).catch(() => {});
+  }
   /** The mini player's window: the show's own picture through the grammar's window fill. */
   function paintMiniWindow(cur) {
     $('mini-window').replaceChildren(pictureWindow({ key: cur.series, name: cur.seriesName }, 48));
@@ -2006,6 +2077,18 @@
   seekEl.addEventListener('input', () => { seeking = true; $('np-pos').textContent = fmtClock(Number(seekEl.value)); });
   seekEl.addEventListener('change', () => { seeking = false; Player.seek(Number(seekEl.value)); });
   $('np-speed').addEventListener('change', (e) => { Player.setRate(e.target.value); announce(`Speed ${e.target.value}×`); });
+  $('np-queue').addEventListener('click', () => {
+    const cur = Player.current;
+    if (!cur) return;
+    const on = !Store.inQueue(cur.id);
+    if (on) Store.enqueue(cur); else Store.dequeue(cur.id);
+    paintQueueVerb(cur);
+    announce(on ? 'Added to queue' : 'Removed from queue');
+  });
+  $('np-share').addEventListener('click', () => {
+    const cur = Player.current;
+    if (cur) share(`${epTitle(cur)} (${cur.date || 'undated'})`, API.shareLink('episode', cur.id));
+  });
   $('np-story').addEventListener('click', () => {
     const story = Player.nextStory();
     if (story) Player.load(story);

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.FormatQuote
@@ -74,6 +76,7 @@ import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.NowPlayingArt
+import com.example.appname.ui.NowPlayingPeople
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.tvFocusMark
 import com.example.appname.ui.rememberCatalogQuery
@@ -154,6 +157,7 @@ fun PlayerSheet(
     onOpenEpisode: (String) -> Unit,
     onOpenTranscript: (String) -> Unit,
     onListenTogether: () -> Unit,
+    onOpenPerson: (String) -> Unit = {},
 ) {
     val engine = LocalAppContainer.current.playback
     val now by engine.state.collectAsState()
@@ -173,8 +177,9 @@ fun PlayerSheet(
             Box(Modifier.padding(Spacing.S6.dp)) { Text("Nothing is playing.") }
             return@ModalBottomSheet
         }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.S6.dp).navigationBarsPadding(),
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.S6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // R11a: full width, no taller than 44 % of the screen, so Play stays on the first screen.
@@ -195,7 +200,7 @@ fun PlayerSheet(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.tvFocusMark().clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
                 )
-                EventLine(listOf(episode.seriesName, formatAirDate(episode.airDate)))
+                EventLine(listOf(episode.seriesName, formatAirDate(episode.airDate), episode.network))
             }
             now.problem?.let { problem ->
                 Text(
@@ -275,6 +280,15 @@ fun PlayerSheet(
                     Text("Next story")
                 }
             }
+        }
+        // D3-9: under the controls, each hidden when it has nothing.
+        NowPlayingPeople(
+            episode,
+            onOpenPerson = onOpenPerson,
+            onOpenEpisode = onOpenEpisode,
+            onPlay = { engine.play(it) },
+            modifier = Modifier.padding(bottom = Spacing.S4.dp),
+        )
         }
     }
 }

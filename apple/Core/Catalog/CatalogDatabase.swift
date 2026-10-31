@@ -664,6 +664,18 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         return PersonPage(person: person, episodes: episodes)
     }
 
+    /// "That night on the radio" (contract §3.3b): the other surviving broadcasts on an air date, capped,
+    /// by network (unknown last), then series, then id. Only a full YYYY-MM-DD has a day. It rides
+    /// `episodes_date`.
+    func sameDay(date: String?, excluding id: String, limit: Int = 12) -> [EpisodeRow] {
+        guard let date, date.count == 10 else { return [] }
+        return rows("""
+            SELECT \(Self.episodeColumns) FROM episodes e JOIN series s ON s.key = e.series_key
+            WHERE e.air_date = ? AND e.id != ?
+            ORDER BY e.network IS NULL, e.network, e.series_key, e.id LIMIT \(limit)
+            """, [.text(date), .text(resolve(id))], decodeEpisode)
+    }
+
     /// The most heard voices (contract §3.3 `voices`), most episodes first; empty for a catalog without them.
     func voices(limit: Int = 300) -> [PersonRow] {
         guard hasVoices else { return [] }

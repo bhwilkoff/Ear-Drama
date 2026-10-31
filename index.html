@@ -227,6 +227,12 @@
           <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5V2l5 4-5 4V7a6 6 0 1 0 6 6h2a8 8 0 1 1-8-8z"/><text x="12" y="16.5" text-anchor="middle" font-size="7" font-weight="700">30</text></svg>
         </button>
       </div>
+      <div class="np-verbs">
+        <button type="button" class="btn btn-fold" id="np-queue" aria-pressed="false"></button>
+        <button type="button" class="btn btn-ghost" id="np-share">
+          <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline"><path d="M18 16a3 3 0 0 0-2.4 1.2l-7-3.5a3 3 0 0 0 0-1.4l7-3.5A3 3 0 1 0 15 7l-7 3.5a3 3 0 1 0 0 3l7 3.5A3 3 0 1 0 18 16z"/></svg>
+          <span>Share</span></button>
+      </div>
       <div class="np-options">
         <label class="filter"><span class="caption">Speed</span>
           <select id="np-speed">
@@ -260,6 +266,8 @@
       <button type="button" class="btn" id="np-story" hidden>
         <svg aria-hidden="true" viewBox="0 0 24 24" class="i-inline"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
         <span>Next story</span></button>
+      <section id="np-air" class="block np-people" hidden></section>
+      <section id="np-night" class="block np-people" hidden></section>
     </div>
     <div id="sleep-menu" class="menu" popover aria-label="Sleep timer">
       <p class="menu-title caption">Sleep timer</p>

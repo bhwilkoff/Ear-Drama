@@ -86,6 +86,8 @@ struct TransportBar_macOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
     @Environment(\.openWindow) private var openWindow
+    @Environment(AppStore.self) private var store
+    @State private var peopleOpen = false
 
     var body: some View {
         VStack(spacing: Spacing.s2) {
@@ -125,6 +127,26 @@ struct TransportBar_macOS: View {
                     .help("AirPlay")
                 NextStoryButton()
                     .fixedSize()
+                if let item = player.item {
+                    Button {
+                        peopleOpen.toggle()
+                    } label: {
+                        Image(systemName: "person.2.wave.2")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("On the air, and that night on the radio")
+                    .accessibilityLabel("On the air")
+                    .popover(isPresented: $peopleOpen, arrowEdge: .top) {
+                        ScrollView {
+                            NowPlayingPeople(episode: item.episode) { route in
+                                peopleOpen = false
+                                store.push(route)
+                            }
+                            .padding(Spacing.s4)
+                        }
+                        .frame(width: 420, height: 480)
+                    }
+                }
                 if let item = player.item, let url = item.episode.transcriptURL {
                     Button {
                         openWindow(id: TranscriptRef.windowID,

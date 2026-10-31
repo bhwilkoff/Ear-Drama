@@ -286,6 +286,8 @@ fun EpisodeListItem(
     onPlay: () -> Unit,
     modifier: Modifier = Modifier,
     supporting: String? = null,
+    /** False where the list is already one date's (Now Playing's "That night on the radio"). */
+    showDate: Boolean = true,
     inQueueList: Boolean = false,
     /** Search's transcript match: the line as said, verbatim from the automatic transcript. */
     quote: String? = null,
@@ -303,11 +305,11 @@ fun EpisodeListItem(
             },
             onOpen = onOpen,
             modifier = modifier,
-            sub = if (showSeries) listOf(row.seriesName, date ?: "Undated", supporting) else listOf(supporting),
+            sub = if (showSeries) listOf(row.seriesName, if (showDate) date ?: "Undated" else null, supporting) else listOf(supporting),
             length = length,
             onPlay = onPlay,
             playDescription = "Play $title",
-            description = listOfNotNull(title, row.seriesName.takeIf { showSeries }, date ?: "Undated", supporting, length)
+            description = listOfNotNull(title, row.seriesName.takeIf { showSeries }, (date ?: "Undated").takeIf { showDate }, supporting, length)
                 .joinToString(", "),
             onLongClick = { menuOpen = true },
             quote = quote,

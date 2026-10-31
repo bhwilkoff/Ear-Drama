@@ -224,16 +224,18 @@ private struct ListenScreen_tvOS: View {
     @State private var following: [SeriesRow] = []
     @State private var allNight = false
     @State private var finished = FinishedStore.shared
+    @State private var voices: [PersonRow] = []
 
     private static let nightFirst = 6
     private static let topCount = 12
+    private static let voiceCount = 12
 
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
-                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && finished.plays.isEmpty {
+                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && voices.isEmpty && finished.plays.isEmpty {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 } else {
                     ScrollView(.vertical) {
@@ -258,6 +260,16 @@ private struct ListenScreen_tvOS: View {
                                     TileShelf_tvOS(items: Array(top.prefix(Self.topCount))) { row in
                                         TileLink(value: Route.series(row.key), series: row)
                                     }
+                                }
+                                .focusSection()
+                            }
+                            if !voices.isEmpty {
+                                VStack(alignment: .leading, spacing: Spacing.s4) {
+                                    SectionHead(title: "Most heard voices") {
+                                        Button("All") { app.openBrowseVoices() }
+                                    }
+                                    .padding(.horizontal, 60)
+                                    VoicesShelf(voices: voices)
                                 }
                                 .focusSection()
                             }
@@ -288,6 +300,7 @@ private struct ListenScreen_tvOS: View {
             top = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: .popular)
                 .filter { ShowLine.isShow($0.episodeCount) }
             day = loadedDay.years.years.isEmpty ? nil : loadedDay
+            voices = await catalog.voices(limit: Self.voiceCount)
             loaded = true
         }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
@@ -379,6 +392,8 @@ private struct SeriesBrowseScreen_tvOS: View {
                             .pickerStyle(.segmented)
                             if scope == .dramas {
                                 FinishedBrowse()
+                            } else if scope == .voices {
+                                VoicesBrowse()
                             } else {
                                 filters
                                 results(series, proxy: proxy)
@@ -411,6 +426,11 @@ private struct SeriesBrowseScreen_tvOS: View {
             guard asked else { return }
             scope = .dramas
             store.pendingBrowseDramas = false
+        }
+        .onChange(of: store.pendingBrowseVoices, initial: true) { _, asked in
+            guard asked else { return }
+            scope = .voices
+            store.pendingBrowseVoices = false
         }
     }
 
@@ -950,9 +970,35 @@ private struct LibraryScreen_tvOS: View {
 private struct NowPlaying_tvOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
+    @Environment(AppStore.self) private var store
     @State private var transcriptOpen = false
 
     var body: some View {
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: Spacing.s8) {
+                controlsPage
+                    .containerRelativeFrame(.vertical)
+                if let item = player.item {
+                    NowPlayingPeople(episode: item.episode) { route in
+                        store.isPlayerPresented = false
+                        store.push(route)
+                    }
+                    .padding(.horizontal, 90)
+                    .padding(.bottom, 60)
+                }
+            }
+        }
+        .background(Color.brandBackground.ignoresSafeArea())
+        .onPlayPauseCommand { player.togglePlayPause() }
+        .fullScreenCover(isPresented: $transcriptOpen) {
+            if let item = player.item, let url = item.episode.transcriptURL {
+                TranscriptScreen_tvOS(title: item.episode.displayTitle, url: url)
+            }
+        }
+    }
+
+    /// The first screen: the picture, the title, the controls. The people sit below it.
+    private var controlsPage: some View {
         VStack(alignment: .leading, spacing: Spacing.s8) {
             Spacer(minLength: 0)
             if let item = player.item {
@@ -1009,13 +1055,6 @@ private struct NowPlaying_tvOS: View {
         }
         .padding(.horizontal, 90)
         .padding(.vertical, 60)
-        .background(Color.brandBackground.ignoresSafeArea())
-        .onPlayPauseCommand { player.togglePlayPause() }
-        .fullScreenCover(isPresented: $transcriptOpen) {
-            if let item = player.item, let url = item.episode.transcriptURL {
-                TranscriptScreen_tvOS(title: item.episode.displayTitle, url: url)
-            }
-        }
     }
 }
 

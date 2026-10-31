@@ -42,6 +42,7 @@ import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.SectionHeading
 import com.example.appname.ui.ShowShelf
 import com.example.appname.ui.TextLink
+import com.example.appname.ui.VoicesShelf
 import com.example.appname.ui.TileGrid
 import com.example.appname.ui.TileSpec
 import com.example.appname.ui.episodeTitle
@@ -86,6 +87,8 @@ fun ListenScreen(
     onBrowse: () -> Unit,
     onOpenDrama: (String) -> Unit = {},
     onDramas: () -> Unit = onBrowse,
+    onOpenPerson: (String) -> Unit = {},
+    onVoices: () -> Unit = onBrowse,
 ) {
     val container = LocalAppContainer.current
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd")) }
@@ -111,6 +114,7 @@ fun ListenScreen(
             db.seriesCounts(BrowseFilter()).first,
         )
     }
+    val voices by rememberCatalogQuery { db -> db.voices(TOP) }
     var picked by rememberSaveable(today) { mutableStateOf<Int?>(null) }
     var allNight by rememberSaveable(today, picked) { mutableStateOf(false) }
     Scaffold(
@@ -213,6 +217,13 @@ fun ListenScreen(
                                 )
                             }
                         }
+                    }
+                    val heard = (voices as? Loadable.Ready)?.value.orEmpty()
+                    if (heard.isNotEmpty()) {
+                        item(key = "voices-h") {
+                            SectionHeading("Most heard voices") { TextLink("All", onClick = onVoices) }
+                        }
+                        item(key = "voices") { VoicesShelf(heard, onOpenPerson) }
                     }
                     item(key = "new-dramas") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
                     if (topShows != null && topShows.shows.isNotEmpty()) {

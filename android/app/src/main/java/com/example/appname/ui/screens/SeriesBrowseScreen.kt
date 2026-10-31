@@ -75,6 +75,7 @@ import com.example.appname.ui.SectionHeading
 import com.example.appname.ui.PLAY_BOARD
 import com.example.appname.ui.ShowTile
 import com.example.appname.ui.TextLink
+import com.example.appname.ui.VoicesScope
 import com.example.appname.ui.TileSpec
 import com.example.appname.ui.formatCount
 import com.example.appname.ui.innerWidth
@@ -115,13 +116,24 @@ fun SeriesBrowseScreen(
     /** Home's "All" asked for the Ear dramas scope; [onDramasRequestHandled] clears it. */
     dramasRequest: Boolean = false,
     onDramasRequestHandled: () -> Unit = {},
+    /** Home's "All" asked for the Voices scope; [onVoicesRequestHandled] clears it. */
+    voicesRequest: Boolean = false,
+    onVoicesRequestHandled: () -> Unit = {},
     onOpenDrama: (String) -> Unit = {},
+    onOpenPerson: (String) -> Unit = {},
 ) {
-    var dramas by rememberSaveable { mutableStateOf(false) }
+    var scopeKey by rememberSaveable { mutableStateOf("shows") }
+    val dramas = scopeKey == "dramas"
     LaunchedEffect(dramasRequest) {
         if (dramasRequest) {
-            dramas = true
+            scopeKey = "dramas"
             onDramasRequestHandled()
+        }
+    }
+    LaunchedEffect(voicesRequest) {
+        if (voicesRequest) {
+            scopeKey = "voices"
+            onVoicesRequestHandled()
         }
     }
     var kind by rememberSaveable { mutableStateOf<BrowseKind?>(null) }
@@ -137,7 +149,7 @@ fun SeriesBrowseScreen(
         if (genreRequest != null) {
             kind = null; hasScript = false; decade = null; network = null; singles = false
             genre = genreRequest
-            dramas = false
+            scopeKey = "shows"
             onGenreRequestHandled()
         }
     }
@@ -173,16 +185,18 @@ fun SeriesBrowseScreen(
       Column(Modifier.padding(padding)) {
         if (!isTv) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-                listOf(false to "Shows", true to "Ear dramas").forEachIndexed { i, (isDramas, label) ->
+                listOf("shows" to "Shows", "voices" to "Voices", "dramas" to "Ear dramas").forEachIndexed { i, (key, label) ->
                     SegmentedButton(
-                        selected = dramas == isDramas,
-                        onClick = { if (dramas != isDramas) { dramas = isDramas; haptics(Haptic.Selection) } },
-                        shape = SegmentedButtonDefaults.itemShape(i, 2),
+                        selected = scopeKey == key,
+                        onClick = { if (scopeKey != key) { scopeKey = key; haptics(Haptic.Selection) } },
+                        shape = SegmentedButtonDefaults.itemShape(i, 3),
                     ) { Text(label) }
                 }
             }
         }
-        if (dramas && !isTv) {
+        if (scopeKey == "voices" && !isTv) {
+            VoicesScope(onOpenPerson, Modifier.weight(1f))
+        } else if (dramas && !isTv) {
             EarDramasScope(onOpenDrama, Modifier.weight(1f))
         } else LoadableContent(series, Modifier.weight(1f)) { rows ->
             val gridState = rememberLazyGridState()

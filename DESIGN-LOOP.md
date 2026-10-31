@@ -217,7 +217,8 @@ describing."*
   tier with a glass frame for the XCTest passcode prompt).
 - D3 left: (5) Library, (6) Create with the three recording modes, (7) invite, finished dramas,
   share pages; then D4. Leftovers: Apple long dates; Now Playing's On the air and That night
-  sections; Android rows carry no network; web player lacks queue and share verbs.
+  sections; Android rows carry no network; web player lacks queue and share verbs. (All built in D3-9, 2026-10-30:
+  Now Playing's On the air and That night on the radio, Voices, the web queue and Share verbs, Android's network.)
 - Enforced now (.claude/hooks/device-guard.py): no simulators, no unmuted Chrome, the runbook
   section before device commands. webdrive.Browser is muted by default.
 - 2026-10-30 afternoon: D3 is built. D3-5 Library, D3-6 Create (three modes), D3-fix2, P-3

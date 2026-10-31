@@ -80,6 +80,7 @@ fun AppRoot(
     var incomingSearch by remember { mutableStateOf<String?>(null) }
     var browseGenre by remember { mutableStateOf<String?>(null) }
     var browseDramas by remember { mutableStateOf(false) }
+    var browseVoices by remember { mutableStateOf(false) }
     var roomSheet by rememberSaveable { mutableStateOf(false) }
     var roomCode by rememberSaveable { mutableStateOf("") }
     val haptics = rememberHaptics()
@@ -181,13 +182,15 @@ fun AppRoot(
                         onBack = back,
                         entryProvider = entryProvider {
                             entry<Route.Listen> {
-                                ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) }, onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse }, onOpenDrama = openDrama, onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse })
+                                ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) }, onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse }, onOpenDrama = openDrama, onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse }, onOpenPerson = openPerson, onVoices = { haptics(Haptic.Selection); browseVoices = true; selected = Tab.Browse })
                             }
                             entry<Route.SeriesBrowse> {
                                 SeriesBrowseScreen(
                                     onOpenSeries = openSeries, onOpenScript = openScript,
                                     genreRequest = browseGenre, onGenreRequestHandled = { browseGenre = null },
                                     dramasRequest = browseDramas, onDramasRequestHandled = { browseDramas = false },
+                                    voicesRequest = browseVoices, onVoicesRequestHandled = { browseVoices = false },
+                                    onOpenPerson = openPerson,
                                     onOpenDrama = openDrama,
                                 )
                             }
@@ -277,6 +280,7 @@ fun AppRoot(
                 onOpenEpisode = { id -> playerOpen = false; openEpisode(id) },
                 onOpenTranscript = { id -> playerOpen = false; openTranscript(id) },
                 onListenTogether = { playerOpen = false; roomSheet = true },
+                onOpenPerson = { id -> playerOpen = false; openPerson(id) },
             )
         }
         if (roomSheet) {

@@ -161,7 +161,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         private const val FULL_DATE = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
 
         private const val EPISODE_COLUMNS =
-            "e.id, e.series_key, s.name, e.air_date, e.season, e.num, e.title, e.length_s"
+            "e.id, e.series_key, s.name, e.air_date, e.season, e.num, e.title, e.length_s, e.network"
         private const val EPISODE_FROM = " FROM episodes e JOIN series s ON s.key = e.series_key"
         private const val SERIES_COLUMNS = "s.key, s.name, s.genre, s.first_date, s.last_date, s.episodes"
 
@@ -494,19 +494,19 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         ) { st ->
             EpisodeDetail(
                 episode = episodeRow(st),
-                rights = st.getText(8),
-                rightsBasis = st.textOrNull(9),
-                network = st.textOrNull(10),
-                noRecommend = st.textOrNull(11),
+                rights = st.getText(9),
+                rightsBasis = st.textOrNull(10),
+                network = st.textOrNull(11),
+                noRecommend = st.textOrNull(12),
                 credits = emptyList(),
                 recordings = emptyList(),
-                detailJson = st.textOrNull(12),
-                loudnessI = if (st.isNull(13)) null else st.getDouble(13),
-                loudnessTp = if (st.isNull(14)) null else st.getDouble(14),
-                transcriptUrl = st.textOrNull(15),
-                sponsor = st.textOrNull(16)?.takeIf { it.isNotBlank() },
-                star = st.textOrNull(17),
-                script = st.textOrNull(18),
+                detailJson = st.textOrNull(13),
+                loudnessI = if (st.isNull(14)) null else st.getDouble(14),
+                loudnessTp = if (st.isNull(15)) null else st.getDouble(15),
+                transcriptUrl = st.textOrNull(16),
+                sponsor = st.textOrNull(17)?.takeIf { it.isNotBlank() },
+                star = st.textOrNull(18),
+                script = st.textOrNull(19),
             )
         }.firstOrNull() ?: return@read null
         val artJoin = if (hasArt) " LEFT JOIN art a ON a.id = p.portrait" else ""
@@ -595,7 +595,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 "JOIN series s ON s.key = e.series_key WHERE episodes_fts MATCH ? AND e.has_transcript = 1 " +
                 "AND e.transcript_url IS NOT NULL$not ORDER BY $OLDEST_FIRST LIMIT ?",
             listOfNotNull(match, excluding) + listOf(limit),
-        ) { episodeRow(it).copy(transcriptUrl = it.textOrNull(8)) }
+        ) { episodeRow(it).copy(transcriptUrl = it.textOrNull(9)) }
     }
 
     /**
@@ -640,7 +640,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 "JOIN series s ON s.key = e.series_key WHERE c.person_id = ? " +
                 "ORDER BY $OLDEST_FIRST, COALESCE(c.role, ''), COALESCE(c.character, '')",
             listOf(id),
-        ) { episodeRow(it) to PersonRole(it.textOrNull(8), it.textOrNull(9)) }
+        ) { episodeRow(it) to PersonRole(it.textOrNull(9), it.textOrNull(10)) }
         val episodes = LinkedHashMap<String, PersonEpisode>()
         for ((episode, role) in credits) {
             val held = episodes[episode.id]
@@ -681,6 +681,21 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
     /** Contract §3.3 `voices`, the most heard voices; a catalog without the table has none. */
     private val hasVoices: Boolean by lazy {
         "episodes" in queryRaw("PRAGMA table_info(voices)") { it.getText(1) }
+    }
+
+    /**
+     * "That night on the radio" (§3.3b): the other surviving broadcasts on an air date, capped, by
+     * network (unknown last), then series, then id. Only a full YYYY-MM-DD has a day; it rides
+     * `episodes_date`.
+     */
+    suspend fun sameDay(date: String?, excluding: String, limit: Int = 12): List<EpisodeRow> = read {
+        if (date == null || date.length != 10) return@read emptyList()
+        queryRaw(
+            "SELECT $EPISODE_COLUMNS$EPISODE_FROM WHERE e.air_date = ? AND e.id != ? " +
+                "ORDER BY e.network IS NULL, e.network, e.series_key, e.id LIMIT ?",
+            listOf(date, resolve(excluding), limit),
+            ::episodeRow,
+        )
     }
 
     /** The most heard voices (§3.3 `voices`), most episodes first; empty for a catalog without them. */
@@ -785,6 +800,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         num = if (st.isNull(5)) null else st.getLong(5).toInt(),
         title = st.textOrNull(6),
         lengthSeconds = if (st.isNull(7)) null else st.getDouble(7),
+        network = st.textOrNull(8),
         seriesGenre = seriesLook[st.getText(1)]?.genre,
         seriesFace = seriesLook[st.getText(1)]?.face,
         seriesPicture = seriesLook[st.getText(1)]?.picture,

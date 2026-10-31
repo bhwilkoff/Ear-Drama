@@ -262,6 +262,29 @@ struct CatalogQueryTests {
         #expect(Artwork.Grade("1.6") == nil && Artwork.Grade(nil) == nil && Artwork.Grade("a,b") == nil)
     }
 
+    /// Contract §3.3b: the other broadcasts of an air date, by network (unknown last), then series, then id;
+    /// capped; never the episode itself; undated or a partial date has none.
+    @Test func sameDayListsTheOtherBroadcastsOfADate() throws {
+        let day = "1943-05-25"
+        let eps = [
+            Fixture.Ep(id: "suspense|\(day)", series: "suspense", date: day, season: nil, num: nil, title: "A", network: "CBS"),
+            Fixture.Ep(id: "mrsorrowful|\(day)", series: "mrsorrowful", date: day, season: nil, num: nil, title: "B",
+                       rights: "clean", basis: "rec_gov_work", network: "ABC"),
+            Fixture.Ep(id: "speeches|\(day)", series: "speeches", date: day, season: nil, num: nil, title: "C",
+                       rights: "clean", basis: "rec_gov_work"),
+            Fixture.Ep(id: "librivox1|\(day)", series: "librivox1", date: day, season: nil, num: nil, title: "D",
+                       rights: "clean", basis: "rec_librivox", network: "NBC"),
+            Fixture.Ep(id: "suspense|1943-05-26", series: "suspense", date: "1943-05-26", season: nil, num: nil, title: "E",
+                       network: "CBS"),
+        ]
+        let db = try #require(CatalogDatabase(path: try Fixture.make(episodeRows: eps).path))
+        #expect(db.sameDay(date: day, excluding: "suspense|\(day)").map(\.id)
+                == ["mrsorrowful|\(day)", "librivox1|\(day)", "speeches|\(day)"], "by network, unknown last; never itself")
+        #expect(db.sameDay(date: day, excluding: "x", limit: 2).count == 2, "the cap")
+        #expect(db.sameDay(date: nil, excluding: "x").isEmpty, "control: undated has no day")
+        #expect(db.sameDay(date: "1943-05", excluding: "x").isEmpty, "control: a month is not a day")
+    }
+
     /// Decision 069, contract §3.3a: the series' face reaches series rows and every
     /// episode row of that series; Detail carries the episode's star and each
     /// credit's portrait with its owed credit.

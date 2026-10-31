@@ -71,10 +71,12 @@ struct ListenScreen: View {
     @State private var year: Int?
     @State private var allNight = false
     @State private var finished = FinishedStore.shared
+    @State private var voices: [PersonRow] = []
 
     private static let nightFirst = 6
     private static let topCount = 12
     private static let dramaCount = 6
+    private static let voiceCount = 12
 
     private var selectedYear: Int? { year ?? day?.years.peak }
 
@@ -131,6 +133,21 @@ struct ListenScreen: View {
                         }
                     }
                 }
+                if !voices.isEmpty {
+                    Section {
+                        VoicesShelf(voices: voices)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        PictureCredit(arts: voices.map(\.person.art), slot: 84)
+                            .gridRow()
+                    } header: {
+                        SectionHead(title: "Most heard voices") {
+                            Button("All") { store.openBrowseVoices() }
+                                .buttonStyle(.borderless)
+                        }
+                    }
+                }
                 if !finished.plays.isEmpty {
                     Section {
                         ShowGrid(items: Array(finished.plays.prefix(Self.dramaCount))) { play, width in
@@ -144,7 +161,7 @@ struct ListenScreen: View {
                         }
                     }
                 }
-                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && finished.plays.isEmpty {
+                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && voices.isEmpty && finished.plays.isEmpty {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 }
             } else {
@@ -168,6 +185,7 @@ struct ListenScreen: View {
                 .filter { ShowLine.isShow($0.episodeCount) }
             day = loadedDay.years.years.isEmpty ? nil : loadedDay
             top = shows
+            voices = await catalog.voices(limit: Self.voiceCount)
             year = nil
             loaded = true
         }
@@ -295,6 +313,9 @@ struct SeriesBrowseScreen: View {
                     .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
+            } else if scope == .voices {
+                VoicesBrowse()
+                    .gridRow()
             } else if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
@@ -354,6 +375,11 @@ struct SeriesBrowseScreen: View {
             guard asked else { return }
             scope = .dramas
             store.pendingBrowseDramas = false
+        }
+        .onChange(of: store.pendingBrowseVoices, initial: true) { _, asked in
+            guard asked else { return }
+            scope = .voices
+            store.pendingBrowseVoices = false
         }
         .task(id: Filter(genre: genre, network: network, decade: decade, sort: sort, generation: catalog.loadKey)) {
             guard catalog.state == .ready else { return }

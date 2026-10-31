@@ -104,6 +104,15 @@ final class AppStore {
     /// Browse's Ear dramas scope, asked for by Home's All; taken once by Browse.
     var pendingBrowseDramas = false
 
+    /// Browse's Voices scope, asked for by Home's All; taken once by Browse.
+    var pendingBrowseVoices = false
+
+    func openBrowseVoices() {
+        paths[.browse] = NavigationPath()
+        pendingBrowseVoices = true
+        selectedTab = .browse
+    }
+
     func openBrowseDramas() {
         paths[.browse] = NavigationPath()
         pendingBrowseDramas = true
