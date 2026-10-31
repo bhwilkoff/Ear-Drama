@@ -76,7 +76,7 @@ many copies survive.
 | `rights` | TEXT | `clean` or `unclaimed` (§6) |
 | `rights_basis` | TEXT | the bucket that decided it, for the rights line's detail |
 | `no_recommend` | TEXT | NULL, or the reason it is never recommended (§6) |
-| `network`, `network_source` | TEXT | the network that aired it, and which witness says so |
+| `network`, `network_source` | TEXT | the network that aired it, and which witness says so. One spelling per network: `catalog/tools/networks.py` folds typos and spacing variants ("Bllue", "Mutaul-Don Lee", "NBC Paciic") where `enrich_db.py` parses them, drops hedges ("possible Blue"), and never merges distinct networks (NBC Red, NBC Blue, Blue, ABC Blue, Mutual-Don Lee); `series.networks` uses the same spellings. `tests/test_networks.py` guards the projection |
 | `sponsor` | TEXT | computed (`catalog/tools/sponsors.py`): the OTRRpedia dated sponsor run covering the air date, several joined by " / "; NULL when no dated run covers it, and "Sustained", "Multi", "Syndicated" are never published; clients show it as the third fact after the network, and the web detail shard carries it as `sponsor` |
 | `has_transcript` | INTEGER | 1 only when the default copy's automatic transcript was fetched and passes the on-screen gate (Decision 058: 50-220 words a minute, at most 10% repeated four-word runs, `catalog/tools/transcript_gate.py`); 0 otherwise, including a transcript that failed the gate (neither shown nor searchable, §3.4) |
 | `gain_db` | REAL | retired, always NULL: the target lives in the clients (Decision 061), so the pipeline publishes the measurement below, never a gain |

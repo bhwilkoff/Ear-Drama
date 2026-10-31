@@ -48,6 +48,7 @@ import time
 sys.path.insert(0, os.path.dirname(__file__))
 import ia_lib as ia
 import otr_parse as P
+from networks import canonical_network
 
 GOLDIN_URL = "https://radiogoldin.library.umkc.edu/ProgramMoreinfo/{}"
 OTRR_PROGRAM_URL = "https://www.otrr.org/OTRRPedia/?p={}"
@@ -204,7 +205,7 @@ def parse_source(s):
     if m:
         net = m.group(1).strip()
         net = {"Red": "NBC Red", "Blue": "Blue", "NBC Blue": "Blue"}.get(net, net)
-        return net, "network", False
+        return canonical_network(net), "network", False
     if re.match(r"^AFRT?S\b", first):
         return first.split()[0], "afrs", False
     if re.search(r"syndicat", first, re.I):
@@ -691,7 +692,7 @@ def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases
             over = sorted({s["sponsor"] for s in spons if clean_date(s.get("begin")) and start
                            and clean_date(s.get("begin")) <= (end or "9999") and (clean_date(s.get("end")) or "9999") >= start})
             length = int(h["length"]) if str(h.get("length") or "").isdigit() else None
-            row = (k, idp, h.get("network") or None, h.get("country") or None, start, end,
+            row = (k, idp, canonical_network(h.get("network")), h.get("country") or None, start, end,
                    h.get("dow") or None, h.get("time") or None, length, "; ".join(over) or None, src)
             db.execute("INSERT INTO program_runs VALUES (?,?,?,?,?,?,?,?,?,?,?)", row)
             runs_by_key[k].append(row)
