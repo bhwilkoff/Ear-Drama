@@ -230,4 +230,14 @@ describing."*
 - Next: D4 (human-shaped review, parity audit, the owner plays on devices). Token rules are in
   memory (loop_token_economy): Sonnet agents, one at a time on overlapping code, verify once per
   ship.
+- 2026-10-30 night: merged and pushed: stall watchdog, P-4 (genres, voices, art.grade, sameDay;
+  cache Release catalog-2026-10-30), D3-8 (Stations, Surprise, Search, person page), D3-9 (On the
+  air, That night on the radio, Voices, web player verbs, Android network), D4 review
+  (reviews/2026-10-30-human-shaped-review.md) and parity audit, P-5 (one spelling per network;
+  live catalog 44 networks, guard 53/53), E1 (rights line from data, Replay after the evening,
+  Queue and Share in player sheets, export, Worker docs). Every check green on main (d285197).
+- Blocked on the owner: the iPad shows "Enter iPad Passcode for XCTest"; enter it, then run the
+  tap tier and ship 1.0.114. Bench at d285197's parent: iPad, Pixel, Ben Bedroom 3/3.
+- Next work: a Stations day switcher (tonight.json holds 13 days), the owner's own words in
+  HUMAN-SHAPED.md and the credits opening, device-play of Create's three modes and sign-in.
 - Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
