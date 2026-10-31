@@ -157,7 +157,10 @@ struct SignInButtons: View {
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 44)
             if account.isGoogleAvailable {
-                Button("Sign in with Google") { Task { await signInWithGoogle() } }
+                Button { Task { await signInWithGoogle() } } label: {
+                    Text("Sign in with Google").frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
             }
             if let error = account.lastError {
                 Label(error, systemImage: "exclamationmark.triangle")

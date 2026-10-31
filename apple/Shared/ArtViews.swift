@@ -224,7 +224,8 @@ struct ArtCredit: View {
         Text(credit).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
         #else
         if let evidence {
-            Link(credit, destination: evidence).font(TypeRamp.caption).foregroundStyle(Color.brandLink)
+            // Borderless: in a List row a plain Link takes the whole row's tap (a voice's face opened a Wikimedia page).
+            Link(credit, destination: evidence).buttonStyle(.borderless).font(TypeRamp.caption).foregroundStyle(Color.brandLink)
         } else {
             Text(credit).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
         }

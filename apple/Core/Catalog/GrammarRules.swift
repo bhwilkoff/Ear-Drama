@@ -378,3 +378,9 @@ nonisolated enum BrowseLayout {
                     tileWidth: tileWidth(width: grid, columns: cols))
     }
 }
+
+/// What a tab stack reserves at the foot of its scroll views for the bar it draws above them (the mini
+/// player and the offline line): their measured height, never negative, nothing before it is measured.
+nonisolated enum MiniPlayerInsetRule {
+    static func scrollMargin(barHeight: CGFloat) -> CGFloat { barHeight.isFinite ? max(0, barHeight) : 0 }
+}

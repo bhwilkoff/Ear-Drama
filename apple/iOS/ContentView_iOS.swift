@@ -68,19 +68,30 @@ private struct MiniPlayerInset: ViewModifier {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
 
+    @State private var barHeight: CGFloat = 0
+
+    /// The inset alone left the last rows of every list under the bar (iPhone 12, 2026-10-31: Library's
+    /// Take-down row and Stations' schedule line could not be scrolled into view), so the bar's measured
+    /// height is also the scroll views' bottom margin.
     func body(content: Content) -> some View {
-        content.safeAreaInset(edge: .bottom, spacing: 0) {
-            if player.item != nil || !catalog.isOnline {
-                VStack(spacing: 0) {
-                    OfflineLine()
-                    if player.item != nil {
-                        MiniPlayer_iOS()
-                            .padding(.vertical, Spacing.s2)
+        content
+            .contentMargins(.bottom, MiniPlayerInsetRule.scrollMargin(barHeight: barHeight), for: .scrollContent)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if player.item != nil || !catalog.isOnline {
+                    VStack(spacing: 0) {
+                        OfflineLine()
+                        if player.item != nil {
+                            MiniPlayer_iOS()
+                                .padding(.vertical, Spacing.s2)
+                        }
                     }
+                    .background(.regularMaterial)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { barHeight = $0 }
+                } else {
+                    Color.clear.frame(height: 0)
+                        .onAppear { barHeight = 0 }
                 }
-                .background(.regularMaterial)
             }
-        }
     }
 }
 

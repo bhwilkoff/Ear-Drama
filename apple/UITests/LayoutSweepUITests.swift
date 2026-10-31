@@ -1,0 +1,131 @@
+import XCTest
+
+/// Layout audit on the real phone: each screen at its top, then scrolled page by page to its end,
+/// every page attached. The last page of a screen must end above the tab bar and mini player.
+final class LayoutSweepUITests: DeviceTestCase {
+    private func sweep(_ app: XCUIApplication, _ name: String, pages: Int = 3) {
+        shot(app, "\(name)-p00")
+        var last = app.screenshot().pngRepresentation
+        for i in 1...pages {
+            app.swipeUp()
+            usleep(600_000)
+            let now = app.screenshot().pngRepresentation
+            if now == last { break }
+            last = now
+            shot(app, "\(name)-p\(String(format: "%02d", i))")
+        }
+    }
+
+    private func tab(_ t: String, _ extra: [String: String] = [:]) -> XCUIApplication {
+        let app = launch(["APP_START_TAB": t, "APP_DOOR_SECONDS": "300"].merging(extra) { $1 })
+        sleep(6)
+        return app
+    }
+
+    func testHome() { sweep(tab("home"), "home") }
+    func testStations() { sweep(tab("stations"), "stations", pages: 9) }
+    func testLibrary() { sweep(tab("library"), "library", pages: 9) }
+    func testSurprise() { sweep(tab("surprise"), "surprise") }
+
+    func testBrowse() {
+        let app = tab("browse")
+        sweep(app, "browse-shows")
+        app.swipeDown(velocity: .fast); app.swipeDown(velocity: .fast); app.swipeDown(velocity: .fast)
+        app.buttons["Voices"].tap(); sleep(3)
+        sweep(app, "browse-voices", pages: 3)
+        app.swipeDown(velocity: .fast); app.swipeDown(velocity: .fast)
+        app.buttons["Ear dramas"].tap(); sleep(3)
+        sweep(app, "browse-plays", pages: 6)
+    }
+
+    /// With an episode loaded the mini player stands above the tab bar; the end of each screen must clear both.
+    private func withMini(_ tab: String, _ name: String, tapBar: Bool = true) {
+        let app = launch(["APP_START_ITEM": Fixture.long, "APP_AUTOPLAY": "1", "APP_DOOR_SECONDS": "300"])
+        sleep(8)
+        let close = app.buttons["Close player"]
+        if close.waitForExistence(timeout: 5) { close.tap(); sleep(2) }
+        openTab(app, tab)
+        sleep(3)
+        sweep(app, name, pages: 9)
+    }
+
+    func testMiniStations() { withMini("Stations", "mini-stations") }
+    func testMiniLibrary() { withMini("Library", "mini-library") }
+    func testMiniHome() { withMini("Home", "mini-home") }
+
+    /// A script's page, the cast sheet and the recorder in its three modes. Nothing is recorded: the
+    /// Record button is never pressed. The production made here is deleted again.
+    func testCreate() {
+        let app = tab("browse")
+        app.buttons["Kind"].tap()
+        app.buttons["Plays"].tap(); sleep(3)
+        let tile = app.buttons.matching(identifier: "show-tile").firstMatch
+        XCTAssertTrue(tile.waitForExistence(timeout: 20), "a script tile")
+        tile.tap(); sleep(3)
+        sweep(app, "create-script", pages: 4)
+        for _ in 0..<4 { app.swipeDown() }
+        let start = app.buttons["Start an ear drama"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5), "Start an ear drama")
+        start.tap(); sleep(3)
+        sweep(app, "create-cast", pages: 6)
+        for _ in 0..<6 { app.swipeDown() }
+        let record = app.buttons["Record"].firstMatch
+        if record.waitForExistence(timeout: 3) {
+            record.tap(); sleep(3)
+            shot(app, "create-recorder-run")
+            for mode in ["Line by line", "Step", "Run through"] where app.buttons[mode].exists {
+                app.buttons[mode].tap(); sleep(2)
+                shot(app, "create-recorder-\(mode)")
+            }
+            app.navigationBars.buttons.firstMatch.tap(); sleep(2)
+        }
+        for _ in 0..<12 where !app.buttons["Delete Production"].isHittable { app.swipeUp() }
+        if app.buttons["Delete Production"].isHittable {
+            app.buttons["Delete Production"].tap()
+            let confirm = app.buttons["Delete Production and Its Recordings"]
+            if confirm.waitForExistence(timeout: 3) { confirm.tap() }
+        }
+        sleep(2)
+    }
+
+    func testSearch() {
+        let app = tab("search")
+        let field = app.searchFields.firstMatch
+        if field.waitForExistence(timeout: 5) { field.tap(); field.typeText("Dragnet\n") }
+        sleep(4)
+        sweep(app, "search", pages: 5)
+    }
+
+    func testPerson() {
+        let app = tab("browse")
+        app.buttons["Voices"].tap(); sleep(3)
+        let face = app.buttons.matching(identifier: "voice-face").firstMatch
+        XCTAssertTrue(face.waitForExistence(timeout: 20), "a voice")
+        shot(app, "person-before-tap")
+        XCTAssertTrue(face.isHittable, "face \(face.label) frame \(face.frame) hittable")
+        print("PERSON-TAP label=\(face.label) frame=\(face.frame)")
+        face.tap(); sleep(4)
+        XCTAssertEqual(app.state, .runningForeground, "the app stays in front after tapping a voice")
+        sweep(app, "person", pages: 6)
+    }
+
+    func testInvite() {
+        let app = launch(["APP_DOOR_SECONDS": "300"])
+        sleep(3)
+        app.open(URL(string: "eardrama://invite#\(String(repeating: "A", count: 43))")!)
+        sleep(6)
+        sweep(app, "invite", pages: 3)
+        app.buttons["Not Now"].tap()
+    }
+
+    func testSeries() {
+        let app = tab("browse", ["APP_START_ITEM": "tarzan"])
+        sweep(app, "series")
+    }
+
+    func testEpisode() {
+        let app = launch(["APP_START_ITEM": Fixture.long, "APP_DOOR_SECONDS": "300"])
+        sleep(8)
+        sweep(app, "episode")
+    }
+}
