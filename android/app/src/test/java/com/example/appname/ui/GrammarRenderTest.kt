@@ -193,6 +193,42 @@ class GrammarRenderTest {
         TextLink("All 14 shows that night", onClick = {}, modifier = Modifier.padding(horizontal = 16.dp))
     }
 
+    /** D3-9: Now Playing's "On the air" and "That night on the radio", and Home's "Most heard voices". */
+    @Test fun nowPlayingPeople() = shoot("now-playing-people") {
+        val faces = listOf(
+            com.example.appname.data.Credit("p1", "Lou Costello", "cast", "Himself", portrait),
+            com.example.appname.data.Credit("p2", "Sidney Fields", "cast", null, null),
+            com.example.appname.data.Credit("p3", "Matty Malneck and His Orchestra", "cast", null, null),
+            com.example.appname.data.Credit("p4", "Bud Abbott", "cast", "Himself", portrait),
+        )
+        OnTheAir(faces, "comedy", onOpenPerson = {})
+        PictureCredit(faces.map { it.art }, 72.dp, Modifier.padding(horizontal = 16.dp))
+        SectionHeader("That night on the radio")
+        fun row(id: String, key: String, name: String, genre: String, title: String, net: String?, art: Artwork?) =
+            EpisodeRow(id, key, name, "1949-02-03", null, null, title, 1740.0, seriesGenre = genre, seriesPicture = art, network = net)
+        listOf(
+            row("a", "calling", "Calling All Detectives", "mystery", "Morgue Nightclub is Setting for Death", "Mutual", null),
+            row("b", "chandu", "Chandu The Magician", "mystery", "The Black Steps", "Mutual-Don Lee", portrait),
+            row("c", "suspense", "Suspense", "mystery", "Backseat Driver", "CBS", null),
+            row("d", "svt", "SVTheater", "drama", "Guest Robert Cummings", null, null),
+        ).forEach { r ->
+            GrammarRow(
+                r.title ?: "", { m -> PictureWindow(r.seriesWindowArt, r.seriesName, r.seriesGenre, m) }, {},
+                sub = listOf(r.seriesName, null, r.network), length = "29 min", onPlay = {},
+            )
+        }
+        SectionHeading("Most heard voices") { TextLink("All", onClick = {}) }
+        VoicesShelf(
+            listOf(
+                com.example.appname.data.PersonRow(com.example.appname.data.Person("v1", "Jack Benny", null, null, portrait), 1379),
+                com.example.appname.data.PersonRow(com.example.appname.data.Person("v2", "Jackson Beck", null, null, null), 1045),
+                com.example.appname.data.PersonRow(com.example.appname.data.Person("v3", "Jack Kruschen", null, null, portrait), 647),
+                com.example.appname.data.PersonRow(com.example.appname.data.Person("v4", "Jay Michael", null, null, null), 523),
+            ),
+            onOpenPerson = {},
+        )
+    }
+
     @Test fun browseField() = shoot("browse-field") {
         val shows = buildList {
             fun n(g: String?, y: String?, k: Int) = repeat(k) { add(com.example.appname.data.FieldShow(g, y)) }

@@ -134,6 +134,8 @@ data class EpisodeRow(
     val seriesPicture: Artwork? = null,
     /** Set only on Search's transcript matches: the shown transcript's own URL, where the snippet is read. */
     val transcriptUrl: String? = null,
+    /** The broadcast's network (§3.1), so an event line reads show, date, network. */
+    val network: String? = null,
 ) {
     val seriesWindowArt: Artwork? get() = seriesPicture ?: seriesFace?.art
 }

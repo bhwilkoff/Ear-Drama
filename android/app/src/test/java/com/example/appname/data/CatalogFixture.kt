@@ -43,6 +43,7 @@ object CatalogFixture {
         val rights: String = "clean",
         val basis: String? = "rec_gov_work",
         val noRecommend: String? = null,
+        val network: String? = "CBS",
     )
 
     val EPISODES = listOf(
@@ -58,6 +59,14 @@ object CatalogFixture {
         Ep("cp|1943-02-24", "commandperformance", "1943-02-24", "1942-43", "Bob Hope Bing Crosby"),
         Ep("cp|1944-01-07", "commandperformance", "1944-01-07", "1943-44", "Dinah Shore"),
         Ep("cp|1945-02-04", "commandperformance", "1945-02-04", "1944-45", "Frank Sinatra"),
+    )
+
+    /** Contract §3.3b: three broadcasts on one day (CBS, ABC, no network) and one on the next. */
+    val SAME_DAY = listOf(
+        Ep("sus|1943-05-25", "suspense", "1943-05-25", "1942-43", "Sorry, Wrong Number"),
+        Ep("cp|1943-05-25", "commandperformance", "1943-05-25", "1942-43", "Same Night ABC", network = "ABC"),
+        Ep("sus|1943-05-25b", "suspense", "1943-05-25", "1942-43", "Same Night None", network = null),
+        Ep("sus|1943-05-26", "suspense", "1943-05-26", "1942-43", "Next Night"),
     )
 
     /**
@@ -89,6 +98,7 @@ object CatalogFixture {
         withScript: Boolean = false,
         withArcs: Boolean = false,
         withGrade: Boolean = false,
+        episodes: List<Ep> = EPISODES,
     ): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
@@ -114,10 +124,10 @@ object CatalogFixture {
             )
             c.execSQL("INSERT INTO people VALUES ('p1', 'Agnes Moorehead', NULL, NULL)")
             c.execSQL("INSERT INTO people VALUES ('p2', 'Orson Welles', NULL, NULL)")
-            EPISODES.forEach { e ->
+            episodes.forEach { e ->
                 val st = c.prepare(
                     "INSERT INTO episodes (id, series_key, air_date, season, num, title, length_s, rights, " +
-                        "rights_basis, no_recommend, network) VALUES (?, ?, ?, ?, ?, ?, 1800, ?, ?, ?, 'CBS')",
+                        "rights_basis, no_recommend, network) VALUES (?, ?, ?, ?, ?, ?, 1800, ?, ?, ?, ?)",
                 )
                 try {
                     st.bindText(1, e.id); st.bindText(2, e.series)
@@ -127,6 +137,7 @@ object CatalogFixture {
                     st.bindText(6, e.title); st.bindText(7, e.rights)
                     if (e.basis == null) st.bindNull(8) else st.bindText(8, e.basis)
                     if (e.noRecommend == null) st.bindNull(9) else st.bindText(9, e.noRecommend)
+                    if (e.network == null) st.bindNull(10) else st.bindText(10, e.network)
                     st.step()
                 } finally {
                     st.close()
