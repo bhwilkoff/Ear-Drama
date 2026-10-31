@@ -171,11 +171,18 @@ private struct StationsShelf_tvOS: View {
         case .after: RadioClock.end(of: slots).map { "Ended at \(RadioClock.clock($0))" }
         case .during: slot.flatMap { evening.detail(for: $0) == nil ? RadioClock.gapNote($0) : nil }
         }
+        let ended = onAir.phase == .after
         return StationCard_tvOS(name: "Tonight in \(evening.day.year)", genre: nil, slot: slot, note: note,
                                 isLive: live.day == evening.day,
-                                canListen: slot.flatMap { evening.detail(for: $0) } != nil) {
+                                canListen: ended ? evening.firstPlayable != nil : slot.flatMap { evening.detail(for: $0) } != nil,
+                                startOver: ended) {
             player.isMuted = store.isMuted
-            live.tuneIn(evening.day, details: evening.details)
+            if ended, let first = evening.firstPlayable {
+                live.stop()
+                player.play(first, from: 0)
+            } else {
+                live.tuneIn(evening.day, details: evening.details)
+            }
             store.isPlayerPresented = true
         } stop: { stopLive() }
     }
@@ -211,6 +218,7 @@ private struct StationCard_tvOS: View {
     let note: String?
     let isLive: Bool
     let canListen: Bool
+    var startOver = false
     let listen: () -> Void
     let stop: () -> Void
     @Environment(CatalogStore.self) private var catalog
@@ -224,11 +232,12 @@ private struct StationCard_tvOS: View {
         } label: {
             ShowTile(series: SeriesRow(key: "station-\(name)", name: name, genre: genre ?? show?.genre, firstDate: nil,
                                        lastDate: nil, networks: [], episodeCount: 0, face: show?.face, picture: show?.picture),
-                     facts: [episode?.series, episode?.title ?? note, isLive ? "Listening live" : nil].compactMap { $0 })
+                     facts: [episode?.series, episode?.title ?? note, isLive ? "Listening live" : nil,
+                             startOver && canListen ? "Replay from the start" : nil].compactMap { $0 })
         }
         .buttonStyle(.card)
         .accessibilityValue(isLive ? "Listening live" : "")
-        .accessibilityHint(isLive ? "Stops listening live" : "Listens live")
+        .accessibilityHint(isLive ? "Stops listening live" : startOver ? "Replays from the start" : "Listens live")
         .task(id: key) {
             show = key.isEmpty ? nil : await catalog.series([key]).first
         }

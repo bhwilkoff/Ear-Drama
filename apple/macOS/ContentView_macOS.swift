@@ -128,6 +128,14 @@ struct TransportBar_macOS: View {
                 NextStoryButton()
                     .fixedSize()
                 if let item = player.item {
+                    PlayerQueueButton(episodeID: item.episode.id)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .fixedSize()
+                    PlayerShareLink(episode: item.episode)
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .fixedSize()
                     Button {
                         peopleOpen.toggle()
                     } label: {
@@ -276,6 +284,13 @@ struct PlaybackCommands_macOS: Commands {
                     queue.add(item.episode.id)
                 }
                 .disabled(player.item == nil)
+            }
+            if let item = player.item {
+                ShareLink(item: SiteLinks.episode(item.episode.id), subject: Text(item.episode.displayTitle)) {
+                    Text("Share Episode")
+                }
+            } else {
+                Button("Share Episode") {}.disabled(true)
             }
             Divider()
             Button(Transcript.label) {

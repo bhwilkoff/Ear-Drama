@@ -75,6 +75,12 @@ struct PlayerSheet_iOS: View {
                     }
                     .accessibilityLabel("Close player")
                 }
+                if let item = player.item {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        PlayerQueueButton(episodeID: item.episode.id)
+                        PlayerShareLink(episode: item.episode)
+                    }
+                }
                 if player.item?.episode.transcriptURL != nil {
                     ToolbarItem(placement: .primaryAction) {
                         Button {

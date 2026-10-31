@@ -39,6 +39,43 @@ struct QueueToggleButton: View {
     }
 }
 
+/// The player's own queue verb: the same toggle as Detail's, on the surface where the episode is
+/// playing. Its label reads the state; a pressed toggle, as the web's `aria-pressed` button.
+struct PlayerQueueButton: View {
+    let episodeID: String
+    @Environment(ListeningQueue.self) private var queue
+
+    var body: some View {
+        let queued = queue.contains(episodeID)
+        Button {
+            if queued { queue.remove(episodeID) } else { queue.add(episodeID) }
+        } label: {
+            Label(queued ? "In queue" : "Add to queue", systemImage: queued ? "text.badge.checkmark" : "text.badge.plus")
+        }
+        .accessibilityIdentifier("player-queue")
+        .accessibilityValue(queued ? "On" : "Off")
+        .help(queued ? "Remove from queue" : "Add to queue")
+        #if !os(tvOS)
+        .sensoryFeedback(Haptic.light.feedback, trigger: queued)
+        #endif
+    }
+}
+
+#if !os(tvOS)
+/// The player's own Share: the episode's https page, the twin every share lands on.
+struct PlayerShareLink: View {
+    let episode: EpisodeRow
+
+    var body: some View {
+        ShareLink(item: SiteLinks.episode(episode.id), subject: Text(episode.displayTitle)) {
+            Label("Share", systemImage: "square.and.arrow.up")
+        }
+        .accessibilityIdentifier("player-share")
+        .help("Share")
+    }
+}
+#endif
+
 /// A queued episode's menu: one step up or down, or out; the web's three buttons.
 struct QueueRowMenu: View {
     let episodeID: String

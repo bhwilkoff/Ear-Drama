@@ -20,6 +20,9 @@ nonisolated struct RadioEvening: Equatable, Sendable {
     func detail(for slot: RadioSlot) -> EpisodeDetail? {
         slot.playableEpisode.flatMap { details[$0.id] }
     }
+
+    /// The first slot of the evening that plays: what "Listen from the start" opens once the evening has ended.
+    var firstPlayable: EpisodeDetail? { day.slots.lazy.compactMap { detail(for: $0) }.first }
 }
 
 /// The genre stations, read through the one API client. A station's episodes

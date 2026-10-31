@@ -496,13 +496,19 @@ nonisolated struct Shelf: Hashable, Sendable, Identifiable {
 /// the contract's same strings for a catalog that predates the key. A basis
 /// with no published words shows NO line, never the unclaimed one.
 nonisolated enum RightsDisplay {
-    static let contract: [String: String] = [
-        "unclaimed": "No rights claim known. Removed on request.",
-        "rec_gov_work": "Government recording",
-        "rec_librivox": "LibriVox recording",
-        "rec_pd_published_age": "Published before 1926",
-        "rec_cc_corroborated": "Creative Commons recording",
-    ]
+    static var contract: [String: String] { contract(year: Calendar(identifier: .gregorian).component(.year, from: Date())) }
+
+    /// The published-age year is the calendar year minus 100 (catalog/tools/audit_audio_rights.py
+    /// `pd_published_year` + 1), so it moves every January and is never typed here.
+    static func contract(year: Int) -> [String: String] {
+        [
+            "unclaimed": "No rights claim known. Removed on request.",
+            "rec_gov_work": "Government recording",
+            "rec_librivox": "LibriVox recording",
+            "rec_pd_published_age": "Published before \(year - 100)",
+            "rec_cc_corroborated": "Creative Commons recording",
+        ]
+    }
 
     static func line(rights: String, basis: String?, lines: [String: String] = contract) -> String? {
         switch rights {

@@ -842,7 +842,8 @@ struct RightsDisplayTests {
                 == "No rights claim known. Removed on request.")
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_gov_work") == "Government recording")
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_librivox") == "LibriVox recording")
-        #expect(RightsDisplay.line(rights: "clean", basis: "rec_pd_published_age") == "Published before 1926")
+        #expect(RightsDisplay.line(rights: "clean", basis: "rec_pd_published_age", lines: RightsDisplay.contract(year: 2026)) == "Published before 1926")
+        #expect(RightsDisplay.contract(year: 2027)["rec_pd_published_age"] == "Published before 1927")
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_cc_corroborated") == "Creative Commons recording")
         #expect(RightsDisplay.line(rights: "clean", basis: "rec_unknown") == nil)
         #expect(RightsDisplay.line(rights: "clean", basis: nil) == nil)
@@ -863,6 +864,19 @@ struct RightsDisplayTests {
         // fallback keeps the same words, and the pipeline builds them from the rule.
         #expect(text.contains("\"rec_pd_published_age\": f\"Published before {"))
         #expect(RightsDisplay.contract["rec_pd_published_age"]?.hasPrefix("Published before ") == true)
+    }
+
+    /// The year moves every January: no client source may type it.
+    @Test func noClientTypesTheRightsYear() throws {
+        let dir = repoRoot.appendingPathComponent("apple/Core")
+        let files = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: nil)!
+            .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
+        #expect(!files.isEmpty)
+        for file in files {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            #expect(text.range(of: #"Published before [0-9]{4}"#, options: .regularExpression) == nil,
+                    "\(file.lastPathComponent) types the rights year")
+        }
     }
 }
 
