@@ -131,7 +131,7 @@ const API = (() => {
 
   /* ---- Art (contract §3.3a, Decision 069) ---- */
 
-  const ART_FIELDS = ['url', 'width', 'height', 'credit', 'evidence', 'face'];
+  const ART_FIELDS = ['url', 'width', 'height', 'credit', 'evidence', 'face', 'grade'];
   /** A published art array as an object, or null. */
   function artOf(a) {
     if (!Array.isArray(a) || !a[0]) return null;
@@ -373,7 +373,8 @@ const API = (() => {
   const fieldSide = (n, max) => (n > 0 && max > 0 ? Math.max(6, Math.round(32 * Math.sqrt(n / max))) : 0);
 
   /** The grade a picture takes (uniform-imagery-design §2): monochrome, then `k * v + o`. The
-      projection does not publish art.grade yet, so this is the documented identity default. */
+      projection publishes art.grade as [k, o] for a picture whose range was measured; any other
+      picture, and a catalog without the column, takes the identity. */
   const DEFAULT_GRADE = { k: 1, o: 0 };
   function gradeOf(art) {
     const g = art && Array.isArray(art.grade) && art.grade.length === 2 ? art.grade : null;
@@ -711,6 +712,19 @@ const API = (() => {
       return words.every(w => t.some(x => x.startsWith(w)));
     }).map(r => ({ ...r, art: artOf(r.art) }));
     return { total: hits.length, rows: hits.slice(0, limit) };
+  }
+
+  /** The most heard voices (contract §3.3 `voices`), most served episodes first; none for a catalog
+      published before them. */
+  async function voices(limit = 300) {
+    let d;
+    try {
+      d = await getJSON('index/voices.json');
+    } catch (e) {
+      if (e.kind === 'missing') return [];
+      throw e;
+    }
+    return rowsOf(d.fields, d.rows).slice(0, limit).map(r => ({ ...r, art: artOf(r.art) }));
   }
 
   /* ---- Transcripts (DECISIONS 058, contract §3.1) ---- */
@@ -1422,7 +1436,7 @@ const API = (() => {
     manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
-    personPage, lifeYears, personGroups, searchPeople,
+    personPage, lifeYears, personGroups, searchPeople, voices,
     transcript, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
     dateQuery, dateLabel, searchAired,
     localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, account,

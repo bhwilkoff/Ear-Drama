@@ -25,6 +25,7 @@ above does, rebuilds, tests, and publishes (contract §7):
 
     python3 tools/build_db.py && python3 tools/enrich_db.py
     python3 tools/enrich_external.py && python3 tools/enrich_people_art.py && python3 tools/enrich_photo_archives.py
+    python3 tools/enrich_genres.py                              # a genre from the records' own keywords (DECISIONS 024)
     bash tests/run_all.sh                                       # every suite; a red one blocks publish
     python3 tools/build_projection.py --out out/publish         # apps: clean + unclaimed
     python3 tools/build_projection.py --clean-only --out out/publish-clean
@@ -105,6 +106,11 @@ non-zero when it read nothing, and records what it could not read.
     python3 tools/harvest_magazine_rights.py          # radio magazines: renewal status by title and year
     python3 tools/enrich_people_art.py && python3 tools/enrich_photo_archives.py   # post-build, seconds
     python3 tests/test_people_art.py && python3 tests/test_photo_archives.py
+
+    python3 tools/measure_art_grade.py                # each served picture's luminance range -> .cache/art_grade.json (~15 min, Pillow + numpy)
+
+`art.grade` is published only from that cache; a build without it publishes none and every client takes the
+identity levels. A new cache Release carries it.
 
 Images follow the audio's take-down rule (owner, 2026-10-21: no review queue):
 used when the image's own record carries the evidence, removed on request.

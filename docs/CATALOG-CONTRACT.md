@@ -188,6 +188,28 @@ none on the web), never as a skip. Segment times are never estimated.
   `? Jiminy`), then one leading article (The, A, An), then case-folded; digits
   sort before letters. Every client sorts Browse A to Z by it and falls back
   to `name` when an older catalog lacks the column; none re-derives it.
+- **`series.genre`** and **`genre_source`**: the genre is one of the eight or NULL, and `genre_source` says what
+  placed it, set together: `otrrpedia` (the first mapped OTRRpedia label), `radioechoes` (its human tag),
+  `librivox`, and, for a series none of those places (catalog DECISIONS 024), `wikidata:genre` (the item's `genre`
+  statements agree on one of the eight, and the item is matched on the years or the network, never the title) or
+  `archive.org` (more than half of the series' default-copy items name the genre in their own subject keywords,
+  collections or file genre tag, `genres.KEYWORD`; "drama" gives way to a specific genre that also passes; two
+  specific genres, or none, leave it NULL). Never a guess from a title. `catalog/tools/enrich_genres.py` writes the
+  evidence (`series_genre`: the words and how many items carry each); `build_projection.py` copies it.
+  MEASURED 2026-10-30 on the 2026-10-29 caches: of the 8,519 served series with no genre, 2,123 get one (all
+  `archive.org`; no unplaced series has a Wikidata genre) and 6,396 stay NULL; of the 834 shows (five episodes or more)
+  with none, 220 get one. Guarded in `tests/test_genre_evidence.py` and `tests/test_projection.py`.
+- **`voices`** `(person_id, rank, name, episodes, portrait)`: the most heard voices, the 300 people heard on the most
+  served episodes, most first (`rank` 1 to 300, ties by name then id). A person is heard in an episode when they hold
+  a credit there whose role is on the air (`art_policy.VOICE_ROLES`: cast, host, narrator, performer, guest, emcee,
+  doubles, vocal, star, a role-less credit, and an announcer or commercial spokesperson); a writer, director,
+  composer or conductor is not a voice. An episode counts once however many credits the person holds in it, and a
+  credit with a role and no character counts the same as a lead. `name` is `people.name`; `portrait` is
+  `people.portrait` (an `art.id` or NULL). Each output counts its own rows, so the clean-only web ranks what it
+  serves: `index/voices.json` on the web (`{fields: PEOPLE_FIELDS, rows}`, the same row as a people search: id, name,
+  episodes, art), `API.voices()`; Apple and Android read `CatalogDatabase.voices()`,
+  and a catalog without the table has none. `art_policy.rank_voices`; guarded in `tests/test_projection.py`
+  (ranked, named as in `people`, portrait the person's) and `tests/test_web_projection.py`.
 - `runs`: `(id, series_key, first_date, last_date, kind, network)`; kind is one
   of anthology, character, serial, strip, comedy-variety, news, broadcast-day.
   Not published yet: the story arcs below decide queueing without it.
@@ -225,7 +247,17 @@ none on the web), never as a skip. Segment times are never estimated.
   `cc_by_sa`); `credit` ("Author, CC BY-SA 3.0") is set exactly when the license
   requires attribution, and a client shows it wherever the image is shown at
   header size or in the Detail credits; `evidence_url` is the file page.
-  `face` is where a small crop centers (§3.3a), or NULL.
+  `face` is where a small crop centers (§3.3a), or NULL. **`grade`** (the web's `art` array carries
+  it last, as `[k, o]` or null) is the picture's tonal levels, `"k,o"`: the linear map `out = k * in + o` a client
+  applies to sRGB luminance after the neutral monochrome in a repeated slot (uniform-imagery-design §2); never on the
+  page about one picture. NULL is the identity (k 1, o 0): a picture already spanning the range, one not measured, or
+  a catalog without the column; a client never treats NULL as an error. Published values keep `1 < k <= 1.6`.
+  `catalog/tools/measure_art_grade.py` measures the 1st and 99th percentile of Rec. 709 luminance of Commons' 500 px
+  thumbnail inside the crop the slot shows (`art_policy.crop_rect`, the one every client draws), once, into
+  `.cache/art_grade.json` with the crop it used; `art_policy.grade_levels` turns the range into `k, o`
+  (`lo` to 0.04 and `hi` to 0.96, centered at the 1.6 cap); `build_projection.grade_of` publishes it only while the
+  picture's crop is still that crop. Counted in the manifest as `counts.artGraded`. Guarded: golden levels and a
+  broken-grade control in `tests/test_projection.py`.
 - `episodes.star`: the episode's face (§3.3a), or NULL.
 
 ### 3.3a Portraits: what is served, and whose face a show wears
@@ -351,6 +383,22 @@ images, 2,364 people, 305 series with a star, 24,894 episodes with one.
   source is one of the show's own records; every published image (portrait or show
   picture) traced back to its source rows passes the predicate again, so a title-only
   match or a file without license evidence is refused.
+
+### 3.3b Same day: "That night on the radio" is a query, not a table
+
+The other surviving broadcasts on an episode's air date need no stored data. A client runs, over the `episodes`
+table (the web: the year's `search/dates/YYYY.json` rows for the date, filtered the same way):
+
+    SELECT id FROM episodes WHERE air_date = ? AND id != ?
+    ORDER BY network IS NULL, network, series_key, id LIMIT ?
+
+Ids only, never the episode itself, capped by the client (12 in the design), by network (unknown last), then
+series, then id; no time of day is known, so none orders it. Only served episodes exist in a projection, so a hidden
+broadcast never appears. It rides `episodes_date`: 15 microseconds a query on the 107,190-episode build. MEASURED
+2026-10-30 as a table instead: 337,810 rows (cap 12) for 49,419 dated episodes that share a day, 11.0 MB as text and
+0.68 MB deflated on a 25.5 MB download, for a result the index returns on demand; so it is not published. Only a
+full `YYYY-MM-DD` date has a day (`air_date` of 10 characters). Guarded in `tests/test_projection.py` (the plan names
+`episodes_date`; the cap, the self-exclusion and the order each have a control).
 
 ### 3.4 Search
 

@@ -32,12 +32,14 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let ftsHasTranscript: Bool
     /// The projection carries portraits (contract §3.3a).
     private let hasArt: Bool
-    /// The art columns a credit or person query reads, `a.face` NULL in an older catalog.
+    /// The art columns a credit or person query reads, `a.face` and `a.grade` NULL in an older catalog.
     private let artColumnsSQL: String
     private let hasEpisodeStar: Bool
     /// The projection links episodes to castable scripts (contract §3.1, Decision 068).
     private let hasScript: Bool
     private let hasArcs: Bool
+    /// Contract §3.3 `voices`, the most heard voices; a catalog without the table has none.
+    private let hasVoices: Bool
     /// Every series' genre and face, read once: rows that mix series draw a tile from it.
     private let seriesLook: [String: SeriesLook]
     /// `meta.rightsLines` (contract §5.5), or the contract's strings when absent.
@@ -75,14 +77,16 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             && Self.columnExists(h, table: "art", column: "url")
         hasArt = art
         let face = art && Self.columnExists(h, table: "art", column: "face")
-        artColumnsSQL = art ? "a.url, a.width, a.height, a.credit, a.evidence_url, \(face ? "a.face" : "NULL")"
-            : "NULL, NULL, NULL, NULL, NULL, NULL"
+        let grade = art && Self.columnExists(h, table: "art", column: "grade")
+        artColumnsSQL = art ? "a.url, a.width, a.height, a.credit, a.evidence_url, \(face ? "a.face" : "NULL"), \(grade ? "a.grade" : "NULL")"
+            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL"
         hasEpisodeStar = art && Self.columnExists(h, table: "episodes", column: "star")
         hasScript = Self.columnExists(h, table: "episodes", column: "script")
+        hasVoices = Self.columnExists(h, table: "voices", column: "episodes")
         hasArcs = Self.columnExists(h, table: "arcs", column: "next_arc")
             && Self.columnExists(h, table: "arc_parts", column: "part")
         seriesLook = Self.loadSeriesLook(h, withFaces: art && Self.columnExists(h, table: "series", column: "star"),
-                                         faceColumn: face,
+                                         faceColumn: face, gradeColumn: grade,
                                          withPicture: art && Self.columnExists(h, table: "series", column: "picture")
                                              && Self.columnExists(h, table: "series", column: "picture_kind"),
                                          withYears: Self.columnExists(h, table: "series", column: "year_counts"),
@@ -167,14 +171,15 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         var sortName: String?
     }
 
-    private static func loadSeriesLook(_ h: OpaquePointer, withFaces: Bool, faceColumn: Bool,
+    private static func loadSeriesLook(_ h: OpaquePointer, withFaces: Bool, faceColumn: Bool, gradeColumn: Bool,
                                        withPicture: Bool, withYears: Bool, withSortName: Bool) -> [String: SeriesLook] {
-        let faceSelect = withFaces ? "p.name, a.url, a.width, a.height, a.credit, a.evidence_url, \(faceColumn ? "a.face" : "NULL")"
-            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL"
+        let faceSelect = withFaces
+            ? "p.name, a.url, a.width, a.height, a.credit, a.evidence_url, \(faceColumn ? "a.face" : "NULL"), \(gradeColumn ? "a.grade" : "NULL")"
+            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL"
         let faceJoin = withFaces ? "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait" : ""
         let pictureSelect = withPicture
-            ? "pa.url, pa.width, pa.height, pa.credit, pa.evidence_url, \(faceColumn ? "pa.face" : "NULL"), s.picture_kind"
-            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL"
+            ? "pa.url, pa.width, pa.height, pa.credit, pa.evidence_url, \(faceColumn ? "pa.face" : "NULL"), \(gradeColumn ? "pa.grade" : "NULL"), s.picture_kind"
+            : "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL"
         let pictureJoin = withPicture ? "LEFT JOIN art pa ON pa.id = s.picture" : ""
         let yearsSelect = withYears ? "s.year_counts" : "NULL"
         let sql = "SELECT s.key, s.genre, \(faceSelect), \(pictureSelect), \(yearsSelect), \(withSortName ? "s.sort_name" : "NULL") FROM series s \(faceJoin) \(pictureJoin)"
@@ -188,24 +193,24 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             guard let key = text(0) else { continue }
             var look = SeriesLook(genre: text(1))
             if let name = text(2), let art = artwork(url: text(3), width: int(4), height: int(5), credit: text(6),
-                                                    evidence: text(7), face: text(8)) {
+                                                    evidence: text(7), face: text(8), grade: text(9)) {
                 look.face = Face(name: name, art: art)
             }
-            look.picture = artwork(url: text(9), width: int(10), height: int(11), credit: text(12),
-                                   evidence: text(13), face: text(14))
-            look.pictureKind = look.picture == nil ? nil : text(15)
-            look.yearCounts = Grammar.parseYearCounts(text(16))
-            look.sortName = text(17)
+            look.picture = artwork(url: text(10), width: int(11), height: int(12), credit: text(13),
+                                   evidence: text(14), face: text(15), grade: text(16))
+            look.pictureKind = look.picture == nil ? nil : text(17)
+            look.yearCounts = Grammar.parseYearCounts(text(18))
+            look.sortName = text(19)
             out[key] = look
         }
         return out
     }
 
     static func artwork(url: String?, width: Int?, height: Int?, credit: String?, evidence: String?,
-                        face: String? = nil) -> Artwork? {
+                        face: String? = nil, grade: String? = nil) -> Artwork? {
         guard let url = url.flatMap(URL.init(string:)) else { return nil }
         return Artwork(url: url, width: width, height: height, credit: credit, evidence: evidence.flatMap(URL.init(string:)),
-                       face: Artwork.FaceBox(face))
+                       face: Artwork.FaceBox(face), grade: Artwork.Grade(grade))
     }
 
     private static func columnExists(_ h: OpaquePointer, table: String, column: String) -> Bool {
@@ -406,7 +411,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             """, [.text(id)]) { row in
             Credit(personID: row.text(0) ?? "", name: row.text(1) ?? "", role: row.text(2), character: row.text(3),
                    art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6), credit: row.text(7),
-                                     evidence: row.text(8), face: row.text(9)))
+                                     evidence: row.text(8), face: row.text(9), grade: row.text(10)))
         }
         let recordings = rows("""
             SELECT rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings
@@ -636,7 +641,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             """, [.text(personID)], { row in
             Person(id: row.text(0) ?? "", name: row.text(1) ?? "", birth: row.text(2), death: row.text(3),
                    art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6), credit: row.text(7),
-                                     evidence: row.text(8), face: row.text(9)))
+                                     evidence: row.text(8), face: row.text(9), grade: row.text(10)))
         }).first else { return nil }
         let credits = rows("""
             SELECT \(Self.episodeColumns), c.role, c.character FROM credits c JOIN episodes e ON e.id = c.episode_id
@@ -657,6 +662,24 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         }
         guard !episodes.isEmpty else { return nil }
         return PersonPage(person: person, episodes: episodes)
+    }
+
+    /// The most heard voices (contract §3.3 `voices`), most episodes first; empty for a catalog without them.
+    func voices(limit: Int = 300) -> [PersonRow] {
+        guard hasVoices else { return [] }
+        let artColumns = artColumnsSQL
+        let artJoin = hasArt ? "LEFT JOIN art a ON a.id = p.portrait" : ""
+        return rows("""
+            SELECT p.id, p.name, p.birth, p.death, \(artColumns), v.episodes FROM voices v
+            JOIN people p ON p.id = v.person_id \(artJoin) ORDER BY v.rank LIMIT ?
+            """, [.int(limit)]) { row in
+            PersonRow(person: Person(id: row.text(0) ?? "", name: row.text(1) ?? "", birth: row.text(2),
+                                     death: row.text(3),
+                                     art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6),
+                                                       credit: row.text(7), evidence: row.text(8),
+                                                       face: row.text(9), grade: row.text(10))),
+                      episodes: row.int(11) ?? 0)
+        }
     }
 
     /// `searchPeople(q)`: people whose name has every typed word (two
@@ -686,7 +709,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                                          death: row.text(3),
                                          art: Self.artwork(url: row.text(4), width: row.int(5), height: row.int(6),
                                                            credit: row.text(7), evidence: row.text(8),
-                                                           face: row.text(9))),
+                                                           face: row.text(9), grade: row.text(10))),
                           episodes: count)
             }.first
         }

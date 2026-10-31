@@ -92,7 +92,7 @@ enum Fixture {
     static func make(rightsLines: [String: String]? = RightsDisplay.contract,
                      clearNoRecommend: Bool = false, dropLoudness: Bool = false,
                      dropTranscript: Bool = false, listenShelves: String? = nil, dropArt: Bool = false,
-                     dropPicture: Bool = false, episodeRows: [Ep]? = nil,
+                     dropPicture: Bool = false, withGrade: Bool = false, dropGrade: Bool = false, episodeRows: [Ep]? = nil,
                      seriesRows: [(key: String, name: String, genre: String?, first: String?, last: String?, networks: String?)]? = nil
     ) throws -> URL {
         let episodes = episodeRows ?? Self.episodes
@@ -174,10 +174,12 @@ enum Fixture {
         // Portraits (contract §3.3a): Agnes Moorehead is Suspense's star and the
         // 1943 episode's; Orson Welles' portrait owes a CC credit.
         try exec("""
-            INSERT INTO art VALUES (1, 'https://commons.wikimedia.org/wiki/Special:FilePath/Agnes_Moorehead.jpg',
+            INSERT INTO art (id, url, width, height, license, author, credit, evidence_url, face)
+            VALUES (1, 'https://commons.wikimedia.org/wiki/Special:FilePath/Agnes_Moorehead.jpg',
                 600, 800, 'pd_us', NULL, NULL, 'https://commons.wikimedia.org/wiki/File:Agnes_Moorehead.jpg',
                 '0.3,0.1,0.4,0.3');
-            INSERT INTO art VALUES (2, 'https://commons.wikimedia.org/wiki/Special:FilePath/Orson_Welles.jpg',
+            INSERT INTO art (id, url, width, height, license, author, credit, evidence_url, face)
+            VALUES (2, 'https://commons.wikimedia.org/wiki/Special:FilePath/Orson_Welles.jpg',
                 NULL, NULL, 'cc_by', 'Alan Light', 'Alan Light, CC BY 2.0',
                 'https://commons.wikimedia.org/wiki/File:Orson_Welles.jpg', NULL);
             UPDATE people SET portrait = 1 WHERE id = 'p1';
@@ -196,6 +198,19 @@ enum Fixture {
             INSERT INTO arc_parts VALUES ('suspense|1943-05-25', 'suspense|arc|b', 1);
             INSERT INTO arc_parts VALUES ('suspense|lost', 'suspense|arc|b', 2);
             """)
+        if withGrade {
+            // Contract §3.3a `art.grade` and §3.3 `voices`: Agnes Moorehead's picture is graded, Orson Welles'
+            // is the identity (NULL); the voices are ranked with their episode counts.
+            try exec("""
+                UPDATE art SET grade = '1.600,0.148' WHERE id = 1;
+                INSERT INTO voices VALUES ('p3', 1, 'Orson Welles', 9, 2);
+                INSERT INTO voices VALUES ('p1', 2, 'Agnes Moorehead', 4, 1);
+                """)
+        }
+        if dropGrade {
+            // A catalog from before art.grade and voices.
+            try exec("ALTER TABLE art DROP COLUMN grade; DROP TABLE voices;")
+        }
         if dropPicture {
             try exec("ALTER TABLE series DROP COLUMN picture; ALTER TABLE series DROP COLUMN picture_kind;")
         }
@@ -218,15 +233,35 @@ enum Fixture {
     static func open(rightsLines: [String: String]? = RightsDisplay.contract,
                      clearNoRecommend: Bool = false, dropLoudness: Bool = false,
                      dropTranscript: Bool = false, listenShelves: String? = nil,
-                     dropArt: Bool = false, dropPicture: Bool = false) throws -> CatalogDatabase {
+                     dropArt: Bool = false, dropPicture: Bool = false,
+                     withGrade: Bool = false, dropGrade: Bool = false) throws -> CatalogDatabase {
         let url = try make(rightsLines: rightsLines, clearNoRecommend: clearNoRecommend, dropLoudness: dropLoudness,
                            dropTranscript: dropTranscript, listenShelves: listenShelves, dropArt: dropArt,
-                           dropPicture: dropPicture)
+                           dropPicture: dropPicture, withGrade: withGrade, dropGrade: dropGrade)
         return try #require(CatalogDatabase(path: url.path))
     }
 }
 
 struct CatalogQueryTests {
+    /// Contract §3.3a `art.grade` and §3.3 `voices`: both read behind a column-exists guard, so an older
+    /// catalog opens with the identity grade and no voices.
+    @Test func gradeAndVoicesAreReadWhenPublished() throws {
+        let db = try Fixture.open(withGrade: true)
+        let agnes = try #require(db.series(key: "suspense")?.picture)
+        #expect(agnes.grade == Artwork.Grade(k: 1.6, o: 0.148))
+        #expect(Grammar.gradeOf(agnes) == Artwork.Grade(k: 1.6, o: 0.148))
+        let hitch = try #require(db.episodeDetail(id: "suspense|1942-10-20"))
+        #expect(hitch.credits.first { $0.personID == "p3" }?.art?.grade == nil, "NULL is the identity")
+        let voices = db.voices()
+        #expect(voices.map(\.person.id) == ["p3", "p1"] && voices.map(\.episodes) == [9, 4])
+        #expect(voices[1].person.art?.grade?.k == 1.6, "a voice's portrait carries its grade")
+        let older = try Fixture.open(dropGrade: true)
+        #expect(older.voices().isEmpty, "a catalog without the table has no voices")
+        #expect(older.series(key: "suspense")?.picture?.grade == nil, "a catalog without the column takes the identity")
+        #expect(Artwork.Grade("1.6, 0.1") == Artwork.Grade(k: 1.6, o: 0.1))
+        #expect(Artwork.Grade("1.6") == nil && Artwork.Grade(nil) == nil && Artwork.Grade("a,b") == nil)
+    }
+
     /// Decision 069, contract §3.3a: the series' face reaches series rows and every
     /// episode row of that series; Detail carries the episode's star and each
     /// credit's portrait with its owed credit.

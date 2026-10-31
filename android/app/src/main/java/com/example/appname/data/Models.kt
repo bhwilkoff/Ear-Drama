@@ -18,7 +18,7 @@ data class Artwork(
     val evidence: String? = null,
     /** Where a small crop centers (contract §3.3a), computed once in the pipeline. */
     val face: FaceBox? = null,
-    /** Published `[k, o]` levels (not yet in the projection); null takes the identity default. */
+    /** Published `[k, o]` levels (`art.grade`, contract §3.3a); null takes the identity default. */
     val grade: List<Double>? = null,
 ) {
     /**

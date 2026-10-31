@@ -607,3 +607,43 @@ the raw title spelled. "Mozart" lost the work; "May Field" split a name a title 
 `tests/test_titles.py` (five cases seen failing on the 022 code). MEASURED on the 2026-10-29 caches: 676 of
 121,907 episode titles change from the 022 build (570 humps split, 106 series names kept) and 64 series names
 (humps); no schema change, so no client change, and the apps see it with the next cache Release and catalog publish.
+
+
+## 024 — Direction D's data: a genre from the records' own keywords, ranked voices, picture grades, and same-day as a query
+
+*Date: 2026-10-30*
+
+Four things direction D's design asked of the pipeline (`docs/research/design/directions/d/direction.md`, "Pipeline
+work D needs"). (1) **A genre for a series no OTRRpedia label, RadioEchoes tag or LibriVox listing places**, only from
+a word its own records carry: Wikidata's `genre` on an item matched on the years or the network, else the one genre
+that more than half of the series' archive.org items name in their subject keywords or the genre tag of their default
+copy's file (`genres.KEYWORD`, exact whole words; "drama" yields to a specific genre that also passes; two specific
+genres, or none, leave it NULL). An item counts only when every served default copy in it belongs to the one series:
+a day's broadcasts and a collector's compilation carry keywords for the item, not for any program in it (found by
+looking: "NBC, WEAF, NY" read as a soap opera because its day-long item said so). A collection never counts
+("audio_news" is where an uploader files everything that is not music: it put a Thanksgiving record show under
+News). The source is stored: `series.genre_source` is `archive.org` or `wikidata:genre`. (2) **`voices`**, the 300 most
+heard people, ranked by served episodes they are heard on (`art_policy.VOICE_ROLES`: on-air credits plus announcers
+and commercial spokespeople; a writer or conductor is not a voice). (3) **`art.grade`**, `"k,o"` per picture, from
+the luminance range of the picture inside the crop a slot shows (uniform-imagery-design section 2),
+measured once (`measure_art_grade.py`, `.cache/art_grade.json`). (4) **`sameDay`** is not published: it is a
+documented query (contract 3.3b).
+
+**Why**: the owner's catalog rules (evidence or nothing; never a guess from a title) and the owner's picture rule
+(2026-10-29: the pictures must read as one set). A genre only from the record, held to one program per item, loses
+coverage and keeps the rule; a table of the other broadcasts that night costs 0.68 MB deflated for what an index
+returns in 15 microseconds.
+
+**How to apply**: `tools/enrich_genres.py` runs after `enrich_photo_archives.py` (the publish workflow does);
+`build_projection.py` reads `series_genre`, `.cache/art_grade.json` (absent: no grades, every client takes the
+identity) and writes `voices`; `build_web_projection.py` writes `index/voices.json` and the art arrays end with the
+grade. Guards: `tests/test_genre_evidence.py`, `tests/test_projection.py` (voices, grade limits, same-day plan, each
+with a broken control), `tests/test_web_projection.py`. MEASURED 2026-10-30 on the 2026-10-29 caches: of 8,519
+served series with no genre, 1,543 get one (all `archive.org`; no unplaced series has a Wikidata genre) and 6,976
+stay unassigned; of the 834 shows (five episodes or more) with none, 89 get one (47 drama, 14 science fiction, 13
+mystery, 6 documentary, 5 comedy, 3 news, 1 serial), 745 stay on the neutral board; a version that let multi-series
+items speak assigned 220 of the 834 and misread the day compilations, so the 131 it added are held back, not
+guessed. Voices: 300 rows. Grades: 2,184 pictures measured, 1,461 graded (51 at the 1.6 cap), 723 the identity,
+none unreadable. Size on the 2026-10-29 build: the app database 125,087,744 to 125,161,472 bytes (+74 KB) and its
+download 25,433,689 to 25,463,104 (+29 KB, 0.12%); the web's `index/voices.json` 19.4 KB, 5.1 KB gzipped. A new
+cache Release is needed for the grades (`art_grade.json` is a new harvest file); the genres and voices need none.

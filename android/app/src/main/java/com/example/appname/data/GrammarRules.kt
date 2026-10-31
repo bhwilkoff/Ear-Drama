@@ -152,7 +152,14 @@ data class Grade(val k: Double, val o: Double)
 
 private val DEFAULT_GRADE = Grade(1.0, 0.0)
 
-/** The grade a picture takes; the projection publishes none yet, so the identity default. */
+/** Parses `art.grade` ("k,o"); null when absent or malformed, which takes the identity. */
+fun parseGrade(text: String?): List<Double>? {
+    if (text.isNullOrEmpty()) return null
+    val parts = text.split(",").map { it.trim().toDoubleOrNull() }
+    return if (parts.size == 2 && parts.none { it == null }) parts.filterNotNull() else null
+}
+
+/** The grade a picture takes: the published levels, else the identity default. */
 fun gradeOf(art: Artwork?): Grade {
     val g = art?.grade
     return if (g != null && g.size == 2) Grade(g[0], g[1]) else DEFAULT_GRADE

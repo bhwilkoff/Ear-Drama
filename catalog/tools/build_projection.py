@@ -74,11 +74,16 @@ CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archiv
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
 CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death TEXT, portrait INTEGER);
+-- The most heard voices (contract section 3.3): people ranked by the served episodes they are heard on,
+-- most first; `rank` is the row's place. portrait is an art.id or NULL, as in people.
+CREATE TABLE voices (person_id TEXT PRIMARY KEY, rank INTEGER NOT NULL, name TEXT NOT NULL, episodes INTEGER NOT NULL,
+    portrait INTEGER);
 -- Served images and their evidence (art_policy.py): url is Commons' Special:FilePath with no
 -- width (a client appends ?width=); credit is the line a CC BY / BY-SA image must carry;
--- face ("x,y,w,h", normalized, top-left origin) is where a small crop centers (contract §3.3a).
+-- face ("x,y,w,h", normalized, top-left origin) is where a small crop centers (contract §3.3a);
+-- grade ("k,o") is the linear levels a monochrome picture takes in a repeated slot, NULL for the identity.
 CREATE TABLE art (id INTEGER PRIMARY KEY, url TEXT NOT NULL, width INTEGER, height INTEGER,
-    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT);
+    license TEXT NOT NULL, author TEXT, credit TEXT, evidence_url TEXT NOT NULL, face TEXT, grade TEXT);
 CREATE TABLE credits (episode_id TEXT NOT NULL, person_id TEXT NOT NULL, role TEXT, character TEXT);
 -- Forwarding ids (forwarding.py, contract §3.5): an id that left forwards to the served episode
 -- now holding its default copy, or is tombstoned when none does; cumulative across publishes.
@@ -144,8 +149,18 @@ def download_url(archive_id, file):
                                                        urllib.parse.quote(file, safe="/"))
 
 
+def grade_of(measured, url, width, height, face):
+    """`art.grade` for a picture: the levels of its measured luminance range (measure_art_grade.py),
+    only while the crop it was measured in is still the crop a client draws; else NULL, the identity."""
+    m = (measured or {}).get(url)
+    crop = AP.crop_rect(width, height, AP.face_list(face))
+    if not m or "lo" not in m or m.get("crop") != (None if crop is None else ",".join(f"{v:.4f}" for v in crop)):
+        return None
+    return AP.grade_text(m["lo"], m["hi"])
+
+
 def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=None, previous=None,
-          forwarding_from=None):
+          forwarding_from=None, art_grades=None):
     """`loudness` is the measurement cache (measure_loudness.py), id -> result; only
     a usable measurement of the episode's default copy URL is published.
     `transcripts` is the transcript cache (fetch_transcripts.py), id -> entry: a text
@@ -184,9 +199,9 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
 
     portraits = served_portraits(s, people_rows, same)   # person id -> art row id, rows written to `art`
     for aid, (file, cls, template, author, w, h, face) in enumerate(portraits["rows"], 1):
-        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?)", (
+        d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?)", (
             aid, AP.image_url(file), w, h, cls, author if AP.license_name(cls, template) else None,
-            AP.credit(cls, template, author), AP.evidence_url(file), face))
+            AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, AP.image_url(file), w, h, face)))
     faces = set(portraits["by_person"])
     series_of = dict(s.execute("SELECT id, series_key FROM episodes"))
     credited_by_series = {}
@@ -208,9 +223,9 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     for sk, (file, src, cls, template, author, w, h, face) in sorted(show_images.items()):
         url = AP.image_url(file)
         if url not in file_ids:
-            d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?)", (
+            d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?)", (
                 next_id, url, w, h, cls, author if AP.license_name(cls, template) else None,
-                AP.credit(cls, template, author), AP.evidence_url(file), face))
+                AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, url, w, h, face)))
             file_ids[url], next_id = next_id, next_id + 1
         pictures[sk] = (file_ids[url], "show", src)
     for sk, f in face_of.items():
@@ -274,10 +289,14 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         if air:
             years_of.setdefault(sk, []).append(air)
 
+    kept_genre = dict(((k, (g, src)) for k, g, src in s.execute("SELECT series_key, genre, source FROM series_genre"))
+                      if has_table(s, "series_genre") else ())
     for key, name, re_genre, otrr_genres, lv, first, last, nets in s.execute(
             "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
+            if genre is None and key in kept_genre:   # enrich_genres.py: a keyword the records carry (DECISIONS 024)
+                genre, gsrc = kept_genre[key]
             pic = pictures.get(key, (None, None, None))
             shown_as = shown_name.get(key) or name
             d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -302,17 +321,19 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     recommendable = {k for (k,) in d.execute("SELECT DISTINCT series_key FROM episodes WHERE no_recommend IS NULL")}
     d.executemany("UPDATE series SET downloads = ? WHERE key = ?",
                   [(n, k) for k, n in SH.browse_downloads(series_dl, recommendable).items()])
+    write_voices(d)
     write_arcs(d)
     fwd = write_forwarding(d, previous, forwarding_from)
     d.executescript(INDEXES)
     counts = {t: d.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-              for t in ("episodes", "recordings", "series", "people", "credits", "art", "arcs", "arc_parts")}
+              for t in ("episodes", "recordings", "series", "people", "credits", "art", "arcs", "arc_parts", "voices")}
     counts["portraits"] = d.execute("SELECT COUNT(*) FROM people WHERE portrait IS NOT NULL").fetchone()[0]
     counts["seriesStars"] = d.execute("SELECT COUNT(*) FROM series WHERE star IS NOT NULL").fetchone()[0]
     counts["seriesDownloads"] = d.execute("SELECT COUNT(*) FROM series WHERE downloads IS NOT NULL").fetchone()[0]
     for kind in AP.KINDS:
         counts[f"seriesPicture{kind.title()}"] = d.execute(
             "SELECT COUNT(*) FROM series WHERE picture_kind = ?", (kind,)).fetchone()[0]
+    counts["artGraded"] = d.execute("SELECT COUNT(*) FROM art WHERE grade IS NOT NULL").fetchone()[0]
     counts["episodeStars"] = d.execute("SELECT COUNT(*) FROM episodes WHERE star IS NOT NULL").fetchone()[0]
     counts["clean"] = d.execute("SELECT COUNT(*) FROM episodes WHERE rights = 'clean'").fetchone()[0]
     counts["loudness"] = d.execute("SELECT COUNT(*) FROM episodes WHERE loudness_i IS NOT NULL").fetchone()[0]
@@ -336,6 +357,19 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     d.execute("VACUUM")
     d.close()
     return meta
+
+
+def write_voices(d):
+    """The ranked voices (art_policy.rank_voices) over the credits this projection serves."""
+    who = {pid: (name, portrait) for pid, name, portrait in d.execute("SELECT id, name, portrait FROM people")}
+    ranked = AP.rank_voices(d.execute("SELECT episode_id, person_id, role FROM credits"),
+                            {pid: v[0] for pid, v in who.items()})
+    d.executemany("INSERT INTO voices VALUES (?,?,?,?,?)",
+                  [(pid, i, who[pid][0], n, who[pid][1]) for i, (pid, n) in enumerate(ranked, 1)])
+
+
+def has_table(con, name):
+    return con.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (name,)).fetchone() is not None
 
 
 def write_arcs(d):
@@ -523,6 +557,7 @@ def main():
     ap.add_argument("--clean-only", action="store_true")
     ap.add_argument("--loudness", help="measure_loudness.py cache (.json or .json.gz); absent = columns NULL")
     ap.add_argument("--transcripts", help="fetch_transcripts.py cache (.json.gz); absent = none searchable or shown")
+    ap.add_argument("--art-grade", help="measure_art_grade.py cache (.json); default .cache/art_grade.json when present")
     ap.add_argument("--previous", help="the live projection (.sqlite or .zz) whose ids this one forwards; absent = "
                                        "a first publish, nothing to forward")
     ap.add_argument("--forwarding-from", help="a projection built from the same database whose forwarding this one "
@@ -545,9 +580,12 @@ def main():
         raise SystemExit(f"--loudness {a.loudness} does not exist (omit the flag to build without loudness)")
     if a.transcripts and not os.path.exists(a.transcripts):
         raise SystemExit(f"--transcripts {a.transcripts} does not exist (omit the flag to build without transcripts)")
+    grades = a.art_grade or os.path.join(ia.CACHE, "art_grade.json")
+    if a.art_grade and not os.path.exists(a.art_grade):
+        raise SystemExit(f"--art-grade {a.art_grade} does not exist (omit the flag to build without grades)")
     meta = build(a.db, db, a.clean_only, load_loudness(a.loudness) if a.loudness else None,
                  T.load(a.transcripts) if a.transcripts else None, previous=previous,
-                 forwarding_from=forwarding_from)
+                 forwarding_from=forwarding_from, art_grades=ia.read_json(grades) if os.path.exists(grades) else None)
     floor = 1_000 if a.clean_only else MIN_EPISODES
     if meta["counts"]["episodes"] < floor:
         raise SystemExit(f"refusing to publish: {meta['counts']['episodes']} episodes is below the floor of {floor}")

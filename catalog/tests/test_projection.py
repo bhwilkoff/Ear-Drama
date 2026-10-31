@@ -14,6 +14,7 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_projection as B
 import genres as G
+import art_policy as AP
 import sponsors as SP
 from sort_name import sort_name
 
@@ -40,25 +41,46 @@ def fixture(path):
     """)
     d.executemany("INSERT INTO series VALUES (?,?,?,?,?,?,?,?)", [
         ("suspense", "Suspense", "OTR-Thriller", '["Mystery", "Suspense", "Anthology"]', 0, "1942-06-17", "1962-09-30", None),
-        ("shadow", "The Shadow", "OTR-Detective", None, 0, "1937-09-26", "1954-12-26", None)])
+        ("shadow", "The Shadow", "OTR-Detective", None, 0, "1937-09-26", "1954-12-26", None),
+        ("hoorspel", "Een Hoorspel", None, None, 0, "1960-01-01", "1960-12-31", None),
+        ("bare", "Bare", None, None, 0, "1960-01-01", "1960-12-31", None)])
     d.executemany("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("suspense|1943-05-25", "suspense", "1943-05-25", "filename", 46, "Sorry, Wrong Number", None,
          "keep_unclaimed", "rec_orphan_unclaimed", "work_none_found", None, "CBS", "otrr", 0),
         ("suspense|1949-09-15", "suspense", "1949-09-15", "filename", 300, "The Night Reveals", None,
          "keep_clean", "rec_pd_published_age", "work_none_found", None, None, None, 0),
         ("shadow|1938-01-02", "shadow", "1938-01-02", "filename", 15, "The Silent Avenger", None,
-         "hide_claim", "rec_rights_holder_claim", "work_none_found", None, None, None, 0)])
+         "hide_claim", "rec_rights_holder_claim", "work_none_found", None, None, None, 0),
+        ("hoorspel|1960-01-01", "hoorspel", "1960-01-01", "filename", 1, "Deel 1", None,
+         "keep_clean", "rec_pd_published_age", "work_none_found", None, "CBS", "otrr", 0),
+        ("bare|1960-01-01", "bare", "1960-01-01", "filename", 1, "Deel 1", None,
+         "keep_clean", "rec_pd_published_age", "work_none_found", None, "NBC", "otrr", 0),
+        ("bare|1943-05-25", "bare", "1943-05-25", "filename", 2, "Other night", None,
+         "keep_clean", "rec_pd_published_age", "work_none_found", None, "ABC", "otrr", 0)])
     d.executemany("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?)", [
         ("suspense|1943-05-25", 0, "OTRR_Suspense_Singles", "Suspense 43-05-25 Sorry, Wrong Number.mp3",
          "VBR MP3", 64, 1740.0, None, 0),
         ("suspense|1943-05-25", 1, "afrs_set", "Suspense AFRS #12.mp3", "VBR MP3", 128, 1735.0, "AFRS", 0),
         ("suspense|1949-09-15", 0, "susp49", "Café Night/1949.mp3", "VBR MP3", 64, 1700.0, None, 0),
-        ("shadow|1938-01-02", 0, "shadow38", "shadow.mp3", "VBR MP3", 64, 1700.0, None, 0)])
+        ("shadow|1938-01-02", 0, "shadow38", "shadow.mp3", "VBR MP3", 64, 1700.0, None, 0),
+        ("hoorspel|1960-01-01", 0, "hoor1", "a.mp3", "VBR MP3", 64, 1700.0, None, 0),
+        ("bare|1960-01-01", 0, "bare1", "b.mp3", "VBR MP3", 64, 1700.0, None, 0),
+        ("bare|1943-05-25", 0, "bare2", "c.mp3", "VBR MP3", 64, 1700.0, None, 0)])
     d.executemany("INSERT INTO episode_credits VALUES (?,?,?,?,?)", [
         ("suspense|1943-05-25", "p1", "Agnes Moorehead", "cast", "Mrs. Stevenson"),
-        ("shadow|1938-01-02", "p2", "Orson Welles", "cast", "Lamont Cranston")])
+        ("shadow|1938-01-02", "p2", "Orson Welles", "cast", "Lamont Cranston"),
+        ("suspense|1943-05-25", "p3", "Ken Niles", "announcer", None),
+        ("suspense|1943-05-25", "p4", "Lud Gluskin", "conductor", None),
+        ("bare|1943-05-25", "p3", "Ken Niles", "cast", None),
+        ("bare|1943-05-25", "p3", "Ken Niles", "narrator", None),
+        ("bare|1960-01-01", "p3", "Ken Niles", "announcer", None)])
     d.executemany("INSERT INTO people VALUES (?,?,?,?)", [("p1", "Agnes Moorehead", "1900", "1974"),
-                                                         ("p2", "Orson Welles", "1915", "1985")])
+                                                         ("p2", "Orson Welles", "1915", "1985"),
+                                                         ("p3", "Ken Niles", None, None),
+                                                         ("p4", "Lud Gluskin", None, None)])
+    d.execute("CREATE TABLE series_genre (series_key, genre, source, evidence, items)")
+    d.execute("INSERT INTO series_genre VALUES ('hoorspel', 'drama', 'archive.org', '{\"subject:hoorspel\": 1}', 1)")
+    d.execute("INSERT INTO series_genre VALUES ('suspense', 'comedy', 'archive.org', '{}', 1)")
     d.execute("CREATE TABLE sponsors (series_key, otrr_idp, sponsor, start, end, source)")
     d.executemany("INSERT INTO sponsors VALUES (?,?,?,?,?,?)", [
         ("suspense", "1", "Roma Wines", "1943-01-01", "1943-12-31", "x"),
@@ -94,6 +116,11 @@ check("control: '#' and '?' cannot cut the path short", B.download_url("a", "x#1
       "https://archive.org/download/a/x%231%3F.mp3")
 
 
+# The documented same-day query (contract section 3.3b): the episode ids on an air date, network
+# first (unknown last), no time of day being known. A client runs it; the projection stores nothing.
+SAME_DAY = ("SELECT id FROM episodes WHERE air_date = ? AND id != ? "
+            "ORDER BY network IS NULL, network, series_key, id LIMIT ?")
+
 CONTRACT = {
     "every episode is clean or unclaimed": "SELECT COUNT(*) FROM episodes WHERE rights NOT IN ('clean','unclaimed')",
     "every episode has exactly one rank-0 copy": "SELECT COUNT(*) FROM episodes e WHERE (SELECT COUNT(*) FROM "
@@ -110,6 +137,19 @@ CONTRACT = {
     "gain_db stays empty (the target lives in clients)": "SELECT COUNT(*) FROM episodes WHERE gain_db IS NOT NULL",
     "a sponsor needs a full air date and is never a non-sponsor marker": "SELECT COUNT(*) FROM episodes WHERE "
         "sponsor IS NOT NULL AND (LENGTH(air_date) != 10 OR LOWER(sponsor) IN ('sustained','multi','syndicated','unknown','none'))",
+    "a genre is one of the eight and names the source that placed it": "SELECT COUNT(*) FROM series WHERE "
+        "(genre IS NULL) != (genre_source IS NULL) OR genre NOT IN ('drama','mystery','scifi','western','comedy',"
+        "'news','documentary','serial')",
+    "every voice is a served person, named as in people": "SELECT COUNT(*) FROM voices v LEFT JOIN people p "
+        "ON p.id = v.person_id WHERE p.id IS NULL OR p.name != v.name OR v.episodes < 1",
+    "voices are ranked most heard first": "SELECT COUNT(*) FROM voices a JOIN voices b ON b.rank = a.rank + 1 "
+        "WHERE b.episodes > a.episodes",
+    "a voice's portrait is its person's": "SELECT COUNT(*) FROM voices v JOIN people p ON p.id = v.person_id "
+        "WHERE v.portrait IS NOT p.portrait",
+    "a published grade stays inside the grammar's limits (k over 1 and at most 1.6, two numbers)": "SELECT COUNT(*) "
+        "FROM art WHERE grade IS NOT NULL AND (grade NOT GLOB '*[0-9],*[0-9]' OR "
+        "CAST(substr(grade, 1, instr(grade, ',') - 1) AS REAL) <= 1.0 OR "
+        "CAST(substr(grade, 1, instr(grade, ',') - 1) AS REAL) > 1.6)",
     "a shown transcript has its URL, and only a shown one": "SELECT COUNT(*) FROM episodes WHERE "
         "(has_transcript = 1) != (transcript_url IS NOT NULL)",
 }
@@ -137,6 +177,17 @@ check("sponsor_for: a title naming another sponsor of the series shows none",
       (SP.sponsor_for(jb, "j", "1934-10-14", "First show for Jell-O - part 1"), SP.sponsor_for(jb, "j", "1934-10-14", "Grocery Store Owner")),
       (None, "General Tire"))
 check("control: a title naming the run's own sponsor keeps it", SP.sponsor_for(jb, "j", "1934-06-01", "The General Tire Hour"), "General Tire")
+check("grade: a picture spanning 0.02-0.42 is stretched to the cap and centered",
+      tuple(round(v, 3) for v in AP.grade_levels(0.02, 0.42)), (1.6, 0.148))
+check("grade: a range of 0.1-0.9 stretches by 0.92 / 0.8 and puts the black point at 0.04",
+      tuple(round(v, 3) for v in AP.grade_levels(0.1, 0.9)), (1.15, -0.075))
+check("control: a picture already spanning the range is the identity, published as nothing",
+      (AP.grade_levels(0.0, 1.0), AP.grade_text(0.0, 1.0)), ((1.0, 0.0), None))
+check("grade text: k,o to three places", AP.grade_text(0.02, 0.42), "1.600,0.148")
+check("grade_of: a measurement only counts in the crop it was taken in",
+      (B.grade_of({"u": {"lo": 0.02, "hi": 0.42, "crop": "0.0000,0.0000,1.0000,1.0000"}}, "u", 100, 100, None),
+       B.grade_of({"u": {"lo": 0.02, "hi": 0.42, "crop": "0.1000,0.0000,0.5000,0.5000"}}, "u", 100, 100, None),
+       B.grade_of({}, "u", 100, 100, None)), ("1.600,0.148", None, None))
 check("genre: OTRR's first mappable label", G.genre_of(["Horror", "Mystery", "Science Fiction"]), ("mystery", "otrrpedia"))
 check("genre: a serial queues by arc", G.genre_of(["Action", "Super Hero", "Youth", "Adventure", "Serial"]),
       ("serial", "otrrpedia"))
@@ -176,14 +227,36 @@ with tempfile.TemporaryDirectory() as tmp:
     meta = B.build(src, dst)
     c = sqlite3.connect(dst)
     ids = {r[0] for r in c.execute("SELECT id FROM episodes")}
-    check("served: the kept rows", ids, {"suspense|1943-05-25", "suspense|1949-09-15"})
+    check("served: the kept rows", ids, {"suspense|1943-05-25", "suspense|1949-09-15", "hoorspel|1960-01-01",
+                                         "bare|1960-01-01", "bare|1943-05-25"})
     check("control: a hidden row never leaves the pipeline", "shadow|1938-01-02" in ids, False)
     check("control: a hidden row's people never leave either",
           c.execute("SELECT COUNT(*) FROM people WHERE id = 'p2'").fetchone()[0], 0)
     check("default copy keeps the pipeline's rank",
           c.execute("SELECT variant FROM recordings WHERE episode_id = 'suspense|1943-05-25' AND rank = 0").fetchone()[0], None)
     check("rights shown", dict(c.execute("SELECT id, rights FROM episodes")),
-          {"suspense|1943-05-25": "unclaimed", "suspense|1949-09-15": "clean"})
+          {"suspense|1943-05-25": "unclaimed", "suspense|1949-09-15": "clean", "hoorspel|1960-01-01": "clean",
+           "bare|1960-01-01": "clean", "bare|1943-05-25": "clean"})
+    check("genre: a series nothing else places takes the evidence the records carry, with its source",
+          c.execute("SELECT genre, genre_source FROM series WHERE key = 'hoorspel'").fetchone(), ("drama", "archive.org"))
+    check("control: a series with no evidence stays unassigned",
+          c.execute("SELECT genre, genre_source FROM series WHERE key = 'bare'").fetchone(), (None, None))
+    check("control: evidence never overrides a genre the sources already place",
+          c.execute("SELECT genre, genre_source FROM series WHERE key = 'suspense'").fetchone(), ("mystery", "otrrpedia"))
+    check("voices: heard credits only, an episode once however many credits, most first",
+          c.execute("SELECT person_id, rank, name, episodes, portrait FROM voices ORDER BY rank").fetchall(),
+          [("p3", 1, "Ken Niles", 3, None), ("p1", 2, "Agnes Moorehead", 1, None)])
+    check("control: a conductor is not a voice", c.execute("SELECT COUNT(*) FROM voices WHERE person_id = 'p4'").fetchone()[0], 0)
+    check("art.grade exists and a catalog without measurements publishes none",
+          ("grade" in {r[1] for r in c.execute("PRAGMA table_info(art)")},
+           c.execute("SELECT COUNT(*) FROM art WHERE grade IS NOT NULL").fetchone()[0]), (True, 0))
+    check("same day: the other surviving broadcasts on an air date, ids only, capped, by network",
+          [r[0] for r in c.execute(SAME_DAY, ("1943-05-25", "suspense|1943-05-25", 12))], ["bare|1943-05-25"])
+    check("control: the same-day query never returns the episode itself",
+          "suspense|1943-05-25" in [r[0] for r in c.execute(SAME_DAY, ("1943-05-25", "suspense|1943-05-25", 12))], False)
+    check("same day: the cap holds", len(c.execute(SAME_DAY, ("1943-05-25", "x", 1)).fetchall()), 1)
+    check("same day: the query rides the air_date index",
+          any("episodes_date" in r[3] for r in c.execute("EXPLAIN QUERY PLAN " + SAME_DAY, ("1943-05-25", "x", 12))), True)
     check("search is word-prefix",
           [r[0] for r in c.execute("SELECT e.id FROM episodes_fts f JOIN episodes e ON e.rowid = f.rowid "
                                    "WHERE episodes_fts MATCH 'sorr* wrong'")], ["suspense|1943-05-25"])
@@ -213,7 +286,8 @@ with tempfile.TemporaryDirectory() as tmp:
     clean = os.path.join(tmp, "clean.sqlite")
     B.build(src, clean, clean_only=True)
     check("public-web gate: clean rows only",
-          [r[0] for r in sqlite3.connect(clean).execute("SELECT id FROM episodes")], ["suspense|1949-09-15"])
+          sorted(r[0] for r in sqlite3.connect(clean).execute("SELECT id FROM episodes")),
+          ["bare|1943-05-25", "bare|1960-01-01", "hoorspel|1960-01-01", "suspense|1949-09-15"])
 
     # Broken control: a projection that leaks a hidden row must fail the contract.
     bad = sqlite3.connect(dst)
@@ -264,6 +338,20 @@ with tempfile.TemporaryDirectory() as tmp:
     bad.close()
     check("control: the contract catches implausible and unpaired loudness", sorted(violations(dst)),
           ["loudness comes as a pair", "no implausible loudness is published"])
+    dst2 = os.path.join(tmp, "broken-d.sqlite")
+    B.build(src, dst2)
+    bad = sqlite3.connect(dst2)
+    bad.execute("INSERT INTO art VALUES (1, 'u', 10, 10, 'pd_us', NULL, NULL, 'e', NULL, '2.500,0.1')")
+    bad.execute("UPDATE voices SET episodes = 9 WHERE rank = 2")
+    bad.execute("UPDATE series SET genre_source = NULL WHERE key = 'hoorspel'")
+    bad.execute("UPDATE voices SET name = 'Someone Else' WHERE rank = 1")
+    bad.commit()
+    bad.close()
+    check("control: the contract catches an unlimited grade, a misranked voice, a misnamed voice and an unsourced genre",
+          sorted(violations(dst2)),
+          ["a genre is one of the eight and names the source that placed it",
+           "a published grade stays inside the grammar's limits (k over 1 and at most 1.6, two numbers)",
+           "every voice is a served person, named as in people", "voices are ranked most heard first"])
 
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 def _has_sponsor_column(path):
