@@ -198,6 +198,8 @@ final class AudioPlayer {
     @ObservationIgnored private var recovery: LoadRecovery?
     @ObservationIgnored private var loadContext: LoadContext?
     @ObservationIgnored private var stallWatch = StallWatchdog()
+    /// Seeks started and not yet finished or cancelled; the watchdog does not count while any is in flight.
+    @ObservationIgnored private var seeksInFlight = 0
     /// Bumps on every load and stop, so a late retry for an older item does nothing.
     @ObservationIgnored private var loadToken = 0
 
@@ -233,6 +235,7 @@ final class AudioPlayer {
             }
         }
         stallWatch.reset()
+        seeksInFlight = 0
         player.replaceCurrentItem(with: playerItem)
         player.isMuted = isMuted
         player.volume = 1
@@ -374,10 +377,13 @@ final class AudioPlayer {
 
     private func seekExactly(to seconds: Double) {
         elapsed = seconds
+        seeksInFlight += 1
         diag("seek \(Int(seconds)) item \(player.currentItem?.status.rawValue ?? -1)")
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { @Sendable [weak self] finished in
             Task { @MainActor in
-                guard let self, Self.diagnoses else { return }
+                guard let self else { return }
+                self.seeksInFlight = max(0, self.seeksInFlight - 1)
+                guard Self.diagnoses else { return }
                 let now = self.player.currentTime().seconds
                 self.diag("seeked \(Int(seconds)) finished \(finished) now \(now.isFinite ? Int(now) : -1)")
             }
@@ -490,9 +496,10 @@ final class AudioPlayer {
         let transferred = current.accessLog()?.events.reduce(0.0) { $0 + Double(max($1.numberOfBytesTransferred, 0)) } ?? 0
         let verdict = stallWatch.observe(
             now: now.timeIntervalSinceReferenceDate, wantsData: player.timeControlStatus != .paused,
-            bytes: loaded + transferred, position: elapsed)
+            bytes: loaded + transferred, position: elapsed, seeking: seeksInFlight > 0)
         guard verdict == .stalled else { return }
         if Self.diagnoses { print("[AudioPlayer] watchdog: stalled \(Int(StallWatchdog.limit)) s, no bytes, no movement; recovering. \(diagnosisLine()) bytes \(Int(transferred))") }
+        diag("watchdog stalled, recovering")
         stallWatch.reset()
         player.pause()
         itemFailed(Connectivity.playerProblem(nil))

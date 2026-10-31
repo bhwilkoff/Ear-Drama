@@ -48,4 +48,17 @@ struct StallWatchdogTests {
         #expect(watch.observe(now: 40, wantsData: true, bytes: 0, position: 0) == .ok)
         #expect(watch.observe(now: 70, wantsData: true, bytes: 0, position: 0) == .stalled)
     }
+
+    @Test func aSeekWaitingForItsFirstBytesIsNeverAStall() {
+        // A seek parks the position on its target and the new range has no bytes for a while:
+        // 100 s of that is the person's wait, and 30 s after the seek lands with nothing is a stall.
+        var watch = StallWatchdog()
+        var stalled: Double?
+        var t = 0.0
+        while t <= 200 && stalled == nil {
+            if watch.observe(now: t, wantsData: true, bytes: 0, position: 500, seeking: t < 100) == .stalled { stalled = t }
+            t += 0.5
+        }
+        #expect(stalled == 130)
+    }
 }
