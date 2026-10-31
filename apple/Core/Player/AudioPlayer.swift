@@ -197,6 +197,7 @@ final class AudioPlayer {
     }
     @ObservationIgnored private var recovery: LoadRecovery?
     @ObservationIgnored private var loadContext: LoadContext?
+    @ObservationIgnored private var stallWatch = StallWatchdog()
     /// Bumps on every load and stop, so a late retry for an older item does nothing.
     @ObservationIgnored private var loadToken = 0
 
@@ -231,6 +232,7 @@ final class AudioPlayer {
                 self?.itemFailed(problem)
             }
         }
+        stallWatch.reset()
         player.replaceCurrentItem(with: playerItem)
         player.isMuted = isMuted
         player.volume = 1
@@ -461,6 +463,7 @@ final class AudioPlayer {
         elapsed = LoadRecovery.clock(reading: seconds, itemFailed: player.currentItem?.status == .failed, shown: elapsed)
         if let d = player.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
         if Self.diagnoses { diagLine = diagnosisLine() }
+        watchForStall(now: now)
 
         if sleep.mode != .off {
             clock = now
@@ -474,6 +477,25 @@ final class AudioPlayer {
             }
         }
         if isPlaying, PlayerNumbers.isSaveDue(lastSaved: lastSaved, now: now) { saveProgress() }
+    }
+
+    /// A load that wants data, gains no bytes, and does not move for `StallWatchdog.limit` is a failed load.
+    /// Signals: `loadedTimeRanges` and the access log's bytes (growth), `timeControlStatus` (wanting data).
+    private func watchForStall(now: Date) {
+        guard let current = player.currentItem, !isLocal, current.status != .failed else {
+            stallWatch.reset()
+            return
+        }
+        let loaded = current.loadedTimeRanges.reduce(0.0) { $0 + $1.timeRangeValue.duration.seconds }
+        let transferred = current.accessLog()?.events.reduce(0.0) { $0 + Double(max($1.numberOfBytesTransferred, 0)) } ?? 0
+        let verdict = stallWatch.observe(
+            now: now.timeIntervalSinceReferenceDate, wantsData: player.timeControlStatus != .paused,
+            bytes: loaded + transferred, position: elapsed)
+        guard verdict == .stalled else { return }
+        if Self.diagnoses { print("[AudioPlayer] watchdog: stalled \(Int(StallWatchdog.limit)) s, no bytes, no movement; recovering. \(diagnosisLine()) bytes \(Int(transferred))") }
+        stallWatch.reset()
+        player.pause()
+        itemFailed(Connectivity.playerProblem(nil))
     }
 
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
