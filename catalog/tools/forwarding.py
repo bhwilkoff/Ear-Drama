@@ -45,9 +45,19 @@ def copy_key(archive_id, url):
 def episode_forwards(db_path):
     """{old id: the episode it forwards to, as a schedule slot carries it} for every alias in the
     projection whose target is served and recommendable. A tombstoned id is not here: it
-    stays a gap (contract §8). Empty when the projection is missing or has no alias table."""
+    stays a gap (contract §8). Empty when the projection is missing or has no alias table.
+    A raw-deflate `.zz` (what the publish job carries between jobs) is read as its sqlite."""
     if not db_path or not os.path.exists(db_path):
         return {}
+    if db_path.endswith(".zz"):
+        with tempfile.TemporaryDirectory() as tmp:
+            raw = os.path.join(tmp, "ear-drama.sqlite")
+            d = zlib.decompressobj(-15)
+            with open(db_path, "rb") as f, open(raw, "wb") as o:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    o.write(d.decompress(chunk))
+                o.write(d.flush())
+            return episode_forwards(raw)
     con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     try:
         if "episode_aliases" not in tables_of(con):

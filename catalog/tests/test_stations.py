@@ -162,6 +162,31 @@ check("an alias carries the target's series name and title",
       fw["mystery0|1900-01-01"], {"id": target["id"], "series": target["series"], "title": target["title"]})
 check("no projection, no aliases", episode_forwards(os.path.join(tmp, "absent.sqlite")), {})
 
+import zlib  # noqa: E402
+import subprocess  # noqa: E402
+zz = fdb + ".zz"
+with open(fdb, "rb") as f, open(zz, "wb") as o:
+    c = zlib.compressobj(9, zlib.DEFLATED, -15)
+    o.write(c.compress(f.read()) + c.flush())
+check("(a) the publish job's deflated projection yields the same aliases as its sqlite",
+      episode_forwards(zz), fw)
+
+# The publish job holds only the .zz: `kept` on a re-attributed id follows the alias through it (case a),
+# a withheld slot stays withheld and a refilled one is still refused (case b), a missing projection is refused.
+old_ep = {"id": "mystery0|1900-01-01", "series": "Old", "title": "t"}
+mk = lambda ep, **kw: {"schemaVersion": 1, "generatedAt": "2026-11-01T00:00:00Z", "stations": [{"genre": "mystery", "slots": [
+    dict({"utc_start": "2026-11-02T00:00:00Z", "utc_end": "2026-11-02T00:30:00Z", "length_s": 1800}, **ep, **kw)]}]}
+fo, fn, fb = (os.path.join(tmp, n) for n in ("kold.json", "knew.json", "kbad.json"))
+json.dump(mk({"episode": old_ep}), open(fo, "w"))
+json.dump(mk({"episode": {k: target[k] for k in ("id", "series", "title")}}), open(fn, "w"))
+json.dump(mk({"episode": {"id": "mystery0|1939-01-01", "series": "x"}}), open(fb, "w"))
+kept = lambda new, proj: subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "..", "tools", "build_stations.py"), "kept", "--old", fo,
+                                         "--new", new, "--projection", proj], capture_output=True, text=True)
+check("(a) kept accepts a re-attributed id resolved through the .zz", kept(fn, zz).returncode, 0)
+check("(b) kept refuses a slot refilled with a different recording", kept(fb, zz).returncode, 1)
+check("kept refuses a missing projection instead of judging with no aliases",
+      kept(fn, os.path.join(tmp, "absent.zz")).returncode, 1)
+
 # --- every guard, broken once ----------------------------------------------------
 
 

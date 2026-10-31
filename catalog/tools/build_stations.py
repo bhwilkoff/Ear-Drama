@@ -340,6 +340,9 @@ def main():
         return 0
     if args.cmd == "kept":
         old = json.load(open(args.old)) if os.path.exists(args.old) else {}
+        if not os.path.exists(args.projection):
+            print(f"the projection {args.projection} is missing: no alias can be followed, so no slot can be judged")
+            return 1
         bad = changed(old, json.load(open(args.new)), episode_forwards(args.projection))
         print(f"published station slots changed: {len(bad)}" + (f"; {bad[:5]}" if bad else ""))
         return 1 if bad else 0
