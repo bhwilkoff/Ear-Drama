@@ -805,14 +805,14 @@ file (`StandInNeverStoredTest`). No analytics.
   episode by the same `PlaybackQueue.after`, so "Up next" matches. The
   verbs only order what the person chose; what plays next is Decision
   067's, untouched. No Android verb removes an episode from history.
-- **Sign-in has not run.** The Worker is not deployed and the ids are
-  placeholders (docs/WORKER.md, Needs Ben). Apple on Android also needs
+- **Sign-in has not run.** The Worker is deployed (`/v1/health`, 2026-10-30)
+  but the ids are placeholders (docs/WORKER.md, Needs Ben). Apple on Android also needs
   the return page at `https://eardrama.org/auth/apple/`, which forwards
   its fragment to `eardrama://oauth/apple`; it is not built. Google needs
   an Android OAuth client for `app.eardrama` with the Play signing SHA-1
   (and `app.eardrama.debug` with the debug key) in the project that owns
   the Web client id.
-- **Listen together has not run** (§4.13). The Worker is not deployed,
+- **Listen together has not run** (§4.13). Sign-in is not set up,
   so every build says it is not available; the room, drift correction,
   and handoff are proven in `ListenTogetherTest` and `RoomProtocolTest`
   on the JVM against a Worker built from `room-protocol.js`, not yet
@@ -821,5 +821,7 @@ file (`StandInNeverStoredTest`). No analytics.
   next read puts the guest back with the host.
 - **Tab icons differ from Apple's** (Headphones and Radio against
   `play.circle` and `square.stack`).
+
+**E1 rules (2026-10-30, D4 review).** The player sheet carries one nowrap row of Add to queue and Share under the controls (the Detail page's `QueueToggle` and `ShareButton`; Share is not offered on a TV). Stations after the evening ends: Tonight's button reads Replay. Library carries an "Export my data" row (absent on a TV) that opens a sheet of Save everything (JSON) and Save history (CSV), written through the system save sheet (docs/EXPORT.md). The rights fallback computes its year from the calendar.
 
 Bring the next change back to a rule here, or bring a new rule first.

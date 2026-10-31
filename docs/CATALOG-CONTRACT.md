@@ -699,7 +699,7 @@ the unclaimed one.
 
 | Field value | Shown as |
 |---|---|
-| `rights = clean` | by `rights_basis`: `rec_gov_work` "Government recording", `rec_librivox` "LibriVox recording", `rec_pd_published_age` "Published before 1926", `rec_cc_corroborated` "Creative Commons recording" |
+| `rights = clean` | by `rights_basis`: `rec_gov_work` "Government recording", `rec_librivox` "LibriVox recording", `rec_pd_published_age` "Published before {year}" (the published age, computed each January; a client reads `rightsLines` and never types the year), `rec_cc_corroborated` "Creative Commons recording" |
 | `rights = unclaimed` | "No rights claim known. Removed on request." Never "public domain" |
 | `variant = AFRS` / `AFRTS` | "Armed Forces Radio rebroadcast" |
 | `partial = 1` | "Incomplete copy" |
