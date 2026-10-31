@@ -162,6 +162,17 @@ test('stall watchdog: a pause is never a stall, and a local file is not either',
   assertEq(local.later.length, 0, 'local');
 });
 
+test('stall watchdog: a seek waiting for its first bytes is never a stall', () => {
+  const { Player, audio, later } = stallRig();
+  audio.seeking = true;
+  for (let t = 0; t <= 100000; t += 5000) Player.checkStall(t);
+  assertEq(later.length, 0, '100 s of seeking, no recovery');
+  audio.seeking = false;
+  Player.checkStall(100000);
+  Player.checkStall(130000);
+  assertEq(later.length, 1, 'and 30 s after it lands with nothing, a stall');
+});
+
 test('a copy that loaded earns its next failure a retry', () => {
   const later = [];
   const { Player, audio } = boot({ setTimeout: (fn) => { later.push(fn); return 0; } });

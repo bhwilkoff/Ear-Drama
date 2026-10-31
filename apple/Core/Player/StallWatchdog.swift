@@ -22,10 +22,13 @@ nonisolated struct StallWatchdog: Sendable {
 
     /// One look at the player. `wantsData`: playing, or waiting to play, from the network.
     /// `bytes`: anything that only grows as data arrives (loaded seconds, bytes transferred).
-    mutating func observe(now: Double, wantsData: Bool, bytes: Double, position: Double) -> Verdict {
+    /// `seeking`: a seek is in flight. The position is parked on its target and the new range has
+    /// no bytes yet; that wait is the person's doing, never a stall.
+    mutating func observe(now: Double, wantsData: Bool, bytes: Double, position: Double,
+                          seeking: Bool = false) -> Verdict {
         let seen = Mark(bytes: bytes, position: position)
-        guard wantsData, seen == mark else {
-            mark = wantsData ? seen : nil
+        guard wantsData, !seeking, seen == mark else {
+            mark = wantsData && !seeking ? seen : nil
             since = now
             return .ok
         }

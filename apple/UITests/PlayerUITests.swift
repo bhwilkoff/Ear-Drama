@@ -3,9 +3,14 @@ import XCTest
 final class PlayerUITests: DeviceTestCase {
     func testPlayerVerbs() throws {
         let app = launch(["APP_START_ITEM": Fixture.long, "APP_AUTOPLAY": "1",
-                          "APP_DOOR_SECONDS": "600"])
+                          "APP_DOOR_SECONDS": "600", "APP_PLAYBACK_DIAG": "1"])
         XCTAssertTrue(app.buttons["Forward 30 seconds"].waitForExistence(timeout: 30))
-        sleep(12)
+        // The clock shows the resume point before the item is ready (an open mid-file took 3 to 45 s
+        // on 2026-10-31), so measure only once it moves.
+        let started = Date()
+        let first = elapsed(app)
+        while elapsed(app) <= first, Date().timeIntervalSince(started) < 60 { usleep(250_000) }
+        sleep(4)
         shot(app, "01-playing")
         let t0 = elapsed(app)
         app.buttons["Forward 30 seconds"].tap(); sleep(2)
@@ -47,8 +52,11 @@ final class PlayerUITests: DeviceTestCase {
             : app.switches["Level volume"]
         level.tap(); sleep(1); level.tap(); sleep(1)
 
+        // The slider's adjust lands as several seeks over seconds, so t3 can be a transient read:
+        // judge "still playing" against the clock as it stands once the verbs are done.
+        let settled = elapsed(app)
         sleep(15)
-        XCTAssertGreaterThan(elapsed(app), t3, "still playing after the verbs")
+        XCTAssertGreaterThan(elapsed(app), settled, "still playing after the verbs")
         app.buttons["Close player"].tap(); sleep(2)
         shot(app, "08-closed-mini")
         XCTAssertEqual(app.state, .runningForeground)

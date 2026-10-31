@@ -383,7 +383,7 @@ const Player = (() => {
    */
   function checkStall(now) {
     const local = current && /^(blob|file|data):/.test(current.url || '');
-    const wants = !!current && !!recovery && !audio.paused && !audio.ended && !local;
+    const wants = !!current && !!recovery && !audio.paused && !audio.ended && !audio.seeking && !local;
     const mark = `${audio.currentTime}|${bufferedEnd()}`;
     if (!wants || mark !== watch.mark) {
       watch = { mark: wants ? mark : null, since: now };
