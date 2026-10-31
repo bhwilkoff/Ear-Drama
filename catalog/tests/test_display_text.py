@@ -73,6 +73,12 @@ check("nothing to compose from: withheld", DT.decide_episode("jbintro", "Radio",
 check("control: a bad date is not composed", DT.decide_episode("xxx", "Radio", "1950-13-40", None)[3],
       "no_readable_title_and_no_date_or_number")
 
+# Recovering a despaced name from evidence.
+KN = {"annsothern": "Ann Sothern", "mynameisnero": "My Name Is Nero"}
+check("a person's name", DT.recover_name("annsothern", KN), "Ann Sothern")
+check("control: nothing matches, stays withheld", DT.recover_name("jbintro", KN), None)
+check("control: the same spelling is no recovery", DT.recover_name("Ann Sothern", {"annsothern": "Ann Sothern"}), None)
+
 # The guard over a real projection.
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):

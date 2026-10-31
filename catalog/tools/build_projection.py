@@ -205,6 +205,26 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     held = {}
     if "display_hold" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
         held = dict(s.execute("SELECT key, display_hold FROM series WHERE display_hold IS NOT NULL"))
+    known = {}
+    def learn(n):
+        if n and " " in n.strip() and re.search(r"[A-Z]", n) and not DT.TD.series_defects(n):
+            known.setdefault(re.sub(r"[^a-z0-9]", "", n.casefold()), n.strip())
+    if has_table(s, "people"):
+        for (n,) in s.execute("SELECT name FROM people"):
+            learn(n)
+    for k, n in shown_name.items():
+        if k in by_series_eps and not DT.series_withheld(n, k, False):
+            learn(n)
+    if has_table(s, "series_aliases"):
+        for (n,) in s.execute("SELECT alias FROM series_aliases"):
+            learn(n)
+    recovered = {}
+    for sk in sorted(by_series_eps):
+        if DT.series_withheld(shown_name.get(sk) or names.get(sk), sk, sk in own_key):
+            got = DT.recover_name(shown_name.get(sk) or names.get(sk), known, words)
+            if got and not DT.series_withheld(got, sk, sk in own_key):
+                recovered[sk] = {"from": shown_name.get(sk), "to": got}
+                shown_name[sk] = got
     withheld = {"series": {}, "episodes": {}}
     composed = {}
     for sk in sorted(by_series_eps):
@@ -379,7 +399,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         for why in withheld[kind].values():
             reasons.setdefault(kind, {}).setdefault(why, 0)
             reasons[kind][why] += 1
-    detail = {"withheld": withheld, "composed": composed}
+    detail = {"withheld": withheld, "composed": composed, "recovered": recovered}
     ia.write_json(os.path.join(os.path.dirname(dst) or ".", "display_text.json"), detail)
     meta = {"schemaVersion": SCHEMA_VERSION, "displayText": {"withheld": reasons, "composed": len(composed)},
             "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),

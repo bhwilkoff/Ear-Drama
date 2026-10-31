@@ -75,3 +75,20 @@ def decide_episode(shown, series_name, air_date, num):
     if got:
         return got[0], "composed", got[1], None
     return None, None, [], "no_readable_title_and_no_date_or_number"
+
+
+def recover_name(shown, known, words=None):
+    """A name spelled with its spaces lost ("annsothern"), set back from evidence: `known` maps the letters of a
+    name a source spells properly (a person, another series, a registry program) to that spelling; else a split
+    the catalog's own titles spell out (titles.Words.split). None when nothing matches, so the series stays withheld."""
+    letters = re.sub(r"[^a-z0-9]", "", (shown or "").casefold())
+    got = known.get(letters)
+    if got and got != shown and not TD.series_defects(got):
+        return got
+    if words is not None and " " not in (shown or "") and len(letters) >= 10 and letters.isalpha():
+        parts = words.split(letters)
+        if parts:
+            name = " ".join(p[:1].upper() + p[1:] for p in parts)
+            if not TD.series_defects(name):
+                return name
+    return None
