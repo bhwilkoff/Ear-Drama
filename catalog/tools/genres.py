@@ -48,3 +48,65 @@ def genre_of(otrr_labels=None, radioechoes=None, librivox=False):
     if librivox:
         return "drama", "librivox"
     return None, None
+
+
+# Evidence for a series no OTRRpedia label, RadioEchoes tag or LibriVox listing places (DECISIONS
+# 024). Every key is a word one record carries itself; none is read from a title. A word that names
+# a subject (a war, a band, a decade) or a medium ("old time radio", "music") is not here.
+KEYWORDS = {
+    "drama": ("radio drama", "radio dramas", "radio play", "radio plays", "audio theater", "audio theatre",
+              "audio drama", "otr drama", "drama", "hoorspel", "hoorspelen", "hörspiel"),
+    "mystery": ("mystery", "mysteries", "suspense", "horror", "crime", "detective", "detectives", "thriller",
+                "murder mystery", "crime drama", "espionage"),
+    "scifi": ("science fiction", "sci-fi", "scifi", "fantasy"),
+    "western": ("western", "westerns"),
+    "comedy": ("comedy", "sitcom", "situation comedy", "humor", "humour", "sketch comedy", "variety"),
+    "news": ("news", "newscast", "newscasts", "news broadcast"),
+    "documentary": ("documentary", "documentaries", "interview", "interviews", "talk show", "sports"),
+    "serial": ("serial", "serials", "soap opera", "soap operas"),
+}
+KEYWORD = {w: g for g, ws in KEYWORDS.items() for w in ws}
+# Wikidata's `genre` (P136) on the series' item, once it is matched on more than its title.
+WIKIDATA = {
+    "Q170238": "comedy", "Q121388202": "mystery", "Q23653": "drama", "Q121747822": "comedy",
+    "Q5937792": "mystery", "Q4506063": "scifi", "Q2049337": "comedy", "Q23739": "serial",
+    "Q21590660": "western", "Q1748941": "comedy", "Q121356781": "comedy", "Q40831": "comedy",
+    "Q846662": "comedy", "Q6585139": "mystery", "Q3071014": "serial", "Q24925": "scifi",
+    "Q468478": "scifi", "Q186424": "mystery", "Q185867": "mystery", "Q2123557": "comedy",
+    "Q9335576": "comedy", "Q1366112": "drama",
+}
+
+
+def item_genres(subjects, file_genres):
+    """{genre: [source words]} one archive.org item's own record names: its subject keywords and the
+    genre tag of its default copy's file. A word counts only whole and exact. (A collection does not
+    count: the uploader files an item under "Audio News" because it is not music, not because it is news.)"""
+    found = {}
+    for kind, words in (("subject", subjects), ("file", file_genres)):
+        for w in words or ():
+            g = KEYWORD.get(w.strip().lower())
+            if g:
+                found.setdefault(g, []).append(f"{kind}:{w.strip().lower()}")
+    return found
+
+
+def archive_genre(per_item):
+    """(genre, {word: items}) from a series' items, each an `item_genres` result: the genre that
+    more than half of the items name, when exactly one does, "drama" yielding to a specific one that
+    also passes. Two specific genres that both pass, or none, is no evidence: the series stays
+    unassigned."""
+    n = len(per_item)
+    votes = {}
+    words = {}
+    for found in per_item:
+        for g, ws in found.items():
+            votes[g] = votes.get(g, 0) + 1
+            for w in set(ws):
+                words.setdefault(g, {})
+                words[g][w] = words[g].get(w, 0) + 1
+    passing = sorted(g for g, v in votes.items() if v * 2 > n)
+    if len(passing) > 1 and "drama" in passing:   # "audio drama" + "horror" is a horror drama: the specific one
+        passing.remove("drama")
+    if len(passing) != 1:
+        return None, {}
+    return passing[0], words[passing[0]]

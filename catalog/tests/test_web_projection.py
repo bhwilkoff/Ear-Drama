@@ -350,6 +350,12 @@ with tempfile.TemporaryDirectory() as tmp:
                                                                                46, "suspense", "cast", "Mrs. Stevenson"])
     found = load(out, "search", "people", W.term_file("moorehead") + ".json")["rows"]
     check("people search: filed by a word of the name, counting episodes", found, [["p1", "Agnes Moorehead", 2, None]])
+    voices = load(out, "index", "voices.json")
+    check("voices: the web ranks its own served credits, most first (same fields as a people row)",
+          (voices["fields"], voices["rows"]), (W.PEOPLE_FIELDS, [["p1", "Agnes Moorehead", 2, None]]))
+    check("control: the gate open adds the unclaimed-only voice, ranked after",
+          [r[0] for r in load(opened, "index", "voices.json")["rows"]], ["p1", "p2"])
+    check("art arrays end with the grade, [k, o] or null", W.ART_FIELDS[-1], "grade")
     check("control: an unclaimed-only person has no page with the gate closed",
           os.path.exists(os.path.join(out, "people", W.shard_of("p2") + ".json")), False)
     check("gate open: the unclaimed-only person has a page", "p2" in

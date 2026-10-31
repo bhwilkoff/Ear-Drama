@@ -350,7 +350,7 @@ with tempfile.TemporaryDirectory() as tmp:
 
     # Broken control: a projection that serves an undated match's image must fail both checks.
     bad = sqlite3.connect(dst)
-    bad.execute("INSERT INTO art VALUES (9, ?, NULL, NULL, 'pd_us', NULL, NULL, ?, NULL)",
+    bad.execute("INSERT INTO art VALUES (9, ?, NULL, NULL, 'pd_us', NULL, NULL, ?, NULL, NULL)",
                 (AP.image_url("Mary.jpg"), AP.evidence_url("Mary.jpg")))
     bad.execute("UPDATE people SET portrait = 9 WHERE id = 'p2'")
     bad.execute("UPDATE art SET credit = NULL WHERE license = 'cc_by'")

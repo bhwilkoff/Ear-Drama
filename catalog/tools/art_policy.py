@@ -151,8 +151,25 @@ def pick(rows):
 # Credits heard on the air; a writer or a director has no face in the broadcast.
 ON_AIR = {None, "", "cast", "host", "hostess", "performer", "narrator", "guest", "emcee", "m. c.", "doubles",
           "vocal", "star"}
+# The voices ranked in "Most heard voices" (contract section 3.3): a credit heard on the air, an
+# announcer or a commercial spokesperson included; a writer, a director or a conductor is not a voice.
+VOICE_ROLES = ON_AIR | {"announcer", "commercial spokesperson"}
+VOICES_LIMIT = 300
 STAR_MIN_EPISODES = 3
 STAR_SHARE = 1 / 3
+
+
+def rank_voices(credit_rows, names, limit=VOICES_LIMIT):
+    """[(person id, served episodes heard on)], most first, ties by name then id, at most `limit`.
+    credit_rows: (episode id, person id, role). An episode counts once for a person however many
+    credits they hold in it; a role-only credit counts the same as a lead."""
+    heard = {}
+    for eid, pid, role in credit_rows:
+        if role in VOICE_ROLES:
+            heard.setdefault(pid, set()).add(eid)
+    ranked = sorted(((pid, len(eps)) for pid, eps in heard.items()),
+                    key=lambda t: (-t[1], (names.get(t[0]) or "").lower(), t[0]))
+    return ranked[:limit]
 
 
 def series_star(credited, portrait_people):
@@ -223,6 +240,31 @@ def crop_rect(width, height, face):
         left = clamp((f[0] + f[2] / 2) * a - s / 2, 0, a - s)
         top = clamp(f[1] + f[3] / 2 - s / 2, 0, 1 - s)
     return (left / a, top, s / a, s)
+
+
+# The grade (uniform-imagery-design section 2): one linear map, out = k * in + o, on sRGB-encoded
+# luminance inside the crop a slot shows. lo and hi, the 1st and 99th percentile, go to 0.04 and
+# 0.96; k stays between 1.0 and 1.6 (at 1.0 or below the grade is the identity), and at the cap the
+# stretch is centered instead of pinning one end.
+GRADE_LO, GRADE_HI, GRADE_KMIN, GRADE_KMAX = 0.04, 0.96, 1.0, 1.6
+
+
+def grade_levels(lo, hi):
+    """(k, o) for a measured luminance range, or (1.0, 0.0) when it already spans the range."""
+    k = (GRADE_HI - GRADE_LO) / max(hi - lo, 1e-3)
+    if k <= GRADE_KMIN:
+        return 1.0, 0.0
+    if k >= GRADE_KMAX:
+        return GRADE_KMAX, 0.5 - GRADE_KMAX * (lo + hi) / 2
+    return k, GRADE_LO - lo * k
+
+
+def grade_text(lo, hi):
+    """`art.grade` ("k,o", contract section 3.3a) for a measured range, or None for the identity."""
+    k, o = grade_levels(lo, hi)
+    if k == 1.0:
+        return None
+    return f"{k:.3f},{o:.3f}"
 
 
 def fill_px(width, height, face):
