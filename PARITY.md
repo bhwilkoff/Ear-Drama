@@ -36,6 +36,13 @@ returning to the platform it started on.
 > ⏳ on the apps though `DeepLink` routes them on Apple and Android. New rows:
 > search by air date, search by transcript, sponsor, never recommended,
 > follow a series, background and lock-screen play, another speaker.
+> **D4 audit, 2026-10-30** (AI feedback pass, no code changed): D3-9 rows
+> (Voices, On the air and That night, A to Z, another speaker, sleep timer,
+> volume leveling, next story, transcripts, Top Shelf) were grepped on every
+> platform and each named symbol exists. One stale cell fixed: §8's Worker
+> row said "not deployed" while the Worker answers. Left alone as uncertain:
+> the Sign in cells that still say "until the Worker is deployed", and
+> `docs/WORKER.md` line 18 ("Nothing is deployed").
 > Previous audit 2026-10-22 (tick 30) replaced the template's sample rows.
 
 ---
@@ -258,7 +265,7 @@ contract is `docs/CATALOG-CONTRACT.md`.
 | `ear-drama-seed.sqlite` | first launch offline (clean only) | bundled at build time from `catalog/out/publish-clean` | iOS, macOS, tvOS, Android |
 | `/data/` (index, series, shards, days) | the web projection | GitHub Pages, deployed by `catalog-publish.yml` | web |
 | `loudness-latest` | loudness measurements | Release asset, `catalog-loudness.yml` | the projection build only |
-| Worker + D1 | accounts, sync, shared plays | 🚧 built and tested locally (Decision 063); not deployed; no client signs in yet | every client |
+| Worker + D1 | accounts, sync, shared plays | 🚧 deployed: `GET /v1/health` answers `{"ok":true}` and `/v1/rooms/x` answers `bad_code` at the `js/config.js` address (D4 audit, 2026-10-30); SCRATCHPAD lists the Worker and D1 as done. Whether D1 holds its schema and whether any client has signed in is not seen | every client |
 
 ---
 
