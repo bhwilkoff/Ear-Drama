@@ -840,15 +840,17 @@
                                       onclick: start }, icon('play'), 'Listen live') : null;
   }
 
-  function stationRow(name, slot, note, button) {
+  /** A station is a grammar row: its show's window (the picture, else the star, else the title
+      block), the station's name, an event line of what is on, and Listen live. */
+  function stationRow(name, slot, note, button, { genre = '', live: tuned = false } = {}) {
     const ep = slot && !slot.withheld && slot.episode;
-    return el('li', { class: 'station' },
-      ep ? artTile({ key: ep.id.split('|')[0], name: ep.series }) : null,
-      el('div', { class: 'station-main' },
-        el('span', { class: 'body-strong' }, name),
-        ep ? el('span', { class: 'body' }, ep.series) : null,
-        ep && ep.title ? el('span', { class: 'caption station-title' }, ep.title) : null,
-        note ? el('span', { class: 'caption' }, note) : null),
+    const win = ep ? pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 48)
+      : pictureWindow({ name, picture: null, genre }, 48);
+    const text = [el('span', { class: 'ep-title body-strong' }, name),
+      eventLine(ep ? [ep.series, ep.title, note] : [note])];
+    return el('li', { class: `station g-row${tuned ? ' station-live' : ''}` },
+      ep ? el('a', { class: 'g-link', href: `?item=${encodeURIComponent(ep.id)}` }, win, el('span', { class: 'g-text' }, ...text))
+        : el('div', { class: 'g-link' }, win, el('span', { class: 'g-text' }, ...text)),
       button);
   }
 
@@ -872,13 +874,15 @@
         : slot && !d ? (slot.withheld || slot.episode ? 'Not in the catalog' : 'Not surviving') : null;
       const name = `Tonight in ${day.evening.slice(0, 4)}`;
       rows.push(stationRow(name, d ? slot : null, note,
-        liveButton(live && live.day === day, Boolean(d), name, () => { tuneIn(day, details); paintRadio(); })));
+        liveButton(live && live.day === day, Boolean(d), name, () => { tuneIn(day, details); paintRadio(); }),
+        { live: Boolean(live && live.day === day) }));
     }
     for (const st of stations) {
       const on = API.onNow(st.slots, clockNow());
       const playable = on && !on.slot.withheld && on.slot.episode;
       rows.push(stationRow(st.name, on && on.slot, on && !playable ? 'Not in the catalog' : null,
-        liveButton(live && live.station === st.genre, Boolean(playable), st.name, () => tuneInStation(st))));
+        liveButton(live && live.station === st.genre, Boolean(playable), st.name, () => tuneInStation(st)),
+        { genre: st.genre, live: Boolean(live && live.station === st.genre) }));
     }
     return el('ul', { class: 'stations', 'aria-label': 'Stations' }, ...rows);
   }
@@ -901,31 +905,32 @@
       const now = i === where.index;
       const local = localClock.format(new Date(s.utc_start));
       const same = sameAsZone(s.utc_start, zone);
-      const time = el('div', { class: 'slot-time' },
-        el('span', { class: 'tabular' }, same ? `${local} ET` : local),
-        same ? null : el('span', { class: 'caption tabular' }, `${fmtEt(s.et_start)} ET`));
-      let main;
+      const time = same ? `${local} ET` : local;
+      const et = same ? null : `${fmtEt(s.et_start)} ET`;
+      const len = `${s.length_min} min`;
+      const lead = now ? el('span', { class: 'g-now', 'aria-hidden': 'true' }, 'Now')
+        : el('span', { class: 'g-len tabular', 'aria-hidden': 'true' }, len);
+      let link;
       if (d) {
-        main = el('a', { class: 'slot-main has-art', href: `?item=${encodeURIComponent(d.id)}` },
-          artTile({ key: d.series, name: s.episode.series }),
-          el('span', { class: 'slot-text' },
-            el('span', { class: 'body-strong' }, s.episode.series),
-            el('span', { class: 'body slot-title' }, epTitle(d)),
-            el('span', { class: 'caption' }, [now ? 'Now' : null, `${s.length_min} min`].filter(Boolean).join(' · '))));
+        link = el('a', { class: 'g-link', href: `?item=${encodeURIComponent(d.id)}` },
+          pictureWindow({ key: d.series, name: s.episode.series }, 48),
+          el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, s.episode.series),
+            eventLine([time, et, epTitle(d), now ? len : null])));
       } else {
         // A gap is stated, never filled (R9). The paper's printed text stays in the file as
         // witness and is not drawn until the owner rules on it (WEB-DESIGN §4.9).
         const why = s.withheld || s.episode ? 'Not in the catalog' : 'Not surviving';
-        main = el('div', { class: 'slot-main' },
-          s.known_series ? el('span', { class: 'body' }, s.known_series) : null,
-          el('span', { class: 'caption' }, [now ? 'Now' : null, why, `${s.length_min} min`].filter(Boolean).join(' · ')));
+        link = el('div', { class: 'g-link' },
+          pictureWindow({ name: s.known_series || '', picture: null }, 48),
+          el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, s.known_series || why),
+            eventLine([time, et, s.known_series ? why : null, now ? len : null])));
       }
       const play = d ? el('button', {
-        type: 'button', class: 'icon-btn', 'aria-label': `Play ${epTitle(d)}, ${s.episode.series}`,
+        type: 'button', class: 'icon-btn g-play', 'aria-label': `Play ${epTitle(d)}, ${s.episode.series}`,
         onclick: () => { if (live) stopLive(); Player.load(cardOf(d, s.episode.series)); },
       }, icon('play')) : null;
-      list.append(el('li', { class: `slot${d ? '' : ' slot-gap'}${now ? ' slot-now' : ''}`,
-                             'aria-current': now ? 'time' : null }, time, main, play));
+      list.append(el('li', { class: `slot g-row${d ? '' : ' slot-gap'}${now ? ' slot-now' : ''}`,
+                             'aria-current': now ? 'time' : null }, link, lead, play));
     });
 
     const w = day.witness || {};
@@ -1358,13 +1363,36 @@
     }, ({ p, index }) => {
       setTitle(p.name);
       const count = new Set(p.credits.map(c => c.id)).size;
-      const facts = [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes')].filter(Boolean).join(' · ');
-      const head = el('header', { class: `page-head${p.art ? ' has-face' : ''}` },
-        el('div', { class: 'page-head-text' },
-          el('h1', { class: 'view-heading', id: 'person-h', tabindex: '-1' }, p.name),
-          el('p', { class: 'caption' }, facts)));
-      if (p.art) head.prepend(faceFigure(head, p.art, null));
-      body.append(head);
+      const groups = API.personGroups(p.credits);
+      const yearList = (eps) => eps.map(e => e.date && +e.date.slice(0, 4)).filter(Boolean);
+      const yearsOf = (eps) => {
+        const ys = yearList(eps);
+        return ys.length ? [Math.min(...ys), Math.max(...ys)] : null;
+      };
+      const stripOf = (eps) => {
+        const ys = yearList(eps);
+        if (!ys.length) return null;
+        const lo = Math.min(...ys), hist = new Array(Math.max(...ys) - lo + 1).fill(0);
+        ys.forEach(y => { hist[y - lo] += 1; });
+        return [lo, ...hist];
+      };
+      const all = groups.flatMap(g => g.episodes);
+      const span = yearsOf(all);
+      body.append(headBoard({ series: { name: p.name, genre: '', picture: p.art || null }, name: p.name,
+        facts: [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes'),
+          groups.length > 1 ? plural(groups.length, 'show', 'shows') : null],
+        first: span && String(span[0]), last: span && String(span[1]), years: stripOf(all) }));
+      if (groups.length > 1) {
+        const tiles = el('ul', { class: 'rail g-rail g-rail-small', 'aria-label': 'Shows' });
+        groups.forEach(g => {
+          const s = index.byKey.get(g.series);
+          const yr = yearsOf(g.episodes);
+          tiles.append(showTile({ key: g.series, name: s ? s.name : g.series, genre: s ? s.genre : '',
+            picture: s ? s.picture : null, art: s ? s.art : null, first: yr && String(yr[0]), last: yr && String(yr[1]),
+            episodes: new Set(g.episodes.map(e => e.id)).size, years: stripOf(g.episodes) }));
+        });
+        body.append(el('section', { class: 'shelf shelf-after-head' }, tiles));
+      }
 
       const seg = el('div', { class: 'segmented', role: 'group', 'aria-label': 'Order' });
       const listBox = el('div');
@@ -1404,12 +1432,14 @@
     });
   }
 
+  /** A person in a list: their portrait in a round window, else their monogram; the episodes they are in. */
   function personRow(p) {
-    return el('li', { class: 'series-row' },
-      el('a', { href: `?person=${encodeURIComponent(p.id)}` },
-        artTile({ name: p.name, art: p.art }),
-        el('span', { class: 'series-row-text' }, el('span', { class: 'body-strong' }, p.name),
-          el('span', { class: 'caption' }, plural(p.episodes, 'episode', 'episodes')))));
+    const win = pictureWindow({ name: p.name, picture: p.art || null }, 48);
+    win.classList.add('g-round');
+    return el('li', { class: 'series-row g-row' },
+      el('a', { class: 'g-link', href: `?person=${encodeURIComponent(p.id)}` }, win,
+        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, p.name),
+          eventLine([plural(p.episodes, 'episode', 'episodes')]))));
   }
 
   /** A disclosure that loads the text on first open; `#transcript` in the URL opens it. */
@@ -1669,32 +1699,32 @@
       randomEpisode().catch((err) => { console.error(err); return null; }),
       randomEvening().catch((err) => { console.error(err); return null; }),
       onTV() ? [] : castable(),
-    ]), ([ep, evening, scripts]) => {
+      API.seriesIndex().catch(() => ({ byKey: new Map() })),
+    ]), ([ep, evening, scripts, index]) => {
       const picks = el('div', { class: 'picks' });
+      const playBtn = (label, onclick) => el('div', { class: 'actions' },
+        el('button', { type: 'button', class: 'btn btn-primary', onclick }, icon('play'), label));
       if (ep) {
         const card = { ...ep, title: epTitle(ep) };
-        picks.append(pickBox('An episode',
-          el('a', { class: 'pick-title body-strong', href: `?item=${encodeURIComponent(ep.id)}` }, epTitle(ep)),
-          el('p', { class: 'caption' }, [ep.seriesName, ep.date].filter(Boolean).join(' · ')),
-          el('div', { class: 'actions' }, el('button', { type: 'button', class: 'btn btn-primary',
-            onclick: () => Player.load(card) }, icon('play'), 'Play'))));
+        const sr = index.byKey.get(ep.series) || { key: ep.series, name: ep.seriesName };
+        picks.append(pickBox('An episode', headBoard({ series: sr, name: sr.name, href: `?item=${encodeURIComponent(ep.id)}`,
+          facts: [epTitle(ep), factDate(ep.date)], first: sr.first, last: sr.last, years: sr.years }),
+          playBtn('Play', () => Player.load(card))));
       }
       if (evening) {
         const { day, first } = evening;
-        picks.append(pickBox('An evening',
-          el('p', { class: 'body-strong' }, fmtLongDate(day.evening)),
-          el('p', { class: 'caption' }, [day.network, day.station].filter(Boolean).join(' · ')),
-          first ? el('p', { class: 'caption' }, [first.seriesName, first.title].filter(Boolean).join(' · ')) : null,
-          first ? el('div', { class: 'actions' }, el('button', { type: 'button', class: 'btn btn-primary',
-            onclick: () => { if (live) stopLive(); Player.load(first); } }, icon('play'), 'Play')) : null));
+        const sr = (first && index.byKey.get(first.series)) || { name: first ? first.seriesName : '' };
+        picks.append(pickBox('An evening', headBoard({ series: sr, name: fmtLongDate(day.evening),
+          facts: [day.network, day.station, first && first.seriesName], first: null, last: null }),
+          first ? playBtn('Play', () => { if (live) stopLive(); Player.load(first); }) : null));
       }
       if (scripts.length) {
         const script = pickOf(scripts);
-        picks.append(pickBox('A play',
-          el('div', { class: 'pick-play' },
-            pictureWindow({ name: script.title, picture: null, genre: PlaysUI.BOARD }, 64),
-            el('div', {}, el('a', { class: 'pick-title body-strong', href: `?play=${encodeURIComponent(script.id)}` }, script.title),
-              el('p', { class: 'caption' }, playMeta(script)))),
+        picks.append(pickBox('A play', headBoard({ series: { name: script.title, genre: PlaysUI.BOARD, picture: null },
+          name: script.title, href: `?play=${encodeURIComponent(script.id)}`,
+          facts: [PlaysCore.authorLine(script),
+            plural(PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')],
+          first: null, last: null }),
           el('div', { class: 'actions' }, PlaysUI.startButton(script, playsHelpers))));
       }
       if (!picks.children.length) { body.append(stateBox('empty', { text: 'Nothing to pick from yet.' })); return; }
