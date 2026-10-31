@@ -129,8 +129,8 @@ nonisolated enum Grammar {
     }
 
     /// The grade a picture takes (uniform-imagery-design §2): monochrome, then `k * v + o`. The
-    /// projection does not publish `art.grade` yet, so an `Artwork` carries none and this is the
-    /// documented identity default.
+    /// projection publishes `art.grade` for a picture whose range was measured; any other picture,
+    /// and a catalog without the column, takes the identity.
     static func gradeOf(_ art: Artwork?) -> Artwork.Grade { art?.grade ?? .identity }
 
     /// The picture that leads an episode's head board (WEB-DESIGN §6.4d, the web's `API.leadPicture`):

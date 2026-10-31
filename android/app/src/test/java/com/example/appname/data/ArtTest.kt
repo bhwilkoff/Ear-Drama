@@ -105,6 +105,32 @@ class ArtTest {
         }
     }
 
+    @Test fun `the projection's grade and voices are read when published`() = runBlocking {
+        val db = CatalogDatabase.open(CatalogFixture.build(tmp.root, withArt = true, withGrade = true).path)!!
+        try {
+            assertEquals(Grade(1.6, 0.148), gradeOf(db.series("suspense")?.face?.art))
+            val d = db.episodeDetail("sus|1943-05-25")!!
+            assertNull("NULL is the identity", d.credits.first { it.personId == "p2" }.art?.grade)
+            val voices = db.voices()
+            assertEquals(listOf("p2", "p1"), voices.map { it.person.id })
+            assertEquals(listOf(9, 4), voices.map { it.episodes })
+            assertEquals(listOf(1.6, 0.148), voices[1].person.art?.grade)
+        } finally {
+            db.close()
+        }
+        val older = CatalogDatabase.open(CatalogFixture.build(tmp.newFolder(), withArt = true).path)!!
+        try {
+            assertTrue("a catalog without the table has no voices", older.voices().isEmpty())
+            assertEquals("a catalog without the column takes the identity", Grade(1.0, 0.0), gradeOf(older.series("suspense")?.face?.art))
+        } finally {
+            older.close()
+        }
+        assertEquals(listOf(1.6, 0.1), parseGrade("1.6, 0.1"))
+        assertNull(parseGrade("1.6"))
+        assertNull(parseGrade("a,b"))
+        assertNull(parseGrade(null))
+    }
+
     @Test fun `initials skip a leading article`() {
         assertEquals("W", artInitial("The Whistler"))
         assertEquals("A", artInitial("\"America First\""))

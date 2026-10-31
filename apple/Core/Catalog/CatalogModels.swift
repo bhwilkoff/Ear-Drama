@@ -14,7 +14,7 @@ nonisolated struct Artwork: Hashable, Sendable {
     var evidence: URL? = nil
     /// Where a small crop centers (contract §3.3a), computed once in the pipeline.
     var face: FaceBox? = nil
-    /// The picture's published levels (uniform-imagery-design §2); nil until the projection carries `art.grade`.
+    /// The picture's published levels (uniform-imagery-design §2), "k,o" in `art.grade`; nil for the identity or a catalog without the column.
     var grade: Grade? = nil
 
     /// The linear levels `k * v + o` a picture takes after the monochrome, in sRGB.
@@ -22,6 +22,16 @@ nonisolated struct Artwork: Hashable, Sendable {
         var k: Double
         var o: Double
         static let identity = Grade(k: 1, o: 0)
+
+        init(k: Double, o: Double) {
+            (self.k, self.o) = (k, o)
+        }
+
+        init?(_ text: String?) {
+            let v = (text ?? "").split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+            guard v.count == 2 else { return nil }
+            self.init(k: v[0], o: v[1])
+        }
     }
 
     /// A face box normalized to the image, origin at its top left: "x,y,w,h" in the projection.

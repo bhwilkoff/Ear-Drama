@@ -104,6 +104,9 @@ test('grammar: the title block, the type step, the window, the event line and th
   assertEq(API.runSpan(null, null), null, 'control: undated is the baseline alone');
   assertEq(JSON.stringify(API.gradeOf(at(10, 10, null))), JSON.stringify({ k: 1, o: 0 }), 'no published grade: the identity levels');
   assertEq(JSON.stringify(API.gradeOf({ grade: [1.1, -0.05] })), JSON.stringify({ k: 1.1, o: -0.05 }), 'a published grade replaces it');
+  const graded = API.artOf(['https://x/A.jpg', 10, 10, null, null, null, [1.6, 0.148]]);
+  assertEq(JSON.stringify(API.gradeOf(graded)), JSON.stringify({ k: 1.6, o: 0.148 }), 'the art array carries the grade as its last field');
+  assertEq(JSON.stringify(API.gradeOf(API.artOf(['https://x/A.jpg', 10, 10, null, null, null, null]))), JSON.stringify({ k: 1, o: 0 }), 'control: a null grade is the identity');
 });
 
 test('browse and rows: A to Z letters, the histogram strip, the bare undated row (WEB-DESIGN 6.4c golden cases)', () => {

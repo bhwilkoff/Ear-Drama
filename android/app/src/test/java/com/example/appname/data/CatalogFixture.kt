@@ -88,6 +88,7 @@ object CatalogFixture {
         withArt: Boolean = false,
         withScript: Boolean = false,
         withArcs: Boolean = false,
+        withGrade: Boolean = false,
     ): File {
         val file = File(dir, "fixture.sqlite")
         file.delete()
@@ -197,6 +198,18 @@ object CatalogFixture {
                 c.execSQL("UPDATE people SET portrait = 2 WHERE id = 'p2'")
                 c.execSQL("UPDATE series SET star = 'p1' WHERE key = 'suspense'")
                 c.execSQL("UPDATE episodes SET star = 'p1' WHERE id = 'sus|1943-05-25'")
+                // Contract §3.3a `art.grade` and §3.3 `voices`: Agnes Moorehead's picture is graded, Orson
+                // Welles' is the identity (NULL); the voices are ranked with their episode counts.
+                if (withGrade) {
+                    c.execSQL("ALTER TABLE art ADD COLUMN grade TEXT")
+                    c.execSQL("UPDATE art SET grade = '1.600,0.148' WHERE id = 1")
+                    c.execSQL(
+                        "CREATE TABLE voices (person_id TEXT PRIMARY KEY, rank INTEGER NOT NULL, name TEXT NOT NULL, " +
+                            "episodes INTEGER NOT NULL, portrait INTEGER)",
+                    )
+                    c.execSQL("INSERT INTO voices VALUES ('p2', 1, 'Orson Welles', 9, 2)")
+                    c.execSQL("INSERT INTO voices VALUES ('p1', 2, 'Agnes Moorehead', 4, 1)")
+                }
             }
             // Contract §3.1's `script` (Decision 068): one episode links a castable script.
             if (withScript) {

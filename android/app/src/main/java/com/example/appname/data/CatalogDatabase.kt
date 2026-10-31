@@ -53,11 +53,12 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         "portrait" in queryRaw("PRAGMA table_info(people)") { it.getText(1) } &&
             "url" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }
     }
-    /** The art columns a credit, person, or series query reads (§3.3a); `a.face` is NULL in an older catalog. */
+    /** The art columns a credit, person, or series query reads (§3.3a); `a.face` and `a.grade` are NULL in an older catalog. */
     private val artColumns: String by lazy {
-        if (!hasArt) return@lazy "NULL, NULL, NULL, NULL, NULL, NULL"
-        val face = "face" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }
-        "a.url, a.width, a.height, a.credit, a.evidence_url, ${if (face) "a.face" else "NULL"}"
+        if (!hasArt) return@lazy "NULL, NULL, NULL, NULL, NULL, NULL, NULL"
+        val cols = queryRaw("PRAGMA table_info(art)") { it.getText(1) }
+        "a.url, a.width, a.height, a.credit, a.evidence_url, ${if ("face" in cols) "a.face" else "NULL"}, " +
+            if ("grade" in cols) "a.grade" else "NULL"
     }
     private val hasEpisodeStar: Boolean by lazy {
         hasArt && "star" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
@@ -90,11 +91,13 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val faces = hasArt && "star" in cols
         // §3.3a series.picture: an art id; an older catalog has no column, and its picture is null.
         val pictures = hasArt && "picture" in cols
-        val face = if (hasArt && "face" in queryRaw("PRAGMA table_info(art)") { it.getText(1) }) "ap.face" else "NULL"
+        val artCols = if (hasArt) queryRaw("PRAGMA table_info(art)") { it.getText(1) } else emptyList()
+        val face = if ("face" in artCols) "ap.face" else "NULL"
+        val grade = if ("grade" in artCols) "ap.grade" else "NULL"
         val sql = "SELECT s.key, s.genre, " +
-            (if (faces) "p.name, $artColumns, " else "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
-            (if (pictures) "ap.url, ap.width, ap.height, ap.credit, ap.evidence_url, $face, s.picture_kind, " else
-                "NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
+            (if (faces) "p.name, $artColumns, " else "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
+            (if (pictures) "ap.url, ap.width, ap.height, ap.credit, ap.evidence_url, $face, $grade, s.picture_kind, " else
+                "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
             (if ("networks" in cols) "s.networks, " else "NULL, ") +
             (if ("year_counts" in cols) "s.year_counts, " else "NULL, ") +
             (if ("sort_name" in cols) "s.sort_name " else "NULL ") +
@@ -107,11 +110,11 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             st.getText(0) to SeriesLook(
                 genre = st.textOrNull(1),
                 face = if (art != null && name != null) Face(name, art) else null,
-                picture = artwork(st, 9),
-                pictureKind = st.textOrNull(15),
-                networks = networkList(st.textOrNull(16)),
-                yearCounts = parseYearCounts(st.textOrNull(17)),
-                sortName = st.textOrNull(18),
+                picture = artwork(st, 10),
+                pictureKind = st.textOrNull(17),
+                networks = networkList(st.textOrNull(18)),
+                yearCounts = parseYearCounts(st.textOrNull(19)),
+                sortName = st.textOrNull(20),
             )
         }.toMap()
     }
@@ -134,6 +137,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             credit = st.textOrNull(at + 3),
             evidence = st.textOrNull(at + 4),
             face = FaceBox.parse(st.textOrNull(at + 5)),
+            grade = parseGrade(st.textOrNull(at + 6)),
         )
     }
 
@@ -672,6 +676,21 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 queryRaw("SELECT $personColumns FROM people p$personJoin WHERE p.id = ?", listOf(pid), ::person)
                     .firstOrNull()?.let { PersonRow(it, count) }
             }
+    }
+
+    /** Contract §3.3 `voices`, the most heard voices; a catalog without the table has none. */
+    private val hasVoices: Boolean by lazy {
+        "episodes" in queryRaw("PRAGMA table_info(voices)") { it.getText(1) }
+    }
+
+    /** The most heard voices (§3.3 `voices`), most episodes first; empty for a catalog without them. */
+    suspend fun voices(limit: Int = 300): List<PersonRow> = read {
+        if (!hasVoices) return@read emptyList()
+        queryRaw(
+            "SELECT $personColumns, v.episodes FROM voices v JOIN people p ON p.id = v.person_id$personJoin " +
+                "ORDER BY v.rank LIMIT ?",
+            listOf(limit),
+        ) { PersonRow(person(it), it.getLong(11).toInt()) }
     }
 
     // --- Shelves ---
