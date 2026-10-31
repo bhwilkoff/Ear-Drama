@@ -82,7 +82,9 @@ import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Arrangement
+import com.example.appname.ui.GrammarRow
 import com.example.appname.ui.PictureWindow
+import com.example.appname.ui.SeriesKeyWindow
 import com.example.appname.ui.tvFocusMark
 import java.time.Instant
 import kotlin.coroutines.cancellation.CancellationException
@@ -279,6 +281,7 @@ private fun LazyListScope.stationRows(evening: RadioEvening?, stations: List<Sta
             }
             StationRow(
                 name = "Tonight in ${evening.day.year}",
+                genre = null,
                 slot = slot?.takeIf { evening.detail(it) != null },
                 note = note,
                 isLive = liveDay == evening.day,
@@ -298,6 +301,7 @@ private fun LazyListScope.stationRows(evening: RadioEvening?, stations: List<Sta
             val on = StationClock.onNow(station.slots, now)
             StationRow(
                 name = station.name,
+                genre = station.genre,
                 slot = on?.slot,
                 note = on?.slot?.takeIf { it.playableEpisode == null }?.let { RadioClock.gapNote(it) },
                 isLive = liveStation == station.genre,
@@ -316,10 +320,14 @@ private fun LazyListScope.stationRows(evening: RadioEvening?, stations: List<Sta
     }
 }
 
-/** A station's row: its name, what is on now (series, title), and Listen live or Listening live. */
+/**
+ * A station as the grammar's row: its show's window (the picture, else the star, else the title
+ * block), the station's name, an event line of what is on, and Listen live or Listening live.
+ */
 @Composable
 private fun StationRow(
     name: String,
+    genre: String?,
     slot: RadioSlot?,
     note: String?,
     isLive: Boolean,
@@ -329,17 +337,16 @@ private fun StationRow(
     onStop: () -> Unit,
 ) {
     val episode = slot?.playableEpisode
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    ListItem(
-        headlineContent = { Text(name, style = MaterialTheme.typography.titleMedium) },
-        supportingContent = {
-            Column {
-                episode?.let { Text(it.series, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                episode?.title?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-                note?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = muted) }
-            }
+    GrammarRow(
+        title = name,
+        visual = { m ->
+            if (episode != null) SeriesKeyWindow(episode.id.substringBefore('|'), episode.series, m)
+            else PictureWindow(null, name, genre, m)
         },
-        trailingContent = when {
+        onOpen = {},
+        opens = false,
+        sub = listOf(episode?.series, episode?.title, note),
+        trailing = when {
             isLive -> {
                 {
                     OutlinedButton(
@@ -350,7 +357,7 @@ private fun StationRow(
                     ) {
                         Icon(Icons.Filled.Sensors, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Listening live")
+                        Text("Listening live", maxLines = 1)
                     }
                 }
             }
@@ -363,7 +370,7 @@ private fun StationRow(
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Listen live")
+                        Text("Listen live", maxLines = 1)
                     }
                 }
             }
@@ -400,9 +407,10 @@ private fun YearMenu(current: String, choices: List<String>, onPick: (String) ->
 }
 
 /**
- * A surviving slot opens its episode and, off a TV, has Play; a gap is muted
- * and says why, never the paper's printed text (R9). On a TV each row is one
- * focus stop, gaps included.
+ * A slot on the evening's clock as the grammar's row: the series' window, the series, an event line
+ * of the time and the episode, and the length, or "Now" in ink on the slot on the air. A surviving
+ * slot opens its episode and, off a TV, has Play; a gap says why, never the paper's printed text
+ * (R9). On a TV each row is one focus stop, gaps included.
  */
 @Composable
 private fun SlotRow(
@@ -416,81 +424,27 @@ private fun SlotRow(
     onPlay: () -> Unit,
 ) {
     val (local, eastern) = RadioClock.timeLabel(slot, zone)
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val gap = detail == null
+    val length = "${slot.lengthMin} min"
     val headline = if (detail == null) slot.knownSeries ?: RadioClock.gapNote(slot) else slot.playableEpisode?.series ?: detail.episode.seriesName
-    val caption = listOfNotNull(
-        "Now".takeIf { isNow },
-        RadioClock.gapNote(slot).takeIf { gap && slot.knownSeries != null },
-        "${slot.lengthMin} min",
-    ).joinToString(" · ")
-    val action = when {
-        !gap -> Modifier.clickable(onClickLabel = "Open episode", onClick = onOpen)
-        television -> Modifier.focusable()
-        else -> Modifier
-    }
-    val liveEdge = OnAir.colors.play
-    ListItem(
+    GrammarRow(
+        title = headline,
+        visual = { m ->
+            if (detail != null) PictureWindow(detail.episode.seriesWindowArt, detail.episode.seriesName, detail.episode.seriesGenre, m)
+            else PictureWindow(null, slot.knownSeries ?: "", null, m)
+        },
+        onOpen = onOpen,
+        opens = !gap,
         modifier = modifier
-            .tvFocusMark()
-            .then(action)
             .semantics { selected = isNow }
-            // The slot on the air wears the primary ink as its leading edge (§6.1a, the web's slot-now).
-            .then(
-                if (isNow) {
-                    Modifier.drawWithContent {
-                        drawContent()
-                        drawRect(liveEdge, size = Size(4.dp.toPx(), size.height))
-                    }
-                } else {
-                    Modifier
-                },
-            ),
-        colors = if (isNow) {
-            ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        } else {
-            ListItemDefaults.colors()
-        },
-        leadingContent = {
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
-                Column(Modifier.widthIn(min = 88.dp)) {
-                    Text(local, style = MaterialTheme.typography.bodySmall)
-                    eastern?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = muted) }
-                }
-                // R11a: an aired slot leads with its series' tile; a gap has none.
-                detail?.let { PictureWindow(it.episode.seriesWindowArt, it.episode.seriesName, it.episode.seriesGenre, Modifier.size(48.dp)) }
-            }
-        },
-        headlineContent = {
-            Text(
-                headline,
-                style = MaterialTheme.typography.titleMedium,
-                color = if (gap) muted else MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-        supportingContent = {
-            Column {
-                detail?.let {
-                    Text(
-                        episodeTitle(it.episode),
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(caption, style = MaterialTheme.typography.labelMedium, color = muted)
-            }
-        },
-        trailingContent = if (detail != null && !television) {
-            {
-                IconButton(onClick = onPlay) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = "Play ${episodeTitle(detail.episode)}, $headline")
-                }
-            }
-        } else {
-            null
-        },
+            .then(if (gap && television) Modifier.tvFocusMark().focusable() else Modifier),
+        sub = listOf(
+            local, eastern, detail?.let { episodeTitle(it.episode) },
+            RadioClock.gapNote(slot).takeIf { gap && slot.knownSeries != null }, length.takeIf { isNow },
+        ),
+        length = length,
+        badge = "Now".takeIf { isNow },
+        onPlay = if (detail != null && !television) onPlay else null,
+        playDescription = detail?.let { "Play ${episodeTitle(it.episode)}, $headline" } ?: "Play",
     )
 }

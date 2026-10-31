@@ -459,6 +459,12 @@ fun GrammarRow(
     openLabel: String = "Open episode",
     onLongClick: (() -> Unit)? = null,
     quote: String? = null,
+    /** Ink on the play color where the length goes: the slot on the air. */
+    badge: String? = null,
+    /** A control that stands where Play does (a station's Listen live). */
+    trailing: (@Composable () -> Unit)? = null,
+    /** False for a row that only states (a station's, a gap in the evening): no click, no focus stop. */
+    opens: Boolean = true,
 ) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Row(
@@ -469,12 +475,17 @@ fun GrammarRow(
             Modifier
                 .weight(1f)
                 .heightIn(min = 64.dp)
-                .tvFocusMark()
-                .combinedClickable(
-                    onClickLabel = openLabel,
-                    onClick = onOpen,
-                    onLongClickLabel = if (onLongClick != null) "Queue options" else null,
-                    onLongClick = onLongClick,
+                .then(
+                    if (opens) {
+                        Modifier.tvFocusMark().combinedClickable(
+                            onClickLabel = openLabel,
+                            onClick = onOpen,
+                            onLongClickLabel = if (onLongClick != null) "Queue options" else null,
+                            onLongClick = onLongClick,
+                        )
+                    } else {
+                        Modifier
+                    },
                 )
                 .padding(vertical = Spacing.S2.dp)
                 .semantics(mergeDescendants = true) { if (description != null) contentDescription = description },
@@ -493,7 +504,20 @@ fun GrammarRow(
                     )
                 }
             }
-            if (length != null) {
+            if (badge != null) {
+                Text(
+                    badge,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = OnAir.colors.onPlay,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .padding(start = Spacing.S2.dp)
+                        .clip(CircleShape)
+                        .background(OnAir.colors.play)
+                        .padding(horizontal = Spacing.S2.dp, vertical = 2.dp),
+                )
+            } else if (length != null) {
                 Text(
                     length,
                     style = MaterialTheme.typography.bodySmall,
@@ -504,7 +528,9 @@ fun GrammarRow(
                 )
             }
         }
-        if (onPlay != null) {
+        if (trailing != null) {
+            Box(Modifier.padding(start = Spacing.S2.dp)) { trailing() }
+        } else if (onPlay != null) {
             IconButton(onClick = onPlay, modifier = Modifier.size(48.dp).tvFocusMark()) {
                 Box(
                     Modifier.size(36.dp).clip(CircleShape).background(OnAir.colors.play),
