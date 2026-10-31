@@ -32,6 +32,7 @@ import shelves as SH
 import sponsors as SP
 from sort_name import sort_name
 import titles as TI
+import display_text as DT
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
@@ -181,6 +182,67 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     states = ("keep_clean",) if clean_only else SERVED
     q = ",".join("?" * len(states))
     served = {r[0] for r in s.execute(f"SELECT id FROM episodes WHERE state IN ({q})", states)}
+    # Display titles and names (titles.py): one vocabulary from every title and name, so a
+    # run-together word is split only into words the catalog itself spells on their own.
+    names = {k: n for k, n in s.execute("SELECT key, name FROM series")}
+    words = TI.Words([TI.clean(t) for (t,) in s.execute("SELECT title FROM episodes") if t] +
+                     [TI.clean(n) for n in names.values() if n])
+    by_series_eps = {}
+    for eid, sk, air, num, title in s.execute("SELECT id, series_key, air_date, num, title FROM episodes"):
+        if eid in served:
+            by_series_eps.setdefault(sk, []).append((eid, air, num, title))
+    display = {}
+    for sk in sorted(by_series_eps):
+        display.update(TI.series_titles(by_series_eps[sk], names.get(sk), words))
+    shown_name = {k: TI.display_name(n, words) for k, n in names.items()}
+    # What a listener may be shown (display_text.py, owner ruling 2026-10-31): a series still named by an upload
+    # habit, and an episode with no readable title and nothing to compose one from, are withheld here and kept
+    # in the research database; a composed title records the fields it came from.
+    own_key = set()
+    if "in_spine" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
+        own_key = {k for (k,) in s.execute("SELECT key FROM series WHERE COALESCE(in_spine, 0) = 0 AND "
+                                           "otrr_programs IS NULL AND COALESCE(is_librivox, 0) = 0")}
+    held = {}
+    if "display_hold" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
+        held = dict(s.execute("SELECT key, display_hold FROM series WHERE display_hold IS NOT NULL"))
+    known = {}
+    def learn(n):
+        if n and " " in n.strip() and re.search(r"[A-Z]", n) and not DT.TD.series_defects(n):
+            known.setdefault(re.sub(r"[^a-z0-9]", "", n.casefold()), n.strip())
+    if has_table(s, "people"):
+        for (n,) in s.execute("SELECT name FROM people"):
+            learn(n)
+    for k, n in shown_name.items():
+        if k in by_series_eps and not DT.series_withheld(n, k, False):
+            learn(n)
+    if has_table(s, "series_aliases"):
+        for (n,) in s.execute("SELECT alias FROM series_aliases"):
+            learn(n)
+    recovered = {}
+    for sk in sorted(by_series_eps):
+        if DT.series_withheld(shown_name.get(sk) or names.get(sk), sk, sk in own_key):
+            got = DT.recover_name(shown_name.get(sk) or names.get(sk), known, words)
+            if got and not DT.series_withheld(got, sk, sk in own_key):
+                recovered[sk] = {"from": shown_name.get(sk), "to": got}
+                shown_name[sk] = got
+    withheld = {"series": {}, "episodes": {}}
+    composed = {}
+    for sk in sorted(by_series_eps):
+        why = held.get(sk) or DT.series_withheld(shown_name.get(sk) or names.get(sk), sk, sk in own_key)
+        if why:
+            withheld["series"][sk] = why
+            for eid, _a, _n, _t in by_series_eps[sk]:
+                withheld["episodes"][eid] = why
+            continue
+        for eid, air, num, _t in by_series_eps[sk]:
+            title, src, fields, why = DT.decide_episode(display[eid], shown_name.get(sk) or names.get(sk), air, num)
+            if why:
+                withheld["episodes"][eid] = why
+            else:
+                if src == "composed":
+                    composed[eid] = {"title": title, "fields": fields}
+                display[eid] = title
+    served -= set(withheld["episodes"])
     script_of, script_report = ES.links(s, served, ES.load_bundle() if scripts is None else scripts)
     print(json.dumps({"episodeScripts": script_report}), file=sys.stderr)
 
@@ -239,18 +301,6 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             recs_by_ep.setdefault(row[0], []).append(row)
 
     sponsor_runs = SP.load(s)
-    # Display titles and names (titles.py): one vocabulary from every title and name, so a
-    # run-together word is split only into words the catalog itself spells on their own.
-    words = TI.Words([TI.clean(t) for (t,) in s.execute("SELECT title FROM episodes") if t] +
-                     [TI.clean(n) for n in names.values() if n])
-    by_series_eps = {}
-    for eid, sk, air, num, title in s.execute("SELECT id, series_key, air_date, num, title FROM episodes"):
-        if eid in served:
-            by_series_eps.setdefault(sk, []).append((eid, air, num, title))
-    display = {}
-    for sk in sorted(by_series_eps):
-        display.update(TI.series_titles(by_series_eps[sk], names.get(sk), words))
-    shown_name = {k: TI.display_name(n, words) for k, n in names.items()}
     years_of = {}
     per_series = {}
     searchable = 0
@@ -344,7 +394,15 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     counts["tombstones"] = d.execute("SELECT COUNT(*) FROM episode_tombstones").fetchone()[0]
     counts["seriesAliases"] = d.execute("SELECT COUNT(*) FROM series_key_aliases").fetchone()[0]
     counts["seriesTombstones"] = d.execute("SELECT COUNT(*) FROM series_key_tombstones").fetchone()[0]
-    meta = {"schemaVersion": SCHEMA_VERSION, "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    reasons = {}
+    for kind in ("series", "episodes"):
+        for why in withheld[kind].values():
+            reasons.setdefault(kind, {}).setdefault(why, 0)
+            reasons[kind][why] += 1
+    detail = {"withheld": withheld, "composed": composed, "recovered": recovered}
+    ia.write_json(os.path.join(os.path.dirname(dst) or ".", "display_text.json"), detail)
+    meta = {"schemaVersion": SCHEMA_VERSION, "displayText": {"withheld": reasons, "composed": len(composed)},
+            "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES, "forwarding": fwd,
             "listenShelves": SH.listen_shelves(
                 d.execute("SELECT id, series_key, air_date, num, no_recommend, title FROM episodes"),

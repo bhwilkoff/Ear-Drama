@@ -96,6 +96,13 @@ PATTERNS = [
     # "esca.53.04.12_Classified_Secret", "amos.1945.01.12_One_Phoney_Antique" (dotted)   [Escape1953, AA441110]
     ("F1e_series_date_title", re.compile(
         rf"^(?P<series>[A-Za-z].*?)[ _.-]+{_DATE_DASH}[ _-]+(?P<title>[A-Za-z].*)$")),
+    # "1959 10 01 World Series Game 1 ...", "1935 10-04 Tigers at Cubs" (a date written YYYY MM DD with spaces, no series),
+    # "19411208 part 5 pearl harbor" (YYYYMMDD glued): F5 read "1959 10" as a series and the day as its number
+    ("F7d_spaced_date_first", re.compile(
+        r"^(?:\d{1,3}[ _.-]+)?(?P<yyyy>19[2-9]\d)[ _](?P<mm>0[1-9]|1[0-2])[ _-](?P<dd>0[1-9]|[12]\d|3[01])(?!\d)"
+        r"[ _-]*(?:-[ _]*)?(?P<title>.*)$")),
+    ("F7e_glued_date_first", re.compile(
+        r"^(?P<yyyy>19[2-9]\d)(?P<mm>0[1-9]|1[0-2])(?P<dd>0[1-9]|[12]\d|3[01])[ _-]+(?P<title>[A-Za-z].*)$")),
     # "42-06-17_Burning_Court", "1932-05-02 - 001) First Show", "01 38-07-11 Dracula"
     #  no series in the name: the ITEM supplies it   [SUSPENSE, TheJackBennyProgram, OrsonWelles_MercuryTheatre]
     ("F7_date_first", re.compile(
@@ -204,7 +211,7 @@ def is_upload_stamp(date, publicdate):
 
 LEAD_TRACK = re.compile(r"^(\d{1,4})[ ._-]+(?=[A-Za-z])")
 _NEED_DATE = ("F2d_series_yymmdd_num_title", "F7c_yymmdd_num_title", "F4b_mmddyy_last", "F0_otrr_v2", "F0b_camel_yymmdd_num", "F2_yymmdd", "F2b_series_yymmdd_title", "F1d_camel_glued",
-              "F7_date_first", "F1e_series_date_title", "F1g_num_then_date", "F2c_yymmdd_80s",
+              "F7_date_first", "F7d_spaced_date_first", "F7e_glued_date_first", "F1e_series_date_title", "F1g_num_then_date", "F2c_yymmdd_80s",
               "F7b_glued_yymmdd_first", "F10_iso_date_last", "F10c_yymmdd_last")
 # A title is something a person could read as one. Junk stems that are not:
 # "UIUC_Archives_1306005_0913_B", "vvl_4005_Audio_file", "05", "Track 3", "DA9363~1"   [MEASURED 2026-10-19]

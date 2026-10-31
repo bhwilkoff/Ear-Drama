@@ -647,3 +647,39 @@ guessed. Voices: 300 rows. Grades: 2,184 pictures measured, 1,461 graded (51 at 
 none unreadable. Size on the 2026-10-29 build: the app database 125,087,744 to 125,161,472 bytes (+74 KB) and its
 download 25,433,689 to 25,463,104 (+29 KB, 0.12%); the web's `index/voices.json` 19.4 KB, 5.1 KB gzipped. A new
 cache Release is needed for the grades (`art_grade.json` is a new harvest file); the genres and voices need none.
+
+
+## 025 — Raw uploader text never reaches a display field: clean it from its source, compose it from data, or withhold it
+
+*Date: 2026-10-31*
+
+Audit: `audits/2026-10-31-display-text.md`. Owner, 2026-10-31: "I don't want raw text uploads to show at all. There is
+no benefit to having raw text that is meaningless within the app ... Titles without context don't belong in the app ...
+If it means writing with AI, based upon data, that is okay. The goal is to avoid AI writing titles that it doesn't know
+(making them up)." Amends 022 and 023 (their protections stand: a rule removes and recases, never cuts a word) and the
+"no AI-written copy" line (a title may be composed from the episode's own fields, never invented).
+
+For every episode, in order: (1) the source's title, cleaned (`titles.py`, which now also drops rip tags, shelf and
+track codes and doubled punctuation, and sets a title with no capital in the catalog's case); (2) a title composed from
+data, "Series, April 26, 1952" (series name + air date) or "Series, episode 112" (series name + number), recorded with
+the fields it used; (3) otherwise the episode is withheld from the apps. A series still named by an upload habit (a date,
+an identifier, a file name, an uploader's grab bag, an item titled by an upload code) is withheld with its episodes.
+Withheld rows stay in the research database untouched, with a reason code (`tools/display_text.py`; the build writes
+`display_text.json` beside the projection and the counts into the projection's `meta.displayText`). Upstream, three
+evidence rules (`tools/reattribute.py`, `build_db.improve_attribution`) put more of the catalog under a real name: a file
+whose name BEGINS with a known program moves to it when the rest is a title that program has, or its own date is inside
+the program's run (recorded in the episode's `identity.reattributed`); an unregistered series takes its name from the
+item's own title when that spells the same letters, or from the ID3 album written on 80% of its files; a file's own ID3
+title beats a title that only restates the file name. The parser also reads `YYYY MM DD` (spaces) as a date: it had read
+"1959 10" as a series.
+
+**Why**: the owner's catalog rule is no invented words, and her reading of it is that a meaningless raw string is worse
+than a composed or absent one. The measured defects were uploader habits (297 series named for a date, 3,840 empty or
+placeholder titles, 3,322 rip tags), not facts about the programs.
+
+**How to apply**: a new display rule goes in `titles.py` with a fixture and a case seen failing; a new withhold reason in
+`display_text.py` with a control; never read a file name, identifier or folder date into a display field. Guard:
+`tests/test_display_text.py` (fixtures, and over `PROJECTION` the live artifact fails it: 297 date-named series).
+`tests/test_reattribute.py`, `tests/test_titles.py`, `tests/test_otr_parse.py`. MEASURED on the 2026-10-29 caches, see the
+audit for the table: series 10,641 to 8,740, episodes 107,190 to 103,027 (3.9%, so the publish needs a `shrink_reason`);
+episode ids that changed are forwarded by recording (`forwarding.py`), no client change. A cache Release is not needed.

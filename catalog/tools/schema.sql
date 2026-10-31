@@ -12,7 +12,8 @@ CREATE TABLE series (
   claim TEXT,                    -- JSON: editorial claim or government-work entry
   in_spine INTEGER,
   otrr_programs TEXT,            -- JSON list of OTRR program ids folded into this series
-  alias_names TEXT               -- JSON list of the names this series was found under
+  alias_names TEXT,              -- JSON list of the names this series was found under
+  display_hold TEXT              -- why the apps do not show it (an upload code for a name); NULL when shown
 );
 CREATE TABLE episodes (
   id TEXT PRIMARY KEY,           -- "<series>|<YYYY-MM-DD>" | "<series>|n<num>" | "<series>|t<title>" | "x:<item>/<file>"

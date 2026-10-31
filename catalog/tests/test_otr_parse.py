@@ -61,6 +61,12 @@ EXPECT = [
      "The TransPacific Matter Aud1 - Gerald Mohr (OTR)"),
     ("44-03-26017StrangerInTheHouse..mp3", None, "1944-03-26", None, "017StrangerInTheHouse"),    # a glued 3-digit number is not a Hijri year
     ("Jack Benny Show, The 40-01-14.mp3", "Jack Benny Show, The", "1940-01-14", None, None),
+    # YYYY MM DD with spaces (2026-10-31): F5 read "1959 10" as a series named for a month and the day as its number
+    ("1959 10 01 World Series Game 1 Dodgers vs White Sox (Mel Allen and By Saam) Radio Broadcast.m4a", None, "1959-10-01", None,
+     "World Series Game 1 Dodgers vs White Sox (Mel Allen and By Saam) Radio Broadcast"),
+    ("1935 10-04 Tigers at Cubs World Series Game 3.mp3", None, "1935-10-04", None, "Tigers at Cubs World Series Game 3"),
+    ("1937 10 10  World Series Game 5 Yankees at Giants.m4a", None, "1937-10-10", None, "World Series Game 5 Yankees at Giants"),
+    ("19411208 part 5  pearl harbor.mp3", None, "1941-12-08", None, "part 5 pearl harbor"),
 ]
 # Controls for the 2026-10-19 families: what must NOT be read.
 CONTROLS = [
@@ -72,6 +78,8 @@ CONTROLS = [
     ("UIUC_Archives_1306005_0913_B.mp3", "title", None),       # an archive's shelf mark is not a title
     ("Jack Benny Show, The 48-11-21.mp3", "num", None),        # the "4" of "48" is not an episode number
     ("Some Show 12-10-45.mp3", "date", "1945-12-10"),          # M-D-YY last is still F4b
+    ("1959 13 01 Not A Date Show.mp3", "date", None),          # a spaced date must be a real one
+    ("1950 12 Monkeys Of The Air.mp3", "date", None),          # a year and a month are not a day
 ]
 # An upload day in the name is not a broadcast date (2026-10-29, Q1): "otrt-9-25-21" on an item
 # uploaded 2021-09-25 read as 1921 and made Escape's earliest episode.
