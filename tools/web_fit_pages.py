@@ -15,7 +15,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
 import web_run  # noqa: E402
 
+def after_the_evening():
+    """An instant (ISO, UTC) one hour after today's published evening ends, for the harness's ?now= door."""
+    import datetime, urllib.request
+    day = json.load(urllib.request.urlopen('https://eardrama.org/data/tonight.json', timeout=30))['days'][time.strftime('%Y-%m-%d')]
+    last = max(datetime.datetime.fromisoformat(s['utc_end'].replace('Z', '+00:00')) for s in day['slots'])
+    return (last + datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
 ROUTES = [('stations', '?view=radio&mute=1', r'Stations', '.station.g-row', 1),
+          ('stations-ended', '?view=radio&mute=1&now=' + after_the_evening(), r'Stations',
+           '.station.g-row .btn-primary[aria-label^="Replay"]', 1),
           ('surprise', '?view=surprise&mute=1', r'Surprise', '.pick .g-head', 2),
           ('search', '?view=search&q=welles&mute=1', r'People', '#search-body .g-row .g-window', 2),
           ('person-portrait', '?person=otrr:6237&mute=1', r'Webb', '.g-head .g-window img', 1),

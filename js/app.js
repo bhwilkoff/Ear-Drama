@@ -839,13 +839,14 @@
 
   /* The stations row (WEB-DESIGN §4.9): Tonight first, then each genre station, each with what is
      on now and one Listen live. A station's episodes are fetched only when someone tunes in. */
-  function liveButton(isLive, canListen, name, start) {
+  function liveButton(isLive, canListen, name, start, startOver = false) {
     if (isLive) {
       return el('button', { type: 'button', class: 'btn btn-live', 'aria-pressed': 'true',
                             onclick: () => { Player.pause(); stopLive(); } }, 'Listening live');
     }
-    return canListen ? el('button', { type: 'button', class: 'btn btn-primary', 'aria-label': `Listen live to ${name}`,
-                                      onclick: start }, icon('play'), 'Listen live') : null;
+    return canListen ? el('button', { type: 'button', class: 'btn btn-primary',
+                                      'aria-label': startOver ? `Replay ${name} from the start` : `Listen live to ${name}`,
+                                      onclick: start }, icon('play'), startOver ? 'Replay' : 'Listen live') : null;
   }
 
   /** A station is a grammar row: its show's window (the picture, else the star, else the title
@@ -881,8 +882,12 @@
         : where.phase === 'after' ? `Ended at ${localClock.format(new Date(last.utc_end))}`
         : slot && !d ? (slot.withheld || slot.episode ? 'Not in the catalog' : 'Not surviving') : null;
       const name = `Tonight in ${day.evening.slice(0, 4)}`;
+      const ended = where.phase === 'after';
+      const first = ended ? day.slots.find(s => s.episode && !s.withheld && details.get(s.episode.id)) : null;
+      const start = ended ? () => { if (live) stopLive(); Player.load(cardOf(details.get(first.episode.id), first.episode.series)); }
+        : () => { tuneIn(day, details); paintRadio(); };
       rows.push(stationRow(name, d ? slot : null, note,
-        liveButton(live && live.day === day, Boolean(d), name, () => { tuneIn(day, details); paintRadio(); }),
+        liveButton(live && live.day === day, ended ? Boolean(first) : Boolean(d), name, start, ended),
         { live: Boolean(live && live.day === day) }));
     }
     for (const st of stations) {
@@ -1783,10 +1788,28 @@
     following: 'Series you follow appear here.',
     history: 'Episodes you play appear here, newest first.',
   };
+  /** Export (Human-Shaped principle 11): the person's own data as files they keep; nothing is sent. */
+  function paintExportRow(row) {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const gather = async () => {
+      let productions = [];
+      try { const s = PlayStore.open(); await s.load(); productions = s.productions; } catch { /* no ear dramas to list */ }
+      return DataExport.build(Store, productions);
+    };
+    row.replaceChildren(
+      el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {
+        DataExport.save(`ear-drama-${stamp}.json`, 'application/json', JSON.stringify(await gather(), null, 2));
+      } }, 'Export my data'),
+      el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': 'Export history as CSV', onclick: async () => {
+        DataExport.save(`ear-drama-history-${stamp}.csv`, 'text/csv', DataExport.historyCsv(await gather()));
+      } }, 'History (CSV)'));
+  }
+
   function renderLibrary(r) {
     setTitle('Library');
     AccountUI.paintRow($('account-row'));
     TogetherUI.paintRow($('together-row'));
+    paintExportRow($('export-row'));
     const tab = LIBRARY_TABS.includes(r.p.get('tab')) ? r.p.get('tab') : 'continue';
     document.querySelectorAll('#library-tabs [data-lib]').forEach(b =>
       b.setAttribute('aria-pressed', String(b.dataset.lib === tab)));
