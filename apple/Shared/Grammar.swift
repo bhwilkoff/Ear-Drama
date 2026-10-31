@@ -97,10 +97,13 @@ private struct GradedImage: View {
 /// start at 9 % of the window, `blockSize` hundredths of it tall.
 nonisolated private struct MonogramShape: Shape {
     let text: String
+    /// A round window: the ink's own box (cap height, not the line box) centered in the circle, set at
+    /// 70 % so its corners stay inside it.
+    var centered = false
 
     func path(in rect: CGRect) -> Path {
         let side = min(rect.width, rect.height)
-        let size = side * CGFloat(Grammar.blockSize(text)) / 100
+        let size = side * CGFloat(Grammar.blockSize(text)) / 100 * (centered ? 0.7 : 1)
         let font = CTFontCreateWithName(TypeRamp.displayFontName as CFString, size, nil)
         let chars = Array(text.utf16)
         var glyphs = [CGGlyph](repeating: 0, count: chars.count)
@@ -116,6 +119,11 @@ nonisolated private struct MonogramShape: Shape {
             }
             x += advance.width + size * 0.02
         }
+        if centered {
+            let box = path.boundingBoxOfPath
+            var move = CGAffineTransform(translationX: rect.midX - box.midX, y: rect.midY - box.midY)
+            return Path(path.copy(using: &move) ?? path)
+        }
         return Path(path)
     }
 }
@@ -125,11 +133,12 @@ nonisolated private struct MonogramShape: Shape {
 struct TitleBlock: View {
     let name: String
     let genre: String?
+    var centered = false
 
     var body: some View {
         ZStack {
             Color.board(genre)
-            MonogramShape(text: Grammar.monogram(name))
+            MonogramShape(text: Grammar.monogram(name), centered: centered)
                 .stroke(Color.onBoard(genre), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
         }
     }
@@ -152,10 +161,7 @@ struct PictureWindow: View {
             switch fill {
             case .block:
                 if round {
-                    ZStack {
-                        Color.board(genre)
-                        TitleBlock(name: name, genre: genre).padding(side * 0.15)
-                    }
+                    TitleBlock(name: name, genre: genre, centered: true)
                 } else {
                     TitleBlock(name: name, genre: genre)
                 }
@@ -683,6 +689,7 @@ struct HeadBoard: View {
                     .buttonStyle(.card)
                     #else
                     .buttonStyle(.plain)
+                    .navigationLinkIndicatorVisibility(.hidden)
                     #endif
             } else {
                 board

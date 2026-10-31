@@ -49,6 +49,18 @@ struct ActionLabel: View {
 }
 
 #if !os(tvOS)
+private struct PageActionLabelStyle: LabelStyle {
+    let iconOnly: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly {
+            configuration.icon
+        } else {
+            HStack(spacing: Spacing.s2) { configuration.icon; configuration.title }
+        }
+    }
+}
+
 private struct ActionButtonStyle: ButtonStyle {
     let primary: Bool
     @Environment(\.actionsFolded) private var folded
@@ -56,7 +68,10 @@ private struct ActionButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let shape = RoundedRectangle(cornerRadius: Radius.control)
+        // A List row's automatic label style sets the icon in its own column (a wide gap before the
+        // title); the row says what it means: icon and title together, or the icon alone when folded.
         return configuration.label
+            .labelStyle(PageActionLabelStyle(iconOnly: folded && !primary))
             .font(TypeRamp.bodyStrong)
             .lineLimit(1)
             .foregroundStyle(primary ? Color.brandOnPrimary : Color.brandText)
@@ -93,7 +108,9 @@ struct ActionRow<Content: View>: View {
             .focusSection()
         #else
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: Spacing.s2) { content(); Spacer(minLength: 0) }
+            // fixedSize makes a variant's smallest width its full width: without it a label's
+            // truncated width "fits", and the row squeezes every title down to a clipped sliver.
+            HStack(spacing: Spacing.s2) { content().fixedSize(horizontal: true, vertical: false); Spacer(minLength: 0) }
             HStack(spacing: Spacing.s2) { content() }.environment(\.actionsFolded, true)
         }
         #endif
@@ -164,6 +181,7 @@ struct OnAirFaces: View {
                     .buttonStyle(.card)
                     #else
                     .buttonStyle(.plain)
+                    .navigationLinkIndicatorVisibility(.hidden)
                     #endif
                 }
             }

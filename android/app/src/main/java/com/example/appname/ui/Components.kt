@@ -333,7 +333,7 @@ fun PersonListItem(row: PersonRow, onOpen: () -> Unit) {
 /** A person's window: the portrait cropped round, else the monogram on the neutral board. */
 @Composable
 fun PersonWindow(art: Artwork?, name: String, modifier: Modifier = Modifier) {
-    Box(modifier.clip(CircleShape)) { PictureWindow(art, name, null, Modifier.fillMaxSize()) }
+    Box(modifier.clip(CircleShape)) { PictureWindow(art, name, null, Modifier.fillMaxSize(), round = true) }
 }
 
 /** A window for a series known only by its key (a station's slot): the title block until the catalog answers. */

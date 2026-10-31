@@ -138,7 +138,7 @@ fun OnTheAir(air: List<Credit>, genre: String?, onOpenPerson: (String) -> Unit, 
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp),
                 ) {
-                    PictureWindow(c.art, c.name, genre, Modifier.size(72.dp).clip(CircleShape))
+                    PictureWindow(c.art, c.name, genre, Modifier.size(72.dp).clip(CircleShape), round = true)
                     Text(
                         c.name,
                         style = MaterialTheme.typography.labelMedium,

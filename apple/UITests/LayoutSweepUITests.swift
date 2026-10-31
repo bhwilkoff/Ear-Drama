@@ -147,6 +147,72 @@ final class LayoutSweepUITests: DeviceTestCase {
         app.buttons["Not Now"].tap()
     }
 
+    /// The ink of a button's picture, as a box in points inside the button, measured against its own
+    /// corner color with the 1 pt border and a 3 pt edge left out.
+    private func inkBox(_ button: XCUIElement) -> CGRect? {
+        let shot = button.screenshot().image
+        guard let cg = shot.cgImage else { return nil }
+        let scale = shot.scale
+        let w = cg.width, h = cg.height
+        var data = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(data: &data, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        let edge = Int(4 * scale)
+        let c = ((h / 2) * w + edge) * 4
+        let base = (Int(data[c]), Int(data[c + 1]), Int(data[c + 2]))
+        var minX = w, maxX = -1, minY = h, maxY = -1
+        for y in edge..<(h - edge) {
+            for x in edge..<(w - edge) {
+                let i = (y * w + x) * 4
+                let d = abs(Int(data[i]) - base.0) + abs(Int(data[i + 1]) - base.1) + abs(Int(data[i + 2]) - base.2)
+                if d > 120 { minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y) }
+            }
+        }
+        guard maxX >= 0 else { return nil }
+        return CGRect(x: CGFloat(minX) / scale, y: CGFloat(minY) / scale,
+                      width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
+    }
+
+    /// Every button in a page's action row draws its picture and title centered: a folded button's glyph
+    /// in the middle, and nothing clipped at the trailing edge.
+    private func assertCentered(_ app: XCUIApplication, _ names: [String], _ page: String) {
+        for name in names {
+            let b = app.buttons[name].firstMatch
+            guard b.waitForExistence(timeout: 5) else { XCTFail("\(page): no '\(name)' button"); continue }
+            guard let ink = inkBox(b) else { XCTFail("\(page): '\(name)' drew nothing"); continue }
+            let f = b.frame
+            XCTAssertEqual(ink.midX, f.width / 2, accuracy: 4, "\(page): '\(name)' content off center (ink \(ink), button \(f))")
+            XCTAssertEqual(ink.midY, f.height / 2, accuracy: 4, "\(page): '\(name)' content off center vertically (ink \(ink), button \(f))")
+            XCTAssertGreaterThanOrEqual(f.width, 44, "\(page): '\(name)' narrower than 44 pt")
+        }
+    }
+
+    func testActionRowsAreCentered() {
+        let ep = launch(["APP_START_ITEM": Fixture.long, "APP_DOOR_SECONDS": "300"])
+        sleep(8)
+        shot(ep, "actions-episode")
+        assertCentered(ep, ["Play", "Add to queue", "Download", "Share"], "episode")
+        ep.buttons["Add to queue"].tap()
+        XCTAssertTrue(ep.buttons["In queue"].waitForExistence(timeout: 5), "queued")
+        shot(ep, "actions-episode-queued")
+        assertCentered(ep, ["Play", "In queue", "Download", "Share"], "episode, queued")
+        ep.buttons["In queue"].tap()
+        XCTAssertTrue(ep.buttons["Add to queue"].waitForExistence(timeout: 5), "unqueued again")
+        ep.terminate()
+        let series = launch(["APP_START_ITEM": Fixture.series, "APP_DOOR_SECONDS": "300"])
+        sleep(8)
+        shot(series, "actions-series")
+        assertCentered(series, ["Follow", "Share"], "series")
+        series.buttons["Follow"].tap()
+        XCTAssertTrue(series.buttons["Following"].waitForExistence(timeout: 5), "followed")
+        shot(series, "actions-series-following")
+        assertCentered(series, ["Following", "Share"], "series, following")
+        series.buttons["Following"].tap()
+        XCTAssertTrue(series.buttons["Follow"].waitForExistence(timeout: 5), "unfollowed again")
+    }
+
     func testSeries() {
         let app = tab("browse", ["APP_START_ITEM": "tarzan"])
         sweep(app, "series")
