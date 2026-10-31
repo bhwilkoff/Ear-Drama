@@ -49,7 +49,52 @@ struct PlayerSheet_iOS: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: Spacing.s6) {
+            ScrollView {
+                VStack(spacing: Spacing.s6) {
+                    controlsPage
+                        .frame(minHeight: sheetSize.height)
+                    if let item = player.item {
+                        NowPlayingPeople(episode: item.episode) { route in
+                            dismiss()
+                            store.push(route)
+                        }
+                        .padding(.horizontal, Spacing.s6)
+                        .padding(.bottom, Spacing.s6)
+                    }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .onGeometryChange(for: CGSize.self) { $0.size } action: { sheetSize = $0 }
+            .background(Color.brandBackground)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.down")
+                    }
+                    .accessibilityLabel("Close player")
+                }
+                if player.item?.episode.transcriptURL != nil {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            transcriptOpen = true
+                        } label: {
+                            Image(systemName: "text.quote")
+                        }
+                        .accessibilityLabel(Transcript.label)
+                    }
+                }
+            }
+            .sheet(isPresented: $transcriptOpen) {
+                if let url = player.item?.episode.transcriptURL { TranscriptSheet_iOS(url: url) }
+            }
+        }
+    }
+
+    /// The first screen: the picture, the title, the controls. The sections sit below it.
+    private var controlsPage: some View {
+        VStack(spacing: Spacing.s6) {
                 Spacer(minLength: 0)
                 if let item = player.item {
                     // R11a: full width, no taller than 44 % of the sheet, so Play stays on the first screen.
@@ -127,32 +172,6 @@ struct PlayerSheet_iOS: View {
                     .font(TypeRamp.body)
             }
             .padding(Spacing.s6)
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { sheetSize = $0 }
-            .background(Color.brandBackground)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "chevron.down")
-                    }
-                    .accessibilityLabel("Close player")
-                }
-                if player.item?.episode.transcriptURL != nil {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            transcriptOpen = true
-                        } label: {
-                            Image(systemName: "text.quote")
-                        }
-                        .accessibilityLabel(Transcript.label)
-                    }
-                }
-            }
-            .sheet(isPresented: $transcriptOpen) {
-                if let url = player.item?.episode.transcriptURL { TranscriptSheet_iOS(url: url) }
-            }
-        }
     }
 }
 

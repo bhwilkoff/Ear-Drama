@@ -47,10 +47,16 @@ struct FinishedTile: View {
 
 // MARK: - Browse's third scope
 
-/// What Browse lists: the shows, or the finished ear dramas.
+/// What Browse lists: the shows, the most heard voices, or the finished ear dramas.
 enum BrowseScope: String, CaseIterable, Hashable {
-    case shows, dramas
-    var title: String { self == .shows ? "Shows" : "Ear dramas" }
+    case shows, voices, dramas
+    var title: String {
+        switch self {
+        case .shows: "Shows"
+        case .voices: "Voices"
+        case .dramas: "Ear dramas"
+        }
+    }
 }
 
 /// The finished dramas as Browse's scope: the count and the order, then the tiles; loading, empty,

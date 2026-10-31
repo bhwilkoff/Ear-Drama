@@ -150,6 +150,14 @@ final class CatalogStore {
         await run { $0.episodes(ids: ids) } ?? []
     }
 
+    func sameDay(_ date: String?, excluding id: String) async -> [EpisodeRow] {
+        await run { $0.sameDay(date: date, excluding: id) } ?? []
+    }
+
+    func voices(limit: Int = 300) async -> [PersonRow] {
+        await run { $0.voices(limit: limit) } ?? []
+    }
+
     func randomEpisode() async -> EpisodeRow? {
         await run { $0.randomEpisode() } ?? nil
     }
