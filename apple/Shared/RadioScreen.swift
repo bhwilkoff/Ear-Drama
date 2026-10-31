@@ -134,7 +134,7 @@ private struct StationsSection: View {
         case .after: RadioClock.end(of: slots).map { "Ended at \(RadioClock.clock($0))" }
         case .during: slot.flatMap { evening.detail(for: $0) == nil ? RadioClock.gapNote($0) : nil }
         }
-        return StationRow(name: "Tonight in \(evening.day.year)", slot: slot, note: note,
+        return StationRow(name: "Tonight in \(evening.day.year)", genre: nil, slot: slot, note: note,
                           isLive: live.day == evening.day,
                           canListen: slot.flatMap { evening.detail(for: $0) } != nil) {
             player.isMuted = store.isMuted
@@ -144,7 +144,7 @@ private struct StationsSection: View {
 
     private func station(for station: Station) -> some View {
         let on = StationClock.onNow(station.slots, at: now)
-        return StationRow(name: station.name, slot: on?.slot,
+        return StationRow(name: station.name, genre: station.genre, slot: on?.slot,
                           note: on.flatMap { $0.slot.playableEpisode == nil ? RadioClock.gapNote($0.slot) : nil },
                           isLive: live.station == station.genre,
                           canListen: on?.slot.playableEpisode != nil) {
@@ -163,8 +163,11 @@ private struct StationsSection: View {
     }
 }
 
-private struct StationRow: View {
+/// A station as the grammar's row: its show's window (the picture, else the star, else the title
+/// block), the station's name, an event line of what is on, and Listen live.
+struct StationRow: View {
     let name: String
+    let genre: String?
     let slot: RadioSlot?
     let note: String?
     let isLive: Bool
@@ -173,26 +176,24 @@ private struct StationRow: View {
     let stop: () -> Void
 
     var body: some View {
+        let episode = slot?.playableEpisode
         HStack(alignment: .center, spacing: Spacing.s3) {
-            VStack(alignment: .leading, spacing: Spacing.s1) {
-                Text(verbatim: name).font(TypeRamp.bodyStrong)
-                if let episode = slot?.playableEpisode {
-                    Text(episode.series).font(TypeRamp.body)
-                    if let title = episode.title {
-                        Text(title)
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                            .lineLimit(1)
-                    }
+            HStack(spacing: Spacing.s3) {
+                if let episode {
+                    SeriesKeyWindow(key: GrammarSlot.seriesKey(episode.id), name: episode.series, side: 48)
+                } else {
+                    PictureWindow(art: nil, name: name, genre: genre, side: 48)
                 }
-                if let note {
-                    Text(verbatim: note)
-                        .font(TypeRamp.caption)
-                        .foregroundStyle(Color.brandTextMuted)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: name)
+                        .font(TypeRamp.bodyStrong)
+                        .foregroundStyle(Color.brandText)
+                        .multilineTextAlignment(.leading)
+                    EventLine(facts: [episode?.series, episode?.title, note])
                 }
+                Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
-            Spacer(minLength: 0)
             if isLive {
                 Button(action: stop) {
                     Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
@@ -211,82 +212,46 @@ private struct StationRow: View {
                 .accessibilityLabel("Listen live to \(name)")
             }
         }
+        .frame(minHeight: 64)
+        .listRowBackground(isLive ? Color.brandSurfaceAlt : nil)
     }
 }
 
-private struct SlotRow: View {
+/// A slot on the evening's clock as the grammar's row: the series' window, the series, an event
+/// line of the time and the episode, and the length, or "Now" in ink on the slot on the air.
+struct SlotRow: View {
     let slot: RadioSlot
     let zone: String
     let detail: EpisodeDetail?
     let isNow: Bool
     let play: (EpisodeDetail) -> Void
-    @ScaledMetric(relativeTo: .body) private var firstLineInset: CGFloat = 14
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
-            if let detail {
-                NavigationLink(value: Route.episode(detail.episode.id)) {
-                    let inset = firstLineInset
-                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
-                        time
-                        // R11a: an aired slot leads with its series' tile, its top on the first line.
-                        ArtTile(name: detail.episode.seriesName, genre: detail.episode.seriesGenre,
-                                face: detail.episode.seriesFace)
-                            .alignmentGuide(.firstTextBaseline) { $0[.top] + inset }
-                        VStack(alignment: .leading, spacing: Spacing.s1) {
-                            Text(slot.playableEpisode?.series ?? detail.episode.seriesName)
-                                .font(TypeRamp.bodyStrong)
-                            Text(detail.episode.displayTitle)
-                                .font(TypeRamp.body)
-                            caption([])
-                        }
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-                Button { play(detail) } label: {
-                    Image(systemName: "play.fill")
-                }
-                .buttonStyle(.borderless)
-                .tint(Color.brandPrimary)
-                .accessibilityLabel("Play \(detail.episode.displayTitle), \(slot.playableEpisode?.series ?? detail.episode.seriesName)")
-            } else {
-                // A gap is stated, never filled (R9). The paper's printed text
-                // is not drawn until the owner rules on it.
-                HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
-                    time
-                    VStack(alignment: .leading, spacing: Spacing.s1) {
-                        if let known = slot.knownSeries {
-                            Text(known).font(TypeRamp.body)
-                        }
-                        caption([RadioClock.gapNote(slot)])
-                    }
-                }
-                .foregroundStyle(Color.brandTextMuted)
-                .accessibilityElement(children: .combine)
-            }
-        }
-        .listRowBackground(isNow ? Color.brandSurfaceAlt : nil)
-        .accessibilityAddTraits(isNow ? .isSelected : [])
-    }
-
-    private var time: some View {
         let label = RadioClock.timeLabel(slot, zone: zone)
-        return VStack(alignment: .leading, spacing: 0) {
-            Text(verbatim: label.local).font(TypeRamp.tabular)
-            if let eastern = label.eastern {
-                Text(verbatim: eastern)
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
+        let length = "\(slot.lengthMin) min"
+        if let detail {
+            NavigationLink(value: Route.episode(detail.episode.id)) {
+                GrammarRow(visual: .window(detail.episode.seriesWindowArt, name: detail.episode.seriesName,
+                                           genre: detail.episode.seriesGenre),
+                           title: slot.playableEpisode?.series ?? detail.episode.seriesName,
+                           sub: [label.local, label.eastern, detail.episode.displayTitle, isNow ? length : nil],
+                           length: length, badge: isNow ? "Now" : nil,
+                           playLabel: "Play \(detail.episode.displayTitle), \(slot.playableEpisode?.series ?? detail.episode.seriesName)",
+                           onPlay: { play(detail) })
             }
+            .listRowBackground(isNow ? Color.brandSurfaceAlt : nil)
+            .accessibilityAddTraits(isNow ? .isSelected : [])
+        } else {
+            // A gap is stated, never filled (R9). The paper's printed text is not drawn until the owner rules on it.
+            GrammarRow(visual: .window(nil, name: slot.knownSeries ?? "", genre: nil),
+                       title: slot.knownSeries ?? RadioClock.gapNote(slot),
+                       sub: [label.local, label.eastern, slot.knownSeries == nil ? nil : RadioClock.gapNote(slot),
+                             isNow ? length : nil],
+                       length: length, badge: isNow ? "Now" : nil)
+                .listRowBackground(isNow ? Color.brandSurfaceAlt : nil)
+                .accessibilityAddTraits(isNow ? .isSelected : [])
         }
-        .frame(minWidth: 96, alignment: .leading)
-    }
-
-    private func caption(_ middle: [String]) -> some View {
-        let parts = (isNow ? ["Now"] : []) + middle + ["\(slot.lengthMin) min"]
-        return Text(verbatim: parts.joined(separator: " · "))
-            .font(TypeRamp.caption)
-            .foregroundStyle(Color.brandTextMuted)
     }
 }
+
 #endif

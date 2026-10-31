@@ -364,6 +364,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   download never plays, and the lock screen's picture is the one Now
   Playing draws, so with no network it is the typographic card.
 
+- **D3-8 Stations, Surprise, People, a person** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: a `GrammarRow` per station and slot (`StationRow`, `SlotRow`; "Now" in an ink pill), head boards for Surprise's picks in a ScrollView, `PersonRowLabel` as a round-window row, and `PersonScreen` as a head board, a rail of `ShowTile`s, then date-block rows with the roles as the sub line.
 - **§4.9 Stations** (was Radio, Decision 068) opens with the stations row,
   the web's §4.9 as the List's first section (`StationsSection`): Tonight in
   19xx first, then each genre station from `stations.json`

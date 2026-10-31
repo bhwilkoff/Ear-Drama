@@ -1,9 +1,12 @@
 package com.example.appname.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,12 +33,17 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.EpisodeListItem
-import com.example.appname.ui.FaceHero
+import com.example.appname.data.PersonShows
+import com.example.appname.ui.HeadBoard
+import com.example.appname.ui.ShowTile
+import com.example.appname.ui.TILE_WIDTH_DP
+import com.example.appname.ui.innerWidth
+import com.example.appname.ui.rememberNameHeight
+import com.example.appname.ui.seriesYears
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.LoadableContent
 import com.example.appname.ui.LocalAppContainer
-import com.example.appname.ui.Meta
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.episodeCount
 import com.example.appname.ui.rememberCatalogQuery
@@ -51,7 +59,7 @@ import com.example.appname.ui.theme.Spacing
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit) {
+fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSeries: (String) -> Unit = {}) {
     val container = LocalAppContainer.current
     val haptics = rememberHaptics()
     val page by rememberCatalogQuery(id) { db -> db.personPage(id) }
@@ -75,25 +83,44 @@ fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit
                 return@LoadableContent
             }
             val groups = remember(personPage, newestFirst) { personPage.groups(newestFirst) }
+            val showsLoad by rememberCatalogQuery(personPage.person.id, groups.size) { db ->
+                groups.mapNotNull { g -> db.series(g.seriesKey)?.let { g.seriesKey to it } }.toMap()
+            }
+            val shows = (showsLoad as? Loadable.Ready)?.value ?: emptyMap()
             // On a TV the D-pad starts on the first episode (§9.2).
             val firstRow = remember { FocusRequester() }
             val firstId = groups.firstOrNull()?.episodes?.firstOrNull()?.episode?.id
             ClaimTvFocus(firstRow, firstId)
             LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-                personPage.person.face?.let { face ->
-                    item(key = "face") {
-                        FaceHero(
-                            face, null,
-                            Modifier.padding(start = Spacing.S4.dp, end = Spacing.S4.dp, top = Spacing.S2.dp, bottom = Spacing.S2.dp),
-                            showsName = false,
-                            facts = listOfNotNull(personPage.person.years, episodeCount(personPage.episodes.size)).joinToString(" · "),
-                        )
-                    }
-                } ?: item(key = "meta") {
-                    Meta(
-                        listOfNotNull(personPage.person.years, episodeCount(personPage.episodes.size)).joinToString(" · "),
-                        Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+                item(key = "head") {
+                    HeadBoard(
+                        name = personPage.person.name, genre = null, art = personPage.person.art, kicker = null,
+                        facts = listOf(
+                            personPage.person.years, episodeCount(personPage.episodes.size),
+                            if (groups.size > 1) "${groups.size} shows" else null,
+                        ),
+                        first = PersonShows.first(personPage.episodes), last = PersonShows.last(personPage.episodes),
+                        years = PersonShows.yearCounts(personPage.episodes),
                     )
+                }
+                if (groups.size > 1) {
+                    item(key = "shows") {
+                        val tiles = remember(groups, shows) {
+                            groups.map { PersonShows.tile(shows[it.seriesKey], it.seriesKey, it.seriesName, it.episodes) }
+                        }
+                        val nameHeight = rememberNameHeight(tiles.map { it.name }, innerWidth(TILE_WIDTH_DP.dp))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
+                        ) {
+                            items(tiles, key = { "s:" + it.key }) { tile ->
+                                ShowTile(
+                                    tile, onOpen = { onOpenSeries(tile.key) }, nameHeight = nameHeight,
+                                    facts = listOf(seriesYears(tile) ?: "Undated", episodeCount(tile.episodes)),
+                                )
+                            }
+                        }
+                    }
                 }
                 if (personPage.episodes.size > 1) {
                     item(key = "order") {

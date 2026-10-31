@@ -36,7 +36,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import com.example.appname.data.Artwork
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentDescription
@@ -313,23 +316,33 @@ fun EpisodeListItem(
     }
 }
 
-/** A person in Search: portrait or initial, the name, and how many episodes credit them. */
+/** A person in Search: the portrait in a round window, else the monogram, the name, how many episodes credit them. */
 @Composable
 fun PersonListItem(row: PersonRow, onOpen: () -> Unit) {
-    ListItem(
-        modifier = Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open person", onClick = onOpen),
-        leadingContent = { ArtTile(row.person.name, null, row.person.face) },
-        headlineContent = {
-            Column {
-                Text(row.person.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    episodeCount(row.episodes),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
+    GrammarRow(
+        title = row.person.name,
+        visual = { m -> PersonWindow(row.person.art, row.person.name, m) },
+        onOpen = onOpen,
+        sub = listOf(episodeCount(row.episodes)),
+        openLabel = "Open person",
     )
+}
+
+/** A person's window: the portrait cropped round, else the monogram on the neutral board. */
+@Composable
+fun PersonWindow(art: Artwork?, name: String, modifier: Modifier = Modifier) {
+    Box(modifier.clip(CircleShape)) { PictureWindow(art, name, null, Modifier.fillMaxSize()) }
+}
+
+/** A window for a series known only by its key (a station's slot): the title block until the catalog answers. */
+@Composable
+fun SeriesKeyWindow(key: String, name: String, modifier: Modifier = Modifier) {
+    val container = LocalAppContainer.current
+    val dbVersion by container.catalog.dbVersion.collectAsState()
+    val row by produceState<SeriesRow?>(null, key, dbVersion) {
+        value = if (key.isEmpty()) null else container.catalog.awaitDb()?.series(key)
+    }
+    PictureWindow(row?.windowArt, name, row?.genre, modifier)
 }
 
 fun episodeCount(n: Int): String = "%,d %s".format(n, if (n == 1) "episode" else "episodes")

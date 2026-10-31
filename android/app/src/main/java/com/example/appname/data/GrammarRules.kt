@@ -301,3 +301,29 @@ fun episodeFacts(
     season?.let { "Season $it" },
     if (!title.isNullOrEmpty() && num != null) "No. $num" else null,
 ).filterNotNull().filter { it.trim().isNotEmpty() }
+
+/** A person's shows as the page draws them: the years and run strip are the person's own episodes in each series. */
+object PersonShows {
+    private fun years(episodes: List<PersonEpisode>): List<Int> =
+        episodes.mapNotNull { it.episode.airDate?.take(4)?.toIntOrNull() }
+
+    /** `[first year, count, count, ...]`, one count per year, or null when no episode is dated. */
+    fun yearCounts(episodes: List<PersonEpisode>): List<Int>? {
+        val ys = years(episodes)
+        val lo = ys.minOrNull() ?: return null
+        val counts = IntArray(ys.max() - lo + 1)
+        ys.forEach { counts[it - lo] += 1 }
+        return listOf(lo) + counts.toList()
+    }
+
+    fun first(episodes: List<PersonEpisode>): String? = years(episodes).minOrNull()?.toString()
+    fun last(episodes: List<PersonEpisode>): String? = years(episodes).maxOrNull()?.toString()
+
+    /** The series as a tile: its picture and genre, the person's years and count. */
+    fun tile(series: SeriesRow?, key: String, name: String, episodes: List<PersonEpisode>): SeriesRow =
+        SeriesRow(
+            key, series?.name ?: name, series?.genre, first(episodes), last(episodes), episodes.size,
+            face = series?.face, picture = series?.picture, pictureKind = series?.pictureKind,
+            yearCounts = yearCounts(episodes),
+        )
+}

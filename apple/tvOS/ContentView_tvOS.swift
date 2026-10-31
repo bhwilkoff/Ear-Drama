@@ -541,6 +541,7 @@ private struct PersonScreen_tvOS: View {
     let id: String
     @Environment(CatalogStore.self) private var catalog
     @State private var page: PersonPage??
+    @State private var shows: [String: SeriesRow] = [:]
     @State private var newestFirst = false
 
     var body: some View {
@@ -549,18 +550,35 @@ private struct PersonScreen_tvOS: View {
             case .none: ProgressView()
             case .some(.none): EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
+                let groups = page.groups(newestFirst: newestFirst)
+                let run = PersonShows.span(page.episodes)
                 List {
                     Section {
-                        HStack(alignment: .top, spacing: Spacing.s6) {
-                            if let face = page.person.face { FaceFigure(face: face, height: 250) }
-                            VStack(alignment: .leading, spacing: Spacing.s2) {
-                                Text(page.person.name).font(TypeRamp.pageTitle)
-                                Text(verbatim: PersonScreen_tvOS.facts(page))
-                                    .font(TypeRamp.caption)
-                                    .foregroundStyle(Color.brandTextMuted)
+                        HeadBoard(kicker: nil, name: page.person.name, genre: nil, art: page.person.art,
+                                  first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes),
+                                  facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
+                                          groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
+                                  showsCredit: true)
+                            .listRowBackground(Color.clear)
+                        if groups.count > 1 {
+                            ScrollView(.horizontal) {
+                                HStack(alignment: .top, spacing: 40) {
+                                    ForEach(groups) { group in
+                                        let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
+                                                                    name: group.seriesName, episodes: group.episodes)
+                                        NavigationLink(value: Route.series(group.seriesKey)) {
+                                            ShowTile(series: tile,
+                                                     facts: [tile.yearSpan ?? "Undated", countText(group.episodes.count, "episode", "episodes")])
+                                        }
+                                        .buttonStyle(.card)
+                                    }
+                                }
+                                .sharesNameHeight()
+                                .padding(.vertical, Spacing.s6)
                             }
+                            .scrollClipDisabled()
+                            .listRowBackground(Color.clear)
                         }
-                        .focusable(false)
                         if page.episodes.count > 1 {
                             Button {
                                 newestFirst.toggle()
@@ -569,11 +587,11 @@ private struct PersonScreen_tvOS: View {
                             }
                         }
                     }
-                    ForEach(page.groups(newestFirst: newestFirst)) { group in
+                    ForEach(groups) { group in
                         Section(group.seriesName) {
                             ForEach(group.episodes) { item in
                                 NavigationLink(value: Route.episode(item.id)) {
-                                    EpisodeRowLabel(episode: item.episode, showSeries: true, note: item.rolesLine)
+                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
                                 }
                             }
                         }
@@ -583,12 +601,13 @@ private struct PersonScreen_tvOS: View {
         }
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
-            page = .some(await catalog.personPage(id))
+            let loaded = await catalog.personPage(id)
+            page = .some(loaded)
+            if let loaded {
+                let keys = Array(Set(loaded.episodes.map(\.episode.seriesKey)))
+                shows = Dictionary(uniqueKeysWithValues: await catalog.series(keys).map { ($0.key, $0) })
+            }
         }
-    }
-
-    static func facts(_ page: PersonPage) -> String {
-        [page.person.years, PersonRowLabel.count(page.episodes.count)].compactMap { $0 }.joined(separator: " · ")
     }
 }
 

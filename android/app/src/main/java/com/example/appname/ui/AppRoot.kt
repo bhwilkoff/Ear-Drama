@@ -235,7 +235,7 @@ fun AppRoot(
                                 )
                             }
                             entry<Route.Person> { route ->
-                                PersonScreen(route.id, onBack = back, onOpenEpisode = openEpisode)
+                                PersonScreen(route.id, onBack = back, onOpenEpisode = openEpisode, onOpenSeries = openSeries)
                             }
                             entry<Route.Invitation> {
                                 InvitationScreen(onBack = back, onOpenProduction = { id ->

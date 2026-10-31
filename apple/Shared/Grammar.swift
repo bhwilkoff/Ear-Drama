@@ -474,6 +474,35 @@ enum GrammarVisual {
     case window(Artwork?, name: String, genre: String?)
     /// The date block, for a list of one series.
     case date(String?, number: Int?, genre: String?)
+    /// A series known only by its key (a station's slot): its window, read from the catalog.
+    case seriesKey(String, name: String)
+    /// A person: the portrait in a round window, else the monogram.
+    case person(Artwork?, name: String)
+}
+
+/// A slot's episode id is `series|date`; the series key is what its window is read by.
+enum GrammarSlot {
+    static func seriesKey(_ episodeID: String) -> String {
+        String(episodeID.split(separator: "|", maxSplits: 1).first ?? "")
+    }
+}
+
+/// A window for a series the row knows only by key: the title block until the catalog answers, then
+/// the series' picture and genre.
+struct SeriesKeyWindow: View {
+    let key: String
+    let name: String
+    let side: CGFloat
+    @Environment(CatalogStore.self) private var catalog
+    @State private var row: SeriesRow?
+
+    var body: some View {
+        PictureWindow(art: row?.windowArt, name: name, genre: row?.genre, side: side)
+            .task(id: key) {
+                guard !key.isEmpty else { return }
+                row = await catalog.series([key]).first
+            }
+    }
 }
 
 /// The one row (R11b): 64 pt whatever it carries, a 48 pt visual, the title (L3), the sub line
@@ -486,6 +515,8 @@ struct GrammarRow: View {
     var sub: [String?] = []
     var quote: String? = nil
     var length: String? = nil
+    /// Ink on the primary color where the length goes: the slot on the air.
+    var badge: String? = nil
     var progress: Double? = nil
     var genre: String? = nil
     var playLabel: String? = nil
@@ -519,7 +550,14 @@ struct GrammarRow: View {
                     }
                 }
                 Spacer(minLength: 0)
-                if let length {
+                if let badge {
+                    Text(verbatim: badge)
+                        .font(TypeRamp.caption.weight(.semibold))
+                        .foregroundStyle(Color.brandOnPrimary)
+                        .padding(.horizontal, Spacing.s2)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.brandPrimary))
+                } else if let length {
                     Text(verbatim: length)
                         .font(TypeRamp.tabular)
                         .foregroundStyle(Color.brandTextMuted)
@@ -551,6 +589,10 @@ struct GrammarRow: View {
             PictureWindow(art: art, name: name, genre: genre, side: visualSide)
         case let .date(date, number, genre):
             DateBlock(date: date, number: number, genre: genre, side: visualSide)
+        case let .seriesKey(key, name):
+            SeriesKeyWindow(key: key, name: name, side: visualSide)
+        case let .person(art, name):
+            PictureWindow(art: art, name: name, genre: nil, side: visualSide, round: true)
         }
     }
 

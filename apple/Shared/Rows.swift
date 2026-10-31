@@ -143,24 +143,14 @@ extension Credit {
     var line: String { character.map { "\(name) as \($0)" } ?? name }
 }
 
-/// A person in Search: their portrait or initial, the name, and how many episodes credit them.
+/// A person in Search: their portrait in a round window, else their monogram, the name, and how
+/// many episodes credit them.
 struct PersonRowLabel: View {
     let row: PersonRow
 
     var body: some View {
-        HStack(spacing: Spacing.s3) {
-            ArtTile(name: row.person.name, genre: nil, face: row.person.face)
-            VStack(alignment: .leading, spacing: Spacing.s1) {
-                Text(row.person.name)
-                    .font(TypeRamp.bodyStrong)
-                    .foregroundStyle(Color.brandText)
-                    .multilineTextAlignment(.leading)
-                Text(verbatim: PersonRowLabel.count(row.episodes))
-                    .font(TypeRamp.caption)
-                    .foregroundStyle(Color.brandTextMuted)
-            }
-        }
-        .accessibilityElement(children: .combine)
+        GrammarRow(visual: .person(row.person.art, name: row.person.name), title: row.person.name,
+                   sub: [Self.count(row.episodes)])
     }
 
     static func count(_ n: Int) -> String {

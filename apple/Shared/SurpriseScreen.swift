@@ -3,13 +3,15 @@ import SwiftUI
 
 /// Surprise (iOS-DESIGN §4.11; Decision 068): an episode, an evening, and a
 /// play, drawn from the data when the screen opens and again on Shuffle. Each
-/// plays or starts in one tap. No copy is written; a pick with no data is absent.
+/// is a head board in the grammar with one tap to play or start. No copy is
+/// written; a pick with no data is absent.
 struct SurpriseScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(AudioPlayer.self) private var player
     @Environment(AppStore.self) private var store
     @Environment(PlaysLibrary.self) private var plays
     @State private var episode: EpisodeRow?
+    @State private var series: SeriesRow?
     @State private var evening: SurpriseEvening?
     @State private var script: PlayScript?
     @State private var loaded = false
@@ -19,46 +21,51 @@ struct SurpriseScreen: View {
 
     var body: some View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
-        List {
-            if !loaded {
-                SkeletonRows(count: 3)
-            } else if episode == nil && evening == nil && script == nil {
-                EmptyState("Nothing to pick from yet", systemImage: "shuffle")
-            }
-            if let episode {
-                Section("An episode") {
-                    NavigationLink(value: Route.episode(episode.id)) {
-                        EpisodeRowLabel(episode: episode, showSeries: true)
-                    }
-                    Button { play(episode.id) } label: { Label("Play", systemImage: "play.fill").foregroundStyle(Color.brandPrimary) }
-                        .tint(Color.brandPrimary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.s6) {
+                if !loaded {
+                    SkeletonRows(count: 3)
+                } else if episode == nil && evening == nil && script == nil {
+                    EmptyState("Nothing to pick from yet", systemImage: "shuffle")
                 }
-            }
-            if let evening {
-                Section("An evening") {
-                    VStack(alignment: .leading, spacing: Spacing.s1) {
-                        Text(verbatim: AirDate.display(evening.day.evening)).font(TypeRamp.bodyStrong)
-                        if let line = evening.day.stationLine {
-                            Text(verbatim: line).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+                if let episode {
+                    pick("An episode") {
+                        NavigationLink(value: Route.episode(episode.id)) {
+                            HeadBoard(kicker: nil, name: episode.seriesName, genre: episode.seriesGenre,
+                                      art: episode.seriesWindowArt, first: series?.firstDate, last: series?.lastDate,
+                                      years: series?.yearCounts,
+                                      facts: [episode.displayTitle, AirDate.stored(episode.airDate)])
+                        }
+                        .buttonStyle(.plain)
+                        playButton { play(episode.id) }
+                    }
+                }
+                if let evening {
+                    let first = evening.first?.episode
+                    pick("An evening") {
+                        HeadBoard(kicker: nil, name: AirDate.display(evening.day.evening), genre: first?.seriesGenre,
+                                  art: first?.seriesWindowArt, first: nil, last: nil,
+                                  facts: [evening.day.stationLine, first?.seriesName])
+                        if let first {
+                            // From its start, never live, and nothing queued behind it.
+                            playButton { play(first.id) }
                         }
                     }
-                    .accessibilityElement(children: .combine)
-                    if let first = evening.first {
-                        NavigationLink(value: Route.episode(first.episode.id)) {
-                            EpisodeRowLabel(episode: first.episode, showSeries: true)
+                }
+                if let script {
+                    pick("A play") {
+                        NavigationLink(value: PlayRoute.script(script.id)) {
+                            HeadBoard(kicker: nil, name: script.title, genre: PlayScript.boardGenre, art: nil,
+                                      first: nil, last: nil, facts: PlayHead.facts(script),
+                                      credits: script.authorLineWithYears, castScript: script)
                         }
-                        // From its start, never live, and nothing queued behind it.
-                        Button { play(first.episode.id) } label: { Label("Play", systemImage: "play.fill").foregroundStyle(Color.brandPrimary) }
-                            .tint(Color.brandPrimary)
+                        .buttonStyle(.plain)
+                        StartEarDramaButton(script: script)
                     }
                 }
             }
-            if let script {
-                Section("A play") {
-                    NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
-                    StartEarDramaButton(script: script)
-                }
-            }
+            .padding(Spacing.s4)
+            .modifier(ReadableColumn())
         }
         .navigationTitle("Surprise")
         .toolbar {
@@ -75,8 +82,24 @@ struct SurpriseScreen: View {
             script = plays.scripts.randomElement()
             episode = await picked
             evening = await night
+            if let key = episode?.seriesKey { series = await catalog.series([key]).first } else { series = nil }
             loaded = true
         }
+    }
+
+    private func pick<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s2) {
+            Text(title).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).accessibilityAddTraits(.isHeader)
+            content()
+        }
+    }
+
+    private func playButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label("Play", systemImage: "play.fill").foregroundStyle(Color.brandOnPrimary)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(Color.brandPrimary)
     }
 }
 #endif

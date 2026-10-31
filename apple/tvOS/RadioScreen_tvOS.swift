@@ -171,7 +171,7 @@ private struct StationsShelf_tvOS: View {
         case .after: RadioClock.end(of: slots).map { "Ended at \(RadioClock.clock($0))" }
         case .during: slot.flatMap { evening.detail(for: $0) == nil ? RadioClock.gapNote($0) : nil }
         }
-        return StationCard_tvOS(name: "Tonight in \(evening.day.year)", slot: slot, note: note,
+        return StationCard_tvOS(name: "Tonight in \(evening.day.year)", genre: nil, slot: slot, note: note,
                                 isLive: live.day == evening.day,
                                 canListen: slot.flatMap { evening.detail(for: $0) } != nil) {
             player.isMuted = store.isMuted
@@ -182,7 +182,7 @@ private struct StationsShelf_tvOS: View {
 
     private func card(for station: Station) -> some View {
         let on = StationClock.onNow(station.slots, at: now)
-        return StationCard_tvOS(name: station.name, slot: on?.slot,
+        return StationCard_tvOS(name: station.name, genre: station.genre, slot: on?.slot,
                                 note: on.flatMap { $0.slot.playableEpisode == nil ? RadioClock.gapNote($0.slot) : nil },
                                 isLive: live.station == station.genre,
                                 canListen: on?.slot.playableEpisode != nil) {
@@ -202,49 +202,42 @@ private struct StationsShelf_tvOS: View {
     }
 }
 
+/// A station as the grammar's tile on its genre's board: its show's window, the station's name, the
+/// strip, and what is on; focus lifts the whole tile through the card style.
 private struct StationCard_tvOS: View {
     let name: String
+    let genre: String?
     let slot: RadioSlot?
     let note: String?
     let isLive: Bool
     let canListen: Bool
     let listen: () -> Void
     let stop: () -> Void
+    @Environment(CatalogStore.self) private var catalog
+    @State private var show: SeriesRow?
 
     var body: some View {
+        let episode = slot?.playableEpisode
+        let key = episode.map { GrammarSlot.seriesKey($0.id) } ?? ""
         Button {
             if isLive { stop() } else if canListen { listen() }
         } label: {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                Text(verbatim: name).font(TypeRamp.bodyStrong)
-                if let episode = slot?.playableEpisode {
-                    Text(episode.series).font(TypeRamp.body).lineLimit(1)
-                    if let title = episode.title {
-                        Text(title).font(TypeRamp.caption).lineLimit(1)
-                    }
-                }
-                if let note {
-                    Text(verbatim: note).font(TypeRamp.caption)
-                }
-                Spacer(minLength: 0)
-                if isLive {
-                    Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
-                        .font(TypeRamp.caption)
-                } else if canListen {
-                    Label("Listen live", systemImage: "play.fill")
-                        .font(TypeRamp.caption)
-                }
-            }
-            .frame(width: 520, height: 260, alignment: .topLeading)
-            .padding(Spacing.s6)
+            ShowTile(series: SeriesRow(key: "station-\(name)", name: name, genre: genre ?? show?.genre, firstDate: nil,
+                                       lastDate: nil, networks: [], episodeCount: 0, face: show?.face, picture: show?.picture),
+                     facts: [episode?.series, episode?.title ?? note, isLive ? "Listening live" : nil].compactMap { $0 })
         }
         .buttonStyle(.card)
         .accessibilityValue(isLive ? "Listening live" : "")
+        .accessibilityHint(isLive ? "Stops listening live" : "Listens live")
+        .task(id: key) {
+            show = key.isEmpty ? nil : await catalog.series([key]).first
+        }
     }
 }
 
-/// A surviving slot opens its episode (Play is on Detail, §4.4); a gap is a
-/// focus stop that reads its time, length, and why, never the printed text.
+/// A surviving slot opens its episode (Play is on Detail, §4.4); a gap is a focus stop that reads
+/// its time, length, and why, never the printed text. Each is the grammar's row, "Now" in ink on
+/// the slot on the air.
 private struct SlotRow_tvOS: View {
     let slot: RadioSlot
     let zone: String
@@ -253,42 +246,28 @@ private struct SlotRow_tvOS: View {
     @FocusState private var focused: Bool
 
     var body: some View {
+        let label = RadioClock.timeLabel(slot, zone: zone)
+        let length = "\(slot.lengthMin) min"
         if let detail {
             NavigationLink(value: Route.episode(detail.episode.id)) {
-                row(title: slot.playableEpisode?.series ?? detail.episode.seriesName,
-                    subtitle: detail.episode.displayTitle, note: nil)
+                GrammarRow(visual: .window(detail.episode.seriesWindowArt, name: detail.episode.seriesName,
+                                           genre: detail.episode.seriesGenre),
+                           title: slot.playableEpisode?.series ?? detail.episode.seriesName,
+                           sub: [label.local, label.eastern, detail.episode.displayTitle, isNow ? length : nil],
+                           length: length, badge: isNow ? "Now" : nil)
             }
         } else {
-            row(title: slot.knownSeries, subtitle: nil, note: RadioClock.gapNote(slot))
+            GrammarRow(visual: .window(nil, name: slot.knownSeries ?? "", genre: nil),
+                       title: slot.knownSeries ?? RadioClock.gapNote(slot),
+                       sub: [label.local, label.eastern, slot.knownSeries == nil ? nil : RadioClock.gapNote(slot),
+                             isNow ? length : nil],
+                       length: length, badge: isNow ? "Now" : nil)
                 .padding(Spacing.s4)
                 .foregroundStyle(focused ? Color.brandText : Color.brandTextMuted)
                 .background(RoundedRectangle(cornerRadius: Radius.card).fill(focused ? Color.brandSurfaceAlt : .clear))
                 .focusable()
                 .focused($focused)
         }
-    }
-
-    private func row(title: String?, subtitle: String?, note: String?) -> some View {
-        let label = RadioClock.timeLabel(slot, zone: zone)
-        let caption = ((isNow ? ["Now"] : []) + [note].compactMap { $0 } + ["\(slot.lengthMin) min"])
-            .joined(separator: " · ")
-        return HStack(alignment: .firstTextBaseline, spacing: Spacing.s6) {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(verbatim: label.local).font(TypeRamp.tabular)
-                if let eastern = label.eastern {
-                    Text(verbatim: eastern).font(TypeRamp.caption)
-                }
-            }
-            .frame(minWidth: 240, alignment: .leading)
-            VStack(alignment: .leading, spacing: Spacing.s1) {
-                if let title { Text(title).font(TypeRamp.bodyStrong) }
-                if let subtitle { Text(subtitle).font(TypeRamp.body).lineLimit(2) }
-                Text(verbatim: caption).font(TypeRamp.caption)
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: 1400, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 }
 #endif

@@ -918,6 +918,7 @@ struct PersonScreen: View {
     let id: String
     @Environment(CatalogStore.self) private var catalog
     @State private var page: PersonPage??
+    @State private var shows: [String: SeriesRow] = [:]
     @State private var newestFirst = false
 
     var body: some View {
@@ -928,25 +929,44 @@ struct PersonScreen: View {
             case .some(.none):
                 EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
+                let groups = page.groups(newestFirst: newestFirst)
+                let run = PersonShows.span(page.episodes)
                 List {
-                    if let face = page.person.face {
-                        Section {
-                            FaceHero(face: face, genre: nil, showsName: false, facts: Self.facts(page))
-                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: Spacing.s2, trailing: 0))
-                                .listRowBackground(Color.clear)
-                        }
-                    } else {
-                        Section {
-                            Text(verbatim: Self.facts(page))
-                                .font(TypeRamp.caption)
-                                .foregroundStyle(Color.brandTextMuted)
+                    Section {
+                        HeadBoard(kicker: nil, name: page.person.name, genre: nil, art: page.person.art,
+                                  first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes),
+                                  facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
+                                          groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
+                                  showsCredit: true)
+                            .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        if groups.count > 1 {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                LazyHStack(alignment: .top, spacing: Spacing.s3) {
+                                    ForEach(groups) { group in
+                                        NavigationLink(value: Route.series(group.seriesKey)) {
+                                            let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
+                                                                        name: group.seriesName, episodes: group.episodes)
+                                            ShowTile(series: tile, width: 160,
+                                                     facts: [tile.yearSpan ?? "Undated", countText(group.episodes.count, "episode", "episodes")])
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .sharesNameHeight()
+                                .padding(.horizontal, Spacing.s4)
+                            }
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         }
                     }
-                    ForEach(page.groups(newestFirst: newestFirst)) { group in
+                    ForEach(groups) { group in
                         Section {
                             ForEach(group.episodes) { item in
                                 NavigationLink(value: Route.episode(item.id)) {
-                                    EpisodeRowLabel(episode: item.episode, showSeries: true, note: item.rolesLine)
+                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
                                 }
                                 .playContextMenu(item.id)
                             }
@@ -955,6 +975,7 @@ struct PersonScreen: View {
                         }
                     }
                 }
+                .modifier(ReadableColumn())
                 .navigationTitle(page.person.name)
                 .toolbar {
                     if page.episodes.count > 1 {
@@ -974,17 +995,17 @@ struct PersonScreen: View {
             }
         }
         #if os(iOS)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         #endif
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
-            page = .some(await catalog.personPage(id))
+            let loaded = await catalog.personPage(id)
+            page = .some(loaded)
+            if let loaded {
+                let keys = Array(Set(loaded.episodes.map(\.episode.seriesKey)))
+                shows = Dictionary(uniqueKeysWithValues: await catalog.series(keys).map { ($0.key, $0) })
+            }
         }
-    }
-
-    /// The years and the count, facts from the data only (no bio is written).
-    static func facts(_ page: PersonPage) -> String {
-        [page.person.years, PersonRowLabel.count(page.episodes.count)].compactMap { $0 }.joined(separator: " · ")
     }
 }
 
