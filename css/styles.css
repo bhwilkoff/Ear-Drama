@@ -1181,3 +1181,17 @@ html.tv .np-together { display: none; }
   .np-options .sleep-btn { min-width: 0; }
   .np-options .sleep-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* Now Playing's verbs and people (D3-9): queue and Share on one line that never wraps apart; the faces and the
+   night's broadcasts under the controls. */
+.np-verbs { display: flex; flex-wrap: nowrap; justify-content: center; gap: var(--space-2); }
+.np-verbs .btn { flex: none; white-space: nowrap; }
+.np-people { margin-top: var(--space-4); }
+.np-people .g-faces { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
+
+/* Voices (D3-9): the most heard people as round faces, in a grid on Browse and a rail on Home. */
+.g-faces-voices { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.g-faces-voices .g-face > .g-window, .g-faces-rail .g-face > .g-window { width: 84px; }
+.g-faces-rail { display: grid; grid-auto-flow: column; grid-auto-columns: 120px; gap: var(--space-2); overflow-x: auto; scroll-snap-type: x proximity; padding: 0 0 var(--space-2); list-style: none; }
+.g-faces-rail > li { scroll-snap-align: start; min-width: 0; }
+.g-face-count { color: var(--color-text-muted); white-space: nowrap; }

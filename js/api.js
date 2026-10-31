@@ -471,10 +471,32 @@ const API = (() => {
       const d = rowsOf(m.fields.detail, [rec])[0];
       const first = rowsOf(m.fields.recording, d.recordings || [])[0];
       return { id, date: d.date, title: d.title, series: d.series, seriesName: names.get(d.series) || null,
-        length: d.length, url: first ? first.url : null, li: d.li, ltp: d.ltp };
+        network: d.network || null, length: d.length, url: first ? first.url : null, li: d.li, ltp: d.ltp };
     }));
     return recs.filter(Boolean);
   }
+
+  /**
+   * "That night on the radio" (contract §3.3b): the other surviving broadcasts on an air date, the
+   * year's `search/dates` rows for that day, capped, by series then id (the date rows carry no
+   * network, so the web cannot order by it), then read as episodes. Only a full YYYY-MM-DD has a day.
+   */
+  async function sameDay(date, id, limit = 12, get = getJSON) {
+    if (typeof date !== 'string' || date.length !== 10) return [];
+    let file;
+    try {
+      file = await get(`search/dates/${date.slice(0, 4)}.json`);
+    } catch (e) {
+      if (e.kind === 'missing') return [];
+      throw e;
+    }
+    const ids = rowsOf(file.fields, file.rows).filter(r => r.date === date && r.id !== id)
+      .sort((a, b) => byText(a.series, b.series) || byText(a.id, b.id)).slice(0, limit).map(r => r.id);
+    if (!ids.length) return [];
+    const eps = await episodesByIds(ids, get);
+    return ids.map(i => eps.find(e => e.id === i)).filter(Boolean);
+  }
+  const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
   /**
    * Listen's shelves (contract §5.1): the manifest's `listenShelves`, in order. onThisDay runs
@@ -1433,7 +1455,7 @@ const API = (() => {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, listenShelves, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,

@@ -573,6 +573,31 @@ test('searchSaidNumbers and searchAired read search/said and search/dates', asyn
   assertEq(await API.searchAired('sorry wrong', get), null, 'control: no date named, no section');
 });
 
+test('sameDay lists the other broadcasts of an air date, by series then id, capped (contract §3.3b)', async () => {
+  const files = {
+    'manifest.json': { shard: { mask: 0 }, fields: { detail: ['date', 'title', 'series', 'network', 'length', 'recordings'], recording: ['url'] } },
+    'index/series.json': { fields: ['key', 'name'], rows: [['b', 'Bee'], ['a', 'Ay']] },
+    'search/dates/1943.json': { fields: ['id', 'title', 'date', 'series', 'doc'], rows: [
+      ['b|1943-05-25', 'T1', '1943-05-25', 'b', 1], ['a|1943-05-25', 'T2', '1943-05-25', 'a', 2],
+      ['c|1943-05-26', 'T3', '1943-05-26', 'a', 3], ['a2|1943-05-25', 'T4', '1943-05-25', 'a', 4]] },
+    'episodes/000.json': {},
+  };
+  for (const [id, series] of [['b|1943-05-25', 'b'], ['a|1943-05-25', 'a'], ['a2|1943-05-25', 'a']]) {
+    files['episodes/000.json'][id] = ['1943-05-25', id, series, 'NBC', 1800, [['https://x/' + id]]];
+  }
+  const get = async (p) => {
+    if (p in files) return files[p];
+    throw Object.assign(new Error(p), { kind: 'missing' });
+  };
+  const rows = await API.sameDay('1943-05-25', 'a2|1943-05-25', 12, get);
+  assertEq(rows.map(r => r.id).join(','), 'a|1943-05-25,b|1943-05-25', 'series then id, the episode itself left out, other days left out');
+  assertEq(rows[0].network, 'NBC');
+  assertEq((await API.sameDay('1943-05-25', 'x', 1, get)).length, 1, 'the cap');
+  assertEq((await API.sameDay('1943-05', 'x', 12, get)).length, 0, 'control: a month is not a day');
+  assertEq((await API.sameDay(null, 'x', 12, get)).length, 0, 'control: undated has none');
+  assertEq((await API.sameDay('1950-01-01', 'x', 12, get)).length, 0, 'control: a year with no file');
+});
+
 // Plain JS has no compiler: every API.x a script calls must be exported.
 test('every API.x called in js/*.js is exported', () => {
   if (typeof require === 'undefined') return;
