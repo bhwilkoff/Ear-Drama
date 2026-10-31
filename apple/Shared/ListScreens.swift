@@ -91,6 +91,7 @@ struct ListenScreen: View {
                             NavigationLink(value: Route.episode(episode.id)) {
                                 EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .playRowLink()
                             .playContextMenu(episode.id)
                         }
                     }
@@ -223,6 +224,15 @@ struct ListenScreen: View {
 }
 
 private extension View {
+    /// A row that carries its own Play: no chevron beside it, so the title keeps the width (375 pt).
+    func playRowLink() -> some View {
+        #if os(tvOS)
+        self
+        #else
+        navigationLinkIndicatorVisibility(.hidden)
+        #endif
+    }
+
     func gridRow() -> some View {
         listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
             .listRowBackground(Color.clear)
@@ -320,7 +330,7 @@ struct SeriesBrowseScreen: View {
                 CatalogUnavailableView()
             } else if let series {
                 results(series, proxy: proxy)
-                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: 0, bottom: Spacing.s2, trailing: 0))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {
@@ -722,6 +732,7 @@ struct SeriesScreen: View {
                                 NavigationLink(value: Route.episode(episode.id)) {
                                     EpisodeRowLabel(episode: episode)
                                 }
+                                .playRowLink()
                                 .playContextMenu(episode.id)
                             }
                         } header: {
@@ -994,6 +1005,7 @@ struct PersonScreen: View {
                                 NavigationLink(value: Route.episode(item.id)) {
                                     EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
                                 }
+                                .playRowLink()
                                 .playContextMenu(item.id)
                             }
                         } header: {
@@ -1104,6 +1116,7 @@ struct SearchResultsList: View {
                                     NavigationLink(value: Route.episode(episode.id)) {
                                         EpisodeRowLabel(episode: episode, showSeries: true)
                                     }
+                                    .playRowLink()
                                     .playContextMenu(episode.id)
                                 }
                             }
@@ -1114,6 +1127,7 @@ struct SearchResultsList: View {
                                     NavigationLink(value: Route.episode(episode.id)) {
                                         EpisodeRowLabel(episode: episode, showSeries: true)
                                     }
+                                    .playRowLink()
                                     .playContextMenu(episode.id)
                                 }
                             }
@@ -1212,6 +1226,7 @@ struct LibraryScreen: View {
                             NavigationLink(value: Route.episode(episode.id)) {
                                 EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .playRowLink()
                             .swipeActions { removeButton(episode.id) }
                             .contextMenu { removeButton(episode.id) }
                         }
@@ -1224,6 +1239,7 @@ struct LibraryScreen: View {
                             NavigationLink(value: Route.episode(episode.id)) {
                                 EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .playRowLink()
                             .swipeActions {
                                 Button(role: .destructive) { queue.remove(episode.id) } label: {
                                     Label("Remove from queue", systemImage: "trash")
@@ -1252,6 +1268,7 @@ struct LibraryScreen: View {
                             NavigationLink(value: Route.episode(episode.id)) {
                                 EpisodeRowLabel(episode: episode, showSeries: true)
                             }
+                            .playRowLink()
                             .swipeActions { removeButton(episode.id) }
                             .contextMenu { removeButton(episode.id) }
                         }

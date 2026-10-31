@@ -182,6 +182,18 @@ struct StationRow: View {
     var startOver = false
     let listen: () -> Void
     let stop: () -> Void
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// On a phone the control is the row's round Play, so the name keeps the width it needs.
+    private var compact: Bool { sizeClass == .compact }
+
+    private func roundIcon(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(TypeRamp.body)
+            .foregroundStyle(Color.brandOnPrimary)
+            .frame(width: 36, height: 36)
+            .background(Circle().fill(Color.brandPrimary))
+    }
 
     var body: some View {
         let episode = slot?.playableEpisode
@@ -204,19 +216,33 @@ struct StationRow: View {
             .accessibilityElement(children: .combine)
             if isLive {
                 Button(action: stop) {
-                    Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
+                    if compact {
+                        roundIcon("dot.radiowaves.left.and.right")
+                    } else {
+                        Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
+                            .foregroundStyle(Color.brandPrimary)
+                            .padding(.horizontal, Spacing.s3)
+                            .padding(.vertical, Spacing.s2)
+                            .background(Capsule().stroke(Color.brandPrimary))
+                    }
                 }
-                .buttonStyle(.bordered)
-                .tint(Color.brandPrimary)
+                .stationButtonStyle()
+                .accessibilityLabel("Listening live")
                 .accessibilityValue("On")
                 .accessibilityHint("Stops listening live")
             } else if canListen {
                 Button(action: listen) {
-                    Label(startOver ? "Replay" : "Listen live", systemImage: "play.fill")
-                        .foregroundStyle(Color.brandOnPrimary)
+                    if compact {
+                        roundIcon(startOver ? "arrow.counterclockwise" : "play.fill")
+                    } else {
+                        Label(startOver ? "Replay" : "Listen live", systemImage: "play.fill")
+                            .foregroundStyle(Color.brandOnPrimary)
+                            .padding(.horizontal, Spacing.s3)
+                            .padding(.vertical, Spacing.s2)
+                            .background(Capsule().fill(Color.brandPrimary))
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.brandPrimary)
+                .stationButtonStyle()
                 .accessibilityLabel(startOver ? "Replay \(name) from the start" : "Listen live to \(name)")
             }
         }
@@ -235,31 +261,62 @@ struct SlotRow: View {
     let play: (EpisodeDetail) -> Void
 
     var body: some View {
-        let label = RadioClock.timeLabel(slot, zone: zone)
-        let length = "\(slot.lengthMin) min"
+        let time = RadioClock.timeLabel(slot, zone: zone).local
+        let length = slot.lengthMin > 0 ? "\(slot.lengthMin) min" : nil
         if let detail {
+            let series = slot.playableEpisode?.series ?? detail.episode.seriesName
+            // The length rides the event line where a Play button crowds the right edge (375 pt).
             NavigationLink(value: Route.episode(detail.episode.id)) {
                 GrammarRow(visual: .window(detail.episode.seriesWindowArt, name: detail.episode.seriesName,
                                            genre: detail.episode.seriesGenre),
-                           title: slot.playableEpisode?.series ?? detail.episode.seriesName,
-                           sub: [label.local, label.eastern, detail.episode.displayTitle, isNow ? length : nil],
-                           length: length, badge: isNow ? "Now" : nil,
-                           playLabel: "Play \(detail.episode.displayTitle), \(slot.playableEpisode?.series ?? detail.episode.seriesName)",
+                           title: series, sub: [time, length, detail.episode.displayTitle], badge: isNow ? "Now" : nil,
+                           playLabel: "Play \(detail.episode.displayTitle), \(series)",
                            onPlay: { play(detail) })
             }
+            .navigationLinkIndicatorVisibility(.hidden)
             .listRowBackground(isNow ? Color.brandSurfaceAlt : nil)
             .accessibilityAddTraits(isNow ? .isSelected : [])
         } else {
-            // A gap is stated, never filled (R9). The paper's printed text is not drawn until the owner rules on it.
-            GrammarRow(visual: .window(nil, name: slot.knownSeries ?? "", genre: nil),
-                       title: slot.knownSeries ?? RadioClock.gapNote(slot),
-                       sub: [label.local, label.eastern, slot.knownSeries == nil ? nil : RadioClock.gapNote(slot),
-                             isNow ? length : nil],
-                       length: length, badge: isNow ? "Now" : nil)
+            // A gap is stated, never filled (R9): one quiet line with no picture frame. The paper's printed text is not drawn until the owner rules on it.
+            GapLine(time: time, name: slot.knownSeries ?? RadioClock.gapNote(slot), isNow: isNow)
                 .listRowBackground(isNow ? Color.brandSurfaceAlt : nil)
                 .accessibilityAddTraits(isNow ? .isSelected : [])
         }
     }
+}
+
+/// A slot with no surviving recording: its time, then the program's name where the data has one, else
+/// the reason. Nothing is there to show, so there is no window.
+struct GapLine: View {
+    let time: String
+    let name: String
+    let isNow: Bool
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
+            Text(verbatim: time)
+                .font(TypeRamp.tabular)
+            Text(verbatim: name)
+                .font(TypeRamp.caption)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+            if isNow {
+                Text(verbatim: "Now")
+                    .font(TypeRamp.caption.weight(.semibold))
+                    .foregroundStyle(Color.brandOnPrimary)
+                    .padding(.horizontal, Spacing.s2)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.brandPrimary))
+            }
+        }
+        .foregroundStyle(Color.brandTextMuted)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private extension View {
+    /// Borderless: the control draws its own round or capsule face.
+    func stationButtonStyle() -> some View { buttonStyle(.borderless) }
 }
 
 #endif

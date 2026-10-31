@@ -61,6 +61,15 @@ struct HomeBrowseRulesTests {
     }
 }
 
+struct MiniPlayerInsetRuleTests {
+    @Test func theScrollMarginIsTheBarsHeight() {
+        #expect(MiniPlayerInsetRule.scrollMargin(barHeight: 80) == 80)
+        #expect(MiniPlayerInsetRule.scrollMargin(barHeight: 0) == 0, "no bar, no margin")
+        #expect(MiniPlayerInsetRule.scrollMargin(barHeight: -4) == 0)
+        #expect(MiniPlayerInsetRule.scrollMargin(barHeight: .nan) == 0)
+    }
+}
+
 struct BrowseLayoutTests {
     private func plan(_ width: CGFloat, decades: Int = 6) -> BrowseLayout.Plan {
         BrowseLayout.plan(width: width, decades: decades, tileMin: 160)
@@ -86,6 +95,16 @@ struct BrowseLayoutTests {
             #expect(used <= w, "the field and the grid together are at most \(w) wide, got \(used)")
             let row = CGFloat(p.columns) * p.tileWidth + BrowseLayout.gap * CGFloat(p.columns - 1)
             #expect(row <= p.gridWidth + 0.001, "a row of \(p.columns) tiles fits \(p.gridWidth)")
+        }
+    }
+
+    /// The tile row takes the section's width (the screen less the list's 16 pt margin each side, no
+    /// row inset on top), so every phone draws two columns and never one 326 pt giant tile.
+    @Test func everyPhoneKeepsTwoColumnsInTheSectionWidth() {
+        for screen: CGFloat in [375, 390, 393, 402, 430] {
+            let p = plan(screen - 32)
+            #expect(p.columns == 2, "\(screen) pt screen: \(p)")
+            #expect(p.tileWidth >= 160 - 0.001 && p.tileWidth <= 200, "\(screen): tile \(p.tileWidth)")
         }
     }
 

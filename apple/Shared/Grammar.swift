@@ -417,7 +417,8 @@ struct EventLine: View {
         if !parts.isEmpty {
             FlowLayout {
                 ForEach(parts.indices, id: \.self) { i in
-                    Text(verbatim: parts[i])
+                    // A no-break space keeps the dot with its fact: a wrapped line never opens or ends on a lone dot.
+                    Text(verbatim: parts[i].replacingOccurrences(of: " \u{00B7}", with: "\u{00A0}\u{00B7}"))
                         .font(TypeRamp.caption)
                         .foregroundStyle(color)
                         .multilineTextAlignment(.leading)
@@ -530,6 +531,16 @@ struct GrammarRow: View {
     private let visualSide: CGFloat = 48
     #endif
 
+    /// Where a Play button crowds the right edge, the length joins the event line and a part-played
+    /// bar sits under it, so the title keeps the row's width (the Home and Stations rows at 375 pt).
+    private var playAtRight: Bool {
+        #if os(tvOS)
+        false
+        #else
+        onPlay != nil
+        #endif
+    }
+
     var body: some View {
         HStack(spacing: Spacing.s3) {
             HStack(spacing: Spacing.s3) {
@@ -540,7 +551,13 @@ struct GrammarRow: View {
                         .foregroundStyle(Color.brandText)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
-                    EventLine(facts: sub)
+                    if playAtRight, let progress, progress > 0, progress < 1 {
+                        ProgressView(value: progress)
+                            .tint(Color.brandPrimary)
+                            .frame(maxWidth: 120)
+                            .accessibilityHidden(true)
+                    }
+                    EventLine(facts: playAtRight && badge == nil ? sub + [length] : sub)
                     if let quote {
                         Text(verbatim: quote)
                             .font(TypeRamp.caption)
@@ -557,7 +574,7 @@ struct GrammarRow: View {
                         .padding(.horizontal, Spacing.s2)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Color.brandPrimary))
-                } else if let length {
+                } else if let length, !playAtRight {
                     Text(verbatim: length)
                         .font(TypeRamp.tabular)
                         .foregroundStyle(Color.brandTextMuted)
@@ -597,7 +614,7 @@ struct GrammarRow: View {
     }
 
     @ViewBuilder private var progressMark: some View {
-        if let progress {
+        if let progress, !(playAtRight && progress < 1) {
             if progress >= 1 {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(Color.brandTextMuted)

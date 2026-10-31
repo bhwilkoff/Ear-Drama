@@ -385,15 +385,16 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   and station; when the date offers other published years (Decision 067),
   a menu Picker "Year" under it loads that year's whole evening on
   tonight's clock (picking stops listening live); then one row a slot.
-  An evening shows whenever any of its programs survives. Each row shows its local time with
-  the paper's Eastern time beside it as a caption ("7:00 PM ET" alone
-  where the two agree). The slot on the air says "Now" and takes the
+  An evening shows whenever any of its programs survives. Each row shows one time, the
+  listener's own (owner, 2026-10-31: "7:00 PM · 9:00 PM ET" read as two
+  shows; the paper's Eastern time is not drawn). The slot on the air says "Now" and takes the
   surface-alt row background, repainted every 15 seconds from the
   file's instants. A surviving slot is a link to its episode with a
-  borderless Play that plays it from its start; a gap is muted text:
-  `known_series` where the file sets it, then "Not surviving" (or "Not
-  in the catalog" for a withheld slot or one the open catalog lacks),
-  and its length. The newspaper's printed text is never drawn (Decision
+  borderless Play that plays it from its start, with no chevron and its
+  length on the event line, so the title keeps the row's width at 375 pt;
+  a gap is one quiet line with no picture frame: the time, then
+  `known_series` where the file sets it, else "Not surviving" (or "Not
+  in the catalog" for a withheld slot or one the open catalog lacks). The newspaper's printed text is never drawn (Decision
   067; the file no longer carries it). Before the
   evening Tonight's row says "Starts at", after it "Ended at"; during it,
   "Listen live" (`LiveRadio`, `apple/Core/Radio/LiveListening.swift`)
