@@ -3,6 +3,30 @@ import XCTest
 /// Layout audit on the real phone: each screen at its top, then scrolled page by page to its end,
 /// every page attached. The last page of a screen must end above the tab bar and mini player.
 final class LayoutSweepUITests: DeviceTestCase {
+    /// At the end of a screen's scroll nothing may straddle the top of the bar (the mini player, else
+    /// the tab bar), and no list row may sit wholly behind it: the last element is fully visible.
+    private func assertEndClears(_ app: XCUIApplication, _ name: String) {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists else { return }
+        var top = bar.frame.minY
+        let mini = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Now playing'")).firstMatch
+        if mini.exists { top = min(top, mini.frame.minY) }
+        let screen = app.frame.height
+        let kinds: [XCUIElementQuery] = [app.cells, app.staticTexts, app.buttons, app.images]
+        for query in kinds {
+            for el in query.allElementsBoundByIndex where el.exists && !bar.buttons[el.label].exists {
+                let f = el.frame
+                if f.isEmpty || f.minY >= screen { continue }
+                if f.minY < top - 4 && f.maxY > top + 4 {
+                    XCTFail("\(name): \(el.elementType.rawValue) '\(el.label.prefix(40))' straddles the bar top \(Int(top)): \(Int(f.minY))-\(Int(f.maxY))")
+                }
+            }
+        }
+        for cell in app.cells.allElementsBoundByIndex where cell.exists && cell.frame.minY >= top && cell.frame.minY < screen {
+            XCTFail("\(name): row '\(cell.label.prefix(40))' is wholly behind the bar at the end of the scroll")
+        }
+    }
+
     private func sweep(_ app: XCUIApplication, _ name: String, pages: Int = 3) {
         shot(app, "\(name)-p00")
         var last = app.screenshot().pngRepresentation
@@ -10,7 +34,7 @@ final class LayoutSweepUITests: DeviceTestCase {
             app.swipeUp()
             usleep(600_000)
             let now = app.screenshot().pngRepresentation
-            if now == last { break }
+            if now == last { assertEndClears(app, name); break }
             last = now
             shot(app, "\(name)-p\(String(format: "%02d", i))")
         }
@@ -52,6 +76,11 @@ final class LayoutSweepUITests: DeviceTestCase {
     func testMiniStations() { withMini("Stations", "mini-stations") }
     func testMiniLibrary() { withMini("Library", "mini-library") }
     func testMiniHome() { withMini("Home", "mini-home") }
+    func testMiniBrowse() { withMini("Browse", "mini-browse") }
+    func testMiniSearch() { withMini("Search", "mini-search") }
+
+    /// A 71-character title: the head board holds it to three lines and its facts stay on screen.
+    func testLongTitleSeries() { sweep(tab("browse", ["APP_START_ITEM": "librivox2469"]), "series-long-title") }
 
     /// A script's page, the cast sheet and the recorder in its three modes. Nothing is recorded: the
     /// Record button is never pressed. The production made here is deleted again.

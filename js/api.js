@@ -219,6 +219,11 @@ const API = (() => {
     const L = Math.max(0, ...String(name || '').split(/[\s\-\u2013]+/).map(w => [...w].length));
     return L > 14 ? 2 : L > 10 ? 1 : 0;
   }
+  /** A head board's name step: nameStep, and one more down for a long title (past 28 characters), two past 48. */
+  function headNameStep(name) {
+    const n = [...String(name || '')].length;
+    return Math.max(nameStep(name), n > 48 ? 2 : n > 28 ? 1 : 0);
+  }
   /** What a window of `slot` CSS px holds: {kind: 'crop', rect} around the face, {kind: 'whole'}
       for a wide picture with no face, or {kind: 'block'} (the title block) for no picture or one
       under the size floor (uniform-imagery-design §4: the crop's pixel height at least the slot;
@@ -1454,7 +1459,7 @@ const API = (() => {
   return {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
-    monogram, blockSize, nameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
+    monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
     manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,

@@ -146,6 +146,37 @@ object RadioClock {
     fun gapNote(slot: RadioSlot): String =
         if (slot.withheld || slot.episode != null) "Not in the catalog" else "Not surviving"
 
+    /** One line of an evening: a slot on its own, or a run of two or more consecutive slots with no recording. */
+    sealed interface Entry {
+        data class One(val index: Int) : Entry
+        data class Run(val indices: List<Int>) : Entry
+    }
+
+    /** Consecutive dead slots fold into one run; a lone dead slot stays a slot. */
+    fun entries(slots: List<RadioSlot>, isDead: (RadioSlot) -> Boolean): List<Entry> {
+        val out = mutableListOf<Entry>()
+        var run = mutableListOf<Int>()
+        fun flush() {
+            if (run.size > 1) out += Entry.Run(run) else run.firstOrNull()?.let { out += Entry.One(it) }
+            run = mutableListOf()
+        }
+        slots.forEachIndexed { i, slot -> if (isDead(slot)) run += i else { flush(); out += Entry.One(i) } }
+        flush()
+        return out
+    }
+
+    /** "7:15\u20138:30 PM" and "5 programs not surviving": the run's span in local time, the period said once where both ends share it. */
+    fun runLabel(slots: List<RadioSlot>, zone: ZoneId = ZoneId.systemDefault(), locale: Locale = Locale.getDefault()): Pair<String, String> {
+        val first = slots.firstOrNull() ?: return "" to ""
+        val start = clock(first.utcStart, zone, locale)
+        val end = clock(slots.last().utcEnd, zone, locale)
+        fun period(t: String) = t.filterNot { it.isDigit() || it == ':' }
+        val head = if (period(start).isNotBlank() && period(start) == period(end)) start.dropLast(period(start).length).trim() else start
+        val notes = slots.map { gapNote(it) }.toSet()
+        val why = if (notes.size == 1) notes.first().lowercase() else "not available"
+        return "$head\u2013$end" to "${slots.size} programs $why"
+    }
+
     /**
      * A slot's time as the listener reads it: local time, with the paper's
      * Eastern time beside it as a fact, or "7:00 PM ET" alone where the two agree.

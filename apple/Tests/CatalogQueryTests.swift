@@ -369,6 +369,9 @@ struct CatalogQueryTests {
         #expect(Grammar.nameStep("Hopalong Cassidy") == 0, "eight letters keep the size")
         #expect(Grammar.nameStep("Extraordinary Tales") == 1, "a word past 10 letters steps down once")
         #expect(Grammar.nameStep("Supercalifragilistic") == 2, "past 14, twice")
+        #expect(Grammar.headNameStep("Hopalong Cassidy") == 0)
+        #expect(Grammar.headNameStep("The Adventures of Philip Marlowe and Friends") == 1, "a title past 28 characters steps down")
+        #expect(Grammar.headNameStep("The Adventures of Philip Marlowe and Friends in Hollywood Town") == 2, "past 48, twice")
         let url = try #require(URL(string: "https://x/A.jpg"))
         func at(_ w: Int?, _ h: Int?, _ face: String?) -> Artwork {
             Artwork(url: url, width: w, height: h, face: Artwork.FaceBox(face))

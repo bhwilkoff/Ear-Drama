@@ -77,6 +77,7 @@ import com.example.appname.data.dateBlockParts
 import com.example.appname.data.eventParts
 import com.example.appname.data.gradeOf
 import com.example.appname.data.monogram
+import com.example.appname.data.headNameStep
 import com.example.appname.data.nameStep
 import com.example.appname.data.runBars
 import com.example.appname.data.runSpan
@@ -608,7 +609,9 @@ fun HeadBoard(
                 }
                 Text(
                     nameText(name),
-                    style = nameStyle(nameStep(name), t, headL1 = true),
+                    style = nameStyle(headNameStep(name), t, headL1 = true),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
                     color = on,
                     modifier = if (onOpen == null) Modifier.semantics { heading() } else Modifier,
                 )
@@ -618,7 +621,8 @@ fun HeadBoard(
         }
         // The histogram needs height to read: 40 dp on a phone, 56 from 600 dp wide.
         val markHeight = if (side >= 128.dp) 56.dp else 40.dp
-        if (mark != null) mark(markHeight) else RunStrip(first, last, on, height = markHeight, years = years)
+        if (mark != null) mark(markHeight)
+        else if (first != null || last != null || !years.isNullOrEmpty()) RunStrip(first, last, on, height = markHeight, years = years)
     }
 }
 

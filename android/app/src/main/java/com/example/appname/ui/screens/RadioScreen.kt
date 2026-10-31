@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.PlayArrow
@@ -195,6 +194,8 @@ private fun Evening(
     val canListen = stationActions(evening, stations, now).any { it }
     ClaimTvFocus(if (canListen) liveButton else firstSlot, canListen)
 
+    val entries = RadioClock.entries(slots) { evening.detail(it) == null }
+    var openRuns by remember { mutableStateOf(setOf<String>()) }
     LazyColumn(modifier.fillMaxSize()) {
         stationRows(evening, stations, now, liveButton)
         item(key = "header") {
@@ -216,23 +217,61 @@ private fun Evening(
                 }
             }
         }
-        itemsIndexed(slots, key = { _, slot -> slot.utcStart.toString() }) { index, slot ->
-            val detail = evening.detail(slot)
-            SlotRow(
-                slot = slot,
-                zone = evening.zone,
-                detail = detail,
-                isNow = index == onAir.index,
-                television = television,
-                modifier = if (index == 0) Modifier.focusRequester(firstSlot) else Modifier,
-                onOpen = { detail?.let { onOpenEpisode(it.episode.id) } },
-                onPlay = {
-                    if (detail != null) {
-                        container.live.stop()
-                        container.playback.play(detail.episode, startMs = 0)
+        entries.forEach { entry ->
+            when (entry) {
+                is RadioClock.Entry.One -> item(key = slots[entry.index].utcStart.toString()) {
+                    val index = entry.index
+                    val slot = slots[index]
+                    val detail = evening.detail(slot)
+                    SlotRow(
+                        slot = slot,
+                        zone = evening.zone,
+                        detail = detail,
+                        isNow = index == onAir.index,
+                        television = television,
+                        modifier = if (index == 0) Modifier.focusRequester(firstSlot) else Modifier,
+                        onOpen = { detail?.let { onOpenEpisode(it.episode.id) } },
+                        onPlay = {
+                            if (detail != null) {
+                                container.live.stop()
+                                container.playback.play(detail.episode, startMs = 0)
+                            }
+                        },
+                    )
+                }
+                is RadioClock.Entry.Run -> {
+                    val run = entry.indices.map { slots[it] }
+                    val key = run.first().utcStart.toString()
+                    val isOpen = key in openRuns
+                    item(key = "run-$key") {
+                        val (span, note) = RadioClock.runLabel(run)
+                        val now = onAir.index?.let { it in entry.indices } == true
+                        TextButton(
+                            onClick = { openRuns = if (isOpen) openRuns - key else openRuns + key },
+                            modifier = Modifier
+                                .padding(horizontal = Spacing.S4.dp)
+                                .tvFocusMark()
+                                .semantics { selected = isOpen },
+                        ) {
+                            Text(
+                                "$span \u00B7 $note" + if (now) " \u00B7 Now" else "",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
-                },
-            )
+                    if (isOpen) {
+                        run.forEach { slot ->
+                            item(key = slot.utcStart.toString()) {
+                                SlotRow(
+                                    slot = slot, zone = evening.zone, detail = null, isNow = false,
+                                    television = television, modifier = Modifier, onOpen = {}, onPlay = {},
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
         day.witnessLine?.let { line ->
             item(key = "witness") {

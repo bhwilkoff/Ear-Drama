@@ -87,9 +87,15 @@ private struct Evening_tvOS: View {
                 }
 
                 VStack(alignment: .leading, spacing: Spacing.s2) {
-                    ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
-                        SlotRow_tvOS(slot: slot, zone: evening.zone, detail: evening.detail(for: slot),
-                                     isNow: index == onAir.index)
+                    ForEach(RadioClock.entries(slots, isDead: { evening.detail(for: $0) == nil }), id: \.self) { entry in
+                        switch entry {
+                        case .slot(let index):
+                            SlotRow_tvOS(slot: slots[index], zone: evening.zone, detail: evening.detail(for: slots[index]),
+                                         isNow: index == onAir.index)
+                        case .run(let indices):
+                            GapRun_tvOS(slots: indices.map { slots[$0] }, zone: evening.zone,
+                                        isNow: onAir.index.map(indices.contains) ?? false)
+                        }
                     }
                 }
                 .focusSection()
@@ -240,6 +246,37 @@ private struct StationCard_tvOS: View {
         .accessibilityHint(isLive ? "Stops listening live" : startOver ? "Replays from the start" : "Listens live")
         .task(id: key) {
             show = key.isEmpty ? nil : await catalog.series([key]).first
+        }
+    }
+}
+
+/// A run of slots with no recording: one focus stop that opens to the individual lines.
+private struct GapRun_tvOS: View {
+    let slots: [RadioSlot]
+    let zone: String
+    let isNow: Bool
+    @State private var open = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let label = RadioClock.runLabel(slots)
+        Button { open.toggle() } label: {
+            HStack(spacing: Spacing.s3) {
+                Text(verbatim: "\(label.span) \u{00B7} \(label.note)").font(TypeRamp.body)
+                Spacer(minLength: 0)
+                if isNow { Text(verbatim: "Now").font(TypeRamp.body.weight(.semibold)) }
+                Image(systemName: open ? "chevron.up" : "chevron.down")
+            }
+            .padding(Spacing.s4)
+            .foregroundStyle(focused ? Color.brandText : Color.brandTextMuted)
+            .background(RoundedRectangle(cornerRadius: Radius.card).fill(focused ? Color.brandSurfaceAlt : .clear))
+        }
+        .buttonStyle(.plain)
+        .focused($focused)
+        if open {
+            ForEach(slots) { slot in
+                SlotRow_tvOS(slot: slot, zone: zone, detail: nil, isNow: false)
+            }
         }
     }
 }

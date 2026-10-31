@@ -26,6 +26,9 @@ class GrammarTest {
         assertEquals("eight letters keep the size", 0, nameStep("Hopalong Cassidy"))
         assertEquals("a word past 10 letters steps down once", 1, nameStep("Extraordinary Tales"))
         assertEquals("past 14, twice", 2, nameStep("Supercalifragilistic"))
+        assertEquals(0, headNameStep("Hopalong Cassidy"))
+        assertEquals("a title past 28 characters steps down", 1, headNameStep("The Adventures of Philip Marlowe and Friends"))
+        assertEquals("past 48, twice", 2, headNameStep("The Adventures of Philip Marlowe and Friends in Hollywood Town"))
     }
 
     @Test fun `the window decides crop, whole or block`() {

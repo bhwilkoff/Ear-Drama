@@ -23,6 +23,7 @@ struct EarDramaApp: App {
     #endif
 
     init() {
+        LaunchDoors.resetUserStateIfAsked()
         URLCache.shared = URLCache(memoryCapacity: 20_000_000, diskCapacity: 100_000_000)
         let store = AppStore()
         let catalog = CatalogStore()

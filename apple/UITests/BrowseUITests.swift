@@ -28,6 +28,7 @@ final class BrowseUITests: DeviceTestCase {
 
         let popular = app.buttons["Sort: Popular"]
         XCTAssertTrue(popular.waitForExistence(timeout: 5), "Sort chip")
+        XCTAssertTrue(app.buttons.matching(identifier: "show-tile").firstMatch.waitForExistence(timeout: 30), "show tiles after Clear")
         let before = firstRow(app)
         if popular.frame.maxX > app.frame.width { app.buttons["Decade"].swipeLeft() }
         popular.tap()
@@ -36,8 +37,14 @@ final class BrowseUITests: DeviceTestCase {
         az.tap()
         XCTAssertTrue(app.buttons["Sort: A to Z"].waitForExistence(timeout: 5), "sort chip names the order")
         sleep(2)
+        shot(app, "03a-az-top")
+        // A to Z is sections of lazy rows under the genre field: the first tile exists once scrolled to.
+        let tiles = app.buttons.matching(identifier: "show-tile")
+        for _ in 0..<8 where !tiles.firstMatch.exists { app.swipeUp() }
+        XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 10), "tiles under A to Z")
         XCTAssertNotEqual(firstRow(app), before, "the list reordered")
         shot(app, "03-sort-az")
+        for _ in 0..<12 where !app.buttons["Sort: A to Z"].isHittable { app.swipeDown(velocity: .fast) }
 
         if app.buttons["Sort: A to Z"].frame.maxX > app.frame.width { app.buttons["Decade"].swipeLeft() }
         app.buttons["Sort: A to Z"].tap()

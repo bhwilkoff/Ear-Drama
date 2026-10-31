@@ -1,12 +1,12 @@
 import XCTest
 
-/// A series' Download menu (iOS-DESIGN §4.3). Barbershop Quartet is two
-/// unclaimed recordings of about two minutes each (live catalog, 2026-10-28:
-/// 118.6 s and 120.8 s, a few MB together). Starts and ends with none of its
+/// A series' Download menu (iOS-DESIGN §4.3). The Suspense Project 15 Brother John is two
+/// unclaimed recordings of 35 seconds each (live catalog, 2026-10-31). Barbershop Quartet, the
+/// fixture before, left the catalog under the scope rule: a missing series reads "Series not found". Starts and ends with none of its
 /// episodes downloaded.
 final class SeriesDownloadUITests: DeviceTestCase {
-    private let key = "barbershopquartet"
-    private let seriesName = "Barbershop Quartet"
+    private let key = "suspenseproject15brotherjohn"
+    private let seriesName = "The Suspense Project 15 Brother John"
 
     private func confirm(_ app: XCUIApplication, _ label: String) {
         let sheet = app.sheets.buttons[label]

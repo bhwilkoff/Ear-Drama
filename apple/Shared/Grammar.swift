@@ -321,7 +321,8 @@ struct ShowTile: View {
     #elseif os(macOS)
     static let defaultWidth: CGFloat = 176
     #else
-    static let defaultWidth: CGFloat = 160
+    /// Two columns on a phone's list row (iPhone 12: a 326 pt row is 160 short of two tiles, so Home drew one tile as wide as the screen).
+    static let defaultWidth: CGFloat = 144
     #endif
 
     var body: some View {
@@ -713,8 +714,9 @@ struct HeadBoard: View {
                             .tracking(1.2)
                     }
                     Text(verbatim: name)
-                        .font(GrammarType.headName(step: Grammar.nameStep(name)))
+                        .font(GrammarType.headName(step: Grammar.headNameStep(name)))
                         .multilineTextAlignment(.leading)
+                        .lineLimit(3)
                         .minimumScaleFactor(0.6)
                     if let credits, !credits.isEmpty {
                         Text(verbatim: credits).font(TypeRamp.caption.weight(.semibold))
@@ -722,11 +724,11 @@ struct HeadBoard: View {
                     EventLine(facts: facts, color: ink)
                 }
                 .foregroundStyle(ink)
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let castScript {
                 CastFingerprint(script: castScript, onBoard: genre, height: Self.stripHeight(forWidth: width) / 3)
-            } else {
+            } else if first != nil || last != nil || !(years ?? []).isEmpty {
                 RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years)
             }
         }

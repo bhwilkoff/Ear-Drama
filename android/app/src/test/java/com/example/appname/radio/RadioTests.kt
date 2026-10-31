@@ -122,6 +122,24 @@ class RadioTests {
         assertTrue(TonightFile.decode(file).toString().let { "Amos W Andy" !in it && "Amos 'n' Andy" in it })
     }
 
+    @Test fun `consecutive dead slots fold into one run`() {
+        val slots = listOf(
+            slot("2026-10-22T23:00:00Z", "2026-10-22T23:15:00Z"),
+            slot("2026-10-22T23:15:00Z", "2026-10-22T23:30:00Z", episode = "a|1", length = 900.0),
+            slot("2026-10-22T23:30:00Z", "2026-10-22T23:45:00Z"),
+            slot("2026-10-22T23:45:00Z", "2026-10-23T00:00:00Z"),
+            slot("2026-10-23T00:00:00Z", "2026-10-23T00:15:00Z"),
+        )
+        val entries = RadioClock.entries(slots) { it.playableEpisode == null }
+        assertEquals(
+            listOf(RadioClock.Entry.One(0), RadioClock.Entry.One(1), RadioClock.Entry.Run(listOf(2, 3, 4))),
+            entries,
+        )
+        val (span, note) = RadioClock.runLabel(slots.drop(2), ZoneId.of("UTC"), Locale.US)
+        assertTrue(plain(span) == "11:30\u201312:15 AM" || plain(span) == "11:30 PM\u201312:15 AM")
+        assertEquals("3 programs not surviving", note)
+    }
+
     @Test fun `withheld and gap slots never play`() {
         val day = TonightFile.decode(file).day("2026-10-22")!!
         assertNull(day.slots[0].playableEpisode)
