@@ -453,7 +453,7 @@ jobs:
             bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber -p tonight.json
           fi
           python3 catalog/tools/build_evenings.py kept --old live/tonight.json --new built/publish/tonight.json \
-            --projection built/publish/ear-drama.sqlite
+            --projection built/publish/ear-drama.sqlite.zz
 
       - name: A published station slot never changes (contract §8)
         run: |
@@ -464,7 +464,7 @@ jobs:
             bash tools/gh_retry.sh gh release download catalog-latest -R "$REPO" -D live --clobber -p stations.json
           fi
           python3 catalog/tools/build_stations.py kept --old live/stations.json --new built/publish/stations.json \
-            --projection built/publish/ear-drama.sqlite
+            --projection built/publish/ear-drama.sqlite.zz
 
       - name: Upload to the rolling Release catalog-latest
         run: |

@@ -1273,6 +1273,9 @@ def main():
     if args.cmd == "kept":
         start, _ = window(_today(args.today))
         old = json.load(open(args.old)) if os.path.exists(args.old) else {}
+        if not os.path.exists(args.projection):
+            print(f"the projection {args.projection} is missing: no alias can be followed, so no day can be judged")
+            return 1
         bad = changed_days(old, json.load(open(args.new)), start.isoformat(), episode_forwards(args.projection))
         kept = sum(1 for d in old.get("days", {}) if d >= start.isoformat())
         print(f"published days kept: {kept - len(bad)} of {kept}" + (f"; changed: {bad}" if bad else ""))
