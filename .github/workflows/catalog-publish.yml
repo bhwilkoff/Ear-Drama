@@ -138,6 +138,7 @@ jobs:
           python3 tools/enrich_people_art.py 2>&1 | tail -5
           python3 tools/enrich_photo_archives.py 2>&1 | tail -5
           python3 tools/enrich_genres.py 2>&1 | tail -12
+          python3 tools/enrich_scope.py 2>&1 | tail -12
 
       - name: Every catalog suite (a red test blocks publish)
         run: bash catalog/tests/run_all.sh

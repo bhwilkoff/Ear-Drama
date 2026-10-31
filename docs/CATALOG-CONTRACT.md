@@ -152,7 +152,7 @@ none on the web), never as a skip. Segment times are never estimated.
 
 - `series`: `key`, `name` (the display name, `titles.display_name`: the same rules as a title, with no
   series to drop, so "01 The Hobbit" is "The Hobbit"; `raw_name` is the source's name where it
-  differs, else NULL; a series still named by an upload habit (a date, an identifier, a file name, an uploader's grab bag) is not served with any of its episodes, catalog DECISIONS 025), `genre` (one of the eight, §5.5), `first_date`,
+  differs, else NULL; a series still named by an upload habit (a date, an identifier, a file name, an uploader's grab bag) is not served with any of its episodes, catalog DECISIONS 025; nor is a series outside "drama and spoken story only", a concert, a music set or a lecture series, nor an episode that is a V-Disc music record, DECISIONS 026; `meta.displayText.withheld` counts each reason code), `genre` (one of the eight, §5.5), `first_date`,
   `last_date`, `networks`, `episodes` (served count), `canonical_episodes` (what
   the logs say aired), `kind_summary`, `star` (§3.3a, or NULL), `sort_name` (below),
   `downloads` (below), `picture`, `picture_kind`, `picture_source` (§3.3a; all

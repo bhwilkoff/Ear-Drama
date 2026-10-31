@@ -79,6 +79,39 @@ check("a person's name", DT.recover_name("annsothern", KN), "Ann Sothern")
 check("control: nothing matches, stays withheld", DT.recover_name("jbintro", KN), None)
 check("control: the same spelling is no recovery", DT.recover_name("Ann Sothern", {"annsothern": "Ann Sothern"}), None)
 
+# P-7 job A: a title that is one word and a number is a file name.
+check("a series token and a number is composed from the number", DT.decide_episode("TopSecret15", "Top Secret", None, 15),
+      ("Top Secret, episode 15", "composed", ["series.name", "episodes.num"], None))
+check("a token and a number, a date composes", DT.decide_episode("Hunting300", "Abbott And Costello Show", "1946-02-07", 300)[0],
+      "Abbott And Costello Show, February 7, 1946")
+check("a token and a number, nothing to compose from: withheld", DT.decide_episode("CheerUp1930", "Belle Baker", None, None)[3],
+      "no_readable_title_and_no_date_or_number")
+check("control: words and a number are a title", DT.readable_title("Apollo 13"), True)
+check("control: a number then words", DT.readable_title("3 Skeleton Key"), True)
+check("control: one word, no number", DT.readable_title("Marathon"), True)
+
+# P-7 job C: a grab bag named by a count or a genre and a year (only when an upload named it).
+check("a counted bag", DT.series_withheld("500 Christmas Shows", "500christmasshows", True), "series_is_an_uploaders_grab_bag")
+check("a genre and a year", DT.series_withheld("Science Fiction 1968", "sciencefiction1968", True), "series_is_an_uploaders_grab_bag")
+check("control: a registry program with a count", DT.series_withheld("77 Sunset Strip", "77sunsetstrip", False), None)
+check("control: a registry program with a year", DT.series_withheld("Science Fiction 1968", "sciencefiction1968", False), None)
+check("control: a numbered show an upload named", DT.series_withheld("77 Sunset Strip", "77sunsetstrip", True), None)
+
+# P-7 job D: an apostrophe only from a registry's spelling.
+check("apostrophe from an alias", DT.repair_apostrophe("The Witchs Tale", ["The Witch's Tale", "Witch's Tale", "the witchs tale"]), "The Witch's Tale")
+check("apostrophe, curly", DT.repair_apostrophe("Bachelors Children", ["Bachelor’s Children"]), "Bachelor’s Children")
+check("control: no alias spells it", DT.repair_apostrophe("Heres To Veterans", ["Here to Veterans"]), "Heres To Veterans")
+check("control: two spellings, no guess", DT.repair_apostrophe("Witches Tale", ["Witches' Tale", "Witche's Tale"]), "Witches Tale")
+check("control: a stray apostrophe is no possessive", DT.repair_apostrophe("Molle Mystery Theater", ["Molle' Mystery Theater"]), "Molle Mystery Theater")
+check("control: a name that has its apostrophe", DT.repair_apostrophe("Duffy's Tavern", ["Duffys Tavern"]), "Duffy's Tavern")
+check("control: nothing to compare", DT.repair_apostrophe("Dads Army", None), "Dads Army")
+
+# P-7 job E: scope reasons and music records.
+check("a V-Disc is a music record", DT.episode_out_of_scope("048 V-Disc A Chorus and Organ - Joy To The World"), "out_of_scope_music_record")
+check("control: a radio show", DT.episode_out_of_scope("Suspense, April 26, 1952"), None)
+check("scope kinds map to reason codes", sorted(DT.SCOPE_REASONS.values()),
+      ["out_of_scope_concert", "out_of_scope_lecture", "out_of_scope_music_set"])
+
 # The guard over a real projection.
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):

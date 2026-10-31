@@ -849,10 +849,9 @@ def improve_attribution(recs, reg, target_dates, titles, stats):
             groups[r["key"]].append(r)
     for key in sorted(groups):
         rs = groups[key]
-        if not TD.series_defects(rs[0]["sname"], key):
-            continue
+        clean = not TD.series_defects(rs[0]["sname"], key)
         got = RA.name_from_metadata(key, [{"item_title": r["item_title"], "album": r["album"]} for r in rs])
-        if not got:
+        if not got or (clean and got[2] != RA.PAREN_RULE):
             continue
         name, new_key, why = got
         target = reg.k2c.get(new_key) if new_key else None
@@ -865,6 +864,105 @@ def improve_attribution(recs, reg, target_dates, titles, stats):
             r["sname"] = reg.display(r["key"], name)
         stats["renamed_by:" + why] += 1
         stats["renamed_files_by:" + why] += len(rs)
+    holds = {}
+    merge_disc_series(recs, reg, target_dates, titles, stats, holds)
+    merge_near_names(recs, reg, target_dates, titles, stats)
+    return holds
+
+
+def _movable(r):
+    return bool(r["key"]) and not r["orow"] and r["how"] in FALLBACK_HOW
+
+
+def _move(reg, r, key, name, rule, how, gate=None):
+    mv = {"from": r["key"], "as": r["raw"], "rule": rule}
+    if gate:
+        mv["gate"] = gate
+    r["idt"]["reattributed"] = mv
+    r["key"], r["raw"], r["how"] = key, name, how
+    r["sname"] = reg.display(key, name)
+
+
+def merge_disc_series(recs, reg, target_dates, titles, stats, holds):
+    """P-7: "X Selection 1", "X Selection 2" are one program; "American Armed Forces Radio No 62" is a disc
+    of many (reattribute.disc_groups). A disc's file moves to the program its own name begins with; the
+    rest of a disc is held back from the apps. Volumes of one program become that program, and a volume's
+    bare number stops naming its episode (two volumes both have a number 1)."""
+    by_key = collections.defaultdict(list)
+    for r in recs:
+        if r["key"]:
+            by_key[r["key"]].append(r)
+    names = {k: collections.Counter(r["sname"] for r in rs if r["sname"]).most_common(1)[0][0]
+             for k, rs in by_key.items() if any(r["sname"] for r in rs) and all(_movable(r) for r in rs)
+             and not k.startswith("librivox")}
+    groups = RA.disc_groups(names)
+
+    def run_of(c):
+        years = sorted(int(d[:4]) for d in target_dates.get(c, ()))
+        return (years[0], years[-1], len(years)) if years else None
+
+    for bk in sorted(groups):
+        base, members, service = groups[bk]
+        if service:
+            for k in members:
+                for r in by_key[k]:
+                    got = RA.stem_program(r["stem"], reg.k2c, lambda c: titles.get(c, ()), r["date"], run_of, loose=True)
+                    if got:
+                        _move(reg, r, got[0], r["stem"], "file name begins with a known program on a disc of many",
+                              "stem:" + got[1], got[2])
+                        stats["disc_files_reattributed"] += 1
+                    else:
+                        holds[k] = "series_is_a_numbered_disc"
+                        stats["disc_files_held"] += 1
+            continue
+        target = reg.k2c.get(bk, bk)
+        for k in members:
+            for r in by_key[k]:
+                if r["date"] is None:
+                    r["num"] = None
+                _move(reg, r, target, base, "numbered volume of one program", "disc")
+                stats["disc_files_merged"] += 1
+        stats["disc_series_merged"] += len(members)
+
+
+def merge_near_names(recs, reg, target_dates, titles, stats):
+    """P-7: an unregistered series named within two letters of one program ("Top Sercet") joins it when the
+    name match is unambiguous and its episodes agree (reattribute.near_program)."""
+    known = set(reg.k2c.values())
+    by_key = collections.defaultdict(list)
+    for r in recs:
+        if r["key"]:
+            by_key[r["key"]].append(r)
+
+    def info(k, rs):
+        years = [int(r["date"][:4]) for r in rs if r["date"]]
+        name = collections.Counter(r["sname"] for r in rs if r["sname"]).most_common(1)[0][0] if any(r["sname"] for r in rs) else None
+        return {"key": k, "name": reg.display(k, name) or name or "", "n": len(rs), "years": years,
+                "titles": {A.norm_title(r["title"]) for r in rs if r["title"]}}
+
+    infos = {k: info(k, rs) for k, rs in by_key.items() if not k.startswith("librivox")}
+    cands = {}
+    bylen = collections.defaultdict(list)
+    for k, i in infos.items():
+        ys = sorted({int(d[:4]) for d in target_dates.get(k, ())} | set(i["years"]))
+        dated = len(set(target_dates.get(k, ())) | {r["date"] for r in by_key[k] if r["date"]})
+        c = dict(i, run=(ys[0], ys[-1], dated) if ys else None, titles=i["titles"] | set(titles.get(k, ())))
+        cands[k] = c
+        bylen[len(k)].append(c)
+    for k in sorted(infos):
+        rs = by_key[k]
+        if k in known or not all(_movable(r) for r in rs):
+            continue
+        near = [c for n in range(len(k) - 2, len(k) + 3) for c in bylen.get(n, ())]
+        got = RA.near_program(infos[k], near)
+        if not got:
+            continue
+        target, how = got
+        tname = cands[target]["name"]
+        for r in rs:
+            _move(reg, r, target, tname, "name within two letters of a program, episodes agree (" + how + ")", "near", how)
+            stats["near_files_merged"] += 1
+        stats["near_series_merged"] += 1
 
 
 def main():
@@ -1079,8 +1177,9 @@ def main():
 
     # Pass 2b (P-6): a file the registry did not place may still begin with a known program's name, and an
     # unregistered series may be named by its own item's metadata.
+    disc_holds = {}
     if "reattrib" not in SKIP:
-        improve_attribution(recs_out, reg, target_dates, program_titles(reg, re_by_key, otrr_rows), stats)
+        disc_holds = improve_attribution(recs_out, reg, target_dates, program_titles(reg, re_by_key, otrr_rows), stats)
 
     # A series whose only name is the item's title and that title is an upload code ("1306005 128 Michael
     # Fisher Acc") is an uploader's dump, not a program: kept, but held back from the apps (display_text.py).
@@ -1091,6 +1190,7 @@ def main():
             h[1] += 1
             h[0] += r["how"] == "item" and bool(UPLOAD_CODE_TITLE.match(r["item_title"] or ""))
     held_back = {k: "series_named_by_an_upload_code" for k, (c, t) in held_back.items() if c == t}
+    held_back.update(disc_holds)
 
     # Pass 3: OTRR's logs and the spine fill what the names left out.
     if "logs" not in SKIP:

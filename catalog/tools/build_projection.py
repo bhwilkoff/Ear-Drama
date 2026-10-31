@@ -205,6 +205,13 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     held = {}
     if "display_hold" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
         held = dict(s.execute("SELECT key, display_hold FROM series WHERE display_hold IS NOT NULL"))
+    if has_table(s, "series_scope"):
+        for k, kind in s.execute("SELECT series_key, kind FROM series_scope"):
+            held.setdefault(k, DT.SCOPE_REASONS[kind])
+    if "alias_names" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
+        for k, al in s.execute("SELECT key, alias_names FROM series WHERE alias_names IS NOT NULL"):
+            if k in shown_name:
+                shown_name[k] = DT.repair_apostrophe(shown_name[k], json.loads(al))
     known = {}
     def learn(n):
         if n and " " in n.strip() and re.search(r"[A-Z]", n) and not DT.TD.series_defects(n):
@@ -235,6 +242,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 withheld["episodes"][eid] = why
             continue
         for eid, air, num, _t in by_series_eps[sk]:
+            why = DT.episode_out_of_scope(display[eid])
+            if why:
+                withheld["episodes"][eid] = why
+                continue
             title, src, fields, why = DT.decide_episode(display[eid], shown_name.get(sk) or names.get(sk), air, num)
             if why:
                 withheld["episodes"][eid] = why
