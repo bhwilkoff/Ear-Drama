@@ -139,6 +139,7 @@ only here:
   §4.8); a row's Remove is on right-click. Library is iOS's list (§4.6, D3-5): Continue, Queue, Following as a shelf of show
   tiles (right-click a tile for Unfollow), History, Downloads, Ear dramas, each with its empty caption. A download is played, never
   exported.
+- **D3-8** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: the same views as iOS-DESIGN's D3-8 note, in the detail column at the readable measure; hover and the pointer are the platform's own.
 - **§4.3 Stations** is iOS's `RadioScreen` (`docs/iOS-DESIGN.md` §4.9) in
   the detail column: the same stations row (Tonight, then each genre
   station, each with what is on now and Listen live), slots, times, gaps,

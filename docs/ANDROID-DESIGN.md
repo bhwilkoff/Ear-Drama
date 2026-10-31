@@ -398,6 +398,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   voice's PCM is tagged `synthetic`; every writer (`TakeAudio.write`,
   the mix renderer, an upload) refuses it, and a listen plan's voice
   entries hold text only (`StandInNeverStoredTest`).
+- **D3-8 Stations, Surprise, People, a person** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: `GrammarRow` gained `badge` ("Now" in the play color), `trailing` (Listen live) and `opens = false` (a row that only states); Surprise's picks are `HeadBoard`s (the play's is `PlayHeadBoard`); `PersonListItem` is a round-window row; `PersonScreen` is a head board, a `LazyRow` of `ShowTile`s, then the rows. `PersonShows` (data/GrammarRules.kt) holds the per-show years rule.
 - **§4.10 Stations** (was Radio) opens with the stations row, the web's
   §4.9 as the list's first items (`stationRows`): Tonight in 19xx first,
   then each genre station from `stations.json` (`ApiClient.stations()`,

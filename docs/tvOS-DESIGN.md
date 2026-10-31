@@ -173,6 +173,7 @@ The only shapes; a new one needs a new rule.
   remote scrolls the text a few sentences at a time and only the
   focused paragraph is bright. Menu closes it.
 
+- **D3-8** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: each station is a `ShowTile` on its genre's board under the card style (a focus stop; "Listening live" is a fact line), slots are `GrammarRow`s with "Now" in ink, Surprise's episode and evening are head boards with Play as the default focus, and its play is a `ShowTile` with the cast fingerprint that takes no focus (the TV records nothing). A person is a head board, a shelf of `ShowTile`s, then rows.
 - **§4.8 Stations** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
   is the web's §4.9 at ten feet. It opens on the stations shelf
   (`StationsShelf_tvOS`), one horizontal focus section of `.card` buttons,
