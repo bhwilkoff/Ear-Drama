@@ -488,12 +488,12 @@ struct SeriesBrowseScreen: View {
                 VStack(alignment: .leading, spacing: Spacing.s4) {
                     HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
                         Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
-                             : countText(shows.count, "show", "shows"))
+                             : countText(shows.count + shownPlays.count, "show", "shows"))
                             .font(TypeRamp.bodyStrong)
                             .foregroundStyle(Color.brandText)
                         Spacer(minLength: 0)
                         if singles || !lesser.isEmpty {
-                            Button(singles ? countText(shows.count, "show", "shows")
+                            Button(singles ? countText(shows.count + shownPlays.count, "show", "shows")
                                    : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
                                 .buttonStyle(.borderless)
                                 .font(TypeRamp.caption)

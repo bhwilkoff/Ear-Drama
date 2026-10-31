@@ -24,6 +24,24 @@ struct RadioTests {
         slot("2026-10-23T00:00:00Z", "2026-10-23T00:30:00Z"),
     ]
 
+    // MARK: - runs of dead slots
+
+    @Test func consecutiveDeadSlotsFoldIntoOneRun() {
+        let slots = [
+            Self.slot("2026-10-22T23:00:00Z", "2026-10-22T23:15:00Z"),
+            Self.slot("2026-10-22T23:15:00Z", "2026-10-22T23:30:00Z", episode: "a|1", length: 900),
+            Self.slot("2026-10-22T23:30:00Z", "2026-10-22T23:45:00Z"),
+            Self.slot("2026-10-22T23:45:00Z", "2026-10-23T00:00:00Z"),
+            Self.slot("2026-10-23T00:00:00Z", "2026-10-23T00:15:00Z"),
+        ]
+        let entries = RadioClock.entries(slots) { $0.playableEpisode == nil }
+        #expect(entries == [.slot(index: 0), .slot(index: 1), .run(indices: [2, 3, 4])])
+        let utc = TimeZone(identifier: "UTC")!
+        let label = RadioClock.runLabel(Array(slots[2...]), timeZone: utc, locale: Locale(identifier: "en_US"))
+        #expect(Self.plain(label.span) == "11:30\u{2013}12:15 AM" || Self.plain(label.span) == "11:30 PM\u{2013}12:15 AM")
+        #expect(label.note == "3 programs not surviving")
+    }
+
     // MARK: - onAir, golden against the web
 
     @Test func onAirMatchesTheWebsCases() {

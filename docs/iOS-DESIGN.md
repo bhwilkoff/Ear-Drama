@@ -394,7 +394,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   length on the event line, so the title keeps the row's width at 375 pt;
   a gap is one quiet line with no picture frame: the time, then
   `known_series` where the file sets it, else "Not surviving" (or "Not
-  in the catalog" for a withheld slot or one the open catalog lacks). The newspaper's printed text is never drawn (Decision
+  in the catalog" for a withheld slot or one the open catalog lacks). Two or more consecutive gaps
+  fold into one quiet line, "7:15\u20139:00 PM \u00b7 5 programs not surviving" (`RadioClock.entries`), that
+  opens to the individual lines; a playable slot is always its own row (web, Android and tvOS the same).
+  The newspaper's printed text is never drawn (Decision
   067; the file no longer carries it). Before the
   evening Tonight's row says "Starts at", after it "Ended at"; during it,
   "Listen live" (`LiveRadio`, `apple/Core/Radio/LiveListening.swift`)
@@ -847,3 +850,5 @@ explained (Listen, Library) lost their descriptions (§1.6).
 **E1 rules (2026-10-30, D4 review).** The player sheet's toolbar carries Add to queue (a toggle) and Share (`ShareLink`), icon only, beside the transcript button; the identifiers `player-queue` and `player-share` are the tests' doors. Stations after the evening ends: Tonight keeps "Ended at ..." and its button reads Replay (the first playable slot, played as an episode). Account carries an Export section: "Export my data" (JSON) and "Export history (CSV)" through `ShareLink`; no upload, no sign-in needed (docs/EXPORT.md). The rights fallback computes its year from the calendar; nothing types it.
 
 Bring the next change back to a rule here, or bring a new rule first.
+
+- **Head board name (iPhone 12, 2026-10-31):** a long title filled five lines on Surprise. The name steps down by its length as well as its longest word (`Grammar.headNameStep`: one step past 28 characters, two past 48), holds to three lines with a 0.6 scale floor, so a head board and its Play button fit one 375 pt screen. Web balances the break (`text-wrap: balance`) and clamps to three lines; Android clamps to three.

@@ -306,18 +306,21 @@
     return id;
   }
   /** The title block: the name's monogram as an outline in the board's onBoard color. */
-  function titleBlock(name) {
+  function titleBlock(name, round = false) {
     const m = API.monogram(name);
+    // A round window: set at 70 % and centered, the baseline half a cap height (0.8 em) below the middle.
+    const size = API.blockSize(m) * (round ? 0.7 : 1);
     return svgEl('svg', { class: 'g-block', viewBox: '0 0 100 100', 'aria-hidden': 'true' },
-      svgEl('text', { x: 9, y: 93, 'font-size': API.blockSize(m) }, m));
+      round ? svgEl('text', { x: 50, y: +(50 + size * 0.4).toFixed(2), 'font-size': +size.toFixed(2), 'text-anchor': 'middle' }, m)
+        : svgEl('text', { x: 9, y: 93, 'font-size': size }, m));
   }
   /** Fills a window with the series' picture (crop or whole, graded) or the title block. */
-  function fillWindow(win, s, slot) {
+  function fillWindow(win, s, slot, round = false) {
     const pic = s && (s.picture !== undefined ? s.picture : s.art);
     const fill = API.windowFill(pic, slot);
     win.replaceChildren();
     win.dataset.genre = (s && s.genre) || '';
-    const block = () => { win.dataset.fill = 'block'; win.replaceChildren(titleBlock(s && s.name)); };
+    const block = () => { win.dataset.fill = 'block'; win.replaceChildren(titleBlock(s && s.name, round)); };
     if (fill.kind === 'block') return block();
     const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
     const r = fill.kind === 'crop' ? fill.rect : null;
@@ -329,11 +332,11 @@
     win.append(img);
   }
   /** The window (one square slot): from the series when it is in hand, else from the index by key. */
-  function pictureWindow(s, slot) {
+  function pictureWindow(s, slot, round = false) {
     const win = el('span', { class: 'g-window', 'aria-hidden': 'true', dataset: { slot: String(slot) } });
-    if (s && (s.picture !== undefined || !s.key)) fillWindow(win, s, slot);
+    if (s && (s.picture !== undefined || !s.key)) fillWindow(win, s, slot, round);
     else {
-      fillWindow(win, { name: s && s.name, genre: s && s.genre }, slot);
+      fillWindow(win, { name: s && s.name, genre: s && s.genre }, slot, round);
       if (s && s.key) win.dataset.series = s.key;
     }
     return win;
@@ -380,7 +383,7 @@
   function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null, mark = null }) {
     const slot = headSlot();
     const lead = picture === undefined ? series : { ...series, picture };
-    const nm = { class: 'g-head-name', dataset: { step: String(API.nameStep(name)) } };
+    const nm = { class: 'g-head-name', dataset: { step: String(API.headNameStep(name)) } };
     return el(href ? 'a' : 'header', { class: `g-head${href ? ' g-head-link' : ''}`, ...(href ? { href } : {}),
                                        dataset: { genre: (series && series.genre) || '' } },
       pictureWindow(lead, slot),
@@ -388,7 +391,7 @@
         kicker ? el('span', { class: 'g-kicker caption' }, ...[].concat(kicker)) : null,
         href ? el('p', nm, name) : el('h1', { ...nm, tabindex: '-1' }, name),
         eventLine(facts || [], 'caption g-head-facts')),
-      mark || runStrip(first, last, 'g-strip g-head-strip', headStripH(), years));
+      mark || (first || last || (years && years.length) ? runStrip(first, last, 'g-strip g-head-strip', headStripH(), years) : null));
   }
   /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
       broken at its hyphens. */
@@ -900,6 +903,7 @@
     return el('ul', { class: 'stations', 'aria-label': 'Stations' }, ...rows);
   }
 
+  const openRuns = new Set();
   function paintRadio() {
     if (!radioState) return;
     const { day, details, base } = radioState;
@@ -912,8 +916,7 @@
     const where = API.onAir(day.slots, clockNow());
     const zone = day.zone;
 
-    const list = el('ol', { class: 'slots' });
-    day.slots.forEach((s, i) => {
+    const rowFor = (s, i) => {
       const d = s.episode && details.get(s.episode.id);
       const now = i === where.index;
       const local = localClock.format(new Date(s.utc_start));
@@ -942,9 +945,33 @@
         type: 'button', class: 'icon-btn g-play', 'aria-label': `Play ${epTitle(d)}, ${s.episode.series}`,
         onclick: () => { if (live) stopLive(); Player.load(cardOf(d, s.episode.series)); },
       }, icon('play')) : null;
-      list.append(el('li', { class: `slot g-row${d ? '' : ' slot-gap'}${now ? ' slot-now' : ''}`,
-                             'aria-current': now ? 'time' : null }, link, lead, play));
-    });
+      return el('li', { class: `slot g-row${d ? '' : ' slot-gap'}${now ? ' slot-now' : ''}`,
+                             'aria-current': now ? 'time' : null }, link, lead, play);
+    };
+
+    // Consecutive slots with no recording are one quiet line that opens to the lines (a run of two or more).
+    const dead = (s) => !(s.episode && details.get(s.episode.id));
+    const list = el('ol', { class: 'slots' });
+    for (let i = 0; i < day.slots.length;) {
+      let j = i;
+      while (j < day.slots.length && dead(day.slots[j])) j++;
+      if (j - i < 2) { list.append(rowFor(day.slots[i], i)); i++; continue; }
+      const run = day.slots.slice(i, j);
+      const key = run[0].utc_start;
+      const notes = new Set(run.map(s => (s.withheld || s.episode ? 'not in the catalog' : 'not surviving')));
+      const start = localClock.format(new Date(run[0].utc_start));
+      const end = localClock.format(new Date(run[run.length - 1].utc_end));
+      const period = (t) => t.replace(/[\d:]/g, '').trim();
+      const head = period(start) && period(start) === period(end) ? start.replace(/\s*[AP]M$/i, '') : start;
+      const sum = el('summary', { class: 'run-line caption' },
+        `${head}\u2013${end} \u00b7 ${run.length} programs ${notes.size === 1 ? [...notes][0] : 'not available'}`,
+        run.some((_, k) => i + k === where.index) ? el('span', { class: 'g-now' }, 'Now') : null);
+      const inner = el('ol', { class: 'slots' }, ...run.map((s, k) => rowFor(s, i + k)));
+      const det = el('details', { class: 'slot-run-details', ontoggle: (e) => { if (e.target.open) openRuns.add(key); else openRuns.delete(key); } }, sum, inner);
+      if (openRuns.has(key)) det.open = true;
+      list.append(el('li', { class: 'slot-run' }, det));
+      i = j;
+    }
 
     const w = day.witness || {};
     const choices = base && base.years && base.years.length ? yearChoices(base) : null;
@@ -1018,7 +1045,7 @@
   function voiceFace(p, genre = '') {
     return el('li', { class: 'g-face-li' },
       el('a', { class: 'g-face', href: `?person=${encodeURIComponent(p.id)}` },
-        pictureWindow({ name: p.name, genre, picture: p.art }, 84),
+        pictureWindow({ name: p.name, genre, picture: p.art }, 84, true),
         el('span', { class: 'g-face-name caption' }, p.name),
         el('span', { class: 'g-face-count caption tabular' }, plural(p.episodes, 'episode', 'episodes'))));
   }
@@ -1271,7 +1298,7 @@
       el('h2', { class: 'section-header', id }, 'On the air'),
       el('ul', { class: 'g-faces' }, ...air.map(c => el('li', { class: 'g-face-li' },
         el(c.person ? 'a' : 'span', { class: 'g-face', ...(c.person ? { href: `?person=${encodeURIComponent(c.person)}` } : {}) },
-          pictureWindow({ name: c.name, genre, picture: c.art }, 72),
+          pictureWindow({ name: c.name, genre, picture: c.art }, 72, true),
           el('span', { class: 'g-face-name caption' }, c.name),
           c.character ? el('span', { class: 'g-face-role caption' }, `as ${c.character}`) : null)))));
     const owed = pictureCredit(air.map(c => c.art).filter(a => a && API.windowFill(a, 72).kind !== 'block'));
@@ -1476,7 +1503,7 @@
 
   /** A person in a list: their portrait in a round window, else their monogram; the episodes they are in. */
   function personRow(p) {
-    const win = pictureWindow({ name: p.name, picture: p.art || null }, 48);
+    const win = pictureWindow({ name: p.name, picture: p.art || null }, 48, true);
     win.classList.add('g-round');
     return el('li', { class: 'series-row g-row' },
       el('a', { class: 'g-link', href: `?person=${encodeURIComponent(p.id)}` }, win,

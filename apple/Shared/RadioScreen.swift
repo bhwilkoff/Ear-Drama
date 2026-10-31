@@ -85,12 +85,18 @@ private struct EveningList: View {
                 }
             }
             Section {
-                ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
-                    SlotRow(slot: slot, zone: evening.zone, detail: evening.detail(for: slot),
-                            isNow: index == onAir.index) { detail in
-                        live.stop()
-                        player.isMuted = store.isMuted
-                        player.play(detail, from: 0)
+                ForEach(RadioClock.entries(slots, isDead: { evening.detail(for: $0) == nil }), id: \.self) { entry in
+                    switch entry {
+                    case .slot(let index):
+                        SlotRow(slot: slots[index], zone: evening.zone, detail: evening.detail(for: slots[index]),
+                                isNow: index == onAir.index) { detail in
+                            live.stop()
+                            player.isMuted = store.isMuted
+                            player.play(detail, from: 0)
+                        }
+                    case .run(let indices):
+                        GapRun(slots: indices.map { slots[$0] }, zone: evening.zone,
+                               isNow: onAir.index.map(indices.contains) ?? false)
                     }
                 }
             }
@@ -281,6 +287,48 @@ struct SlotRow: View {
             GapLine(time: time, name: slot.knownSeries ?? RadioClock.gapNote(slot), isNow: isNow)
                 .listRowBackground(isNow ? Color.brandSurfaceAlt : nil)
                 .accessibilityAddTraits(isNow ? .isSelected : [])
+        }
+    }
+}
+
+/// A run of slots with no recording: one quiet line that opens to the individual lines (their
+/// names where the data has them).
+struct GapRun: View {
+    let slots: [RadioSlot]
+    let zone: String
+    let isNow: Bool
+    @State private var open = false
+
+    var body: some View {
+        let label = RadioClock.runLabel(slots)
+        Button {
+            withAnimation { open.toggle() }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s2) {
+                Text(verbatim: "\(label.span) \u{00B7} \(label.note)")
+                    .font(TypeRamp.caption)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                if isNow {
+                    Text(verbatim: "Now")
+                        .font(TypeRamp.caption.weight(.semibold))
+                        .foregroundStyle(Color.brandOnPrimary)
+                        .padding(.horizontal, Spacing.s2)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.brandPrimary))
+                }
+                Image(systemName: open ? "chevron.up" : "chevron.down").font(TypeRamp.caption)
+            }
+            .foregroundStyle(Color.brandTextMuted)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(open ? "Hides the programs" : "Lists the programs")
+        if open {
+            ForEach(slots) { slot in
+                GapLine(time: RadioClock.timeLabel(slot, zone: zone).local,
+                        name: slot.knownSeries ?? RadioClock.gapNote(slot), isNow: false)
+            }
         }
     }
 }

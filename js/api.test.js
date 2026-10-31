@@ -86,6 +86,9 @@ test('grammar: the title block, the type step, the window, the event line and th
   assertEq(API.nameStep('Hopalong Cassidy'), 0, 'eight letters keep the size');
   assertEq(API.nameStep('Extraordinary Tales'), 1, 'a word past 10 letters steps down once');
   assertEq(API.nameStep('Supercalifragilistic'), 2, 'past 14, twice');
+  assertEq(API.headNameStep('Hopalong Cassidy'), 0, 'a short title keeps the head step');
+  assertEq(API.headNameStep('The Adventures of Philip Marlowe and Friends'), 1, 'a title past 28 characters steps down');
+  assertEq(API.headNameStep('The Adventures of Philip Marlowe and Friends in Hollywood Town'), 2, 'past 48, twice');
   const at = (w, h, face) => API.artOf(['https://x/A.jpg', w, h, null, null, face]);
   assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 200).kind, 'crop', 'a face crop 240 px tall fills a 200 px window');
   assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 300).kind, 'block', 'control: the same crop is under the floor at 300');

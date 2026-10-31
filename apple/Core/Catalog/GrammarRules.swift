@@ -43,6 +43,13 @@ nonisolated enum Grammar {
         return longest > 14 ? 2 : longest > 10 ? 1 : 0
     }
 
+    /// A head board's name step: the word rule, and one more step down for a long title (past 28
+    /// characters), two past 48, so a title holds to three lines beside the window.
+    static func headNameStep(_ name: String?) -> Int {
+        let n = (name ?? "").unicodeScalars.count
+        return max(nameStep(name), n > 48 ? 2 : n > 28 ? 1 : 0)
+    }
+
     enum WindowFill: Equatable {
         case crop(Artwork.CropRect), whole, block
     }

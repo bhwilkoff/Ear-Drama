@@ -189,6 +189,42 @@ nonisolated enum RadioClock {
         slot.withheld || slot.episode != nil ? "Not in the catalog" : "Not surviving"
     }
 
+    /// One line of an evening: a slot that plays or stands alone, or a run of consecutive slots
+    /// with no recording, drawn as one quiet line (a run of two or more).
+    enum Entry: Hashable, Sendable {
+        case slot(index: Int)
+        case run(indices: [Int])
+    }
+
+    /// Consecutive dead slots (`isDead`) fold into one run; a lone dead slot stays a slot.
+    static func entries(_ slots: [RadioSlot], isDead: (RadioSlot) -> Bool) -> [Entry] {
+        var out: [Entry] = []
+        var run: [Int] = []
+        func flush() {
+            if run.count > 1 { out.append(.run(indices: run)) } else if let i = run.first { out.append(.slot(index: i)) }
+            run = []
+        }
+        for (i, slot) in slots.enumerated() {
+            if isDead(slot) { run.append(i) } else { flush(); out.append(.slot(index: i)) }
+        }
+        flush()
+        return out
+    }
+
+    /// "7:15–" span and "5 programs not surviving": the run's span in local time (the period
+    /// said once where both ends share it) and what is missing.
+    static func runLabel(_ slots: [RadioSlot], timeZone: TimeZone = .current, locale: Locale = .current) -> (span: String, note: String) {
+        guard let first = slots.first, let last = slots.last else { return ("", "") }
+        let start = clock(first.utcStart, in: timeZone, locale: locale)
+        let end = clock(last.utcEnd, in: timeZone, locale: locale)
+        func period(_ t: String) -> String { String(t.drop { $0.isNumber || $0 == ":" }) }
+        let shared = !period(start).isEmpty && period(start) == period(end)
+        let head = shared ? String(start.dropLast(period(start).count)).trimmingCharacters(in: .whitespaces) : start
+        let notes = Set(slots.map(gapNote))
+        let why = notes.count == 1 ? notes.first!.lowercased() : "not available"
+        return ("\(head)\u{2013}\(end)", "\(slots.count) programs \(why)")
+    }
+
     /// A slot's time as the listener reads it: local time, with the paper's
     /// Eastern time beside it as a fact, or "7:00 PM ET" alone where the two agree.
     static func timeLabel(_ slot: RadioSlot, zone: String, timeZone: TimeZone = .current,

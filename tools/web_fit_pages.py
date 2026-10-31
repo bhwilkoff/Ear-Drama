@@ -28,6 +28,7 @@ ROUTES = [('stations', '?view=radio&mute=1', r'Stations', '.station.g-row', 1),
            '.station.g-row .btn-primary[aria-label^="Replay"]', 1),
           ('surprise', '?view=surprise&mute=1', r'Surprise', '.pick .g-head', 2),
           ('search', '?view=search&q=welles&mute=1', r'People', '#search-body .g-row .g-window', 2),
+          ('episode-air', '?item=xminusone%7C1956-04-24&mute=1', r'On the air', '.g-face .g-window[data-fill="block"]', 1),
           ('person-portrait', '?person=otrr:6237&mute=1', r'Webb', '.g-head .g-window img', 1),
           ('person-monogram', '?person=otrr:6267&mute=1', r'Welles', '.g-head .g-window[data-fill="block"]', 1)]
 JS = r"""(async () => {
@@ -45,6 +46,22 @@ JS = r"""(async () => {
     else if (Math.abs(w.getBoundingClientRect().width - 48) > 1) bad.push('visual is not 48 px: ' + r.textContent.slice(0, 30));
   });
   view.querySelectorAll('a[href*="person="] > .g-window').forEach(w => { if (getComputedStyle(w).borderRadius !== '50%%') bad.push('a person window is not round'); });
+  // A monogram in a round window is centered on its ink (cap height), not the line box: the glyphs' own box
+  // is within 2 %% of the circle's center, both ways.
+  await document.fonts.load('700 100px "Big Shoulders"');
+  const cx = document.createElement('canvas').getContext('2d');
+  view.querySelectorAll('.g-face > .g-window[data-fill="block"], .g-round[data-fill="block"]').forEach(w => {
+    const t = w.querySelector('svg.g-block text'), box = w.getBoundingClientRect();
+    if (!t || !box.width) return;
+    const u = box.width / 100, size = parseFloat(t.getAttribute('font-size'));
+    cx.font = `700 ${size * u}px "Big Shoulders"`;
+    const m = cx.measureText(t.textContent);
+    const top = parseFloat(t.getAttribute('y')) * u - m.actualBoundingBoxAscent, bot = parseFloat(t.getAttribute('y')) * u + m.actualBoundingBoxDescent;
+    const left = parseFloat(t.getAttribute('x')) * u - m.width / 2 - m.actualBoundingBoxLeft + 0, right = parseFloat(t.getAttribute('x')) * u - m.width / 2 + m.actualBoundingBoxRight;
+    const dy = Math.abs((top + bot) / 2 - box.height / 2) / box.height, dx = Math.abs((left + right) / 2 - box.width / 2) / box.width;
+    if (dy > 0.02 || dx > 0.02) bad.push(`monogram off center in ${t.textContent}: dy ${(dy * 100).toFixed(1)} %% dx ${(dx * 100).toFixed(1)} %%`);
+    if (t.getAttribute('text-anchor') !== 'middle') bad.push('round monogram is not anchored in the middle: ' + t.textContent);
+  });
   if (!view.querySelector(%r)) bad.push('nothing drew for %s');
   return JSON.stringify(bad);
 })()"""

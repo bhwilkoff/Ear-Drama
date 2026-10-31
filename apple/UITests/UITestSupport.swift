@@ -5,10 +5,17 @@ import XCTest
 @MainActor class DeviceTestCase: XCTestCase {
     override func setUp() { continueAfterFailure = true }
 
+    /// The first launch of each test starts from a new listener's lists (APP_RESET_USER_STATE); a
+    /// relaunch inside the test keeps them, because tests that terminate and reopen the app check
+    /// that a queue or a follow survives.
+    private var launchedOnce = false
+
     func launch(_ env: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment = ["APP_MUTE": "1", "APP_SKIP_ONBOARD": "1"]
+            .merging(launchedOnce ? [:] : ["APP_RESET_USER_STATE": "1"]) { $1 }
             .merging(env) { $1 }
+        launchedOnce = true
         app.launch()
         return app
     }

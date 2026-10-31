@@ -31,6 +31,12 @@ fun nameStep(name: String?): Int {
     return if (longest > 14) 2 else if (longest > 10) 1 else 0
 }
 
+/** A head board's name step: nameStep, and one more down for a long title (past 28 characters), two past 48. */
+fun headNameStep(name: String?): Int {
+    val n = (name ?: "").codePointCount(0, (name ?: "").length)
+    return maxOf(nameStep(name), if (n > 48) 2 else if (n > 28) 1 else 0)
+}
+
 /** What a window holds. */
 sealed interface WindowFill {
     data class Crop(val rect: CropRect) : WindowFill

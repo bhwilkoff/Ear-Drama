@@ -48,7 +48,7 @@ fun VoiceFace(row: PersonRow, onOpen: () -> Unit, modifier: Modifier = Modifier)
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp),
     ) {
-        PictureWindow(row.person.art, row.person.name, null, Modifier.size(VOICE_SIDE).clip(CircleShape))
+        PictureWindow(row.person.art, row.person.name, null, Modifier.size(VOICE_SIDE).clip(CircleShape), round = true)
         Text(
             row.person.name,
             style = MaterialTheme.typography.labelMedium,

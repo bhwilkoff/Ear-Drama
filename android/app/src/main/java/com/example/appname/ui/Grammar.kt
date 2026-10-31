@@ -77,6 +77,7 @@ import com.example.appname.data.dateBlockParts
 import com.example.appname.data.eventParts
 import com.example.appname.data.gradeOf
 import com.example.appname.data.monogram
+import com.example.appname.data.headNameStep
 import com.example.appname.data.nameStep
 import com.example.appname.data.runBars
 import com.example.appname.data.runSpan
@@ -138,7 +139,7 @@ fun gradeMatrix(g: Grade): ColorMatrix {
 
 /** The title block: the monogram as an outline in the board's onBoard color, on the board. */
 @Composable
-fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier) {
+fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier, round: Boolean = false) {
     val on = onBoard(genre)
     val m = remember(name) { monogram(name) }
     BoxWithConstraints(
@@ -153,7 +154,7 @@ fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier) {
         val style = TextStyle(
             fontFamily = DisplayFontFamily,
             fontWeight = FontWeight.Bold,
-            fontSize = with(density) { (side * blockSize(m) / 100f).toSp() },
+            fontSize = with(density) { (side * blockSize(m) / 100f * (if (round) 0.7f else 1f)).toSp() },
             color = on,
             drawStyle = Stroke(width = with(density) { 1.4.dp.toPx() }),
         )
@@ -166,7 +167,13 @@ fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier) {
                 val p = measurable.measure(Constraints())
                 val base = p[FirstBaseline]
                 layout(c.maxWidth, c.maxHeight) {
-                    p.place((0.09f * c.maxWidth).roundToInt(), (0.93f * c.maxHeight).roundToInt() - base)
+                    if (round) {
+                        // Centered on the ink: the cap height (0.8 of the size), not the line box.
+                        val cap = 0.8f * (side * blockSize(m) / 100f * 0.7f).toPx()
+                        p.place((c.maxWidth - p.width) / 2, (c.maxHeight / 2f + cap / 2f).roundToInt() - base)
+                    } else {
+                        p.place((0.09f * c.maxWidth).roundToInt(), (0.93f * c.maxHeight).roundToInt() - base)
+                    }
                 }
             },
         )
@@ -180,13 +187,13 @@ fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier) {
  * sizes it; it is hidden from accessibility, as the row or tile around it speaks.
  */
 @Composable
-fun PictureWindow(art: Artwork?, name: String, genre: String?, modifier: Modifier = Modifier) {
+fun PictureWindow(art: Artwork?, name: String, genre: String?, modifier: Modifier = Modifier, round: Boolean = false) {
     BoxWithConstraints(modifier) {
         val side = maxWidth
         val fill = remember(art, side) { windowFill(art, side.value) }
         var failed by remember(art) { mutableStateOf(false) }
         if (art == null || fill is WindowFill.Block || failed) {
-            TitleBlock(name, genre, Modifier.fillMaxSize())
+            TitleBlock(name, genre, Modifier.fillMaxSize(), round)
             return@BoxWithConstraints
         }
         val dark = OnAir.colors.dark
@@ -608,7 +615,9 @@ fun HeadBoard(
                 }
                 Text(
                     nameText(name),
-                    style = nameStyle(nameStep(name), t, headL1 = true),
+                    style = nameStyle(headNameStep(name), t, headL1 = true),
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
                     color = on,
                     modifier = if (onOpen == null) Modifier.semantics { heading() } else Modifier,
                 )
@@ -618,7 +627,8 @@ fun HeadBoard(
         }
         // The histogram needs height to read: 40 dp on a phone, 56 from 600 dp wide.
         val markHeight = if (side >= 128.dp) 56.dp else 40.dp
-        if (mark != null) mark(markHeight) else RunStrip(first, last, on, height = markHeight, years = years)
+        if (mark != null) mark(markHeight)
+        else if (first != null || last != null || !years.isNullOrEmpty()) RunStrip(first, last, on, height = markHeight, years = years)
     }
 }
 
