@@ -68,7 +68,11 @@ import com.example.appname.together.RoomStatus
 import com.example.appname.data.Transcript
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import com.example.appname.navigation.SiteLinks
 import com.example.appname.ui.ArtCredit
+import com.example.appname.ui.QueueToggle
+import com.example.appname.ui.ShareButton
+import com.example.appname.ui.episodeShareTitle
 import com.example.appname.ui.EventLine
 import com.example.appname.ui.GrammarRow
 import com.example.appname.ui.PictureWindow
@@ -255,6 +259,14 @@ fun PlayerSheet(
                 LevelToggle(engine)
                 SleepMenu(now, engine)
                 CastButton()
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = Spacing.S3.dp),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                QueueToggle(episode.id, folded = false)
+                ShareButton(episodeShareTitle(episode), SiteLinks.episode(episode.id), folded = false)
             }
             if (now.upNext.isNotEmpty()) {
                 HorizontalDivider()

@@ -253,7 +253,11 @@ private fun Evening(
 
 /** Which rows of [stationRows] can listen live now, in order: Tonight's (when [evening] is set), then each station's. */
 private fun stationActions(evening: RadioEvening?, stations: List<Station>, now: Instant): List<Boolean> =
-    listOfNotNull(evening?.let { e -> RadioClock.onAir(e.day.slots, now).index?.let { e.detail(e.day.slots[it]) } != null }) +
+    listOfNotNull(evening?.let { e ->
+        val onAir = RadioClock.onAir(e.day.slots, now)
+        if (onAir.phase == RadioClock.Phase.After) e.firstPlayable != null
+        else onAir.index?.let { e.detail(e.day.slots[it]) } != null
+    }) +
         stations.map { StationClock.onNow(it.slots, now)?.slot?.playableEpisode != null }
 
 /**
@@ -286,8 +290,18 @@ private fun LazyListScope.stationRows(evening: RadioEvening?, stations: List<Sta
                 note = note,
                 isLive = liveDay == evening.day,
                 canListen = actions[index],
+                startOver = onAir.phase == RadioClock.Phase.After,
                 modifier = if (index == firstAction) Modifier.focusRequester(first) else Modifier,
-                onListen = { container.live.tuneIn(evening) },
+                onListen = {
+                    if (onAir.phase == RadioClock.Phase.After) {
+                        evening.firstPlayable?.let {
+                            container.live.stop()
+                            container.playback.play(it.episode, startMs = 0)
+                        }
+                    } else {
+                        container.live.tuneIn(evening)
+                    }
+                },
                 onStop = { container.live.pauseAndStop() },
             )
         }
@@ -335,6 +349,7 @@ private fun StationRow(
     modifier: Modifier,
     onListen: () -> Unit,
     onStop: () -> Unit,
+    startOver: Boolean = false,
 ) {
     val episode = slot?.playableEpisode
     GrammarRow(
@@ -365,12 +380,12 @@ private fun StationRow(
                 {
                     Button(
                         onClick = onListen,
-                        modifier = modifier.semantics { contentDescription = "Listen live to $name" },
+                        modifier = modifier.semantics { contentDescription = if (startOver) "Replay $name from the start" else "Listen live to $name" },
                         colors = playButtonColors(),
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Listen live", maxLines = 1)
+                        Text(if (startOver) "Replay" else "Listen live", maxLines = 1)
                     }
                 }
             }
