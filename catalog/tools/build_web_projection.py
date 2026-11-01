@@ -156,11 +156,12 @@ def build(src, out, include_unclaimed=False, transcripts=None):
     turls = (dict(s.execute("SELECT id, transcript_url FROM episodes WHERE transcript_url IS NOT NULL"))
              if "transcript_url" in cols else {})
     recs = {}
-    for eid, rank, aid, url, fmt, kbps, length, variant, partial in s.execute(
-            "SELECT episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings "
+    label_col = "label" if "label" in {r[1] for r in s.execute("PRAGMA table_info(recordings)")} else "NULL"
+    for eid, rank, aid, url, fmt, kbps, length, variant, partial, label in s.execute(
+            f"SELECT episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial, {label_col} FROM recordings "
             "ORDER BY episode_id, rank"):
         if eid in eps:
-            recs.setdefault(eid, []).append([url, aid, fmt, kbps, length, variant, partial])
+            recs.setdefault(eid, []).append([url, aid, fmt, kbps, length, variant, partial, label])
     names = dict(s.execute("SELECT id, name FROM people"))
     lives = {pid: (b, d) for pid, b, d in s.execute("SELECT id, birth, death FROM people")}
     tables = {r[0] for r in s.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}

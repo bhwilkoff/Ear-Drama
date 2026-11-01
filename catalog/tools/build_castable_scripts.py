@@ -54,10 +54,30 @@ def display_title(record, parsed):
     return cased, record["title"]
 
 
+CATALOG_NOTE = re.compile(r",?\s+with\s+(?:notes|an?\s+introduction|introduction|a\s+commentary)\b.*$", re.I)
+
+
+def clean_title(title):
+    """A catalog title without its cataloguer's boilerplate ("..., with Notes and Introduction") or stray spaces."""
+    return re.sub(r"\s{2,}", " ", CATALOG_NOTE.sub("", title or "")).strip()
+
+
+def author_display(name):
+    """"Baker, George M. (George Melville)" -> "George Melville Baker": the record's own parenthetical fills the
+    initials it follows, and the surname moves last. A name with no comma is returned as it is."""
+    if not name or "," not in name:
+        return name
+    last, rest = (p.strip() for p in name.split(",", 1))
+    full = re.search(r"\(([^)]+)\)", rest)
+    given = full.group(1).strip() if full else rest
+    return f"{given} {last}".strip()
+
+
 def script_entry(record, rights, parsed):
     lines = [compact_line(l) for l in parsed["lines"]]
     body = json.dumps(lines, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     title, collection = display_title(record, parsed)
+    title = clean_title(title)
     return {
         "id": record["id"],
         "revision": hashlib.sha256(body.encode()).hexdigest()[:12],
@@ -68,7 +88,7 @@ def script_entry(record, rights, parsed):
         # A play is marked only by facts from its record (Decision 067): the year is the
         # record's own publication year, never estimated.
         **({"year": record["published"]["year"]} if (record.get("published") or {}).get("year") else {}),
-        "authors": [{"name": a.get("name"), "born": a.get("born"), "died": a.get("died")}
+        "authors": [{"name": a.get("name"), "display": author_display(a.get("name")), "born": a.get("born"), "died": a.get("died")}
                     for a in record.get("authors") or []],
         "source": {"name": record["source"]["name"], "url": record["source"]["url"]},
         "rights": {"bucket": rights["bucket"], "evidence": rights["evidence"]},
