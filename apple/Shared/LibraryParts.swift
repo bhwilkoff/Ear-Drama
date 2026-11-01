@@ -25,7 +25,7 @@ struct FollowingShelf: View {
         ScrollView(.horizontal) {
             HStack(alignment: .top, spacing: Spacing.s3) {
                 ForEach(series) { row in
-                    NavigationLink(value: Route.series(row.key)) { ShowTile(series: row) }
+                    PushLink(value: Route.series(row.key)) { ShowTile(series: row) }
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button(role: .destructive) { follows.setFollowing(row.key, false) } label: {

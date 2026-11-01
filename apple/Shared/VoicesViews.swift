@@ -34,7 +34,7 @@ struct VoiceLink: View {
     var side: CGFloat = 84
 
     var body: some View {
-        NavigationLink(value: Route.person(row.person.id)) { VoiceFace(row: row, side: side) }
+        PushLink(value: Route.person(row.person.id)) { VoiceFace(row: row, side: side) }
             #if os(tvOS)
             .buttonStyle(.card)
             #else

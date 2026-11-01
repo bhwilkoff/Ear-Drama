@@ -468,7 +468,10 @@ final class AudioPlayer {
         let seconds = player.currentTime().seconds
         elapsed = LoadRecovery.clock(reading: seconds, itemFailed: player.currentItem?.status == .failed, shown: elapsed)
         if let d = player.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
-        if Self.diagnoses { diagLine = diagnosisLine() }
+        if Self.diagnoses {
+            diagLine = diagnosisLine()
+            if Int(now.timeIntervalSince1970) % 5 == 0 { print("[PlaybackDiag] clock \(Int(seconds)) \(diagLine ?? "")") }
+        }
         watchForStall(now: now)
 
         if sleep.mode != .off {

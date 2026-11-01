@@ -31,7 +31,7 @@ struct FinishedTile: View {
     var width: CGFloat = ShowTile.defaultWidth
 
     var body: some View {
-        NavigationLink(value: Route.drama(play.id)) {
+        PushLink(value: Route.drama(play.id)) {
             ShowTile(series: FinishedTiles.row(play), width: width, facts: FinishedTiles.facts(play),
                      castScript: FinishedTiles.script(for: play))
         }

@@ -102,9 +102,9 @@ private struct RouteDestinations_tvOS: ViewModifier {
     func body(content: Content) -> some View {
         content.navigationDestination(for: Route.self) { route in
             switch route {
-            case let .series(key): SeriesScreen_tvOS(key: key)
-            case let .episode(id): EpisodeScreen_tvOS(id: id)
-            case let .person(id): PersonScreen_tvOS(id: id)
+            case let .series(key): SeriesScreen_tvOS(key: key).id(route)
+            case let .episode(id): EpisodeScreen_tvOS(id: id).id(route)
+            case let .person(id): PersonScreen_tvOS(id: id).id(route)
             case .account: AccountScreen_tvOS()
             case .surprise: SurpriseScreen_tvOS()
             case let .drama(pid): FinishedDramaScreen(id: pid)
@@ -548,7 +548,8 @@ private struct SeriesScreen_tvOS: View {
                 }
             }
         }
-        .task(id: catalog.loadKey) {
+        .task(id: PageIdentity.taskID(key, load: catalog.loadKey)) {
+            page = nil
             guard catalog.state == .ready else { return }
             page = .some(await catalog.seriesPage(key))
         }
@@ -619,7 +620,8 @@ private struct PersonScreen_tvOS: View {
                 }
             }
         }
-        .task(id: catalog.loadKey) {
+        .task(id: PageIdentity.taskID(id, load: catalog.loadKey)) {
+            page = nil
             guard catalog.state == .ready else { return }
             let loaded = await catalog.personPage(id)
             page = .some(loaded)
@@ -652,7 +654,9 @@ private struct EpisodeScreen_tvOS: View {
             case let .some(.some(detail)): content(detail)
             }
         }
-        .task(id: catalog.loadKey) {
+        .task(id: PageIdentity.taskID(id, load: catalog.loadKey)) {
+            detail = nil
+            show = nil
             guard catalog.state == .ready else { return }
             let loaded = await catalog.episodeDetail(id)
             if let loaded { show = await catalog.series([loaded.episode.seriesKey]).first }

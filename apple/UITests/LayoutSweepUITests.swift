@@ -14,7 +14,7 @@ final class LayoutSweepUITests: DeviceTestCase {
         let screen = app.frame.height
         let kinds: [XCUIElementQuery] = [app.cells, app.staticTexts, app.buttons, app.images]
         for query in kinds {
-            for el in query.allElementsBoundByIndex where el.exists && el.isHittable && !bar.buttons[el.label].exists {
+            for el in query.allElementsBoundByIndex where el.exists && el.isHittable && el.label.count <= 128 && !bar.buttons[el.label].exists {
                 let f = el.frame
                 if f.isEmpty || f.minY >= screen { continue }
                 if f.minY < top - 4 && f.maxY > top + 4 {

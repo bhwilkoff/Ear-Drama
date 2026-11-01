@@ -60,6 +60,12 @@ enum Route: Hashable {
     }
 }
 
+/// What a pushed page's loading task is keyed on: the page's own id and the catalog generation, so a
+/// view reused for another show reloads instead of keeping the first show's state.
+enum PageIdentity {
+    static func taskID(_ id: String, load: Int) -> String { "\(id)#\(load)" }
+}
+
 /// Global app state, injected via @Environment(AppStore.self).
 @Observable
 final class AppStore {
