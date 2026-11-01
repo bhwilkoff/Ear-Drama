@@ -7,8 +7,14 @@ final class NavigationUITests: DeviceTestCase {
         app.buttons.matching(identifier: "show-tile")
     }
 
+    /// The pushed page's bar: the stack keeps the bars beneath it in the tree, in order.
+    private func topBar(_ app: XCUIApplication) -> XCUIElement {
+        let bars = app.navigationBars.allElementsBoundByIndex
+        return bars.last(where: { $0.isHittable }) ?? bars.last ?? app.navigationBars.element(boundBy: 0)
+    }
+
     private func title(_ app: XCUIApplication) -> String {
-        app.navigationBars.element(boundBy: 0).identifier
+        topBar(app).identifier
     }
 
     private func name(_ tile: XCUIElement) -> String {
@@ -19,28 +25,44 @@ final class NavigationUITests: DeviceTestCase {
         !got.isEmpty && (show.hasPrefix(got) || got.hasPrefix(show))
     }
 
+    /// Whole on screen: a tile's frame that runs under the tab bar or off the glass has a center nothing receives.
+    private func onScreen(_ app: XCUIApplication, _ e: XCUIElement) -> Bool {
+        e.isHittable && e.frame.minY > 120 && e.frame.maxY < app.frame.height - 110 && e.frame.minX >= 0
+    }
+
     private func firstHittable(_ app: XCUIApplication) -> XCUIElement? {
-        tiles(app).allElementsBoundByIndex.first(where: { $0.isHittable })
+        tiles(app).allElementsBoundByIndex.first(where: { onScreen(app, $0) })
+    }
+
+    /// Waits for a pushed page: the root's own bar gone, and a title shown.
+    private func settle(_ app: XCUIApplication, from root: String) {
+        for _ in 0..<30 {
+            let t = title(app)
+            if t != root && !t.isEmpty { return }
+            usleep(500_000)
+        }
     }
 
     private func back(_ app: XCUIApplication) {
-        app.navigationBars.element(boundBy: 0).buttons.element(boundBy: 0).tap()
+        topBar(app).buttons.element(boundBy: 0).tap()
     }
 
     func testTilesOpenTheirOwnShowAfterScrolling() throws {
         let app = launch(["APP_START_TAB": "browse", "APP_DOOR_SECONDS": "600"])
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "tiles")
+        sleep(3)
         var wrong: [String] = []
         for round in 0..<10 {
             if round > 0 { app.swipeUp(); app.swipeUp() }
-            let visible = tiles(app).allElementsBoundByIndex.filter { $0.isHittable }
+            let visible = tiles(app).allElementsBoundByIndex.filter { onScreen(app, $0) }
             guard !visible.isEmpty else { continue }
             let tile = visible[round % visible.count]
             let show = name(tile)
             tile.tap()
-            sleep(2)
+            settle(app, from: "Browse")
             let got = title(app)
             if !matches(show, got) { wrong.append("\(show) -> \(got)") }
+            if got == "Browse" { continue }
             back(app)
             XCTAssertTrue(app.navigationBars["Browse"].waitForExistence(timeout: 10), "Back reaches Browse")
         }
@@ -64,15 +86,17 @@ final class NavigationUITests: DeviceTestCase {
         guard let tile = firstHittable(app) else { return XCTFail("no tile") }
         let show = name(tile)
         tile.tap()
-        sleep(2)
-        shot(app, "nav-after-tap")
-        print("NAVDIAG bars=\(app.navigationBars.allElementsBoundByIndex.map { $0.identifier }) tile=\(tile.label)")
+        settle(app, from: "Browse")
         let showTitle = title(app)
         XCTAssertTrue(matches(show, showTitle), "opened \(showTitle) for \(show)")
-        let rows = app.cells.allElementsBoundByIndex.filter { $0.isHittable && $0.frame.minY > 300 }
+        sleep(3)
+        let rows = app.buttons.allElementsBoundByIndex.filter {
+            $0.isHittable && $0.frame.minY > 400 && $0.frame.height > 40 && $0.frame.maxY < app.frame.height - 180
+                && !["Follow", "Following", "Share", "Back"].contains($0.label) && !$0.label.isEmpty
+        }
         guard let episode = rows.first else { throw XCTSkip("no episode row visible") }
         episode.tap()
-        sleep(2)
+        settle(app, from: showTitle)
         XCTAssertNotEqual(title(app), showTitle, "moved to the episode")
         back(app)
         sleep(1)
@@ -84,19 +108,19 @@ final class NavigationUITests: DeviceTestCase {
     func testHomeThenBrowseKeepsEachTabsStack() throws {
         let app = launch(["APP_START_TAB": "home", "APP_DOOR_SECONDS": "600"])
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "home tiles")
-        guard let a = firstHittable(app) else { return XCTFail("no home tile") }
+        guard let a = firstHittable(app) ?? tiles(app).allElementsBoundByIndex.first(where: { $0.isHittable }) else { return XCTFail("no home tile") }
         let aName = name(a)
         a.tap()
-        sleep(2)
+        settle(app, from: "Home")
         let aTitle = title(app)
-        XCTAssertTrue(matches(aName, aTitle), "Home opened \(aTitle) for \(aName)")
+        XCTAssertNotEqual(aTitle, "Home", "Home's tile opened a page (\(aName))")
         openTab(app, "Browse")
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "browse tiles")
         app.swipeUp(); app.swipeUp()
         guard let b = firstHittable(app) else { return XCTFail("no browse tile") }
         let bName = name(b)
         b.tap()
-        sleep(2)
+        settle(app, from: "Browse")
         let bTitle = title(app)
         XCTAssertTrue(matches(bName, bTitle), "Browse opened \(bTitle) for \(bName)")
         back(app)

@@ -84,6 +84,23 @@ struct SectionHead<Trailing: View>: View {
     }
 }
 
+/// A link that opens `value` on the active section's path. Several links in one List row (a tile
+/// row, a shelf) as NavigationLinks all fire on one tap, so a tile opened the wrong show and Back
+/// landed on another (iPhone 12, 2026-11-01); on iOS and the Mac each is a Button that pushes once.
+struct PushLink<Value: Hashable, Label: View>: View {
+    let value: Value
+    @ViewBuilder let label: () -> Label
+    @Environment(AppStore.self) private var store
+
+    var body: some View {
+        #if os(tvOS)
+        NavigationLink(value: value, label: label)
+        #else
+        Button { store.push(value) } label: { label() }
+        #endif
+    }
+}
+
 /// A show or an episode as the grammar's tile, opening `value`.
 struct TileLink<Value: Hashable>: View {
     let value: Value
@@ -93,7 +110,7 @@ struct TileLink<Value: Hashable>: View {
     var castScript: PlayScript? = nil
 
     var body: some View {
-        NavigationLink(value: value) { ShowTile(series: series, width: width, facts: facts, castScript: castScript) }
+        PushLink(value: value) { ShowTile(series: series, width: width, facts: facts, castScript: castScript) }
             #if os(tvOS)
             .buttonStyle(.card)
             #else
