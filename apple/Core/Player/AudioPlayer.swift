@@ -249,13 +249,13 @@ final class AudioPlayer {
     }
 
     /// One retry after a jittered wait, then the next recording in rank order, then the error.
-    private func itemFailed(_ problem: String) {
+    private func itemFailed(_ problem: String, prematureEnd: Bool = false) {
         isPlaying = false
         guard var plan = recovery, let context = loadContext else {
             errorMessage = problem
             return
         }
-        let step = plan.failed(jitter: Double.random(in: 0.5...1.5))
+        let step = prematureEnd ? plan.endedTooSoon(jitter: Double.random(in: 0.5...1.5)) : plan.failed(jitter: Double.random(in: 0.5...1.5))
         recovery = plan
         diag("step \(step) elapsed \(Int(elapsed))")
         let token = loadToken
@@ -516,6 +516,12 @@ final class AudioPlayer {
 
     private func itemDidEnd() {
         guard let current = item else { return }
+        diag("ended at \(Int(player.currentTime().seconds)) of \(Int(player.currentItem?.duration.seconds ?? -1))")
+        let known = recovery?.current.lengthSeconds ?? loadContext?.detail.episode.lengthSeconds
+        if LoadRecovery.endedTooSoon(position: player.currentTime().seconds, expected: known) {
+            itemFailed(Connectivity.playerProblem(nil), prematureEnd: true)
+            return
+        }
         history.markFinished(current.episode.id, duration: duration)
         // R20: once the timer fires (or it was set for this episode), nothing
         // starts the next one. Decision 067: an arc's next part plays next;
