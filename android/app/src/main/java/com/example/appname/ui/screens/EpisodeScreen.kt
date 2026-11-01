@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FormatQuote
@@ -37,6 +38,7 @@ import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.EpisodeDetail
 import com.example.appname.data.Progress
 import com.example.appname.data.Recording
+import com.example.appname.data.RecordingLabel
 import com.example.appname.data.SeriesRow
 import com.example.appname.data.Transcript
 import com.example.appname.data.episodeFacts
@@ -135,9 +137,9 @@ fun EpisodeScreen(
                         },
                     )
                     if (d.recordings.size > 1) {
-                        item(key = "versions-h") { SectionHeader("Versions") }
-                        items(d.recordings, key = { "r${it.rank}" }) { rec ->
-                            VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
+                        item(key = "versions-h") { SectionHeader("Recordings") }
+                        itemsIndexed(d.recordings, key = { _, it -> "r${it.rank}" }) { index, rec ->
+                            VersionItem(rec, index + 1, onPlay = { container.playback.play(row, url = rec.url) })
                         }
                     } else {
                         d.recordings.firstOrNull()?.let { rec ->
@@ -263,17 +265,15 @@ private fun recordingNotes(rec: Recording): List<String> =
     listOfNotNull(DisplayVocabulary.variantLine(rec.variant), DisplayVocabulary.PARTIAL.takeIf { rec.partial })
 
 @Composable
-private fun VersionItem(rec: Recording, onPlay: () -> Unit) {
-    val technical = listOfNotNull(rec.format, rec.kbps?.let { "$it kbps" }, formatLength(rec.lengthSeconds))
-        .joinToString(" · ")
-    val notes = recordingNotes(rec).joinToString(" · ")
+private fun VersionItem(rec: Recording, position: Int, onPlay: () -> Unit) {
+    val title = RecordingLabel.title(rec, position)
+    val facts = RecordingLabel.facts(rec, rec.rank == 0, formatLength(rec.lengthSeconds), recordingNotes(rec))
     ListItem(
-        headlineContent = { Text(rec.archiveId) },
-        supportingContent = listOf(technical, notes).filter { it.isNotEmpty() }.joinToString("\n")
-            .ifEmpty { null }?.let { { Text(it) } },
+        headlineContent = { Text(title) },
+        supportingContent = facts.ifEmpty { null }?.let { { Text(it) } },
         trailingContent = {
             IconButton(onClick = onPlay, modifier = Modifier.tvFocusMark()) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Play the copy from ${rec.archiveId}")
+                Icon(Icons.Filled.PlayArrow, contentDescription = "Play $title")
             }
         },
     )
