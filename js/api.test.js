@@ -670,6 +670,32 @@ test('path links route to the app query; shared links are the path form (DEEP_LI
   assertEq(API.pathQuery(API.shareLink('episode', 'x|y z')).get('item'), 'x|y z', 'round trip');
 });
 
+test('dates: no ISO date reaches the screen, and the catalog precision stays (owner 2026-10-31, R1)', () => {
+  assertEq(API.mediumDate('1949-09-17'), 'Sep 17, 1949', 'a full day is the medium form');
+  assertEq(API.mediumDate('1949-09'), 'Sep 1949', 'a month stays a month');
+  assertEq(API.mediumDate('1949'), '1949', 'a year stays a year');
+  assertEq(API.mediumDate(null), '', 'no date is nothing');
+  assertEq(API.mediumDate('1947-13-40'), '1947-13-40', 'a date that is no day is shown as stored, never invented');
+  assertEq(API.titleDates('Abbott & Costello (1947-04-14)'), 'Abbott & Costello (Apr 14, 1947)', 'a title that carries an ISO date');
+  const iso = /\d{4}-\d{2}/;
+  assert(iso.test('1949-09-17'), 'control: the pattern catches a raw date');
+  ['1949-09-17', '1949-09', '1949', '1931-01-01'].forEach(d => assert(!iso.test(API.mediumDate(d)), `${d} rendered as ISO`));
+});
+
+test('recordings: a copy is named from data or by position, never by an archive.org identifier', () => {
+  const ids = ['OTRR_Suspense_Singles', 'Suspense420617TheBurningCourt', 'AnthonyBerkeleyThePoisonedChocolatesCaseBBCSNT198'];
+  ids.forEach(id => assert(API.looksLikeIdentifier(id), `control: ${id} is identifier-shaped`));
+  ids.forEach((id, i) => {
+    const rec = { archiveId: id, kbps: 128, label: i === 0 ? id : null };
+    const drawn = `${API.recordingLabel(rec, i)} ${API.recordingFacts(rec, i === 0, '30 min', {}, '')}`;
+    assert(!API.looksLikeIdentifier(drawn), `identifier on screen: ${drawn}`);
+    assert(!drawn.includes(id), `identifier on screen: ${drawn}`);
+  });
+  assertEq(API.recordingLabel({ archiveId: 'x' }, 0), 'Recording 1', 'no label: by position');
+  assertEq(API.recordingLabel({ label: 'Old Time Radio Researchers' }, 1), 'Old Time Radio Researchers', 'a clean label wins');
+  assertEq(API.recordingFacts({ kbps: 128 }, true, '30 min', {}, ''), 'Best copy · 128 kbps · 30 min');
+});
+
 // --- RUNNER ----------------------------------------------------------
 
 async function run() {

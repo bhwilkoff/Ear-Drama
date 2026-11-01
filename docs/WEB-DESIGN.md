@@ -1001,3 +1001,6 @@ web app follows today.
   viewport with DevTools' `Emulation.setDeviceMetricsOverride` instead.
 
 **E1 rules (2026-10-30, D4 review).** Stations after the evening ends: the Tonight row keeps "Ended at 9:00 PM" and offers Replay (a primary button, the first playable slot from the top, played as an ordinary episode, never live). Library carries "Export my data" and "Export history (CSV)" as ghost buttons in the account row (`js/export.js`; docs/EXPORT.md). The rights line is read from `rightsLines`, never typed.
+
+**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `API.mediumDate` is the one formatter: rows, event lines, the Now Playing line, the lock screen and share text say "Sep 17, 1949", a month "Sep 1949", a year "1949"; the episode page keeps the long form; a date that is no day shows as stored. `tools/web_fit_*.py` and `js/api.test.js` fail on an ISO shape in the rendered DOM. Recordings are labeled by `recordings.label` (read when the catalog has it, ignored when empty or identifier-shaped), else "Recording N" with the best copy marked; the identifier is only the "View on archive.org" link target (`API.recordingLabel`).
+
