@@ -470,7 +470,7 @@ final class AudioPlayer {
         if let d = player.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
         if Self.diagnoses {
             diagLine = diagnosisLine()
-            if Int(now.timeIntervalSince1970) % 5 == 0 { print("[PlaybackDiag] clock \(Int(seconds)) \(diagLine)") }
+            if Int(now.timeIntervalSince1970) % 5 == 0 { print("[PlaybackDiag] clock \(Int(seconds)) \(diagLine ?? "")") }
         }
         watchForStall(now: now)
 

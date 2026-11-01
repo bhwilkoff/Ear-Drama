@@ -21,6 +21,10 @@
 	<array>
 		<string>BigShoulders-Bold.ttf</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>ATSApplicationFontsPath</key>
 	<string>.</string>
 </dict>

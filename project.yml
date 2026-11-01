@@ -137,8 +137,8 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Ear Drama records your part in a play. The recording stays on this device."
         # Audio keeps playing with the screen locked or the app in the
         # background (research 04 §2.2). macOS needs no background mode.
-        "INFOPLIST_KEY_UIBackgroundModes[sdk=iphone*]": audio
-        "INFOPLIST_KEY_UIBackgroundModes[sdk=appletv*]": audio
+        # UIBackgroundModes lives in apple/Resources/EarDrama-Info.plist: as an INFOPLIST_KEY it never
+        # reached the built plist, and playback paused on leaving the app (iPhone 12, 2026-11-01).
         # The bundled seed catalog (contract §2). The database is NEVER
         # committed: the "Bundle catalog seed" phase copies this file into the
         # app at build time. Override on the command line, e.g.
