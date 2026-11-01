@@ -171,8 +171,13 @@ final class LayoutSweepUITests: DeviceTestCase {
             }
         }
         guard maxX >= 0 else { return nil }
-        return CGRect(x: CGFloat(minX) / scale, y: CGFloat(minY) / scale,
-                      width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
+        let box = CGRect(x: CGFloat(minX) / scale, y: CGFloat(minY) / scale,
+                         width: CGFloat(maxX - minX + 1) / scale, height: CGFloat(maxY - minY + 1) / scale)
+        // A landscape iPad hands back the screenshot's pixels in portrait order, so its axes are
+        // the button's turned 90 degrees: every glyph read as off center on both axes at once.
+        let frame = button.frame
+        let turned = (w > h) != (frame.width > frame.height) && abs(frame.width - frame.height) > 1
+        return turned ? CGRect(x: box.minY, y: box.minX, width: box.height, height: box.width) : box
     }
 
     /// Every button in a page's action row draws its picture and title centered: a folded button's glyph
