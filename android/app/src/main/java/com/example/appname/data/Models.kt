@@ -166,6 +166,8 @@ data class Recording(
     val lengthSeconds: Double?,
     val variant: String?,
     val partial: Boolean,
+    /** The catalog's clean collection or uploader name (`recordings.label`), or null. */
+    val label: String? = null,
 )
 
 /** An arc part's view ahead (contract §3.3): the parts after it, in order, and the next story's first part. */

@@ -919,11 +919,11 @@ struct EpisodeScreen: View {
 
             if detail.recordings.count > 1 {
                 Section("Recordings") {
-                    ForEach(detail.recordings) { recording in
+                    ForEach(Array(detail.recordings.enumerated()), id: \.element.id) { index, recording in
                         Button {
                             play(episode.id, recording: recording)
                         } label: {
-                            VersionLabel(recording: recording, isDefault: recording.rank == 0)
+                            VersionLabel(recording: recording, position: index + 1, isDefault: recording.rank == 0)
                         }
                         .accessibilityHint("Plays this copy")
                     }
@@ -1049,24 +1049,18 @@ struct PersonScreen: View {
 
 struct VersionLabel: View {
     let recording: Recording
+    let position: Int
     let isDefault: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s1) {
-            Text(recording.archiveID)
+            Text(verbatim: RecordingLabel.title(recording, position: position))
                 .font(TypeRamp.body)
                 .foregroundStyle(Color.brandText)
-            Text(verbatim: facts)
+            Text(verbatim: RecordingLabel.facts(recording, isBest: isDefault))
                 .font(TypeRamp.caption)
                 .foregroundStyle(Color.brandTextMuted)
         }
-    }
-
-    private var facts: String {
-        var parts = recording.notes
-        if let length = recording.lengthSeconds { parts.append(EpisodeRow.clock(length)) }
-        if let kbps = recording.kbps { parts.append("\(kbps) kbps") }
-        return parts.joined(separator: " · ")
     }
 }
 

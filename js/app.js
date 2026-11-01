@@ -115,7 +115,7 @@
   }
   /** An episode's name: its title, else its number in the series, else "Untitled"; never its id. */
   function epTitle(ep) {
-    if (ep.title) return ep.title;
+    if (ep.title) return API.titleDates(ep.title);
     return ep.num !== null && ep.num !== undefined ? `No. ${ep.num}` : 'Untitled';
   }
   function plural(n, one, many) { return `${num.format(n)} ${n === 1 ? one : many}`; }
@@ -393,9 +393,9 @@
         eventLine(facts || [], 'caption g-head-facts')),
       mark || (first || last || (years && years.length) ? runStrip(first, last, 'g-strip g-head-strip', headStripH(), years) : null));
   }
-  /** A date as an event line's fact, as the catalog stores it (R1, the same on every platform), never
-      broken at its hyphens. */
-  function factDate(iso) { return iso ? iso.replace(/-/g, '\u2011') : null; }
+  /** A date as an event line's fact: abbreviated month, at the catalog's precision (R1, the same on every
+      platform), never an ISO string, and never broken across lines. */
+  function factDate(iso) { return iso ? API.mediumDate(iso).replace(/ /g, '\u00a0') : null; }
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   /** The date block: the month and year in small caps over the day, on the series' board; an undated
       numbered episode says "No." over its number. */
@@ -438,7 +438,7 @@
       series mix; R1, the date leads), the title, the sub line, the length, Play. */
   function episodeRow(ep, { showSeries = false, note = null, genre = null, dated = true } = {}) {
     const progress = Store.progress(ep.id);
-    const dateText = ep.date && (ep.date.length === 10 ? fmtLongDate(ep.date) : ep.date);
+    const dateText = ep.date && (ep.date.length === 10 ? fmtLongDate(ep.date) : API.mediumDate(ep.date));
     const sub = eventLine(showSeries ? [ep.seriesName, dated ? factDate(ep.date) || 'Undated' : null, note] : [note]);
     const len = fmtLength(ep.length);
     const link = el('a', { class: 'ep-link g-link', href: `?item=${encodeURIComponent(ep.id)}`,
@@ -452,7 +452,7 @@
     const row = el('li', { class: 'ep-row g-row' }, link,
       len ? el('span', { class: 'g-len tabular', 'aria-hidden': 'true' }, len) : null,
       ep.url ? el('button', {
-        type: 'button', class: 'icon-btn g-play', 'aria-label': `Play ${epTitle(ep)}, ${ep.date || 'undated'}`,
+        type: 'button', class: 'icon-btn g-play', 'aria-label': `Play ${epTitle(ep)}, ${API.mediumDate(ep.date) || 'undated'}`,
         onclick: () => Player.load({ ...ep, title: epTitle(ep) }),
       }, icon('play')) : null);
     return row;
@@ -1321,7 +1321,7 @@
       if (d.id !== r.id) history.replaceState(null, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
       const title = epTitle(d);
-      setTitle(title, d.date, seriesName);
+      setTitle(title, API.mediumDate(d.date), seriesName);
       let chosen = 0;
       const card = () => ({ id: d.id, title, series: d.series, seriesName, date: d.date, network: d.network || null,
                             alts: altsOf(d, chosen), url: d.recordings[chosen].url, length: d.recordings[chosen].length || d.length,
@@ -1345,7 +1345,7 @@
         announce(on ? 'Added to queue' : 'Removed from queue');
       });
       const shareBtn = iconBtn('btn-ghost', 'share', 'Share', { 'aria-label': `Share ${title}` });
-      shareBtn.addEventListener('click', () => share(`${title} (${d.date || 'undated'})`, API.shareLink('episode', d.id)));
+      shareBtn.addEventListener('click', () => share(`${title} (${API.mediumDate(d.date) || 'undated'})`, API.shareLink('episode', d.id)));
 
       // An undated episode with no network or credits is most of the catalog: its event line says
       // "Undated" and nothing more, in the same structure as a rich one.
@@ -1395,10 +1395,10 @@
       const fs = el('fieldset', { class: 'versions' },
         el('legend', { class: 'section-header' }, d.recordings.length > 1 ? 'Recordings' : 'Recording'));
       d.recordings.forEach((rec, i) => {
-        const label = rec.archiveId || rec.format || `Recording ${i + 1}`;
-        const facts2 = [rec.archiveId ? rec.format : null, rec.kbps ? `${rec.kbps} kbps` : null, fmtLength(rec.length),
-                        m.variantLines[rec.variant] || rec.variant || null, rec.partial ? m.partialLine : null]
-          .filter(Boolean).join(' · ');
+        // A copy is named from data (rec.label, when the catalog publishes one), else by position;
+        // the archive.org identifier is never text, only the link target.
+        const label = API.recordingLabel(rec, i);
+        const facts2 = API.recordingFacts(rec, i === 0, fmtLength(rec.length), m.variantLines, m.partialLine);
         const input = el('input', { type: 'radio', name: 'version', value: String(i), checked: i === 0,
                                     id: `ver-${i}` });
         input.addEventListener('change', () => { chosen = i; });
@@ -1406,8 +1406,8 @@
           el('label', { for: `ver-${i}` }, el('span', { class: 'body-strong' }, label),
             facts2 ? el('span', { class: 'caption' }, facts2) : null),
           rec.archiveId ? el('a', { class: 'caption', href: `https://archive.org/details/${encodeURIComponent(rec.archiveId)}`,
-                    rel: 'noopener', target: '_blank', 'aria-label': `${rec.archiveId} on the Internet Archive` },
-          'Source') : null));
+                    rel: 'noopener', target: '_blank', 'aria-label': `${label} on archive.org` },
+          'View on archive.org') : null));
       });
       body.append(fs);
       if (rightsLine) body.append(el('p', { class: 'caption rights' }, rightsLine));
@@ -2137,7 +2137,7 @@
   });
   $('np-share').addEventListener('click', () => {
     const cur = Player.current;
-    if (cur) share(`${epTitle(cur)} (${cur.date || 'undated'})`, API.shareLink('episode', cur.id));
+    if (cur) share(`${epTitle(cur)} (${API.mediumDate(cur.date) || 'undated'})`, API.shareLink('episode', cur.id));
   });
   $('np-story').addEventListener('click', () => {
     const story = Player.nextStory();

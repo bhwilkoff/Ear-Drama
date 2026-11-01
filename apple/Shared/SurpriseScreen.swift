@@ -34,7 +34,7 @@ struct SurpriseScreen: View {
                             HeadBoard(kicker: nil, name: episode.seriesName, genre: episode.seriesGenre,
                                       art: episode.seriesWindowArt, first: series?.firstDate, last: series?.lastDate,
                                       years: series?.yearCounts,
-                                      facts: [episode.displayTitle, AirDate.stored(episode.airDate)])
+                                      facts: [episode.displayTitle, AirDate.medium(episode.airDate)])
                         }
                         .buttonStyle(.plain)
                         playButton { play(episode.id) }

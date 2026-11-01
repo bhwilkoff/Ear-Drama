@@ -27,6 +27,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let hasDownloads: Bool
     private let hasLoudness: Bool
     private let hasTranscript: Bool
+    private let hasRecordingLabel: Bool
     /// The index carries the transcript column (contract §3.4), so a match can
     /// be told apart as transcript-only.
     private let ftsHasTranscript: Bool
@@ -64,6 +65,7 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         self.path = path
         self.handle = h
         self.onCorruption = onCorruption
+        hasRecordingLabel = Self.columnExists(h, table: "recordings", column: "label")
         hasSponsor = Self.columnExists(h, table: "episodes", column: "sponsor")
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
         hasSortName = Self.columnExists(h, table: "series", column: "sort_name")
@@ -414,13 +416,13 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                                      evidence: row.text(8), face: row.text(9), grade: row.text(10)))
         }
         let recordings = rows("""
-            SELECT rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings
+            SELECT rank, archive_id, url, format, kbps, length_s, variant, partial, \(hasRecordingLabel ? "label" : "NULL") FROM recordings
             WHERE episode_id = ? ORDER BY rank
             """, [.text(id)]) { row -> Recording? in
             guard let raw = row.text(2), let url = URL(string: raw) else { return nil }
             return Recording(rank: row.int(0) ?? 0, archiveID: row.text(1) ?? "", url: url, format: row.text(3),
                              kbps: row.int(4), lengthSeconds: row.double(5), variant: row.text(6),
-                             partial: (row.int(7) ?? 0) != 0)
+                             partial: (row.int(7) ?? 0) != 0, label: row.text(8))
         }.compactMap { $0 }
         let rightsLine = RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
         return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings,

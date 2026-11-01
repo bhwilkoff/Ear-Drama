@@ -211,23 +211,41 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/**
- * R1: the date is the identity, shown as the catalog stores it (`1943-02-24`),
- * as Apple and the web do, in the tabular style so a column of dates aligns.
- */
-fun formatAirDate(date: String?): String? = date?.takeIf { it.isNotBlank() }
+private val AIR_DATE = Regex("""^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$""")
 
 /**
- * The episode page's date, as the web writes it: a full day in the device's long date format
- * ("May 25, 1943"); a year-only or month-only date stays as precise as the catalog is (R1), so it is
- * shown as stored.
+ * R1: the date is the identity, kept at the precision the catalog has, and never an ISO string on
+ * screen (owner, 2026-10-31): "Sep 17, 1949" (the device's medium date), "Sep 1949", "1949".
  */
-fun formatAirDateLong(date: String?, locale: Locale = Locale.getDefault()): String? {
-    val d = formatAirDate(date) ?: return null
-    if (d.length != 10) return d
+fun formatAirDate(date: String?, locale: Locale = Locale.getDefault()): String? =
+    airDateText(date, locale, java.time.format.FormatStyle.MEDIUM, "LLL y")
+
+/**
+ * The episode page's date: the device's long form ("May 25, 1943"), a month as "May 1943", a year
+ * as "1943", each as precise as the catalog is (R1).
+ */
+fun formatAirDateLong(date: String?, locale: Locale = Locale.getDefault()): String? =
+    airDateText(date, locale, java.time.format.FormatStyle.LONG, "LLLL y")
+
+private val TITLE_DATE = Regex("""\b\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b""")
+
+/** A title the upload spelled with an ISO date ("Show (1947-04-14)") shows that date as a person reads it. */
+fun spellingDates(title: String, locale: Locale = Locale.getDefault()): String =
+    TITLE_DATE.replace(title) { formatAirDate(it.value, locale) ?: it.value }
+
+private fun airDateText(date: String?, locale: Locale, style: java.time.format.FormatStyle, monthPattern: String): String? {
+    val d = date?.takeIf { it.isNotBlank() } ?: return null
+    val m = AIR_DATE.matchEntire(d) ?: return d
+    val year = m.groupValues[1].toInt()
+    val month = m.groupValues[2].takeIf { it.isNotEmpty() }?.toInt() ?: return m.groupValues[1]
+    val day = m.groupValues[3].takeIf { it.isNotEmpty() }?.toInt()
     return try {
-        java.time.LocalDate.parse(d).format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(locale))
-    } catch (_: java.time.format.DateTimeParseException) {
+        if (day == null) {
+            java.time.YearMonth.of(year, month).format(java.time.format.DateTimeFormatter.ofPattern(monthPattern, locale))
+        } else {
+            java.time.LocalDate.of(year, month, day).format(java.time.format.DateTimeFormatter.ofLocalizedDate(style).withLocale(locale))
+        }
+    } catch (_: java.time.DateTimeException) {
         d
     }
 }
@@ -249,7 +267,7 @@ fun formatClock(ms: Long): String {
 fun seasonLabel(season: String?): String = season?.replace('-', '–') ?: "Undated"
 
 fun episodeTitle(row: EpisodeRow): String =
-    row.title?.takeIf { it.isNotBlank() } ?: row.num?.let { "No. $it" } ?: formatAirDate(row.airDate) ?: row.seriesName
+    row.title?.takeIf { it.isNotBlank() }?.let(::spellingDates) ?: row.num?.let { "No. $it" } ?: formatAirDate(row.airDate) ?: row.seriesName
 
 /**
  * Detail's one facts line (ANDROID-DESIGN §4.4, WEB-DESIGN §4.5): "Undated"

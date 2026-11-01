@@ -745,6 +745,8 @@ file (`StandInNeverStoredTest`). No analytics.
 - **§10.4 A credit's position is its key** on Detail: one person can hold
   two roles on one broadcast.
 
+**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `formatAirDate` is the one formatter for rows, event lines, the media session and Android Auto ("Sep 17, 1949" in the device's medium format, "Sep 1949", "1949"); `formatAirDateLong` is the long form for Detail. Recordings (the section is now named Recordings, not Versions) are named by `RecordingLabel` (`recordings.label` behind a column-exists guard, else "Recording N", best copy marked); the archive.org identifier never renders. `AirDateTest` and `RecordingLabelTest` fail on an ISO shape or an identifier-shaped label.
+
 ## §11 Deliberate inversions
 
 - **§11.1 Play never opens the player.** Like iOS, Play on Detail

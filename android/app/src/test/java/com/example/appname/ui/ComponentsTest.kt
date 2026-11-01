@@ -7,8 +7,8 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ComponentsTest {
-    @Test fun `dates show as the catalog stores them (R1)`() {
-        assertEquals("1943-02-24", formatAirDate("1943-02-24"))
+    @Test fun `dates keep the catalog's precision and read as a medium date (R1)`() {
+        assertEquals("Feb 24, 1943", formatAirDate("1943-02-24", java.util.Locale.US))
         assertNull(formatAirDate(null))
         assertNull(formatAirDate(""))
     }
@@ -19,7 +19,8 @@ class ComponentsTest {
         assertEquals("CBS · Roma Wines · 30 min", detailFacts(d))
         assertEquals("Undated · CBS · 30 min", detailFacts(d.copy(episode = row.copy(airDate = null), sponsor = null)))
         assertNull(detailFacts(d.copy(network = null, sponsor = null, episode = row.copy(lengthSeconds = null))))
-        assertEquals("Sorry, Wrong Number (1943-05-25)", episodeShareTitle(row))
+        java.util.Locale.setDefault(java.util.Locale.US)
+        assertEquals("Sorry, Wrong Number (May 25, 1943)", episodeShareTitle(row))
         assertEquals("Sorry, Wrong Number (undated)", episodeShareTitle(row.copy(airDate = null)))
     }
 

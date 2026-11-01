@@ -309,6 +309,8 @@ the Mac target.
 - **§10.3 macOS `AVPlayerItem` has no `externalMetadata`**; the window
   title carries what is playing (template §B3d).
 
+**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `AirDate.medium` is the one formatter for rows and event lines ("Sep 17, 1949", "Sep 1949", "1949"); `AirDate.display` the long form for Detail. Recordings are named by `RecordingLabel` (`recordings.label` behind a column-exists guard, else "Recording N", best copy marked); the archive.org identifier never renders. Shared with iOS; `AirDateTests` holds both rules.
+
 ## §11 Deliberate inversions
 
 - **§11.1 The player never replaces the window root.** The template's

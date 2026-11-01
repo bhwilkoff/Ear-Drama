@@ -362,6 +362,8 @@ The rights line, the transcript label, and volume leveling are as in
 - **§10.3 A shelf without `scrollClipDisabled()` clips the focused
   card's lift.**
 
+**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `AirDate.medium` is the one formatter for cards and rows ("Sep 17, 1949", "Sep 1949", "1949"); `AirDate.display` the long form for Detail. The Recordings section names each copy with `RecordingLabel` (`recordings.label` behind a column-exists guard, else "Recording N", best copy marked); the archive.org identifier never renders. `AirDateTests` holds both rules.
+
 ## §11 Deliberate inversions
 
 - **§11.1 Detail focuses Play and Play opens Now Playing** (§6.2), and

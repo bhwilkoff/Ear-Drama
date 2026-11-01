@@ -30,6 +30,13 @@ JS = r"""(() => {
   });
   if (document.getElementById('np-air').hidden) bad.push('On the air is hidden for an episode with credits');
   if (document.getElementById('np-night').hidden) bad.push('That night on the radio is hidden for a date with other broadcasts');
+  const shown = document.body.innerText + ' ' + [...document.querySelectorAll('[aria-label]')].map(n => n.getAttribute('aria-label')).join(' ');
+  const iso = shown.match(/\d{4}[-‑](0[1-9]|1[0-2])([-‑](0[1-9]|[12]\d|3[01]))?(?!\d)/);
+  if (iso) bad.push('an ISO date is on screen: ' + iso[0]);
+  document.querySelectorAll('.versions .version').forEach(v => {
+    const id = v.querySelector('label').textContent.match(/\w*_\w*|[A-Za-z]{4,}\d{3,}|\d{3,}[A-Za-z]{4,}/);
+    if (id) bad.push('an archive.org identifier is in the Recordings list: ' + id[0]);
+  });
   return JSON.stringify(bad);
 })()"""
 

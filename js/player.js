@@ -415,7 +415,7 @@ const Player = (() => {
   function setMetadata() {
     if (!ms || !current || typeof MediaMetadata === 'undefined') return;
     ms.metadata = new MediaMetadata({
-      title: current.title || '', artist: current.seriesName || '', album: current.date || '', artwork,
+      title: current.title || '', artist: current.seriesName || '', album: (typeof API !== 'undefined' && API.mediumDate ? API.mediumDate(current.date) : '') || '', artwork,
     });
   }
   /** The lock screen's picture (§5.6), the same art Now Playing draws; null clears it. */

@@ -83,6 +83,6 @@ struct TopShelfTests {
     @Test func theLabelNamesSeriesThenEpisode() {
         let items = TopShelfSnapshot.make(from: [episode("a|1"), episode("b|2", series: "Dragnet", title: nil)]).items
         #expect(items[0].label == "Suspense: Cabin B-13")
-        #expect(items[1].label == "Dragnet: 1950-01-01")
+        #expect(items[1].label == "Dragnet: \(AirDate.medium("1950-01-01"))")
     }
 }

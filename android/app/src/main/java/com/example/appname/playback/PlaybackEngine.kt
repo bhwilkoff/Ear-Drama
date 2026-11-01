@@ -501,9 +501,9 @@ class PlaybackEngine(
         .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(copyUrl.toUri()).build())
         .setMediaMetadata(
             MediaMetadata.Builder()
-                .setTitle(row.title ?: row.airDate ?: row.seriesName)
+                .setTitle(row.title ?: com.example.appname.ui.formatAirDate(row.airDate) ?: row.seriesName)
                 .setArtist(row.seriesName)
-                .setSubtitle(row.airDate)
+                .setSubtitle(com.example.appname.ui.formatAirDate(row.airDate))
                 .setMediaType(MediaMetadata.MEDIA_TYPE_PODCAST_EPISODE)
                 .let {
                     when {

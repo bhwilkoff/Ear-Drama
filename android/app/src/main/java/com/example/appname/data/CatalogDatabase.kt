@@ -48,6 +48,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         "sponsor" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
     }
 
+    /** `recordings.label`, a clean collection or uploader name; an older catalog has none. */
+    private val hasRecordingLabel: Boolean by lazy { hasColumn("recordings", "label") }
+
     /** Contract §3.3a: the projection carries portraits; an older catalog has none. */
     private val hasArt: Boolean by lazy {
         "portrait" in queryRaw("PRAGMA table_info(people)") { it.getText(1) } &&
@@ -516,7 +519,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
             listOf(resolved),
         ) { Credit(it.getText(0), it.getText(1), it.textOrNull(2), it.textOrNull(3), artwork(it, 4)) }
         val recordings = queryRaw(
-            "SELECT rank, archive_id, url, format, kbps, length_s, variant, partial FROM recordings " +
+            "SELECT rank, archive_id, url, format, kbps, length_s, variant, partial, ${if (hasRecordingLabel) "label" else "NULL"} FROM recordings " +
                 "WHERE episode_id = ? ORDER BY rank",
             listOf(resolved),
         ) {
@@ -529,6 +532,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 lengthSeconds = if (it.isNull(5)) null else it.getDouble(5),
                 variant = it.textOrNull(6),
                 partial = it.getLong(7) != 0L,
+                label = it.textOrNull(8),
             )
         }
         head.copy(

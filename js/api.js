@@ -306,6 +306,45 @@ const API = (() => {
     }
     return out;
   }
+  /** An air date as a person reads it (owner, 2026-10-31: spelled or abbreviated, never ISO), at the
+      precision the catalog has (R1): "Sep 17, 1949", "Sep 1949", "1949". Anything else is returned as given. */
+  const MON_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function mediumDate(iso) {
+    const m = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/.exec(iso || '');
+    if (!m) return iso || '';
+    const mo = m[2] ? +m[2] : 0, day = m[3] ? +m[3] : 0;
+    if (!mo) return m[1];
+    if (mo > 12 || mo < 1) return iso;
+    if (!day) return `${MON_ABBR[mo - 1]} ${m[1]}`;
+    if (new Date(Date.UTC(+m[1], mo - 1, day)).getUTCMonth() !== mo - 1) return iso;
+    return `${MON_ABBR[mo - 1]} ${day}, ${m[1]}`;
+  }
+
+  /** A title the upload spelled with an ISO date ("Show (1947-04-14)") shows that date as a person reads it. */
+  function titleDates(title) {
+    return String(title).replace(/\b\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b/g, (d) => mediumDate(d));
+  }
+
+  /** An archive.org identifier, or something shaped like one: underscores, or a long run-together
+      word of letters and numerals. Raw upload text never shows (AGENTS.md). */
+  function looksLikeIdentifier(text) {
+    return String(text || '').split(/\s+/).some(w => w.includes('_')
+      || (w.length >= 10 && /[A-Za-z]/.test(w) && /\d/.test(w))
+      || (w.length >= 24 && /[A-Za-z]/.test(w) && (w.match(/[A-Z]/g) || []).length >= 4));
+  }
+  /** What names a copy in the Recordings list: the catalog's clean `label` when it publishes one
+      (and it is not identifier-shaped), else its position. Never the identifier. */
+  function recordingLabel(rec, index) {
+    const label = rec && typeof rec.label === 'string' ? rec.label.trim() : '';
+    return label && !looksLikeIdentifier(label) ? label : `Recording ${index + 1}`;
+  }
+  /** The line under the name: "Best copy · 128 kbps · 29 min". `length` arrives formatted. */
+  function recordingFacts(rec, isBest, length, variantLines, partialLine) {
+    return [isBest ? 'Best copy' : null, rec.kbps ? `${rec.kbps} kbps` : null, length,
+            (variantLines && variantLines[rec.variant]) || rec.variant || null, rec.partial ? partialLine : null]
+      .filter(Boolean).join(' · ');
+  }
+
   /** The facts of an episode's event line: its date (or Undated), network, sponsor, length, season,
       and its number when the title does not already say it. `date` and `length` arrive formatted. */
   function episodeFacts(d, date, length) {
@@ -1460,7 +1499,7 @@ const API = (() => {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,
