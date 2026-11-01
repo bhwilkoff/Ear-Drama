@@ -167,18 +167,36 @@ def withhold(slots, served, forward=None):
     return out
 
 
+def refresh_text(slot, current):
+    """A kept slot's time and episode never change; its words follow the catalog. The
+    series name and title are display text, so a cleaned title (owner 2026-10-31: raw
+    upload text never shows) reaches a slot published before the cleanup."""
+    ep = slot.get("episode")
+    src = current.get(ep.get("id")) if isinstance(ep, dict) else None
+    if not src:
+        return slot
+    ep = dict(ep, series=src["series"])
+    if src.get("title"):
+        ep["title"] = src["title"]
+    else:
+        ep.pop("title", None)
+    return dict(slot, episode=ep)
+
+
 def build(pool_by_genre, now, previous=None, served=None, forward=None):
     """The stations file for a build at `now`: each published slot still running or
     ahead is kept as it is (withheld when no longer served, or following its id's alias); new slots follow until
     the window reaches `now + AHEAD`. A first publish starts on the hour."""
     old = {s["genre"]: s for s in (previous or {}).get("stations", [])}
     first = now.replace(minute=0, second=0, microsecond=0)
+    current = {e["id"]: e for pool in pool_by_genre.values() for e in (pool or [])}
     stations = []
     for g in GENRES:
         pool = pool_by_genre.get(g)
         kept = [s for s in old.get(g, {}).get("slots", []) if parse(s["utc_end"]) > now - BEHIND]
         if served:
             kept = withhold(kept, served, forward)
+        kept = [refresh_text(s, current) for s in kept]
         if not pool and not kept:
             continue
         slots = extend(kept, pool or [], now + AHEAD, first)

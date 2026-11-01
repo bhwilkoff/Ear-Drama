@@ -110,6 +110,17 @@ check("a rebuild drops slots over before the build", B.parse(again["stations"][0
 kept = [s for s in doc["stations"][0]["slots"] if B.parse(s["utc_end"]) > later - B.BEHIND]
 check("a rebuild keeps every recent, running, and coming slot as published",
       again["stations"][0]["slots"][:len(kept)], kept)
+
+# A kept slot's words follow the catalog; its time and episode do not move (owner 2026-10-31).
+first_kept = next(s for s in kept if s.get("episode"))
+cleaned = {g: [dict(e, title="Cleaned Title") if e["id"] == first_kept["episode"]["id"] else e for e in es]
+           for g, es in pool.items()}
+retitled = B.build(cleaned, later, previous=doc)
+slot = next(s for s in retitled["stations"][0]["slots"] if s["utc_start"] == first_kept["utc_start"])
+check("a kept slot takes the catalog's cleaned title", slot["episode"].get("title"), "Cleaned Title")
+check("a kept slot keeps its episode and time", (slot["episode"]["id"], slot["utc_end"]),
+      (first_kept["episode"]["id"], first_kept["utc_end"]))
+check("a retitled rebuild changes no published slot", B.changed(doc, retitled), [])
 running = [s for s in kept if B.parse(s["utc_end"]) > later]
 check("a rebuild extends the window", B.parse(again["stations"][0]["slots"][-1]["utc_end"]) >= later + B.AHEAD,
       True)

@@ -2,38 +2,6 @@
  "format": 1,
  "source_format": 1,
  "scripts": {
-  "gut-47826": {
-   "revision": "d1bcacfd08c1",
-   "title": "A Tender Attachment",
-   "cast": "1123a568e6f11febe2bb3b47ca412cef2254500af7c6446c6c7bf8cdbfc1afb3",
-   "lines": 297,
-   "source": "https://www.gutenberg.org/ebooks/47826",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/47826.rdf"
-     }
-    ]
-   }
-  },
-  "gut-54702": {
-   "revision": "9dc5ae479fe1",
-   "title": "A Translation of Octavia, a Latin Tragedy, with Notes and Introduction",
-   "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
-   "lines": 148,
-   "source": "https://www.gutenberg.org/ebooks/54702",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/54702.rdf"
-     }
-    ]
-   }
-  },
   "gut-49295": {
    "revision": "34e6f3dbbcb9",
    "title": "After Taps",
@@ -46,6 +14,22 @@
      {
       "claim": "Copyright 1876 by GEORGE M. BAKER",
       "src": "https://www.gutenberg.org/ebooks/49295"
+     }
+    ]
+   }
+  },
+  "gut-7364": {
+   "revision": "63209a9057fa",
+   "title": "The Albany Depot",
+   "cast": "dccf767c0778c6237b441aea4f257e9da8b58b8b5aad09b8cd7f0aabdd279d80",
+   "lines": 166,
+   "source": "https://www.gutenberg.org/ebooks/7364",
+   "rights": {
+    "bucket": "script_pd_published_age",
+    "evidence": [
+     {
+      "claim": "Copyright, 1891, by HARPER & BROTHERS",
+      "src": "https://www.gutenberg.org/ebooks/7364"
      }
     ]
    }
@@ -66,54 +50,6 @@
     ]
    }
   },
-  "gut-2265": {
-   "revision": "e3cf30fcf0cc",
-   "title": "Hamlet",
-   "cast": "e63124d9e9fcffe1732185338813a9961aa0cfb5033365f38c595d67634c5bdc",
-   "lines": 1201,
-   "source": "https://www.gutenberg.org/ebooks/2265",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/2265.rdf"
-     }
-    ]
-   }
-  },
-  "gut-1502": {
-   "revision": "95f4398b7008",
-   "title": "King Henry VI, Part 3",
-   "cast": "6968e055678602cb447b3f3aa426fd82ba9623f93b7b07b01130083b31def721",
-   "lines": 986,
-   "source": "https://www.gutenberg.org/ebooks/1502",
-   "rights": {
-    "bucket": "script_source_cleared",
-    "evidence": [
-     {
-      "claim": "Public domain in the USA.",
-      "src": "https://www.gutenberg.org/ebooks/1502.rdf"
-     }
-    ]
-   }
-  },
-  "gut-7364": {
-   "revision": "63209a9057fa",
-   "title": "The Albany Depot ",
-   "cast": "dccf767c0778c6237b441aea4f257e9da8b58b8b5aad09b8cd7f0aabdd279d80",
-   "lines": 166,
-   "source": "https://www.gutenberg.org/ebooks/7364",
-   "rights": {
-    "bucket": "script_pd_published_age",
-    "evidence": [
-     {
-      "claim": "Copyright, 1891, by HARPER & BROTHERS",
-      "src": "https://www.gutenberg.org/ebooks/7364"
-     }
-    ]
-   }
-  },
   "gut-12039": {
    "revision": "c963c907912a",
    "title": "The Custom of the Country",
@@ -130,6 +66,22 @@
     ]
    }
   },
+  "gut-2265": {
+   "revision": "e3cf30fcf0cc",
+   "title": "Hamlet",
+   "cast": "e63124d9e9fcffe1732185338813a9961aa0cfb5033365f38c595d67634c5bdc",
+   "lines": 1201,
+   "source": "https://www.gutenberg.org/ebooks/2265",
+   "rights": {
+    "bucket": "script_source_cleared",
+    "evidence": [
+     {
+      "claim": "Public domain in the USA.",
+      "src": "https://www.gutenberg.org/ebooks/2265.rdf"
+     }
+    ]
+   }
+  },
   "gut-67583": {
    "revision": "3acb1ae02adb",
    "title": "The Jazz Singer",
@@ -142,6 +94,22 @@
      {
       "claim": "Copyright, 1925, by",
       "src": "https://www.gutenberg.org/ebooks/67583"
+     }
+    ]
+   }
+  },
+  "gut-1502": {
+   "revision": "95f4398b7008",
+   "title": "King Henry VI, Part 3",
+   "cast": "6968e055678602cb447b3f3aa426fd82ba9623f93b7b07b01130083b31def721",
+   "lines": 986,
+   "source": "https://www.gutenberg.org/ebooks/1502",
+   "rights": {
+    "bucket": "script_source_cleared",
+    "evidence": [
+     {
+      "claim": "Public domain in the USA.",
+      "src": "https://www.gutenberg.org/ebooks/1502.rdf"
      }
     ]
    }
@@ -194,6 +162,22 @@
     ]
    }
   },
+  "gut-47826": {
+   "revision": "d1bcacfd08c1",
+   "title": "A Tender Attachment",
+   "cast": "1123a568e6f11febe2bb3b47ca412cef2254500af7c6446c6c7bf8cdbfc1afb3",
+   "lines": 297,
+   "source": "https://www.gutenberg.org/ebooks/47826",
+   "rights": {
+    "bucket": "script_source_cleared",
+    "evidence": [
+     {
+      "claim": "Public domain in the USA.",
+      "src": "https://www.gutenberg.org/ebooks/47826.rdf"
+     }
+    ]
+   }
+  },
   "gut-49916": {
    "revision": "627e3ee71a25",
    "title": "The Tenth Man",
@@ -206,6 +190,22 @@
      {
       "claim": "Public domain in the USA.",
       "src": "https://www.gutenberg.org/ebooks/49916.rdf"
+     }
+    ]
+   }
+  },
+  "gut-54702": {
+   "revision": "9dc5ae479fe1",
+   "title": "A Translation of Octavia, a Latin Tragedy",
+   "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
+   "lines": 148,
+   "source": "https://www.gutenberg.org/ebooks/54702",
+   "rights": {
+    "bucket": "script_source_cleared",
+    "evidence": [
+     {
+      "claim": "Public domain in the USA.",
+      "src": "https://www.gutenberg.org/ebooks/54702.rdf"
      }
     ]
    }
