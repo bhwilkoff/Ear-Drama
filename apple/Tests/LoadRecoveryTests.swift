@@ -80,4 +80,24 @@ struct LoadRecoveryTests {
         _ = plan.failed(jitter: 1)
         #expect(plan.failed(jitter: 1) == .giveUp)
     }
+
+    /// iPad 2026-10-31: archive.org failed rank 0 (-1008), the rank 1 item read 5 s of a 1774 s
+    /// file, "ended", and playback sat silent.
+    @Test func anItemThatEndsFarShortOfItsLengthIsRecoveredNotFinished() {
+        #expect(LoadRecovery.endedTooSoon(position: 5, expected: 1774.6))
+        #expect(!LoadRecovery.endedTooSoon(position: 1773, expected: 1774.6))
+        #expect(!LoadRecovery.endedTooSoon(position: 5, expected: nil))
+        let all = [recording(0), recording(1)]
+        var plan = LoadRecovery(chosen: all[0], among: all)
+        #expect(plan.failed(jitter: 1) == .retry(after: LoadRecovery.retryDelay))
+        #expect(plan.failed(jitter: 1) == .fallback(all[1]))
+        plan.loaded()
+        #expect(plan.endedTooSoon(jitter: 1) == .retry(after: LoadRecovery.retryDelay))
+        plan.loaded()
+        #expect(plan.endedTooSoon(jitter: 1) == .fallback(all[0]), "rank 0 has not ended early yet")
+        plan.loaded()
+        #expect(plan.endedTooSoon(jitter: 1) == .retry(after: LoadRecovery.retryDelay))
+        plan.loaded()
+        #expect(plan.endedTooSoon(jitter: 1) == .giveUp, "every copy ended early: say so")
+    }
 }

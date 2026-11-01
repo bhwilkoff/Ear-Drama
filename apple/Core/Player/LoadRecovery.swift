@@ -20,6 +20,7 @@ nonisolated struct LoadRecovery: Sendable {
     private let ranked: [Recording]
     private var tried: Set<Int> = []
     private var retried = false
+    private var endedEarly: Set<Int> = []
 
     init(chosen: Recording, among recordings: [Recording]) {
         current = chosen
@@ -50,6 +51,24 @@ nonisolated struct LoadRecovery: Sendable {
         guard let next = ranked.first(where: { !tried.contains($0.rank) && $0.rank != current.rank }) else {
             return .giveUp
         }
+        current = next
+        retried = false
+        return .fallback(next)
+    }
+
+    /// Whether an item that played to its end stopped far short of the recording's known length.
+    /// A slow archive.org response can hand AVFoundation a few seconds of file; with precise timing
+    /// it reads that as the whole item and "ends" it at 5 s of 30 minutes (iPad, 2026-10-31).
+    static func endedTooSoon(position: Double, expected: Double?) -> Bool {
+        guard let expected, expected.isFinite, position.isFinite else { return false }
+        return expected - position > max(120, expected * 0.5)
+    }
+
+    /// The item ended too soon. Unlike `failed`, a recording that became ready first gets no fresh
+    /// retry: each recording is retried once, then replaced by one that has not ended early.
+    mutating func endedTooSoon(jitter: Double) -> Step {
+        if endedEarly.insert(current.rank).inserted { return .retry(after: Self.retryDelay * jitter) }
+        guard let next = ranked.first(where: { !endedEarly.contains($0.rank) }) else { return .giveUp }
         current = next
         retried = false
         return .fallback(next)
