@@ -131,10 +131,19 @@ rows as `counts.loudness`.
 
 ### 3.2 `recordings`, the copies
 
-`(episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial)`;
+`(episode_id, rank, archive_id, url, format, kbps, length_s, variant, partial, label)`;
 `url` is percent-encoded by the pipeline and is the only path a client plays. Rank 0 is the default copy, chosen by `build_db.order_recordings`
 (catalog DECISIONS 007): complete before partial, domestic before AFRS, OTRR's
 copy, then measured bitrate. The versions picker lists the rest in rank order.
+
+`label` (added 2026-10-31, P-8; additive, `schemaVersion` stays 1) is the clean name of the archive.org item a copy
+comes from, for the versions list and the recording page, where `archive_id` ("OTRR_Suspense_Singles",
+"Suspense420617TheBurningCourt") is an identifier, not a name. Order: a family the identifier names (`OTRR_...` is
+"Old Time Radio Researchers"); else the item's own title, cleaned (the organization before a " - ", an upload's
+episode count and "( OTR)" dropped, a shouted word set in case); NULL when the item is a single broadcast or its title
+restates one (a date, a code, a file name). A client shows `label` when set and "Recording N" when NULL; it never
+shows `archive_id` as a name. The identifier stays as the link to the item's archive.org page. The web projection's
+recordings rows carry it as an eighth element `[url, archiveId, format, kbps, length, variant, partial, label]`.
 
 ### 3.2a Commercial segments (R8): a seam, no data yet
 

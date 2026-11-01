@@ -51,10 +51,28 @@ def license_name(cls, template):
     return f"{base} {m.group(1)}" if m else base
 
 
+def clean_author(author):
+    """The author as a person reads a credit: wiki markup and bare links dropped, nothing added. "{{Fortepan |id= 1 ...}}"
+    is credited to "Fortepan"; "*File.jpg: Geoff Leonard. () *derivative work: X (talk)" to "Geoff Leonard; derivative
+    work: X"; "Greg Hernandez at https://www.flickr.com/..." to "Greg Hernandez"."""
+    a = (author or "").strip()
+    m = re.match(r"\{\{\s*([^|{}]+?)\s*(?:\||\}\})", a)
+    if m:
+        return m.group(1)
+    a = re.sub(r"^\*[^:*]*\.(?:jpe?g|png|gif|tiff?|webp)\s*:\s*", "", a, flags=re.I)
+    a = re.sub(r"\(\s*\)|\(talk\)", "", a)
+    a = re.sub(r"\s*\*\s*", "; ", a)
+    a = re.sub(r"\s+at\s+https?://\S+", "", a)
+    a = re.sub(r"https?://\S+", "", a)
+    a = re.sub(r"[\s.]+;", ";", a)
+    a = re.sub(r"\s{2,}", " ", a)
+    return a.strip(" ;.") or (author or "").strip()
+
+
 def credit(cls, template, author):
     """The line a credited image carries: 'Author, CC BY-SA 3.0'; None when none is owed."""
     name = license_name(cls, template)
-    return f"{author.strip()}, {name}" if name else None
+    return f"{clean_author(author)}, {name}" if name else None
 
 
 def year_of(text):

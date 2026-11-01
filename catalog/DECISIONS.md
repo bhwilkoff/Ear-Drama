@@ -741,3 +741,51 @@ names. Forwarding against the live projection: 7,670 episode ids left, 744 alias
 Known residue: "Science Fiction 1968" (OTRR names it, so the build does not call it a grab bag) keeps its name;
 "Poetry and Modern Man" (a talk about poetry, kind lecture) and a DJ show that is unlisted music stay or go on the
 data alone.
+
+
+## 027 — Every string the apps render is audited, not every column we chose; the last pass undoes upload habits and adds no word
+
+*Date: 2026-10-31*
+
+Amends 025 and 026 (P-8). Owner, 2026-10-31: "I don't want raw text uploads to show at all ... Titles without context
+don't belong in the app. If it means writing with AI, based upon data, that is okay." Never invent.
+
+1. **The audit starts from the clients' rendering code**, not from the columns the pipeline picked: 31 fields in
+   `audits/2026-10-31-display-fields.md`. P-6 and P-7 audited series names and episode titles only, so roles with broken
+   encodings (202), recording identifiers shown as names, wiki markup in picture credits and 10,523 titles in uploader
+   casing went unseen.
+2. **`tools/polish.py` is the one last pass** (series names, titles, `aka`, sponsors, roles, characters, person names,
+   recording labels), and `tools/field_defects.py` is the one classifier the build, the guard and the audit share.
+   A text still carrying a hard defect after the pass is composed from data or withheld (`display_text.readable_title`,
+   `series_withheld`), never shown.
+3. **Apostrophes** are restored from a dictionary of unambiguous contractions (`Dont`, `Isnt`; `Lets` only as the first
+   word, because it is a verb elsewhere) or from exactly one independent witness spelling (`episode_witnesses`), never
+   from a guess ("Witchs" needs a source).
+4. **`recordings.label`** (additive column, contract 3.2): an `OTRR_` identifier is the Old Time Radio Researchers; else
+   the item's own title cleaned (organization before " - ", count and rip tags dropped, run-together words split, a
+   shouted word set in case); NULL for an item that is a single broadcast or whose title restates one. Clients show the
+   label, else "Recording N", never the identifier.
+5. **Scope additions** (`enrich_scope.py`): a band remote ("Remote-HarryJames", "Band Remotes") is music; a run-together
+   music-group name ("ArbershopQuartet barbershopQuartet") is music without keywords because a broken name has none to
+   read. **Speeches stay.** The first P-8 pass withheld speeches and addresses (28 series); the owner ruled the same day
+   "Keep them": historical speeches and wartime addresses (Churchill, FDR, Truman, Lindbergh, Nimitz, the Hitler
+   speeches) are the spoken word of radio's golden age and are in scope. The rule was removed whole; no pass may
+   withhold a series or episode for being a speech (stated in `enrich_scope.py`'s docstring). Nazi-state recordings keep
+   `no_recommend` (never recommended, always findable).
+6. **Pictures and plays**: credit lines lose wiki markup and links (`art_policy.clean_author`); a play's title loses
+   cataloguer boilerplate and each author gets a `display` name.
+
+**Why**: the owner's no-raw-uploads and no-invention rules; an audit that starts from the schema finds only what the
+schema's author already looked at.
+
+**How to apply**: a new displayed field goes in the inventory and in `field_defects.FIELDS`; a new habit gets a rule in
+`polish.py` with a fixture and a control in `tests/test_display_fields.py`. The guard fails on the 2026-10-31 live
+projection (about 30 classes of defect) and passes on the rebuild. MEASURED on the 2026-10-30 caches against the live
+projection: episode titles changed 13,111 of 95,641, series names 1,496, series 6,980 to 6,767 (band
+remotes 28, file-name and date fragments, run-together names), episodes 96,397 to 95,641 (-0.8%, inside the 2% floor, so
+no `shrink_reason` is needed; if the merge guard is run against a fresher live count, use "P-8 scope: band
+remotes, upload fragments, 2026-10-31"). Arcs 335 to 455 (`Ep01of18` now parses as a part). Station slots changed:
+0 (`build_stations.py kept`). Two builds under different hash seeds publish identical tables. Episode ids are unchanged
+by display text; forwarding is recomputed by the publish as usual. The publish workflow should also run
+`PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_display_fields.py` beside the other real-artifact tests
+(a workflow edit, outside this change).

@@ -33,6 +33,7 @@ import sponsors as SP
 from sort_name import sort_name
 import titles as TI
 import display_text as DT
+import polish as PL
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
@@ -73,7 +74,7 @@ CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date T
     script TEXT, sponsor TEXT, raw_title TEXT);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
-    partial INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (episode_id, rank));
+    partial INTEGER NOT NULL DEFAULT 0, label TEXT, PRIMARY KEY (episode_id, rank));
 CREATE TABLE people (id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT, death TEXT, portrait INTEGER);
 -- The most heard voices (contract section 3.3): people ranked by the served episodes they are heard on,
 -- most first; `rank` is the row's place. portrait is an art.id or NULL, as in people.
@@ -212,6 +213,15 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         for k, al in s.execute("SELECT key, alias_names FROM series WHERE alias_names IS NOT NULL"):
             if k in shown_name:
                 shown_name[k] = DT.repair_apostrophe(shown_name[k], json.loads(al))
+    shown_name = {k: PL.polish_name(n) or n for k, n in shown_name.items()}
+    witnessed = {}
+    if has_table(s, "episode_witnesses"):
+        for eid, wt in s.execute("SELECT episode_id, title FROM episode_witnesses WHERE episode_id IS NOT NULL AND title LIKE '%''%'"):
+            witnessed.setdefault(eid, set()).add(wt)
+    for eid in display:
+        got = PL.polish_title(display[eid])
+        got = PL.apostrophe_from(got, witnessed.get(eid)) if got else got
+        display[eid] = got or ""
     known = {}
     def learn(n):
         if n and " " in n.strip() and re.search(r"[A-Z]", n) and not DT.TD.series_defects(n):
@@ -231,7 +241,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             got = DT.recover_name(shown_name.get(sk) or names.get(sk), known, words)
             if got and not DT.series_withheld(got, sk, sk in own_key):
                 recovered[sk] = {"from": shown_name.get(sk), "to": got}
-                shown_name[sk] = got
+                shown_name[sk] = PL.polish_name(got) or got
     withheld = {"series": {}, "episodes": {}}
     composed = {}
     for sk in sorted(by_series_eps):
@@ -252,7 +262,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             else:
                 if src == "composed":
                     composed[eid] = {"title": title, "fields": fields}
-                display[eid] = title
+                display[eid] = PL.small_words(title)
     served -= set(withheld["episodes"])
     script_of, script_report = ES.links(s, served, ES.load_bundle() if scripts is None else scripts)
     print(json.dumps({"episodeScripts": script_report}), file=sys.stderr)
@@ -265,6 +275,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             "SELECT episode_id, person_id, name, role, character FROM episode_credits"):
         if eid in served:
             pid = same.get(pid, pid)
+            role, character = PL.polish_role(role, PL.polish_character(character))
+            name = PL.polish_person(name)
             row = (pid, name, role, character)
             if row not in credits_by_ep.setdefault(eid, []):
                 credits_by_ep[eid].append(row)
@@ -273,7 +285,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     portraits = served_portraits(s, people_rows, same)   # person id -> art row id, rows written to `art`
     for aid, (file, cls, template, author, w, h, face) in enumerate(portraits["rows"], 1):
         d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?)", (
-            aid, AP.image_url(file), w, h, cls, author if AP.license_name(cls, template) else None,
+            aid, AP.image_url(file), w, h, cls, AP.clean_author(author) if AP.license_name(cls, template) else None,
             AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, AP.image_url(file), w, h, face)))
     faces = set(portraits["by_person"])
     series_of = dict(s.execute("SELECT id, series_key FROM episodes"))
@@ -297,7 +309,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         url = AP.image_url(file)
         if url not in file_ids:
             d.execute("INSERT INTO art VALUES (?,?,?,?,?,?,?,?,?,?)", (
-                next_id, url, w, h, cls, author if AP.license_name(cls, template) else None,
+                next_id, url, w, h, cls, AP.clean_author(author) if AP.license_name(cls, template) else None,
                 AP.credit(cls, template, author), AP.evidence_url(file), face, grade_of(art_grades, url, w, h, face)))
             file_ids[url], next_id = next_id, next_id + 1
         pictures[sk] = (file_ids[url], "show", src)
@@ -310,6 +322,13 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                          "FROM recordings ORDER BY episode_id, rank"):
         if row[0] in served:
             recs_by_ep.setdefault(row[0], []).append(row)
+    item_title = (dict(s.execute("SELECT id, title FROM items"))
+                  if has_table(s, "items") and "title" in {r[1] for r in s.execute("PRAGMA table_info(items)")} else {})
+    item_eps = {}
+    for eid, rows in recs_by_ep.items():
+        for r in rows:
+            item_eps.setdefault(r[2], set()).add(eid)
+    labels = {aid: PL.recording_label(aid, item_title.get(aid), len(eids)) for aid, eids in item_eps.items()}
 
     sponsor_runs = SP.load(s)
     years_of = {}
@@ -331,16 +350,16 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         shown = text is not None and TG.shown(text, recs[0][6])[0]
         searchable += shown
         for i, (_, _rank, aid, file, fmt, kbps, length, variant, partial) in enumerate(recs):
-            d.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?)",
-                      (eid, i, aid, download_url(aid, file), fmt, kbps, length, variant, int(bool(partial))))
+            d.execute("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?,?)",
+                      (eid, i, aid, download_url(aid, file), fmt, kbps, length, variant, int(bool(partial)), labels.get(aid)))
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
         cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
-            eid, sk, air, dsrc, season(air), num, display[eid], aka, recs[0][6],
+            eid, sk, air, dsrc, season(air), num, display[eid], PL.polish_title(aka) if aka else aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
-            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), SP.sponsor_for(sponsor_runs, sk, air, title),
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), PL.small_words(SP.sponsor_for(sponsor_runs, sk, air, title) or "") or None,
             title if display[eid] != title else None))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display[eid], title, aka) if x)),
@@ -367,7 +386,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
-                      (pid, name, birth, death, portraits["by_person"].get(pid)))
+                      (pid, PL.polish_person(name), birth, death, portraits["by_person"].get(pid)))
 
     try:
         counts_by_item = dict(s.execute("SELECT id, downloads FROM items WHERE downloads IS NOT NULL"))

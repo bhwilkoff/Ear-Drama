@@ -13,6 +13,7 @@ identifier, an uploader's grab bag with no program behind it) is withheld with a
 """
 import re
 
+import field_defects as FD
 import text_defects as TD
 
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
@@ -26,8 +27,13 @@ COUNTED_BAG = re.compile(r"^\d[\d,]*\+?\s+(?:[A-Za-z']+\s+){0,3}(?:shows?|episod
 GENRE_YEAR = re.compile(r"^[^\W\d_]+(?:\s+[^\W\d_]+){0,3}\s+(?:19|20)\d\d$")
 V_DISC = re.compile(r"\bV[- ]?Discs?\b", re.I)
 IDENTIFIER_TITLE = re.compile(r"^[^\W\d_]+\d+$")
+HARD_TITLE = {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED"}
+INTRO_TRACK = re.compile(r"^(?:old[- ]time radio researchers(?: group)? (?:introduction|information)|otrr (?:introduction|information)|"
+                         r"kbps(?:\[\d+\])?|old[- ]time radio(?: \d+)?)$", re.I)
+HARD_NAME = {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED"}
 LONG_NAME = 60
-GENERIC_TITLE = re.compile(r"^(?:episode|ep|deel|program|file|track|nr|no|side|disc|show)\.?\s*[\d.\-]*$", re.I)
+GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program|file|track|nr|no|side|disc|show)\.?\s*[\d.\-]*)$", re.I)
+AIRED_FRAGMENT = re.compile(r"\b(?:aired|air\s?date)\s+[\d/ ,-]*$", re.I)
 
 SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set"}
 SERIES_REASONS = {"S_DATED": "series_name_is_a_date", "S_RUNTOGETHER": "series_name_is_an_identifier",
@@ -49,6 +55,8 @@ def series_withheld(shown_name, key, own_key):
         if c == "S_COLLECTION" and not (own_key or GRAB_BAG.match(shown_name.strip())):
             continue
         return SERIES_REASONS[c]
+    if AIRED_FRAGMENT.search(shown_name) or set(FD.text_defects(shown_name, "name")) & HARD_NAME:
+        return "series_name_is_a_file_name"
     return None
 
 
@@ -63,11 +71,15 @@ def readable_title(t):
         return False   # one lowercase token: an identifier
     if IDENTIFIER_TITLE.match(t):
         return False   # one word and a number ("TopSecret15", "Hunting300"): a file name, not a title
+    if set(FD.text_defects(t, "title")) & HARD_TITLE:
+        return False   # a habit polish.py could not undo: composed from data or withheld
     return True
 
 
 def episode_out_of_scope(title):
     """The reason an episode is not shown for being music, from its own title ("048 V-Disc A Chorus and Organ"), or None."""
+    if INTRO_TRACK.match((title or "").strip()):
+        return "out_of_scope_not_a_program"
     return "out_of_scope_music_record" if V_DISC.search(title or "") else None
 
 
