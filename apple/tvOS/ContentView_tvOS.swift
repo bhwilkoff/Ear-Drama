@@ -128,7 +128,7 @@ private struct EpisodeCard_tvOS: View {
     var body: some View {
         NavigationLink(value: Route.episode(episode.id)) {
             VStack(alignment: .leading, spacing: Spacing.s2) {
-                Text(verbatim: AirDate.stored(episode.airDate))
+                Text(verbatim: AirDate.medium(episode.airDate))
                     .font(TypeRamp.tabular)
                     .foregroundStyle(Color.brandTextMuted)
                 Text(episode.displayTitle)
@@ -791,14 +791,14 @@ private struct VersionsSection_tvOS: View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         VStack(alignment: .leading, spacing: Spacing.s4) {
             Text("Recordings").font(TypeRamp.sectionHeader)
-            ForEach(detail.recordings.sorted { $0.rank < $1.rank }) { recording in
+            ForEach(Array(detail.recordings.sorted { $0.rank < $1.rank }.enumerated()), id: \.element.id) { index, recording in
                 Button {
                     play(detail.episode.id, recording: recording, presentPlayer: true)
                 } label: {
                     VStack(alignment: .leading, spacing: Spacing.s1) {
-                        Text(verbatim: recording.archiveID)
+                        Text(verbatim: RecordingLabel.title(recording, position: index + 1))
                             .font(TypeRamp.body)
-                        Text(verbatim: Self.facts(recording))
+                        Text(verbatim: RecordingLabel.facts(recording, isBest: index == 0))
                             .font(TypeRamp.caption)
                             .foregroundStyle(Color.brandTextMuted)
                     }
@@ -808,13 +808,6 @@ private struct VersionsSection_tvOS: View {
             }
         }
         .focusSection()
-    }
-
-    private static func facts(_ recording: Recording) -> String {
-        var parts = recording.notes
-        if let length = recording.lengthSeconds { parts.append(EpisodeRow.clock(length)) }
-        if let kbps = recording.kbps { parts.append("\(kbps) kbps") }
-        return parts.joined(separator: " · ")
     }
 }
 

@@ -215,9 +215,9 @@ nonisolated struct EpisodeRow: Hashable, Sendable, Identifiable {
     /// The episode's display title. A row the pipeline left untitled shows its
     /// log number, then its date, and only then the series name.
     var displayTitle: String {
-        if let title, !title.isEmpty { return title }
+        if let title, !title.isEmpty { return AirDate.spellingDates(in: title) }
         if let number { return "No. \(number)" }
-        if let airDate { return airDate }
+        if let airDate { return AirDate.medium(airDate) }
         return seriesName
     }
 
@@ -239,6 +239,8 @@ nonisolated struct Recording: Hashable, Sendable, Identifiable {
     let lengthSeconds: Double?
     let variant: String?
     let partial: Bool
+    /// The catalog's clean collection or uploader name (`recordings.label`), or nil.
+    var label: String? = nil
 
     var id: Int { rank }
 
@@ -535,18 +537,31 @@ nonisolated enum GenreDisplay {
 }
 
 /// Air dates are `YYYY`, `YYYY-MM` or `YYYY-MM-DD` strings (R1: the date is the
-/// identity, kept at the precision the catalog has). `stored` is the digits, for
-/// a column of tabular figures; `display` is the system's long form of the same
-/// precision (a year stays a year, a month a month).
+/// identity, kept at the precision the catalog has). An ISO date never reaches the
+/// screen (owner, 2026-10-31): `medium` is the system's abbreviated form for rows
+/// and event lines ("Sep 17, 1949"), `display` the long form for a Detail page;
+/// both keep the precision (a year stays a year, a month a month).
 nonisolated enum AirDate {
-    static func stored(_ date: String?) -> String { date ?? "Undated" }
+    static func medium(_ date: String?, locale: Locale = .current) -> String {
+        guard let date, !date.isEmpty else { return "Undated" }
+        return format(date, long: false, locale: locale) ?? date
+    }
 
     static func display(_ date: String?, locale: Locale = .current) -> String {
         guard let date, !date.isEmpty else { return "Undated" }
         return long(date, locale: locale) ?? date
     }
 
+    /// A title the upload spelled with an ISO date ("Show (1947-04-14)") shows that date as a person reads it.
+    static func spellingDates(in title: String, locale: Locale = .current) -> String {
+        title.replacing(/\b\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/) { medium(String($0.output.0), locale: locale) }
+    }
+
     static func long(_ date: String, locale: Locale = .current) -> String? {
+        format(date, long: true, locale: locale)
+    }
+
+    private static func format(_ date: String, long: Bool, locale: Locale) -> String? {
         let parts = date.split(separator: "-", omittingEmptySubsequences: false).map { Int($0) }
         guard (1...3).contains(parts.count), parts.allSatisfy({ $0 != nil }),
               let year = parts[0], date.prefix(4).count == 4 else { return nil }
@@ -560,9 +575,39 @@ nonisolated enum AirDate {
         var style = Date.FormatStyle(locale: locale, calendar: calendar, timeZone: .gmt)
         switch parts.count {
         case 1: style = style.year()
-        case 2: style = style.month(.wide).year()
-        default: style = style.weekday(.wide).month(.wide).day().year()
+        case 2: style = long ? style.month(.wide).year() : style.month(.abbreviated).year()
+        default: style = long ? style.weekday(.wide).month(.wide).day().year() : style.month(.abbreviated).day().year()
         }
         return day.formatted(style)
+    }
+}
+
+/// A copy of a broadcast is named from data, never from the archive.org upload
+/// text (AGENTS.md: raw upload text never shows). `label` is the catalog's clean
+/// collection or uploader name when it publishes one; otherwise the copy is
+/// "Recording 2" by position. The identifier stays in the link target only.
+nonisolated enum RecordingLabel {
+    static func title(_ recording: Recording, position: Int) -> String {
+        if let label = recording.label?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !label.isEmpty, !looksLikeIdentifier(label) { return label }
+        return "Recording \(position)"
+    }
+
+    /// "Best copy · 128 kbps · 29:50" under the title.
+    static func facts(_ recording: Recording, isBest: Bool) -> String {
+        var parts = recording.notes
+        if isBest { parts.insert("Best copy", at: 0) }
+        if let kbps = recording.kbps { parts.append("\(kbps) kbps") }
+        if let length = recording.lengthSeconds { parts.append(EpisodeRow.clock(length)) }
+        return parts.joined(separator: " \u{00B7} ")
+    }
+
+    /// An archive.org identifier: underscores, or a long unspaced run of letters and numerals.
+    static func looksLikeIdentifier(_ text: String) -> Bool {
+        text.split(whereSeparator: \.isWhitespace).contains { word in
+            word.contains("_")
+                || (word.count >= 10 && word.contains(where: \.isLetter) && word.contains(where: \.isNumber))
+                || (word.count >= 24 && word.contains(where: \.isLetter) && word.filter(\.isUppercase).count >= 4)
+        }
     }
 }

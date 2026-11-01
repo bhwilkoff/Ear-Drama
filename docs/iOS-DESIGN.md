@@ -778,6 +778,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§10.4 `Text(verbatim:)` for dates, counts, and clocks**, so a locale
   never reformats `1943-05-25` or `1,098`.
 
+**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `AirDate.medium` is the one formatter for rows and event lines ("Sep 17, 1949", "Sep 1949", "1949"; the system's abbreviated month); `AirDate.display` is the long form for Detail; `EpisodeRow.displayTitle` uses it too. Recordings are named by `RecordingLabel` (the catalog's `recordings.label` behind a column-exists guard, else "Recording N", best copy marked); the archive.org identifier never renders. `AirDateTests` fails on an ISO shape or an identifier-shaped label.
+
 ## §11 Deliberate inversions
 
 - **§11.1 iOS never steals focus or opens a surface on its own.** Play on
