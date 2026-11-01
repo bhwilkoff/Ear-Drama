@@ -10,9 +10,9 @@ struct RouteDestinations: ViewModifier {
     func body(content: Content) -> some View {
         content.navigationDestination(for: Route.self) { route in
             switch route {
-            case let .series(key): SeriesScreen(key: key)
-            case let .episode(id): EpisodeScreen(id: id)
-            case let .person(id): PersonScreen(id: id)
+            case let .series(key): SeriesScreen(key: key).id(route)
+            case let .episode(id): EpisodeScreen(id: id).id(route)
+            case let .person(id): PersonScreen(id: id).id(route)
             case .account: AccountScreen()
             case .surprise: SurpriseScreen()
             case let .drama(pid): FinishedDramaScreen(id: pid)
@@ -753,7 +753,8 @@ struct SeriesScreen: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .task(id: catalog.loadKey) {
+        .task(id: PageIdentity.taskID(key, load: catalog.loadKey)) {
+            page = nil
             guard catalog.state == .ready else { return }
             page = .some(await catalog.seriesPage(key))
         }
@@ -788,7 +789,9 @@ struct EpisodeScreen: View {
                 content(detail)
             }
         }
-        .task(id: catalog.loadKey) {
+        .task(id: PageIdentity.taskID(id, load: catalog.loadKey)) {
+            detail = nil
+            show = nil
             guard catalog.state == .ready else { return }
             let loaded = await catalog.episodeDetail(id)
             if let loaded { show = await catalog.series([loaded.episode.seriesKey]).first }
@@ -1035,7 +1038,8 @@ struct PersonScreen: View {
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .task(id: catalog.loadKey) {
+        .task(id: PageIdentity.taskID(id, load: catalog.loadKey)) {
+            page = nil
             guard catalog.state == .ready else { return }
             let loaded = await catalog.personPage(id)
             page = .some(loaded)
