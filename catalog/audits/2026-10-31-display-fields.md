@@ -101,7 +101,7 @@ All in `catalog/tools/polish.py` (the last pass, imported by `build_projection.p
 - `recordings.label` (new): see the contract, section 3.2.
 - Pictures: wiki markup and bare links out of the credit line.
 - Plays: `title` without cataloguer boilerplate; `authors[].display` ("George Melville Baker").
-- Scope (catalog DECISIONS 027): band remotes, run-together music-group names, speeches.
+- Scope (catalog DECISIONS 027): band remotes and run-together music-group names. Speeches stay.
 
 ## Not repaired, on purpose
 
@@ -110,37 +110,6 @@ All in `catalog/tools/polish.py` (the last pass, imported by `build_projection.p
 - "Whatever Became Of" (series): a fragment the source gave; nothing to compose it from.
 - "Dramatis Personae" (a play's cast-list section) and the 71-character "1601: Conversation, as it was by the Social Fireside ..." are the works' own titles.
 
-## Speeches, for the owner
+## Speeches stay
 
-Rule applied (needs your word to stand): a series whose name names a speech or address, or at least 60% of whose titles do, is out of scope even when OTRR or RadioEchoes files it as a program; a series that mixes speeches with other talk (Adolf Hitler: 53 of 111) loses only its speech episodes. Golden-age news programs are untouched (no speech word in their names or titles). Kept in the research database; to bring one back, put its key on `editorial/scope_review.json` with a reason. Series on the live projection that this removes (names, episodes, downloads):
-
-- Winston Churchill Speeches And Radio Broadcasts | 71 | 899456
-- Franklin D Roosevelt | 8 | 410689
-- Addresses | 1 | 205130
-- xx xx Rendezvous with Destiny FDR speeches from | 1 | 13566
-- Speech Finalist | 1 | 10299
-- Harry Truman Speech | 1 | 6157
-- Address By Madame Chiang To Congress 02 18 | 1 | 3520
-- King George VI's Empire Day Address 05/24/ | 1 | 1853
-- President Franklin Roosevelt's "Quarantine" Speech 10/05/ | 1 | 1708
-- Fireside Chat On National Security 12/29/ | 1 | 1597
-- Radio Address By Charles A Lindbergh 05/19/ | 1 | 1333
-- Address Of Admiral Chester W Nimitz 05 30 | 1 | 848
-- Cordell Hull's " What America Is Fighting For" Speech 07/23/ | 1 | 657
-- Franklin Roosevelt's Fourth Inaugural Address 01 20 | 1 | 588
-- President Franklin D Roosevelt's Labor Day Address 09 01 | 1 | 562
-- Speech By Undersecretary Of State Summer Welles 05 30 | 1 | 362
-- Adolf Hitler | 111 | 232 (only its speeches)
-- Mackenzie King Addresses The Nation | 1 | 226
-- Roosevelt Speeches Reel | 1 | 38
-- Adolf Hitler Rede Im Artushof In Danzig 19m 04s | 1 | 0
-- Governor Earl Warren speech | 1 | 0
-- Interviews and Speeches by Black Panthers and MLK KPFA | 2 | 0
-- KM99's WWII (THE BIG ONE) | 6 | 0 (only its speeches)
-- Madame Vijaya L Pandit speech | 1 | 0
-- Nixon Speeches | 1 | 0
-- Speeches by Dr Ralph Spitzer and Dr L R La Vallee | 1 | 0
-- Speeches from the Opening of La Brea Tar Pits 06 13 | 1 | 0
-- Wartime broadcast speeches by Sir Winston Churchill | 3 | 0
-
-Also removed as band remotes (music): "Band Remotes", "Remote Harryjames", "Remote Countbasie" and the rest of the "Remote ..." series, 28 series and 75 episodes in all.
+The first pass withheld 28 speech series. Owner ruling, 2026-10-31: "Keep them." Historical speeches and wartime addresses are in scope (catalog DECISIONS 027); the rule is removed. Band remotes ("Band Remotes", "Remote Harryjames" and the rest of the "Remote ..." series, 28 series, 75 episodes) remain out of scope as music.

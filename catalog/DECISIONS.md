@@ -767,9 +767,11 @@ don't belong in the app. If it means writing with AI, based upon data, that is o
    label, else "Recording N", never the identifier.
 5. **Scope additions** (`enrich_scope.py`): a band remote ("Remote-HarryJames", "Band Remotes") is music; a run-together
    music-group name ("ArbershopQuartet barbershopQuartet") is music without keywords because a broken name has none to
-   read; **speeches and addresses are out of scope** (name or at least 60% of titles), even when a registry files them,
-   and a mixed series loses only its speech episodes. The speech list is the owner's to confirm
-   (`audits/2026-10-31-display-fields.md`); a reversal goes on `editorial/scope_review.json`.
+   read. **Speeches stay.** The first P-8 pass withheld speeches and addresses (28 series); the owner ruled the same day
+   "Keep them": historical speeches and wartime addresses (Churchill, FDR, Truman, Lindbergh, Nimitz, the Hitler
+   speeches) are the spoken word of radio's golden age and are in scope. The rule was removed whole; no pass may
+   withhold a series or episode for being a speech (stated in `enrich_scope.py`'s docstring). Nazi-state recordings keep
+   `no_recommend` (never recommended, always findable).
 6. **Pictures and plays**: credit lines lose wiki markup and links (`art_policy.clean_author`); a play's title loses
    cataloguer boilerplate and each author gets a `display` name.
 
@@ -779,9 +781,9 @@ schema's author already looked at.
 **How to apply**: a new displayed field goes in the inventory and in `field_defects.FIELDS`; a new habit gets a rule in
 `polish.py` with a fixture and a control in `tests/test_display_fields.py`. The guard fails on the 2026-10-31 live
 projection (about 30 classes of defect) and passes on the rebuild. MEASURED on the 2026-10-30 caches against the live
-projection: episode titles changed 13,111 of 95,641, series names 1,496, series 6,980 to 6,767 (speeches 28, band
+projection: episode titles changed 13,111 of 95,641, series names 1,496, series 6,980 to 6,767 (band
 remotes 28, file-name and date fragments, run-together names), episodes 96,397 to 95,641 (-0.8%, inside the 2% floor, so
-no `shrink_reason` is needed; if the merge guard is run against a fresher live count, use "P-8 scope: speeches, band
+no `shrink_reason` is needed; if the merge guard is run against a fresher live count, use "P-8 scope: band
 remotes, upload fragments, 2026-10-31"). Arcs 335 to 455 (`Ep01of18` now parses as a part). Station slots changed:
 0 (`build_stations.py kept`). Two builds under different hash seeds publish identical tables. Episode ids are unchanged
 by display text; forwarding is recomputed by the publish as usual. The publish workflow should also run

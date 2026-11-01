@@ -110,7 +110,7 @@ check("control: nothing to compare", DT.repair_apostrophe("Dads Army", None), "D
 check("a V-Disc is a music record", DT.episode_out_of_scope("048 V-Disc A Chorus and Organ - Joy To The World"), "out_of_scope_music_record")
 check("control: a radio show", DT.episode_out_of_scope("Suspense, April 26, 1952"), None)
 check("scope kinds map to reason codes", sorted(DT.SCOPE_REASONS.values()),
-      ["out_of_scope_concert", "out_of_scope_lecture", "out_of_scope_music_set", "out_of_scope_speech"])
+      ["out_of_scope_concert", "out_of_scope_lecture", "out_of_scope_music_set"])
 
 # The guard over a real projection.
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")

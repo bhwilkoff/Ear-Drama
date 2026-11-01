@@ -204,15 +204,11 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         own_key = {k for (k,) in s.execute("SELECT key FROM series WHERE COALESCE(in_spine, 0) = 0 AND "
                                            "otrr_programs IS NULL AND COALESCE(is_librivox, 0) = 0")}
     held = {}
-    speech_eps = set()
     if "display_hold" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
         held = dict(s.execute("SELECT key, display_hold FROM series WHERE display_hold IS NOT NULL"))
     if has_table(s, "series_scope"):
         for k, kind in s.execute("SELECT series_key, kind FROM series_scope"):
-            if kind == "speech_episodes":
-                speech_eps.add(k)   # a series that mixes speeches with other talk: only its speeches are out of scope
-            else:
-                held.setdefault(k, DT.SCOPE_REASONS[kind])
+            held.setdefault(k, DT.SCOPE_REASONS[kind])
     if "alias_names" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
         for k, al in s.execute("SELECT key, alias_names FROM series WHERE alias_names IS NOT NULL"):
             if k in shown_name:
@@ -256,7 +252,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 withheld["episodes"][eid] = why
             continue
         for eid, air, num, _t in by_series_eps[sk]:
-            why = DT.episode_out_of_scope(display[eid], sk in speech_eps)
+            why = DT.episode_out_of_scope(display[eid])
             if why:
                 withheld["episodes"][eid] = why
                 continue

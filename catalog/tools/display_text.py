@@ -27,8 +27,6 @@ COUNTED_BAG = re.compile(r"^\d[\d,]*\+?\s+(?:[A-Za-z']+\s+){0,3}(?:shows?|episod
 GENRE_YEAR = re.compile(r"^[^\W\d_]+(?:\s+[^\W\d_]+){0,3}\s+(?:19|20)\d\d$")
 V_DISC = re.compile(r"\bV[- ]?Discs?\b", re.I)
 IDENTIFIER_TITLE = re.compile(r"^[^\W\d_]+\d+$")
-SPEECH_TITLE = re.compile(r"\b(?:speech|address(?!\s+unknown)|rede|reichstagsrede|ansprache|tischrede|proclamation|fireside chat|radio address|"
-                          r"message to|appeal to|declaration of war)\b", re.I)
 HARD_TITLE = {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED"}
 INTRO_TRACK = re.compile(r"^(?:old[- ]time radio researchers(?: group)? (?:introduction|information)|otrr (?:introduction|information)|"
                          r"kbps(?:\[\d+\])?|old[- ]time radio(?: \d+)?)$", re.I)
@@ -37,8 +35,7 @@ LONG_NAME = 60
 GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program|file|track|nr|no|side|disc|show)\.?\s*[\d.\-]*)$", re.I)
 AIRED_FRAGMENT = re.compile(r"\b(?:aired|air\s?date)\s+[\d/ ,-]*$", re.I)
 
-SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set",
-                "speech": "out_of_scope_speech"}
+SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set"}
 SERIES_REASONS = {"S_DATED": "series_name_is_a_date", "S_RUNTOGETHER": "series_name_is_an_identifier",
                   "S_LOWER": "series_name_is_an_identifier", "S_COLLECTION": "series_is_an_uploaders_grab_bag"}
 
@@ -79,10 +76,8 @@ def readable_title(t):
     return True
 
 
-def episode_out_of_scope(title, speeches=False):
+def episode_out_of_scope(title):
     """The reason an episode is not shown for being music, from its own title ("048 V-Disc A Chorus and Organ"), or None."""
-    if speeches and SPEECH_TITLE.search(title or ""):
-        return "out_of_scope_speech"
     if INTRO_TRACK.match((title or "").strip()):
         return "out_of_scope_not_a_program"
     return "out_of_scope_music_record" if V_DISC.search(title or "") else None

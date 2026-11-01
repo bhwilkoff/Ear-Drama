@@ -15,6 +15,11 @@ project, a series with a drama genre (its own label or its own keywords) and a s
 list (editorial/scope_review.json, each with a reason) are never classified: golden-age variety, music
 variety and news programs are named by the registries, and stay.
 
+SPEECHES ARE IN SCOPE (owner, 2026-10-31, "Keep them"): historical speeches and wartime addresses (Churchill's broadcasts,
+FDR, Truman, Lindbergh, Nimitz, the Hitler speeches) are the spoken word of radio's golden age. No rule here may withhold a
+series or an episode for being a speech or an address (DECISIONS 027). Nazi-state recordings keep their existing
+`no_recommend` (never recommended, always findable).
+
 Run: python3 tools/enrich_scope.py
 """
 import collections
@@ -26,7 +31,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ia_lib as L
-import display_text as DT
 import genres as G
 import enrich_genres as EG
 
@@ -43,13 +47,9 @@ MUSIC_NAME = re.compile(r"\b(?:orchestra|quartet|quintet|chorus|choir|chorale|ba
 LIVE_NAME = re.compile(r"\blive\b", re.I)
 # A band remote is a dance band playing from a hotel ballroom: file names "Remote-DukeEllington", series "Remote Dukeellington".
 REMOTE_NAME = re.compile(r"^(?:band[\s-]+)?remotes?(?:[\s-]+\S.*)?$", re.I)
-# A speech named as one. "Address Unknown" and "to address us" are titles, not addresses.
-SPEECH_NAME = re.compile(r"\b(?:speech(?:es)?|addresses|address(?!\s+(?:unknown|us|the\s+(?:problem|issue)))|rede|reden|ansprache|"
-                         r"fireside\s+chats?|inaugural\s+address|oration|sermons?)\b", re.I)
 HUMP_NAME = re.compile(r"(?<=[a-z])(?=[A-Z][a-z]{3,})")
 SPOKEN_NAME = re.compile(r"\b(?:dramatic reading|reading|readings|poems?|poetry|poets?|drama|play|plays|theat(?:er|re)|story|stories|"
                          r"mystery|adventure|sherlock|holmes)\b", re.I)
-SPEECH_SHARE = 0.6
 MUSIC_SUBJECTS = {"music", "jazz", "big band", "dance band", "swing", "country music", "bluegrass", "folk music",
                   "classical music", "opera", "concert", "concerts", "orchestra", "symphony", "choir", "chorus",
                   "gospel music", "blues", "songs", "yodeling", "dobro", "banjo", "fiddle", "piano", "band music",
@@ -58,11 +58,10 @@ MUSIC_COLLECTIONS = {"audio_music", "78rpm", "etree", "georgeblood", "netlabels"
 LECTURE_SUBJECTS = {"lecture", "lectures", "public lectures", "speeches", "symposium"}
 SHARE = 0.6
 REASONS = ("name_names_a_concert", "name_names_a_lecture", "episodes_are_lectures", "music_in_its_own_keywords",
-           "live_set_by_one_performer", "name_names_a_band_remote", "name_names_a_music_group", "name_names_a_speech",
-           "episodes_are_speeches", "some_episodes_are_speeches")
+           "live_set_by_one_performer", "name_names_a_band_remote", "name_names_a_music_group")
 
 
-def classify(name, items, kinds, drama_items, music_hits, lecture_hits, music_colls, performers=None, titles=()):
+def classify(name, items, kinds, drama_items, music_hits, lecture_hits, music_colls, performers=None):
     """(kind, reason, evidence) or None. `items`: items read; `kinds`: {content_kind: episodes};
     `drama_items`: items whose own keywords name a spoken genre; `music_hits`, `lecture_hits`,
     `music_colls`: items carrying a music keyword / lecture keyword / music collection; `performers`: the
@@ -73,14 +72,6 @@ def classify(name, items, kinds, drama_items, music_hits, lecture_hits, music_co
         return None
     if REMOTE_NAME.match(name.strip()) and not (items and drama_items * 2 >= items):
         return "music", "name_names_a_band_remote", {"name": name.strip()}
-    if SPEECH_NAME.search(name) and not (items and drama_items * 2 >= items):
-        return "speech", "name_names_a_speech", {"name": SPEECH_NAME.search(name).group(0).lower()}
-    if titles and len(titles) >= 3 and not (items and drama_items * 2 >= items):
-        n_speech = sum(bool(DT.SPEECH_TITLE.search(t or "")) for t in titles)
-        if n_speech >= SPEECH_SHARE * len(titles):
-            return "speech", "episodes_are_speeches", {"titles": len(titles), "speech titles": n_speech}
-        if len(titles) >= 5 and n_speech >= 0.3 * len(titles):
-            return "speech_episodes", "some_episodes_are_speeches", {"titles": len(titles), "speech titles": n_speech}
     if items and drama_items * 2 >= items:
         return None
     n_eps = sum(kinds.values())
@@ -120,9 +111,6 @@ def run(con):
         files[key][aid].add(f)
         colls[aid] = set(json.loads(c or "[]"))
         shared[aid].add(key)
-    title_of = collections.defaultdict(list)
-    for key, title in con.execute(f"SELECT series_key, title FROM episodes WHERE state IN ({q})", SERVED):
-        title_of[key].append(title)
     rows, stats = [], collections.Counter()
     cache, artists_of = {}, {}
     for key in sorted(files):
@@ -134,14 +122,6 @@ def run(con):
             stats["kept by the reviewed list"] += 1
             continue
         if s["named"] or s["genre"]:
-            # A speech is out of scope even when a registry files it as a program (owner, 2026-10-31); a drama genre,
-            # a LibriVox reading and a golden-age news program (no speech word in its name or its titles) stay.
-            if not s["librivox"] and s["genre"] in (None, "documentary", "news"):
-                got = classify(s["name"], 0, kinds[key], 0, 0, 0, 0, None, title_of.get(key, ()))
-                if got and got[0].startswith("speech"):
-                    rows.append((key, got[0], got[1], json.dumps(dict(got[2], named=s["named"]), ensure_ascii=False, sort_keys=True), 0))
-                    stats[got[0]] += 1
-                    continue
             stats["named by a registry or a genre label"] += 1
             continue
         items = music = lecture = drama = mcoll = 0
@@ -169,7 +149,7 @@ def run(con):
             drama += bool(genres)
             mcoll += bool(colls.get(aid, set()) & MUSIC_COLLECTIONS)
         got = classify(s["name"], items, kinds[key], drama, music, lecture, mcoll, artists if tagged and items else None,
-                       title_of.get(key, ()))
+)
         if got:
             rows.append((key, got[0], got[1], json.dumps(got[2], ensure_ascii=False, sort_keys=True), items))
             stats[got[0]] += 1
@@ -185,7 +165,7 @@ def main():
     con.executemany("INSERT INTO series_scope VALUES (?,?,?,?,?)", rows)
     con.commit()
     report = {"servedSeries": stats["served series"], "outOfScope": len(rows),
-              "byKind": {k: stats[k] for k in ("concert", "lecture", "music", "speech", "speech_episodes")},
+              "byKind": {k: stats[k] for k in ("concert", "lecture", "music")},
               "keptByReview": stats["kept by the reviewed list"], "keptNamedByRegistry": stats["named by a registry or a genre label"]}
     L.write_json(REPORT, report)
     print(json.dumps(report, indent=1))
