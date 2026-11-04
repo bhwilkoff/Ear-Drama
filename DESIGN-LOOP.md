@@ -290,7 +290,10 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   - light tiles (WS, OW, RR, TT): pale outlined monogram on pale ground, hardly visible
   - every Jack Benny row reads "Cast"; Stations stacks eight heavy black Listen live buttons
   - titles: "Battle WithThe Apes", "Tarzans First Birthday", "Production 3", "(second audion starring...)"
-  Pixel and web frames were not kept: recapture and read them before calling those audits reviewed.
+  Web at 1440, read 2026-11-04 on the live site: holds up best. Open: Library opens on loose blue links
+  (Sign in, Join a room, Export, CSV) above its tabs; Stations stacks eight heavy Listen live buttons;
+  titles "GG Season 05", "Rc Superman", "(DM)" suffixes, "The Silver Clippe", "(second audion starring...)".
+  Web at 375 and the Pixel not yet read by the main thread.
 - [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
   pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
   a yes before building.
