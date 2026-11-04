@@ -441,6 +441,7 @@ private struct SeriesBrowseScreen_tvOS: View {
                     Text("Any genre").tag(String?.none)
                     ForEach(genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
                 }
+                .pickerStyle(.menu)
             }
             Picker("Sort", selection: $sort) {
                 ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }

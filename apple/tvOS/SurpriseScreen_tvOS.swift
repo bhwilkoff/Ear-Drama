@@ -36,7 +36,6 @@ struct SurpriseScreen_tvOS: View {
                                   facts: [episode.displayTitle, AirDate.display(episode.airDate)],
                                   link: .episode(episode.id))
                         Button { play(episode.id, presentPlayer: true) } label: { Label("Play", systemImage: "play.fill") }
-                            .tint(Color.brandPrimary)
                             .focused($playFocused)
                     }
                 }
@@ -49,7 +48,6 @@ struct SurpriseScreen_tvOS: View {
                         if let first {
                             // From its start, never live, and nothing queued behind it.
                             Button { play(first.id, presentPlayer: true) } label: { Label("Play", systemImage: "play.fill") }
-                                .tint(Color.brandPrimary)
                         }
                     }
                 }
