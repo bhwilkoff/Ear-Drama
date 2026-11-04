@@ -129,6 +129,8 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
     let items: [Item]
     /// A width the caller already knows (Browse's plan); nil measures it.
     var fixedWidth: CGFloat? = nil
+    /// Reports the first row's height, for a caller that fills a neighbor's height with rows.
+    var onRowHeight: ((CGFloat) -> Void)? = nil
     @ViewBuilder let tile: (Item, CGFloat) -> Tile
     @State private var measured: CGFloat = 0
 
@@ -160,6 +162,9 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
                     }
                     .frame(width: width, alignment: .leading)
                     .sharesNameHeight()
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                        if chunk.id == chunks.first?.id { onRowHeight?($0) }
+                    }
                 }
             }
         }

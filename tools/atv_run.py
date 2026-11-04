@@ -35,6 +35,7 @@ import devlease  # noqa: E402
 from devharness import OCR_FAILED, frame_darkness, frame_text, ocr, qa_dir  # noqa: E402
 
 BUNDLE = APPLE_BUNDLE_ID
+MIN_FRAMES = 3
 SHOT_EVERY = 4.0   # 4K captures pressure the device's screenshot daemon;
                    # 2.5s coincided with jetsam events on a previous app's bench
 
@@ -101,7 +102,11 @@ def capture_loop(entry, atv, outdir, minutes, presses, log):
     t0 = time.time()
     deadline = t0 + minutes * 60
     pending = sorted(presses or [], key=lambda p: p[0])
-    while time.time() < deadline:
+    # A 4K capture takes about 14 s on the device, so a 24 s window fits two: the window
+    # sets the dwell, and the run keeps capturing until it holds MIN_FRAMES (bounded, so a
+    # device that never captures still ends).
+    hard_stop = t0 + max(minutes * 60, MIN_FRAMES * 40)
+    while time.time() < deadline or (len(shots) < MIN_FRAMES and time.time() < hard_stop):
         state = atv.power_state() if atv.available else None
         if state == "off":
             log.append(f"{time.time() - t0:.0f}s TV off/dozing — frame skipped, waking")
@@ -266,7 +271,7 @@ def _run(entry, spec, env, name, outdir, args):
     report["shots"] = len(shots)
     report["capture_log"] = log
 
-    grade("captured_frames", len(shots) >= 3, f"{len(shots)} frames")
+    grade("captured_frames", len(shots) >= MIN_FRAMES, f"{len(shots)} frames")
     grade("app_alive_to_end", alive_end is True, "process present at capture end"
           if alive_end else ("could not ask the device" if alive_end is None
                              else "process GONE at capture end (crash or exit)"))

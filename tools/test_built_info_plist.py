@@ -40,6 +40,9 @@ def problems(platform, info):
 
 def main(argv):
     if argv and argv[0] == "--self-test":
+        if len(argv) < 2:
+            print("NOT VERIFIED: --self-test needs one built .app")
+            return 2
         info = plist_of(argv[1])
         good = problems("ios", info)
         broken = dict(info)
