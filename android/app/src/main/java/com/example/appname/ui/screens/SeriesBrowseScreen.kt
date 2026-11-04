@@ -359,14 +359,16 @@ fun SeriesBrowseScreen(
                 val expanded = maxWidth >= 840.dp
                 SideEffect { headerItems = if (expanded) 0 else 1 }
                 val fieldWidth = 380.dp
-                val (cols, tileWidth) = tileLayout(if (expanded) maxWidth - fieldWidth else maxWidth)
+                // The rail gets its own gutter, so it never sits on a count line or a tile edge.
+                val railGutter = if (!isTv && letters.size > 1) 24.dp else 0.dp
+                val (cols, tileWidth) = tileLayout((if (expanded) maxWidth - fieldWidth else maxWidth) - railGutter)
                 val heights = rememberNameHeights(tiles.map { it.series.name }, innerWidth(tileWidth))
                 val grid: @Composable (Modifier, (@Composable () -> Unit)?) -> Unit = { mod, header ->
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(cols),
                         state = gridState,
                         modifier = mod,
-                        contentPadding = PaddingValues(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+                        contentPadding = PaddingValues(start = Spacing.S4.dp, end = Spacing.S4.dp + railGutter, top = Spacing.S2.dp, bottom = Spacing.S2.dp),
                         horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
                         verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
                     ) {

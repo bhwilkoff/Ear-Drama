@@ -536,7 +536,7 @@ fun GrammarRow(
             }
         }
         if (trailing != null) {
-            Box(Modifier.padding(start = Spacing.S2.dp, end = 4.dp)) { trailing() }
+            Box(Modifier.padding(start = Spacing.S2.dp, end = Spacing.S2.dp)) { trailing() }
         } else if (onPlay != null) {
             IconButton(onClick = onPlay, modifier = Modifier.size(48.dp).tvFocusMark()) {
                 Box(

@@ -187,12 +187,14 @@ fun PlayerSheet(
             Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // R11a: full width, no taller than 44 % of the screen, so Play stays on the first screen.
+            // R11a: full width, no taller than 44 % of the screen, so Play stays on the first screen;
+            // on a short screen it gives up height until Add to queue and Share are in view too (N4b).
             val shown = (face as? Loadable.Ready)?.value ?: episode.seriesFace
             val art = episode.seriesWindowArt ?: shown?.art
             NowPlayingArt(
                 art, episode.seriesName, episode.seriesGenre,
-                maxSide = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } * 0.44f,
+                maxSide = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+                    .let { h -> minOf(h * 0.44f, h - 480.dp).coerceAtLeast(160.dp) },
             )
             // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
             art?.credit?.let { ArtCredit(it, art.evidence) }
