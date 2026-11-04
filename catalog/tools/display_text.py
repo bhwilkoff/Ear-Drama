@@ -322,3 +322,23 @@ def merge_into(series):
             if k != tgt and (same_text or track or same_day):
                 out[k] = tgt
     return {k: v for k, v in out.items() if k != v}
+
+
+def merged_span(merged, rows):
+    """{surviving key: (first, last, networks)} widened across every series folded into it. `rows`: key ->
+    (first, last, networks as a JSON list or None). Only keys that absorbed another appear."""
+    import json
+    out = {}
+    for old, new in sorted(merged.items()):
+        for k in (new, old):
+            f, l, n = rows.get(k, (None, None, None))
+            cf, cl, cn = out.get(new, (None, None, []))
+            fs = [x for x in (cf, f) if x]
+            ls = [x for x in (cl, l) if x]
+            try:
+                nets = json.loads(n) if n else []
+            except ValueError:
+                nets = []
+            out[new] = (min(fs) if fs else None, max(ls) if ls else None,
+                        cn + [x for x in nets if x not in cn])
+    return {k: (f, l, json.dumps(n) if n else None) for k, (f, l, n) in out.items()}

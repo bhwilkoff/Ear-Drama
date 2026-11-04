@@ -388,8 +388,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
 
     kept_genre = dict(((k, (g, src)) for k, g, src in s.execute("SELECT series_key, genre, source FROM series_genre"))
                       if has_table(s, "series_genre") else ())
-    for key, name, re_genre, otrr_genres, lv, first, last, nets in s.execute(
-            "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"):
+    series_rows = list(s.execute(
+        "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"))
+    widened = DT.merged_span(merged, {r[0]: (r[5], r[6], r[7]) for r in series_rows})
+    for key, name, re_genre, otrr_genres, lv, first, last, nets in series_rows:
+        if key in widened:
+            first, last, nets = widened[key]
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
             if genre is None and key in kept_genre:   # enrich_genres.py: a keyword the records carry (DECISIONS 024)

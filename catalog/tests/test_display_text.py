@@ -171,6 +171,10 @@ check("fragments join the registry program that names them", DT.merge_into({"p1"
       "adv": S("The Adventures Of Superman", "x", False, 1391, aliases=["Superman"])}), {"p1": "adv"})
 check("same single air date: one show", DT.merge_into({"n1": S("Naughty Navy", "x", first="1965-12-25", last="1965-12-25"),
       "n2": S("Naughty Navy", "x", first="1965-12-25", last="1965-12-25")}), {"n2": "n1"})
+check("a merged series shows the whole run", DT.merged_span({"b": "a"}, {"a": ("1940-01-01", "1941-01-01", '["NBC"]'),
+      "b": ("1938-05-01", "1950-02-02", '["CBS", "NBC"]')}), {"a": ("1938-05-01", "1950-02-02", '["NBC", "CBS"]')})
+check("control: an undated fragment leaves the dates", DT.merged_span({"b": "a"}, {"a": ("1940-01-01", "1941-01-01", None),
+      "b": (None, None, None)}), {"a": ("1940-01-01", "1941-01-01", None)})
 check("control: a LibriVox reading and a broadcast are two productions", DT.merge_into({"henryv": S("Henry V", "x", first="1942-10-25", last="1942-10-25"),
       "librivox4773": S("Henry V", "x", False, 5, lv=True)}), {})
 check("control: same name, different stems and dates stay apart", DT.merge_into({"01thehobbit": S("The Hobbit", "x", eps=19),
