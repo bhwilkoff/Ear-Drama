@@ -60,8 +60,10 @@ nonisolated enum Grammar {
     /// short side at least half of it). An unknown size is a block.
     static func windowFill(_ art: Artwork?, slot: Double) -> WindowFill {
         guard let art, let w = art.width, let h = art.height, w > 0, h > 0 else { return .block }
-        guard let rect = art.cropRect() else { return Double(min(w, h)) >= slot / 2 ? .whole : .block }
-        return rect.h * Double(h) >= slot ? .crop(rect) : .block
+        // A face crop opens out to the slot before the floor refuses: Gunsmoke's 296 px crop drew a
+        // letter in a 300 pt tile though the picture holds a 571 px square.
+        guard let rect = art.cropRect(least: slot / Double(h)) else { return Double(min(w, h)) >= slot / 2 ? .whole : .block }
+        return rect.h * Double(h) >= slot - 0.001 ? .crop(rect) : .block
     }
 
     /// An event line's pieces: each fact with the separator kept at its end, so a line may end on a

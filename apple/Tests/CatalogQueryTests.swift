@@ -384,7 +384,12 @@ struct CatalogQueryTests {
             }
         }
         #expect(kind(at(600, 800, "0.4,0.1,0.2,0.15"), 200) == "crop", "a face crop 240 px tall fills a 200 px window")
-        #expect(kind(at(600, 800, "0.4,0.1,0.2,0.15"), 300) == "block", "control: the same crop is under the floor at 300")
+        func cropHeight(_ art: Artwork, _ slot: Double) -> Double? {
+            if case let .crop(r) = Grammar.windowFill(art, slot: slot) { r.h } else { nil }
+        }
+        #expect(abs((cropHeight(at(600, 800, "0.4,0.1,0.2,0.15"), 200) ?? 0) - 0.3) < 1e-6, "a window the face crop clears keeps that crop")
+        #expect(abs((cropHeight(at(600, 800, "0.4,0.1,0.2,0.15"), 400) ?? 0) - 0.5) < 1e-6, "a larger window opens the crop out to its floor, around the face")
+        #expect(kind(at(600, 800, "0.4,0.1,0.2,0.15"), 700) == "block", "control: past the largest square the floor refuses")
         #expect(kind(at(1000, 500, nil), 200) == "whole", "a wide picture with no face is drawn whole")
         #expect(kind(at(300, 150, nil), 400) == "block", "control: its short side under half the window is a block")
         #expect(kind(at(nil, nil, nil), 48) == "block", "control: an unknown size is a block")
@@ -760,6 +765,10 @@ struct CatalogQueryTests {
         let agnes = try #require(db.personPage(id: "p1"))
         #expect(agnes.person.face != nil, "the served portrait (Decision 069)")
         #expect(agnes.episodes.first?.rolesLine == "Cast as Mrs. Stevenson")
+        let row = try #require(agnes.episodes.first?.episode)
+        #expect(PersonEpisode(episode: row, roles: [PersonRole(role: "cast", character: nil)]).rolesLine.isEmpty, "a plain cast credit says nothing")
+        #expect(PersonEpisode(episode: row, roles: [PersonRole(role: nil, character: nil), PersonRole(role: "host", character: nil)]).rolesLine == "Host",
+                "control: a role still shows beside it")
         #expect(db.personPage(id: "nobody") == nil, "control: no credits, no page")
         let older = try Fixture.open(dropArt: true)
         #expect(older.personPage(id: "p1")?.person.art == nil, "an older catalog opens, with no portrait")

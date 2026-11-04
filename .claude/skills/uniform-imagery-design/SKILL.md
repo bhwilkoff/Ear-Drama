@@ -158,7 +158,11 @@ after converting to gray (Rec. 709 weights: 0.2126, 0.7152, 0.0722).
 ### 4. Minimum size
 
 `cropPx >= slot` (CSS points). That is at most a 2x upscale on a 2x
-screen, the softness of a printed halftone, not mush. Below it, use the
+screen, the softness of a printed halftone, not mush. A face crop that
+falls short opens out, still centered on the face, up to the picture's
+largest square, before the floor refuses: the tight crop is a default,
+not the picture's limit (Gunsmoke's 296 px crop drew a letter in a 300 pt
+Apple TV tile from a picture with a 571 px square). Below that, use the
 fallback; never request a bigger step than the original (Commons
 returns the original anyway) and never run an upscaler. A header draws
 the whole picture at no more than its own pixel size at 1x.
@@ -172,7 +176,8 @@ initials still reads as one set; a wall with gray boxes does not.
 
 In a repeated slot whose object already carries its name in a fixed
 slot (a show tile, a face), the fallback is the **title block**: the
-initial cut large in the display face in the on-board color, cropped by
+initial cut large in the display face in the on-board color (solid on
+a pale, genre-less board, where a thin outline all but vanishes), cropped by
 the window like wood type, with the window's hairline, in the same
 window the picture would fill. The name stays in its own slot, so it is
 never drawn twice and never moves (`catalog-experience-design` rule 11,

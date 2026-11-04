@@ -603,7 +603,7 @@ private struct PersonScreen_tvOS: View {
                             } content: {
                                 ForEach(group.episodes) { item in
                                     NavigationLink(value: Route.episode(item.id)) {
-                                        TVDateCard(episode: item.episode, note: item.rolesLine)
+                                        TVDateCard(episode: item.episode, note: item.rolesLine.isEmpty ? nil : item.rolesLine)
                                     }
                                     .buttonStyle(.card)
                                 }

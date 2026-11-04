@@ -177,8 +177,10 @@ const API = (() => {
       image (contract §3.3a, WEB-DESIGN §6.4): around the published face box, the face about half
       the square and at most 4x zoom; without a face the largest square at 50% across and 20%
       down; null when the picture is wide with no face (not cropped) or its size is unknown (the
-      caller keeps the plain fill crop). The same formula and golden cases on Apple and Android. */
-  function cropRect(art) {
+      caller keeps the plain fill crop). `least` is the smallest square a window can take, as a
+      fraction of the height: the face stays centered and the square opens out to it, up to the
+      largest. The same formula and golden cases on Apple and Android. */
+  function cropRect(art, least = 0) {
     const a = artAspect(art);
     if (a === null) return null;
     const f = Array.isArray(art.face) && art.face.length === 4 ? art.face : null;
@@ -187,7 +189,7 @@ const API = (() => {
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     let s = full, left = 0.5 * (a - full), top = 0.2 * (1 - full);
     if (f) {
-      s = clamp(2 * Math.max(f[2] * a, f[3]), full / 4, full);
+      s = clamp(Math.max(2 * Math.max(f[2] * a, f[3]), least), full / 4, full);
       left = clamp((f[0] + f[2] / 2) * a - s / 2, 0, a - s);
       top = clamp(f[1] + f[3] / 2 - s / 2, 0, 1 - s);
     }
@@ -226,13 +228,14 @@ const API = (() => {
   }
   /** What a window of `slot` CSS px holds: {kind: 'crop', rect} around the face, {kind: 'whole'}
       for a wide picture with no face, or {kind: 'block'} (the title block) for no picture or one
-      under the size floor (uniform-imagery-design §4: the crop's pixel height at least the slot;
-      a whole picture's short side at least half of it). An unknown size is a block. */
+      under the size floor (uniform-imagery-design §4: the crop's pixel height at least the slot,
+      a face crop opening out to it before the floor refuses; a whole picture's short side at
+      least half of it). An unknown size is a block. */
   function windowFill(art, slot) {
     if (!art || !art.url || !(art.width > 0 && art.height > 0)) return { kind: 'block' };
-    const rect = cropRect(art);
+    const rect = cropRect(art, slot / art.height);
     if (!rect) return Math.min(art.width, art.height) >= slot / 2 ? { kind: 'whole' } : { kind: 'block' };
-    return rect.h * art.height >= slot ? { kind: 'crop', rect } : { kind: 'block' };
+    return rect.h * art.height >= slot - 0.001 ? { kind: 'crop', rect } : { kind: 'block' };
   }
   /** An event line's pieces: each fact with the separator kept at its end, so a line may end on a
       dot and never opens with one. Empty facts drop out. */
