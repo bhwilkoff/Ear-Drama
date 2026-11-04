@@ -104,8 +104,29 @@ def compose_title(series_name, air_date, num):
     return None
 
 
+ISO_IN_TITLE = re.compile(r"(?<![\d])((?:19|20)\d\d)[-.](\d\d)[-.](\d\d)(?!\d)")
+
+
+def spell_iso_dates(title, air_date):
+    """No ISO date on screen (owner 2026-11-04): a date the title repeats from the record's own air date is
+    dropped with its brackets and separators (the date line already shows it); any other is spelled out."""
+    def one(m):
+        y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
+        if not 1 <= mo <= 12 or not 1 <= d <= 31:
+            return m.group(0)
+        if f"{y}-{mo:02d}-{d:02d}" == (air_date or ""):
+            return "\0"
+        return f"{MONTHS[mo - 1]} {d}, {y}"
+    t = ISO_IN_TITLE.sub(one, title or "")
+    if "\0" in t:
+        t = re.sub(r"\s*[\[(]\s*\0\s*[\])]|\s*[-\u2013\u2014:,]\s*\0|\0\s*[-\u2013\u2014:]\s*|\s*\0", "", t)
+        t = re.sub(r"\(\s*\)|\[\s*\]", "", t)
+    return re.sub(r"\s{2,}", " ", t).strip(" -\u2013\u2014:,")
+
+
 def decide_episode(shown, series_name, air_date, num):
     """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'."""
+    shown = spell_iso_dates(shown, air_date)
     if readable_title(shown):
         return shown, "source", ["episodes.title"], None
     got = compose_title(series_name, air_date, num)
