@@ -35,6 +35,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: worker/package-lock.json
       - name: Install from the lockfile
-        run: npm ci
+        run: npm ci --fetch-retries=5 --fetch-retry-mintimeout=5000
       - name: Sign-in, sync, deletion, CORS, and rate limits
         run: npm test

@@ -168,6 +168,39 @@ with tempfile.TemporaryDirectory() as tmp:
     streak = T.run_batch([item(f"s|{i:04d}") for i in range(40)], {}, path + "2", None, 0,
                          fake({f"s|{i:04d}": "transient" for i in range(40)}), sleep=lambda s: None)
     check("batch: the breaker stops a refusing host", (streak["breaker"], streak["transient"]), (True, T.BREAKER))
+    check("batch: the reason for each failure is counted", sum(streak["reasons"].values()), T.BREAKER)
+    check("verdict: nothing back and archive.org silent is unreachable, not all_failed",
+          T.verdict(todo, {"texts": 0, "missing": 0}, (False, "timed out")), "unreachable")
+    check("control: nothing back and archive.org answering stays all_failed",
+          T.verdict(todo, {"texts": 0, "missing": 0}, (True, "HTTP 200")), "all_failed")
+    calls = []
+    def flaky(item, timeout=60):
+        calls.append(1)
+        raise T.Transient("HTTP 503", None)
+    orig = T.fetch_once
+    T.fetch_once = lambda item, timeout=60: (calls.append(1), (_ for _ in ()).throw(T.Transient("HTTP 503", None)) if len(calls) < 3 else T.entry(item, GOOD))[1]
+    try:
+        r = T.fetch(item("suspense|1943-05-25"), sleep=lambda s: None)
+        check("fetch: a blip is retried inside the call and succeeds", (len(calls), T.has_text(r)), (3, True))
+        calls.clear()
+        T.fetch_once = flaky
+        try:
+            T.fetch(item("suspense|1943-05-25"), sleep=lambda s: None)
+            raised = False
+        except T.Transient:
+            raised = True
+        check("control: a persistent failure still raises after 3 attempts", (raised, len(calls)), (True, 3))
+    finally:
+        T.fetch_once = orig
+    import urllib.error
+    def dead(req, timeout=0):
+        raise urllib.error.URLError("down")
+    check("probe: a dead host is unreachable", T.probe(opener=dead, sleep=lambda s: None)[0], False)
+    class OK:
+        status = 200
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+    check("control: a 200 is reachable", T.probe(opener=lambda req, timeout=0: OK(), sleep=lambda s: None)[0], True)
 
 # --- the cache never shrinks -------------------------------------------------------
 t = T.entry(item("suspense|1943-05-25"), GOOD)

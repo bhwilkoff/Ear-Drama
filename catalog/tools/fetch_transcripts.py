@@ -100,8 +100,8 @@ def entry(item, text):
             "bytes": len(text.encode("utf-8")), "gate": {"shown": shown, **f}, "text": text}
 
 
-def fetch(item, timeout=60):
-    """One transcript. Returns a cache entry; raises Transient for anything worth retrying."""
+def fetch_once(item, timeout=60):
+    """One request. Returns a cache entry; raises Transient for anything worth retrying."""
     req = urllib.request.Request(item["url"], headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -113,8 +113,42 @@ def fetch(item, timeout=60):
             raise Transient(f"HTTP {e.code}", e.headers.get("Retry-After") if e.headers else None)
         return {"url": item["url"], "fetchedAt": now_iso(), "error": f"HTTP {e.code}"}
     except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException, OSError) as e:
-        raise Transient(str(e)[:120], None)
+        raise Transient(f"{type(e).__name__}: {str(e)[:100]}", None)
     return entry(item, body.decode("utf-8", "replace"))
+
+
+def fetch(item, timeout=60, attempts=3, backoff=(2.0, 6.0), sleep=time.sleep):
+    """fetch_once, retrying a transient failure inside the call with backoff; the last Transient escapes."""
+    for n in range(attempts):
+        try:
+            return fetch_once(item, timeout)
+        except Transient:
+            if n == attempts - 1:
+                raise
+            sleep(backoff[min(n, len(backoff) - 1)])
+
+
+PROBE_URL = "https://archive.org/robots.txt"
+
+
+def probe(url=PROBE_URL, attempts=3, backoff=(5.0, 15.0), opener=None, sleep=time.sleep):
+    """Is archive.org answering at all? Returns (ok, detail). Only HTTP 200 counts as reachable."""
+    opener = opener or urllib.request.urlopen
+    detail = ""
+    for n in range(attempts):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": UA})
+            with opener(req, timeout=30) as resp:
+                if resp.status == 200:
+                    return True, "HTTP 200"
+                detail = f"HTTP {resp.status}"
+        except urllib.error.HTTPError as e:
+            detail = f"HTTP {e.code}"
+        except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException, OSError) as e:
+            detail = f"{type(e).__name__}: {str(e)[:100]}"
+        if n < attempts - 1:
+            sleep(backoff[min(n, len(backoff) - 1)])
+    return False, detail
 
 
 def attempted_at(r):
@@ -199,7 +233,8 @@ def plan(cands, cache, n, retry_days, now=None):
 
 def run_batch(todo, cache, path, deadline, pace=1.0, fetch_fn=fetch, sleep=time.sleep):
     """Fetch `todo` one at a time, saving additively as it goes. Returns this run's counts."""
-    got = {"texts": 0, "shown": 0, "missing": 0, "errors": 0, "transient": 0, "not_started": 0, "breaker": False}
+    got = {"texts": 0, "shown": 0, "missing": 0, "errors": 0, "transient": 0, "not_started": 0, "breaker": False,
+           "reasons": {}, "sample": {}}
     streak, last_save = 0, time.time()
     for i, item in enumerate(todo):
         if got["breaker"] or (deadline is not None and time.time() > deadline):
@@ -209,6 +244,9 @@ def run_batch(todo, cache, path, deadline, pace=1.0, fetch_fn=fetch, sleep=time.
             r = fetch_fn(item)
         except Transient as e:
             got["transient"] += 1
+            why = str(e.args[0])
+            got["reasons"][why] = got["reasons"].get(why, 0) + 1
+            got["sample"].setdefault(why, item["url"])
             streak += 1
             if streak >= BREAKER:
                 got["breaker"] = True
@@ -225,6 +263,9 @@ def run_batch(todo, cache, path, deadline, pace=1.0, fetch_fn=fetch, sleep=time.
             streak = 0
         else:
             got["errors"] += 1
+            why = str(r.get("error", "error"))
+            got["reasons"][why] = got["reasons"].get(why, 0) + 1
+            got["sample"].setdefault(why, item["url"])
             streak += 1
             if streak >= BREAKER:
                 got["breaker"] = True
@@ -238,12 +279,13 @@ def run_batch(todo, cache, path, deadline, pace=1.0, fetch_fn=fetch, sleep=time.
     return got
 
 
-def verdict(todo, got):
-    """idle: nothing was due. all_failed: something was due and nothing came back. fetched otherwise."""
+def verdict(todo, got, reach=None):
+    """idle: nothing was due. all_failed: something was due, nothing came back, and archive.org answers.
+    unreachable: the same, but archive.org did not answer the probe (an outage, not a defect). fetched otherwise."""
     if not todo:
         return "idle"
     if got["texts"] + got["missing"] == 0:
-        return "all_failed"
+        return "unreachable" if reach is not None and not reach[0] else "all_failed"
     return "fetched"
 
 
@@ -318,9 +360,15 @@ def main():
     todo, due_n = plan(cands, cache, a.batch, a.retry_days)
     print(f"{len(cands)} served episodes with a transcript; {due_n} due; fetching {len(todo)}", flush=True)
     got = run_batch(todo, cache, a.cache, deadline, a.pace)
+    for why, n in sorted(got["reasons"].items(), key=lambda kv: -kv[1]):
+        print(f"[catalog-transcripts] failed x{n}: {why} (e.g. {got['sample'][why]})", flush=True)
+    reach = None
+    if verdict(todo, got) == "all_failed":
+        reach = probe()
+        print(f"[catalog-transcripts] archive.org probe {PROBE_URL}: {'reachable' if reach[0] else 'UNREACHABLE'} ({reach[1]})", flush=True)
     covered = sum(1 for it in cands if text_for(cache.get(it["id"]), it["url"]) is not None)
     summary = {**got, "planned": len(todo), "due_after": due_n - got["texts"] - got["missing"] - got["errors"],
-               "candidates": len(cands), "covered": covered, "cache": tally(cache), "verdict": verdict(todo, got),
+               "candidates": len(cands), "covered": covered, "cache": tally(cache), "verdict": verdict(todo, got, reach), "probe": reach[1] if reach else None,
                "minutes": round((time.time() - t_start) / 60, 1)}
     if a.summary:
         ia.write_json(a.summary, summary)
