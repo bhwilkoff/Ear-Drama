@@ -95,16 +95,20 @@ def red_means_recording(files):
     set only where recording happens, and the recording controls take it."""
     rx = re.compile(r"\bbrand(On)?Record\b")
     outside = [p for p, t in files.items()
-               if not p.endswith(("Shared/RecordingScreen.swift", "Core/Design.swift")) and rx.search(t)]
+               if not p.endswith(("Shared/RecordingScreen.swift", "Shared/PlaysGrammar.swift", "Core/Design.swift")) and rx.search(t)]
     rec = files.get("apple/Shared/RecordingScreen.swift", "")
-    return not outside and rec.count("Color.brandRecord") >= 3
+    grammar = files.get("apple/Shared/PlaysGrammar.swift", "")
+    return (not outside and rec.count("Color.brandRecord") >= 3
+            and "case .record: Color.brandRecord" in grammar and "case .record: Color.brandOnRecord" in grammar)
 
 
 def secondary_action_is_ink(files):
-    """Decision 064: Use This Take is an action, not wayfinding: an ink outline."""
+    """Decision 064: Keep (the take, once Use This Take) is an action, not wayfinding: an ink outline."""
     t = files.get("apple/Shared/RecordingScreen.swift", "")
-    i = t.find('Button("Use This Take")')
-    return i != -1 and ".buttonStyle(.bordered)" in t[i:i + 200] and ".tint(Color.brandPrimary)" in t[i:i + 200]
+    g = files.get("apple/Shared/PlaysGrammar.swift", "")
+    i = t.find("controls.keep()")
+    return ("case .ink: Color.brandPrimary" in g and i != -1
+            and ".buttonStyle(.play(.ink))" in t[i:i + 200])
 
 
 def library_empty_keeps_navigation(text, struct):
@@ -119,7 +123,7 @@ def library_empty_keeps_navigation(text, struct):
         lst = body.find("List {")
         return -1 < lst < account < links < inset < empty
     lst = body.rfind("List {", 0, empty)
-    return (-1 < lst < empty < account < links) and "} else {" not in body[lst:links]
+    return (-1 < lst < empty < account < links) and "} else {" not in body[empty:empty + 200]
 
 
 def main():
@@ -162,20 +166,17 @@ def main():
          {**swift, "x.swift": 'ContentUnavailableView("Nothing here", systemImage: "tray")'}),
         ("red means recording", red_means_recording, swift,
          {**swift, "apple/Shared/ListScreens.swift":
-          swift["apple/Shared/ListScreens.swift"].replace(".tint(Color.brandPrimary)", ".tint(Color.brandRecord)", 1)}),
+          swift["apple/Shared/ListScreens.swift"] + "\n.tint(Color.brandRecord)"}),
         ("the record control takes the red", red_means_recording, swift,
+         {**swift, "apple/Shared/PlaysGrammar.swift":
+          swift["apple/Shared/PlaysGrammar.swift"].replace(
+              "case .record: Color.brandRecord", "case .record: Color.semanticError", 1)}),
+        ("Keep is an ink action", secondary_action_is_ink, swift,
          {**swift, "apple/Shared/RecordingScreen.swift":
-          swift["apple/Shared/RecordingScreen.swift"].replace(
-              ".font(.system(size: 64))\n                .foregroundStyle(Color.brandRecord)",
-              ".font(.system(size: 64))\n                .foregroundStyle(Color.semanticError)")}),
-        ("Use This Take is an ink outline", secondary_action_is_ink, swift,
-         {**swift, "apple/Shared/RecordingScreen.swift":
-          swift["apple/Shared/RecordingScreen.swift"].replace("                                .tint(Color.brandPrimary)\n", "", 1)}),
+          swift["apple/Shared/RecordingScreen.swift"].replace("controls.keep() } label: {\n                    Label(\"Keep\", systemImage: \"checkmark\").frame(maxWidth: .infinity)\n                }\n                .buttonStyle(.play(.ink))", "controls.keep() } label: {\n                    Label(\"Keep\", systemImage: \"checkmark\").frame(maxWidth: .infinity)\n                }\n                .buttonStyle(.play(.way))", 1)}),
         ("an empty Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen"), detail,
-         detail.replace("                List {\n                    if empty {",
-                        "                if empty { EmptyState(\"x\", systemImage: \"y\") } else {\n"
-                        "                List {\n                    if empty {", 1)),
+         detail.replace("                    Section { AccountRow() }\n", "", 1)),
         ("an empty TV Library keeps Account and the site pages",
          lambda t: library_empty_keeps_navigation(t, "LibraryScreen_tvOS"), tv,
          tv.replace("                        AccountRow()\n                        SiteLinkRows()\n",
