@@ -336,6 +336,7 @@ private struct SeriesBrowseScreen_tvOS: View {
     @State private var shown = BrowseScreenPage.size
     @State private var scope: BrowseScope = .shows
     @State private var fieldOpen = false
+    @State private var azFrom: String?
     @Environment(AppStore.self) private var store
 
     private struct Key: Hashable { let genre: String?; let decade: Int?; let sort: SeriesSort; let load: Int }
@@ -345,25 +346,23 @@ private struct SeriesBrowseScreen_tvOS: View {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                ScrollViewReader { proxy in
-                    ScrollView(.vertical) {
-                        VStack(alignment: .leading, spacing: Spacing.s4) {
-                            Picker("Browse", selection: $scope) {
-                                ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
-                            }
-                            .pickerStyle(.segmented)
-                            .fixedSize()
-                            if scope == .dramas {
-                                FinishedBrowse()
-                            } else if scope == .voices {
-                                VoicesBrowse()
-                            } else {
-                                results(series, proxy: proxy)
-                            }
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: Spacing.s4) {
+                        Picker("Browse", selection: $scope) {
+                            ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
                         }
-                        .padding(.top, TV.rootClearance)
-                        .padding(.bottom, 60)
+                        .pickerStyle(.segmented)
+                        .fixedSize()
+                        if scope == .dramas {
+                            FinishedBrowse()
+                        } else if scope == .voices {
+                            VoicesBrowse()
+                        } else {
+                            results(series)
+                        }
                     }
+                    .padding(.top, TV.rootClearance)
+                    .padding(.bottom, 60)
                 }
             } else {
                 ProgressView()
@@ -378,7 +377,10 @@ private struct SeriesBrowseScreen_tvOS: View {
             guard catalog.state == .ready else { return }
             fieldBase = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: sort)
         }
-        .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) { shown = BrowseScreenPage.size }
+        .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) {
+            shown = BrowseScreenPage.size
+            azFrom = nil
+        }
         .onChange(of: store.pendingBrowseGenre, initial: true) { _, g in
             guard let g else { return }
             genre = g; decade = nil; scope = .shows
@@ -415,7 +417,7 @@ private struct SeriesBrowseScreen_tvOS: View {
         }
     }
 
-    @ViewBuilder private func results(_ all: [SeriesRow], proxy: ScrollViewProxy) -> some View {
+    @ViewBuilder private func results(_ all: [SeriesRow]) -> some View {
         let shows = all.filter { ShowLine.isShow($0.episodeCount) }
         let lesser = all.filter { !ShowLine.isShow($0.episodeCount) }
         let listed = singles ? lesser : shows
@@ -451,14 +453,16 @@ private struct SeriesBrowseScreen_tvOS: View {
             EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
                        action: .init(title: "Clear Filters") { genre = nil; decade = nil })
         } else if sort == .name {
-            // A to Z: a row of letters focus can reach, then each letter's tiles, drawn as they scroll in.
+            // A to Z (§4.2): a letter starts the list there. Scroll on the TV follows focus, so a
+            // scrollTo is undone at once, and the letter's tiles may not be drawn to take focus.
             let letters = Grammar.azLetters(listed.map { $0.sortName ?? $0.name })
             let groups = Dictionary(grouping: listed) { Grammar.azLetter($0.sortName ?? $0.name) }
-            LetterRow(letters: letters) { proxy.scrollTo("az-\($0)", anchor: .top) }
+            let start = azFrom.flatMap { letters.firstIndex(of: $0) } ?? 0
+            LetterRow(letters: letters, current: letters.isEmpty ? nil : letters[start]) { azFrom = $0 }
             LazyVStack(alignment: .leading, spacing: Spacing.s6) {
-                ForEach(letters, id: \.self) { l in
+                ForEach(letters[start...], id: \.self) { l in
                     VStack(alignment: .leading, spacing: Spacing.s3) {
-                        Text(verbatim: l).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).id("az-\(l)")
+                        Text(verbatim: l).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText)
                         ShowGrid(items: groups[l] ?? []) { row, width in
                             TileLink(value: Route.series(row.key), series: row, width: width)
                         }

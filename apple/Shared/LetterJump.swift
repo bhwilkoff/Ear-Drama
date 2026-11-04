@@ -45,12 +45,14 @@ struct LetterRail: View {
 /// A row of letter buttons: the Mac's pointer clicks one; the Apple TV's focus moves along them.
 struct LetterRow: View {
     let letters: [String]
+    /// The letter the list starts at, on the TV.
+    var current: String? = nil
     let jump: (String) -> Void
 
     var body: some View {
         #if os(tvOS)
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Spacing.s3) { buttons }
+            HStack(spacing: Spacing.s1) { buttons }
                 .padding(.vertical, Spacing.s2)
         }
         .focusSection()
@@ -62,11 +64,24 @@ struct LetterRow: View {
     @ViewBuilder private var buttons: some View {
         ForEach(letters, id: \.self) { l in
             Button { jump(l) } label: {
+                #if os(tvOS)
+                TVFocusRing {
+                    Text(verbatim: l)
+                        .font(TypeRamp.bodyStrong)
+                        .foregroundStyle(l == current ? Color.brandText : Color.brandTextMuted)
+                        .frame(minWidth: 56, minHeight: 56)
+                }
+                #else
                 Text(verbatim: l)
                     .font(TypeRamp.bodyStrong)
                     .frame(minWidth: 28)
+                #endif
             }
+            #if os(tvOS)
+            .buttonStyle(TVBareButtonStyle())
+            #else
             .buttonStyle(.borderless)
+            #endif
             .accessibilityLabel(l == "#" ? "Numbers and symbols" : "Shows starting with \(l)")
         }
     }
