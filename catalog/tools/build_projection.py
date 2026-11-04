@@ -224,11 +224,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         if why:
             held.setdefault(k, why)
         elif got != shown_name[k]:
-            shown_name[k] = got
+            shown_name[k] = PL.polish_name(got) or got
             fragments.add(k)
     numbered = {k: shown_name[k] for k in shown_name if k in by_series_eps and k not in held}
     for k in sorted(DT.track_numbered(numbered, own_key)):
-        shown_name[k] = DT.strip_track_number(shown_name[k])
+        stripped = DT.strip_track_number(shown_name[k])
+        shown_name[k] = PL.polish_name(stripped) or stripped
         fragments.add(k)
     witnessed = {}
     if has_table(s, "episode_witnesses"):
