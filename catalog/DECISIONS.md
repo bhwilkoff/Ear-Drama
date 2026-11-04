@@ -789,3 +789,31 @@ remotes, upload fragments, 2026-10-31"). Arcs 335 to 455 (`Ep01of18` now parses 
 by display text; forwarding is recomputed by the publish as usual. The publish workflow should also run
 `PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_display_fields.py` beside the other real-artifact tests
 (a workflow edit, outside this change).
+
+## 028 — A name an upload cut, numbered or strung together is its source's own words or withheld; one show under several names is folded only on evidence (P-9)
+
+*Date: 2026-11-04*
+
+Amends 025 to 027. Owner rulings stand: raw upload text never shows; a name comes from a source, cleaned residue or the
+record's own data, never invented; no context means withheld, counted, kept in the research database; speeches stay.
+
+1. **One pass, `display_text.clean_series_name`**, run in `build_projection.py` after `polish_name`. Classes: page or side
+   fragment ("Superman page01", "Side 2"), cut-off tail (an unclosed bracket, a bare Part or Side; "On the Sunny Side" is
+   whole), episode code ("- s01e01", "Deel18"), uploader initials, a glued count or month ("Jukebox31", "Dec18"), reel
+   compilations (a reel word and dot-joined programs: one program keeps its name, several are withheld). Each removes words the
+   uploader added and adds none. A residue under four letters or a numbered stub ("Vintage No 2") is withheld
+   (`series_name_has_no_context`); the others carry `series_name_is_a_fragment`, `series_is_a_reel_compilation`,
+   `series_name_joins_programs`.
+2. **A leading number goes only as a track number** (`track_numbered`): the series is upload-named (a registry program may be
+   really numbered: 33 Half Moon Street, 2000 Plus), three upload-named names within two of its number write the number the
+   same way, and the next word is not a quantity ("100 Years").
+3. **Same show, several names** (`merge_into`) folds series only on data: names differing by quotes or "&" for "and", keys
+   differing by a leading track number, the same single air date, or fragments whose cleaned name is another fragment's or a
+   registry program's name or alias. A LibriVox reading and a broadcast are different productions and are never folded. Episodes
+   are read under the surviving key (a TEMP view over `episodes`), so the departed key forwards through `series_key_aliases`
+   (forwarding.py) with no second mechanism.
+4. **Left for the owner:** pairs with the same name and different key stems or dates (The Hobbit 01thehobbit and hobbit,
+   Noel Coward Hay Fever 09a/09), and Christopher Marlowe's Faustus (1964 and 1970 productions, kept apart).
+5. **Guards** in `tests/test_display_text.py`: fixtures for each class with its control, and over the real projection no name
+   the pass would change, no run of track-numbered names, no show split by quotes, "&" or a track number, no title cut off
+   mid-bracket.

@@ -112,6 +112,72 @@ check("control: a radio show", DT.episode_out_of_scope("Suspense, April 26, 1952
 check("scope kinds map to reason codes", sorted(DT.SCOPE_REASONS.values()),
       ["out_of_scope_concert", "out_of_scope_lecture", "out_of_scope_music_set"])
 
+# P-9: names an upload cut, numbered or strung together. Each class, then the real titles that must survive.
+cs = DT.clean_series_name
+check("page suffix is dropped", cs("Superman page01"), ("Superman", None))
+check("a bare side has no program", cs("Side 2"), (None, "series_name_is_a_fragment"))
+check("an unclosed bracket is cut", cs("Banter (s01"), ("Banter", None))
+check("a dangling Side is cut", cs("The Best of Fibber McGee & Molly Side"), ("The Best of Fibber McGee & Molly", None))
+check("a dangling Part after a dash", cs("The Freedland Files - Part"), ("The Freedland Files", None))
+check("control: Sunny Side is a whole title", cs("On the Sunny Side"), ("On the Sunny Side", None))
+check("control: Part 1 is the source's own", cs("Henry VI, Part 1"), ("Henry VI, Part 1", None))
+check("reels of several programs are withheld", cs("Mystery Reel.Suspense.X Minus One.Black Museum"), (None, "series_is_a_reel_compilation"))
+check("a one-letter program in a reel still splits", cs("Mystery Reel.Theatre V.Dimension X.Weird Circle"), (None, "series_is_a_reel_compilation"))
+check("a mystery reel of one group", cs("Frank Sinatra and Others Mystery Reel"), ("Frank Sinatra and Others", None))
+check("a lone reel word has no program", cs("Christmas Reel"), (None, "series_is_a_reel_compilation"))
+check("the reel word goes, the program stays", cs("FDR Speaks.Reel Series"), ("FDR Speaks", None))
+check("one program on a reel", cs("Bergen and McCarthy.Bits and Pieces Reel"), ("Bergen and McCarthy", None))
+check("programs joined by dots are withheld", cs("Tales of the Texas Rangers.Cisco Kid"), (None, "series_name_joins_programs"))
+check("control: a sentence is not a join (speeches stay)", cs("First War Address. WGN."), ("First War Address. WGN.", None))
+check("control: a dot inside brackets is not a join", cs('"How Good Is American Air Power" (prog.1, part2) American Legion')[1], None)
+check("control: initials are not a join", cs("T.S. Eliot Reading His Poetry"), ("T.S. Eliot Reading His Poetry", None))
+check("control: an abbreviation is not a join", cs("Capt.Midnight"), ("Capt.Midnight", None))
+check("control: an ellipsis is not a join", cs("This...Our Land Get on Board"), ("This...Our Land Get on Board", None))
+check("uploader initials are dropped", cs("APM Stan Kenton Story D.D.Teoli Jr. A.C"), ("APM Stan Kenton Story", None))
+check("uploader initials leave no program", cs("101 Vintage No 2 D D Teoli Jr A C"), (None, "series_name_has_no_context"))
+check("a glued count is dropped", cs("Jills All Time Jukebox31"), ("Jills All Time Jukebox", None))
+check("an episode code is dropped", cs("Sexton Blake - s01e01"), ("Sexton Blake", None))
+check("an upload's episode number leaves no program", cs("GG Ep119"), (None, "series_name_has_no_context"))
+check("a month and day leave no program", cs("SS Dec18"), (None, "series_name_has_no_context"))
+check("control: real titles are untouched", [cs(n)[0] for n in ("33 Half Moon Street", "2000 Plus", "1938 Radio News", "Ford V8 Revue", "Radio 4 Extra")],
+      ["33 Half Moon Street", "2000 Plus", "1938 Radio News", "Ford V8 Revue", "Radio 4 Extra"])
+check("control: LibriVox keeps its reader's name", cs("Part 2 (Dramatic Reading", "librivox9"), ("Part 2 (Dramatic Reading", None))
+
+check("a title cut mid-bracket loses the bracket", DT.cut_title("Jack Armstrong 41-05-07 (FROM (DON MARRIS)"), "Jack Armstrong 41-05-07")
+check("control: a closed bracket stays", DT.cut_title("Gone Again (Part 2)"), "Gone Again (Part 2)")
+check("control: a date in a name is not a glued month", cs("15 post prayer speeches by Mahatma Gandhi August 24"),
+      ("15 post prayer speeches by Mahatma Gandhi August 24", None))
+run = {"a%d" % i: "%d Maigret Case %d" % (10 + i, i) for i in range(4)}
+check("a numbered run of upload-named series is track numbers", sorted(DT.track_numbered(run, set(run))), sorted(run))
+check("control: a registry program is really numbered", DT.track_numbered(run, set()), set())
+check("control: a lone number is part of the title", DT.track_numbered({"k": "33 Half Moon Street", "j": "40 Other Show"}, {"k", "j"}), set())
+check("control: a quantity is part of the title", DT.track_numbered({"a": "100 Years of Motion Pictures", "b": "101 Dalmatians",
+      "c": "99 Best Shows"}, {"a", "b", "c"}), set())
+check("a track number is removed", DT.strip_track_number("10 Maigret's Boyhood Friend"), "Maigret's Boyhood Friend")
+check("dotted track number", DT.strip_track_number("34.Habakkuk"), "Habakkuk")
+
+
+def S(name, key, own=True, eps=1, first=None, last=None, cleaned=False, lv=False, aliases=()):
+    return {"name": name, "cleaned": cleaned, "librivox": lv, "own": own, "eps": eps, "first": first, "last": last, "aliases": list(aliases)}
+
+
+check("quotes only: one show", DT.merge_into({"armyhour": S("The Army Hour", "x", False, 7), "thearmyhour": S('"The Army Hour"', "x")}),
+      {"thearmyhour": "armyhour"})
+check("& and 'and': one show", DT.merge_into({"b1": S("Bergen & McCarthy", "x", eps=2), "b2": S("Bergen and McCarthy", "x")}), {"b2": "b1"})
+check("a track number on the key: one show", DT.merge_into({"02tarzan": S("Tarzan", "x"), "tarzan": S("Tarzan", "x", False, 152)}), {"02tarzan": "tarzan"})
+check("fragments of one upload join", DT.merge_into({"p1": S("Superman", "x", cleaned=True, eps=2), "p2": S("Superman", "x", cleaned=True, eps=9)}),
+      {"p1": "p2"})
+check("fragments join the registry program that names them", DT.merge_into({"p1": S("Superman", "x", cleaned=True),
+      "adv": S("The Adventures Of Superman", "x", False, 1391, aliases=["Superman"])}), {"p1": "adv"})
+check("same single air date: one show", DT.merge_into({"n1": S("Naughty Navy", "x", first="1965-12-25", last="1965-12-25"),
+      "n2": S("Naughty Navy", "x", first="1965-12-25", last="1965-12-25")}), {"n2": "n1"})
+check("control: a LibriVox reading and a broadcast are two productions", DT.merge_into({"henryv": S("Henry V", "x", first="1942-10-25", last="1942-10-25"),
+      "librivox4773": S("Henry V", "x", False, 5, lv=True)}), {})
+check("control: same name, different stems and dates stay apart", DT.merge_into({"01thehobbit": S("The Hobbit", "x", eps=19),
+      "hobbit": S("The Hobbit", "x", False, 8, "1968-09-29", "1968-11-17")}), {})
+check("control: two interviews with one title stay apart", DT.merge_into({"a": S("In Conversation With", "x", first="2002-01-01", last="2002-01-01"),
+      "b": S("In Conversation With", "x", first="2004-01-01", last="2004-01-01")}), {})
+
 # The guard over a real projection.
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):
@@ -120,6 +186,16 @@ if os.path.exists(real):
     check("guard: no series is named for an upload habit", bad_series[:5], [])
     n = d.execute("SELECT COUNT(*) FROM episodes").fetchone()[0]
     empty = [(i, t) for i, t in d.execute("SELECT id, title FROM episodes") if TD.title_defects(t) == ["T_EMPTY"]]
+    p9 = [(k, n) for k, n in d.execute("SELECT key, name FROM series") if DT.clean_series_name(n, k) != (n, None)]
+    check("guard P-9: no series name is a fragment, reel, code or uploader string", p9[:5], [])
+    names = {k: n for k, n in d.execute("SELECT key, name FROM series")}
+    check("guard P-9: no run of track-numbered names", sorted(DT.track_numbered(names, set(names)))[:5], [])
+    dupes = DT.merge_into({k: {"name": n, "cleaned": False, "librivox": k.startswith("librivox"), "own": True, "eps": c,
+                               "first": f, "last": la, "aliases": []}
+                           for k, n, c, f, la in d.execute("SELECT key, name, episodes, first_date, last_date FROM series")})
+    check("guard P-9: no show is split by quotes, '&' or a track number", sorted(dupes.items())[:5], [])
+    cut = [(i, t) for i, t in d.execute("SELECT id, title FROM episodes") if DT.cut_title(t) != (t or "").strip()]
+    check("guard P-9: no episode title is cut off mid-bracket", cut[:5], [])
     check("guard: no title is empty or a placeholder", empty[:5], [])
     unreadable = [(i, t) for i, t in d.execute("SELECT id, title FROM episodes") if not DT.readable_title(t)]
     check("guard: every title is readable", unreadable[:5], [])

@@ -214,12 +214,28 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             if k in shown_name:
                 shown_name[k] = DT.repair_apostrophe(shown_name[k], json.loads(al))
     shown_name = {k: PL.polish_name(n) or n for k, n in shown_name.items()}
+    # P-9 (display_text.py): names an upload cut, numbered or strung together are cleaned to the source's own
+    # words or withheld; a leading number goes only where upload-named siblings run in order.
+    fragments = set()
+    for k in sorted(shown_name):
+        if k not in by_series_eps:
+            continue
+        got, why = DT.clean_series_name(shown_name[k], k)
+        if why:
+            held.setdefault(k, why)
+        elif got != shown_name[k]:
+            shown_name[k] = got
+            fragments.add(k)
+    numbered = {k: shown_name[k] for k in shown_name if k in by_series_eps and k not in held}
+    for k in sorted(DT.track_numbered(numbered, own_key)):
+        shown_name[k] = DT.strip_track_number(shown_name[k])
+        fragments.add(k)
     witnessed = {}
     if has_table(s, "episode_witnesses"):
         for eid, wt in s.execute("SELECT episode_id, title FROM episode_witnesses WHERE episode_id IS NOT NULL AND title LIKE '%''%'"):
             witnessed.setdefault(eid, set()).add(wt)
     for eid in display:
-        got = PL.polish_title(display[eid])
+        got = PL.polish_title(DT.cut_title(display[eid]))
         got = PL.apostrophe_from(got, witnessed.get(eid)) if got else got
         display[eid] = got or ""
     known = {}
@@ -264,6 +280,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                     composed[eid] = {"title": title, "fields": fields}
                 display[eid] = PL.small_words(title)
     served -= set(withheld["episodes"])
+    merged = merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments)
     script_of, script_report = ES.links(s, served, ES.load_bundle() if scripts is None else scripts)
     print(json.dumps({"episodeScripts": script_report}), file=sys.stderr)
 
@@ -429,9 +446,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         for why in withheld[kind].values():
             reasons.setdefault(kind, {}).setdefault(why, 0)
             reasons[kind][why] += 1
-    detail = {"withheld": withheld, "composed": composed, "recovered": recovered}
+    detail = {"withheld": withheld, "composed": composed, "recovered": recovered, "merged": merged,
+              "cleanedNames": sorted(fragments)}
     ia.write_json(os.path.join(os.path.dirname(dst) or ".", "display_text.json"), detail)
-    meta = {"schemaVersion": SCHEMA_VERSION, "displayText": {"withheld": reasons, "composed": len(composed)},
+    meta = {"schemaVersion": SCHEMA_VERSION, "displayText": {"withheld": reasons, "composed": len(composed), "merged": len(merged)},
             "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "cleanOnly": clean_only, "counts": counts, "rightsLines": RIGHTS_LINES, "forwarding": fwd,
             "listenShelves": SH.listen_shelves(
@@ -475,6 +493,31 @@ def write_arcs(d):
         d.executemany("INSERT INTO arc_parts VALUES (?,?,?)",
                       [(eid, a["id"], i) for i, eid in enumerate(a["parts"], 1)])
     print(json.dumps({"arcs": {k: report[k] for k in report}}), file=sys.stderr)
+
+
+def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments):
+    """Fold series that are one show into the surviving one (display_text.merge_into) by reading their
+    episodes under the surviving key from here on; the departed key forwards through the series aliases."""
+    has_alias = "alias_names" in {r[1] for r in s.execute("PRAGMA main.table_info(series)")}
+    info = {k: (lv, first, last, al) for k, lv, first, last, al in s.execute(
+        "SELECT key, is_librivox, first_date, last_date, " + ("alias_names" if has_alias else "NULL") + " FROM series")}
+    series = {}
+    for k, eps in by_series_eps.items():
+        n = sum(1 for e in eps if e[0] in served)
+        if n and k not in withheld["series"] and k in info:
+            lv, first, last, al = info[k]
+            series[k] = {"name": shown_name.get(k) or k, "cleaned": k in fragments, "librivox": bool(lv),
+                         "own": k in own_key, "eps": n, "first": first, "last": last,
+                         "aliases": json.loads(al) if al else []}
+    got = DT.merge_into(series)
+    if got:
+        s.execute("CREATE TEMP TABLE series_merge (old TEXT PRIMARY KEY, new TEXT NOT NULL)")
+        s.executemany("INSERT INTO series_merge VALUES (?,?)", sorted(got.items()))
+        cols = [r[1] for r in s.execute("PRAGMA main.table_info(episodes)")]
+        sel = ", ".join("COALESCE((SELECT new FROM temp.series_merge m WHERE m.old = e.series_key), e.series_key) AS series_key"
+                        if c == "series_key" else f"e.{c}" for c in cols)
+        s.execute(f"CREATE TEMP VIEW episodes AS SELECT {sel} FROM main.episodes e")
+    return got
 
 
 def write_forwarding(d, previous, forwarding_from):
