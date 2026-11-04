@@ -15,13 +15,17 @@ struct EmptyState: View {
     let systemImage: String
     var action: Action?
 
-    init(_ title: String, systemImage: String, action: Action? = nil) {
+    init(_ title: String, systemImage: String, action: Action? = nil, focus: FocusState<Bool>.Binding? = nil) {
         self.title = title
         self.systemImage = systemImage
         self.action = action
+        #if os(tvOS)
+        self.focus = focus
+        #endif
     }
 
     #if os(tvOS)
+    private let focus: FocusState<Bool>.Binding?
     @FocusState private var actionFocused: Bool
     #endif
 
@@ -33,7 +37,7 @@ struct EmptyState: View {
                 Button(action.title, action: action.perform)
                     .accessibilityIdentifier("empty-action")
                     #if os(tvOS)
-                    .focused($actionFocused)
+                    .focused(focus ?? $actionFocused)
                     #endif
             }
         }

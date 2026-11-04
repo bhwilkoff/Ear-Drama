@@ -90,7 +90,7 @@ extension View {
     /// The Apple TV keeps the system button, whose focus is the only emphasis.
     @ViewBuilder func pageAction(primary: Bool = false) -> some View {
         #if os(tvOS)
-        if primary { tint(Color.brandPrimary) } else { self }
+        self
         #else
         buttonStyle(ActionButtonStyle(primary: primary))
         #endif

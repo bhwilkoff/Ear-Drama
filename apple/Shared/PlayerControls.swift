@@ -75,14 +75,23 @@ struct LevelToggle: View {
 
     var body: some View {
         @Bindable var player = player
+        #if os(tvOS)
+        Button { player.isLeveling.toggle() } label: {
+            Label(player.isLeveling ? "Level: On" : "Level: Off", systemImage: "waveform")
+                .lineLimit(1)
+        }
+        .accessibilityLabel("Level volume")
+        .accessibilityValue(player.isLeveling ? "On" : "Off")
+        .accessibilityAddTraits(player.isLeveling ? .isSelected : [])
+        .help("Level volume")
+        #else
         Toggle(isOn: $player.isLeveling) {
             Label("Level volume", systemImage: "waveform")
         }
-        #if !os(tvOS)
         .toggleStyle(.button)
-        #endif
         .accessibilityLabel("Level volume")
         .help("Level volume")
+        #endif
     }
 }
 

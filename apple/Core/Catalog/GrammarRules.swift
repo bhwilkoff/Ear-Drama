@@ -349,7 +349,7 @@ nonisolated enum ShowLine {
 /// can never widen the column that holds it.
 nonisolated enum BrowseLayout {
     #if os(tvOS)
-    static let labelWidth: CGFloat = 220, cellWidth: CGFloat = 64
+    static let labelWidth: CGFloat = 220, cellWidth: CGFloat = 200
     #else
     static let labelWidth: CGFloat = 96, cellWidth: CGFloat = 36
     #endif

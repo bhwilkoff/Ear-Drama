@@ -113,6 +113,11 @@ def library_empty_keeps_navigation(text, struct):
     m = re.search(r"struct " + struct + r": View \{.*?\n}\n", text, re.S)
     body = m.group(0) if m else ""
     empty, account, links = body.find("EmptyState("), body.find("AccountRow()"), body.find("SiteLinkRows()")
+    inset = body.find(".safeAreaInset(edge: .top")
+    if -1 < inset < empty:
+        # tvOS: the empty state is the list's top inset, so its focus plate is its own, not a row's.
+        lst = body.find("List {")
+        return -1 < lst < account < links < inset < empty
     lst = body.rfind("List {", 0, empty)
     return (-1 < lst < empty < account < links) and "} else {" not in body[lst:links]
 

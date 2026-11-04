@@ -441,6 +441,7 @@ private struct SeriesBrowseScreen_tvOS: View {
                     Text("Any genre").tag(String?.none)
                     ForEach(genres, id: \.self) { Text(GenreDisplay.name($0)).tag(String?.some($0)) }
                 }
+                .pickerStyle(.menu)
             }
             Picker("Sort", selection: $sort) {
                 ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -511,6 +512,7 @@ private struct SeriesScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(FollowedSeries.self) private var follows
     @State private var page: SeriesPage??
+    @FocusState private var followFocused: Bool
 
     var body: some View {
         Group {
@@ -533,6 +535,7 @@ private struct SeriesScreen_tvOS: View {
                                 Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
                             }
                             .pageAction(primary: true)
+                            .focused($followFocused)
                         }
                         .listRowBackground(Color.clear)
                     }
@@ -546,6 +549,7 @@ private struct SeriesScreen_tvOS: View {
                         }
                     }
                 }
+                .defaultFocus($followFocused, true)
             }
         }
         .task(id: PageIdentity.taskID(key, load: catalog.loadKey)) {
@@ -894,6 +898,7 @@ private struct LibraryScreen_tvOS: View {
     @State private var inProgress: [EpisodeRow]?
     @State private var queued: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
+    @FocusState private var emptyFocused: Bool
 
     private struct Key: Equatable { let ids: [String]; let queue: [String]; let load: Int }
 
@@ -903,10 +908,6 @@ private struct LibraryScreen_tvOS: View {
                 // The empty state heads the list and takes the focus; the
                 // account and the site pages stay under it (tvOS-DESIGN §7.3a).
                 List {
-                    if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
-                        EmptyState("Nothing played yet", systemImage: "books.vertical",
-                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) })
-                    }
                     Section("Continue") {
                         if inProgress.isEmpty {
                             SectionCaption("Episodes you stop partway through wait here.")
@@ -945,6 +946,15 @@ private struct LibraryScreen_tvOS: View {
                         SiteLinkRows()
                     }
                 }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
+                        EmptyState("Nothing played yet", systemImage: "books.vertical",
+                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) },
+                                   focus: $emptyFocused)
+                            .frame(height: 360)
+                    }
+                }
+                .defaultFocus($emptyFocused, true)
             } else {
                 ProgressView()
             }
@@ -1026,24 +1036,28 @@ private struct NowPlaying_tvOS: View {
             HStack(spacing: Spacing.s8) {
                 TransportControls(large: true)
                 Spacer()
-                SpeedMenu()
-                SleepButton()
-                LevelToggle()
-                if let item = player.item {
-                    PlayerQueueButton(episodeID: item.episode.id)
-                }
-                ListenTogetherButton()
-                RoutePicker_tvOS()
-                    .frame(width: 80, height: 80)
-                NextStoryButton()
-                if player.item?.episode.transcriptURL != nil {
-                    Button {
-                        transcriptOpen = true
-                    } label: {
-                        Label(Transcript.label, systemImage: "text.quote")
+                HStack(spacing: Spacing.s4) {
+                    SpeedMenu()
+                    SleepButton()
+                    LevelToggle()
+                    if let item = player.item {
+                        PlayerQueueButton(episodeID: item.episode.id)
+                    }
+                    ListenTogetherButton()
+                    RoutePicker_tvOS()
+                        .frame(width: 80, height: 80)
+                    NextStoryButton()
+                    if player.item?.episode.transcriptURL != nil {
+                        Button {
+                            transcriptOpen = true
+                        } label: {
+                            Label(Transcript.label, systemImage: "text.quote")
+                        }
                     }
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .lineLimit(1)
             .focusSection()
             FollowingHostNotice()
             if let message = player.errorMessage {
