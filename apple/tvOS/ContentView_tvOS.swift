@@ -512,6 +512,7 @@ private struct SeriesScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(FollowedSeries.self) private var follows
     @State private var page: SeriesPage??
+    @FocusState private var followFocused: Bool
 
     var body: some View {
         Group {
@@ -534,6 +535,7 @@ private struct SeriesScreen_tvOS: View {
                                 Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
                             }
                             .pageAction(primary: true)
+                            .focused($followFocused)
                         }
                         .listRowBackground(Color.clear)
                     }
@@ -547,6 +549,7 @@ private struct SeriesScreen_tvOS: View {
                         }
                     }
                 }
+                .defaultFocus($followFocused, true)
             }
         }
         .task(id: PageIdentity.taskID(key, load: catalog.loadKey)) {
