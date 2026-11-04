@@ -281,6 +281,16 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   Web joins N4's audit (it was left off). To check: Browse's gap beside the field (iPad, fixed; shared with
   Mac; web wide layouts unchecked); Now Playing opening short (Pixel, fixed); uneven player option row
   (Pixel, fixed); Stations' right edge and indented toggles (Pixel, fixed).
+- [ ] **N4c Design pass on iPad after Apple TV (Opus, main thread reads the frames).** Read 2026-11-04 from
+  portrait light frames; earlier audits passed all of these:
+  - series and person pages sit in a narrow column with wide empty margins; small rows; the head board's
+    run chart is mostly blank
+  - Home's "Most heard voices" shows monograms for Jack Benny, Don Wilson and others who have portraits
+    (Apple TV's person header too): a portrait not reaching the view, not a missing picture
+  - light tiles (WS, OW, RR, TT): pale outlined monogram on pale ground, hardly visible
+  - every Jack Benny row reads "Cast"; Stations stacks eight heavy black Listen live buttons
+  - titles: "Battle WithThe Apes", "Tarzans First Birthday", "Production 3", "(second audion starring...)"
+  Pixel and web frames were not kept: recapture and read them before calling those audits reviewed.
 - [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
   pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
   a yes before building.
