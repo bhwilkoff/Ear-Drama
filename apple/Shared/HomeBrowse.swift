@@ -75,7 +75,10 @@ struct SectionHead<Trailing: View>: View {
             Spacer(minLength: 0)
             trailing()
                 .font(TypeRamp.caption)
+                #if !os(tvOS)
+                // On the TV a button here inverts its own label on focus, which a style would stop.
                 .foregroundStyle(Color.brandTextMuted)
+                #endif
                 .lineLimit(1)
                 .fixedSize()
         }
@@ -386,9 +389,15 @@ struct GenreField: View {
         if n == 0 {
             body.hidden()
         } else {
-            Button { pick(g, d) } label: { body.contentShape(Rectangle()) }
+            Button { pick(g, d) } label: {
                 #if os(tvOS)
-                .buttonStyle(.card)
+                TVFocusRing { body }
+                #else
+                body.contentShape(Rectangle())
+                #endif
+            }
+                #if os(tvOS)
+                .buttonStyle(TVBareButtonStyle())
                 #else
                 .buttonStyle(.plain)
                 #endif

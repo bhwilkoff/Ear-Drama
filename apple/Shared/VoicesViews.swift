@@ -34,14 +34,18 @@ struct VoiceLink: View {
     var side: CGFloat = 84
 
     var body: some View {
+        #if os(tvOS)
+        PushLink(value: Route.person(row.person.id)) {
+            TVFace(art: row.person.art, name: row.person.name, line: PersonRowLabel.count(row.episodes))
+        }
+        .buttonStyle(TVBareButtonStyle())
+        .accessibilityIdentifier("voice-face")
+        #else
         PushLink(value: Route.person(row.person.id)) { VoiceFace(row: row, side: side) }
-            #if os(tvOS)
-            .buttonStyle(.card)
-            #else
             .buttonStyle(.plain)
             .navigationLinkIndicatorVisibility(.hidden)
-            #endif
             .accessibilityIdentifier("voice-face")
+        #endif
     }
 }
 
@@ -51,7 +55,7 @@ struct VoicesBrowse: View {
     @State private var voices: [PersonRow]?
 
     #if os(tvOS)
-    private let side: CGFloat = 160
+    private let side: CGFloat = 190
     #else
     private let side: CGFloat = 84
     #endif
@@ -65,10 +69,18 @@ struct VoicesBrowse: View {
                     Text(verbatim: countText(voices.count, "voice", "voices"))
                         .font(TypeRamp.bodyStrong)
                         .foregroundStyle(Color.brandText)
+                    #if os(tvOS)
+                    // Six fixed columns (§3.0): every count fits and every face sits on one grid.
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: TV.cardGap, alignment: .top), count: 6),
+                              alignment: .leading, spacing: 56) {
+                        ForEach(voices) { VoiceLink(row: $0) }
+                    }
+                    #else
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: side + Spacing.s6), spacing: Spacing.s3, alignment: .top)],
                               alignment: .leading, spacing: Spacing.s4) {
                         ForEach(voices) { VoiceLink(row: $0, side: side) }
                     }
+                    #endif
                     PictureCredit(arts: voices.map(\.person.art), slot: side)
                 }
             } else {

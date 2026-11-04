@@ -37,8 +37,11 @@ struct ContentView_tvOS: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
+        // §3.0: no tint on the TV. A tint colors a focused button's label too, so any light one
+        // is white on the system's white plate.
+        .tint(nil)
         .fullScreenCover(isPresented: $store.isPlayerPresented) {
-            NowPlaying_tvOS()
+            NowPlaying_tvOS().tint(nil)
         }
         // The Top Shelf's Continue items follow the history from any tab.
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
@@ -76,12 +79,13 @@ private struct NowPlayingEntry_tvOS: View {
     var body: some View {
         if let item = player.item {
             HStack {
+                // At the trailing edge: the tab bar's pill holds the leading one.
+                Spacer(minLength: 300)
                 Button {
                     store.isPlayerPresented = true
                 } label: {
                     Label {
-                        Text(verbatim: "Now Playing · \(item.episode.displayTitle) · \(item.episode.seriesName)")
-                            .lineLimit(1)
+                        Text(verbatim: item.episode.displayTitle).lineLimit(1)
                     } icon: {
                         Image(systemName: player.isPlaying ? "waveform" : "pause.fill")
                     }
@@ -89,10 +93,8 @@ private struct NowPlayingEntry_tvOS: View {
                 }
                 .accessibilityLabel("Now playing: \(item.episode.displayTitle), \(item.episode.seriesName)")
                 .accessibilityHint("Opens the player")
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 90)
-            .padding(.vertical, Spacing.s4)
+            .padding(.bottom, Spacing.s3)
             .focusSection()
         }
     }
@@ -119,97 +121,6 @@ extension View {
     fileprivate func routeDestinations_tvOS() -> some View { modifier(RouteDestinations_tvOS()) }
 }
 
-// MARK: - Cards and rows
-
-/// A typographic episode card: date, title, series. No art, no placeholder.
-private struct EpisodeCard_tvOS: View {
-    let episode: EpisodeRow
-
-    var body: some View {
-        NavigationLink(value: Route.episode(episode.id)) {
-            VStack(alignment: .leading, spacing: Spacing.s2) {
-                Text(verbatim: AirDate.medium(episode.airDate))
-                    .font(TypeRamp.tabular)
-                    .foregroundStyle(Color.brandTextMuted)
-                Text(episode.displayTitle)
-                    .font(TypeRamp.bodyStrong)
-                    .foregroundStyle(Color.brandText)
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-                Spacer(minLength: 0)
-                HStack(spacing: Spacing.s3) {
-                    PictureWindow(art: episode.seriesWindowArt, name: episode.seriesName, genre: episode.seriesGenre, side: 64)
-                    Text(episode.seriesName)
-                        .font(TypeRamp.caption)
-                        .foregroundStyle(Color.brandTextMuted)
-                        .lineLimit(1)
-                }
-            }
-            .padding(Spacing.s6)
-            .frame(width: 420, height: 236, alignment: .topLeading)
-            .background(Color.brandSurface)
-        }
-        .buttonStyle(.card)
-        .accessibilityElement(children: .combine)
-        .contextMenu { QueueMenuItem(episodeID: episode.id) }
-    }
-}
-
-/// A followed series as the grammar's tile (R11b): focus scales the whole tile through the card style.
-private struct SeriesCard_tvOS: View {
-    let series: SeriesRow
-
-    var body: some View {
-        NavigationLink(value: Route.series(series.key)) {
-            ShowTile(series: series)
-        }
-        .buttonStyle(.card)
-    }
-}
-
-private struct SeriesShelf_tvOS: View {
-    let title: String
-    let series: [SeriesRow]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s4) {
-            Text(title)
-                .font(TypeRamp.sectionHeader)
-                .foregroundStyle(Color.brandText)
-            ScrollView(.horizontal) {
-                HStack(alignment: .top, spacing: 40) {
-                    ForEach(series) { SeriesCard_tvOS(series: $0) }
-                }
-                .sharesNameHeight()
-                .padding(.vertical, Spacing.s6)
-            }
-            .scrollClipDisabled()
-        }
-        .focusSection()
-    }
-}
-
-private struct ShelfRow_tvOS: View {
-    let title: String
-    let episodes: [EpisodeRow]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s4) {
-            Text(title)
-                .font(TypeRamp.sectionHeader)
-                .foregroundStyle(Color.brandText)
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: 40) {
-                    ForEach(episodes) { EpisodeCard_tvOS(episode: $0) }
-                }
-                .padding(.vertical, Spacing.s6)
-            }
-            .scrollClipDisabled()
-        }
-        .focusSection()
-    }
-}
-
 // MARK: - Home (was Listen)
 
 private struct ListenScreen_tvOS: View {
@@ -217,16 +128,16 @@ private struct ListenScreen_tvOS: View {
     @Environment(ListeningHistory.self) private var history
     @Environment(FollowedSeries.self) private var follows
     @Environment(AppStore.self) private var app
+    @Environment(AudioPlayer.self) private var player
     @State private var day: HomeDay?
     @State private var top: [SeriesRow] = []
     @State private var loaded = false
     @State private var continuing: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
-    @State private var allNight = false
     @State private var finished = FinishedStore.shared
     @State private var voices: [PersonRow] = []
+    @FocusState private var heroFocused: Bool
 
-    private static let nightFirst = 6
     private static let topCount = 12
     private static let voiceCount = 12
 
@@ -239,55 +150,42 @@ private struct ListenScreen_tvOS: View {
                     EmptyState("Nothing to list yet", systemImage: "radio")
                 } else {
                     ScrollView(.vertical) {
-                        LazyVStack(alignment: .leading, spacing: 80) {
-                            if !continuing.isEmpty {
-                                ShelfRow_tvOS(title: "Continue listening", episodes: continuing)
-                            }
+                        LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                            hero
+                            firstRow
                             if !following.isEmpty {
-                                SeriesShelf_tvOS(title: "Following", series: following)
+                                TVShelf(title: "Following") {
+                                    ForEach(following) { TileLink(value: Route.series($0.key), series: $0) }
+                                }
                             }
                             if let day, let peak = day.years.peak {
-                                DayBoard(model: day, selected: .constant(peak), interactive: false)
-                                    .padding(.horizontal, 60)
-                                night(day, peak)
+                                DayStrip_tvOS(model: day, year: peak)
                             }
                             if !top.isEmpty {
-                                VStack(alignment: .leading, spacing: Spacing.s4) {
-                                    SectionHead(title: "Most downloaded") {
-                                        Button("All \(top.count.formatted()) shows") { app.selectResettingPrevious(.browse) }
-                                    }
-                                    .padding(.horizontal, 60)
-                                    TileShelf_tvOS(items: Array(top.prefix(Self.topCount))) { row in
-                                        TileLink(value: Route.series(row.key), series: row)
-                                    }
+                                TVShelf(title: "Most downloaded") {
+                                    Button("All \(top.count.formatted()) shows") { app.selectResettingPrevious(.browse) }
+                                } content: {
+                                    ForEach(top.prefix(Self.topCount)) { TileLink(value: Route.series($0.key), series: $0) }
                                 }
-                                .focusSection()
                             }
                             if !voices.isEmpty {
-                                VStack(alignment: .leading, spacing: Spacing.s4) {
-                                    SectionHead(title: "Most heard voices") {
-                                        Button("All") { app.openBrowseVoices() }
-                                    }
-                                    .padding(.horizontal, 60)
-                                    VoicesShelf(voices: voices)
+                                TVShelf(title: "Most heard voices") {
+                                    Button("All") { app.openBrowseVoices() }
+                                } content: {
+                                    ForEach(voices) { VoiceLink(row: $0) }
                                 }
-                                .focusSection()
                             }
                             if !finished.plays.isEmpty {
-                                VStack(alignment: .leading, spacing: Spacing.s4) {
-                                    SectionHead(title: "New ear dramas") {
-                                        Button("All") { app.openBrowseDramas() }
-                                    }
-                                    .padding(.horizontal, 60)
-                                    TileShelf_tvOS(items: Array(finished.plays.prefix(6))) { play in
-                                        FinishedTile(play: play)
-                                    }
+                                TVShelf(title: "New ear dramas") {
+                                    Button("All") { app.openBrowseDramas() }
+                                } content: {
+                                    ForEach(finished.plays.prefix(6)) { FinishedTile(play: $0) }
                                 }
-                                .focusSection()
                             }
                         }
-                        .padding(.vertical, 60)
+                        .padding(.bottom, 60)
                     }
+                    .defaultFocus($heroFocused, true)
                 }
             } else {
                 ProgressView()
@@ -311,44 +209,116 @@ private struct ListenScreen_tvOS: View {
         }
     }
 
-    @ViewBuilder private func night(_ day: HomeDay, _ year: Int) -> some View {
-        let night = day.night(year)
-        if !night.shows.isEmpty {
-            VStack(alignment: .leading, spacing: Spacing.s4) {
-                SectionHead(title: day.nightHeading(year)) {
-                    if night.singles > 0 { Text(verbatim: countText(night.singles, "single recording", "single recordings")) }
-                }
-                .padding(.horizontal, 60)
-                TileShelf_tvOS(items: allNight ? night.shows : Array(night.shows.prefix(Self.nightFirst))) { show in
-                    TileLink(value: Route.episode(show.episode.id), series: show.series, facts: show.facts)
-                }
-                if night.shows.count > Self.nightFirst {
-                    Button(allNight ? "Fewer shows" : "All \(night.shows.count.formatted()) shows that night") {
-                        allNight.toggle()
+    /// §4.1: the episode in progress, else this day's busiest year, its first show with a picture.
+    private func lead(_ day: HomeDay?) -> HomeDay.Show? {
+        guard let day, let peak = day.years.peak else { return nil }
+        let shows = day.night(peak).shows
+        return shows.first { $0.series.windowArt != nil } ?? shows.first
+    }
+
+    @ViewBuilder private var hero: some View {
+        if let episode = continuing.first {
+            TVHero(kicker: "Continue listening", title: episode.seriesName, subtitle: episode.displayTitle,
+                   facts: [AirDate.medium(episode.airDate), episode.durationText], genre: episode.seriesGenre,
+                   art: episode.seriesWindowArt, progress: history.progress(for: episode.id), clearance: TV.rootClearance) {
+                heroActions(episode, verb: "Resume")
+            }
+        } else if let show = lead(day), let day, let peak = day.years.peak {
+            TVHero(kicker: "This day in radio", title: show.series.name, subtitle: show.episode.displayTitle,
+                   facts: [day.nightHeading(peak), show.episode.durationText], genre: show.series.genre,
+                   art: show.series.windowArt, clearance: TV.rootClearance) {
+                heroActions(show.episode, verb: "Play")
+            }
+        }
+    }
+
+    @ViewBuilder private func heroActions(_ episode: EpisodeRow, verb: String) -> some View {
+        Button {
+            if player.item?.episode.id == episode.id {
+                app.isPlayerPresented = true
+            } else {
+                PlayEpisodeAction(catalog: catalog, player: player, store: app)(episode.id, presentPlayer: true)
+            }
+        } label: {
+            Label(verb, systemImage: "play.fill")
+        }
+        .focused($heroFocused)
+        NavigationLink(value: Route.episode(episode.id)) { Text("Details") }
+    }
+
+    /// §4.1: the rest of Continue listening and that night's shows are one row of wide cards, each
+    /// group under its own heading, so a single episode in progress never stands beside an empty screen.
+    @ViewBuilder private var firstRow: some View {
+        let rest = Array(continuing.dropFirst())
+        let peak = day?.years.peak
+        let night = peak.flatMap { day?.night($0) }
+        let leadID = continuing.isEmpty ? lead(day)?.id : nil
+        let others = night?.shows.filter { $0.id != leadID } ?? []
+        // §3.0: pictures lead.
+        let shows = others.filter { $0.series.windowArt != nil } + others.filter { $0.series.windowArt == nil }
+        if !rest.isEmpty || !shows.isEmpty {
+            TVShelf {
+                if !rest.isEmpty {
+                    group("Continue listening", fact: nil) {
+                        ForEach(rest) { TVEpisodeLink(episode: $0) }
                     }
-                    .padding(.horizontal, 60)
+                }
+                if !shows.isEmpty, let day, let peak, let night {
+                    group(day.nightHeading(peak),
+                          fact: night.singles > 0 ? countText(night.singles, "single recording", "single recordings") : nil) {
+                        ForEach(shows) { show in
+                            NavigationLink(value: Route.episode(show.episode.id)) {
+                                TVWideCard(art: show.series.windowArt, name: show.series.name, genre: show.series.genre,
+                                           title: show.series.name, sub: show.episode.displayTitle, foot: show.episode.durationText)
+                            }
+                            .buttonStyle(.card)
+                            .contextMenu { QueueMenuItem(episodeID: show.episode.id) }
+                        }
+                    }
                 }
             }
-            .focusSection()
+        }
+    }
+
+    private func group<Content: View>(_ title: String, fact: String?, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.s6) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s4) {
+                Text(verbatim: title).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).lineLimit(1).fixedSize()
+                if let fact {
+                    Text(verbatim: fact).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).lineLimit(1).fixedSize()
+                }
+            }
+            .accessibilityAddTraits(.isHeader)
+            HStack(alignment: .top, spacing: TV.cardGap) { content() }
         }
     }
 }
 
-/// A shelf of show tiles in one row, each sharing the shelf's name height.
-private struct TileShelf_tvOS<Item: Identifiable, Tile: View>: View {
-    let items: [Item]
-    @ViewBuilder let tile: (Item) -> Tile
+/// The day across the years (R11c): the strip and its legend, under the shows it counts.
+private struct DayStrip_tvOS: View {
+    let model: HomeDay
+    let year: Int
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: 40) {
-                ForEach(items) { tile($0) }
+        let day = model.years
+        VStack(alignment: .leading, spacing: Spacing.s3) {
+            SectionHead(title: "This day in radio") {
+                Text(verbatim: "\(countText(day.count, "surviving broadcast", "surviving broadcasts")) \u{00B7} \(countText(day.years.count, "year", "years"))").foregroundStyle(Color.brandTextMuted)
             }
-            .sharesNameHeight()
-            .padding(.horizontal, 60)
-            .padding(.vertical, Spacing.s6)
+            YearStrip(day: day, selected: year, height: DayBoard.stripHeight)
+            HStack(spacing: TV.cardGap) {
+                ForEach(day.genres.filter { !$0.isEmpty }, id: \.self) { genre in
+                    HStack(spacing: Spacing.s1) {
+                        Rectangle().fill(Color.genre(genre) ?? Color.brandTextMuted).frame(width: 20, height: 20)
+                        Text(verbatim: GenreDisplay.name(genre)).lineLimit(1).fixedSize()
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .font(TypeRamp.caption)
+            .foregroundStyle(Color.brandTextMuted)
+            .accessibilityHidden(true)
         }
-        .scrollClipDisabled()
     }
 }
 
@@ -365,43 +335,34 @@ private struct SeriesBrowseScreen_tvOS: View {
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
     @State private var scope: BrowseScope = .shows
+    @State private var fieldOpen = false
+    @State private var azFrom: String?
     @Environment(AppStore.self) private var store
 
     private struct Key: Hashable { let genre: String?; let decade: Int?; let sort: SeriesSort; let load: Int }
-
-    private var heading: String {
-        switch sort {
-        case .popular: "Most downloaded first"
-        case .name: "A to Z"
-        case .episodes: "Most episodes"
-        case .firstAired: "Oldest first"
-        }
-    }
 
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if let series {
-                ScrollViewReader { proxy in
-                    ScrollView(.vertical) {
-                        VStack(alignment: .leading, spacing: Spacing.s6) {
-                            Picker("Browse", selection: $scope) {
-                                ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
-                            }
-                            .pickerStyle(.segmented)
-                            if scope == .dramas {
-                                FinishedBrowse()
-                            } else if scope == .voices {
-                                VoicesBrowse()
-                            } else {
-                                filters
-                                results(series, proxy: proxy)
-                            }
+                ScrollView(.vertical) {
+                    VStack(alignment: .leading, spacing: Spacing.s4) {
+                        Picker("Browse", selection: $scope) {
+                            ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
                         }
-                        .padding(.horizontal, 60)
-                        .padding(.vertical, 60)
+                        .pickerStyle(.segmented)
+                        .fixedSize()
+                        if scope == .dramas {
+                            FinishedBrowse()
+                        } else if scope == .voices {
+                            VoicesBrowse()
+                        } else {
+                            results(series)
+                        }
                     }
+                    .padding(.top, TV.rootClearance)
+                    .padding(.bottom, 60)
                 }
             } else {
                 ProgressView()
@@ -416,7 +377,10 @@ private struct SeriesBrowseScreen_tvOS: View {
             guard catalog.state == .ready else { return }
             fieldBase = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: sort)
         }
-        .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) { shown = BrowseScreenPage.size }
+        .onChange(of: Key(genre: genre, decade: decade, sort: sort, load: singles ? 1 : 0)) {
+            shown = BrowseScreenPage.size
+            azFrom = nil
+        }
         .onChange(of: store.pendingBrowseGenre, initial: true) { _, g in
             guard let g else { return }
             genre = g; decade = nil; scope = .shows
@@ -446,50 +410,59 @@ private struct SeriesBrowseScreen_tvOS: View {
             Picker("Sort", selection: $sort) {
                 ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
             }
+            .pickerStyle(.menu)
             if genre != nil || decade != nil {
                 Button("Clear") { genre = nil; decade = nil }
             }
         }
     }
 
-    @ViewBuilder private func results(_ all: [SeriesRow], proxy: ScrollViewProxy) -> some View {
+    @ViewBuilder private func results(_ all: [SeriesRow]) -> some View {
         let shows = all.filter { ShowLine.isShow($0.episodeCount) }
         let lesser = all.filter { !ShowLine.isShow($0.episodeCount) }
         let listed = singles ? lesser : shows
         let field = ShowLine.decadeField(fieldBase.filter { ShowLine.isShow($0.episodeCount) }
             .map { (genre: $0.genre, first: $0.firstDate) })
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .firstTextBaseline, spacing: Spacing.s6) {
             Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
                  : countText(shows.count, "show", "shows"))
                 .font(TypeRamp.bodyStrong)
             Spacer()
+            filters
+            if !field.genres.isEmpty {
+                Button { fieldOpen.toggle() } label: {
+                    Label("By decade", systemImage: fieldOpen ? "chevron.up" : "chevron.down")
+                }
+            }
             if singles || !lesser.isEmpty {
                 Button(singles ? countText(shows.count, "show", "shows")
                        : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
             }
         }
-        if !field.genres.isEmpty {
+        .focusSection()
+        if fieldOpen, !field.genres.isEmpty {
             GenreField(field: field, genre: genre, decade: decade) { g, d in genre = g; decade = d }
                 .focusSection()
+            if field.none > 0 {
+                Text(verbatim: "\(field.none.formatted()) with no genre")
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
         }
-        if field.none > 0 {
-            Text(verbatim: "\(field.none.formatted()) with no genre")
-                .font(TypeRamp.caption)
-                .foregroundStyle(Color.brandTextMuted)
-        }
-        SectionHead(title: heading) { EmptyView() }
         if listed.isEmpty {
             EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
                        action: .init(title: "Clear Filters") { genre = nil; decade = nil })
         } else if sort == .name {
-            // A to Z: a row of letters focus can reach, then each letter's tiles, drawn as they scroll in.
+            // A to Z (§4.2): a letter starts the list there. Scroll on the TV follows focus, so a
+            // scrollTo is undone at once, and the letter's tiles may not be drawn to take focus.
             let letters = Grammar.azLetters(listed.map { $0.sortName ?? $0.name })
             let groups = Dictionary(grouping: listed) { Grammar.azLetter($0.sortName ?? $0.name) }
-            LetterRow(letters: letters) { proxy.scrollTo("az-\($0)", anchor: .top) }
+            let start = azFrom.flatMap { letters.firstIndex(of: $0) } ?? 0
+            LetterRow(letters: letters, current: letters.isEmpty ? nil : letters[start]) { azFrom = $0 }
             LazyVStack(alignment: .leading, spacing: Spacing.s6) {
-                ForEach(letters, id: \.self) { l in
+                ForEach(letters[start...], id: \.self) { l in
                     VStack(alignment: .leading, spacing: Spacing.s3) {
-                        Text(verbatim: l).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).id("az-\(l)")
+                        Text(verbatim: l).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText)
                         ShowGrid(items: groups[l] ?? []) { row, width in
                             TileLink(value: Route.series(row.key), series: row, width: width)
                         }
@@ -511,45 +484,18 @@ private struct SeriesScreen_tvOS: View {
     let key: String
     @Environment(CatalogStore.self) private var catalog
     @Environment(FollowedSeries.self) private var follows
+    @Environment(ListeningHistory.self) private var history
+    @Environment(AudioPlayer.self) private var player
+    @Environment(AppStore.self) private var store
     @State private var page: SeriesPage??
-    @FocusState private var followFocused: Bool
+    @FocusState private var playFocused: Bool
 
     var body: some View {
         Group {
             switch page {
             case .none: ProgressView()
             case .some(.none): EmptyState("Series not found", systemImage: "questionmark.square.dashed")
-            case let .some(.some(page)):
-                List {
-                    Section {
-                        HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
-                                  art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
-                                  years: page.series.yearCounts,
-                                  facts: SeriesHead.facts(page.series), genreKey: page.series.genre,
-                                  kickerRest: page.series.networks.joined(separator: " \u{00B7} "), showsCredit: true)
-                            .listRowBackground(Color.clear)
-                        // Follow is the first focus stop; only the focused control is bright.
-                        let on = follows.isFollowing(page.series.key)
-                        ActionRow {
-                            Button { follows.toggle(page.series.key) } label: {
-                                Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
-                            }
-                            .pageAction(primary: true)
-                            .focused($followFocused)
-                        }
-                        .listRowBackground(Color.clear)
-                    }
-                    ForEach(page.seasons) { season in
-                        Section(season.season ?? "Undated") {
-                            ForEach(season.episodes) { episode in
-                                NavigationLink(value: Route.episode(episode.id)) {
-                                    EpisodeRowLabel(episode: episode)
-                                }
-                            }
-                        }
-                    }
-                }
-                .defaultFocus($followFocused, true)
+            case let .some(.some(page)): content(page)
             }
         }
         .task(id: PageIdentity.taskID(key, load: catalog.loadKey)) {
@@ -557,6 +503,56 @@ private struct SeriesScreen_tvOS: View {
             guard catalog.state == .ready else { return }
             page = .some(await catalog.seriesPage(key))
         }
+    }
+
+    private func content(_ page: SeriesPage) -> some View {
+        let series = page.series
+        let on = follows.isFollowing(series.key)
+        let episodes = page.seasons.flatMap(\.episodes)
+        let ids = Set(episodes.map(\.id))
+        let resume = history.inProgressIDs.first(where: ids.contains)
+        let kicker = ([series.genre.map(GenreDisplay.name)].compactMap { $0 } + series.networks.prefix(2))
+            .joined(separator: " \u{00B7} ")
+        return ScrollView(.vertical) {
+            LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                TVHero(kicker: kicker, title: series.name, facts: SeriesHead.facts(series), genre: series.genre,
+                       art: series.windowArt, years: series.yearCounts) {
+                    // §4.3: Play is the first focus stop; only the focused control is bright.
+                    if let first = resume ?? episodes.first?.id {
+                        Button {
+                            if player.item?.episode.id == first {
+                                store.isPlayerPresented = true
+                            } else {
+                                PlayEpisodeAction(catalog: catalog, player: player, store: store)(first, presentPlayer: true)
+                            }
+                        } label: {
+                            Label(resume == nil ? "Play" : "Resume", systemImage: "play.fill")
+                        }
+                        .focused($playFocused)
+                    }
+                    Button { follows.toggle(series.key) } label: {
+                        Label(on ? "Following" : "Follow", systemImage: on ? "checkmark" : "plus")
+                    }
+                    if let genre = series.genre {
+                        Button(GenreDisplay.name(genre)) { store.openBrowse(genre: genre) }
+                            .accessibilityLabel("Browse \(GenreDisplay.name(genre))")
+                    }
+                }
+                ForEach(page.seasons) { season in
+                    TVShelf(title: season.season ?? "Undated", lazy: true) {
+                        Text(verbatim: countText(season.episodes.count, "episode", "episodes")).foregroundStyle(Color.brandTextMuted)
+                    } content: {
+                        ForEach(season.episodes) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) { TVDateCard(episode: episode) }
+                                .buttonStyle(.card)
+                                .contextMenu { QueueMenuItem(episodeID: episode.id) }
+                        }
+                    }
+                }
+            }
+            .padding(.bottom, 60)
+        }
+        .defaultFocus($playFocused, true)
     }
 }
 
@@ -576,51 +572,45 @@ private struct PersonScreen_tvOS: View {
             case .some(.none): EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
                 let groups = page.groups(newestFirst: newestFirst)
-                let run = PersonShows.span(page.episodes)
-                List {
-                    Section {
-                        HeadBoard(kicker: nil, name: page.person.name, genre: nil, art: page.person.art,
-                                  first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes),
-                                  facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
-                                          groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
-                                  showsCredit: true)
-                            .listRowBackground(Color.clear)
+                ScrollView(.vertical) {
+                    LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                        TVHero(title: page.person.name,
+                               facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
+                                       groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
+                               genre: nil, art: page.person.art, round: true,
+                               years: PersonShows.yearCounts(page.episodes)) {
+                            if page.episodes.count > 1 {
+                                Button {
+                                    newestFirst.toggle()
+                                } label: {
+                                    Label(newestFirst ? "Newest first" : "Oldest first", systemImage: "arrow.up.arrow.down")
+                                }
+                            }
+                        }
                         if groups.count > 1 {
-                            ScrollView(.horizontal) {
-                                HStack(alignment: .top, spacing: 40) {
-                                    ForEach(groups) { group in
-                                        let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
-                                                                    name: group.seriesName, episodes: group.episodes)
-                                        NavigationLink(value: Route.series(group.seriesKey)) {
-                                            ShowTile(series: tile,
-                                                     facts: [tile.yearSpan ?? "Undated", countText(group.episodes.count, "episode", "episodes")])
-                                        }
-                                        .buttonStyle(.card)
+                            TVShelf(title: "Shows") {
+                                ForEach(groups.sorted { $0.episodes.count > $1.episodes.count }) { group in
+                                    let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
+                                                                name: group.seriesName, episodes: group.episodes)
+                                    TileLink(value: Route.series(group.seriesKey), series: tile,
+                                             facts: [tile.yearSpan ?? "Undated", countText(group.episodes.count, "episode", "episodes")])
+                                }
+                            }
+                        }
+                        ForEach(groups) { group in
+                            TVShelf(title: group.seriesName, lazy: true) {
+                                Text(verbatim: countText(group.episodes.count, "episode", "episodes")).foregroundStyle(Color.brandTextMuted)
+                            } content: {
+                                ForEach(group.episodes) { item in
+                                    NavigationLink(value: Route.episode(item.id)) {
+                                        TVDateCard(episode: item.episode, note: item.rolesLine)
                                     }
-                                }
-                                .sharesNameHeight()
-                                .padding(.vertical, Spacing.s6)
-                            }
-                            .scrollClipDisabled()
-                            .listRowBackground(Color.clear)
-                        }
-                        if page.episodes.count > 1 {
-                            Button {
-                                newestFirst.toggle()
-                            } label: {
-                                Label(newestFirst ? "Newest first" : "Oldest first", systemImage: "arrow.up.arrow.down")
-                            }
-                        }
-                    }
-                    ForEach(groups) { group in
-                        Section(group.seriesName) {
-                            ForEach(group.episodes) { item in
-                                NavigationLink(value: Route.episode(item.id)) {
-                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                                    .buttonStyle(.card)
                                 }
                             }
                         }
                     }
+                    .padding(.bottom, 60)
                 }
             }
         }
@@ -675,23 +665,12 @@ private struct EpisodeScreen_tvOS: View {
         let genre = show?.genre ?? episode.seriesGenre
         let onAir = Grammar.onAirOf(detail.credits)
         return ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: Spacing.s8) {
-                HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
-                          first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
-                          facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
-                          link: .series(episode.seriesKey), showsCredit: true)
-
-                VStack(alignment: .leading, spacing: Spacing.s2) {
-                    Text(episode.displayTitle)
-                        .font(TypeRamp.pageTitle)
-                        .foregroundStyle(Color.brandText)
-                    EventLine(facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network, sponsor: detail.sponsor,
-                                                          length: episode.durationText, season: episode.season,
-                                                          title: episode.title, number: episode.number))
-                }
-                .accessibilityElement(children: .combine)
-
-                ActionRow {
+            VStack(alignment: .leading, spacing: TV.rowGap) {
+                TVHero(kicker: episode.seriesName, title: episode.displayTitle,
+                       facts: Grammar.episodeFacts(date: episode.airDate.map { AirDate.display($0) }, network: episode.network,
+                                                   sponsor: detail.sponsor, length: nil, season: episode.season,
+                                                   title: episode.title, number: episode.number),
+                       genre: genre, art: lead, pictureName: episode.seriesName) {
                     // tvOS auto-focuses Play on Detail (an inversion of the
                     // iOS rule, which never steals focus).
                     Button {
@@ -702,18 +681,19 @@ private struct EpisodeScreen_tvOS: View {
                             play(episode.id, presentPlayer: true)
                         }
                     } label: {
-                        Label("Play", systemImage: "play.fill")
+                        Label(episode.durationText.map { "Play \u{00B7} \($0)" } ?? "Play", systemImage: "play.fill")
                     }
-                    .pageAction(primary: true)
                     .focused($playFocused)
                     .disabled(detail.recordings.isEmpty)
+                    NavigationLink(value: Route.series(episode.seriesKey)) { Text("Show") }
                     QueueToggleButton(episodeID: episode.id)
                     if episode.transcriptURL != nil {
                         Button {
                             transcriptOpen = true
                         } label: {
-                            Label(Transcript.label, systemImage: "text.quote")
+                            Label("Transcript", systemImage: "text.quote")
                         }
+                        .accessibilityLabel(Transcript.label)
                     }
                 }
 
@@ -721,7 +701,7 @@ private struct EpisodeScreen_tvOS: View {
 
                 if !onAir.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.s3) {
-                        Text("On the air").font(TypeRamp.sectionHeader)
+                        SectionHead(title: "On the air") { EmptyView() }
                         OnAirFaces(credits: onAir, genre: genre)
                         PictureCredit(arts: onAir.map(\.art), slot: 72)
                     }
@@ -734,14 +714,8 @@ private struct EpisodeScreen_tvOS: View {
                         Button {
                             creditsOpen.toggle()
                         } label: {
-                            HStack {
-                                Text("Cast and credits").font(TypeRamp.bodyStrong)
-                                Spacer(minLength: 0)
-                                Text(verbatim: detail.credits.count.formatted())
-                                    .font(TypeRamp.caption)
-                                    .foregroundStyle(Color.brandTextMuted)
-                                Image(systemName: creditsOpen ? "chevron.up" : "chevron.down")
-                            }
+                            Label("Cast and credits \u{00B7} \(detail.credits.count.formatted())",
+                                  systemImage: creditsOpen ? "chevron.up" : "chevron.down")
                         }
                         if creditsOpen {
                             ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
@@ -774,8 +748,7 @@ private struct EpisodeScreen_tvOS: View {
                         .foregroundStyle(Color.brandTextMuted)
                 }
             }
-            .padding(.horizontal, 90)
-            .padding(.vertical, 60)
+            .padding(.bottom, 60)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .defaultFocus($playFocused, true)
@@ -787,8 +760,8 @@ private struct EpisodeScreen_tvOS: View {
     }
 }
 
-/// R5 on the TV (§4.4): every copy of the broadcast, the default first; each
-/// plays that copy in Now Playing.
+/// R5 on the TV (§4.4): every copy of the broadcast as a card, the default first; each plays that
+/// copy in Now Playing.
 private struct VersionsSection_tvOS: View {
     let detail: EpisodeDetail
     @Environment(CatalogStore.self) private var catalog
@@ -797,25 +770,30 @@ private struct VersionsSection_tvOS: View {
 
     var body: some View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
-        VStack(alignment: .leading, spacing: Spacing.s4) {
-            Text("Recordings").font(TypeRamp.sectionHeader)
+        TVShelf(title: "Recordings", lazy: true) {
             ForEach(Array(detail.recordings.sorted { $0.rank < $1.rank }.enumerated()), id: \.element.id) { index, recording in
                 Button {
                     play(detail.episode.id, recording: recording, presentPlayer: true)
                 } label: {
                     VStack(alignment: .leading, spacing: Spacing.s1) {
                         Text(verbatim: RecordingLabel.title(recording, position: index + 1))
-                            .font(TypeRamp.body)
+                            .font(TypeRamp.bodyStrong)
+                            .lineLimit(2)
+                        Spacer(minLength: 0)
                         Text(verbatim: RecordingLabel.facts(recording, isBest: index == 0))
                             .font(TypeRamp.caption)
                             .foregroundStyle(Color.brandTextMuted)
+                            .lineLimit(2)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+                    .padding(Spacing.s4)
+                    .frame(width: TV.dateCard.width, height: 180, alignment: .topLeading)
+                    .background(Color.brandSurface)
                 }
+                .buttonStyle(.card)
                 .accessibilityHint("Plays this copy")
             }
         }
-        .focusSection()
     }
 }
 
@@ -828,49 +806,41 @@ private struct SearchScreen_tvOS: View {
     @State private var results = SearchResults()
 
     var body: some View {
-        List {
-            if !results.series.isEmpty {
-                Section("Series") {
-                    ForEach(results.series) { row in
-                        NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+        ScrollView(.vertical) {
+            LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                if !results.series.isEmpty {
+                    TVShelf(title: "Shows") {
+                        ForEach(results.series) { TileLink(value: Route.series($0.key), series: $0) }
                     }
                 }
-            }
-            if !results.people.isEmpty {
-                Section("People") {
-                    ForEach(results.people) { row in
-                        NavigationLink(value: Route.person(row.id)) { PersonRowLabel(row: row) }
-                    }
-                }
-            }
-            if let aired = results.aired, !aired.episodes.isEmpty {
-                Section(aired.title) {
-                    ForEach(aired.episodes) { episode in
-                        NavigationLink(value: Route.episode(episode.id)) {
-                            EpisodeRowLabel(episode: episode, showSeries: true)
+                if !results.people.isEmpty {
+                    TVShelf(title: "People") {
+                        ForEach(results.people) { row in
+                            NavigationLink(value: Route.person(row.id)) {
+                                TVFace(art: row.person.art, name: row.person.name, line: PersonRowLabel.count(row.episodes))
+                            }
+                            .buttonStyle(TVBareButtonStyle())
                         }
                     }
                 }
-            }
-            if !results.episodes.isEmpty {
-                Section("Episodes") {
-                    ForEach(results.episodes) { episode in
-                        NavigationLink(value: Route.episode(episode.id)) {
-                            EpisodeRowLabel(episode: episode, showSeries: true)
-                        }
+                if let aired = results.aired, !aired.episodes.isEmpty {
+                    TVShelf(title: aired.title, lazy: true) {
+                        ForEach(aired.episodes) { TVEpisodeLink(episode: $0) }
+                    }
+                }
+                if !results.episodes.isEmpty {
+                    TVShelf(title: "Episodes", lazy: true) {
+                        ForEach(results.episodes) { TVEpisodeLink(episode: $0) }
+                    }
+                }
+                if !results.transcript.isEmpty {
+                    TVShelf(title: Transcript.label, lazy: true) {
+                        let words = Transcript.searchWords(query)
+                        ForEach(results.transcript) { TranscriptHitCard_tvOS(episode: $0, words: words) }
                     }
                 }
             }
-            if !results.transcript.isEmpty {
-                Section(Transcript.label) {
-                    let words = Transcript.searchWords(query)
-                    ForEach(results.transcript) { episode in
-                        NavigationLink(value: Route.episode(episode.id)) {
-                            TranscriptHitLabel(episode: episode, words: words)
-                        }
-                    }
-                }
-            }
+            .padding(.vertical, Spacing.s6)
         }
         .overlay {
             if !query.isEmpty, results.isEmpty { EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass") }
@@ -886,6 +856,21 @@ private struct SearchScreen_tvOS: View {
             guard (try? await Task.sleep(for: .milliseconds(300))) != nil else { return }
             results = q.isEmpty ? SearchResults() : await catalog.search(q)
         }
+    }
+}
+
+/// §4.5: the episode's card with the line where the words are said, verbatim.
+private struct TranscriptHitCard_tvOS: View {
+    let episode: EpisodeRow
+    let words: [String]
+    @State private var quote: String?
+
+    var body: some View {
+        TVEpisodeLink(episode: episode, quote: quote)
+            .task(id: episode.id) {
+                guard let url = episode.transcriptURL else { return }
+                quote = await Transcript.snippet(from: url, words: words)
+            }
     }
 }
 
@@ -905,54 +890,50 @@ private struct LibraryScreen_tvOS: View {
     var body: some View {
         Group {
             if let inProgress {
-                // The empty state heads the list and takes the focus; the
-                // account and the site pages stay under it (tvOS-DESIGN §7.3a).
-                List {
-                    Section("Continue") {
-                        if inProgress.isEmpty {
-                            SectionCaption("Episodes you stop partway through wait here.")
+                ScrollView(.vertical) {
+                    LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                        // The empty state heads the page and takes the focus; the account and the
+                        // site pages stay under it (tvOS-DESIGN §7.3a).
+                        if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
+                            EmptyState("Nothing played yet", systemImage: "books.vertical",
+                                       action: .init(title: "Browse") { app.selectResettingPrevious(.browse) },
+                                       focus: $emptyFocused)
+                                .frame(height: 360)
+                                .frame(maxWidth: .infinity)
                         }
-                        ForEach(inProgress) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .contextMenu {
-                                Button(role: .destructive) { history.remove(episode.id) } label: {
-                                    Label("Remove from History", systemImage: "trash")
+                        section("Continue", caption: "Episodes you stop partway through wait here.", empty: inProgress.isEmpty) {
+                            ForEach(inProgress) { episode in
+                                TVEpisodeLink(episode: episode) {
+                                    Button(role: .destructive) { history.remove(episode.id) } label: {
+                                        Label("Remove from History", systemImage: "trash")
+                                    }
                                 }
                             }
                         }
-                    }
-                    Section("Queue") {
-                        if queued.isEmpty {
-                            SectionCaption("Episodes you add play in this order, after the one that is playing.")
-                        }
-                        ForEach(queued) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
+                        section("Queue", caption: "Episodes you add play in this order, after the one that is playing.", empty: queued.isEmpty) {
+                            ForEach(queued) { episode in
+                                TVEpisodeLink(episode: episode) { QueueRowMenu(episodeID: episode.id) }
                             }
-                            .contextMenu { QueueRowMenu(episodeID: episode.id) }
+                        }
+                        if following.isEmpty {
+                            section("Following", caption: "Series you follow appear here.", empty: true) { EmptyView() }
+                        } else {
+                            TVShelf(title: "Following") {
+                                ForEach(following) { TileLink(value: Route.series($0.key), series: $0) }
+                            }
+                        }
+                        SharedEarDramasSection_tvOS()
+                        VStack(alignment: .leading, spacing: Spacing.s4) {
+                            AccountRow()
+                                .frame(maxWidth: 640)
+                                .focusSection()
+                            HStack(spacing: 64) { SiteLinkRows() }
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
                         }
                     }
-                    if following.isEmpty {
-                        Section("Following") { SectionCaption("Series you follow appear here.") }
-                    } else {
-                        SeriesShelf_tvOS(title: "Following", series: following)
-                            .listRowBackground(Color.clear)
-                    }
-                    SharedEarDramasSection_tvOS()
-                    Section {
-                        AccountRow()
-                        SiteLinkRows()
-                    }
-                }
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
-                        EmptyState("Nothing played yet", systemImage: "books.vertical",
-                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) },
-                                   focus: $emptyFocused)
-                            .frame(height: 360)
-                    }
+                    .padding(.top, TV.rootClearance)
+                    .padding(.bottom, 60)
                 }
                 .defaultFocus($emptyFocused, true)
             } else {
@@ -968,17 +949,31 @@ private struct LibraryScreen_tvOS: View {
             following = await catalog.series(follows.followedKeys)
         }
     }
+
+    /// §4.6: an empty section keeps its header and its one caption.
+    @ViewBuilder private func section<Content: View>(_ title: String, caption: String, empty: Bool,
+                                                     @ViewBuilder content: @escaping () -> Content) -> some View {
+        if empty {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                SectionHead(title: title) { EmptyView() }
+                SectionCaption(caption)
+            }
+        } else {
+            TVShelf(title: title, lazy: true, content: content)
+        }
+    }
 }
 
 // MARK: - Now Playing
 
-/// Full-screen and typographic: series, episode, date, network, the people.
+/// Full-screen (§5.2a): the hero, the progress line, one row of controls, the people below it.
 /// Speed, sleep, and skip are on this screen (R18). Menu dismisses (Back).
 private struct NowPlaying_tvOS: View {
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
     @Environment(AppStore.self) private var store
     @State private var transcriptOpen = false
+    @FocusState private var pauseFocused: Bool
 
     var body: some View {
         ScrollView(.vertical) {
@@ -990,12 +985,12 @@ private struct NowPlaying_tvOS: View {
                         store.isPlayerPresented = false
                         store.push(route)
                     }
-                    .padding(.horizontal, 90)
                     .padding(.bottom, 60)
                 }
             }
         }
         .background(Color.brandBackground.ignoresSafeArea())
+        .defaultFocus($pauseFocused, true)
         .onPlayPauseCommand { player.togglePlayPause() }
         .fullScreenCover(isPresented: $transcriptOpen) {
             if let item = player.item, let url = item.episode.transcriptURL {
@@ -1004,39 +999,33 @@ private struct NowPlaying_tvOS: View {
         }
     }
 
-    /// The first screen: the picture, the title, the controls. The people sit below it.
+    /// The first screen: the hero and the controls. The people sit below it.
     private var controlsPage: some View {
-        VStack(alignment: .leading, spacing: Spacing.s8) {
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: Spacing.s6) {
             if let item = player.item {
-                HStack(alignment: .bottom, spacing: Spacing.s8) {
-                    VStack(alignment: .leading, spacing: Spacing.s2) {
-                        NowPlayingArt(episode: item.episode, face: item.face, side: 400)
-                        // Shown larger than a page's head, so a credited portrait carries its credit (Decision 069).
-                        if let art = NowPlayingArt.art(item.episode, item.face), let credit = art.credit {
-                            ArtCredit(credit: credit, evidence: art.evidence)
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: Spacing.s3) {
-                        Text(item.episode.displayTitle)
-                            .font(TypeRamp.pageTitle)
-                            .foregroundStyle(Color.brandText)
-                        EventLine(facts: [item.episode.seriesName, AirDate.display(item.episode.airDate), item.episode.network])
-                    }
-                    .accessibilityElement(children: .combine)
-                }
+                TVHero(kicker: item.episode.seriesName, title: item.episode.displayTitle,
+                       facts: [AirDate.display(item.episode.airDate), item.episode.network],
+                       genre: item.episode.seriesGenre, art: NowPlayingArt.art(item.episode, item.face),
+                       pictureName: item.episode.seriesName) { EmptyView() }
             }
             Spacer(minLength: 0)
-            VStack(alignment: .leading, spacing: Spacing.s3) {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
                 ProgressView(value: min(player.elapsed, player.duration ?? 1), total: max(player.duration ?? 1, 1))
                     .tint(Color.brandPrimary)
                     .accessibilityLabel("Position")
                 TimeLabels()
             }
-            HStack(spacing: Spacing.s8) {
-                TransportControls(large: true)
-                Spacer()
-                HStack(spacing: Spacing.s4) {
+            HStack(spacing: Spacing.s4) {
+                transport("gobackward.15", label: "Back 15 seconds") { player.skip(by: -AudioPlayer.Skip.back) }
+                    .disabled(player.isFollowing)
+                transport(player.isPlaying ? "pause.fill" : "play.fill", label: player.isPlaying ? "Pause" : "Play") {
+                    player.togglePlayPause()
+                }
+                .focused($pauseFocused)
+                transport("goforward.30", label: "Forward 30 seconds") { player.skip(by: AudioPlayer.Skip.forward) }
+                    .disabled(player.isFollowing)
+                Spacer(minLength: Spacing.s6)
+                HStack(spacing: Spacing.s3) {
                     SpeedMenu()
                     SleepButton()
                     LevelToggle()
@@ -1044,16 +1033,17 @@ private struct NowPlaying_tvOS: View {
                         PlayerQueueButton(episodeID: item.episode.id)
                     }
                     ListenTogetherButton()
-                    RoutePicker_tvOS()
-                        .frame(width: 80, height: 80)
                     NextStoryButton()
                     if player.item?.episode.transcriptURL != nil {
                         Button {
                             transcriptOpen = true
                         } label: {
-                            Label(Transcript.label, systemImage: "text.quote")
+                            Label("Transcript", systemImage: "text.quote")
                         }
+                        .accessibilityLabel(Transcript.label)
                     }
+                    RoutePicker_tvOS()
+                        .frame(width: 88, height: 88)
                 }
                 .fixedSize(horizontal: true, vertical: false)
             }
@@ -1066,22 +1056,46 @@ private struct NowPlaying_tvOS: View {
             } else if !catalog.isOnline {
                 OfflineNotice()
             }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 90)
-        .padding(.vertical, 60)
+        .disabled(player.item == nil)
+    }
+
+    /// One size for all three (§5.2a): the circle is the system's, the glyph sits in one frame.
+    private func transport(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .frame(width: 88, height: 88)
+        }
+        .buttonBorderShape(.circle)
+        .accessibilityLabel(label)
     }
 }
 
 /// The system's audio output picker (AVKit): the Apple TV's own speakers, a
 /// HomePod, or another AirPlay speaker, never a custom device list.
 private struct RoutePicker_tvOS: UIViewRepresentable {
-    func makeUIView(context: Context) -> AVRoutePickerView {
-        let view = AVRoutePickerView()
-        view.routePickerButtonStyle = .system
+    /// Focus puts a white plate behind the glyph, which `tintColor` alone leaves white on white.
+    final class InkedPicker: AVRoutePickerView {
+        override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+            super.didUpdateFocus(in: context, with: coordinator)
+            let ink: UIColor = context.nextFocusedView?.isDescendant(of: self) == true ? .black : .white
+            tintColor = ink
+            activeTintColor = ink
+        }
+    }
+
+    func makeUIView(context: Context) -> InkedPicker {
+        let view = InkedPicker()
+        view.routePickerButtonStyle = .plain
         view.prioritizesVideoDevices = false
+        // §5.2a: the system style draws its glyph black on this page.
+        view.tintColor = .white
+        view.activeTintColor = .white
         return view
     }
 
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+    func updateUIView(_ uiView: InkedPicker, context: Context) {}
 }
 #endif

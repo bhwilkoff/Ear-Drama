@@ -106,6 +106,19 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 
 The only shapes; a new one needs a new rule.
 
+**§3.0 The living room, not a resized iPad** (owner, 2026-11-04: the Apple TV app "has many glaring design issues"; two audits passed them because they checked function, not design). Binding on every screen, and it replaces any older line below that disagrees. Judge a frame as a person on a sofa: hierarchy at ten feet, pictures leading, one margin, no truncation of what matters.
+
+- **One margin.** The system's safe area (80 pt on the set) is the only left and right margin: no screen adds padding of its own, and a `List` (which adds 20 more) never draws a page. Shelves scroll to the screen's edge past it.
+- **No `List`, no chevron, no full-width bar.** Pages are a `ScrollView` of a hero and shelves (`apple/tvOS/TenFoot_tvOS.swift`). Buttons are the system's, at their natural width.
+- **The hero (`TVHero`) heads Home, a series, an episode, a person, Surprise and Now Playing:** a board in the genre hue, edge to edge and up to the top of the screen, the words at the margin (kicker, name at L1, what it is, event line, one row of actions), the picture at the right. It replaces `HeadBoard` on the TV. The window takes the largest side its picture holds up at (`Grammar.windowFill`'s floor), up to 460 pt, so a picture is never lost to a slot too big for it. A window of 300 pt or more with no picture is a tonal letter, filled, never a hairline outline.
+- **Two cards.** The wide card (`TVWideCard`, 640 by 236, `.card`): the window, then a line, the title, a line, on its board. It carries Continue, Queue, stations, an evening's slots, search hits. The date card (`TVDateCard`, 420 by 236, `.card`): the date in display type, the title, the length, on the show's board, for a list of one show, where the window would repeat. A row of cards is one height, always.
+- **A person is a round face (`TVFace`) with no plate:** focus lifts the circle and rings it; the name holds two lines and the count one, so every face sits on one grid. `.card` is for rectangles.
+- **Color.** The TV takes no tint (`.tint(nil)` on the tab view and the player): a tint colors a focused button's label too, so a light one is white on the system's white plate, which is how Play, Resume and Pause first reached the set. At rest the system's quiet plate, focused the system's plate, which is glass and takes a little of the board behind it. A button's label carries no `foregroundStyle` of its own, or it cannot invert on focus. Blue is for nothing on this screen but the tab bar's selection (the remote has no links), so §7.2 no longer tints labels. Ink plays; a hue is a board.
+- **Focus always shows.** `.borderless` lights only an image, so text or shapes under it take focus with nothing on screen. Anything with no plate of its own (a field's cell, a letter) wears `TVFocusRing` under `TVBareButtonStyle`.
+- **Page order: pictures before charts.** A chart (the day strip, the field) never opens a page. Home's strip follows the shows of that night; Browse's field opens from "By decade" and its tiles are the first thing under the filters.
+
+- *Replaced* §3.2's 420 by 236 typographic card with date, title, series as the only card; §3.3's native `List`s; §4.3's series page; §4.6's Library as a list; R11c's day board at the head of Home; R11d's "Follow stays the series page's first focus stop".
+
 - **§3.1 Shelf**: a section title over a horizontal `LazyHStack` of
   cards, in a `.focusSection()`, with `scrollClipDisabled()` so the
   focused card's lift is not clipped (`ShelfRow_tvOS`).
@@ -119,19 +132,23 @@ The only shapes; a new one needs a new rule.
 
 ## §4 Surfaces
 
-- **§4.1 Home** (was Listen) is Continue listening as the first shelf (up to ten),
-  then Following (a shelf of typographic series cards, newest follow
-  first, drawn only with follows), then the catalog's `meta.listenShelves` in order (contract §5.1;
-  `docs/iOS-DESIGN.md` R13): "This day in radio", then a shelf per
-  published genre.
-- **§4.2 Browse** (was Series) is a `List` of series led by a Genre
-  picker and a Sort picker (Popular by default, A to Z, Most episodes,
-  Oldest first; Popular as `docs/iOS-DESIGN.md` §4.2). The tab bar names
-  the section, so the screen draws no title, as every tvOS tab.
-- **§4.3 A series page** is the series name and meta line (not
-  focusable), then a Follow / Following button (the first focus stop,
-  the web's words; `FollowedSeries`, synced), then episodes oldest first in sections by broadcast
-  season, "Undated" last.
+- **§4.1 Home** (was Listen) opens on the hero, filled by a stated rule: the episode the person
+  is partway through, Resume first, else this day in radio's busiest year, its first show with a
+  picture, Play first. Under it the rest of Continue listening (up to nine), Following, that night's
+  shows as tiles, the day strip with its legend on one line, Most downloaded, Most heard voices, New
+  ear dramas. A shelf of nothing draws nothing, so one episode in progress is the hero, not a lone
+  card beside an empty screen.
+- **§4.2 Browse** (was Series) is Shows, Voices and Ear dramas at natural width, then one line: the
+  count, then Genre and Sort as menus (Popular by default, A to Z, Most episodes, Oldest first;
+  Popular as `docs/iOS-DESIGN.md` §4.2), By decade and the singles switch; then the tiles. The tab
+  bar names the section, so the screen draws no title, as every tvOS tab. In A to Z a letter starts
+  the list at that letter and the row marks which: scroll on the TV follows focus, so a `scrollTo`
+  is undone at once, and a letter's tiles may not be drawn to take focus.
+- **§4.3 A series page** is the hero (genre and at most two networks, the name, the years and
+  count, the run strip on the show's own years), then Play (the first focus stop: the episode in
+  progress as Resume, else the first episode), Follow / Following (`FollowedSeries`, synced) and the
+  genre, a link to Browse; then a shelf of date cards per broadcast season, oldest first, "Undated"
+  last, so down moves season to season and across moves through one.
 - **§4.4 Episode detail** (`EpisodeScreen_tvOS`) is the series, the
   title at page-title size, the facts line (date, network, sponsor,
   length), then an action row in one focus section: Play, Series, and
@@ -174,6 +191,7 @@ The only shapes; a new one needs a new rule.
   focused paragraph is bright. Menu closes it.
 
 - **D3-8** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: each station is a `ShowTile` on its genre's board under the card style (a focus stop; "Listening live" is a fact line), slots are `GrammarRow`s with "Now" in ink, Surprise's episode and evening are head boards with Play as the default focus, and its play is a `ShowTile` with the cast fingerprint that takes no focus (the TV records nothing). A person is a head board, a shelf of `ShowTile`s, then rows.
+- **§4.8a Stations at ten feet** (2026-11-04; replaces what disagrees in §4.8): stations are wide cards of one height. "Tonight in 19xx" is said once, by the first card; the evening under them is headed by its date, with the network, station and Year menu on that line. The evening is one shelf of wide cards in time order, each slot's time first ("7:00 PM"), the paper's own time in words at its foot ("Aired 9:00 PM ET"). A run of dead slots is one narrow quiet card that opens in place; surviving broadcasts lead the eye. The Year menu names a date where two evenings share a year.
 - **§4.8 Stations** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
   is the web's §4.9 at ten feet. It opens on the stations shelf
   (`StationsShelf_tvOS`), one horizontal focus section of `.card` buttons,
@@ -198,10 +216,11 @@ The only shapes; a new one needs a new rule.
   web page. The empty and error states are iOS's words
   (`docs/iOS-DESIGN.md` §4.9).
 
-- **§4.10 Surprise** (`SurpriseScreen_tvOS`) is two picks drawn when it
-  opens, an episode and an evening (`docs/iOS-DESIGN.md` §4.11), each a
-  card-row with Play that opens Now Playing, then Shuffle. Play is the
-  default focus, as on Detail.
+- **§4.10 Surprise** (`SurpriseScreen_tvOS`) is drawn when it opens: an
+  episode as the hero with Play (the default focus, as on Detail), Details
+  and Shuffle, then one shelf of wide cards: the evening, the play, three
+  more episodes (`docs/iOS-DESIGN.md` §4.11), so the row is never one card
+  beside an empty screen.
 
 - **§4.12 Shared ear dramas** (PLAYS-DESIGN §11.7 rule 12, binding:
   "Apple TV plays back ... Nothing is claimed, recorded, uploaded, invited,
@@ -220,21 +239,22 @@ The only shapes; a new one needs a new rule.
   will no longer hear their takes." for everyone else), each a focus
   section. Returning to the app re-reads the record unless it is playing.
 
-- **§4.11 A person** (`PersonScreen_tvOS`, `withPerson`) is a List: the
-  portrait at 200 pt when one is served, the name at page-title size and
-  the facts line (the years from the people row, the episode count), not
-  focusable; then one button naming the order, Oldest first or Newest
-  first, which flips it (shown only with more than one episode); then a
-  section per series of episode rows, each naming the roles it credits
-  the person in. Focus lands on the order button or the first row,
-  never the heading. No bio is written (R13). Back pops to Detail or
-  Search (§1.5).
+- **§4.11 A person** (`PersonScreen_tvOS`, `withPerson`) is the hero: the
+  round portrait, the name, the facts line (the years from the people row,
+  the episode count, the shows), the run strip; then one button naming the
+  order, Oldest first or Newest first, which flips it (shown only with more
+  than one episode). Then the Shows shelf, most episodes first, so the show a
+  person is known for leads; then a shelf per series of date cards, each naming
+  the roles it credits the person in. Focus lands on the order button or the
+  first card, never the heading. No bio is written (R13). Back pops to Detail
+  or Search (§1.5).
 
 ## §5 The player
 
 - **§5.1 One engine**, the shared `AudioPlayer`, with the `.playback`
   and `.spokenAudio` session and remote commands as on iOS
   (`docs/iOS-DESIGN.md` §5.1, §5.4, §5.5).
+- **§5.2a Now Playing at ten feet** (2026-11-04; replaces what disagrees in §5.2): the hero with the show as its kicker and no actions, then the progress line, then one row: back 15, Pause, forward 30, three identical round buttons, and the options at one height to their right. Focus opens on Pause. The output picker is light on the dark page.
 - **§5.2 Now Playing is full screen** (`NowPlaying_tvOS`): the episode's
   picture at 400 pt (D3-4: the grammar's `PictureWindow`, the show's
   picture, else its star's, else the title block, Decision 069), then the
@@ -294,8 +314,8 @@ The only shapes; a new one needs a new rule.
   style under 29 pt.
 - **§7.2 Tokens only**, the same generated colors as every Apple
   platform; only the focused element is bright. Roles are
-  iOS-DESIGN §6.1a's (Decision 064): the tint is blue, ink
-  (`brandPrimary`) on Play, Listen live, and the progress line, red
+  iOS-DESIGN §6.1a's (Decision 064): ink
+  (`brandPrimary`) on the progress line, the buttons the system's (§3.0), red
   only for recording (the TV records nothing, so it shows none), and a
   genre hue only as the
   series row's mark. Focus itself stays the system's lift and
@@ -380,11 +400,8 @@ The rights line, the transcript label, and volume leveling are as in
 
 ## §12 Open (what the code does not yet meet)
 
-- **Now Playing shows no cast**, though its own comment and research
-  §6 say the people are the picture (`NowPlaying_tvOS`).
 - **Focus is claimed by `defaultFocus` alone**, which the template's §6.2
-  calls unreliable on tvOS; Now Playing declares no default focus and no
-  restoration target on dismiss.
+  calls unreliable on tvOS; pressed on the set 2026-11-04 it held on every page.
 - **Series browse has only a Genre facet**, no network or decade
   (`SeriesBrowseScreen_tvOS` passes `network: nil, decade: nil`).
 - **Library has no Played section**, and Remove from History does not
