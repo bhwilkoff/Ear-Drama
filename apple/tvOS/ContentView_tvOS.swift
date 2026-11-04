@@ -898,7 +898,7 @@ private struct LibraryScreen_tvOS: View {
     @State private var inProgress: [EpisodeRow]?
     @State private var queued: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
-    @Namespace private var libraryFocus
+    @FocusState private var emptyFocused: Bool
 
     private struct Key: Equatable { let ids: [String]; let queue: [String]; let load: Int }
 
@@ -949,12 +949,12 @@ private struct LibraryScreen_tvOS: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
                         EmptyState("Nothing played yet", systemImage: "books.vertical",
-                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) })
+                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) },
+                                   focus: $emptyFocused)
                             .frame(height: 360)
-                            .prefersDefaultFocus(true, in: libraryFocus)
                     }
                 }
-                .focusScope(libraryFocus)
+                .defaultFocus($emptyFocused, true)
             } else {
                 ProgressView()
             }
