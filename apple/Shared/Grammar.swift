@@ -86,7 +86,11 @@ private struct GradedImage: View {
         .task(id: url) {
             if let hit = PictureGrade.cached(url, grade) { image = hit; return }
             image = nil
-            if let loaded = await PictureGrade.load(url, grade: grade) { image = loaded } else { onFail() }
+            switch await PictureGrade.load(url, grade: grade) {
+            case let .image(loaded): image = loaded
+            case .cancelled: break
+            case .failed: onFail()
+            }
         }
     }
 }
@@ -183,7 +187,10 @@ struct PictureWindow: View {
                 RoundedRectangle(cornerRadius: 4).strokeBorder(edge, lineWidth: 1)
             }
         }
+        // A failure is about one fetch: a new picture, a new size or a return to the screen tries again.
         .onChange(of: art?.url) { failed = false }
+        .onChange(of: side) { failed = false }
+        .onAppear { failed = false }
         .accessibilityHidden(true)
     }
 
