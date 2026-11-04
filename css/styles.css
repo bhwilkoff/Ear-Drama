@@ -400,6 +400,7 @@ select {
 /* ---- Blocks and shelves ---- */
 .block { margin-bottom: var(--space-6); }
 .block > .section-header, .block-head { margin-bottom: var(--space-2); }
+.block-head > .btn-ghost { margin-right: calc(-1 * var(--space-4)); }
 .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .shelf { margin-bottom: var(--space-6); }
 .shelf > .section-header { margin-bottom: var(--space-2); }
@@ -670,7 +671,7 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .np-art:empty { display: none; }
 .np-credit { display: block; margin-top: var(--space-1); text-align: center; }
 .np-art { margin-bottom: var(--space-3); }
-.np-art .np-window { width: min(100%, 44vh); width: min(100%, 44dvh); margin: 0 auto; border-radius: var(--radius-card); }
+.np-art .np-window { width: min(100%, 36vh); width: min(100%, 36dvh); margin: 0 auto; border-radius: var(--radius-card); }
 .np-meta { margin: 0; text-align: left; }
 .np-series { color: var(--color-link); text-decoration: none; }
 .mini-window { flex: none; width: 40px; height: 40px; margin-right: var(--space-2); }
@@ -709,7 +710,7 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .slot .g-event, .station .g-event { overflow-wrap: anywhere; }
 .witness { padding-bottom: var(--space-6); }
 .stations { margin-bottom: var(--space-6); border-top: 1px solid var(--color-border); }
-.station > .btn { flex: none; margin-right: var(--space-2); }
+.station > .btn { flex: none; }
 .witness a { color: var(--color-link); }
 
 /* ---- Filters ---- */
@@ -1126,7 +1127,8 @@ li.pl-lx.sel .pl-mine { margin-left: 0; }
 .request-form fieldset { border: 0; padding: 0; display: grid; gap: var(--space-1); }
 .request-form [data-for] { display: grid; gap: var(--space-2); }
 .request-form [hidden] { display: none; }
-.request-form .choice { display: flex; gap: var(--space-2); align-items: flex-start; }
+.request-form .choice { display: flex; gap: var(--space-2); align-items: flex-start; min-height: 44px; }
+.request-form .choice input { flex: none; width: 20px; height: 20px; margin: 2px 0 0; }
 .request-form textarea.field-input { padding: var(--space-2) var(--space-3); }
 .request-form .btn { justify-self: start; }
 .request-trap { position: absolute; left: -9999px; }
