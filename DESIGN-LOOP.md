@@ -180,8 +180,9 @@ describing."*
 
 ## State
 
-- Phase: **D3** (build D on every platform), started 2026-10-29. Owner: "Yes to both"
-  (build D everywhere; one face per star).
+- Phase: **D4** (2026-11-04): D3 is built and on TestFlight at 1.0.117. **Work from "Next round"
+  at the end of this file**; the entries below are history. The D3 phase opened 2026-10-29. Owner:
+  "Yes to both" (build D everywhere; one face per star).
 - **One face per star**: a person leads at most one show, the one they are most identified
   with (a title role first, then the highest share of episodes); every other show they would
   have led falls to its next picture or its title block.
@@ -241,3 +242,81 @@ describing."*
 - Next work: a Stations day switcher (tonight.json holds 13 days), the owner's own words in
   HUMAN-SHAPED.md and the credits opening, device-play of Create's three modes and sign-in.
 - Review page: https://claude.ai/artifact/18ay3AKgXdN53V32TGTqMB
+- 2026-10-31 to 11-01, after the owner's iPhone and text feedback: 1.0.114 to 1.0.117 shipped to
+  TestFlight. The iPad needs no passcode while unlocked (the prompt above is closed). Display text
+  P-6 to P-8; two iPhone 12 design passes; dates spelled out; recording labels from data; a cut-off
+  copy counts as a failed load; tiles are Buttons (wrong show, wrong Back); background play works.
+
+## Next round (written 2026-11-04, from an audit of main, CI, the live catalog and last week's session)
+
+Each tick takes the first open item, one agent at a time on overlapping code, Sonnet unless the
+item says otherwise. Check a box only with evidence. Items marked **owner** never block the rest:
+list them and move on. Stop when only owner items remain.
+
+**Found 2026-11-04.** Main is 97a3275 (1.0.117), clean; all workflows' latest runs green; the site
+is current (no web change since its last deploy); catalog published 2026-11-03. Nothing is running.
+
+### A. Put what is built in front of people
+- [ ] **N1 Android to Play internal.** Play's last release is 1.0.101 (2026-10-29, c849ae7), before
+  direction D: anyone on Play has the old app. Check nothing is in review, run the Pixel bench, then
+  dispatch `Play release`.
+- [ ] **N2 Verify 1.0.117 beyond the iPhone.** Its last run was the iPhone 12 tap tier only. Tile
+  navigation changed for iPad and Mac (`PushLink`) and page identity changed on tvOS. Run qa_suite and
+  the iPad tap tier, the Pixel, Ben Bedroom, and press tiles and Back on the Mac (when the owner is away).
+- [ ] **N3 Read the built Info.plist on iOS, tvOS and macOS.** Background play failed because a key
+  never reached the built app, and the test added reads the source file. `NSMicrophoneUsageDescription`
+  is still an `INFOPLIST_KEY_` in `project.yml`; no built app was on disk to check it on 2026-11-04.
+  Missing, the first recording crashes. Add a guard on the built product (a test failing first).
+
+### B. Design on the other devices
+- [ ] **N4 Bring the iPad, Pixel, Apple TV and Mac to the iPhone's depth (Opus for design calls).** The
+  owner found the 10-31 faults on the iPhone, not the harness: spacing, images, bottom scroll, button
+  close-ups, malformed icons. Only the iPhone had that pass. One device per batch: every screen, every
+  button row up close in each state, light and dark, last row reachable with the mini player up.
+- [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
+  pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
+  a yes before building.
+
+### C. Catalog pass P-9 (classes, not names; rules per `display_text_ruling`)
+- [ ] **N6 Remaining junk names, each class with a guard seen to fail.** Live on 2026-11-04:
+  - page and side fragments: Superman page01, page02, page08; Side 1; Side 2
+  - cut-off names: Banter (s01, Banter (s02; The Best of Fibber McGee & Molly Side
+  - reel compilations: Mystery Reel.Suspense.X Minus One.Black Museum; Christmas Reel; FDR Speaks.Reel Series
+  - leading track numbers: 10 Maigret's Boyhood Friend; 1 Julian Simpson Fragments
+  - uploader strings: 101 Vintage No 2 D D Teoli Jr A C; Jills All Time Jukebox31; GG Ep119
+  - the same show under several names (21 groups by normalized name, some legitimately distinct
+    productions such as Henry V: judge each): Bergen & McCarthy three ways; "The Army Hour" in quotes
+  A first scan matched 200 of 6,794 series, with false positives (33 Half Moon Street, 2000 Plus).
+  Read before cleaning, and scan the live index, not only these examples.
+
+### D. Harness and player defects
+- [ ] **N7 Three intermittent checks** (a harness defect, never rerun until green):
+  `LayoutSweepUITests/testMiniHome`, `DownloadsPlaceUITests`, and `web_fit_library` (failed 3 of 4 under
+  load on 10-31). No fix is in the log for any of them.
+- [ ] **N8 Android's stall watchdog can count a slow seek as a stall.** Fixed on Apple and web
+  2026-10-31; Android has no in-flight seek signal. It was promised a note and got none until now.
+
+### E. Records
+- [ ] **N9 Parity audit.** PARITY shows 7 iPhone ✅ against a 50-test tap tier, and row "Background
+  play" still says not seen on a device. Promote what the tap tier proves, nothing more.
+- [ ] **N10 Housekeeping.** Add `.wrangler/` to `.gitignore`. Prune 100 `worktree-agent-*` branches and
+  10 worktrees (2.6 GB; one is locked), reading each first: two show commits off main, but D3-3 landed
+  by another route (90611e6). Confirm the two transcript failures (11-01, 11-02, "nothing came back",
+  green since) were archive.org and not ours.
+
+### Owner: only you
+- [ ] **O1 Play it.** This is D4: an evening on the phone and the Apple TV, and your notes open the
+  next round. Include the lock-screen controls: unchecked, and agents may not lock a test device.
+- [ ] **O2 Record a two-role scene with headphones,** trying Run through, Line by line and Step; and
+  sign in once on a device. None of these has been played.
+- [ ] **O3 Take-down page:** your reply time, and the agent's details as registered (`takedown/index.html`
+  lines 42 and 45). Before any public launch.
+- [ ] **O4 Remove the Ear Drama App Limit on the iPhone 12 for good.** It came back on 11-01.
+- [ ] **O5 Your words in `HUMAN-SHAPED.md`,** blank at the last review. Someone other than you trying it
+  is that review's largest open question.
+- [ ] **O6 Before a public store release:** store words, the CarPlay entitlement, the radio-script rule
+  and the GRW ask (SCRATCHPAD 13, 15, 16), and trademark (Decision 060).
+
+Closed, do not carry forward: the iPad XCTest passcode; the Big Shoulders cut and Android's Play button
+(native look per platform, 2026-10-30); the stall watchdog branch; the credits page's OWNER notes; `ios_uitest.py` failing a system-overlay
+frame (`SYSTEM_OVERLAY_RX`, already in).

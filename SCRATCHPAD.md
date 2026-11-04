@@ -25,11 +25,8 @@
      awake. First check the iPhone app still opens normally (the CarPlay stub
      changed how its scenes start). Broken would be: playback that never starts, a sleep timer that
      starts the next episode, "public domain" anywhere.
-  10. **Setup steps still open** (LOOP-PLAN Needs Ben): the take-down email
-     (`js/site.js` still holds a placeholder), the CarPlay entitlement request,
-     the archive.org account and S3 keys, store-word approval. Pages, the DMCA
-     agent, the Worker and D1, OAuth clients, App Store Connect, Play Console,
-     App Groups and the cache Release are done.
+  10. **Setup steps still open** (LOOP-PLAN Needs Ben): the CarPlay entitlement request,
+     store-word approval, and the take-down page's reply time and agent details.
   11. **Record a play on a device** (M7's play gate): a two-role scene on the
      iPhone and on the Pixel (Android since 1.0.24), with headphones. Broken would be a
      take that never ends on silence, a cue line you cannot hear, or Listen
@@ -44,26 +41,16 @@
      for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-10-28, tick 110)**: the loop runs from `LOOP-PLAN.md` (wakes on
-  results, 30-minute fallback; each tick starts with the GitHub Actions check).
-  Main is at 1.0.92 (Android versionCode 2). First Play internal release done
-  (run 40808816813); TestFlight uploads continue (1.0.92, run 40808331721). Every
-  Ear Drama workflow's latest run is green. Log: `AUTONOMOUS_PROGRESS.md` ticks
-  86-110. Not verified anywhere: anything heard (sleep fade, leveling, a seek
-  landing on its scene), Android and tvOS on a device, AirPlay or Cast sessions.
-  Also waiting on you: station-slot forwarding ruling (A1), 1.x store words.
-  (Non-photo portraits: owner 2026-10-28, "Graphics count just as much as photos.")
-- **Catalog now**: `catalog-2026-10-28` (cache Release with portrait sizes and
-  face boxes, cut by the owner); 107,369 episodes served after the Jack Benny
-  date fix. Daily scheduled publish is green. Research database and caches:
-  `catalog/README.md`.
-- **Open infrastructure**: `workflow-health.yml` (daily) and
-  `retry-infra-failures.yml` (twice an hour) are scheduled as of C2; the
-  first scheduled runs are unobserved. `www.eardrama.org` now answers (301) and
-  the apex serves.
-- **Owner steps**: the "Needs Ben" table in `LOOP-PLAN.md` (only the take-down
-  email, the CarPlay entitlement, the archive.org account, store words, and
-  optional API keys remain). Outreach and trademark are off for now (Decision 060).
+- **Status (2026-11-04)**: main is 1.0.117 (97a3275) on TestFlight; every workflow's latest run
+  is green; nothing is running. Play's internal track is still 1.0.101, before direction D. **The next
+  loop works from "Next round" in `DESIGN-LOOP.md`.** Not verified: 1.0.117 beyond the iPhone 12;
+  anything heard (sleep fade, leveling); lock-screen controls; AirPlay or Cast; Create's three modes.
+- **Catalog now**: published 2026-11-03 from the daily schedule; 6,794 series served, 1,708 with five
+  or more episodes. Research database and caches: `catalog/README.md`.
+- **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and
+  are green. `www.eardrama.org` answers (301) and the apex serves.
+- **Owner steps**: "Owner: only you" in `DESIGN-LOOP.md`, and the "Needs Ben" table in `LOOP-PLAN.md`.
+  Outreach and trademark are off for now (Decision 060).
 
 ---
 

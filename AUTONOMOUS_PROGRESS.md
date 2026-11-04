@@ -521,3 +521,13 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Merged: D3-5 Library, D3-6 Create (three modes), D3-fix2, P-3 titles, the tap-tier fixes (iPad player sheet; tests follow D), the seek fix (a failed item's zero clock), D3-7 invitations, finished dramas and share pages; CI fixes (Create null child, Android lint); bench now iPad, Pixel, Ben Bedroom (lease atv); device-guard hook; webdrive muted.
 - 1.0.113 (649fa66) verified: every check on main; iPad tap tier 28/28, no crash logs; qa_suite 3/3 on iPad, Pixel, Ben Bedroom. TestFlight upload 41124730247 (submit=false); catalog publish 41124735954.
 - Held for the next ship: the stall watchdog (branch worktree-agent-ade95e0af07854150). Loop stopped to save tokens (owner at 80% of the week); D4 is the owner on devices.
+
+### Design ticks 25 on, 2026-10-31 to 11-01, 1.0.114 to 1.0.117 (written up 2026-11-04; the log had stopped at 1.0.113)
+- Owner: "there are hundreds of shows/ear dramas that have uploader titles or garbage text"; "I don't want raw text uploads to show at all." P-6 to P-8 and their publish guards; speeches stay (owner).
+- Owner: "There are major issues with the phone app when it comes to design and spacing and image usage." Two iPhone 12 passes (1.0.115). Dates spelled out, recording labels from data, a cut-off copy is a failed load (1.0.116).
+- Owner: wrong show on tap, wrong Back, no background play. Tiles are Buttons; UIBackgroundModes reaches the built app (1.0.117, 97a3275). iPhone tap tier 50 of 50, macOS 290 of 290, Release 0 warnings; iPad, Pixel and Apple TV not rerun. Loop stopped at the week's limit.
+
+### Audit, 2026-11-04, the to-do list for the next round
+- Owner: "We were doing some deep design loop work last week before we ran into the limits for the week, can you investigate the status of that and see about setting up a remaining to do list that we should use for the next loop."
+- Read main, CI, the live catalog, the store workflows and last week's session. `DESIGN-LOOP.md` gains "Next round" (N1 to N10, O1 to O6); its State and SCRATCHPAD's Current State corrected. Found: Play is 16 versions behind at 1.0.101; junk show names are classes, not three names; the Android seek gap had been noted nowhere. No code changed.
+
