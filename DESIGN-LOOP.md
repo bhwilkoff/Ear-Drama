@@ -256,14 +256,16 @@ list them and move on. Stop when only owner items remain.
 **Found 2026-11-04.** Main is 97a3275 (1.0.117), clean; all workflows' latest runs green; the site
 is current (no web change since its last deploy); catalog published 2026-11-03. Nothing is running.
 
+**Owner, 2026-11-04:** "I'd really love to move on to new features after these tests and audits of screens on each platform are complete." Gate: N1, N2, N4. The rest may run beside feature work.
+
 ### A. Put what is built in front of people
-- [ ] **N1 Android to Play internal.** Play's last release is 1.0.101 (2026-10-29, c849ae7), before
+- [ ] **N1 Android to Play internal (blocked 2026-11-04: the Pixel is not on adb).** Play's last release is 1.0.101 (2026-10-29, c849ae7), before
   direction D: anyone on Play has the old app. Check nothing is in review, run the Pixel bench, then
   dispatch `Play release`.
 - [ ] **N2 Verify 1.0.117 beyond the iPhone.** Its last run was the iPhone 12 tap tier only. Tile
   navigation changed for iPad and Mac (`PushLink`) and page identity changed on tvOS. Run qa_suite and
   the iPad tap tier, the Pixel, Ben Bedroom, and press tiles and Back on the Mac (when the owner is away).
-- [ ] **N3 Read the built Info.plist on iOS, tvOS and macOS.** Background play failed because a key
+- [x] **N3 Read the built Info.plist on iOS, tvOS and macOS.** Background play failed because a key
   never reached the built app, and the test added reads the source file. `NSMicrophoneUsageDescription`
   is still an `INFOPLIST_KEY_` in `project.yml`; no built app was on disk to check it on 2026-11-04.
   Missing, the first recording crashes. Add a guard on the built product (a test failing first).
@@ -278,7 +280,7 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   a yes before building.
 
 ### C. Catalog pass P-9 (classes, not names; rules per `display_text_ruling`)
-- [ ] **N6 Remaining junk names, each class with a guard seen to fail.** Live on 2026-11-04:
+- [x] **N6 Remaining junk names, each class with a guard seen to fail.** Live on 2026-11-04:
   - page and side fragments: Superman page01, page02, page08; Side 1; Side 2
   - cut-off names: Banter (s01, Banter (s02; The Best of Fibber McGee & Molly Side
   - reel compilations: Mystery Reel.Suspense.X Minus One.Black Museum; Christmas Reel; FDR Speaks.Reel Series
