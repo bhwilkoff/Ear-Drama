@@ -34,6 +34,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -176,14 +177,14 @@ fun PlayerSheet(
     val face by rememberCatalogQuery(episode?.id) { db ->
         episode?.let { db.episodeDetail(it.id)?.face ?: it.seriesFace }
     }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         if (episode == null) {
             Box(Modifier.padding(Spacing.S6.dp)) { Text("Nothing is playing.") }
             return@ModalBottomSheet
         }
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding()) {
         Column(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.S6.dp),
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // R11a: full width, no taller than 44 % of the screen, so Play stays on the first screen.
@@ -243,22 +244,26 @@ fun PlayerSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                SpeedMenu(now.speed, engine, enabled = !guest)
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { SpeedMenu(now.speed, engine, enabled = !guest) }
                 if ((hasTranscript as? Loadable.Ready)?.value == true) {
-                    IconButton(onClick = { onOpenTranscript(episode.id) }, modifier = Modifier.tvFocusMark()) {
-                        Icon(Icons.Filled.FormatQuote, contentDescription = Transcript.LABEL)
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        IconButton(onClick = { onOpenTranscript(episode.id) }, modifier = Modifier.tvFocusMark()) {
+                            Icon(Icons.Filled.FormatQuote, contentDescription = Transcript.LABEL)
+                        }
                     }
                 }
-                IconButton(onClick = onListenTogether, modifier = Modifier.tvFocusMark()) {
-                    Icon(
-                        Icons.Filled.Groups,
-                        contentDescription = "Listen together",
-                        tint = if (room is RoomStatus.In) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                    )
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    IconButton(onClick = onListenTogether, modifier = Modifier.tvFocusMark()) {
+                        Icon(
+                            Icons.Filled.Groups,
+                            contentDescription = "Listen together",
+                            tint = if (room is RoomStatus.In) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+                        )
+                    }
                 }
-                LevelToggle(engine)
-                SleepMenu(now, engine)
-                CastButton()
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { LevelToggle(engine) }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { SleepMenu(now, engine) }
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { CastButton() }
             }
             Row(
                 Modifier.fillMaxWidth().padding(bottom = Spacing.S3.dp),

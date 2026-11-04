@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
@@ -248,6 +249,7 @@ private fun Evening(
                         val now = onAir.index?.let { it in entry.indices } == true
                         TextButton(
                             onClick = { openRuns = if (isOpen) openRuns - key else openRuns + key },
+                            contentPadding = PaddingValues(0.dp),
                             modifier = Modifier
                                 .padding(horizontal = Spacing.S4.dp)
                                 .tvFocusMark()
@@ -440,6 +442,7 @@ private fun YearMenu(current: String, choices: List<String>, onPick: (String) ->
     Box {
         TextButton(
             onClick = { open = true },
+            contentPadding = PaddingValues(0.dp),
             modifier = Modifier.tvFocusMark().semantics { contentDescription = "Year ${current.take(4)}" },
         ) {
             Text("Year ${current.take(4)}")

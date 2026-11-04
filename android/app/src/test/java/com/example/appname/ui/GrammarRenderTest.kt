@@ -150,14 +150,14 @@ class GrammarRenderTest {
         }
     }
 
-    @Composable private fun one(m: Modifier, date: String?, num: Int?, g: String?) = DateBlock(date, num, g, m)
+    @Composable private fun DateCell(modifier: Modifier, date: String?, num: Int?, g: String?) = DateBlock(date, num, g, modifier)
 
     @Test fun rows() = shoot("rows") {
-        GrammarRow("Sorry, Wrong Number", { m -> one(m, "1943-05-25", null, "mystery") }, {}, sub = listOf(null), length = "30 min", onPlay = {})
-        GrammarRow("The Hitch-Hiker", { m -> one(m, "1942-09-02", null, "mystery") }, {}, sub = listOf("Orson Welles in the lead"), length = "29 min", onPlay = {})
-        GrammarRow("Spring Offensive, a title long enough to take two full lines", { m -> one(m, "1950-02", null, "drama") }, {}, sub = listOf("Sponsored by Lux", "CBS", "Remastered"), length = "1 h", onPlay = {})
-        GrammarRow("Year only", { m -> one(m, "1948", null, "scifi") }, {}, length = "30 min", onPlay = {})
-        GrammarRow("Undated number", { m -> one(m, null, 14, null) }, {}, sub = listOf("Undated"), length = "28 min", onPlay = {})
+        GrammarRow("Sorry, Wrong Number", { m -> DateCell(m, "1943-05-25", null, "mystery") }, {}, sub = listOf(null), length = "30 min", onPlay = {})
+        GrammarRow("The Hitch-Hiker", { m -> DateCell(m, "1942-09-02", null, "mystery") }, {}, sub = listOf("Orson Welles in the lead"), length = "29 min", onPlay = {})
+        GrammarRow("Spring Offensive, a title long enough to take two full lines", { m -> DateCell(m, "1950-02", null, "drama") }, {}, sub = listOf("Sponsored by Lux", "CBS", "Remastered"), length = "1 h", onPlay = {})
+        GrammarRow("Year only", { m -> DateCell(m, "1948", null, "scifi") }, {}, length = "30 min", onPlay = {})
+        GrammarRow("Undated number", { m -> DateCell(m, null, 14, null) }, {}, sub = listOf("Undated"), length = "28 min", onPlay = {})
         GrammarRow("Undated, unnumbered: the series' window", { m -> PictureWindow(portrait, "Suspense", "mystery", m) }, {}, sub = listOf("Undated"), length = "28 min", onPlay = {})
         GrammarRow("Suspense: Sorry, Wrong Number", { m -> PictureWindow(portrait, "Suspense", "mystery", m) }, {}, sub = listOf("Suspense", "1943-05-25", "Cast as Mrs. Stevenson"), length = "30 min", onPlay = {})
         GrammarRow("Wide picture whole", { m -> PictureWindow(wide, "The Adventures of Sherlock Holmes", "mystery", m) }, {}, sub = listOf("The Adventures of Sherlock Holmes", "Undated"), length = "30 min", onPlay = {})
@@ -326,7 +326,7 @@ class GrammarRenderTest {
         HeadBoard("Counterrevolutionary Hour", null, null, "Series", listOf("1950"), "1950-01-01", "1951-01-01", Modifier.padding(top = 12.dp))
     }
 
-    @Composable private fun nowPlaying(art: Artwork?, name: String, genre: String?) {
+    @Composable private fun NowPlayingCell(art: Artwork?, name: String, genre: String?) {
         androidx.compose.foundation.layout.Column(Modifier.padding(horizontal = 24.dp)) {
             NowPlayingArt(art, name, genre, maxSide = 360.dp)
             androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
@@ -336,9 +336,9 @@ class GrammarRenderTest {
         GrammarRow("Sorry, Wrong Number", { m -> PictureWindow(art, name, genre, m) }, {}, sub = listOf(name, "May 25, 1943"), openLabel = "Open player")
     }
 
-    @Test fun nowPlayingPortrait() = shoot("nowplaying-portrait") { nowPlaying(portrait, "Suspense", "mystery") }
-    @Test fun nowPlayingWide() = shoot("nowplaying-wide") { nowPlaying(wide, "The Adventures of Sherlock Holmes", "mystery") }
-    @Test fun nowPlayingBlock() = shoot("nowplaying-block") { nowPlaying(null, "Lux Radio Theatre", "drama") }
+    @Test fun nowPlayingPortrait() = shoot("nowplaying-portrait") { NowPlayingCell(portrait, "Suspense", "mystery") }
+    @Test fun nowPlayingWide() = shoot("nowplaying-wide") { NowPlayingCell(wide, "The Adventures of Sherlock Holmes", "mystery") }
+    @Test fun nowPlayingBlock() = shoot("nowplaying-block") { NowPlayingCell(null, "Lux Radio Theatre", "drama") }
 
     private val queueEmpty = "Episodes you add play in this order, after the one that is playing."
 

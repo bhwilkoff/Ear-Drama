@@ -158,6 +158,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **R16** "Automatic transcript" (`Transcript.LABEL`) on Detail, the
   player, and the transcript screen's title.
 - **R17** the car's four roots are the phone's tabs reduced (§9.1).
+- **R18a Player sheet opens whole** (N4, 2026-11-04): `skipPartiallyExpanded = true`, so Play and the option row are on the first screen, never below a half-height peek; the sheet and the page share the 16 dp margin; the option row's controls sit in equal-weight cells. A trailing button on a row ends 12 dp from the edge, where Play's circle does; a text button that opens a menu or a run starts on the page margin (zero content padding).
 - **R18** speed, sleep, and skip live on the player sheet.
 - **R18a** Another speaker (the owner, 2026-10-28: "All apps should be
   able to make use of native sharing like airplay or casting on their
