@@ -66,6 +66,9 @@ check("guard: a repeated air date is dropped from a title", DT.decide_episode("R
 check("guard: a bracketed air date is dropped", DT.decide_episode("Cops And Robbers [1964-03-19]", "S", "1964-03-19", None)[0], "Cops And Robbers")
 check("guard: another date is spelled out", DT.decide_episode("Frankenstein (Repeat of 1931-08-03)", "W", "1932-03-07", None)[0], "Frankenstein (Repeat of August 3, 1931)")
 check("guard: a trailing air date is dropped", DT.decide_episode("Criscos Radio Newspaper 1944-03-14", "C", "1944-03-14", None)[0], "Criscos Radio Newspaper")
+check("guard: an asterisk-wrapped uploader note leaves a series name", DT.clean_series_name("The Shadow Recreations **Updated 1 27 **", "k")[0], "The Shadow Recreations")
+check("guard: an asterisk-wrapped uploader note leaves an episode title", DT.decide_episode("Chapter One **Updated 1 27 **", "S", None, None)[0], "Chapter One")
+check("control: a lone asterisk is not an uploader note", DT.strip_uploader_note("MacArthur*s Dismissal"), "MacArthur*s Dismissal")
 check("date composes", DT.decide_episode("xxx", "Suspense", "1952-04-26", None),
       ("Suspense, April 26, 1952", "composed", ["series.name", "episodes.air_date"], None))
 check("number composes", DT.decide_episode("Episode 112", "Gunsmoke", None, 112),

@@ -107,6 +107,14 @@ def compose_title(series_name, air_date, num):
 ISO_IN_TITLE = re.compile(r"(?<![\d])((?:19|20)\d\d)[-.](\d\d)[-.](\d\d)(?!\d)")
 
 
+UPLOADER_NOTE = re.compile(r"\s*\*{2,}[^*]*\*{2,}")
+
+
+def strip_uploader_note(text):
+    """An uploader's asterisk-wrapped note ("The Shadow Recreations **Updated 1 27 **") is raw upload residue: removed."""
+    return re.sub(r"\s{2,}", " ", UPLOADER_NOTE.sub("", text or "")).strip()
+
+
 def spell_iso_dates(title, air_date):
     """No ISO date on screen (owner 2026-11-04): a date the title repeats from the record's own air date is
     dropped with its brackets and separators (the date line already shows it); any other is spelled out."""
@@ -126,7 +134,7 @@ def spell_iso_dates(title, air_date):
 
 def decide_episode(shown, series_name, air_date, num):
     """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'."""
-    shown = spell_iso_dates(shown, air_date)
+    shown = spell_iso_dates(strip_uploader_note(shown), air_date)
     if readable_title(shown):
         return shown, "source", ["episodes.title"], None
     got = compose_title(series_name, air_date, num)
@@ -229,7 +237,7 @@ def clean_series_name(name, key=None):
     """(shown name, reason): the name with this pass's classes undone, or (None, reason) when what is left has
     no program behind it. Classes: page or side fragment, cut-off tail, episode code, uploader's initials,
     a glued count or month, a reel compilation. A name no class touches comes back unchanged."""
-    orig = (name or "").strip()
+    orig = strip_uploader_note(name)
     if not orig or (key or "").startswith("librivox"):
         return orig, None
     if FRAGMENT_ONLY.match(orig):
