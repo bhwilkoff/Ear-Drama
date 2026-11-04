@@ -113,7 +113,8 @@ The only shapes; a new one needs a new rule.
 - **The hero (`TVHero`) heads Home, a series, an episode, a person, Surprise and Now Playing:** a board in the genre hue, edge to edge and up to the top of the screen, the words at the margin (kicker, name at L1, what it is, event line, one row of actions), the picture at the right. It replaces `HeadBoard` on the TV. The window takes the largest side its picture holds up at (`Grammar.windowFill`'s floor), up to 460 pt, so a picture is never lost to a slot too big for it. A window of 300 pt or more with no picture is a tonal letter, filled, never a hairline outline.
 - **Two cards.** The wide card (`TVWideCard`, 640 by 236, `.card`): the window, then a line, the title, a line, on its board. It carries Continue, Queue, stations, an evening's slots, search hits. The date card (`TVDateCard`, 420 by 236, `.card`): the date in display type, the title, the length, on the show's board, for a list of one show, where the window would repeat. A row of cards is one height, always.
 - **A person is a round face (`TVFace`) with no plate:** focus lifts the circle and rings it; the name holds two lines and the count one, so every face sits on one grid. `.card` is for rectangles.
-- **Color.** The app's tint does not reach the TV's buttons: at rest the system's quiet plate, focused the system's white. Blue is for nothing on this screen but the tab bar's selection (the remote has no links), so §7.2 no longer tints labels. Ink plays; a hue is a board.
+- **Color.** The TV takes no tint (`.tint(nil)` on the tab view and the player): a tint colors a focused button's label too, so a light one is white on the system's white plate, which is how Play, Resume and Pause first reached the set. At rest the system's quiet plate, focused the system's plate, which is glass and takes a little of the board behind it. A button's label carries no `foregroundStyle` of its own, or it cannot invert on focus. Blue is for nothing on this screen but the tab bar's selection (the remote has no links), so §7.2 no longer tints labels. Ink plays; a hue is a board.
+- **Focus always shows.** `.borderless` lights only an image, so text or shapes under it take focus with nothing on screen. Anything with no plate of its own (a field's cell, a letter) wears `TVFocusRing` under `TVBareButtonStyle`.
 - **Page order: pictures before charts.** A chart (the day strip, the field) never opens a page. Home's strip follows the shows of that night; Browse's field opens from "By decade" and its tiles are the first thing under the filters.
 
 - *Replaced* §3.2's 420 by 236 typographic card with date, title, series as the only card; §3.3's native `List`s; §4.3's series page; §4.6's Library as a list; R11c's day board at the head of Home; R11d's "Follow stays the series page's first focus stop".
@@ -137,10 +138,12 @@ The only shapes; a new one needs a new rule.
   shows as tiles, the day strip with its legend on one line, Most downloaded, Most heard voices, New
   ear dramas. A shelf of nothing draws nothing, so one episode in progress is the hero, not a lone
   card beside an empty screen.
-- **§4.2 Browse** (was Series) is a `List` of series led by a Genre
-  picker and a Sort picker (Popular by default, A to Z, Most episodes,
-  Oldest first; Popular as `docs/iOS-DESIGN.md` §4.2). The tab bar names
-  the section, so the screen draws no title, as every tvOS tab.
+- **§4.2 Browse** (was Series) is Shows, Voices and Ear dramas at natural width, then one line: the
+  count, then Genre and Sort as menus (Popular by default, A to Z, Most episodes, Oldest first;
+  Popular as `docs/iOS-DESIGN.md` §4.2), By decade and the singles switch; then the tiles. The tab
+  bar names the section, so the screen draws no title, as every tvOS tab. In A to Z a letter starts
+  the list at that letter and the row marks which: scroll on the TV follows focus, so a `scrollTo`
+  is undone at once, and a letter's tiles may not be drawn to take focus.
 - **§4.3 A series page** is the hero (genre and at most two networks, the name, the years and
   count, the run strip on the show's own years), then Play (the first focus stop: the episode in
   progress as Resume, else the first episode), Follow / Following (`FollowedSeries`, synced) and the
@@ -188,7 +191,7 @@ The only shapes; a new one needs a new rule.
   focused paragraph is bright. Menu closes it.
 
 - **D3-8** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: each station is a `ShowTile` on its genre's board under the card style (a focus stop; "Listening live" is a fact line), slots are `GrammarRow`s with "Now" in ink, Surprise's episode and evening are head boards with Play as the default focus, and its play is a `ShowTile` with the cast fingerprint that takes no focus (the TV records nothing). A person is a head board, a shelf of `ShowTile`s, then rows.
-- **§4.8a Stations at ten feet** (2026-11-04; replaces what disagrees in §4.8): stations are wide cards of one height. "Tonight in 19xx" is said once, by the first card; the evening under them is headed by its date, with the network, station and Year menu on that line. The evening is one shelf of wide cards in time order, each slot's time first ("7:00 PM"), the paper's own time in words at its foot ("Aired 9:00 PM ET"). A run of dead slots is one narrow quiet card that opens in place; surviving broadcasts lead the eye.
+- **§4.8a Stations at ten feet** (2026-11-04; replaces what disagrees in §4.8): stations are wide cards of one height. "Tonight in 19xx" is said once, by the first card; the evening under them is headed by its date, with the network, station and Year menu on that line. The evening is one shelf of wide cards in time order, each slot's time first ("7:00 PM"), the paper's own time in words at its foot ("Aired 9:00 PM ET"). A run of dead slots is one narrow quiet card that opens in place; surviving broadcasts lead the eye. The Year menu names a date where two evenings share a year.
 - **§4.8 Stations** (`RadioScreen_tvOS`, `apple/tvOS/RadioScreen_tvOS.swift`)
   is the web's §4.9 at ten feet. It opens on the stations shelf
   (`StationsShelf_tvOS`), one horizontal focus section of `.card` buttons,
@@ -236,15 +239,15 @@ The only shapes; a new one needs a new rule.
   will no longer hear their takes." for everyone else), each a focus
   section. Returning to the app re-reads the record unless it is playing.
 
-- **§4.11 A person** (`PersonScreen_tvOS`, `withPerson`) is a List: the
-  portrait at 200 pt when one is served, the name at page-title size and
-  the facts line (the years from the people row, the episode count), not
-  focusable; then one button naming the order, Oldest first or Newest
-  first, which flips it (shown only with more than one episode); then a
-  section per series of episode rows, each naming the roles it credits
-  the person in. Focus lands on the order button or the first row,
-  never the heading. No bio is written (R13). Back pops to Detail or
-  Search (§1.5).
+- **§4.11 A person** (`PersonScreen_tvOS`, `withPerson`) is the hero: the
+  round portrait, the name, the facts line (the years from the people row,
+  the episode count, the shows), the run strip; then one button naming the
+  order, Oldest first or Newest first, which flips it (shown only with more
+  than one episode). Then the Shows shelf, most episodes first, so the show a
+  person is known for leads; then a shelf per series of date cards, each naming
+  the roles it credits the person in. Focus lands on the order button or the
+  first card, never the heading. No bio is written (R13). Back pops to Detail
+  or Search (§1.5).
 
 ## §5 The player
 
@@ -397,11 +400,8 @@ The rights line, the transcript label, and volume leveling are as in
 
 ## §12 Open (what the code does not yet meet)
 
-- **Now Playing shows no cast**, though its own comment and research
-  §6 say the people are the picture (`NowPlaying_tvOS`).
 - **Focus is claimed by `defaultFocus` alone**, which the template's §6.2
-  calls unreliable on tvOS; Now Playing declares no default focus and no
-  restoration target on dismiss.
+  calls unreliable on tvOS; pressed on the set 2026-11-04 it held on every page.
 - **Series browse has only a Genre facet**, no network or decade
   (`SeriesBrowseScreen_tvOS` passes `network: nil, decade: nil`).
 - **Library has no Played section**, and Remove from History does not

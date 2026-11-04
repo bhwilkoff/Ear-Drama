@@ -79,7 +79,11 @@ private struct EveningList: View {
                         if live.day == evening.day { live.stop() }
                         picked = year
                     })) {
-                        ForEach(evening.choices, id: \.self) { Text(verbatim: String($0.prefix(4))).tag($0) }
+                        // Two evenings can share a year; only their dates tell them apart.
+                        ForEach(evening.choices, id: \.self) { choice in
+                            let year = String(choice.prefix(4))
+                            Text(verbatim: evening.choices.filter { $0.hasPrefix(year) }.count > 1 ? AirDate.medium(choice) : year).tag(choice)
+                        }
                     }
                     .pickerStyle(.menu)
                 }
