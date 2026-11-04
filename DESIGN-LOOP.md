@@ -295,6 +295,10 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   load on 10-31). No fix is in the log for any of them.
 - [ ] **N8 Android's stall watchdog can count a slow seek as a stall.** Fixed on Apple and web
   2026-10-31; Android has no in-flight seek signal. It was promised a note and got none until now.
+- [ ] **N12 The tap tier tests the same two shows.** Owner, 2026-11-04: "It seems to me that it is running
+  the same things over and over." `Fixture` pins X Minus One and Hopalong Cassidy, so every run walks the
+  same pages (the vary-test-content rule). Pick shows from the live catalog per run: rich, bare, no
+  picture, long title. Run only the classes a change touches; the whole tier once per ship.
 
 ### E. Records
 - [ ] **N9 Parity audit.** PARITY shows 7 iPhone ✅ against a 50-test tap tier, and row "Background
