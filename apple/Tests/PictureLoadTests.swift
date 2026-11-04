@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 // A portrait must not become a monogram because its fetch was cancelled or throttled (2026-11-04:
 // a person's page and iPad Home drew monograms for people whose Voices tiles drew their portraits).
 @Suite(.serialized) struct PictureLoadTests {
-    private final class Stub: URLProtocol, @unchecked Sendable {
+    private nonisolated final class Stub: URLProtocol, @unchecked Sendable {
         nonisolated(unsafe) static var statuses: [Int] = []
         nonisolated(unsafe) static var requests = 0
         nonisolated(unsafe) static var hang = false
@@ -29,7 +29,7 @@ import UniformTypeIdentifiers
         }
     }
 
-    private static func png() -> Data {
+    private nonisolated static func png() -> Data {
         let context = CGContext(data: nil, width: 2, height: 2, bitsPerComponent: 8, bytesPerRow: 0,
                                 space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
         let data = NSMutableData()
