@@ -37,10 +37,11 @@ struct ContentView_tvOS: View {
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        // §3.0: blue is not a label color on the TV; focus is the system's white.
-        .tint(Color.brandText)
+        // §3.0: no tint on the TV. A tint colors a focused button's label too, so any light one
+        // is white on the system's white plate.
+        .tint(nil)
         .fullScreenCover(isPresented: $store.isPlayerPresented) {
-            NowPlaying_tvOS().tint(Color.brandText)
+            NowPlaying_tvOS().tint(nil)
         }
         // The Top Shelf's Continue items follow the history from any tab.
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
@@ -349,12 +350,12 @@ private struct SeriesBrowseScreen_tvOS: View {
                                 ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
                             }
                             .pickerStyle(.segmented)
+                            .fixedSize()
                             if scope == .dramas {
                                 FinishedBrowse()
                             } else if scope == .voices {
                                 VoicesBrowse()
                             } else {
-                                filters
                                 results(series, proxy: proxy)
                             }
                         }
@@ -405,6 +406,7 @@ private struct SeriesBrowseScreen_tvOS: View {
             Picker("Sort", selection: $sort) {
                 ForEach(SeriesSort.allCases, id: \.self) { Text($0.title).tag($0) }
             }
+            .pickerStyle(.menu)
             if genre != nil || decade != nil {
                 Button("Clear") { genre = nil; decade = nil }
             }
@@ -422,6 +424,7 @@ private struct SeriesBrowseScreen_tvOS: View {
                  : countText(shows.count, "show", "shows"))
                 .font(TypeRamp.bodyStrong)
             Spacer()
+            filters
             if !field.genres.isEmpty {
                 Button { fieldOpen.toggle() } label: {
                     Label("By decade", systemImage: fieldOpen ? "chevron.up" : "chevron.down")
@@ -580,7 +583,7 @@ private struct PersonScreen_tvOS: View {
                         }
                         if groups.count > 1 {
                             TVShelf(title: "Shows") {
-                                ForEach(groups) { group in
+                                ForEach(groups.sorted { $0.episodes.count > $1.episodes.count }) { group in
                                     let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
                                                                 name: group.seriesName, episodes: group.episodes)
                                     TileLink(value: Route.series(group.seriesKey), series: tile,
@@ -1067,8 +1070,18 @@ private struct NowPlaying_tvOS: View {
 /// The system's audio output picker (AVKit): the Apple TV's own speakers, a
 /// HomePod, or another AirPlay speaker, never a custom device list.
 private struct RoutePicker_tvOS: UIViewRepresentable {
-    func makeUIView(context: Context) -> AVRoutePickerView {
-        let view = AVRoutePickerView()
+    /// Focus puts a white plate behind the glyph, which `tintColor` alone leaves white on white.
+    final class InkedPicker: AVRoutePickerView {
+        override func didUpdateFocus(in context: UIFocusUpdateContext, with coordinator: UIFocusAnimationCoordinator) {
+            super.didUpdateFocus(in: context, with: coordinator)
+            let ink: UIColor = context.nextFocusedView?.isDescendant(of: self) == true ? .black : .white
+            tintColor = ink
+            activeTintColor = ink
+        }
+    }
+
+    func makeUIView(context: Context) -> InkedPicker {
+        let view = InkedPicker()
         view.routePickerButtonStyle = .plain
         view.prioritizesVideoDevices = false
         // §5.2a: the system style draws its glyph black on this page.
@@ -1077,6 +1090,6 @@ private struct RoutePicker_tvOS: UIViewRepresentable {
         return view
     }
 
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+    func updateUIView(_ uiView: InkedPicker, context: Context) {}
 }
 #endif

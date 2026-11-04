@@ -142,9 +142,9 @@ struct TitleBlock: View {
     var side: CGFloat = 0
 
     #if os(tvOS)
-    private static let tonalSide: CGFloat = 200
+    static let tonalSide: CGFloat = 200
     #else
-    private static let tonalSide: CGFloat = .infinity
+    static let tonalSide: CGFloat = .infinity
     #endif
 
     var body: some View {
@@ -189,7 +189,9 @@ struct PictureWindow: View {
         .clipShape(round ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 4)))
         .overlay {
             let edge = fill == .block ? Color.onBoard(genre).opacity(0.32) : Color.printEdge
-            if round {
+            if fill == .block, side >= TitleBlock.tonalSide {
+                // A filled letter on its own board needs no frame; a hairline here reads as a wireframe.
+            } else if round {
                 Circle().strokeBorder(edge, lineWidth: 1)
             } else {
                 RoundedRectangle(cornerRadius: 4).strokeBorder(edge, lineWidth: 1)
