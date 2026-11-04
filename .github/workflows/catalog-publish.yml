@@ -297,8 +297,8 @@ jobs:
           EARDRAMA_REGISTRY: out/radio-catalog.sqlite
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq poppler-utils > /dev/null
+          sudo apt-get -o Acquire::Retries=5 update -qq
+          sudo apt-get -o Acquire::Retries=5 install -y -qq poppler-utils > /dev/null
           # Only the window's anniversaries not yet measured, nearest day first, 3 s
           # apart; a day that enters the window costs about 21 PDFs (~1.3 MB).
           python3 tools/build_evenings.py measure --window --max-fetch 120 | tail -4
@@ -425,7 +425,7 @@ jobs:
             exit 1
           fi
           site=$(cat CNAME)
-          code=$(curl -sS -o live/web-manifest.json -w '%{http_code}' "https://$site/data/manifest.json")
+          code=$(curl -sS --retry 4 --retry-delay 5 -o live/web-manifest.json -w '%{http_code}' "https://$site/data/manifest.json")
           case "$code" in
             200) echo "live web projection: $(python3 -c "import json;m=json.load(open('live/web-manifest.json'));print(m['generatedAt'], m['counts']['episodes'])")" ;;
             404) rm -f live/web-manifest.json; echo "no web projection live yet: first publish" ;;

@@ -60,6 +60,8 @@ env:
   # 1 s pause, so 1,200 is about 62 minutes, inside the 75-minute budget.
   BATCH: ${{ inputs.batch || '1200' }}
   MAX_MINUTES: '75'
+  # Nights of an unreachable archive.org (counting tonight) that turn the run red.
+  OUTAGE_DAYS: '3'
 
 jobs:
   fetch:
@@ -161,11 +163,26 @@ jobs:
               # The yield line tools/audit_workflow_health.py reads; without it an idle day is SILENT.
               echo "[catalog-transcripts] nothing to do: every candidate is cached or waiting its retry window" ;;
             fetched/*/success) ;;
-            all_failed/*) echo "::error::transcripts were due and nothing came back (every request failed, or the breaker stopped the batch)" ;;
+            all_failed/*) echo "::error::transcripts were due and nothing came back although archive.org answers its probe (reasons above: '[catalog-transcripts] failed xN')" ;;
+            unreachable/*)
+              echo "::warning::archive.org did not answer the probe; no transcript was fetched tonight"
+              echo "[catalog-transcripts] did nothing: archive.org unreachable ($(python3 -c "import json;print(json.load(open('work/summary.json'))['probe'])")); a warning, not a failure, until it has happened ${OUTAGE_DAYS} nights running" | tee -a "$GITHUB_STEP_SUMMARY" ;;
             killed/yes/*) echo "::warning::the fetch step was stopped by its backstop; publishing what it saved" ;;
             killed/no/*) echo "::error::the fetch step failed before fetching anything" ;;
             *) echo "::error::fetch step outcome ${{ steps.fetch.outcome }} with verdict $verdict" ;;
           esac
+
+      - name: Mark an outage night (the verdict job counts them)
+        if: always() && steps.verdict.outputs.verdict == 'unreachable'
+        run: echo "outage $(date -u +%F)" > outage.txt
+
+      - name: Keep the outage marker
+        if: always() && steps.verdict.outputs.verdict == 'unreachable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: transcripts-outage
+          path: outage.txt
+          retention-days: 7
 
       - name: Keep this run's cache for the publish job
         if: always() && steps.verdict.outputs.changed == 'yes'
@@ -260,9 +277,12 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      actions: write              # count the earlier outage markers, and clear them once archive.org answers
     steps:
       - name: A red X only for broken
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FETCH: ${{ needs.fetch.result }}
           VERDICT: ${{ needs.fetch.outputs.verdict }}
           CHANGED: ${{ needs.fetch.outputs.changed }}
@@ -273,10 +293,26 @@ jobs:
             echo "::error::fetched, but the publish job did not succeed ($PUBLISH)"
             exit 1
           fi
+          if [ "$VERDICT" != unreachable ]; then
+            # Nights running means consecutive: an answer clears the record.
+            for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=transcripts-outage&per_page=100" --jq '.artifacts[].id'); do
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" > /dev/null || echo "::warning::could not clear outage marker $id"
+            done
+          fi
           case "$VERDICT" in
             idle|fetched) ;;
             killed) [ "$CHANGED" = "yes" ] || { echo "::error::nothing fetched before the backstop"; exit 1; } ;;
-            all_failed) echo "::error::transcripts were due and nothing came back"; exit 1 ;;
+            all_failed) echo "::error::transcripts were due and nothing came back and archive.org answers its probe"; exit 1 ;;
+            unreachable)
+              # Markers are artifacts kept 7 days, one per outage night; tonight's is among them.
+              n=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=transcripts-outage&per_page=100" \
+                --jq '[.artifacts[] | select(.expired == false)] | length')
+              echo "outage nights on record, tonight included: $n (red at $OUTAGE_DAYS)"
+              if [ "$n" -ge "$OUTAGE_DAYS" ]; then
+                echo "::error::archive.org has been unreachable for $n nights running; transcripts are not being fetched"
+                exit 1
+              fi
+              echo "::warning::archive.org unreachable tonight; the run did nothing and says so (night $n of $OUTAGE_DAYS)" ;;
             *) echo "::error::the fetch job did not reach a verdict ($FETCH)"; exit 1 ;;
           esac
           if [ "$FETCH" = "failure" ] && [ "$VERDICT" != "killed" ]; then

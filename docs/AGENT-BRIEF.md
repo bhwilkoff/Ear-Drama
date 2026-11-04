@@ -38,6 +38,11 @@ touches. Your brief adds the feature's goal, decisions, and acceptance tests.
   judged from the test XML, 0 `w:` lines. NEVER an emulator or device.
 - Catalog: `bash catalog/tests/run_all.sh`. A change under `catalog/tools/`
   also runs any client suite that reads that file (`git grep` its name).
+- Any change under `catalog/` that the publish runs also runs `bash tools/catalog_dryrun.sh`
+  before it merges (owner, 2026-11-04: "failures shouldn't happen"): it restores the
+  newest Release, builds the projections, and runs the publish's contract tests over
+  the real data, publishing nothing. Fixtures and an old database passed twice on
+  2026-11-04 and met the real data only in the publish. Needs `gh auth` and PyYAML.
 - Worker: `cd worker && npm ci && npm test && npm run test:mutations`. Never
   deploy, never create cloud resources.
 - A changed workflow step is RUN before it merges: extract its `run:` script and

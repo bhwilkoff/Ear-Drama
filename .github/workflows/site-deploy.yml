@@ -64,7 +64,7 @@ jobs:
       - name: Pages from Actions, and the last web projection
         id: ready
         run: |
-          bt=$(gh api "repos/$REPO/pages" --jq .build_type)
+          bt=$(bash tools/gh_retry.sh gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null)
           if [ "$bt" != "workflow" ]; then
             echo "::warning::Pages build_type is '$bt', not 'workflow'; nothing deployed."
             echo "go=no" >> "$GITHUB_OUTPUT"; exit 0
