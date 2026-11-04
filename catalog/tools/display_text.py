@@ -115,6 +115,14 @@ def strip_uploader_note(text):
     return re.sub(r"\s{2,}", " ", UPLOADER_NOTE.sub("", text or "")).strip()
 
 
+ARCHIVE_CODE = re.compile(r"\s*[(\[]\s*(?:[A-Z]{1,4}\s+)?(?:REEL|TAPE|DISC)\s*#?\d[\w.\-]*(?:\s+TRACK\s*\d+)?\s*[)\]]\s*$", re.I)
+
+
+def strip_archive_code(title):
+    """A trailing reel, tape or disc code an uploader added ("Poison Gas (BB REEL 0552)") is residue: removed."""
+    return ARCHIVE_CODE.sub("", title or "").strip()
+
+
 def spell_iso_dates(title, air_date):
     """No ISO date on screen (owner 2026-11-04): a date the title repeats from the record's own air date is
     dropped with its brackets and separators (the date line already shows it); any other is spelled out."""
@@ -134,7 +142,7 @@ def spell_iso_dates(title, air_date):
 
 def decide_episode(shown, series_name, air_date, num):
     """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'."""
-    shown = spell_iso_dates(strip_uploader_note(shown), air_date)
+    shown = spell_iso_dates(strip_archive_code(strip_uploader_note(shown)), air_date)
     if readable_title(shown):
         return shown, "source", ["episodes.title"], None
     got = compose_title(series_name, air_date, num)

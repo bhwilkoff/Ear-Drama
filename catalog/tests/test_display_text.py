@@ -69,6 +69,10 @@ check("guard: a trailing air date is dropped", DT.decide_episode("Criscos Radio 
 check("guard: an asterisk-wrapped uploader note leaves a series name", DT.clean_series_name("The Shadow Recreations **Updated 1 27 **", "k")[0], "The Shadow Recreations")
 check("guard: an asterisk-wrapped uploader note leaves an episode title", DT.decide_episode("Chapter One **Updated 1 27 **", "S", None, None)[0], "Chapter One")
 check("control: a lone asterisk is not an uploader note", DT.strip_uploader_note("MacArthur*s Dismissal"), "MacArthur*s Dismissal")
+check("guard: a trailing reel code leaves an episode title", DT.decide_episode("Poison Gas (BB REEL 0552)", "S", None, None)[0], "Poison Gas")
+check("guard: a reel code with a track leaves a title", DT.decide_episode("The Raincoat (JD REEL 0206 TRACK 2)", "S", None, None)[0], "The Raincoat")
+check("guard: a disc code leaves a title", DT.decide_episode("Night Beat [Disc 123456]", "S", None, None)[0], "Night Beat")
+check("control: a parenthesis that is not a code stays", DT.strip_archive_code("Sound (Last Show of the Series)"), "Sound (Last Show of the Series)")
 check("date composes", DT.decide_episode("xxx", "Suspense", "1952-04-26", None),
       ("Suspense, April 26, 1952", "composed", ["series.name", "episodes.air_date"], None))
 check("number composes", DT.decide_episode("Episode 112", "Gunsmoke", None, 112),
