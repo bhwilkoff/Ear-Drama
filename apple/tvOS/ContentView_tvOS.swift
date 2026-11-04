@@ -1036,24 +1036,28 @@ private struct NowPlaying_tvOS: View {
             HStack(spacing: Spacing.s8) {
                 TransportControls(large: true)
                 Spacer()
-                SpeedMenu()
-                SleepButton()
-                LevelToggle()
-                if let item = player.item {
-                    PlayerQueueButton(episodeID: item.episode.id)
-                }
-                ListenTogetherButton()
-                RoutePicker_tvOS()
-                    .frame(width: 80, height: 80)
-                NextStoryButton()
-                if player.item?.episode.transcriptURL != nil {
-                    Button {
-                        transcriptOpen = true
-                    } label: {
-                        Label(Transcript.label, systemImage: "text.quote")
+                HStack(spacing: Spacing.s4) {
+                    SpeedMenu()
+                    SleepButton()
+                    LevelToggle()
+                    if let item = player.item {
+                        PlayerQueueButton(episodeID: item.episode.id)
+                    }
+                    ListenTogetherButton()
+                    RoutePicker_tvOS()
+                        .frame(width: 80, height: 80)
+                    NextStoryButton()
+                    if player.item?.episode.transcriptURL != nil {
+                        Button {
+                            transcriptOpen = true
+                        } label: {
+                            Label(Transcript.label, systemImage: "text.quote")
+                        }
                     }
                 }
+                .fixedSize(horizontal: true, vertical: false)
             }
+            .lineLimit(1)
             .focusSection()
             FollowingHostNotice()
             if let message = player.errorMessage {
