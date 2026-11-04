@@ -267,6 +267,8 @@ struct SeriesBrowseScreen: View {
     @State private var singles = false
     @State private var shown = BrowseScreenPage.size
     @State private var columnWidth: CGFloat = 0
+    @State private var fieldHeight: CGFloat = 0
+    @State private var sideRowHeight: CGFloat = 0
     @State private var scope: BrowseScope = .shows
 
     private struct Filter: Hashable {
@@ -506,9 +508,24 @@ struct SeriesBrowseScreen: View {
                         LetterRow(letters: azLetters(items)) { proxy.scrollTo("az-\($0)", anchor: .top) }
                         #endif
                     } else if plan.sideBySide {
-                        HStack(alignment: .top, spacing: BrowseLayout.sideGap) {
-                            fieldColumn(field).frame(width: plan.fieldWidth, alignment: .topLeading)
-                            grid(items, width: plan.gridWidth)
+                        // Rows beside the field fill its height; the rest take the whole width, so
+                        // no empty column is left under a short field.
+                        let visible = Array(items.prefix(shown))
+                        let cut = BrowseLayout.rowsBeside(fieldHeight: fieldHeight, rowHeight: sideRowHeight) * plan.columns
+                        VStack(alignment: .leading, spacing: Spacing.s3) {
+                            HStack(alignment: .top, spacing: BrowseLayout.sideGap) {
+                                fieldColumn(field).frame(width: plan.fieldWidth, alignment: .topLeading)
+                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fieldHeight = $0 }
+                                VStack(alignment: .leading, spacing: Spacing.s3) {
+                                    SectionHead(title: heading) { EmptyView() }
+                                    ShowGrid(items: Array(visible.prefix(cut)), fixedWidth: plan.gridWidth,
+                                             onRowHeight: { sideRowHeight = $0 }) { tileView($0, width: $1) }
+                                }
+                            }
+                            if visible.count > cut {
+                                ShowGrid(items: Array(visible.dropFirst(cut)), fixedWidth: columnWidth) { tileView($0, width: $1) }
+                            }
+                            moreButton(items.count)
                         }
                     } else {
                         fieldColumn(field)
@@ -542,11 +559,15 @@ struct SeriesBrowseScreen: View {
             ShowGrid(items: Array(items.prefix(shown)), fixedWidth: gridWidth) { item, width in
                 tileView(item, width: width)
             }
-            if items.count > shown {
-                Button("Show more") { shown += BrowseScreenPage.size }
-                    .buttonStyle(.borderless)
-                    .font(TypeRamp.caption)
-            }
+            moreButton(items.count)
+        }
+    }
+
+    @ViewBuilder private func moreButton(_ count: Int) -> some View {
+        if count > shown {
+            Button("Show more") { shown += BrowseScreenPage.size }
+                .buttonStyle(.borderless)
+                .font(TypeRamp.caption)
         }
     }
 

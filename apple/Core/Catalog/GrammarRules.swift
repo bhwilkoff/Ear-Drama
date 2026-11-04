@@ -376,6 +376,13 @@ nonisolated enum BrowseLayout {
         max(1, (width - gap * CGFloat(columns - 1)) / CGFloat(columns))
     }
 
+    /// Whole tile rows that fit beside a field of `fieldHeight`, one at least; the rest of the grid
+    /// runs the full width.
+    static func rowsBeside(fieldHeight: CGFloat, rowHeight: CGFloat) -> Int {
+        guard fieldHeight > 0, rowHeight > 0 else { return 2 }
+        return max(1, Int(((fieldHeight + gap) / (rowHeight + gap)).rounded(.up)))
+    }
+
     static func plan(width: CGFloat, decades: Int, tileMin: CGFloat) -> Plan {
         let field = fieldWidth(decades: decades)
         let beside = decades > 0 && width - field - sideGap >= CGFloat(sideMinColumns) * tileMin + gap * CGFloat(sideMinColumns - 1)

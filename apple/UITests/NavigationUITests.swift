@@ -27,7 +27,10 @@ final class NavigationUITests: DeviceTestCase {
 
     /// Whole on screen: a tile's frame that runs under the tab bar or off the glass has a center nothing receives.
     private func onScreen(_ app: XCUIApplication, _ e: XCUIElement) -> Bool {
-        e.isHittable && e.frame.minY > 120 && e.frame.maxY < app.frame.height - 110 && e.frame.minX >= 0
+        // The frame is read first: on the iPad XCUITest throws, rather than answers false, when it asks
+        // a tile scrolled out of the List whether it is hittable (no activation point to test).
+        let f = e.frame
+        return f.minY > 120 && f.maxY < app.frame.height - 110 && f.minX >= 0 && f.maxX <= app.frame.width && e.isHittable
     }
 
     private func firstHittable(_ app: XCUIApplication) -> XCUIElement? {
