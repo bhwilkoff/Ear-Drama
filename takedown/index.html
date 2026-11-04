@@ -25,32 +25,81 @@
       <ol>
         <li>The link to each episode or series on eardrama.org.</li>
         <li>The work you hold rights in, and how you hold them.</li>
-        <li>The claim in a form a reader can open: a registration or renewal record, a schedule filed with the U.S. Copyright Office under 17 U.S.C. §1401(f)(5), or another published record that names the claimant.</li>
         <li>Your name, postal address, phone number, and email address.</li>
         <li>A statement that you believe in good faith that the use is not authorized by the rights holder, its agent, or the law.</li>
         <li>A statement that the information in the request is accurate and, under penalty of perjury, that you are the rights holder or authorized to act for them.</li>
         <li>Your physical or electronic signature.</li>
       </ol>
-      <p class="caption">Items 4 through 7 are the elements of a notice under 17 U.S.C. §512(c)(3).</p>
+      <p class="caption">These are the elements of a notice under 17 U.S.C. §512(c)(3).</p>
 
       <h2 class="section-header">Where to send it</h2>
-      <p>By email to <a data-takedown-email href="#">the address on this page</a>.</p>
-      <noscript><p>This page needs JavaScript to show the email address.</p></noscript>
+      <form class="request-form" id="takedown-form" novalidate>
+        <fieldset>
+          <legend class="caption">This request is about</legend>
+          <label class="choice"><input type="radio" name="kind" value="copyright" checked> A copyright I hold or represent</label>
+          <label class="choice"><input type="radio" name="kind" value="other"> Something else, such as privacy</label>
+        </fieldset>
+
+        <label for="td-links">Links, one per line</label>
+        <textarea class="field-input" id="td-links" name="links" rows="3" required placeholder="https://eardrama.org/series/…"></textarea>
+
+        <div data-for="copyright">
+          <label for="td-work">The work you hold rights in</label>
+          <textarea class="field-input" id="td-work" name="work" rows="2"></textarea>
+        </div>
+        <div data-for="other" hidden>
+          <label for="td-reason">Why it should come down</label>
+          <textarea class="field-input" id="td-reason" name="reason" rows="3"></textarea>
+        </div>
+
+        <label for="td-name">Your name</label>
+        <input class="field-input" id="td-name" name="name" autocomplete="name" required>
+        <label for="td-email">Email</label>
+        <input class="field-input" id="td-email" name="email" type="email" autocomplete="email" required>
+
+        <div data-for="copyright">
+          <label for="td-org">Company you represent (optional)</label>
+          <input class="field-input" id="td-org" name="org" autocomplete="organization">
+          <label for="td-phone">Phone</label>
+          <input class="field-input" id="td-phone" name="phone" type="tel" autocomplete="tel">
+          <label for="td-address">Postal address</label>
+          <textarea class="field-input" id="td-address" name="address" rows="2" autocomplete="street-address"></textarea>
+          <label class="choice"><input type="checkbox" name="goodFaith"> I believe in good faith that this use is not authorized by the rights holder, its agent, or the law.</label>
+          <label class="choice"><input type="checkbox" name="accurate"> The information in this request is accurate and, under penalty of perjury, I am the rights holder or authorized to act for them.</label>
+          <label for="td-signature">Type your full name as your signature</label>
+          <input class="field-input" id="td-signature" name="signature">
+        </div>
+
+        <div class="request-trap" aria-hidden="true">
+          <label for="td-website">Leave this empty</label>
+          <input id="td-website" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <button class="btn btn-primary" type="submit">Send request</button>
+        <p class="caption" id="takedown-status" role="status"></p>
+      </form>
+      <p>Or by email to <a data-takedown-email href="#">the address on this page</a>.</p>
+      <noscript><p>This page needs JavaScript to show the form and the email address.</p></noscript>
 
       <h2 class="section-header">What happens next</h2>
-      <p>A recording is removed once its claim can be opened and read. The removal takes effect the next time the catalog is built.</p>
-      <!-- OWNER: how quickly you reply to a request and rebuild the catalog, in your own words. -->
+      <p>A complete notice is answered within one week. The recording comes off the next time the catalog is built, in every app and on this site, and stays off. Your details are kept private and erased three years after the case closes (<a href="../privacy/">Privacy</a>).</p>
+
+      <h2 class="section-header">If something was removed by mistake</h2>
+      <p>Write to the agent below with the link and why it should return.</p>
+
+      <h2 class="section-header">Repeat infringement</h2>
+      <p>Ear Drama stops serving the work of anyone found to infringe repeatedly.</p>
 
       <h2 class="section-header">Designated agent</h2>
-      <!-- OWNER: registered 2026-10-23 as DMCA-1083942. Replace each "Listed in the directory"
-           below with the agent's details exactly as registered. -->
-      <dl class="facts">
-        <div><dt class="caption">Registration</dt><dd><a href="https://dmca.copyright.gov/dmca/search.html">DMCA-1083942</a>, U.S. Copyright Office</dd></div>
-        <div><dt class="caption">Name</dt><dd>Listed in the directory</dd></div>
-        <div><dt class="caption">Postal address</dt><dd>Listed in the directory</dd></div>
-        <div><dt class="caption">Phone</dt><dd>Listed in the directory</dd></div>
-        <div><dt class="caption">Email</dt><dd>Listed in the directory</dd></div>
-      </dl>
+      <p>Registered with the U.S. Copyright Office as <a href="https://dmca.copyright.gov/osp/" rel="noopener">DMCA-1083942</a>.</p>
+      <address class="request-agent">
+        Ben Wilkoff<br>
+        Learning is Change, Inc.<br>
+        8287 S. Pennsylvania Ct.<br>
+        Littleton, CO 80122<br>
+        303-478-9812<br>
+        <a href="mailto:benwilkoff@gmail.com?subject=Removal%20request">benwilkoff@gmail.com</a>
+      </address>
     </article>
     <footer class="site-footer caption">
       <a href="../">Ear Drama</a>
@@ -62,5 +111,6 @@
   </main>
 
   <script src="../js/site.js"></script>
+  <script src="../js/takedown.js"></script>
 </body>
 </html>

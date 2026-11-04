@@ -19,6 +19,7 @@ import { handleAccount, handleDelete } from "./account.js";
 import { handleRooms, sweepRooms } from "./rooms.js";
 import { handlePlays, sweepPlays } from "./plays.js";
 import { handleOpen, isOpenAudio, isOpenRoute } from "./plays-open.js";
+import { handleTakedown, sweepTakedowns } from "./takedown.js";
 import { ARCHIVE_CRON, runArchive } from "./plays-archive.js";
 import { clientAddress, corsHeaders, json, limited, originAllowed, problem, withCors } from "./http.js";
 
@@ -34,6 +35,8 @@ async function route(request, env, url) {
     if (await limited(env.AUTH_LIMITER, ip)) return problem(429, "rate_limited");
     return signIn ? handleSignIn(signIn[1], request, env) : handleRefresh(request, env);
   }
+
+  if (pathname === "/v1/takedown" || pathname.startsWith("/v1/takedown/")) return handleTakedown(url, request, env);
 
   if (pathname === "/v1/rooms" || pathname.startsWith("/v1/rooms/")) {
     if (await limited(env.ROOM_LIMITER, ip)) return problem(429, "rate_limited");
@@ -74,7 +77,7 @@ export default {
   async scheduled(event, env, ctx) {
     // The five-minute trigger only uploads to archive.org; the hourly one also sweeps.
     if (event.cron === ARCHIVE_CRON) return ctx.waitUntil(runArchive(env));
-    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env), runArchive(env)]));
+    ctx.waitUntil(Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env), sweepTakedowns(env), runArchive(env)]));
   },
 
   async fetch(request, env) {

@@ -1068,3 +1068,24 @@ asked for replace and remove; the agent chose the identifier, the collection,
 and the file layout. Performers gain a recording they can take back from the
 item; listeners on archive.org get the play line by line, not one file; copies
 others made before a removal stay out of reach, as the consent says.
+
+
+## 074: Take-down notices: a complete notice removes on its own, and nobody's details are public
+
+**Rule**: the take-down page asks for the elements of a 17 U.S.C. section 512(c)(3)
+notice and nothing more, through a quiet form (one footer link) or email. A complete
+notice removes unless the evidence contradicts it. The public list holds a date and a
+case number; the requester sits in a private D1 table, erased three years after the
+case closes. Nothing a requester wrote reaches Actions logs or issues.
+
+**Why**: the owner, 2026-11-04: *"Let's keep personal details out of the public
+repo... All of these proposals seem incredibly reasonable."* (Archive Watch's note,
+its Decision 175; the owner is the registered agent, DMCA-1083942, reply time one
+week.) The full rule, signals and tests are catalog Decision 029.
+
+**How to apply**: a Worker change reruns `cd worker && npm test && npm run test:mutations`;
+a change to `catalog/tools/takedown_*.py` reruns `catalog/tests/test_takedown_check.py`.
+The deploy needs migration `0005_takedowns.sql` on D1 `eardrama`, the Worker secret
+`TAKEDOWN_TOKEN` (`wrangler secret put`), the same value as the repository secret
+`TAKEDOWN_TOKEN`, and `wrangler deploy` (adds the `TAKEDOWN_LIMITER` binding). No
+platform app change: each already links to the web page (PARITY.md).

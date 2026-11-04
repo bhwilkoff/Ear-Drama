@@ -5,7 +5,9 @@ import { ANONYMOUS_TABLES as ROOM_TABLES } from "../src/rooms.js";
 import { DELETED_PERSON, PLAYS_ANONYMOUS_TABLES, sweepPlays } from "../src/plays.js";
 import { claimByInvite, consent, createProduction, firstPart, invite, linesFor, record, upload } from "./plays-helpers.js";
 
-const ANONYMOUS_TABLES = [...ROOM_TABLES, ...PLAYS_ANONYMOUS_TABLES];
+import { TAKEDOWN_ANONYMOUS_TABLES } from "../src/takedown.js";
+
+const ANONYMOUS_TABLES = [...ROOM_TABLES, ...PLAYS_ANONYMOUS_TABLES, ...TAKEDOWN_ANONYMOUS_TABLES];
 
 let appleCalls;
 beforeEach(() => {
