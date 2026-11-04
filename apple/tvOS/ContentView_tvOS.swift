@@ -895,6 +895,7 @@ private struct LibraryScreen_tvOS: View {
     @State private var inProgress: [EpisodeRow]?
     @State private var queued: [EpisodeRow] = []
     @State private var following: [SeriesRow] = []
+    @Namespace private var libraryFocus
 
     private struct Key: Equatable { let ids: [String]; let queue: [String]; let load: Int }
 
@@ -904,10 +905,6 @@ private struct LibraryScreen_tvOS: View {
                 // The empty state heads the list and takes the focus; the
                 // account and the site pages stay under it (tvOS-DESIGN §7.3a).
                 List {
-                    if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
-                        EmptyState("Nothing played yet", systemImage: "books.vertical",
-                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) })
-                    }
                     Section("Continue") {
                         if inProgress.isEmpty {
                             SectionCaption("Episodes you stop partway through wait here.")
@@ -946,6 +943,15 @@ private struct LibraryScreen_tvOS: View {
                         SiteLinkRows()
                     }
                 }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if inProgress.isEmpty && queued.isEmpty && following.isEmpty {
+                        EmptyState("Nothing played yet", systemImage: "books.vertical",
+                                   action: .init(title: "Browse") { app.selectResettingPrevious(.browse) })
+                            .frame(height: 360)
+                            .prefersDefaultFocus(true, in: libraryFocus)
+                    }
+                }
+                .focusScope(libraryFocus)
             } else {
                 ProgressView()
             }
