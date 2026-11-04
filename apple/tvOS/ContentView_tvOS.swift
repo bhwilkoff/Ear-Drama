@@ -253,7 +253,9 @@ private struct ListenScreen_tvOS: View {
         let peak = day?.years.peak
         let night = peak.flatMap { day?.night($0) }
         let leadID = continuing.isEmpty ? lead(day)?.id : nil
-        let shows = night?.shows.filter { $0.id != leadID } ?? []
+        let others = night?.shows.filter { $0.id != leadID } ?? []
+        // §3.0: pictures lead.
+        let shows = others.filter { $0.series.windowArt != nil } + others.filter { $0.series.windowArt == nil }
         if !rest.isEmpty || !shows.isEmpty {
             TVShelf {
                 if !rest.isEmpty {
@@ -301,7 +303,7 @@ private struct DayStrip_tvOS: View {
         let day = model.years
         VStack(alignment: .leading, spacing: Spacing.s3) {
             SectionHead(title: "This day in radio") {
-                Text(verbatim: "\(countText(day.count, "surviving broadcast", "surviving broadcasts")) \u{00B7} \(countText(day.years.count, "year", "years"))")
+                Text(verbatim: "\(countText(day.count, "surviving broadcast", "surviving broadcasts")) \u{00B7} \(countText(day.years.count, "year", "years"))").foregroundStyle(Color.brandTextMuted)
             }
             YearStrip(day: day, selected: year, height: DayBoard.stripHeight)
             HStack(spacing: TV.cardGap) {
@@ -534,7 +536,7 @@ private struct SeriesScreen_tvOS: View {
                 }
                 ForEach(page.seasons) { season in
                     TVShelf(title: season.season ?? "Undated", lazy: true) {
-                        Text(verbatim: countText(season.episodes.count, "episode", "episodes"))
+                        Text(verbatim: countText(season.episodes.count, "episode", "episodes")).foregroundStyle(Color.brandTextMuted)
                     } content: {
                         ForEach(season.episodes) { episode in
                             NavigationLink(value: Route.episode(episode.id)) { TVDateCard(episode: episode) }
@@ -593,7 +595,7 @@ private struct PersonScreen_tvOS: View {
                         }
                         ForEach(groups) { group in
                             TVShelf(title: group.seriesName, lazy: true) {
-                                Text(verbatim: countText(group.episodes.count, "episode", "episodes"))
+                                Text(verbatim: countText(group.episodes.count, "episode", "episodes")).foregroundStyle(Color.brandTextMuted)
                             } content: {
                                 ForEach(group.episodes) { item in
                                     NavigationLink(value: Route.episode(item.id)) {

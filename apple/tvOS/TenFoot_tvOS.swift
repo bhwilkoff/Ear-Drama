@@ -28,6 +28,20 @@ struct TVBareButtonStyle: ButtonStyle {
     }
 }
 
+/// Focus on something with no plate of its own, under `TVBareButtonStyle` (a field's cell).
+struct TVFocusRing<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.isFocused) private var focused
+
+    var body: some View {
+        content()
+            .background { RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(focused ? 0.16 : 0)) }
+            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(Color.white, lineWidth: 4).opacity(focused ? 1 : 0) }
+            .scaleEffect(focused ? 1.08 : 1)
+            .animation(.easeOut(duration: 0.15), value: focused)
+    }
+}
+
 // MARK: - The hero
 
 /// The show's years as bars on its own span, so a short run is not a mostly empty axis.
@@ -170,7 +184,7 @@ struct TVWideCard: View {
                 Text(verbatim: display ? title.uppercased() : title)
                     .font(display ? TypeRamp.sectionHeader : TypeRamp.bodyStrong)
                     .lineLimit(sub == nil ? 3 : 2)
-                    .minimumScaleFactor(display ? 0.7 : 1)
+                    .minimumScaleFactor(display ? 0.7 : 0.75)
                 if let sub { Text(verbatim: sub).font(TypeRamp.caption).lineLimit(2) }
                 Spacer(minLength: 0)
                 if let foot { Text(verbatim: foot).font(TypeRamp.caption).lineLimit(display ? 2 : 1).opacity(0.8) }
@@ -211,6 +225,7 @@ struct TVDateCard: View {
             Text(verbatim: episode.displayTitle)
                 .font(TypeRamp.bodyStrong)
                 .lineLimit(3)
+                .minimumScaleFactor(0.75)
                 .multilineTextAlignment(.leading)
             Spacer(minLength: 0)
             if let foot = note ?? episode.durationText {

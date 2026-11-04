@@ -123,7 +123,9 @@ extension Evening_tvOS {
         if evening.choices.count > 1 {
             Menu {
                 ForEach(evening.choices, id: \.self) { choice in
-                    Button(String(choice.prefix(4))) {
+                    // Two evenings can share a year; only their dates tell them apart.
+                    let year = String(choice.prefix(4))
+                    Button(evening.choices.filter { $0.hasPrefix(year) }.count > 1 ? AirDate.medium(choice) : year) {
                         if live.day == evening.day { live.stop() }
                         picked = choice
                     }
