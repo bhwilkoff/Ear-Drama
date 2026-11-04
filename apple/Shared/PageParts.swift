@@ -229,6 +229,10 @@ struct ReadableColumn: ViewModifier {
         content
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity)
+            #if os(iOS)
+            // The list's own grouped backdrop stops at the column; the same color fills the margins.
+            .background(Color(uiColor: .systemGroupedBackground))
+            #endif
         #endif
     }
 }
