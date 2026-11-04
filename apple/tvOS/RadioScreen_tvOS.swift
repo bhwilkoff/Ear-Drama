@@ -1,10 +1,9 @@
 #if os(tvOS)
 import SwiftUI
 
-// Stations on the TV (tvOS-DESIGN §4.8): a shelf of station cards, Tonight in
+// Stations on the TV (tvOS-DESIGN §4.8, §4.8a): a shelf of station cards, Tonight in
 // 19xx first and then the genre stations, each listening live into Now
-// Playing full screen; then tonight's evening as a schedule the remote
-// scrolls, every slot a focus stop so only the focused one is bright.
+// Playing full screen; then tonight's evening as a shelf of slots in time order.
 
 struct RadioScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
@@ -35,8 +34,8 @@ struct RadioScreen_tvOS: View {
         case .nothing where !stations.stations.isEmpty:
             ScrollView(.vertical) {
                 StationsShelf_tvOS(evening: nil, stations: stations.stations, now: now, focus: $shelfFocused)
-                    .padding(.horizontal, 90)
-                    .padding(.vertical, 60)
+                    .padding(.top, TV.rootClearance)
+                    .padding(.bottom, 60)
             }
             .defaultFocus($shelfFocused, true)
         case .nothing:
@@ -64,51 +63,53 @@ private struct Evening_tvOS: View {
         let slots = evening.day.slots
         let onAir = RadioClock.onAir(slots, at: now)
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: Spacing.s8) {
+            VStack(alignment: .leading, spacing: Spacing.s6) {
                 StationsShelf_tvOS(evening: evening, stations: stations, now: now, focus: $liveFocused)
 
-                VStack(alignment: .leading, spacing: Spacing.s3) {
-                    Text(verbatim: "Tonight in \(evening.day.year)")
-                        .font(TypeRamp.pageTitle)
-                        .foregroundStyle(Color.brandText)
-                    Text(verbatim: RadioClock.longDate(evening.day.evening))
-                        .font(TypeRamp.body)
-                        .foregroundStyle(Color.brandText)
-                    if let line = evening.day.stationLine {
-                        Text(verbatim: line)
+                VStack(alignment: .leading, spacing: Spacing.s1) {
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.s4) {
+                        Text(verbatim: RadioClock.longDate(evening.day.evening))
+                            .font(TypeRamp.sectionHeader)
+                            .foregroundStyle(Color.brandText)
+                        if let line = evening.day.stationLine {
+                            Text(verbatim: line)
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
+                        Spacer(minLength: 0)
+                        yearMenu
+                    }
+                    .focusSection()
+
+                    ScrollView(.horizontal) {
+                        LazyHStack(alignment: .top, spacing: TV.cardGap) {
+                            ForEach(RadioClock.entries(slots, isDead: { evening.detail(for: $0) == nil }), id: \.self) { entry in
+                                switch entry {
+                                case .slot(let index):
+                                    SlotCard_tvOS(slot: slots[index], zone: evening.zone, detail: evening.detail(for: slots[index]),
+                                                  isNow: index == onAir.index)
+                                case .run(let indices):
+                                    GapRun_tvOS(slots: indices.map { slots[$0] }, zone: evening.zone,
+                                                isNow: onAir.index.map(indices.contains) ?? false)
+                                }
+                            }
+                        }
+                        .padding(.vertical, Spacing.s4)
+                    }
+                    .scrollClipDisabled()
+                    .scrollIndicators(.hidden)
+                    .focusSection()
+
+                    // The TV opens no web page, so the listing's credit is text.
+                    if let line = evening.day.witnessLine {
+                        Text(verbatim: "Schedule: \(line)")
                             .font(TypeRamp.caption)
                             .foregroundStyle(Color.brandTextMuted)
                     }
                 }
-                .accessibilityElement(children: .combine)
-
-                if evening.choices.count > 1 {
-                    HStack { yearMenu }.focusSection()
-                }
-
-                VStack(alignment: .leading, spacing: Spacing.s2) {
-                    ForEach(RadioClock.entries(slots, isDead: { evening.detail(for: $0) == nil }), id: \.self) { entry in
-                        switch entry {
-                        case .slot(let index):
-                            SlotRow_tvOS(slot: slots[index], zone: evening.zone, detail: evening.detail(for: slots[index]),
-                                         isNow: index == onAir.index)
-                        case .run(let indices):
-                            GapRun_tvOS(slots: indices.map { slots[$0] }, zone: evening.zone,
-                                        isNow: onAir.index.map(indices.contains) ?? false)
-                        }
-                    }
-                }
-                .focusSection()
-
-                // The TV opens no web page, so the listing's credit is text.
-                if let line = evening.day.witnessLine {
-                    Text(verbatim: "Schedule: \(line)")
-                        .font(TypeRamp.caption)
-                        .foregroundStyle(Color.brandTextMuted)
-                }
             }
-            .padding(.horizontal, 90)
-            .padding(.vertical, 60)
+            .padding(.top, TV.rootClearance)
+            .padding(.bottom, 60)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .defaultFocus($liveFocused, true)
@@ -150,7 +151,7 @@ private struct StationsShelf_tvOS: View {
 
     var body: some View {
         ScrollView(.horizontal) {
-            LazyHStack(spacing: Spacing.s8) {
+            LazyHStack(alignment: .top, spacing: TV.cardGap) {
                 if let evening {
                     tonight(evening).focused(focus)
                 }
@@ -162,9 +163,10 @@ private struct StationsShelf_tvOS: View {
                     }
                 }
             }
-            .padding(.vertical, Spacing.s6)
+            .padding(.vertical, Spacing.s4)
         }
         .scrollClipDisabled()
+        .scrollIndicators(.hidden)
         .focusSection()
     }
 
@@ -215,8 +217,8 @@ private struct StationsShelf_tvOS: View {
     }
 }
 
-/// A station as the grammar's tile on its genre's board: its show's window, the station's name, the
-/// strip, and what is on; focus lifts the whole tile through the card style.
+/// A station as the wide card on its genre's board: what is on now, its show's window; focus lifts
+/// the whole card through the card style.
 private struct StationCard_tvOS: View {
     let name: String
     let genre: String?
@@ -236,10 +238,9 @@ private struct StationCard_tvOS: View {
         Button {
             if isLive { stop() } else if canListen { listen() }
         } label: {
-            ShowTile(series: SeriesRow(key: "station-\(name)", name: name, genre: genre ?? show?.genre, firstDate: nil,
-                                       lastDate: nil, networks: [], episodeCount: 0, face: show?.face, picture: show?.picture),
-                     facts: [episode?.series, episode?.title ?? note, isLive ? "Listening live" : nil,
-                             startOver && canListen ? "Replay from the start" : nil].compactMap { $0 })
+            TVWideCard(art: show?.windowArt, name: name, genre: genre ?? show?.genre, title: name, display: true,
+                       sub: episode?.series ?? note,
+                       foot: isLive ? "Listening live" : startOver && canListen ? "Replay from the start" : episode?.title)
         }
         .buttonStyle(.card)
         .accessibilityValue(isLive ? "Listening live" : "")
@@ -250,69 +251,77 @@ private struct StationCard_tvOS: View {
     }
 }
 
-/// A run of slots with no recording: one focus stop that opens to the individual lines.
+/// A dead slot or a run of them: narrow and quiet, so what survives leads (§4.8a).
+private struct GapCard_tvOS: View {
+    let time: String
+    let title: String
+    var foot: String? = nil
+    var isNow = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: time).font(TypeRamp.caption).lineLimit(1)
+            Text(verbatim: title).font(TypeRamp.caption).lineLimit(3).multilineTextAlignment(.leading)
+            Spacer(minLength: 0)
+            if isNow {
+                Text(verbatim: "Now").font(TypeRamp.caption.weight(.semibold))
+            } else if let foot {
+                Text(verbatim: foot).font(TypeRamp.caption).lineLimit(1)
+            }
+        }
+        .foregroundStyle(Color.brandTextMuted)
+        .padding(.horizontal, Spacing.s4)
+        .padding(.vertical, Spacing.s3)
+        .frame(width: 320, height: TV.wideCard.height, alignment: .topLeading)
+        .background(Color.brandSurface)
+    }
+}
+
+/// A run of slots with no recording: one focus stop that opens to the individual slots.
 private struct GapRun_tvOS: View {
     let slots: [RadioSlot]
     let zone: String
     let isNow: Bool
     @State private var open = false
-    @FocusState private var focused: Bool
 
     var body: some View {
         let label = RadioClock.runLabel(slots)
         Button { open.toggle() } label: {
-            HStack(spacing: Spacing.s3) {
-                Text(verbatim: "\(label.span) \u{00B7} \(label.note)").font(TypeRamp.body)
-                Spacer(minLength: 0)
-                if isNow { Text(verbatim: "Now").font(TypeRamp.body.weight(.semibold)) }
-                Image(systemName: open ? "chevron.up" : "chevron.down")
-            }
-            .padding(Spacing.s4)
-            .foregroundStyle(focused ? Color.brandText : Color.brandTextMuted)
-            .background(RoundedRectangle(cornerRadius: Radius.card).fill(focused ? Color.brandSurfaceAlt : .clear))
+            GapCard_tvOS(time: label.span, title: label.note, isNow: isNow)
         }
-        .buttonStyle(.plain)
-        .focused($focused)
+        .buttonStyle(.card)
+        .accessibilityValue(open ? "Open" : "Closed")
         if open {
-            ForEach(slots) { slot in
-                SlotRow_tvOS(slot: slot, zone: zone, detail: nil, isNow: false)
-            }
+            ForEach(slots) { SlotCard_tvOS(slot: $0, zone: zone, detail: nil, isNow: false) }
         }
     }
 }
 
-/// A surviving slot opens its episode (Play is on Detail, §4.4); a gap is a focus stop that reads
-/// its time, length, and why, never the printed text. Each is the grammar's row, "Now" in ink on
-/// the slot on the air.
-private struct SlotRow_tvOS: View {
+/// A surviving slot opens its episode (Play is on Detail, §4.4); a gap reads its time, length and
+/// why, never the printed text. The time heads the card, the paper's own time at its foot.
+private struct SlotCard_tvOS: View {
     let slot: RadioSlot
     let zone: String
     let detail: EpisodeDetail?
     let isNow: Bool
-    @FocusState private var focused: Bool
 
     var body: some View {
         let label = RadioClock.timeLabel(slot, zone: zone)
         let length = "\(slot.lengthMin) min"
+        let foot = [label.eastern.map { "Aired \($0)" }, length].compactMap { $0 }.joined(separator: " \u{00B7} ")
         if let detail {
             NavigationLink(value: Route.episode(detail.episode.id)) {
-                GrammarRow(visual: .window(detail.episode.seriesWindowArt, name: detail.episode.seriesName,
-                                           genre: detail.episode.seriesGenre),
-                           title: slot.playableEpisode?.series ?? detail.episode.seriesName,
-                           sub: [label.local, label.eastern, detail.episode.displayTitle, isNow ? length : nil],
-                           length: length, badge: isNow ? "Now" : nil)
+                TVWideCard(art: detail.episode.seriesWindowArt, name: detail.episode.seriesName, genre: detail.episode.seriesGenre,
+                           top: label.local, title: slot.playableEpisode?.series ?? detail.episode.seriesName,
+                           sub: detail.episode.displayTitle, foot: foot, badge: isNow ? "Now" : nil)
             }
+            .buttonStyle(.card)
         } else {
-            GrammarRow(visual: .window(nil, name: slot.knownSeries ?? "", genre: nil),
-                       title: slot.knownSeries ?? RadioClock.gapNote(slot),
-                       sub: [label.local, label.eastern, slot.knownSeries == nil ? nil : RadioClock.gapNote(slot),
-                             isNow ? length : nil],
-                       length: length, badge: isNow ? "Now" : nil)
-                .padding(Spacing.s4)
-                .foregroundStyle(focused ? Color.brandText : Color.brandTextMuted)
-                .background(RoundedRectangle(cornerRadius: Radius.card).fill(focused ? Color.brandSurfaceAlt : .clear))
-                .focusable()
-                .focused($focused)
+            Button {} label: {
+                GapCard_tvOS(time: label.local, title: slot.knownSeries ?? RadioClock.gapNote(slot),
+                             foot: slot.knownSeries == nil ? length : RadioClock.gapNote(slot), isNow: isNow)
+            }
+            .buttonStyle(.card)
         }
     }
 }

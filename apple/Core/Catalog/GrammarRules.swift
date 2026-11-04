@@ -230,16 +230,83 @@ nonisolated enum PictureGrade {
         cache.object(forKey: key(url, grade))?.image
     }
 
-    /// The decoded, graded picture at `url`, or nil when it cannot be fetched or decoded.
-    static func load(_ url: URL, grade: Artwork.Grade) async -> CGImage? {
-        if let hit = cached(url, grade) { return hit }
-        guard let (data, response) = try? await URLSession.shared.data(from: url),
-              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
-              let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let decoded = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
-        let graded = apply(decoded, grade: grade)
-        cache.setObject(Box(graded), forKey: key(url, grade))
-        return graded
+    /// How a load ended. `cancelled` is no verdict on the picture: a window that scrolled away or
+    /// resized cancels its fetch, and only `failed` may turn it into a title block.
+    enum Outcome {
+        case image(CGImage)
+        case cancelled
+        case failed
+    }
+
+    /// Commons answers half of a 30-wide burst with 429 (measured 2026-11-04), and a screen of tiles
+    /// is that burst: at most `limit` run at once, and a 429 holds the whole queue as long as it asks.
+    private actor Gate {
+        private let limit = 6
+        private var running = 0
+        private var waiting: [CheckedContinuation<Void, Never>] = []
+        private var heldUntil = ContinuousClock.now
+
+        func enter() async {
+            if running >= limit {
+                await withCheckedContinuation { waiting.append($0) }
+            } else {
+                running += 1
+            }
+            if heldUntil > .now { try? await Task.sleep(until: heldUntil, clock: .continuous) }
+        }
+
+        func leave() {
+            if waiting.isEmpty {
+                running -= 1
+            } else {
+                waiting.removeFirst().resume()
+            }
+        }
+
+        func hold(for seconds: Double) {
+            heldUntil = max(heldUntil, .now + .seconds(seconds))
+        }
+    }
+
+    private static let gate = Gate()
+    private static let attempts = 5
+
+    /// Seconds to wait after try `attempt` (from 1): what the server asked for, else 1, 2, 4, 8.
+    static func retryDelay(attempt: Int, retryAfter: String?) -> Double {
+        if let asked = retryAfter.flatMap(Double.init), asked > 0 { return min(asked, 30) }
+        return Double(1 << min(max(attempt - 1, 0), 4))
+    }
+
+    /// The decoded, graded picture at `url`. Throttling and a dropped connection are tried again.
+    static func load(_ url: URL, grade: Artwork.Grade, session: URLSession = .shared) async -> Outcome {
+        if let hit = cached(url, grade) { return .image(hit) }
+        for attempt in 1...attempts {
+            await gate.enter()
+            let data: Data, response: URLResponse
+            do {
+                try Task.checkCancellation()
+                (data, response) = try await session.data(from: url)
+                await gate.leave()
+            } catch {
+                await gate.leave()
+                if Task.isCancelled || (error as? URLError)?.code == .cancelled { return .cancelled }
+                await gate.hold(for: retryDelay(attempt: attempt, retryAfter: nil))
+                continue
+            }
+            let http = response as? HTTPURLResponse
+            if let http, http.statusCode == 429 || http.statusCode == 503 {
+                let wait = retryDelay(attempt: attempt, retryAfter: http.value(forHTTPHeaderField: "Retry-After"))
+                await gate.hold(for: wait + Double.random(in: 0...0.5))
+                continue
+            }
+            guard http.map({ (200..<300).contains($0.statusCode) }) ?? true,
+                  let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let decoded = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return .failed }
+            let graded = apply(decoded, grade: grade)
+            cache.setObject(Box(graded), forKey: key(url, grade))
+            return .image(graded)
+        }
+        return Task.isCancelled ? .cancelled : .failed
     }
 
     private static func key(_ url: URL, _ grade: Artwork.Grade) -> NSString {
@@ -353,7 +420,12 @@ nonisolated enum BrowseLayout {
     #else
     static let labelWidth: CGFloat = 96, cellWidth: CGFloat = 36
     #endif
+    #if os(tvOS)
+    /// A focused tile lifts, so tiles keep the shelf's gap (tvOS-DESIGN §3.1).
+    static let gap: CGFloat = 40
+    #else
     static let gap: CGFloat = 12
+    #endif
     static let sideGap: CGFloat = 24
     static let sideMinColumns = 3
 

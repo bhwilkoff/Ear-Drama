@@ -388,7 +388,7 @@ struct GenreField: View {
         } else {
             Button { pick(g, d) } label: { body.contentShape(Rectangle()) }
                 #if os(tvOS)
-                .buttonStyle(.card)
+                .buttonStyle(.borderless)
                 #else
                 .buttonStyle(.plain)
                 #endif

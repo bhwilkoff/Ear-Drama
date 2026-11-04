@@ -86,7 +86,11 @@ private struct GradedImage: View {
         .task(id: url) {
             if let hit = PictureGrade.cached(url, grade) { image = hit; return }
             image = nil
-            if let loaded = await PictureGrade.load(url, grade: grade) { image = loaded } else { onFail() }
+            switch await PictureGrade.load(url, grade: grade) {
+            case let .image(loaded): image = loaded
+            case .cancelled: break
+            case .failed: onFail()
+            }
         }
     }
 }
@@ -134,12 +138,24 @@ struct TitleBlock: View {
     let name: String
     let genre: String?
     var centered = false
+    /// The window's side: past `tonalSide` a hairline reads as a wireframe, so the letters are filled.
+    var side: CGFloat = 0
+
+    #if os(tvOS)
+    private static let tonalSide: CGFloat = 200
+    #else
+    private static let tonalSide: CGFloat = .infinity
+    #endif
 
     var body: some View {
         ZStack {
             Color.board(genre)
-            MonogramShape(text: Grammar.monogram(name), centered: centered)
-                .stroke(Color.onBoard(genre), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
+            if side >= Self.tonalSide {
+                MonogramShape(text: Grammar.monogram(name), centered: true).fill(Color.onBoard(genre).opacity(0.16))
+            } else {
+                MonogramShape(text: Grammar.monogram(name), centered: centered)
+                    .stroke(Color.onBoard(genre), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
+            }
         }
     }
 }
@@ -160,11 +176,7 @@ struct PictureWindow: View {
         ZStack {
             switch fill {
             case .block:
-                if round {
-                    TitleBlock(name: name, genre: genre, centered: true)
-                } else {
-                    TitleBlock(name: name, genre: genre)
-                }
+                TitleBlock(name: name, genre: genre, centered: round, side: side)
             case let .crop(r):
                 Color.printGround
                 if let art { crop(art, r) }
@@ -183,7 +195,10 @@ struct PictureWindow: View {
                 RoundedRectangle(cornerRadius: 4).strokeBorder(edge, lineWidth: 1)
             }
         }
+        // A failure is about one fetch: a new picture, a new size or a return to the screen tries again.
         .onChange(of: art?.url) { failed = false }
+        .onChange(of: side) { failed = false }
+        .onAppear { failed = false }
         .accessibilityHidden(true)
     }
 
@@ -331,6 +346,14 @@ struct ShowTile: View {
     static let defaultWidth: CGFloat = 144
     #endif
 
+    private func factLines(_ index: Int) -> Int {
+        #if os(tvOS)
+        index == 0 ? 2 : 1
+        #else
+        2
+        #endif
+    }
+
     var body: some View {
         let ink = Color.onBoard(series.genre)
         VStack(alignment: .leading, spacing: 6) {
@@ -351,7 +374,7 @@ struct ShowTile: View {
             }
             VStack(alignment: .leading, spacing: 0) {
                 if let facts {
-                    ForEach(Array(facts.enumerated()), id: \.offset) { Text(verbatim: $0.element).lineLimit(2) }
+                    ForEach(Array(facts.enumerated()), id: \.offset) { Text(verbatim: $0.element).lineLimit(factLines($0.offset)) }
                 } else {
                     Text(verbatim: series.yearSpan ?? "Undated")
                     Text(verbatim: series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes")
@@ -359,6 +382,10 @@ struct ShowTile: View {
             }
             .font(TypeRamp.caption)
             .foregroundStyle(ink)
+            #if os(tvOS)
+            // Tiles in a row are one height (§3.0): the same room for facts, whatever a tile says.
+            .frame(height: facts == nil ? 76 : 112, alignment: .topLeading)
+            #endif
         }
         .padding(EdgeInsets(top: 6, leading: 6, bottom: 10, trailing: 6))
         .frame(width: width, alignment: .topLeading)
