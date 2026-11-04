@@ -52,7 +52,8 @@ final class DetailUITests: DeviceTestCase {
         shot(app, "01-credit")
         credit.tap()
         XCTAssertTrue(app.navigationBars[Multi.person].waitForExistence(timeout: 15), "person page titled with the name")
-        XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 10), "their episodes listed")
+        // A row's own Play: on a phone rows are List cells, on a tablet a two-across grid (R11g).
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Play '")).firstMatch.waitForExistence(timeout: 10), "their episodes listed")
         shot(app, "02-person")
     }
 }

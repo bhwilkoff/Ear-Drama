@@ -15,10 +15,10 @@ final class ShowArtUITests: DeviceTestCase {
         app.descendants(matching: .any).matching(identifier: "head-board").firstMatch
     }
 
-    /// The board spans the page's column (720 pt at most, ReadableColumn) and is tall enough for
+    /// The board spans the page column (ReadableColumn, or the whole page at regular width) and is tall enough for
     /// the smallest window (96 pt) and the run strip.
     private func assertLeads(_ app: XCUIApplication, _ element: XCUIElement, _ page: String) {
-        let column = min(app.frame.width, 720)
+        let column = min(app.frame.width, 720) // the narrowest column a board can have on any device
         XCTAssertGreaterThanOrEqual(element.frame.width, column * 0.8, "\(page): the board spans the column")
         XCTAssertGreaterThanOrEqual(element.frame.height, 96 + 40, "\(page): the board holds the window and the strip")
         XCTAssertLessThan(element.frame.minY, app.frame.height * 0.5, "\(page): the board leads the page")

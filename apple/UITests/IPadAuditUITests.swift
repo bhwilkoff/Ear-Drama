@@ -4,8 +4,9 @@ import XCTest
 /// One test per orientation and appearance; each visits the screens and a spread of shows.
 final class IPadAuditUITests: DeviceTestCase {
     private func configure(_ o: UIDeviceOrientation, _ a: XCUIDevice.Appearance) {
-        // The iPad stands in landscape; XCUITest only rotates it for the portrait runs.
-        if o != .landscapeRight { XCUIDevice.shared.orientation = o }
+        // Always set: however the iPad stands on the bench, a "landscape" frame must be one
+        // (2026-11-04: the stand had moved and every land- frame came back portrait).
+        XCUIDevice.shared.orientation = o
         XCUIDevice.shared.appearance = a
         sleep(2)
     }
@@ -43,6 +44,27 @@ final class IPadAuditUITests: DeviceTestCase {
             sweep(mini, "\(tag)-mini-\(t.lowercased())", pages: 9)
         }
     }
+
+    /// The screens a person judges the iPad by, one or two frames each: quick enough to run per change.
+    private func frames(_ tag: String) {
+        sweep(tab("home"), "\(tag)-home", pages: 4)
+        sweep(tab("stations"), "\(tag)-stations", pages: 1)
+        sweep(tab("browse"), "\(tag)-browse", pages: 1)
+        for (name, item) in [("rich", "gunsmoke"), ("sparse", "tarzan")] {
+            sweep(tab("browse", ["APP_START_ITEM": item]), "\(tag)-series-\(name)", pages: 1)
+        }
+        shot(tab("browse", ["APP_START_ITEM": "gunsmoke|1952-04-26"]), "\(tag)-episode-p00")
+        let person = tab("browse")
+        person.buttons["Voices"].tap(); sleep(3)
+        shot(person, "\(tag)-voices-p00")
+        let face = person.buttons.matching(identifier: "voice-face").firstMatch
+        if face.waitForExistence(timeout: 20) { face.tap(); sleep(5); sweep(person, "\(tag)-person", pages: 1) }
+    }
+
+    func testFramesLandscapeDark() { configure(.landscapeRight, .dark); frames("land-dark") }
+    func testFramesLandscapeLight() { configure(.landscapeRight, .light); frames("land-light") }
+    func testFramesPortraitDark() { configure(.portrait, .dark); frames("port-dark") }
+    func testFramesPortraitLight() { configure(.portrait, .light); frames("port-light") }
 
     func testLandscapeDark() { configure(.landscapeRight, .dark); visit("land-dark") }
     func testLandscapeLight() { configure(.landscapeRight, .light); visit("land-light") }

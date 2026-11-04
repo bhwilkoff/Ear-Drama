@@ -28,6 +28,12 @@ private enum GrammarType {
         Font.custom(TypeRamp.displayFontName, size: size(style), relativeTo: style)
     }
 
+    /// The head board across a tablet: the same steps, set for a page read at arm's length.
+    static func wideHeadName(step: Int) -> Font {
+        let style = headNames[min(step, 2)]
+        return Font.custom(TypeRamp.displayFontName, size: size(style) * 1.6, relativeTo: style)
+    }
+
     static func tileName(step: Int) -> Font { display(tileNames[min(step, 2)]) }
     static func headName(step: Int) -> Font { display(headNames[min(step, 2)]) }
 
@@ -141,10 +147,10 @@ struct TitleBlock: View {
     /// The window's side: past `tonalSide` a hairline reads as a wireframe, so the letters are filled.
     var side: CGFloat = 0
 
-    #if os(tvOS)
-    static let tonalSide: CGFloat = 200
-    #else
+    #if os(macOS)
     static let tonalSide: CGFloat = .infinity
+    #else
+    static let tonalSide: CGFloat = 200
     #endif
 
     var body: some View {
@@ -152,6 +158,9 @@ struct TitleBlock: View {
             Color.board(genre)
             if side >= Self.tonalSide {
                 MonogramShape(text: Grammar.monogram(name), centered: true).fill(Color.onBoard(genre).opacity(0.16))
+            } else if genre == nil {
+                // No genre is the pale ground: a thin outline on it all but vanishes, so the letter is cut solid.
+                MonogramShape(text: Grammar.monogram(name), centered: centered).fill(Color.onBoard(nil).opacity(0.78))
             } else {
                 MonogramShape(text: Grammar.monogram(name), centered: centered)
                     .stroke(Color.onBoard(genre), style: StrokeStyle(lineWidth: 1.4, lineJoin: .round))
@@ -232,19 +241,25 @@ struct RunStrip: View {
     /// The run histogram (`series.year_counts`): a bar per year, its height the count; the span
     /// bar draws where the catalog has none.
     var years: [Int]? = nil
+    /// The page about one show compares it with nothing: the bars take the show's own years, so a
+    /// short run is not a mostly empty axis. A tile keeps the fixed axis, where shows sit side by side.
+    var ownSpan = false
 
     var body: some View {
         GeometryReader { geo in
             let ink = Color.onBoard(genre)
             let bars = Grammar.runBars(years: years)
+            let fit = ownSpan && (bars?.count ?? 0) >= 3
+            let lo = fit ? CGFloat(bars?.first?.from ?? 0) : 0
+            let scale = geo.size.width / (fit ? CGFloat(bars?.last?.to ?? 1) - lo : 1)
             ZStack(alignment: .bottomLeading) {
                 Rectangle().fill(ink.opacity(0.3)).frame(height: 1)
                 if let bars {
                     ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
                         Rectangle().fill(ink)
-                            .frame(width: max(1, geo.size.width * CGFloat(bar.to - bar.from) - 0.5),
+                            .frame(width: max(1, scale * CGFloat(bar.to - bar.from) - (fit ? 2 : 0.5)),
                                    height: max(2, (height - 3) * CGFloat(bar.height)))
-                            .offset(x: geo.size.width * CGFloat(bar.from), y: -1)
+                            .offset(x: scale * (CGFloat(bar.from) - lo), y: -1)
                     }
                 } else if let span = Grammar.runSpan(first: first, last: last) {
                     Rectangle().fill(ink)
@@ -694,13 +709,32 @@ struct HeadBoard: View {
     var credits: String? = nil
     /// A play: its cast fingerprint stands in the mark slot where a show has its run strip.
     var castScript: PlayScript? = nil
+    /// The page's buttons, on the board where it runs across a tablet; a phone keeps them under it.
+    var actions: AnyView? = nil
     @Environment(AppStore.self) private var store
     /// The picture's credit, under the board, when its license asks and the window shows it.
     var showsCredit = false
     @State private var width: CGFloat = 0
 
-    static func side(forWidth width: CGFloat) -> CGFloat { width >= 1024 ? 176 : width >= 600 ? 128 : 96 }
-    private var windowSide: CGFloat { Self.side(forWidth: width) }
+    static func side(forWidth width: CGFloat) -> CGFloat {
+        #if os(iOS)
+        if width >= wideFrom { return 240 }
+        #endif
+        return width >= 1024 ? 176 : width >= 600 ? 128 : 96
+    }
+    private var windowSide: CGFloat { link == nil ? Self.side(forWidth: width) : min(Self.side(forWidth: width), 176) }
+    /// Past a phone's column the board is composed for the width: words and strip beside a large window.
+    static let wideFrom: CGFloat = 760
+    private var beside: Bool {
+        #if os(iOS)
+        width >= Self.wideFrom
+        #else
+        false
+        #endif
+    }
+    /// An episode's board is a link to the show above the page's own title: strip beside the words
+    /// too, but at the smaller window and name, so the episode's title leads.
+    private var wide: Bool { beside && link == nil }
     /// The histogram needs height to read: 40 on a phone, 56 on an iPad or Mac, 96 across the room.
     static func stripHeight(forWidth width: CGFloat) -> CGFloat {
         #if os(tvOS)
@@ -727,48 +761,68 @@ struct HeadBoard: View {
         }
     }
 
-    private var board: some View {
-        let ink = Color.onBoard(genre)
-        return VStack(alignment: .leading, spacing: Spacing.s3) {
-            HStack(alignment: .top, spacing: Spacing.s4) {
-                PictureWindow(art: art, name: name, genre: genre, side: windowSide)
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    if let genreKey {
-                        HStack(spacing: 0) {
-                            Button { store.openBrowse(genre: genreKey) } label: {
-                                Text(verbatim: GenreDisplay.name(genreKey).uppercased()).underline()
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Browse \(GenreDisplay.name(genreKey))")
-                            if let kickerRest, !kickerRest.isEmpty { Text(verbatim: " \u{00B7} " + kickerRest.uppercased()) }
-                        }
-                        .font(TypeRamp.caption)
-                        .tracking(1.2)
-                    } else if let kicker {
-                        Text(verbatim: kicker.uppercased())
-                            .font(TypeRamp.caption)
-                            .tracking(1.2)
+    private var words: some View {
+        VStack(alignment: .leading, spacing: Spacing.s1) {
+            if let genreKey {
+                HStack(spacing: 0) {
+                    Button { store.openBrowse(genre: genreKey) } label: {
+                        Text(verbatim: GenreDisplay.name(genreKey).uppercased()).underline()
                     }
-                    Text(verbatim: name)
-                        .font(GrammarType.headName(step: Grammar.headNameStep(name)))
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.6)
-                    if let credits, !credits.isEmpty {
-                        Text(verbatim: credits).font(TypeRamp.caption.weight(.semibold))
-                    }
-                    EventLine(facts: facts, color: ink)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Browse \(GenreDisplay.name(genreKey))")
+                    if let kickerRest, !kickerRest.isEmpty { Text(verbatim: " \u{00B7} " + kickerRest.uppercased()) }
                 }
-                .foregroundStyle(ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(TypeRamp.caption)
+                .tracking(1.2)
+            } else if let kicker {
+                Text(verbatim: kicker.uppercased())
+                    .font(TypeRamp.caption)
+                    .tracking(1.2)
             }
-            if let castScript {
-                CastFingerprint(script: castScript, onBoard: genre, height: Self.stripHeight(forWidth: width) / 3)
-            } else if first != nil || last != nil || !(years ?? []).isEmpty {
-                RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years)
+            Text(verbatim: name)
+                .font(wide ? GrammarType.wideHeadName(step: Grammar.headNameStep(name)) : GrammarType.headName(step: Grammar.headNameStep(name)))
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .minimumScaleFactor(0.6)
+            if let credits, !credits.isEmpty {
+                Text(verbatim: credits).font(TypeRamp.caption.weight(.semibold))
+            }
+            EventLine(facts: facts, color: Color.onBoard(genre))
+        }
+        .foregroundStyle(Color.onBoard(genre))
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var mark: some View {
+        if let castScript {
+            CastFingerprint(script: castScript, onBoard: genre, height: Self.stripHeight(forWidth: width) / 3)
+        } else if first != nil || last != nil || !(years ?? []).isEmpty {
+            RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years, ownSpan: true)
+        }
+    }
+
+    private var board: some View {
+        Group {
+            if beside {
+                HStack(alignment: .top, spacing: Spacing.s6) {
+                    PictureWindow(art: art, name: name, genre: genre, side: windowSide)
+                    VStack(alignment: .leading, spacing: Spacing.s3) {
+                        words
+                        mark
+                        if let actions { actions.environment(\.actionBoard, .some(genre)) }
+                    }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: Spacing.s3) {
+                    HStack(alignment: .top, spacing: Spacing.s4) {
+                        PictureWindow(art: art, name: name, genre: genre, side: windowSide)
+                        words
+                    }
+                    mark
+                }
             }
         }
-        .padding(Spacing.s4)
+        .padding(wide ? Spacing.s6 : Spacing.s4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.board(genre))
         .clipShape(RoundedRectangle(cornerRadius: Radius.card))

@@ -21,7 +21,9 @@ import XCTest
     }
 
     func shot(_ app: XCUIApplication, _ name: String) {
-        let a = XCTAttachment(screenshot: app.screenshot())
+        // The screen, not the app: a rotated app's own screenshot keeps the portrait canvas and
+        // cuts the landscape page off at both edges (iPad, 2026-11-04).
+        let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         a.name = name
         a.lifetime = .keepAlways
         add(a)
