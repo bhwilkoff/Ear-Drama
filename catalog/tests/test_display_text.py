@@ -62,6 +62,17 @@ check("control: a year in a name is not a code", DT.series_withheld("Radio News 
 check("control: Chapter 19 is the source's own word", DT.decide_episode("Chapter 19", "Woyzeck", None, 19)[1], "source")
 check("a readable title is the source's", DT.decide_episode("The Burning Court", "Suspense", "1942-06-17", None),
       ("The Burning Court", "source", ["episodes.title"], None))
+check("guard: a repeated air date is dropped from a title", DT.decide_episode("Red Goes To The Fights - 1941-11-11", "Red", "1941-11-11", None)[0], "Red Goes To The Fights")
+check("guard: a bracketed air date is dropped", DT.decide_episode("Cops And Robbers [1964-03-19]", "S", "1964-03-19", None)[0], "Cops And Robbers")
+check("guard: another date is spelled out", DT.decide_episode("Frankenstein (Repeat of 1931-08-03)", "W", "1932-03-07", None)[0], "Frankenstein (Repeat of August 3, 1931)")
+check("guard: a trailing air date is dropped", DT.decide_episode("Criscos Radio Newspaper 1944-03-14", "C", "1944-03-14", None)[0], "Criscos Radio Newspaper")
+check("guard: an asterisk-wrapped uploader note leaves a series name", DT.clean_series_name("The Shadow Recreations **Updated 1 27 **", "k")[0], "The Shadow Recreations")
+check("guard: an asterisk-wrapped uploader note leaves an episode title", DT.decide_episode("Chapter One **Updated 1 27 **", "S", None, None)[0], "Chapter One")
+check("control: a lone asterisk is not an uploader note", DT.strip_uploader_note("MacArthur*s Dismissal"), "MacArthur*s Dismissal")
+check("guard: a trailing reel code leaves an episode title", DT.decide_episode("Poison Gas (BB REEL 0552)", "S", None, None)[0], "Poison Gas")
+check("guard: a reel code with a track leaves a title", DT.decide_episode("The Raincoat (JD REEL 0206 TRACK 2)", "S", None, None)[0], "The Raincoat")
+check("guard: a disc code leaves a title", DT.decide_episode("Night Beat [Disc 123456]", "S", None, None)[0], "Night Beat")
+check("control: a parenthesis that is not a code stays", DT.strip_archive_code("Sound (Last Show of the Series)"), "Sound (Last Show of the Series)")
 check("date composes", DT.decide_episode("xxx", "Suspense", "1952-04-26", None),
       ("Suspense, April 26, 1952", "composed", ["series.name", "episodes.air_date"], None))
 check("number composes", DT.decide_episode("Episode 112", "Gunsmoke", None, 112),
@@ -203,6 +214,8 @@ if os.path.exists(real):
     check("guard: no title is empty or a placeholder", empty[:5], [])
     unreadable = [(i, t) for i, t in d.execute("SELECT id, title FROM episodes") if not DT.readable_title(t)]
     check("guard: every title is readable", unreadable[:5], [])
+    iso = [(i, t) for i, t in d.execute("SELECT id, title FROM episodes") if DT.ISO_IN_TITLE.search(t or "")]
+    check("guard: no shown title carries an ISO date", iso[:5], [])
     rip = sum(1 for (t,) in d.execute("SELECT title FROM episodes") if "T_RIPTAG" in TD.title_defects(t))
     check("guard: rip tags are rare (under 0.2%)", rip <= n * 0.002, True)
 elif os.environ.get("PROJECTION"):

@@ -104,8 +104,45 @@ def compose_title(series_name, air_date, num):
     return None
 
 
+ISO_IN_TITLE = re.compile(r"(?<![\d])((?:19|20)\d\d)[-.](\d\d)[-.](\d\d)(?!\d)")
+
+
+UPLOADER_NOTE = re.compile(r"\s*\*{2,}[^*]*\*{2,}")
+
+
+def strip_uploader_note(text):
+    """An uploader's asterisk-wrapped note ("The Shadow Recreations **Updated 1 27 **") is raw upload residue: removed."""
+    return re.sub(r"\s{2,}", " ", UPLOADER_NOTE.sub("", text or "")).strip()
+
+
+ARCHIVE_CODE = re.compile(r"\s*[(\[]\s*(?:[A-Z]{1,4}\s+)?(?:REEL|TAPE|DISC)\s*#?\d[\w.\-]*(?:\s+TRACK\s*\d+)?\s*[)\]]\s*$", re.I)
+
+
+def strip_archive_code(title):
+    """A trailing reel, tape or disc code an uploader added ("Poison Gas (BB REEL 0552)") is residue: removed."""
+    return ARCHIVE_CODE.sub("", title or "").strip()
+
+
+def spell_iso_dates(title, air_date):
+    """No ISO date on screen (owner 2026-11-04): a date the title repeats from the record's own air date is
+    dropped with its brackets and separators (the date line already shows it); any other is spelled out."""
+    def one(m):
+        y, mo, d = m.group(1), int(m.group(2)), int(m.group(3))
+        if not 1 <= mo <= 12 or not 1 <= d <= 31:
+            return m.group(0)
+        if f"{y}-{mo:02d}-{d:02d}" == (air_date or ""):
+            return "\0"
+        return f"{MONTHS[mo - 1]} {d}, {y}"
+    t = ISO_IN_TITLE.sub(one, title or "")
+    if "\0" in t:
+        t = re.sub(r"\s*[\[(]\s*\0\s*[\])]|\s*[-\u2013\u2014:,]\s*\0|\0\s*[-\u2013\u2014:]\s*|\s*\0", "", t)
+        t = re.sub(r"\(\s*\)|\[\s*\]", "", t)
+    return re.sub(r"\s{2,}", " ", t).strip(" -\u2013\u2014:,")
+
+
 def decide_episode(shown, series_name, air_date, num):
     """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'."""
+    shown = spell_iso_dates(strip_archive_code(strip_uploader_note(shown)), air_date)
     if readable_title(shown):
         return shown, "source", ["episodes.title"], None
     got = compose_title(series_name, air_date, num)
@@ -208,7 +245,7 @@ def clean_series_name(name, key=None):
     """(shown name, reason): the name with this pass's classes undone, or (None, reason) when what is left has
     no program behind it. Classes: page or side fragment, cut-off tail, episode code, uploader's initials,
     a glued count or month, a reel compilation. A name no class touches comes back unchanged."""
-    orig = (name or "").strip()
+    orig = strip_uploader_note(name)
     if not orig or (key or "").startswith("librivox"):
         return orig, None
     if FRAGMENT_ONLY.match(orig):
