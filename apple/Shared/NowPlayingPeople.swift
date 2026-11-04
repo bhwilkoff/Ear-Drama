@@ -27,21 +27,29 @@ struct NowPlayingPeople: View {
                 .accessibilityIdentifier("now-playing-on-the-air")
             }
             if !night.isEmpty {
+                #if os(tvOS)
+                TVShelf(title: "That night on the radio", lazy: true) {
+                    ForEach(night) { row in
+                        Button { open(.episode(row.id)) } label: {
+                            TVWideCard(art: row.seriesWindowArt, name: row.seriesName, genre: row.seriesGenre, top: row.network,
+                                       title: row.seriesName, sub: row.displayTitle, foot: row.durationText)
+                        }
+                        .buttonStyle(.card)
+                    }
+                }
+                .accessibilityIdentifier("now-playing-that-night")
+                #else
                 VStack(alignment: .leading, spacing: Spacing.s2) {
                     SectionHead(title: "That night on the radio") { EmptyView() }
                     ForEach(night) { row in
-                        #if os(tvOS)
-                        Button { open(.episode(row.id)) } label: { nightRow(row) }
-                            .buttonStyle(.card)
-                        #else
                         nightRow(row)
                             .contentShape(Rectangle())
                             .onTapGesture { open(.episode(row.id)) }
                             .accessibilityAddTraits(.isButton)
-                        #endif
                     }
                 }
                 .accessibilityIdentifier("now-playing-that-night")
+                #endif
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

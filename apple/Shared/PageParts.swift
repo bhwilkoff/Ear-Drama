@@ -155,37 +155,44 @@ struct OnAirFaces: View {
     /// Where a face opens a page without a navigation stack of its own (Now Playing's sheet).
     var open: ((Route) -> Void)? = nil
 
-    #if os(tvOS)
-    private let columns = [GridItem(.adaptive(minimum: 180), spacing: Spacing.s6, alignment: .top)]
-    #else
+    #if !os(tvOS)
     private let columns = [GridItem(.adaptive(minimum: 88), spacing: Spacing.s2, alignment: .top)]
     #endif
 
     var body: some View {
+        #if os(tvOS)
+        TVShelf {
+            ForEach(credits) { credit in
+                let face = TVFace(art: credit.art, name: credit.name, line: credit.character.map { "as \($0)" }, side: 160)
+                if credit.personID.isEmpty {
+                    face
+                } else if let open {
+                    Button { open(.person(credit.personID)) } label: { face }
+                        .buttonStyle(TVBareButtonStyle())
+                } else {
+                    NavigationLink(value: Route.person(credit.personID)) { face }
+                        .buttonStyle(TVBareButtonStyle())
+                }
+            }
+        }
+        #else
         LazyVGrid(columns: columns, alignment: .leading, spacing: Spacing.s4) {
             ForEach(credits) { credit in
                 if credit.personID.isEmpty {
                     OnAirFace(credit: credit, genre: genre)
                 } else if let open {
                     Button { open(.person(credit.personID)) } label: { OnAirFace(credit: credit, genre: genre) }
-                        #if os(tvOS)
-                        .buttonStyle(.card)
-                        #else
                         .buttonStyle(.plain)
-                        #endif
                 } else {
                     NavigationLink(value: Route.person(credit.personID)) {
                         OnAirFace(credit: credit, genre: genre)
                     }
-                    #if os(tvOS)
-                    .buttonStyle(.card)
-                    #else
                     .buttonStyle(.plain)
                     .navigationLinkIndicatorVisibility(.hidden)
-                    #endif
                 }
             }
         }
+        #endif
     }
 }
 

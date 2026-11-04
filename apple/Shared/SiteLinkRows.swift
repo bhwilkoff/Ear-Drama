@@ -6,9 +6,15 @@ import SwiftUI
 struct SiteLinkRows: View {
     var body: some View {
         #if os(tvOS)
-        LabeledContent("Credits", value: "eardrama.org/credits")
-        LabeledContent("Privacy", value: "eardrama.org/privacy")
-        LabeledContent("Take-down requests", value: "eardrama.org/takedown")
+        ForEach([("Credits", "eardrama.org/credits"), ("Privacy", "eardrama.org/privacy"),
+                 ("Take-down requests", "eardrama.org/takedown")], id: \.0) { name, address in
+            VStack(alignment: .leading, spacing: 2) {
+                Text(name).foregroundStyle(Color.brandText)
+                Text(verbatim: address).foregroundStyle(Color.brandTextMuted)
+            }
+            .lineLimit(1)
+            .fixedSize()
+        }
         #elseif os(iOS)
         Link("Credits", destination: SiteLinks.credits)
         Link("Privacy", destination: SiteLinks.privacy)

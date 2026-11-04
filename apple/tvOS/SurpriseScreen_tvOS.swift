@@ -2,8 +2,8 @@
 import SwiftUI
 
 /// Surprise at ten feet (tvOS-DESIGN §4.10; Decision 068): an episode, an evening, and a play drawn
-/// when it opens, each in the grammar, then Shuffle. The episode's and the evening's boards carry
-/// Play, the default focus, as on Detail. The play is a tile only: the TV records nothing
+/// when it opens. The episode is the hero, Play the default focus, as on Detail, Shuffle beside it.
+/// The evening is a wide card that plays; the play is a card only: the TV records nothing
 /// (PLAYS-DESIGN §6), so it takes no focus.
 struct SurpriseScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
@@ -13,60 +13,59 @@ struct SurpriseScreen_tvOS: View {
     @State private var series: SeriesRow?
     @State private var evening: SurpriseEvening?
     @State private var script: PlayScript?
+    @State private var more: [EpisodeRow] = []
     @State private var loaded = false
     @State private var draw = 0
     @FocusState private var playFocused: Bool
 
     private struct Key: Hashable { let draw: Int; let load: Int }
+    private static let moreCount = 3
 
     var body: some View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: Spacing.s8) {
+            VStack(alignment: .leading, spacing: TV.rowGap) {
                 if !loaded {
-                    ProgressView()
+                    ProgressView().frame(maxWidth: .infinity).padding(.top, 200)
                 } else if episode == nil && evening == nil && script == nil {
                     EmptyState("Nothing to pick from yet", systemImage: "shuffle")
                 }
                 if let episode {
-                    pick("An episode") {
-                        HeadBoard(kicker: nil, name: episode.seriesName, genre: episode.seriesGenre,
-                                  art: episode.seriesWindowArt, first: series?.firstDate, last: series?.lastDate,
-                                  years: series?.yearCounts,
-                                  facts: [episode.displayTitle, AirDate.display(episode.airDate)],
-                                  link: .episode(episode.id))
+                    TVHero(kicker: episode.seriesName, title: episode.displayTitle,
+                           facts: [AirDate.display(episode.airDate), episode.durationText], genre: episode.seriesGenre,
+                           art: episode.seriesWindowArt, pictureName: episode.seriesName, years: series?.yearCounts,
+                           clearance: TV.rootClearance) {
                         Button { play(episode.id, presentPlayer: true) } label: { Label("Play", systemImage: "play.fill") }
                             .focused($playFocused)
+                        NavigationLink(value: Route.episode(episode.id)) { Text("Details") }
+                        Button { draw += 1 } label: { Label("Shuffle", systemImage: "shuffle") }
                     }
-                }
-                if let evening {
-                    let first = evening.first?.episode
-                    pick("An evening") {
-                        HeadBoard(kicker: nil, name: AirDate.display(evening.day.evening), genre: first?.seriesGenre,
-                                  art: first?.seriesWindowArt, first: nil, last: nil,
-                                  facts: [evening.day.stationLine, first?.seriesName])
-                        if let first {
-                            // From its start, never live, and nothing queued behind it.
-                            Button { play(first.id, presentPlayer: true) } label: { Label("Play", systemImage: "play.fill") }
-                        }
-                    }
-                }
-                if let script {
-                    pick("A play") {
-                        ShowTile(series: SeriesRow(key: script.id, name: script.title, genre: PlayScript.boardGenre, firstDate: nil,
-                                                   lastDate: nil, networks: [], episodeCount: 0),
-                                 facts: [script.authorLine, countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts")]
-                                     .filter { !$0.isEmpty },
-                                 castScript: script)
-                    }
-                }
-                if loaded {
+                } else if loaded {
                     Button { draw += 1 } label: { Label("Shuffle", systemImage: "shuffle") }
                         .focusSection()
                 }
+                if evening != nil || script != nil || !more.isEmpty {
+                    TVShelf {
+                        if let evening, let first = evening.first?.episode {
+                            // From its start, never live, and nothing queued behind it.
+                            Button { play(first.id, presentPlayer: true) } label: {
+                                TVWideCard(art: first.seriesWindowArt, name: first.seriesName, genre: first.seriesGenre,
+                                           top: "An evening", title: AirDate.display(evening.day.evening), display: true,
+                                           sub: first.seriesName, foot: evening.day.stationLine)
+                            }
+                            .buttonStyle(.card)
+                        }
+                        if let script {
+                            TVWideCard(art: nil, name: script.title, genre: PlayScript.boardGenre, top: "A play", title: script.title,
+                                       sub: script.authorLine.isEmpty ? nil : script.authorLine,
+                                       foot: countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts"))
+                                .clipShape(RoundedRectangle(cornerRadius: Radius.card))
+                        }
+                        ForEach(more) { TVEpisodeLink(episode: $0) }
+                    }
+                }
             }
-            .padding(.horizontal, 90)
-            .padding(.vertical, 60)
+            .padding(.bottom, 60)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .defaultFocus($playFocused, true)
@@ -76,18 +75,17 @@ struct SurpriseScreen_tvOS: View {
             async let night = SurprisePicks.evening(catalog: catalog)
             script = await Task.detached { CastableLibrary.load()?.scripts.randomElement() }.value
             episode = await picked
+            var drawn: [EpisodeRow] = []
+            for _ in 0..<Self.moreCount {
+                if let row = await catalog.randomEpisode(), row.id != episode?.id, !drawn.contains(where: { $0.id == row.id }) {
+                    drawn.append(row)
+                }
+            }
+            more = drawn
             evening = await night
             if let key = episode?.seriesKey { series = await catalog.series([key]).first } else { series = nil }
             loaded = true
         }
-    }
-
-    private func pick<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.s3) {
-            Text(title).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).accessibilityAddTraits(.isHeader)
-            content()
-        }
-        .focusSection()
     }
 }
 #endif

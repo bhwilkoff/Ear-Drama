@@ -420,7 +420,12 @@ nonisolated enum BrowseLayout {
     #else
     static let labelWidth: CGFloat = 96, cellWidth: CGFloat = 36
     #endif
+    #if os(tvOS)
+    /// A focused tile lifts, so tiles keep the shelf's gap (tvOS-DESIGN §3.1).
+    static let gap: CGFloat = 40
+    #else
     static let gap: CGFloat = 12
+    #endif
     static let sideGap: CGFloat = 24
     static let sideMinColumns = 3
 
