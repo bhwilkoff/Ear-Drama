@@ -24,7 +24,7 @@ archive.org and RadioEchoes run on notice and takedown
 **How to apply**: never label `keep_unclaimed` "public domain" in any client —
 its rights line says no claim is known and that it is removed on request
 (Archive Watch Decision 153's lesson). A take-down goes in
-`editorial/takedowns.json` and takes effect at the next build. Every new claim
+`editorial/takedowns.json` (date and case number only, Decision 029) and takes effect at the next build; a complete notice removes without a record to open (Decision 029). Every new claim
 source becomes a hide bucket that runs BEFORE the rescues, with a test and a
 control. Register a DMCA agent before launch.
 
@@ -102,7 +102,7 @@ These settle Q6-Q9 and 02-rights §11 items 5-10:
 |---|---|
 | Non-US productions | hidden unless licensed |
 | Post-1972 series (CBS Radio Mystery Theater) | hidden unless licensed |
-| A general takedown naming no episodes | hides the whole series; the letter is kept in `takedowns.json` |
+| A general takedown naming no episodes | hides the whole series; the case is listed in `takedowns.json` (date and case number; the letter stays private, Decision 029) |
 | 10+ live script renewals in a series | a series claim |
 | CBS news broadcasts Sony scheduled | hidden; news is out of scope anyway |
 | Music and variety shows built on popular songs | **hidden** (stricter than drama) |
@@ -817,3 +817,39 @@ record's own data, never invented; no context means withheld, counted, kept in t
 5. **Guards** in `tests/test_display_text.py`: fixtures for each class with its control, and over the real projection no name
    the pass would change, no run of track-numbered names, no show split by quotes, "&" or a track number, no title cut off
    mid-bracket.
+
+
+## 029 — A complete notice removes on its own; the bar of "a claim a reader can open" is for what we hide unprompted
+*Date: 2026-11-04*
+
+A take-down notice with every element of 17 U.S.C. section 512(c)(3) removes the
+recording without a record to open. `takedown/index.html` no longer asks for one.
+"A claim a reader can open" (Decision 001, `evidence-gated-catalog-curation` rule 1)
+stays the bar for what the pipeline hides on its own initiative.
+
+**Why**: the owner, 2026-11-04, on Archive Watch's seven proposals: *"All of these
+proposals seem incredibly reasonable."* and *"Let's keep personal details out of the
+public repo."* Refusing a complete notice for want of extra evidence may cost the
+safe harbor Decision 001 relies on.
+
+**How to apply**:
+- The public `editorial/takedowns.json` holds `{date, case, scope, key}` and never a
+  claimant or a letter link. The requester's details sit in the Worker's D1 table
+  `takedown_cases` (`worker/src/takedown.js`), erased three years after a case closes
+  (hourly cron; privacy page says so). Old `claimant` / `letter_url` fields are not read.
+- `.github/workflows/takedown-check.yml` runs `tools/takedown_cases.py judge` every six
+  hours, then lists, records, and dispatches `catalog-publish.yml`. A complete notice
+  removes unless the evidence contradicts it. Contradictions go to the owner as an issue
+  to answer `remove` or `keep`: a claim naming only a word of a longer title; a recording
+  old enough to have no recording right (pre-1926 in 2026) whose archive.org record shows
+  no modern layer; a privacy request or incomplete notice. A record that could not be
+  read contradicts nothing. A modern layer (a restoration or remaster, new narration, a
+  music bed, a re-recording, a post-1971 date, read from archive.org's own record) removes
+  even a word-only claim. No audio is decoded: the film-only signals were not ported.
+- At most 5 automatic removals a run; the rest wait as holds, so a false sworn form
+  cannot do much.
+- One footer link, no highlight. The page also says what happens after a mistake and
+  that repeat infringers lose the service.
+- Nothing a requester wrote reaches a log, issue or the public list, links and the
+  work's name included. `tests/test_takedown_check.py` plants a requester and fails if
+  it appears; the same run with a leak in place is part of the test.

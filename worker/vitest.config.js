@@ -19,6 +19,7 @@ export default defineConfig(async () => {
             SESSION_SECRET: "test-only-session-secret-0123456789abcdef",
             APPLE_AUDIENCES: "app.eardrama.test,web.eardrama.test",
             GOOGLE_AUDIENCES: "google-client.test",
+            TAKEDOWN_TOKEN: "test-only-takedown-token",
           },
         },
       }),

@@ -1122,6 +1122,15 @@ li.pl-lx.sel .pl-mine { margin-left: 0; }
 .prose a { color: var(--color-link); }
 .facts > div { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: var(--space-3);
   padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.request-form { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
+.request-form fieldset { border: 0; padding: 0; display: grid; gap: var(--space-1); }
+.request-form [data-for] { display: grid; gap: var(--space-2); }
+.request-form [hidden] { display: none; }
+.request-form .choice { display: flex; gap: var(--space-2); align-items: flex-start; }
+.request-form textarea.field-input { padding: var(--space-2) var(--space-3); }
+.request-form .btn { justify-self: start; }
+.request-trap { position: absolute; left: -9999px; }
+.request-agent { font-style: normal; margin-bottom: var(--space-3); }
 .credit-list > div { padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
 .credit-list dd { margin-top: 2px; }
 @media (min-width: 768px) { .site-bar { padding-left: var(--space-8); padding-right: var(--space-8); } }

@@ -132,7 +132,7 @@ const M = [
   ["students record school consent", "src/plays.js", '  if (c.user_id !== auth.userId) return problem(403, "teacher_only");\n', ""],
   ["students see the roster", "src/plays.js", "  if (c.user_id === auth.userId) {\n    const { results }", "  if (true) {\n    const { results }"],
   // The archive.org uploader (P14) and published takes (P12)
-  ["uploader never runs", "src/index.js", "Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env), runArchive(env)])", "Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env)])"],
+  ["uploader never runs", "src/index.js", "Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env), sweepTakedowns(env), runArchive(env)])", "Promise.all([sweepSessions(env), sweepRooms(env), sweepPlays(env), sweepTakedowns(env)])"],
   ["five-minute trigger idle", "src/index.js", "if (event.cron === ARCHIVE_CRON) return ctx.waitUntil(runArchive(env));", "if (event.cron === ARCHIVE_CRON) return;"],
   ["uploader without the bucket", "src/plays-archive.js", "if (!iaConfigured(env) || !env.TAKES) return;", "if (!iaConfigured(env)) return;"],
   ["sent lines sent again", "src/plays-archive.js", "WHERE f.production_id = ?1 AND f.state IN ('pending', 'remove') ORDER BY f.seq", "WHERE f.production_id = ?1 AND f.state IN ('pending', 'remove', 'sent') ORDER BY f.seq"],
@@ -195,6 +195,18 @@ const M = [
   ["deleted performers keep their name", "src/plays-open.js", "LEFT JOIN play_members m ON m.production_id = f.production_id AND m.user_id = t.user_id", "LEFT JOIN play_members m ON m.production_id = f.production_id"],
   ["finished one lists unpublished", "src/plays-open.js", "  const row = await env.DB.prepare(`${FINISHED} AND j.production_id = ?1`)", "  const row = await env.DB.prepare(\"SELECT j.production_id AS id, j.item_url, j.published_at, p.script_id, p.title FROM play_archive_jobs j JOIN play_productions p ON p.id = j.production_id WHERE j.production_id = ?1\")"],
   ["short class codes", "src/plays.js", "export const CLASS_CODE_LENGTH = 8;", "export const CLASS_CODE_LENGTH = 4;"],
+  // Take-down cases (Decision 074)
+  ["case routes need no token", "src/takedown.js", 'if (!authorized(request, env)) return problem(403, "forbidden");', ""],
+  ["any token length passes", "src/takedown.js", "given.length !== env.TAKEDOWN_TOKEN.length", "false"],
+  ["check list carries people", "src/takedown.js", "`SELECT ref, created_ms, status, kind, complete, source, links, work, verdict\n       FROM takedown_cases WHERE status", "`SELECT * FROM takedown_cases WHERE status"],
+  ["trap field stored", "src/takedown.js", "if (b.website) return json({ ref: newRef() });", ""],
+  ["notice without signature", "src/takedown.js", 'if (!c.signature) return "signature";', ""],
+  ["notice without sworn statement", "src/takedown.js", 'if (!c.accurate) return "accurate";', ""],
+  ["no form limit", "src/takedown.js", 'if (await limited(env.TAKEDOWN_LIMITER, clientAddress(request))) return problem(429, "rate_limited");', ""],
+  ["details kept one year", "src/takedown.js", "RETAIN_MS = 3 * 365", "RETAIN_MS = 1 * 365"],
+  ["details kept forever", "src/takedown.js", "WHERE closed_ms IS NOT NULL AND closed_ms < ?1 AND email IS NOT NULL", "WHERE 0 AND ?1"],
+  ["open cases swept", "src/takedown.js", "WHERE closed_ms IS NOT NULL AND closed_ms < ?1", "WHERE ?1"],
+  ["cron skips take-downs", "src/index.js", "sweepPlays(env), sweepTakedowns(env), runArchive(env)])", "sweepPlays(env), runArchive(env)])"],
 ];
 
 // --check: confirm every mutation still matches its file exactly once, and run nothing.

@@ -313,16 +313,13 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   next round. Include the lock-screen controls: unchecked, and agents may not lock a test device.
 - [ ] **O2 Record a two-role scene with headphones,** trying Run through, Line by line and Step; and
   sign in once on a device. None of these has been played.
-- [ ] **O3 Take-down page:** your reply time, and the agent's details as registered (`takedown/index.html`
-  lines 42 and 45). Before any public launch.
+- [x] **O3 Take-down page:** agent details and the one-week reply time are on the page (2026-11-04).
 - [ ] **O4 Remove the Ear Drama App Limit on the iPhone 12 for good.** It came back on 11-01.
 - [ ] **O5 Your words in `HUMAN-SHAPED.md`,** blank at the last review. Someone other than you trying it
   is that review's largest open question.
 - [ ] **O6 Before a public store release:** store words, the CarPlay entitlement, the radio-script rule
   and the GRW ask (SCRATCHPAD 13, 15, 16), and trademark (Decision 060).
-- [ ] **O7 Take-down process (Archive Watch's note, 2026-11-04):** rule on its seven proposals; the page's
-  "once its claim can be opened and read" may ask for more than a notice requires, and the public
-  `takedowns.json` schema carries `claimant` and `letter_url`. Worth a lawyer's read. Nothing changes until you rule.
+- [x] **O7 Take-down process (Archive Watch's note, 2026-11-04):** approved and built (Decision 074; catalog 029). Deploy steps are in Decision 074.
 
 Closed, do not carry forward: the iPad XCTest passcode; the Big Shoulders cut and Android's Play button
 (native look per platform, 2026-10-30); the stall watchdog branch; the credits page's OWNER notes; `ios_uitest.py` failing a system-overlay
