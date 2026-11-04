@@ -316,6 +316,9 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   is that review's largest open question.
 - [ ] **O6 Before a public store release:** store words, the CarPlay entitlement, the radio-script rule
   and the GRW ask (SCRATCHPAD 13, 15, 16), and trademark (Decision 060).
+- [ ] **O7 Take-down process (Archive Watch's note, 2026-11-04):** rule on its seven proposals; the page's
+  "once its claim can be opened and read" may ask for more than a notice requires, and the public
+  `takedowns.json` schema carries `claimant` and `letter_url`. Worth a lawyer's read. Nothing changes until you rule.
 
 Closed, do not carry forward: the iPad XCTest passcode; the Big Shoulders cut and Android's Play button
 (native look per platform, 2026-10-30); the stall watchdog branch; the credits page's OWNER notes; `ios_uitest.py` failing a system-overlay
