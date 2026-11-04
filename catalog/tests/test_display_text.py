@@ -164,6 +164,10 @@ check("control: a registry program is really numbered", DT.track_numbered(run, s
 check("control: a lone number is part of the title", DT.track_numbered({"k": "33 Half Moon Street", "j": "40 Other Show"}, {"k", "j"}), set())
 check("control: a quantity is part of the title", DT.track_numbered({"a": "100 Years of Motion Pictures", "b": "101 Dalmatians",
       "c": "99 Best Shows"}, {"a", "b", "c"}), set())
+check("an impossible date is a file code", DT.spell_iso_dates("TJed 1946-05-38 #192 Stagecoach Pushed Off Cliff", None), "Stagecoach Pushed Off Cliff")
+check("an impossible date with no day", DT.spell_iso_dates("Arch an 1949-09-00 Dinner in a Restaurant", None), "Dinner in a Restaurant")
+check("an impossible date as an aka tail", DT.spell_iso_dates("The Mystery of the Magic Mesaaka Tm1949-12-00", None), "The Mystery of the Magic Mesa")
+check("a real date is still spelled out", DT.spell_iso_dates("Report of 1944-03-14", None), "Report of March 14, 1944")
 check("a track number is removed", DT.strip_track_number("10 Maigret's Boyhood Friend"), "Maigret's Boyhood Friend")
 check("dotted track number", DT.strip_track_number("34.Habakkuk"), "Habakkuk")
 

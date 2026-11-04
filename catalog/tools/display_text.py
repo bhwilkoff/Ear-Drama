@@ -123,6 +123,20 @@ def strip_archive_code(title):
     return ARCHIVE_CODE.sub("", title or "").strip()
 
 
+def drop_impossible_date(title):
+    """A date no calendar holds ("1946-05-38", "1949-09-00") is a file name's code, not a date: it goes with
+    the short code before it, or an "aka" tail, and the words of the title stay."""
+    for m in ISO_IN_TITLE.finditer(title or ""):
+        if 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31:
+            continue
+        head, tail = title[:m.start()], title[m.end():].strip()
+        if tail and len(head.split()) <= 2:
+            return re.sub(r"^#\d+\s*", "", tail)
+        if not tail:
+            return re.sub(r"(?:\s*aka)?\s*\b[A-Za-z]{0,3}$", "", head)
+    return title
+
+
 def spell_iso_dates(title, air_date):
     """No ISO date on screen (owner 2026-11-04): a date the title repeats from the record's own air date is
     dropped with its brackets and separators (the date line already shows it); any other is spelled out."""
@@ -133,7 +147,7 @@ def spell_iso_dates(title, air_date):
         if f"{y}-{mo:02d}-{d:02d}" == (air_date or ""):
             return "\0"
         return f"{MONTHS[mo - 1]} {d}, {y}"
-    t = ISO_IN_TITLE.sub(one, title or "")
+    t = ISO_IN_TITLE.sub(one, drop_impossible_date(title) or "")
     if "\0" in t:
         t = re.sub(r"\s*[\[(]\s*\0\s*[\])]|\s*[-\u2013\u2014:,]\s*\0|\0\s*[-\u2013\u2014:]\s*|\s*\0", "", t)
         t = re.sub(r"\(\s*\)|\[\s*\]", "", t)
