@@ -253,6 +253,8 @@ struct StationRow: View {
             }
         }
         .frame(minHeight: 64)
+        // Without this the separator starts under the Listen live button instead of the name.
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 48 + Spacing.s3 }
         .listRowBackground(isLive ? Color.brandSurfaceAlt : nil)
     }
 }

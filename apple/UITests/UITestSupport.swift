@@ -37,6 +37,13 @@ import XCTest
     func openTab(_ app: XCUIApplication, _ name: String) {
         let bar = app.tabBars.buttons[name]
         if bar.exists { bar.tap(); return }
+        let cell = app.cells.matching(NSPredicate(format: "label == %@", name)).firstMatch
+        if !cell.exists {
+            let button = app.buttons[name].firstMatch
+            if button.exists { button.tap(); return }
+            let toggle = app.buttons["Show Sidebar"].firstMatch
+            if toggle.exists { toggle.tap(); sleep(1) }
+        }
         app.cells.matching(NSPredicate(format: "label == %@", name)).firstMatch.tap()
     }
 
