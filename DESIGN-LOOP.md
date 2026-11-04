@@ -275,6 +275,12 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   owner found the 10-31 faults on the iPhone, not the harness: spacing, images, bottom scroll, button
   close-ups, malformed icons. Only the iPhone had that pass. One device per batch: every screen, every
   button row up close in each state, light and dark, last row reachable with the mini player up.
+- [ ] **N4b Every fault checked on every platform.** Owner, 2026-11-04: "Are we working to fix the things
+  that we have identified in these tests across all of the platforms?" Not until now: batches fixed their
+  own platform. Each fault below is fixed or marked n/a with a reason on web, iOS, iPad, Mac, tvOS, Android.
+  Web joins N4's audit (it was left off). To check: Browse's gap beside the field (iPad, fixed; shared with
+  Mac; web wide layouts unchecked); Now Playing opening short (Pixel, fixed); uneven player option row
+  (Pixel, fixed); Stations' right edge and indented toggles (Pixel, fixed).
 - [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
   pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
   a yes before building.
