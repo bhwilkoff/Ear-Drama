@@ -465,6 +465,15 @@ build/bin/winshot pid:12345 "" out.png --skip-size 800x600 --id-only
 - `mac_run.py` prefers the locally built app in `build/dd-mac/` over the
   copy in `/Applications`, so it grades what is about to ship. It holds
   the `mac` lease and quits the app when it is done.
+- **With the owner at the Mac, walk the screens without a relaunch or the
+  focus.** Launch once with `open -g -n <app> --env APP_MUTE=1 --env
+  APP_DOOR_FILE=<path>`, then write commands to that file, one a line: `tab`,
+  `item`, `play`, `person <id>`, `search`, `back`, `size 1600x1000`, `look dark`,
+  `scroll 900` (`apple/macOS/DoorFile_macOS.swift`, DEBUG only). The app deletes
+  the file when it has run them. A tile is pressed with AXPress from System
+  Events, found by its frame (SwiftUI buttons here carry no AXDescription), which
+  moves no pointer. Quit by the pid you launched, never `macapp.quit_all()` (it
+  ends whatever is named the same).
 - `tools/macapp.py`, `tools/mac-shotset.sh` and `tools/mac-screenshots.sh`
   all capture through `winshot` with an exact owner match. The shot list
   in `mac-shotset.sh` is yours to fill in.

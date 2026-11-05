@@ -20,6 +20,8 @@ import Foundation
 /// - APP_EMPTY_LIBRARY=1: Library drawn as a new listener's, for its empty
 ///   state (fakes the lists, never clears them)
 ///
+/// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
+///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
 /// no-op in production. Doors never touch the router directly; they are posted
 /// to the AppStore inbox and consumed by RootView like any other deep link.

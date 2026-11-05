@@ -342,6 +342,20 @@ extension View {
 
 /// A series on its genre's board (R11b): the window, the name, the run strip, the facts. Never
 /// shows `pictureKind`. tvOS focus scales the whole tile through the card style around it.
+#if os(macOS)
+private struct TileFillsRowKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// A grid row's tiles end on one line, whatever each says (macOS-DESIGN §4.0a).
+    var tileFillsRow: Bool {
+        get { self[TileFillsRowKey.self] }
+        set { self[TileFillsRowKey.self] = newValue }
+    }
+}
+#endif
+
 struct ShowTile: View {
     let series: SeriesRow
     var width: CGFloat = Self.defaultWidth
@@ -351,6 +365,7 @@ struct ShowTile: View {
     var castScript: PlayScript? = nil
     @Environment(\.sharedNameHeight) private var sharedNameHeight
     #if os(macOS)
+    @Environment(\.tileFillsRow) private var fillsRow
     @State private var hovering = false
     #endif
 
@@ -406,6 +421,9 @@ struct ShowTile: View {
         }
         .padding(EdgeInsets(top: 6, leading: 6, bottom: 10, trailing: 6))
         .frame(width: width, alignment: .topLeading)
+        #if os(macOS)
+        .frame(maxHeight: fillsRow ? .infinity : nil, alignment: .topLeading)
+        #endif
         .background(Color.board(series.genre))
         .clipShape(RoundedRectangle(cornerRadius: Radius.card))
         #if os(macOS)
@@ -717,7 +735,7 @@ struct HeadBoard: View {
     @State private var width: CGFloat = 0
 
     static func side(forWidth width: CGFloat) -> CGFloat {
-        #if os(iOS)
+        #if !os(tvOS)
         if width >= wideFrom { return 240 }
         #endif
         return width >= 1024 ? 176 : width >= 600 ? 128 : 96
@@ -726,7 +744,7 @@ struct HeadBoard: View {
     /// Past a phone's column the board is composed for the width: words and strip beside a large window.
     static let wideFrom: CGFloat = 760
     private var beside: Bool {
-        #if os(iOS)
+        #if !os(tvOS)
         width >= Self.wideFrom
         #else
         false
