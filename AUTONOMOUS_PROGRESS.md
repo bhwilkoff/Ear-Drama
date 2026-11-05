@@ -531,3 +531,7 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Owner: "We were doing some deep design loop work last week before we ran into the limits for the week, can you investigate the status of that and see about setting up a remaining to do list that we should use for the next loop."
 - Read main, CI, the live catalog, the store workflows and last week's session. `DESIGN-LOOP.md` gains "Next round" (N1 to N10, O1 to O6); its State and SCRATCHPAD's Current State corrected. Found: Play is 16 versions behind at 1.0.101; junk show names are classes, not three names; the Android seek gap had been noted nowhere. No code changed.
 
+### Design round 2, 2026-11-04, audits, redesigns and 1.0.118; loop stopped
+- Owner: "I'd really love to move on to new features after these tests and audits of screens on each platform are complete." Play internal got direction D (1.0.117). P-9 and title passes live; take-down process live (Decision 074); real-data dry run and honest CI (tools/catalog_dryrun.sh).
+- Owner: "What is the audit even doing if you aren't looking at the results of the audit?!" Sonnet audits passed glaring faults; Apple TV, iPad and Mac redone on Opus with the design skills, frames read by the main thread before each merge. Android portraits were refused by Commons (bare User-Agent), fixed.
+- 1.0.118 on the merged tree: web 17 suites, catalog 38, Worker 250, Android tests and lint, macOS 294, design rules 14, iPhone 12 Release launch held. Left: DESIGN-LOOP N5, N7 to N10, N12, N13, owner list.

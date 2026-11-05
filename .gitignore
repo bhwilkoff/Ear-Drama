@@ -106,3 +106,4 @@ tv/dist/
 roku/dist/
 .claude/settings.local.json
 _site/
+.wrangler/

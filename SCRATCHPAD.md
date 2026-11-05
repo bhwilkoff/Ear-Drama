@@ -41,10 +41,9 @@
      for radio scripts is the owner's call.
   15. **Ask the Generic Radio Workshop** before any GRW script is used (the
      owner sends it; a draft is in `docs/outreach/grw-request.md`).
-- **Status (2026-11-04)**: main is 1.0.117 (97a3275) on TestFlight; every workflow's latest run
-  is green; nothing is running. Play's internal track is still 1.0.101, before direction D. **The next
-  loop works from "Next round" in `DESIGN-LOOP.md`.** Not verified: 1.0.117 beyond the iPhone 12;
-  anything heard (sleep fade, leveling); lock-screen controls; AirPlay or Cast; Create's three modes.
+- **Status (2026-11-04)**: main is 1.0.118. Screen audits and redesigns done on web, iPad, Apple TV,
+  Mac and Pixel. The loop is stopped; next round starts from "Next round" in `DESIGN-LOOP.md` (N5, N7 to N10,
+  N12, N13). Not verified: anything heard; lock-screen controls; AirPlay or Cast; Create's three modes on a device.
 - **Catalog now**: published 2026-11-03 from the daily schedule; 6,794 series served, 1,708 with five
   or more episodes. Research database and caches: `catalog/README.md`.
 - **Open infrastructure**: `workflow-health.yml` and `retry-infra-failures.yml` run on schedule and

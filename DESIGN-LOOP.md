@@ -258,11 +258,15 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
 
 **Owner, 2026-11-04:** "I'd really love to move on to new features after these tests and audits of screens on each platform are complete." Gate: N1, N2, N4. The rest may run beside feature work.
 
+**Stopped 2026-11-04, 1.0.118.** N1 to N4c done; every screen's frames read by the main thread on web,
+iPad, Apple TV, Mac and Pixel. The rule from here: a design audit runs on Opus with the design skills, and
+the main thread reads the frames before anything merges. Left: N5, N7 to N10, N12, N13 and the owner's list.
+
 ### A. Put what is built in front of people
-- [ ] **N1 Android to Play internal (blocked 2026-11-04: the Pixel is not on adb).** Play's last release is 1.0.101 (2026-10-29, c849ae7), before
+- [x] **N1 Android to Play internal.** Play's last release is 1.0.101 (2026-10-29, c849ae7), before
   direction D: anyone on Play has the old app. Check nothing is in review, run the Pixel bench, then
   dispatch `Play release`.
-- [ ] **N2 Verify 1.0.117 beyond the iPhone.** Its last run was the iPhone 12 tap tier only. Tile
+- [x] **N2 Verify 1.0.117 beyond the iPhone.** Its last run was the iPhone 12 tap tier only. Tile
   navigation changed for iPad and Mac (`PushLink`) and page identity changed on tvOS. Run qa_suite and
   the iPad tap tier, the Pixel, Ben Bedroom, and press tiles and Back on the Mac (when the owner is away).
 - [x] **N3 Read the built Info.plist on iOS, tvOS and macOS.** Background play failed because a key
@@ -271,17 +275,17 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   Missing, the first recording crashes. Add a guard on the built product (a test failing first).
 
 ### B. Design on the other devices
-- [ ] **N4 Bring the iPad, Pixel, Apple TV and Mac to the iPhone's depth (Opus for design calls).** The
+- [x] **N4 Bring the iPad, Pixel, Apple TV and Mac to the iPhone's depth (Opus for design calls).** The
   owner found the 10-31 faults on the iPhone, not the harness: spacing, images, bottom scroll, button
   close-ups, malformed icons. Only the iPhone had that pass. One device per batch: every screen, every
   button row up close in each state, light and dark, last row reachable with the mini player up.
-- [ ] **N4b Every fault checked on every platform.** Owner, 2026-11-04: "Are we working to fix the things
+- [x] **N4b Every fault checked on every platform.** Owner, 2026-11-04: "Are we working to fix the things
   that we have identified in these tests across all of the platforms?" Not until now: batches fixed their
   own platform. Each fault below is fixed or marked n/a with a reason on web, iOS, iPad, Mac, tvOS, Android.
   Web joins N4's audit (it was left off). To check: Browse's gap beside the field (iPad, fixed; shared with
   Mac; web wide layouts unchecked); Now Playing opening short (Pixel, fixed); uneven player option row
   (Pixel, fixed); Stations' right edge and indented toggles (Pixel, fixed).
-- [ ] **N4c Design pass on iPad after Apple TV (Opus, main thread reads the frames).** Read 2026-11-04 from
+- [x] **N4c Design pass on iPad after Apple TV (Opus, main thread reads the frames).** Read 2026-11-04 from
   portrait light frames; earlier audits passed all of these:
   - series and person pages sit in a narrow column with wide empty margins; small rows; the head board's
     run chart is mostly blank
@@ -324,6 +328,12 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   the same things over and over." `Fixture` pins X Minus One and Hopalong Cassidy, so every run walks the
   same pages (the vary-test-content rule). Pick shows from the live catalog per run: rich, bare, no
   picture, long title. Run only the classes a change touches; the whole tier once per ship.
+- [ ] **N13 Remaining raw titles, a further catalog pass (run tools/catalog_dryrun.sh first).** Seen on
+  screens 2026-11-04: "Tarzans First Birthday", "Battle WithThe Apes", "Production 2", "CGS #055...",
+  "GG Season 05", "Rc Superman", "(DM)", "The Silver Clippe", "(second audion...)", "1943-xx-xx RRGO...",
+  "(Combines all dates)". Also unchecked: Mac row hover and keyboard; Ear dramas filled on Apple TV; a
+  filled Queue on Apple TV; Pixel Now Playing frame; Create on every device (needs sign-in, O2);
+  Now Playing artwork on a short Android screen.
 
 ### E. Records
 - [ ] **N9 Parity audit.** PARITY shows 7 iPhone ✅ against a 50-test tap tier, and row "Background
