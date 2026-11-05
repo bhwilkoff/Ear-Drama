@@ -24,7 +24,17 @@ private struct ActionsFoldedKey: EnvironmentKey {
     static let defaultValue = false
 }
 
+private struct ActionBoardKey: EnvironmentKey {
+    static let defaultValue: String?? = nil
+}
+
 extension EnvironmentValues {
+    /// The board a button row stands on, by genre: its controls take the board's one ink.
+    var actionBoard: String?? {
+        get { self[ActionBoardKey.self] }
+        set { self[ActionBoardKey.self] = newValue }
+    }
+
     /// True when the row is too narrow for labels: its secondary buttons show their icons alone.
     var actionsFolded: Bool {
         get { self[ActionsFoldedKey.self] }
@@ -64,7 +74,18 @@ private struct PageActionLabelStyle: LabelStyle {
 private struct ActionButtonStyle: ButtonStyle {
     let primary: Bool
     @Environment(\.actionsFolded) private var folded
+    @Environment(\.actionBoard) private var board
     @Environment(\.isEnabled) private var enabled
+
+    private var fill: Color {
+        if let board { return primary ? Color.onBoard(board) : .clear }
+        return primary ? Color.brandPrimary : Color.brandSurfaceAlt
+    }
+
+    private var ink: Color {
+        if let board { return primary ? Color.board(board) : Color.onBoard(board) }
+        return primary ? Color.brandOnPrimary : Color.brandText
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         let shape = RoundedRectangle(cornerRadius: Radius.control)
@@ -74,11 +95,11 @@ private struct ActionButtonStyle: ButtonStyle {
             .labelStyle(PageActionLabelStyle(iconOnly: folded && !primary))
             .font(TypeRamp.bodyStrong)
             .lineLimit(1)
-            .foregroundStyle(primary ? Color.brandOnPrimary : Color.brandText)
+            .foregroundStyle(ink)
             .padding(.horizontal, folded && !primary ? 0 : Spacing.s4)
             .frame(minWidth: 44, maxWidth: primary && folded ? .infinity : nil, minHeight: 44)
-            .background(primary ? Color.brandPrimary : Color.brandSurfaceAlt, in: shape)
-            .overlay { if !primary { shape.strokeBorder(Color.brandBorder, lineWidth: 1) } }
+            .background(fill, in: shape)
+            .overlay { if !primary { shape.strokeBorder(board.map { Color.onBoard($0).opacity(0.5) } ?? Color.brandBorder, lineWidth: 1) } }
             .contentShape(shape)
             .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
     }
@@ -226,15 +247,80 @@ private struct OnAirFace: View {
     }
 }
 
+#if os(iOS)
+// MARK: - The tablet page
+
+private struct WideColumnsKey: EnvironmentKey {
+    static let defaultValue = 2
+}
+
+private extension EnvironmentValues {
+    var wideColumns: Int {
+        get { self[WideColumnsKey.self] }
+        set { self[WideColumnsKey.self] = newValue }
+    }
+}
+
+/// A series or person page at regular width (iOS-DESIGN R11g): the head board and shelves across the
+/// whole page, and its rows two across, each column a phone's measure. A list one row wide leaves
+/// a tablet's margins empty or its rows too long to read across.
+struct WidePage<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @State private var width: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: Spacing.s6) { content() }
+                .padding(.horizontal, Spacing.s6)
+                .padding(.vertical, Spacing.s4)
+                .environment(\.wideColumns, width >= 700 ? 2 : 1)
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .background(Color(uiColor: .systemGroupedBackground))
+    }
+}
+
+/// A run of rows under its heading (a season, a show), two across, in reading order.
+struct WideSection<Rows: View>: View {
+    let title: String
+    @ViewBuilder let rows: () -> Rows
+    @Environment(\.wideColumns) private var count
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s1) {
+            Text(verbatim: title)
+                .font(TypeRamp.bodyStrong)
+                .foregroundStyle(Color.brandText)
+                .accessibilityAddTraits(.isHeader)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s6, alignment: .top), count: count),
+                      alignment: .leading, spacing: 0) { rows() }
+        }
+    }
+}
+
+extension View {
+    /// A row outside a List: its own hairline, under the words as the List's separator is.
+    func wideRow() -> some View {
+        buttonStyle(.plain)
+            .padding(.vertical, Spacing.s1)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.brandBorder).frame(height: 0.5).padding(.leading, 48 + Spacing.s3)
+            }
+    }
+}
+#endif
+
 /// The page's column: at regular width the content keeps a readable measure and the head board
 /// spans it, instead of a portrait on the left and a wide empty area.
 struct ReadableColumn: ViewModifier {
+    var width: CGFloat = 720
+
     func body(content: Content) -> some View {
         #if os(tvOS)
         content
         #else
         content
-            .frame(maxWidth: 720)
+            .frame(maxWidth: width)
             .frame(maxWidth: .infinity)
             #if os(iOS)
             // The list's own grouped backdrop stops at the column; the same color fills the margins.

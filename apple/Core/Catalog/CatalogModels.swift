@@ -59,14 +59,15 @@ nonisolated struct Artwork: Hashable, Sendable {
     /// §3.3a, the web's `API.cropRect` with the same golden cases): around the published
     /// face, the face about half the square and at most `maxZoom` times the largest square;
     /// without a face the largest square at 50 % across and 20 % down; nil when the picture
-    /// is wide with no face (not cropped) or its size is unknown (the plain fill crop).
-    func cropRect(maxZoom: Double = 4) -> CropRect? {
+    /// is wide with no face (not cropped) or its size is unknown (the plain fill crop). `least` is
+    /// the smallest square a window can take, as a fraction of the height: the square opens out to it.
+    func cropRect(maxZoom: Double = 4, least: Double = 0) -> CropRect? {
         guard let a = aspectRatio, face != nil || !isWide else { return nil }
         let full = min(a, 1)
         func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { min(hi, max(lo, v)) }
         var (s, left, top) = (full, 0.5 * (a - full), 0.2 * (1 - full))
         if let f = face {
-            s = clamp(2 * max(f.w * a, f.h), full / maxZoom, full)
+            s = clamp(max(2 * max(f.w * a, f.h), least), full / maxZoom, full)
             left = clamp((f.x + f.w / 2) * a - s / 2, 0, a - s)
             top = clamp(f.y + f.h / 2 - s / 2, 0, 1 - s)
         }
@@ -390,9 +391,10 @@ nonisolated struct PersonEpisode: Hashable, Sendable, Identifiable {
     var roles: [PersonRole]
     var id: String { episode.id }
 
-    /// "Cast as Mrs. Stevenson, Narrator": every role this episode credits the person in.
+    /// "Cast as Mrs. Stevenson, Narrator": every role this episode credits the person in. A plain
+    /// cast credit says nothing (every Jack Benny row read "Cast"), so it is left out.
     var rolesLine: String {
-        roles.map { r in
+        roles.filter { $0.character != nil || ($0.role ?? "cast").lowercased() != "cast" }.map { r in
             let title = PersonRole.title(r.role ?? "cast")
             return r.character.map { "\(title) as \($0)" } ?? title
         }.joined(separator: ", ")

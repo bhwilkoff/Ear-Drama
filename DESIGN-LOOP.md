@@ -294,6 +294,10 @@ is current (no web change since its last deploy); catalog published 2026-11-03. 
   (Sign in, Join a room, Export, CSV) above its tabs; Stations stacks eight heavy Listen live buttons;
   titles "GG Season 05", "Rc Superman", "(DM)" suffixes, "The Silver Clippe", "(second audion starring...)".
   Web at 375 and the Pixel not yet read by the main thread.
+  Done on Apple 2026-11-04 (branch of this batch): R11g tablet pages, R11h no bare "Cast", §4.9a station rows,
+  solid genre-less monogram, the crop opening out to the floor (Gunsmoke: 296 px crop in a 300 pt TV tile; also on
+  web and Android, with the role rule). Still open: web and Android take the solid monogram and quiet station rows;
+  a tablet's rows carry a black Play each; web's head strip keeps the fixed axis.
 - [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
   pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
   a yes before building.

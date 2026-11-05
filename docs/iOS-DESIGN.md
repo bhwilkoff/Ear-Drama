@@ -123,7 +123,9 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `Artwork.cropRect`, graded at decode in Core by `PictureGrade`,
   `CIColorControls` saturation 0 then `CIColorMatrix` in sRGB, the
   identity levels until the projection publishes `art.grade`; else
-  `TitleBlock`, the monogram as an outlined Core Text path in onBoard),
+  `TitleBlock`, the monogram as an outlined Core Text path in onBoard, cut
+  solid on the pale genre-less board, where an outline all but vanishes,
+  and filled tonally past 200 pt on iOS and tvOS),
   `ShowTile` (window, name, `RunStrip`, facts, on `Color.board(_:)`;
   names in one shelf share the tallest name's height, so every strip
   sits on one line), `GrammarRow` (64 pt, a 48 pt visual: `DateBlock`
@@ -159,9 +161,13 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   never wraps apart**: an `HStack` inside `ViewThatFits`; when the labels
   do not fit, the secondary buttons fold to 44 pt icons (the title kept
   as the accessibility label) and the primary takes the room. At regular
-  width the page keeps a 720 pt column (`ReadableColumn`) and the board
-  spans it. The rules are golden-tested in `PagesRulesTests` with the
-  web's cases.
+  width the episode page keeps a column (`ReadableColumn`, 960 pt on an iPad,
+  720 on a Mac) and its board, the link to the show, spans it with the
+  strip beside the words at a 176 pt window and the plain name, so the
+  episode's own title leads; the series and person pages follow R11g. The rules are
+  golden-tested in `PagesRulesTests` with the web's cases.
+- **R11g The series and person pages on a tablet** (owner's read of the iPad, 2026-11-04: *"series and person pages sit in a narrow column with wide empty margins"*; `catalog-experience-design`: "iPad uses the width for Detail's two columns, not a stretched phone"). At regular width on iPadOS these pages are `WidePage`, not a `List`: the head board across the page, then each season or show as a `WideSection`, its rows two across in reading order, so each column keeps a phone's measure (one column under 700 pt). The board past 760 pt is composed for the width: a 240 pt window, beside it the words (the name at 1.6 times its step), the run strip and the page's buttons, which stand on the board in its one ink (`actionBoard`: the primary an onBoard fill with the board's color as its label). A person's shows stay a shelf under the board. **The head board's strip takes the show's own years** (`RunStrip.ownSpan`, at three years or more, every platform's page about one show on Apple; tvOS's `TVRunStrip` is the same rule): the page compares the show with nothing, and on the fixed axis Gunsmoke was mostly blank. Tiles keep the fixed axis, where shows sit side by side. The Mac keeps its column; the phone its list.
+- **R11h Marks that say nothing are left off** (owner, 2026-11-04: *"every Jack Benny row reads Cast"*). A person's row names a role only when it says something: "Cast" alone is dropped, "Cast as Mrs. Stevenson" and "Host" stay (`rolesLine`, the same on the web and Android).
 - **R12** brand colors are chrome; a genre's hue is content, drawn only
   as the series row's genre mark (`Color.genre(_:)`, Decision 064).
 - **R13** shelves come from `catalog.listenShelves()`, which draws the
@@ -367,6 +373,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   Playing draws, so with no network it is the typographic card.
 
 - **D3-8 Stations, Surprise, People, a person** (D3-8, 2026-10-30) Stations, Surprise, Search's people and a person's page follow WEB-DESIGN §6.4f in this platform's idiom: a `GrammarRow` per station and slot (`StationRow`, `SlotRow`; "Now" in an ink pill), head boards for Surprise's picks in a ScrollView, `PersonRowLabel` as a round-window row, and `PersonScreen` as a head board, a rail of `ShowTile`s, then date-block rows with the roles as the sub line.
+- **§4.9a A station row is one action** (owner, 2026-11-04: *"eight heavy black Listen live buttons"*). The whole row tunes in, and its mark is a hollow 36 pt ring in ink: eight stations are equal choices, so none is filled. Ink fills only the one on the air, with "Listening live" beside it at regular width; a tap on that row stops it. Spoken as "Listen live to Drama".
 - **§4.9 Stations** (was Radio, Decision 068) opens with the stations row,
   the web's §4.9 as the List's first section (`StationsSection`): Tonight in
   19xx first, then each genre station from `stations.json`

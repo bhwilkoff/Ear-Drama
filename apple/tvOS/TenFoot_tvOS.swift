@@ -16,7 +16,7 @@ enum TV {
     /// The largest window a picture holds up at, up to `bound` (`Grammar.windowFill`'s floor).
     static func windowSide(_ art: Artwork?, bound: CGFloat) -> CGFloat {
         guard let art, let w = art.width, let h = art.height, w > 0, h > 0 else { return bound }
-        guard let rect = art.cropRect() else { return min(bound, CGFloat(min(w, h)) * 2) }
+        guard let rect = art.cropRect(least: 1) else { return min(bound, CGFloat(min(w, h)) * 2) }
         return min(bound, CGFloat(rect.h * Double(h)).rounded(.down))
     }
 }

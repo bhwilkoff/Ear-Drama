@@ -34,7 +34,8 @@ class GrammarTest {
     @Test fun `the window decides crop, whole or block`() {
         val face = FaceBox(0.4f, 0.1f, 0.2f, 0.15f)
         assertTrue("a face crop 240 px tall fills a 200 px window", windowFill(at(600, 800, face), 200f) is WindowFill.Crop)
-        assertEquals("control: the same crop is under the floor at 300", WindowFill.Block, windowFill(at(600, 800, face), 300f))
+        assertEquals("a larger window opens the crop out to its floor", 0.5f, (windowFill(at(600, 800, face), 400f) as WindowFill.Crop).rect.h, 0.001f)
+        assertEquals("control: past the largest square the floor refuses", WindowFill.Block, windowFill(at(600, 800, face), 700f))
         assertEquals("a wide picture with no face is drawn whole", WindowFill.Whole, windowFill(at(1000, 500, null), 200f))
         assertEquals("control: its short side under half the window is a block", WindowFill.Block, windowFill(at(300, 150, null), 400f))
         assertEquals("control: an unknown size is a block", WindowFill.Block, windowFill(at(null, null, null), 48f))

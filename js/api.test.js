@@ -91,7 +91,9 @@ test('grammar: the title block, the type step, the window, the event line and th
   assertEq(API.headNameStep('The Adventures of Philip Marlowe and Friends in Hollywood Town'), 2, 'past 48, twice');
   const at = (w, h, face) => API.artOf(['https://x/A.jpg', w, h, null, null, face]);
   assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 200).kind, 'crop', 'a face crop 240 px tall fills a 200 px window');
-  assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 300).kind, 'block', 'control: the same crop is under the floor at 300');
+  assert(Math.abs(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 200).rect.h - 0.3) < 1e-6, 'a window the face crop clears keeps that crop');
+  assert(Math.abs(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 400).rect.h - 0.5) < 1e-6, 'a larger window opens the crop out to its floor, around the face');
+  assertEq(API.windowFill(at(600, 800, [0.4, 0.1, 0.2, 0.15]), 700).kind, 'block', 'control: past the largest square the floor refuses');
   assertEq(API.windowFill(at(1000, 500, null), 200).kind, 'whole', 'a wide picture with no face is drawn whole');
   assertEq(API.windowFill(at(300, 150, null), 400).kind, 'block', 'control: its short side under half the window is a block');
   assertEq(API.windowFill(at(null, null, null), 48).kind, 'block', 'control: an unknown size is a block');

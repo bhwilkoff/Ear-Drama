@@ -715,6 +715,9 @@ struct SeriesScreen: View {
     let key: String
     @Environment(CatalogStore.self) private var catalog
     @Environment(FollowedSeries.self) private var follows
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
     @State private var page: SeriesPage??
 
     var body: some View {
@@ -725,43 +728,7 @@ struct SeriesScreen: View {
             case .some(.none):
                 EmptyState("Series not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
-                List {
-                    Section {
-                        HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
-                                  art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
-                                  years: page.series.yearCounts,
-                                  facts: SeriesHead.facts(page.series), genreKey: page.series.genre,
-                                  kickerRest: page.series.networks.joined(separator: " \u{00B7} "), showsCredit: true)
-                            .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                        ActionRow {
-                            FollowButton(key: page.series.key).pageAction(primary: true)
-                            ShareLink(item: SiteLinks.series(page.series.key), subject: Text(page.series.name)) {
-                                ActionLabel(title: "Share", systemImage: "square.and.arrow.up")
-                            }
-                            .pageAction()
-                            .help("Share")
-                        }
-                        .listRowInsets(EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                    }
-                    ForEach(page.seasons) { season in
-                        Section {
-                            ForEach(season.episodes) { episode in
-                                NavigationLink(value: Route.episode(episode.id)) {
-                                    EpisodeRowLabel(episode: episode)
-                                }
-                                .playRowLink()
-                                .playContextMenu(episode.id)
-                            }
-                        } header: {
-                            Text(verbatim: season.season ?? "Undated")
-                        }
-                    }
-                }
-                .modifier(ReadableColumn())
+                content(page)
                 .navigationTitle(page.series.name)
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
@@ -779,6 +746,79 @@ struct SeriesScreen: View {
             guard catalog.state == .ready else { return }
             page = .some(await catalog.seriesPage(key))
         }
+    }
+
+    private func head(_ page: SeriesPage, actions: AnyView? = nil) -> some View {
+        HeadBoard(kicker: SeriesHead.kicker(page.series), name: page.series.name, genre: page.series.genre,
+                  art: page.series.windowArt, first: page.series.firstDate, last: page.series.lastDate,
+                  years: page.series.yearCounts,
+                  facts: SeriesHead.facts(page.series), genreKey: page.series.genre,
+                  kickerRest: page.series.networks.joined(separator: " \u{00B7} "), actions: actions, showsCredit: true)
+    }
+
+    private func actions(_ page: SeriesPage) -> some View {
+        ActionRow {
+            FollowButton(key: page.series.key).pageAction(primary: true)
+            ShareLink(item: SiteLinks.series(page.series.key), subject: Text(page.series.name)) {
+                ActionLabel(title: "Share", systemImage: "square.and.arrow.up")
+            }
+            .pageAction()
+            .help("Share")
+        }
+    }
+
+    @ViewBuilder private func content(_ page: SeriesPage) -> some View {
+        #if os(iOS)
+        if sizeClass == .regular {
+            WidePage {
+                head(page, actions: AnyView(actions(page)))
+                ForEach(page.seasons) { season in
+                    WideSection(title: season.season ?? "Undated") {
+                        ForEach(season.episodes) { episode in
+                            NavigationLink(value: Route.episode(episode.id)) {
+                                EpisodeRowLabel(episode: episode)
+                            }
+                            .wideRow()
+                            .playContextMenu(episode.id)
+                        }
+                    }
+                }
+            }
+        } else {
+            list(page)
+        }
+        #else
+        list(page)
+        #endif
+    }
+
+    private func list(_ page: SeriesPage) -> some View {
+        List {
+            Section {
+                head(page)
+                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                actions(page)
+                    .listRowInsets(EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+            ForEach(page.seasons) { season in
+                Section {
+                    ForEach(season.episodes) { episode in
+                        NavigationLink(value: Route.episode(episode.id)) {
+                            EpisodeRowLabel(episode: episode)
+                        }
+                        .playRowLink()
+                        .playContextMenu(episode.id)
+                    }
+                } header: {
+                    Text(verbatim: season.season ?? "Undated")
+                }
+            }
+        }
+        .modifier(ReadableColumn())
     }
 }
 
@@ -962,7 +1002,11 @@ struct EpisodeScreen: View {
                 }
             }
         }
+        #if os(iOS)
+        .modifier(ReadableColumn(width: 960))
+        #else
         .modifier(ReadableColumn())
+        #endif
         .navigationTitle(episode.displayTitle)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -978,6 +1022,9 @@ struct EpisodeScreen: View {
 struct PersonScreen: View {
     let id: String
     @Environment(CatalogStore.self) private var catalog
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
     @State private var page: PersonPage??
     @State private var shows: [String: SeriesRow] = [:]
     @State private var newestFirst = false
@@ -990,54 +1037,7 @@ struct PersonScreen: View {
             case .some(.none):
                 EmptyState("Person not found", systemImage: "questionmark.square.dashed")
             case let .some(.some(page)):
-                let groups = page.groups(newestFirst: newestFirst)
-                let run = PersonShows.span(page.episodes)
-                List {
-                    Section {
-                        HeadBoard(kicker: nil, name: page.person.name, genre: nil, art: page.person.art,
-                                  first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes),
-                                  facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
-                                          groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
-                                  showsCredit: true)
-                            .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                        if groups.count > 1 {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(alignment: .top, spacing: Spacing.s3) {
-                                    ForEach(groups) { group in
-                                        NavigationLink(value: Route.series(group.seriesKey)) {
-                                            let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
-                                                                        name: group.seriesName, episodes: group.episodes)
-                                            ShowTile(series: tile, width: 160,
-                                                     facts: [tile.yearSpan ?? "Undated", countText(group.episodes.count, "episode", "episodes")])
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .sharesNameHeight()
-                                .padding(.horizontal, Spacing.s4)
-                            }
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                        }
-                    }
-                    ForEach(groups) { group in
-                        Section {
-                            ForEach(group.episodes) { item in
-                                NavigationLink(value: Route.episode(item.id)) {
-                                    EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
-                                }
-                                .playRowLink()
-                                .playContextMenu(item.id)
-                            }
-                        } header: {
-                            Text(group.seriesName)
-                        }
-                    }
-                }
-                .modifier(ReadableColumn())
+                content(page, groups: page.groups(newestFirst: newestFirst))
                 .navigationTitle(page.person.name)
                 .toolbar {
                     if page.episodes.count > 1 {
@@ -1069,6 +1069,90 @@ struct PersonScreen: View {
                 shows = Dictionary(uniqueKeysWithValues: await catalog.series(keys).map { ($0.key, $0) })
             }
         }
+    }
+
+    private func head(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
+        let run = PersonShows.span(page.episodes)
+        return HeadBoard(kicker: nil, name: page.person.name, genre: nil, art: page.person.art,
+                         first: run.first, last: run.last, years: PersonShows.yearCounts(page.episodes),
+                         facts: [page.person.years, PersonRowLabel.count(page.episodes.count),
+                                 groups.count > 1 ? countText(groups.count, "show", "shows") : nil],
+                         showsCredit: true)
+    }
+
+    private func showShelf(_ groups: [PersonSeriesGroup], inset: CGFloat) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: Spacing.s3) {
+                ForEach(groups) { group in
+                    NavigationLink(value: Route.series(group.seriesKey)) {
+                        let tile = PersonShows.tile(shows[group.seriesKey], key: group.seriesKey,
+                                                    name: group.seriesName, episodes: group.episodes)
+                        ShowTile(series: tile, width: 160,
+                                 facts: [tile.yearSpan ?? "Undated", countText(group.episodes.count, "episode", "episodes")])
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .sharesNameHeight()
+            .padding(.horizontal, inset)
+        }
+    }
+
+    @ViewBuilder private func content(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
+        #if os(iOS)
+        if sizeClass == .regular {
+            WidePage {
+                head(page, groups: groups)
+                if groups.count > 1 { showShelf(groups, inset: Spacing.s6).padding(.horizontal, -Spacing.s6) }
+                ForEach(groups) { group in
+                    WideSection(title: group.seriesName) {
+                        ForEach(group.episodes) { item in
+                            NavigationLink(value: Route.episode(item.id)) {
+                                EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                            }
+                            .wideRow()
+                            .playContextMenu(item.id)
+                        }
+                    }
+                }
+            }
+        } else {
+            list(page, groups: groups)
+        }
+        #else
+        list(page, groups: groups)
+        #endif
+    }
+
+    private func list(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
+        List {
+            Section {
+                head(page, groups: groups)
+                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                if groups.count > 1 {
+                    showShelf(groups, inset: Spacing.s4)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+            }
+            ForEach(groups) { group in
+                Section {
+                    ForEach(group.episodes) { item in
+                        NavigationLink(value: Route.episode(item.id)) {
+                            EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
+                        }
+                        .playRowLink()
+                        .playContextMenu(item.id)
+                    }
+                } header: {
+                    Text(group.seriesName)
+                }
+            }
+        }
+        .modifier(ReadableColumn())
     }
 }
 

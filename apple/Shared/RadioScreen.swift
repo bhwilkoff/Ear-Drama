@@ -181,7 +181,8 @@ private struct StationsSection: View {
 }
 
 /// A station as the grammar's row: its show's window (the picture, else the star, else the title
-/// block), the station's name, an event line of what is on, and Listen live.
+/// block), the station's name, an event line of what is on. The whole row is its one action: a page of
+/// stations is eight equal choices, so the mark is a hollow ring and ink is kept for the one on the air.
 struct StationRow: View {
     let name: String
     let genre: String?
@@ -194,70 +195,63 @@ struct StationRow: View {
     let stop: () -> Void
     @Environment(\.horizontalSizeClass) private var sizeClass
 
-    /// On a phone the control is the row's round Play, so the name keeps the width it needs.
-    private var compact: Bool { sizeClass == .compact }
-
-    private func roundIcon(_ symbol: String) -> some View {
-        Image(systemName: symbol)
-            .font(TypeRamp.body)
-            .foregroundStyle(Color.brandOnPrimary)
-            .frame(width: 36, height: 36)
-            .background(Circle().fill(Color.brandPrimary))
+    private var row: some View {
+        let episode = slot?.playableEpisode
+        return HStack(spacing: Spacing.s3) {
+            if let episode {
+                SeriesKeyWindow(key: GrammarSlot.seriesKey(episode.id), name: episode.series, side: 48)
+            } else {
+                PictureWindow(art: nil, name: name, genre: genre, side: 48)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(verbatim: name)
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.brandText)
+                    .multilineTextAlignment(.leading)
+                EventLine(facts: [episode?.series, episode?.title, note])
+            }
+            Spacer(minLength: 0)
+            if isLive {
+                if sizeClass != .compact {
+                    Text("Listening live").font(TypeRamp.bodyStrong).foregroundStyle(Color.brandText)
+                }
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(TypeRamp.body)
+                    .foregroundStyle(Color.brandOnPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color.brandPrimary))
+            } else if canListen {
+                Image(systemName: startOver ? "arrow.counterclockwise" : "play.fill")
+                    .font(TypeRamp.body)
+                    .foregroundStyle(Color.brandText)
+                    .frame(width: 36, height: 36)
+                    .overlay { Circle().strokeBorder(Color.brandBorder, lineWidth: 1) }
+            }
+        }
+        .frame(minHeight: 64)
+        .contentShape(Rectangle())
     }
 
     var body: some View {
         let episode = slot?.playableEpisode
-        HStack(alignment: .center, spacing: Spacing.s3) {
-            HStack(spacing: Spacing.s3) {
-                if let episode {
-                    SeriesKeyWindow(key: GrammarSlot.seriesKey(episode.id), name: episode.series, side: 48)
-                } else {
-                    PictureWindow(art: nil, name: name, genre: genre, side: 48)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: name)
-                        .font(TypeRamp.bodyStrong)
-                        .foregroundStyle(Color.brandText)
-                        .multilineTextAlignment(.leading)
-                    EventLine(facts: [episode?.series, episode?.title, note])
-                }
-                Spacer(minLength: 0)
-            }
-            .accessibilityElement(children: .combine)
+        let facts = [episode?.series, episode?.title, note].compactMap { $0 }.joined(separator: ", ")
+        Group {
             if isLive {
-                Button(action: stop) {
-                    if compact {
-                        roundIcon("dot.radiowaves.left.and.right")
-                    } else {
-                        Label("Listening live", systemImage: "dot.radiowaves.left.and.right")
-                            .foregroundStyle(Color.brandPrimary)
-                            .padding(.horizontal, Spacing.s3)
-                            .padding(.vertical, Spacing.s2)
-                            .background(Capsule().stroke(Color.brandPrimary))
-                    }
-                }
-                .stationButtonStyle()
-                .accessibilityLabel("Listening live")
-                .accessibilityValue("On")
-                .accessibilityHint("Stops listening live")
+                Button(action: stop) { row }
+                    .stationButtonStyle()
+                    .accessibilityLabel("Listening live to \(name)")
+                    .accessibilityValue(facts)
+                    .accessibilityHint("Stops listening live")
             } else if canListen {
-                Button(action: listen) {
-                    if compact {
-                        roundIcon(startOver ? "arrow.counterclockwise" : "play.fill")
-                    } else {
-                        Label(startOver ? "Replay" : "Listen live", systemImage: "play.fill")
-                            .foregroundStyle(Color.brandOnPrimary)
-                            .padding(.horizontal, Spacing.s3)
-                            .padding(.vertical, Spacing.s2)
-                            .background(Capsule().fill(Color.brandPrimary))
-                    }
-                }
-                .stationButtonStyle()
-                .accessibilityLabel(startOver ? "Replay \(name) from the start" : "Listen live to \(name)")
+                Button(action: listen) { row }
+                    .stationButtonStyle()
+                    .accessibilityLabel(startOver ? "Replay \(name) from the start" : "Listen live to \(name)")
+                    .accessibilityValue(facts)
+            } else {
+                row.accessibilityElement(children: .combine)
             }
         }
-        .frame(minHeight: 64)
-        // Without this the separator starts under the Listen live button instead of the name.
+        // Without this the separator starts under the row's mark instead of the name.
         .alignmentGuide(.listRowSeparatorLeading) { _ in 48 + Spacing.s3 }
         .listRowBackground(isLive ? Color.brandSurfaceAlt : nil)
     }

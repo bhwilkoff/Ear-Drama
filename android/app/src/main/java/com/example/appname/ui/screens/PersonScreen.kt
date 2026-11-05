@@ -147,7 +147,7 @@ fun PersonScreen(id: String, onBack: () -> Unit, onOpenEpisode: (String) -> Unit
                             showSeries = false,
                             onOpen = { onOpenEpisode(item.episode.id) },
                             onPlay = { container.playback.play(item.episode) },
-                            supporting = item.rolesLine,
+                            supporting = item.rolesLine.ifEmpty { null },
                             modifier = if (item.episode.id == firstId) Modifier.focusRequester(firstRow) else Modifier,
                         )
                     }

@@ -1420,7 +1420,8 @@
 
   const roleWord = (r) => { const w = r || 'cast'; return w.charAt(0).toUpperCase() + w.slice(1); };
   function rolesLine(roles) {
-    return roles.map(r => r.character ? `${roleWord(r.role)} as ${r.character}` : roleWord(r.role)).join(', ');
+    return roles.filter(r => r.character || (r.role || 'cast') !== 'cast')
+      .map(r => r.character ? `${roleWord(r.role)} as ${r.character}` : roleWord(r.role)).join(', ');
   }
 
   function renderPerson(r) {

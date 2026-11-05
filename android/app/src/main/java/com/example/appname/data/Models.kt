@@ -26,9 +26,10 @@ data class Artwork(
      * (ANDROID-DESIGN R11a, contract §3.3a, the web's `API.cropRect` with the same golden
      * cases): around the published face, the face about half the square and at most 4x zoom;
      * without a face the largest square at 50 % across and 20 % down; null when the picture is
-     * wide with no face (not cropped) or its size is unknown (the plain fill crop).
+     * wide with no face (not cropped) or its size is unknown (the plain fill crop). [least] is the
+     * smallest square a window can take, as a fraction of the height: the square opens out to it.
      */
-    fun cropRect(): CropRect? {
+    fun cropRect(least: Float = 0f): CropRect? {
         val a = aspectRatio ?: return null
         val f = face
         if (f == null && isWide) return null
@@ -37,7 +38,7 @@ data class Artwork(
         var left = 0.5f * (a - full)
         var top = 0.2f * (1 - full)
         if (f != null) {
-            s = (2 * maxOf(f.w * a, f.h)).coerceIn(full / 4, full)
+            s = maxOf(2 * maxOf(f.w * a, f.h), least).coerceIn(full / 4, full)
             left = ((f.x + f.w / 2) * a - s / 2).coerceIn(0f, a - s)
             top = (f.y + f.h / 2 - s / 2).coerceIn(0f, 1 - s)
         }
@@ -287,9 +288,9 @@ data class PersonRole(val role: String?, val character: String?) {
 
 /** One episode on a person's page, with every role it credits them in. */
 data class PersonEpisode(val episode: EpisodeRow, val roles: List<PersonRole>) {
-    /** "Cast as Mrs. Stevenson, Narrator". */
+    /** "Cast as Mrs. Stevenson, Narrator"; a plain cast credit says nothing. */
     val rolesLine: String
-        get() = roles.joinToString(", ") { r ->
+        get() = roles.filter { it.character != null || (it.role ?: "cast").lowercase() != "cast" }.joinToString(", ") { r ->
             val t = PersonRole.title(r.role)
             r.character?.let { "$t as $it" } ?: t
         }

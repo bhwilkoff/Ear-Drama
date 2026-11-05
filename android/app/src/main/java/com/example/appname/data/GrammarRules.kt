@@ -47,16 +47,16 @@ sealed interface WindowFill {
 /**
  * What a window of [slot] dp holds: a crop around the face, a wide picture with no face whole, or
  * the title block for no picture or one under the size floor (the crop's pixel height at least the
- * slot; a whole picture's short side at least half of it). An unknown size is a block.
+ * slot, a face crop opening out to it before the floor refuses; a whole picture's short side at least half of it). An unknown size is a block.
  */
 fun windowFill(art: Artwork?, slot: Float): WindowFill {
     if (art == null || art.url.isEmpty()) return WindowFill.Block
     val w = art.width ?: return WindowFill.Block
     val h = art.height ?: return WindowFill.Block
     if (w <= 0 || h <= 0) return WindowFill.Block
-    val rect = art.cropRect()
+    val rect = art.cropRect(least = slot / h)
         ?: return if (minOf(w, h) >= slot / 2) WindowFill.Whole else WindowFill.Block
-    return if (rect.h * h >= slot) WindowFill.Crop(rect) else WindowFill.Block
+    return if (rect.h * h >= slot - 0.01f) WindowFill.Crop(rect) else WindowFill.Block
 }
 
 /** An event line's pieces: each fact with the separator kept at its end; empty facts drop out. */
