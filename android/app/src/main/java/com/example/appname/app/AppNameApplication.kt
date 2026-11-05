@@ -7,6 +7,8 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import com.example.appname.data.ApiClient
 import coil3.request.crossfade
 import com.example.appname.playback.CastRoute
 import dagger.hilt.android.HiltAndroidApp
@@ -86,8 +88,12 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory, Configur
                     .maxSizeBytes(500L * 1024 * 1024)  // 500 MB
                     .build()
             }
-            // .components { add(OkHttpNetworkFetcherFactory(sharedOkHttp)) }
-            // wire when needed — Coil's default network fetcher works without it.
+            // Wikimedia answers a bare okhttp User-Agent with 403, so every portrait on Commons failed on a phone.
+            .components {
+                add(OkHttpNetworkFetcherFactory(sharedOkHttp.newBuilder()
+                    .addInterceptor { c -> c.proceed(c.request().newBuilder().header("User-Agent", ApiClient.USER_AGENT).build()) }
+                    .build()))
+            }
             .crossfade(true)
             .build()
 }

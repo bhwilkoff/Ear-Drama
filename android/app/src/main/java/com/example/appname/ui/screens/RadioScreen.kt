@@ -3,6 +3,10 @@ package com.example.appname.ui.screens
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -399,34 +403,29 @@ private fun StationRow(
             if (episode != null) SeriesKeyWindow(episode.id.substringBefore('|'), episode.series, m)
             else PictureWindow(null, name, genre, m)
         },
-        onOpen = {},
-        opens = false,
+        onOpen = { if (isLive) onStop() else onListen() },
+        opens = isLive || canListen,
+        openLabel = if (isLive) "Stop" else if (startOver) "Replay" else "Listen live",
+        description = if (isLive) "Listening live to $name" else if (startOver) "Replay $name from the start" else if (canListen) "Listen live to $name" else null,
         sub = listOf(episode?.series, episode?.title, note),
         trailing = when {
             isLive -> {
                 {
-                    OutlinedButton(
-                        onClick = onStop,
-                        modifier = modifier.semantics { stateDescription = "On" },
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnAir.colors.play),
-                        border = BorderStroke(1.dp, OnAir.colors.play),
+                    Box(
+                        Modifier.size(36.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSurface),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Filled.Sensors, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text("Listening live", maxLines = 1)
+                        Icon(Icons.Filled.Sensors, contentDescription = null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(20.dp))
                     }
                 }
             }
             canListen -> {
                 {
-                    Button(
-                        onClick = onListen,
-                        modifier = modifier.semantics { contentDescription = if (startOver) "Replay $name from the start" else "Listen live to $name" },
-                        colors = playButtonColors(),
+                    Box(
+                        Modifier.size(36.dp).border(1.5.dp, MaterialTheme.colorScheme.onSurface, CircleShape),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                        Text(if (startOver) "Replay" else "Listen live", maxLines = 1)
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(20.dp))
                     }
                 }
             }

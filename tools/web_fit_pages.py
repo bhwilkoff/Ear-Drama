@@ -25,7 +25,7 @@ def after_the_evening():
 
 ROUTES = [('stations', '?view=radio&mute=1', r'Stations', '.station.g-row', 1),
           ('stations-ended', '?view=radio&mute=1&now=' + after_the_evening(), r'Stations',
-           '.station.g-row .btn-primary[aria-label^="Replay"]', 1),
+           '.station.g-row .station-go[aria-label^="Replay"]', 1),
           ('surprise', '?view=surprise&mute=1', r'Surprise', '.pick .g-head', 2),
           ('search', '?view=search&q=welles&mute=1', r'People', '#search-body .g-row .g-window', 2),
           ('episode-air', '?item=xminusone%7C1956-04-24&mute=1', r'On the air', '.g-face .g-window[data-fill="block"]', 1),

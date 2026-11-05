@@ -69,6 +69,7 @@
 
   const ICONS = {
     play: 'M8 5v14l11-7z',
+    live: 'M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7.8 7.8 6.4 6.4a8 8 0 0 0 0 11.2l1.4-1.4a6 6 0 0 1 0-8.4zm8.4 0a6 6 0 0 1 0 8.4l1.4 1.4a8 8 0 0 0 0-11.2z',
     queue: 'M4 6h12v2H4zm0 5h12v2H4zm0 5h8v2H4zm14-1v-3h2v3h3v2h-3v3h-2v-3h-3v-2z',
     queued: 'M4 6h12v2H4zm0 5h12v2H4zm0 5h8v2H4zm11.6 1.4 1.4-1.4 2 2 4-4 1.4 1.4-5.4 5.4z',
     share: 'M18 16a3 3 0 0 0-2.4 1.2l-7-3.5a3 3 0 0 0 0-1.4l7-3.5A3 3 0 1 0 15 7l-7 3.5a3 3 0 1 0 0 3l7 3.5A3 3 0 1 0 18 16z',
@@ -844,12 +845,14 @@
      on now and one Listen live. A station's episodes are fetched only when someone tunes in. */
   function liveButton(isLive, canListen, name, start, startOver = false) {
     if (isLive) {
-      return el('button', { type: 'button', class: 'btn btn-live', 'aria-pressed': 'true',
-                            onclick: () => { Player.pause(); stopLive(); } }, 'Listening live');
+      return el('button', { type: 'button', class: 'station-go station-go-on', 'aria-pressed': 'true',
+                            'aria-label': `Listening live to ${name}, stop`,
+                            onclick: (e) => { e.stopPropagation(); Player.pause(); stopLive(); } },
+        icon('live'), el('span', { class: 'station-go-lab' }, 'Listening live'));
     }
-    return canListen ? el('button', { type: 'button', class: 'btn btn-primary',
+    return canListen ? el('button', { type: 'button', class: 'station-go',
                                       'aria-label': startOver ? `Replay ${name} from the start` : `Listen live to ${name}`,
-                                      onclick: start }, icon('play'), startOver ? 'Replay' : 'Listen live') : null;
+                                      onclick: (e) => { e.stopPropagation(); start(); } }, icon('play')) : null;
   }
 
   /** A station is a grammar row: its show's window (the picture, else the star, else the title
@@ -860,10 +863,11 @@
       : pictureWindow({ name, picture: null, genre }, 48);
     const text = [el('span', { class: 'ep-title body-strong' }, name),
       eventLine(ep ? [ep.series, ep.title, note] : [note])];
-    return el('li', { class: `station g-row${tuned ? ' station-live' : ''}` },
-      ep ? el('a', { class: 'g-link', href: `?item=${encodeURIComponent(ep.id)}` }, win, el('span', { class: 'g-text' }, ...text))
-        : el('div', { class: 'g-link' }, win, el('span', { class: 'g-text' }, ...text)),
+    const li = el('li', { class: `station g-row${tuned ? ' station-live' : ''}${button ? ' station-tap' : ''}` },
+      el('div', { class: 'g-link' }, win, el('span', { class: 'g-text' }, ...text)),
       button);
+    if (button) li.addEventListener('click', () => button.click());
+    return li;
   }
 
   async function tuneInStation(st) {

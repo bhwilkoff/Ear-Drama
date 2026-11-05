@@ -436,6 +436,7 @@ select {
 .g-rail.g-rail-small { grid-auto-columns: 148px; }
 @media (min-width: 768px) { .g-rail.g-rail-small { grid-auto-columns: 160px; } }
 .g-window[data-fill="whole"] img { inset: 6%; width: 88%; height: 88%; object-fit: contain; }
+.g-window[data-genre=""] .g-block text { fill: currentColor; fill-opacity: 0.78; stroke: none; }
 .g-block { display: block; width: 100%; height: 100%; overflow: visible; }
 .g-block text {
   font-family: var(--font-display); font-weight: 700; fill: none; stroke: currentColor; stroke-width: 1.4px;
@@ -710,7 +711,16 @@ a.g-face:hover .g-face-name { text-decoration: underline; }
 .slot .g-event, .station .g-event { overflow-wrap: anywhere; }
 .witness { padding-bottom: var(--space-6); }
 .stations { margin-bottom: var(--space-6); border-top: 1px solid var(--color-border); }
-.station > .btn { flex: none; }
+.station > .station-go { flex: none; }
+.station-tap { cursor: pointer; }
+.station-tap .g-link { cursor: pointer; }
+.station-go { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); flex: none; width: 36px; height: 36px; min-width: 36px; padding: 0; border: 1.5px solid var(--color-text); border-radius: 999px; background: transparent; color: var(--color-text); cursor: pointer; }
+.station-go svg { width: 18px; height: 18px; fill: currentColor; }
+.station-go-on { background: var(--color-text); color: var(--color-bg); width: auto; padding: 0 var(--space-2); }
+.station-go-lab { display: none; font-size: var(--type-caption-size); font-weight: var(--type-body-strong-weight); white-space: nowrap; }
+.station-go-on:not(:has(.station-go-lab)) { width: 36px; }
+@media (min-width: 768px) { .station-go-on .station-go-lab { display: inline; } .station-go-on { padding: 0 var(--space-3) 0 var(--space-2); } }
+.station-go-on svg { flex: none; }
 .witness a { color: var(--color-link); }
 
 /* ---- Filters ---- */
@@ -1208,3 +1218,6 @@ html.tv .np-together { display: none; }
 .g-faces-rail { display: grid; grid-auto-flow: column; grid-auto-columns: 120px; gap: var(--space-2); overflow-x: auto; scroll-snap-type: x proximity; padding: 0 0 var(--space-2); list-style: none; }
 .g-faces-rail > li { scroll-snap-align: start; min-width: 0; }
 .g-face-count { color: var(--color-text-muted); white-space: nowrap; }
+
+.library-account { margin-top: var(--space-6); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
+.library-account .account-row { margin: 0 0 var(--space-1); }
