@@ -113,6 +113,7 @@ struct EarDramaApp: App {
                 }
         }
         #if os(macOS)
+        .defaultSize(width: 1180, height: 780)
         .commands {
             GoCommands_macOS(store: store)
             PlaybackCommands_macOS(player: player, store: store, downloads: downloads, room: room, queue: queue)

@@ -33,7 +33,7 @@ struct RadioScreen: View {
         case .loading:
             List { SkeletonRows() }
         case .nothing where !stations.stations.isEmpty:
-            List { StationsSection(evening: nil, stations: stations.stations, now: now) }
+            PageBody { StationsSection(evening: nil, stations: stations.stations, now: now) }
         case .nothing:
             EmptyState("No evening is published for today", systemImage: "radio")
         case .failed:
@@ -55,64 +55,103 @@ private struct EveningList: View {
     @Environment(LiveRadio.self) private var live
 
     var body: some View {
-        let slots = evening.day.slots
-        let onAir = RadioClock.onAir(slots, at: now)
+        #if os(macOS)
+        // Radio's two ways in, side by side: what is on each station, and tonight's listing (macOS-DESIGN §4.3).
+        WidePage {
+            TwoPanes {
+                StationsSection(evening: evening, stations: stations, now: now)
+            } right: {
+                heading
+                listing
+                witness
+            }
+        }
+        #else
         List {
             StationsSection(evening: evening, stations: stations, now: now)
-            Section {
-                VStack(alignment: .leading, spacing: Spacing.s1) {
-                    Text(verbatim: "Tonight in \(evening.day.year)")
-                        .font(TypeRamp.sectionHeader)
-                    Text(verbatim: RadioClock.longDate(evening.day.evening))
-                        .font(TypeRamp.body)
-                    if let line = evening.day.stationLine {
-                        Text(verbatim: line)
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isHeader)
-                if evening.choices.count > 1 {
-                    // Decision 067: another published year for the same date.
-                    Picker("Year", selection: Binding(get: { evening.day.evening }, set: { year in
-                        if live.day == evening.day { live.stop() }
-                        picked = year
-                    })) {
-                        // Two evenings can share a year; only their dates tell them apart.
-                        ForEach(evening.choices, id: \.self) { choice in
-                            let year = String(choice.prefix(4))
-                            Text(verbatim: evening.choices.filter { $0.hasPrefix(year) }.count > 1 ? AirDate.medium(choice) : year).tag(choice)
-                        }
-                    }
-                    .pickerStyle(.menu)
+            Section { heading }
+            Section { listing }
+            if evening.day.witness?.url != nil, evening.day.witnessLine != nil { Section { witness } }
+        }
+        #endif
+    }
+
+    @ViewBuilder private var heading: some View {
+        VStack(alignment: .leading, spacing: Spacing.s1) {
+            Text(verbatim: "Tonight in \(evening.day.year)")
+                .font(TypeRamp.sectionHeader)
+            Text(verbatim: RadioClock.longDate(evening.day.evening))
+                .font(TypeRamp.body)
+            if let line = evening.day.stationLine {
+                Text(verbatim: line)
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        if evening.choices.count > 1 {
+            // Decision 067: another published year for the same date.
+            Picker("Year", selection: Binding(get: { evening.day.evening }, set: { year in
+                if live.day == evening.day { live.stop() }
+                picked = year
+            })) {
+                // Two evenings can share a year; only their dates tell them apart.
+                ForEach(evening.choices, id: \.self) { choice in
+                    let year = String(choice.prefix(4))
+                    Text(verbatim: evening.choices.filter { $0.hasPrefix(year) }.count > 1 ? AirDate.medium(choice) : year).tag(choice)
                 }
             }
-            Section {
-                ForEach(RadioClock.entries(slots, isDead: { evening.detail(for: $0) == nil }), id: \.self) { entry in
-                    switch entry {
-                    case .slot(let index):
-                        SlotRow(slot: slots[index], zone: evening.zone, detail: evening.detail(for: slots[index]),
-                                isNow: index == onAir.index) { detail in
-                            live.stop()
-                            player.isMuted = store.isMuted
-                            player.play(detail, from: 0)
-                        }
-                    case .run(let indices):
-                        GapRun(slots: indices.map { slots[$0] }, zone: evening.zone,
-                               isNow: onAir.index.map(indices.contains) ?? false)
+            .pickerStyle(.menu)
+            #if os(macOS)
+            .fixedSize()
+            #endif
+        }
+    }
+
+    private var listing: some View {
+        let slots = evening.day.slots
+        let onAir = RadioClock.onAir(slots, at: now)
+        return VStackOnMac {
+            ForEach(RadioClock.entries(slots, isDead: { evening.detail(for: $0) == nil }), id: \.self) { entry in
+                switch entry {
+                case .slot(let index):
+                    SlotRow(slot: slots[index], zone: evening.zone, detail: evening.detail(for: slots[index]),
+                            isNow: index == onAir.index) { detail in
+                        live.stop()
+                        player.isMuted = store.isMuted
+                        player.play(detail, from: 0)
                     }
-                }
-            }
-            if let url = evening.day.witness?.url, let line = evening.day.witnessLine {
-                Section {
-                    Link(destination: url) {
-                        Text(verbatim: "Schedule: \(line)")
-                            .font(TypeRamp.caption)
-                    }
+                    .pageRow()
+                case .run(let indices):
+                    GapRun(slots: indices.map { slots[$0] }, zone: evening.zone,
+                           isNow: onAir.index.map(indices.contains) ?? false)
+                        .pageRow()
                 }
             }
         }
+    }
+
+    @ViewBuilder private var witness: some View {
+        if let url = evening.day.witness?.url, let line = evening.day.witnessLine {
+            Link(destination: url) {
+                Text(verbatim: "Schedule: \(line)")
+                    .font(TypeRamp.caption)
+            }
+        }
+    }
+}
+
+/// Rows stacked tight on a Mac page; a List stacks its own.
+private struct VStackOnMac<Rows: View>: View {
+    @ViewBuilder let rows: () -> Rows
+
+    var body: some View {
+        #if os(macOS)
+        VStack(alignment: .leading, spacing: 0) { rows() }
+        #else
+        rows()
+        #endif
     }
 }
 
@@ -129,9 +168,11 @@ private struct StationsSection: View {
     @Environment(CatalogStore.self) private var catalog
 
     var body: some View {
-        Section {
-            if let evening { tonight(evening) }
-            ForEach(stations) { station(for: $0) }
+        PageSection {
+            VStackOnMac {
+                if let evening { tonight(evening).pageRow() }
+                ForEach(stations) { station(for: $0).pageRow() }
+            }
         }
     }
 

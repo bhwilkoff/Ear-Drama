@@ -132,6 +132,8 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
     let items: [Item]
     /// A width the caller already knows (Browse's plan); nil measures it.
     var fixedWidth: CGFloat? = nil
+    /// About this many tiles, in whole rows, when a link beside the grid reaches the rest; nil draws them all.
+    var first: Int? = nil
     /// Reports the first row's height, for a caller that fills a neighbor's height with rows.
     var onRowHeight: ((CGFloat) -> Void)? = nil
     @ViewBuilder let tile: (Item, CGFloat) -> Tile
@@ -147,8 +149,9 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
         let gap = BrowseLayout.gap
         let columns = BrowseLayout.columns(width: width, tileMin: ShowTile.defaultWidth)
         let tileWidth = BrowseLayout.tileWidth(width: width, columns: columns)
-        let chunks = stride(from: 0, to: items.count, by: columns).map {
-            Chunk(items: Array(items[$0..<min($0 + columns, items.count)]))
+        let count = first.map { min(items.count, max(columns, $0 / columns * columns)) } ?? items.count
+        let chunks = stride(from: 0, to: count, by: columns).map {
+            Chunk(items: Array(items[$0..<min($0 + columns, count)]))
         }
         VStack(alignment: .leading, spacing: gap) {
             // The width comes from a view that holds no content, so nothing drawn below can change
@@ -165,6 +168,10 @@ struct ShowGrid<Item: Identifiable, Tile: View>: View {
                     }
                     .frame(width: width, alignment: .leading)
                     .sharesNameHeight()
+                    #if os(macOS)
+                    .environment(\.tileFillsRow, true)
+                    .fixedSize(horizontal: false, vertical: true)
+                    #endif
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                         if chunk.id == chunks.first?.id { onRowHeight?($0) }
                     }

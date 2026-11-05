@@ -247,8 +247,8 @@ private struct OnAirFace: View {
     }
 }
 
-#if os(iOS)
-// MARK: - The tablet page
+#if !os(tvOS)
+// MARK: - The wide page
 
 private struct WideColumnsKey: EnvironmentKey {
     static let defaultValue = 2
@@ -265,47 +265,198 @@ private extension EnvironmentValues {
 /// whole page, and its rows two across, each column a phone's measure. A list one row wide leaves
 /// a tablet's margins empty or its rows too long to read across.
 struct WidePage<Content: View>: View {
+    /// The measure a page of reading keeps, centered; nil spans the window.
+    var measure: CGFloat? = nil
     @ViewBuilder let content: () -> Content
     @State private var width: CGFloat = 0
+
+    private var columns: Int {
+        #if os(macOS)
+        if width >= 1320 { return 3 }
+        #endif
+        return width >= 700 ? 2 : 1
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Spacing.s6) { content() }
                 .padding(.horizontal, Spacing.s6)
                 .padding(.vertical, Spacing.s4)
-                .environment(\.wideColumns, width >= 700 ? 2 : 1)
+                .environment(\.wideColumns, columns)
+                .frame(maxWidth: measure ?? .infinity)
+                .frame(maxWidth: .infinity)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        #if os(iOS)
         .background(Color(uiColor: .systemGroupedBackground))
+        #endif
+    }
+}
+
+/// A page's body: a `WidePage` on the Mac (macOS-DESIGN §4.0a), a `List` elsewhere.
+struct PageBody<Content: View>: View {
+    var measure: CGFloat? = nil
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        #if os(macOS)
+        WidePage(measure: measure, content: content)
+        #else
+        List(content: content)
+        #endif
+    }
+}
+
+/// A titled run of rows in a `PageBody`: a `WideSection` on the Mac, a `Section` elsewhere.
+struct PageRows<Rows: View>: View {
+    let title: String
+    @ViewBuilder let rows: () -> Rows
+
+    init(_ title: String, @ViewBuilder rows: @escaping () -> Rows) {
+        self.title = title
+        self.rows = rows
+    }
+
+    var body: some View {
+        #if os(macOS)
+        WideSection(title: title, rows: rows)
+        #else
+        Section(title, content: rows)
+        #endif
+    }
+}
+
+#if os(macOS)
+/// Two things read side by side once the page is wide enough, stacked otherwise.
+struct TwoPanes<Left: View, Right: View>: View {
+    @ViewBuilder let left: () -> Left
+    @ViewBuilder let right: () -> Right
+    @Environment(\.wideColumns) private var count
+
+    var body: some View {
+        let layout = count > 1 ? AnyLayout(HStackLayout(alignment: .top, spacing: Spacing.s8))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: Spacing.s6))
+        layout {
+            VStack(alignment: .leading, spacing: Spacing.s4) { left() }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: Spacing.s4) { right() }
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+#endif
+
+/// A `PageBody`'s section: its heading close over its rows, the page's spacing between sections.
+struct PageSection<Content: View, Header: View>: View {
+    @ViewBuilder let content: () -> Content
+    @ViewBuilder let header: () -> Header
+
+    var body: some View {
+        #if os(macOS)
+        VStack(alignment: .leading, spacing: Spacing.s3) {
+            header()
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #else
+        Section(content: content, header: header)
+        #endif
+    }
+}
+
+extension PageSection where Header == EmptyView {
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.init(content: content, header: { EmptyView() })
+    }
+}
+
+extension PageSection where Header == PageSectionTitle {
+    init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.init(content: content, header: { PageSectionTitle(title: title) })
+    }
+}
+
+/// A section's plain heading: the List's own on iOS, the row heading's weight on a Mac page.
+struct PageSectionTitle: View {
+    let title: String
+
+    var body: some View {
+        Text(verbatim: title)
+            #if os(macOS)
+            .font(TypeRamp.bodyStrong)
+            .foregroundStyle(Color.brandText)
+            .accessibilityAddTraits(.isHeader)
+            #endif
     }
 }
 
 /// A run of rows under its heading (a season, a show), two across, in reading order.
 struct WideSection<Rows: View>: View {
-    let title: String
+    var title: String? = nil
     @ViewBuilder let rows: () -> Rows
     @Environment(\.wideColumns) private var count
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s1) {
-            Text(verbatim: title)
-                .font(TypeRamp.bodyStrong)
-                .foregroundStyle(Color.brandText)
-                .accessibilityAddTraits(.isHeader)
+            if let title {
+                Text(verbatim: title)
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.brandText)
+                    .accessibilityAddTraits(.isHeader)
+            }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s6, alignment: .top), count: count),
                       alignment: .leading, spacing: 0) { rows() }
         }
     }
 }
 
+#if os(macOS)
+/// The pointer's mark on a page row, where a tile lifts: a wash behind the row, past its edges.
+private struct RowHover: ViewModifier {
+    @State private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: Radius.control)
+                    .fill(Color.brandSurfaceAlt)
+                    .padding(.horizontal, -Spacing.s1)
+                    .opacity(hovering ? 1 : 0)
+            }
+            .onHover { hovering = $0 }
+    }
+}
+#endif
+
 extension View {
     /// A row outside a List: its own hairline, under the words as the List's separator is.
     func wideRow() -> some View {
         buttonStyle(.plain)
             .padding(.vertical, Spacing.s1)
+            #if os(macOS)
+            .modifier(RowHover())
+            #endif
             .overlay(alignment: .bottom) {
                 Rectangle().fill(Color.brandBorder).frame(height: 0.5).padding(.leading, 48 + Spacing.s3)
             }
+    }
+
+    /// A row in a `PageBody`: a `wideRow` on the Mac; a List draws its own elsewhere.
+    @ViewBuilder func pageRow() -> some View {
+        #if os(macOS)
+        wideRow()
+        #else
+        self
+        #endif
+    }
+
+    /// A shelf that scrolls to the edge of a `PageBody`, past the page's margin, on the Mac.
+    @ViewBuilder func pageBleed() -> some View {
+        #if os(macOS)
+        padding(.horizontal, -Spacing.s6)
+        #else
+        self
+        #endif
     }
 }
 #endif

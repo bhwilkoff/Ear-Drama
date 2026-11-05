@@ -81,23 +81,15 @@ struct ListenScreen: View {
     private var selectedYear: Int? { year ?? day?.years.peak }
 
     var body: some View {
-        List {
+        PageBody {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
                 if !continuing.isEmpty {
-                    Section("Continue listening") {
-                        ForEach(continuing) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode, showSeries: true)
-                            }
-                            .playRowLink()
-                            .playContextMenu(episode.id)
-                        }
-                    }
+                    continuingRows
                 }
                 if !following.isEmpty {
-                    Section("Following") {
+                    PageSection("Following") {
                         ScrollView(.horizontal) {
                             HStack(alignment: .top, spacing: Spacing.s3) {
                                 ForEach(following) { row in
@@ -112,18 +104,19 @@ struct ListenScreen: View {
                         .scrollIndicators(.hidden)
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
+                        .pageBleed()
                     }
                 }
                 if let day, let selected = selectedYear {
-                    Section {
+                    PageSection {
                         DayBoard(model: day, selected: Binding(get: { selected }, set: { year = $0; allNight = false }))
                             .gridRow()
                     }
                     nightSection(day, selected)
                 }
                 if !top.isEmpty {
-                    Section {
-                        ShowGrid(items: Array(top.prefix(Self.topCount))) { row, width in
+                    PageSection {
+                        ShowGrid(items: top, first: Self.topCount) { row, width in
                             TileLink(value: Route.series(row.key), series: row, width: width)
                         }
                         .gridRow()
@@ -135,11 +128,12 @@ struct ListenScreen: View {
                     }
                 }
                 if !voices.isEmpty {
-                    Section {
+                    PageSection {
                         VoicesShelf(voices: voices)
                             .listRowInsets(EdgeInsets())
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
+                            .pageBleed()
                         PictureCredit(arts: voices.map(\.person.art), slot: 84)
                             .gridRow()
                     } header: {
@@ -150,7 +144,7 @@ struct ListenScreen: View {
                     }
                 }
                 if !finished.plays.isEmpty {
-                    Section {
+                    PageSection {
                         ShowGrid(items: Array(finished.plays.prefix(Self.dramaCount))) { play, width in
                             FinishedTile(play: play, width: width)
                         }
@@ -198,12 +192,23 @@ struct ListenScreen: View {
         }
     }
 
+    private var continuingRows: some View {
+        let rows = ForEach(continuing) { episode in
+            NavigationLink(value: Route.episode(episode.id)) {
+                EpisodeRowLabel(episode: episode, showSeries: true)
+            }
+            .playRowLink()
+            .pageRow()
+            .playContextMenu(episode.id)
+        }
+        return PageRows("Continue listening") { rows }
+    }
+
     @ViewBuilder private func nightSection(_ day: HomeDay, _ selected: Int) -> some View {
         let night = day.night(selected)
         if !night.shows.isEmpty {
-            let shown = allNight ? night.shows : Array(night.shows.prefix(Self.nightFirst))
-            Section {
-                ShowGrid(items: shown) { show, width in
+            PageSection {
+                ShowGrid(items: night.shows, first: allNight ? nil : Self.nightFirst) { show, width in
                     TileLink(value: Route.episode(show.episode.id), series: show.series, width: width, facts: show.facts)
                 }
                 .gridRow()
@@ -363,6 +368,7 @@ struct SeriesBrowseScreen: View {
                     ForEach(BrowseScope.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .padding(.horizontal, Spacing.s4)
                 .padding(.vertical, Spacing.s2)
                 .accessibilityIdentifier("browse-scope")
@@ -767,26 +773,30 @@ struct SeriesScreen: View {
         }
     }
 
-    @ViewBuilder private func content(_ page: SeriesPage) -> some View {
-        #if os(iOS)
-        if sizeClass == .regular {
-            WidePage {
-                head(page, actions: AnyView(actions(page)))
-                ForEach(page.seasons) { season in
-                    WideSection(title: season.season ?? "Undated") {
-                        ForEach(season.episodes) { episode in
-                            NavigationLink(value: Route.episode(episode.id)) {
-                                EpisodeRowLabel(episode: episode)
-                            }
-                            .wideRow()
-                            .playContextMenu(episode.id)
+    #if !os(tvOS)
+    private func wide(_ page: SeriesPage) -> some View {
+        WidePage {
+            head(page, actions: AnyView(actions(page)))
+            ForEach(page.seasons) { season in
+                WideSection(title: season.season ?? "Undated") {
+                    ForEach(season.episodes) { episode in
+                        NavigationLink(value: Route.episode(episode.id)) {
+                            EpisodeRowLabel(episode: episode)
                         }
+                        .wideRow()
+                        .playContextMenu(episode.id)
                     }
                 }
             }
-        } else {
-            list(page)
         }
+    }
+    #endif
+
+    @ViewBuilder private func content(_ page: SeriesPage) -> some View {
+        #if os(iOS)
+        if sizeClass == .regular { wide(page) } else { list(page) }
+        #elseif os(macOS)
+        wide(page)
         #else
         list(page)
         #endif
@@ -870,8 +880,8 @@ struct EpisodeScreen: View {
         let onAir = Grammar.onAirOf(detail.credits)
         let downloadState = downloads.record(for: episode.id)?.state
         let rowInsets = EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4)
-        return List {
-            Section {
+        return PageBody(measure: 960) {
+            PageSection {
                 HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
                           first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
                           facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
@@ -908,6 +918,17 @@ struct EpisodeScreen: View {
                     }
                     .pageAction()
                     .help("Share")
+                    #if os(macOS)
+                    if let url = episode.transcriptURL {
+                        Button {
+                            openWindow(id: TranscriptRef.windowID, value: TranscriptRef(title: episode.displayTitle, url: url))
+                        } label: {
+                            ActionLabel(title: Transcript.label, systemImage: "text.quote")
+                        }
+                        .pageAction()
+                        .help(Transcript.label)
+                    }
+                    #endif
                 }
                 .listRowInsets(rowInsets)
                 .listRowSeparator(.hidden)
@@ -922,18 +943,15 @@ struct EpisodeScreen: View {
                         .listRowBackground(Color.clear)
                 }
                 if downloadState != nil { DownloadControl(detail: detail) }
-                if let url = episode.transcriptURL {
+                #if !os(macOS)
+                if episode.transcriptURL != nil {
                     Button {
-                        #if os(macOS)
-                        openWindow(id: TranscriptRef.windowID,
-                                   value: TranscriptRef(title: episode.displayTitle, url: url))
-                        #else
                         transcriptOpen = true
-                        #endif
                     } label: {
                         Label(Transcript.label, systemImage: "text.quote")
                     }
                 }
+                #endif
                 if !catalog.isOnline && downloads.record(for: episode.id)?.state != .downloaded { OfflineNotice() }
                 if isCurrent, let message = player.errorMessage {
                     Label(message, systemImage: "exclamationmark.triangle")
@@ -942,7 +960,7 @@ struct EpisodeScreen: View {
             }
 
             if !onAir.isEmpty {
-                Section {
+                PageSection {
                     OnAirFaces(credits: onAir, genre: genre)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -950,12 +968,12 @@ struct EpisodeScreen: View {
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                 } header: {
-                    Text("On the air")
+                    PageSectionTitle(title: "On the air")
                 }
             }
 
             if !detail.credits.isEmpty {
-                Section {
+                PageSection {
                     DisclosureGroup {
                         ForEach(CreditGroups.grouped(detail.credits), id: \.role) { group in
                             Text(group.role)
@@ -967,6 +985,9 @@ struct EpisodeScreen: View {
                                     Text(credit.line).font(TypeRamp.body)
                                 }
                                 .disabled(credit.personID.isEmpty)
+                                #if os(macOS)
+                                .buttonStyle(.plain)
+                                #endif
                             }
                         }
                     } label: {
@@ -982,7 +1003,7 @@ struct EpisodeScreen: View {
             }
 
             if detail.recordings.count > 1 {
-                Section("Recordings") {
+                PageSection("Recordings") {
                     ForEach(Array(detail.recordings.enumerated()), id: \.element.id) { index, recording in
                         Button {
                             play(episode.id, recording: recording)
@@ -990,12 +1011,16 @@ struct EpisodeScreen: View {
                             VersionLabel(recording: recording, position: index + 1, isDefault: recording.rank == 0)
                         }
                         .accessibilityHint("Plays this copy")
+                        #if os(macOS)
+                        .buttonStyle(.plain)
+                        .help("Play this copy")
+                        #endif
                     }
                 }
             }
 
             if let rightsLine = detail.rightsLine {
-                Section {
+                PageSection {
                     Text(rightsLine)
                         .font(TypeRamp.caption)
                         .foregroundStyle(Color.brandTextMuted)
@@ -1004,8 +1029,6 @@ struct EpisodeScreen: View {
         }
         #if os(iOS)
         .modifier(ReadableColumn(width: 960))
-        #else
-        .modifier(ReadableColumn())
         #endif
         .navigationTitle(episode.displayTitle)
         #if os(iOS)
@@ -1098,27 +1121,31 @@ struct PersonScreen: View {
         }
     }
 
-    @ViewBuilder private func content(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
-        #if os(iOS)
-        if sizeClass == .regular {
-            WidePage {
-                head(page, groups: groups)
-                if groups.count > 1 { showShelf(groups, inset: Spacing.s6).padding(.horizontal, -Spacing.s6) }
-                ForEach(groups) { group in
-                    WideSection(title: group.seriesName) {
-                        ForEach(group.episodes) { item in
-                            NavigationLink(value: Route.episode(item.id)) {
-                                EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
-                            }
-                            .wideRow()
-                            .playContextMenu(item.id)
+    #if !os(tvOS)
+    private func wide(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
+        WidePage {
+            head(page, groups: groups)
+            if groups.count > 1 { showShelf(groups, inset: Spacing.s6).padding(.horizontal, -Spacing.s6) }
+            ForEach(groups) { group in
+                WideSection(title: group.seriesName) {
+                    ForEach(group.episodes) { item in
+                        NavigationLink(value: Route.episode(item.id)) {
+                            EpisodeRowLabel(episode: item.episode, note: item.rolesLine)
                         }
+                        .wideRow()
+                        .playContextMenu(item.id)
                     }
                 }
             }
-        } else {
-            list(page, groups: groups)
         }
+    }
+    #endif
+
+    @ViewBuilder private func content(_ page: PersonPage, groups: [PersonSeriesGroup]) -> some View {
+        #if os(iOS)
+        if sizeClass == .regular { wide(page, groups: groups) } else { list(page, groups: groups) }
+        #elseif os(macOS)
+        wide(page, groups: groups)
         #else
         list(page, groups: groups)
         #endif
@@ -1191,57 +1218,63 @@ struct SearchResultsList: View {
                 if results.isEmpty && matchingPlays.isEmpty {
                     EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass")
                 } else {
-                    List {
+                    PageBody {
                         if !results.series.isEmpty {
-                            Section("Series") {
+                            PageRows("Series") {
                                 ForEach(results.series) { row in
                                     NavigationLink(value: Route.series(row.key)) { SeriesRowLabel(series: row) }
+                                        .pageRow()
                                 }
                             }
                         }
                         if !results.people.isEmpty {
-                            Section("People") {
+                            PageRows("People") {
                                 ForEach(results.people) { row in
                                     NavigationLink(value: Route.person(row.id)) { PersonRowLabel(row: row) }
+                                        .pageRow()
                                 }
                             }
                         }
                         if !matchingPlays.isEmpty {
-                            Section("Plays") {
+                            PageRows("Plays") {
                                 ForEach(matchingPlays) { script in
                                     NavigationLink(value: PlayRoute.script(script.id)) { ScriptRow(script: script) }
+                                        .pageRow()
                                 }
                             }
                         }
                         if let aired = results.aired, !aired.episodes.isEmpty {
-                            Section(aired.title) {
+                            PageRows(aired.title) {
                                 ForEach(aired.episodes) { episode in
                                     NavigationLink(value: Route.episode(episode.id)) {
                                         EpisodeRowLabel(episode: episode, showSeries: true)
                                     }
                                     .playRowLink()
+                                    .pageRow()
                                     .playContextMenu(episode.id)
                                 }
                             }
                         }
                         if !results.episodes.isEmpty {
-                            Section("Episodes") {
+                            PageRows("Episodes") {
                                 ForEach(results.episodes) { episode in
                                     NavigationLink(value: Route.episode(episode.id)) {
                                         EpisodeRowLabel(episode: episode, showSeries: true)
                                     }
                                     .playRowLink()
+                                    .pageRow()
                                     .playContextMenu(episode.id)
                                 }
                             }
                         }
                         if !results.transcript.isEmpty {
-                            Section(Transcript.label) {
+                            PageRows(Transcript.label) {
                                 let words = Transcript.searchWords(query)
                                 ForEach(results.transcript) { episode in
                                     NavigationLink(value: Route.episode(episode.id)) {
                                         TranscriptHitLabel(episode: episode, words: words)
                                     }
+                                    .pageRow()
                                     .playContextMenu(episode.id)
                                 }
                             }
@@ -1318,7 +1351,9 @@ struct LibraryScreen: View {
                         Section {
                             EmptyState("Nothing played yet", systemImage: "books.vertical",
                                        action: .init(title: "Browse") { app.selectedTab = .browse })
+                                .frame(maxWidth: .infinity)
                                 .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
                         }
                     }
                     Section("Continue") {

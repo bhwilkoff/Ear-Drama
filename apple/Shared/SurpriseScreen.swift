@@ -22,7 +22,7 @@ struct SurpriseScreen: View {
     var body: some View {
         let play = PlayEpisodeAction(catalog: catalog, player: player, store: store)
         ScrollView {
-            VStack(alignment: .leading, spacing: Spacing.s6) {
+            picks {
                 if !loaded {
                     SkeletonRows(count: 3)
                 } else if episode == nil && evening == nil && script == nil {
@@ -65,7 +65,9 @@ struct SurpriseScreen: View {
                 }
             }
             .padding(Spacing.s4)
+            #if !os(macOS)
             .modifier(ReadableColumn())
+            #endif
         }
         .navigationTitle("Surprise")
         .toolbar {
@@ -87,6 +89,16 @@ struct SurpriseScreen: View {
         }
     }
 
+    /// The three picks: a column, or side by side as far as a Mac window allows.
+    @ViewBuilder private func picks<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        #if os(macOS)
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 400), spacing: Spacing.s6, alignment: .top)],
+                  alignment: .leading, spacing: Spacing.s6, content: content)
+        #else
+        VStack(alignment: .leading, spacing: Spacing.s6, content: content)
+        #endif
+    }
+
     private func pick<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
             Text(title).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).accessibilityAddTraits(.isHeader)
@@ -96,10 +108,9 @@ struct SurpriseScreen: View {
 
     private func playButton(_ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Label("Play", systemImage: "play.fill").foregroundStyle(Color.brandOnPrimary)
+            Label("Play", systemImage: "play.fill")
         }
-        .buttonStyle(.borderedProminent)
-        .tint(Color.brandPrimary)
+        .pageAction(primary: true)
     }
 }
 #endif

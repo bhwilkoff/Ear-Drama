@@ -47,6 +47,7 @@ struct ContentView_macOS: View {
             }
         }
         .navigationTitle(player.item?.episode.displayTitle ?? "Ear Drama")
+        .frame(minWidth: 920, minHeight: 560)
         // Space plays and pauses here, never as a menu key (macOS-DESIGN §5.3):
         // a focused text field takes the key first, so typing never pauses.
         .onKeyPress(.space) {
@@ -54,6 +55,9 @@ struct ContentView_macOS: View {
             player.togglePlayPause()
             return .handled
         }
+        #if DEBUG
+        .task { await DoorFile_macOS.watch(store) }
+        #endif
     }
 }
 

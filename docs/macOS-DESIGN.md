@@ -81,7 +81,9 @@ Mac uses the same Core, so the same code holds them:
 ## §2 Scenes and windows
 
 - **§2.1 The main window** is one `WindowGroup` (`apple/App/EarDramaApp.swift`)
-  whose title is the episode playing, or "Ear Drama" when nothing is.
+  whose title is the episode playing, or "Ear Drama" when nothing is. It opens
+  at 1180 by 780 and stops at 920 by 560, so the transport bar never crushes
+  the split view.
 - **§2.2 The transcript window** is a second `WindowGroup`, id
   `transcript`, opened with a `TranscriptRef` (title and URL), default
   560 by 680, at least 360 by 320, titled with the episode and
@@ -131,6 +133,19 @@ the Mac is already a Mac list, with context menus on right-click. What
 each holds is `docs/iOS-DESIGN.md` §4.1 to §4.6, and the Mac differs
 only here:
 
+- **§4.0a Pages are pages, lists are lists (R11h).** Home, a series, a person,
+  and an episode are `WidePage`s on the Mac, never a `List` (Mac audit,
+  2026-11-04: Home's tile grids drew one point tall). A macOS `List` row keeps the
+  height of its first measure, so anything that learns its width after layout
+  (`ShowGrid`) stays collapsed; a `ReadableColumn` around a `List` also clipped the
+  toolbar's hairline and the scroller to the column. The head board and the rows
+  share one left edge. Rows run two across at 700 pt and three at 1320 pt, each a
+  phone's measure (iOS-DESIGN R11g); an episode's page keeps a 960 pt measure.
+  Search is a `WidePage` too, its sections two across. Stations is a `WidePage` of
+  two panes, the stations beside tonight's listing, stacked when narrow; Surprise's
+  picks stand side by side as the window allows. Library stays a List.
+  Automatic transcript is a page button in the episode's button row, and a
+  recording is a row, not a button shape.
 - **§4.0 Browse** is iOS's (`docs/iOS-DESIGN.md` §4.2): the same chips,
   "Sort: Popular" by default, in a `safeAreaBar` under the toolbar.
 - **§4.1 The transcript opens a window** from Detail, the transport bar,
@@ -334,8 +349,6 @@ the Mac target.
 
 ## §12 Open (what the code does not yet meet)
 
-- **No minimum size on the main window**; the template sets one so the
-  transport bar never crushes the split view.
 - **Every iOS §12 item that lives in shared code holds here too**: the
   queue and arc rule (the transport bar carries "Next story" on an arc's
   last part), the resume and "played" windows, the untitled fallback,
