@@ -135,9 +135,6 @@
 
       <section id="view-library" class="view" aria-labelledby="library-h" hidden>
         <h1 id="library-h" class="view-heading" tabindex="-1">Library</h1>
-        <div id="account-row" class="account-row" role="group" aria-label="Account"></div>
-        <div id="together-row" class="account-row" role="group" aria-label="Listen together"></div>
-        <div id="export-row" class="account-row" role="group" aria-label="Export your data"></div>
         <div class="segmented segmented-scroll" role="group" aria-label="Library section" id="library-tabs">
           <button type="button" data-lib="continue" aria-pressed="true">Continue</button>
           <button type="button" data-lib="queue" aria-pressed="false">Queue</button>
@@ -146,6 +143,11 @@
           <button type="button" data-lib="dramas" aria-pressed="false" class="ear-drama-only">Ear dramas</button>
         </div>
         <div id="library-body"></div>
+        <div class="library-account">
+          <div id="account-row" class="account-row" role="group" aria-label="Account"></div>
+          <div id="together-row" class="account-row" role="group" aria-label="Listen together"></div>
+          <div id="export-row" class="account-row" role="group" aria-label="Export your data"></div>
+        </div>
       </section>
 
       <footer class="site-footer caption">

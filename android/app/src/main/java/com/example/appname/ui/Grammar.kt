@@ -46,6 +46,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.FirstBaseline
@@ -155,8 +156,8 @@ fun TitleBlock(name: String, genre: String?, modifier: Modifier = Modifier, roun
             fontFamily = DisplayFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = with(density) { (side * blockSize(m) / 100f * (if (round) 0.7f else 1f)).toSp() },
-            color = on,
-            drawStyle = Stroke(width = with(density) { 1.4.dp.toPx() }),
+            color = if (genre == null) on.copy(alpha = 0.78f) else on,
+            drawStyle = if (genre == null) Fill else Stroke(width = with(density) { 1.4.dp.toPx() }),
         )
         Text(
             m,

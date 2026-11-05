@@ -368,3 +368,4 @@ walk the shipped feature list per platform and verify every cell is
 honest. Real audits on shipped apps have found both missing rows
 (features nobody recorded) AND false cells (a "synced" claim that
 never actually synced). The audit is what keeps this file true.
+| Quiet station rows (whole row tunes in; a hollow ring, ink fill when live) and a solid monogram on the genre-less tile; the web Library keeps Sign in, Join a room and Export below its tabs | ✅ 2026-11-04 | ✅ iOS-DESIGN §4.9a | ⏳ shares iOS's views, not looked at | n/a (focus does it) | ✅ 2026-11-04, Pixel; Commons portraits now load (a bare okhttp User-Agent got 403) | Same verbs, native idiom; the Library move is web only (the apps keep account in Settings) |
