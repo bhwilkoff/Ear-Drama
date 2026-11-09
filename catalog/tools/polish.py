@@ -136,9 +136,21 @@ def _clean(t, name=False):
     return t.strip()
 
 
+# P-10 (owner 2026-11-09): a small word glued to the next ("Battle WithThe Apes", "TheIdeal"), a recording-condition
+# note ("Hippo clipped", "Army Life (end clipped)", "clippe" cut off), an uploader's "(Combines all dates)".
+_GLUED_SMALL = re.compile(r"\b(The|With|And|Of|In|On|At|To|For|From)(?=(?:The|A|An|[A-Z][a-z]{2,})\b)")
+_CLIPPED = re.compile(r"(?:\s*\((?:(?:start|end)\s+)?clipped\)|,?\s+(?:(?:start|end)\s+)?clipp(?:ed?)?)\s*$")
+_CLIPPED_LEAD = re.compile(r"^clipped\s+(?=\S)")
+_COMBINED_NOTE = re.compile(r"\s*\(\s*combines all dates\s*\)", re.I)
+
+
 def polish_title(t):
     """The shown title with the upload habits undone, or None when nothing readable is left."""
     t = _clean(t)
+    if not t:
+        return None
+    t = _COMBINED_NOTE.sub("", _CLIPPED_LEAD.sub("", _CLIPPED.sub("", t)))
+    t = _GLUED_SMALL.sub(r"\1 ", t).strip()
     if not t:
         return None
     m = _INVERTED.match(t)
@@ -256,3 +268,86 @@ def recording_label(archive_id, title, episodes):
             or FD.text_defects(t, "label")):
         return None
     return t
+
+
+VARIANT_LABELS = {"afrs": "AFRS rebroadcast", "afrts": "AFRTS rebroadcast", "rehearsal": "Rehearsal",
+                  "audition": "Audition"}
+LONGER, KBPS_STEP = 0.10, 1.25
+
+
+def _median(xs):
+    xs = sorted(xs)
+    return xs[len(xs) // 2] if len(xs) % 2 else (xs[len(xs) // 2 - 1] + xs[len(xs) // 2]) / 2
+
+
+def _copy_facts(i, copies):
+    """What tells copy i apart from the episode's other copies, most telling first: its variant, a partial copy,
+    a clearly longer or shorter length, a clearly higher or lower bitrate, the year its item was uploaded.
+    Each fact is read from the copy's own row; a fact every copy shares tells nothing."""
+    me, others = copies[i], [c for j, c in enumerate(copies) if j != i]
+    out = []
+    v = (me.get("variant") or "").casefold()
+    if v in VARIANT_LABELS and any((o.get("variant") or "").casefold() != v for o in others):
+        out.append(VARIANT_LABELS[v])
+    if me.get("partial") and not all(o.get("partial") for o in others):
+        out.append("Partial copy")
+    lens = [o["length_s"] for o in others if o.get("length_s")]
+    if me.get("length_s") and lens:
+        mid = _median(lens)
+        if me["length_s"] >= mid * (1 + LONGER) and me["length_s"] - mid >= 60:
+            out.append("Longer copy")
+        elif me["length_s"] <= mid * (1 - LONGER) and mid - me["length_s"] >= 60 and "Partial copy" not in out:
+            out.append("Shorter copy")
+    rates = [o["kbps"] for o in others if o.get("kbps")]
+    if me.get("kbps") and rates:
+        if me["kbps"] >= max(rates) * KBPS_STEP:
+            out.append(f"Higher quality ({me['kbps']} kbps)")
+        elif me["kbps"] * KBPS_STEP <= min(rates):
+            out.append(f"Lower quality ({me['kbps']} kbps)")
+    year = str(me.get("uploaded") or "")[:4]
+    if year.isdigit() and any(str(o.get("uploaded") or "")[:4] != year for o in others):
+        out.append(f"Uploaded {year}")
+    mins = round(me["length_s"] / 60) if me.get("length_s") else None
+    if mins and all(o.get("length_s") and round(o["length_s"] / 60) != mins for o in others):
+        out.append(f"{mins} min")
+    return out
+
+
+def _counts(labels):
+    seen = {}
+    for lab in labels:
+        seen[lab] = seen.get(lab, 0) + 1
+    return seen
+
+
+def copy_labels(copies):
+    """A label for every copy of an episode with more than one (owner 2026-11-09: no "Recording 2"): the copy's
+    source name (recording_label) when no other copy shares it; else that name and the first fact that tells the
+    copy apart (_copy_facts), or the fact alone. When the rows hold nothing that differs, the default copy is
+    "Best copy" (the pipeline's rank, DECISIONS 007) and the rest "Another copy". `copies`: dicts with source,
+    variant, partial, length_s, kbps, uploaded, in rank order. Never the identifier, never a word the rows do not
+    support. A single copy keeps its source name or None."""
+    if len(copies) < 2:
+        return [c.get("source") for c in copies]
+    facts = [_copy_facts(i, copies) for i in range(len(copies))]
+    labels = [c.get("source") for c in copies]
+    for _ in range(3):
+        seen = _counts(labels)
+        clash = [i for i, lab in enumerate(labels) if lab is None or seen[lab] > 1]
+        if not clash or not any(facts[i] for i in clash):
+            break
+        for i in clash:
+            if facts[i]:
+                f = facts[i].pop(0)
+                low = f[:1].lower() + f[1:] if f[1:2].islower() else f
+                labels[i] = f if labels[i] is None else f"{labels[i]}, {low}"
+    seen, kept, out = _counts(labels), set(), []
+    for i, lab in enumerate(labels):
+        if lab is not None and seen[lab] > 1 and lab not in kept:
+            kept.add(lab)
+        elif lab is None:
+            lab = "Best copy" if i == 0 else "Another copy"
+        elif seen[lab] > 1:
+            lab = f"{lab}, another copy"
+        out.append(lab)
+    return out

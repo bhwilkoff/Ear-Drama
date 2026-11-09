@@ -913,3 +913,72 @@ worse than none: it tells a listener what a show is not.
   matching cue words to transcript segments (fuzzy, in order), interpolating within a
   segment.
 - A new `about.json` reaches the apps only through a new cache Release (README).
+
+## 031 — One broadcast in one place, one show under one name, every copy labeled (P-10)
+*Date: 2026-11-09*
+
+Owner, 2026-11-09: *"we need to do significant audits on the database, as I see lots of things in recordings that
+still are called 'Recording 2'. Also, I see a lot of things that seem disconnected from their shows."* Extends 028's
+`merge_same_shows` (same TEMP-view mechanism, same forwarding; no second mechanism). Every fold is read from the data
+and listed in `display_text.json` under `folded` (series with their rule, episodes) for review.
+
+1. **A broadcast filed under two series is one episode** (`display_text.same_broadcasts`): the same full air date and
+   the same title (six letters or more, not the series' own name, not composed from the date), when a series is
+   upload-named, the two share an archive.org item, or the two series repeat each other at least 3 times. One
+   coincidence between two registry programs ("A Christmas Carol" on December 24) is two productions. The survivor
+   is the episode of the series with fewer partner series (a compilation repeats many shows), then a registry
+   program, then the larger. The folded episode's copies become the survivor's further copies (after its own, the
+   same file once) and its id forwards by recording (014). A copy the audit served as unclaimed never joins an
+   episode served as clean (the clean-only public web would carry it under the clean line); the reverse is allowed,
+   the stricter line holds. The rights vocabulary is untouched.
+2. **A series that is one program joins it** (`display_text.same_program`, then `dissolve`), each rule needing every
+   dated episode inside the program's run (a year either side) and the program to be the larger: *alias* (its name
+   spells a registry alias: "FM&M"), *variant* (names differ by the, show, program, radio or hour: "Red Skelton"),
+   *item* (half its episodes come from items titled with one registry program's name and collection words only,
+   feeding no third series, three dated episodes, no production qualifier like "(South Africa)", and a season name or
+   a shared broadcast: "Grape Nuts Program" is "Jack Benny - Single Episodes - 1932-1934"), *initials* ("GG Season
+   05", with a shared broadcast and one program with those initials), *prefix* ("Escape the Birds", dated, the rest an
+   episode's own title or a number), *shared* (an upload-named series more than half of whose dated broadcasts are
+   one larger series'). A LibriVox project never folds. A moved episode on a date its new series holds, with a title
+   one contains, is that broadcast. 028's fragment rule now also finds a registry program of the same cleaned name
+   ("The Whistler reel" beside "The Whistler"). An arc whose first part was folded in keeps that part's whole id.
+3. **Every copy of an episode with several has a label** (`polish.copy_labels`; contract 3.2): the source name when
+   no other copy shares it, else the name or nothing and the first fact that differs, read from the copy's own row
+   (variant, partial, clearly longer or shorter, a bitrate 25% apart, the item's upload year, the length in minutes),
+   and "Best copy" / "Another copy" only when the rows hold nothing that differs. Never the identifier, never a word
+   the row does not support; NULL stays a client fallback only.
+4. **Raw title classes** (`display_text.episode_text`, `decide_episode`, `polish.polish_title`): a reel track tail
+   (".t01": the reel's name is no title, unless it names the series and one title), "1942-xx-xx" (the year kept at
+   the end), the series' initials with a date, date code, "#" or zero-padded number or SxxEyy ("OMB #001", "CGS #055";
+   a bare number and a network stay), a trailing code a series' titles carry three times or more ("(DM)", "(JR)"; a
+   network's stays), "xx" in front, "Production N" / "Tape N", recording-condition notes ("clipped"), "(Combines all
+   dates)", a glued small word ("WithThe"), a series' one-word name plus s before a word ("Tarzans First Birthday": the
+   series name is the witness), and a title that only repeats its series' name, composed from the date or number when
+   the record has one (else the name is the work's title).
+
+**Why**: the owner's two reports, measured on the live data (manifest 2026-11-08): the 1947-11-09 Home row showed
+"Corner Drug Store" under Jack Benny and under "Grape Nuts Program" (735 OTRR Jack Benny singles named for a sponsor),
+the same Chase and Sanborn broadcast in two series, a season-named series, and 21,974 copies that read "Recording N".
+A person who taps a broadcast should land in its show; a fold on a likeness of names alone would be a guess, so each
+rule names its evidence and a control proves its refusal.
+
+**How to apply**: a new fold rule goes in `display_text.py` with a fixture and a control in
+`tests/test_same_broadcast.py`; a wrong fold is fixed by tightening its evidence, never by a hand-written alias.
+Guards over the real projection: no two series repeat each other's broadcasts 3 times or share an item, no multi-copy
+episode has an unlabeled copy, no reel track tail, xx-date or recurring shelf code (seen failing on the unchanged
+tools' dry-run projection: 21,974 bare copies, the Michael Fisher / baseball pairs, 271 reel tails, 5+ coded series).
+MEASURED on the 2026-10-30 cache Release against the live projection (PYTHONHASHSEED 0 and 7 publish identical
+tables): series 6,745 to 6,640, one-episode series 3,952 to 3,906 (two or fewer 4,542 to 4,496); episodes 95,587 to
+91,301 (-4.5%, so the publish needs a `shrink_reason`, e.g. "P-10: duplicate broadcasts folded into their shows,
+2026-11-09"): 4,042 duplicate broadcasts folded (every one aliased to the episode now holding its copy), 245 reel
+tracks whose only title was the reel's name withheld (tombstoned); 97 series folded (66 by these rules: alias 3,
+variant 32, item 3, initials 13, prefix 1, shared 14; merge_into 31), series keys 76 aliased, 29 tombstoned (series
+of withheld reel tracks only). Copies with no label 21,974 to 0; copies sharing a label within an episode 14,771 to
+1,701. Titles changed on episodes served before and after: 2,906 ("(DM)" 837 to 0, ".tNN" 271 to 0, xx-dates 132 to
+4, series-initials prefixes 728 to 128 (the rest are networks and stations), titles that only repeat the series'
+name 1,315 to 918 (no date or number), "clipped"/"xx"/"WithThe" 344 to 35).
+**Left for the owner**: "The Shadow" is hidden by its series renewals, but its season uploads ("Season 11
+(9-7-47 to 5-30-48)", 27 episodes) are served as their own series and "Season 17" joined "The Shadow Recreations" by
+shared broadcasts: a rights question, not a display one. Two registry programs that are one show on air (The Chase
+and Sanborn Hour and Edgar Bergen and Charlie McCarthy; The Fred Allen Show and Town Hall Tonight) keep both series;
+their shared broadcasts fold.
