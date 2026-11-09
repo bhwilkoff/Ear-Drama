@@ -66,12 +66,14 @@ SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE series (key TEXT PRIMARY KEY, name TEXT NOT NULL, genre TEXT, genre_source TEXT, first_date TEXT, last_date TEXT,
     networks TEXT, episodes INTEGER NOT NULL, star TEXT, sort_name TEXT NOT NULL, downloads INTEGER,
-    picture INTEGER, picture_kind TEXT, picture_source TEXT, raw_name TEXT, year_counts TEXT);
+    picture INTEGER, picture_kind TEXT, picture_source TEXT, raw_name TEXT, year_counts TEXT,
+    about_text TEXT, about_source TEXT, about_url TEXT);
 CREATE TABLE episodes (id TEXT PRIMARY KEY, series_key TEXT NOT NULL, air_date TEXT, date_source TEXT,
     season TEXT, num INTEGER, title TEXT, aka TEXT, length_s REAL, rights TEXT NOT NULL, rights_basis TEXT,
     no_recommend TEXT, network TEXT, network_source TEXT, has_transcript INTEGER NOT NULL DEFAULT 0,
     gain_db REAL, detail_json TEXT, loudness_i REAL, loudness_tp REAL, transcript_url TEXT, star TEXT,
-    script TEXT, sponsor TEXT, raw_title TEXT);
+    script TEXT, sponsor TEXT, raw_title TEXT, script_url TEXT, script_source TEXT,
+    script_id TEXT);
 CREATE TABLE recordings (episode_id TEXT NOT NULL, rank INTEGER NOT NULL, archive_id TEXT NOT NULL,
     url TEXT NOT NULL, format TEXT, kbps INTEGER, length_s REAL, variant TEXT,
     partial INTEGER NOT NULL DEFAULT 0, label TEXT, PRIMARY KEY (episode_id, rank));
@@ -283,6 +285,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     served -= set(withheld["episodes"])
     merged = merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments)
     script_of, script_report = ES.links(s, served, ES.load_bundle() if scripts is None else scripts)
+    script_out = ES.link_outs(s, served)
     print(json.dumps({"episodeScripts": script_report}), file=sys.stderr)
 
     names = {k: n for k, n in s.execute("SELECT key, name FROM series")}
@@ -373,12 +376,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         credits = credits_by_ep.get(eid, [])
         for pid, _name, role, ch in credits:
             d.execute("INSERT INTO credits VALUES (?,?,?,?)", (eid, pid, role, ch))
-        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
+        cur = d.execute("INSERT INTO episodes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
             eid, sk, air, dsrc, season(air), num, display[eid], PL.polish_title(aka) if aka else aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
             AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), PL.small_words(SP.sponsor_for(sponsor_runs, sk, air, title) or "") or None,
-            title if display[eid] != title else None))
+            title if display[eid] != title else None) + script_out.get(eid, (None, None, ES.scheme_id(script_of.get(eid)))))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display[eid], title, aka) if x)),
                    " ".join(dict.fromkeys(x for x in (shown_name.get(sk), names.get(sk)) if x)),
@@ -392,6 +395,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     series_rows = list(s.execute(
         "SELECT key, name, genre, genres_otrr, is_librivox, first_date, last_date, networks FROM series"))
     widened = DT.merged_span(merged, {r[0]: (r[5], r[6], r[7]) for r in series_rows})
+    about = ({k: (t, src, u) for k, t, src, u in s.execute("SELECT series_key, text, source, url FROM series_about")}
+             if has_table(s, "series_about") else {})   # enrich_external.py + series_about.py (DECISIONS 030)
     for key, name, re_genre, otrr_genres, lv, first, last, nets in series_rows:
         if key in widened:
             first, last, nets = widened[key]
@@ -401,10 +406,11 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 genre, gsrc = kept_genre[key]
             pic = pictures.get(key, (None, None, None))
             shown_as = shown_name.get(key) or name
-            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (key, shown_as, genre, gsrc, first, last, nets, per_series[key], stars.get(key),
                        sort_name(shown_as), None) + pic + (name if shown_as != name else None,
-                                                           year_counts(years_of.get(key))))
+                                                           year_counts(years_of.get(key))) +
+                      about.get(key, (None, None, None)))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
         if pid in people_rows:
             d.execute("INSERT INTO people VALUES (?,?,?,?,?)",
@@ -442,6 +448,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     counts["transcripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE has_transcript = 1").fetchone()[0]
     counts["transcriptsSearchable"] = searchable
     counts["scripts"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script IS NOT NULL").fetchone()[0]
+    counts["scriptLinks"] = d.execute("SELECT COUNT(*) FROM episodes WHERE script_url IS NOT NULL").fetchone()[0]
+    counts["seriesAbout"] = d.execute("SELECT COUNT(*) FROM series WHERE about_text IS NOT NULL").fetchone()[0]
     counts["aliases"] = d.execute("SELECT COUNT(*) FROM episode_aliases").fetchone()[0]
     counts["tombstones"] = d.execute("SELECT COUNT(*) FROM episode_tombstones").fetchone()[0]
     counts["seriesAliases"] = d.execute("SELECT COUNT(*) FROM series_key_aliases").fetchone()[0]

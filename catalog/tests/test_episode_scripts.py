@@ -1,5 +1,6 @@
 """An episode's `script` link (tools/episode_scripts.py, Decision 068): set only where the
 match is series + date + title, and the script is in the castable bundle with a castable bucket.
+Its `script_url` / `script_source` link out (catalog DECISIONS 030): the same match, any rights.
 
     python3 tests/test_episode_scripts.py
 A fixture proves each rule; when out/publish/ear-drama.sqlite exists, the guard also runs
@@ -8,6 +9,11 @@ Broken controls, 2026-10-24, each run against a mutated copy of episode_scripts.
     links() skips the bundle test                 9 failed
     title_agrees() returns True for any pair     11 failed
     check() returns []                            1 failed
+2026-11-09:
+    matches() skips the title test                14 failed
+    link_outs() drops the https test               1 failed
+    write_cues() stores the printed line, not the spoken words   1 failed
+    scheme_id() returns the bundle id unchanged    1 failed
 """
 import json
 import os
@@ -78,12 +84,12 @@ def research(path):
     d.executemany("INSERT INTO recordings VALUES (?,?,?,?,?,?,?,?,?)", [
         (i, 0, "fibber47", f"{n}.mp3", "VBR MP3", 64, 1700.0, None, 0) for n, (i, *_r) in enumerate(eps)])
     d.executemany("INSERT INTO scripts VALUES (?,?,?,?,?,?,?,?,?)", [
-        ("A1", "genericradio.com", "fibber", "1947-05-06", "Good Grammar", "u", 1, "fibber|1947-05-06", "link"),
-        ("A2", "genericradio.com", "fibber", "1947-05-13", "Fibber Needs Glasses", "u", 1, "fibber|1947-05-13", "link"),
-        ("H1", "genericradio.com", "fibber", "1947-05-20", "Fibber Paints the Fence", "u", 1, "fibber|1947-05-20", "link"),
-        ("N1", "genericradio.com", "fibber", "1947-05-27", "Molly's Hat", "u", 1, "fibber|1947-05-27", "link"),
-        ("S1", "genericradio.com", "fibber", "1947-06-03", "Summer Plans", "u", 1, "fibber|1947-06-03", "link"),
-        ("D1", "genericradio.com", "fibber", "1947-06-11", "The Big Bet", "u", 1, "fibber|1947-06-10", "link")])
+        ("A1", "genericradio.com", "fibber", "1947-05-06", "Good Grammar", "https://www.genericradio.com/show/X", 1, "fibber|1947-05-06", "link"),
+        ("A2", "genericradio.com", "fibber", "1947-05-13", "Fibber Needs Glasses", "https://www.genericradio.com/show/X", 1, "fibber|1947-05-13", "link"),
+        ("H1", "genericradio.com", "fibber", "1947-05-20", "Fibber Paints the Fence", "https://www.genericradio.com/show/X", 1, "fibber|1947-05-20", "link"),
+        ("N1", "genericradio.com", "fibber", "1947-05-27", "Molly's Hat", "https://www.genericradio.com/show/X", 1, "fibber|1947-05-27", "link"),
+        ("S1", "genericradio.com", "fibber", "1947-06-03", "Summer Plans", "https://www.genericradio.com/show/X", 1, "fibber|1947-06-03", "link"),
+        ("D1", "genericradio.com", "fibber", "1947-06-11", "The Big Bet", "https://www.genericradio.com/show/X", 1, "fibber|1947-06-10", "link")])
     d.commit()
     return d
 
@@ -100,6 +106,39 @@ with tempfile.TemporaryDirectory() as tmp:
     check("a script missing from the bundle waits on its source", report["awaiting_permission"], 2)
     check("the disagreeing title is counted", report["title_disagrees"], 1)
     check("control: no bundle, no links", E.links(s, served, {}, TERMS_ASK)[0], {})
+    outs = E.link_outs(s, served)
+    check("a link out for every served series + date + title match, castable or not", sorted(outs),
+          ["fibber|1947-05-06", "fibber|1947-05-20", "fibber|1947-05-27"])
+    check("a link out names its host and the script's one id", outs["fibber|1947-05-20"],
+          ("https://www.genericradio.com/show/X", "Generic Radio Workshop", "grw:H1"))
+    check("one id scheme: a castable bundle id and a research row name the same script",
+          (E.scheme_id("grw-A1"), E.scheme_id("A1", "genericradio.com"), E.scheme_id("gut-49295")),
+          ("grw:A1", "grw:A1", "gut:49295"))
+    check("control: an unknown source or a bare id has no scheme id",
+          (E.scheme_id("A1", "elsewhere.example"), E.scheme_id("plain"), E.scheme_id(None)), (None, None, None))
+    text_dir = os.path.join(tmp, "grw_text")
+    os.makedirs(text_dir)
+    with open(os.path.join(text_dir, "A1.txt"), "w") as f:
+        f.write("CAST\nFIBBER\nMOLLY\n\n" + "\n\n".join(
+            f"FIBBER: Line {i} about the closet and the hall and the porch today.\n\n"
+            f"MOLLY: Answer {i}, dearie, and do not open that door again tonight. [SOUND: CRASH]"
+            for i in range(30)) + "\n")
+    counts = E.write_cues(s, text_dir)
+    cues = list(s.execute("SELECT script_id, ord, kind, speaker, text FROM script_cues ORDER BY script_id, ord"))
+    check("cues are written for a matched script with cached text, keyed by its id, in order",
+          (counts.get("parsed"), cues[0][:4], cues[1][3], {c[0] for c in cues}),
+          (1, ("grw:A1", 1, "speech", "FIBBER"), "MOLLY", {"grw:A1"}))
+    check("a cue's text is the spoken words only", cues[0][4], "Line 0 about the closet and the hall and the porch today.")
+    check("control: a matched script without cached text writes no cues", counts.get("no_text"), 5)
+    check("control: no link out where the titles disagree, the episode is hidden, or the date differs",
+          {"fibber|1947-05-13", "fibber|1947-06-03", "fibber|1947-06-10"} & set(outs), set())
+    s.execute("UPDATE scripts SET url = 'http://www.genericradio.com/show/X' WHERE id = 'N1'")
+    s.execute("UPDATE scripts SET source = 'elsewhere.example' WHERE id = 'H1'")
+    check("control: an http URL or an unnamed source is never linked", sorted(E.link_outs(s, served)),
+          ["fibber|1947-05-06"])
+    s.execute("UPDATE scripts SET url = 'https://www.genericradio.com/show/X' WHERE id = 'N1'")
+    s.execute("UPDATE scripts SET source = 'genericradio.com' WHERE id = 'H1'")
+    s.commit()
     s.close()
 
     dst = os.path.join(tmp, "ear-drama.sqlite")
@@ -110,6 +149,17 @@ with tempfile.TemporaryDirectory() as tmp:
     check("the manifest counts it", json.loads(p.execute("SELECT value FROM meta WHERE key = 'counts'").fetchone()[0])
           ["scripts"], 1)
     check("guard: every link is castable and bundled", E.check(p, BUNDLE), [])
+    check("script_id rides with the link out and names the same script as `script`",
+          p.execute("SELECT script, script_id FROM episodes WHERE id = 'fibber|1947-05-06'").fetchone(),
+          ("grw-A1", "grw:A1"))
+    check("control: no script, no script_id",
+          p.execute("SELECT script_id FROM episodes WHERE id = 'fibber|1947-05-13'").fetchone()[0], None)
+    check("the projection carries every link out with its host",
+          sorted(p.execute("SELECT id, script_source FROM episodes WHERE script_url IS NOT NULL")),
+          [("fibber|1947-05-06", "Generic Radio Workshop"), ("fibber|1947-05-20", "Generic Radio Workshop"),
+           ("fibber|1947-05-27", "Generic Radio Workshop")])
+    check("the manifest counts the links out",
+          json.loads(p.execute("SELECT value FROM meta WHERE key = 'counts'").fetchone()[0])["scriptLinks"], 3)
     p.close()
 
     # Negative controls for the guard: a link to a script the bundle lacks, and one whose bucket hides it.
@@ -130,16 +180,28 @@ with tempfile.TemporaryDirectory() as tmp:
     eid = "fibber|1947-05-06"
     shard = json.load(open(os.path.join(web, "episodes", W.shard_of(eid) + ".json")))
     check("web detail carries the script id", dict(zip(m["fields"]["detail"], shard[eid]))["script"], "grw-A1")
+    row = dict(zip(m["fields"]["detail"], shard[eid]))
+    check("web detail carries the link out, its host and the script's id",
+          (row["scriptUrl"], row["scriptSource"], row["scriptId"]),
+          ("https://www.genericradio.com/show/X", "Generic Radio Workshop", "grw:A1"))
+    check("the web manifest counts the links out", m["counts"]["scriptLinks"], 3)
     other = "fibber|1947-05-13"
     shard = json.load(open(os.path.join(web, "episodes", W.shard_of(other) + ".json")))
     check("control: an unlinked episode's script is null", dict(zip(m["fields"]["detail"], shard[other]))["script"],
           None)
+    row = dict(zip(m["fields"]["detail"], shard[other]))
+    check("control: no link out where the titles disagree", (row["scriptUrl"], row["scriptSource"], row["scriptId"]),
+          (None, None, None))
 
 # --- the real artifact, shape only ------------------------------------------------------
 real = os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(real):
     p = sqlite3.connect(f"file:{real}?mode=ro", uri=True)
     check("real projection: every linked script is castable and bundled", E.check(p, E.load_bundle()), [])
+    if "script_url" in {r[1] for r in p.execute("PRAGMA table_info(episodes)")}:
+        check("real projection: a link out is https with its host, set together", p.execute(
+            "SELECT COUNT(*) FROM episodes WHERE (script_url IS NULL) != (script_source IS NULL) "
+            "OR (script_url IS NOT NULL AND (script_url NOT LIKE 'https://%' OR script_id IS NULL))").fetchone()[0], 0)
     p.close()
 check("the real bundle's linked kinds are castable buckets only",
       all(E.castable_entry(b) for b in E.load_bundle().values()), True)

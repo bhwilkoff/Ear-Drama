@@ -217,6 +217,16 @@ def violations(db):
         out["a raw name only where it differs, and sort_name follows the display name"] = bad_name
         out["a raw title only where it differs"] = c.execute(
             "SELECT COUNT(*) FROM episodes WHERE raw_title IS NOT NULL AND raw_title = title").fetchone()[0]
+    if "about_text" in cols:   # catalog DECISIONS 030 (contract section 3.3)
+        out["a series' about is set all together, from Wikipedia, linked to its article"] = c.execute(
+            "SELECT COUNT(*) FROM series WHERE (about_text IS NULL) != (about_url IS NULL) "
+            "OR (about_text IS NULL) != (about_source IS NULL) OR (about_text IS NOT NULL AND "
+            "(about_source != 'Wikipedia' OR about_url NOT LIKE 'https://en.wikipedia.org/wiki/%'))").fetchone()[0]
+    if "script_id" in {r[1] for r in c.execute("PRAGMA table_info(episodes)")}:   # section 3.1
+        out["a script link has its host and id; an id has a script or a link"] = c.execute(
+            "SELECT COUNT(*) FROM episodes WHERE (script_url IS NULL) != (script_source IS NULL) "
+            "OR (script_url IS NOT NULL AND script_id IS NULL) "
+            "OR ((script_id IS NOT NULL) != (script_url IS NOT NULL OR script IS NOT NULL))").fetchone()[0]
     c.close()
     return {k: v for k, v in out.items() if v}
 

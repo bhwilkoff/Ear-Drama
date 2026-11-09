@@ -1,0 +1,18 @@
+{
+  "_comment": "Series 'about' matches an editor read and refused (catalog DECISIONS 030; tools/series_about.py). Each row names the article it refuses and why, checked against the article and the series' own episodes; a different article matched later is judged afresh. Restore a series by removing its row once the evidence changes, never by loosening the gate.",
+  "playhouse": {
+    "article": "The Playhouse (radio show)",
+    "reason": "The article is a Portland, Oregon morning drive-time show that began in 2000; the series' five undated episodes are radio dramas ('A Case of Checkmate', 'The Unguarded Hour').",
+    "checked": "2026-11-09"
+  },
+  "hollywoodstartime": {
+    "article": "Hollywood Star Time (interview program)",
+    "reason": "The article covers a 1944 interview program only; the series also holds the 1946-1947 dramatic anthology of the same name ('Laura', 'The Letter'), which the article does not describe.",
+    "checked": "2026-11-09"
+  },
+  "childrenshour": {
+    "article": "Children's Hour",
+    "reason": "The article is the BBC's children's service, 1922-1964; the series is one 1949 interview with an ice skater, and nothing in its record places it on the BBC.",
+    "checked": "2026-11-09"
+  }
+}
