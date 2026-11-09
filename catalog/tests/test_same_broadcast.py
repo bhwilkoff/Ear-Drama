@@ -1,5 +1,5 @@
 """P-10: one broadcast in one place, one show under one name, a label on every copy, and the last raw titles
-(tools/display_text.py, tools/polish.py, tools/build_projection.py; catalog DECISIONS 030, owner 2026-11-09).
+(tools/display_text.py, tools/polish.py, tools/build_projection.py; catalog DECISIONS 031, owner 2026-11-09).
 
     python3 tests/test_same_broadcast.py
     PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_same_broadcast.py

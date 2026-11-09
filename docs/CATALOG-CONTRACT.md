@@ -160,7 +160,7 @@ restates one (a date, a code, a file name). Since 2026-11-09 (P-10, catalog DECI
 with more than one carries a label that tells it apart: that name when no other copy of the episode shares it, else the
 name or nothing followed by the fact that differs, read from the copy's own row ("AFRS rebroadcast", "Partial copy",
 "Longer copy", "Higher quality (128 kbps)", "Uploaded 2015", "31 min"), and "Best copy" / "Another copy" only when
-every fact is the same. A client shows `label` when set and "Recording N" only as a fallback when NULL; it never
+every fact is the same. A client shows `label` when set and, only as a fallback when NULL, the copy's own facts (bit rate, length), never "Recording N"; it never
 shows `archive_id` as a name. The identifier stays as the link to the item's archive.org page. The web projection's
 recordings rows carry it as an eighth element `[url, archiveId, format, kbps, length, variant, partial, label]`.
 

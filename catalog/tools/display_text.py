@@ -473,7 +473,7 @@ def merged_span(merged, rows):
     return {k: (f, l, json.dumps(n) if n else None) for k, (f, l, n) in out.items()}
 
 
-# ---- P-10: one broadcast in one place, one show under one name (owner 2026-11-09; catalog DECISIONS 030) ----
+# ---- P-10: one broadcast in one place, one show under one name (owner 2026-11-09; catalog DECISIONS 031) ----
 # "I see a lot of things that seem disconnected from their shows": the same broadcast filed under a real show and
 # under a series named for a sponsor, a collection, a season or a reel. Every fold below is read from the data
 # (an air date and a title the two records share, an archive.org item title, a registry alias, a run), never
