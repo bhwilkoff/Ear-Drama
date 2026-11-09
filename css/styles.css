@@ -1226,8 +1226,9 @@ html.tv .np-together { display: none; }
 /* A show's About: four lines until opened; the attribution under it is the license's price. */
 .about { margin: var(--space-4) 0; max-width: 68ch; }
 .about-text p { margin: 0 0 var(--space-3); }
-.about-text[data-clamped="true"] { max-height: calc(4 * 1.45em); overflow: hidden; }
-.about-text[data-clamped="true"] p + p { margin-top: 0; }
+.about-text[data-clamped="true"] { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; }
+.about-text[data-clamped="true"] p { display: inline; margin: 0; }
+.about-text[data-clamped="true"] p + p::before { content: " "; }
 .about-more { padding-inline: 0; min-height: 44px; }
 .about-source { margin: 0; color: var(--color-text-muted); }
 .ep-script { margin: var(--space-2) 0; }
