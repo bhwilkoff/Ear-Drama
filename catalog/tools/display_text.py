@@ -1061,3 +1061,227 @@ def witness_name(keys, series_name, texts):
             if not upload_shaped(text):
                 names.setdefault(t, text)
     return next(iter(names.values())) if len(names) == 1 else None
+
+
+# ---- 035: a series is one production (catalog DECISIONS 035) ----
+# OTRRpedia files several productions of one character under one program ("Sherlock Holmes", 8101: Richard Gordon on
+# NBC in the 1930s, Rathbone and Bruce 1939-47, John Stanley on Mutual 1947-49, Gielgud and Richardson 1955, the BBC's
+# Hobbs and Shelley), and the folds trusted it. 026: an adaptation of the same character by another producer, network,
+# run or cast is another program. A series is split only where the evidence separates its broadcasts: the casts its
+# credits name, the silences in the registry's broadcast runs, the networks, and the program names a source writes.
+MIN_PRINCIPAL = 3     # a cast member credited on this many of a series' episodes is one of its principals
+SILENCE_DAYS = 730    # two years in which no registry run and no broadcast of the series falls: a run ended
+MIN_RUN = 3           # dated broadcasts an uncredited run needs to stand as a production of its own
+MIN_TOGETHER = 2      # broadcasts two principals must share to be one cast: one shared credit may be a slip
+
+
+def _day(d, end=False):
+    """A registry date ("1931-00-00", "1936-09-00") as a full date, or None."""
+    m = re.match(r"^(19\d\d|20\d\d)-(\d\d)-(\d\d)$", d or "")
+    if not m:
+        return None
+    y, mo, dd = m.groups()
+    mo = mo if mo != "00" else ("12" if end else "01")
+    dd = dd if dd != "00" else ("28" if end else "01")
+    return f"{y}-{mo}-{dd}"
+
+
+def _days(a, b):
+    import datetime
+    try:
+        return (datetime.date.fromisoformat(b) - datetime.date.fromisoformat(a)).days
+    except ValueError:
+        return 0
+
+
+def silence(lo, hi, runs):
+    """True when, between the broadcasts `lo` and `hi`, SILENCE_DAYS pass that no registry run covers. With no runs
+    the registry says nothing about the gap, and a gap in the surviving recordings is not a silence on the air."""
+    spans = []
+    for b, e in runs or ():
+        b, e = _day(b), _day(e, end=True) or _day(b, end=True)
+        if b and e and e >= b:
+            spans.append((b, e))
+    if not spans:
+        return False
+    cur = lo
+    for b, e in sorted(spans):
+        if e <= cur:
+            continue
+        if b >= hi:
+            break
+        if _days(cur, min(b, hi)) >= SILENCE_DAYS:
+            return True
+        cur = max(cur, e)
+    return _days(cur, hi) >= SILENCE_DAYS
+
+
+def goldin_cast(artists):
+    """The performers a RadioGOLDINdex record names: its `artists` entries without a role in brackets, or with a
+    character ("Louis Hector (as "Sherlock Holmes")"); "Edith Meiser (writer)" and an uncertain "(?)" are not cast."""
+    out = []
+    for part in re.split(r"[;,]", artists or ""):
+        part = part.strip()
+        m = re.match(r"^([^()]+?)\s*(?:\((.*)\))?\s*$", part)
+        if not m or not re.search(r"[A-Za-z]{2,}\s+[A-Za-z]", m.group(1)):
+            continue
+        role = (m.group(2) or "").strip().casefold()
+        if not role or role.startswith("as "):
+            out.append(m.group(1).strip())
+    return out
+
+
+def _major(names):
+    """The program name most broadcasts of a run carry, as name tokens, or None."""
+    if not names:
+        return None
+    best = sorted(names.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+    return name_tokens(best)
+
+
+def _undated_key(title):
+    """A title's letters, a trailing date note dropped ("The Viennese Strangler (04-09-45)"), when eight or more."""
+    t = re.sub(r"\s*[(\[][\d\s./-]+[)\]]\s*$", "", title or "")
+    k = _letter_key(t)
+    return k if len(k) >= MIN_CONTAINED else None
+
+
+def productions(eps, cast, witnesses=None, runs=(), nights=None):
+    """DECISIONS 035: the productions one series holds, by evidence. `eps`: id -> (air date or None, network or None,
+    title or None); `cast`: id -> person ids its credits name as cast; `witnesses`: id -> program names a source
+    (RadioGOLDINdex) writes for that broadcast; `runs`: the registry's broadcast runs [(begin, end)] for the
+    program(s) the series is; `nights`: title letters (_undated_key) -> the nights a source gives that title for the
+    program. Returns (productions, remainder): productions in air order, each {"eps", "first",
+    "last", "names" {name: broadcasts}, "cast"}; ([], set()) when the evidence finds one production.
+
+    A principal is a cast member credited on MIN_PRINCIPAL episodes; principals credited together are one cast
+    (Nigel Bruce joins Rathbone's seasons to Tom Conway's). Each cast's dated broadcasts are a block, and so is each
+    run of MIN_RUN uncredited dated broadcasts outside every cast's span that carries a program name. In air order, a block starts another
+    production when
+      silence:  SILENCE_DAYS pass between them that no registry run covers, and both have a cast (none shared) or
+                the program names they carry differ (Richard Gordon's 1936 to Rathbone's 1939); or
+      boundary: with no silence, the network changes where they meet and the names differ (Rathbone and Conway's
+                "The New Adventures of Sherlock Holmes" on ABC to John Stanley's "Sherlock Holmes" on Mutual).
+    A recast on one name and network is one program (Mr. Keen, Johnny Dollar). An episode is then placed by its
+    cast, else its date inside exactly one production's span, else (undated) its title's nights (this series' dated
+    broadcasts of that title, a source's records of it) inside exactly one production's span; the rest is the remainder: broadcasts the evidence does not place."""
+    witnesses = witnesses or {}
+    full = lambda e: bool(eps[e][0]) and bool(FULL_DATE.match(eps[e][0]))
+    count = {}
+    for e in eps:
+        for p in cast.get(e) or ():
+            count[p] = count.get(p, 0) + 1
+    principal = {p for p, n in count.items() if n >= MIN_PRINCIPAL}
+    root = {p: p for p in principal}
+
+    def find(x):
+        while root[x] != x:
+            root[x] = root[root[x]]
+            x = root[x]
+        return x
+    together = {}
+    for e in sorted(eps):
+        ps = sorted(set(cast.get(e) or ()) & principal)
+        for i, a in enumerate(ps):
+            for b in ps[i + 1:]:
+                together[(a, b)] = together.get((a, b), 0) + 1
+    for (a, b), n in sorted(together.items()):
+        if n >= MIN_TOGETHER:
+            a, b = find(a), find(b)
+            if a != b:
+                root[max(a, b)] = min(a, b)
+    comp = {}
+    for e in sorted(eps):
+        ps = set(cast.get(e) or ()) & principal
+        if ps:
+            comp[e] = find(min(ps))
+
+    def block(es, people):
+        ds = sorted((eps[e][0], eps[e][1] or "") for e in es if full(e))
+        names = {}
+        for e in es:
+            for n in witnesses.get(e) or ():
+                if not upload_shaped(n):
+                    names[n] = names.get(n, 0) + 1
+        nets = [n for _d, n in ds if n]
+        return {"eps": set(es), "first": ds[0][0], "last": ds[-1][0], "names": names, "cast": set(people),
+                "net_first": nets[0] if nets else None, "net_last": nets[-1] if nets else None}
+    blocks = []
+    by_comp = {}
+    for e, r in comp.items():
+        by_comp.setdefault(r, set()).add(e)
+    for r in sorted(by_comp):   # a cast's broadcasts two years apart are two blocks; a stray date is no block
+        people = {p for p in principal if find(p) == r}
+        ds = sorted((eps[e][0], e) for e in by_comp[r] if full(e))
+        run = []
+        for i, (d, e) in enumerate(ds + [(None, None)]):
+            if run and (e is None or _days(ds[i - 1][0], d) >= SILENCE_DAYS):
+                if len(run) >= MIN_RUN:
+                    blocks.append(block(run, people))
+                run = []
+            if e is not None:
+                run.append(e)
+    inside = lambda d: any(b["first"] <= d <= b["last"] for b in blocks)
+    loose = sorted((eps[e][0], e) for e in eps if e not in comp and full(e) and not inside(eps[e][0]))
+    run = []
+    for i, (d, e) in enumerate(loose + [(None, None)]):
+        if run and (e is None or _days(loose[i - 1][0], d) >= SILENCE_DAYS):
+            b = block(run, ())
+            if len(run) >= MIN_RUN and b["names"]:   # an uncredited run stands only under a name a source writes
+                blocks.append(b)
+            run = []
+        if e is not None:
+            run.append(e)
+    blocks.sort(key=lambda b: (b["first"], b["last"], min(b["eps"])))
+    prods = []
+    for b in blocks:
+        if prods:
+            p = prods[-1]
+            mp, mb = _major(p["names"]), _major(b["names"])
+            differ = bool(mp and mb and mp != mb)
+            if b["first"] <= p["last"] or p["cast"] & b["cast"]:   # overlapping, or one cast: one production
+                apart = False
+            elif silence(p["last"], b["first"], runs):
+                apart = bool(p["cast"] and b["cast"] and not p["cast"] & b["cast"]) or differ
+            else:
+                apart = bool(p["net_last"] and b["net_first"] and p["net_last"] != b["net_first"]) and differ
+            if not apart:
+                p["eps"] |= b["eps"]
+                p["cast"] |= b["cast"]
+                for n, c in b["names"].items():
+                    p["names"][n] = p["names"].get(n, 0) + c
+                if b["last"] >= p["last"]:
+                    p["last"] = b["last"]
+                    p["net_last"] = b["net_last"] or p["net_last"]
+                continue
+        prods.append(dict(b, eps=set(b["eps"]), cast=set(b["cast"]), names=dict(b["names"])))
+    if len(prods) < 2:
+        return [], set()
+    of_comp = {}
+    for i, p in enumerate(prods):
+        for e in p["eps"]:
+            if e in comp:
+                of_comp.setdefault(comp[e], set()).add(i)
+    remainder = set()
+    own_nights = {}
+    for x in eps:
+        if full(x) and _undated_key(eps[x][2]):
+            own_nights.setdefault(_undated_key(eps[x][2]), set()).add(eps[x][0])
+    for e in sorted(eps):
+        if any(e in p["eps"] for p in prods):
+            continue
+        home = set(of_comp.get(comp[e], ())) if e in comp else set()
+        if not home and full(e):
+            home = {i for i, p in enumerate(prods) if p["first"] <= eps[e][0] <= p["last"]}
+        if not home and not full(e) and eps[e][2]:   # undated: the nights its title aired, by this series or a source
+            t = _undated_key(eps[e][2])
+            days = set((nights or {}).get(t, ())) | own_nights.get(t, set())
+            home = {i for i, p in enumerate(prods) if t and any(p["first"] <= d <= p["last"] for d in days)}
+        if len(home) == 1:
+            prods[next(iter(home))]["eps"].add(e)
+        else:
+            remainder.add(e)
+    for p in prods:
+        p.pop("net_first", None)
+        p.pop("net_last", None)
+    return prods, remainder

@@ -291,10 +291,11 @@ if os.path.exists(real) and os.path.exists(src_db):
     us = set()   # OTRRpedia names a US run: an American production whatever an item's language field says
     pedia = os.path.join(os.path.dirname(os.path.abspath(src_db)), "..", ".cache", "otrrpedia", "progPedia.json.gz")
     if os.path.exists(pedia) and "otrr_idp" in {r[1] for r in s.execute("PRAGMA table_info(series)")}:
-        usa = {p.get("idp") for p in json.load(gzip.open(pedia))
-               if any(h.get("country") == "USA" for h in p.get("histories") or [])}
-        us = {k for k, idps in s.execute("SELECT key, otrr_idp FROM series WHERE otrr_idp IS NOT NULL")
-              if set(idps.split(",")) & usa}
+        keys_of = {}
+        for k, idps in s.execute("SELECT key, otrr_idp FROM series WHERE otrr_idp IS NOT NULL"):
+            for i in idps.split(","):
+                keys_of.setdefault(i, []).append(k)
+        us = A.us_series_keys(json.load(gzip.open(pedia)), lambda p: keys_of.get(p.get("idp"), []))
     other = []
     for eid, (sk, a, t) in sorted(served.items()):
         if eid not in first or sk in librivox or sk in us:
