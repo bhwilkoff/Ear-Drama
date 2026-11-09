@@ -149,6 +149,35 @@ def country_label(text):
     return m.group(0).strip(" -–") if m else None
 
 
+def us_program(program):
+    """True when an OTRRpedia program's own record vouches for an American production (DECISIONS 033, 035): a run in
+    the USA, no run in another country and no title carrying a production label. A program that files other
+    countries' productions too ("Sherlock Holmes", 8101: a United Kingdom run, "Stories of Sherlock Holmes (SA)")
+    does not vouch for a recording its US run may not be."""
+    countries = {h.get("country") for h in program.get("histories") or [] if h.get("country")}
+    return "USA" in countries and not files_foreign(program)
+
+
+def files_foreign(program):
+    """True when an OTRRpedia program's record names another country's production: a run outside the USA or a title
+    carrying a production label."""
+    return (any(h.get("country") not in (None, "", "USA") for h in program.get("histories") or []) or
+            any(country_label(t.get("title")) for t in program.get("titles") or []))
+
+
+def us_series_keys(programs, key_of):
+    """The series an OTRRpedia record vouches for as American (033, 035): mapped to a program us_program reads, and to
+    none that files_foreign reads. `key_of`: program -> the series keys it maps to."""
+    vouch, mixed = set(), set()
+    for p in programs:
+        for k in key_of(p):
+            if us_program(p):
+                vouch.add(k)
+            elif files_foreign(p):
+                mixed.add(k)
+    return vouch - mixed
+
+
 # A recording in another language is another country's production (006), read from archive.org's own `language`
 # field, else from the title's own script or words. Speeches and addresses are kept whatever their language
 # (owner 2026-10-31, "Keep them"; DECISIONS 027), and so is a US government service broadcasting abroad.

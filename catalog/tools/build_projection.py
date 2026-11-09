@@ -390,6 +390,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                   for eid, rows in recs_by_ep.items()}
 
     sponsor_runs = SP.load(s)
+    # DECISIONS 035: a production split from a series takes the series' research row for what is not its own.
+    split_parent = {u["key"]: k for k, units in (folded.get("split") or {}).items() for u in units if u["key"] != k}
+    split_keys = set(split_parent) | set(folded.get("split") or {})
+    nets_of = {}
     years_of = {}
     per_series = {}
     searchable = 0
@@ -418,7 +422,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             eid, sk, air, dsrc, season(air), num, display[eid], PL.polish_title(aka) if aka else aka, recs[0][6],
             "clean" if state == "keep_clean" else "unclaimed", rb, nr, net, nsrc, int(shown), None,
             None, lr and lr["I"], lr and lr["TP"], turl if shown else None,
-            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), PL.small_words(SP.sponsor_for(sponsor_runs, sk, air, title) or "") or None,
+            AP.episode_star([(p, r) for p, _n, r, _c in credits], faces, stars.get(sk)), script_of.get(eid), PL.small_words(SP.sponsor_for(sponsor_runs, split_parent.get(sk, sk), air, title) or "") or None,
             title if display[eid] != title else None) + script_out.get(eid, (None, None, ES.scheme_id(script_of.get(eid)))))
         d.execute("INSERT INTO episodes_fts (rowid, title, series, people, transcript) VALUES (?,?,?,?,?)",
                   (cur.lastrowid, " ".join(dict.fromkeys(x for x in (display[eid], title, aka) if x)),
@@ -427,6 +431,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         per_series[sk] = per_series.get(sk, 0) + 1
         if air:
             years_of.setdefault(sk, []).append(air)
+            if net:
+                nets_of.setdefault(sk, []).append((air, net))
 
     kept_genre = dict(((k, (g, src)) for k, g, src in s.execute("SELECT series_key, genre, source FROM series_genre"))
                       if has_table(s, "series_genre") else ())
@@ -435,9 +441,16 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
     widened = DT.merged_span(merged, {r[0]: (r[5], r[6], r[7]) for r in series_rows})
     about = ({k: (t, src, u) for k, t, src, u in s.execute("SELECT series_key, text, source, url FROM series_about")}
              if has_table(s, "series_about") else {})   # enrich_external.py + series_about.py (DECISIONS 030)
+    by_key = {r[0]: r for r in series_rows}
+    series_rows += [(k, None) + tuple(by_key[p][2:]) for k, p in sorted(split_parent.items()) if p in by_key]
     for key, name, re_genre, otrr_genres, lv, first, last, nets in series_rows:
         if key in widened:
             first, last, nets = widened[key]
+        if key in split_keys:   # its own broadcasts' span and networks, not the series it was split from
+            ds = sorted(years_of.get(key) or [])
+            first, last = (ds[0], ds[-1]) if ds else (None, None)
+            seen = list(dict.fromkeys(n for _a, n in sorted(nets_of.get(key) or [])))
+            nets = json.dumps(seen) if seen else None
         if key in per_series:
             genre, gsrc = genre_of(json.loads(otrr_genres) if otrr_genres else None, re_genre, bool(lv))
             if genre is None and key in kept_genre:   # enrich_genres.py: a keyword the records carry (DECISIONS 024)
@@ -446,7 +459,7 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             shown_as = shown_name.get(key) or name
             d.execute("INSERT INTO series VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (key, shown_as, genre, gsrc, first, last, nets, per_series[key], stars.get(key),
-                       sort_name(shown_as), None) + pic + (name if shown_as != name else None,
+                       sort_name(shown_as), None) + pic + (name if name and shown_as != name else None,
                                                            year_counts(years_of.get(key))) +
                       about.get(key, (None, None, None)))
     for pid, name, birth, death in s.execute("SELECT id, name, birth, death FROM people"):
@@ -644,11 +657,26 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
                         display[eid] = PL.small_words(new[0])
     if folded is not None:
         folded["titled"] = titled
-    if got:
+    # DECISIONS 035: a series that holds several productions is split, each under its own witness title.
+    moved, split = split_productions(s, by_series_eps, served, got, series, shown_name, (folded or {}).get("episodes") or {})
+    if folded is not None:
+        folded["split"] = split
+    if moved and display is not None and composed is not None:
+        for k0, eps in by_series_eps.items():
+            for eid, air, num, _t in eps:
+                if eid in moved and eid in composed and eid in served:
+                    new = DT.compose_title(shown_name[moved[eid]], air, num)
+                    if new:
+                        composed[eid] = {"title": new[0], "fields": new[1]}
+                        display[eid] = PL.small_words(new[0])
+    if got or moved:
         s.execute("CREATE TEMP TABLE series_merge (old TEXT PRIMARY KEY, new TEXT NOT NULL)")
         s.executemany("INSERT INTO series_merge VALUES (?,?)", sorted(got.items()))
+        s.execute("CREATE TEMP TABLE episode_series (id TEXT PRIMARY KEY, series_key TEXT NOT NULL)")
+        s.executemany("INSERT INTO episode_series VALUES (?,?)", sorted(moved.items()))
         cols = [r[1] for r in s.execute("PRAGMA main.table_info(episodes)")]
-        sel = ", ".join("COALESCE((SELECT new FROM temp.series_merge m WHERE m.old = e.series_key), e.series_key) AS series_key"
+        sel = ", ".join("COALESCE((SELECT x.series_key FROM temp.episode_series x WHERE x.id = e.id), "
+                        "(SELECT new FROM temp.series_merge m WHERE m.old = e.series_key), e.series_key) AS series_key"
                         if c == "series_key" else f"e.{c}" for c in cols)
         s.execute(f"CREATE TEMP VIEW episodes AS SELECT {sel} FROM main.episodes e")
     eps_fold = (folded or {}).get("episodes")
@@ -663,6 +691,147 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
             s.execute(f"CREATE TEMP VIEW {table} AS SELECT {sel} FROM main.{table} t "
                       "LEFT JOIN temp.episode_fold f ON f.old = t.episode_id")
     return got
+
+
+def split_productions(s, by_series_eps, served, got, series, shown_name, eps_fold):
+    """DECISIONS 035 over the research database: display_text.productions for every served series after the folds
+    (evidence: production_inputs). The production named as the series is keeps its key; another takes the key of its
+    own name (with its first year when that key is taken); the broadcasts the evidence does not place stay together
+    under the registry's own name for the program the series was filed under. Returns ({episode id: new series
+    key}, report); `shown_name` gains the new keys."""
+    if not has_table(s, "episode_credits"):
+        return {}, {}
+    group = {}
+    for old, new in got.items():
+        group.setdefault(new, {new}).add(old)
+    eps_of = {}
+    for k0, eps in by_series_eps.items():
+        k = got.get(k0, k0)
+        if k not in series or series[k]["bag"] or series[k]["librivox"]:
+            continue
+        for eid, air, _num, title in eps:
+            if eid in served:
+                eps_of.setdefault(k, {})[eid] = (air, title)
+    eps_of = {k: v for k, v in eps_of.items() if len(v) >= 2 * DT.MIN_RUN}
+    inputs = production_inputs(s, eps_of, {k: sorted(group.get(k, {k})) for k in eps_of}, shown_name, eps_fold)
+    used = {k for (k,) in s.execute("SELECT key FROM main.series")}
+    moved, report = {}, {}
+    for k in sorted(inputs):
+        eps, cast, wit, runs, nights, umbrella = inputs[k]
+        prods, rest = DT.productions(eps, cast, wit, runs, nights)
+        if not prods:
+            continue
+        parent = shown_name.get(k) or k
+        named = [PL.polish_name(DT.witness_text(max(sorted(p["names"]), key=lambda n: p["names"][n])))
+                 if p["names"] else None for p in prods]
+        same = [i for i, n in enumerate(named) if n and DT.name_tokens(n) == DT.name_tokens(parent)]
+        keep = max(same, key=lambda i: (len(prods[i]["eps"]), -i)) if same else None
+        rest_name = PL.polish_name(DT.COLLECTION_NOTE.sub("", DT.witness_text(umbrella))) if umbrella else None
+        units = [(named[i] or rest_name or parent, prods[i]["eps"], prods[i]["first"], prods[i]["last"],
+                  sorted(prods[i]["names"].items(), key=lambda kv: (-kv[1], kv[0]))[:3]) for i in range(len(prods))]
+        if rest:
+            units.append((rest_name or parent, rest, None, None, []))
+        if keep is None:
+            keep = len(prods) if rest and rest_name is None else max(range(len(prods)), key=lambda i: (len(prods[i]["eps"]), -i))
+        for i, (name, es, first, last, wits) in enumerate(units):
+            if i == keep:
+                key = k
+                shown_name[k] = name
+            else:
+                key = RA.P.norm_series(name)
+                if key in used:
+                    dated = sorted(eps[e][0] for e in es if eps[e][0] and DT.FULL_DATE.match(eps[e][0]))
+                    key = f"{key}{(first or (dated[0] if dated else ''))[:4] or 'undated'}"
+                n = 2
+                while key in used:
+                    key, n = f"{key.rstrip('0123456789')}{n}", n + 1
+                used.add(key)
+                shown_name[key] = name
+                for eid in es:
+                    moved[eid] = key
+            report.setdefault(k, []).append({"key": key, "name": name,
+                                             "episodes": len(es), "first": first, "last": last,
+                                             "witnesses": [f"{n} ({c})" for n, c in wits],
+                                             "unplaced": first is None and i == len(prods)})
+    return moved, report
+
+
+def production_inputs(s, eps_of, members_of, shown_name, eps_fold=None):
+    """DECISIONS 035: the evidence display_text.productions reads, for each series `k` in `eps_of` ({k: {episode id:
+    (air date, title)}}), whose research keys are `members_of[k]`. Returns {k: (eps, cast, witnesses, runs, nights,
+    umbrella)}: each broadcast's network (episodes.network); cast credits (episode_credits) and the performers
+    RadioGOLDINdex's record of the broadcast names; the program names that record writes (linked to the episode, a
+    credit taken from it, or an unlinked record of the same night whose name carries every word the series' names
+    share); the registry's broadcast runs (program_runs); the nights RadioGOLDINdex gives an undated title; and the
+    registry's own name for the program the series was filed under (OTRR, the shortest name it maps by). The
+    projection's split and the guard over the real build both read this."""
+    owner = {eid: k for k in eps_of for eid in eps_of[k]}
+    into = {old: new for old, new in (eps_fold or {}).items() if new in owner}
+    net = ({eid: n for eid, n in s.execute("SELECT id, network FROM main.episodes WHERE network IS NOT NULL") if eid in owner}
+           if "network" in {r[1] for r in s.execute("PRAGMA main.table_info(episodes)")} else {})
+    person = lambda n: re.sub(r"[^a-z]", "", (n or "").casefold())
+    cast = {}
+    for eid, name in s.execute("SELECT episode_id, name FROM main.episode_credits WHERE role = 'cast'"):
+        eid = into.get(eid, eid)
+        if eid in owner and person(name):
+            cast.setdefault(eid, set()).add(person(name))
+    gold = {}
+    if has_table(s, "goldin_records") and {"catalognum", "program", "air_date", "artists", "title", "episode_id"} <= {
+            r[1] for r in s.execute("PRAGMA main.table_info(goldin_records)")}:
+        gold = {c: (p, a, DT.goldin_cast(art), t) for c, p, a, art, t in s.execute(
+            "SELECT catalognum, program, air_date, artists, title FROM goldin_records WHERE program IS NOT NULL")}
+    wit = {}
+
+    def witness(eid, c):
+        prog, _air, names, _t = gold[c]
+        wit.setdefault(eid, set()).add(prog)
+        cast.setdefault(eid, set()).update(person(n) for n in names if person(n))
+    for c, eid in (s.execute("SELECT catalognum, episode_id FROM goldin_records WHERE episode_id IS NOT NULL")
+                   if gold else ()):
+        eid = into.get(eid, eid)
+        if eid in owner and c in gold:
+            witness(eid, c)
+    credit_cols = {r[1] for r in s.execute("PRAGMA main.table_info(episode_credits)")}
+    for eid, ref in (s.execute("SELECT episode_id, source_ref FROM main.episode_credits WHERE source = 'goldin'")
+                     if gold and {"source", "source_ref"} <= credit_cols else ()):
+        eid = into.get(eid, eid)
+        if eid in owner and str(ref or "").isdigit() and int(ref) in gold:
+            witness(eid, int(ref))
+    otrr = {}
+    if has_table(s, "series_map") and "method" in {r[1] for r in s.execute("PRAGMA main.table_info(series_map)")}:
+        for k, prog, method in s.execute("SELECT series_key, program, method FROM series_map WHERE source = 'otrr'"):
+            otrr.setdefault(k, []).append((method != "name", len(prog or ""), prog or ""))
+    by_night, by_title = {}, {}
+    for c, (prog, air, _names, title) in gold.items():
+        if air and len(air) == 10:
+            by_night.setdefault(air, []).append(c)
+            if DT._undated_key(title):
+                by_title.setdefault(DT._undated_key(title), []).append(c)
+    runs = {}
+    if has_table(s, "program_runs") and "start" in {r[1] for r in s.execute("PRAGMA main.table_info(program_runs)")}:
+        for k, b, e in s.execute('SELECT series_key, start, "end" FROM program_runs'):
+            runs.setdefault(k, []).append((b, e))
+    small = DT.GENERIC_WORDS | DT.SMALL_INITIAL
+    out = {}
+    for k in sorted(eps_of):
+        members = members_of.get(k) or [k]
+        names = [shown_name.get(m) or m for m in members if m in shown_name] + [x[2] for m in members for x in otrr.get(m, ())]
+        common = set.intersection(*[set(DT.name_tokens(n)) - small for n in names]) if names else set()
+        eps = {eid: (air, net.get(eid), title) for eid, (air, title) in eps_of[k].items()}
+        nights = {}
+        if common:   # RadioGOLDINdex's records of a program named with every word the names share: same night, same title
+            for eid, (air, _n, title) in eps.items():
+                for c in by_night.get(air or "", ()):
+                    if common <= set(DT.name_tokens(gold[c][0])):
+                        witness(eid, c)
+                t = None if air and DT.FULL_DATE.match(air) else DT._undated_key(title)
+                for c in by_title.get(t, ()) if t else ():
+                    if common <= set(DT.name_tokens(gold[c][0])):
+                        nights.setdefault(t, set()).add(gold[c][1])
+        umbrella = sorted(x for m in members for x in otrr.get(m, ()))
+        out[k] = (eps, cast, wit, [r for m in members for r in runs.get(m, ())], nights,
+                  umbrella[0][2] if umbrella else None)
+    return out
 
 
 def name_survivors(s, cur, series):

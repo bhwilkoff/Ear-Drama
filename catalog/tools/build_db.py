@@ -1548,12 +1548,14 @@ def main():
         print("WARNING: no OTRRpedia genres matched any series; work_music_led cannot fire", file=sys.stderr)
     # P-12 (DECISIONS 033): OTRRpedia's broadcast history names each run's country. A program with runs only outside
     # the USA is a non-US production (006); one with a US run is American, whatever an item's language field says.
+    # DECISIONS 035: only a program whose record is all American vouches so; a catch-all that files another
+    # country's productions too (8101 "Sherlock Holmes") does not speak for a German or Dutch recording under it.
     countries = collections.defaultdict(set)
     for p in progs:
         k = reg.idp2c.get(p.get("idp"))
         if k in by_series:
             countries[k].update(h["country"] for h in p.get("histories") or [] if h.get("country"))
-    us_series = {k for k, cs in countries.items() if "USA" in cs}
+    us_series = A.us_series_keys(progs, lambda p: [k for k in [reg.idp2c.get(p.get("idp"))] if k in by_series])
     for k in sorted(countries):
         if countries[k] and "USA" not in countries[k] and k not in series_foreign and not k.startswith("librivox"):
             series_foreign[k] = {"source": "OTRRpedia broadcast history: every run outside the USA",

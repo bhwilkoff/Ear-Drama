@@ -1214,3 +1214,71 @@ McCarthy and Screen Guild Theater keep their names (the most witnessed). **Left*
 home for OTRRpedia's umbrella program "Sherlock Holmes" (8101), so the New Adventures group still carries every
 Sherlock Holmes production it held (a 1934 Richard Gordon broadcast among them): which production an episode is
 belongs to the fold rules (031, 033), not to the name.
+
+## 035 — A series is one production: a fold never joins what the credits, runs, networks and witnesses separate
+*Date: 2026-11-09*
+
+Amends 031, 033 and 034's folds. Nothing here is a new policy: 026 (a series is the program it is; an adaptation of the
+same character by another producer, network, run or cast is another program), 025/034 (a name is a source's own words)
+and 006 (non-US productions are hidden), applied to the catch-all programs the folds trusted.
+
+1. **The split** (`display_text.productions`, run by `build_projection.split_productions` after every fold and after
+   034's naming). Evidence (`build_projection.production_inputs`): the cast its credits name and the performers
+   RadioGOLDINdex's record of the broadcast names; the program name that record writes (linked to the episode, a credit
+   taken from it, or an unlinked record of the same night whose name carries every word the series' names share); each
+   broadcast's network; the registry's broadcast runs (`program_runs`). A principal is a cast member on 3 episodes;
+   principals credited together on 2 broadcasts are one cast (Nigel Bruce joins Rathbone's seasons to Tom Conway's; one
+   shared credit may be a slip). Each cast's dated broadcasts are a block (two years apart, two blocks), and so is a run
+   of 3 uncredited broadcasts that carries a program name. In air order a block starts another production on
+   *silence* (two years no registry run covers, and two casts sharing no one, or different program names) or on a
+   *boundary* (the network changes where they meet and the names differ). One cast is always one production; a recast
+   under one name and network is one program (Mr. Keen, Red Ryder, Johnny Dollar); with no registry runs a gap in the
+   surviving recordings is no silence on the air. An episode is placed by its cast, else its date inside exactly one
+   production's span, else (undated) the nights its title aired (this series' dated broadcasts of it, RadioGOLDINdex's
+   records of it, a trailing date note dropped) inside exactly one span. The rest is the remainder.
+2. **Names and keys** (034). Each production takes the program name most of its broadcasts carry; the one named as the
+   series keeps the key (and its picture and "about"); another takes the key of its own name, with its first year when
+   that key is taken. The remainder stays together under the registry's own name for the program the series was filed
+   under (OTRR's shortest name, a collection note dropped): it is what OTRRpedia files there and no evidence places, so
+   it is neither the largest production nor withheld (001: not knowing is not a claim). Two series may carry one name
+   (two productions a source names alike); their years tell them apart. `display_text.json` lists each split under
+   `folded.split` with its witnesses.
+3. **A registry vouches only for its own country** (033's exemption; `audit_audio_rights.us_program`,
+   `us_series_keys`). A program's US run outweighs an item's language field only when its record is all American: a run
+   in another country or a title with a production label ("Sherlock Holmes [SA]", 8101's United Kingdom run) means the
+   program files other countries' productions, and its US run does not speak for a German or Dutch recording under it.
+
+**Why**: OTRRpedia's "Sherlock Holmes" (8101) files Richard Gordon's NBC run, Rathbone and Bruce, John Stanley's Mutual
+seasons, Gielgud and Richardson's 1955 series, the BBC's Hobbs and Shelley, German and Dutch radio plays and modern
+productions under one id; the folds trusted it, so "The New Adventures of Sherlock Holmes" held all of them. The
+original Casebook/New Adventures fold is checked here too: Tom Conway's 1946-47 ABC season is Rathbone's production
+(Nigel Bruce, the same writers, RadioGOLDINdex's same title); Stanley's is another (another cast, network, writer and
+title). Ben Wright's 1949-50 season has no served broadcast.
+
+**How to apply**: a new kind of evidence goes in `production_inputs` (both the split and the guard read it), a new
+separation in `productions`, each with a fixture and a control in `tests/test_productions.py`. A wrong split is fixed by
+tightening the evidence, never by a list of keys. Guard over the real build (`tests/test_productions.py`, in the
+publish's contract step): no served series holds two productions the same evidence separates; seen failing on the
+unchanged tools' dry-run artifacts of catalog-2026-11-09 (4 series: The New Adventures of Sherlock Holmes in 4
+productions, Tarzan, Chandu the Magician, Lights Out). `tests/test_p12_audit.py`'s language guard now exempts only the
+series `us_series_keys` vouches for; on the unchanged build it failed with 36 German and Dutch Sherlock episodes.
+MEASURED on the catalog-2026-11-09 Release (PYTHONHASHSEED 0, `catalog_dryrun.sh --with-suites` green): series 4,954 to
+4,964, episodes 75,057 to 75,021 (37 research episodes newly hidden as `rec_foreign_origin`, all under 8101: German BR
+Hörspiele, Dutch, Italian; none newly served). Split, 1,245 episodes in 4 series:
+- The New Adventures of Sherlock Holmes (413): The New Adventures of Sherlock Holmes 1939-47, Rathbone/Bruce/Conway, 178
+  (68 undated placed by their titles' nights); Sherlock Holmes 1947-49, John Stanley, Mutual, 80; The Adventures of
+  Sherlock Holmes 1955, Gielgud/Richardson, NBC, 12; The Adventures of Sherlock Holmes 1959-69, Hobbs/Shelley, 55;
+  remainder "Sherlock Holmes" 88 (the 1932-36 Gordon and Hector broadcasts among them: too few credits or witnesses to
+  stand as a production).
+- Tarzan (400): Tarzan of the Apes 1932-36, syndicated, 232; Tarzan 1951-53, Lamont Johnson, 117; remainder 51.
+- Chandu the Magician (282): 1932-35, Gayne Whitman, 102; 1948-49, Tom Collins, 167; remainder 13.
+- Lights Out (150): 1936-43 (Oboler, NBC then CBS), 98; 1945-46 NBC summer runs, 13; remainder 39.
+Read for mistakes: no served one-program show split (Johnny Dollar, The Shadow, Superman, Mr. Keen, Red Ryder, The Fred
+Allen Show, Burns and Allen stay whole: their casts bridge or their names agree). Forwarding: none (032).
+**Left, each by a rule**: the Gielgud (1955, "BBC origination, NBC net rebroadcast") and Hobbs/Shelley (BBC Home
+Service) productions are served: 006 hides non-US productions on the evidence the rights audit reads (item records,
+OTRRpedia runs), and neither names the BBC; RadioGOLDINdex's `source_text` does, a reading the audit does not yet make
+(the next pass for 006, not a display rule). The Gordon-era broadcasts and undated pieces with no credit, witness or
+title night stay in their remainder (001). Superman, Dracula, Frankenstein, A Christmas Carol and The Mysterious
+Traveler hold one production by this evidence (Frankenstein and Dracula are undated; A Christmas Carol's years are
+single broadcasts, no run).
