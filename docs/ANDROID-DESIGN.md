@@ -186,6 +186,27 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   strings for a catalog that predates the key: "No rights claim known.
   Removed on request." for an unclaimed recording, never public domain;
   a clean basis with no words shows no line (`DisplayVocabulary.rightsLine`).
+  **The unclaimed line is not drawn** (owner, 2026-11-09: *"the 'No rights
+  claim known. Removed on request.' on each ear drama is unnecessary as that
+  is the default for every show on the app"*): `displayedRightsLine` returns
+  null for `unclaimed`, the vocabulary string stays for the cross-language
+  parity test, and every other rights phrase still shows.
+- **R22 A show is one tap from any of its episodes, and says what it is**
+  (owner, 2026-11-09: *"the dramas seem totally disconnected from any
+  recurring show that they are a part of ... Most people will have no idea
+  what the shows are about and they will need an entry point to know whether
+  or not they should listen."*). The episode page's head board is the show's
+  control (its facts line ends "All N episodes ›"; click label "Open series");
+  Now Playing names the show as a link (`onOpenSeries`); every episode row
+  and Home's night tile name the show. The series page draws an About under
+  its facts when the catalog has `series.about_text` (column-exists guard,
+  `AboutBlock`): paragraphs collapsed to four lines with Read more, then
+  "From [about_source]" opening `about_url` in a Custom Tab (the CC BY-SA
+  attribution; a TV names the source without a link). Nothing is drawn when
+  the columns or the value are absent. An episode with `episodes.script_url`
+  offers "Read the script · [script_source]" in a Custom Tab, beside the
+  ear drama and transcript rows. A recording with no clean label is named by
+  its kbps and length, never "Recording N" (`RecordingLabel.title`).
 - **R9, R10, R14 on the Radio tab** (§4.10): a gap is drawn as a gap,
   the slot on the air is read from the file's UTC instants on the one
   clock (`RadioClock.onAir`, `radio/Tonight.kt`, golden against
@@ -746,7 +767,7 @@ file (`StandInNeverStoredTest`). No analytics.
 - **§10.4 A credit's position is its key** on Detail: one person can hold
   two roles on one broadcast.
 
-**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `formatAirDate` is the one formatter for rows, event lines, the media session and Android Auto ("Sep 17, 1949" in the device's medium format, "Sep 1949", "1949"); `formatAirDateLong` is the long form for Detail. Recordings (the section is now named Recordings, not Versions) are named by `RecordingLabel` (`recordings.label` behind a column-exists guard, else "Recording N", best copy marked); the archive.org identifier never renders. `AirDateTest` and `RecordingLabelTest` fail on an ISO shape or an identifier-shaped label.
+**R14 Dates and recordings never show raw archive text** (owner, 2026-10-31: *"We want to be both unambiguous and well designed. Spelling out the month (or abbreviating it for space) is far better."*; AGENTS.md: raw upload text never shows). `formatAirDate` is the one formatter for rows, event lines, the media session and Android Auto ("Sep 17, 1949" in the device's medium format, "Sep 1949", "1949"); `formatAirDateLong` is the long form for Detail. Recordings (the section is now named Recordings, not Versions) are named by `RecordingLabel` (`recordings.label` behind a column-exists guard, else its kbps and length, best copy marked); the archive.org identifier never renders. `AirDateTest` and `RecordingLabelTest` fail on an ISO shape or an identifier-shaped label.
 
 ## §11 Deliberate inversions
 

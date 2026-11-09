@@ -114,6 +114,10 @@ data class SeriesRow(
     val yearCounts: List<Int>? = null,
     /** The key the A to Z order sorts on, for Browse's letter rail; null where the catalog has none. */
     val sortName: String? = null,
+    /** Optional About (`series.about_text`), its source name, and the page it came from; null when the catalog has none. */
+    val aboutText: String? = null,
+    val aboutSource: String? = null,
+    val aboutUrl: String? = null,
 ) {
     /** What the window draws: the published picture, else the star's portrait an older catalog carries. */
     val windowArt: Artwork? get() = picture ?: face?.art
@@ -200,6 +204,9 @@ data class EpisodeDetail(
     val star: String? = null,
     /** A castable script this episode can be recorded from (§3.1, Decision 068), or null. */
     val script: String? = null,
+    /** Optional `episodes.script_url`: a page where the script can be read, and its source's name. */
+    val scriptUrl: String? = null,
+    val scriptSource: String? = null,
 ) {
     /** The credited star with a portrait, drawn beside the heading. */
     val starFace: Face?

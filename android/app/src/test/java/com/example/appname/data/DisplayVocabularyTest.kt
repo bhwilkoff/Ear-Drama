@@ -57,4 +57,10 @@ class DisplayVocabularyTest {
         assertNull(DisplayVocabulary.variantLine(null))
         assertEquals("Incomplete copy", DisplayVocabulary.PARTIAL)
     }
+
+    @Test fun `the unclaimed line is never displayed, other rights phrases are`() {
+        assertNull(DisplayVocabulary.displayedRightsLine("unclaimed", null))
+        assertNull(DisplayVocabulary.displayedRightsLine("unclaimed", "rec_orphan_unclaimed"))
+        assertEquals("Government recording", DisplayVocabulary.displayedRightsLine("clean", "rec_gov_work"))
+    }
 }
