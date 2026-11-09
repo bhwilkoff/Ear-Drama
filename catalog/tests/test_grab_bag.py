@@ -106,6 +106,10 @@ if os.path.exists(real) and os.path.exists(src):
         files.setdefault(eid, []).append((aid, f))
     served = dict(d.execute("SELECT id, series_key FROM episodes"))
     names = dict(d.execute("SELECT key, name FROM series"))
+    try:   # a program the build folded into a series is that series (DECISIONS 034: the key follows the name)
+        merged = json.load(open(os.path.join(os.path.dirname(os.path.abspath(real)), "display_text.json"))).get("merged") or {}
+    except (OSError, ValueError):
+        merged = {}
     feeds, item_files, by = {}, {}, {}
     for eid, sk in served.items():
         for aid, f in files.get(eid, ())[:1]:
@@ -113,7 +117,7 @@ if os.path.exists(real) and os.path.exists(src):
             item_files[aid] = item_files.get(aid, 0) + 1
             stem = os.path.splitext(f.rsplit("/", 1)[-1])[0]
             p = RA.lead_program(stem, k2c, registry) if how.get(eid) != "otrr_log" else None
-            by.setdefault(sk, []).append({"how": how.get(eid), "item": aid, "program": p if p != sk else None})
+            by.setdefault(sk, []).append({"how": how.get(eid), "item": aid, "program": p if merged.get(p, p) != sk else None})
     feeds_n = {k: len(v) for k, v in feeds.items()}
     bags = []
     for sk in sorted(by):

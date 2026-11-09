@@ -12,7 +12,8 @@ serves something a rule withholds:
   - an undated episode whose own name carries a year after 1972 ("Oct 2019", "(2015)", "Upstate Radio Theatre 2004");
   - a series that names a game broadcast or V-Discs;
   - an upload-named series that is one registry program under its initials or another spelling, by three shared titles;
-  - a piece of one broadcast filed as a single (same day, one title's letters inside a registry episode's title).
+  - a piece of one broadcast filed as a single (same day, one title's letters inside a registry episode's title);
+  - a series under an upload-shaped name ("Babe Ruth Collection") where a program source names its show (DECISIONS 034).
 Seen failing on the 2026-11-09 dry-run artifacts of the unchanged tools (counts in DECISIONS 033).
 """
 import gzip
@@ -209,6 +210,55 @@ check("control: an old upload", P.modern_two_digit("1920-02-08", "2009-03-01"), 
 check("control: a date after the upload", P.modern_two_digit("1921-05-08", "2021-03-01"), None)
 check("control: a year with broadcasting", P.modern_two_digit("1935-02-08", "2035-03-01"), None)
 
+# ---- fixtures: a fold keeps the program's own title, and the key follows it (DECISIONS 034) ----
+fold = {"casebook": {"name": "The Newly Discovered Casebook Of Sherlock Holmes", "eps": 475, "own": False},
+        "newadv": {"name": "The New Adventures Of Sherlock Holmes", "eps": 48, "own": False},
+        "baberuthcollection": {"name": "Babe Ruth Collection", "eps": 23, "own": False},
+        "adventuresofbaberuth": {"name": "Adventures of Babe Ruth", "eps": 9, "own": False},
+        "fredallen": {"name": "The Fred Allen Show", "eps": 579, "own": False},
+        "townhall": {"name": "Town Hall Tonight", "eps": 73, "own": False},
+        "cs": {"name": "Chase And Sanborn Program", "eps": 57, "own": False},
+        "bergen": {"name": "Edgar Bergen And Charlie McCarthy", "eps": 288, "own": False},
+        "big": {"name": "Suspense Reel", "eps": 30, "own": True}, "small": {"name": "Suspense Theater", "eps": 3, "own": True},
+        "bag": {"name": "Escape", "eps": 90, "own": True, "bag": True}, "esc": {"name": "Escape Singles", "eps": 2, "own": True}}
+wit = {"newadv": {"otrr": {DT.witness_tokens("New Adventures of Sherlock Holmes")},
+                  "goldin": {DT.witness_tokens("The New Adventures Of Sherlock Holmes")},
+                  "wiki": {DT.witness_tokens("The New Adventures of Sherlock Holmes (radio series)")}},
+       "casebook": {"otrr": {DT.witness_tokens("Sherlock Holmes")},
+                    "goldin": {DT.witness_tokens("The Newly Discovered Casebook Of Sherlock Holmes")}},
+       "baberuthcollection": {"otrr": {DT.witness_tokens("Babe Ruth")}},
+       "adventuresofbaberuth": {"otrr": {DT.witness_tokens("Adventures of Babe Ruth")}},
+       "fredallen": {"otrr": {DT.witness_tokens("Fred Allen Show, The")}, "goldin": {DT.witness_tokens("The Fred Allen Show")}},
+       "townhall": {"goldin": {DT.witness_tokens("Town Hall Tonight")}}}
+got, named = DT.name_survivors({"newadv": "casebook", "adventuresofbaberuth": "baberuthcollection", "townhall": "fredallen",
+                                "cs": "bergen", "small": "big", "esc": "bag"}, fold, wit, {"cs": {"Chase and Sanborn Coffee"}})
+check("the name more program sources write survives, and the key follows it", got.get("casebook"), "newadv")
+check("a witnessed program name beats a collection's", got.get("baberuthcollection"), "adventuresofbaberuth")
+check("named folds report why", (named.get("casebook"), named.get("baberuthcollection")),
+      (("newadv", "witness"), ("adventuresofbaberuth", "witness")))
+check("control: a show's best-witnessed name stays when a title-era name folds in", got.get("townhall"), "fredallen")
+check("control: a sponsor's name never takes over a program's", got.get("cs"), "bergen")
+check("unwitnessed: the name that is not upload-shaped survives", got.get("big"), "small")
+got2, named2 = DT.name_survivors({"tarzanallruns": "tarzan"}, {"tarzan": {"name": "Tarzan", "eps": 40, "own": True},
+                                  "tarzanallruns": {"name": "Tarzan", "eps": 360, "own": True}}, {})
+check("control: the same name either way keeps the survivor's key", (got2, named2), ({"tarzanallruns": "tarzan"}, {}))
+check("an upload-shaped show takes the one program name its sources write",
+      DT.witness_name(["boriskarloffcollection"], "Boris Karloff Collection",
+                      {"boriskarloffcollection": {("boris", "karloff", "show"): "Boris Karloff Show"}}), "Boris Karloff Show")
+check("control: two program names, no choice", DT.witness_name(["x"], "Sherlock Holmes Collection",
+      {"x": {("sherlock", "holmes"): "Sherlock Holmes", ("new", "adventures"): "New Adventures"}}), None)
+check("control: a name that is not upload-shaped stands", DT.witness_name(["x"], "Town Hall Tonight",
+      {"x": {("fred", "allen", "show"): "The Fred Allen Show"}}), None)
+check("a grab bag never survives", "bag" in set(got.values()), False)
+check("witness names read inverted articles and encyclopedia qualifiers",
+      (DT.witness_tokens("Fred Allen Show, The"), DT.witness_tokens("The Fred Allen Show (radio program)")),
+      (("fred", "allen", "show"), ("fred", "allen", "show")))
+for n in ("Babe Ruth Collection", "Jack Benny Singles", "Ron Bowser John Dunning Project", "The Whistler Reel", "GG Season 05",
+          "Adventures of Babe Ruth 08 Eps", "Lux Vol 2"):
+    check(f"upload-shaped: {n}", DT.upload_shaped(n), True)
+for n in ("The Shadow", "The Single Girl", "Project Mercury", "Screen Guild Theater", "Season of Fear", "The Collector"):
+    check(f"control: a program's name: {n}", DT.upload_shaped(n), False)
+
 # ---- the guards over a real build ----
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 src_db = os.environ.get("SOURCE") or os.path.join(os.path.dirname(__file__), "..", "out", "radio-catalog.sqlite")
@@ -314,6 +364,26 @@ if os.path.exists(real) and os.path.exists(src_db):
     pieces = DT.contained_broadcasts(rows, info)
     show = sorted((names[served[e][0]], served[e][2], names[served[v][0]], served[v][2]) for e, v in pieces.items())
     check("guard: no piece of one broadcast is served as a single", (len(show), show[:6]), (0, []))
+    # DECISIONS 034: a served series' name is never upload-shaped when a program source names the show it is. The
+    # show is the served key and every key the build folded into it (display_text.json beside the projection).
+    witnesses = DT.program_witnesses(s)
+    try:
+        merged = json.load(open(os.path.join(os.path.dirname(os.path.abspath(real)), "display_text.json"))).get("merged") or {}
+    except (OSError, ValueError):
+        merged = {}
+    group = {k: {k} for k in names}
+    for old, new in merged.items():
+        if new in group:
+            group[new].add(old)
+    titled = []
+    for k in sorted(names):
+        if k in librivox or not DT.upload_shaped(names[k]):
+            continue
+        said = sorted({" ".join(t) for m in group[k] for ns in (witnesses.get(m) or {}).values() for t in ns
+                       if not DT.upload_shaped(" ".join(t))})
+        if said:
+            titled.append((names[k], said[:3]))
+    check("guard: no served series is upload-named where a program source names its show", (len(titled), titled[:8]), (0, []))
 elif os.environ.get("PROJECTION"):
     check("the build named by PROJECTION and SOURCE exists", False, True)
 else:

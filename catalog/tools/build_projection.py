@@ -615,6 +615,35 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
     if display is not None:
         got = fold_same_broadcasts(s, by_series_eps, served, series, got, display, composed or {}, shown_name,
                                    folded if folded is not None else {})
+    else:
+        got, _renamed = name_survivors(s, DT.resolve_chains(got), series)
+    # DECISIONS 034: a show still under an upload-shaped name takes the one program name its sources write for it.
+    texts = {}
+    DT.program_witnesses(s, texts)
+    keys = {}
+    for old, new in got.items():
+        keys.setdefault(new, {new}).add(old)
+    titled = {}
+    for k in sorted(series):
+        if k in got or series[k]["bag"] or series[k]["librivox"]:
+            continue
+        name = DT.witness_name(sorted(keys.get(k, {k})), shown_name.get(k) or k, texts)
+        if name:
+            titled[k] = {"from": shown_name.get(k), "to": PL.polish_name(name) or name}
+            shown_name[k] = titled[k]["to"]
+    if titled and display is not None and composed is not None:
+        for k0, eps in by_series_eps.items():
+            k = got.get(k0, k0)
+            if k not in titled:
+                continue
+            for eid, air, num, _t in eps:
+                if eid in composed and eid in served:
+                    new = DT.compose_title(shown_name[k], air, num)
+                    if new:
+                        composed[eid] = {"title": new[0], "fields": new[1]}
+                        display[eid] = PL.small_words(new[0])
+    if folded is not None:
+        folded["titled"] = titled
     if got:
         s.execute("CREATE TEMP TABLE series_merge (old TEXT PRIMARY KEY, new TEXT NOT NULL)")
         s.executemany("INSERT INTO series_merge VALUES (?,?)", sorted(got.items()))
@@ -634,6 +663,16 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
             s.execute(f"CREATE TEMP VIEW {table} AS SELECT {sel} FROM main.{table} t "
                       "LEFT JOIN temp.episode_fold f ON f.old = t.episode_id")
     return got
+
+
+def name_survivors(s, cur, series):
+    """DECISIONS 034 over the research database: display_text.name_survivors with the program sources' names
+    (series_map, goldin_records, series_wikidata) and the registry's sponsors."""
+    sponsors = {}
+    if has_table(s, "sponsors"):
+        for k, sp in s.execute("SELECT series_key, sponsor FROM sponsors WHERE sponsor IS NOT NULL"):
+            sponsors.setdefault(k, set()).add(sp)
+    return DT.name_survivors(cur, series, DT.program_witnesses(s), sponsors)
 
 
 def fold_same_broadcasts(s, by_series_eps, served, series, got, display, composed, shown_name, report):
@@ -716,6 +755,11 @@ def fold_same_broadcasts(s, by_series_eps, served, series, got, display, compose
     folds.update(DT.same_day_in_series(rows, moved, one_show))
     folds = DT.resolve_chains(folds)
     served.difference_update(folds)
+    # DECISIONS 034: the folds are decided; the group keeps the program's own title, and the key follows the name.
+    cur, renamed = name_survivors(s, cur, series)
+    rules.update({old: rules[new] for old, (new, _why) in renamed.items() if new in rules})
+    report["named"] = {old: [new, why] for old, (new, why) in sorted(renamed.items())}
+    moved = {eid for eid, (k0, _a, _n) in eps_of.items() if cur.get(k0, k0) != k0}
     for eid in sorted(moved - set(folds)):
         if eid in composed:
             k0, air, num = eps_of[eid]

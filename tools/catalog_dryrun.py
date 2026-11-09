@@ -5,6 +5,8 @@ The steps are read out of the workflow itself (never copied), so the dry run
 cannot drift from the publish. They run in a scratch copy of the working tree:
 catalog/out, catalog/.cache and catalog/dist are NOT copied, so a stale local
 build is never trusted; the restore step pulls the newest dated Release.
+A --workdir that already exists is emptied first: a reused one let the suites
+step read the previous run's out/publish, so its guards checked stale data.
 Usage: python3 tools/catalog_dryrun.py [--keep] [--with-suites] [--workdir DIR]
 """
 import argparse, os, shutil, subprocess, sys, tempfile, time
@@ -42,6 +44,35 @@ def sh(*a):
     return r.stdout.strip() if r.returncode == 0 else ""
 
 
+def which_build(work, start):
+    """The build a step reads: the Release the restore pulled and the projection on disk, with its hash and the
+    manifest's own build time, so a log shows which artifacts each guard checked."""
+    tag = ""
+    try:
+        for line in open(os.path.join(work, ".gh_output")):
+            if line.startswith("tag="):
+                tag = line.strip()[4:]
+    except OSError:
+        pass
+    proj = os.path.join(work, "catalog", "out", "publish", "ear-drama.sqlite")
+    if not os.path.exists(proj):
+        return f"release {tag or '(not restored yet)'}; no projection yet (out/publish absent)"
+    import hashlib, json
+    h = hashlib.sha256()
+    with open(proj, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    built = ""
+    try:
+        m = json.load(open(os.path.join(os.path.dirname(proj), "manifest.json")))
+        built = m.get("generatedAt") or ""
+    except (OSError, ValueError):
+        pass
+    when = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(proj)))
+    fresh = "by this run" if os.path.getmtime(proj) >= start else "BEFORE this run (stale)"
+    return f"release {tag or '?'}; projection {h.hexdigest()[:12]} written {when} {fresh}, generatedAt {built}"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep", action="store_true")
@@ -51,9 +82,16 @@ def main():
     wf = yaml.safe_load(open(WORKFLOW))
     steps = {s.get("name"): s for s in wf["jobs"]["build"]["steps"]}
     work = a.workdir or tempfile.mkdtemp(prefix="catalog-dryrun-")
-    os.makedirs(work, exist_ok=True)
+    if a.workdir and os.path.exists(work):
+        if os.path.abspath(work) in (ROOT, os.path.dirname(ROOT)) or not os.path.isdir(work):
+            sys.exit(f"refusing to empty {work}")
+        shutil.rmtree(work)
+    os.makedirs(work)
     copy_tree(work)
-    print(f"dry run in {work} (nothing is published; catalog/out not trusted)", flush=True)
+    stale = [p for p in ("catalog/out", "catalog/dist", "catalog/.cache", "live") if os.path.exists(os.path.join(work, p))]
+    if stale:
+        sys.exit(f"fresh workdir {work} already holds {stale}; refusing to check a build this run did not make")
+    print(f"dry run in {work} (fresh; nothing is published; catalog/out not trusted)", flush=True)
     env = dict(os.environ)
     token = env.get("GH_TOKEN") or sh("gh", "auth", "token")
     repo = env.get("REPO") or sh("gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner")
@@ -79,12 +117,14 @@ def main():
         cwd = os.path.join(work, s.get("working-directory", "."))
         t = time.time()
         print(f"--- {name}", flush=True)
+        print(f"    checks: {which_build(work, t0)}", flush=True)
         r = subprocess.run(["bash", "-eo", "pipefail", "-c", s["run"]], cwd=cwd, env=senv)
         print(f"--- {name}: exit {r.returncode} in {time.time() - t:.0f}s", flush=True)
         if r.returncode:
             print(f"DRY RUN RED at step {name!r} after {time.time() - t0:.0f}s", flush=True)
             sys.exit(1)
-    print(f"DRY RUN GREEN: the publish's contract tests pass over the real data ({time.time() - t0:.0f}s)")
+    print(f"DRY RUN GREEN: the publish's contract tests pass over the real data ({time.time() - t0:.0f}s); "
+          f"checked {which_build(work, t0)}")
     if not a.keep and not a.workdir:
         shutil.rmtree(work, ignore_errors=True)
 
