@@ -15,9 +15,12 @@ struct NowPlayingPeople: View {
     @Environment(AppStore.self) private var store
     @State private var onAir: [Credit] = []
     @State private var night: [EpisodeRow] = []
+    @State private var show: SeriesRow?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s6) {
+            // The show this episode is one of (owner, 2026-11-09), first: its window and name open its page.
+            showLink
             if !onAir.isEmpty {
                 VStack(alignment: .leading, spacing: Spacing.s3) {
                     SectionHead(title: "On the air") { EmptyView() }
@@ -56,13 +59,46 @@ struct NowPlayingPeople: View {
         .task(id: episode.id) {
             onAir = []
             night = []
+            show = nil
             let id = episode.id
             let detail = await catalog.episodeDetail(id)
             let same = await catalog.sameDay(episode.airDate, excluding: id)
+            let series = await catalog.series([episode.seriesKey]).first
             guard id == episode.id else { return }
             onAir = detail.map { Grammar.onAirOf($0.credits) } ?? []
             night = same
+            show = series
         }
+    }
+
+    @ViewBuilder private var showLink: some View {
+        let art = show?.windowArt ?? episode.seriesWindowArt
+        let facts = show.map(SeriesHead.facts) ?? []
+        #if os(tvOS)
+        Button { open(.series(episode.seriesKey)) } label: {
+            TVWideCard(art: art, name: episode.seriesName, genre: episode.seriesGenre,
+                       top: show.flatMap(SeriesHead.kicker), title: episode.seriesName,
+                       sub: Grammar.eventParts(facts).joined(separator: " "))
+        }
+        .buttonStyle(.card)
+        .accessibilityLabel("Show: \(episode.seriesName)")
+        .accessibilityIdentifier("now-playing-show")
+        #else
+        Button { open(.series(episode.seriesKey)) } label: {
+            HStack(spacing: Spacing.s2) {
+                GrammarRow(visual: .window(art, name: episode.seriesName, genre: episode.seriesGenre),
+                           title: episode.seriesName, sub: facts)
+                Image(systemName: "chevron.right")
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show: \(episode.seriesName)")
+        .accessibilityIdentifier("now-playing-show")
+        #endif
     }
 
     /// The row the lists use: the show's window, the title, the show and its network (the date is

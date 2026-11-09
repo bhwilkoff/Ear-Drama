@@ -120,10 +120,22 @@ struct PlayerSheet_iOS: View {
                             .font(TypeRamp.pageTitle)
                             .foregroundStyle(Color.brandText)
                             .multilineTextAlignment(.leading)
-                        EventLine(facts: [item.episode.seriesName, AirDate.display(item.episode.airDate), item.episode.network])
+                        // The show is a link (owner, 2026-11-09): the sheet closes onto its page.
+                        Button {
+                            dismiss()
+                            store.push(Route.series(item.episode.seriesKey))
+                        } label: {
+                            Text("\(Text(verbatim: item.episode.seriesName))\u{00A0}\(Image(systemName: "chevron.right"))")
+                                .font(TypeRamp.bodyStrong)
+                                .foregroundStyle(Color.brandText)
+                                .multilineTextAlignment(.leading)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Show: \(item.episode.seriesName)")
+                        .accessibilityIdentifier("now-playing-series-link")
+                        EventLine(facts: [AirDate.display(item.episode.airDate), item.episode.network])
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
                 } else {
                     EmptyState("Nothing playing", systemImage: "play.slash")
                 }

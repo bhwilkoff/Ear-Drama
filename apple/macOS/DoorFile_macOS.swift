@@ -44,7 +44,10 @@ enum DoorFile_macOS {
             window.setFrame(frame, display: true)
         case "scroll":
             guard let view = window?.contentView, let scroller = pageScroller(in: view) else { return }
-            scroller.contentView.scroll(to: NSPoint(x: 0, y: Double(arg) ?? 0))
+            // Clamped to the page: an unclamped offset scrolls the clip view past the document's end and
+            // the frame shows an empty pane that reads as content gone (2026-11-09).
+            let bottom = max(0, (scroller.documentView?.frame.height ?? 0) - scroller.contentView.bounds.height)
+            scroller.contentView.scroll(to: NSPoint(x: 0, y: min(max(0, Double(arg) ?? 0), bottom)))
             scroller.reflectScrolledClipView(scroller.contentView)
         default: break
         }

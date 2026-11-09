@@ -145,19 +145,28 @@ The only shapes; a new one needs a new rule.
   the list at that letter and the row marks which: scroll on the TV follows focus, so a `scrollTo`
   is undone at once, and a letter's tiles may not be drawn to take focus.
 - **§4.3 A series page** is the hero (genre and at most two networks, the name, the years and
-  count, the run strip on the show's own years), then Play (the first focus stop: the episode in
+  count and "With" the show's star, the run strip on the show's own years), then Play (the first focus stop: the episode in
   progress as Resume, else the first episode), Follow / Following (`FollowedSeries`, synced) and the
-  genre, a link to Browse; then a shelf of date cards per broadcast season, oldest first, "Undated"
+  genre, a link to Browse; then **About** when the catalog publishes `series.about_text` (owner,
+  2026-11-09): one focusable card of its first three lines that opens the whole text full screen,
+  each paragraph a focus stop as in the transcript reader (§4.7), Menu to close; under the card the
+  source as words ("From Wikipedia", required by CC BY-SA 4.0), never a link (no browser). No text,
+  no card. Then a shelf of date cards per broadcast season, oldest first, "Undated"
   last, so down moves season to season and across moves through one.
-- **§4.4 Episode detail** (`EpisodeScreen_tvOS`) is the series, the
+- **§4.4 Episode detail** (`EpisodeScreen_tvOS`) is the series name as the kicker, the
   title at page-title size, the facts line (date, network, sponsor,
-  length), then an action row in one focus section: Play, Series, and
-  "Automatic transcript" when the gate passed. Then the offline warning,
+  length), then an action row in one focus section: Play, Add to queue, and
+  "Automatic transcript" when the gate passed. Under the hero, its own focus section, **the
+  show**: a wide card with the show's picture, genre and network, name, years, episode count and
+  star, opening the series page (owner, 2026-11-09: episodes felt "totally disconnected from any
+  recurring show"; it replaced a "Show" button that named nothing). Then the offline warning,
   the credits by role (one focus section; every credited name is a focus
   stop that pushes its person, §4.11), Versions when there is more than one copy (R5),
-  and the rights line. Versions is its own focus section of buttons, the
-  rank 0 copy first and the default; each names its archive.org
-  identifier, notes, length, and bit rate, and plays that copy in Now
+  and the rights line, except unclaimed, every show's default, which is not drawn (owner,
+  2026-11-09). "Read the script" is not on the TV: there is no browser, and a script is read
+  on the phone (PARITY n/a). Versions is its own focus section of buttons, the
+  rank 0 copy first and the default; each is named by `recordings.label`, else by its notes,
+  bit rate and length (never "Recording 2", never the identifier), and plays that copy in Now
   Playing. Play on the episode already loaded opens Now Playing where
   it is, never from the start (§5.4).
 - **§4.5 Search** is `.searchable` with the prompt "Titles, series,

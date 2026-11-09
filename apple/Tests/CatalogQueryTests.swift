@@ -829,7 +829,9 @@ struct CatalogQueryTests {
     /// Contract §5.5: the published words, read from `meta.rightsLines`.
     @Test func rightsLinesComeFromTheCatalog() throws {
         let db = try Fixture.open()
-        #expect(db.episodeDetail(id: "suspense|1943-05-25")?.rightsLine == "No rights claim known. Removed on request.")
+        // Unclaimed is every show's default, so no screen says it (owner, 2026-11-09); the words stay published.
+        #expect(db.episodeDetail(id: "suspense|1943-05-25")?.rightsLine == nil)
+        #expect(db.rightsLines["unclaimed"] == "No rights claim known. Removed on request.")
         #expect(db.episodeDetail(id: "mrsorrowful|1950-05-25")?.rightsLine == "Government recording")
         #expect(db.episodeDetail(id: "librivox1|s1")?.rightsLine == "LibriVox recording")
         #expect(db.episodeDetail(id: "speeches|1944-06-01")?.rightsLine == "Creative Commons recording")

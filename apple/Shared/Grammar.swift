@@ -779,6 +779,13 @@ struct HeadBoard: View {
         }
     }
 
+    /// The name; on a board that links to its show, followed by the chevron that says it opens.
+    private var nameText: Text {
+        guard link != nil else { return Text(verbatim: name) }
+        let chevron = Text(Image(systemName: "chevron.right")).font(TypeRamp.bodyStrong)
+        return Text("\(Text(verbatim: name))\u{00A0}\(chevron)")
+    }
+
     private var words: some View {
         VStack(alignment: .leading, spacing: Spacing.s1) {
             if let genreKey {
@@ -797,7 +804,7 @@ struct HeadBoard: View {
                     .font(TypeRamp.caption)
                     .tracking(1.2)
             }
-            Text(verbatim: name)
+            nameText
                 .font(wide ? GrammarType.wideHeadName(step: Grammar.headNameStep(name)) : GrammarType.headName(step: Grammar.headNameStep(name)))
                 .multilineTextAlignment(.leading)
                 .lineLimit(3)
