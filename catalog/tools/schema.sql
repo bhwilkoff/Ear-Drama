@@ -43,7 +43,8 @@ CREATE TABLE recordings (
 CREATE TABLE items (
   id TEXT PRIMARY KEY, title TEXT, collections TEXT, licenseurl TEXT, uploader TEXT,
   publicdate TEXT, is_dark INTEGER, reviews INTEGER, avg_stars REAL, transcripts INTEGER,
-  downloads INTEGER  -- archive.org's own download count for the item (harvest_downloads.py, else seeds.json); NULL when unread
+  downloads INTEGER,  -- archive.org's own download count for the item (harvest_downloads.py, else seeds.json); NULL when unread
+  language TEXT      -- archive.org's language field, normalized (audit_audio_rights.language_of); NULL when it names none
 );
 CREATE TABLE wants (series_key TEXT, air_date TEXT, title TEXT, note TEXT);  -- logged or spine episodes with no archive.org copy (note: RadioEchoes length, or 'otrr')
 CREATE TABLE meta (k TEXT PRIMARY KEY, v TEXT);

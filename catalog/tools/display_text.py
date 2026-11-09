@@ -35,7 +35,8 @@ LONG_NAME = 60
 GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program|file|track|nr|no|side|disc|show|production|tape|reel|recording)\.?\s*[\d.\-]*)$", re.I)
 AIRED_FRAGMENT = re.compile(r"\b(?:aired|air\s?date)\s+[\d/ ,-]*$", re.I)
 
-SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set"}
+SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set",
+                 "sports": "out_of_scope_sports"}
 # A grab bag (DECISIONS 032) is withheld as a series only after P-10 folds every broadcast of it another series
 # holds into that series: it gives broadcasts, never keeps or receives one.
 BAG_REASONS = {"series_is_a_grab_bag", "series_is_an_uploaders_grab_bag"}
@@ -163,7 +164,7 @@ TAIL_TAG = re.compile(r"\s*\(([A-Z]{1,4})\)$")
 BROADCASTERS = re.compile(r"^(?:[KW][A-Z]{2,3}|NBC|CBS|ABC|MBS|BBC|CBC|AFRS|AFRTS|AFN|RRG|DRF|TV|US|USA|UK|NYC)$")
 
 
-XX_LEAD = re.compile(r"^(?:xx\s+)+(?=[A-Za-z]{2})")
+XX_LEAD = re.compile(r"^(?:xx[\s-]+)+(?=[A-Za-z]{2})", re.I)
 
 
 def series_possessive(title, series_name):
@@ -207,6 +208,36 @@ def strip_series_code(title, series_name):
     return title
 
 
+# P-12 (DECISIONS 033): a shelf or date code an upload put in front of a title ("67073A-Billy Williams", "460507 249.5 A
+# Day at Camp"), alone or behind the series' own name ("Crime Does Not Pay-500529-34-Imported Headaches", "The
+# Brownstone Theater 45-02-21the Lion and the Mouse"); and a collector's credit where a title should be ("Tom C. Miller
+# Collection"). Each is removed; a title with nothing left is composed or withheld.
+STATION_ONLY = re.compile(r"^(?:[KW][A-Z]{2,3}|NBC|CBS|ABC|MBS|Mutual|Blue)(?:[-\s]?(?:AM|FM))?,?\s+[A-Z][A-Za-z.]*(?:,?\s+[A-Z]{2})?$")
+LEAD_CATALOG_CODE = re.compile(r"^(?:\d{6,7}|\d{5}[A-Za-z])(?:[\s_-]+\d{1,4}(?:\.\d)?)?\s*[-–:]?\s*(?=[A-Za-z])")
+LEAD_DATE_CODE = re.compile(r"^(?:\d{6,7}|\d\d[-.]\d\d[-.]\d\d)(?:[\s_-]+\d{1,4}(?:\.\d)?)?\s*[-–:]?\s*(?=[A-Za-z])")
+COLLECTOR_CREDIT = re.compile(r"(?:^|\s*[-–]\s*|\s+)[A-Z][a-z]+\s+(?:[A-Z]\.\s*)?[A-Z][a-z]+\s+Collection$")
+
+
+def strip_catalog_code(t, series_name):
+    t = (t or "").strip()
+    words = name_tokens(series_name or "")
+    if words:
+        m = re.match(r"^(?:the\s+)?" + r"[\W_]*".join(map(re.escape, words)) + r"[\s_\-–:]*(?=\d)", t, re.I)
+        if m:
+            rest = LEAD_DATE_CODE.sub("", t[m.end():], count=1)
+            if rest != t[m.end():] and readable_title(rest):
+                t = rest
+    rest = LEAD_CATALOG_CODE.sub("", t, count=1)
+    if rest != t and readable_title(rest):
+        t = rest
+    t = UPLOADER_TAIL.sub("", t).strip()   # "Silver Eagle Trouble Trail D.D.Teoli Jr. A.C"
+    if BROADCASTERS.match(t) or STATION_ONLY.match(t):
+        return ""   # "NBC", "WOR, NY": the network, not the title
+    if re.fullmatch(r"\([^()]*\)", t.strip()):
+        return ""   # "(Radio Comedy)": a note where a title should be
+    return COLLECTOR_CREDIT.sub("", t).strip()
+
+
 def episode_text(shown, series_name, tags=()):
     """The P-10 classes undone on one title (owner 2026-11-09): a reel track tail ("Six Shooter.Gunsmoke Reel.t01"
     is the reel's name, so no title is left), a date an upload wrote as "1942-xx-xx" (its year kept at the end),
@@ -223,6 +254,7 @@ def episode_text(shown, series_name, tags=()):
     if m:
         t = f"{t[m.end():].strip()} ({m.group(1)})"
     t = XX_LEAD.sub("", t)
+    t = strip_catalog_code(t, series_name)
     t = strip_series_code(t, series_name)
     t = series_possessive(t, series_name)
     m = TAIL_TAG.search(t)
@@ -231,13 +263,53 @@ def episode_text(shown, series_name, tags=()):
     return t
 
 
+DANGLING = {"a", "an", "the", "of", "and", "to", "with", "for", "from", "in", "on", "at", "by"}
+LEAD_CODE_WORD = re.compile(r"^([A-Z][a-z])\s+(?=[A-Z])")
+TWO_LETTER_WORDS = {"mr", "dr", "st", "ms", "ma", "pa", "al", "ed", "jo", "bo", "oz", "my", "no", "on", "in", "to", "of",
+                    "at", "by", "go", "up", "us", "we", "be", "do", "he", "it", "me", "so", "an", "as", "is", "or", "am",
+                    "ox", "ye", "la", "le", "el", "de", "di", "du", "da", "yo", "hi", "oh", "ah", "ok", "ty", "vi", "xi"}
+
+
+def _fold_words(t):
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", (t or "").casefold())).strip()
+
+
+def restore_cut(title, witnesses):
+    """P-12 (DECISIONS 033): a title an upload cut off ("The Silver Clippe", "Surprise Awaits the Mayor a") restored
+    from a witness title of the same episode (OTRR, GOLDINdex, Haendiges, Wikipedia logs already harvested) that
+    begins with every letter of it and goes on, mid-word or past a dangling small word. Returns the witness or None."""
+    t = _fold_words(title)
+    if len(t.replace(" ", "")) < 4:
+        return None
+    for w in sorted(witnesses or (), key=lambda x: (len(x), x)):
+        f = _fold_words(w)
+        if len(f) > len(t) and f.startswith(t) and (f[len(t)] != " " or t.rsplit(" ", 1)[-1] in DANGLING):
+            return w.strip()
+    return None
+
+
+def cut_off(title):
+    """True when a title ends on a dangling small word after three words or more ("... Awaits the Mayor a"): an
+    upload cut it, and with no witness its words are not the title (025)."""
+    w = _fold_words(title).split()
+    return len(w) >= 4 and w[-1] in DANGLING and w[-1] != w[-2]
+
+
+def lead_code(name):
+    """A two-letter code an upload put in front of a name ("Rc Superman"): not a word, so not the name."""
+    m = LEAD_CODE_WORD.match(name or "")
+    return bool(m) and m.group(1).casefold() not in TWO_LETTER_WORDS
+
+
 def decide_episode(shown, series_name, air_date, num, tags=()):
     """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'.
     A title that only repeats its series' name ("Louella Parsons" in Louella Parsons) is composed from the date or
     number when the record has one; with neither, the name is the work's own title and stays."""
     shown = spell_iso_dates(strip_archive_code(strip_uploader_note(episode_text(shown, series_name, tags))), air_date)
     restates = bool(shown) and bool(series_name) and _norm(shown) == _norm(series_name)
-    if readable_title(shown) and not (restates and compose_title(series_name, air_date, num)):
+    if lead_code(shown) and _norm(series_name).startswith(shown[:2].casefold()):
+        shown = LEAD_CODE_WORD.sub("", shown)   # "Rc Super Two" in "Rcsupptwo": the series' own code
+    if readable_title(shown) and not cut_off(shown) and not (restates and compose_title(series_name, air_date, num)):
         return shown, "source", ["episodes.title"], None
     got = compose_title(series_name, air_date, num)
     if got:
@@ -271,6 +343,11 @@ CODE_TAIL = re.compile(r"\s*[-–]?\s*(?:s\d{1,2}\s?e\d{1,3}|ep\.?\s?\d{1,4}|dee
 MONTH_TAIL = re.compile(r"\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\d{1,4}$", re.I)
 GLUED_TAIL = re.compile(r"(?<=[a-z]{4})\d{2,3}$")
 PAGE_TAIL = re.compile(r"\s+page\s?\d{1,3}$", re.I)
+# P-12 (DECISIONS 033): a collection's note on a program's name ("Tarzan (all runs)") names the program.
+COLLECTION_NOTE = re.compile(r"\s*\((?:all runs?|all episodes|all shows|complete(?: series| runs?)?|singles(?: collection)?|"
+                             r"combines all dates)\)\s*$", re.I)
+SORT_LETTER = re.compile(r"^[b-df-hj-z](?=[A-Z][a-z])")         # "zSherlock Holmes": a letter that sorts a folder
+DATE_CODE_TAIL = re.compile(r"\s+\d\d\s(?:0[1-9]|1[0-2])\s(?:0[1-9]|[12]\d|3[01])$")   # "Big City Nights 30 10 13"
 CUT_WORD = re.compile(r"(?:\s*[-–,]\s*|\s+)(part|side|vol|volume|disc|reel|episode|ep|chapter)\.?$", re.I)
 # "On the Sunny Side" is whole: the word before Side is an adjective or a direction.
 SIDE_OWNERS = {"sunny", "other", "dark", "bright", "wild", "west", "east", "north", "south", "flip", "seamy", "right",
@@ -344,6 +421,8 @@ def clean_series_name(name, key=None):
         return orig, None
     if FRAGMENT_ONLY.match(orig):
         return None, P9_REASONS["fragment"]
+    if lead_code(orig):
+        return None, P9_REASONS["context"]   # "Rc Superman": an upload's code and a word (DECISIONS 033)
     n = UPLOADER_TAIL.sub("", orig)
     parts = _joined_parts(n)
     reel = [p for p in parts if REEL_WORD.search(p)]
@@ -359,7 +438,7 @@ def clean_series_name(name, key=None):
             return None, P9_REASONS["reel"]
     elif len(parts) > 1:
         return None, P9_REASONS["programs"]
-    n = cut_residue(PAGE_TAIL.sub("", n))
+    n = cut_residue(PAGE_TAIL.sub("", DATE_CODE_TAIL.sub("", COLLECTION_NOTE.sub("", SORT_LETTER.sub("", n)))))
     if " " in n:
         n = MONTH_TAIL.sub("", CODE_TAIL.sub("", n)).strip()
         n = GLUED_TAIL.sub("", n)
@@ -705,14 +784,66 @@ def same_broadcasts(eps, series):
                 continue
             if series[ka]["own"] or series[b]["own"] or n >= MIN_SHARED or eps[keep][4] & eps[e][4]:
                 out[e] = keep
+    out.update(contained_broadcasts(eps, series, out))
     return out, shared
 
 
-def same_day_in_series(eps, moved):
+MIN_CONTAINED = 8        # letters of the shorter title in a same-day containment
+
+
+def _letter_key(title):
+    return "".join(w for w in name_tokens(title) if w.isalpha())
+
+
+def contained_broadcasts(eps, series, done=()):
+    """P-12 (DECISIONS 033): a piece of one broadcast filed as a single. {old id: surviving id} for an episode of an
+    upload-named series that carries the same full air date as exactly one registry program's episode, when one
+    title's letters (MIN_CONTAINED or more) hold the other's: "Orson Welles - War of the Worlds" on 1938-10-30 is
+    the Mercury Theatre's "War of the Worlds"; "The Silver Clippe", an upload's cut, is "Menace to the Silver
+    Clipper" of the same day. A title composed from the series' name is read as that name, the file's own words
+    ("AFRS-88-Duffys Tavern-Finnegan the Millionaire"). Never into an upload-named series, never a registry
+    program's composed title, never an unclaimed copy into a clean episode (_rights_allow)."""
+    def text(e):
+        sk, _air, title, composed = eps[e][:4]
+        if composed:
+            return _letter_key(series[sk]["name"]) if series[sk]["own"] else ""
+        return _letter_key(title)
+    by_day, key = {}, {}
+    for eid in sorted(eps):
+        air = eps[eid][1]
+        key[eid] = text(eid)
+        if air and len(air) == 10 and key[eid]:
+            by_day.setdefault(air, []).append(eid)
+    out = {}
+    for air, ids in sorted(by_day.items()):
+        for e in ids:
+            sk = eps[e][0]
+            if e in done or not series[sk]["own"] or series[sk].get("librivox"):
+                continue
+            le = key[e]
+            hits = {}
+            for t in ids:
+                tk = eps[t][0]
+                if tk == sk or series[tk]["own"] or series[tk].get("librivox") or t in done:
+                    continue
+                lt = key[t]
+                short, long_ = sorted((le, lt), key=len)
+                if len(short) >= MIN_CONTAINED and short in long_:
+                    hits.setdefault(tk, []).append(t)
+            if len(hits) == 1:
+                t = sorted(next(iter(hits.values())))[0]
+                if _rights_allow(eps[t], eps[e]):
+                    out[e] = t
+    return out
+
+
+def same_day_in_series(eps, moved, one_show=()):
     """{old id: surviving id} for episodes a series fold brought onto a date their new series already holds, when
     one title contains the other's words or one was composed from the date. `eps`: id -> (series key, air date,
     display title, composed?, original series key[, clean?]); `moved`: ids whose series changed. Never an unclaimed
-    copy into a clean episode (_rights_allow)."""
+    copy into a clean episode (_rights_allow). An episode moved from a series in `one_show` (same_show: one show a
+    night under two names) is the broadcast its new series holds that night whatever its title says: the catalog's
+    identity for a dated episode is the series and the night."""
     by = {}
     for eid in sorted(eps):
         sk, air = eps[eid][:2]
@@ -728,8 +859,49 @@ def same_day_in_series(eps, moved):
             a, b = set(name_tokens(eps[keep][2])), set(name_tokens(eps[e][2]))
             if not _rights_allow(eps[keep], eps[e]):
                 continue
-            if eps[keep][3] or eps[e][3] or (a and b and (a <= b or b <= a)):
+            if eps[keep][3] or eps[e][3] or (a and b and (a <= b or b <= a)) or eps[e][4] in one_show:
                 out[e] = keep
+    return out
+
+
+def same_show(series):
+    """P-12 (DECISIONS 033): {old key: (surviving key, rule)} for two registry programs that are one star's continuing
+    show under a sponsor- or title-era name ("Town Hall Tonight" is The Fred Allen Show 1934-39; "Chase and Sanborn
+    Program" is Edgar Bergen and Charlie McCarthy 1937-48), by the registry's own evidence. `series`: key -> dict(own,
+    librivox, eps, dates, run, idps (OTRRpedia program ids the build mapped to it)). The smaller series joins the
+    larger, every dated episode inside its run (a year either side), when:
+      registry_alias  both map to the same OTRRpedia programs and nothing else (OTRR files one program under both names);
+      same_nights     they share an OTRRpedia program and more than half of the smaller one's dated episodes (MIN_SHARED
+                      at least) aired on nights the larger holds: one show a night, filed under two names.
+    An upload-named series and a LibriVox project are never read here (031's rules take them)."""
+    reg = {k: v for k, v in series.items() if not v["own"] and not v["librivox"] and v.get("idps") and v["eps"]}
+    by_idp = {}
+    for k in sorted(reg):
+        for i in reg[k]["idps"]:
+            by_idp.setdefault(i, set()).add(k)
+    out = {}
+    for k in sorted(reg):
+        v = reg[k]
+        dates = v.get("dates") or []
+        cands = set()
+        for i in v["idps"]:
+            cands |= by_idp.get(i, set())
+        best = []
+        for r in sorted(cands - {k}):
+            w = reg[r]
+            if w["eps"] <= v["eps"] or (dates and not _in_run(dates, w["run"])):
+                continue
+            if set(v["idps"]) == set(w["idps"]):
+                best.append((r, "registry_alias"))
+                continue
+            held = set(w.get("dates") or [])
+            on = sum(1 for d in dates if d in held)
+            if len(dates) >= MIN_SHARED and on >= MIN_SHARED and on > DISSOLVE_SHARE * len(dates):
+                best.append((r, "same_nights"))
+        nights = [b for b in best if b[1] == "same_nights"]
+        best = nights or best   # the nights a show aired are the stronger evidence
+        if len({r for r, _rule in best}) == 1:
+            out[k] = best[0]
     return out
 
 

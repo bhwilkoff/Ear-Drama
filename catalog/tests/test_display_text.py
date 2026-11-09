@@ -121,7 +121,7 @@ check("control: nothing to compare", DT.repair_apostrophe("Dads Army", None), "D
 check("a V-Disc is a music record", DT.episode_out_of_scope("048 V-Disc A Chorus and Organ - Joy To The World"), "out_of_scope_music_record")
 check("control: a radio show", DT.episode_out_of_scope("Suspense, April 26, 1952"), None)
 check("scope kinds map to reason codes", sorted(DT.SCOPE_REASONS.values()),
-      ["out_of_scope_concert", "out_of_scope_lecture", "out_of_scope_music_set"])
+      ["out_of_scope_concert", "out_of_scope_lecture", "out_of_scope_music_set", "out_of_scope_sports"])
 
 # P-9: names an upload cut, numbered or strung together. Each class, then the real titles that must survive.
 cs = DT.clean_series_name

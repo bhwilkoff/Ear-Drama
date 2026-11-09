@@ -1065,3 +1065,106 @@ where the spelling differs and nothing is dated ("Big Jon and Sparky"/"Sparkie",
 fragments of one broadcast filed as singles ("Orson Welles War of the Worlds 10 30" beside the Mercury Theatre);
 modern recordings whose date is not a full date ("Oct 2019"); raw titles inside real shows ("Blackstonethe Magic
 Detective48 10 03 01The Ghost...").
+
+## 033 — What P-11 left open, each decided by a rule we already had (P-12)
+*Date: 2026-11-09*
+
+Owner, 2026-11-09: *"These are incredibly easy questions to answer using our own rules for how we build."* and *"I'm
+really not sure what you are saying is 'passing' when we are attempting to find issues in the database."* Nothing here
+is a new policy: each class is a case of 006 (non-US and post-1972 productions hidden; music shows hidden), 026 (scope
+is drama and spoken story; a misspelled or abbreviated series is the program it spells, by evidence), 027 (speeches
+stay), 025 (raw upload text never shows: clean it from its source, compose it from data, or withhold it) or 031 (one
+broadcast in one place, one show under one name). The app has not launched, so nothing changed here forwards (032).
+
+1. **A show under its initials or another spelling is that show** (026; `reattribute.renamed_program`,
+   `build_db.merge_renamed`, before the grab-bag pass). An upload-named series whose words are a registry program's
+   with some written as initials ("W B Hickok" for Wild Bill Hickok) or spelled another way (each word the same or two
+   letters apart with the same first letter, one extra word inside the name at most: "Big Jon And Sparky", "Big John
+   and Little Sparky" for Big Jon and Sparkie) joins it when exactly one program is that near and its episodes agree:
+   three of its titles the program has (all, when it has fewer), read as `stem_program` reads a file's rest, or every
+   date inside the run. Undated is fine: an episode needs no date. The renamed key then resolves to the program, so a
+   file named "W B Hickok 051 - The Treasure of Old Number" moves too. A name with a production label ("Lux Radio
+   Theater - AU") or an extra word at an edge ("Suspense AFRS") is another production; two programs that near
+   ("Bill Stern Colgate Sports Newsreel": two registry spellings) leave it where it is.
+2. **Non-US productions** (006), three new readings of the record: a production label the series' name, most of its
+   items' titles, or the episode's own title or file name carries ("- AU", "(Aus)", "Aus 62", "[SA]", "(South
+   Africa)", "(UK)", "Sth African"); "Aussie" or an Australian station and city in item metadata; OTRRpedia's own
+   broadcast history when every run is outside the USA. **Language**: archive.org's `language` field (now kept in the
+   research database's `items.language`), else the title's script or two function words of another language and none
+   of English, else a Dutch or German genre word on the item ("hoorspel", "luisterboek", "Hörspiel"). Exempt exactly
+   what 027 keeps, a speech or address (speech, address, Rede, Ansprache, Kundgebung, Aufruf, Parteitag, Kongress,
+   discours, discurso ... in the title, file or item record), plus a US government service broadcasting abroad and
+   any program OTRRpedia gives a US run (an item's language field does not outweigh a registry's broadcast history:
+   Hello Americans, the Newly Discovered Casebook). LibriVox is not read: its recordings are PD-dedicated readings,
+   not another country's broadcasts, and 006's concern is a claim regime, not a language.
+3. **Out of scope** (026; `enrich_scope.py`, kind `sports`, reason `out_of_scope_sports`): a series whose name names a
+   game broadcast (a sport and a broadcast word, a sporting event's own name, a sport alone), whoever names it; a sports
+   talk or story show ("Bill Stern Sports Newsreel", "Red Grange Football Show") names no game and stays. A series
+   named for V-Discs is music records. A registry program with no story label (OTRRpedia or RadioEchoes) whose own
+   items' subject keywords name music on 60% of its episodes is a music show (006's stricter music rule, from data).
+4. **One show under two names** (026, 031). Spelling variants are rule 1. A collection's note on a program's name is
+   the program ("Tarzan (all runs)", "(Combines all dates)": `display_text.COLLECTION_NOTE`, then 028's fragment fold).
+   Two registry programs that are one star's show under a sponsor- or title-era name fold (`display_text.same_show`)
+   when both map to the same OTRRpedia programs and nothing else (`registry_alias`), or they share an OTRRpedia program
+   and more than half of the smaller one's dated episodes aired on nights the larger holds (`same_nights`); every date
+   inside the larger's run. The nights are the stronger evidence. Their same-night episodes are one broadcast (the
+   catalog's identity for a dated episode is the series and the night).
+5. **A piece of one broadcast filed as a single** (031; `display_text.contained_broadcasts`): an upload-named series'
+   episode on the same full date as exactly one registry program's episode, one title's letters (eight or more)
+   inside the other's, folds in as a copy. A title composed from the series' name is read as that name. Rights as in
+   031: an unclaimed copy never joins a clean episode ("AFRS Thanksgiving Special" stays apart from Command
+   Performance's).
+6. **A year after 1972 dates a production after 1972** (006; `audit_audio_rights.modern_date(partial=True)`): a month
+   and year ("Oct 2019"), a day, month and year with a four-digit year ("14.03.1988"), a year on its own ("Upstate
+   Radio Theatre 2004"), a bracket holding only a date ("(2015)", "[2013]"), in the episode's own title or file name,
+   folders included ("Bob & Ray - 1973 - WOR, NY - Skits/..."); an upload-named series' own name ("WKBW 1973 Halloween
+   Show"). Not read: a bracket with words ("[Rpt BBC7 3 Oct 2003]", "(Recreation 4-22-2016)"), a bracketed date beside
+   the copy's own date (032's rebroadcast note), a year the series' own name carries ("2000 Plus"), a title that is
+   only a year ("1984"); a dated episode reads only a bracketed year or a month-year. A two-digit year read as 1920-26
+   in an item uploaded within three years after the 20YY reading is this century's ("The Glowing Dial" 2020).
+7. **Raw titles** (025): lower-to-capital humps split when every piece is a word the catalog spells (two letters at
+   least: "Meta Tells Ted Off", "No Leg To Stand On"); markup ("<strong>"); a leading shelf or date code, alone or
+   behind the series' name ("67073A-", "460507 249.5", "Crime Does Not Pay-500529-34-"); a collector's credit ("Tom C.
+   Miller Collection"), a bracketed note ("(Radio Comedy)"), a network or station alone ("NBC", "WOR, NY") or "Xx"
+   where a title should be; the uploader's signature ("D.D.Teoli Jr. A.C") on a title as on a name; a series name's sort
+   letter ("zSherlock Holmes"), trailing date code ("Big City Nights 30 10 13") or leading two-letter code ("Rc
+   Superman": no context, withheld). A title an upload cut off is restored from a witness of the same episode already
+   harvested (OTRR, GOLDINdex, Haendiges, Wikipedia) that begins with every letter of it; with none, a title ending on
+   a dangling small word is composed or withheld. "The Silver Clippe" is rule 5: the same day's "Menace to the Silver
+   Clipper".
+8. **Grab bags are judged on what is served** (032; `build_projection.served_bags`): a series left a bag once rules
+   above withhold its other files is withheld as a bag, by the same test the publish's guard runs.
+
+**Why**: the owner's rules already decided each case; P-11 listed them as open. A guard that passes only proves the
+shapes it checks, so each new guard asks whether the build serves something a rule withholds.
+
+**How to apply**: a new reading goes beside its rule (`audit_audio_rights.py`, `enrich_scope.py`, `reattribute.py`,
+`display_text.py`) with a fixture and a control in `tests/test_p12_audit.py`. A wrong catch is fixed by tightening the
+evidence, never by a list of keys. Guards over the real build (`tests/test_p12_audit.py`, in the publish's contract
+step): no served episode in another language (speeches and US-run programs kept); no served episode or series with a
+production label; no served undated episode with a year after 1972; no served series naming a game broadcast or
+V-Discs; no served upload-named series that is one program under its initials or spelling; no two served registry
+series that are one show; no piece of one broadcast served as a single. Each failed on the P-11 dry-run artifacts of
+the unchanged tools (1,334 other-language episodes, 418 labeled series and episodes, 577 modern undated episodes, 14
+game or V-Disc series, 2 spelled series, 4 same-show pairs, 98 broadcast pieces).
+MEASURED on the catalog-2026-11-09 Release against the P-11 build (PYTHONHASHSEED 0, `catalog_dryrun.sh --with-suites`
+green): series 5,594 to 4,954, one-episode series 3,393 to 2,986, episodes 82,177 to 75,057 (-8.7%, so the publish
+needs a `shrink_reason`, e.g. "P-12: non-US and modern productions, game broadcasts and music shows withheld; shows
+under other names joined, 2026-11-09"). Newly hidden by source, in research-database episodes: OTRRpedia runs only
+outside the USA 952, archive.org language 569, the title's words 755, a Dutch or German genre word 1,163, a label on
+the series or its items 415, a label on the episode 105, a year after 1972 in the episode's own name 532 to 2,235, in
+an upload-named series' name 31; non-US broadcasters named in item metadata 8,228 to 9,833. Scope: 20 game-broadcast
+series (1,705 episodes withheld), 8 music shows and 7 V-Disc series (music withheld 733 to 1,227). Joined to their
+program: by initials 338 episodes (W B Hickok 220 into Wild Bill Hickok, V Point 98, AFRS P 20), by spelling 330
+(Great Gildersleeves 102, Big Jon And Sparky 96, Martin Lewis Show 34, Grand Old Opry 31, Top Sercet 15, Dick Tracey 12,
+Big John and Little Sparky 11 ...). One show under two names: Chase and Sanborn Program into Edgar Bergen and Charlie
+McCarthy, Hour of Smiles and Town Hall Tonight into The Fred Allen Show, The New Adventures of Sherlock Holmes into
+The Newly Discovered Casebook of Sherlock Holmes (the larger keeps its name), Stars in the Air into Screen Guild
+Theater, Adventures of Babe Ruth into Babe Ruth Collection; name folds (merge_into, "Tarzan (all runs)") 23 to 65;
+the 1947-11-09 Home row now lists Bergen once. Titles restored from witnesses 91. Home day files for ten dates: 1,175
+rows to 1,147. **Left, each by a rule**: undated parts ("War of the Worlds Part 1-4") have no night to fold on (031);
+"Bill Stern Colgate Sports Newsreel" is near two registry spellings (026: exactly one); humps whose pieces the catalog
+never spells ("JrsSecret") stay (023); a production no record dates or labels (NPR's 1981 Star Wars) is not knowable
+from the record (001: not knowing is not a claim); "AFRS Thanksgiving Special" stays beside Command Performance's
+episode (031: an unclaimed copy never joins a clean one); speeches in other languages (027) and LibriVox readings in
+other languages (PD-dedicated, not another country's broadcast) stay.

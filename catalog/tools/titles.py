@@ -67,6 +67,9 @@ MIN_PIECE = 3
 SHORT = {"an", "as", "at", "be", "by", "do", "go", "he", "in", "is", "it", "me", "my", "no", "of", "on", "or",
          "so", "to", "up", "us", "we"}
 HUMP_TOKEN = re.compile(r"\b([A-Za-z]{4,}?)([A-Z][a-z]{3,})\b")   # one hump: "barbershopQuartet"
+# P-12 (catalog DECISIONS 033): any word with lower-to-capital humps ("TellsTed", "LegTo", "BobHastings", "theHorse").
+GLUED_TOKEN = re.compile(r"\b[A-Za-z]*[a-z][A-Z][A-Za-z]*\b")
+NAME_HUMP = re.compile(r"^(?:Mc|Mac|De|Di|Da|Du|La|Le|Van|Von|O|St|Fitz)[A-Z][a-z]+$")
 MIN_USES = 3           # a piece is a word of the catalog's when this many titles spell it on its own
 
 
@@ -174,6 +177,20 @@ class Words:
         if self.uses.get((a + b).casefold(), 0) >= 2:
             return m.group()
         return a + " " + b
+
+    def humps(self, m):
+        """A word with one or more lower-to-capital humps split at each one, only when every piece is a word the
+        catalog uses on its own (two letters at least: "Leg To", "Bob Hastings") and the whole is not a word it spells
+        twice or a name's form ("McGee", "DeMille", "LaVerne")."""
+        w = m.group()
+        if NAME_HUMP.match(w) or self.uses.get(w.casefold(), 0) >= 2:
+            return w
+        pieces = re.findall(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])", w)
+        if "".join(pieces) != w or len(pieces) < 2:
+            return w
+        if not all(len(p) >= 2 and self.known(p) for p in pieces):
+            return w
+        return " ".join(pieces)
 
     def cased(self, w, first):
         k = w.casefold()
@@ -287,6 +304,7 @@ def display_title(raw, series=None, words=None):
         t = _recase(t, words)
     elif words is not None:
         t = HUMP_TOKEN.sub(words.hump, t)
+        t = GLUED_TOKEN.sub(words.humps, t)
         if LETTER.search(t) and not re.search(r"[A-Z]", t):
             t = _lowercase(t, words)
     return t or raw.strip()
