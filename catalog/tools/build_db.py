@@ -30,6 +30,7 @@ import otr_parse as P
 import audit_audio_rights as A
 import reattribute as RA
 import text_defects as TD
+import episode_scripts as ES
 
 # A copy of Archive Watch's shared/editorial/cce_renewals.json (tools/fetch_cce_renewals.py
 # there), so this catalog builds outside that repository.
@@ -1444,6 +1445,7 @@ def main():
     for r in script_rows:
         display = "full" if r[7] and states.get(r[7]) == "keep_clean" else "link"
         db.execute("INSERT INTO scripts VALUES (?,?,?,?,?,?,?,?,?)", (*r, display))
+    stats["script_cues"] = ES.write_cues(db, os.path.join(ia.CACHE, "grw", "text"))   # read-along groundwork, DECISIONS 030
     db.executemany("INSERT INTO wants VALUES (?,?,?,?)", wants)
     stats["otrr_rows"] = len(otrr_rows)
     stats["otrr_files"] = len(otrr_by_file)

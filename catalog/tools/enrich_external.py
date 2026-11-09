@@ -7,6 +7,8 @@ a rerun is idempotent) and never changes a row build_db.py wrote:
 
   series_wikidata       one row per series matched to a Wikidata item, with the
                         evidence for the match and the item's facts
+  series_about          the lead of the matched item's English Wikipedia article,
+                        where series_about.py's gate passes (DECISIONS 030)
   episode_witnesses     one row per external dated mention of an episode
                         (Haendiges log line, Wikipedia episode-table row,
                         Wikidata episode item), joined to our episode when the
@@ -36,6 +38,7 @@ from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import otr_parse as P  # noqa: E402
+import series_about as SA  # noqa: E402
 from ia_lib import CACHE, EDITORIAL, OUT  # noqa: E402
 
 PD_CLASSES = {"PD-US-no notice", "PD-US-not renewed", "PD-US-expired",
@@ -325,6 +328,13 @@ CREATE TABLE series_wikidata (
   image TEXT, logo TEXT, commons_category TEXT,
   url TEXT                       -- https://www.wikidata.org/wiki/<qid>
 );
+DROP TABLE IF EXISTS series_about;
+CREATE TABLE series_about (
+  series_key TEXT PRIMARY KEY, qid TEXT,
+  text TEXT NOT NULL,            -- the article's lead, whole paragraphs or sentences, a blank line between paragraphs
+  source TEXT NOT NULL, url TEXT NOT NULL, license TEXT NOT NULL,
+  fetched TEXT                   -- the day the harvest read this revision
+);
 DROP TABLE IF EXISTS episode_witnesses;
 CREATE TABLE episode_witnesses (
   series_key TEXT, air_date TEXT, episode_id TEXT,   -- episode_id NULL when we hold no such (series, date)
@@ -388,6 +398,28 @@ def write_wikidata(db, matched, items, labels, in_db=()):
             f"https://www.wikidata.org/wiki/{ev['qid']}"))
     db.executemany("INSERT INTO series_wikidata VALUES (" + ",".join("?" * 23) + ")", rows)
     return len(rows)
+
+
+def write_about(db, matched, items, about, years, rejects=None):
+    """`series_about` rows for matched series whose article passes series_about.py.
+    `years`: series key -> (first, last) year. Returns (rows written, Counter of
+    reasons a matched article was not used)."""
+    pages = (about or {}).get("pages", {})
+    rejects = SA.load_rejects() if rejects is None else rejects
+    rows, why = [], Counter()
+    for key in sorted(matched):
+        qid = matched[key]["qid"]
+        title = items[qid].get("enwiki")
+        if not title:
+            continue
+        page = pages.get(title)
+        got, reason = SA.about_of(page, qid, years.get(key), SA.rejected_for(rejects, key, page))
+        if got is None:
+            why[reason] += 1
+            continue
+        rows.append((key, qid, got["text"], got["source"], got["url"], got["license"], got["fetched"]))
+    db.executemany("INSERT INTO series_about VALUES (?,?,?,?,?,?,?)", rows)
+    return len(rows), why
 
 
 def witness_keys(idx, name):
@@ -568,6 +600,8 @@ def main():
     labels = load(os.path.join(wd, "labels.json.gz"), {})
     matched, rejected, ambiguous = match_wikidata(idx, items, enw)
     n_wd = write_wikidata(db, matched, items, labels, idx.in_db)
+    about = load(os.path.join(CACHE, "wikipedia", "about.json"))
+    n_about, about_why = write_about(db, matched, items, about, idx.years)
     rows, ab2, unmatched = collect_witnesses(idx, matched)
     absent += ab2
     n_w, n_dis = write_witnesses(db, rows)
@@ -587,6 +621,10 @@ def main():
         "otrr_logged_programs": len(idx.otrr), "otrr_logged_with_qid": len(set(matched) & idx.otrr),
         "radioechoes_series": len(idx.radioechoes), "radioechoes_with_qid": len(set(matched) & idx.radioechoes),
         "series_with_qid_spine": q("SELECT COUNT(*) FROM series_wikidata w JOIN series s ON s.key=w.series_key WHERE s.in_spine=1"),
+        "about_cache_absent": about is None,
+        "series_about": n_about,
+        "series_about_in_db": q("SELECT COUNT(*) FROM series_about a JOIN series s ON s.key = a.series_key"),
+        "series_about_not_used": dict(about_why),
         "wikidata_items_considered": len(items), "wikidata_rejected": dict(rejected),
         "wikidata_ambiguous": len(ambiguous), "ambiguous_sample": ambiguous[:20],
         "witness_rows": n_w,
