@@ -90,8 +90,10 @@ PATTERNS = [
         r"[ _-]*(?P<title>.*?)(?:\(\s*(?P<num>\d{1,4})\s*\))?$")),
     # "Rex Stout's Nero Wolfe 04 82-02-06 The Cop Killer" (number BEFORE the date)
     #   [04-rex-stouts-nero-wolfe-04-82-02-06-the-cop-killer, after the leading track is stripped]
+    # "Captain Midnight #167 39-10-17 (JD REEL 0990)", "Chandu the Magician 113 48-12-02LUPU ARRIVES (JD REEL 1901)"
+    #   (a "#" before the number; a capitalized title glued to the date)   [catalog DECISIONS 037]
     ("F1g_num_then_date", re.compile(
-        rf"^(?P<series>[A-Za-z].*?)[ _-]+(?P<num>\d{{1,4}})[ _-]+{_DATE_DASH}[ _-]+(?P<title>.+)$")),
+        rf"^(?P<series>[A-Za-z].*?)[ _-]+#?(?P<num>\d{{1,4}})[ _-]+{_DATE_DASH}(?:[ _-]+|(?=[A-Z]{{2}}))(?P<title>.+)$")),
     # "Series 42-06-17 Title" / "Series_1942-06-17_Title" (no episode number)
     # "esca.53.04.12_Classified_Secret", "amos.1945.01.12_One_Phoney_Antique" (dotted)   [Escape1953, AA441110]
     ("F1e_series_date_title", re.compile(
@@ -218,6 +220,44 @@ def modern_two_digit(date, publicdate):
         return None
     m = "20" + d[2:]
     return m if m <= u and int(u[:4]) - int(m[:4]) <= 3 else None
+
+
+_TWO_DIGIT = re.compile(r"(?<![\d/])(?<!\d[-. _])(\d{1,2})[-. _](\d{1,2})[-. _](\d{2})(?![\d/])(?![-. _]\d)")
+
+
+def this_century(stem, date, publicdate):
+    """catalog DECISIONS 037: a name's two-digit year read in this century, from the item's own upload date. The
+    parser reads YY-MM-DD, else MM-DD-YY, with 19YY; when the one date group in `stem` reads, in that same order, as a
+    20YY date on or before the item was uploaded, and every 19YY reading of it is either no broadcast date (a year
+    before 1920) or the second convention's (`date`, read MM-DD-YY only because YY-MM-DD gave 1900-1919), the digits
+    are this century's: "BB_06-17-07" (WAMU's The Big Broadcast, 2007-06-17), "The '70s- The Hard Years 03-11-28"
+    (2003-11-28, not 1928-03-11). Returns the 20YY date, else None. A 19YY reading in the parser's first convention
+    ("Amos_n_Andy 28-07-27") is never re-read."""
+    u = str(publicdate or "")[:10]
+    if not re.fullmatch(r"20\d\d-\d\d-\d\d", u):
+        return None
+    groups = _TWO_DIGIT.findall(stem or "")
+    if len(groups) != 1 or re.search(r"(?<!\d)19[2-9]\d(?!\d)", stem):   # a four-digit year says the century
+        return None
+    if len(groups) != 1:
+        return None
+    a, b, c = (int(x) for x in groups[0])
+    first19 = valid_date(1900 + a, b, c)          # YY-MM-DD in 19YY: the parser's own reading, never re-read
+    if first19:
+        return None
+    second19 = valid_date(1900 + c, a, b)
+    if second19 and date != f"19{c:02d}-{a:02d}-{b:02d}":
+        return None
+    import datetime
+    for y, m, d in ((2000 + a, b, c), (2000 + c, a, b)):
+        try:
+            iso = datetime.date(y, m, d).isoformat()
+        except ValueError:
+            continue
+        if a > 19 and y == 2000 + a:
+            continue
+        return iso if iso <= u else None
+    return None
 
 
 LEAD_TRACK = re.compile(r"^(\d{1,4})[ ._-]+(?=[A-Za-z])")

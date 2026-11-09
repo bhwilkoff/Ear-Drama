@@ -156,10 +156,13 @@ def sane_length(f, others):
 
 def pick_files(files):
     """One playable file per stem: the uploaded MP3 when there is one (92% are VBR MP3
-    and archive.org derives only Ogg from them, MEASURED), else the best derivative."""
+    and archive.org derives only Ogg from them, MEASURED), else the best derivative. A name starting "._" is a
+    macOS AppleDouble resource fork an uploader's zip carried along: never audio."""
     by = collections.defaultdict(list)
     for f in files:
         if f.get("private") in ("true", True) or f.get("format") not in PLAYABLE:
+            continue
+        if os.path.basename(f.get("name") or "").startswith("._"):   # a macOS resource fork, not audio (037)
             continue
         by[stem_key(f["name"])].append(f)
     out = []
@@ -620,6 +623,84 @@ def title_similarity(a, b):
 
 
 NUM_DATE_FLOOR = (0.9, 5)   # a series' numbers give dates only where 90% of 5+ checkable files agree
+NUM_NEIGHBOR = 5            # catalog 037: neighbours this many numbers away at most witness a numbered file's date
+NUM_SLACK_DAYS = 14         # a broadcast may slip this far outside its neighbours' dates (pre-emptions, holidays)
+NUM_ALONE_DAYS = 60         # a slipped date has no other broadcast of its series this near but other slips
+
+
+def number_contradicted_dates(recs):
+    """catalog DECISIONS 037 (016's rule: a fact the source contradicts itself on is not shown). A file whose name
+    gives both a number and a date is contradicted by its numbered neighbours when: the numbers within NUM_NEIGHBOR
+    of it, each carried with one date by files' own names, hold a chain in order (each step as far apart as its
+    numbers allow at one broadcast a day to one a week, NUM_SLACK_DAYS of slack) of at least four, with numbers on
+    both sides of it and more than half of those neighbours in it; its date falls more than NUM_SLACK_DAYS outside
+    the chain's nearest dates on either side; and the same date with one digit of its year written otherwise falls
+    inside them (a slip of the pen, not another run). "Chandu the Magician 135 48-01-03" sits between #134
+    1948-12-30 and #138 1949-01-05. Chandu's 1932 run is numbered again: its #137 1932-09-13 has no one-digit slip
+    into 1948-49 and keeps its date, and a number written in two runs never witnesses (it has two dates). The date
+    must also stand alone: no broadcast of the series within NUM_ALONE_DAYS of it but other slips. Returns the
+    records whose date is dropped (the number stays and names the broadcast)."""
+    by = collections.defaultdict(dict)
+    for r in recs:
+        if r["key"] and r["date"] and r.get("name_num") is not None and \
+                r.get("date_source") in ("filename", "filename_alt") \
+                and FULL_DATE.fullmatch(r["date"]):
+            by[r["key"]].setdefault(r["name_num"], set()).add(r["date"])
+    day = lambda d: datetime.date.fromisoformat(d)
+    valid = lambda y: P.valid_date(*y.split("-"))
+    agree = lambda n1, d1, n2, d2: n2 - n1 <= (d2 - d1).days <= 7 * (n2 - n1) + NUM_SLACK_DAYS
+    out = []
+    for r in recs:
+        k, n, d = r["key"], r.get("name_num"), r["date"]
+        if not (k in by and d and n is not None and r.get("date_source") in ("filename", "filename_alt")
+                and FULL_DATE.fullmatch(d)) or (r.get("orow") or {}).get("date") == d:   # a log confirms it
+            continue
+        try:
+            x = day(d)
+            win = sorted((m, day(next(iter(ds)))) for m, ds in by[k].items()
+                         if m != n and abs(m - n) <= NUM_NEIGHBOR and len(ds) == 1)
+        except ValueError:
+            continue
+        if len(win) < 4:
+            continue
+        best = [[w] for w in win]                         # the longest chain in order ending at each neighbour
+        for j in range(len(win)):
+            for i in range(j):
+                if agree(*win[i], *win[j]) and len(best[i]) + 1 > len(best[j]):
+                    best[j] = best[i] + [win[j]]
+        chain = max(best, key=len)
+        below = [w for w in chain if w[0] < n]
+        above = [w for w in chain if w[0] > n]
+        if len(chain) < 4 or not below or not above or len(chain) * 2 <= len(win):
+            continue
+        d1, d2 = below[-1][1], above[0][1]
+        inside = lambda y: (d1 - y).days <= NUM_SLACK_DAYS and (y - d2).days <= NUM_SLACK_DAYS
+        slips = []
+        for i in (2, 3):                                  # one digit of the year written wrong
+            for c in "0123456789":
+                y = d[:i] + c + d[i + 1:]
+                if y != d and valid(y):
+                    slips.append(day(y))
+        if not inside(x) and any(inside(y) for y in slips):
+            out.append((r, d1, d2))
+    # A run that renumbers (Superman's 1949 half hours, a season of Theater Guild on the Air) holds other broadcasts
+    # near the date as written; a slipped date stands alone, or beside other slips only.
+    flagged = {id(r) for r, _a, _b in out}
+    near = collections.defaultdict(list)
+    for r in recs:
+        if r["key"] in by and r["date"] and FULL_DATE.fullmatch(r["date"]):
+            near[r["key"]].append(r)
+    keep = []
+    for r, d1, d2 in out:
+        x = day(r["date"])
+        if all(id(o) in flagged for o in near[r["key"]]
+               if o is not r and abs((day(o["date"]) - x).days) <= NUM_ALONE_DAYS):
+            r["idt"].setdefault("disagree", []).append({"date_contradicted_by_numbers": r["date"],
+                                                        "between": [d1.isoformat(), d2.isoformat()]})
+            keep.append(r)
+    for r in keep:
+        r["date"], r["decade"] = None, None
+    return keep
 
 
 def match_logs(recs, otrr_rows, reg, re_by_key, stats):
@@ -1310,6 +1391,13 @@ def main():
                 idt.setdefault("disagree", []).append({"two_digit_year_read_as": p["date"]})
                 p = dict(p, date=P.modern_two_digit(p["date"], it.get("publicdate")), decade=None)
                 stats["two_digit_years_read_in_this_century"] += 1
+            elif (p["date"] is None or date_source in ("filename", "filename_alt")) and \
+                    P.this_century(P.stem(f["name"]), p["date"], it.get("publicdate")):
+                # DECISIONS 037: "BB_06-17-07" is 2007 and "Hard Years 03-11-28" 2003, by the parser's own order
+                idt.setdefault("disagree", []).append({"two_digit_year_read_as": p["date"] or "undated"})
+                p = dict(p, date=P.this_century(P.stem(f["name"]), p["date"], it.get("publicdate")), decade=None)
+                date_source = date_source or "filename"
+                stats["two_digit_years_read_in_this_century"] += 1
             files.append({"f": f, "p": p, "date_source": date_source, "idt": idt, "uiuc": uiuc_row,
                           "ident": ident, "item_series": isr, "item_title": it.get("title"),
                           "orow": otrr_by_file.get((ident, f["name"])), "colls": colls, "d": d, "it": it,
@@ -1420,7 +1508,7 @@ def main():
         uiuc_text = (" " + (fr["uiuc"].get("title") or "")) if fr["uiuc"] else ""
         recs_out.append({"key": key, "sname": reg.display(key, sname) if key else None, "how": how, "raw": sname,
                          "title0": p["title"], "num0": num if not orow else None,
-                         "date": date, "date_source": date_source, "num": num, "title": title, "aka": p["aka"],
+                         "date": date, "date_source": date_source, "num": num, "name_num": p["num"], "title": title, "aka": p["aka"],
                          "decade": p["decade"], "kind": kind, "idt": idt, "orow": orow, "length": length,
                          "stem": P.stem(f["name"]), "album": f.get("album"), "item_title": fr["item_title"],
                          "rec": {
@@ -1456,6 +1544,7 @@ def main():
     # Pass 3: OTRR's logs and the spine fill what the names left out.
     if "logs" not in SKIP:
         match_logs(recs_out, otrr_rows, reg, re_by_key, stats)
+    stats["dates_contradicted_by_numbers"] = len(number_contradicted_dates(recs_out))
 
     # Group files into broadcasts.
     episodes = {}
