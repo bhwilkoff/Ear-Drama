@@ -268,6 +268,220 @@ def foreign_series(item_texts):
     return None
 
 
+# DECISIONS 036: RadioGOLDINdex's Source field names who originated a broadcast ("BBC origination, NBC net
+# rebroadcast", "Grace Gibson syndication (Australia)", "CBC net, Toronto origination") and who carried a copy of it.
+# A non-US originator is 006's non-US production. A carrier's copy (a rebroadcast, aircheck, recording, relay,
+# simulcast, coverage, a station's date note, a commercial release) never says who made it, and a US party named
+# beside the originator, or as the network it was made for, makes the reading joint: not knowing is not a claim (001).
+GOLDIN_NON_US = re.compile(
+    r"(?<![A-Za-z])BBC|B\.B\.C\.|\bCBCF?\b|Radio[- ]Canada|Canadian Broadcasting|Canadian National Railways|"
+    r"\bDominion (?:net|network)|Trans-?Canada (?:net|network)|\(Canada\)|\bC[FHJK][A-Z]{2}\b|"
+    r"Australia|Grace Gibson|Macquarie|MacQuarrie|Artransa|South Africa|\bSABC\b|Springbok|New Zealand|\bNZBC\b|"
+    r"Radio Luxembourg|Radio Monte Carlo|Radio Normandy|Towers Of London|\bRTE\b|Radio Eireann|"
+    r"German|Reichs?sender|Reichs?rundfunk|\bRRG\b|Deutsche[sn]? Rundfunk|\bNDR\b|"
+    r"\bFrance\b|\bORTF\b|Radio Paris|Paris Mondial|Parisienne|Radio ?France|France Musique|\bRFI\b|"
+    r"\bHolland\b(?! Productions)|\bJapan|All India Radio|Radio Moscow|Swiss Radio|Thames Television|"
+    r"London Broadcasting|\bLBC\b|\bENSA\b|Britain'?s Forces|British Forces|(?<!New )\bEngland\b")
+GOLDIN_US = re.compile(
+    r"\bNBC\b|\bCBS\b|\bABC\b(?!(?i:\s*(?:radio\s*)?\(?\s*Australia))|(?i:\bmutual\b|\bblue (?:net|network)\b|"
+    r"\bred net|\bdon lee\b|\byankee\b|\bAFRT?S\b|\bAFN\b|\bNPR\b|\bPBS\b|\bOWI\b|office of war information|"
+    r"allied expeditionary|\bS?H?AEF\b|supreme allied|"
+    r"voice of america|group w\b|westinghouse)|\b[WK][A-Z]{2,3}\b")
+GOLDIN_COPY = re.compile(r"rebroadcas|re-broadcast|aircheck|recording|recorded|relay|simulcast|coverage|audition|"
+                         r"\bdat[ae]\b|commercial(?:ly)? releas|\bheard\b|(?<!initial )\bbroadcast\b|"
+                         r"\bin the (?:U\. ?S\.|United States)", re.I)
+GOLDIN_ORIGIN = re.compile(r"originat|orgination|production|produced", re.I)
+GOLDIN_STATION = re.compile(r"^[KWC][A-Z]{2,3}(?:-(?:AM|FM))?$")
+GOLDIN_TV = re.compile(r"-TV\b|\baudio \+ video\b|\btelevision\b", re.I)
+
+
+def goldin_origin(source):
+    """RadioGOLDINdex's Source -> (verdict, term, explicit). verdict: 'non-US' when the originator it names is another
+    country's broadcaster or producer and no US party is named with it; 'US' when only a US party is; None when it
+    names neither, both, or a television source. explicit: the source names the origination ('BBC origination',
+    'Grace Gibson ... production'), not only the station or network a copy was taken from ('BBC Radio4', 'NBC net').
+    'NBC net origination, CBC rebroadcast' and 'CBS net origination for the BBC' are US; 'BBC/CBS co-production',
+    'BBC origination for Mutual' and 'NBC net, Towers Of London syndication' are joint."""
+    s = re.sub(r"\s+", " ", source or "").strip()
+    if not s or s == "*" or GOLDIN_TV.search(s):
+        return None, None, False
+    origin, dest = [], []
+    for seg in (x.strip() for x in s.split(",")):
+        m = re.search(r"\bfor\b", seg, re.I)
+        o, d = (seg[:m.start()], seg[m.end():]) if m else (seg, "")
+        if d.strip():
+            dest.append(d)
+        if GOLDIN_COPY.search(o):
+            if origin and GOLDIN_STATION.match(origin[-1]):
+                origin.pop()                         # "CFCF, Montreal aircheck": the station a copy was taken from
+            continue
+        if o.strip():
+            origin.append(o.strip())
+    named = [o for o in origin if GOLDIN_ORIGIN.search(o)]
+    if any(re.search(r"co-?production", o, re.I) for o in named):
+        named = []                                   # a co-production names every party: read them all
+    party = lambda t: GOLDIN_US.search(t) or GOLDIN_NON_US.search(t)
+    explicit = any(party(o) for o in named)
+    parties = " | ".join(named if explicit else origin)
+    us = GOLDIN_US.search(parties) or GOLDIN_US.search(" | ".join(dest))
+    non = GOLDIN_NON_US.search(parties)
+    if non and not us:
+        return "non-US", non.group(0), explicit
+    if us and not non:
+        return "US", us.group(0), explicit
+    return None, None, False
+
+
+# The Axis states' own radio before VJ Day ("Reichssender Hamburg", "JLP, Japan") is WWII propaganda, which 006 keeps
+# never recommended and always findable (Lord Haw Haw, Tokyo Rose's Zero Hour, the Hitler speeches 027 keeps).
+AXIS_STATE = re.compile(r"German|Reichs?sender|Reichs?rundfunk|\bRRG\b|Deutsche[sn]? Rundfunk|\bJapan")
+AXIS_END = "1945-09-02"
+GOLDIN_SILENCE_DAYS = 730   # two years with no record of a program's broadcasts is another run (DECISIONS 035's silence)
+
+
+def goldin_productions(records, episodes, us_series=(), named_by=None):
+    """Non-US productions read from RadioGOLDINdex's Source (DECISIONS 036). `records`: dicts with keys (the series
+    keys its program maps to), episode (the episode it links to, or None), date (or None), program (Goldin's name),
+    title, source, cat. `episodes`: [(id, series, date, title)]. `named_by(program)`: the series keys whose names'
+    shared words the program name carries every one of (DECISIONS 035's witness test); a record names the broadcast
+    of its night in every series its program maps to or names. `us_series`: series an all-American registry record
+    vouches for (033, 035), where a copy taken from a foreign carrier ('BBC7') is a rebroadcast of an American
+    production, never its origin: there only an explicit origination counts. The Axis states' own radio before
+    1945-09-02 is propaganda, findable (006), and never read. Returns ({episode: evidence},
+    {series: evidence}).
+      episode: its own record, or a record of its night naming its series, names a non-US origin and none names a
+               US one;
+      run:     a program's dated records with no two-year silence between them are a run; a run whose non-US
+               records are two at least and outnumber its US ones, and none names a US origination (a program
+               whose weeks alternate, "Transatlantic Call"), is a non-US production (one production, 006),
+               and so is every episode of a series the program maps to or names dated inside it, or undated with
+               every night its title aired inside it, unless a record of its own names a US origin or another
+               program;
+      series:  a series whose episodes' records name a non-US origin on two and half of them, or on its only one
+               (foreign_series' share).
+    """
+    named_by = named_by or (lambda prog: ())
+    named = {}
+
+    def names(prog, k):
+        if prog not in named:
+            named[prog] = set(named_by(prog))
+        return k in named[prog]
+
+    def origin(r):
+        v, term, explicit = goldin_origin(r.get("source"))
+        if v == "non-US" and AXIS_STATE.search(term) and (r.get("date") or "") <= AXIS_END:
+            return None, None, False   # propaganda: findable (006)
+        return v, term, explicit
+
+    def verdict(r, k):
+        v, term, explicit = origin(r)
+        if v == "non-US" and k in us_series and not explicit:
+            return None, None, False
+        return v, term, explicit
+
+    def ev(r, how, term, **kw):
+        return {"source": "RadioGOLDINdex names a non-US origin", "how": how, "term": term,
+                "goldin": r.get("source"), "record": r.get("cat"), **kw}
+
+    linked, by_night, prog_keys = {}, {}, {}
+    for r in records:
+        if r.get("episode"):
+            linked.setdefault(r["episode"], []).append(r)
+        if r.get("date"):
+            by_night.setdefault(r["date"], []).append(r)
+        prog_keys.setdefault(r["program"], set()).update(r.get("keys") or ())
+    of_ep = {}   # episode -> [(record, verdict, term, explicit)]: its own records and its night's naming its series
+    for eid, k, date, title in episodes:
+        got = {r["cat"]: r for r in linked.get(eid, ())}
+        for r in by_night.get(date, ()) if date else ():
+            if r["cat"] not in got and (k in (r.get("keys") or ()) or names(r["program"], k)):
+                got[r["cat"]] = r
+        if got:
+            of_ep[eid] = [(r, *verdict(r, k)) for c, r in sorted(got.items(), key=lambda x: str(x[0]))]
+    by_ep = {}
+    for eid, js in sorted(of_ep.items()):
+        if any(v == "US" and x for r, v, t, x in js):
+            continue
+        non = [(r, t) for r, v, t, x in js if v == "non-US"]
+        if non and not any(v == "US" for r, v, t, x in js):
+            by_ep[eid] = ev(non[0][0], "episode", non[0][1])
+
+    series_of = {eid: k for eid, k, d, t in episodes}
+    per = {}
+    for eid, js in sorted(of_ep.items()):
+        vs = [v for r, v, t, x in js if v]
+        if vs:
+            per.setdefault(series_of[eid], []).append(("non-US" if "non-US" in vs and "US" not in vs else
+                                                      "US" if "US" in vs else None,
+                                                      next((t for r, v, t, x in js if v == "non-US"), None)))
+    by_series = {}
+    for k, vs in sorted(per.items()):
+        non = [t for v, t in vs if v == "non-US"]
+        if non and len(non) >= min(2, len(vs)) and len(non) * 2 >= len(vs):
+            by_series[k] = {"source": "RadioGOLDINdex names a non-US origin", "how": "series",
+                            "term": max(sorted(set(non)), key=non.count), "share": round(len(non) / len(vs), 2)}
+
+    runs = {}
+    for r in records:
+        if r.get("date"):
+            runs.setdefault(r["program"], []).append(r)
+    spans = []   # (first, last, program, evidence)
+    for prog, rs in sorted(runs.items()):
+        rs.sort(key=lambda r: (r["date"], str(r.get("cat"))))
+        blocks, block = [], []
+        for r in rs:
+            if block and (datetime.date.fromisoformat(r["date"]) -
+                          datetime.date.fromisoformat(block[-1]["date"])).days > GOLDIN_SILENCE_DAYS:
+                blocks.append(block)
+                block = []
+            block.append(r)
+        blocks.append(block)
+        for block in blocks:
+            vs = [origin(r) for r in block]
+            non = [(r, t) for r, (v, t, x) in zip(block, vs) if v == "non-US"]
+            us = [r for r, (v, t, x) in zip(block, vs) if v == "US"]
+            if len(non) >= 2 and len(non) > len(us) and not any(v == "US" and x for v, t, x in vs):
+                terms = [t for r, t in non]
+                spans.append((block[0]["date"], block[-1]["date"], prog, ev(
+                    non[0][0], "run", max(sorted(set(terms)), key=terms.count), program=prog,
+                    run=[block[0]["date"], block[-1]["date"]], records=len(block), non_us=len(non), us=len(us),
+                    non_us_explicit=sum(1 for r, (v, t, x) in zip(block, vs) if v == "non-US" and x))))
+    if not spans:
+        return by_ep, by_series
+    nights = {}
+    for r in records:
+        if r.get("date") and r.get("title"):
+            nights.setdefault((r["program"], norm_title(r["title"])), set()).add(r["date"])
+    span_of = {}
+    for sp in spans:
+        for k in sorted(prog_keys.get(sp[2], set()) | set(named_by(sp[2]))):
+            if k not in us_series or sp[3]["non_us_explicit"] >= 2:
+                span_of.setdefault(k, []).append(sp)
+    for eid, k, date, title in episodes:
+        if eid in by_ep:
+            continue
+        mine = span_of.get(k)
+        if not mine:
+            continue
+        js = of_ep.get(eid, [])
+        if any(v == "US" and x for r, v, t, x in js):
+            continue
+        own_progs = {r["program"] for r, v, t, x in js}
+        if date:
+            hit = [sp for sp in mine if sp[0] <= date <= sp[1] and (not own_progs or sp[2] in own_progs)]
+            how = "by date"
+        else:
+            ds = sorted({d for sp in mine for d in nights.get((sp[2], norm_title(title)), ())})
+            inside = {i for d in ds for i, sp in enumerate(mine) if sp[0] <= d <= sp[1]}
+            covered = all(any(sp[0] <= d <= sp[1] for sp in mine) for d in ds)
+            hit = [mine[min(inside)]] if ds and covered and len(inside) == 1 else []
+            how = "by its title's nights"
+        if hit:
+            by_ep[eid] = dict(hit[0][3], placed=how)
+    return by_ep, by_series
+
+
 def credited_performers(ep):
     return [p["name"] for p in ep.get("people") or []
             if (p.get("role") or "").strip().lower() not in NON_PERFORMER_ROLES]
@@ -328,6 +542,8 @@ def rec_bucket(ep, ctx):
 
     if ctx["series_foreign"].get(key):
         return "rec_foreign_origin", [ctx["series_foreign"][key]]
+    if (ctx.get("goldin_origin") or {}).get(ep["id"]):   # DECISIONS 036
+        return "rec_foreign_origin", [ctx["goldin_origin"][ep["id"]]]
     lang = None if key in (ctx.get("us_series") or ()) else foreign_language(ep, ctx.get("item_language") or {},
                                                                               ctx.get("item_subjects"))
     if lang:

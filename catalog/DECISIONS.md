@@ -1282,3 +1282,75 @@ OTRRpedia runs), and neither names the BBC; RadioGOLDINdex's `source_text` does,
 title night stay in their remainder (001). Superman, Dracula, Frankenstein, A Christmas Carol and The Mysterious
 Traveler hold one production by this evidence (Frankenstein and Dracula are undated; A Christmas Carol's years are
 single broadcasts, no run).
+
+## 036 — Who originated a broadcast is read from RadioGOLDINdex; a date note on a title dates it (P-13)
+*Date: 2026-11-09*
+
+What 035 left open, each a case of a rule we had: 006 (non-US productions are hidden; WWII propaganda is never
+recommended and always findable), 001 (not knowing is not a claim), 025 (raw upload text never shows) and the parser's
+own date conventions. The app has not launched, so nothing here forwards (032).
+
+1. **Non-US by RadioGOLDINdex's Source** (`audit_audio_rights.goldin_origin`, `goldin_productions`;
+   `build_db.goldin_foreign`, on the records `enrich_db.link_goldin` links, now shared by both). The originator a
+   record names is the producer: a segment naming an origination, production or syndication ("BBC origination, NBC
+   net rebroadcast", "Grace Gibson syndication (Australia)", "CBC net, Toronto origination"), else the station or
+   network it names. A carrier's copy (a rebroadcast, aircheck, recording, relay, simulcast, coverage, a station's
+   date note, a commercial release, and the station an aircheck was taken from) never says who made it. A US party
+   named beside the originator, as a co-producer, or as the network it was made for makes the reading joint and
+   unread: "NBC net origination, CBC rebroadcast", "NBC net, BBC rebroadcast", "CBS net origination for the BBC" and
+   "transcribed in London for NBC" are US; "BBC/CBS co-production", "BBC origination for Mutual" and "Mutual net, CBC,
+   Toronto origination" are joint; a city alone ("NBC Blue net, Montreal origination") is no producer. Non-US:
+   BBC, CBC, Radio-Canada and Canadian call signs, Australian producers (Grace Gibson, Macquarie, Artransa, ABC
+   Australia), SABC and Springbok, Radio New Zealand, Radio Luxembourg, Towers of London, German, French, Dutch and
+   Japanese broadcasters, and the like. Read three ways: *episode*, its own record or a record of its night whose
+   program names its series (035's witness test, `display_text.program_namer`); *run*, a program's dated records with
+   no two-year silence, two non-US at least, outnumbering the US ones and none naming a US origination (a program
+   whose weeks alternate, "Transatlantic Call", is not one production), is one production, and holds the episodes
+   of every series it maps to or names dated inside it, or undated with every night its title aired inside it; and
+   *series*, its episodes' records non-US on two and half (foreign_series' share), applied per episode. A series an
+   all-American registry record vouches for (033, 035) reads only an explicit origination, never a foreign carrier's
+   copy ("BBC7" is a rebroadcast of an American show). Kept, as 033 keeps them from the language rule: a speech or
+   address (027), an episode `no_recommend` already marks, and the Axis states' own radio before 1945-09-02 (Lord Haw
+   Haw, Tokyo Rose's Zero Hour, the Hitler broadcasts): WWII propaganda, findable (006). LibriVox is never read.
+2. **A date note on an undated episode's own title or file name dates it** (`otr_parse.title_date_note`,
+   `build_db.first_parse`): a bracket holding only a date ("The Viennese Strangler (04-09-45)") or a date ending a
+   title ("Barry Gray 49-10-07", "Father Coughlin 38-11-20 (fixed)"), the only date in it. Read by the parser's own
+   conventions: two-digit years YY-MM-DD, else MM-DD-YY (`_date`; "19-07-45" is not guessed); a four-digit year last
+   is month-day, or day-month when the first field cannot be a month; never on or after 1972-02-15 (a bracketed date
+   is never read as a modern one, 032); upload-day digits and this century's two-digit years are not a broadcast's
+   (`is_upload_stamp`, `modern_two_digit`). A bracket with words ("[Rpt 1966-10-16]") is a note on the copy, and two
+   dates are not known apart. A name that is only a date ("Johnny Dollar/1957/06-15-57") notes no title: 33 of the 38
+   such files fall the day before the logged broadcast, so they are left to the logs. The title loses the note (025),
+   and so does any title whose note restates its episode's own date.
+
+**Why**: 035 measured that the 1955 Gielgud/Richardson and 1959-69 Hobbs/Shelley Sherlock Holmes productions were
+served because the audit read only item records and OTRRpedia runs, though RadioGOLDINdex, a source the build already
+links, names the BBC as their origin. A note a title carries is the file's own words for its night; withholding the
+date it states while serving the note in the title broke 025 twice.
+
+**How to apply**: a new producer or carrier phrase goes in `GOLDIN_NON_US`, `GOLDIN_US` or `GOLDIN_COPY` with a
+fixture and a control in `tests/test_p13_audit.py`; a wrong reading is fixed by tightening the evidence, never by a
+list of keys. Guards over the real build (`tests/test_p13_audit.py`, in the publish's contract step): no served
+episode is a production RadioGOLDINdex names a non-US origin for; no served undated episode carries a date note the
+build would read on its own title or file name; no served title carries a note restating its own date. Seen failing on
+the unchanged tools' dry-run artifacts of catalog-2026-11-09 (437 foreign episodes, 270 undated notes, 25 restating
+titles) and, mid-change, on a build that missed "(fixed)" after the date (3).
+MEASURED on the catalog-2026-11-09 Release against the 035 build (PYTHONHASHSEED 0, `catalog_dryrun.sh --with-suites`
+green): series 4,964 to 4,954, episodes 75,021 to 74,166 (-1.1%). RadioGOLDINdex origin: 447 research episodes newly
+hidden as `rec_foreign_origin` (episode 248, run by date 109, run by its title's nights 9, series 81; BBC 303, Towers
+of London 70, Radio Luxembourg 62, Australian producers 10, CBC 1, Springbok 1), 421 of them served before: The Goon
+Show 191, the Gielgud/Richardson and Hobbs/Shelley Sherlock Holmes 70, The Lives of Harry Lime 62, Horatio Hornblower
+54, London Column 10, The Ovaltineys 8, The Witch's Tale's Australian transcriptions 7, Living in an Atomic Age 7,
+London Forum 4, Famous Jury Trials' Grace Gibson remakes 2, London Calling 2, and one BBC origination each in An
+American in England ("The Yanks Are Here"), Columbia Workshop ("Death of a Queen"), Transatlantic Call and a BBC
+programme. Read for mistakes: the Rathbone/Bruce, Stanley and Gordon broadcasts stay; the Axis readings (Hitler, Lord
+Haw Haw, Zero Hour, German Radio) stay as propaganda. Dates: 441 research episodes dated from a note (288 kept), served
+undated episodes 32,591 to 31,918 (dated copies join the night's broadcast: The New Adventures of Sherlock Holmes 178 to
+116 episodes, every one still served). Spot check, 20 kept at random against RadioGOLDINdex and OTRR records of the
+same night: 16 agree, 4 have no witness, none differs; over all 288 kept, 218 agree, 59 have no witness, 11 differ.
+**Left, each by a rule**: seven Gielgud and Hobbs/Shelley broadcasts dated outside any RadioGOLDINdex run (the 1954
+Light Programme airings, 1955-05-01, 1955-12-13, 1957-11-05) stay in the remainder 035's split leaves them in; carrying
+a production's rights verdict to its cast-placed siblings is the split's next pass, not this reading's. Of the 11 note
+dates a same-program witness puts on another night, the syndicated transcriptions (The Haunting Hour 3, The Sealed Book
+2) aired on different nights by station; two Casebook notes are a day or a digit off (09-02-45 for 09-03, 02-17 for
+12-17): a note a witness contradicts is 016's case and the next pass for this reading.

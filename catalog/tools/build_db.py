@@ -32,6 +32,8 @@ import reattribute as RA
 import text_defects as TD
 import episode_scripts as ES
 import same_work as SW
+import enrich_db as ED
+import display_text as DT
 
 # A copy of Archive Watch's shared/editorial/cce_renewals.json (tools/fetch_cce_renewals.py
 # there), so this catalog builds outside that repository.
@@ -559,6 +561,21 @@ def first_parse(f, it, ident, n_audio, uiuc):
                 p = dict(p, date=dt, decade=dt[:3] + "0s")
                 date_source = src
                 break
+    if not p["date"] and "datenote" not in SKIP:
+        # DECISIONS 036: a date note on the file's own title or name, "The Viennese Strangler (04-09-45)", dates it
+        # and leaves the title (025); digits that are the upload day or this century's are not a broadcast's.
+        ttag = f.get("title") if isinstance(f.get("title"), str) else None
+        for txt in (p["title"], st, ttag):
+            dt, rest = P.title_date_note(txt) if txt else (None, txt)
+            if not dt or P.is_upload_stamp(dt, it.get("publicdate")) or P.modern_two_digit(dt, it.get("publicdate")):
+                continue
+            title = P.title_date_note(p["title"])[1] if p["title"] else (rest if P.is_titleish(rest or "") else None)
+            p = dict(p, date=dt, decade=dt[:3] + "0s", title=title)
+            date_source = "title_date_note"
+            idt["date_note"] = txt
+            break
+    elif p["date"] and p["title"] and P.title_date_note(p["title"])[0] == p["date"]:
+        p = dict(p, title=P.title_date_note(p["title"])[1])   # the note restates the date the name gave (025)
     if not p["date"] and n_audio == 1:
         dt = P.parse_text_date(it.get("title") or "") or item_full_date(it)
         if dt:
@@ -1159,6 +1176,50 @@ def follow_work(episodes, verdict, reg, re_by_key, items, ctx, stats):
         stats["same_work_hidden:" + w["rule"]] += 1
 
 
+def goldin_foreign(episodes, by_series, reg, aliases, items, us_series, otrr_progs, stats):
+    """DECISIONS 036: the non-US productions RadioGOLDINdex's Source names (audit_audio_rights.goldin_productions),
+    on the records enrich_db links (the same link_goldin, run on this build's series) and the records of a night whose
+    program names the series (035's witness test, display_text.program_namer). Exempt what 033's language rule
+    exempts, a speech or address (027), and what 006 keeps findable, propaganda (no_recommend); LibriVox is never
+    read. -> {episode: evidence}."""
+    rows = load(os.path.join(ia.CACHE, "goldin", "records.json.gz"), [])
+    if not rows:
+        print("WARNING: no RadioGOLDINdex records cached; its origination reading cannot fire", file=sys.stderr)
+        return {}
+    known = {k: reg.display(k, eps[0]["series_name"]) or k for k, eps in by_series.items()}
+    by_sd, by_st, by_date = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(set)
+    for ep in episodes.values():
+        if ep["date"]:
+            by_sd[(ep["series_key"], ep["date"])].append(ep["id"])
+            by_date[ep["date"]].add(ep["series_key"])
+        else:
+            nt = ED.norm_title(ep["title"])
+            if len(nt) >= 4:
+                by_st[(ep["series_key"], nt)].append(ep["id"])
+    progs, linked = ED.link_goldin(rows, ED.SeriesMap(known, aliases, by_date), by_sd, by_st)
+    recs = [{"keys": sorted((progs.get(g["prog"]) or ((),))[0]), "episode": g["ep"], "date": g["date"],
+             "program": g["prog"], "title": (g["r"].get("TITLE") or "").strip().strip('"') or None,
+             "source": g["r"].get("SOURCE"), "cat": g["cat"]} for g in linked if g["prog"] and not g["tv"]]
+    names_of = {k: [known[k]] + [otrr_progs.get(i) for i in sorted(reg.idps.get(k) or ())] for k in known}
+    named_by = DT.program_namer(names_of)
+
+    def speech(ep):
+        said = " ".join([ep.get("title") or "", ep.get("series_name") or ""] +
+                        [(r.get("file") or "").rsplit("/", 1)[-1] + " " + (items.get(r["archive_id"], {}).get("subjects") or "")
+                         for r in ep["recordings"]])
+        return bool(A.SPEECH.search(said)) or bool(ep.get("no_recommend"))   # 027 keeps speeches; 006 propaganda findable
+    eps = [(e["id"], e["series_key"], e["date"], e["title"]) for e in episodes.values()
+           if e["series_key"] and not e.get("librivox")]
+    by_ep, by_ser = A.goldin_productions(recs, eps, us_series, named_by)
+    for k, v in sorted(by_ser.items()):   # a series-level reading is applied per episode, so a speech in it stays
+        for e in by_series.get(k, ()):
+            by_ep.setdefault(e["id"], v)
+    by_ep = {e: v for e, v in by_ep.items() if not speech(episodes[e]) and not episodes[e].get("librivox")}
+    stats["goldin_non_us_episodes"] = len(by_ep)
+    stats["goldin_non_us_series"] = len(by_ser)
+    return by_ep
+
+
 def main():
     t0 = time.time()
     args = sys.argv[1:]
@@ -1448,6 +1509,8 @@ def main():
     caricature_table = load(os.path.join(ia.EDITORIAL, "racist_caricature.json"), {})
     caricature = caricature_rules(caricature_table)
     for ep in episodes.values():
+        if ep["date"] and ep["title"] and P.title_date_note(ep["title"])[0] == ep["date"]:
+            ep["title"] = P.title_date_note(ep["title"])[1]   # a note restating the episode's own date (036, 025)
         ks = collections.Counter(k or "radio" for k in ep.pop("kinds"))
         ep["content_kind"] = ks.most_common(1)[0][0]
         kinds = {CORPUS_KIND.get(seed_kind.get(r["archive_id"])) for r in ep["recordings"]}
@@ -1560,6 +1623,7 @@ def main():
         if countries[k] and "USA" not in countries[k] and k not in series_foreign and not k.startswith("librivox"):
             series_foreign[k] = {"source": "OTRRpedia broadcast history: every run outside the USA",
                                  "term": ", ".join(sorted(countries[k]))}
+    goldin_origin = goldin_foreign(episodes, by_series, reg, aliases, items, us_series, otrr_progs, stats)
     sched = load(os.path.join(ia.CACHE, "p72_schedules.json.gz"), {"rows": []})
     if not sched["rows"]:
         print("WARNING: no pre-1972 schedules cached; rec_schedule_claim cannot fire", file=sys.stderr)
@@ -1569,7 +1633,7 @@ def main():
            "licence_evidence": lic_ev, "published_records": pub_rec, "film_renewals": film_ren,
            "script_renewals": script_ren, "series_genres": series_genres,
            "item_language": {i: it["language"] for i, it in items.items() if it.get("language")},
-           "us_series": us_series,
+           "us_series": us_series, "goldin_origin": goldin_origin,
            "item_subjects": {i: it.get("subjects") or "" for i, it in items.items()},
            "today": datetime.date.today()}
 

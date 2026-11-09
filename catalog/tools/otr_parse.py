@@ -343,6 +343,57 @@ def parse_text_date(t):
     return None
 
 
+# catalog DECISIONS 036: a date note on an undated episode's own title or file name, "The Viennese Strangler
+# (04-09-45)", "Passenger to Bali (11-13-1938)", "Barry Gray 49-10-07": a bracket holding only a date, or a date that
+# ends a title. A name that is only a date ("Johnny Dollar/1957/06-15-57") carries no title to note it beside: 33 of
+# 38 such files fall the day before the logged broadcast, so they are left to the logs. Read by the parser's own conventions (_date: YY-MM-DD, else MM-DD-YY; a four-digit year
+# last is month-day, or day-month when the first field cannot be a month), never past 1972-02-14: a bracketed date
+# is never read as a modern one (032's rebroadcast note), and a bracket with words ("[Rpt 1966-10-16]") is a note.
+_NOTE_DATE = r"\d{1,4}[-./]\d{1,2}[-./]\d{2,4}"
+DATE_NOTE = re.compile(r"\s*[(\[]\s*(?P<b>" + _NOTE_DATE + r")\s*[)\]]|"
+                       r"(?<=[A-Za-z\")])[ _]+(?:-[ _]*)?(?P<e>\d{1,4}[-/]\d{1,2}[-/]\d{2,4})"
+                       r"(?=[ _]*(?:[(\[][^)\]]*[)\]][ _]*)*$)")
+_ANY_DATE = re.compile(r"(?<!\d)" + _NOTE_DATE + r"(?!\d)")
+
+
+def note_date(text):
+    """The date a note's digits write, by the parser's conventions, or None."""
+    parts = re.split(r"[-./]", text)
+    if len(parts) != 3 or not all(p.isdigit() for p in parts):
+        return None
+    a, b, c = parts
+    if len(a) == 4:
+        d = f"{a}-{int(b):02d}-{int(c):02d}" if valid_date(a, b, c) else None
+    elif len(c) == 4:
+        if valid_date(c, a, b):
+            d = f"{c}-{int(a):02d}-{int(b):02d}"
+        elif int(a) > 12 and valid_date(c, b, a):
+            d = f"{c}-{int(b):02d}-{int(a):02d}"
+        else:
+            d = None
+    elif len(a) <= 2 and len(b) <= 2 and len(c) == 2:
+        d, swapped = _date({"yy": a.zfill(2), "mm": b, "dd": c}, "note")
+    else:
+        d = None
+    return d if d and d < "1972-02-15" else None
+
+
+def title_date_note(text):
+    """-> (date, the text without its note) when `text` carries exactly one date and it is a note (DATE_NOTE), else
+    (None, text). "The Notorious Canary Trainer (04-23-45)" -> ("1945-04-23", "The Notorious Canary Trainer")."""
+    t = text or ""
+    if len(_ANY_DATE.findall(t)) != 1:
+        return None, text
+    m = DATE_NOTE.search(t)
+    if not m:
+        return None, text
+    d = note_date(m.group("b") or m.group("e"))
+    if not d:
+        return None, text
+    rest = re.sub(r"\s+", " ", (t[:m.start()] + " " + t[m.end():])).strip(" -_.")
+    return d, rest or None
+
+
 def parse_album_tag(album):
     m = ALBUM_TAG.match((album or "").strip())
     if not m:

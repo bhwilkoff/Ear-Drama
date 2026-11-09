@@ -497,6 +497,53 @@ class People:
         return pid
 
 
+def link_goldin(goldin_rows, smap, by_sd, by_st):
+    """RadioGOLDINdex records -> ({program: (keys, {key: method}, evidence, records) or None}, [parsed record]).
+    A record links to an episode on (series, date), or, undated, on (series, title) when the title is unique on
+    both sides. TV records never link. Shared by this enrichment and build_db's rights audit (catalog DECISIONS 036),
+    so both read the same links."""
+    g_by_prog = collections.defaultdict(list)
+    for r in goldin_rows:
+        g_by_prog[(r.get("PROGNAME") or "").strip()].append(r)
+    g_key, g_progs = {}, {}
+    for prog, rs in g_by_prog.items():
+        if not prog:
+            continue
+        radio = [r for r in rs if not parse_source(r.get("SOURCE"))[2]]
+        dates = [d for d in (goldin_date(r.get("SDATE")) for r in radio) if d]
+        keys, how, ev = smap.resolve([prog], dates)
+        g_progs[prog] = (keys, how, ev, len(rs)) if keys else None
+        if keys:
+            g_key[prog] = (keys, how)
+
+    g_title = collections.defaultdict(list)
+    g_parsed = []
+    for r in goldin_rows:
+        prog = (r.get("PROGNAME") or "").strip()
+        keys, how = g_key.get(prog, ((), None))
+        net, dist, tv = parse_source(r.get("SOURCE"))
+        date = goldin_date(r.get("SDATE"))
+        dur, nominal = goldin_duration(r.get("DURATION"))
+        rec = {"cat": r["CATALOGNUM"], "prog": prog, "k": keys[0] if keys else None, "how": None, "date": date,
+               "net": net, "dist": dist, "tv": tv, "dur": dur, "nominal": nominal, "r": r, "ep": None, "ep_how": None}
+        for k in keys if not tv else ():
+            if date:
+                t = by_sd.get((k, date), [])
+                if t and not rec["ep"]:
+                    rec["k"], rec["ep"], rec["ep_how"] = k, t[0], "series_date"
+            else:
+                g_title[(k, norm_title(r.get("TITLE")))].append(rec)
+        if rec["k"]:
+            rec["how"] = how[rec["k"]]
+        g_parsed.append(rec)
+    for (k, nt), rs in g_title.items():
+        t = by_st.get((k, nt), [])
+        if len(nt) >= 4 and len(rs) == 1 and len(t) == 1 and not rs[0]["ep"]:
+            rs[0]["k"], rs[0]["ep"], rs[0]["ep_how"] = k, t[0], "series_title"
+            rs[0]["how"] = g_key[rs[0]["prog"]][1][k]
+    return g_progs, g_parsed
+
+
 def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases):
     stats = collections.Counter()
     db.executescript(SCHEMA)
@@ -584,52 +631,18 @@ def enrich(db, goldin_rows, otrr_logs, progs, full, pedia_people, pdata, aliases
             stats["credits_otrr_" + how] += 1
 
     # --- Goldin
-    g_by_prog = collections.defaultdict(list)
-    for r in goldin_rows:
-        g_by_prog[(r.get("PROGNAME") or "").strip()].append(r)
-    g_key = {}
-    for prog, rs in g_by_prog.items():
-        if not prog:
-            continue
-        radio = [r for r in rs if not parse_source(r.get("SOURCE"))[2]]
-        dates = [d for d in (goldin_date(r.get("SDATE")) for r in radio) if d]
-        keys, how, ev = smap.resolve([prog], dates)
-        if keys:
-            g_key[prog] = (keys, how)
-            for k in keys:
-                db.execute("INSERT INTO series_map VALUES (?,?,?,?,?,?)",
-                           ("goldin", prog, None, k, how[k], json.dumps({**(ev or {}), "records": len(rs)})))
-                stats["goldin_program_keys_" + how[k]] += 1
-            stats["goldin_programs_mapped"] += 1
-            stats["goldin_records_in_mapped_programs"] += len(rs)
-        else:
+    g_progs, g_parsed = link_goldin(goldin_rows, smap, by_sd, by_st)
+    for prog, got in g_progs.items():
+        if not got:
             stats["goldin_programs_unmapped"] += 1
-
-    g_title = collections.defaultdict(list)
-    g_parsed = []
-    for r in goldin_rows:
-        prog = (r.get("PROGNAME") or "").strip()
-        keys, how = g_key.get(prog, ((), None))
-        net, dist, tv = parse_source(r.get("SOURCE"))
-        date = goldin_date(r.get("SDATE"))
-        dur, nominal = goldin_duration(r.get("DURATION"))
-        rec = {"cat": r["CATALOGNUM"], "prog": prog, "k": keys[0] if keys else None, "how": None, "date": date,
-               "net": net, "dist": dist, "tv": tv, "dur": dur, "nominal": nominal, "r": r, "ep": None, "ep_how": None}
-        for k in keys if not tv else ():
-            if date:
-                t = by_sd.get((k, date), [])
-                if t and not rec["ep"]:
-                    rec["k"], rec["ep"], rec["ep_how"] = k, t[0], "series_date"
-            else:
-                g_title[(k, norm_title(r.get("TITLE")))].append(rec)
-        if rec["k"]:
-            rec["how"] = how[rec["k"]]
-        g_parsed.append(rec)
-    for (k, nt), rs in g_title.items():
-        t = by_st.get((k, nt), [])
-        if len(nt) >= 4 and len(rs) == 1 and len(t) == 1 and not rs[0]["ep"]:
-            rs[0]["k"], rs[0]["ep"], rs[0]["ep_how"] = k, t[0], "series_title"
-            rs[0]["how"] = g_key[rs[0]["prog"]][1][k]
+            continue
+        keys, how, ev, n = got
+        for k in keys:
+            db.execute("INSERT INTO series_map VALUES (?,?,?,?,?,?)",
+                       ("goldin", prog, None, k, how[k], json.dumps({**(ev or {}), "records": n})))
+            stats["goldin_program_keys_" + how[k]] += 1
+        stats["goldin_programs_mapped"] += 1
+        stats["goldin_records_in_mapped_programs"] += n
 
     ep_network = {}
     ep_goldin = {}
