@@ -394,7 +394,7 @@ jobs:
       id-token: write             # deploy-pages
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -562,8 +562,20 @@ jobs:
         with:
           path: _site
 
+      # Pages refuses a deploy while another writer's is still settling ("in progress
+      # deployment"), seconds after that run reported success (2026-11-09). That is a
+      # blip, not a broken publish: wait and deploy once more in the same run.
       - id: deployment
         if: steps.pages.outputs.go == 'yes'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      - name: Pages was busy, wait for it
+        if: steps.pages.outputs.go == 'yes' && steps.deployment.outcome == 'failure'
+        run: sleep 90
+
+      - id: deployment_retry
+        if: steps.pages.outputs.go == 'yes' && steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
       - name: The live site serves this run's web projection
