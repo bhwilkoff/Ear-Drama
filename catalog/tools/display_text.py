@@ -586,6 +586,29 @@ def name_tokens(n):
     return tuple(t)
 
 
+def program_namer(names_of):
+    """DECISIONS 035's witness test as an index: `names_of` {series key: [its names]} -> a function from a program
+    name to the series keys whose names' shared words (generic and small words aside) it carries every one of.
+    DECISIONS 036's GOLDINdex origination reading uses it to find the series a record's program names."""
+    small = GENERIC_WORDS | SMALL_INITIAL
+    common = {}
+    for k in sorted(names_of):
+        ns = [n for n in names_of[k] if n]
+        c = set.intersection(*[set(name_tokens(n)) - small for n in ns]) if ns else set()
+        if c:
+            common[k] = c
+    by_word = {}
+    for k, c in common.items():
+        for w in c:
+            by_word.setdefault(w, set()).add(k)
+
+    def named_by(program):
+        toks = set(name_tokens(program))
+        cand = set().union(*[by_word.get(w, set()) for w in toks]) if toks else set()
+        return {k for k in cand if common[k] <= toks}
+    return named_by
+
+
 def _core(n):
     return tuple(w for w in name_tokens(n) if w not in GENERIC_WORDS)
 
