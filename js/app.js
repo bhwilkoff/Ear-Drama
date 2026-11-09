@@ -1231,6 +1231,27 @@
       ...owed.flatMap((a, i) => [i ? ' \u00b7 ' : '', el('a', { href: a.evidence, rel: 'noopener', target: '_blank' }, a.credit)])) : null;
   }
 
+  /** The show's About (WEB-DESIGN §4.5): the encyclopedia's paragraphs, four lines until opened, with the
+      attribution its license asks for. Nothing when the series carries none. */
+  function aboutBlock(about) {
+    const paras = API.aboutParagraphs(about), url = API.aboutLink(about);
+    if (!paras.length || !url) return null;
+    const text = el('div', { class: 'about-text body', id: 'about-text', dataset: { clamped: 'true' } },
+      ...paras.map(t => el('p', {}, t)));
+    const more = el('button', { type: 'button', class: 'btn btn-ghost about-more', 'aria-expanded': 'false', 'aria-controls': 'about-text', hidden: true }, 'Read more');
+    more.addEventListener('click', () => {
+      const open = text.dataset.clamped === 'true';
+      text.dataset.clamped = open ? 'false' : 'true';
+      more.setAttribute('aria-expanded', String(open));
+      more.textContent = open ? 'Show less' : 'Read more';
+    });
+    requestAnimationFrame(() => { more.hidden = text.scrollHeight <= text.clientHeight + 1; });
+    return el('section', { class: 'block about', 'aria-label': 'About' }, text, more,
+      el('p', { class: 'caption about-source' }, 'From ',
+        el('a', { href: url, rel: 'noopener', target: '_blank' }, about.source || 'Wikipedia'),
+        about.license ? `, ${about.license}` : null));
+  }
+
   function renderShow(r) {
     const body = $('show-body');
     const scope = r.p.get('season');
@@ -1282,9 +1303,9 @@
 
       const genreLink = genre && s.genre ? el('a', { class: 'g-kicker-link', href: `?view=browse&genre=${encodeURIComponent(s.genre)}`,
         'aria-label': `Browse ${genre}` }, genre) : genre;
-      const head = headBoard({ series: s, kicker: [genreLink, s.networks ? `${genreLink ? ' \u00b7 ' : ''}${s.networks}` : null].filter(Boolean), name: s.name,
-        facts: [years(s.first, s.last) || 'Undated', plural(s.episodes.length, 'episode', 'episodes')], first: s.first, last: s.last, years: s.years });
-      body.append(...[head, el('div', { class: 'actions actions-one' }, followBtn, shareBtn), pictureCredit([s.picture])].filter(Boolean));
+      const head = headBoard({ series: s, kicker: genreLink ? [genreLink] : null, name: s.name,
+        facts: API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')), first: s.first, last: s.last, years: s.years });
+      body.append(...[head, aboutBlock(s.about), el('div', { class: 'actions actions-one' }, followBtn, shareBtn), pictureCredit([s.picture])].filter(Boolean));
       if (scopes.length > 2) body.append(seg);
       body.append(countLine, listBox);
       drawEpisodes(scope || '');
@@ -1307,6 +1328,15 @@
           c.character ? el('span', { class: 'g-face-role caption' }, `as ${c.character}`) : null)))));
     const owed = pictureCredit(air.map(c => c.art).filter(a => a && API.windowFill(a, 72).kind !== 'block'));
     return owed ? [sec, owed] : [sec];
+  }
+
+  /** "Read the script" (WEB-DESIGN §4.6): the script's own page, in a new tab, naming its source. */
+  function scriptLink(d) {
+    const url = API.safeLink(d.scriptUrl);
+    if (!url) return null;
+    return el('p', { class: 'caption ep-script' },
+      el('a', { class: 'eyebrow-link', href: url, rel: 'noopener', target: '_blank' }, 'Read the script'),
+      d.scriptSource ? ` \u00b7 ${d.scriptSource}` : null);
   }
 
   function renderEpisode(r) {
@@ -1357,13 +1387,14 @@
       const showName = { key: d.series, name: seriesName, genre: (s && s.genre) || '', picture: lead };
       const head = headBoard({ series: showName, href: `?series=${encodeURIComponent(d.series)}`,
         kicker: genre || 'Show', name: seriesName,
-        facts: [s && years(s.first, s.last) || 'Undated', s ? plural(s.episodes.length, 'episode', 'episodes') : null],
+        facts: s ? API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')) : ['Undated'],
         first: s && s.first, last: s && s.last, years: s && s.years });
       const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
       body.append(...[head,
         el('h1', { class: 'view-heading ep-heading', id: 'episode-h', tabindex: '-1' }, title),
         eventLine(API.episodeFacts(d, d.date ? fmtLongDate(d.date) : null, fmtLength(d.length)), 'caption g-event-line'),
         d.aka ? el('p', { class: 'caption' }, `Also titled ${d.aka}`) : null,
+        scriptLink(d),
         el('div', { class: 'actions actions-one' }, playBtn, queueBtn, shareBtn),
         startBtn ? el('div', { class: 'actions actions-one actions-start' }, startBtn) : null,
         pictureCredit([lead])].filter(Boolean));
@@ -1401,8 +1432,8 @@
       d.recordings.forEach((rec, i) => {
         // A copy is named from data (rec.label, when the catalog publishes one), else by position;
         // the archive.org identifier is never text, only the link target.
-        const label = API.recordingLabel(rec, i);
-        const facts2 = API.recordingFacts(rec, i === 0, fmtLength(rec.length), m.variantLines, m.partialLine);
+        const label = API.recordingLabel(rec, i, fmtLength(rec.length));
+        const facts2 = API.recordingFacts(rec, i === 0, fmtLength(rec.length), m.variantLines, m.partialLine, !!API.recordingNamed(rec));
         const input = el('input', { type: 'radio', name: 'version', value: String(i), checked: i === 0,
                                     id: `ver-${i}` });
         input.addEventListener('change', () => { chosen = i; });

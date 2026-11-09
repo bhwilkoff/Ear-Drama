@@ -954,9 +954,19 @@ web app follows today.
 ## §8 Values
 
 - **§8.1 The rights line is the projection's words** (contract §5.5),
-  drawn under the recordings. An unclaimed recording reads "No rights
-  claim known. Removed on request." and is never called public domain
-  (catalog Decision 001).
+  drawn under the recordings. An unclaimed recording is every recording's
+  default, so it draws no line at all (owner 2026-11-09) and is still never
+  called public domain (catalog Decision 001); any other basis keeps its
+  line.
+- **§8.1a A show explains itself, and a recording is never "Recording N"**
+  (owner 2026-11-09). The show page's facts line is its entry point: years,
+  network, star, episode count. Under it, `series.about` (when served) draws
+  as paragraphs clamped to four lines with a Read more button, and "From
+  {source}" linking `about.url` (`rel=noopener`) with its license; no url,
+  no About. An episode's `scriptUrl` draws "Read the script" under its
+  event line, a new tab naming `scriptSource`. The episode's head board is
+  the link to its show (its name underlined). A copy with no published
+  label is named by its kbps and length, else "Best copy" or "Another copy".
 - **§8.2 The take-down page** says what to send, where, and that removal
   follows a claim a reader can open; the address is one constant in
   `js/site.js`. The designated agent's details are the owner's to fill
