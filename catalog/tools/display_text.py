@@ -935,3 +935,129 @@ def resolve_chains(m):
         if t != k:
             out[k] = t
     return out
+
+
+# ---- 034: a fold keeps the program's own title, by evidence (catalog DECISIONS 034) ----
+# When series folded, the larger one's key and name survived: "The New Adventures of Sherlock Holmes" showed as
+# "The Newly Discovered Casebook of Sherlock Holmes", and "Adventures of Babe Ruth" as "Babe Ruth Collection". A
+# display name is the source's own words (025) and a series is the program it spells (026), so the surviving name is
+# the one program sources write, else the one that is not an upload's, else the larger's; the key follows it.
+UPLOAD_SHAPED = re.compile(
+    r"\b(?:collections?|singles|project$|reels?|misc(?:ellaneous)?|compilations?|complete|otr|"
+    r"(?:season|series|vol(?:ume)?|disc|cd|set|part)\.?\s*#?\d+|\d+\s*(?:eps?|episodes?|shows?)|"
+    r"single\s+episodes?|episodes)\b", re.I)
+INVERTED_ARTICLE = re.compile(r"^(.*),\s*(the|a|an)$", re.I)
+WIKI_QUALIFIER = re.compile(r"\s*\((?:[^()]*\b(?:radio|series|program|programme|show|serial|drama)\b[^()]*)\)$", re.I)
+SPONSOR_FRAME = GENERIC_WORDS | {"presents", "programs", "time"}
+
+
+def witness_tokens(name):
+    """A program source's name as `name_tokens`: "Fred Allen Show, The" and "The Fred Allen Show (radio program)" are
+    one name."""
+    n = (name or "").strip()
+    m = INVERTED_ARTICLE.match(n)
+    if m:
+        n = f"{m.group(2)} {m.group(1)}"
+    return name_tokens(WIKI_QUALIFIER.sub("", n))
+
+
+def upload_shaped(name):
+    """A series name an upload wrote, not a program's: a collection, singles, a project, a reel, a season or volume
+    number, an episode count ("Babe Ruth Collection", "Adventures of Babe Ruth 08 Eps", "GG Season 05")."""
+    return bool(UPLOAD_SHAPED.search(name or ""))
+
+
+def sponsor_only(name, sponsors):
+    """True when the name is a sponsor's name and frame words ("Chase and Sanborn Program") for one of `sponsors`
+    (the names the registry gives the show's sponsors)."""
+    core = [w for w in name_tokens(name) if w not in SPONSOR_FRAME]
+    return bool(core) and any(set(core) <= set(name_tokens(sp)) for sp in sponsors or ())
+
+
+def witness_text(name):
+    """A program source's name as it reads: "Fred Allen Show, The" is "The Fred Allen Show"."""
+    n = (name or "").strip()
+    m = INVERTED_ARTICLE.match(n)
+    return WIKI_QUALIFIER.sub("", f"{m.group(2).capitalize()} {m.group(1)}" if m else n).strip()
+
+
+def program_witnesses(con, texts=None):
+    """{series key: {source: {name tokens}}}: the program names OTRRpedia, RadioGOLDINdex and Wikipedia/Wikidata (one
+    encyclopedia, counted once) write for the program the build mapped to each series (research database tables
+    series_map, goldin_records, series_wikidata). Each is a source's own words for a program, never an uploader's.
+    `texts`, when given, receives {series key: {name tokens: the name as the source writes it}}."""
+    tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type IN ('table', 'view')")}
+    out = {}
+
+    def add(k, src, n):
+        t = witness_tokens(n)
+        if k and t:
+            out.setdefault(k, {}).setdefault(src, set()).add(t)
+            if texts is not None:
+                texts.setdefault(k, {}).setdefault(t, witness_text(n))
+    if "series_map" in tables:
+        for k, src, prog in con.execute("SELECT series_key, source, program FROM series_map WHERE program IS NOT NULL"):
+            add(k, src, prog)
+    if "goldin_records" in tables:
+        for k, prog in con.execute("SELECT DISTINCT series_key, program FROM goldin_records WHERE program IS NOT NULL"):
+            add(k, "goldin", prog)
+    if "series_wikidata" in tables:
+        for k, label, enwiki in con.execute("SELECT series_key, label, enwiki FROM series_wikidata"):
+            for n in (label, enwiki):
+                if n:
+                    add(k, "wiki", n)
+    return out
+
+
+def name_survivors(merged, series, witnesses, sponsors=None):
+    """Re-key folds so the surviving key is the one whose name is the program's own title (DECISIONS 034).
+    `merged`: {old key: surviving key} (chains resolved); `series`: key -> dict(name, eps, own[, bag]); `witnesses`:
+    program_witnesses(); `sponsors`: key -> sponsor names. In each group (a survivor and every key folded into it) the
+    name kept is, in order: the one the most program sources write (every source's names for every key in the group
+    are pooled: one show, one set of witnesses); then one that is not upload-shaped (a name `upload_shaped` reads, or a
+    sponsor's name when another is not); then a registry program's over an upload-named series'; then the larger; then
+    the key. A grab bag never survives. Returns ({old: new}, {former survivor: (new survivor, reason)}), reason
+    "witness", "not_upload", "registry" or "larger"."""
+    groups = {}
+    for old, new in sorted(merged.items()):
+        groups.setdefault(new, set()).add(old)
+    out, renamed = {}, {}
+    for tgt in sorted(groups):
+        members = sorted(groups[tgt] | {tgt})
+        pool, spons = {}, set()
+        for m in members:
+            for src, names in (witnesses.get(m) or {}).items():
+                pool.setdefault(src, set()).update(names)
+            spons |= set((sponsors or {}).get(m) or ())
+        cand = [m for m in members if m in series and not series[m].get("bag")] or [tgt]
+        name = lambda m: series[m]["name"] if m in series else m
+        score = {m: sum(1 for names in pool.values() if name_tokens(name(m)) in names) for m in cand}
+        sp = {m: sponsor_only(name(m), spons) for m in cand}
+        shaped = {m: m not in series or upload_shaped(name(m)) or (sp[m] and not all(sp.values())) for m in cand}
+        own = {m: m not in series or bool(series[m].get("own")) for m in cand}
+        eps = lambda m: series[m]["eps"] if m in series else 0
+        best = sorted(cand, key=lambda m: (-score[m], shaped[m], own[m], -eps(m), m))[0]
+        if tgt in cand and name_tokens(name(best)) == name_tokens(name(tgt)):
+            best = tgt   # the same name either way: the key is the name's, and the survivor keeps it
+        if best != tgt:
+            reason = ("witness" if score[best] > score.get(tgt, 0) else "not_upload" if shaped.get(tgt, True)
+                      else "registry" if own.get(tgt, True) else "larger")
+            renamed[tgt] = (best, reason)
+        for m in members:
+            if m != best:
+                out[m] = best
+    return out, renamed
+
+
+def witness_name(keys, series_name, texts):
+    """The name a series shown under an upload-shaped name ("Boris Karloff Collection") takes: the one program name
+    the sources write for it and every key folded into it (`texts`: program_witnesses' texts), when there is exactly
+    one that is not upload-shaped; else None, and the name stands."""
+    if not upload_shaped(series_name):
+        return None
+    names = {}
+    for k in keys:
+        for t, text in (texts.get(k) or {}).items():
+            if not upload_shaped(text):
+                names.setdefault(t, text)
+    return next(iter(names.values())) if len(names) == 1 else None

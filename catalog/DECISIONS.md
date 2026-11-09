@@ -1168,3 +1168,49 @@ never spells ("JrsSecret") stay (023); a production no record dates or labels (N
 from the record (001: not knowing is not a claim); "AFRS Thanksgiving Special" stays beside Command Performance's
 episode (031: an unclaimed copy never joins a clean one); speeches in other languages (027) and LibriVox readings in
 other languages (PD-dedicated, not another country's broadcast) stay.
+
+## 034 — A fold keeps the program's own title, and the key follows the name; a dry run checks only its own build
+*Date: 2026-11-09*
+
+Amends 028, 031 and 033's folds. Nothing here is a new policy: 025 (a display name is the source's own words) and 026
+(a series is the program it spells), applied to the one choice every fold makes.
+
+1. **The surviving name is the program's own title, by evidence** (`display_text.name_survivors`, run on every fold
+   path: `merge_into`, `same_program`, `same_show`, `dissolve`, after the folds are decided and before composed titles
+   are written). In each group (a survivor and every series folded into it) the name kept is, in order: the one the
+   most program sources write, OTRRpedia, RadioGOLDINdex, and Wikipedia/Wikidata counted as one encyclopedia
+   (`program_witnesses`: `series_map`, `goldin_records`, `series_wikidata`; the group's witnesses pooled, since it is
+   one show); then the one that is not upload-shaped (`upload_shaped`: Collection, Singles, a trailing Project, Reel,
+   Season/Volume/Part N, an episode count; or a sponsor's name when another is not); then a registry program's over an
+   upload-named series'; then the larger. The same name either way keeps the survivor's key ("Tarzan (all runs)"). The
+   key follows the chosen name; episode ids do not change. `display_text.json` lists each change under
+   `folded.named` with its reason.
+2. **A show still under an upload-shaped name takes the one program name its sources write**
+   (`display_text.witness_name`): exactly one name that is not upload-shaped, among the witnesses for it and every
+   series folded into it; two names, or none, and the name stands. Listed under `folded.titled`.
+3. **A dry run starts from an empty workdir** (`tools/catalog_dryrun.py`): a reused `--workdir` is emptied first, and
+   each step prints the build it checks (the restored Release, the projection's hash, write time, whether this run
+   wrote it, and its `generatedAt`). A reused workdir let the suites step (which runs before the build) read the
+   previous run's `out/publish`, so its guards checked stale data.
+
+**Why**: P-12 folded The New Adventures of Sherlock Holmes (the Rathbone/Bruce program's title, written by OTRRpedia,
+GOLDINdex and Wikipedia) into "The Newly Discovered Casebook of Sherlock Holmes" and Adventures of Babe Ruth into
+"Babe Ruth Collection" because the larger series' key and name survived. Size says which upload held more files, not
+what the program was called. A guard that checks stale artifacts proves nothing about the build it reports on.
+
+**How to apply**: a new fold path returns its {old: new} map and goes through `name_survivors`; never pick a survivor
+by size alone. A wrong name is fixed by the evidence (a witness, an upload-shaped word), never by a list of keys.
+Guard over the real build (`tests/test_p12_audit.py`, in the publish's contract step): no served series' name is
+upload-shaped where a program source names its show (seen failing on the unchanged tools' dry-run artifacts of
+catalog-2026-11-09: "Babe Ruth Collection" with "Adventures of Babe Ruth"/"Babe Ruth", "Boris Karloff Collection" with
+"Boris Karloff Show"). 032's grab-bag guard reads a file led by a program the build folded into a series as that
+series' own (`display_text.json` `merged`): renamed, the Sherlock group's "Sherlock Holmes ..." files had read as
+another program's and flagged it a bag. MEASURED on the catalog-2026-11-09 Release (PYTHONHASHSEED 0): series 4,954 and episodes
+75,057 unchanged, no episode id changed; names changed: The Newly Discovered Casebook of Sherlock Holmes (449 episodes)
+is The New Adventures of Sherlock Holmes, Babe Ruth Collection (19) is Adventures of Babe Ruth, Beyond Teaching
+Series (14) is Beyond Teaching, Commercials (126) is Radio Commercials (each by witness), Boris Karloff Collection (10)
+is Boris Karloff Show; 9 composed titles follow their series' new name. The Fred Allen Show, Edgar Bergen and Charlie
+McCarthy and Screen Guild Theater keep their names (the most witnessed). **Left**: the Casebook series is the build's
+home for OTRRpedia's umbrella program "Sherlock Holmes" (8101), so the New Adventures group still carries every
+Sherlock Holmes production it held (a 1934 Richard Gordon broadcast among them): which production an episode is
+belongs to the fold rules (031, 033), not to the name.
