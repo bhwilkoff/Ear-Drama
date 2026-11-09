@@ -335,17 +335,44 @@ const API = (() => {
       || (w.length >= 10 && /[A-Za-z]/.test(w) && /\d/.test(w))
       || (w.length >= 24 && /[A-Za-z]/.test(w) && (w.match(/[A-Z]/g) || []).length >= 4));
   }
-  /** What names a copy in the Recordings list: the catalog's clean `label` when it publishes one
-      (and it is not identifier-shaped), else its position. Never the identifier. */
-  function recordingLabel(rec, index) {
+  /** The catalog's clean `label` for a copy, or '' (none published, or identifier-shaped). */
+  function recordingNamed(rec) {
     const label = rec && typeof rec.label === 'string' ? rec.label.trim() : '';
-    return label && !looksLikeIdentifier(label) ? label : `Recording ${index + 1}`;
+    return label && !looksLikeIdentifier(label) ? label : '';
   }
-  /** The line under the name: "Best copy · 128 kbps · 29 min". `length` arrives formatted. */
-  function recordingFacts(rec, isBest, length, variantLines, partialLine) {
-    return [isBest ? 'Best copy' : null, rec.kbps ? `${rec.kbps} kbps` : null, length,
+  /** What names a copy in the Recordings list: the catalog's clean `label`, else the facts that tell
+      the copies apart ("128 kbps · 29 min"; `length` arrives formatted), else "Best copy" / "Another
+      copy". Never "Recording 2" and never the identifier. */
+  function recordingLabel(rec, index, length = '') {
+    const named = recordingNamed(rec);
+    if (named) return named;
+    const facts = [rec && rec.kbps ? `${rec.kbps} kbps` : null, length || null].filter(Boolean).join(' · ');
+    return facts || (index === 0 ? 'Best copy' : 'Another copy');
+  }
+  /** The line under the name: "Best copy · 128 kbps · 29 min". `length` arrives formatted. A copy whose
+      name already is its kbps and length (`named` false) does not say them twice. */
+  function recordingFacts(rec, isBest, length, variantLines, partialLine, named = true) {
+    return [isBest ? 'Best copy' : null, named && rec.kbps ? `${rec.kbps} kbps` : null, named ? length : null,
             (variantLines && variantLines[rec.variant]) || rec.variant || null, rec.partial ? partialLine : null]
       .filter(Boolean).join(' · ');
+  }
+
+  /** An http(s) address, or null: what the catalog gave is a link only when it is one. */
+  function safeLink(u) {
+    try { const x = new URL(u); return x.protocol === 'https:' || x.protocol === 'http:' ? x.href : null; } catch { return null; }
+  }
+  /** A show page's About: the paragraphs of `about.text` (split on blank lines), or none. */
+  function aboutParagraphs(about) {
+    return about && typeof about.text === 'string' ? about.text.split(/\n\s*\n/).map(t => t.trim()).filter(Boolean) : [];
+  }
+  /** The address "From Wikipedia" links to; no link, no About (attribution is the price of the text). */
+  function aboutLink(about) {
+    return aboutParagraphs(about).length ? safeLink(about && about.url) : null;
+  }
+  /** A show's facts line, the entry point for a reader who does not know it: years, network, the star,
+      the episode count. `dates` and `count` arrive formatted. */
+  function showFacts(s, dates, count) {
+    return [dates || 'Undated', s.networks, s.star ? `with ${s.star}` : null, count].filter(x => x && String(x).trim());
   }
 
   /** The facts of an episode's event line: its date (or Undated), network, sponsor, length, season,
@@ -1062,10 +1089,11 @@ const API = (() => {
     return Array.isArray(d.scripts) ? d.scripts : [];
   }
 
-  /** The rights line, worded by the projection (contract §5.5); never "public domain". */
+  /** The rights line, worded by the projection (contract §5.5); never "public domain". Unclaimed is
+      every recording's default, so it has no line (owner 2026-11-09); the other bases keep theirs. */
   async function rightsLine(rights, basis) {
+    if (rights === 'unclaimed') return null;
     const m = await manifest();
-    if (rights === 'unclaimed') return m.rightsLines.unclaimed;
     return m.rightsLines[basis] || null;
   }
 
@@ -1502,7 +1530,7 @@ const API = (() => {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,

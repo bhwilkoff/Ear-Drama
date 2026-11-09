@@ -288,7 +288,7 @@ function plane(manifestExtra, files = {}) {
     'drama1|1940-01-01': detail('drama1', 'D1', '1940-01-01'),
   };
   const data = {
-    'manifest.json': { shard: { mask: 0xfff }, fields: { detail: DETAIL, recording: ['url'] }, genreNames: {}, ...manifestExtra },
+    'manifest.json': { shard: { mask: 0xfff }, rightsLines: { archive: 'Rights listed by the archive.', unclaimed: 'No rights claim known.' }, fields: { detail: DETAIL, recording: ['url'] }, genreNames: {}, ...manifestExtra },
     'index/series.json': { fields: ['key', 'name'], rows: [['comedy1', 'Comedy One'], ['comedy2', 'Comedy Two'], ['drama1', 'Drama One']] },
     'index/days/05-25.json': { fields: ['id', 'date', 'title', 'series', 'length', 'url', 'seriesName'], rows: [
       ['b|1950-05-25', '1950-05-25', 'B', 'b', 1, 'u', 'Bee'], ['a|1943-05-25', '1943-05-25', 'A', 'a', 1, 'u', 'Ay']] },
@@ -457,16 +457,16 @@ test('episodeDetail forwards a moved id (contract §3.5); a tombstoned or unknow
   const real = globalThis.fetch;
   const files = {
     // getJSON keeps the first manifest a page reads, so this one carries the person test's fields too.
-    'manifest.json': { shard: { mask: 0xfff }, fields: { detail: ['series', 'date', 'title', 'recordings', 'credits'],
-      recording: ['url'], credit: ['name'], person: ['name', 'birth', 'death', 'art', 'credits'],
+    'manifest.json': { shard: { mask: 0xfff }, rightsLines: { archive: 'Rights listed by the archive.' }, fields: { detail: ['series', 'date', 'title', 'recordings', 'credits', 'scriptUrl', 'scriptSource'],
+      recording: ['url', 'label'], credit: ['name'], person: ['name', 'birth', 'death', 'art', 'credits'],
       personCredit: ['id', 'date', 'title', 'num', 'series', 'role', 'character'],
       people: ['id', 'name', 'episodes', 'art'] } },
     'index/aliases.json': { 'jb|1921-03-11': 'jb|1943-11-21' },
     'index/tombstones.json': ['jb|gone'],
     'index/series-aliases.json': { jbp: 'jb' },
     'index/series-tombstones.json': ['folkweave'],
-    [`episodes/${API.shardOf('jb|1943-11-21')}.json`]: { 'jb|1943-11-21': ['jb', '1943-11-21', 'Show', [['u']], []] },
-    'series/jb.json': { key: 'jb', name: 'The Jack Benny Program', fields: ['id'], episodes: [['jb|1943-11-21']] },
+    [`episodes/${API.shardOf('jb|1943-11-21')}.json`]: { 'jb|1943-11-21': ['jb', '1943-11-21', 'Show', [['u', 'Old Time Radio Researchers']], [], 'https://example.org/script', 'Generic Radio Workshop'] },
+    'series/jb.json': { key: 'jb', name: 'The Jack Benny Program', fields: ['id'], episodes: [['jb|1943-11-21']], about: { text: 'A.\n\nB.', source: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/X' } },
   };
   let reads = 0;
   globalThis.fetch = async (url) => {
@@ -478,6 +478,11 @@ test('episodeDetail forwards a moved id (contract §3.5); a tombstoned or unknow
   try {
     const d = await API.episodeDetail('jb|1921-03-11');
     assertEq(d && d.id, 'jb|1943-11-21', 'the old id opens the episode it now is, under its new id');
+    assertEq(d.scriptUrl, 'https://example.org/script', 'the optional scriptUrl field decodes');
+    assertEq(d.scriptSource, 'Generic Radio Workshop', 'and its source');
+    assertEq(d.recordings[0].label, 'Old Time Radio Researchers', 'a published copy label decodes');
+    assertEq(await API.rightsLine('unclaimed', null), null, 'unclaimed has no line (owner 2026-11-09)');
+    assertEq(await API.rightsLine('other', 'archive'), 'Rights listed by the archive.', 'control: a stated basis keeps its line');
     assertEq(await API.episodeDetail('jb|gone'), null, 'a tombstoned id is not served');
     assertEq(await API.episodeDetail('jb|1999-01-01'), null, 'control: an unknown id is not served either');
     const f = await API.forwarding();
@@ -485,6 +490,8 @@ test('episodeDetail forwards a moved id (contract §3.5); a tombstoned or unknow
     assertEq(reads, 4, 'aliases and tombstones, episode and series, are read once a page');
     assertEq((await API.seriesPage('jbp')).key, 'jb', 'a moved series key opens the series it now is, under its new key');
     assertEq((await API.seriesPage('jb')).episodes[0].series, 'jb', 'the page itself still opens');
+    assertEq(API.aboutParagraphs((await API.seriesPage('jb')).about).length, 2, 'the series page carries its about through');
+    assertEq(await API.episodeDetail('jb|1943-11-21').then(x => x.recordings.length), 1);
     let err = null;
     try { await API.seriesPage('folkweave'); } catch (e) { err = e; }
     assertEq(err && err.kind, 'missing', 'control: a tombstoned series key is not served');
@@ -693,9 +700,30 @@ test('recordings: a copy is named from data or by position, never by an archive.
     assert(!API.looksLikeIdentifier(drawn), `identifier on screen: ${drawn}`);
     assert(!drawn.includes(id), `identifier on screen: ${drawn}`);
   });
-  assertEq(API.recordingLabel({ archiveId: 'x' }, 0), 'Recording 1', 'no label: by position');
+  assertEq(API.recordingLabel({ archiveId: 'x' }, 0), 'Best copy', 'no label and no facts: never "Recording N"');
+  assertEq(API.recordingLabel({ archiveId: 'x' }, 1), 'Another copy');
+  assertEq(API.recordingLabel({ kbps: 64 }, 1, '29 min'), '64 kbps \u00b7 29 min', 'no label: the copy\'s distinguishing facts');
+  for (let i = 0; i < 4; i++) assert(!/Recording \d/.test(API.recordingLabel({ kbps: i ? 128 : null }, i, i > 1 ? '30 min' : '')), `Recording N at ${i}`);
+  assertEq(API.recordingFacts({ kbps: 64 }, false, '29 min', {}, '', false), '', 'a fact-named copy does not say its facts twice');
   assertEq(API.recordingLabel({ label: 'Old Time Radio Researchers' }, 1), 'Old Time Radio Researchers', 'a clean label wins');
   assertEq(API.recordingFacts({ kbps: 128 }, true, '30 min', {}, ''), 'Best copy · 128 kbps · 30 min');
+});
+
+test('about: paragraphs split on blank lines; no source link means no About; links are http(s) only', () => {
+  const about = { text: 'One.\n\nTwo.\n\n\n  Three. ', source: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Suspense_(radio_drama)', license: 'CC BY-SA 4.0' };
+  assertEq(API.aboutParagraphs(about).length, 3);
+  assertEq(API.aboutLink(about), about.url);
+  assertEq(API.aboutLink({ ...about, url: 'javascript:alert(1)' }), null, 'a script URL is no link');
+  assertEq(API.aboutLink({ text: '', url: about.url }), null, 'no text, no About');
+  assertEq(API.aboutParagraphs(undefined).length, 0);
+  assertEq(API.safeLink('https://archive.org/details/x'), 'https://archive.org/details/x');
+  assertEq(API.safeLink('javascript:1'), null);
+  assertEq(API.safeLink(null), null);
+});
+
+test('show facts: years, network, star, count; blanks drop out', () => {
+  assertEq(API.showFacts({ networks: 'CBS', star: 'William Conrad' }, '1952\u20131961', '544 episodes').join('|'), '1952\u20131961|CBS|with William Conrad|544 episodes');
+  assertEq(API.showFacts({}, '', '3 episodes').join('|'), 'Undated|3 episodes');
 });
 
 // --- RUNNER ----------------------------------------------------------

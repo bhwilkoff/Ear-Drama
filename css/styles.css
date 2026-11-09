@@ -535,7 +535,8 @@ a.g-field-cell:hover { background: var(--color-surface-alt); }
 .g-kicker-link { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .g-kicker-link:hover { text-decoration-thickness: 2px; }
 .g-head-link { text-decoration: none; }
-.g-head-link:hover .g-head-name { text-decoration: underline; }
+.g-head-link .g-head-name { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.g-head-link:hover .g-head-name { text-decoration-thickness: 2px; }
 .g-head-link:hover { filter: brightness(1.06); }
 
 /* Series and episode pages (WEB-DESIGN 6.4d): one button row that never wraps apart. Play and Follow take
@@ -1221,3 +1222,12 @@ html.tv .np-together { display: none; }
 
 .library-account { margin-top: var(--space-6); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
 .library-account .account-row { margin: 0 0 var(--space-1); }
+
+/* A show's About: four lines until opened; the attribution under it is the license's price. */
+.about { margin: var(--space-4) 0; max-width: 68ch; }
+.about-text p { margin: 0 0 var(--space-3); }
+.about-text[data-clamped="true"] { max-height: calc(4 * 1.45em); overflow: hidden; }
+.about-text[data-clamped="true"] p + p { margin-top: 0; }
+.about-more { padding-inline: 0; min-height: 44px; }
+.about-source { margin: 0; color: var(--color-text-muted); }
+.ep-script { margin: var(--space-2) 0; }
