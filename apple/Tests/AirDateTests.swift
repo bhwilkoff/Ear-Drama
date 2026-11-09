@@ -59,8 +59,11 @@ struct AirDateTests {
             #expect(!RecordingLabel.looksLikeIdentifier(drawn), "\(drawn)")
             #expect(!drawn.contains(id))
         }
-        #expect(RecordingLabel.title(copy(0, id: "x"), position: 1) == "Recording 1")
-        #expect(RecordingLabel.facts(copy(0, id: "x"), isBest: true) == "Best copy \u{00B7} 128 kbps \u{00B7} 29:50")
+        // Unlabeled, a copy is named by its facts, never "Recording 1" (owner, 2026-11-09).
+        #expect(RecordingLabel.title(copy(0, id: "x"), position: 1) == "128 kbps \u{00B7} 29:50")
+        #expect(RecordingLabel.facts(copy(0, id: "x"), isBest: true) == "Best copy")
+        #expect(RecordingLabel.facts(copy(0, id: "x", label: "Old Time Radio Researchers"), isBest: true)
+                == "Best copy \u{00B7} 128 kbps \u{00B7} 29:50")
         #expect(RecordingLabel.title(copy(1, id: "x", label: "Old Time Radio Researchers"), position: 2) == "Old Time Radio Researchers")
     }
 }

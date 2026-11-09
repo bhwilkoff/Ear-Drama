@@ -105,10 +105,21 @@ struct TransportBar_macOS: View {
                         Text(item.episode.displayTitle)
                             .font(TypeRamp.bodyStrong)
                             .lineLimit(1)
-                        EventLine(facts: [item.episode.seriesName, AirDate.display(item.episode.airDate)])
+                        // The show is a link to its page (owner, 2026-11-09).
+                        HStack(spacing: 0) {
+                            Button { store.push(Route.series(item.episode.seriesKey)) } label: {
+                                Text(verbatim: item.episode.seriesName)
+                            }
+                            .buttonStyle(.link)
+                            .help("Open \(item.episode.seriesName)")
+                            .accessibilityLabel("Show: \(item.episode.seriesName)")
+                            Text(verbatim: " \u{00B7} " + AirDate.display(item.episode.airDate))
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
+                        .font(TypeRamp.caption)
+                        .lineLimit(1)
                     }
                     .frame(minWidth: 160, maxWidth: 280, alignment: .leading)
-                    .accessibilityElement(children: .combine)
                 }
                 TransportControls()
                     .buttonStyle(.borderless)

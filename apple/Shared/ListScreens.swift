@@ -777,6 +777,10 @@ struct SeriesScreen: View {
     private func wide(_ page: SeriesPage) -> some View {
         WidePage {
             head(page, actions: AnyView(actions(page)))
+            if let about = page.about {
+                SeriesAboutBlock(about: about)
+                    .frame(maxWidth: 720, alignment: .leading)
+            }
             ForEach(page.seasons) { season in
                 WideSection(title: season.season ?? "Undated") {
                     ForEach(season.episodes) { episode in
@@ -813,6 +817,12 @@ struct SeriesScreen: View {
                     .listRowInsets(EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
+                if let about = page.about {
+                    SeriesAboutBlock(about: about)
+                        .listRowInsets(EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
             }
             ForEach(page.seasons) { season in
                 Section {
@@ -938,6 +948,12 @@ struct EpisodeScreen: View {
                 if let id = detail.script, let script = plays.script(id) {
                     StartEarDramaButton(script: script)
                         .pageAction()
+                        .listRowInsets(rowInsets)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
+                if let access = detail.scriptAccess {
+                    ReadScriptControl(access: access)
                         .listRowInsets(rowInsets)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
@@ -1193,9 +1209,12 @@ struct VersionLabel: View {
             Text(verbatim: RecordingLabel.title(recording, position: position))
                 .font(TypeRamp.body)
                 .foregroundStyle(Color.brandText)
-            Text(verbatim: RecordingLabel.facts(recording, isBest: isDefault))
-                .font(TypeRamp.caption)
-                .foregroundStyle(Color.brandTextMuted)
+            let facts = RecordingLabel.facts(recording, isBest: isDefault)
+            if !facts.isEmpty {
+                Text(verbatim: facts)
+                    .font(TypeRamp.caption)
+                    .foregroundStyle(Color.brandTextMuted)
+            }
         }
     }
 }

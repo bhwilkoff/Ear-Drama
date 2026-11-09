@@ -276,6 +276,8 @@ nonisolated struct EpisodeDetail: Hashable, Sendable {
     var star: String? = nil
     /// A castable script this episode can be recorded from (contract §3.1), or nil.
     var script: String? = nil
+    /// How this broadcast's script can be read (`episodes.script_id`, `script_url`), or nil.
+    var scriptAccess: ScriptAccess? = nil
     var defaultRecording: Recording? { recordings.first }
     /// The credited star with a portrait, drawn beside the heading.
     var starFace: Face? {
@@ -309,7 +311,85 @@ nonisolated struct SeasonGroup: Hashable, Sendable, Identifiable {
 nonisolated struct SeriesPage: Hashable, Sendable {
     let series: SeriesRow
     let seasons: [SeasonGroup]
+    /// What the show is about, in its source's words (`series.about_text`), or nil: nothing is written in its place.
+    var about: SeriesAbout? = nil
     var episodes: [EpisodeRow] { seasons.flatMap(\.episodes) }
+}
+
+/// A page somewhere else that a screen names and links: its address and whose it is.
+nonisolated struct SourceLink: Hashable, Sendable {
+    let url: URL
+    let source: String?
+
+    /// A link only to a web page; anything else is no link.
+    init?(url: String?, source: String?) {
+        guard let raw = url?.trimmingCharacters(in: .whitespacesAndNewlines), let url = URL(string: raw),
+              let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http", url.host() != nil
+        else { return nil }
+        self.url = url
+        let name = source?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.source = (name?.isEmpty ?? true) ? nil : name
+    }
+
+    /// Whose page it is: the published name, else the site's own address.
+    var sourceName: String {
+        if let source { return source }
+        guard let host = url.host() else { return url.absoluteString }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
+}
+
+/// The one seam behind "Read the script" (owner, 2026-11-09: a reader that follows the voices is
+/// coming). Resolved from the episode's columns; a screen asks only `reading`, so when hosted, timed
+/// text arrives the same control opens the in-app reader, from Detail or Now Playing, and no screen
+/// changes. Today the only way to read is the source's own page.
+nonisolated struct ScriptAccess: Hashable, Sendable {
+    /// The script's stable id (`episodes.script_id`, `grw:<id>`, the castable plays' scheme), or nil.
+    let scriptID: String?
+    /// The script's page on the site that holds it (`script_url`, `script_source`), or nil.
+    let link: SourceLink?
+
+    enum Reading: Hashable, Sendable {
+        /// The source's page, outside the app.
+        case external(SourceLink)
+    }
+
+    /// Nil when there is nothing to read: neither column resolves to a way in.
+    init?(scriptID: String?, url: String?, source: String?) {
+        let id = scriptID?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.scriptID = (id?.isEmpty ?? true) ? nil : id
+        self.link = SourceLink(url: url, source: source)
+        guard reading != nil else { return nil }
+    }
+
+    /// How the control opens the script.
+    var reading: Reading? { link.map(Reading.external) }
+}
+
+/// A show's description as its source published it (`series.about_text`, `about_source`, `about_url`).
+/// Wikipedia's text is CC BY-SA 4.0, so it is never drawn without its source line.
+nonisolated struct SeriesAbout: Hashable, Sendable {
+    let paragraphs: [String]
+    let source: String?
+    let link: SourceLink?
+
+    init?(text: String?, source: String?, url: String?) {
+        let paragraphs = (text ?? "").components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard !paragraphs.isEmpty else { return nil }
+        self.paragraphs = paragraphs
+        let name = source?.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.source = (name?.isEmpty ?? true) ? nil : name
+        self.link = SourceLink(url: url, source: self.source)
+    }
+
+    var text: String { paragraphs.joined(separator: "\n\n") }
+
+    /// "From Wikipedia", the attribution the license asks for; nil when the catalog names no source.
+    var sourceLine: String? {
+        (source ?? link?.sourceName).map { "From \($0)" }
+    }
 }
 
 nonisolated struct SearchResults: Hashable, Sendable {
@@ -521,6 +601,12 @@ nonisolated enum RightsDisplay {
         default: return nil
         }
     }
+
+    /// The line a screen draws. Unclaimed is every show's default, so saying it on each episode says
+    /// nothing (owner, 2026-11-09); the take-down page says it once. The published words stay as they are.
+    static func shown(rights: String, basis: String?, lines: [String: String] = contract) -> String? {
+        rights == "unclaimed" ? nil : line(rights: rights, basis: basis, lines: lines)
+    }
 }
 
 /// The eight genres' names (contract §5.5). The pipeline decides the genre
@@ -586,22 +672,40 @@ nonisolated enum AirDate {
 
 /// A copy of a broadcast is named from data, never from the archive.org upload
 /// text (AGENTS.md: raw upload text never shows). `label` is the catalog's clean
-/// collection or uploader name when it publishes one; otherwise the copy is
-/// "Recording 2" by position. The identifier stays in the link target only.
+/// collection or uploader name when it publishes one; otherwise the copy is named
+/// by what tells it apart, its notes, length and bit rate, never "Recording 2"
+/// (owner, 2026-11-09). The identifier stays in the link target only.
 nonisolated enum RecordingLabel {
     static func title(_ recording: Recording, position: Int) -> String {
-        if let label = recording.label?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !label.isEmpty, !looksLikeIdentifier(label) { return label }
-        return "Recording \(position)"
+        if let label = cleanLabel(recording) { return label }
+        let parts = distinguishing(recording)
+        if !parts.isEmpty { return parts.joined(separator: separator) }
+        return recording.rank == 0 ? "Best copy" : "Another copy"
     }
 
-    /// "Best copy · 128 kbps · 29:50" under the title.
+    /// "Best copy · 128 kbps · 29:50" under a named copy; under one its facts name, only what the
+    /// title does not already say.
     static func facts(_ recording: Recording, isBest: Bool) -> String {
+        let named = cleanLabel(recording) != nil
+        var parts = named ? distinguishing(recording) : []
+        if isBest, named || !distinguishing(recording).isEmpty { parts.insert("Best copy", at: 0) }
+        return parts.joined(separator: separator)
+    }
+
+    private static let separator = " \u{00B7} "
+
+    private static func cleanLabel(_ recording: Recording) -> String? {
+        guard let label = recording.label?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !label.isEmpty, !looksLikeIdentifier(label) else { return nil }
+        return label
+    }
+
+    /// What tells one copy from another: its notes, then its bit rate and length, in the facts line's order.
+    private static func distinguishing(_ recording: Recording) -> [String] {
         var parts = recording.notes
-        if isBest { parts.insert("Best copy", at: 0) }
         if let kbps = recording.kbps { parts.append("\(kbps) kbps") }
         if let length = recording.lengthSeconds { parts.append(EpisodeRow.clock(length)) }
-        return parts.joined(separator: " \u{00B7} ")
+        return parts
     }
 
     /// An archive.org identifier: underscores, or a long unspaced run of letters and numerals.

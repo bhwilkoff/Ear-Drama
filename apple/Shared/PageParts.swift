@@ -13,8 +13,11 @@ enum SeriesHead {
         return parts.isEmpty ? nil : parts.joined(separator: " \u{00B7} ")
     }
 
+    /// The entry point a stranger reads first: when it ran, how much survives, and whose voice leads it
+    /// (`series.star`, the face the catalog chose; never a name typed here).
     static func facts(_ series: SeriesRow) -> [String?] {
-        [series.yearSpan ?? "Undated", series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes"]
+        [series.yearSpan ?? "Undated", series.episodeCount == 1 ? "1 episode" : "\(series.episodeCount.formatted()) episodes",
+         series.face.map { "With \($0.name)" }]
     }
 }
 

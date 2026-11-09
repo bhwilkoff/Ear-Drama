@@ -538,6 +538,9 @@ private struct SeriesScreen_tvOS: View {
                             .accessibilityLabel("Browse \(GenreDisplay.name(genre))")
                     }
                 }
+                if let about = page.about {
+                    SeriesAboutBlock_tvOS(about: about, title: series.name)
+                }
                 ForEach(page.seasons) { season in
                     TVShelf(title: season.season ?? "Undated", lazy: true) {
                         Text(verbatim: countText(season.episodes.count, "episode", "episodes")).foregroundStyle(Color.brandTextMuted)
@@ -685,7 +688,6 @@ private struct EpisodeScreen_tvOS: View {
                     }
                     .focused($playFocused)
                     .disabled(detail.recordings.isEmpty)
-                    NavigationLink(value: Route.series(episode.seriesKey)) { Text("Show") }
                     QueueToggleButton(episodeID: episode.id)
                     if episode.transcriptURL != nil {
                         Button {
@@ -698,6 +700,18 @@ private struct EpisodeScreen_tvOS: View {
                 }
 
                 if !catalog.isOnline { OfflineNotice() }
+
+                // The show this episode is one of (owner, 2026-11-09): its picture and name, a card
+                // that opens its page, the first stop under the action row.
+                NavigationLink(value: Route.series(episode.seriesKey)) {
+                    TVWideCard(art: show?.windowArt ?? episode.seriesWindowArt, name: episode.seriesName, genre: genre,
+                               top: show.flatMap(SeriesHead.kicker), title: episode.seriesName,
+                               sub: show.map { Grammar.eventParts(SeriesHead.facts($0)).joined(separator: " ") })
+                }
+                .buttonStyle(.card)
+                .accessibilityLabel("Show: \(episode.seriesName)")
+                .accessibilityIdentifier("episode-show-card")
+                .focusSection()
 
                 if !onAir.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.s3) {
@@ -780,10 +794,13 @@ private struct VersionsSection_tvOS: View {
                             .font(TypeRamp.bodyStrong)
                             .lineLimit(2)
                         Spacer(minLength: 0)
-                        Text(verbatim: RecordingLabel.facts(recording, isBest: index == 0))
-                            .font(TypeRamp.caption)
-                            .foregroundStyle(Color.brandTextMuted)
-                            .lineLimit(2)
+                        let facts = RecordingLabel.facts(recording, isBest: index == 0)
+                        if !facts.isEmpty {
+                            Text(verbatim: facts)
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                                .lineLimit(2)
+                        }
                     }
                     .multilineTextAlignment(.leading)
                     .padding(Spacing.s4)

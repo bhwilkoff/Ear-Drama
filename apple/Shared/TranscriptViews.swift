@@ -69,7 +69,8 @@ private struct TranscriptText: View {
     }
 }
 
-private struct TranscriptParagraph_tvOS: View {
+/// One paragraph of a ten-foot reader (the transcript, a show's About): a focus stop, bright when focused.
+struct TranscriptParagraph_tvOS: View {
     let text: String
     @FocusState private var focused: Bool
 

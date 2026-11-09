@@ -293,8 +293,15 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   primary action (the web's verb and words; a plus, then a checkmark once
   followed), with the selection haptic on change. It writes
   `FollowedSeries`, the store the account sync carries; an unfollow is a
-  marker. It shows the series' one meta line, then its
-  episodes oldest first in sections by broadcast season, "Undated" last.
+  marker. It shows the series' one meta line (the years, the episode count, and
+  "With" the show's star from `series.star`: the entry point a stranger reads first),
+  then **About** when the catalog publishes `series.about_text` (owner, 2026-11-09:
+  "Most people will have no idea what the shows are about"): the text in its
+  paragraphs, four lines until More opens it in place, then the source line ("From
+  Wikipedia"), which opens `about_url` in Safari over the app (`SFSafariViewController`;
+  the Mac: the default browser). The source line is required (CC BY-SA 4.0) and the
+  text is never drawn without it. No text, no About: nothing is written in its place.
+  Then its episodes oldest first in sections by broadcast season, "Undated" last.
   The toolbar's Download menu (iPhone, iPad, Mac; never the TV) offers
   Download All Episodes, then one Download item per season when there
   is more than one, then Remove Downloads once any of the series is on
@@ -303,13 +310,21 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   52 episodes?", "About 640 MB."); an item whose episodes are all
   downloaded or downloading is disabled. Removing a series' downloads
   asks first (R17, the car and bedtime: a whole run before the trip).
-- **§4.4 Episode detail** is a `List`: the series (a link), the title,
+- **§4.4 Episode detail** is a `List`: the series (the head board with its
+  picture and name, a link whose name ends in a chevron so it reads as one; owner
+  2026-11-09: episodes felt "totally disconnected from any recurring show"), the title,
   one facts line (date, network, sponsor, length), Play or Pause, the
   download control, "Start an ear drama" when the episode's `script`
-  names a bundled script (Decision 068), "Automatic transcript" when the
+  names a bundled script (Decision 068), "Read the script" with the source named
+  under it when the catalog links one (`episodes.script_url`; Safari over the app; it
+  opens through `ScriptAccess.reading`, the one seam the coming reader that follows the
+  voices will take over), "Automatic transcript" when the
   gate passed, the
-  credits grouped by role (each name a push to its person, §4.13), Versions when there is more than one copy,
-  and the rights line. A part with no data is absent, never a
+  credits grouped by role (each name a push to its person, §4.13), Versions when there is more than one copy
+  (each named by `recordings.label`, else by what tells it apart, bit rate and length,
+  never "Recording 2"),
+  and the rights line, except unclaimed, which is every show's default and is not
+  drawn (owner, 2026-11-09). A part with no data is absent, never a
   placeholder. Play starts the audio in place; it never opens the
   player (§11.1). The toolbar carries Share: the system share sheet
   (`ShareLink`) with the episode's https twin,

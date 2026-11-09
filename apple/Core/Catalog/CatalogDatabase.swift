@@ -28,6 +28,10 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
     private let hasLoudness: Bool
     private let hasTranscript: Bool
     private let hasRecordingLabel: Bool
+    /// `series.about_text` and its source columns, or nil: a catalog without them shows no About.
+    private let aboutColumnsSQL: String?
+    /// `episodes.script_url`, `script_source` and `script_id`, each NULL in a catalog without it.
+    private let scriptLinkColumnsSQL: String
     /// The index carries the transcript column (contract §3.4), so a match can
     /// be told apart as transcript-only.
     private let ftsHasTranscript: Bool
@@ -66,6 +70,14 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         self.handle = h
         self.onCorruption = onCorruption
         hasRecordingLabel = Self.columnExists(h, table: "recordings", column: "label")
+        let aboutSource = Self.columnExists(h, table: "series", column: "about_source") ? "about_source" : "NULL"
+        let aboutURL = Self.columnExists(h, table: "series", column: "about_url") ? "about_url" : "NULL"
+        aboutColumnsSQL = Self.columnExists(h, table: "series", column: "about_text")
+            ? "about_text, \(aboutSource), \(aboutURL)" : nil
+        let scriptSource = Self.columnExists(h, table: "episodes", column: "script_source") ? "e.script_source" : "NULL"
+        let scriptURL = Self.columnExists(h, table: "episodes", column: "script_url") ? "e.script_url" : "NULL"
+        let scriptID = Self.columnExists(h, table: "episodes", column: "script_id") ? "e.script_id" : "NULL"
+        scriptLinkColumnsSQL = "\(scriptURL), \(scriptSource), \(scriptID)"
         hasSponsor = Self.columnExists(h, table: "episodes", column: "sponsor")
         hasNoRecommend = Self.columnExists(h, table: "episodes", column: "no_recommend")
         hasSortName = Self.columnExists(h, table: "series", column: "sort_name")
@@ -352,7 +364,12 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
             current.append(episode)
         }
         if !current.isEmpty { groups.append(SeasonGroup(season: currentSeason ?? nil, episodes: current)) }
-        return SeriesPage(series: series, seasons: groups)
+        let about = aboutColumnsSQL.flatMap { columns in
+            rows("SELECT \(columns) FROM series WHERE key = ?", [.text(series.key)]) {
+                SeriesAbout(text: $0.text(0), source: $0.text(1), url: $0.text(2))
+            }.first ?? nil
+        }
+        return SeriesPage(series: series, seasons: groups, about: about)
     }
 
     /// Resolves a forwarded id (§3.5) so a saved position or link never breaks.
@@ -394,16 +411,17 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
         let scriptColumn = hasScript ? "e.script" : "NULL"
         let found = rows("""
             SELECT \(Self.episodeColumns), \(sponsorColumn), \(loudnessColumns), \(transcriptColumn), \(starColumn),
-            \(scriptColumn)
+            \(scriptColumn), \(scriptLinkColumnsSQL)
             FROM episodes e JOIN series s ON s.key = e.series_key WHERE e.id = ?
-            """, [.text(id)]) { row -> (EpisodeRow, String?, String?, String?) in
+            """, [.text(id)]) { row -> (EpisodeRow, String?, String?, String?, ScriptAccess?) in
             var episode = decodeEpisode(row)
             episode.loudnessI = row.double(12)
             episode.loudnessTP = row.double(13)
             episode.transcriptURL = row.text(14).flatMap { URL(string: $0) }
-            return (episode, row.text(11), row.text(15), row.text(16))
+            let access = ScriptAccess(scriptID: row.text(19), url: row.text(17), source: row.text(18))
+            return (episode, row.text(11), row.text(15), row.text(16), access)
         }.first
-        guard let (episode, sponsor, star, script) = found else { return nil }
+        guard let (episode, sponsor, star, script, scriptAccess) = found else { return nil }
         let artColumns = artColumnsSQL
         let artJoin = hasArt ? "LEFT JOIN art a ON a.id = p.portrait" : ""
         let credits = rows("""
@@ -424,9 +442,9 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                              kbps: row.int(4), lengthSeconds: row.double(5), variant: row.text(6),
                              partial: (row.int(7) ?? 0) != 0, label: row.text(8))
         }.compactMap { $0 }
-        let rightsLine = RightsDisplay.line(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
+        let rightsLine = RightsDisplay.shown(rights: episode.rights, basis: episode.rightsBasis, lines: rightsLines)
         return EpisodeDetail(episode: episode, sponsor: sponsor, credits: credits, recordings: recordings,
-                             rightsLine: rightsLine, star: star, script: script)
+                             rightsLine: rightsLine, star: star, script: script, scriptAccess: scriptAccess)
     }
 
     /// The story arc an episode is a part of (contract §3.3, Decision 067), or
