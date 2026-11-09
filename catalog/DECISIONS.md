@@ -1354,3 +1354,74 @@ a production's rights verdict to its cast-placed siblings is the split's next pa
 dates a same-program witness puts on another night, the syndicated transcriptions (The Haunting Hour 3, The Sealed Book
 2) aired on different nights by station; two Casebook notes are a day or a digit off (09-02-45 for 09-03, 02-17 for
 12-17): a note a witness contradicts is 016's case and the next pass for this reading.
+
+## 037 — A split never leaves a run's own broadcasts in a second series of its name; a slipped date is not shown; two-digit years by the parser's own order (P-14)
+*Date: 2026-11-09*
+
+What 035 and 036 left in the served catalog, each a case of a rule we had: 035 (a series is one production; a
+silence separates productions), 016 (a fact the source contradicts itself on is not shown), 006 (post-1972
+productions are hidden), 025 (no raw upload text; a title or date only from the record) and the parser's own date
+conventions. The app has not launched, so nothing here forwards (032).
+
+1. **A production reaches a silence** (`display_text.productions`). A dated broadcast outside every production's
+   span, less than two years (SILENCE_DAYS) from exactly one, is that production's; a cast-placed broadcast a silence
+   from its production's broadcasts is placed as any date is (035: a stray date is no block). The remainder had held
+   "Tarzan" 1951-01-04 (a week before the run's first recording) and the 1953 broadcasts OTRR's log re-dated, so it
+   read as a second "Tarzan" of the same years; the Stanley "Sherlock Holmes" showed 1933-1949 from one stray credit.
+2. **Two upload-named series of one name with no date between them are one series** (`display_text.merge_into`):
+   nothing a list shows could tell them apart ("Noël Coward Hay Fever" twice, "The Best of Jack Benny" and its
+   "Side"). Dated series of one name stay apart; their years tell them apart in every list (web `showTile`/`seriesRow`,
+   Apple `ShowTile`/`SeriesRowLabel`, Android `ShowTile`/`SeriesListItem` all show the year span or "Undated" and the
+   count), so no client change and no new field.
+3. **A date its own number contradicts is not shown** (016; `build_db.number_contradicted_dates`, after the logs). A
+   file's own number and date, when the numbers within five of it that files carry with one date hold a chain in
+   order (one broadcast a day to one a week, 14 days slack) of four or more on both sides, its date falls outside
+   the chain's nearest dates, the same date with one digit of its year changed falls inside, a log does not confirm
+   it, and no other broadcast of the series sits within 60 days but other slips: "Chandu the Magician 135 48-01-03"
+   between #134 1948-12-30 and #138 1949-01-05. A run numbered again (Chandu's 1932 serial, Superman's 1949 half
+   hours) keeps its dates. The number stays and names the broadcast.
+4. **A two-digit year in this century** (`otr_parse.this_century`, `build_db` pass 1): the one date group of a name,
+   read in the parser's own order (YY-MM-DD, else MM-DD-YY), is this century's when that 20YY reading is on or before
+   the item's upload and no 19YY reading in the first order exists: "BB_06-17-07" (WAMU's The Big Broadcast,
+   2007-06-17, was 73 undated one-episode series), "The '70s- The Hard Years 03-11-28" (2003-11-28, was 1928-03-11).
+   A name with a four-digit year, or a group beside other digits ("1932-06-16-04", "TARZ.1932.09.16_03"), is never
+   re-read. A 20YY date is post-1972 (006). Measured: every one of the 27 names in the corpus whose 1920-31 reading
+   had a 20YY alternative is a modern upload (the Blues series of 2003, CBC's 2001 Mystery Project, Fuse! 2006).
+5. **A "._" file is a macOS resource fork** (`build_db.pick_files`): never audio, never a copy.
+6. **Parser** (F1g): "Captain Midnight #167 39-10-17" (a "#" before the number) and "Chandu the Magician 113
+   48-12-02LUPU ARRIVES" (a capitalized title glued to the date) are dated.
+
+**Why**: the owner saw "Tarzan" twice over 1951-53, "Chandu the Magician" with 13 episodes over two days and "Lights
+Out" with 39 on 1947-07-16. Measured: no series serves more than 2 broadcasts on one night (525 nights hold 2: serial
+doubles and two-part nights), so nothing was piled. Those series were 035's remainders: one or two dated broadcasts
+plus undated ones (Lights Out 1 dated and 38 undated; Chandu's two dates the slipped year above), and the first and
+last dates of a mostly undated series read as a pile. The remainder's dates came from broadcasts the split did not
+reach and from a pen slip.
+
+**How to apply**: a new reach or placement goes in `productions` with a fixture and a control in
+`tests/test_p14_audit.py`; a wrong date reading is fixed by tightening its evidence, never by a list of keys. Guards
+over the real build (`tests/test_p14_audit.py`, in the publish's contract step): no served broadcast within a season
+(91 days) of a broadcast of another served series of its name; no two served series of one name with the same
+years and count; no series with more than 2 broadcasts on one night (MAX_PER_NIGHT, from the data); no served date its
+own number contradicts; no served episode whose two-digit year this rule reads in this century; no served "._"
+copy. Seen failing on the unchanged tools' dry-run artifacts of catalog-2026-11-10: 1 same-name pair within a season
+(Tarzan, 26 broadcasts), 2 look-alike pairs, 5 contradicted dates, 157 this-century two-digit years, 11 resource-fork
+copies (Jim Beshears Collection files under ten series); the night guard passed (max 2). Mid-change it failed on
+this branch's own build (6: a four-digit date's tail read as a two-digit year, which had re-dated 233 genuine
+1930s broadcasts), and the fixtures now refuse that.
+MEASURED on the catalog-2026-11-10 Release against the unchanged build (PYTHONHASHSEED 0, `catalog_dryrun.sh
+--with-suites` green): series 4,954 to 4,842, one-episode series 2,984 to 2,879, episodes 74,166 to 73,642 (-0.7%),
+undated 31,918 to 31,345. Two-digit years read in this century 56 to 412 (343 undated names, 69 misread 1920s), 673
+more research episodes post-1972 (WAMU's Big Broadcast 121 served episodes gone, the 2003 Blues series, CBC's
+Mystery Project). Dates dropped as slips: 10 (Chandu 135-136, Philo Vance 93-94 1951-04, Campbell Playhouse 50
+1950-02-18, Theater Guild on the Air 14 1949-12-11, Chase and Sanborn 22 1932-10-30, Nick Carter 39 1943-01-15).
+Resource forks 49 research copies to 0. JD/RB REEL files undated and kept 85 to 64. Same name, served: Tarzan 1951-53
+124 plus 44 undated (the 1936 "Fires of Tohr" serial among them); Chandu 1948-49 167, 1932-35 102, 7 undated; Lights
+Out 1936-43 98, 1945-47 14 (the 1947 ABC broadcast joins it), 37 undated; Sherlock Holmes 1947-49 (Stanley) 79 and the
+registry remainder 63.
+**Left, each by a rule**: the remainder "Sherlock Holmes" still holds six 1953-57 Gielgud/Richardson and Hobbs/Shelley
+broadcasts no RadioGOLDINdex record dates (036's left item); the 1968 BBC "The Hobbit" (8 episodes) is served because
+no record we read names the BBC (001); OTRR's log re-dates five "Tarzan - Lord of the Jungle" files a week or a year
+off their own names (016's next pass); "Philip Marlowe #053 10-08-49" (MM-DD-YY beside a number) and "Chandu 118
+48-12" (a month only) are still read wrong; a two-digit year read for a genuine 1920-31 broadcast uploaded after the
+20YY reading would be re-read (none in the corpus); Android's search row shows no "Undated" (a client gap, not data).

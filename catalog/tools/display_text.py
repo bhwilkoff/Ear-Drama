@@ -493,7 +493,8 @@ def merge_into(series):
       - an upload's fragments (page, side, episode code) whose cleaned name is another fragment's, or a registry
         program's name or alias: one show cut into pieces by an upload;
       - names that differ only in quotes or "&" for "and", whose keys differ only by a leading track number,
-        or that carry the same single air date: one show written several ways.
+        or that carry the same single air date: one show written several ways;
+      - two upload-named series of one name, neither dated (catalog 037): nothing tells them apart.
     A LibriVox reading and a broadcast are distinct productions and are never merged; a pair that differs in
     dates or key stems (The Hobbit, Henry V) is left for a person."""
     by_norm, registry = {}, {}
@@ -530,7 +531,9 @@ def merge_into(series):
             same_text = _norm(a["name"]) == _norm(b["name"]) and (quoted(a) or quoted(b) or amp)
             track = _key_stem(k) == _key_stem(tgt) and k != tgt and (k != _key_stem(k) or tgt != _key_stem(tgt))
             same_day = bool(a["first"]) and a["first"] == a["last"] == b["first"] == b["last"]
-            if k != tgt and (same_text or track or same_day):
+            # 037: two uploads' series of one name with no date between them have nothing a list could tell apart
+            undated = a["own"] and b["own"] and not (a["first"] or a["last"] or b["first"] or b["last"])
+            if k != tgt and (same_text or track or same_day or undated):
                 out[k] = tgt
     return {k: v for k, v in out.items() if k != v}
 
@@ -1186,7 +1189,8 @@ def productions(eps, cast, witnesses=None, runs=(), nights=None):
       boundary: with no silence, the network changes where they meet and the names differ (Rathbone and Conway's
                 "The New Adventures of Sherlock Holmes" on ABC to John Stanley's "Sherlock Holmes" on Mutual).
     A recast on one name and network is one program (Mr. Keen, Johnny Dollar). An episode is then placed by its
-    cast, else its date inside exactly one production's span, else (undated) its title's nights (this series' dated
+    cast, else its date inside exactly one production's span (or, outside every span, less than SILENCE_DAYS from
+    exactly one: 037), else (undated) its title's nights (this series' dated
     broadcasts of that title, a source's records of it) inside exactly one production's span; the rest is the remainder: broadcasts the evidence does not place."""
     witnesses = witnesses or {}
     full = lambda e: bool(eps[e][0]) and bool(FULL_DATE.match(eps[e][0]))
@@ -1293,9 +1297,14 @@ def productions(eps, cast, witnesses=None, runs=(), nights=None):
     for e in sorted(eps):
         if any(e in p["eps"] for p in prods):
             continue
+        reach = lambda d, p: (_days(d, p["first"]) if d < p["first"] else max(0, _days(p["last"], d))) < SILENCE_DAYS
         home = set(of_comp.get(comp[e], ())) if e in comp else set()
+        if home and full(e):   # 037: a cast's stray date a silence from its production is placed as any date is
+            home = {i for i in home if reach(eps[e][0], prods[i])}
         if not home and full(e):
             home = {i for i, p in enumerate(prods) if p["first"] <= eps[e][0] <= p["last"]}
+        if not home and full(e):   # 037: outside every span, but less than a silence from exactly one production
+            home = {i for i, p in enumerate(prods) if reach(eps[e][0], p)}
         if not home and not full(e) and eps[e][2]:   # undated: the nights its title aired, by this series or a source
             t = _undated_key(eps[e][2])
             days = set((nights or {}).get(t, ())) | own_nights.get(t, set())
