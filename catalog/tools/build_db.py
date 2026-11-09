@@ -868,6 +868,7 @@ def improve_attribution(recs, reg, target_dates, titles, stats):
         stats["renamed_files_by:" + why] += len(rs)
     holds = {}
     merge_disc_series(recs, reg, target_dates, titles, stats, holds)
+    merge_renamed(recs, reg, target_dates, titles, stats)
     merge_grab_bags(recs, reg, target_dates, titles, stats, holds)
     merge_near_names(recs, reg, target_dates, titles, stats)
     return holds
@@ -1011,6 +1012,77 @@ def merge_disc_series(recs, reg, target_dates, titles, stats, holds):
                 _move(reg, r, target, base, "numbered volume of one program", "disc")
                 stats["disc_files_merged"] += 1
         stats["disc_series_merged"] += len(members)
+
+
+def merge_renamed(recs, reg, target_dates, titles, stats):
+    """P-12 (DECISIONS 033): an upload-named series that is one registry program under its initials ("W B Hickok") or
+    another spelling ("Big Jon And Sparky", "Big John and Little Sparky") joins it when its episodes agree
+    (reattribute.renamed_program: three of its titles the program has, or every date inside its run); undated is
+    fine, an episode needs no date. Runs before the grab-bag pass, so a renamed show's files are no bag's pieces. The
+    renamed key then resolves to the program, and a file of another series whose name begins with it moves too when
+    stem_program's gates hold ("W B Hickok 051 - The Treasure of Old Number")."""
+    registry = {k for k in set(reg.k2c.values()) if k in reg.re_keys or reg.idps.get(k)}
+    by_key = collections.defaultdict(list)
+    for r in recs:
+        if r["key"] and not r["key"].startswith("librivox"):
+            by_key[r["key"]].append(r)
+
+    def name_of(k, rs):
+        c = collections.Counter(r["sname"] for r in rs if r["sname"]).most_common(1)
+        return reg.display(k, c[0][0] if c else k) or (c[0][0] if c else k)
+
+    cands, index = {}, collections.defaultdict(set)
+    for k in sorted(registry):
+        rs = by_key.get(k, [])
+        ys = sorted({int(d[:4]) for d in target_dates.get(k, ())} | {int(r["date"][:4]) for r in rs if r["date"]})
+        dated = len(set(target_dates.get(k, ())) | {r["date"] for r in rs if r["date"]})
+        name = reg.display(k, k) or name_of(k, rs)
+        cands[k] = {"key": k, "name": name, "n": max(len(rs), len(target_dates.get(k, ()))),
+                    "titles": set(titles.get(k, ())) | {A.norm_title(r["title"]) for r in rs if r["title"]},
+                    "run": (ys[0], ys[-1], dated) if ys else None}
+        for w in RA._name_words(name):
+            if len(w) >= 3 and w not in RA.STOP_WORDS:
+                index[w].add(k)
+
+    def run_of(c):
+        years = sorted(int(d[:4]) for d in target_dates.get(c, ()))
+        return (years[0], years[-1], len(years)) if years else None
+
+    renamed = {}
+    for k in sorted(by_key):
+        rs = by_key[k]
+        if k in registry or not all(_movable(r) for r in rs):
+            continue
+        name = name_of(k, rs)
+        near = set()
+        for w in RA._name_words(name):
+            near |= index.get(w, set())
+        if not near:
+            continue
+        src = {"key": k, "name": name, "n": len(rs), "titles": [r["title"] for r in rs if r["title"]],
+               "years": [int(r["date"][:4]) for r in rs if r["date"]]}
+        got = RA.renamed_program(src, [cands[c] for c in sorted(near)])
+        if not got:
+            continue
+        target, rule, gate = got
+        for r in rs:
+            _move(reg, r, target, cands[target]["name"], f"the program under its {rule} (episodes agree by {gate})",
+                  "renamed:" + rule, gate)
+            stats["renamed_files_merged:" + rule] += 1
+        stats["renamed_series_merged:" + rule] += 1
+        reg.add(k, target, name, "renamed:" + rule)
+        renamed[k] = target
+    if not renamed:
+        return
+    for r in recs:
+        if not _movable(r) or r["key"] in renamed.values():
+            continue
+        if not any(P.norm_series(r["stem"]).startswith(k) for k in renamed):
+            continue
+        got = RA.stem_program(r["stem"], reg.k2c, lambda c: titles.get(c, ()), r["date"], run_of)
+        if got and got[0] in renamed.values() and got[0] != r["key"]:
+            _move(reg, r, got[0], r["stem"], "file name begins with a program's other name", "stem:" + got[1], got[2])
+            stats["renamed_files_by_file_name"] += 1
 
 
 def merge_near_names(recs, reg, target_dates, titles, stats):
@@ -1159,7 +1231,9 @@ def main():
                         "licenseurl": it.get("licenseurl"), "uploader": it.get("uploader"),
                         "publicdate": it.get("publicdate"), "is_dark": d.get("is_dark"),
                         "reviews": d["reviews"]["count"], "avg_stars": d["reviews"]["avg_stars"],
-                        "transcripts": len(d.get("transcripts") or []), "item_series": isr}
+                        "transcripts": len(d.get("transcripts") or []), "item_series": isr,
+                        "language": A.language_of(it.get("language")),
+                        "subjects": text}
         tstems = {re.sub(r"(\.autogenerated|_asr|\.asr)$", "", stem_key(t)) for t in d.get("transcripts") or []}
         chosen = pick_files(d["files"])
         n_audio = len(chosen)
@@ -1171,6 +1245,10 @@ def main():
                 idt.setdefault("disagree", []).append({"upload_date_not_broadcast": p["date"]})
                 p, date_source = dict(p, date=None, decade=None), None
                 stats["upload_stamp_dates_dropped"] += 1
+            elif p["date"] and date_source in ("filename", "filename_alt") and P.modern_two_digit(p["date"], it.get("publicdate")):
+                idt.setdefault("disagree", []).append({"two_digit_year_read_as": p["date"]})
+                p = dict(p, date=P.modern_two_digit(p["date"], it.get("publicdate")), decade=None)
+                stats["two_digit_years_read_in_this_century"] += 1
             files.append({"f": f, "p": p, "date_source": date_source, "idt": idt, "uiuc": uiuc_row,
                           "ident": ident, "item_series": isr, "item_title": it.get("title"),
                           "orow": otrr_by_file.get((ident, f["name"])), "colls": colls, "d": d, "it": it,
@@ -1428,9 +1506,25 @@ def main():
                                [(items.get(r["archive_id"], {}).get("title") or "") + " " + (r["file"] or "") for r in recs])
         if got:
             series_foreign[k] = got
+        # P-12 (DECISIONS 033): a production label beside the series' own name ("Lux Radio Theater - AU", "Aus 62
+        # Rocky Starr") or on most of its items' titles is the production's country (006), whoever names the series.
+        if not got and not k.startswith("librivox"):
+            names = sorted({e["series_name"] for e in eps if e.get("series_name")} | {reg.display(k, k) or ""})
+            label = next((A.country_label(n) for n in names if A.country_label(n)), None)
+            titled = [A.country_label(items.get(r["archive_id"], {}).get("title") or "") for r in recs]
+            if not label and recs and sum(1 for t in titled if t) * 2 > len(recs):
+                label = next(t for t in titled if t)
+            if label:
+                series_foreign[k] = {"source": "the series' name or its items' titles carry a production label",
+                                     "term": label}
         dated = [e["date"] for e in eps if e["date"]]
         if dated and min(dated) >= "1972-02-15":
             series_post[k] = {"source": "every dated episode is after 1972-02-15", "earliest": min(dated)}
+        elif not dated and not (k in re_by_key or reg.idps.get(k) or k.startswith("librivox")):
+            yr = next((A.series_name_year(n) for n in sorted({e["series_name"] for e in eps if e.get("series_name")})
+                       if A.series_name_year(n)), None)
+            if yr:
+                series_post[k] = {"source": "the upload-named series' own name carries a year after 1972", "year": yr}
 
     film_ren = collections.defaultdict(list)
     for r in load(AW_RENEWALS, []):
@@ -1452,6 +1546,18 @@ def main():
                 series_genres[k].append(g["genre"])
     if not series_genres:
         print("WARNING: no OTRRpedia genres matched any series; work_music_led cannot fire", file=sys.stderr)
+    # P-12 (DECISIONS 033): OTRRpedia's broadcast history names each run's country. A program with runs only outside
+    # the USA is a non-US production (006); one with a US run is American, whatever an item's language field says.
+    countries = collections.defaultdict(set)
+    for p in progs:
+        k = reg.idp2c.get(p.get("idp"))
+        if k in by_series:
+            countries[k].update(h["country"] for h in p.get("histories") or [] if h.get("country"))
+    us_series = {k for k, cs in countries.items() if "USA" in cs}
+    for k in sorted(countries):
+        if countries[k] and "USA" not in countries[k] and k not in series_foreign and not k.startswith("librivox"):
+            series_foreign[k] = {"source": "OTRRpedia broadcast history: every run outside the USA",
+                                 "term": ", ".join(sorted(countries[k]))}
     sched = load(os.path.join(ia.CACHE, "p72_schedules.json.gz"), {"rows": []})
     if not sched["rows"]:
         print("WARNING: no pre-1972 schedules cached; rec_schedule_claim cannot fire", file=sys.stderr)
@@ -1460,6 +1566,9 @@ def main():
            "series_post_1972": series_post, "series_foreign": series_foreign, "gov_series": gov,
            "licence_evidence": lic_ev, "published_records": pub_rec, "film_renewals": film_ren,
            "script_renewals": script_ren, "series_genres": series_genres,
+           "item_language": {i: it["language"] for i, it in items.items() if it.get("language")},
+           "us_series": us_series,
+           "item_subjects": {i: it.get("subjects") or "" for i, it in items.items()},
            "today": datetime.date.today()}
 
     # The spine: attach RadioEchoes genre and episode facts; unmatched RE episodes are wants.
@@ -1554,10 +1663,10 @@ def main():
             db.execute("INSERT INTO series_aliases VALUES (?,?,?,?)", (ak, ck, alias, source))
     downloads = download_counts()
     for it in items.values():
-        db.execute("INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?)", (
+        db.execute("INSERT INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
             it["id"], it["title"], json.dumps(it["collections"]), it["licenseurl"], it["uploader"],
             it["publicdate"], bool(it["is_dark"]), it["reviews"], it["avg_stars"], it["transcripts"],
-            downloads.get(it["id"])))
+            downloads.get(it["id"]), it.get("language")))
     for ep in episodes.values():
         for pp in ep.get("people") or []:
             db.execute("INSERT INTO credits VALUES (?,?,?,?,?)", (ep["id"], pp["id"], pp["name"], pp["role"], "otrr.org"))

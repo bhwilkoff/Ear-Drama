@@ -209,6 +209,17 @@ def is_upload_stamp(date, publicdate):
                 and u[2:] == d[2:])
 
 
+def modern_two_digit(date, publicdate):
+    """P-12 (catalog DECISIONS 033): a name's "20-02-08" read as 1920-02-08, before regular broadcasting, in an item
+    uploaded within three years after 2020-02-08: the digits are this century's ("The Glowing Dial Celebrity
+    Interview", 2019-2020). Returns the 20YY date, else None."""
+    d, u = str(date or ""), str(publicdate or "")[:10]
+    if not (re.fullmatch(r"192[0-6]-\d\d-\d\d", d) and re.fullmatch(r"20\d\d-\d\d-\d\d", u)):
+        return None
+    m = "20" + d[2:]
+    return m if m <= u and int(u[:4]) - int(m[:4]) <= 3 else None
+
+
 LEAD_TRACK = re.compile(r"^(\d{1,4})[ ._-]+(?=[A-Za-z])")
 _NEED_DATE = ("F2d_series_yymmdd_num_title", "F7c_yymmdd_num_title", "F4b_mmddyy_last", "F0_otrr_v2", "F0b_camel_yymmdd_num", "F2_yymmdd", "F2b_series_yymmdd_title", "F1d_camel_glued",
               "F7_date_first", "F7d_spaced_date_first", "F7e_glued_date_first", "F1e_series_date_title", "F1g_num_then_date", "F2c_yymmdd_80s",

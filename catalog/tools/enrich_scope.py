@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ia_lib as L
 import genres as G
 import enrich_genres as EG
+import audit_audio_rights as A
 
 DB = os.path.join(L.OUT, "radio-catalog.sqlite")
 if "--db" in sys.argv:
@@ -58,7 +59,38 @@ MUSIC_COLLECTIONS = {"audio_music", "78rpm", "etree", "georgeblood", "netlabels"
 LECTURE_SUBJECTS = {"lecture", "lectures", "public lectures", "speeches", "symposium"}
 SHARE = 0.6
 REASONS = ("name_names_a_concert", "name_names_a_lecture", "episodes_are_lectures", "music_in_its_own_keywords",
-           "live_set_by_one_performer", "name_names_a_band_remote", "name_names_a_music_group")
+           "live_set_by_one_performer", "name_names_a_band_remote", "name_names_a_music_group",
+           "name_names_a_game_broadcast", "name_names_v_discs", "music_show_in_its_own_keywords")
+# P-12 (DECISIONS 033): a game's play-by-play is neither drama nor a spoken story, whoever names the series. A sport and
+# a broadcast word ("Classic Baseball on the Radio", "Baseball Games", "State High School Basketball Championship
+# Game"), a sporting event's own name ("World Series", "Kentucky Derby Broadcasts"), or a sport alone ("Boxing"). A
+# sports talk or story show ("Bill Stern Sports Newsreel", "Red Grange Football Show") names no game and stays.
+SPORT = r"(?:baseball|football|basketball|hockey|boxing|softball|soccer|wrestling|prize ?fights?)"
+GAME = r"(?:games?|broadcasts?|on the radio|play[- ]by[- ]play|championships?|tournaments?|vs\.?)"
+SPORT_GAME = re.compile(r"\b" + SPORT + r"\b.*\b" + GAME + r"(?!\w)|\b" + GAME + r"\b.*\b" + SPORT + r"\b", re.I)
+SPORT_EVENT = re.compile(r"^(?:the\s+)?(?:\d{4}\s+)?(?:world series|kentucky derby|rose bowl|sugar bowl|orange bowl|"
+                         r"cotton bowl|all[- ]star game|indianapolis 500|indy 500)(?:\s+(?:broadcasts?|games?|game \d+|"
+                         r"\d{4}))*(?:\s*[-–:].*\bvs\b.*)?$", re.I)
+SPORT_ONLY = re.compile(r"^(?:the\s+)?" + SPORT + r"$", re.I)
+V_DISC = re.compile(r"\bV[- ]?Discs?\b", re.I)
+RE_STORY = {"OTR-Drama", "OTR-Adventure", "OTR-Detective", "OTR-Thriller", "OTR-Mystery", "OTR-SciFi", "OTR-Western",
+            "OTR-Comedy", "OTR-Soap", "OTR-Kids"}
+
+
+def sports(name):
+    """The scope reason when the series' name names a game broadcast, else None."""
+    n = (name or "").strip()
+    if SPOKEN_NAME.search(n):
+        return None
+    if SPORT_GAME.search(n) or SPORT_EVENT.match(n) or SPORT_ONLY.match(n):
+        return "name_names_a_game_broadcast"
+    return None
+
+
+def music_show(story, eps, music_eps):
+    """A registry program that is a music show (006: built on songs, hidden, stricter than drama): no story genre in
+    its registry labels, and SHARE of its served episodes from items of its own whose subject keywords name music."""
+    return not story and eps >= 3 and music_eps >= SHARE * eps
 
 
 def classify(name, items, kinds, drama_items, music_hits, lecture_hits, music_colls, performers=None):
@@ -97,8 +129,10 @@ def run(con):
     series = {}
     for key, name, spine, otrr, lv, genre, genres_otrr in con.execute(
             "SELECT key, name, in_spine, otrr_programs, is_librivox, genre, genres_otrr FROM series"):
+        labels = json.loads(genres_otrr) if genres_otrr else []
         series[key] = dict(name=name, named=bool(spine or otrr or lv), librivox=bool(lv), genre=G.genre_of(
-            json.loads(genres_otrr) if genres_otrr else None, genre, bool(lv))[0])
+            labels or None, genre, bool(lv))[0],
+            story=bool(set(labels) & A.STORY_GENRES) or bool(set((genre or "").split("|")) & RE_STORY))
     q = ",".join("?" * len(SERVED))
     kinds = collections.defaultdict(collections.Counter)
     files = collections.defaultdict(lambda: collections.defaultdict(set))
@@ -112,7 +146,7 @@ def run(con):
         colls[aid] = set(json.loads(c or "[]"))
         shared[aid].add(key)
     rows, stats = [], collections.Counter()
-    cache, artists_of = {}, {}
+    cache, artists_of, subjects_of = {}, {}, {}
     for key in sorted(files):
         s = series.get(key)
         if s is None:
@@ -121,6 +155,32 @@ def run(con):
         if key in keep:
             stats["kept by the reviewed list"] += 1
             continue
+        why = None if s["librivox"] else sports(s["name"])
+        if why:
+            rows.append((key, "sports", why, json.dumps({"name": s["name"]}, ensure_ascii=False), 0))
+            stats["sports"] += 1
+            continue
+        if not s["librivox"] and V_DISC.search(s["name"] or ""):
+            rows.append((key, "music", "name_names_v_discs", json.dumps({"name": s["name"]}, ensure_ascii=False), 0))
+            stats["music"] += 1
+            continue
+        if s["named"] and not s["librivox"]:
+            n_eps = sum(len(v) for v in files[key].values())
+            m_eps = 0
+            for aid in sorted(files[key]):
+                if len(shared[aid]) > 1:
+                    continue
+                if aid not in subjects_of:
+                    rec = EG.item_record(aid, files[key][aid])
+                    subjects_of[aid] = set(t.lower() for t in rec[0]) if rec else set()
+                if subjects_of[aid] & MUSIC_SUBJECTS:
+                    m_eps += len(files[key][aid])
+            if music_show(s["story"], n_eps, m_eps):
+                rows.append((key, "music", "music_show_in_its_own_keywords",
+                             json.dumps({"episodes": n_eps, "music keyword episodes": m_eps},
+                                        ensure_ascii=False, sort_keys=True), len(files[key])))
+                stats["music"] += 1
+                continue
         if s["named"] or s["genre"]:
             stats["named by a registry or a genre label"] += 1
             continue
@@ -165,7 +225,7 @@ def main():
     con.executemany("INSERT INTO series_scope VALUES (?,?,?,?,?)", rows)
     con.commit()
     report = {"servedSeries": stats["served series"], "outOfScope": len(rows),
-              "byKind": {k: stats[k] for k in ("concert", "lecture", "music")},
+              "byKind": {k: stats[k] for k in ("concert", "lecture", "music", "sports")},
               "keptByReview": stats["kept by the reviewed list"], "keptNamedByRegistry": stats["named by a registry or a genre label"]}
     L.write_json(REPORT, report)
     print(json.dumps(report, indent=1))

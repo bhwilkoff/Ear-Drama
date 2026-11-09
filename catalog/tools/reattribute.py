@@ -318,3 +318,88 @@ def grab_bag(name, files, item_feeds, item_files, broadcast=False, librivox=Fals
     if YEAR_NEWS.search(name or "") or (COLLECTION_NAME.search(name or "") and (len(progs) >= BAG_PROGRAMS or mixed)):
         return "collection"
     return None
+
+
+# ---- P-12: a show under its initials or another spelling is that show (catalog DECISIONS 033) ----
+
+SPELL_MAX = 2            # letters two spellings of one word may differ by ("Sparky", "Sparkie"; "Jon", "John")
+MIN_AGREE = 3            # titles a renamed series must share with the program (or all of them, when it has fewer)
+
+
+def _name_words(name):
+    return [w for w in re.findall(r"[a-z0-9]+", P._fold(name or "").replace("'", "")) if w != "the"]
+
+
+def spells_by_initials(src, prog):
+    """True when the words of `src` are the words of `prog` with one or more written as their initial ("W B Hickok"
+    for "Wild Bill Hickok"): as many words, each the same word or its first letter, one initial at least and one
+    whole word of four letters or more."""
+    a, b = _name_words(src), _name_words(prog)
+    if len(a) != len(b) or len(a) < 2:
+        return False
+    initial = sum(1 for x, y in zip(a, b) if len(x) == 1 and len(y) > 1 and y[0] == x)
+    whole = sum(1 for x, y in zip(a, b) if x == y and len(x) >= 4 and x.isalpha())
+    return initial >= 1 and whole >= 1 and all(x == y or (len(x) == 1 and y[0] == x) for x, y in zip(a, b))
+
+
+CALL_SIGN = re.compile(r"^[kw][a-z]{2,3}$")
+
+
+def _variant(x, y):
+    if CALL_SIGN.match(x) and CALL_SIGN.match(y):
+        return False   # KEAR and KYA are two stations, not two spellings
+    return x[0] == y[0] and min(len(x), len(y)) >= 3 and x.isalpha() and y.isalpha() and _lev(x, y, SPELL_MAX) <= SPELL_MAX
+
+
+def spelled_alike(src, prog):
+    """True when `src` is `prog` spelled another way ("Big Jon And Sparky", "Big John and Little Sparky" for "Big Jon
+    and Sparkie"): its words are the program's in order, each the same word or a spelling of it (the same first letter,
+    two letters apart at most), with one extra word at most inside the name (one at an edge is a qualifier); one word differs at least and one whole
+    word is the same, three letters of such words at least; never a name with a production label."""
+    a, b = _name_words(src), _name_words(prog)
+    if a == b or not a or not b or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        pairs = list(zip(a, b))
+    else:
+        long_, short = (a, b) if len(a) > len(b) else (b, a)
+        pairs = None
+        for i in range(1, len(long_) - 1):   # an extra word at an edge is a qualifier ("Suspense AFRS"), not a spelling
+            rest = long_[:i] + long_[i + 1:]
+            if all(x == y or _variant(x, y) for x, y in zip(rest, short)):
+                pairs = list(zip(rest, short))
+                break
+        if pairs is None:
+            return False
+    if A.country_label(src) or A.country_label(prog):
+        return False   # "Lux Radio Theater - AU" is another production (DECISIONS 026, 033)
+    return (all(x == y or _variant(x, y) for x, y in pairs)
+            and sum(len(x) for x, y in pairs if x == y and x not in STOP_WORDS) >= 3)
+
+
+def _agree(src, c):
+    """The episode test for a renamed series: MIN_AGREE of its titles (all of them, when it has fewer) are titles
+    the program has, read as stem_program reads a file's rest; or every dated episode inside the program's run, three
+    dated episodes at least."""
+    titles = [t for t in src["titles"] if t]
+    hits = sum(1 for t in titles if _title_matches(t, c["titles"]))
+    if titles and hits >= min(MIN_AGREE, len(titles)):
+        return "title"
+    run = c.get("run")
+    if len(src["years"]) >= MIN_AGREE and run and run[2] >= MIN_RUN_DATES and all(run[0] - 1 <= y <= run[1] + 1 for y in src["years"]):
+        return "date"   # three dated episodes at least: one date inside a long run is a coincidence ("Freedom Forge")
+    return None
+
+
+def renamed_program(src, cands):
+    """(program key, rule, gate) when an upload-named series is exactly one registry program under its initials
+    (`initials`) or another spelling (`spelling`), and its episodes agree (_agree), else None. src: {"key", "name",
+    "n", "titles": raw titles, "years"}; cands: the registry programs, each {"key", "name", "n", "titles": set of
+    A.norm_title, "run"}. A program with fewer episodes than the series never takes it."""
+    for rule, test in (("initials", spells_by_initials), ("spelling", spelled_alike)):
+        hits = [c for c in cands if c["key"] != src["key"] and c["n"] > src["n"] and test(src["name"], c["name"])]
+        if len(hits) == 1:
+            gate = _agree(src, hits[0])
+            if gate:
+                return hits[0]["key"], rule, gate
+    return None

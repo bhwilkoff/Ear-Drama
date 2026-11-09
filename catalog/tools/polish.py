@@ -97,6 +97,10 @@ def _contractions(t):
     return "".join(parts)
 
 
+# P-12 (catalog DECISIONS 033): markup a source left in its text ("<strong>01: Adam and Eve").
+_MARKUP = re.compile(r"</?(?:strong|b|i|em|u|br|p|span|div|a|font)\b[^>]*>", re.I)
+
+
 def _brackets(t):
     t = _DROP_GROUP.sub("", t)
     t = _DROP_CODE.sub("", t)
@@ -113,6 +117,7 @@ def _clean(t, name=False):
     t = fix_encoding(t)
     if t is None:
         return None
+    t = _MARKUP.sub("", t)
     t = _brackets(t)
     t = _PAREN_NOTE.sub("", t)
     t = _GLUED_CODE.sub("", t)

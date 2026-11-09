@@ -34,6 +34,7 @@ from sort_name import sort_name
 import titles as TI
 import display_text as DT
 import polish as PL
+import reattribute as RA
 from measure_loudness import load as load_loudness, usable as loudness_usable
 import fetch_transcripts as T
 import transcript_gate as TG
@@ -241,6 +242,20 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
         got = PL.polish_title(DT.cut_title(display[eid]))
         got = PL.apostrophe_from(got, witnessed.get(eid)) if got else got
         display[eid] = got or ""
+    # P-12 (DECISIONS 033): a title an upload cut off is restored from a witness of the same episode, else
+    # decide_episode composes or withholds it.
+    restored = {}
+    if has_table(s, "episode_witnesses"):
+        wit = {}
+        for eid, wt in s.execute("SELECT episode_id, title FROM episode_witnesses WHERE episode_id IS NOT NULL AND title IS NOT NULL"):
+            if eid in display:
+                wit.setdefault(eid, set()).add(wt)
+        for eid in sorted(wit):
+            got = DT.restore_cut(display[eid], wit[eid])
+            got = PL.polish_title(got) if got else None
+            if got:
+                restored[eid] = {"from": display[eid], "to": got}
+                display[eid] = got
     known = {}
     def learn(n):
         if n and " " in n.strip() and re.search(r"[A-Z]", n) and not DT.TD.series_defects(n):
@@ -288,6 +303,10 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                     composed[eid] = {"title": title, "fields": fields}
                 display[eid] = PL.small_words(title)
     served -= set(withheld["episodes"])
+    # P-12 (DECISIONS 033): a grab bag is judged on what is served, the same test the publish's guard runs: a series
+    # whose other files a rights or scope rule withheld may be left a bag ("Christmas": two collections' singles).
+    for sk, why in sorted(served_bags(s, by_series_eps, served, withheld, shown_name).items()):
+        bags.setdefault(sk, why)
     folded = {}
     merged = merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments, display, composed, folded,
                               bags)
@@ -479,7 +498,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             reasons.setdefault(kind, {}).setdefault(why, 0)
             reasons[kind][why] += 1
     detail = {"withheld": withheld, "composed": composed, "recovered": recovered, "merged": merged,
-              "cleanedNames": sorted(fragments), "folded": folded}
+              "cleanedNames": sorted(fragments), "folded": folded,
+              "restored": restored}
     ia.write_json(os.path.join(os.path.dirname(dst) or ".", "display_text.json"), detail)
     meta = {"schemaVersion": SCHEMA_VERSION, "displayText": {"withheld": reasons, "composed": len(composed), "merged": len(merged),
                                                              "foldedBroadcasts": len(folded.get("episodes", {}))},
@@ -528,6 +548,47 @@ def write_arcs(d):
     print(json.dumps({"arcs": {k: report[k] for k in report}}), file=sys.stderr)
 
 
+def served_bags(s, by_series_eps, served, withheld, shown_name):
+    """{series key: series_is_a_grab_bag} for a series that reattribute.grab_bag calls a bag on its served files."""
+    cols = {r[1] for r in s.execute("PRAGMA main.table_info(series)")}
+    if not {"in_spine", "otrr_programs", "is_librivox"} <= cols or not has_table(s, "series_aliases"):
+        return {}
+    registry = {k for (k,) in s.execute("SELECT key FROM series WHERE in_spine = 1 OR otrr_programs IS NOT NULL")}
+    k2c = {k: k for k in registry}
+    for ak, sk in s.execute("SELECT alias_key, series_key FROM series_aliases"):
+        if sk in registry:
+            k2c[ak] = sk
+    lv = {k for (k,) in s.execute("SELECT key FROM series WHERE is_librivox = 1")}
+    runs = ({k: (a, b) for k, a, b in s.execute("SELECT key, first_broadcast, last_broadcast FROM series")}
+            if "first_broadcast" in cols else {})
+    how = {eid: (json.loads(i).get("series") if i else "") or "" for eid, i in s.execute("SELECT id, identity FROM main.episodes")}
+    first = {}
+    for eid, aid, f in s.execute("SELECT episode_id, archive_id, file FROM main.recordings WHERE rank = 0"):
+        if eid in served:
+            first[eid] = (aid, f)
+    feeds, item_files, by = {}, {}, {}
+    for sk in sorted(by_series_eps):
+        if sk in withheld["series"]:
+            continue
+        for eid, _a, _n, _t in by_series_eps[sk]:
+            if eid not in first:
+                continue
+            aid, f = first[eid]
+            feeds.setdefault(aid, set()).add(sk)
+            item_files[aid] = item_files.get(aid, 0) + 1
+            stem = os.path.splitext(f.rsplit("/", 1)[-1])[0]
+            p = RA.lead_program(stem, k2c, registry) if how.get(eid) != "otrr_log" else None
+            by.setdefault(sk, []).append({"how": how.get(eid), "item": aid, "program": p if p != sk else None})
+    feeds_n = {k: len(v) for k, v in feeds.items()}
+    out = {}
+    for sk in sorted(by):
+        a, b = runs.get(sk, (None, None))
+        broadcast = sk in registry and bool(a and b) and int(b[:4]) - int(a[:4]) <= RA.BAG_RUN_YEARS
+        if RA.grab_bag(shown_name.get(sk), by[sk], feeds_n, item_files, broadcast, sk in lv):
+            out[sk] = "series_is_a_grab_bag"
+    return out
+
+
 def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments, display=None, composed=None,
                      folded=None, bags=None):
     """Fold series that are one show into the surviving one (display_text.merge_into, then P-10's same_program and
@@ -537,6 +598,8 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
     publish forwards it to the episode now holding its default copy (forwarding.py). `folded` receives the
     report: series folds with their rule, and episode folds."""
     has_alias = "alias_names" in {r[1] for r in s.execute("PRAGMA main.table_info(series)")}
+    has_idp = "otrr_idp" in {r[1] for r in s.execute("PRAGMA main.table_info(series)")}
+    idps = dict(s.execute("SELECT key, otrr_idp FROM series WHERE otrr_idp IS NOT NULL")) if has_idp else {}
     info = {k: (lv, first, last, al) for k, lv, first, last, al in s.execute(
         "SELECT key, is_librivox, first_date, last_date, " + ("alias_names" if has_alias else "NULL") + " FROM series")}
     series = {}
@@ -546,7 +609,8 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
             lv, first, last, al = info[k]
             series[k] = {"name": shown_name.get(k) or k, "cleaned": k in fragments, "librivox": bool(lv),
                          "own": k in own_key or k in (bags or ()), "eps": n, "first": first, "last": last,
-                         "aliases": json.loads(al) if al else [], "bag": k in (bags or ())}
+                         "aliases": json.loads(al) if al else [], "bag": k in (bags or ()),
+                         "idps": sorted(idps[k].split(",")) if idps.get(k) else []}
     got = {k: v for k, v in DT.merge_into(series).items() if not series[k]["bag"] and not series.get(v, {}).get("bag")}
     if display is not None:
         got = fold_same_broadcasts(s, by_series_eps, served, series, got, display, composed or {}, shown_name,
@@ -628,6 +692,15 @@ def fold_same_broadcasts(s, by_series_eps, served, series, got, display, compose
             break
         rules.update({k: list(v) for k, v in prog.items()})
         cur = DT.resolve_chains({**cur, **{k: r for k, (r, _rule) in prog.items()}})
+    one_show = set()
+    for _ in range(2):   # P-12 (DECISIONS 033): one star's show under a sponsor- or title-era name
+        same = {k: v for k, v in DT.same_show(info(cur)).items() if k not in cur and not series[k].get("bag")
+                and not series.get(v[0], {}).get("bag")}
+        if not same:
+            break
+        rules.update({k: list(v) for k, v in same.items()})
+        one_show |= set(same)
+        cur = DT.resolve_chains({**cur, **{k: r for k, (r, _rule) in same.items()}})
     for _ in range(2):
         _f, shared = DT.same_broadcasts(broadcast_rows(cur), info(cur))
         gone = {k: r for k, r in DT.dissolve(info(cur), shared).items()
@@ -640,7 +713,7 @@ def fold_same_broadcasts(s, by_series_eps, served, series, got, display, compose
     moved = {eid for eid, (k0, _a, _n) in eps_of.items() if cur.get(k0, k0) != k0}
     rows = {eid: (cur.get(k0, k0), air, display.get(eid) or "", eid in composed, k0, eid in clean)
             for eid, (k0, air, _n) in eps_of.items() if eid not in folds}
-    folds.update(DT.same_day_in_series(rows, moved))
+    folds.update(DT.same_day_in_series(rows, moved, one_show))
     folds = DT.resolve_chains(folds)
     served.difference_update(folds)
     for eid in sorted(moved - set(folds)):
