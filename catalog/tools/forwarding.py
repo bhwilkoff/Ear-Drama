@@ -17,6 +17,12 @@ alias or tombstone.
 Series keys forward the same way (follows, series links): a key that left gets an
 alias to the served series now holding more than half of its recordings, or a
 tombstone (forward_series).
+
+Forwarding starts at launch (catalog DECISIONS 032; owner, 2026-11-09: "the app has not launched yet ... We are
+trying to get everything set up correctly the first time and not create a bunch of cruft for things that were set
+up incorrectly the first time and had to be fixed before launch."). Until LAUNCHED is set, forward() and
+forward_series() publish no aliases or tombstones and carry none: a pre-launch fix leaves no trail. Set it to the
+launch date in the commit that launches; from then on every id that leaves forwards as above.
 """
 import argparse
 import json
@@ -188,15 +194,22 @@ def carry(previous, served, fresh):
     return aliases, tombstones, report
 
 
+# The launch date (YYYY-MM-DD); None before launch: nothing is forwarded (DECISIONS 032). The environment variable
+# is for the mechanism's own tests, which run it as it will run after launch.
+LAUNCHED = None or os.environ.get("FORWARDING_TEST_LAUNCHED")
 EMPTY_REPORT = {"left": 0, "aliased": 0, "tombstoned": 0, "carriedAliases": 0, "carriedTombstones": 0, "returned": 0}
+
+
+def prelaunch():
+    return not LAUNCHED
 
 
 def forward(previous, served, copies):
     """The aliases and tombstones this build publishes: (aliases {old: new}, tombstones set, report).
 
     `previous` is read_projection of the live projection (None on a first publish);
-    `served` and `copies` are this build's."""
-    if previous is None:
+    `served` and `copies` are this build's. Before launch nothing is forwarded (LAUNCHED)."""
+    if previous is None or prelaunch():
         return {}, set(), dict(EMPTY_REPORT)
     holders = {}
     for eid, keys in copies.items():
@@ -224,8 +237,8 @@ def series_successor(old_keys, holders):
 def forward_series(previous, served, copies):
     """forward() for series keys: `previous` is read_projection's `series` part of the live
     projection (None on a first publish); `served` is this build's series keys and `copies`
-    series_copies of it."""
-    if previous is None:
+    series_copies of it. Before launch nothing is forwarded (LAUNCHED)."""
+    if previous is None or prelaunch():
         return {}, set(), dict(EMPTY_REPORT)
     holders = {}
     for sk, keys in copies.items():

@@ -487,6 +487,12 @@ Show, The 43-11-21" had been read as 1921-03-11), and 79,612 undated ids in the
 2026-10-21 snapshot come from a title slug or a file path. So the old id
 forwards, permanently (catalog DECISIONS 014, `canonical-entity-identity`).
 
+**Forwarding starts at launch** (catalog DECISIONS 032, owner 2026-11-09): until
+`forwarding.LAUNCHED` is set to the launch date, every build publishes these
+tables empty and carries nothing from the live projection; pre-launch fixes
+leave no trail. Clients resolve through the tables as always; empty tables
+resolve nothing.
+
 | Table | Columns | Meaning |
 |---|---|---|
 | `episode_aliases` | `old_id` TEXT PK, `new_id` TEXT | an id this projection no longer serves, and the served episode it now is |

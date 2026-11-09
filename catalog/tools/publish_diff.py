@@ -27,6 +27,9 @@ import sys
 import tempfile
 import zlib
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import forwarding as FW  # noqa: E402
+
 SKIP_BYTES = {"maxRaw", "maxGzip", "maxFile"}
 
 
@@ -198,7 +201,10 @@ def main():
             for k in ("hidden", "tombstoned", "unexplained"):
                 if why[k]:
                     out += [f"First {k}: " + ", ".join(why[k][:10]), ""]
-            if why["unexplained"]:
+            if why["unexplained"] and FW.prelaunch():
+                out += [f"Before launch nothing is forwarded (forwarding.LAUNCHED, DECISIONS 032): "
+                        f"{len(why['unexplained']):,} ids left without a trail.", ""]
+            elif why["unexplained"]:
                 # A gate (contract §3.5, §9.6): an id that leaves with neither breaks every saved
                 # history, queue, download, and share link that names it.
                 out += [f"**Refused**: {len(why['unexplained']):,} episode ids left with no alias and no tombstone.", ""]
@@ -211,7 +217,9 @@ def main():
                 out += [f"**Series keys**: {len(s_added):,} added, {len(s_removed):,} removed "
                         f"({len(s_why['aliased']):,} aliased to a served series, {len(s_why['tombstoned']):,} "
                         f"tombstoned, {len(s_why['unexplained']):,} neither aliased nor tombstoned).", ""]
-                if s_why["unexplained"]:
+                if s_why["unexplained"] and FW.prelaunch():
+                    out += ["Before launch no series key is forwarded (forwarding.LAUNCHED).", ""]
+                elif s_why["unexplained"]:
                     # A follow, a series link, and a Worker follow row name the key (contract §3.5).
                     out += ["First unforwarded series keys: " + ", ".join(s_why["unexplained"][:10]), ""]
                     print(f"::error::{len(s_why['unexplained'])} series keys left the {a.label} with no alias and "

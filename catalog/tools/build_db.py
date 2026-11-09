@@ -31,6 +31,7 @@ import audit_audio_rights as A
 import reattribute as RA
 import text_defects as TD
 import episode_scripts as ES
+import same_work as SW
 
 # A copy of Archive Watch's shared/editorial/cce_renewals.json (tools/fetch_cce_renewals.py
 # there), so this catalog builds outside that repository.
@@ -867,8 +868,94 @@ def improve_attribution(recs, reg, target_dates, titles, stats):
         stats["renamed_files_by:" + why] += len(rs)
     holds = {}
     merge_disc_series(recs, reg, target_dates, titles, stats, holds)
+    merge_grab_bags(recs, reg, target_dates, titles, stats, holds)
     merge_near_names(recs, reg, target_dates, titles, stats)
     return holds
+
+
+GRAB_BAG = "series_is_a_grab_bag"
+
+
+def merge_grab_bags(recs, reg, target_dates, titles, stats, holds):
+    """DECISIONS 032: an uploader's or a collection's mixed bag ("Michael Fisher Acc", "1945 Radio News", "Christmas
+    Shows") is not a series (reattribute.grab_bag). Each of its files moves to the program its own name begins with
+    when that program has its title or its date is in the program's run (stem_program, gated); the rest of the bag is
+    held, and the projection first folds any of its broadcasts another series holds (P-10), then withholds the rest.
+    Two kinds of piece go back to the bag they came from: a series an undated file of the bag made by its own name
+    ("Richard Nixon", from "Grandpa's Old Time Radio Stories"), and an undated file the registry took by its name alone
+    with no title the program has ("Bob Hope #3")."""
+    registry = {k for k in set(reg.k2c.values()) if k in reg.re_keys or reg.idps.get(k)}
+    by_key = collections.defaultdict(list)
+    feeds, item_files = collections.defaultdict(set), collections.Counter()
+    for r in recs:
+        if r["key"] and not r["key"].startswith("librivox"):
+            by_key[r["key"]].append(r)
+            feeds[r["rec"]["archive_id"]].add(r["key"])
+            item_files[r["rec"]["archive_id"]] += 1
+    feeds_n = {i: len(v) for i, v in feeds.items()}
+
+    def run_of(c):
+        years = sorted(int(d[:4]) for d in target_dates.get(c, ()))
+        return (years[0], years[-1], len(years)) if years else None
+
+    def broadcast(k):
+        run = run_of(k)
+        return k in registry and bool(run) and run[2] >= RA.MIN_RUN_DATES and run[1] - run[0] <= RA.BAG_RUN_YEARS
+
+    def lead(r, k):
+        c = None if r["orow"] else RA.lead_program(r["stem"], reg.k2c, registry)
+        return c if c != k else None
+
+    bags, bag_name = {}, {}
+    for k in sorted(by_key):
+        rs = by_key[k]
+        name = collections.Counter(r["sname"] for r in rs if r["sname"]).most_common(1)
+        name = reg.display(k, name[0][0] if name else k)
+        files = [{"how": r["how"], "item": r["rec"]["archive_id"], "program": lead(r, k)} for r in rs]
+        rule = RA.grab_bag(name, files, feeds_n, item_files, broadcast(k))
+        if rule:
+            bags[k] = rule
+            bag_name[k] = name
+    bag_of_item = {}
+    for k in sorted(bags):
+        for r in by_key[k]:
+            bag_of_item.setdefault(r["rec"]["archive_id"], collections.Counter())[k] += 1
+    bag_of_item = {i: c.most_common(1)[0][0] for i, c in bag_of_item.items()}
+    for k in sorted(by_key):
+        if k in bags:
+            continue
+        rs = by_key[k]
+        if k not in registry and all(r["rec"]["archive_id"] in bag_of_item and r["how"].startswith(("file", "dir"))
+                                     and not r["date"] and not r["orow"] for r in rs):
+            target = bag_of_item[rs[0]["rec"]["archive_id"]]
+            for r in rs:
+                _move(reg, r, target, bag_name[target], "undated piece of a grab bag named by its own file", "bag")
+                stats["grab_bag_pieces_returned"] += 1
+            continue
+        if k in registry:
+            for r in rs:
+                if r["rec"]["archive_id"] not in bag_of_item or not r["how"].startswith(("file", "dir")) or r["date"] \
+                        or r["orow"] or RA._title_matches(r["title"], titles.get(k, ())):
+                    continue
+                target = bag_of_item[r["rec"]["archive_id"]]
+                _move(reg, r, target, bag_name[target], "undated file of a grab bag a program took by its name alone", "bag")
+                stats["grab_bag_files_returned"] += 1
+    in_bag = collections.defaultdict(list)
+    for r in recs:
+        if r["key"] in bags:
+            in_bag[r["key"]].append(r)
+    for k in sorted(bags):
+        stats["grab_bags:" + bags[k]] += 1
+        for r in in_bag[k]:
+            if r["orow"]:
+                continue
+            got = RA.stem_program(r["stem"], reg.k2c, lambda c: titles.get(c, ()), r["date"], run_of)
+            if got and got[0] != k and got[0] in registry:
+                _move(reg, r, got[0], r["stem"], "file of a grab bag begins with a known program", "stem:" + got[1], got[2])
+                stats["grab_bag_files_reattributed"] += 1
+            else:
+                holds[k] = GRAB_BAG
+                stats["grab_bag_files_held"] += 1
 
 
 def _movable(r):
@@ -964,6 +1051,40 @@ def merge_near_names(recs, reg, target_dates, titles, stats):
             _move(reg, r, target, tname, "name within two letters of a program, episodes agree (" + how + ")", "near", how)
             stats["near_files_merged"] += 1
         stats["near_series_merged"] += 1
+
+
+def follow_work(episodes, verdict, reg, re_by_key, items, ctx, stats):
+    """A rights hide follows the work (same_work.py, DECISIONS 032): an episode the first pass served that is a
+    hidden work's broadcast, season upload, reel or re-performance takes the work's verdict, judged by the same
+    audit under the work's key (or, for one broadcast, the hidden episode's own verdict), with the reason first
+    in its evidence."""
+    names = {}
+    for ep in episodes.values():
+        k = ep["series_key"]
+        if k and k not in names:
+            names[k] = {"name": reg.display(k, ep["series_name"]) or ep["series_name"] or k,
+                        "own": not (k in re_by_key or reg.idps.get(k) or k.startswith("librivox")),
+                        "librivox": k.startswith("librivox")}
+    eps = {e["id"]: (e["series_key"], e["date"], e["title"], {r["archive_id"] for r in e["recordings"]})
+           for e in episodes.values()}
+    verdicts = {i: (j["state"], j["rec_bucket"], j["work_bucket"]) for i, j in verdict.items()}
+    inames = {i: i.replace("_", " ").replace("-", " ") + " " + (it.get("title") or "") for i, it in items.items()}
+    for eid, w in sorted(SW.find(eps, names, verdicts, inames).items()):
+        ep = episodes[eid]
+        if w["episode"]:
+            j = dict(verdict[w["episode"]])
+        else:
+            j = A.judge(dict(ep, series_key=w["key"], series_name=names[w["key"]]["name"]), ctx)
+            if not (j["state"] == "hide_claim" and (j["rec_bucket"] in SW.FOLLOW or j["work_bucket"] in SW.FOLLOW)):
+                continue
+        same = {"same_work": names[w["key"]]["name"], "key": w["key"], "rule": w["rule"],
+                "source": "catalog DECISIONS 032: a rights hide follows the work"}
+        if w["episode"]:
+            same["episode"] = w["episode"]
+        j["evidence"] = [same] + list(j["evidence"])
+        verdict[eid] = j
+        stats["same_work_hidden"] += 1
+        stats["same_work_hidden:" + w["rule"]] += 1
 
 
 def main():
@@ -1301,12 +1422,12 @@ def main():
     series_foreign, series_post = {}, {}
     for k, eps in by_series.items():
         recs = [r for e in eps for r in e["recordings"]]
-        hits = [A.FOREIGN.search(r["item_text"]) for r in recs]
-        n = sum(1 for h in hits if h)
-        if recs and n >= 2 and n / len(recs) >= 0.5:
-            series_foreign[k] = {"source": "item metadata names a non-US broadcaster",
-                                 "term": collections.Counter(h.group(0) for h in hits if h).most_common(1)[0][0],
-                                 "share": round(n / len(recs), 2)}
+        # A one-recording series is judged on its item's title and its file name: an item's description speaks for
+        # every file in it ("Afrs-MrAndMrsNorth" sits in an item whose description names the BBC).
+        got = A.foreign_series([r["item_text"] + " " + (r["file"] or "") for r in recs] if len(recs) > 1 else
+                               [(items.get(r["archive_id"], {}).get("title") or "") + " " + (r["file"] or "") for r in recs])
+        if got:
+            series_foreign[k] = got
         dated = [e["date"] for e in eps if e["date"]]
         if dated and min(dated) >= "1972-02-15":
             series_post[k] = {"source": "every dated episode is after 1972-02-15", "earliest": min(dated)}
@@ -1386,13 +1507,18 @@ def main():
     db.executescript(open(os.path.join(os.path.dirname(__file__), "schema.sql")).read())
     state_count = collections.Counter()
     bucket_count = collections.Counter()
+    verdict = {}
     for ep in episodes.values():
         recs = ep["recordings"]
         n_copies = len(recs)
         order_recordings(recs)
         stats["copies_overlong_dropped"] += n_copies - len(recs)
+        verdict[ep["id"]] = A.judge(ep, ctx)
+    follow_work(episodes, verdict, reg, re_by_key, items, ctx, stats)
+    for ep in episodes.values():
+        recs = ep["recordings"]
         med = median_length(recs)
-        j = A.judge(ep, ctx)
+        j = verdict[ep["id"]]
         state_count[j["state"]] += 1
         bucket_count[j["rec_bucket"]] += 1
         bucket_count[j["work_bucket"]] += 1
