@@ -266,6 +266,8 @@ jobs:
           PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_display_text.py
           PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_networks.py
           PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_display_fields.py
+          PROJECTION=out/publish/ear-drama.sqlite python3 tests/test_same_broadcast.py
+          PROJECTION=out/publish-clean/ear-drama.sqlite python3 tests/test_same_broadcast.py
 
       - name: Restore the measured evenings (radiologs-latest)
         id: radiologs

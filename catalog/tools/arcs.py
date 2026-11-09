@@ -124,7 +124,10 @@ def derive(rows, series_names=None):
 
 
 def arc_id(series_key, first_part_id):
-    """Stable while the first part's id is: the series and the first part's id."""
+    """Stable while the first part's id is: the series and the first part's id. A part folded in from another
+    series keeps its own id ("other|n1"), so its whole id is kept and cannot repeat the series' own "|n1"."""
+    if not first_part_id.startswith(f"{series_key}|"):
+        return f"{series_key}|arc|{first_part_id}"
     return f"{series_key}|arc|{first_part_id.split('|', 1)[-1]}"
 
 

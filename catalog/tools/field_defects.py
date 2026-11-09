@@ -82,9 +82,17 @@ def small_word_slips(t):
     return [] if lower_small_words(t) == t else [t]
 
 
+# The facts polish.copy_labels composes from a copy's own row ("Higher quality (128 kbps)", "Uploaded 2015",
+# "another copy"): the catalog's words, never an upload's, so a label is judged on its source name alone.
+_COPY_FACTS = re.compile(r"(?:^|,\s*)(?:(?:higher|lower) quality \(\d+ kbps\)|(?:another|longer|shorter|partial|best) copy|"
+                         r"uploaded \d{4}|\d+ min|afrts? rebroadcast|rehearsal|audition)(?=,|$)", re.I)
+
+
 def text_defects(text, kind="title", key=None):
     """The classes a displayed text falls in (a list). `kind`: title | name | role | label | person."""
     t = (text or "").strip()
+    if kind == "label":
+        t = _COPY_FACTS.sub("", t).strip(" ,")
     out = []
     if not t:
         return out

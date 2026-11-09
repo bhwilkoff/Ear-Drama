@@ -32,7 +32,7 @@ INTRO_TRACK = re.compile(r"^(?:old[- ]time radio researchers(?: group)? (?:intro
                          r"kbps(?:\[\d+\])?|old[- ]time radio(?: \d+)?)$", re.I)
 HARD_NAME = {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED"}
 LONG_NAME = 60
-GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program|file|track|nr|no|side|disc|show)\.?\s*[\d.\-]*)$", re.I)
+GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program|file|track|nr|no|side|disc|show|production|tape|reel|recording)\.?\s*[\d.\-]*)$", re.I)
 AIRED_FRAGMENT = re.compile(r"\b(?:aired|air\s?date)\s+[\d/ ,-]*$", re.I)
 
 SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set"}
@@ -154,10 +154,87 @@ def spell_iso_dates(title, air_date):
     return re.sub(r"\s{2,}", " ", t).strip(" -\u2013\u2014:,")
 
 
-def decide_episode(shown, series_name, air_date, num):
-    """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'."""
-    shown = spell_iso_dates(strip_archive_code(strip_uploader_note(shown)), air_date)
-    if readable_title(shown):
+TRACK_TAIL = re.compile(r"\.t\d{1,3}$", re.I)
+XX_DATE = re.compile(r"^((?:19|20)\d\d)-xx-xx\b\s*[-–:]?\s*(?=\S)", re.I)
+TAIL_TAG = re.compile(r"\s*\(([A-Z]{1,4})\)$")
+BROADCASTERS = re.compile(r"^(?:[KW][A-Z]{2,3}|NBC|CBS|ABC|MBS|BBC|CBC|AFRS|AFRTS|AFN|RRG|DRF|TV|US|USA|UK|NYC)$")
+
+
+XX_LEAD = re.compile(r"^(?:xx\s+)+(?=[A-Za-z]{2})")
+
+
+def series_possessive(title, series_name):
+    """"Tarzans First Birthday" in Tarzan is "Tarzan's First Birthday": a word that is the series' own one-word name
+    and an s, before a capitalized word, is that name's possessive; the series' name is the witness to the spelling."""
+    t = name_tokens(series_name or "")
+    words = re.findall(r"[A-Za-z]+", series_name or "")
+    if len(t) != 1 or len(t[0]) < 4:
+        return title
+    name = next((w for w in words if w.casefold() == t[0]), None)
+    if not name or not name[0].isupper():
+        return title
+    return re.sub(rf"\b{name}s(?= [A-Z])", f"{name}'s", title)
+
+
+def recurring_tags(titles):
+    """The trailing "(DM)", "(JR)" codes a series' titles carry three times or more: a source's or uploader's shelf
+    mark, not the program's words. A broadcaster's call letters or a network ("(NBC)", "(WOR)") is a fact, and stays."""
+    seen = {}
+    for t in titles:
+        m = TAIL_TAG.search(t or "")
+        if m and not BROADCASTERS.match(m.group(1)):
+            seen[m.group(1)] = seen.get(m.group(1), 0) + 1
+    return {c for c, n in seen.items() if n >= 3}
+
+
+# Initials, then what an upload put after them: a date (the record's air date shows it), a six-digit date code, a
+# "#" or zero-padded episode number, an SxxEyy code. A bare number stays ("MLM 100 Shares of Stock").
+SERIES_CODE = re.compile(r"^([A-Z]{2,5})\b\s*(?:(?:19|20)?\d\d[-./]\d{1,2}[-./]\d{1,2}\b\s*)?(?:\d{6}\b\s*)?"
+                         r"(?:(?:#\d{1,4}|0\d{1,3})[a-z]?\b\s*)?(?:[-\u2013:]\s*)?(?:S\d{1,2}E\d{1,3}\b\s*(?:[-\u2013:]\s*)?)?")
+
+
+def strip_series_code(title, series_name):
+    """A title led by its series' initials and a number ("OMB #001 1st Show" in Our Miss Brooks, "CGS #055 ..." in
+    the Charlotte Greenwood Show, "STSA - S01E04 - ...") is the title after them: the initials restate the series."""
+    t, whole = name_tokens(series_name or ""), tuple(_tokens(series_name or ""))
+    inits = {i.upper() for i in _initials(t) | _initials(whole) if len(i) >= 2} if len(t) >= 2 else set()
+    m = SERIES_CODE.match(title or "")
+    if m and m.group(1) in inits and not BROADCASTERS.match(m.group(1)) and m.end() < len(title):
+        return title[m.end():].strip()
+    return title
+
+
+def episode_text(shown, series_name, tags=()):
+    """The P-10 classes undone on one title (owner 2026-11-09): a reel track tail ("Six Shooter.Gunsmoke Reel.t01"
+    is the reel's name, so no title is left), a date an upload wrote as "1942-xx-xx" (its year kept at the end),
+    the series' initials and number in front, a recurring trailing shelf code. Removes; never adds a word."""
+    t = (shown or "").strip()
+    if TRACK_TAIL.search(t):
+        t = TRACK_TAIL.sub("", t).strip()
+        if REEL_WORD.search(t) or _norm(t) == _norm(series_name):
+            # "Suspense-The Pit and the Pendulum Reel.t01": the reel names its series, then one title.
+            parts = [p for p in re.split(r"\s*(?:\.|\s-\s|-)\s*", REEL_WORD.sub("", t).strip(" -.")) if p.strip()]
+            rest = [p for p in parts if name_tokens(p) != name_tokens(series_name or "")]
+            return rest[0].strip() if len(parts) == 2 and len(rest) == 1 and len(rest[0].split()) >= 2 else ""
+    m = XX_DATE.match(t)
+    if m:
+        t = f"{t[m.end():].strip()} ({m.group(1)})"
+    t = XX_LEAD.sub("", t)
+    t = strip_series_code(t, series_name)
+    t = series_possessive(t, series_name)
+    m = TAIL_TAG.search(t)
+    if m and m.group(1) in tags and m.start() > 0:
+        t = t[:m.start()].strip()
+    return t
+
+
+def decide_episode(shown, series_name, air_date, num, tags=()):
+    """(title to show, source, fields, withheld reason): source is 'source' (the cleaned title) or 'composed'.
+    A title that only repeats its series' name ("Louella Parsons" in Louella Parsons) is composed from the date or
+    number when the record has one; with neither, the name is the work's own title and stays."""
+    shown = spell_iso_dates(strip_archive_code(strip_uploader_note(episode_text(shown, series_name, tags))), air_date)
+    restates = bool(shown) and bool(series_name) and _norm(shown) == _norm(series_name)
+    if readable_title(shown) and not (restates and compose_title(series_name, air_date, num)):
         return shown, "source", ["episodes.title"], None
     got = compose_title(series_name, air_date, num)
     if got:
@@ -351,8 +428,9 @@ def merge_into(series):
         return sorted(keys, key=lambda k: (series[k]["own"], -series[k]["eps"], k))[0]
     out = {}
     for nm, keys in sorted(by_norm.items()):
-        reg = registry.get(nm, set()) - set(keys)
         frag = [k for k in keys if series[k]["cleaned"]]
+        # The registry program may share the cleaned name ("The Whistler reel" beside "The Whistler").
+        reg = registry.get(nm, set()) - set(frag)
         if frag and len(reg) == 1:
             out.update({k: next(iter(reg)) for k in frag})
             keys = [k for k in keys if k not in frag]
@@ -393,3 +471,292 @@ def merged_span(merged, rows):
             out[new] = (min(fs) if fs else None, max(ls) if ls else None,
                         cn + [x for x in nets if x not in cn])
     return {k: (f, l, json.dumps(n) if n else None) for k, (f, l, n) in out.items()}
+
+
+# ---- P-10: one broadcast in one place, one show under one name (owner 2026-11-09; catalog DECISIONS 030) ----
+# "I see a lot of things that seem disconnected from their shows": the same broadcast filed under a real show and
+# under a series named for a sponsor, a collection, a season or a reel. Every fold below is read from the data
+# (an air date and a title the two records share, an archive.org item title, a registry alias, a run), never
+# from a likeness of names alone, and each one is listed in display_text.json for review.
+GENERIC_WORDS = {"the", "a", "an", "show", "program", "programme", "radio", "series", "hour"}
+COLLECTION_WORDS = {"single", "singles", "episode", "episodes", "show", "shows", "program", "programs", "season",
+                    "seasons", "series", "vol", "volume", "volumes", "disc", "discs", "reel", "reels", "set", "part",
+                    "parts", "final", "collection", "complete", "otr", "old", "time", "radio", "summer", "winter",
+                    "spring", "fall", "and", "to", "of", "the", "lost", "all", "available", "eps", "ep", "a", "b"}
+RANGE_TOKEN = re.compile(r"^(?:\d[\d\-/.]*[a-z]?|[ivx]+)$")
+SMALL_INITIAL = {"and", "of", "the", "a", "an", "to", "in", "on", "for"}
+MIN_SHARED = 3           # a pair of series that repeat each other's broadcasts this often is one source copying another
+DISSOLVE_SHARE = 1 / 2   # an upload-named series more than half of whose dated broadcasts are one show's is that show
+
+
+def _tokens(s):
+    s = (s or "").casefold().replace("&", " and ").replace("theatre", "theater")
+    s = re.sub(r"['’\"“”]", "", s)
+    return re.findall(r"[a-z]+|\d[\d\-/.]*[a-z]?", s)
+
+
+def name_tokens(n):
+    t = _tokens(n)
+    while t and t[0] in ("the", "a", "an"):
+        t = t[1:]
+    while t and t[-1] == "the":   # "Springbok Library of the Air - The"
+        t = t[:-1]
+    return tuple(t)
+
+
+def _core(n):
+    return tuple(w for w in name_tokens(n) if w not in GENERIC_WORDS)
+
+
+def _collection_only(tokens):
+    return all(w in COLLECTION_WORDS or RANGE_TOKEN.match(w) for w in tokens)
+
+
+def _strong_name(t):
+    return len(t) >= 2 or (len(t) == 1 and len(t[0]) >= 6 and t[0].isalpha())
+
+
+def _framed(text, name):
+    """True when `text` (tokens) is `name` (tokens) with only collection words and numbers around it:
+    "Jack Benny - Single Episodes - 1932-1934", "The Shadow Season 11 (9-7-47 to 5-30-48)"."""
+    n = len(name)
+    for i in range(len(text) - n + 1):
+        if tuple(text[i:i + n]) == name and _collection_only(list(text[:i]) + list(text[i + n:])):
+            return True
+    return False
+
+
+def _initials(t):
+    return {"".join(w[0] for w in t if w.isalpha()), "".join(w[0] for w in t if w.isalpha() and w not in SMALL_INITIAL)}
+
+
+def _in_run(dates, run, years=1):
+    lo, hi = run
+    if not lo or not hi:
+        return False
+    lo, hi = f"{int(lo[:4]) - years}{lo[4:]}", f"{int(hi[:4]) + years}{hi[4:]}"
+    return all(lo <= d <= hi for d in dates)
+
+
+def same_program(series, shared=None):
+    """{old key: (surviving key, rule)} for upload- and sponsor-named series that are one program. `series`: key ->
+    dict(name, own, librivox, eps, aliases, dates (served air dates), run (first, last), items {item title: episodes},
+    titles [display titles]); `shared`: {(a, b): broadcasts the two series both carry}, either order. Rules, each
+    needing every dated episode inside the program's run (a year either side) and the program to be the larger:
+      alias     the name spells the letters of exactly one registry program's name or alias ("FM&M", alias "FMM");
+      variant   the names differ only by the, show, program, radio or hour ("Red Skelton", "The Red Skelton Show");
+      item      half its episodes come from archive.org items titled with one registry program's name and collection
+                words only ("Jack Benny - Single Episodes - 1932-1934" for "Grape Nuts Program"), items that feed no
+                third series; three dated episodes or more; its own name not that program's name plus a qualifier
+                ("High Adventure (South Africa)"); and its name is a season or volume, or the two share a broadcast;
+      initials  the name is a program's initials and collection words ("GG Season 05"), and the two share a broadcast;
+      prefix    the name is a program's name and more ("Escape the Birds"), dated, and the rest is a number or an
+                episode's own title, or the two share a broadcast.
+    A LibriVox project is never folded either way; a series named by a registry is folded only by `item`."""
+    shared = shared or {}
+    pair = lambda a, b: shared.get((a, b), 0) + shared.get((b, a), 0)
+    names, letters, inits, cores = {}, {}, {}, {}
+    for k in sorted(series):
+        v = series[k]
+        if v["librivox"] or not v["eps"]:
+            continue
+        for n in [v["name"]] + ([] if v["own"] else list(v.get("aliases") or ())):
+            t = name_tokens(n)
+            if _strong_name(t) and not re.search(r"\d", " ".join(t)):
+                names.setdefault(t, set()).add(k)
+            if not v["own"]:
+                lt = re.sub(r"[^a-z0-9]", "", n.casefold())
+                if len(lt) >= 3:
+                    letters.setdefault(lt, set()).add(k)
+        t = name_tokens(v["name"])
+        if len(t) >= 2:
+            for i in _initials(t):
+                if len(i) >= 2:
+                    inits.setdefault(i, set()).add(k)
+        if _core(v["name"]):
+            cores.setdefault(_core(v["name"]), set()).add(k)
+
+    out = {}
+    for k in sorted(series):
+        v = series[k]
+        if v["librivox"] or not v["eps"]:
+            continue
+        dates = v.get("dates") or []
+
+        def ok(r):
+            w = series[r]
+            return (r != k and not w["librivox"] and w["eps"] > v["eps"] and _in_run(dates, w["run"])
+                    if dates else r != k and not w["librivox"] and w["eps"] > v["eps"])
+
+        def one(cands):
+            c = {r for r in cands if ok(r)}
+            return next(iter(c)) if len(c) == 1 else None
+        tok = name_tokens(v["name"])
+        got = None
+        if v["own"]:
+            lt = re.sub(r"[^a-z0-9]", "", v["name"].replace("&", "").casefold())
+            if len(lt) >= 3 and (r := one(letters.get(lt, ()))):
+                got = (r, "alias")
+            elif len(_core(v["name"])) and len("".join(_core(v["name"]))) >= 5 and (r := one(cores.get(_core(v["name"]), ()))):
+                got = (r, "variant")
+        if not got and len(dates) >= MIN_SHARED:
+            held = {}
+            for title, n in sorted((v.get("items") or {}).items()):
+                tt = _tokens(title)
+                found = {(r, name_tokens(series[r]["name"]) == t) for t, rs in names.items() for r in rs
+                         if not series[r]["own"] and _framed(tt, t) and ok(r)}
+                hits = {r for r, _p in found}
+                if len(hits) > 1:   # one program's own name beats another's alias ("The Shadow")
+                    hits = {r for r, primary in found if primary} or hits
+                if len(hits) == 1:
+                    r = next(iter(hits))
+                    if (v.get("feeds") or {}).get(title, {k}) <= {k, r}:   # an item feeding other series is a compilation
+                        held[r] = held.get(r, 0) + n
+            best = [r for r, n in held.items() if 2 * n >= v["eps"]]
+            if len(best) == 1:
+                r = best[0]
+                rt = name_tokens(series[r]["name"])
+                qualified = len(tok) > len(rt) and any(tuple(tok[i:i + len(rt)]) == rt for i in range(len(tok)))
+                if not qualified and (_collection_only(tok) or pair(k, r) >= 1):
+                    got = (r, "item")
+        if not got and v["own"]:
+            head = [w for w in tok]
+            while head and (head[-1] in COLLECTION_WORDS or RANGE_TOKEN.match(head[-1])):
+                head.pop()
+            hl = "".join(w for w in head if w != "and")
+            if head and len(hl) >= 2 and head != list(tok) and len(head) <= 2 and hl.isalpha():
+                r = one(x for x in inits.get(hl, ()) if pair(k, x) >= 1)
+                if r:
+                    got = (r, "initials")
+        if not got and v["own"] and dates:
+            for t in sorted(names, key=len, reverse=True):
+                if len(t) < len(tok) and tok[:len(t)] == t:
+                    rest = tok[len(t):]
+                    for r in sorted(names[t]):
+                        if not ok(r):
+                            continue
+                        titled = any(name_tokens(x) and set(name_tokens(x)) <= set(rest) for x in v.get("titles") or ())
+                        if _collection_only(rest) or titled or pair(k, r) >= 1:
+                            got = (r, "prefix")
+                            break
+                    if got:
+                        break
+        if got:
+            out[k] = got
+    return out
+
+
+def _title_key(title):
+    t = name_tokens(title)
+    return " ".join(t) if len("".join(w for w in t if w.isalpha())) >= 6 else None
+
+
+def _rights_allow(keep, gone):
+    """A copy the rights audit served as unclaimed never joins an episode served as clean: the clean-only (public web)
+    projection would carry it under the clean line. Element 5 of an episode row is True for keep_clean (absent: clean)."""
+    clean = lambda row: row[5] if len(row) > 5 else True
+    return not clean(keep) or clean(gone)
+
+
+def same_broadcasts(eps, series):
+    """Episodes of different series that are one broadcast: ({old id: surviving id}, {(a, b): shared count}).
+    `eps`: id -> (series key, air date, display title, composed?, items {archive.org item}[, clean?]). Two episodes are one
+    broadcast when they carry the same full air date and the same title (six letters or more, not the series'
+    own name, not a title composed from the date) and either a series is upload-named, they share an archive.org
+    item, or their two series repeat each other at least MIN_SHARED times (one source copying another; a single
+    coincidence such as two "A Christmas Carol" on December 24 is two productions). Within one series after a
+    fold, the same date and a title one contains is one broadcast (the catalog's identity for a dated episode).
+    The survivor is the episode of the series with fewer partner series (a compilation repeats many shows),
+    then a registry program, then the larger series."""
+    groups = {}
+    for eid in sorted(eps):
+        sk, air, title, composed = eps[eid][:4]
+        if not air or len(air) != 10 or composed:
+            continue
+        key = _title_key(title)
+        if not key or key == " ".join(name_tokens(series[sk]["name"])):
+            continue
+        groups.setdefault((air, key), []).append(eid)
+    shared, partners = {}, {}
+    for ids in groups.values():
+        sks = sorted({eps[e][0] for e in ids})
+        for i, a in enumerate(sks):
+            for b in sks[i + 1:]:
+                shared[(a, b)] = shared.get((a, b), 0) + 1
+                partners.setdefault(a, set()).add(b)
+                partners.setdefault(b, set()).add(a)
+    rank = lambda sk: (len(partners.get(sk, ())), series[sk]["own"], -series[sk]["eps"], sk)
+    out = {}
+    for (air, key), ids in sorted(groups.items()):
+        if len({eps[e][0] for e in ids}) < 2:
+            continue
+        ids = sorted(ids, key=lambda e: (rank(eps[e][0]), e))
+        keep = ids[0]
+        ka = eps[keep][0]
+        for e in ids[1:]:
+            b = eps[e][0]
+            if b == ka:
+                continue
+            n = shared.get((min(ka, b), max(ka, b)), 0)
+            if not _rights_allow(eps[keep], eps[e]):
+                continue
+            if series[ka]["own"] or series[b]["own"] or n >= MIN_SHARED or eps[keep][4] & eps[e][4]:
+                out[e] = keep
+    return out, shared
+
+
+def same_day_in_series(eps, moved):
+    """{old id: surviving id} for episodes a series fold brought onto a date their new series already holds, when
+    one title contains the other's words or one was composed from the date. `eps`: id -> (series key, air date,
+    display title, composed?, original series key[, clean?]); `moved`: ids whose series changed. Never an unclaimed
+    copy into a clean episode (_rights_allow)."""
+    by = {}
+    for eid in sorted(eps):
+        sk, air = eps[eid][:2]
+        if air and len(air) == 10:
+            by.setdefault((sk, air), []).append(eid)
+    out = {}
+    for ids in by.values():
+        stay = [e for e in ids if e not in moved] or ids[:1]
+        keep = stay[0]
+        for e in ids:
+            if e == keep or e not in moved:
+                continue
+            a, b = set(name_tokens(eps[keep][2])), set(name_tokens(eps[e][2]))
+            if not _rights_allow(eps[keep], eps[e]):
+                continue
+            if eps[keep][3] or eps[e][3] or (a and b and (a <= b or b <= a)):
+                out[e] = keep
+    return out
+
+
+def dissolve(series, shared):
+    """{old key: surviving key} for an upload-named series more than DISSOLVE_SHARE of whose dated broadcasts (and at
+    least MIN_SHARED) are one larger series' broadcasts, with every dated episode inside that series' run."""
+    out = {}
+    for k in sorted(series):
+        v = series[k]
+        if not v["own"] or v["librivox"] or not v.get("dates"):
+            continue
+        best = {}
+        for (a, b), n in shared.items():
+            if k in (a, b):
+                best[b if a == k else a] = n
+        cands = sorted(((n, r) for r, n in best.items()
+                        if n >= MIN_SHARED and n > DISSOLVE_SHARE * len(v["dates"]) and series[r]["eps"] > v["eps"]
+                        and not series[r]["librivox"] and _in_run(v["dates"], series[r]["run"])), reverse=True)
+        if cands and (len(cands) == 1 or cands[0][0] > cands[1][0]):
+            out[k] = cands[0][1]
+    return out
+
+
+def resolve_chains(m):
+    out = {}
+    for k in sorted(m):
+        seen, t = {k}, m[k]
+        while t in m and t not in seen:
+            seen.add(t)
+            t = m[t]
+        if t != k:
+            out[k] = t
+    return out

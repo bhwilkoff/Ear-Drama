@@ -141,7 +141,11 @@ comes from, for the versions list and the recording page, where `archive_id` ("O
 "Suspense420617TheBurningCourt") is an identifier, not a name. Order: a family the identifier names (`OTRR_...` is
 "Old Time Radio Researchers"); else the item's own title, cleaned (the organization before a " - ", an upload's
 episode count and "( OTR)" dropped, a shouted word set in case); NULL when the item is a single broadcast or its title
-restates one (a date, a code, a file name). A client shows `label` when set and "Recording N" when NULL; it never
+restates one (a date, a code, a file name). Since 2026-11-09 (P-10, catalog DECISIONS 030) every copy of an episode
+with more than one carries a label that tells it apart: that name when no other copy of the episode shares it, else the
+name or nothing followed by the fact that differs, read from the copy's own row ("AFRS rebroadcast", "Partial copy",
+"Longer copy", "Higher quality (128 kbps)", "Uploaded 2015", "31 min"), and "Best copy" / "Another copy" only when
+every fact is the same. A client shows `label` when set and "Recording N" only as a fallback when NULL; it never
 shows `archive_id` as a name. The identifier stays as the link to the item's archive.org page. The web projection's
 recordings rows carry it as an eighth element `[url, archiveId, format, kbps, length, variant, partial, label]`.
 
