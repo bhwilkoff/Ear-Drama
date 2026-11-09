@@ -72,6 +72,7 @@ import androidx.compose.ui.focus.focusRequester
 import com.example.appname.navigation.SiteLinks
 import com.example.appname.ui.ArtCredit
 import com.example.appname.ui.QueueToggle
+import com.example.appname.ui.TextLink
 import com.example.appname.ui.ShareButton
 import com.example.appname.ui.episodeShareTitle
 import com.example.appname.ui.EventLine
@@ -160,6 +161,7 @@ private fun PlayPauseButton(now: NowPlaying, engine: PlaybackEngine, filled: Boo
 fun PlayerSheet(
     onDismiss: () -> Unit,
     onOpenEpisode: (String) -> Unit,
+    onOpenSeries: (String) -> Unit = {},
     onOpenTranscript: (String) -> Unit,
     onListenTogether: () -> Unit,
     onOpenPerson: (String) -> Unit = {},
@@ -207,7 +209,11 @@ fun PlayerSheet(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.tvFocusMark().clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
                 )
-                EventLine(listOf(episode.seriesName, formatAirDate(episode.airDate), episode.network))
+                TextLink(
+                    episode.seriesName,
+                    onClick = { onOpenSeries(episode.seriesKey) },
+                )
+                EventLine(listOf(formatAirDate(episode.airDate), episode.network))
             }
             now.problem?.let { problem ->
                 Text(

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.data.DisplayVocabulary
 import com.example.appname.data.SeriesRow
 import com.example.appname.navigation.SiteLinks
+import com.example.appname.ui.AboutBlock
 import com.example.appname.ui.ActionRow
 import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
@@ -205,5 +206,8 @@ fun LazyListScope.seriesHead(series: SeriesRow, following: Boolean, onOpenGenre:
     }
     item(key = "credit") {
         PictureCredit(listOf(series.windowArt), headSlot(), Modifier.padding(horizontal = Spacing.S4.dp))
+    }
+    if (series.aboutText != null) {
+        item(key = "about") { AboutBlock(series.aboutText, series.aboutSource, series.aboutUrl) }
     }
 }

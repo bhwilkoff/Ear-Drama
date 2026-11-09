@@ -161,9 +161,28 @@ class CatalogQueriesTest {
         assertEquals("No rights claim known. Removed on request.", DisplayVocabulary.rightsLine(d.rights, d.rightsBasis))
     }
 
+    @Test fun `series about and episode script link read when the columns exist, and are absent without them`() = runBlocking {
+        val with = CatalogDatabase.open(CatalogFixture.build(tmp.newFolder(), withAbout = true, withScriptUrl = true).path)!!
+        try {
+            val s = with.series("suspense")!!
+            assertEquals("First paragraph.\n\nSecond paragraph.", s.aboutText)
+            assertEquals("Wikipedia", s.aboutSource)
+            assertEquals("https://en.wikipedia.org/wiki/Suspense_(radio_drama)", s.aboutUrl)
+            assertNull(with.series("commandperformance")!!.aboutText)
+            val d = with.episodeDetail("sus|1943-05-25")!!
+            assertEquals("https://example.org/scripts/sorry", d.scriptUrl)
+            assertEquals("Script Library", d.scriptSource)
+            assertNull(with.episodeDetail("sus|1943-01-07")!!.scriptUrl)
+        } finally {
+            with.close()
+        }
+        assertNull(db.series("suspense")!!.aboutText)
+        assertNull(db.episodeDetail("sus|1943-05-25")!!.scriptUrl)
+    }
+
     @Test fun `a catalog without meta rightsLines shows the contract's words`() = runBlocking {
         assertEquals(DisplayVocabulary.CONTRACT_RIGHTS_LINES, db.rightsLines)
-        assertEquals("No rights claim known. Removed on request.", db.episodeDetail("sus|1943-03-11")!!.rightsLine)
+        assertNull("the unclaimed line is the default and is not drawn", db.episodeDetail("sus|1943-03-11")!!.rightsLine)
         assertEquals("Government recording", db.episodeDetail("sus|1943-05-25")!!.rightsLine)
     }
 
@@ -171,7 +190,7 @@ class CatalogQueriesTest {
         val json = """{"unclaimed": "Published words for unclaimed.", "rec_gov_work": "Published gov words"}"""
         val published = CatalogDatabase.open(CatalogFixture.build(tmp.newFolder(), rightsLines = json).path)!!
         try {
-            assertEquals("Published words for unclaimed.", published.episodeDetail("sus|1943-03-11")!!.rightsLine)
+            assertNull(published.episodeDetail("sus|1943-03-11")!!.rightsLine)
             assertEquals("Published gov words", published.episodeDetail("sus|1943-05-25")!!.rightsLine)
         } finally {
             published.close()

@@ -15,15 +15,22 @@ class RecordingLabelTest {
         ids.forEach { assertTrue("control: $it is identifier-shaped", RecordingLabel.looksLikeIdentifier(it)) }
         ids.forEachIndexed { i, id ->
             val rec = copy(i, id, label = if (i == 0) id else null)
-            val drawn = RecordingLabel.title(rec, i + 1) + " " + RecordingLabel.facts(rec, i == 0, "30 min", emptyList())
+            val drawn = RecordingLabel.title(rec, "30 min") + " " + RecordingLabel.facts(rec, i == 0, "30 min", emptyList())
             assertFalse(drawn, RecordingLabel.looksLikeIdentifier(drawn))
             assertFalse(drawn.contains(id))
         }
     }
 
-    @Test fun `a clean label wins, else the position`() {
-        assertEquals("Recording 1", RecordingLabel.title(copy(0, "x"), 1))
-        assertEquals("Old Time Radio Researchers", RecordingLabel.title(copy(1, "x", "Old Time Radio Researchers"), 2))
-        assertEquals("Best copy · 128 kbps · 30 min", RecordingLabel.facts(copy(0, "x"), true, "30 min", emptyList()))
+    @Test fun `a clean label wins, else the distinguishing facts, never Recording N`() {
+        assertEquals("128 kbps · 30 min", RecordingLabel.title(copy(0, "x"), "30 min"))
+        assertEquals("Old Time Radio Researchers", RecordingLabel.title(copy(1, "x", "Old Time Radio Researchers"), "30 min"))
+        assertEquals("Best copy", RecordingLabel.facts(copy(0, "x"), true, "30 min", emptyList()))
+        assertEquals("Best copy · 128 kbps · 30 min", RecordingLabel.facts(copy(0, "x", "Old Time Radio Researchers"), true, "30 min", emptyList()))
+        val bare = Recording(0, "x", "u", "MP3", null, null, null, false, null)
+        assertEquals("MP3", RecordingLabel.title(bare, null))
+        assertEquals("Another copy", RecordingLabel.title(bare.copy(format = null), null))
+        listOf(copy(0, "x"), copy(1, "x", "OTRR_Suspense_Singles"), bare).forEach {
+            assertFalse(RecordingLabel.title(it, null).startsWith("Recording"))
+        }
     }
 }

@@ -82,6 +82,18 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         "script" in queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
     }
 
+    /** Optional `series.about_text`, `about_source`, `about_url` (a Wikipedia summary); a catalog without them shows no About. */
+    private val hasAbout: Boolean by lazy {
+        val cols = queryRaw("PRAGMA table_info(series)") { it.getText(1) }
+        listOf("about_text", "about_source", "about_url").all { it in cols }
+    }
+
+    /** Optional `episodes.script_url` and `script_source`: where the script can be read. */
+    private val hasScriptUrl: Boolean by lazy {
+        val cols = queryRaw("PRAGMA table_info(episodes)") { it.getText(1) }
+        "script_url" in cols && "script_source" in cols
+    }
+
     /** §3.3's `arcs` and `arc_parts` (Decision 067); an older catalog has no arcs. */
     private val hasArcs: Boolean by lazy {
         "next_arc" in queryRaw("PRAGMA table_info(arcs)") { it.getText(1) } &&
@@ -103,7 +115,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 "NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, ") +
             (if ("networks" in cols) "s.networks, " else "NULL, ") +
             (if ("year_counts" in cols) "s.year_counts, " else "NULL, ") +
-            (if ("sort_name" in cols) "s.sort_name " else "NULL ") +
+            (if ("sort_name" in cols) "s.sort_name, " else "NULL, ") +
+            (if (hasAbout) "s.about_text, s.about_source, s.about_url " else "NULL, NULL, NULL ") +
             "FROM series s " +
             (if (faces) "LEFT JOIN people p ON p.id = s.star AND p.portrait IS NOT NULL LEFT JOIN art a ON a.id = p.portrait " else "") +
             (if (pictures) "LEFT JOIN art ap ON ap.id = s.picture" else "")
@@ -118,6 +131,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 networks = networkList(st.textOrNull(18)),
                 yearCounts = parseYearCounts(st.textOrNull(19)),
                 sortName = st.textOrNull(20),
+                aboutText = st.textOrNull(21)?.trim()?.takeIf { it.isNotEmpty() },
+                aboutSource = st.textOrNull(22),
+                aboutUrl = st.textOrNull(23),
             )
         }.toMap()
     }
@@ -130,6 +146,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val networks: List<String>,
         val yearCounts: List<Int>?,
         val sortName: String?,
+        val aboutText: String? = null,
+        val aboutSource: String? = null,
+        val aboutUrl: String? = null,
     )
 
     private fun artwork(st: SQLiteStatement, at: Int): Artwork? = st.textOrNull(at)?.let {
@@ -490,9 +509,10 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         val sponsor = if (hasSponsor) "e.sponsor" else "NULL"
         val star = if (hasEpisodeStar) "e.star" else "NULL"
         val script = if (hasScript) "e.script" else "NULL"
+        val scriptUrl = if (hasScriptUrl) "e.script_url, e.script_source" else "NULL, NULL"
         val head = queryRaw(
             "SELECT $EPISODE_COLUMNS, e.rights, e.rights_basis, e.network, e.no_recommend, e.detail_json, " +
-                "$loudness, $transcript, $sponsor, $star, $script$EPISODE_FROM WHERE e.id = ?",
+                "$loudness, $transcript, $sponsor, $star, $script, $scriptUrl$EPISODE_FROM WHERE e.id = ?",
             listOf(resolved),
         ) { st ->
             EpisodeDetail(
@@ -510,6 +530,8 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                 sponsor = st.textOrNull(17)?.takeIf { it.isNotBlank() },
                 star = st.textOrNull(18),
                 script = st.textOrNull(19),
+                scriptUrl = st.textOrNull(20),
+                scriptSource = st.textOrNull(21),
             )
         }.firstOrNull() ?: return@read null
         val artJoin = if (hasArt) " LEFT JOIN art a ON a.id = p.portrait" else ""
@@ -538,7 +560,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         head.copy(
             credits = credits,
             recordings = recordings,
-            rightsLine = DisplayVocabulary.rightsLine(head.rights, head.rightsBasis, rightsLines),
+            rightsLine = DisplayVocabulary.displayedRightsLine(head.rights, head.rightsBasis, rightsLines),
         )
     }
 
@@ -793,6 +815,9 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
         networks = seriesLook[st.getText(0)]?.networks.orEmpty(),
         yearCounts = seriesLook[st.getText(0)]?.yearCounts,
         sortName = seriesLook[st.getText(0)]?.sortName,
+        aboutText = seriesLook[st.getText(0)]?.aboutText,
+        aboutSource = seriesLook[st.getText(0)]?.aboutSource,
+        aboutUrl = seriesLook[st.getText(0)]?.aboutUrl,
     )
 
     private fun episodeRow(st: SQLiteStatement) = EpisodeRow(

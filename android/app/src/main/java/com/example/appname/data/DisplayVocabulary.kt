@@ -32,6 +32,14 @@ object DisplayVocabulary {
             else -> null
         }
 
+    /**
+     * What an episode page draws: the contract's line, except the unclaimed one. Unclaimed is the
+     * default for every recording in the app, so it is not said (owner 2026-11-09); any other rights
+     * phrase still shows.
+     */
+    fun displayedRightsLine(rights: String, basis: String?, lines: Map<String, String> = CONTRACT_RIGHTS_LINES): String? =
+        if (rights == "unclaimed") null else rightsLine(rights, basis, lines)
+
     fun variantLine(variant: String?): String? = when (variant) {
         "AFRS", "AFRTS" -> "Armed Forces Radio rebroadcast"
         else -> null

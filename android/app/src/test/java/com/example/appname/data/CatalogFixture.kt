@@ -96,6 +96,8 @@ object CatalogFixture {
         listenShelves: String? = null,
         withArt: Boolean = false,
         withScript: Boolean = false,
+        withAbout: Boolean = false,
+        withScriptUrl: Boolean = false,
         withArcs: Boolean = false,
         withGrade: Boolean = false,
         episodes: List<Ep> = EPISODES,
@@ -221,6 +223,24 @@ object CatalogFixture {
                     c.execSQL("INSERT INTO voices VALUES ('p2', 1, 'Orson Welles', 9, 2)")
                     c.execSQL("INSERT INTO voices VALUES ('p1', 2, 'Agnes Moorehead', 4, 1)")
                 }
+            }
+            // Optional `series.about_*` and `episodes.script_*`, absent from today's projection.
+            if (withAbout) {
+                c.execSQL("ALTER TABLE series ADD COLUMN about_text TEXT")
+                c.execSQL("ALTER TABLE series ADD COLUMN about_source TEXT")
+                c.execSQL("ALTER TABLE series ADD COLUMN about_url TEXT")
+                c.execSQL(
+                    "UPDATE series SET about_text = 'First paragraph.\n\nSecond paragraph.', about_source = 'Wikipedia', " +
+                        "about_url = 'https://en.wikipedia.org/wiki/Suspense_(radio_drama)' WHERE key = 'suspense'",
+                )
+            }
+            if (withScriptUrl) {
+                c.execSQL("ALTER TABLE episodes ADD COLUMN script_url TEXT")
+                c.execSQL("ALTER TABLE episodes ADD COLUMN script_source TEXT")
+                c.execSQL(
+                    "UPDATE episodes SET script_url = 'https://example.org/scripts/sorry', script_source = 'Script Library' " +
+                        "WHERE id = 'sus|1943-05-25'",
+                )
             }
             // Contract §3.1's `script` (Decision 068): one episode links a castable script.
             if (withScript) {

@@ -278,6 +278,7 @@ fun AppRoot(
             PlayerSheet(
                 onDismiss = { playerOpen = false },
                 onOpenEpisode = { id -> playerOpen = false; openEpisode(id) },
+                onOpenSeries = { key -> playerOpen = false; openSeries(key) },
                 onOpenTranscript = { id -> playerOpen = false; openTranscript(id) },
                 onListenTogether = { playerOpen = false; roomSheet = true },
                 onOpenPerson = { id -> playerOpen = false; openPerson(id) },

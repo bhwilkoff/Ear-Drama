@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
@@ -31,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,7 @@ import com.example.appname.ui.PictureCredit
 import com.example.appname.ui.QueueToggle
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.ShareButton
+import com.example.appname.ui.openInCustomTab
 import com.example.appname.ui.episodeCount
 import com.example.appname.ui.episodeShareTitle
 import com.example.appname.ui.episodeTitle
@@ -138,8 +140,8 @@ fun EpisodeScreen(
                     )
                     if (d.recordings.size > 1) {
                         item(key = "versions-h") { SectionHeader("Recordings") }
-                        itemsIndexed(d.recordings, key = { _, it -> "r${it.rank}" }) { index, rec ->
-                            VersionItem(rec, index + 1, onPlay = { container.playback.play(row, url = rec.url) })
+                        items(d.recordings, key = { "r${it.rank}" }) { rec ->
+                            VersionItem(rec, onPlay = { container.playback.play(row, url = rec.url) })
                         }
                     } else {
                         d.recordings.firstOrNull()?.let { rec ->
@@ -189,7 +191,7 @@ fun LazyListScope.episodeHead(
             genre = genre,
             art = lead,
             kicker = genre?.let { DisplayVocabulary.genreName(it) } ?: "Show",
-            facts = listOf(series?.let { seriesYears(it) } ?: "Undated", series?.let { episodeCount(it.episodes) }),
+            facts = listOf(series?.let { seriesYears(it) } ?: "Undated", series?.let { "All " + episodeCount(it.episodes) + " \u203a" }),
             first = series?.firstDate,
             last = series?.lastDate,
             years = series?.yearCounts,
@@ -234,6 +236,19 @@ fun LazyListScope.episodeHead(
             Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) { earDrama() }
         }
     }
+    if (d.scriptUrl != null) {
+        item(key = "script-link") {
+            val context = LocalContext.current
+            OutlinedButton(
+                onClick = { openInCustomTab(context, d.scriptUrl) },
+                modifier = Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp).tvFocusMark(),
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
+            ) {
+                Icon(Icons.Filled.Description, contentDescription = null)
+                Text(listOfNotNull("Read the script", d.scriptSource).joinToString(" \u00B7 "), maxLines = 1)
+            }
+        }
+    }
     item(key = "credit") {
         PictureCredit(listOf(lead), headSlot(), Modifier.padding(horizontal = Spacing.S4.dp))
     }
@@ -265,9 +280,10 @@ private fun recordingNotes(rec: Recording): List<String> =
     listOfNotNull(DisplayVocabulary.variantLine(rec.variant), DisplayVocabulary.PARTIAL.takeIf { rec.partial })
 
 @Composable
-private fun VersionItem(rec: Recording, position: Int, onPlay: () -> Unit) {
-    val title = RecordingLabel.title(rec, position)
-    val facts = RecordingLabel.facts(rec, rec.rank == 0, formatLength(rec.lengthSeconds), recordingNotes(rec))
+private fun VersionItem(rec: Recording, onPlay: () -> Unit) {
+    val length = formatLength(rec.lengthSeconds)
+    val title = RecordingLabel.title(rec, length)
+    val facts = RecordingLabel.facts(rec, rec.rank == 0, length, recordingNotes(rec))
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = facts.ifEmpty { null }?.let { { Text(it) } },
