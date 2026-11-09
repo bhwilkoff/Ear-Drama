@@ -4,6 +4,7 @@
 """
 import json
 import os
+os.environ["FORWARDING_TEST_LAUNCHED"] = "2027-01-01"   # the mechanism as it runs after launch
 import sqlite3
 import subprocess
 import sys

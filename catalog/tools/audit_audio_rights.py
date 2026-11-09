@@ -25,7 +25,10 @@ import re
 FOREIGN = re.compile(
     r"\b(BBC|B\.B\.C\.|CBC|Canadian Broadcasting|Radio[- ]Canada|Australian Broadcasting|"
     r"ABC Australia|Grace Gibson|Springbok Radio|SABC|Radio New Zealand|NZBC|RTE Radio|"
-    r"Radio Luxembourg)\b")
+    r"Radio Luxembourg)\b"
+    # A BBC programme id in brackets ("[b007k108]", "[m000fg0q]") names the programme page at bbc.co.uk/programmes:
+    # the file was taken from a BBC broadcast (DECISIONS 032).
+    r"|\[(?:b0|m0|p0)[0-9a-z]{6}\]")
 GOV_PRODUCER = re.compile(
     r"\b(Office of War Information|Voice of America|U\.?S\.? Treasury|Treasury Department|"
     r"Federal Civil Defense|United States Army|United States Navy|U\.?S\.? Army|U\.?S\.? Navy)\b", re.I)
@@ -52,6 +55,48 @@ STORY_GENRES = {"Comedy", "Sitcom", "Drama", "Anthology Drama", "Anthology", "My
 # other role (announcer, writer, crew) is the agency's own.
 NON_PERFORMER_ROLES = {"announcer", "writer", "author", "producer", "director", "engineer", "sound effects",
                        "production", "script", "adaptation", "adapter"}
+
+
+MONTHS = "january|february|march|april|may|june|july|august|september|october|november|december"
+MODERN_DATE = re.compile(r"(?<![\d\w])(19[7-9]\d|20[0-4]\d)[-._ ]?(0[1-9]|1[0-2])[-._ ]?(0[1-9]|[12]\d|3[01])(?!\d)|"
+                         r"\b(?:" + MONTHS + r")\s+\d{1,2},?\s+(19[7-9]\d|20[0-4]\d)\b", re.I)
+BRACKETED = re.compile(r"\[[^\]]*\]|\([^)]*\)")
+
+
+def modern_date(*texts):
+    """A full date after POST_1972 that an episode's own file name or title carries outside brackets, else None:
+    "BBC R4 SD - A Slow Air by David Harrower 20121201", "The-Big-Broadcast-2003-05-04". A bracketed or
+    parenthesized date is a note on the copy (a rebroadcast "[2018-03-08]", "(Recreation 4-22-2016)") and is not
+    read (DECISIONS 032)."""
+    for t in texts:
+        for m in MODERN_DATE.finditer(BRACKETED.sub(" ", t or "")):
+            y = int(m.group(1) or m.group(4))
+            if m.group(1):
+                try:
+                    d = datetime.date(y, int(m.group(2)), int(m.group(3)))
+                except ValueError:
+                    continue
+                if d >= POST_1972:
+                    return d.isoformat()
+            elif y > 1972:
+                return m.group(0)
+    return None
+
+
+def foreign_series(item_texts):
+    """Evidence that a series is a non-US production, or None: its items' own metadata names a non-US broadcaster
+    on two recordings and half of them, or on its only recording (DECISIONS 032: the two-recording floor let every
+    one-recording BBC upload through, "King David by Katie Hims", "BBC R3")."""
+    hits = [FOREIGN.search(t or "") for t in item_texts]
+    n = sum(1 for h in hits if h)
+    if item_texts and n >= min(2, len(item_texts)) and n / len(item_texts) >= 0.5:
+        terms = {}
+        for h in hits:
+            if h:
+                terms[h.group(0)] = terms.get(h.group(0), 0) + 1
+        return {"source": "item metadata names a non-US broadcaster",
+                "term": max(sorted(terms), key=lambda t: terms[t]), "share": round(n / len(item_texts), 2)}
+    return None
 
 
 def credited_performers(ep):
@@ -100,6 +145,9 @@ def rec_bucket(ep, ctx):
 
     if date and datetime.date.fromisoformat(date) >= POST_1972:
         return "rec_post_1972", [{"date": date}]
+    modern = None if date else modern_date(ep.get("title"), *[(r.get("file") or "").rsplit("/", 1)[-1] for r in recs[:1]])
+    if modern:
+        return "rec_post_1972", [{"date_in_name": modern, "source": "the episode's own file name or title"}]
     if ctx["series_post_1972"].get(key):
         return "rec_post_1972", [ctx["series_post_1972"][key]]
 

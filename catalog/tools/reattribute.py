@@ -249,3 +249,72 @@ def disc_groups(names, skip=()):
         if len(members) + len(whole) >= 2 and bk:
             out[bk] = (names.get(bk) or bn, sorted(members + whole), bool(SERVICE_BASE.search(bn)))
     return out
+
+
+# ---- 2026-11-09: an uploader's or a collection's mixed bag is not a series (catalog DECISIONS 032) ----
+
+BAG_FEEDS = 5            # an item whose files the build filed under this many series holds many programs
+BAG_PROGRAMS = 2         # distinct programs that lead a series' file names: a collection of them, not one show
+BAG_SHARE = 1 / 4        # of a series' files led by other programs, with three or more of them
+BAG_RUN_YEARS = 40       # a registry program whose logged broadcasts span this many years at most is one program
+# Words that name a collection rather than a program. "Singles and Doubles" and "Odds and Ends" as phrases only:
+# "Mixed Doubles" and "The Wizard of Odds" are programs.
+COLLECTION_NAME = re.compile(
+    r"\b(?:collection|acc|misc\w*|various|assorted|odds (?:and|&) ends|odd (?:shows|bits)|singles (?:and|&) doubles|"
+    r"specials|playlist|unsorted|compilation|goodies|golden age|radio news|news reports|rare|weekend|"
+    r"audition recordings|public service|vol|volume|(?:shows|programs|broadcasts|recordings|episodes)$)\b", re.I)
+YEAR_NEWS = re.compile(r"^(?:19\d0'?s|19\d\d|\d0'?s)\s+(?:radio\s+)?news$|\bnews\b.*\bthrough the\b|"
+                       r"^radio news$|\bnews\b.*\b(?:sound files|collection)\b", re.I)
+
+
+def lead_program(stem, k2c, registry):
+    """The registry program a file name begins with (two words and eight letters at least, one program only),
+    else None: "Cbs World News Today 1944-06-06", "Lux_Dark Victory_1-17-40"."""
+    for seg in _segments(stem)[:2]:
+        if CODE_PART.match(seg):
+            continue
+        words = seg.split()
+        for n in range(len(words), 1, -1):
+            head = " ".join(words[:n])
+            if len(P.norm_series(head)) >= 8:
+                found = {k2c[k] for k in _program_keys(head) if k in k2c and k2c[k] in registry}
+                if len(found) == 1:
+                    return next(iter(found))
+        return None
+    return None
+
+
+def grab_bag(name, files, item_feeds, item_files, broadcast=False, librivox=False):
+    """The rule by which a series is an uploader's or a collection's mixed bag, else None.
+
+    name: the series' shown name. files: [{"how": how the build named its series, "item": archive.org item,
+    "program": the registry program its file name begins with, if not this series}]. item_feeds: item -> number of
+    series its files were filed under; item_files: item -> number of its files. broadcast: a registry program
+    whose logged broadcasts span BAG_RUN_YEARS at most (one show on the air, whatever an upload calls it).
+      item        named for its archive.org item (most files), an item whose files are filed under BAG_FEEDS series
+                  or more, and either two programs lead its own file names or it holds under half of that item;
+      programs    three or more registry programs lead its file names, on a quarter of its files or more;
+      collection  a collection's name ("Christmas Shows", "1945 Radio News") with two programs leading its file
+                  names or an item filed under BAG_FEEDS series or more.
+    A LibriVox project is a work, never a bag; a broadcast program is judged only by its name."""
+    if librivox or not files:
+        return None
+    n = len(files)
+    items = {}
+    for f in files:
+        items[f["item"]] = items.get(f["item"], 0) + 1
+    top = max(sorted(items), key=lambda i: items[i])
+    mixed = item_feeds.get(top, 0) >= BAG_FEEDS
+    progs = {}
+    for f in files:
+        if f.get("program"):
+            progs[f["program"]] = progs.get(f["program"], 0) + 1
+    named_for_item = sum(1 for f in files if (f.get("how") or "").startswith("item")) * 2 > n
+    if not broadcast:
+        if named_for_item and mixed and (len(progs) >= BAG_PROGRAMS or items[top] * 2 < item_files.get(top, 0)):
+            return "item"
+        if len(progs) >= 3 and sum(progs.values()) >= BAG_SHARE * n:
+            return "programs"
+    if YEAR_NEWS.search(name or "") or (COLLECTION_NAME.search(name or "") and (len(progs) >= BAG_PROGRAMS or mixed)):
+        return "collection"
+    return None

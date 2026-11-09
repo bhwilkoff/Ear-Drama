@@ -982,3 +982,86 @@ name 1,315 to 918 (no date or number), "clipped"/"xx"/"WithThe" 344 to 35).
 shared broadcasts: a rights question, not a display one. Two registry programs that are one show on air (The Chase
 and Sanborn Hour and Edgar Bergen and Charlie McCarthy; The Fred Allen Show and Town Hall Tonight) keep both series;
 their shared broadcasts fold.
+
+## 032 — A rights hide follows the work; a grab bag is not a series; forwarding starts at launch (P-11)
+*Date: 2026-11-09*
+
+Owner, 2026-11-09: *"Obviously The Shadow is still under copyright. All seasons should be hidden if the copyright is
+still active. Obviously, a grab bag of uploads isn't a series. ... These are incredibly easy questions to answer using
+our own rules for how we build."* and *"I'm really not sure what you are saying is 'passing' when we are attempting to
+find issues in the database."* And on forwarding: *"the app has not launched yet. Forwarding content only matters if
+folks are going to look for it at the old location ... We are trying to get everything set up correctly the first time
+and not create a bunch of cruft for things that were set up incorrectly the first time and had to be fixed before
+launch."* A data audit: each rule below was found in the real build and is measured there.
+
+1. **A rights hide follows the work** (`tools/same_work.py`, `build_db.follow_work`). The audit judged an episode by
+   its series key, so a work hidden on a claim (005's named claimant, a series takedown, 10+ live script renewals, a
+   renewed script) stayed served wherever an upload named it otherwise. After the first pass, an episode it served is
+   the work's when: *broadcast*, it has the same full air date and title (six letters or more, a trailing
+   parenthetical note dropped) as an episode hidden on such a claim, and its series is upload-named, shares the item,
+   carries an item whose own name names the work, or repeats the work's broadcasts 3 times (031's test); it takes that
+   episode's verdict. *series*, an upload-named series more than half of whose dated episodes (3 at least) are the
+   work's broadcasts goes whole ("Season 11 (9-7-47 to 5-30-48)"). *named*, an upload-named series carrying the work's
+   name as whole words, not followed by "of"/"'s" ("The Shadow of a Gunman" is another work), with one of the work's
+   titles, a date inside its run, or the "Work - Title" form, goes whole ("20 best The Shadow", "The Shadow
+   Recreations": a re-performance of a claimed script is the claimed work). Those are judged by the same audit under
+   the work's key, the same claims file, no second list; the evidence leads with `same_work`. A post-1972 date or a
+   foreign producer describes one production and is not followed. LibriVox never.
+2. **A grab bag is not a series** (`reattribute.grab_bag`, `build_db.merge_grab_bags`). A series is an uploader's or
+   collection's mixed bag when (*item*) it is named for an archive.org item whose files the build filed under 5+
+   series and two registry programs lead its file names or it holds under half the item; (*programs*) three registry
+   programs lead a quarter of its file names; (*collection*) its name is a collection's ("Christmas Shows",
+   "Singles and Doubles", "Golden Age", "... Radio News", "Weekend", "Audition Recordings", a year or decades of news,
+   an uploader's news files) with two programs leading its files or a mixed item. A registry program whose logs span 40
+   years at most is judged by its name only; LibriVox never; "Mixed Doubles", "The Wizard of Odds" and "NBC News" are
+   programs. Each bag file moves to the program its name begins with when the program has its title or its date is in
+   the run (stem_program, gated); an undated piece of a bag that made its own series by its file name ("Richard Nixon"
+   from "Grandpa's Old Time Radio Stories") and an undated bag file a registry program took by its name alone with no
+   title it has ("Bob Hope #3") go back to the bag. The projection passes the bag through P-10 as a donor only (it
+   never survives a fold, never receives one, never joins or is joined by same_program, dissolve or merge_into), then
+   withholds what is left (`series_is_a_grab_bag`; the old `series_is_an_uploaders_grab_bag` now donates the same way).
+   A dated piece with its own name stays a single (display-text ruling: a name and a date are context).
+3. **Rights, two holes the audit sample found** (`audit_audio_rights.foreign_series`, `modern_date`). A one-recording
+   series whose item title or file name names a non-US broadcaster is non-US (006): the old two-recording floor let
+   every single BBC upload through. A BBC programme id in brackets ("[b007k108]") names a BBC broadcast; a series whose
+   files mostly carry one is a BBC programme (Jack Benny's one Radio 4 Extra copy is not most of Jack Benny). An
+   undated episode whose own file name or title carries a full date after 1972-02-15 outside brackets is post-1972
+   ("BBC R4 SD - A Slow Air ... 20121201", "The-Big-Broadcast-2003-05-04"); a bracketed or parenthesized date is a note
+   on the copy ("[Rpt 2019-01-07]", "(Recreation 4-22-2016)") and is never read.
+4. **Forwarding starts at launch** (`forwarding.LAUNCHED`). Until it holds the launch date, every build publishes the
+   alias and tombstone tables empty and carries nothing from the live projection; pre-launch fixes leave no trail, and
+   `publish_diff.py` reports ids that left instead of refusing them. The mechanism and its fixtures stay (its tests run
+   it as it will run after launch); set `LAUNCHED` in the commit that launches.
+
+**Why**: the owner's own rules already answered each case: a claim a reader can open hides the work (005), not a
+series key; a series is a program, and an uploader's bag is an upload habit (025-028); no context means withheld
+(display-text ruling 2026-10-31); non-US and post-1972 productions are hidden (006). The guards that passed before
+checked shapes; none asked whether a hidden work was served under another name.
+
+**How to apply**: a new follow rule goes in `same_work.py` with a fixture and a control in `tests/test_same_work.py`; a
+bag rule in `reattribute.grab_bag` with both in `tests/test_grab_bag.py`; a program wrongly caught is fixed by
+tightening the evidence, never by a list of keys. Guards over the real build (in the publish's contract step): no
+served episode is the broadcast of an episode hidden on a claim that follows the work; no served upload-named series
+carries a hidden work's name with its titles or dates; no served series is a grab bag by the same test run on what is
+served. Each failed on the unchanged tools' dry-run artifacts (94 broadcast leaks, 5+ named series, 57 bags).
+MEASURED on the catalog-2026-11-09 Release against the live projection (PYTHONHASHSEED 0, `catalog_dryrun.sh
+--with-suites` green): series 6,640 to 5,594, one-episode series 3,906 to 3,393, episodes 91,301 to 82,177 (-10.0%, so
+the publish needs a `shrink_reason`, e.g. "P-11: rights follow the work, grab bags withheld, BBC and post-1972 holes
+closed, 2026-11-09"). Of the 9,350 ids that left (226 appeared): 5,325 withheld with their bag and 2,489 more that were bag pieces or
+name-only bag files returned to it (204 bags: item 149, collection 50, programs 5; 389 bag files moved to the program
+their name begins with), 519 bag broadcasts folded into the show that holds them, 709 non-US (BBC 963 of the 1,128
+newly flagged series, CBC 122, a BBC programme id 25), 175 post-1972 by a date in their own name, 131 the hidden work's
+(research database: 139 episodes, broadcast 102, series 16, named 21; The Shadow's three season uploads, "The Shadow
+Recreations", "20 best The Shadow", "Types of The Shadow Radio", the Ghost of Radio singles, "House of Horror"; a Vic
+and Sade, a Fibber McGee renewed script, a Free Company renewed script, a Nick Carter). Forwarding: 0 aliases and 0
+tombstones published (the live projection carried 9,059 aliases, 13,234 tombstones, 334 series aliases and 3,740 series
+tombstones). Home day files for ten dates: 1,290 rows to 1,183, every bag row gone. **Left** (each a class the next
+pass can take by rule): undated episodes of real shows in mixed uploads with no date or known title go with the bag
+("W B Hickok", 240 Wild Bill Hickok files; "Deadline - Have Gun Will Travel", whose program name trails); Dutch, Japanese
+and other non-English productions with no broadcaster named (archive.org's `language` field is on few of them, and
+006's non-US rule would also take the Hitler speeches 027 keeps: an owner question); Australian "(AU)"/"Aus NN" uploads;
+baseball-game collections ("Classic Baseball on the Radio"), which hold games, not programs; one show under two names
+where the spelling differs and nothing is dated ("Big Jon and Sparky"/"Sparkie", "Tarzan"/"Tarzan (all runs)");
+fragments of one broadcast filed as singles ("Orson Welles War of the Worlds 10 30" beside the Mercury Theatre);
+modern recordings whose date is not a full date ("Oct 2019"); raw titles inside real shows ("Blackstonethe Magic
+Detective48 10 03 01The Ghost...").

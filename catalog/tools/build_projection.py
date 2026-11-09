@@ -263,8 +263,12 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 shown_name[sk] = PL.polish_name(got) or got
     withheld = {"series": {}, "episodes": {}}
     composed = {}
+    bags = {}
     for sk in sorted(by_series_eps):
         why = held.get(sk) or DT.series_withheld(shown_name.get(sk) or names.get(sk), sk, sk in own_key)
+        if why in DT.BAG_REASONS:
+            bags[sk] = why
+            why = None
         if why:
             withheld["series"][sk] = why
             for eid, _a, _n, _t in by_series_eps[sk]:
@@ -285,7 +289,15 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
                 display[eid] = PL.small_words(title)
     served -= set(withheld["episodes"])
     folded = {}
-    merged = merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments, display, composed, folded)
+    merged = merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments, display, composed, folded,
+                              bags)
+    # A grab bag's broadcasts that P-10 placed in their shows have left it; the rest go with the bag (DECISIONS 032).
+    for sk in sorted(bags):
+        rest = [eid for eid, _a, _n, _t in by_series_eps[sk] if eid in served]
+        withheld["series"][sk] = bags[sk]
+        for eid in rest:
+            withheld["episodes"][eid] = bags[sk]
+        served.difference_update(rest)
     script_of, script_report = ES.links(s, served, ES.load_bundle() if scripts is None else scripts)
     script_out = ES.link_outs(s, served)
     print(json.dumps({"episodeScripts": script_report}), file=sys.stderr)
@@ -517,7 +529,7 @@ def write_arcs(d):
 
 
 def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fragments, display=None, composed=None,
-                     folded=None):
+                     folded=None, bags=None):
     """Fold series that are one show into the surviving one (display_text.merge_into, then P-10's same_program and
     dissolve) by reading their episodes under the surviving key from here on; the departed key forwards through
     the series aliases. P-10 also folds an episode that is another series' broadcast (display_text.same_broadcasts)
@@ -533,9 +545,9 @@ def merge_same_shows(s, by_series_eps, served, withheld, shown_name, own_key, fr
         if n and k not in withheld["series"] and k in info:
             lv, first, last, al = info[k]
             series[k] = {"name": shown_name.get(k) or k, "cleaned": k in fragments, "librivox": bool(lv),
-                         "own": k in own_key, "eps": n, "first": first, "last": last,
-                         "aliases": json.loads(al) if al else []}
-    got = DT.merge_into(series)
+                         "own": k in own_key or k in (bags or ()), "eps": n, "first": first, "last": last,
+                         "aliases": json.loads(al) if al else [], "bag": k in (bags or ())}
+    got = {k: v for k, v in DT.merge_into(series).items() if not series[k]["bag"] and not series.get(v, {}).get("bag")}
     if display is not None:
         got = fold_same_broadcasts(s, by_series_eps, served, series, got, display, composed or {}, shown_name,
                                    folded if folded is not None else {})
@@ -611,14 +623,15 @@ def fold_same_broadcasts(s, by_series_eps, served, series, got, display, compose
     for _ in range(2):
         _f, shared = DT.same_broadcasts(broadcast_rows(cur), info(cur))
         prog = DT.same_program(info(cur), shared)
-        prog = {k: v for k, v in prog.items() if k not in cur}
+        prog = {k: v for k, v in prog.items() if k not in cur and not series[k].get("bag") and not series.get(v[0], {}).get("bag")}
         if not prog:
             break
         rules.update({k: list(v) for k, v in prog.items()})
         cur = DT.resolve_chains({**cur, **{k: r for k, (r, _rule) in prog.items()}})
     for _ in range(2):
         _f, shared = DT.same_broadcasts(broadcast_rows(cur), info(cur))
-        gone = {k: r for k, r in DT.dissolve(info(cur), shared).items() if k not in cur}
+        gone = {k: r for k, r in DT.dissolve(info(cur), shared).items()
+                if k not in cur and not series[k].get("bag") and not series.get(r, {}).get("bag")}
         if not gone:
             break
         rules.update({k: [r, "shared"] for k, r in gone.items()})

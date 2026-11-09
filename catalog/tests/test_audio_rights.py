@@ -245,6 +245,32 @@ def afrs_original_with_credited_star_is_not_government_work():
     assert A.judge(ep(series_key="owiseries", people=star), c)["rec_bucket"] == "rec_gov_work"
 
 
+@case
+def foreign_series_needs_its_items_to_name_the_broadcaster():
+    assert A.foreign_series(["BBC Radio 3 drama"])["term"] == "BBC"
+    assert A.foreign_series(["CBC Stage", "CBC Stage", "NBC"])["share"] == 0.67
+    assert A.foreign_series(["NBC", "NBC", "BBC rebroadcast"]) is None   # one mention of three is not the series
+    assert A.foreign_series(["ABC Radio"]) is None and A.foreign_series([]) is None
+
+
+@case
+def a_modern_date_in_its_own_name_is_post_1972_and_a_bracketed_note_is_not():
+    j = A.judge(ep(date=None, title="A Slow Air", recordings=[rec(file="BBC R4 SD - A Slow Air 20121201.mp3")]), ctx())
+    assert (j["rec_bucket"], j["evidence"][0]["date_in_name"]) == ("rec_post_1972", "2012-12-01"), j
+    assert A.modern_date("The-Big-Broadcast-2003-05-04") == "2003-05-04"
+    assert A.modern_date("July 10, 2004 sd_02") == "July 10, 2004"
+    assert A.modern_date("Navy Lark - s08e07 1966-10-16 - The Army Lark [2019-05-29] [b007k108]") is None
+    assert A.modern_date("Red Macaw (Recreation 4-22-2016)") is None and A.modern_date("Suspense 1949-01-06") is None
+    j = A.judge(ep(recordings=[rec(file="Suspense 1942-06-17 [Rpt 2019-01-07].mp3")]), ctx())
+    assert j["rec_bucket"] == "rec_orphan_unclaimed", j    # its own air date decides
+
+
+@case
+def a_bbc_programme_id_names_a_bbc_broadcast():
+    assert A.foreign_series(["x Navy Lark - s08e07 [b007k108].m4a"])["term"] == "[b007k108]"
+    assert A.foreign_series(["x Jack Benny [m000rml7].m4a"] + ["x Jack Benny.mp3"] * 9) is None
+
+
 def main():
     failed = 0
     for fn in CASES:

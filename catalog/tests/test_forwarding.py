@@ -8,6 +8,7 @@ exists, the forwarding rules also run over the real artifact.
 """
 import json
 import os
+os.environ["FORWARDING_TEST_LAUNCHED"] = "2027-01-01"   # the mechanism as it runs after launch
 import sqlite3
 import sys
 import tempfile
@@ -244,6 +245,19 @@ with tempfile.TemporaryDirectory() as t:
     check("control: episode forwarding that breaks a rule refuses the build", refused_with({"a": "b", "b": "c"}, {}), True)
     check("control: series forwarding that breaks a rule refuses the build", refused_with({}, {"a": "b", "b": "c"}), True)
     check("forwarding that breaks no rule builds", refused_with({}, {}), False)
+
+# Before launch nothing is forwarded or carried (DECISIONS 032: pre-launch fixes leave no trail).
+_launched = FW.LAUNCHED
+FW.LAUNCHED = None
+_prev = {"served": {"a|1", "b|1"}, "copies": {"a|1": ["x/f.mp3"]}, "aliases": {"old|1": "b|1"}, "tombstones": {"t|1"}}
+check("pre-launch: an id that left gets neither alias nor tombstone, and none is carried",
+      FW.forward(_prev, {"b|1", "c|1"}, {"c|1": ["x/f.mp3"]})[:2], ({}, set()))
+check("pre-launch: no series key is forwarded",
+      FW.forward_series({"served": {"a"}, "copies": {"a": {"x/f.mp3"}}, "aliases": {"z": "a"}, "tombstones": {"y"}},
+                        {"b"}, {"b": {"x/f.mp3"}})[:2], ({}, set()))
+FW.LAUNCHED = _launched
+check("control: after launch the same departure is aliased",
+      FW.forward(_prev, {"b|1", "c|1"}, {"c|1": ["x/f.mp3"]})[0].get("a|1"), "c|1")
 
 # --- the real artifact --------------------------------------------------------------------
 REAL = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")

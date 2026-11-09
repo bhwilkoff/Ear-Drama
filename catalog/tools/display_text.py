@@ -36,6 +36,9 @@ GENERIC_TITLE = re.compile(r"^(?:(?:xx\s+)*no\s+title|(?:episode|ep|deel|program
 AIRED_FRAGMENT = re.compile(r"\b(?:aired|air\s?date)\s+[\d/ ,-]*$", re.I)
 
 SCOPE_REASONS = {"concert": "out_of_scope_concert", "lecture": "out_of_scope_lecture", "music": "out_of_scope_music_set"}
+# A grab bag (DECISIONS 032) is withheld as a series only after P-10 folds every broadcast of it another series
+# holds into that series: it gives broadcasts, never keeps or receives one.
+BAG_REASONS = {"series_is_a_grab_bag", "series_is_an_uploaders_grab_bag"}
 SERIES_REASONS = {"S_DATED": "series_name_is_a_date", "S_RUNTOGETHER": "series_name_is_an_identifier",
                   "S_LOWER": "series_name_is_an_identifier", "S_COLLECTION": "series_is_an_uploaders_grab_bag"}
 
@@ -666,8 +669,8 @@ def same_broadcasts(eps, series):
     item, or their two series repeat each other at least MIN_SHARED times (one source copying another; a single
     coincidence such as two "A Christmas Carol" on December 24 is two productions). Within one series after a
     fold, the same date and a title one contains is one broadcast (the catalog's identity for a dated episode).
-    The survivor is the episode of the series with fewer partner series (a compilation repeats many shows),
-    then a registry program, then the larger series."""
+    The survivor is never a grab bag's (DECISIONS 032), then the episode of the series with fewer partner series
+    (a compilation repeats many shows), then a registry program, then the larger series."""
     groups = {}
     for eid in sorted(eps):
         sk, air, title, composed = eps[eid][:4]
@@ -685,7 +688,7 @@ def same_broadcasts(eps, series):
                 shared[(a, b)] = shared.get((a, b), 0) + 1
                 partners.setdefault(a, set()).add(b)
                 partners.setdefault(b, set()).add(a)
-    rank = lambda sk: (len(partners.get(sk, ())), series[sk]["own"], -series[sk]["eps"], sk)
+    rank = lambda sk: (bool(series[sk].get("bag")), len(partners.get(sk, ())), series[sk]["own"], -series[sk]["eps"], sk)
     out = {}
     for (air, key), ids in sorted(groups.items()):
         if len({eps[e][0] for e in ids}) < 2:
