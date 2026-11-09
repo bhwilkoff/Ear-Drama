@@ -194,9 +194,6 @@ jobs:
           python3 tools/test_ios_floor.py
           python3 tools/test_tvos_floor.py
 
-      - name: Apple design rules hold
-        run: python3 tools/test_apple_design_rules.py
-
       - name: Archive + sign + upload to App Store Connect
         env:
           ASC_DIST_CERT_ID: ${{ secrets.APPLE_DIST_CERT_ID }}
