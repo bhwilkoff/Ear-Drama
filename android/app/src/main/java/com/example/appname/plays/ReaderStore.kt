@@ -1,6 +1,7 @@
 package com.example.appname.plays
 
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -17,19 +18,19 @@ import kotlinx.serialization.json.jsonPrimitive
 class ReaderStore(private val store: SharedPreferences) {
     fun prefs(): ReaderPrefs = decodePrefs(store.getString(PREFS, null))
 
-    fun savePrefs(prefs: ReaderPrefs) = store.edit().putString(PREFS, encodePrefs(prefs)).apply()
+    fun savePrefs(prefs: ReaderPrefs) = store.edit { putString(PREFS, encodePrefs(prefs)) }
 
     fun position(scriptId: String): Map<String, String?> = decodePositions(store.getString(POS, null))[scriptId].orEmpty()
 
     fun savePosition(scriptId: String, line: String?, part: String?) {
         val next = ReaderMath.remember(decodePositions(store.getString(POS, null)), scriptId, mapOf("line" to line, "part" to part))
-        store.edit().putString(POS, encodePositions(next)).apply()
+        store.edit { putString(POS, encodePositions(next)) }
     }
 
     /** Volume keys turn pages: off until the person turns it on in Text. */
     var volumeKeys: Boolean
         get() = store.getBoolean(VOLUME, false)
-        set(on) = store.edit().putBoolean(VOLUME, on).apply()
+        set(on) = store.edit { putBoolean(VOLUME, on) }
 
     companion object {
         const val PREFS = "ed.reader.prefs"
