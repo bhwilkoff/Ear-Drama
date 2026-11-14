@@ -336,12 +336,96 @@ struct ScriptReadingTests {
         let l = try ReaderLayout.build(pick, structure: structure, style: ReaderStyle(base: 17, scale: 1, leading: 1.55),
                                        pageSize: CGSize(width: 330, height: 560))
         let text = l.string.string as NSString
+        let roles = pick.roles.map(\.name)
+        func collapsed(_ s: String) -> String { s.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
         for i in stride(from: 0, to: pick.lines.count, by: 7) where pick.lines[i].kind == .speech && structure.setAside[i] == nil {
+            guard PlayPage.layoutOf(pick.lines[i], roles: roles).speeches.count == 1 else { continue }
             let range = l.lineRanges[i]
-            let drawn = text.substring(with: range)
+            let drawn = collapsed(text.substring(with: range))
             for part in pick.lines[i].parts ?? [] where part.isSaid {
-                let said = part.text.replacingOccurrences(of: "_", with: "")
+                let said = collapsed(part.text.replacingOccurrences(of: "_", with: ""))
                 #expect(drawn.contains(said) || said.isEmpty, "\(pick.id) \(pick.lines[i].id): the said words are on the page as printed")
+            }
+        }
+    }
+
+    // MARK: The Ear Drama page (js/reader.test.js, case for case)
+
+    private func page(_ role: String, _ parts: [LinePart]) -> ScriptLine { ScriptLine(id: "L", kind: .speech, role: role, parts: parts) }
+
+    @Test func versePageKeepsItsLinesAndATranscribersWrappingIsReflowed() {
+        #expect(PlayPage.isVerse(["When shall we three meet again?\nIn thunder, lightning, or in rain?"]), "a couplet is verse")
+        #expect(PlayPage.isVerse(["This is the sergeant\nWho, like a good and hardy soldier, fought\n\u{2019}Gainst my captivity."]), "a capital after a quote")
+        #expect(!PlayPage.isVerse(["I attribute it to the superior quality of the wine, sir. I have often\nobserved that in married households"]), "a lowercase turnover is prose")
+        #expect(!PlayPage.isVerse(["Why is it that at a bachelor\u{2019}s establishment the servants invariably\nDrink the champagne? I ask merely for information, and nothing more than\nThat, sir, as anyone would."]), "rows as long as a wrapped line are prose")
+        #expect(!PlayPage.isVerse(["Who is there?"]), "no break, nothing to keep")
+    }
+
+    @Test func aSpeechRunIntoAnotherIsAttributedToItsSpeakerAndCuesGetTheSoundLane() {
+        let roles = ["CHARTERIS", "GRACE"]
+        let lay = PlayPage.layoutOf(page("CHARTERIS", [.say("Of course. Why not?\nGRACE"), .direction("reflecting"), .say(". Never mind why.")]), roles: roles)
+        #expect(lay.speeches.map(\.role) == ["CHARTERIS", "GRACE"], "two speakers")
+        #expect(lay.speeches[1].name?.text == "GRACE" && lay.speeches[1].name?.at == 20, "the printed name, at its offset")
+        #expect(lay.speeches[1].rows[0].runs.map { [$0.text, "\($0.said)"] } == [["reflecting", "false"], ["Never mind why.", "true"]], "the label period is not drawn")
+        #expect(!lay.verse, "a run-in break is not verse")
+        let radio = PlayPage.layoutOf(page("HANCOCK", [.direction("sound of gavel"), .say("Order!"), .sound("knock"), .say("Come in.")]), roles: ["HANCOCK"])
+        #expect(radio.speeches[0].rows.map(\.cue) == [true, false, true, false], "a sound piece and a sound-of aside are cue rows")
+        let blk = PlayPage.layoutOf(ScriptLine(id: "L3", kind: .direction, source: "[_Exeunt._]"), roles: [])
+        #expect(blk.rows[0].runs.map(\.text) == ["Exeunt."] && blk.rows[0].runs.map(\.kind) == [.plain], "brackets left undrawn; a wholly italic direction stays italic")
+        #expect(PlayPage.layoutOf(ScriptLine(id: "L4", kind: .direction, source: "[Enter Lane."), roles: []).rows[0].runs.map(\.text) == ["Enter Lane."], "an unclosed bracket")
+        let stress = PlayPage.layoutOf(page("A", [.say("It is the first in which"), .direction("I"), .say("have been serious."), .direction("Sits."), .say("Well.")]), roles: ["A"])
+        #expect(stress.speeches[0].rows[0].runs.map { [$0.text, "\($0.said)"] }
+                == [["It is the first in which", "true"], ["I", "true"], ["have been serious.", "true"], ["Sits.", "false"], ["Well.", "true"]],
+                "an italic word between lowercase said words is emphasis; a sentence direction stays a direction")
+        #expect(PlayPage.cueTail("I could love anybody. Any pretty woman, that is.") == 22, "the cue is the last sentence")
+        #expect(PlayPage.cueTail("Who is there?") == 0, "one sentence is all cue")
+    }
+
+    @Test func verseRowsKeepPrintedLinesAndAHalfLineIsIndented() {
+        let lay = PlayPage.layoutOf(page("A", [.say("What bloody man is that?\nHe can report,\n    As seemeth by his plight.")]), roles: ["A"])
+        #expect(lay.verse)
+        #expect(lay.speeches[0].rows.map { $0.runs.map(\.text).joined() } == ["What bloody man is that?", "He can report,", "As seemeth by his plight."])
+        #expect(lay.speeches[0].rows.map(\.indent) == [false, false, true])
+    }
+
+    @Test func everyDrawnPieceMapsBackToItsLinesText() throws {
+        var n = 0, split = 0
+        for s in try bundled() + libraryScripts(40) {
+            let roles = s.roles.map(\.name)
+            for line in s.lines {
+                let text = ScriptReading.lineText(line).replacingOccurrences(of: "\n", with: " ") as NSString
+                let lay = PlayPage.layoutOf(line, roles: roles)
+                var runs: [PageRun] = lay.rows.flatMap(\.runs)
+                for sp in lay.speeches {
+                    if let name = sp.name { runs.append(name) }
+                    runs += sp.rows.flatMap(\.runs)
+                }
+                if lay.speeches.count > 1 { split += 1 }
+                for r in runs {
+                    n += 1
+                    let want = r.text.replacingOccurrences(of: "\n", with: " ")
+                    #expect(r.at >= 0 && r.at + want.utf16.count <= text.length
+                            && text.substring(with: NSRange(location: r.at, length: want.utf16.count)) == want,
+                            "\(s.id) \(line.id): run at \(r.at) is not \(want.debugDescription)")
+                }
+            }
+        }
+        #expect(n > 1000)
+        #expect(split > 0, "some script runs a speech into another (the parser miss the page attributes)")
+    }
+
+    @Test func aRealScriptsPagesNeverEndOnANameAndOpenOnAHeadedSpeech() throws {
+        let pick = try #require((try bundled() + libraryScripts(8)).first { $0.lines.count > 150 })
+        let l = try ReaderLayout.build(pick, structure: ScriptStructure(pick), style: ReaderStyle(base: 17, scale: 1, leading: 1.55),
+                                       pageSize: CGSize(width: 330, height: 560))
+        #expect(!l.gutter, "a phone page sets the name over the words")
+        let wide = try ReaderLayout.build(pick, structure: ScriptStructure(pick), style: ReaderStyle(base: 17, scale: 1, leading: 1.55),
+                                          pageSize: CGSize(width: 560, height: 560))
+        #expect(wide.gutter, "a page of 30 em or more sets it in a gutter")
+        for layout in [l, wide] {
+            for (p, r) in layout.pages.enumerated().dropLast().dropFirst() {
+                let last = layout.string.attribute(.edInk, at: max(0, r.location + r.length - 2), effectiveRange: nil) as? Int
+                #expect(last != ReaderInk.speaker.rawValue || r.length < 3, "page \(p) does not end on a speaker's name")
             }
         }
     }
