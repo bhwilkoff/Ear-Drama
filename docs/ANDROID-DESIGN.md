@@ -567,16 +567,23 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.9b The voices on the cast sheet** (Decision 076 S2; PLAYS-DESIGN §2.8 is
   binding; owner 2026-11-14: *"The virtual voices who play the different parts should
   also be intuitive."*; WEB-DESIGN §4.10 for the shared words; port spec
-  `docs/research/design/R2-voices-port-brief.md`). Planned (PARITY ⏳). Every part no
+  `docs/research/design/R2-voices-port-brief.md`). Built 2026-11-14 (PARITY 🚧). Every part no
   person holds shows an `AssistChip` with the voice's name (and a warning icon when its
   cast voice is gone and the auto-cast one reads), "Not read" for directions and sound.
   The chip opens a `ModalBottomSheet` picker: Speed and Pitch as − value + steppers,
   then "On this device": `TextToSpeech.getVoices()` filtered to English and
   `!isNetworkConnectionRequired` and without `KEY_FEATURE_NOT_INSTALLED`, sorted by
   `quality` (500 down to 100), then the person's locale, then name; a voice's label is
-  its locale's display name plus a short tail of `Voice.getName()` (engines name voices
-  like "en-us-x-sfg-local", which says nothing to a person), numbered when two share a
-  locale ("English (United States) 2"). Each row is a `RadioButton` row with a play
+  its locale's display name (engines name voices like "en-us-x-sfg-local", which says
+  nothing to a person, so the raw name is never shown), numbered in sort order when two
+  share a locale ("English (United States) 2"), with "High quality" under it when the
+  engine reports quality 400 or more. The sheet is full height on a phone
+  (`skipPartiallyExpanded = true`). Recast all sits with the cast sheet's manage actions;
+  on a TV the chips and picker are absent and the listen-through reads the cast. The
+  reader's top bar has Voices (`RecordVoiceOver`: every part with its chip, Recast all)
+  and its bottom bar Hear the cast / Stop (icon only below 600 dp), a one-line "Device
+  voice · PART" above the bar while it reads. Voices are re-read when the engine is up
+  and on every resume. Each row is a `RadioButton` row with a play
   `IconButton` that reads the part's first line. **Get more voices** sends
   `TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA` to the engine's installer. Android
   reports no voice gender, so auto-cast alternates by voice only. The cast is a

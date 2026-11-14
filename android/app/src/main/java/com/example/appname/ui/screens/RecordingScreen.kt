@@ -60,6 +60,8 @@ import com.example.appname.plays.Relay
 import com.example.appname.plays.SystemStandInVoice
 import com.example.appname.plays.TakeAudio
 import com.example.appname.ui.AccountRow
+import com.example.appname.ui.rememberCast
+import com.example.appname.ui.rememberDeviceVoices
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.recordButtonColors
@@ -89,6 +91,8 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
     val script = rememberCastScript(productionId)
     var session by remember { mutableStateOf<RecordingSession?>(null) }
     var voice by remember { mutableStateOf<SystemStandInVoice?>(null) }
+    val voices = rememberDeviceVoices()
+    val castHandle = rememberCast(voices, script, productionId)
     var preflight by remember { mutableStateOf(Preflight.Ready) }
     var pendingEcho by remember { mutableStateOf(false) }
     var announcing by remember { mutableStateOf(false) }
@@ -106,6 +110,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
     fun begin(echoCancelled: Boolean) {
         val production = plays.store.production(productionId) ?: return
         val cast = script ?: return
+        val voiceCast = castHandle?.cast ?: return
         val audio = DeviceLiveAudio(context)
         if (audio.outputRoute() == AudioRoute.Speaker && !echoCancelled) {
             preflight = Preflight.NeedsHeadphones
@@ -113,7 +118,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
         }
         preflight = Preflight.Ready
         if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-        val standIn = voice ?: SystemStandInVoice(context).also { voice = it }
+        val standIn = voice ?: SystemStandInVoice(context, voiceCast).also { voice = it }
         val accessibility = context.getSystemService(AccessibilityManager::class.java)
         val s = RecordingSession(
             production, cast, part, plays.store, audio, standIn,

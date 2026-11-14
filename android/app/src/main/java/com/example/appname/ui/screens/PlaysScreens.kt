@@ -86,6 +86,11 @@ import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
 import com.example.appname.plays.Relay
 import com.example.appname.ui.AccountRow
+import com.example.appname.ui.CastHandle
+import com.example.appname.ui.VoiceChip
+import com.example.appname.ui.VoicePickerSheet
+import com.example.appname.ui.rememberCast
+import com.example.appname.ui.rememberDeviceVoices
 import androidx.compose.foundation.layout.Box
 import com.example.appname.ui.ActionRow
 import com.example.appname.ui.lineCountText
@@ -385,6 +390,9 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
     } else {
         null
     }
+    val voices = rememberDeviceVoices()
+    val castHandle = rememberCast(voices, script, id)
+    var pickingVoice by remember { mutableStateOf<PartID?>(null) }
     var syncError by remember { mutableStateOf<String?>(null) }
     var shareError by remember { mutableStateOf<String?>(null) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -434,7 +442,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item(key = "head") { PlayHeadBoard(script, kicker = "Ear drama", title = production.title) }
             item(key = "listen") {
-                Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet) }
+                Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet, castHandle) }
             }
             if (!television && link == null) {
                 item(key = "share") {
@@ -466,7 +474,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
             }
             if (link != null && sheet != null) {
                 syncError?.let { item(key = "sync-error") { Column(Modifier.padding(horizontal = Spacing.S4.dp)) { ErrorLine(it) } } }
-                sharedCastRows(sheet, rec, me, pendingByPart, onRecord, onReplace)
+                sharedCastRows(sheet, rec, me, pendingByPart, onRecord, onReplace, voiceChip = castHandle?.takeIf { !television }?.let { h -> { p: PartID -> VoiceChip(h, p, onClick = { pickingVoice = p }) } })
             }
             if (link == null) {
                 item(key = "parts-h") { SectionHeader("Parts") }
@@ -480,6 +488,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
                             isNext = part.id == next,
                             canTake = current == null,
                             canReopen = current == null,
+                            voiceChip = castHandle?.takeIf { !television }?.let { h -> { VoiceChip(h, part.id, onClick = { pickingVoice = part.id }) } },
                             onRecord = { onRecord(part.id) },
                             onTake = { taking = part.id },
                             onLeaveSilent = { apply { Relay.leaveSilent(part.id, it, script) } },
@@ -500,6 +509,9 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
             }
             item(key = "manage") {
                 Column(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S4.dp)) {
+                    if (castHandle != null && !television) {
+                        TextButton(onClick = { castHandle.cast.recast(); castHandle.changed(); haptics(Haptic.Selection) }) { Text("Recast all") }
+                    }
                     if (production.unusedTakes.isNotEmpty()) {
                         TextButton(onClick = { runCatching { plays.store.discardUnusedTakes(id) }.onFailure { refusal = it.message } }) {
                             Text("Discard unused takes")
@@ -521,6 +533,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
                 },
             )
         }
+        if (castHandle != null) pickingVoice?.let { VoicePickerSheet(castHandle, script, it) { pickingVoice = null } }
         if (confirmingDelete) DeleteProductionDialog(production, onDismiss = { confirmingDelete = false }, onDeleted = onBack)
     }
 }
@@ -551,6 +564,7 @@ internal fun CastRow(
     onLeaveSilent: () -> Unit,
     onReopen: () -> Unit,
     modifier: Modifier = Modifier,
+    voiceChip: (@Composable () -> Unit)? = null,
 ) {
     val state = production.state(part.id)
     val full = Modifier.fillMaxWidth()
@@ -562,6 +576,7 @@ internal fun CastRow(
         modifier = modifier,
         who = partWho(part, production, script),
         highlight = state.status == PartState.Status.Recording,
+        whoSlot = if (state.status == PartState.Status.Open) voiceChip else null,
     ) {
         when (state.status) {
             PartState.Status.Recording -> Button(onClick = onRecord, modifier = full, colors = playButtonColors()) { Text("Record") }
@@ -628,7 +643,7 @@ private fun DeleteProductionDialog(production: Production, onDismiss: () -> Unit
  * Export is offered whenever the play is complete.
  */
 @Composable
-private fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?) {
+private fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?, voices: CastHandle?) {
     val container = LocalAppContainer.current
     val plays = container.plays
     val context = LocalContext.current
@@ -737,12 +752,13 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
             }
             else -> Button(onClick = {
                 if (container.playback.state.value.isPlaying) container.playback.togglePlay()
-                val listen = LiveListen(context, plays.store.takesFolder(production.id))
+                val cast = voices ?: return@Button
+                val listen = LiveListen(plays.store.takesFolder(production.id), cast.speaker)
                 live = listen
                 liveJob = scope.launch {
                     try {
                         shared?.prepareListen()
-                        listen.run(Relay.listenPlan(plays.store.production(production.id) ?: production, script))
+                        listen.run(Relay.listenPlan(plays.store.production(production.id) ?: production, script) { !it.isSpeaking && cast.cast.resolve(it).read })
                     } finally {
                         if (live === listen) {
                             listen.close()
