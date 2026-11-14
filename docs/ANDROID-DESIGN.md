@@ -564,6 +564,24 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   D-pad stops with the ring, the code field takes focus, and Share is
   absent.
 
+- **§4.9b The voices on the cast sheet** (Decision 076 S2; PLAYS-DESIGN §2.8 is
+  binding; owner 2026-11-14: *"The virtual voices who play the different parts should
+  also be intuitive."*; WEB-DESIGN §4.10 for the shared words; port spec
+  `docs/research/design/R2-voices-port-brief.md`). Planned (PARITY ⏳). Every part no
+  person holds shows an `AssistChip` with the voice's name (and a warning icon when its
+  cast voice is gone and the auto-cast one reads), "Not read" for directions and sound.
+  The chip opens a `ModalBottomSheet` picker: Speed and Pitch as − value + steppers,
+  then "On this device": `TextToSpeech.getVoices()` filtered to English and
+  `!isNetworkConnectionRequired` and without `KEY_FEATURE_NOT_INSTALLED`, sorted by
+  `quality` (500 down to 100), then the person's locale, then name; a voice's label is
+  its locale's display name plus a short tail of `Voice.getName()` (engines name voices
+  like "en-us-x-sfg-local", which says nothing to a person), numbered when two share a
+  locale ("English (United States) 2"). Each row is a `RadioButton` row with a play
+  `IconButton` that reads the part's first line. **Get more voices** sends
+  `TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA` to the engine's installer. Android
+  reports no voice gender, so auto-cast alternates by voice only. The cast is a
+  `VoiceCast` in `plays/` read by `SystemStandInVoice`, the live listen-through and the
+  reader's Hear the cast; kept in `SharedPreferences` (`ed.cast`), never synced.
 - **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;
   not on a TV). The tab's root is a `LazyColumn`: **Yours** (this device's
   productions and the shared ones not yet opened, each "n of m lines

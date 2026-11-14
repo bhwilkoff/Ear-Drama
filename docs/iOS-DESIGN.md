@@ -630,6 +630,30 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
     line's aids. The stand-in buffers' lifetime is unchanged (§5 of
     PLAYS-DESIGN): held for the bleed check, then released; a run creates no new
     write path. The microphone is asked for at Start Recording, never at launch.
+- **§4.12c The voices on the cast sheet** (Decision 076 S2; PLAYS-DESIGN §2.8 is
+  binding; owner 2026-11-14: *"The virtual voices who play the different parts should
+  also be intuitive."*; the web's WEB-DESIGN §4.10 for the shared words; port spec
+  `docs/research/design/R2-voices-port-brief.md`). Planned (PARITY ⏳). Every part no
+  person holds shows its voice in the part card's status line beside the dashed ring:
+  the voice's `name` ("Ava (Premium)", "Samantha (Enhanced)"), "Not read" for Stage
+  directions and Sound effects, and `exclamationmark.triangle` before the name when the
+  cast voice is not installed and the auto-cast voice reads instead. Tapping it pushes
+  (iPhone) or presents as a `.sheet` with `.presentationDetents([.medium, .large])`
+  (iPad) the **voice picker**: a `Form` with Speed and Pitch as `Stepper`s, then a
+  section "On this Device" of `AVSpeechSynthesisVoice.speechVoices()` filtered to
+  English, not Personal Voice, not `.isNoveltyVoice`, sorted by `quality` (`.premium`,
+  `.enhanced`, `.default`), the person's own language, then name; each row a selection
+  row (checkmark) with a `play.circle` button that `speak`s **the part's first line**
+  in that voice. The section footer is "Add voices in Settings > Accessibility > Spoken
+  Content > Voices." with a button that opens `UIApplication.openSettingsURLString`
+  (no API lists or starts a voice download; R2 §2.7). Auto-cast alternates the voices'
+  own `gender` (`.male`, `.female`; `.unspecified` counts as none). Voices are chosen
+  by `identifier`, never `AVSpeechSynthesisVoice(language:)`. The cast is a
+  `VoiceCast` in `Core/Plays` read by `SystemStandInVoice`, `LiveListen` and the
+  reader's Hear the Cast; stored in `UserDefaults` (`ed.cast`, keyed `p:<production>`
+  and `s:<script>`), never in `production.json`, never synced. The reader gets a
+  Voices toolbar item and Hear the Cast (§4.15). Personal Voice stays the
+  listen-through toggle it is (§4.12) and is not in the picker.
 - **§4.12a A shared ear drama** (phase 2; PLAYS-DESIGN §11.7, binding:
   "The same verbs on the web, iPhone, iPad, Mac, and Android ... Words on
   screen are these, on every platform"). Logic in `PlaysShare`

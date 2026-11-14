@@ -339,7 +339,7 @@ const ListenThrough = (() => {
   const C = PlaysCore;
 
   function create({ production, script, store, audio, voice, onChange = () => {} }) {
-    const plan = C.listenPlan(production, script);
+    const plan = C.listenPlan(production, script, voice.reads ? (part) => !C.isSpeaking(part) && voice.reads(part) : null);
     let run = 0;
     const s = { plan, index: 0, playing: false, rate: 1 };
 
@@ -384,6 +384,50 @@ const ListenThrough = (() => {
       s.playing = false;
       voice.cancel();
       audio.stop();
+    };
+
+    return s;
+  }
+
+  return { create };
+})();
+
+/**
+ * Hear the cast (WEB-DESIGN §4.16 item 13, PLAYS-DESIGN §2.8): the reader's table read, from
+ * a line to the end, each speaking part in its cast voice, directions and sound only when the
+ * cast gives them one. `onLine(line)` follows each line as it is read (null when it ends).
+ * Words only, live: it holds no takes and writes nothing (§5).
+ */
+const TableRead = (() => {
+  'use strict';
+  const C = PlaysCore;
+
+  function create({ script, voice, onLine = () => {}, onChange = () => {} }) {
+    let run = 0;
+    const s = { playing: false, line: null };
+
+    s.play = async (from = 0) => {
+      const my = ++run;
+      s.playing = true;
+      onChange(s);
+      for (let i = Math.max(0, from); i < script.lines.length && my === run; i++) {
+        const line = script.lines[i];
+        const part = C.linePart(line);
+        if (line.kind !== 'speech' && !voice.reads(part)) continue;
+        s.line = line;
+        onLine(line);
+        onChange(s);
+        await voice.speak(C.spokenText(line), part);
+      }
+      if (my === run) { s.playing = false; s.line = null; onLine(null); onChange(s); }
+    };
+
+    s.stop = () => {
+      run += 1;
+      s.playing = false;
+      s.line = null;
+      voice.cancel();
+      onChange(s);
     };
 
     return s;

@@ -1332,7 +1332,7 @@ body.reading #main-content { overflow: hidden; }
 }
 .rd-hiding .rd-mine:not(.rd-peek) { cursor: pointer; }
 .rd-flash { outline: 2px solid var(--color-text); outline-offset: -2px; border-radius: 2px; }
-.rd-now { box-shadow: inset 3px 0 0 var(--color-text); }
+.rd-now { background: color-mix(in srgb, var(--color-text) 8%, transparent); border-radius: 2px; }
 .rd-dock { flex-shrink: 0; }
 /* The reader's sheets: full screen on a phone, a card from 600 px. */
 .rd-sheet { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; border: 0; padding: var(--space-4);
@@ -1371,6 +1371,42 @@ body.reading #main-content { overflow: hidden; }
 .rd-seg span { display: grid; place-items: center; min-height: 40px; border-radius: calc(var(--radius-control) - 3px); font-weight: var(--type-body-strong-weight); color: var(--color-secondary); }
 .rd-seg input:checked + span { background: var(--color-primary); color: var(--color-on-primary); }
 .rd-seg input:focus-visible + span { outline: 2px solid var(--color-link); outline-offset: 2px; }
+/* ---- The device voices' cast (WEB-DESIGN §4.10, §4.16 item 13; PLAYS-DESIGN §2.8) ---- */
+.vc-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 32px; margin: -6px 0 0 -6px; padding: 0 4px 0 6px;
+  border: 0; border-radius: var(--radius-control); background: transparent; color: var(--color-link);
+  font: inherit; font-size: var(--type-caption-size); text-align: left; cursor: pointer; }
+.vc-chip:hover { background: color-mix(in srgb, var(--color-text) 6%, transparent); }
+.vc-chip-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vc-chip-tune { flex: none; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.vc-chip svg { flex: none; width: 16px; height: 16px; fill: currentColor; }
+.vc-chip .vc-warn { fill: var(--color-warning); }
+.vc-chip[data-state="off"], .vc-chip[data-state="none"] { color: var(--color-text-muted); }
+.vc-sheet .pl-warn { margin-bottom: var(--space-3); }
+.vc-steps { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-4); }
+.vc-step { display: flex; align-items: center; gap: var(--space-2); flex: 1 1 12rem; }
+.vc-step-lab { flex: 1; }
+.vc-step-btn { min-width: 44px; padding: 0; font-size: 1.15em; }
+.vc-step-val { min-width: 3.2em; text-align: center; }
+.vc-group { margin: 0 0 var(--space-1); color: var(--color-text-muted); font-weight: var(--type-body-strong-weight); }
+.vc-list { list-style: none; padding: 0; margin: 0; }
+.vc-row { display: flex; align-items: center; gap: var(--space-1); border-bottom: 1px solid var(--color-border); }
+.vc-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: var(--space-1) 0; cursor: pointer; }
+.vc-pick input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--color-primary); }
+.vc-name { min-width: 0; overflow-wrap: anywhere; }
+.vc-lang { flex: none; color: var(--color-text-muted); }
+.vc-hear svg { width: 22px; height: 22px; }
+.vc-more-voices { margin: var(--space-3) 0 0; color: var(--color-text-muted); }
+.vc-cast-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); }
+.vc-cast-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--tap);
+  padding: var(--space-1) 0; border-bottom: 1px solid var(--color-border); }
+.vc-cast-part { display: flex; flex-direction: column; min-width: 0; }
+.vc-cast-part .caption { color: var(--color-text-muted); }
+.vc-cast-row .vc-chip { margin: 0; flex: 0 1 auto; min-width: 0; }
+.rd-voice-now { display: flex; align-items: center; gap: 6px; margin: 0; padding: var(--space-2) var(--space-4); color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border); }
+.rd-voice-now svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+.rd-tool svg { width: 20px; height: 20px; fill: currentColor; }
+
 /* Read on a play tile: over the window's corner, outside the link, as Play on an episode tile. */
 .pl-tile-li { position: relative; }
 .g-tile-read { position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; min-width: 40px; min-height: 40px;

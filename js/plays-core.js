@@ -299,13 +299,14 @@ const PlaysCore = (() => {
    * device voice; unrecorded directions and sound are skipped. A voice entry holds the
    * words only, never audio, so nothing of it can be stored, mixed, or exported (§5).
    */
-  function listenPlan(p, script) {
+  function listenPlan(p, script, reads = null) {
     const plan = [];
     for (const line of script.lines) {
       const part = linePart(line);
       const t = usableTake(p, line.id);
       if (t) plan.push({ lineID: line.id, part, source: 'take', take: t });
-      else if (line.kind === 'speech') plan.push({ lineID: line.id, part, source: 'voice', text: spokenText(line) });
+      // `reads(part)`: directions and sound are read only when the cast gives them a voice (§2.8 rule 7).
+      else if (line.kind === 'speech' || (reads && reads(part))) plan.push({ lineID: line.id, part, source: 'voice', text: spokenText(line) });
     }
     return plan;
   }

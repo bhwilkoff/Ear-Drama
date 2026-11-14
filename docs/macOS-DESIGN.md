@@ -195,6 +195,14 @@ only here:
   takes in a run's review); R records again; up and down arrows (left and right
   in the dock) move by line, and in Line by line the selection. Run-up keeps
   Shift-Command-R. Nothing opens the microphone at launch.
+- **§4.5c The voices on the cast sheet** is `docs/iOS-DESIGN.md` §4.12c (Decision
+  076 S2; PLAYS-DESIGN §2.8) in the production's window: the voice is a pop-up
+  `Menu` in each part's row (the voices by quality, then "Not read" for directions and
+  sound) with "Voice Settings…" opening an inspector popover (Speed and Pitch
+  `Stepper`s, each voice's Hear button reading the part's first line). The footer's
+  path is System Settings > Accessibility > Read & Speak (or Spoken Content) >
+  System Voice > Manage Voices (the pane name and its `x-apple.systempreferences:`
+  URL to verify on macOS 26 before shipping; R2 §2.7 marks the name UNVERIFIED). Planned (PARITY ⏳).
 - **§4.5a A shared ear drama** is `docs/iOS-DESIGN.md` §4.12a (PLAYS-DESIGN
   §11.7, binding: the same verbs and words on every platform) in the
   production's window: Share, Invite, Upload, and People sit in the cast
