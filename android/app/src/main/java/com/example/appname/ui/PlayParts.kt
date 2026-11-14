@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
+import com.example.appname.plays.PlayListing
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.Production
 import com.example.appname.ui.theme.OnAir
@@ -178,10 +179,11 @@ fun PresenceStrip(script: PlayScript, part: PartID, modifier: Modifier = Modifie
  * off a board ([onBoard] null) each segment is its part's mark.
  */
 @Composable
-fun CastFingerprint(script: PlayScript, modifier: Modifier = Modifier, onBoard: Color? = null, height: Dp = 10.dp) {
-    val speaking = remember(script) { script.castParts.filter { it.id.isSpeaking } }
-    val total = remember(script) { speaking.sumOf { it.lineCount }.coerceAtLeast(1) }
-    val marks = speaking.map { partMark(script, it.id) ?: MaterialTheme.colorScheme.onSurfaceVariant }
+fun CastFingerprint(script: PlayListing, modifier: Modifier = Modifier, onBoard: Color? = null, height: Dp = 10.dp) {
+    val speaking = script.cast
+    val total = remember(script) { speaking.sum().coerceAtLeast(1) }
+    val dark = OnAir.colors.dark
+    val marks = speaking.indices.map { genreColor(PlayScript.PART_HUES.getOrNull(it), dark) ?: MaterialTheme.colorScheme.onSurfaceVariant }
     Canvas(
         modifier
             .fillMaxWidth()
@@ -191,8 +193,8 @@ fun CastFingerprint(script: PlayScript, modifier: Modifier = Modifier, onBoard: 
         val gap = 1.dp.toPx()
         val room = size.width - gap * (speaking.size - 1).coerceAtLeast(0)
         var x = 0f
-        speaking.forEachIndexed { i, part ->
-            val w = maxOf(1f, room * part.lineCount / total)
+        speaking.forEachIndexed { i, lines ->
+            val w = maxOf(1f, room * lines / total)
             drawRect(onBoard ?: marks[i], Offset(x, 0f), Size(w, size.height))
             x += w + gap
         }
@@ -208,10 +210,10 @@ private const val CAST_SHOWN = 7
  * bottom right when there are more. It replaces the monogram wherever a play wears a window.
  */
 @Composable
-fun CastWindow(script: PlayScript, modifier: Modifier = Modifier) {
-    val parts = remember(script) { script.castParts.filter { it.id.isSpeaking } }
+fun CastWindow(script: PlayListing, modifier: Modifier = Modifier) {
+    val parts = script.cast
     val shown = parts.take(CAST_SHOWN)
-    val most = (parts.firstOrNull()?.lineCount ?: 1).coerceAtLeast(1)
+    val most = (parts.firstOrNull() ?: 1).coerceAtLeast(1)
     val on = onBoardColor(PLAY_BOARD, OnAir.colors.dark)
     val shape = RoundedCornerShape(4.dp)
     Box(
@@ -228,9 +230,9 @@ fun CastWindow(script: PlayScript, modifier: Modifier = Modifier) {
             // The first bar is 1.6 units thick, the rest 1, with 0.7 between.
             val unit = room / (1.6f + (shown.size - 1) + 0.7f * (shown.size - 1))
             var y = pad
-            shown.forEachIndexed { i, part ->
+            shown.forEachIndexed { i, lines ->
                 val h = if (i == 0) unit * 1.6f else unit
-                val w = (size.width - pad * 2) * maxOf(0.06f, part.lineCount.toFloat() / most)
+                val w = (size.width - pad * 2) * maxOf(0.06f, lines.toFloat() / most)
                 drawRect(on, Offset(pad, y), Size(w, h))
                 y += h + unit * 0.7f
             }
@@ -248,8 +250,12 @@ fun CastWindow(script: PlayScript, modifier: Modifier = Modifier) {
 
 /** The ear drama head board's mark: the cast fingerprint at the strip's place, in the board's own onBoard color. */
 @Composable
-fun PlayHeadBoard(script: PlayScript, kicker: String, modifier: Modifier = Modifier, title: String = script.title) {
-    val facts = listOf(script.year?.toString(), script.castParts.count { it.id.isSpeaking }.let { "$it ${if (it == 1) "part" else "parts"}" }, linesFact(script.lines.size))
+fun PlayHeadBoard(script: PlayListing, kicker: String, modifier: Modifier = Modifier, title: String = script.title) {
+    val facts = listOf(
+        script.year?.toString(),
+        script.cast.size.let { "$it ${if (it == 1) "part" else "parts"}" },
+        (script as? PlayScript)?.let { linesFact(it.lines.size) },
+    )
     HeadBoard(
         name = title,
         genre = PLAY_BOARD,

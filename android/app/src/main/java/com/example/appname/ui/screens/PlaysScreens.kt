@@ -1,5 +1,9 @@
 package com.example.appname.ui.screens
 
+import androidx.compose.material.icons.outlined.MenuBook
+import com.example.appname.plays.PlayListing
+import com.example.appname.ui.FoldButton
+import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.wayColors
 import android.content.Context
 import android.content.Intent
@@ -159,14 +163,17 @@ fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
 
 /** "Start an ear drama" (PLAYS-DESIGN §2.1): makes the production and opens its cast sheet. */
 @Composable
-fun StartEarDramaButton(script: PlayScript, onOpenProduction: (String) -> Unit) {
+fun StartEarDramaButton(script: PlayListing, onOpenProduction: (String) -> Unit) {
     val plays = LocalAppContainer.current.plays
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
         Button(colors = playButtonColors(), onClick = {
             scope.launch {
-                runCatching { plays.create(script) }
+                runCatching {
+                    val whole = script as? PlayScript ?: plays.script(script.id) ?: error("This play is not on this device.")
+                    plays.create(whole)
+                }
                     .onSuccess { onOpenProduction(it.id) }
                     .onFailure { error = it.message ?: "The production could not be saved." }
             }
@@ -260,21 +267,44 @@ private fun RightsLine(script: PlayScript) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
+fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit = {}) {
     val plays = LocalAppContainer.current.plays
-    LaunchedEffect(Unit) { plays.load() }
-    val state by plays.state.collectAsState()
-    val script = (state as? PlaysLibrary.State.Ready)?.scripts?.firstOrNull { it.id == id }
-    Scaffold(topBar = { BackBar(onBack) }) { padding ->
-        if (script == null) {
-            if (state !is PlaysLibrary.State.Loading) EmptyMessage("This play is not on this device.", Modifier.padding(padding))
-            return@Scaffold
-        }
-        val television = LocalIsTelevision.current
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
-            playPage(script, television, onOpenProduction)
+    var attempt by remember { mutableStateOf(0) }
+    val loaded by produceState<PlayLoad>(PlayLoad.Loading, id, attempt) {
+        value = PlayLoad.Loading
+        value = try {
+            plays.script(id)?.let { PlayLoad.Ready(it) } ?: PlayLoad.Missing
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            PlayLoad.Failed
         }
     }
+    Scaffold(topBar = { BackBar(onBack) }) { padding ->
+        when (val l = loaded) {
+            PlayLoad.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
+            }
+            PlayLoad.Missing -> EmptyMessage("This play is not on this device.", Modifier.padding(padding))
+            PlayLoad.Failed -> EmptyMessage(
+                "This play could not be loaded. Check the connection.", Modifier.padding(padding),
+                action = EmptyAction("Try again") { attempt++ },
+            )
+            is PlayLoad.Ready -> {
+                val television = LocalIsTelevision.current
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
+                    playPage(l.script, television, onOpenProduction, onRead = { onRead(l.script.id) })
+                }
+            }
+        }
+    }
+}
+
+private sealed interface PlayLoad {
+    data object Loading : PlayLoad
+    data object Missing : PlayLoad
+    data object Failed : PlayLoad
+    data class Ready(val script: PlayScript) : PlayLoad
 }
 
 /**
@@ -287,11 +317,15 @@ fun LazyListScope.playPage(
     television: Boolean,
     onOpenProduction: (String) -> Unit,
     start: @Composable () -> Unit = { StartEarDramaButton(script, onOpenProduction) },
+    onRead: (() -> Unit)? = null,
 ) {
     item(key = "head") { PlayHeadBoard(script, kicker = if (script.kind == "stage") "Stage play" else "Radio play") }
     if (!television) {
         item(key = "actions") {
-            ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { start() }
+            ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
+                start()
+                if (onRead != null) FoldButton(Icons.Outlined.MenuBook, "Read", fit.folded, onRead, description = "Read ${script.title}")
+            }
         }
     }
     item(key = "parts-h") { SectionHeader("Parts") }

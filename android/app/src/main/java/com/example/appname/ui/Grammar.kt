@@ -21,11 +21,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,7 +75,7 @@ import coil3.compose.AsyncImage
 import com.example.appname.data.Artwork
 import com.example.appname.data.Grade
 import com.example.appname.data.SeriesRow
-import com.example.appname.plays.PlayScript
+import com.example.appname.plays.PlayListing
 import com.example.appname.data.WindowFill
 import com.example.appname.data.blockSize
 import com.example.appname.data.dateBlockParts
@@ -399,57 +402,81 @@ fun ShowTile(
 /**
  * A play's tile (§4.9a): the show tile's grammar on the drama board, the window drawing the cast
  * ([CastWindow]), the name, the cast fingerprint in the strip slot, and "N voices" and "About M min".
+ * [onRead] draws the book button in the window's corner (§4.17).
  */
 @Composable
 fun PlayTile(
-    script: PlayScript,
+    script: PlayListing,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
     width: Dp = TileWidth,
     nameHeight: Dp? = null,
+    onRead: (() -> Unit)? = null,
 ) {
     val on = onBoard(PLAY_BOARD)
     val style = nameStyle(nameStep(script.title), MaterialTheme.typography)
     val voices = script.voices
     val facts = listOf("$voices ${if (voices == 1) "voice" else "voices"}", "About ${script.minutes} min")
-    Column(
-        modifier
-            .width(width)
-            .tvFocusMark()
-            .clip(RoundedCornerShape(12.dp))
-            .background(board(PLAY_BOARD))
-            .clickable(onClickLabel = "Open play", onClick = onOpen)
-            .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp)
-            .semantics(mergeDescendants = true) { contentDescription = (listOf(script.title) + facts).joinToString(", ") },
-    ) {
-        CastWindow(script, Modifier.fillMaxWidth().height(innerWidth(width)))
-        Text(
-            nameText(script.title),
-            style = style,
-            color = on,
-            modifier = Modifier
-                .padding(top = Spacing.S2.dp)
-                .then(if (nameHeight != null) Modifier.height(nameHeight) else Modifier),
-        )
-        CastFingerprint(script, Modifier.padding(top = Spacing.S1.dp), onBoard = on, height = 10.dp)
-        facts.forEach { Text(it, style = MaterialTheme.typography.labelMedium, color = on) }
+    Box(modifier.width(width)) {
+        Column(
+            Modifier
+                .width(width)
+                .tvFocusMark()
+                .clip(RoundedCornerShape(12.dp))
+                .background(board(PLAY_BOARD))
+                .clickable(onClickLabel = "Open play", onClick = onOpen)
+                .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp)
+                .semantics(mergeDescendants = true) { contentDescription = (listOf(script.title) + facts).joinToString(", ") },
+        ) {
+            CastWindow(script, Modifier.fillMaxWidth().height(innerWidth(width)))
+            Text(
+                nameText(script.title),
+                style = style,
+                color = on,
+                modifier = Modifier
+                    .padding(top = Spacing.S2.dp)
+                    .then(if (nameHeight != null) Modifier.height(nameHeight) else Modifier),
+            )
+            CastFingerprint(script, Modifier.padding(top = Spacing.S1.dp), onBoard = on, height = 10.dp)
+            facts.forEach { Text(it, style = MaterialTheme.typography.labelMedium, color = on) }
+        }
+        if (onRead != null) {
+            IconButton(onClick = onRead, modifier = Modifier.align(Alignment.TopEnd).size(48.dp).tvFocusMark()) {
+                Icon(Icons.Outlined.MenuBook, contentDescription = "Read ${script.title}", tint = on)
+            }
+        }
     }
 }
 
-/** A page of play tiles in a plain grid, for a screen section that is not itself a lazy grid; a row shares its tallest name. */
-@Composable
-fun PlayGrid(scripts: List<PlayScript>, onOpen: (PlayScript) -> Unit, modifier: Modifier = Modifier) {
-    BoxWithConstraints(modifier.fillMaxWidth()) {
-        val (cols, tileWidth) = tileLayout(maxWidth)
-        val heights = rememberNameHeights(scripts.map { it.title }, innerWidth(tileWidth))
-        Column(Modifier.padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-            scripts.chunked(cols).forEachIndexed { r, chunk ->
-                val nameHeight = (0 until chunk.size).maxOf { heights[r * cols + it] }
-                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-                    chunk.forEach { s -> PlayTile(s, onOpen = { onOpen(s) }, width = tileWidth, nameHeight = nameHeight) }
-                }
+/**
+ * The play tiles as cells of a lazy grid (650 plays and more), [cols] across at [tileWidth]; a row shares its tallest
+ * name, measured for the visible rows only. The grid carries the S4 gutter as its content padding.
+ */
+fun LazyGridScope.playTiles(
+    plays: List<PlayListing>,
+    cols: Int,
+    tileWidth: Dp,
+    onOpen: (PlayListing) -> Unit,
+    onRead: ((PlayListing) -> Unit)? = null,
+) {
+    items(plays.size, key = { "p:" + plays[it].id }) { i ->
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val typography = MaterialTheme.typography
+        val rowStart = i / cols * cols
+        val nameHeight = remember(plays, rowStart, cols, tileWidth, typography, density) {
+            val px = with(density) { innerWidth(tileWidth).roundToPx() }
+            val tallest = (rowStart until minOf(plays.size, rowStart + cols)).maxOf { n ->
+                val title = plays[n].title
+                measurer.measure(nameText(title), nameStyle(nameStep(title), typography), constraints = Constraints(maxWidth = px)).size.height
             }
+            with(density) { tallest.toDp() }
         }
+        val s = plays[i]
+        PlayTile(
+            s, onOpen = { onOpen(s) }, modifier = Modifier.padding(bottom = Spacing.S2.dp), width = tileWidth, nameHeight = nameHeight,
+            onRead = onRead?.let { r -> { r(s) } },
+        )
     }
 }
 

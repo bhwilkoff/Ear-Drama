@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
  * this device. It opens no audio and asks for nothing; the microphone is asked
  * for only when a performer starts recording (§2.3).
  */
-class PlaysLibrary(private val context: Context) {
+class PlaysLibrary(private val context: Context, transport: LibraryTransport? = null) {
     sealed interface State {
         data object Loading : State
         data class Ready(val scripts: List<PlayScript>) : State
@@ -39,7 +39,18 @@ class PlaysLibrary(private val context: Context) {
         }
     }
 
-    fun script(id: String): PlayScript? = (_state.value as? State.Ready)?.scripts?.firstOrNull { it.id == id }
+    /** The published library (contract §4.1) as the lists read it, the bundle its floor; `Caches/PlayLibrary/` keeps the last good copy. */
+    val feed: PlayLibraryFeed = PlayLibraryFeed(
+        transport ?: LibraryTransport { null },
+        File(context.cacheDir, "PlayLibrary"),
+    ) { load(); (_state.value as? State.Ready)?.scripts.orEmpty() }
+
+    val rows: StateFlow<PlayLibraryFeed.Rows> get() = feed.rows
+
+    suspend fun loadRows() = feed.loadRows()
+
+    /** One play's whole script: the library's file, else the bundle's; null when neither has it, an error when it could not be fetched. */
+    suspend fun script(id: String): PlayScript? = feed.script(id)
 
     private val cast = ConcurrentHashMap<String, PlayScript>()
 

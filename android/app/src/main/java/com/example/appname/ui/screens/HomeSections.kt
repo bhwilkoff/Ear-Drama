@@ -1,5 +1,11 @@
 package com.example.appname.ui.screens
 
+import androidx.compose.material.icons.outlined.MenuBook
+import com.example.appname.plays.PlayLibraryFeed
+import com.example.appname.plays.PlayListing
+import com.example.appname.plays.SharedPlays
+import com.example.appname.ui.ActionRow
+import com.example.appname.ui.FoldButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -360,39 +366,42 @@ private fun EpisodeRailTile(ep: EpisodeRow, series: SeriesRow, nameHeight: Dp, o
     }
 }
 
-/** The castable plays state for a section that tells loading from none: Ready with [PlaysLibrary.State]. */
+/**
+ * The play library's rows for a section that tells loading from none (contract §4.1): the published index, else
+ * the copy this device kept, else the bundled plays.
+ */
 @Composable
-fun rememberCastableState(): PlaysLibrary.State {
+fun rememberPlayRows(): PlayLibraryFeed.Rows {
     val plays = LocalAppContainer.current.plays
-    val state by plays.state.collectAsState()
-    LaunchedEffect(Unit) { plays.load() }
-    return state
+    val rows by plays.rows.collectAsState()
+    LaunchedEffect(Unit) { plays.loadRows() }
+    return rows
 }
 
 /**
  * Today's play (Decision 075): `todaysPlay` of the day, as the head board with its cast window,
- * then "Record this" and "Parts" on one row. Absent with no plays; a library that failed reads as a
+ * then "Record this", "Parts" and Read on one row. Absent with no plays; a library that failed reads as a
  * problem line with Try again.
  */
 @Composable
 fun TodaysPlayBoard(
-    script: PlayScript,
+    play: PlayListing,
     onOpenScript: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
+    onRead: (String) -> Unit = {},
 ) {
     Column {
         PlayHeadBoard(
-            script,
-            kicker = "Today’s play",
-            modifier = Modifier.clickable(onClickLabel = "Open play") { onOpenScript(script.id) },
+            play,
+            kicker = "Today\u2019s play",
+            modifier = Modifier.clickable(onClickLabel = "Open play") { onOpenScript(play.id) },
         )
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            StartEarDramaButton(script, onOpenProduction)
-            OutlinedButton(onClick = { onOpenScript(script.id) }, modifier = Modifier.tvFocusMark()) { Text("Parts") }
+        ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
+            StartEarDramaButton(play, onOpenProduction)
+            OutlinedButton(onClick = { onOpenScript(play.id) }, modifier = Modifier.tvFocusMark()) { Text("Parts") }
+            if (!LocalIsTelevision.current) {
+                FoldButton(Icons.Outlined.MenuBook, "Read", fit.folded, { onRead(play.id) }, description = "Read ${play.title}")
+            }
         }
     }
 }
@@ -402,37 +411,41 @@ fun TodaysPlayBoard(
 fun TodaysPlay(
     onOpenScript: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
+    onRead: (String) -> Unit = {},
     heading: (@Composable () -> Unit)? = null,
 ) {
     val plays = LocalAppContainer.current.plays
-    val state = rememberCastableState()
+    val state = rememberPlayRows()
     val scope = rememberCoroutineScope()
     when (state) {
-        PlaysLibrary.State.Loading -> { heading?.invoke(); RowSpinner() }
-        PlaysLibrary.State.Unavailable -> {
+        PlayLibraryFeed.Rows.Loading -> { heading?.invoke(); RowSpinner() }
+        PlayLibraryFeed.Rows.Unavailable -> {
             heading?.invoke()
-            RowProblem("The plays could not be read.", onRetry = { scope.launch { plays.load() } })
+            RowProblem("The plays could not be read.", onRetry = { scope.launch { plays.feed.retry(); plays.loadRows() } })
         }
-        is PlaysLibrary.State.Ready -> {
-            val script = remember(state) { PlayScript.todaysPlay(state.scripts, RadioClock.localDate()) }
-            if (script != null) {
+        is PlayLibraryFeed.Rows.Ready -> {
+            val play = remember(state) { PlayScript.todaysPlay(state.rows, RadioClock.localDate()) }
+            if (play != null) {
                 heading?.invoke()
-                TodaysPlayBoard(script, onOpenScript, onOpenProduction)
+                TodaysPlayBoard(play, onOpenScript, onOpenProduction, onRead)
             }
         }
     }
 }
 
-/** Open parts: this device's productions with a part still open, newest first, at most five. */
+/**
+ * Open parts (WEB-DESIGN §4.2 item 7, owner 2026-11-14): shared productions someone else directs that this signed-in
+ * person belongs to, each with a speaking part still open, at most five. A person's own productions are Record's Yours,
+ * never here.
+ */
 @Composable
 fun OpenPartsRows(onOpenProduction: (String) -> Unit) {
     val container = LocalAppContainer.current
-    val productions by container.plays.store.productions.collectAsState()
-    val open = remember(productions) {
-        productions.filter { p -> p.parts.values.any { it.status == com.example.appname.plays.PartState.Status.Open } }
-            .sortedByDescending { it.created }.take(5)
+    val account by container.accounts.account.collectAsState()
+    val open by produceState(emptyList<SharedPlays.OpenPart>(), account?.userId) {
+        value = if (account == null) emptyList() else runCatching { container.sharing.openParts() }.getOrDefault(emptyList())
     }
     if (open.isEmpty()) return
     SectionHeader("Open parts")
-    open.forEach { p -> ProductionRow(p, onOpen = { onOpenProduction(p.id) }) }
+    open.forEach { p -> RemoteProductionRow(p.row, onOpenProduction, detail = if (p.open == 1) "1 open part" else "${p.open} open parts") }
 }

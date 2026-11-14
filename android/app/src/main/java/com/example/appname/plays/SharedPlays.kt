@@ -23,6 +23,8 @@ class SharedPlays(
     private val scripts: suspend () -> List<PlayScript>,
     private val io: CoroutineDispatcher = Dispatchers.IO,
     private val now: () -> Long = System::currentTimeMillis,
+    /** A play of the published library that the bundle does not hold, at the revision a production was cast from. */
+    private val libraryScript: suspend (String, String) -> PlayScript? = { _, _ -> null },
 ) {
     private val _records = MutableStateFlow<Map<String, SharedRecord>>(emptyMap())
 
@@ -181,11 +183,45 @@ class SharedPlays(
         _remote.value = api.list()
     }
 
+    /** A shared production someone else directs that this person is in, and how many speaking parts of it are still open. */
+    data class OpenPart(val row: RemoteRow, val open: Int)
+
+    /**
+     * Home's Open parts (WEB-DESIGN §4.2 item 7, owner 2026-11-14): shared productions someone else directs that this
+     * signed-in person belongs to, each with a speaking part still open, newest first, at most [limit]. The person's own
+     * productions are never here (they are Record's Yours), and sound effects and stage directions are never open parts.
+     */
+    suspend fun openParts(limit: Int = 5): List<OpenPart> {
+        val self = me() ?: return emptyList()
+        val listed = api.list().filter { it.director != null && it.director != self }.sortedByDescending { it.updatedAt }.take(limit + 3)
+        val out = ArrayList<OpenPart>()
+        for (row in listed) {
+            if (out.size >= limit) break
+            val rec = try {
+                api.get(row.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                continue
+            }
+            val script = try {
+                PlaysShare.scriptFor(scripts(), rec.scriptID, rec.scriptRevision) ?: libraryScript(rec.scriptID, rec.scriptRevision)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            val open = ScriptReading.openSpeakingParts(rec.parts.mapValues { it.value.status }, script)
+            if (open.isNotEmpty()) out += OpenPart(row, open.size)
+        }
+        return out
+    }
+
     suspend fun viewInvite(token: String): InviteView = api.viewInvite(token)
 
     /** Joins by the held invite, claiming [part]; the local production, ready to open. */
     suspend fun join(token: String, part: String, name: String?, scriptID: String, revision: String): Production {
-        val script = PlaysShare.scriptFor(scripts(), scriptID, revision)
+        val script = PlaysShare.scriptFor(scripts(), scriptID, revision) ?: libraryScript(scriptID, revision)
         val joined = withContext(io) { PlaysShare.join(api, store, token, part, name, script) }
         _links.update { it + (joined.local.id to (store.share(joined.local.id) ?: ShareLink(joined.rec.id))) }
         _records.update { it + (joined.local.id to joined.rec) }
@@ -197,7 +233,7 @@ class SharedPlays(
     /** Opens a shared production this device has not opened: makes it here from the bundle's script, as a join does. */
     suspend fun openRemote(pid: String): Production {
         val rec = api.get(pid)
-        val script = PlaysShare.scriptFor(scripts(), rec.scriptID, rec.scriptRevision)
+        val script = PlaysShare.scriptFor(scripts(), rec.scriptID, rec.scriptRevision) ?: libraryScript(rec.scriptID, rec.scriptRevision)
         val local = withContext(io) { PlaysShare.localFor(store, pid, script) }
         _links.update { it + (local.id to (store.share(local.id) ?: ShareLink(pid))) }
         _records.update { it + (local.id to rec) }

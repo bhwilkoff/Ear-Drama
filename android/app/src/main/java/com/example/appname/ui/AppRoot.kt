@@ -11,7 +11,10 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -45,6 +48,7 @@ import com.example.appname.ui.screens.MiniPlayer
 import com.example.appname.ui.screens.PersonScreen
 import com.example.appname.ui.screens.ProductionScreen
 import com.example.appname.ui.screens.RadioScreen
+import com.example.appname.ui.screens.ReaderScreen
 import com.example.appname.ui.screens.RecordScreen
 import com.example.appname.ui.screens.RecordingScreen
 import com.example.appname.ui.screens.ScriptScreen
@@ -127,6 +131,10 @@ fun AppRoot(
                 }
                 // A TV lists no ear dramas yet (PARITY), so a drama link opens nothing there.
                 is InboxRequest.Drama -> if (!container.isTelevision) stacks.getValue(selected).navigateTo(Route.Drama(request.pid))
+                is InboxRequest.Read -> if (!container.isTelevision) {
+                    stacks.getValue(Tab.Record).navigateTo(Route.Reader(request.id, request.line))
+                    selected = Tab.Record
+                }
                 InboxRequest.EndDoor -> {
                     container.playback.stop()
                     playerOpen = false
@@ -150,6 +158,9 @@ fun AppRoot(
     val openScript: (String) -> Unit = { id -> stack.navigateTo(Route.Script(id)) }
     val openDrama: (String) -> Unit = { id -> stack.navigateTo(Route.Drama(id)) }
     val openProduction: (String) -> Unit = { id -> stack.navigateTo(Route.Production(id)) }
+    val openReader: (String) -> Unit = { id -> stack.navigateTo(Route.Reader(id)) }
+    // Reading is full screen (§4.17): the tab bar, the mini player and the offline line step aside.
+    val reading = stack.lastOrNull() is Route.Reader
 
     CompositionLocalProvider(
         LocalPlayerMuted provides muted,
@@ -158,6 +169,8 @@ fun AppRoot(
     ) {
         HapticEvents()
         NavigationSuiteScaffold(
+            layoutType = if (reading) NavigationSuiteType.None
+            else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo()),
             navigationSuiteItems = {
                 Tab.entries.filter { !(container.isTelevision && it == Tab.Record) }.forEach { tab ->
                     item(
@@ -196,6 +209,7 @@ fun AppRoot(
                                     onOpenRecord = { haptics(Haptic.Selection); selected = Tab.Record },
                                     onOpenScript = openScript,
                                     onOpenProduction = openProduction,
+                                    onRead = openReader,
                                 )
                             }
                             entry<Route.SeriesBrowse> {
@@ -221,6 +235,7 @@ fun AppRoot(
                                 RecordScreen(
                                     onOpenScript = openScript, onOpenProduction = openProduction, onOpenDrama = openDrama,
                                     onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse },
+                                    onRead = openReader,
                                 )
                             }
                             entry<Route.Search> {
@@ -270,12 +285,13 @@ fun AppRoot(
                             entry<Route.Drama> { route -> DramaScreen(route.id, onBack = back) }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
-                                ScriptScreen(route.id, onBack = back, onOpenProduction = { id ->
+                                ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenProduction = { id ->
                                     // Starting one replaces the play's page with its cast sheet: depth stays two (§1.4).
                                     if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
                                     stack.add(Route.Production(id))
                                 })
                             }
+                            entry<Route.Reader> { route -> ReaderScreen(route.scriptId, route.lineId, onBack = back) }
                             entry<Route.Production> { route ->
                                 ProductionScreen(route.id, onBack = back, onRecord = { part ->
                                     stack.add(Route.Recording(route.id, part.raw))
@@ -290,8 +306,10 @@ fun AppRoot(
                     )
                 }
                 // Below the screens, so it never sits under the status bar (edge to edge).
-                offlineLine(online)?.let { OfflineLine(it) }
-                MiniPlayer(onExpand = { playerOpen = true })
+                if (!reading) {
+                    offlineLine(online)?.let { OfflineLine(it) }
+                    MiniPlayer(onExpand = { playerOpen = true })
+                }
             }
         }
         if (playerOpen) {
