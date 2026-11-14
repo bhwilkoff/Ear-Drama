@@ -72,6 +72,7 @@ import coil3.compose.AsyncImage
 import com.example.appname.data.Artwork
 import com.example.appname.data.Grade
 import com.example.appname.data.SeriesRow
+import com.example.appname.plays.PlayScript
 import com.example.appname.data.WindowFill
 import com.example.appname.data.blockSize
 import com.example.appname.data.dateBlockParts
@@ -395,6 +396,63 @@ fun ShowTile(
     }
 }
 
+/**
+ * A play's tile (§4.9a): the show tile's grammar on the drama board, the window drawing the cast
+ * ([CastWindow]), the name, the cast fingerprint in the strip slot, and "N voices" and "About M min".
+ */
+@Composable
+fun PlayTile(
+    script: PlayScript,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    width: Dp = TileWidth,
+    nameHeight: Dp? = null,
+) {
+    val on = onBoard(PLAY_BOARD)
+    val style = nameStyle(nameStep(script.title), MaterialTheme.typography)
+    val voices = script.voices
+    val facts = listOf("$voices ${if (voices == 1) "voice" else "voices"}", "About ${script.minutes} min")
+    Column(
+        modifier
+            .width(width)
+            .tvFocusMark()
+            .clip(RoundedCornerShape(12.dp))
+            .background(board(PLAY_BOARD))
+            .clickable(onClickLabel = "Open play", onClick = onOpen)
+            .padding(start = TilePad, top = TilePad, end = TilePad, bottom = 10.dp)
+            .semantics(mergeDescendants = true) { contentDescription = (listOf(script.title) + facts).joinToString(", ") },
+    ) {
+        CastWindow(script, Modifier.fillMaxWidth().height(innerWidth(width)))
+        Text(
+            nameText(script.title),
+            style = style,
+            color = on,
+            modifier = Modifier
+                .padding(top = Spacing.S2.dp)
+                .then(if (nameHeight != null) Modifier.height(nameHeight) else Modifier),
+        )
+        CastFingerprint(script, Modifier.padding(top = Spacing.S1.dp), onBoard = on, height = 10.dp)
+        facts.forEach { Text(it, style = MaterialTheme.typography.labelMedium, color = on) }
+    }
+}
+
+/** A page of play tiles in a plain grid, for a screen section that is not itself a lazy grid; a row shares its tallest name. */
+@Composable
+fun PlayGrid(scripts: List<PlayScript>, onOpen: (PlayScript) -> Unit, modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val (cols, tileWidth) = tileLayout(maxWidth)
+        val heights = rememberNameHeights(scripts.map { it.title }, innerWidth(tileWidth))
+        Column(Modifier.padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+            scripts.chunked(cols).forEachIndexed { r, chunk ->
+                val nameHeight = (0 until chunk.size).maxOf { heights[r * cols + it] }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
+                    chunk.forEach { s -> PlayTile(s, onOpen = { onOpen(s) }, width = tileWidth, nameHeight = nameHeight) }
+                }
+            }
+        }
+    }
+}
+
 /** A shelf of show tiles in one row; the names share the tallest name's height. */
 @Composable
 fun ShowShelf(
@@ -584,6 +642,8 @@ fun HeadBoard(
     credits: String? = null,
     /** What stands in the mark slot in place of the run strip (an ear drama's cast fingerprint), given the slot's height. */
     mark: (@Composable (Dp) -> Unit)? = null,
+    /** What stands in the picture slot in place of the window (an ear drama's cast window), sized by the slot. */
+    window: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val on = onBoard(genre)
     val side = headSlot()
@@ -595,7 +655,7 @@ fun HeadBoard(
         verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp)) {
-            PictureWindow(art, name, genre, Modifier.size(side))
+            if (window != null) window(Modifier.size(side)) else PictureWindow(art, name, genre, Modifier.size(side))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
                 if (genreLink != null) {
                     Row {

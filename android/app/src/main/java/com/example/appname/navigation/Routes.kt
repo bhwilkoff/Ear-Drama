@@ -10,8 +10,10 @@ sealed interface Route : NavKey {
     @Serializable data object Listen : Route
     /** Browse: series and plays together (§4.2; was Series). */
     @Serializable data object SeriesBrowse : Route
-    /** Stations: Tonight in 19xx (§4.10; was Radio). */
+    /** Stations: Tonight in 19xx (§4.10), pushed from Home's On the air and Listen door (§3.1). */
     @Serializable data object Radio : Route
+    /** Record (§4.9a, Decision 075): your productions, today's play, the plays. Not on a TV. */
+    @Serializable data object Record : Route
     @Serializable data object Search : Route
     @Serializable data object Library : Route
     /** Library's Downloads place (§4.6), by series. */
@@ -43,14 +45,21 @@ sealed interface Route : NavKey {
 enum class Tab(val label: String, val root: Route) {
     Home("Home", Route.Listen),
     Browse("Browse", Route.SeriesBrowse),
-    Stations("Stations", Route.Radio),
+    Record("Record", Route.Record),
     Search("Search", Route.Search),
     Library("Library", Route.Library),
     ;
 
     companion object {
-        /** The names before Decision 068 still open: listen, series, radio, plays. */
-        private val RENAMED = mapOf("listen" to Home, "series" to Browse, "radio" to Stations, "plays" to Browse)
+        /** The names before Decision 075 still open: listen, series, plays (now Record). */
+        private val RENAMED = mapOf("listen" to Home, "series" to Browse, "plays" to Record)
+
+        /** Doors that open Home and then push a screen that is no longer a tab (Decision 075). */
+        fun pushedFromHome(name: String): Route? = when (name.lowercase()) {
+            "radio", "stations" -> Route.Radio
+            "surprise" -> Route.Surprise
+            else -> null
+        }
 
         fun named(name: String): Tab? =
             entries.firstOrNull { it.name.equals(name, ignoreCase = true) } ?: RENAMED[name.lowercase()]

@@ -107,7 +107,7 @@ private const val REPAINT_MS = 15_000L
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RadioScreen(onOpenEpisode: (String) -> Unit) {
+fun RadioScreen(onOpenEpisode: (String) -> Unit, onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val online = LocalOnline.current
     val haptics = rememberHaptics()
@@ -146,7 +146,7 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit) {
     val failed = load is RadioLoad.Failed
     LaunchedEffect(failed) { if (failed) haptics(Haptic.Error) }
 
-    Scaffold(topBar = { TopAppBar(title = { Text("Stations") }) }) { padding ->
+    Scaffold(topBar = { BackBar(onBack, "Stations") }) { padding ->
         when (val state = load) {
             RadioLoad.Loading -> CenteredBox(Modifier.padding(padding)) {
                 CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })

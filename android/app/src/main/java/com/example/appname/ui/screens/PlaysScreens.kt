@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -171,8 +171,8 @@ fun StartEarDramaButton(script: PlayScript, onOpenProduction: (String) -> Unit) 
                     .onFailure { error = it.message ?: "The production could not be saved." }
             }
         }) {
-            Icon(Icons.Filled.Groups, contentDescription = null)
-            Text("Start an ear drama", Modifier.padding(start = Spacing.S2.dp))
+            Icon(Icons.Filled.Mic, contentDescription = null)
+            Text("Record this", Modifier.padding(start = Spacing.S2.dp))
         }
         error?.let { ErrorLine(it) }
     }

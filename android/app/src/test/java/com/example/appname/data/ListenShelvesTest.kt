@@ -30,6 +30,8 @@ class ListenShelvesTest {
          {"rule": "onThisDay"},
          {"rule": "genreFirsts", "genre": "mystery", "episodes": ["sus|1943-05-25", "gone|1900-01-01", "sus|1942-06-17"]},
          {"rule": "mostEpisodes"},
+         {"rule": "byLength", "band": "about30", "episodes": ["cp|1945-02-04"]},
+         {"rule": "byLength", "band": "twoHours", "episodes": ["cp|1943-02-24"]},
          {"rule": "genreFirsts", "genre": "western", "episodes": []}]
     """.trimIndent()
 
@@ -68,8 +70,8 @@ class ListenShelvesTest {
         val db = open(CatalogFixture.build(tmp.root, listenShelves = published))
         val shelves = db.listenShelves("05-25")
         // An unknown rule is ignored and an empty shelf dropped.
-        assertEquals(listOf("genre:comedy", "thisday", "genre:mystery"), shelves.map { it.key })
-        assertEquals(listOf("comedy", null, "mystery"), shelves.map { it.genre })
+        assertEquals(listOf("genre:comedy", "thisday", "genre:mystery", "length:about30"), shelves.map { it.key })
+        assertEquals(listOf("comedy", null, "mystery", null), shelves.map { it.genre })
         // Ids in published order, not broadcast order; an unserved id dropped.
         assertEquals(listOf("cp|1945-02-04", "cp|1943-02-24"), shelves[0].rows.map { it.id })
         assertEquals(listOf("sus|1943-05-25"), shelves[1].rows.map { it.id })
@@ -87,6 +89,30 @@ class ListenShelvesTest {
         assertEquals("Most downloaded", popular.heading)
         assertEquals(listOf("sus|1942-06-17", "cp|1945-02-04"), popular.rows.map { it.id })
         db.close()
+    }
+
+    /** Decision 075: Start a show leads with Most downloaded, then each genre; By length keeps its bands in order; empty rules are dropped. */
+    @Test fun `home shelves lead with most downloaded and keep the length bands in order`() = runBlocking {
+        val db = open(CatalogFixture.build(tmp.root, listenShelves = """
+            [{"rule": "onThisDay"},
+             {"rule": "mostDownloaded", "episodes": ["sus|1942-06-17"]},
+             {"rule": "genreFirsts", "genre": "comedy", "episodes": ["cp|1945-02-04"]},
+             {"rule": "genreFirsts", "genre": "western", "episodes": []},
+             {"rule": "byLength", "band": "hour", "episodes": ["cp|1943-02-24"]},
+             {"rule": "byLength", "band": "under15", "episodes": ["sus|1943-05-25"]},
+             {"rule": "byLength", "band": "about30", "episodes": []}]
+        """.trimIndent()))
+        val home = db.homeShelves()
+        assertEquals(listOf("popular", "comedy"), home.start.map { it.key })
+        assertEquals("Most downloaded", home.start[0].label)
+        assertEquals(listOf("under15", "hour"), home.length.map { it.key })
+        assertEquals(listOf("Under 15 min", "An hour"), home.length.map { it.label })
+        db.close()
+        // An older catalog publishes none: both rows are absent.
+        val old = open(CatalogFixture.build(tmp.newFolder()))
+        assertEquals(emptyList<HomeShelf>(), old.homeShelves().start)
+        assertEquals(emptyList<HomeShelf>(), old.homeShelves().length)
+        old.close()
     }
 
     @Test fun `an older catalog falls back to the rules run here`() = runBlocking {
@@ -109,6 +135,7 @@ class ListenShelvesTest {
                 PublishedShelf.GenreFirsts("comedy", listOf("cp|1945-02-04", "cp|1943-02-24")),
                 PublishedShelf.OnThisDay,
                 PublishedShelf.GenreFirsts("mystery", listOf("sus|1943-05-25", "gone|1900-01-01", "sus|1942-06-17")),
+                PublishedShelf.ByLength("about30", listOf("cp|1945-02-04")),
                 PublishedShelf.GenreFirsts("western", emptyList()),
             ),
             PublishedShelf.parse(published),

@@ -480,7 +480,7 @@ fun FinishedPlay.tile(onOpen: () -> Unit): TileSpec = TileSpec(
     onOpen = onOpen,
 )
 
-/** Home's New ear dramas: the newest three, nothing at all while there are none to show. */
+/** Made here: the newest three, nothing at all while there are none to show. */
 @Composable
 fun NewEarDramas(onOpen: (String) -> Unit, onAll: () -> Unit) {
     if (LocalIsTelevision.current) return
@@ -489,7 +489,7 @@ fun NewEarDramas(onOpen: (String) -> Unit, onAll: () -> Unit) {
     val state by finished.state.collectAsState()
     val plays = (state as? FinishedList.State.Ready)?.plays.orEmpty()
     if (plays.isEmpty()) return
-    com.example.appname.ui.SectionHeading("New ear dramas") {
+    com.example.appname.ui.SectionHeading("Made here") {
         com.example.appname.ui.TextLink("All ${formatCount(plays.size)}", onClick = onAll)
     }
     TileGrid(plays.take(3).map { p -> p.tile { onOpen(p.id) } })

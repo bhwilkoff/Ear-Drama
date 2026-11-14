@@ -757,6 +757,7 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                     is PublishedShelf.GenreFirsts -> ListenShelf("genre:${it.genre}", it.genre, episodes(it.episodes))
                     is PublishedShelf.MostDownloaded ->
                         ListenShelf("mostdownloaded", null, episodes(it.episodes), heading = "Most downloaded")
+                    is PublishedShelf.ByLength -> ListenShelf("length:${it.band}", null, episodes(it.episodes), heading = lengthLabel(it.band))
                 }
             }
         } else {
@@ -765,6 +766,28 @@ class CatalogDatabase internal constructor(private val connection: SQLiteConnect
                     .map { ListenShelf("genre:$it", it, shelf(ShelfRule.Genre(it))) }
         }
         return shelves.filter { it.rows.isNotEmpty() }
+    }
+
+    /**
+     * Home's Start a show and By length (Decision 075), from `meta.listenShelves` alone: Most downloaded, then each
+     * genre in manifest order labelled by its published name; then the length bands in order. A catalog that
+     * predates the key publishes none, and a rule that names no episode is not drawn.
+     */
+    suspend fun homeShelves(): HomeShelves {
+        val published = read { publishedShelves }.orEmpty()
+        val start = published.mapNotNull {
+            when {
+                it is PublishedShelf.MostDownloaded && it.episodes.isNotEmpty() -> HomeShelf("popular", "Most downloaded", it.episodes)
+                it is PublishedShelf.GenreFirsts && it.episodes.isNotEmpty() ->
+                    HomeShelf(it.genre, DisplayVocabulary.genreName(it.genre) ?: it.genre, it.episodes)
+                else -> null
+            }
+        }
+        val length = PublishedShelf.LENGTH_BANDS.mapNotNull { band ->
+            published.filterIsInstance<PublishedShelf.ByLength>().firstOrNull { it.band == band && it.episodes.isNotEmpty() }
+                ?.let { HomeShelf(band, lengthLabel(band), it.episodes) }
+        }
+        return HomeShelves(start, length)
     }
 
     /**

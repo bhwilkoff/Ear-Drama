@@ -91,17 +91,13 @@ import java.util.Locale
 
 private const val PAGE = 200
 
-/** What Browse lists (Decision 068): radio series, stage plays, or both. */
-private enum class BrowseKind(val label: String) { Series("Series"), Plays("Plays") }
-
 /**
- * Browse (§4.2; was Series): radio series and stage plays together, by kind,
- * "Has a script", network, decade, and genre, in one of the web's three orders
- * (§5 `seriesBrowse`; the listener drives it, so no `recommendAnd`). Every
+ * Browse (§4.2; was Series): radio series by "Has a script", network, decade, and genre,
+ * in one of the web's orders (§5 `seriesBrowse`; the listener drives it, so no
+ * `recommendAnd`). The plays moved to Record (Decision 075). Every
  * series facet comes from the data, each counted against the others'
- * selection. A play carries no genre, decade, or network, so setting one
- * narrows to series; "Has a script" keeps the plays and the series with a
- * linked episode (§3.1). No plays on a TV. R11c: the results are show tiles
+ * selection; "Has a script" keeps the series with a
+ * linked episode (§3.1). R11c: the results are show tiles
  * (the show line), with the decade by genre field above them, or beside them
  * at expanded widths.
  */
@@ -109,7 +105,6 @@ private enum class BrowseKind(val label: String) { Series("Series"), Plays("Play
 @Composable
 fun SeriesBrowseScreen(
     onOpenSeries: (String) -> Unit,
-    onOpenScript: (String) -> Unit,
     /** A genre the series page asked Browse to filter to; [onGenreRequestHandled] clears it. */
     genreRequest: String? = null,
     onGenreRequestHandled: () -> Unit = {},
@@ -136,7 +131,6 @@ fun SeriesBrowseScreen(
             onVoicesRequestHandled()
         }
     }
-    var kind by rememberSaveable { mutableStateOf<BrowseKind?>(null) }
     var hasScript by rememberSaveable { mutableStateOf(false) }
     val allPlays = rememberCastablePlays()
     var genre by rememberSaveable { mutableStateOf<String?>(null) }
@@ -147,7 +141,7 @@ fun SeriesBrowseScreen(
     var pages by rememberSaveable(genre, decade, network, sort, singles) { mutableIntStateOf(1) }
     LaunchedEffect(genreRequest) {
         if (genreRequest != null) {
-            kind = null; hasScript = false; decade = null; network = null; singles = false
+            hasScript = false; decade = null; network = null; singles = false
             genre = genreRequest
             scopeKey = "shows"
             onGenreRequestHandled()
@@ -172,8 +166,6 @@ fun SeriesBrowseScreen(
     val fieldShows by rememberCatalogQuery(network) { db -> db.fieldShows(network) }
     val field = remember(fieldShows) { decadeField((fieldShows as? Loadable.Ready)?.value.orEmpty()) }
     val scripted by rememberCatalogQuery { db -> db.scriptedSeries() }
-    val showsSeries = kind != BrowseKind.Plays
-    val plays = if (kind != BrowseKind.Series && genre == null && decade == null && network == null) allPlays else emptyList()
     val (showCount, singleCount) = (counts as? Loadable.Ready)?.value ?: (0 to 0)
     val sectionTitle = when (sort) {
         SeriesSort.Popular -> "Most downloaded first"
@@ -216,21 +208,11 @@ fun SeriesBrowseScreen(
             val bundled = allPlays.mapTo(HashSet()) { it.id }
             val linked = (scripted as? Loadable.Ready)?.value.orEmpty()
             val seriesRows = when {
-                !showsSeries -> emptyList()
                 hasScript -> rows.filter { r -> linked[r.key].orEmpty().any { it in bundled } }
                 else -> rows
             }
             val tiles = seriesRows.map { row ->
                 TileSpec("s:" + row.key, row, onOpen = { onOpenSeries(row.key) })
-            } + plays.map { script ->
-                val speaking = script.castParts.count { it.id.isSpeaking }
-                TileSpec(
-                    "play:" + script.id,
-                    SeriesRow("play:" + script.id, script.title, PLAY_BOARD, null, null, 0),
-                    facts = listOf(script.authorLine, "$speaking parts").filter { it.isNotEmpty() },
-                    openLabel = "Open play",
-                    onOpen = { onOpenScript(script.id) },
-                )
             }
             // A to Z: every letter that has a show; a letter jumps to its first tile.
             val azKeys = tiles.map { it.series.sortName ?: it.series.name }
@@ -249,15 +231,6 @@ fun SeriesBrowseScreen(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp),
                 ) {
                     if (allPlays.isNotEmpty()) {
-                        item(key = "kind") {
-                            MenuChip(
-                                label = kind?.label ?: "Kind",
-                                selected = kind != null,
-                                choices = listOf<Pair<BrowseKind?, String>>(null to "Any kind") +
-                                    BrowseKind.entries.map { it to it.label },
-                                onChoose = { if (it != kind) { kind = it; haptics(Haptic.Selection) } },
-                            )
-                        }
                         item(key = "script") {
                             FilterChip(
                                 selected = hasScript,
@@ -323,9 +296,7 @@ fun SeriesBrowseScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (!showsSeries) {
-                        Text("${formatCount(plays.size)} plays", style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                    } else if (singles) {
+                    if (singles) {
                         Text("${formatCount(singleCount)} single recordings", style = MaterialTheme.typography.titleMedium, maxLines = 1)
                         TextLink("${formatCount(showCount)} shows", onClick = { singles = false; haptics(Haptic.Selection) })
                     } else {
@@ -335,7 +306,7 @@ fun SeriesBrowseScreen(
                 }
             }
             val fieldBlock: @Composable () -> Unit = {
-                if (showsSeries && field.genres.isNotEmpty()) {
+                if (field.genres.isNotEmpty()) {
                     Column {
                         SectionHeading("By decade and genre") {
                             if (field.none > 0) {
@@ -386,7 +357,7 @@ fun SeriesBrowseScreen(
                                 EmptyMessage(
                                     "Nothing matches these filters.",
                                     action = EmptyAction("Clear filters") {
-                                        kind = null; hasScript = false; genre = null; decade = null; network = null
+                                        hasScript = false; genre = null; decade = null; network = null
                                         singles = false
                                         haptics(Haptic.Selection)
                                     },
@@ -447,7 +418,7 @@ fun SeriesBrowseScreen(
 
 /** A filter chip that opens its choices in a menu (Material's dropdown filter chip). */
 @Composable
-private fun <T> MenuChip(label: String, selected: Boolean, choices: List<Pair<T, String>>, onChoose: (T) -> Unit) {
+internal fun <T> MenuChip(label: String, selected: Boolean, choices: List<Pair<T, String>>, onChoose: (T) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Box {
         FilterChip(
