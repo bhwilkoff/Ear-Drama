@@ -237,13 +237,16 @@ struct PartGrid<Content: View>: View {
 
 /// What a play's head board says about it: the kind from the record, then the facts the record holds.
 enum PlayHead {
-    static func kicker(_ script: PlayScript) -> String { script.kind == "radio" ? "Radio play" : "Stage play" }
+    static func kicker(_ script: some PlayListing) -> String { script.kind == "radio" ? "Radio play" : "Stage play" }
 
-    static func facts(_ script: PlayScript) -> [String?] {
-        let parts = script.castParts.filter { $0.id.isSpeaking }.count
+    static func facts(_ script: some PlayListing) -> [String?] {
+        let parts = script.castLines.count
         return [script.year.map(String.init),
                 parts == 1 ? "1 part" : "\(parts) parts",
-                script.lines.count == 1 ? "1 line" : "\(script.lines.count.formatted()) lines"]
+                script.lineCount == 1 ? "1 line" : "\(script.lineCount.formatted()) lines"]
     }
+
+    /// A row's authors; a full script's carry their years too.
+    static func credits(_ row: PlayRow) -> String { row.authorLine }
 }
 #endif

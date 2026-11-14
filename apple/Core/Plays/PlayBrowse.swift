@@ -74,13 +74,34 @@ nonisolated enum PlaySort: String, CaseIterable, Sendable {
     }
 }
 
-nonisolated extension PlayScript {
+/// What a list of plays reads: a full script or a row of the published library's index (contract §4.1), so a
+/// shelf of 650 plays never fetches a script. The index's own numbers win; a full script computes the same.
+nonisolated protocol PlayListing: Sendable {
+    var id: String { get }
+    var title: String { get }
+    var kind: String { get }
+    var sortName: String? { get }
+    var year: Int? { get }
+    /// Speaking parts with at least `PlayScript.castableLines` speeches: the voices a person can cast.
+    var voices: Int { get }
+    var minutes: Int { get }
+    /// Each speaking part's speeches, largest first.
+    var castLines: [Int] { get }
+    /// The authors as the record names them for reading.
+    var authorLine: String { get }
+    var lineCount: Int { get }
+}
+
+nonisolated extension PlayScript: PlayListing {
     /// Words a minute for a play's length: speech read aloud. A length is "About N min", never exact.
     static let wordsPerMinute = 150
+    /// A role a person can cast has at least this many speeches (`script_parse.CASTABLE_LINES`).
+    static let castableLines = 5
 
-    /// Speaking parts.
+    /// The voices a person can cast: roles with `castableLines` speeches.
     var voices: Int {
-        roles.isEmpty ? castParts.filter { $0.id.isSpeaking }.count : roles.count
+        if !roles.isEmpty { return roles.filter { $0.lines >= Self.castableLines }.count }
+        return castParts.filter { $0.id.isSpeaking }.count
     }
 
     /// Minutes from the words its parts speak, at least 1.
@@ -89,23 +110,50 @@ nonisolated extension PlayScript {
         return max(1, Int((Double(words) / Double(Self.wordsPerMinute)).rounded()))
     }
 
-    var voiceBand: VoiceBand? { VoiceBand.of(voices) }
-    var lengthBand: LengthBand? { LengthBand.of(minutes) }
-    var kindFacet: PlayKindFacet? { PlayKindFacet(rawValue: kind) }
+    var castLines: [Int] { castParts.filter { $0.id.isSpeaking }.map(\.lineCount) }
+    var lineCount: Int { lines.count }
 
     static func todaysPlay(_ scripts: [PlayScript], dateKey: String) -> PlayScript? {
         PlayBrowse.todaysPlay(scripts, dateKey: dateKey)
     }
-
-    /// "3 voices", "About 30 min": the two facts a play tile says.
-    var voicesText: String { voices == 1 ? "1 voice" : "\(voices.formatted()) voices" }
-    var minutesText: String { "About \(minutes.formatted()) min" }
 
     /// The speaking parts the cast window draws: largest first, at most seven, and how many more there are.
     var castWindowBars: (shown: [CastPart], more: Int) {
         let speaking = castParts.filter { $0.id.isSpeaking }
         return (Array(speaking.prefix(7)), max(0, speaking.count - 7))
     }
+}
+
+nonisolated extension PlayListing {
+    var voiceBand: VoiceBand? { VoiceBand.of(voices) }
+    var lengthBand: LengthBand? { LengthBand.of(minutes) }
+    var kindFacet: PlayKindFacet? { PlayKindFacet(rawValue: kind) }
+
+    /// "3 voices", "About 30 min": the two facts a play tile says.
+    var voicesText: String { voices == 1 ? "1 voice" : "\(voices.formatted()) voices" }
+    var minutesText: String { "About \(minutes.formatted()) min" }
+
+    var cast: CastSummary { CastSummary(lines: castLines) }
+}
+
+/// A play's cast as the speeches of each speaking part, largest first: all the window and the fingerprint draw.
+nonisolated struct CastSummary: Equatable, Sendable {
+    let lines: [Int]
+
+    init(lines: [Int]) { self.lines = lines }
+    init(script: PlayScript) { self.init(lines: script.castLines) }
+
+    /// The first seven parts' bars and how many more there are.
+    var window: (shown: [Int], more: Int) { (Array(lines.prefix(7)), max(0, lines.count - 7)) }
+
+    /// Each part's share of the speaking lines.
+    var shares: [Double] {
+        let total = Double(lines.reduce(0, +))
+        return total > 0 ? lines.map { Double($0) / total } : []
+    }
+
+    /// A part's mark color key by its place in the cast (the first seven, in order), or nil.
+    static func hue(at index: Int) -> String? { index < PlayScript.partHues.count ? PlayScript.partHues[index] : nil }
 }
 
 /// A person's choice on Record: the three facets and the order.
@@ -123,19 +171,19 @@ nonisolated enum PlayBrowse {
     enum Facet: Sendable { case voices, length, kind }
 
     /// Whether a play passes the filter, leaving out `skip`, so a facet's own counts ignore its own choice.
-    static func keeps(_ s: PlayScript, _ f: PlayFilter, skip: Facet? = nil) -> Bool {
+    static func keeps<S: PlayListing>(_ s: S, _ f: PlayFilter, skip: Facet? = nil) -> Bool {
         (skip == .voices || f.voices == nil || s.voiceBand == f.voices)
             && (skip == .length || f.length == nil || s.lengthBand == f.length)
             && (skip == .kind || f.kind == nil || s.kindFacet == f.kind)
     }
 
-    private static func byName(_ a: PlayScript, _ b: PlayScript) -> Bool {
+    private static func byName<S: PlayListing>(_ a: S, _ b: S) -> Bool {
         let ka = a.sortName ?? a.title, kb = b.sortName ?? b.title
         let c = ka.compare(kb, options: [.caseInsensitive, .diacriticInsensitive], range: nil, locale: Locale(identifier: "en"))
         return c == .orderedSame ? a.id < b.id : c == .orderedAscending
     }
 
-    static func list(_ scripts: [PlayScript], _ f: PlayFilter) -> [PlayScript] {
+    static func list<S: PlayListing>(_ scripts: [S], _ f: PlayFilter) -> [S] {
         let kept = scripts.filter { keeps($0, f) }
         switch f.sort {
         case .voices:
@@ -148,7 +196,7 @@ nonisolated enum PlayBrowse {
     }
 
     /// How many plays a facet's option would leave, with the other two facets applied.
-    static func count(_ scripts: [PlayScript], _ f: PlayFilter, facet: Facet, matching: (PlayScript) -> Bool) -> Int {
+    static func count<S: PlayListing>(_ scripts: [S], _ f: PlayFilter, facet: Facet, matching: (S) -> Bool) -> Int {
         scripts.filter { keeps($0, f, skip: facet) && matching($0) }.count
     }
 
@@ -164,8 +212,8 @@ nonisolated enum PlayBrowse {
     /// Today's play (WEB-DESIGN §4.2): the script whose FNV-1a 64 of "play:{YYYY-MM-DD}:{id}" is smallest,
     /// ties by id, on the person's own calendar date. Order-independent, so every platform with the same
     /// library and date picks the same play. Nil for an empty library.
-    static func todaysPlay(_ scripts: [PlayScript], dateKey: String) -> PlayScript? {
-        var best: PlayScript?
+    static func todaysPlay<S: PlayListing>(_ scripts: [S], dateKey: String) -> S? {
+        var best: S?
         var bestHash: UInt64 = 0
         for script in scripts {
             let h = fnv1a64("play:\(dateKey):\(script.id)")

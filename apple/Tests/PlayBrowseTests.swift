@@ -13,7 +13,7 @@ private func play(_ id: String, title: String = "T", kind: String = "radio", rol
     PlayScript(id: id, revision: "r1", kind: kind, title: title, authors: authors,
                source: .init(name: "S", url: "https://example.org"),
                rights: .init(bucket: "script_source_cleared", evidence: []),
-               roles: roles.map { PlayScript.Role(name: $0.0, lines: 1, words: $0.1) },
+               roles: roles.map { PlayScript.Role(name: $0.0, lines: PlayScript.castableLines, words: $0.1) },
                lines: roles.map { ScriptLine(id: "\(id)-\($0.0)", kind: .speech, role: $0.0, parts: [.say("x")]) },
                sortName: sortName)
 }

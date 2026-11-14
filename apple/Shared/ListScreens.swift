@@ -1134,7 +1134,7 @@ struct SearchResultsList: View {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 EmptyState("Search titles, people, and spoken words", systemImage: "magnifyingglass")
             } else if let results, searchedFor == query {
-                let matchingPlays = Self.plays(plays.scripts, matching: query)
+                let matchingPlays = Self.plays(plays.rows, matching: query)
                 if results.isEmpty && matchingPlays.isEmpty {
                     EmptyState("No matches for “\(query)”", systemImage: "magnifyingglass")
                 } else {
@@ -1220,13 +1220,13 @@ struct SearchResultsList: View {
 extension SearchResultsList {
     /// Word-prefix, as every search here (§3.4): each typed word begins a word
     /// of the play's title or author.
-    static func plays(_ scripts: [PlayScript], matching query: String) -> [PlayScript] {
+    static func plays<Play: PlayListing>(_ scripts: [Play], matching query: String) -> [Play] {
         let words = Self.words(query)
         guard !words.isEmpty else { return [] }
-        return scripts.filter { script in
+        return Array(scripts.lazy.filter { script in
             let have = Self.words("\(script.title) \(script.authorLine)")
             return words.allSatisfy { w in have.contains { $0.hasPrefix(w) } }
-        }
+        }.prefix(40))
     }
 
     private static func words(_ text: String) -> [String] {

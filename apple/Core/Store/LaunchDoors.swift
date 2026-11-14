@@ -21,6 +21,10 @@ import Foundation
 /// - APP_EMPTY_LIBRARY=1: Library drawn as a new listener's, for its empty
 ///   state (fakes the lists, never clears them)
 ///
+/// - APP_READER=<script id>: open the script reader on that play (iOS and macOS); APP_READER_LINE a line id to open at,
+///   APP_READER_PART a part ("role:HAMLET") to play, APP_READER_HIDE=1 to hide its lines, APP_READER_SHEET
+///   contents | search | text, APP_READER_PAGE a page to turn to, APP_READER_PREFS the settings as JSON
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
@@ -36,6 +40,8 @@ struct LaunchDoors: Sendable, Equatable {
     var forceOffline = false
     var emptyLibrary = false
     var resetUserState = false
+    var reader: String?
+    var readerDoor = ReaderDoor()
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -58,7 +64,12 @@ struct LaunchDoors: Sendable, Equatable {
             doorSeconds: environment["APP_DOOR_SECONDS"].flatMap { Int($0) },
             forceOffline: environment["APP_FORCE_OFFLINE"] == "1",
             emptyLibrary: environment["APP_EMPTY_LIBRARY"] == "1",
-            resetUserState: environment["APP_RESET_USER_STATE"] == "1"
+            resetUserState: environment["APP_RESET_USER_STATE"] == "1",
+            reader: environment["APP_READER"],
+            readerDoor: ReaderDoor(line: environment["APP_READER_LINE"], part: environment["APP_READER_PART"],
+                                   hide: environment["APP_READER_HIDE"] == "1", sheet: environment["APP_READER_SHEET"],
+                                   page: environment["APP_READER_PAGE"].flatMap { Int($0) },
+                                   prefs: environment["APP_READER_PREFS"])
         )
     }
 

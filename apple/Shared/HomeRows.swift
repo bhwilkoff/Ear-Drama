@@ -269,16 +269,17 @@ struct EpisodeTile: View {
 
 /// Today's play on its board (the cast in its window), Record This under it with Parts.
 struct TodaysPlayBoard: View {
-    let script: PlayScript
+    let row: PlayRow
     @Environment(AppStore.self) private var store
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s3) {
-            HeadBoard(kicker: "Today\u{2019}s play", name: script.title, genre: PlayScript.boardGenre, art: nil, first: nil,
-                      last: nil, facts: [script.authorLine, script.voicesText, script.minutesText], castScript: script)
+            HeadBoard(kicker: "Today\u{2019}s play", name: row.title, genre: PlayScript.boardGenre, art: nil, first: nil,
+                      last: nil, facts: [row.authorLine, row.voicesText, row.minutesText], cast: row.cast)
             ActionRow {
-                StartEarDramaButton(script: script)
-                Button { store.push(PlayRoute.script(script.id)) } label: { ActionLabel(title: "Parts", systemImage: "list.bullet") }
+                StartEarDramaButton(row: row)
+                ReadButton(scriptID: row.id)
+                Button { store.push(PlayRoute.script(row.id)) } label: { ActionLabel(title: "Parts", systemImage: "list.bullet") }
                     .pageAction()
             }
         }
@@ -308,9 +309,9 @@ struct HomeRecordSection: View {
                     SectionHead(title: "Record a play") { EmptyView() }
                 }
             case .ready:
-                if let script = PlayBrowse.todaysPlay(plays.scripts, dateKey: RadioClock.localDate()) {
+                if let row = PlayBrowse.todaysPlay(plays.rows, dateKey: RadioClock.localDate()) {
                     PageSection {
-                        TodaysPlayBoard(script: script).gridRow()
+                        TodaysPlayBoard(row: row).gridRow()
                     } header: {
                         SectionHead(title: "Record a play") { EmptyView() }
                     }
@@ -322,16 +323,44 @@ struct HomeRecordSection: View {
     }
 }
 
+/// Home's Open parts: shared productions someone else directs, signed in, with a speaking part still open.
+/// This device's own productions are Record's Yours, never here.
 struct OpenPartsRows: View {
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @Environment(AccountStore.self) private var account
+    @Environment(AppStore.self) private var app
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     var body: some View {
-        let open = PlayBrowse.openProductions(plays.store.productions)
-        if !open.isEmpty {
-            PageRows("Open parts") {
-                ForEach(open) { ProductionLink(production: $0).pageRow() }
+        Group {
+            if account.isSignedIn, !shared.openParts.isEmpty {
+                PageRows("Open parts") {
+                    ForEach(shared.openParts) { row in
+                        VStack(alignment: .leading, spacing: 0) {
+                            RemoteProductionRow(remote: row.remote, open: open)
+                            Text(verbatim: row.open == 1 ? "1 open part" : "\(row.open.formatted()) open parts")
+                                .font(TypeRamp.caption)
+                                .foregroundStyle(Color.brandTextMuted)
+                        }
+                        .pageRow()
+                    }
+                }
             }
         }
+        .task(id: account.isSignedIn) {
+            if account.isSignedIn { await shared.loadOpenParts(plays: plays) }
+        }
+    }
+
+    private func open(_ production: Production) {
+        #if os(macOS)
+        openWindow(id: ProductionWindow_macOS.id, value: production.id)
+        #else
+        app.push(PlayRoute.production(production.id))
+        #endif
     }
 }
 

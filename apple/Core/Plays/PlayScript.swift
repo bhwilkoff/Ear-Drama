@@ -162,9 +162,11 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     let lines: [ScriptLine]
     /// The key the A to Z order sorts on (`sort_name`), when the record has one.
     var sortName: String? = nil
+    /// The printed act and scene headings the parser set aside (contract §4.1), for the reader's contents.
+    var sections: [ScriptSection]? = nil
 
     private enum CodingKeys: String, CodingKey {
-        case id, revision, kind, title, authors, year, source, rights, roles, lines
+        case id, revision, kind, title, authors, year, source, rights, roles, lines, sections
         case sortName = "sort_name"
     }
 

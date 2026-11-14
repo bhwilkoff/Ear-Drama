@@ -22,6 +22,15 @@ final class SharedPlays {
     private(set) var removed: Set<String> = []
     private(set) var busy: Set<String> = []
 
+    /// Home's Open parts: shared productions someone else directs with a speaking part open, at most five.
+    private(set) var openParts: [OpenPartRow] = []
+
+    struct OpenPartRow: Equatable, Identifiable {
+        let remote: RemoteProduction
+        let open: Int
+        var id: String { remote.id }
+    }
+
     @ObservationIgnored let api: any PlaysTransport
     @ObservationIgnored private let me: () -> String?
 
@@ -149,6 +158,24 @@ final class SharedPlays {
 
     func loadRemote() async {
         remote = (try? await api.list()) ?? remote
+    }
+
+    /// Reads Open parts (WEB-DESIGN §4.2 item 7): the productions another person directs that this person belongs to,
+    /// newest first, each kept only when a speaking part is still open. A person's own productions are Record's Yours.
+    func loadOpenParts(plays: PlaysLibrary) async {
+        await loadRemote()
+        let mine = me()
+        let candidates = remote.filter { $0.director != nil && $0.director != mine }
+            .sorted { ($0.updatedAt ?? 0) > ($1.updatedAt ?? 0) }.prefix(8)
+        var rows: [OpenPartRow] = []
+        for r in candidates where rows.count < 5 {
+            guard let rec = try? await api.get(r.id) else { continue }
+            let found = (try? await plays.script(id: rec.scriptID)) ?? nil
+            let script = found.flatMap { $0.revision == rec.scriptRevision ? $0 : nil }
+            let open = ScriptReading.openSpeakingParts(rec, script: script).count
+            if open > 0 { rows.append(OpenPartRow(remote: r, open: open)) }
+        }
+        openParts = rows
     }
 
     /// Opens a shared production this device has not opened: the record, then

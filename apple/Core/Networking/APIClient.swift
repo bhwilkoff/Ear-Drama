@@ -75,6 +75,17 @@ actor APIClient {
         return try TonightFile.decode(data)
     }
 
+    /// A published file under the site's `data/plays/` (the play library, contract §4.1), or nil on a 404.
+    /// Public data beside the catalog, not a Worker: no token, no refresh.
+    func playsData(_ path: String, base: URL = CatalogSource.playsURL) async throws -> Data? {
+        let request = URLRequest(url: base.appending(path: path), cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 12)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 404 { return nil }
+        guard 200...299 ~= http.statusCode else { throw URLError(.badServerResponse) }
+        return data
+    }
+
     /// The genre stations (contract §8), or nil when none is published.
     func stations(from url: URL = CatalogSource.stationsURL) async throws -> StationsFile? {
         let request = URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 20)
