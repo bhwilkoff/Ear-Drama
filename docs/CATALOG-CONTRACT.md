@@ -670,6 +670,38 @@ moves Settings > Pages > Source to GitHub Actions; until then the publish
 workflow builds and tests the web projection and skips its deploy with a
 warning (§7).
 
+### 4.1 The play library (Decision 075)
+
+The castable play library is published beside the catalog, not bundled: at
+`<site>/data/plays/library/`, built by `catalog/tools/build_play_library.py` into
+`catalog/out/plays-library/` and copied by `tools/assemble_site.sh`. It holds every
+Project Gutenberg play whose rights bucket is castable (`script_rights.judge`) AND whose text
+parses clean (`script_parse`: parsed, at least two roles with three or more lines, one play in
+the text, not mostly front or back matter, at most 5% of blocks unclassified, no castable role whose every line precedes the first cast list or act heading; a title cut off by the record's punctuation is held back too). The 15 plays the
+apps bundle (`catalog/plays/castable-scripts.json`) are all in it with the same id and
+`revision`; the bundle stays the offline floor.
+
+- `index.json`: `{format: 1, count, wordsPerMinute: 150, report, plays: [...]}`, plays in
+  `(sort_name, id)` order. `report` is the build's own counts (`parsed`, `clean`, `failures` by
+  reason, `bundled`, `bundled_missing_from_library`).
+  Each play row: `id` (`gut-<Gutenberg ebook number>`, the record's own, never reissued),
+  `revision` (hash of the lines; a changed text keeps its id and changes this), `title`,
+  `sort_name`, `kind` (`stage` | `radio`), `authors` (display names), `year` (only when the
+  record carries evidence of one; otherwise absent), `collection` (when the record names a
+  volume and the text prints the play's own title), `voices` (roles with at least three
+  lines, the ones a person can cast), `roles` (all named speakers), `lines` (speeches),
+  `words` (spoken words), `minutes` (`ceil(words / wordsPerMinute)`, approximate, at least 1),
+  `rights` (`bucket` and `evidence`: claim plus a link a reader can open), `source`
+  (`name`, `url`), `path` (`scripts/<id>.json`, relative to the index).
+- `scripts/<id>.json`: `{format: 1, scripts: [<one entry>]}`, the shape of
+  `castable-scripts.json`, so one decoder reads both. An entry carries `roles` and `lines`
+  (the parser's exact slices; stage directions and spoken parts kept apart).
+
+A client may show a play from the index alone (title, voices, minutes) and fetches
+`scripts/<id>.json` only to cast it. The guard is `catalog/tests/test_play_library.py`: shape
+and cross-file consistency of the real artifact when built, a fixture build always, and
+broken controls (a missing script file, an index row without rights evidence).
+
 ## 5. Query verbs
 
 Every client reproduces these natively; each says which filter clauses it applies.
