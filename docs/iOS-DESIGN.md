@@ -506,6 +506,47 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   then **Made Here**. The author line is each author's `display` name.
   Pushes `PlayRoute.script` and the cast sheet as before.
 
+- **§4.15 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 is binding
+  on the verbs, WEB-DESIGN §4.16 is the sibling; port spec
+  `docs/research/design/R2-reader-port-brief.md`). **Read** sits beside
+  Record This on a play's page, on Today's Play, and as a book button on
+  each Record tile; it needs no account. The reader is a
+  `fullScreenCover(item:)` (never `isPresented`, ios-production-gotchas)
+  over the tab, so the tab bar steps aside: a toolbar with Close, the
+  title over the act and scene (`.subtitle`), and Contents, Search and
+  Text (`Label`s, so the Duo's vertical strip can carry them); a bottom
+  bar with **I'm Playing** (a `Picker` in a `Menu`), Next Line and Hide
+  My Lines (a `Toggle` styled as a button), and the page count.
+  - **Pages by default**: the script laid out into pages by TextKit 2 at
+    the current size class and Dynamic Type, shown in a horizontal paging
+    `ScrollView` (`.scrollTargetBehavior(.paging)`), a slide, never a
+    curl. Two facing pages when the reader has a regular-width area of at
+    least 900 pt (iPad landscape, the open Duo, a wide window); one
+    otherwise. Turns: swipe; a tap on the outer fifth of either side;
+    hardware keys ← → ↑ ↓, Page Up/Down, Space and Shift-Space (pedals),
+    with the reader holding key focus (`.focusable()`, `.onKeyPress`) so an
+    arrow turns the page instead of moving focus. **Scroll** (a setting):
+    one `ScrollView` with a `LazyVStack` of lines, `ScrollPosition` by line id.
+  - **Position** is a line id per script in `UserDefaults` with the part,
+    restored on open; a Dynamic Type, text size, spacing, rotation or
+    window change re-paginates and scrolls to the page holding that line.
+  - **Text** (a sheet, `.presentationDetents([.medium])`): size over
+    seven steps on top of Dynamic Type, line spacing, Pages / Scroll.
+    **Contents** and **Search** are sheets (a `List` of acts with scenes;
+    `.searchable` over `PlayScript.search`).
+  - **I'm Playing**: the part's lines carry a leading rule and tint in its
+    hue; Hide My Lines draws its words as capsules in the hue (the text
+    still laid out, so pages stay put); a tap peeks one.
+  - **iPad and Duo**: the same reader; at regular width two facing pages.
+    On the **open iPhone Duo** the reader is the primary pane of the
+    studio's `ArrangementView` (S4, iOS 27.1, gated); in S1 it is the
+    reader alone, full width, two facing pages (the inner display is
+    regular width). Closed Duo: one page. Nothing branches on the device,
+    only on width (`onGeometryChange`).
+  - The line is addressable by id (an `id` per line view, `ScrollViewReader`)
+    and each printed run keeps its offset into `lineText`, for marks (S5),
+    the read-along's `follow(line)`, and the studio dock (S3).
+
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's
   page is a `List`: its title, the author with their years when the

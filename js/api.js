@@ -1110,6 +1110,45 @@ const API = (() => {
     return Array.isArray(d.scripts) ? d.scripts : [];
   }
 
+  /**
+   * The play library (contract §4.1, Decision 075): the published index's rows, every
+   * rights-cleared play that parses clean, read without fetching a script. When the library is not
+   * there (not yet published, or it fails), the bundled castable scripts stand in: whole scripts,
+   * which every browse helper in PlaysCore reads the same way (WEB-DESIGN §4.15).
+   */
+  async function playLibrary(get = getJSON) {
+    try {
+      const d = await get('plays/library/index.json', 30000);
+      if (Array.isArray(d.plays) && d.plays.length) return d.plays;
+    } catch (e) {
+      if (e.kind !== 'missing') console.warn('play library:', e.message);
+    }
+    const d = await get('plays/castable-scripts.json', 30000);
+    return Array.isArray(d.scripts) ? d.scripts : [];
+  }
+
+  /** One play's whole script: the library's `scripts/<id>.json` when the index lists it, else the bundle's; null when neither has it. */
+  async function playScript(id, get = getJSON) {
+    let row = null;
+    try { row = (await playLibrary(get)).find(p => p.id === id) || null; } catch { row = null; }
+    if (row && Array.isArray(row.lines)) return row;
+    let failure = null;
+    if (row && row.path) {
+      try {
+        const d = await get(`plays/library/${row.path}`, 30000);
+        const s = Array.isArray(d.scripts) ? d.scripts.find(x => x.id === id) : null;
+        if (s) return s;
+      } catch (e) { failure = e; }
+    }
+    try {
+      const d = await get('plays/castable-scripts.json', 30000);
+      const s = (Array.isArray(d.scripts) ? d.scripts : []).find(x => x.id === id);
+      if (s) return s;
+    } catch (e) { if (!failure) failure = e; }
+    if (failure) throw failure;
+    return null;
+  }
+
   /** The rights line, worded by the projection (contract §5.5); never "public domain". Unclaimed is
       every recording's default, so it has no line (owner 2026-11-09); the other bases keep theirs. */
   async function rightsLine(rights, basis) {
@@ -1557,7 +1596,7 @@ const API = (() => {
     personPage, lifeYears, personGroups, searchPeople, voices,
     transcript, transcriptLines, transcriptLabel, transcriptSnippet, saidWords, searchSaidNumbers,
     dateQuery, dateLabel, searchAired,
-    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, account,
+    localDate, tonight, tonightFile, onAir, stations, onNow, ahead, castableScripts, playLibrary, playScript, account,
   };
 })();
 

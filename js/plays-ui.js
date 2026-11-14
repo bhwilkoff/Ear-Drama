@@ -185,21 +185,34 @@ const PlaysUI = (() => {
     body.replaceChildren(...out);
   }
 
-  /** Home's Open parts (WEB-DESIGN §4.2 item 7): this browser's productions with a part still open,
-      newest first, as rows; null when there are none. */
+  /** Home's Open parts (WEB-DESIGN §4.2 item 7, owner 2026-11-14): shared productions someone else directs
+      that this signed-in person belongs to, each with a speaking part still open, newest first, at most five;
+      null when there are none. A person's own productions are Record's Yours, never here. */
   async function openParts(helpers) {
     h = h || helpers;
+    if (!canShare()) return null;
+    const me = API.account.state().user_id;
+    const listed = ((await API.plays.list()).productions || []).filter(r => r.director && r.director !== me)
+      .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0)).slice(0, 8);
+    const rows = [];
+    for (const r of listed) {
+      if (rows.length >= 5) break;
+      let rec = null;
+      try { rec = await API.plays.get(r.id); } catch (err) { console.error(err); continue; }
+      let script = null;
+      try { script = await API.playScript(rec.scriptID); } catch { script = null; }
+      const open = C.openSpeakingParts(rec, script && script.revision === rec.scriptRevision ? script : null);
+      if (open.length) rows.push({ r, n: open.length });
+    }
+    if (!rows.length) return null;
     await openStore();
-    const open = store.productions.filter(p => Object.values(p.parts || {}).some(x => x && x.status === 'open'))
-      .sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 5);
-    if (!open.length) return null;
     const ul = helpers.el('ul', { class: 'play-list', 'aria-labelledby': 'open-parts-h' });
-    for (const p of open) {
-      const script = await store.script(p);
+    for (const { r, n } of rows) {
+      const status = helpers.el('span', { class: 'caption refusal', role: 'alert' });
       ul.append(helpers.el('li', { class: 'play-row' },
-        helpers.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(p.id)}` },
-          helpers.el('span', { class: 'body-strong' }, p.title),
-          helpers.el('span', { class: 'caption' }, progressLine(p, script)))));
+        helpers.el('button', { type: 'button', class: 'play-link play-remote', onclick: () => openRemote(r, status) },
+          helpers.el('span', { class: 'body-strong' }, r.title),
+          helpers.el('span', { class: 'caption' }, n === 1 ? '1 open part' : `${num.format(n)} open parts`)), status));
     }
     return helpers.el('section', { class: 'block home-open-parts' },
       helpers.el('h3', { class: 'section-header', id: 'open-parts-h' }, 'Open parts'), ul);
@@ -209,7 +222,9 @@ const PlaysUI = (() => {
   async function openRemote(remote, status) {
     try {
       const rec = await API.plays.get(remote.id);
-      const script = S.scriptFor(await API.castableScripts(), rec.scriptID, rec.scriptRevision);
+      const found = await API.playScript(rec.scriptID);
+      const script = found && found.revision === rec.scriptRevision ? found
+        : S.scriptFor(await API.castableScripts(), rec.scriptID, rec.scriptRevision);
       const local = await S.localFor(store, rec.id, script);
       h.navigate(`?production=${encodeURIComponent(local.id)}`);
     } catch (err) { console.error(err); status.textContent = S.line(err); }
@@ -221,9 +236,9 @@ const PlaysUI = (() => {
   const speakingParts = (script) => C.castParts(script).filter(x => C.isSpeaking(x.id));
   const hueOf = (script, part) => C.partHue(script, part) || 'none';
 
-  /** The cast fingerprint: each speaking part's share of the play's lines, largest first. */
+  /** The cast fingerprint: each speaking part's share of the play's lines, largest first (a library row's `cast`, or the script's own). */
   function fingerprint(script, cls = '') {
-    const parts = speakingParts(script);
+    const parts = C.castOf(script).map((lineCount, i) => ({ lineCount, hue: C.PART_HUES[i] || 'none' }));
     const el = (tag, attrs, ...kids) => {
       const n = document.createElement(tag);
       for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
@@ -231,7 +246,7 @@ const PlaysUI = (() => {
       return n;
     };
     return el('span', { class: `pl-print ${cls}`.trim(), role: 'img', 'aria-label': parts.length === 1 ? '1 part' : `${num.format(parts.length)} parts, largest first` },
-      ...parts.map(x => el('i', { 'data-hue': hueOf(script, x.id), style: `flex: ${x.lineCount} 1 0` })));
+      ...parts.map(x => el('i', { 'data-hue': x.hue, style: `flex: ${x.lineCount} 1 0` })));
   }
 
   /** Where a part speaks: 24 bars across the script, each its share of the part's lines there. */
@@ -301,7 +316,10 @@ const PlaysUI = (() => {
       try {
         await openStore();
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-        const p = await store.create(script);
+        // A library row (WEB-DESIGN §4.15) carries no lines: the whole script is fetched to cast it.
+        const whole = Array.isArray(script.lines) ? script : await API.playScript(script.id);
+        if (!whole) throw new Error('script not found');
+        const p = await store.create(whole);
         helpers.navigate(`?production=${encodeURIComponent(p.id)}`, $('view-plays').hidden === false);
       } catch (err) {
         console.error(err);
@@ -313,13 +331,37 @@ const PlaysUI = (() => {
     return box;
   }
 
+  /** Read (WEB-DESIGN §4.16, Decision 076): the reader, for anyone, no account. `icon` is the tile's corner button. */
+  function readLink(id, { icon = false } = {}) {
+    const a = document.createElement('a');
+    a.href = `?read=${encodeURIComponent(id)}`;
+    if (!icon) {
+      a.className = 'btn btn-ghost ear-drama-only';
+      a.textContent = 'Read';
+      return a;
+    }
+    a.className = 'icon-btn g-tile-read ear-drama-only';
+    a.setAttribute('aria-label', 'Read');
+    a.title = 'Read';
+    const ns = 'http://www.w3.org/2000/svg';
+    const s = document.createElementNS(ns, 'svg');
+    s.setAttribute('viewBox', '0 0 24 24');
+    s.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', BOOK);
+    s.append(path);
+    a.append(s);
+    return a;
+  }
+  const BOOK = 'M21 5c-1.1-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z';
+
   /* ---- A play: its head board, its parts, its rights ---- */
 
   async function renderScript(body, my, id) {
     body.replaceChildren(h.stateBox('loading'));
     let script;
     try {
-      script = (await API.castableScripts()).find(s => s.id === id);
+      script = await API.playScript(id);
     } catch (err) {
       if (my === token) failBox(body, err, () => renderScript(body, my, id));
       return;
@@ -336,7 +378,7 @@ const PlaysUI = (() => {
     body.replaceChildren(
       playBoard(script, script.title, kindOf(script),
         [C.authorFacts(script), script.year ? String(script.year) : null, `${num.format(parts.length)}\u00a0${parts.length === 1 ? 'part' : 'parts'}`, lines(script.lines.length).replace(' ', '\u00a0')]),
-      h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true })),
+      h.el('div', { class: 'actions actions-one actions-start ear-drama-only' }, startButton(script, h, { primary: true }), readLink(script.id)),
       h.el('section', { class: 'block' },
         h.el('h2', { class: 'section-header', id: 'play-parts-h' }, 'Parts'),
         h.el('ul', { class: 'pl-grid', 'aria-labelledby': 'play-parts-h' },
@@ -1563,7 +1605,7 @@ const PlaysUI = (() => {
 
   /** Finished ear dramas, newest first: `{ rows, next }`. A failed read of the plays leaves the tiles without their strip. */
   async function finishedPage(cursor) {
-    const [got, scripts] = await Promise.all([API.plays.finished({ limit: 24, cursor }), API.castableScripts().catch(() => [])]);
+    const [got, scripts] = await Promise.all([API.plays.finished({ limit: 24, cursor }), API.playLibrary().catch(() => [])]);
     return { rows: got.productions || [], next: got.next_cursor || null, scripts };
   }
 
@@ -1662,9 +1704,8 @@ const PlaysUI = (() => {
     let d;
     let script = null;
     try {
-      let scripts;
-      [d, scripts] = await Promise.all([API.plays.finishedOne(pid), API.castableScripts().catch(() => [])]);
-      script = scripts.find(s => s.id === d.script_id) || null;
+      d = await API.plays.finishedOne(pid);
+      script = await API.playScript(d.script_id).catch(() => null);
     } catch (err) {
       if (my !== token) return;
       if (err && err.status === 404) body.replaceChildren(h.stateBox('empty', { text: 'This ear drama is not listed.' }));
@@ -1731,9 +1772,10 @@ const PlaysUI = (() => {
     let inv;
     let script = null;
     try {
-      const [got, scripts] = await Promise.all([API.plays.openInvite(tok), API.castableScripts().catch(() => [])]);
-      inv = got;
-      script = S.scriptFor(scripts, inv.scriptID, inv.scriptRevision) || null;
+      inv = await API.plays.openInvite(tok);
+      const found = await API.playScript(inv.scriptID).catch(() => null);
+      script = found && found.revision === inv.scriptRevision ? found
+        : S.scriptFor(await API.castableScripts().catch(() => []), inv.scriptID, inv.scriptRevision) || null;
     } catch (err) {
       if (my !== token) return;
       if (err && err.kind === 'gone') say('This invitation has ended.');
@@ -1891,5 +1933,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, leave, fingerprint, BOARD };
+  return { render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
 })();

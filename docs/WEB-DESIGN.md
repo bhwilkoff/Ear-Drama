@@ -55,7 +55,8 @@ web app follows today.
   `?view=record&voices=&length=&kind=&sort=` (§4.15),
   `?series={key}&season=`, `?item={episode id}`, `?person={person id}&order=newest`
   (§4.14), `?view=search&q=`,
-  `?view=library&tab=`, and for an ear drama (§4.10) `?play={script id}`,
+  `?view=library&tab=`, the script reader (§4.16) `?read={script id}` with an
+  optional `&line={line id}` to open at a line, and for an ear drama (§4.10) `?play={script id}`,
   `?production={id}`, `?production={id}&part={part id}`, and `?room={CODE}`
   (§4.12), which opens the Listen Together sheet over the Home view. Every
   older name still opens, rewritten in place (`history.replaceState`) so the
@@ -141,15 +142,24 @@ web app follows today.
      one per band; `length=` in the URL). Absent while the manifest has none.
   7. **Record a play**: **Today's play**, one play board (the title block on
      the drama board, the cast fingerprint in the mark slot, the author, the
-     voice count and minutes as facts) with **Record this** (ink) and
-     **Parts** (a ghost link to the play's page). The play is
-     `PlaysCore.todaysPlay(scripts, date)`: the castable script whose
+     voice count and minutes as facts) with **Record this** (ink), **Read**
+     (§4.16) and **Parts** (ghost links). The play is
+     `PlaysCore.todaysPlay(plays, date)` over the published play library
+     (§4.15, contract §4.1; the bundled fifteen when the library does not
+     load): the play whose
      FNV-1a 64 of `play:{YYYY-MM-DD}:{id}` (UTF-8) is smallest, on the
-     person's own calendar date, so every device on that date shows the
+     person's own calendar date, so every device reading the same library on that date shows the
      same play (`cross-platform-determinism`; golden cases in
      `catalog/tests/golden/todays_play.json`, run by every stack). Under it,
-     **Open parts**: this browser's productions with a part still open, as
-     rows, drawn only when there are some. Not on a TV.
+     **Open parts**: shared productions someone else directs that this
+     signed-in person belongs to, each with a speaking part still open, as
+     rows ("N open parts": speaking parts only, never sound effects or stage
+     directions, `PlaysCore.openSpeakingParts`), at most five, drawn only when
+     there are some. A person's own unfinished production is never here: it
+     belongs to Record's Yours (§4.15). Not on a TV.
+     - *Replaced* (2026-11-14, owner): "**Open parts**: this browser's
+       productions with a part still open" (it listed the person's own
+       productions, and counted sound and directions as open parts).
   8. **This day in radio**: the day board and the night picked on it
      (§6.4c), unchanged, moved down.
   9. **Most heard voices**: the faces rail (`voices`), "All voices".
@@ -314,7 +324,7 @@ web app follows today.
     with the years the record carries, the record's year when it has one,
     "N parts", "N lines"; never an age rating, Decision 067; the cast
     fingerprint in the mark slot), "Record this" (ink; Decision 075, was
-    "Start an ear drama"), its parts
+    "Start an ear drama") and "Read" beside it (§4.16, any person, no account), its parts
     as part cards largest first (directions and sound are parts too), then
     the rights line.
     Casting replaces this page in the history with the cast sheet, so the
@@ -549,11 +559,20 @@ web app follows today.
      Absent when there are none: the empty state is a real play, below,
      never a sentence about recording.
   2. **Today's play**: the same board as Home's (§4.2 item 7) with
-     **Record this** and **Parts**.
-  3. **Plays**: the castable library (`API.castableScripts`), with three
+     **Record this**, **Read** and **Parts**.
+  3. **Plays**: the published play library (`API.playLibrary`: contract
+     §4.1's `plays/library/index.json`, 532 plays on 2026-11-14 and growing;
+     when it does not load, the bundled `castable-scripts.json`), with three
      facets as native selects in one row, each counted against the other
-     two so no choice yields nothing (§10.5), and a sort:
-     - **Voices**: speaking parts, 1-2, 3-5, 6-10, 11+ (`voices=1-2|3-5|6-10|11+`).
+     two so no choice yields nothing (§10.5), and a sort. Facets, counts,
+     sort and tiles read the index rows only (`voices`, `minutes`, `cast`,
+     `kind`, `authors`); no script is fetched until a play opens. The grid
+     draws its first 60 tiles, then the next 60 each time its end nears
+     (an `IntersectionObserver` on a sentinel), so 1,500 plays draw as quickly
+     as 15. (Not `content-visibility`: the tiles share their rows through
+     subgrid, and size containment would break the shared name and fact lines.)
+     - **Voices**: the parts a person can cast (the index's `voices`: roles
+       with at least five speeches, `PlaysCore.voicesOf`), 1-2, 3-5, 6-10, 11+ (`voices=1-2|3-5|6-10|11+`).
      - **Length**: minutes from the words its parts speak at 150 a
        minute (`PlaysCore.minutesOf`), Under 30 min, 30-60 min, Over an
        hour (`length=short|mid|long`).
@@ -569,7 +588,12 @@ web app follows today.
      name in the tile's type; the cast fingerprint in the strip slot; the
      facts are "N voices" and "About M min". The author line uses each
      author's `display` name, never the filed form ("George M. (George
-     Melville) Baker"). A tile opens the play's page (§4.10).
+     Melville) Baker"). A tile opens the play's page (§4.10); a **Read**
+     button (a book icon, named Read for assistive tech) sits over the
+     window's corner, outside the link, as Play sits on an episode tile,
+     and opens the reader (§4.16).
+     The window's bars and the fingerprint come from the row's `cast`
+     (each named role's speeches, largest first).
   4. **Made here**: finished ear dramas, as Home's row (§4.2 item 10).
 
   **States**: the plays load once; loading is the spinner in the Plays
@@ -581,6 +605,99 @@ web app follows today.
   - *Replaced* (2026-11-14): plays reached through Browse's "Has a
     script" box or Kind filter, as fifteen identical monograms headed
     "Most downloaded first".
+
+- **§4.16 The script reader** (`?read={script id}`; Decision 076, owner
+  2026-11-14: *"You should be able to read a script and turn pages and
+  mark them up and do all of the things that a good book/script reading
+  experience should contain"*; research `R2-script-reader-and-studio.md`
+  §4.1; PLAYS-DESIGN §2.7 is binding on the verbs). Code: `js/reader.js`
+  (the view), `js/reader-core.js` (settings, page arithmetic, the text
+  runs), `PlaysCore` (sections, contents, search, a part's next line);
+  tests `js/reader.test.js`. Not on a TV (TVs get a read-along panel only).
+  1. **Doors.** **Read** sits on a play's page beside Record this
+     (§4.10), on Today's play on Home and Record (§4.2, §4.15), and under
+     every Record play tile. Reading needs no account, no part and no
+     microphone. The script comes from the play library's
+     `scripts/<id>.json` (contract §4.1), else the bundled file.
+  2. **The view.** One full-height view: while it shows, the tab bar and
+     the sidebar step aside (`body.reading`; the player bar stays), and
+     the view is its own scroller, never `position: fixed` (§10, Safari).
+     A **top bar**: Close (back where the person came from, else the
+     play's page), the play's title over the act and scene the reading
+     position is in (a caption, one line, truncated), then three icon
+     buttons with labels for assistive tech: **Contents**, **Search**,
+     **Text** (Aa). A **bottom bar**: **I'm playing** (a native select:
+     Nobody, then the speaking parts largest first with their line
+     counts), and once a part is chosen **Next line** and **Hide my
+     lines** (a toggle, `aria-pressed`), then the page count ("12 of 140",
+     "11–12 of 140" for a spread; a percentage in Scroll). Both bars stay
+     put, so nothing reflows when they would come and go.
+  3. **The page.** A reading measure of at most 36 em per page. A speech
+     is one paragraph: the speaker's name run in, in small caps in the
+     part's hue (the first seven speaking parts, PLAYS-DESIGN's part hues;
+     neutral after), then the words in the body face; a printed direction
+     inside a speech in italic. A stage direction is its own indented,
+     muted italic paragraph; a sound or music cue carries a small speaker
+     glyph (inline SVG, R-ICON-1). Printed `_italic_` marks are drawn as
+     italics, never shown. Act and scene headings (`PlaysCore.sectionsOf`)
+     are section breaks in the section-header type: a heading the parser
+     set aside is drawn before its line; a heading that is itself a stage
+     direction is that line, drawn as a heading. No line numbers.
+  4. **Pages** (the default, owner ruling): the script laid out in CSS
+     columns inside the page area, one page per screen, **two facing
+     pages from 900 px** of reading width. A turn **slides** the strip of
+     pages (a 240 ms transform; none under Reduce Motion), never a curl.
+     Turns: → ↓ Page Down Space (and a pedal's arrows) on, ← ↑ Page Up
+     Shift-Space back, Home and End; a tap or click on the outer fifth of
+     either side; a swipe, which follows the finger and turns past a fifth
+     of the width or on a flick (`ReaderCore.swipeTurn`).
+  5. **Scroll** (a setting): the same page as one continuous column in
+     the view's own scroller; the keyboard scrolls natively.
+  6. **The reading position** is a line id, never a page: the first line
+     still showing at the top of the page (`ReaderCore.lineAtPage`), or at
+     the top of the scroller. It is saved per script in this browser
+     (`localStorage` `ed.reader.pos`, newest 60) with the part chosen,
+     restored on open (a `&line=` in the address wins), and kept through
+     every re-layout: a text size, spacing, layout or window change lays
+     the script out again and turns to the page holding that line. Pages
+     are never stored.
+  7. **Text** (Aa, a `<dialog>`): text size, smaller and larger over
+     seven steps (87.5% to 175% of the body size, shown as a percentage);
+     line spacing Tight, Normal, Loose; layout Pages, Scroll. Remembered
+     for this browser (`ed.reader.prefs`); the theme follows the app's.
+  8. **Contents** (a `<dialog>`): the acts (and a prologue, epilogue or
+     induction) with their scenes indented, each the first line of its
+     printed heading, the one holding the reading position marked
+     (`aria-current`); a tap goes there. A script that prints no headings
+     says "This script prints no acts or scenes." (a fact a person cannot
+     see without paging through it).
+  9. **Search** (a `<dialog>`): one search field; as the person types
+     (from two letters), the lines whose words hold it, ignoring case,
+     accents, curly quotes and line breaks (`PlaysCore.searchScript`),
+     each row the speaker and the words around the match with the match
+     marked; the first 100, and "N more" when there are more. A tap goes to
+     the line and outlines it a moment. Nothing found: "No line has these
+     words."
+  10. **I'm playing** (remembered per script with the position): the
+     part's lines carry a rule and a light tint in its hue. **Next line**
+     (and `J`, `K` for the previous) goes to the part's next line after the
+     reading position and outlines it. **Hide my lines** draws the part's
+     spoken words as bars in its hue, the speaker's name and any printed
+     direction left showing; the text keeps its place, so pages never move.
+     A tap, click, Enter or Space on a hidden line peeks it until the next
+     turn or the next tap; a hidden line is a button to assistive tech
+     ("Show line").
+  11. **The line, built for what comes next.** Each line is one element,
+     `id` and `data-line` its line id, `data-part` its part; each printed
+     run inside it is a span whose `data-at` is its offset into the line's
+     printed words (`PlaysCore.lineText`, `ReaderCore.runsOf`), so a text
+     selection maps to (line id, start, end), the anchor marks will use
+     (S5). The reader's `go(lineID)` and `follow(lineID)` (light a line and
+     keep it in view; a touch stops following) are the read-along's seam,
+     and an empty dock under the page area is the studio's (S3).
+  12. **States.** Loading: the spinner in the page area. A failed read:
+     "This did not load." with Try again. Offline without the script:
+     "You are offline." An id in neither file: "Not in the catalog."
 
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll except Home's (Decision 075) and on each site page: Credits, Privacy, Take-down requests,
