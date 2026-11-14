@@ -54,13 +54,15 @@ def detail_share_twin(text):
 
 def phone_shell_is_five_verbs(text, home):
     """iOS-DESIGN §3.1 (Decision 068): iPhone's bar is Home, Browse, Stations,
-    Search, Library; Surprise is listed only at regular width, hidden from the
-    bar, and Home's toolbar pushes it."""
+    Search, Library; Surprise is listed only at regular width AND while a sidebar
+    can list it (the Duo's vertical strip shows hidden tabs, 2026-11-14), hidden
+    from the bar, and Home's toolbar pushes it."""
     tabs = re.findall(r"Tab\(AppTab\.(\w+)\.title", text)
     at = text.find("Tab(AppTab.surprise.title")
-    gate = text.rfind("if hSize == .regular", 0, at)
+    gate = text.rfind("if showsSurpriseTab {", 0, at)
+    rule = "showsSurpriseTab: Bool { hSize == .regular && sidebarAvailable != false }"
     return (tabs == ["home", "browse", "stations", "search", "library", "surprise"]
-            and gate != -1 and ".defaultVisibility(.hidden, for: .tabBar)" in text[at:]
+            and gate != -1 and rule in text and "isTabViewSidebarAvailable" in text and ".defaultVisibility(.hidden, for: .tabBar)" in text[at:]
             and "store.push(Route.surprise)" in home)
 
 
@@ -147,7 +149,9 @@ def main():
          tv.replace("                        NowPlayingEntry_tvOS()\n", "")),
         ("tvOS Detail has Versions", tv_versions, tv, tv.replace("VersionsSection_tvOS(detail: detail)", "EmptyView()")),
         ("iPhone's bar is five verbs; Surprise from Home", lambda t: phone_shell_is_five_verbs(t, detail), phone,
-         phone.replace("if hSize == .regular {", "if true {")),
+         phone.replace("if showsSurpriseTab {", "if true {")),
+        ("the Surprise tab waits for a sidebar", lambda t: phone_shell_is_five_verbs(t, detail), phone,
+         phone.replace(" && sidebarAvailable != false", "")),
         ("Detail shares the https twin", detail_share_twin, detail,
          detail.replace("SiteLinks.episode(episode.id)", "episode.transcriptURL!")),
         ("haptics go through Haptic", haptics_through_mapping, swift,

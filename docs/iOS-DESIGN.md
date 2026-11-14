@@ -235,6 +235,14 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   hidden from the tab bar (`.defaultVisibility(.hidden, for: .tabBar)`)
   and added only at regular width, so the phone's bar never grows a More
   tab; narrowing to compact width hands a selected Surprise back to Home.
+  **The Surprise tab exists only while there IS a sidebar** (the Duo,
+  2026-11-14, `build/qa/duo-2026-11-14/01-home.png`): the open Duo in
+  landscape is regular width but puts the tabs in its vertical strip, and
+  the strip shows every tab whatever its `defaultVisibility`, so Surprise
+  stood in the strip beside Home's own shuffle button. The tab is added
+  only when `hSize == .regular` AND iOS 27's `isTabViewSidebarAvailable`
+  is not false (Archive Watch §2.8); in the strip, Surprise is Home's push
+  as on the phone.
   Each section owns one verb (Archive Watch §12.2): Home chosen for you,
   Browse everything by facet, Stations lean back on one clock, Search
   find, Library yours. No section is named for a content type: plays sit
