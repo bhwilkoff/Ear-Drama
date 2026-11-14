@@ -373,3 +373,4 @@ Tracks (R = research doc, B = build):
 
 ### Round 2 state
 - 2026-11-14 tick 1: agents launched for U (device pass), P (measure + fix), H+C research, S research.
+- 2026-11-14 tick 2: H+C research in (R2-home-and-create.md); owner chose Concept B: Decision 075. Duo pass merged (Surprise out of the vertical strip, verified on the Duo; player toolbar Labels, not seen in the strip; docs/research/IPHONE-DUO.md). Launched: web shell + Home + Record tab with design docs and a port brief (Opus); Gutenberg play library harvest (Sonnet); App Store CI to Xcode 27.1 (Sonnet). Waiting: playback agent, script-studio research.
