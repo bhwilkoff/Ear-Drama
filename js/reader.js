@@ -29,6 +29,7 @@ const Reader = (() => {
     play: 'M8 5v14l11-7z',
     stop: 'M7 7h10v10H7z',
     wave: 'M3 10h2v4H3zm4-3h2v10H7zm4-4h2v18h-2zm4 4h2v10h-2zm4 3h2v4h-2z',
+    mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11z',
     close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
   };
   function svg(name) {
@@ -359,6 +360,7 @@ const Reader = (() => {
     st.root.style.setProperty('--mine', hue === 'none' ? 'var(--color-text-muted)' : `var(--color-genre-${hue})`);
     st.nextBtn.hidden = !st.part;
     st.hideBtn.hidden = !st.part;
+    st.recBtn.hidden = !st.part || !st.onRecord;
     if (!st.part) setHiding(st, false);
     else paintHidden(st);
     save(st);
@@ -587,6 +589,11 @@ const Reader = (() => {
       if (swallow) { swallow = false; return; }
       st.following = false;
       const line = e.target.closest('.rd-line');
+      // The studio (PLAYS-DESIGN §2.9 rule 2): a tap on one of my lines makes it current, never a page turn.
+      if (st.studio && st.studio.tap(e.target, line)) {
+        if (st.hiding && line && line.classList.contains('rd-mine')) peek(st, line);
+        return;
+      }
       if (st.hiding && line && line.classList.contains('rd-mine')) { peek(st, line); return; }
       clearPeeks(st);
       if (st.prefs.layout !== 'pages') return;
@@ -648,9 +655,16 @@ const Reader = (() => {
     const iconBtn = (name, label, onclick) => el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': label, title: label, onclick }, svg(name));
     const dock = el('div', { class: 'rd-dock', hidden: true });
     const hearBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool rd-hear' });
+    // Record (PLAYS-DESIGN §2.9 rule 1): with a part chosen, the studio opens here.
+    const recBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool rd-rec-btn', hidden: true, 'aria-label': 'Record' },
+      svg('mic'), el('span', { class: 'rd-tool-lab' }, 'Record'));
     const root = el('div', { class: 'rd' });
-    const cast = CastUI.castFor({ script });
-    const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, lines, dock, prefs: prefsNow(),
+    const side = el('aside', { class: 'st-side', 'aria-label': 'Studio', hidden: true });
+    const footer = el('footer', { class: 'rd-bar rd-bottom' });
+    // A production's studio reads the production's cast; the reader alone, the play's (§2.8 rule 2).
+    const cast = opts.studio ? CastUI.castFor({ script, production: opts.studio.production }) : CastUI.castFor({ script });
+    const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, recBtn, footer, side, lines, dock, prefs: prefsNow(),
+                 onRecord: opts.onRecord || null, studio: null, partSel: null,
                  cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
                  pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, following: true };
     st.contents = contentsSheet(st);
@@ -665,9 +679,11 @@ const Reader = (() => {
         iconBtn('search', 'Search', () => st.search.showModal()),
         iconBtn('text', 'Text', () => st.text.showModal()),
         iconBtn('voices', 'Voices', () => st.voices.showModal())),
-      stage, dock,
-      el('footer', { class: 'rd-bar rd-bottom' }, el('label', { class: 'rd-part' }, partSel), hearBtn, nextBtn, hideBtn, pageLab),
+      el('div', { class: 'rd-main' }, el('div', { class: 'rd-col' }, stage, dock, footer), side),
       st.contents, st.search, st.text, st.voices);
+    st.partSel = partSel;
+    footer.append(el('label', { class: 'rd-part' }, partSel), hearBtn, recBtn, nextBtn, hideBtn, pageLab);
+    recBtn.addEventListener('click', () => { if (st.part && st.onRecord) st.onRecord(st.part); });
     hearBtn.addEventListener('click', () => hearCast(st));
     paintHear(st);
     st.voicesOff = StandInVoice.onVoices(() => { if (cur === st) paintHear(st); });
@@ -679,7 +695,9 @@ const Reader = (() => {
     applyPrefs(st);
     wire(st);
     document.addEventListener('keydown', onKey);
-    if (saved.part && parts.some(p => p.id === saved.part)) { partSel.value = saved.part; setPart(st, saved.part); }
+    const startPart = opts.studio ? opts.studio.part : saved.part;
+    if (startPart && parts.some(p => p.id === startPart)) { partSel.value = startPart; setPart(st, startPart); }
+    if (opts.studio && typeof Studio !== 'undefined') st.studio = Studio.attach(studioApi(st, opts), opts.studio);
     layout(st, at);
     // A face that arrives late (the heading face loads when a heading first shows) moves every line:
     // lay out again, keeping the position.
@@ -690,6 +708,7 @@ const Reader = (() => {
     }
     stage.focus({ preventScroll: true });
     st.handle = handle(st);
+    st.key = opts.studio ? `${script.id} ${opts.studio.production} ${opts.studio.part}` : script.id;
     return st.handle;
   }
 
@@ -714,6 +733,7 @@ const Reader = (() => {
   function close() {
     if (!cur) return;
     document.removeEventListener('keydown', onKey);
+    if (cur.studio) cur.studio.detach();
     if (cur.table) cur.table.stop();
     if (cur.voicesOff) cur.voicesOff();
     if (cur.resize) cur.resize.disconnect();
@@ -723,6 +743,36 @@ const Reader = (() => {
   }
 
   const openID = () => (cur ? cur.script.id : null);
+  /** The open reader's script and studio, so a route to the same address does not open it again. */
+  const openKey = () => (cur ? cur.key : null);
 
-  return { open, close, openID };
+  /**
+   * What the studio (js/studio.js, PLAYS-DESIGN §2.9) may touch: the page's lines, the dock and the
+   * side column, the bottom bar, the sheets, going to and following a line. The reader keeps the page.
+   */
+  function studioApi(st, opts) {
+    const index = (id) => st.script.lines.findIndex(l => l.id === id);
+    return {
+      root: st.root, script: st.script, cast: st.cast, voice: st.voice, dock: st.dock, side: st.side, footer: st.footer,
+      hideBtn: st.hideBtn, pageLab: st.pageLab, el, svg, sheet, navigate: opts.navigate || null,
+      line: (id) => st.lines[index(id)] || null,
+      /** Goes to a line (turning the page to it) and, when asked, outlines it a moment. */
+      go: (id, flash = false) => { const i = index(id); if (i >= 0) goIndex(st, i, { flash }); },
+      /** The read-along: lights the line heard and keeps it in view while following; null clears it. */
+      follow: (id) => st.handle && st.handle.follow(id),
+      refollow: () => { st.following = true; },
+      relayout: () => layout(st, st.pos),
+      /** In studio mode the bottom bar is the transport: I'm playing, Next line, Hear the cast and Record step aside. */
+      studioMode: (on) => {
+        st.root.classList.toggle('rd-studio', on);
+        st.partSel.closest('.rd-part').hidden = on;
+        st.hearBtn.hidden = on;
+        st.recBtn.hidden = on || !st.part || !st.onRecord;
+        st.nextBtn.hidden = on || !st.part;
+        if (on && st.table && st.table.playing) st.table.stop();
+      },
+    };
+  }
+
+  return { open, close, openID, openKey };
 })();

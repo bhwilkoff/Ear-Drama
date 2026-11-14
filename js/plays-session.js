@@ -39,9 +39,11 @@ const RecordingSession = (() => {
       /** The microphone's recent loudness (0..1), newest last, for the level meter while a line records. */
       levels: [],
       onLevel: null,
+      /** A second observer of every phase (the reader's studio follows the line heard, PLAYS-DESIGN §2.9). */
+      onPhase: null,
     };
 
-    const set = (phase) => { if (phase.kind !== 'cue') cancelled = false; s.phase = phase; onChange(s); };
+    const set = (phase) => { if (phase.kind !== 'cue') cancelled = false; s.phase = phase; if (s.onPhase) s.onPhase(s); onChange(s); };
     s.isBusy = () => ['roomTone', 'cue', 'listening'].includes(s.phase.kind);
 
     /** Changes the store's current record, never a stale copy. */

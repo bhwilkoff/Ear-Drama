@@ -183,8 +183,8 @@ def main():
             settle()
             # I'm playing, hide my lines, peek.
             ev(f"(() => {{ const s = document.querySelector('.rd-part-sel'); s.value = 'role:' + {json.dumps(part)}; s.dispatchEvent(new Event('change')); }})()")
-            ev("[...document.querySelectorAll('.rd-tool:not(.rd-hear)')][0].click()")
-            ev("[...document.querySelectorAll('.rd-tool:not(.rd-hear)')][1].click()")
+            ev("[...document.querySelectorAll('.rd-tool:not(.rd-hear):not(.rd-rec-btn)')][0].click()")
+            ev("[...document.querySelectorAll('.rd-tool:not(.rd-hear):not(.rd-rec-btn)')][1].click()")
             settle()
             hid = ev("(() => { const cr = document.querySelector('.rd-clip').getBoundingClientRect(); const n = [...document.querySelectorAll('.rd-mine .rd-said')].find(x => { const r = x.getBoundingClientRect(); return r.left < cr.right && r.right > cr.left; }); return n ? getComputedStyle(n).color : null; })()")
             if hid is None: bad('no line of the part on the page after Next line')
@@ -195,7 +195,7 @@ def main():
             if not peek or peek in ('rgba(0, 0, 0, 0)', 'transparent'): bad('a tap did not peek the hidden line')
             shot('peek')
             # Scroll.
-            ev("[...document.querySelectorAll('.rd-tool:not(.rd-hear)')][1].click()")
+            ev("[...document.querySelectorAll('.rd-tool:not(.rd-hear):not(.rd-rec-btn)')][1].click()")
             ev("document.querySelector('[aria-label=Text]').click()")
             ev("document.querySelector('input[name=rd-layout][value=scroll]').click()")
             ev("document.querySelector('dialog[open]').close()")
