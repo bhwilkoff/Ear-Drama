@@ -64,31 +64,102 @@ const Reader = (() => {
 
   /* ---- The page: one element per line, each printed run knowing its offset (§4.16 item 11) ---- */
 
-  function lineNode(script, line, hues, heads) {
+  /*
+   * The Ear Drama page (PLAYS-DESIGN §2.7 rule 10, WEB-DESIGN §4.16 item 3; ReaderCore.layoutOf sets
+   * each line): a speech is a block, the speaker's name over the words (beside them, in a gutter, when
+   * the page is wide); a printed direction inside a speech is italic in parentheses; verse keeps its
+   * lines; a sound or music cue is its own row in the sound lane; a stage direction is a quieter,
+   * indented paragraph with the parts it names in their hues.
+   */
+
+  /** A direction's text, a part's name in it (as printed, in capitals) drawn in that part's hue. */
+  function directionRuns(parent, r, cls, namesRx, hues) {
+    const tag = r.kind === 'em' ? 'em' : 'span';
+    const segs = [];
+    let last = 0;
+    if (namesRx && r.kind !== 'em') {
+      for (const m of r.text.matchAll(namesRx)) {
+        if (m.index > last) segs.push([last, r.text.slice(last, m.index), null]);
+        segs.push([m.index, m[0], hues.get(`role:${m[0]}`) || 'none']);
+        last = m.index + m[0].length;
+      }
+    }
+    if (last < r.text.length || !segs.length) segs.push([last, r.text.slice(last), null]);
+    // The page's parentheses go on the first and last pieces only, and never double a printed one.
+    const base = cls.replace(/ rd-open| rd-close/g, '');
+    segs.forEach(([at, text, hue], i) => {
+      let c = base;
+      if (i === 0 && cls.includes('rd-open') && !/^\s*[(\[]/.test(text)) c += ' rd-open';
+      if (i === segs.length - 1 && cls.includes('rd-close') && !/[)\]][.,;:!?]*\s*$/.test(text)) c += ' rd-close';
+      if (hue) c += ' rd-dname';
+      parent.append(el(tag, { class: c.trim(), dataset: { at: String(r.at + at), ...(hue ? { hue } : {}) } }, text));
+    });
+  }
+
+  function rowNode(row, namesRx, hues) {
+    const n = el('span', { class: `rd-row${row.cue ? ' rd-sfx' : ''}${row.indent ? ' rd-half' : ''}` });
+    if (row.cue) n.append(el('span', { class: 'rd-sfx-mark' }, svg('cue')));
+    row.runs.forEach((r, i) => {
+      // A space between two printed pieces (the data keeps no spacing there), never before a period.
+      if (i && r.piece !== row.runs[i - 1].piece && R.spaceBetween(row.runs[i - 1].text, r.text)) n.append(' ');
+      if (row.cue) { n.append(el(r.kind === 'em' ? 'em' : 'span', { class: 'rd-sfx-text', dataset: { at: String(r.at) } }, r.text)); return; }
+      // A spaced ellipsis (". . .") never breaks across lines; the no-break spaces keep every offset.
+      if (r.said) { n.append(el(r.kind === 'em' ? 'em' : 'span', { class: 'rd-said', dataset: { at: String(r.at) } }, r.text.replace(/\.(?: \.)+/g, (m) => m.replace(/ /g, ' ')))); return; }
+      // A printed direction inside a speech: one parenthesized aside per piece.
+      const whole = row.runs.filter(x => x.piece === r.piece && !x.said).map(x => x.text).join('');
+      const open = (!i || row.runs[i - 1].piece !== r.piece) && !/^\s*[(\[]/.test(whole);
+      const close = (i === row.runs.length - 1 || row.runs[i + 1].piece !== r.piece) && !/[)\]][.,;:!?]*\s*$/.test(whole);
+      const cls = `rd-aside${r.kind === 'plain' ? ' rd-roman' : ''}${open ? ' rd-open' : ''}${close ? ' rd-close' : ''}`;
+      directionRuns(n, r, cls, namesRx, hues);
+    });
+    return n;
+  }
+
+  function lineNode(script, line, hues, heads, roles, namesRx) {
     const part = C.linePart(line);
-    const runs = R.runsOf(line);
-    const cls = line.kind === 'speech' ? 'rd-speech' : line.kind === 'direction' ? 'rd-dir' : 'rd-cue';
+    const lay = R.layoutOf(line, roles);
     const head = heads.get(line.id);
+    if (line.kind === 'speech') {
+      const node = el('div', { class: 'rd-line rd-speech', id: line.id, dataset: { line: line.id, part, hue: hues.get(part) || 'none' } });
+      for (const sp of lay.speeches) {
+        const p = `role:${sp.role}`;
+        const name = sp.name
+          ? el('span', { class: 'rd-name', dataset: { at: String(sp.name.at) } }, sp.name.text)
+          : el('span', { class: 'rd-name' }, sp.role);
+        const body = el('p', { class: `rd-body${lay.verse ? ' rd-verse' : ''}` }, ...sp.rows.map(rw => rowNode(rw, namesRx, hues)));
+        node.append(el('div', { class: 'rd-sp', dataset: { part: p, hue: hues.get(p) || 'none' } }, el('p', { class: 'rd-who' }, name), body));
+      }
+      return node;
+    }
+    const cls = line.kind === 'direction' ? 'rd-dir' : 'rd-cue';
     const node = el('p', { class: `rd-line ${cls}${head ? ' rd-headline' : ''}`, id: line.id,
       dataset: { line: line.id, part, hue: hues.get(part) || 'none', ...(head ? { level: head.level } : {}) } });
-    if (line.kind === 'speech') {
-      node.append(el('span', { class: 'rd-who' }, line.role || ''), ' ');
-      runs.forEach((r, i) => {
-        // A space between two printed pieces (the data keeps no spacing there), never before a period.
-        if (i && r.piece !== runs[i - 1].piece && R.spaceBetween(runs[i - 1].text, r.text)) node.append(' ');
-        const cls = r.said ? 'rd-said' : r.kind === 'plain' ? 'rd-aside rd-roman' : 'rd-aside';
-        node.append(el(r.kind === 'em' ? 'em' : 'span', { class: cls, dataset: { at: String(r.at) } }, r.text));
-      });
-    } else {
-      if (line.kind !== 'direction') node.append(el('span', { class: 'rd-cue-mark' }, svg('cue')));
-      for (const r of runs) node.append(el(r.kind === 'em' ? 'em' : 'span', { dataset: { at: String(r.at) } }, r.text));
-    }
+    const row = lay.rows[0];
+    if (head) { for (const r of R.runsOf(line)) node.append(el(r.kind === 'em' ? 'em' : 'span', { dataset: { at: String(r.at) } }, r.text)); return node; }
+    if (row.cue) node.append(el('span', { class: 'rd-sfx-mark' }, svg('cue')));
+    for (const r of row.runs) directionRuns(node, r, row.cue ? 'rd-sfx-text' : '', line.kind === 'direction' ? namesRx : null, hues);
     return node;
+  }
+
+  /** The front of the play: its title, its authors, and its speaking parts in their hues, largest first. */
+  function frontNode(script, hues) {
+    const parts = C.castParts(script).filter(x => C.isSpeaking(x.id));
+    const by = C.authorLine(script);
+    return el('header', { class: 'rd-front' },
+      el('h1', { class: 'rd-front-title' }, script.title),
+      by ? el('p', { class: 'rd-front-by' }, by) : null,
+      parts.length ? el('p', { class: 'caption rd-front-lab' }, 'Parts') : null,
+      parts.length ? el('ul', { class: 'rd-front-parts' }, ...parts.map(x => el('li', { dataset: { hue: hues.get(x.id) || 'none' } }, x.title))) : null);
   }
 
   function buildFlow(script) {
     const hues = new Map();
     C.castParts(script).filter(x => C.isSpeaking(x.id)).forEach((x, i) => hues.set(x.id, C.PART_HUES[i] || 'none'));
+    const roles = (script.roles || []).map(r => r.name).filter(Boolean);
+    // Parts named in capitals inside a direction (as the printed text sets them), longest first.
+    const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const capRoles = roles.filter(n => n.length >= 3 && n === n.toUpperCase() && /[A-Z]/.test(n)).sort((a, b) => b.length - a.length);
+    const namesRx = capRoles.length ? new RegExp(`(?<![\\p{L}])(?:${capRoles.map(esc).join('|')})(?![\\p{L}])`, 'gu') : null;
     const secs = C.sectionsOf(script);
     const before = new Map();
     const heads = new Map();
@@ -97,12 +168,13 @@ const Reader = (() => {
       else (before.get(s.line) || before.set(s.line, []).get(s.line)).push(s);
     }
     const frag = document.createDocumentFragment();
+    frag.append(frontNode(script, hues));
     const lines = [];
     for (const line of script.lines) {
       for (const s of before.get(line.id) || []) {
         frag.append(el('h2', { class: 'rd-head', dataset: { level: s.level, line: s.line } }, s.title));
       }
-      const n = lineNode(script, line, hues, heads);
+      const n = lineNode(script, line, hues, heads, roles, namesRx);
       lines.push(n);
       frag.append(n);
     }
@@ -123,13 +195,18 @@ const Reader = (() => {
   function layout(st, keep) {
     const at = keep !== undefined ? keep : st.pos;
     st.flow.classList.add('rd-still');
+    const cs = getComputedStyle(st.clip);
+    const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+    const em = parseFloat(cs.fontSize) || 16;
     if (st.prefs.layout === 'pages') {
       st.per = R.perSpread(st.stage.clientWidth);
       st.root.style.setProperty('--rd-per', String(st.per));
       st.flow.style.columnCount = String(st.per);
       st.flow.style.columnGap = `${GAP}px`;
-      const w = st.clip.clientWidth;
+      const w = st.clip.clientWidth - pad;
       st.unit = (w - (st.per - 1) * GAP) / st.per + GAP;
+      // The speaker's name goes beside the words, in a gutter, once a page holds 30 em.
+      st.root.dataset.gutter = String((st.unit - GAP) / em >= R.GUTTER_MIN_EM);
       st.flow.style.transform = 'translateX(0px)';
       const left = st.flow.getBoundingClientRect().left;
       const starts = new Array(st.lines.length);
@@ -148,6 +225,8 @@ const Reader = (() => {
       st.flow.style.columnCount = '';
       st.flow.style.columnGap = '';
       st.flow.style.transform = '';
+      st.root.dataset.gutter = String((st.clip.clientWidth - pad) / em >= R.GUTTER_MIN_EM);
+      st.heads.replaceChildren();
       const n = st.lines[Math.max(0, at)];
       st.stage.scrollTop = n ? n.offsetTop - st.flow.offsetTop : 0;
       st.pos = Math.max(0, at);
@@ -162,8 +241,36 @@ const Reader = (() => {
     st.flow.style.transform = `translateX(${-st.page * st.unit}px)`;
     st.pos = keep !== undefined ? keep : R.lineAtPage(st.starts, st.ends, st.page);
     clearPeeks(st);
+    paintHeads(st);
     paintWhere(st);
     save(st);
+  }
+
+  /**
+   * A speech carried over from the page before is headed with its speaker's name and "(cont’d)", as an
+   * acting edition and a radio script print it, so a page never opens on words nobody is saying.
+   */
+  function paintHeads(st) {
+    const out = [];
+    const left = st.flow.getBoundingClientRect().left;
+    const pageOf = (n) => { const r = n.getClientRects(); return r.length ? R.pageAt(r[0].left - left, st.unit) : -1; };
+    for (let p = st.page; p < st.page + st.per && p < st.count; p++) {
+      let who = null;
+      const i = st.starts.findIndex((s, k) => s < p && st.ends[k] >= p);
+      const n = i >= 0 ? st.lines[i] : null;
+      if (n && n.classList.contains('rd-speech')) {
+        let sp = null;
+        for (const s of n.querySelectorAll('.rd-sp')) { const at = pageOf(s); if (at >= 0 && at < p) sp = s; }
+        if (sp) {
+          const body = sp.querySelector('.rd-body');
+          const rects = body ? [...body.getClientRects()] : [];
+          if (rects.some(r => R.pageAt(r.left - left, st.unit) >= p)) who = sp;
+        }
+      }
+      out.push(el('span', { class: 'rd-runhead', dataset: who ? { hue: who.dataset.hue } : {} },
+        who ? [el('span', { class: 'rd-runhead-name' }, who.querySelector('.rd-name').textContent), ' (cont’d)'] : ''));
+    }
+    st.heads.replaceChildren(...out);
   }
 
   function step(st, delta) {
@@ -227,16 +334,51 @@ const Reader = (() => {
 
   /* ---- I'm playing (§4.16 item 10) ---- */
 
+  /**
+   * The part's speeches (a speech another speaker's words ran into is still theirs on the page), and
+   * the cue each is heard on: the last words of the speech before it, underlined in the part's hue.
+   */
   function setPart(st, part) {
     st.part = part || null;
-    const mine = new Set(st.part ? C.lineIndexesOf(st.script, st.part) : []);
-    st.lines.forEach((n, i) => n.classList.toggle('rd-mine', mine.has(i)));
+    st.mine = [];
+    for (const n of st.root.querySelectorAll('.rd-cueword')) n.classList.remove('rd-cueword');
+    let prev = null;
+    st.lines.forEach((n, i) => {
+      let any = false;
+      for (const sp of n.querySelectorAll('.rd-sp')) {
+        const me = !!st.part && sp.dataset.part === st.part;
+        sp.classList.toggle('rd-mine', me);
+        if (me) { any = true; if (prev && prev.dataset.part !== st.part) cueWords(prev); }
+        prev = sp;
+      }
+      n.classList.toggle('rd-mine', any);
+      if (any) st.mine.push(i);
+    });
+    const first = st.part ? st.root.querySelector(`.rd-sp[data-part="${CSS.escape(st.part)}"]`) : null;
+    const hue = first ? first.dataset.hue : 'none';
+    st.root.style.setProperty('--mine', hue === 'none' ? 'var(--color-text-muted)' : `var(--color-genre-${hue})`);
     st.nextBtn.hidden = !st.part;
     st.hideBtn.hidden = !st.part;
     if (!st.part) setHiding(st, false);
     else paintHidden(st);
     save(st);
   }
+  /** Marks the last sentence of a speech's last said words (splitting their run, each half keeping its offset). */
+  function cueWords(sp) {
+    const said = [...sp.querySelectorAll('.rd-said')];
+    const last = said[said.length - 1];
+    if (!last) return;
+    const k = R.cueTail(last.textContent);
+    if (k > 0) {
+      const tail = last.cloneNode(false);
+      tail.textContent = last.textContent.slice(k);
+      tail.dataset.at = String(Number(last.dataset.at) + k);
+      last.textContent = last.textContent.slice(0, k);
+      last.after(tail);
+      tail.classList.add('rd-cueword');
+    } else last.classList.add('rd-cueword');
+  }
+
   function setHiding(st, on) {
     st.hiding = on;
     st.root.classList.toggle('rd-hiding', on);
@@ -265,8 +407,10 @@ const Reader = (() => {
   }
   function myLine(st, direction) {
     if (!st.part) return;
-    let i = C.nextLineOf(st.script, st.part, st.pos, direction);
-    if (i < 0 && direction > 0) i = C.nextLineOf(st.script, st.part, -1, 1);
+    const m = st.mine || [];
+    let i = direction > 0 ? m.find(k => k > st.pos) : [...m].reverse().find(k => k < st.pos);
+    if (i === undefined && direction > 0) i = m[0];
+    if (i === undefined) i = -1;
     if (i >= 0) goIndex(st, i, { flash: true });
   }
 
@@ -491,7 +635,8 @@ const Reader = (() => {
     const flow = el('div', { class: 'rd-flow' });
     flow.append(frag);
     const clip = el('div', { class: 'rd-clip' }, flow);
-    const stage = el('div', { class: 'rd-stage', tabindex: '-1' }, clip);
+    const heads = el('div', { class: 'rd-heads', 'aria-hidden': 'true' });
+    const stage = el('div', { class: 'rd-stage', tabindex: '-1' }, el('div', { class: 'rd-heads-wrap' }, heads), clip);
     const where = el('p', { class: 'caption rd-where' });
     const pageLab = el('span', { class: 'caption tabular rd-page', 'aria-live': 'polite' });
     const parts = C.castParts(script).filter(x => C.isSpeaking(x.id));
@@ -505,7 +650,7 @@ const Reader = (() => {
     const hearBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool rd-hear' });
     const root = el('div', { class: 'rd' });
     const cast = CastUI.castFor({ script });
-    const st = { root, script, flow, clip, stage, where, pageLab, nextBtn, hideBtn, hearBtn, lines, dock, prefs: prefsNow(),
+    const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, lines, dock, prefs: prefsNow(),
                  cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
                  pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, following: true };
     st.contents = contentsSheet(st);

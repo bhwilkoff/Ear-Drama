@@ -1302,37 +1302,89 @@ body.reading #main-content { overflow: hidden; }
 @media (min-width: 560px) { .rd-tool-lab { display: inline; } }
 .rd-tool[aria-pressed="true"] { background: var(--color-surface-alt); border-color: transparent; }
 .rd-page { flex: none; min-width: 4.5em; text-align: right; }
-.rd-stage { flex: 1; min-height: 0; position: relative; padding: var(--space-6) var(--space-6) var(--space-4); outline: none; }
-.rd-clip { height: 100%; overflow: hidden; margin: 0 auto; max-width: calc(var(--rd-per) * 36em + (var(--rd-per) - 1) * var(--rd-gap));
+.rd-stage { flex: 1; min-height: 0; position: relative; padding: var(--space-6) var(--space-2) var(--space-4); outline: none; }
+@media (min-width: 600px) { .rd-stage { padding-left: var(--space-6); padding-right: var(--space-6); } }
+/* The page: a 14 px inner margin, so the tint of "my" speeches is never cut at a page's edge. */
+.rd-clip { --rd-pad: 14px; height: 100%; overflow: hidden; margin: 0 auto; padding: 0 var(--rd-pad); box-sizing: border-box;
+  max-width: calc(var(--rd-per) * 36em + (var(--rd-per) - 1) * var(--rd-gap) + 2 * var(--rd-pad));
   font-size: calc(var(--type-body-size) * var(--rd-scale)); touch-action: pan-y pinch-zoom; }
 .rd-flow { height: 100%; column-fill: auto; transition: transform 240ms ease; will-change: transform; line-height: var(--rd-leading); }
 .rd-flow.rd-still { transition: none; }
 .rd[data-layout="scroll"] .rd-stage { overflow-y: auto; overscroll-behavior: contain; }
 .rd[data-layout="scroll"] .rd-clip { height: auto; overflow: visible; }
 .rd[data-layout="scroll"] .rd-flow { height: auto; transition: none; will-change: auto; padding-bottom: 40vh; }
-.rd-line { margin: 0 0 0.7em; overflow-wrap: break-word; orphans: 2; widows: 2; scroll-margin-top: var(--space-4); }
-.rd-speech { padding-left: 0.6em; margin-left: -0.6em; border-left: 3px solid transparent; }
-.rd-who { font-weight: var(--type-body-strong-weight); font-size: 0.8125em; letter-spacing: 0.04em; color: var(--hue); }
-.rd-aside, .rd-dir { font-style: italic; color: var(--color-text-muted); }
-.rd-dir { margin-left: 1.25em; }
-.rd-dir em, .rd-roman { font-style: normal; }
-.rd-cue { color: var(--color-text-muted); }
-.rd-cue-mark svg { display: inline-block; width: 1em; height: 1em; margin-right: 0.3em; vertical-align: -0.12em; fill: currentColor; }
+/* The running head: a speech carried over from the page before names its speaker. */
+.rd-heads-wrap { position: absolute; top: 4px; left: 0; right: 0; padding: 0 var(--space-2); pointer-events: none; font-size: calc(var(--type-body-size) * var(--rd-scale)); }
+@media (min-width: 600px) { .rd-heads-wrap { padding: 0 var(--space-6); } }
+.rd-heads { display: grid; grid-template-columns: repeat(var(--rd-per), minmax(0, 1fr)); column-gap: var(--rd-gap); margin: 0 auto; padding: 0 14px;
+  max-width: calc(var(--rd-per) * 36em + (var(--rd-per) - 1) * var(--rd-gap) + 28px); line-height: 1.4; }
+.rd-runhead { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--color-text-muted); font-size: 0.8125em; }
+.rd-runhead-name { color: var(--hue); }
+.rd[data-gutter="true"] .rd-runhead { padding-left: 11.7em; }
+/* The front of the play: title, authors, the speaking parts in their hues. */
+.rd-front { margin: 0 0 2.5em; }
+.rd-front-title { font-family: var(--type-page-title-family); font-weight: var(--type-page-title-weight); font-size: 1.75em; line-height: 1.1; margin: 0 0 0.3em; }
+.rd-front-by { margin: 0 0 1.2em; color: var(--color-text-muted); }
+.rd-front-lab { margin: 0 0 0.3em; font-size: 0.8125em; color: var(--color-text-muted); }
+.rd-front-parts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.15em 0.9em; }
+.rd-front-parts li { color: var(--hue); font-weight: var(--type-body-strong-weight); letter-spacing: 0.02em; }
+/* A line. A speech: the name (L3, the part's hue) over the words (L4); beside them from 30 em a page. */
+.rd-line { margin: 0 0 0.85em; overflow-wrap: break-word; scroll-margin-top: var(--space-4); }
+.rd-speech { margin: 0; }
+.rd-sp { margin: 0 0 0.85em; }
+.rd-who { margin: 0; break-after: avoid; }
+.rd-name { color: var(--hue); font-weight: var(--type-body-strong-weight); letter-spacing: 0.02em; }
+.rd-body { margin: 0; orphans: 2; widows: 2; }
+.rd-row { display: block; }
+.rd-verse .rd-row:not(.rd-sfx) { padding-left: 1.5em; text-indent: -1.5em; }
+.rd-verse .rd-row.rd-half { padding-left: 4em; }
+/* Never a single verse line left at a page's foot or carried alone to the next. */
+.rd-verse .rd-row { break-inside: avoid; }
+.rd-verse .rd-row:first-child { break-after: avoid; }
+.rd-verse .rd-row:last-child:nth-child(n+4) { break-before: avoid; }
+.rd[data-gutter="true"] .rd-sp { display: flow-root; padding-left: 9.5em; }
+.rd[data-gutter="true"] .rd-who { float: left; width: 8.5em; margin-left: -9.5em; text-align: right; overflow-wrap: anywhere; }
+/* A printed direction inside a speech: italic and muted, in upright parentheses. */
+.rd-aside { font-style: italic; color: var(--color-text-muted); }
+.rd-aside.rd-roman { font-style: normal; }
+.rd-aside.rd-open::before { content: "("; font-style: normal; }
+.rd-aside.rd-close::after { content: ")"; font-style: normal; }
+/* A stage direction: a quieter, indented paragraph; a part it names (in capitals) in that part's hue. */
+.rd-dir { font-style: italic; color: var(--color-text-muted); margin-left: 1.5em; }
+.rd-dir em { font-style: normal; }
+.rd[data-gutter="true"] .rd-dir, .rd[data-gutter="true"] .rd-line.rd-cue { margin-left: 9.5em; }
+.rd-dname { color: var(--hue); font-style: normal; font-weight: var(--type-body-strong-weight); }
+/* The sound lane (radio): a cue is its own row, a block in capitals (L5) behind a speaker glyph. */
+.rd-sfx { margin: 0.35em 0; }
+.rd-line.rd-cue { margin-left: 1.5em; }
+.rd-sfx-text { font-size: 0.8125em; font-style: normal; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text);
+  background: var(--color-surface-alt); padding: 0.2em 0.5em; border-radius: 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.rd-sfx-mark svg { display: inline-block; width: 1.1em; height: 1.1em; margin-right: 0.35em; vertical-align: -0.2em; fill: var(--color-text-muted); }
+.rd-verse .rd-row.rd-sfx { text-indent: 0; padding-left: 0; }
+/* Act and scene headings: an act opens a page (L1); a scene is a section header (L2). */
 .rd-head, .rd-headline {
   font-family: var(--type-section-header-family); font-weight: var(--type-section-header-weight); font-style: normal;
-  font-size: 1.25em; line-height: 1.2; color: var(--color-text); margin: 1.2em 0 0.6em; break-after: avoid; break-inside: avoid;
+  font-size: 1.25em; line-height: 1.15; color: var(--color-text); margin: 1.4em 0 0.6em; break-after: avoid; break-inside: avoid;
 }
 .rd-headline { margin-left: 0; }
-.rd-head[data-level="scene"], .rd-headline[data-level="scene"] { font-size: 1.05em; }
+.rd[data-gutter="true"] .rd-headline { margin-left: 0; }
+.rd-head[data-level="act"], .rd-headline[data-level="act"], .rd-head[data-level="part"], .rd-headline[data-level="part"] { font-size: 1.75em; }
+.rd[data-layout="pages"] .rd-head[data-level="act"], .rd[data-layout="pages"] .rd-headline[data-level="act"],
+.rd[data-layout="pages"] .rd-head[data-level="part"], .rd[data-layout="pages"] .rd-headline[data-level="part"] { break-before: column; margin-top: 0; }
 .rd-flow > :first-child { margin-top: 0; }
-.rd-mine { border-left-color: var(--hue); background: color-mix(in srgb, var(--hue) 9%, transparent); }
-.rd-hiding .rd-mine:not(.rd-peek) .rd-said {
+/* I'm playing: my speeches tinted with a rule in the hue; the cue I come in on underlined in it. */
+.rd-sp.rd-mine { position: relative; background: color-mix(in srgb, var(--hue) 10%, transparent);
+  box-shadow: -10px 0 0 0 color-mix(in srgb, var(--hue) 10%, transparent), 10px 0 0 0 color-mix(in srgb, var(--hue) 10%, transparent); }
+.rd-sp.rd-mine::before { content: ""; position: absolute; top: 0; bottom: 0; left: -13px; width: 3px; background: var(--hue); }
+.rd-cueword { text-decoration: underline 2px var(--mine); text-underline-offset: 0.22em; text-decoration-skip-ink: none; }
+.rd-hiding .rd-line:not(.rd-peek) .rd-sp.rd-mine .rd-said {
   color: transparent; background: color-mix(in srgb, var(--hue) 30%, transparent); border-radius: 3px;
   -webkit-box-decoration-break: clone; box-decoration-break: clone; user-select: none;
 }
 .rd-hiding .rd-mine:not(.rd-peek) { cursor: pointer; }
-.rd-flash { outline: 2px solid var(--color-text); outline-offset: -2px; border-radius: 2px; }
-.rd-now { background: color-mix(in srgb, var(--color-text) 8%, transparent); border-radius: 2px; }
+.rd-flash { outline: 2px solid var(--color-text); outline-offset: 2px; border-radius: 2px; }
+.rd-now .rd-sp, .rd-line.rd-now:not(.rd-speech) { background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  box-shadow: -10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent), 10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent); }
 .rd-dock { flex-shrink: 0; }
 /* The reader's sheets: full screen on a phone, a card from 600 px. */
 .rd-sheet { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; border: 0; padding: var(--space-4);

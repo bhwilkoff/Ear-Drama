@@ -667,17 +667,44 @@ web app follows today.
      lines** (a toggle, `aria-pressed`), then the page count ("12 of 140",
      "11–12 of 140" for a spread; a percentage in Scroll). Both bars stay
      put, so nothing reflows when they would come and go.
-  3. **The page.** A reading measure of at most 36 em per page. A speech
-     is one paragraph: the speaker's name run in, in small caps in the
-     part's hue (the first seven speaking parts, PLAYS-DESIGN's part hues;
-     neutral after), then the words in the body face; a printed direction
-     inside a speech in italic. A stage direction is its own indented,
-     muted italic paragraph; a sound or music cue carries a small speaker
-     glyph (inline SVG, R-ICON-1). Printed `_italic_` marks are drawn as
-     italics, never shown. Act and scene headings (`PlaysCore.sectionsOf`)
-     are section breaks in the section-header type: a heading the parser
-     set aside is drawn before its line; a heading that is itself a stage
-     direction is that line, drawn as a heading. No line numbers.
+  3. **The page: the Ear Drama page** (PLAYS-DESIGN §2.7 rule 10; owner
+     2026-11-14 *"You definietly need to work on the formatting of plays…"*;
+     research and frames `R2-play-typography.md`). `ReaderCore.layoutOf`
+     sets each line (no DOM, tested in `js/reader.test.js`); `js/reader.js`
+     draws it. A reading measure of at most 36 em per page, inside a 14 px
+     inner margin (the tint of my speeches is painted there, never clipped).
+     - A speech is a block (`.rd-sp`, one per speaker; a line whose printed
+       text runs a second speaker in holds two): the name (`.rd-who`, body
+       strong, the part's hue: the first seven speaking parts take
+       PLAYS-DESIGN's part hues, neutral after) on its own line over the
+       words (`.rd-body`, body), `break-after: avoid`. When a page is 30 em
+       or wider (`ReaderCore.GUTTER_MIN_EM`; `.rd[data-gutter=true]`, set
+       on every layout) the name floats into a right-aligned 8.5 em gutter.
+     - Verse (`ReaderCore.isVerse`) is a block row per printed line with a
+       1.5 em turnover indent (no indent in the gutter), a printed indent
+       kept (`.rd-half`), the first and last rows never alone across a page
+       break; prose rows reflow.
+     - A printed direction inside a speech is italic and muted with upright
+       parentheses from `::before`/`::after` (never in the text). A stage
+       direction is its own indented, muted italic paragraph, its enclosing
+       brackets undrawn, a part named in capitals in that part's hue
+       (`.rd-dname`). Printed `_italic_` marks are drawn as italics, never
+       shown; a direction wholly in them stays italic.
+     - The sound lane: a cue (a sound piece, or an aside beginning "sound
+       of", "noise of" or "music") is a row of its own (`.rd-sfx`): the
+       speaker glyph (inline SVG, R-ICON-1) and the cue in caption capitals
+       on a surface-alt block.
+     - The front (`.rd-front`) opens the flow: the title (page title), the
+       authors, "Parts" and every speaking part in its hue, largest first.
+     - Act and scene headings (`PlaysCore.sectionsOf`): an act (or a
+       prologue, epilogue, induction) in the page-title type, opening a page
+       in Pages (`break-before: column`); a scene in the section-header type.
+       A heading the parser set aside is drawn before its line; a heading
+       that is itself a stage direction is that line, drawn as a heading.
+     - **"NAME (cont'd)"** (`.rd-heads`, above the page, one per facing
+       page, `aria-hidden`): when a page opens inside a speech, its speaker
+       in the hue and "(cont'd)" in caption type. None in Scroll.
+     - No line numbers.
   4. **Pages** (the default, owner ruling): the script laid out in CSS
      columns inside the page area, one page per screen, **two facing
      pages from 860 px** of reading width. A turn **slides** the strip of
@@ -714,7 +741,10 @@ web app follows today.
      the line and outlines it a moment. Nothing found: "No line has these
      words."
   10. **I'm playing** (remembered per script with the position): the
-     part's lines carry a rule and a light tint in its hue. **Next line**
+     part's speeches carry a 3 px rule outside the text and a light tint in
+     its hue (a speech run into another part's line is still the part's),
+     and the cue each is heard on, the last sentence of the speech before
+     it (`ReaderCore.cueTail`), is underlined in the part's hue. **Next line**
      (and `J`, `K` for the previous) goes to the part's next line after the
      reading position and outlines it. **Hide my lines** draws the part's
      spoken words as bars in its hue, the speaker's name and any printed

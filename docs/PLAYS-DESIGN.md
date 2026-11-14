@@ -257,6 +257,36 @@ macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along pa
    read-along's seam; the studio (S3) docks inside the reader.
 9. **Nothing is written by the app**: every word on the page is the script's; the reader
    adds no summary, no character notes, no suggestions.
+10. **The Ear Drama page** (owner 2026-11-14: *"You definietly need to work on the formatting of
+   plays. Probably need to figure out the best way to show plays from research and then figure
+   out an innovative way to do it within our app."*; research and frames
+   `docs/research/design/R2-play-typography.md`). Six type levels only. The set-up is computed
+   once per line by each stack's `layoutOf` (web `ReaderCore.layoutOf`), golden-tested.
+   - **Speaker over speech** on a narrow page: the name in L3 (body strong) in the part's hue,
+     uppercase as printed, on its own line, never left at a page's foot. **In a gutter** when a
+     page holds 30 em or more: right-aligned, 8.5 em, the words hanging beside it.
+   - **Verse keeps its lines**: a speech is verse when every row after a printed break starts
+     with a capital and its rows are not mostly 60 characters or longer; one row per printed
+     line with a turnover indent, a printed indent kept; prose breaks reflow as spaces. Never
+     one verse row alone at a page's foot or head.
+   - **A direction inside a speech**: italic, muted, in upright parentheses the page adds (never
+     in the text). A short italic piece between said words that run on in lowercase is the
+     speaker's emphasis and is drawn as said.
+   - **A stage direction**: an indented, quieter italic paragraph, its enclosing brackets not
+     drawn; a part it names in capitals drawn in that part's hue, upright.
+   - **The sound lane**: a sound piece, or an aside beginning "sound of", "noise of" or "music",
+     is its own row inside the speech: a speaker glyph and the cue in L5 capitals on a quiet
+     block; the words continue after it without repeating the name.
+   - **A speech run into another** (a printed `\nNAME` then `. ` the parser missed) is drawn as
+     the second speaker's speech, its printed name as the name, the label's period not drawn.
+   - **"NAME (cont'd)"** heads a page that opens inside a speech (L5, the name in its hue).
+   - **The front**: title (L1), authors, and **Parts** with every speaking part in its hue,
+     largest first. **An act opens a page** (L1); a scene is L2.
+   - **I'm playing**: my speeches tinted with a rule in my hue, never clipped; **the cue I come in
+     on** (the last sentence of the speech before mine) underlined in my hue; Hide my lines bars
+     only said words.
+   - Every drawn run keeps its offset into `lineText`; a character not drawn is skipped, never
+     rewritten, so marks (S5) and the read-along anchor as before.
 
 ### §2.8 Casting the device voices (Decision 076, phase S2; binding on every platform)
 

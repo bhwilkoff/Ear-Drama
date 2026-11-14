@@ -690,6 +690,23 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   - **I'm playing**: the part's lines carry a start rule and tint in its
     hue; Hide my lines draws its words as rounded bars in the hue (still
     measured, so pages stay put); a tap peeks one.
+  - **The Ear Drama page** (PLAYS-DESIGN §2.7 rule 10, binding; frames in
+    `docs/research/design/R2-play-typography.md`). Port `layoutOf`, `isVerse`
+    and `cueTail` to `PlaysCore` (Kotlin) with the web's fixtures as golden
+    tests. Per speech: the name in `titleMedium` in the part's hue over the
+    words (`bodyMedium`), never the last item measured on a page; when a page
+    is 30 em or wider (expanded width) the name sits in a right-aligned
+    8.5 em column in a `Row`. Verse is one `Text` per printed line with a
+    hanging turnover indent (`ParagraphStyle(textIndent = TextIndent(0.sp,
+    rest = 1.5.em))`); a direction inside a speech an italic
+    `onSurfaceVariant` span with the parentheses added in the
+    `AnnotatedString` (never stored); a stage direction an indented italic
+    paragraph with a part named in capitals in its hue; a cue a row with
+    the Material `volume_up` symbol and the cue in `labelMedium` capitals on
+    a `surfaceContainerHigh` shape. The front page (title, authors, Parts in
+    their hues); an act opens a page; "NAME (cont'd)" heads a page that opens
+    inside a speech; the cue before each of my speeches underlined in my hue.
+    TalkBack reads each speech as one node: the name, then the words.
   - Not on a TV (Android TV and Fire TV get a read-along panel later, as
     tvOS-DESIGN §4.13).
 

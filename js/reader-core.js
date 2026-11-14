@@ -18,6 +18,8 @@ const ReaderCore = (() => {
   const LAYOUTS = ['pages', 'scroll'];
   /** Two facing pages once the reading area is this wide (CSS pixels). */
   const SPREAD_MIN = 860;
+  /** A page this many em wide sets the speaker's name in a gutter beside the words; narrower, over them. */
+  const GUTTER_MIN_EM = 30;
 
   /** Settings as stored (or not): anything unknown falls back to the default. Pages by default (owner, Decision 076). */
   function normalizePrefs(raw) {
@@ -135,6 +137,183 @@ const ReaderCore = (() => {
   /** Whether a space is drawn before a printed piece: not before closing punctuation, not after an opening one. */
   const spaceBetween = (before, after) => !/^[.,;:!?)\]’”…—-]/.test(after) && !/[(\[“‘—-]$/.test(before);
 
-  return { SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
-           spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween };
+  /*
+   * The Ear Drama page (docs/research/design/R2-play-typography.md, PLAYS-DESIGN §2.7 rule 10): how a
+   * line is set, as plain data. Every run keeps its offset into lineText, so marks still anchor; a
+   * character the page leaves out (a printed speaker label's period, a direction's enclosing bracket)
+   * is simply not drawn, and a line break inside prose is drawn as the space it stands for.
+   */
+
+  /** A said row may begin with quotes, a dash, a bracket or an italic mark before its capital. */
+  const ROW_START = /^[\s'"‘’“”(\[_—–-]*(\S)/;
+  /**
+   * Whether a speech's printed line breaks are verse (kept) or a transcriber's wrapping (reflowed):
+   * verse when the speech has a break and every row after a break begins with a capital, and its rows
+   * are not mostly as long as a wrapped prose line (60 characters and more).
+   */
+  function isVerse(texts) {
+    const rows = [];
+    let after = [];
+    for (const t of texts) {
+      const parts = String(t || '').split('\n');
+      parts.forEach((p, i) => { rows.push(p); if (i) after.push(p); });
+    }
+    after = after.filter(r => r.trim());
+    if (!after.length) return false;
+    for (const r of after) {
+      const m = ROW_START.exec(r);
+      if (!m || m[1] === m[1].toLowerCase() || !/\p{L}/u.test(m[1])) return false;
+    }
+    const full = rows.map(r => r.trim()).filter(Boolean);
+    const body = full.slice(0, -1);
+    const long = body.filter(r => r.length >= 60).length;
+    if (body.length && long / body.length >= 0.7) return false;
+    return full.length >= 3 || (full[0] || '').length < 50;
+  }
+
+  /** An aside whose words begin "sound of", "noise of" or "music" is a cue, whatever the parser called it. */
+  const CUE_WORDS = /^[\s(\[_]*(?:(?:sounds?|noises?) of\b|music\b)/i;
+
+  /**
+   * How a line is set. A speech gives `speeches`: one, or more when the printed text runs a second
+   * speaker's speech into the first ("Why not?\nGRACE" then ". Never mind why.", a parser miss the page
+   * still attributes); each `{ role, name, rows }`, `name` null for the line's own role (drawn from
+   * line.role, outside the printed words) or the printed name run; each row `{ cue, indent, runs }`.
+   * Verse keeps a row per printed line (`indent` when the printed line was indented); prose is one row,
+   * broken only by a cue (a sound piece, or an aside that is a sound or music). A block gives one row,
+   * its enclosing brackets left undrawn. `roles` is the script's role names.
+   */
+  function layoutOf(line, roles) {
+    const runs = runsOf(line);
+    // A direction printed wholly in italic marks ("[_Exeunt._]") is italic, not turned roman: the
+    // marks set it apart from speech, which the page already does.
+    const lettered = (rs) => rs.filter(r => /\p{L}/u.test(r.text));
+    // A word or three printed in italics between said words that run on in lowercase ("in which _I_
+    // have been") is the speaker's emphasis the parser took for a direction: drawn as said, in italic.
+    if (line.kind === 'speech' && Array.isArray(line.parts)) {
+      const key = (p) => Object.keys(p || {})[0];
+      const stressed = new Set();
+      line.parts.forEach((p, i) => {
+        const prev = line.parts[i - 1], next = line.parts[i + 1];
+        if (key(p) !== 'direction' || key(prev) !== 'say' || key(next) !== 'say') return;
+        const words = String(p.direction || '').replace(/_/g, '').trim().split(/\s+/);
+        if (words.length <= 3 && /^\s*\p{Ll}/u.test(next.say || '') && !/[.!?]["’”]?\s*$/.test(prev.say || '')) stressed.add(i);
+      });
+      for (const r of runs) if (stressed.has(r.piece)) { r.said = true; r.kind = 'em'; }
+    }
+    const byPiece = new Map();
+    for (const r of runs) if (!r.said) (byPiece.get(r.piece) || byPiece.set(r.piece, []).get(r.piece)).push(r);
+    for (const rs of byPiece.values()) {
+      const lt = lettered(rs);
+      const turned = line.kind === 'speech' ? 'plain' : 'em';
+      if (lt.length && lt.every(r => r.kind === turned)) for (const r of rs) r.kind = line.kind === 'speech' ? 'aside' : 'plain';
+    }
+    if (!(line.kind === 'speech' && Array.isArray(line.parts))) {
+      const out = runs.map(r => ({ ...r, text: r.text.replace(/\n\s*/g, (m) => ' '.padEnd(m.length)) }));
+      const first = out[0], last = out[out.length - 1];
+      const src = (line.source || '').replace(/_/g, '');
+      const opens = /^\s*[\[(]/.test(src);
+      const closes = /[\])]\s*$/.test(src);
+      const bracketed = opens && (closes || !/[\])]/.test(src));
+      if (first && bracketed) {
+        const m = /^\s*[\[(]\s*/.exec(first.text);
+        if (m) { first.text = first.text.slice(m[0].length); first.at += m[0].length; }
+      }
+      if (last && bracketed && closes) last.text = last.text.replace(/\s*[\])]\s*$/, '');
+      const cue = line.kind !== 'direction';
+      return { rows: [{ cue, indent: false, runs: out.filter(r => r.text) }] };
+    }
+    const keyOf = (i) => Object.keys(line.parts[i] || {})[0];
+    const textOf = (i) => { const p = line.parts[i] || {}; return p[Object.keys(p)[0]] || ''; };
+    const isCue = (i) => keyOf(i) === 'sound' || (keyOf(i) === 'direction' && CUE_WORDS.test(textOf(i)));
+    const names = [...(roles || [])].filter(n => n && n.length >= 2).sort((a, b) => b.length - a.length);
+    const runIn = (text, k) => {
+      for (const n of names) {
+        if (!text.startsWith(n, k + 1)) continue;
+        const rest = text.slice(k + 1 + n.length);
+        if (/^\s*$/.test(rest) || /^[.:]\s/.test(rest)) return n;
+      }
+      return null;
+    };
+    // A run-in speaker's break is not a verse break.
+    const said = line.parts.filter(p => Object.keys(p)[0] === 'say').map(p => {
+      let t = p.say || '';
+      for (let k = t.indexOf('\n'); k >= 0; k = t.indexOf('\n', k + 1)) if (runIn(t, k)) t = `${t.slice(0, k)} ${t.slice(k + 1)}`;
+      return t;
+    });
+    const verse = isVerse(said);
+    const speeches = [];
+    let sp, row, label = false;
+    const start = (role, name) => { sp = { role, name, rows: [] }; speeches.push(sp); row = null; };
+    const rowNow = (key) => {
+      if (!row || row.key !== key) { row = { cue: !!key, indent: false, runs: [], key }; sp.rows.push(row); }
+      return row;
+    };
+    const push = (r, text, at) => { if (text) rowNow(false).runs.push({ ...r, text, at }); };
+    start(line.role || '', null);
+    for (const r of runs) {
+      if (isCue(r.piece)) {
+        const cr = rowNow(`p${r.piece}`);
+        cr.runs.push({ ...r, text: r.text.replace(/\n\s*/g, (m) => ' '.padEnd(m.length)) });
+        continue;
+      }
+      if (row && row.cue) row = null;
+      if (!r.said) { push(r, r.text.replace(/\n\s*/g, (m) => ' '.padEnd(m.length)), r.at); continue; }
+      let text = r.text, at = r.at;
+      if (label) {
+        const m = /^\s*[.:]?\s*/.exec(text);
+        text = text.slice(m[0].length); at += m[0].length;
+        if (!text) continue;
+        label = false;
+      }
+      // A second speaker run in: "\nNAME" at the end of the words, or "\nNAME. " before more.
+      for (;;) {
+        let hit = null;
+        for (let k = text.indexOf('\n'); k >= 0 && !hit; k = text.indexOf('\n', k + 1)) {
+          const n = runIn(text, k);
+          if (n) hit = { k, n };
+        }
+        if (!hit) break;
+        emit(r, text.slice(0, hit.k), at);
+        start(hit.n, { ...r, kind: 'name', text: hit.n, at: at + hit.k + 1, said: false });
+        const after = text.slice(hit.k + 1 + hit.n.length);
+        const m = /^[.:]?\s*/.exec(after);
+        at += hit.k + 1 + hit.n.length + m[0].length;
+        text = after.slice(m[0].length);
+        if (!text) { label = true; break; }
+      }
+      if (text) emit(r, text, at);
+    }
+    function emit(r, text, at) {
+      if (!verse) { push(r, text.replace(/\n/g, ' '), at); return; }
+      const segs = text.split('\n');
+      segs.forEach((seg, i) => {
+        if (i) { row = { cue: false, indent: false, runs: [], key: false }; sp.rows.push(row); }
+        if (i || !row || !row.runs.length) {
+          const lead = /^\s*/.exec(seg)[0].length;
+          if (i && lead >= 2) row = Object.assign(rowNow(false), { indent: true });
+          seg = seg.slice(lead); at += lead;
+        }
+        push(r, seg, at);
+        at += seg.length + 1;
+      });
+    }
+    for (const s of speeches) {
+      s.rows = s.rows.filter(rw => rw.runs.length);
+      for (const rw of s.rows) delete rw.key;
+    }
+    return { verse, speeches };
+  }
+
+  /** The last words of a speech a cue is heard on: from the last sentence break, at most the whole text. */
+  function cueTail(text) {
+    const t = String(text || '');
+    const re = /[.!?;:—](?:['"’”)\]]*)\s+(?=\S)/g;
+    let at = 0, m;
+    while ((m = re.exec(t))) if (m.index + m[0].length < t.trimEnd().length - 2) at = m.index + m[0].length;
+    return at;
+  }
+
+  return { SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
+           spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
 })();
