@@ -42,6 +42,7 @@ import apple_device as ad  # noqa: E402
 import bench  # noqa: E402
 import devharness as dh  # noqa: E402
 import devlease  # noqa: E402
+import frame_blind  # noqa: E402
 
 REPO = app_config.REPO
 SCHEME = "EarDramaUITests"
@@ -185,12 +186,60 @@ def dropped_launches(log_text):
     return out
 
 
+def displays(udid):
+    """[unique id, ...] from `devicectl device info displays`; [] when unknown."""
+    out = DERIVED.parent / f"displays-{os.getpid()}.json"
+    ad.devicectl("device", "info", "displays", "--device", udid, "--json-output", str(out))
+    try:
+        data = json.loads(out.read_text())
+    except (OSError, ValueError):
+        return []
+    finally:
+        out.unlink(missing_ok=True)
+    ids = []
+
+    def walk(n):
+        if isinstance(n, dict):
+            for k, v in n.items():
+                if re.fullmatch(r"(display)?unique_?id", k, re.I) and isinstance(v, str) and v not in ids:
+                    ids.append(v)
+                else:
+                    walk(v)
+        elif isinstance(n, list):
+            for v in n:
+                walk(v)
+    walk(data)
+    return ids
+
+
+def display_evidence(udid, ids, outdir):
+    """One frame per display straight from the device, named by display id."""
+    for i, did in enumerate(ids):
+        dest = outdir / f"display-{i}-{re.sub(r'[^A-Za-z0-9]', '_', did)[:24]}.png"
+        r = ad.devicectl("device", "capture", "screenshot", "--device", udid,
+                         "--display-unique-id", did, "--destination", str(dest))
+        if dest.exists():
+            note = " (BLIND: one flat color, display is off)" if frame_blind.is_blind(dest) else ""
+            print(f"[uitest] display {did}: {dest}{note}")
+        else:
+            print(f"[uitest] display {did}: capture failed: {(r.stdout + r.stderr).strip()[-200:]}")
+
+
 def overlay_check(outdir_shots, shots):
     """OCR every exported frame. Returns {test id: [failure lines]}, with key None for
     frames the instrument could not read (blind, never a pass)."""
     frames = [(tid, outdir_shots / f) for tid, items in shots.items() for _, f in items
               if f.lower().endswith(".png")]
     bad = {}
+    if not frames:
+        return bad
+    blind = set()
+    for tid, p in frames:
+        if frame_blind.is_blind(p):
+            blind.add(p)
+            bad.setdefault(tid, []).append(f"{p.name} is one flat color (blind: {frame_blind.CAUSE})")
+            bad.setdefault(None, []).append(f"{tid}: {p.name} is one flat color — {frame_blind.CAUSE}")
+    frames = [(t, p) for t, p in frames if p not in blind]
     if not frames:
         return bad
     got = dh.ocr([(0, p) for _, p in frames])
@@ -209,6 +258,10 @@ def overlay_check(outdir_shots, shots):
 
 
 def run(entry, udid, a, outdir, bundle):
+    ids = displays(udid)
+    if len(ids) > 1:
+        print(f"[uitest] WARNING {entry['name']} has {len(ids)} displays: XCUITest frames come from "
+              "the primary display, which is off on an open Duo; every display is captured after the run")
     before = crash_logs(udid)
     if before is None:
         print("[uitest] could not list systemCrashLogs before the run — crash check UNKNOWN")
@@ -257,10 +310,12 @@ def run(entry, udid, a, outdir, bundle):
                 continue
             print(f"{'PASS' if good else 'FAIL'} {name} ({result})")
             for h in (x for v in hits for x in v):
-                print(f"  FAIL overlay: {h} — XCUITest matched through it; this pass proves nothing")
+                print(f"  FAIL frame: {h} — XCUITest matched through it; this pass proves nothing")
         for line in overlays.get(None, []):
-            print(f"FAIL overlay_check_blind: {line}")
+            print(f"FAIL frame_check_blind: {line}")
             ok_all = False
+        if len(ids) > 1:
+            display_evidence(udid, ids, outdir)
         for tid, items in shots.items():
             print(f"  frames {tid}: " + ", ".join(f"{h or f}" for h, f in items))
     finally:
