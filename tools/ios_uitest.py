@@ -32,6 +32,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -212,17 +213,49 @@ def displays(udid):
     return ids
 
 
-def display_evidence(udid, ids, outdir):
-    """One frame per display straight from the device, named by display id."""
+def display_evidence(udid, ids, outdir, tag="", alive=None, capture=None):
+    """One frame per display straight from the device, named by display id, taken ONLY while the app is
+    running (a frame of whatever else is on screen is private to the owner: the Duo's once caught a Messages
+    conversation). The app is checked before each capture and again after it; a frame taken when it was not
+    running at either moment is deleted unseen. `alive`/`capture` are seams for tests."""
+    alive = alive or (lambda: ad.app_alive(udid))
+    capture = capture or (lambda did, dest: ad.devicectl("device", "capture", "screenshot", "--device", udid,
+                                                          "--display-unique-id", did, "--destination", str(dest)))
+    kept = []
     for i, did in enumerate(ids):
-        dest = outdir / f"display-{i}-{re.sub(r'[^A-Za-z0-9]', '_', did)[:24]}.png"
-        r = ad.devicectl("device", "capture", "screenshot", "--device", udid,
-                         "--display-unique-id", did, "--destination", str(dest))
+        dest = outdir / f"display-{tag}{i}-{re.sub(r'[^A-Za-z0-9]', '_', did)[:24]}.png"
+        if alive() is not True:
+            print(f"[uitest] display {did}: skipped, {app_config.APPLE_APP_NAME} is not running")
+            continue
+        r = capture(did, dest)
+        if alive() is not True:
+            dest.unlink(missing_ok=True)
+            print(f"[uitest] display {did}: capture deleted, {app_config.APPLE_APP_NAME} was not running after it")
+            continue
         if dest.exists():
             note = " (BLIND: one flat color, display is off)" if frame_blind.is_blind(dest) else ""
             print(f"[uitest] display {did}: {dest}{note}")
+            kept.append(dest)
         else:
             print(f"[uitest] display {did}: capture failed: {(r.stdout + r.stderr).strip()[-200:]}")
+    return kept
+
+
+class DisplaySampler(threading.Thread):
+    """Captures every display while the tests run (the app is in front then), never after xcodebuild returns:
+    the runner ends the app, and what is on screen afterwards is not ours to photograph."""
+    def __init__(self, udid, ids, outdir, period=60, rounds=5, first=45):
+        super().__init__(daemon=True)
+        self.udid, self.ids, self.outdir, self.period, self.rounds, self.first = udid, ids, outdir, period, rounds, first
+        self.stop = threading.Event()
+
+    def run(self):
+        wait = self.first
+        for n in range(self.rounds):
+            if self.stop.wait(wait):
+                return
+            display_evidence(self.udid, self.ids, self.outdir, tag=f"r{n}-")
+            wait = self.period
 
 
 def overlay_check(outdir_shots, shots):
@@ -261,7 +294,7 @@ def run(entry, udid, a, outdir, bundle):
     ids = displays(udid)
     if len(ids) > 1:
         print(f"[uitest] WARNING {entry['name']} has {len(ids)} displays: XCUITest frames come from "
-              "the primary display, which is off on an open Duo; every display is captured after the run")
+              "the primary display, which is off on an open Duo; every display is captured during the run, only while the app is running")
     before = crash_logs(udid)
     if before is None:
         print("[uitest] could not list systemCrashLogs before the run — crash check UNKNOWN")
@@ -280,7 +313,15 @@ def run(entry, udid, a, outdir, bundle):
     for o in a.only:
         extra += ["-only-testing", f"{SCHEME}/{o}"]
     # Renew-free: hold() renews in the background for as long as this process lives.
-    rc = xcodebuild("test-without-building", udid, a, log, extra)
+    sampler = DisplaySampler(udid, ids, outdir) if len(ids) > 1 else None
+    if sampler:
+        sampler.start()
+    try:
+        rc = xcodebuild("test-without-building", udid, a, log, extra)
+    finally:
+        if sampler:
+            sampler.stop.set()
+            sampler.join(timeout=150)
     ok_all = True
     try:
         tests = []
@@ -314,8 +355,6 @@ def run(entry, udid, a, outdir, bundle):
         for line in overlays.get(None, []):
             print(f"FAIL frame_check_blind: {line}")
             ok_all = False
-        if len(ids) > 1:
-            display_evidence(udid, ids, outdir)
         for tid, items in shots.items():
             print(f"  frames {tid}: " + ", ".join(f"{h or f}" for h, f in items))
     finally:

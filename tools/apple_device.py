@@ -45,8 +45,8 @@ def sh(cmd, timeout=90, env=None):
 
 def devicectl(*args, timeout=90):
     env = dict(os.environ)
-    if app_config.DEVELOPER_DIR:
-        env["DEVELOPER_DIR"] = app_config.DEVELOPER_DIR
+    env["DEVELOPER_DIR"] = (env.get("DEVELOPER_DIR") or app_config.DEVELOPER_DIR
+                            or "/Applications/Xcode.app/Contents/Developer")
     return sh(["xcrun", "devicectl", *args], timeout=timeout, env=env)
 
 
