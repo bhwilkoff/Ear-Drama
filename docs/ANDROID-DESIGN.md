@@ -709,6 +709,25 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     TalkBack reads each speech as one node: the name, then the words.
   - Not on a TV (Android TV and Fire TV get a read-along panel later, as
     tvOS-DESIGN §4.13).
+  - **The studio** (Decision 076 S3; PLAYS-DESIGN §2.9 binding; web sibling
+    WEB-DESIGN §4.16 item 14; port spec `docs/research/design/R2-studio-port-brief.md`).
+    `Route.Reader(scriptId, lineId?, productionId?, part?)`: the cast sheet's
+    Take part / Record / Open part and the reader's **Record** (bottom bar,
+    once a part is chosen) open the reader with the studio attached; the
+    `RecordingSession` engine and take model stay, plus `deleteTake` (refused for
+    the chosen take) and a part-scoped `discardUnused`. Each of my lines shows
+    its take state after the name (`radio_button_unchecked`, a filled circle
+    with the count in the hue, `warning`), a click target that makes the line
+    current and opens its take list. **Compact**: a bottom dock in the
+    `Scaffold` (the `SingleChoiceSegmentedButtonRow`, the status line with the
+    level meter, Previous / record / Next / Hide my lines), the take list, cast,
+    Listen through from here, Delete unused takes and Done with this part in a
+    `ModalBottomSheet`. **Expanded** (the reader holds 860 dp or more: a
+    tablet, an open foldable): a `SupportingPaneScaffold` with the reader as
+    the main pane and the studio as the supporting pane; in tabletop posture
+    the dock sits below the hinge (`currentWindowAdaptiveInfo().windowPosture`).
+    Hardware keys and pedals: SPACE record / stop, J / K my lines, R again,
+    ENTER keep.
 
 ## §5 The player
 

@@ -1082,8 +1082,9 @@ const PlaysUI = (() => {
         C.linesFor(script, part).map(l => h.el('li', {}, lineView(l)))));
       return;
     }
-    rec = { key, id, part, script, s: null, index: 0, headphones: false, back, line: replacing ? lineId : null };
-    paintRecording();
+    // Recording happens in the reader's studio (PLAYS-DESIGN §2.9, WEB-DESIGN §4.16 item 14).
+    const line = lineId && C.linesFor(script, part).some(l => l.id === lineId) ? `&line=${encodeURIComponent(lineId)}` : '';
+    h.navigate(`?read=${encodeURIComponent(p.scriptID || script.id)}&production=${encodeURIComponent(id)}&part=${encodeURIComponent(part)}${line}`, true);
   }
 
   /** Another member's part: the lines with the takes the Worker shows this person, each playable and reportable (rule 8). */
@@ -1963,5 +1964,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
+  return { openStore, render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
 })();

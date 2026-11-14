@@ -1302,6 +1302,8 @@ body.reading #main-content { overflow: hidden; }
 @media (min-width: 560px) { .rd-tool-lab { display: inline; } }
 .rd-tool[aria-pressed="true"] { background: var(--color-surface-alt); border-color: transparent; }
 .rd-page { flex: none; min-width: 4.5em; text-align: right; }
+/* A phone's bar holds the part, four tools and the page: tighter gaps, so the part's name still reads. */
+@media (max-width: 399px) { .rd-bottom { gap: 4px; } .rd-bottom .rd-tool { padding: 0 6px; min-width: 36px; } .rd-page { min-width: 0; } }
 .rd-stage { flex: 1; min-height: 0; position: relative; padding: var(--space-6) var(--space-2) var(--space-4); outline: none; }
 @media (min-width: 600px) { .rd-stage { padding-left: var(--space-6); padding-right: var(--space-6); } }
 /* The page: a 14 px inner margin, so the tint of "my" speeches is never cut at a page's edge. */
@@ -1386,6 +1388,97 @@ body.reading #main-content { overflow: hidden; }
 .rd-now .rd-sp, .rd-line.rd-now:not(.rd-speech) { background: color-mix(in srgb, var(--color-text) 8%, transparent);
   box-shadow: -10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent), 10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent); }
 .rd-dock { flex-shrink: 0; }
+.rd-main { flex: 1; min-height: 0; display: flex; }
+.rd-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rd-rec-btn { color: var(--color-record); border-color: color-mix(in srgb, var(--color-record) 45%, transparent); }
+.rd-rec-btn svg { fill: currentColor; }
+
+/* ---- The studio inside the reader (WEB-DESIGN §4.16 item 14, PLAYS-DESIGN §2.9) ---- */
+/* Each of my lines' take state, after the speaker's name: a ring, the ring filled with the count, or the flag. */
+.rd-take { display: inline-flex; align-items: center; gap: 0.3em; margin-left: 0.5em; padding: 0.15em 0.35em; border: 0; border-radius: 999px;
+  background: transparent; color: var(--hue); font: inherit; font-size: 0.8125em; line-height: 1; vertical-align: 0.05em; cursor: pointer; }
+.rd-take:hover { background: color-mix(in srgb, var(--hue) 14%, transparent); }
+.rd-take-dot { width: 0.75em; height: 0.75em; border-radius: 50%; border: 1.5px solid currentColor; box-sizing: border-box; }
+.rd-take[data-state="chosen"] .rd-take-dot { background: currentColor; }
+.rd-take[data-state="none"] { color: var(--color-text-muted); }
+.rd-take svg { width: 1em; height: 1em; fill: var(--color-warning); }
+.rd-take-n { font-weight: var(--type-body-strong-weight); color: var(--color-text); }
+.rd[data-gutter="true"] .rd-take { display: flex; width: max-content; margin: 0.2em 0 0 auto; }
+/* In the studio a line of mine never splits across pages, so the line being recorded is always whole on screen. */
+.rd.rd-studio .rd-line.rd-mine { break-inside: avoid; }
+/* Room at each page's head and foot for the current line's outline (the page clips what overflows it). */
+.rd.rd-studio[data-layout="pages"] .rd-flow { padding: 8px 0; box-sizing: border-box; }
+/* The current line in ink; dashed red while its cue plays, solid red while the microphone is open. */
+.rd-line.rd-cur, .rd-line.rd-armed, .rd-line.rd-rec { outline-offset: 6px; border-radius: 2px; }
+.rd-line.rd-cur { outline: 2px solid var(--color-text); }
+.rd-line.rd-armed { outline: 2px dashed var(--color-record); }
+.rd-line.rd-rec { outline: 3px solid var(--color-record); }
+/* The dock: the mode, then one status row (or the gate before the first take). */
+.st-dock { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-1); border-top: 1px solid var(--color-border); }
+.st-mode { width: 100%; max-width: 30rem; margin: 0 auto; box-sizing: border-box; }
+.st-mode label { min-height: 34px; font-size: var(--type-caption-size); }
+.st-status { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; width: 100%; max-width: 30rem; margin: 0 auto; flex-wrap: wrap; }
+.st-status > .tabular:first-child { flex: 1; }
+.st-takes-btn { min-height: 32px; padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: 999px; background: transparent;
+  color: var(--color-text); font: inherit; cursor: pointer; white-space: nowrap; }
+.st-takes-btn:hover { background: var(--color-surface-alt); }
+.st-warn-t { color: var(--color-warning); }
+.st-who { color: var(--hue); font-weight: var(--type-body-strong-weight); }
+.st-muted { color: var(--color-text-muted); }
+.st-rec { display: inline-flex; align-items: center; gap: 6px; color: var(--color-record); font-weight: var(--type-body-strong-weight); white-space: nowrap; }
+.st-rec .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-record); }
+.st-meter { flex: 1; min-width: 80px; height: 28px; margin: 0; padding: 0 var(--space-2); }
+.st-count { font-weight: var(--type-body-strong-weight); margin-left: auto; }
+.st-gate { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; max-width: 30rem; margin: 0 auto; padding: var(--space-1) 0; }
+.st-gate > .body { margin: 0; }
+.st-gate > .btn { align-self: flex-start; }
+.st-gate-h { display: flex; align-items: center; gap: var(--space-2); }
+.st-gate-h > span { display: flex; flex-direction: column; }
+.st-gate-icon { width: 28px; height: 28px; flex: none; fill: currentColor; }
+.st-why { color: var(--color-text-muted); }
+.st-gate-go { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.st-gate-go .pl-check { flex: 1 1 14rem; padding: var(--space-2) var(--space-3); }
+.st-go { flex: 1 1 10rem; min-height: var(--tap); }
+.st-gate .refusal { margin: 0; }
+/* The transport: the bottom bar while the studio is attached. */
+.rd-studio .rd-bottom { min-height: 64px; }
+.st-transport { flex: 1; display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; }
+.st-transport:empty { visibility: hidden; }
+.st-transport > .btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; padding-left: var(--space-2); padding-right: var(--space-2); }
+.st-recbtn { flex: none; width: 52px; height: 52px; box-shadow: 0 0 0 3px var(--color-background), 0 0 0 5px color-mix(in srgb, var(--color-record) 40%, transparent); }
+.st-recbtn svg { width: 22px; height: 22px; }
+.rd[data-studio="wide"] .st-open { display: none; }
+/* A review's three buttons take the phone's whole bar. */
+@media (max-width: 559px) { .st-reviewing .rd-page, .st-reviewing .st-open, .st-reviewing .rd-tool[aria-pressed] { display: none; } }
+/* The panel: beside the script from the spread width, else the Studio sheet. */
+.st-side { flex: none; width: 360px; border-left: 1px solid var(--color-border); overflow-y: auto; overscroll-behavior: contain; background: var(--color-background); }
+.st-side[hidden] { display: none; }
+.st-panel { display: flex; flex-direction: column; gap: var(--space-4); }
+.st-side .st-panel { padding: var(--space-4); }
+.st-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.st-part { color: var(--hue); font-family: var(--type-section-header-family); font-weight: var(--type-section-header-weight); font-size: var(--type-section-header-size); text-transform: uppercase; }
+.st-sec { display: flex; flex-direction: column; gap: var(--space-2); }
+.st-h { margin: 0; font-size: var(--type-caption-size); font-weight: var(--type-body-strong-weight); letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-text-muted); }
+.st-words { margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--color-text-muted); }
+.st-take-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.st-take { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); border-bottom: 1px solid var(--color-border); }
+.st-take-pick { flex: 1; min-width: 0; display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+.st-take-t { display: flex; flex-direction: column; line-height: 1.25; white-space: nowrap; }
+.st-take-pick input { width: 20px; height: 20px; margin: 0; accent-color: var(--color-secondary); flex: none; }
+.st-take.on .st-take-pick .body-strong { color: var(--hue); }
+.st-flag { width: 18px; height: 18px; fill: var(--color-warning); flex: none; }
+.st-take .pl-play-dot { width: 36px; height: 36px; }
+.st-cue { flex: none; padding-left: var(--space-2); padding-right: var(--space-2); }
+.st-del, .st-del-gap { flex: none; width: 40px; }
+.st-del svg { width: 20px; height: 20px; fill: currentColor; }
+.st-again { align-self: flex-start; }
+.st-acts { align-items: stretch; }
+.st-acts .caption { margin: 0; }
+.st-keys { display: none; }
+.st-side .st-keys { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; margin: 0; font-size: var(--type-caption-size); }
+.st-side .st-keys dd { margin: 0; }
+.st-side .st-keys kbd { display: inline-block; min-width: 2em; padding: 4px 7px; border: 1.5px solid var(--color-border); border-bottom-width: 3px;
+  border-radius: 6px; font: 600 var(--type-caption-size)/1 var(--font-mono); text-align: center; }
 /* The reader's sheets: full screen on a phone, a card from 600 px. */
 .rd-sheet { width: 100%; max-width: 100%; height: 100%; max-height: 100%; margin: 0; border: 0; padding: var(--space-4);
   background: var(--color-background); color: var(--color-text); overflow-y: auto; }

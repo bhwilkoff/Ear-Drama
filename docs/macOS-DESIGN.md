@@ -236,6 +236,18 @@ only here:
   - The position is a line id per script in `UserDefaults`, kept through
     window resizes and text size changes (re-paginate, return to the line).
   - The studio (S3) becomes the window's `.inspector`; the reader is the same.
+    Specified 2026-11-14 (PLAYS-DESIGN §2.9; port spec
+    `docs/research/design/R2-studio-port-brief.md`): a production's part opens
+    the reader window with the studio attached; the **inspector** (`.inspector`,
+    toggle ⌥⌘I, 320-380 pt) holds the mode `Picker(.segmented)`, the transport
+    (Previous, record, Next) with the status line and level meter, the current
+    line's take list (a `List`: play, With Cue, choose, Delete on unchosen takes,
+    Record Again), the cast with voices, Listen Through From Here, Delete Unused
+    Takes (confirmation with the count) and Done With This Part. A **Recording**
+    menu carries every key (Space record / stop, J / K my lines, R again,
+    Return keep, ⌥⌘I the inspector). Each of my lines shows its take state after
+    the name, clickable. A window too narrow for inspector and page shows the
+    inspector over the page (the system's own behavior).
   - **The page is the Ear Drama page** (PLAYS-DESIGN §2.7 rule 10; iOS-DESIGN
     §4.15 for the shared TextKit set-up). Most Mac windows give a page of 30 em
     or more, so the speaker's name sits in the right-aligned gutter; a narrow

@@ -566,6 +566,40 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
     Playing tints the part's speeches with a leading rule and underlines the
     cue (`.underlineStyle` in the hue). VoiceOver reads a speech as the name,
     then the words (one accessibility element per speech).
+  - **The studio** (Decision 076 S3; PLAYS-DESIGN §2.9 binding; web sibling
+    WEB-DESIGN §4.16 item 14; port spec `docs/research/design/R2-studio-port-brief.md`).
+    `RecordingScreen`'s one-line stage is replaced by the reader with the studio
+    attached: `ScriptReaderView(script:, studio: StudioTarget(production:, part:))`,
+    opened by the cast sheet's Take Part / Record / Open Part and by **Record** in
+    the reader's bottom bar once a part is chosen. The `RecordingSession` engine,
+    take model and three-mode goldens are unchanged; Core gains `Production.deleteTake`
+    (refused for the chosen take) and a part-scoped `discardUnused`.
+    - **On the page**: each of my lines carries its take state after the name
+      (`circle`, `circle.fill` + count in the hue, `exclamationmark.triangle.fill`),
+      a `Button` that makes the line current and opens its take list; the current
+      line outlined in `.primary`, dashed `record` red while its cue plays, solid
+      while the microphone is open.
+    - **Compact width** (iPhone, the closed Duo, a narrow iPad window): the
+      dock is a `.safeAreaInset(edge: .bottom)` under the pages: the mode
+      `Picker(.segmented)`, the status line (line place and takes; speaker and
+      "Device voice" during a cue; "Recording 0:03" and the level meter), and the
+      transport (Previous, the round record control at thumb height, Next, Hide
+      My Lines). Takes, Cast, Listen Through From Here, Delete Unused Takes and
+      Done With This Part are one sheet (`.presentationDetents([.medium, .large])`)
+      from a Studio button (a `Label`) and from the status line.
+    - **Regular width of 860 pt or more** (iPad landscape, the open Duo, a wide
+      window): the same studio as a 340-380 pt trailing pane in an `HStack`
+      with the reader (`onGeometryChange` on width, never the idiom); the
+      reader lays out again in what is left. On the open Duo with iOS 27.1
+      this becomes `ArrangementView { reader } secondary: { studio }`
+      (`.split.axes(.horizontal)`, S4, behind `if #available(iOS 27.1, *)`); the
+      toolbar items stay `Label`s so they move into the Duo's vertical strip.
+    - **Keys** (iPad keyboard; the reader holds focus): Space record / stop /
+      cancel, J / K my next and previous line, R record again, Return keep.
+    - Delete Unused Takes asks with a `confirmationDialog` naming the count; a
+      take's Delete is a swipe action and a context-menu item, absent on the
+      chosen take. Headphones, sign-in, room tone and the microphone prompt are
+      §4.12's, shown in the dock.
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's

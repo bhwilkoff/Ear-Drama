@@ -200,13 +200,27 @@ const PlaysCore = (() => {
     return p.takes.filter(t => !keep.has(t.id));
   }
 
-  /** Every take that is not a line's chosen one is removed; returns them so the store deletes their files. */
-  function discardUnused(p) {
-    const gone = unusedTakes(p);
+  /**
+   * Every take that is not a line's chosen one is removed (only on `lineIDs` when given: the
+   * studio's Delete unused takes is one part's, PLAYS-DESIGN §2.9 rule 4); returns them so the
+   * store deletes their files.
+   */
+  function discardUnused(p, lineIDs = null) {
+    const only = lineIDs ? new Set(lineIDs) : null;
+    const gone = unusedTakes(p).filter(t => !only || only.has(t.lineID));
     const ids = new Set(gone.map(t => t.id));
     const next = clone(p);
     next.takes = next.takes.filter(t => !ids.has(t.id));
     return { production: next, gone };
+  }
+
+  /** One take deleted by the person (§2.9 rule 4); never a line's chosen take, which the play uses. */
+  function deleteTake(p, takeID) {
+    const t = takeById(p, takeID);
+    if (!t || p.chosen[t.lineID] === takeID) return { production: p, gone: [] };
+    const next = clone(p);
+    next.takes = next.takes.filter(x => x.id !== takeID);
+    return { production: next, gone: [t] };
   }
 
   function fingerprint(p) {
@@ -881,7 +895,7 @@ const PlaysCore = (() => {
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
     WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay,
     linesFor, speechLineIDs, castParts,
-    newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused,
+    newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
     cueLines, sectionLevel, sectionTitle, actKey, sectionsOf, contentsOf, placeOf, lineText, fold, searchScript,

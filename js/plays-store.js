@@ -183,12 +183,25 @@ const PlayStore = (() => {
         writes.delete(id);
       },
 
-      async discardUnusedTakes(id) {
+      /** Every unchosen take (on `lineIDs` only, when given) and its file; returns how many went. */
+      async discardUnusedTakes(id, lineIDs = null) {
         const p = store.production(id);
-        if (!p) return;
-        const { production, gone } = C.discardUnused(p);
+        if (!p) return 0;
+        const { production, gone } = C.discardUnused(p, lineIDs);
         for (const t of gone) await backend.remove(takePath(id, t.file)).catch(() => {});
         await store.save(production);
+        return gone.length;
+      },
+
+      /** One unchosen take and its file, the person's own act (PLAYS-DESIGN §2.9 rule 4); false when refused. */
+      async deleteTake(id, takeID) {
+        const p = store.production(id);
+        if (!p) return false;
+        const { production, gone } = C.deleteTake(p, takeID);
+        if (!gone.length) return false;
+        for (const t of gone) await backend.remove(takePath(id, t.file)).catch(() => {});
+        await store.save(production);
+        return true;
       },
 
       /** Discard the run (Run through's review): its takes and their files go, each line back to its prior take. */

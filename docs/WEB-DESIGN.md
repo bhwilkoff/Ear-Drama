@@ -398,6 +398,8 @@ web app follows today.
     countdown, then the recorder in one of three modes (§4.10b). Done with
     this part is enabled when every line of a speaking part has a take.
     Leaving the page ends the session and stops the microphone.
+    Since Decision 076 S3 all of this happens in the reader's studio
+    (§4.16 item 14): `?production=&part=` opens it.
     - *Replaced*: "then the teleprompter: the cue line ..., one record
       control, previous and next, Run-up, Hear it read, the device voice's
       speed, Keep".
@@ -775,6 +777,91 @@ web app follows today.
   12. **States.** Loading: the spinner in the page area. A failed read:
      "This did not load." with Try again. Offline without the script:
      "You are offline." An id in neither file: "Not in the catalog."
+  14. **The studio** (Decision 076 S3; PLAYS-DESIGN §2.9 is binding on the
+     verbs; owner 2026-11-14: *"The recording experience should allow you to
+     read the script as you would any book or script while you record your
+     lines."*). Code: `js/studio.js` (the dock, the panel, the take list),
+     `js/studio-core.js` (no DOM: the current line, mode movement, take
+     states, the production to record into), the shipped `RecordingSession`
+     engine (`js/plays-session.js`) and take model (`PlaysCore`) unchanged
+     but for `deleteTake` and a part-scoped `discardUnused`; tests
+     `js/studio.test.js`; gate and frames `tools/web_fit_studio.py`.
+     - **Address**: `?read={script}&production={id}&part={part}` (the
+       reader's `&line=` still opens at a line). The cast sheet's Take part,
+       Record and Open part go there (`?production=&part=` is replaced in
+       the history by it, so old links land in the studio); a shared
+       production's part that is not this person's keeps its read-along
+       (§4.10a). The script is the production's own copy (its revision), so
+       a line id always names the line its takes were made for.
+     - **The reader's Record**: with a speaking part chosen and no studio,
+       the bottom bar shows **Record** (a mic icon, red outline, its label from
+       560 px) after Hear the cast; it picks the production by PLAYS-DESIGN
+       §2.9 rule 1 (`StudioCore.productionFor`), takes the part if it must,
+       and attaches the studio in place (the address replaced, never a new
+       history entry).
+     - **On the page**: each line of my part carries its take state in the
+       name row (`.rd-take`, a button after the name; in the gutter, under
+       it): an empty ring (`aria-label` "No take"), the ring filled in the
+       hue with the count ("3", "3 takes, take 2 chosen"), or the warning
+       glyph ("Re-take: the microphone heard the device voice"). The current
+       line is outlined in ink (`.rd-cur`); while its cue plays the outline
+       is dashed red (`.rd-armed`), solid red while the microphone is open
+       (`.rd-rec`); the line being heard is lit as Hear the cast lights it
+       (`.rd-now`). A tap on one of my lines makes it current (it does not
+       turn the page in Pages); a tap on its take state also opens its take
+       list. The page itself is unchanged (§4.16 item 3).
+     - **The dock** (`.st-dock`, in the reader's dock slot, above the bottom
+       bar): the mode control (§4.10b's segments, 36 px), then one status
+       row: "Line 3 of 44" and the line's takes ("Take 2 of 3", "No take",
+       "Re-take"), which is a button that opens the take list; while a cue
+       plays, the speaker in the hue and "Device voice" when the device reads
+       it; while the microphone is open, "Recording 0:03" in the record color
+       and the live level meter (40 bars, drawn in place). In studio mode the
+       **bottom bar** is the transport: on a phone a **Studio** icon (the
+       panel as a sheet), then Previous, the round record control (56 px,
+       red; Stop while listening; Cancel, ink, while a Step or Line by line
+       cue plays; "From here" in Run through, Pause or Stop during a run),
+       Next, Hide my lines, and the page count. I'm playing, Next line and
+       Hear the cast step aside (the studio's part is the part; cues play
+       from the studio). Step's review replaces the transport with Again,
+       With cue, Keep; a run's review with Discard the run and Keep N takes.
+     - **The panel** (`.st-panel`): a heading with the part ("ROSE · You")
+       and "K of N" kept; **Takes** for the current line (each row: "Take 2",
+       its length, play, With cue, a radio to choose it, Delete on unchosen
+       takes; then **Record again**); **Cast** (`CastUI.list` over the
+       production's cast, a held part showing its performer); **Listen
+       through from here** (`ListenThrough` from the current line; the reader
+       follows it); **Delete unused takes** (`confirm()` naming the count,
+       hidden when there are none) and **Done with this part** (enabled when
+       every line has a usable take); then the keys. From **860 px** of
+       reader width (`ReaderCore.SPREAD_MIN`, the spread width) it is a
+       360 px column beside the script (`.rd[data-studio=wide]`), the
+       script laid out again in the rest (two facing pages once it still
+       holds 860); narrower, it is a `<dialog>` sheet (the reader's sheet:
+       full screen on a phone, a card from 600 px) opened from the Studio
+       icon or the status row.
+     - **Keys** (the reader's handler first, so nothing reaches the player):
+       Space records, stops, cancels, or (in Run through) starts and pauses;
+       `J` / `K` my next and previous line (current, and the page turned to
+       it); `R` records the current line again (Again in a review); Return
+       keeps in a review; arrows and Page keys turn pages as before.
+     - **States**, in the dock's status area, each in place of the
+       transport until it clears: this browser cannot record ("This browser
+       cannot record."); signed out ("Recording needs an account." and Sign
+       in, which opens the account sheet; offline, Sign in is disabled and
+       "You are offline." follows); headphones (§4.10's "Headphones on", "This
+       browser cannot tell whether they are on.", the check and Start
+       recording, every session); room tone ("Quiet, please. Recording the
+       room." and the countdown); a refused or missing microphone and a take
+       not saved (§4.10's words, in the error color, with Start recording
+       again). Offline while signed in records as usual.
+     - **Leaving**: Close goes back to the cast sheet (or where the person
+       came from); leaving the reader ends the session and stops the
+       microphone, as leaving the recorder did.
+     - *Replaced*: the recorder's own page (`?production=&part=`): "the
+       top (close, the part over the play, "K of N" kept), the strip ... the
+       dock. At 1100 px and wider, "In this scene" (faces) on the left and
+       this line's aids and the keys on the right" (§4.10b's fixed slots).
 
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll except Home's (Decision 075) and on each site page: Credits, Privacy, Take-down requests,

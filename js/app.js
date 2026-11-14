@@ -2059,23 +2059,51 @@
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }
-  /** The script reader (WEB-DESIGN §4.16): `?read={id}`, optionally `&line={line id}`. */
+  /**
+   * The script reader (WEB-DESIGN §4.16): `?read={id}`, optionally `&line={line id}`; with
+   * `&production={id}&part={part}` the studio is attached (§4.16 item 14), on the production's own
+   * copy of the script.
+   */
   let readerSeq = 0;
   function renderReader(r) {
     const body = $('reader-body');
     const my = ++readerSeq;
-    if (Reader.openID() === r.id && body.firstChild) return;
+    const prod = r.p.get('production');
+    const part = r.p.get('part');
+    const studio = !!(prod && part);
+    const key = studio ? `${r.id} ${prod} ${part}` : r.id;
+    if (Reader.openKey() === key && body.firstChild) return;
     setTitle('Read');
     body.replaceChildren(stateBox('loading'));
     const close = () => {
       if (readerFrom) history.back();
-      else navigate(`?play=${encodeURIComponent(r.id)}`, true);
+      else navigate(studio ? `?production=${encodeURIComponent(prod)}` : `?play=${encodeURIComponent(r.id)}`, true);
     };
-    API.playScript(r.id).then((script) => {
+    /** The reader's Record (§4.16 item 14): the production this part records in, then the studio. Not on a TV. */
+    const onRecord = document.documentElement.classList.contains('tv') ? null : async (script, p) => {
+      try {
+        const id = await Studio.begin(script, p);
+        navigate(`?read=${encodeURIComponent(script.id)}&production=${encodeURIComponent(id)}&part=${encodeURIComponent(p)}`, true);
+      } catch (err) {
+        console.error(err);
+        announce('This browser could not save a production.');
+      }
+    };
+    const load = studio
+      ? PlaysUI.openStore().then(async (store) => {
+        const p = store.production(prod);
+        return p ? { script: await store.script(p), store } : { script: null };
+      })
+      : API.playScript(r.id).then(script => ({ script }));
+    load.then(({ script, store }) => {
       if (my !== readerSeq || $('view-reader').hidden) return;
       if (!script) { body.replaceChildren(stateBox('missing')); return; }
       setTitle(script.title);
-      Reader.open(body, script, { line: r.p.get('line'), onClose: close });
+      Reader.open(body, script, {
+        line: r.p.get('line'), onClose: close, navigate,
+        onRecord: onRecord ? (p) => onRecord(script, p) : null,
+        studio: studio ? { production: prod, part, store, line: r.p.get('line') } : null,
+      });
     }).catch((err) => {
       if (my !== readerSeq) return;
       console.error(err);

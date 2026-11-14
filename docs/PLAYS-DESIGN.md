@@ -185,6 +185,8 @@ Every platform does the same seven things, in its own idiom.
    - **Line by line**: every line of the part with its state; tapping any
      line opens it under its cue to record it or record it again, and the
      take leaves the line ready to record again.
+   Where it happens: inside the reader, the modes as three ways the reader
+   moves (§2.9, Decision 076 S3).
    The mode control is the platform's native segmented control, disabled
    while a cue plays, the microphone is open, or a run is on screen. The
    recorder opens in Run through the first time, then in the person's last
@@ -345,17 +347,91 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    device voice reads is labeled "Device voice", and nothing of a device voice is stored
    (§5).
 
+### §2.9 The studio inside the reader (Decision 076, phase S3; binding on every platform that records)
+
+The owner, 2026-11-14: *"The recording experience should allow you to read the script as you
+would any book or script while you record your lines. It should be easy to go back and forth
+within the script and rerecord any line that you'd like to do another take with. ...
+Additionally, on an iPhone Duo with the screen open, you should be able to see the script on one
+side and the recording featueres on the other."* Research: `R2-script-reader-and-studio.md`
+§4.3 and §4.5; Q9 and Q11 answered (a). Each platform's design doc says the idiom (WEB-DESIGN
+§4.16 item 14, iOS-DESIGN §4.15 "The studio", macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS
+records nothing). Port spec: `docs/research/design/R2-studio-port-brief.md`. Step 4 of §2 (the
+three modes) is unchanged in what the engine does; this section is where it happens.
+
+1. **Recording happens in the script.** The studio is the reader (§2.7) with "I'm playing" set
+   to the part and the studio attached; every page of the play stays readable, turnable and
+   searchable while recording, and the page keeps the Ear Drama page (§2.7 rule 10) unchanged.
+   It opens two ways: from the cast sheet (Take part, Record, Open part), at the part's first
+   line with no take, else the line asked for; and from the reader itself, where a chosen part
+   offers **Record**. The reader's Record continues this device's newest unshared production of
+   the play in which that part is recording, else takes the part in the newest one where it is
+   open and no other part records, else makes a new production and takes the part. One seam on
+   every platform: `open(scriptID, at: lineID?, studio: (production, part)?)`.
+2. **The current line.** One of my lines is current: outlined in ink on the page. A tap on any of
+   my lines makes it current; Next and Previous (`J` / `K` on a keyboard) move to my next and
+   previous line and turn the page to it. Other parts' lines are read as before (and their pages
+   turn as before).
+3. **Each of my lines shows its take state inline**, beside the speaker's name: an empty ring
+   (no take), the ring filled in the part's hue with the number of takes (a chosen take; every
+   line with takes has one), or the warning glyph (the chosen take was flagged by the bleed
+   check). It is a button: it makes the line current and opens its **take list**.
+4. **The take list** (one per line): every take, oldest first, numbered, with its length; the
+   chosen one marked. Each row: play it, play it after its cue (With cue), choose it, and delete
+   it. **Only an unchosen take can be deleted** (choose another first): the chosen take is the
+   one the play uses, and in a shared production the one uploaded. **Record again** records the
+   line again as a new take, chosen at once; every older take stays (§8 rule 5). **Delete unused
+   takes** removes every unchosen take of the part, after one confirmation that says how many:
+   the person's own act, never automatic.
+5. **The three modes are three ways the reader moves** (owner ruling 4, Q11 (a)), the same
+   native segmented control as §2.4, disabled while a cue plays, the microphone is open, or a
+   run is on screen; the last mode is kept per device, as before.
+   - **Run through**: Record (labeled "From here") plays the play from the current line's cue,
+     other parts in their human takes or their cast voices (§2.8), the microphone opening on each
+     of my lines as it comes and the line-end detector closing it; the reader follows the line
+     being heard or recorded, turning its own pages. Pause ends the run; its review is §2.4's
+     (each take with its cue, Again, Keep N takes, Discard the run).
+   - **Line by line**: Record plays the current line's cue and records it; after the take the
+     line stays current, ready to record again. Next and Previous move by my lines.
+   - **Step**: Record plays the cue and records; the take's review offers Again, With cue and
+     Keep, and Keep makes my next line current and waits for a tap.
+6. **The dock.** On a phone (and any compact width) the studio is a dock under the page: the
+   mode control; one status line (the current line's place, "Line 3 of 44", and its takes; while
+   the cue plays, the speaker and "Device voice" when a device voice reads it; while the
+   microphone is open, "Recording 0:03" and the live level meter); and the transport (Previous,
+   the one round record control, Next), with the take list, the cast and the rest in a sheet.
+   The record control is always on screen (Q9 (a)).
+7. **Wide: the script on one side, the studio on the other.** When the reader has 860 pt (px,
+   dp) or more, the studio's panel stands beside the script: the current line's take list, the
+   cast with each part's voice or performer (§2.8's chips and picker), **Listen through from
+   here**, Delete unused takes, Done with this part, and the keys. The script keeps the rest of
+   the width (two facing pages when it still holds 860). On the open iPhone Duo this is the
+   reader's wide layout, later an `ArrangementView` (S4); on a Mac the window's inspector; on an
+   Android tablet or open foldable a supporting pane.
+8. **Keys** wherever there is a keyboard: Space records, stops, or cancels the cue (in a run,
+   starts or pauses); `J` / `K` my next and previous line; `R` records the current line again
+   (Again in a review); Return keeps (Step's review, a run's review); the arrows and Page keys
+   keep turning pages.
+9. **Before the first take, unchanged from §2.3**: the account (signed out: "Recording needs an
+   account." and sign-in, nothing else), headphones (§4.3), the microphone asked for at Start
+   recording, five seconds of room tone, each shown in the dock. A refused microphone, a missing
+   one, a take that did not save, and being offline while signed out each say so in the dock;
+   offline while signed in records as usual (everything is on the device, §6).
+10. **Nothing new is stored.** Takes, the chosen map, room tone and the production record are
+    §6's; device voices stay live and unstored (§5); take upload and publish rules are Decisions
+    072 and 073's, unchanged. The reader's position and marks stay the reader's.
+
 ### The platform idioms
 
 Same verbs, native idioms (`cross-platform-parity-discipline`).
 
 | Platform | Records? | The idiom |
 |---|---|---|
-| iPhone | Yes | One line at a time in a large teleprompter, the next line dim, one record control at thumb height; the cast sheet is a list and the relay is a push |
-| iPad | Yes | The script and the cast side by side (a split view), so the person waiting their turn can follow along on the same screen |
-| Mac | Yes | A production is a window, the script in a sidebar, and the keyboard drives it (Space to record or stop, Return to keep a take, the arrow keys to move by line); the best seat for listening through and fixing timing |
-| Android phone | Yes | Material 3 list and teleprompter, the same verbs; recording quality varies by device (§4.2) |
-| Web | Yes, with headphones only | "Wait for me" pacing only, no sample-accurate cues, and no bleed check, because a browser cannot capture synthesized speech (08a §3) |
+| iPhone | Yes | The reader with the studio's dock under the page (§2.9 rule 6); the take list, cast and the rest in a sheet; the cast sheet is a list and the relay is a push |
+| iPad, open iPhone Duo | Yes | The script and the studio side by side once the reader holds 860 pt (§2.9 rule 7), so the person waiting their turn can follow along on the same screen |
+| Mac | Yes | A production is a window: the reader with the studio as the window's inspector, and the keyboard drives it (Space to record or stop, Return to keep a take, J and K to move by my lines); the best seat for listening through and fixing timing |
+| Android phone, tablet, foldable | Yes | Material 3: the reader with a bottom dock on a phone, a supporting pane when expanded; recording quality varies by device (§4.2) |
+| Web | Yes, with headphones only | The reader with a dock under the page, a studio column from 860 px; "wait for me" pacing only, no sample-accurate cues, and no bleed check beyond level, because a browser cannot capture synthesized speech (08a §3) |
 | Apple TV, Google TV, Fire TV, Roku | No | Play back only (research 08 §5). In phase 1 a finished play reaches a TV by AirPlay or Cast from the device that made it |
 
 ---
@@ -733,7 +809,9 @@ why it is open to everyone, children included (08c §6.2).
 4. Phase 1 uploads nothing. Recording needs an account, always (owner
    2026-10-23); listening and reading along do not.
 5. A take is immutable; choosing a different take never deletes the old one
-   until the person discards it.
+   until the person discards it. A take is deleted only by the person's own act
+   (its Delete, Delete unused takes, Discard the run), and never the chosen one
+   alone (§2.9 rule 4).
 6. The app never scores or rejects a performance.
 7. Every platform that records ships the same seven verbs (§2) in the same
    change set, or carries a ⏳ cell in PARITY.md with its reason.
