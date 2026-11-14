@@ -51,6 +51,7 @@ final class CatalogStore {
         guard !started else { return }
         started = true
         watchNetwork()
+        await refresher.recoverStaging()
         if let cached = await refresher.cachedDatabasePath(), open(cached, seed: false) {
             // the last full download
         } else if let seed = Bundle.main.path(forResource: CatalogSource.seedResource, ofType: "sqlite"),

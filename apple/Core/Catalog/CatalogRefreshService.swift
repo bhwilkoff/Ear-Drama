@@ -41,11 +41,14 @@ actor CatalogRefreshService {
     private let defaults: UserDefaults
     private let directory: URL
     private let sourceURL: URL
+    private let minimumBytes: Int
     private var isDownloading = false
 
     /// tvOS may write only to Caches and tmp, never Application Support.
     init(session: URLSession = .shared, defaults: UserDefaults = .standard,
-         directory: URL? = nil, sourceURL: URL = CatalogSource.releaseURL) {
+         directory: URL? = nil, sourceURL: URL = CatalogSource.releaseURL,
+         minimumBytes: Int = CatalogRefreshService.minimumBytes) {
+        self.minimumBytes = minimumBytes
         self.session = session
         self.defaults = defaults
         self.directory = directory
@@ -67,13 +70,62 @@ actor CatalogRefreshService {
         let path = cachedDatabasePath()
         defaults.removeObject(forKey: Self.etagKey)
         defaults.removeObject(forKey: Self.filenameKey)
+        defaults.removeObject(forKey: Self.lastCheckedKey)
         if let path { try? FileManager.default.removeItem(atPath: path) }
         print("[CatalogRefresh] discarded cached catalog (\(reason))")
     }
 
+    /// A launch with no downloaded catalog (only the seed, or nothing) always
+    /// checks, whatever the window says.
     func isStale(ttl: TimeInterval = staleAfter) -> Bool {
+        guard cachedDatabasePath() != nil else { return true }
         let last = defaults.double(forKey: Self.lastCheckedKey)
         return last <= 0 || Date().timeIntervalSince1970 - last >= ttl
+    }
+
+    /// "Last checked" is stamped only when a check truly completes: the
+    /// release answered unchanged or is not published, or the new catalog was
+    /// swapped in. A kill or a failure anywhere before that leaves the window
+    /// open so the next launch tries again.
+    private func markChecked() {
+        defaults.set(Date().timeIntervalSince1970, forKey: Self.lastCheckedKey)
+    }
+
+    /// Launch repair, before anything opens the cache: a finished generation a
+    /// kill left unadopted (or an inflated staging file it never renamed) is
+    /// promoted when it passes the size floor and the integrity gate and is
+    /// newer than the one in use; anything else of ours is deleted.
+    func recoverStaging() {
+        let fm = FileManager.default
+        let files = ((try? fm.contentsOfDirectory(atPath: directory.path)) ?? []).sorted()
+        let current = defaults.string(forKey: Self.filenameKey)
+        func remove(_ name: String) { try? fm.removeItem(at: directory.appendingPathComponent(name)) }
+        func usable(_ name: String) -> Bool {
+            let url = directory.appendingPathComponent(name)
+            let size = ((try? fm.attributesOfItem(atPath: url.path))?[.size] as? Int) ?? 0
+            return size >= minimumBytes && CatalogDatabase.validate(path: url.path)
+        }
+        for name in files where name.hasPrefix("ear-drama-") && name.hasSuffix(".inflating") {
+            let final = String(name.dropLast(".inflating".count))
+            if usable(name), final > (current ?? ""),
+               (try? fm.moveItem(at: directory.appendingPathComponent(name),
+                                 to: directory.appendingPathComponent(final))) != nil {
+                continue
+            }
+            remove(name)
+        }
+        let generations = ((try? fm.contentsOfDirectory(atPath: directory.path)) ?? []).sorted()
+            .filter { $0.hasPrefix("ear-drama-") && $0.hasSuffix(".sqlite") && $0 != current }
+        guard let newest = generations.last else { return }
+        for name in generations.dropLast() { remove(name) }
+        if newest > (current ?? ""), usable(newest) {
+            defaults.set(newest, forKey: Self.filenameKey)
+            defaults.removeObject(forKey: Self.etagKey)
+            markChecked()
+            if let current { remove(current) }
+        } else {
+            remove(newest)
+        }
     }
 
     /// Returns the path of a NEWER validated catalog, or nil when the release
@@ -94,13 +146,16 @@ actor CatalogRefreshService {
             let (tmp, response) = try await session.download(for: request)
             defer { try? FileManager.default.removeItem(at: tmp) }
             guard let http = response as? HTTPURLResponse else { return nil }
-            defaults.set(Date().timeIntervalSince1970, forKey: Self.lastCheckedKey)
-            guard http.statusCode == 200 else { return nil }   // 304 keeps the cache
+            guard http.statusCode == 200 else {   // 304 keeps the cache; 404 is not published yet
+                if http.statusCode == 304 || http.statusCode == 404 { markChecked() }
+                return nil
+            }
             let destination = directory.appendingPathComponent("ear-drama-\(Int(Date().timeIntervalSince1970)).sqlite")
-            guard let path = try Self.install(compressed: tmp, to: destination, minimumBytes: Self.minimumBytes)
+            guard let path = try Self.install(compressed: tmp, to: destination, minimumBytes: minimumBytes)
             else { return nil }
             defaults.set(destination.lastPathComponent, forKey: Self.filenameKey)
             if let etag = http.value(forHTTPHeaderField: "ETag") { defaults.set(etag, forKey: Self.etagKey) }
+            markChecked()
             return path
         } catch {
             print("[CatalogRefresh] unreachable (\(error.localizedDescription)); staying on the current catalog")

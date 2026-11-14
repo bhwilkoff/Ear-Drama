@@ -48,6 +48,16 @@ downloaded database is validated before the swap: a size floor, `PRAGMA
 integrity_check`, and `schemaVersion` at or above the app's minimum, then an
 atomic rename. A half-downloaded catalog never becomes the live one.
 
+A client stamps "last checked" (the 6-hour window) only when a check truly
+completes: the release answered unchanged (304) or is not published (404), or
+the new catalog was swapped in. An interrupted download, a torn inflate, or a
+kill anywhere before that leaves the window open so the next launch retries.
+At launch, a complete valid staged file a kill left behind is promoted (and
+counts as a completed check); an invalid one is deleted; a launch with no
+downloaded catalog in use checks regardless of the window. Android
+(`CatalogFiles.kt`, `CatalogFilesTest`) and Apple (`CatalogRefreshService`,
+`CatalogRefreshStampTests`) hold the same rule.
+
 ## 3. The served projection (native SQLite)
 
 Only rows whose `state` begins with `keep_` are served. Hidden rows never leave
