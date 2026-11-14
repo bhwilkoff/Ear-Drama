@@ -11,11 +11,14 @@ cross-file consistency, never which plays exist.
 import json
 import os
 import sys
+import tarfile
 import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
 import build_castable_scripts as B
 import build_play_library as L
+import check_play_library as C
+import play_library_archive as A
 import script_parse as P
 
 CASES = []
@@ -52,40 +55,19 @@ def fixture_build():
     return L.build(PLAYS, CTX, TEXTS.get)
 
 
-def check_library(root):
-    """Shape and consistency of a built library; returns the index."""
-    idx = json.load(open(os.path.join(root, "index.json")))
-    assert idx["format"] == L.FORMAT and isinstance(idx["plays"], list)
-    assert idx["count"] == len(idx["plays"]) > 0
-    names = sorted(os.listdir(os.path.join(root, "scripts")))
-    assert names == sorted(f"{p['id']}.json" for p in idx["plays"]), "scripts/ and the index name different plays"
-    ids = [p["id"] for p in idx["plays"]]
-    assert len(ids) == len(set(ids)), "duplicate id"
-    keys = [(p["sort_name"], p["id"]) for p in idx["plays"]]
-    assert keys == sorted(keys), "index is not in sort order"
-    for p in idx["plays"]:
-        assert p["id"].startswith("gut-") and p["id"][4:].isdigit(), p["id"]
-        assert p["kind"] in ("stage", "radio"), p
-        for k in ("title", "revision", "path"):
-            assert isinstance(p[k], str) and p[k], (p["id"], k)
-        assert p["path"] == f"scripts/{p['id']}.json"
-        assert isinstance(p["authors"], list) and all(isinstance(a, str) for a in p["authors"])
-        assert isinstance(p["voices"], int) and p["voices"] >= 2, p
-        assert p["roles"] >= p["voices"] and p["words"] > 0 and p["minutes"] >= 1 and p["lines"] > 0
-        assert "year" not in p or isinstance(p["year"], int)
-        assert p["rights"]["bucket"] and p["rights"]["evidence"], (p["id"], "no rights evidence")
-        for ev in p["rights"]["evidence"]:
-            assert ev["claim"] and ev["src"].startswith("http"), p["id"]
-        assert p["source"]["url"].startswith("http")
-        doc = json.load(open(os.path.join(root, p["path"])))
-        assert doc["format"] == L.FORMAT and len(doc["scripts"]) == 1
-        s = doc["scripts"][0]
-        assert s["id"] == p["id"] and s["revision"] == p["revision"] and s["title"] == p["title"]
-        assert len(s["roles"]) == p["roles"] and s["rights"] == p["rights"]
-        speech = [l for l in s["lines"] if l["kind"] == "speech"]
-        assert len(speech) == p["lines"]
-        assert all(l["role"] and l["parts"] for l in speech)
-    return idx
+def speeches(prefix, speakers, n=40):
+    return "\n\n".join(f"{s}. {prefix} line {i} of {s}, said plainly and at some length." for i in range(n) for s in speakers)
+
+
+def volume_text(titles=("THE FIRST PLAY", "THE SECOND PLAY"), names=(("SHERIFF", "HALE"), ("COOK", "BAKER"))):
+    out = ["*** START OF THE PROJECT GUTENBERG EBOOK VOLUME ***", "THE COLLECTED PLAYS"]
+    for title, who in zip(titles, names):
+        out += [title, "CHARACTERS", "\n".join(f"{w}, a person." for w in who), "ACT I",
+                speeches(title.split()[1].lower(), who), "THE END"]
+    return "\n\n".join(out) + "\n"
+
+
+check_library = C.check_library
 
 
 @case
@@ -171,12 +153,148 @@ def the_real_artifact_has_the_documented_shape():
     assert idx["report"]["bundled_missing_from_library"] == []
 
 
+@case
+def a_volume_is_split_at_its_plays_with_stable_numbers():
+    parts = P.split_volume(volume_text())
+    assert [(n, t) for n, t, _ in parts] == [(1, "THE FIRST PLAY"), (2, "THE SECOND PLAY")], [(n, t) for n, t, _ in parts]
+    assert "SHERIFF" in parts[0][2] and "COOK" not in parts[0][2] and "COOK" in parts[1][2]
+
+
+@case
+def a_volume_builds_to_numbered_plays_carrying_its_rights():
+    plays = [dict(play(7, "The Collected Plays"), authors=[{"name": "Glaspell, Susan", "born": 1876, "died": 1948, "role": "author"}])]
+    entries, report = L.build(plays, CTX, {"7": volume_text()}.get)
+    assert [e["id"] for e in entries] == ["gut-7-1", "gut-7-2"], [e["id"] for e in entries]
+    assert [e["title"] for e in entries] == ["The First Play", "The Second Play"]
+    assert all(e["collection"] == "The Collected Plays" and e["rights"]["evidence"] for e in entries)
+    assert report["volumes"] == 1 and report["split_clean"] == 2, report
+    with tempfile.TemporaryDirectory() as d:
+        L.write(entries, report, d)
+        check_library(d)
+
+
+@case
+def a_volume_with_two_authors_is_held_not_split():
+    two = dict(play(7, "The Collected Plays"))
+    two["authors"] = two["authors"] + [{"name": "Cook, George Cram", "born": 1873, "died": 1924, "role": "author"}]
+    entries, report = L.build([two], CTX, {"7": volume_text()}.get)
+    assert entries == [] and report["volumes_held_not_one_author"] == 1, report
+
+
+@case
+def a_title_that_names_no_play_is_not_used():
+    rec = {"authors": [{"name": "Dunsany, Lord"}], "translators": []}
+    for bad in (None, "THE", "BY", "DISPOSITION OF CHARACTERS", "II.--THE FAN", "OR THE DOUBLE LIFE", "LORD DUNSANY"):
+        assert L.volume_play_title(bad, rec) is None, bad
+    assert L.volume_play_title("THE GODS OF THE MOUNTAIN", rec) == "The Gods of the Mountain"
+
+
+@case
+def a_role_read_out_of_a_cast_list_is_an_artifact():
+    ent = lambda *names: {"title": "Hedda Gabler", "roles": [{"name": n, "lines": 9, "words": 9} for n in names]}
+    assert L.role_artifact(ent("HEDDA", "MRS")) == "MRS" and L.role_artifact(ent("HEDDA", "HEDDA GABLER"))
+    assert L.role_artifact(ent("HEDDA", "STROPHE I")) and L.role_artifact(ent("HEDDA", "MRS. ELVSTED")) is None
+
+
+def dup_entry(eid, lines, volume=False, voices=2):
+    words = [f"w{i}" for i in range(lines)]
+    ent = {"id": eid, "title": "Same Play", "authors": [{"name": "Author, A"}],
+           "roles": [{"name": f"R{k}", "lines": 9, "words": 9} for k in range(voices)],
+           "lines": [{"kind": "speech", "role": "R0", "parts": [{"say": " ".join(words)}]}]}
+    if volume:
+        ent["collection"] = "A Volume"
+    return ent
+
+
+@case
+def one_work_under_several_ids_is_kept_once_and_every_drop_is_listed():
+    entries = [dup_entry("gut-9-3", 400, volume=True, voices=9), dup_entry("gut-5", 400), dup_entry("gut-2", 400)]
+    kept, rows, _ = L.dedupe(entries)
+    assert [e["id"] for e in kept] == ["gut-2"], "the single-play text with the lower id wins over a fuller volume play"
+    assert sorted(r["dropped"] for r in rows) == ["gut-5", "gut-9-3"] and all(r["kept"] == "gut-2" for r in rows)
+    kept, rows, _ = L.dedupe(entries, protect={"gut-5"})
+    assert [e["id"] for e in kept] == ["gut-5"], "a bundled play is never the one dropped"
+
+
+@case
+def different_plays_and_a_bundle_are_not_taken_for_duplicates():
+    a, b = dup_entry("gut-1", 400), dup_entry("gut-2", 400)
+    b["lines"][0]["parts"][0]["say"] = " ".join(f"z{i}" for i in range(400))
+    bundle = dup_entry("gut-3", 4000)
+    bundle["lines"][0]["parts"][0]["say"] += " " + a["lines"][0]["parts"][0]["say"]
+    kept, rows, shared = L.dedupe([a, b, bundle])
+    assert len(kept) == 3 and rows == [], rows
+    assert shared == [["gut-1", "gut-2", "gut-3"]], "same title and author, different text: reported, kept"
+
+
+def sized_library(d, n):
+    """A library of n copies of the fixture play under distinct ids, for the archive tests."""
+    entries, report = fixture_build()
+    many = []
+    for k in range(n):
+        e = json.loads(json.dumps(entries[0]))
+        e["id"] = f"gut-{1000 + k}"
+        e["sort_name"] = f"play {k:04d}"
+        many.append(e)
+    L.write(many, report, d)
+
+
+@case
+def the_archive_round_trips_a_library_byte_for_byte():
+    with tempfile.TemporaryDirectory() as d:
+        src, a, b, out = (os.path.join(d, x) for x in ("src", "a.tar.xz", "b.tar.xz", "out"))
+        sized_library(src, C.MIN_PLAYS)
+        A.pack(src, a)
+        A.pack(src, b)
+        assert open(a, "rb").read() == open(b, "rb").read(), "packing is not deterministic"
+        assert A.unpack(a, out)["count"] == C.MIN_PLAYS
+        assert open(os.path.join(out, "index.json"), "rb").read() == open(os.path.join(src, "index.json"), "rb").read()
+
+
+@case
+def a_library_below_the_floor_is_not_packed_or_unpacked():
+    with tempfile.TemporaryDirectory() as d:
+        src, a = os.path.join(d, "src"), os.path.join(d, "a.tar.xz")
+        sized_library(src, 3)
+        for fn in (lambda: A.pack(src, a),):
+            try:
+                fn()
+            except AssertionError:
+                break
+            raise AssertionError("a 3-play library was packed")
+        with tarfile.open(a, "w:xz") as tar:
+            for name in ("index.json",) + tuple(f"scripts/{n}" for n in sorted(os.listdir(os.path.join(src, "scripts")))):
+                tar.add(os.path.join(src, name), arcname="plays-library/" + name)
+        try:
+            A.unpack(a, os.path.join(d, "out"))
+        except AssertionError:
+            return
+        raise AssertionError("a 3-play archive was unpacked")
+
+
+@case
+def an_archive_with_a_stray_or_climbing_member_is_refused():
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "src")
+        sized_library(src, C.MIN_PLAYS)
+        for bad in ("plays-library/notes.txt", "../escape.json", "/abs/index.json"):
+            a = os.path.join(d, "bad.tar.xz")
+            with tarfile.open(a, "w:xz") as tar:
+                tar.add(os.path.join(src, "index.json"), arcname="plays-library/index.json")
+                tar.add(os.path.join(src, "index.json"), arcname=bad)
+            try:
+                A.unpack(a, os.path.join(d, "out"))
+            except ValueError:
+                continue
+            raise AssertionError(f"an archive holding {bad} was unpacked")
+
+
 def main():
     failed = 0
     for fn in CASES:
         try:
             fn()
-        except (AssertionError, KeyError, StopIteration, FileNotFoundError) as e:
+        except (AssertionError, KeyError, StopIteration, FileNotFoundError, ValueError) as e:
             failed += 1
             print(f"FAIL {fn.__name__}: {e!r}")
     print(f"{len(CASES) - failed}/{len(CASES)} passed")

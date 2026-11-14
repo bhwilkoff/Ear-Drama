@@ -212,6 +212,12 @@ flagged (`tests/test_no_recommend.py` holds that control).
     python3 tools/build_castable_scripts.py               # plays/castable-scripts.json, which the apps bundle
     python3 tools/harvest_gutenberg_plays.py --rsync-castable   # every cleared text, one rsync session (Decision 075)
     python3 tools/build_play_library.py                   # out/plays-library/: the full library, published beside the catalog
+    bash ../tools/refresh_play_library.sh                 # harvest, build, test, pack, upload plays-library-DATE.tar.xz (never --clobber)
+
+The library reaches the site as a dated asset of the rolling `plays-library` Release: `tools/assemble_site.sh`
+downloads the newest one (`tools/fetch_play_library.py`, size, sha256 and shape checked) when the run built none,
+so a refresh needs no workflow edit. Collected volumes are split into `gut-<ebook>-<n>` plays and the same work
+under several ids is kept once; both rules, and every drop's ledger, are in docs/CATALOG-CONTRACT.md 4.1.
 
 A script may be cast only when its own record carries rights evidence: ordered
 buckets, hides before rescues, like the audio audit. Measured 2026-10-22: 1,722

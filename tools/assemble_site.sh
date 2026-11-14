@@ -16,11 +16,16 @@ rsync -a --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='
 cp -R "$web" "$out/data"
 mkdir -p "$out/data/plays"
 cp catalog/plays/castable-scripts.json "$out/data/plays/"
-# The full play library (Decision 075), when this run built one: index.json + scripts/<id>.json.
-if [ -s catalog/out/plays-library/index.json ]; then
-  mkdir -p "$out/data/plays/library"
-  cp -R catalog/out/plays-library/. "$out/data/plays/library/"
+# The full play library (Decision 075): index.json + scripts/<id>.json. A run that built one uses it;
+# every other run downloads the newest dated asset of the `plays-library` Release
+# (tools/refresh_play_library.sh uploads it). Either way it must pass the shape check, or the build stops:
+# the deploy never ships an empty or partial shelf.
+if [ ! -s catalog/out/plays-library/index.json ]; then
+  python3 tools/fetch_play_library.py catalog/out/plays-library
 fi
+python3 catalog/tools/check_play_library.py catalog/out/plays-library
+mkdir -p "$out/data/plays/library"
+cp -R catalog/out/plays-library/. "$out/data/plays/library/"
 # A real page at every served /series/{key} and /episode/{id}, so a preview bot reads a 200 with a
 # card; a path it does not write stays with 404.html.
 # The finished ear dramas come from the Worker's open listing; if it cannot be read, the drama
@@ -32,7 +37,7 @@ python3 catalog/tools/build_share_pages.py "$web" "$out" --finished "$finished"
 test -e "$out/.nojekyll" || { echo "::error::$out/.nojekyll is missing; not deploying"; exit 1; }
 for f in index.html 404.html CNAME manifest.json css/styles.css js/app.js \
          .well-known/apple-app-site-association .well-known/assetlinks.json \
-         data/manifest.json data/index/series.json data/plays/castable-scripts.json; do
+         data/manifest.json data/index/series.json data/plays/castable-scripts.json data/plays/library/index.json; do
   test -s "$out/$f" || { echo "::error::$out/$f is missing or empty; not deploying"; exit 1; }
 done
 echo "site files: $(find "$out" -type f | wc -l); data files: $(find "$out/data" -type f | wc -l); $(du -sh "$out" | cut -f1)"

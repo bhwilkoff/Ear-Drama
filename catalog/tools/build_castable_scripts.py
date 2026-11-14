@@ -6,9 +6,9 @@ parser's exact slices, and the rights line is the record's own evidence.
 
 Phase 1 bundles the file in the apps (it works offline, and nothing is fetched to
 cast a play); it moves beside the catalog once the library outgrows a bundle.
-Only texts already in the cache are read, so the harvest decides what grows it:
+Only the BUNDLE_IDS plays are read, and the file is refused unless all of them parse clean, so a
+fuller text cache never grows the bundle:
 
-    python3 tools/harvest_gutenberg_plays.py --texts N   # caches texts
     python3 tools/build_castable_scripts.py              # writes plays/castable-scripts.json
 """
 import datetime
@@ -27,6 +27,10 @@ from sort_name import sort_name
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "plays", "castable-scripts.json")
 FORMAT = 1
+# The bundle is these plays and no others (the library, build_play_library.py, holds the rest). A
+# change to this list is a change to what every app ships and needs a new Decision.
+BUNDLE_IDS = ("gut-49295", "gut-7364", "gut-28051", "gut-12039", "gut-2265", "gut-67583", "gut-1502", "gut-27357",
+              "gut-5071", "gut-28527", "gut-47826", "gut-49916", "gut-54702", "gut-28511", "gut-76327")
 
 
 def compact_line(line):
@@ -49,9 +53,12 @@ def display_title(record, parsed):
     printed = parsed.get("printed_title")
     if not (COLLECTION.search(record["title"]) and printed):
         return record["title"], None
+    return cased_title(printed), record["title"]
+
+
+def cased_title(printed):
     words = printed.lower().split()
-    cased = " ".join(w if i and w in SMALL else w[:1].upper() + w[1:] for i, w in enumerate(words))
-    return cased, record["title"]
+    return " ".join(w if i and w in SMALL else w[:1].upper() + w[1:] for i, w in enumerate(words))
 
 
 CATALOG_NOTE = re.compile(r",?\s+with\s+(?:notes|an?\s+introduction|introduction|a\s+commentary)\b.*$", re.I)
@@ -110,6 +117,8 @@ def main():
     text_dir = os.path.join(R.CACHE, "gutenberg", "text")
     scripts, seen, skipped = [], 0, {}
     for p in plays:
+        if p["id"] not in BUNDLE_IDS:
+            continue
         path = os.path.join(text_dir, p["id"][4:] + ".txt")
         if not os.path.exists(path):
             continue
@@ -124,14 +133,14 @@ def main():
                 "_unclean" if parsed.get("status") == "parsed" else "")
             skipped[why] = skipped.get(why, 0) + 1
     scripts.sort(key=lambda s: (s["sort_name"], s["id"]))
+    if sorted(s["id"] for s in scripts) != sorted(BUNDLE_IDS):
+        sys.exit("the bundle must be exactly BUNDLE_IDS; missing: " + ", ".join(sorted(set(BUNDLE_IDS) - {s["id"] for s in scripts})))
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump({"format": FORMAT, "scripts": scripts}, f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
     print(json.dumps({"texts_read": seen, "written": len(scripts), "skipped": skipped,
                       "bytes": os.path.getsize(OUT)}), file=sys.stderr)
-    if not scripts:
-        sys.exit(1)
 
 
 if __name__ == "__main__":
