@@ -18,6 +18,7 @@ and uploaders the text came from; it does not say a name is wrong in fact.
   SMALLWORDS    a title-case title that capitalizes its small words ("The Case Of The Kewpie Doll")
   LOWERROLE     (roles only) a role that is a sentence or note rather than a word or two
   FILE          a file extension or path
+  ENTITY        an HTML entity left in the text ("&amp;", "&#38;"): text is unescaped once where it is composed
 """
 import re
 import sqlite3
@@ -88,6 +89,9 @@ _COPY_FACTS = re.compile(r"(?:^|,\s*)(?:(?:higher|lower) quality \(\d+ kbps\)|(?
                          r"uploaded \d{4}|\d+ min|afrts? rebroadcast|rehearsal|audition)(?=,|$)", re.I)
 
 
+HTML_ENTITY = re.compile(r"&(?:#\d+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]{1,31});")
+
+
 def text_defects(text, kind="title", key=None):
     """The classes a displayed text falls in (a list). `kind`: title | name | role | label | person."""
     t = (text or "").strip()
@@ -97,6 +101,8 @@ def text_defects(text, kind="title", key=None):
     if not t:
         return out
     toks = t.split()
+    if HTML_ENTITY.search(t):
+        out.append("ENTITY")
     if _MOJIBAKE.search(t):
         out.append("MOJIBAKE")
     if _FILE.search(t):

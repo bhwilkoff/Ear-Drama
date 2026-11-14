@@ -20,6 +20,7 @@ import display_text as DT
 import enrich_scope as ES
 import field_defects as FD
 import polish as PL
+import art_policy as AP
 
 ran = failed = 0
 
@@ -56,6 +57,19 @@ check("control: a sentence-case title with a capital word is left", d("Gone to t
 check("control: a small word at the start or after a dash", d("Of Mice and Men - The Radio Play", "title"), [])
 check("role: a note, not a role", d("chief of police of santa barbara", "role"), ["LOWERROLE"])
 check("control: a role", d("commercial spokesman", "role"), [])
+
+# HTML entities: unescaped once where text is composed; the guard sees any that survive.
+check("entity: detected", "ENTITY" in d("Erster Akt 2. &amp; 3. Szene", "title"), True)
+check("entity: numeric detected", "ENTITY" in d("Tom &#38; Jerry", "title"), True)
+check("control: a bare ampersand is not an entity", "ENTITY" in d("Amos & Andy, AT&T", "title"), False)
+check("entity: polish_title unescapes", PL.polish_title("Erster Akt 2. &amp; 3. Szene"), "Erster Akt 2. & 3. Szene")
+check("entity: once, never twice", PL.polish_title("Fish &amp;amp; Chips"), "Fish &amp; Chips")
+check("entity: a name", PL.polish_name("Thompson &amp; French"), "Thompson & French")
+check("entity: a character", PL.polish_character("Mom &amp; Pop"), "Mom & Pop")
+check("control: a bare ampersand and a legacy entity name without a semicolon stay", PL.polish_title("Rock &notes and R&D"), "Rock &notes and R&D")
+check("entity: the guard flags a surviving entity (negative control)", FD.text_defects(PL.polish_title("Fish &amp;amp; Chips"), "title"), ["ENTITY"])
+
+check("entity: an image credit", AP.clean_author("Kingkongphoto & www.celebrity-photos.com&#32;from"), "Kingkongphoto & www.celebrity-photos.com from")
 
 # Repairs: the sightings of the iPhone pass and the owner's examples.
 t = PL.polish_title
@@ -137,19 +151,19 @@ check("control: a plain title is readable", DT.readable_title("The Burglar"), Tr
 
 # The real artifact.
 GUARDED = {
-    "series.name": {"IDENT", "GLUED", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
-    "episodes.title": {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
-    "episodes.aka": {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
-    "episodes.sponsor": {"GLUED", "MOJIBAKE", "CODE", "SMALLWORDS"},
-    "episodes.network": {"GLUED", "MOJIBAKE", "CODE"},
-    "series.networks": {"GLUED", "MOJIBAKE", "CODE"},
-    "credits.role": {"MOJIBAKE", "LOWERROLE", "CODE", "DOUBLED", "IDENT"},
-    "credits.character": {"MOJIBAKE", "CODE", "DOUBLED", "IDENT"},
-    "people.name": {"GLUED", "MOJIBAKE", "CODE"},
-    "voices.name": {"GLUED", "MOJIBAKE", "CODE"},
-    "arcs.title": {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
-    "art.credit": {"MOJIBAKE", "CODE", "FILE", "DOUBLED"},
-    "recordings.label": {"IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS", "SHOUT"},
+    "series.name": {"ENTITY", "IDENT", "GLUED", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
+    "episodes.title": {"ENTITY", "IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
+    "episodes.aka": {"ENTITY", "IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
+    "episodes.sponsor": {"ENTITY", "GLUED", "MOJIBAKE", "CODE", "SMALLWORDS"},
+    "episodes.network": {"ENTITY", "GLUED", "MOJIBAKE", "CODE"},
+    "series.networks": {"ENTITY", "GLUED", "MOJIBAKE", "CODE"},
+    "credits.role": {"ENTITY", "MOJIBAKE", "LOWERROLE", "CODE", "DOUBLED", "IDENT"},
+    "credits.character": {"ENTITY", "MOJIBAKE", "CODE", "DOUBLED", "IDENT"},
+    "people.name": {"ENTITY", "GLUED", "MOJIBAKE", "CODE"},
+    "voices.name": {"ENTITY", "GLUED", "MOJIBAKE", "CODE"},
+    "arcs.title": {"ENTITY", "IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS"},
+    "art.credit": {"ENTITY", "MOJIBAKE", "CODE", "FILE", "DOUBLED"},
+    "recordings.label": {"ENTITY", "IDENT", "GLUED", "RIPTAG", "COUNT", "UPLOADER", "MOJIBAKE", "CODE", "FILE", "DOUBLED", "SMALLWORDS", "SHOUT"},
 }
 path = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")
 if os.path.exists(path):

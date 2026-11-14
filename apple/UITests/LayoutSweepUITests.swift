@@ -41,14 +41,16 @@ final class LayoutSweepUITests: DeviceTestCase {
     /// A 71-character title: the head board holds it to three lines and its facts stay on screen.
     func testLongTitleSeries() { sweep(tab("browse", ["APP_START_ITEM": "librivox2469"]), "series-long-title") }
 
-    /// Record, a play, Record This, the cast sheet and the recorder in its three modes. Nothing is
+    /// Record (Decision 075: the plays are tiles on the Record tab), a play, Record This, the cast sheet and
+    /// the recorder in its three modes. Nothing is
     /// recorded: the Record button is never pressed. The production made here is deleted again.
     func testCreate() {
         let app = tab("record")
         sweep(app, "create-record", pages: 3)
         for _ in 0..<3 { app.swipeDown(velocity: .fast) }
-        let tile = app.buttons.matching(identifier: "show-tile").firstMatch
-        XCTAssertTrue(tile.waitForExistence(timeout: 20), "a script tile")
+        let tile = app.buttons.matching(identifier: "play-tile").firstMatch
+        for _ in 0..<8 where !(tile.exists && tile.isHittable) { app.swipeUp() }
+        XCTAssertTrue(tile.waitForExistence(timeout: 20) && tile.isHittable, "a play tile on Record")
         tile.tap(); sleep(3)
         sweep(app, "create-script", pages: 4)
         for _ in 0..<4 { app.swipeDown() }

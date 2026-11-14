@@ -25,6 +25,8 @@ import math
 import re
 import urllib.parse
 
+import polish as PL
+
 SERVED_CLASSES = ("pd_us", "pd_us_gov", "cc0", "pd_release", "free_use", "cc_by", "cc_by_sa")
 PREFER = {c: i for i, c in enumerate(SERVED_CLASSES)}
 NEEDS_CREDIT = {"cc_by", "cc_by_sa"}
@@ -55,7 +57,7 @@ def clean_author(author):
     """The author as a person reads a credit: wiki markup and bare links dropped, nothing added. "{{Fortepan |id= 1 ...}}"
     is credited to "Fortepan"; "*File.jpg: Geoff Leonard. () *derivative work: X (talk)" to "Geoff Leonard; derivative
     work: X"; "Greg Hernandez at https://www.flickr.com/..." to "Greg Hernandez"."""
-    a = (author or "").strip()
+    a = PL.unescape((author or "").strip())
     m = re.match(r"\{\{\s*([^|{}]+?)\s*(?:\||\}\})", a)
     if m:
         return m.group(1)
