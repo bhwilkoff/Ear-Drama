@@ -150,7 +150,7 @@ final class ReaderModel {
         let per = ReaderMath.perSpread(area.width)
         let style = ReaderStyle(base: base, scale: prefs.scale, leading: prefs.lineHeight)
         let width = min(((area.width - 2 * Self.margin - CGFloat(per - 1) * Self.gutter) / CGFloat(per)).rounded(.down), style.size * 36)
-        let height = (area.height - 2 * Self.margin).rounded(.down)
+        let height = (area.height - 2 * Self.margin - ReaderLayout.headRoom).rounded(.down)
         let script = script, structure = structure
         kick = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
@@ -293,7 +293,7 @@ final class ReaderModel {
         let pageW = layout.pageSize.width
         let total = CGFloat(per) * pageW + CGFloat(per - 1) * Self.gutter
         let left = (area.width - total) / 2
-        let top = (area.height - layout.pageSize.height) / 2
+        let top = (area.height - layout.pageSize.height - ReaderLayout.headRoom) / 2 + ReaderLayout.headRoom
         for k in 0..<per {
             let page = s * per + k
             guard page < layout.pageCount else { continue }
@@ -693,7 +693,7 @@ private struct ReaderPageView: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let marks = ReaderLayout.Marks(mine: model.mine, hide: model.hide, peeked: model.peeked)
+        let marks = ReaderLayout.Marks(role: model.part?.roleName, hide: model.hide, peeked: model.peeked)
         let scheme = scheme
         Canvas { context, _ in
             // The token colors are dynamic: resolved against the scheme the page is in, not the thread's appearance.
@@ -701,10 +701,10 @@ private struct ReaderPageView: View {
             let muted = cg(Color.brandTextMuted)
             let theme = ReaderLayout.Theme(ink: cg(Color.brandText), muted: muted,
                                            hues: PlayScript.partHues.map { Color.genre($0).map(cg) ?? muted },
-                                           background: cg(Color.brandBackground))
+                                           background: cg(Color.brandBackground), block: cg(Color.brandSurfaceAlt))
             context.withCGContext { layout.draw(page: page, in: $0, theme: theme, marks: marks) }
         }
-        .frame(width: layout.pageSize.width, height: layout.pageSize.height)
+        .frame(width: layout.pageSize.width, height: layout.pageSize.height + ReaderLayout.headRoom)
         .accessibilityChildren {
             ForEach(Array(layout.lines(onPage: page)), id: \.self) { i in
                 if model.isHidden(i) {
@@ -734,79 +734,233 @@ private struct ReaderPageView: View {
 
 // MARK: - Scroll
 
-/// One script line as its own view, keyed by its id (Scroll; marks come in S5).
+/// One script line as its own view, keyed by its id (Scroll): the same Ear Drama page as the pages, set in SwiftUI
+/// from `PlayPage.layoutOf` (a printed verse line wraps without the pages' hanging indent: `Text` has none).
 private struct ReaderLineView: View {
     let model: ReaderModel
     let index: Int
     let size: CGFloat
 
+    private var gutter: Bool {
+        let width = min(model.area.width - 2 * ReaderModel.margin, size * 36)
+        return width / size >= PlayPage.gutterMinEm
+    }
+
+    private var roles: [String] { model.script.roles.map(\.name) }
+
+    private func hueColor(_ role: String) -> Color {
+        let h = model.structure.speaking.firstIndex { $0.roleName == role }
+        return h.flatMap { $0 < PlayScript.partHues.count ? Color.genre(PlayScript.partHues[$0]) : nil } ?? Color.brandTextMuted
+    }
+
+    private var gap: CGFloat { size * 0.7 }
+
     var body: some View {
         let line = model.script.lines[index]
-        let hidden = model.isHidden(index)
-        let hue = model.structure.hueOfLine[index]
-        let color = (hue >= 0 ? Color.genre(PlayScript.partHues[hue]) : nil) ?? Color.brandTextMuted
         VStack(alignment: .leading, spacing: 0) {
             ForEach(model.structure.setAside[index] ?? []) { head in
-                Text(verbatim: head.title)
-                    .font(.custom(TypeRamp.displayFontName, size: size * (head.level == .scene ? 1.15 : 1.4)))
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, size * 1.2)
-                    .padding(.bottom, size * 0.8)
+                heading(head.title, head.level)
             }
-            Text(attributed(line, hidden: hidden, color: color))
-                .lineSpacing(size * (model.prefs.lineHeight - 1.2))
-                .padding(.leading, line.kind == .speech ? 0 : size * 1.25)
-                .padding(.vertical, size * 0.3)
-                .padding(.horizontal, model.mine?.contains(index) == true ? 8 : 0)
-                .background(model.mine?.contains(index) == true ? color.opacity(0.09) : Color.clear)
-                .overlay(alignment: .leading) {
-                    if model.mine?.contains(index) == true { Rectangle().fill(color).frame(width: 3) }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture { if model.mine?.contains(index) == true, model.hide { model.peek(index) } }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(hidden ? "Show line" : ReaderPageView.spoken(line))
-                .accessibilityAddTraits(hidden ? .isButton : [])
+            if let head = model.structure.headLines[index] {
+                heading(ScriptReading.runsOf(line).map(\.text).joined(), head.level)
+            } else if line.kind == .speech, line.parts != nil {
+                speechBlocks(line)
+            } else {
+                block(line)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(model.isHidden(index) ? "Show line" : ReaderPageView.spoken(line))
+        .accessibilityAddTraits(model.isHidden(index) ? .isButton : [])
+    }
+
+    private func heading(_ text: String, _ level: SectionLevel) -> some View {
+        Text(verbatim: text)
+            .font(.custom(TypeRamp.displayFontName, size: size * (level == .scene ? 1.25 : 1.75)))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, size * 1.4)
+            .padding(.bottom, size * 0.6)
+    }
+
+    // MARK: A speech
+
+    private func speechBlocks(_ line: ScriptLine) -> some View {
+        let layout = PlayPage.layoutOf(line, roles: roles)
+        let beside = gutter
+        return VStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(layout.speeches.enumerated()), id: \.offset) { k, sp in
+                speech(line, layout: layout, k: k, sp: sp, beside: beside)
+            }
         }
     }
 
-    private func attributed(_ line: ScriptLine, hidden: Bool, color: Color) -> AttributedString {
+    private func speech(_ line: ScriptLine, layout: PageLine, k: Int, sp: PageSpeech, beside: Bool) -> some View {
+        let color = hueColor(sp.role)
+        let mine = model.part?.roleName == sp.role
+        let name = sp.name?.text ?? sp.role
+        let hidden = model.isHidden(index) && mine
+        let cueFrom = cueStart(line, layout: layout, k: k)
+        let words = VStack(alignment: .leading, spacing: size * 0.1) {
+            ForEach(Array(sp.rows.enumerated()), id: \.offset) { r, row in
+                if row.cue {
+                    cue(row)
+                } else {
+                    Text(attributed(row, hidden: hidden, color: color, cueFrom: r == sp.rows.count - 1 ? cueFrom : nil))
+                        .lineSpacing(size * (model.prefs.lineHeight - 1.2))
+                        .padding(.leading, layout.verse && row.indent ? size * 2.5 : 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        let title = Text(verbatim: name).font(.system(size: size * 0.9, weight: .semibold)).kerning(size * 0.02).foregroundStyle(color)
+        return Group {
+            if beside, !sp.rows.isEmpty, !(sp.rows.first?.cue ?? false) {
+                HStack(alignment: .firstTextBaseline, spacing: size) {
+                    title.frame(width: size * 8.5, alignment: .trailing)
+                    words
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    title
+                    words
+                }
+            }
+        }
+        .padding(.vertical, size * 0.3)
+        .padding(.horizontal, 14)
+        .background(mine ? color.opacity(0.10) : Color.clear)
+        .overlay(alignment: .leading) { if mine { Rectangle().fill(color).frame(width: 3) } }
+        .padding(.horizontal, -14)
+        .padding(.bottom, gap - size * 0.6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture { if mine, model.hide { model.peek(index) } }
+    }
+
+    /// Where the cue begins in this speech's last said run, when the next speaker is the part being played.
+    private func cueStart(_ line: ScriptLine, layout: PageLine, k: Int) -> (at: Int, color: Color)? {
+        guard let me = model.part?.roleName else { return nil }
+        let sp = layout.speeches[k]
+        guard sp.role != me else { return nil }
+        let next: String?
+        if k + 1 < layout.speeches.count {
+            next = layout.speeches[k + 1].role
+        } else {
+            var j = index + 1
+            var found: String?
+            while j < model.script.lines.count, found == nil {
+                let l = model.script.lines[j]
+                if l.kind == .speech, l.parts != nil { found = PlayPage.layoutOf(l, roles: roles).speeches.first?.role }
+                j += 1
+            }
+            next = found
+        }
+        guard next == me else { return nil }
+        guard let last = sp.rows.last(where: { !$0.cue })?.runs.last(where: \.said) else { return nil }
+        return (last.at + PlayPage.cueTail(last.text), hueColor(me))
+    }
+
+    private func cue(_ row: PageRow) -> some View {
+        HStack(spacing: size * 0.35) {
+            Image(systemName: "speaker.wave.2")
+            Text(verbatim: row.runs.map(\.text).joined(separator: " ").uppercased()).kerning(size * 0.05)
+        }
+        .font(.system(size: size * 0.8125, weight: .semibold))
+        .foregroundStyle(Color.brandText)
+        .padding(.horizontal, size * 0.5)
+        .padding(.vertical, size * 0.15)
+        .background(Color.brandSurfaceAlt, in: RoundedRectangle(cornerRadius: 4))
+        .padding(.vertical, size * 0.15)
+    }
+
+    private func attributed(_ row: PageRow, hidden: Bool, color: Color, cueFrom: (at: Int, color: Color)?) -> AttributedString {
         var out = AttributedString()
-        func add(_ text: String, _ font: Font, _ ink: Color, hide: Bool = false) {
+        func add(_ text: String, _ font: Font, _ ink: Color, hide: Bool = false, underline: Color? = nil) {
+            guard !text.isEmpty else { return }
             var run = AttributedString(text)
             run.font = font
             run.foregroundColor = hide ? .clear : ink
             if hide { run.backgroundColor = color.opacity(0.3) }
+            if let underline {
+                run.underlineStyle = Text.LineStyle(pattern: .solid, color: underline)
+            }
             out.append(run)
         }
         let serif = Font.system(size: size, design: .serif)
-        let runs = ScriptReading.runsOf(line)
-        if let head = model.structure.headLines[index] {
-            let font = Font.custom(TypeRamp.displayFontName, size: size * (head.level == .scene ? 1.15 : 1.4))
-            for r in runs { add(r.text, font, Color.brandText) }
-            return out
-        }
-        if line.kind == .speech {
-            add((line.role ?? "") + " ", Font.system(size: size * 0.8125, weight: .semibold), color)
-            var previous: ScriptReading.Run?
-            for r in runs {
-                if let p = previous, p.piece != r.piece, ScriptReading.spaceBetween(p.text, r.text) { add(" ", serif, Color.brandText) }
-                switch r.kind {
-                case .say: add(r.text, serif, Color.brandText, hide: hidden)
-                case .em: add(r.text, serif.italic(), Color.brandText, hide: hidden)
-                case .aside: add(r.text, serif.italic(), Color.brandTextMuted)
-                case .plain: add(r.text, serif, Color.brandTextMuted)
+        let names = DirectionNames(roles: roles)
+        var previous: PageRun?
+        for (n, r) in row.runs.enumerated() {
+            if let p = previous, p.piece != r.piece, ScriptReading.spaceBetween(p.text, r.text) { add(" ", serif, Color.brandText) }
+            previous = r
+            if r.said {
+                let font = r.kind == .em ? serif.italic() : serif
+                if let c = cueFrom, r.at + r.text.utf16.count > c.at {
+                    let k = max(0, c.at - r.at)
+                    let ns = r.text as NSString
+                    add(ns.substring(to: k), font, Color.brandText, hide: hidden)
+                    add(ns.substring(from: k), font, Color.brandText, hide: hidden, underline: c.color)
+                } else {
+                    add(r.text, font, Color.brandText, hide: hidden)
                 }
-                previous = r
+                continue
             }
-            return out
+            let whole = row.runs.filter { $0.piece == r.piece && !$0.said }.map(\.text).joined()
+            let open = (n == 0 || row.runs[n - 1].piece != r.piece) && whole.range(of: "^\\s*[(\\[]", options: .regularExpression) == nil
+            let close = (n == row.runs.count - 1 || row.runs[n + 1].piece != r.piece)
+                && whole.range(of: "[)\\]][.,;:!?]*\\s*$", options: .regularExpression) == nil
+            if open { add("(", serif, Color.brandTextMuted) }
+            direction(r.text, italic: r.kind != .plain, names: names, add: add)
+            if close { add(")", serif, Color.brandTextMuted) }
         }
-        let cue = line.kind != .direction
-        for r in runs {
-            let font = cue ? Font.system(size: size * 0.8125, weight: .semibold) : Font.system(size: size * 0.95, design: .serif).italic()
-            add(r.text, r.kind == .em && !cue ? Font.system(size: size * 0.95, design: .serif) : font, Color.brandTextMuted)
+        return out
+    }
+
+    /// A direction's words, a part it names in capitals in that part's hue, upright and strong.
+    private func direction(_ text: String, italic: Bool, names: DirectionNames,
+                           add: (String, Font, Color, Bool, Color?) -> Void) {
+        let ns = text as NSString
+        var last = 0
+        let base = Font.system(size: size, design: .serif)
+        for m in names.matches(in: text) {
+            if m.range.location > last { add(ns.substring(with: NSRange(location: last, length: m.range.location - last)), italic ? base.italic() : base, Color.brandTextMuted, false, nil) }
+            let n = ns.substring(with: m.range)
+            let known = model.structure.speaking.contains { $0.roleName == n }
+            add(n, known ? base.weight(.semibold) : (italic ? base.italic() : base), known ? hueColor(n) : Color.brandTextMuted, false, nil)
+            last = m.range.location + m.range.length
         }
+        if last < ns.length { add(ns.substring(from: last), italic ? base.italic() : base, Color.brandTextMuted, false, nil) }
+    }
+
+    // MARK: A block
+
+    private func block(_ line: ScriptLine) -> some View {
+        let layout = PlayPage.layoutOf(line, roles: roles)
+        let row = layout.rows.first ?? PageRow(cue: false, indent: false, runs: [])
+        let indent = gutter ? size * 9.5 : size * 1.5
+        let names = DirectionNames(roles: roles)
+        return Group {
+            if row.cue {
+                cue(row)
+            } else {
+                Text(blockText(row, names: names))
+                    .lineSpacing(size * (model.prefs.lineHeight - 1.2))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.leading, indent)
+        .padding(.vertical, size * 0.15)
+        .padding(.bottom, gap - size * 0.3)
+    }
+
+    private func blockText(_ row: PageRow, names: DirectionNames) -> AttributedString {
+        var out = AttributedString()
+        func add(_ text: String, _ font: Font, _ ink: Color, _: Bool, _: Color?) {
+            var run = AttributedString(text)
+            run.font = font
+            run.foregroundColor = ink
+            out.append(run)
+        }
+        for r in row.runs { direction(r.text, italic: r.kind == .plain, names: names, add: add) }
         return out
     }
 }
