@@ -72,9 +72,16 @@ struct ContentView_iOS: View {
 private struct SidebarAvailabilityProbe: View {
     @Binding var available: Bool?
     var body: some View {
+        #if compiler(>=6.4)
         if #available(iOS 27, *) { Probe27(available: $available) } else { Color.clear }
+        #else
+        Color.clear
+        #endif
     }
 
+    // The iOS 27 SDK (Swift 6.4) has the value; the App Store workflow still builds
+    // with Xcode 26.6 until its runner moves (IPHONE-DUO.md §7 Q1).
+    #if compiler(>=6.4)
     @available(iOS 27, *)
     private struct Probe27: View {
         @Binding var available: Bool?
@@ -85,6 +92,7 @@ private struct SidebarAvailabilityProbe: View {
             }
         }
     }
+    #endif
 }
 
 /// The mini player sits inside each tab's stack, above the tab bar, on every
