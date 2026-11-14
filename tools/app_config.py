@@ -177,14 +177,16 @@ MIN_OCR_LINES = 4              # fewer than this = the frame is unreadable
 # real screen. The harness grades "is my app on the glass" by matching this, so it
 # must be words your UI actually renders (tab titles, primary actions), not the app's
 # name. Getting this wrong makes every scenario fail with "wrong app/screen".
-APP_ANCHOR_RX = r"Home|Browse|Stations|Library"
+APP_ANCHOR_RX = r"Home|Browse|Record|Library"
 
 # iOS only (tools/ios_run.py), calibrated on real iPhone 12 frames 2026-10-27.
 # Springboard drew "Home" (a folder name) and "Search", so one tab word proves
-# nothing there: the tab bar counts only with Browse, Stations and Library together.
+# nothing there: the tab bar counts only with Browse, Record and Library together
+# (Decision 075: Record replaced Stations as the third section; the TV has no Record tab but is
+# graded by APP_ANCHOR_RX, whose words are alternatives).
 # The full-screen player sheet has no tab bar; it draws "Sleep" and a "-14:57" time
 # remaining, which Springboard does not.
-IOS_ANCHOR_RX = (r"^(?=.*\bBrowse\b)(?=.*\bStations\b)(?=.*\bLibrary\b)"
+IOS_ANCHOR_RX = (r"^(?=.*\bBrowse\b)(?=.*\bRecord\b)(?=.*\bLibrary\b)"
                  r"|^(?=.*\bSleep\b)(?=.*-\d+:\d\d)")
 
 # Text that means iOS, not the app, owns the glass: XCUITest's element queries still

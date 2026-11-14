@@ -18,13 +18,13 @@ enum PlayRoute: Hashable {
     case recording(production: String, part: PartID, line: String? = nil)
 }
 
-// MARK: - Start an ear drama
+// MARK: - Record this
 
-// There is no Plays section (Decision 068): a play is a row in Browse and
-// Search and a pick on Surprise, and the person's productions are Library's
-// Ear dramas. Recording starts from the play's own page.
+// Record is a section of its own (Decision 075): the plays, by facet, and the person's
+// productions. Recording starts from the play's own page, Today's play, Surprise's play,
+// or an episode whose script is castable.
 
-/// "Start an ear drama" (PLAYS-DESIGN §2.1): makes the production and opens
+/// "Record This" (PLAYS-DESIGN §2.1; was "Start an ear drama", Decision 075): makes the production and opens
 /// its cast sheet, in place on iPhone and iPad and in its own window on the Mac.
 struct StartEarDramaButton: View {
     let script: PlayScript
@@ -40,7 +40,7 @@ struct StartEarDramaButton: View {
             Button {
                 start()
             } label: {
-                Label("Start an ear drama", systemImage: "person.2")
+                Label("Record This", systemImage: "mic")
             }
             .pageAction(primary: true)
             if let error {
@@ -197,7 +197,7 @@ struct PlayScriptScreen: View {
     }
 }
 
-/// A play's page: the head board, Start an ear drama, the parts, the rights line (D3-6).
+/// A play's page: the head board, Record This, the parts, the rights line (D3-6).
 struct PlayPageBody: View {
     let script: PlayScript
 

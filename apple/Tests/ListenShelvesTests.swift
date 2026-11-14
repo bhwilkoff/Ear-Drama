@@ -14,6 +14,8 @@ struct ListenShelvesTests {
          {"rule": "onThisDay"},
          {"rule": "genreFirsts", "genre": "mystery", "episodes": ["suspense|1943-05-25", "gone|1900-01-01", "suspense|1942-06-17"]},
          {"rule": "mostEpisodes"},
+         {"rule": "byLength", "band": "about30", "episodes": ["suspense|1942-06-17"]},
+         {"rule": "byLength", "band": "forever", "episodes": ["suspense|1942-06-17"]},
          {"rule": "genreFirsts", "genre": "western", "episodes": []}]
         """
 
@@ -44,8 +46,9 @@ struct ListenShelvesTests {
         let db = try Fixture.open(listenShelves: Self.published)
         let shelves = db.listenShelves(month: 5, day: 25)
         // An unknown rule is ignored and an empty shelf dropped.
-        #expect(shelves.map(\.rule) == [.genreFirsts("drama"), .onThisDay(month: 5, day: 25), .genreFirsts("mystery")])
-        #expect(shelves.map(\.rule.title) == ["Drama", "This day in radio", "Mystery"])
+        #expect(shelves.map(\.rule) == [.genreFirsts("drama"), .onThisDay(month: 5, day: 25), .genreFirsts("mystery"),
+                                         .byLength("about30")])
+        #expect(shelves.map(\.rule.title) == ["Drama", "This day in radio", "Mystery", "About 30 min"])
         // Ids in published order, not broadcast order; an unserved id dropped.
         #expect(shelves[0].episodes.map(\.id) == ["librivox1|s2", "librivox1|s1"])
         #expect(shelves[2].episodes.map(\.id) == ["suspense|1943-05-25", "suspense|1942-06-17"])
@@ -83,6 +86,7 @@ struct ListenShelvesTests {
         #expect(PublishedShelf.parse(Self.published) == [
             .genreFirsts(genre: "drama", episodes: ["librivox1|s2", "librivox1|s1"]), .onThisDay,
             .genreFirsts(genre: "mystery", episodes: ["suspense|1943-05-25", "gone|1900-01-01", "suspense|1942-06-17"]),
+            .byLength(band: "about30", episodes: ["suspense|1942-06-17"]),
             .genreFirsts(genre: "western", episodes: []),
         ])
         #expect(PublishedShelf.parse("not json") == nil)

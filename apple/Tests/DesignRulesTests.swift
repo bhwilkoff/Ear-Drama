@@ -90,20 +90,34 @@ struct AppStoreNavigationTests {
         #expect(store.paths[.browse]?.count == 0)
     }
 
-    /// Decision 068: the sections are Archive Watch's, in its order, and a door
-    /// or link that names a section by its old name still opens the new one.
+    /// Decision 075: five sections, Record among them; a door or link that names a section by an older name
+    /// still opens the right one, and Stations and Surprise open Home and then push their screen.
     @Test func sectionsAreActionsAndOldNamesStillOpen() {
-        #expect(AppTab.allCases.map(\.title) == ["Home", "Browse", "Stations", "Surprise", "Search", "Library"])
+        #expect(AppTab.allCases.map(\.title) == ["Home", "Browse", "Record", "Search", "Library"])
         #expect(AppTab(door: "listen") == .home)
         #expect(AppTab(door: "series") == .browse)
-        #expect(AppTab(door: "radio") == .stations)
-        #expect(AppTab(door: "plays") == .browse)
-        #expect(AppTab(door: "surprise") == .surprise)
+        #expect(AppTab(door: "radio") == .home)
+        #expect(AppTab(door: "stations") == .home)
+        #expect(AppTab(door: "plays") == .record)
+        #expect(AppTab(door: "record") == .record)
+        #expect(AppTab(door: "surprise") == .home)
         #expect(AppTab(door: "nonsense") == nil)
+        #expect(AppTab.push(forDoor: "radio") == .stations)
+        #expect(AppTab.push(forDoor: "Stations") == .stations)
+        #expect(AppTab.push(forDoor: "surprise") == .surprise)
+        #expect(AppTab.push(forDoor: "home") == nil)
         let store = AppStore()
         store.post(.tab("radio"))
         _ = store.drainInbox()
-        #expect(store.selectedTab == .stations)
+        #expect(store.selectedTab == .home)
+        #expect(store.paths[.home]?.count == 1)
+        store.post(.tab("surprise"))
+        _ = store.drainInbox()
+        #expect(store.selectedTab == .home)
+        #expect(store.paths[.home]?.count == 1)
+        store.post(.tab("plays"))
+        _ = store.drainInbox()
+        #expect(store.selectedTab == .record)
     }
 
     @Test func searchOpensTheSectionAndAsksForFocus() {

@@ -63,7 +63,8 @@ FORBID_DEFAULT = FORBIDDEN
 #              multi-press navigation is better served by a launch door.
 # drop_env:    BASE_ENV keys this scenario must NOT send.
 #
-# Ear Drama's sections (LaunchDoors.swift: home|browse|stations|surprise|search|library);
+# Ear Drama's sections (LaunchDoors.swift: home|browse|search|library; Decision 075, the TV has no Record,
+# and `stations` and `surprise` open Home then push);
 # not yet calibrated against an Apple TV capture (SCRATCHPAD item 3). Tab titles are
 # on every screen, so a calibrated signature should be content unique to the surface.
 SCENARIOS = {
@@ -71,8 +72,8 @@ SCENARIOS = {
         env={HOOK_START_TAB: "home"}, minutes=0.4,
         # Text only Home draws. Direction D's tvOS Home hides the tab bar once focus is in
         # the content, so "Home" alone never appeared (Ben Bedroom, 2026-10-30).
-        expect_any=r"This day in radio|shows that night|Continue listening",
-        expect_end=r"This day in radio|shows that night|Continue listening",
+        expect_any=r"Listen Live|All Stations|This day in radio|shows that night|Continue",
+        expect_end=r"Listen Live|All Stations|This day in radio|shows that night|Continue",
         note="Home renders."),
     "search": dict(
         env={HOOK_START_TAB: "search"}, minutes=0.4,

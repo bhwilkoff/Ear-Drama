@@ -609,9 +609,9 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                     ORDER BY \(Self.oldestFirst) LIMIT 1)
                 WHERE s.genre = ? ORDER BY s.episodes DESC, s.key LIMIT \(limit)
                 """, [.text(genre)], decodeEpisode)
-        case .mostDownloaded:
-            // Precomputed by the pipeline from archive.org's counts, which
-            // the served projection carries per item, not per episode.
+        case .mostDownloaded, .byLength:
+            // Precomputed by the pipeline (archive.org's counts, and each
+            // episode's default copy's length), never derived on the device.
             return []
         }
     }
@@ -633,6 +633,8 @@ nonisolated final class CatalogDatabase: @unchecked Sendable {
                     return Shelf(rule: .genreFirsts(genre), episodes: episodes(ids: ids))
                 case let .mostDownloaded(ids):
                     return Shelf(rule: .mostDownloaded, episodes: episodes(ids: ids))
+                case let .byLength(band, ids):
+                    return Shelf(rule: .byLength(band), episodes: episodes(ids: ids))
                 }
             }
         } else {

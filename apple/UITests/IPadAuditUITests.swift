@@ -13,6 +13,7 @@ final class IPadAuditUITests: DeviceTestCase {
 
     private func visit(_ tag: String) {
         sweep(tab("home"), "\(tag)-home", pages: 2)
+        sweep(tab("record"), "\(tag)-record", pages: 3)
         sweep(tab("stations"), "\(tag)-stations", pages: 2)
         sweep(tab("surprise"), "\(tag)-surprise", pages: 1)
         sweep(tab("library"), "\(tag)-library", pages: 2)
@@ -48,6 +49,7 @@ final class IPadAuditUITests: DeviceTestCase {
     /// The screens a person judges the iPad by, one or two frames each: quick enough to run per change.
     private func frames(_ tag: String) {
         sweep(tab("home"), "\(tag)-home", pages: 4)
+        sweep(tab("record"), "\(tag)-record", pages: 2)
         sweep(tab("stations"), "\(tag)-stations", pages: 1)
         sweep(tab("browse"), "\(tag)-browse", pages: 1)
         for (name, item) in [("rich", "gunsmoke"), ("sparse", "tarzan")] {

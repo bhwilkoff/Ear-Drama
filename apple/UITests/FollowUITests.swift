@@ -15,10 +15,10 @@ final class FollowUITests: DeviceTestCase {
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", Fixture.seriesName)).firstMatch
     }
 
-    /// Home has loaded its data: Continue listening exists only with something in progress (none on
+    /// Home has loaded its data: Continue exists only with something in progress (none on
     /// the iPad, 2026-10-30), and the day board follows it whenever the catalog has a day.
     private func homeLoaded(_ app: XCUIApplication) -> Bool {
-        text(app, matching: "Continue listening|This day in radio").waitForExistence(timeout: 30)
+        text(app, matching: "Continue|Start a show|This day in radio").waitForExistence(timeout: 30)
     }
 
     func testFollowShowsOnHomeThenUnfollow() throws {

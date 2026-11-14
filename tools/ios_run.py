@@ -53,17 +53,20 @@ APP_ANCHOR_RX = IOS_ANCHOR_RX  # see tools/app_config.py
 # and teaches the loop to be ignored. (Other keys devharness.Grader.grade_glass
 # reads: expect_end, forbid.)
 #
-# Ear Drama's sections (LaunchDoors.swift: home|browse|stations|surprise|search|library;
-# Decision 068, the old listen|series|radio|plays still open);
+# Ear Drama's sections (LaunchDoors.swift: home|browse|record|search|library; Decision 075).
+# `stations` and `surprise` still open: Home, then that screen pushed (AppTab.push(forDoor:));
+# the old listen|series|radio|plays names still open too;
 # each regex is text only its screen draws, never a tab-bar label (calibrated on the iPhone 12,
 # 2026-10-24: the tab bar's "Browse"/"Library"/"Search" made Release-build Home frames pass).
 SCENARIOS = {
     "home":        {"env": {HOOK_START_TAB: "home"}, "minutes": 0.6,
-                    "expect_any": r"This day in radio|Continue"},
+                    "expect_any": r"Listen Live|Find a Show|Record a Play|Continue"},
+    "record":      {"env": {HOOK_START_TAB: "record"}, "minutes": 0.6,
+                    "expect_any": r"Today.s play|Voices|Plays|Yours"},
     "search":      {"env": {HOOK_START_TAB: "search"}, "minutes": 0.6,
                     "expect_any": r"Titles, series, people|Search titles"},
     "browse":      {"env": {HOOK_START_TAB: "browse"}, "minutes": 0.6,
-                    "expect_any": r"Kind|Genre|Decade"},
+                    "expect_any": r"Genre|Decade"},
     "stations":    {"env": {HOOK_START_TAB: "stations"}, "minutes": 0.6,
                     "expect_any": r"Tonight in"},
     "surprise":    {"env": {HOOK_START_TAB: "surprise"}, "minutes": 0.6,

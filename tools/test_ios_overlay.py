@@ -16,9 +16,9 @@ PERMISSION = "“Ear Drama” Would Like to Find and Connect to Devices on Your 
 APP_FRAMES = [
     "5:41 SOS X Minus One The Sense of Wonder 1956-04-24 NBC 12:58 -14:57 15 30 1.5x Sleep 14:59",
     "Library Queue 1956-04-24 The Sense of Wonder X Minus One 27:55 Undated Andy Clyde Bio "
-    "In progress Home Browse Stations Library Search Edit",
+    "In progress Home Browse Record Library Search Edit",
     "Search gangbusters august 1954 Aired August 1954 1954-08-02 The Case Of The Kewpie Doll Champ "
-    "Gangbusters 23:42 Home Browse Stations Library Search",
+    "Gangbusters 23:42 Home Browse Record Library Search",
     "Sleep timer End of this episode 15 minutes 30 minutes 45 minutes 1 hour",
 ]
 

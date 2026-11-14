@@ -29,8 +29,7 @@ struct ContentView_macOS: View {
                     switch store.selectedTab {
                     case .home: ListenScreen()
                     case .browse: SeriesBrowseScreen()
-                    case .stations: RadioScreen()
-                    case .surprise: SurpriseScreen()
+                    case .record: RecordScreen()
                     case .search: SearchScreen_macOS()
                     case .library: LibraryScreen()
                     }
@@ -197,7 +196,7 @@ struct TransportBar_macOS: View {
     }
 }
 
-/// The Go menu (macOS-DESIGN §5.5): the sidebar sections, Search, and Back.
+/// The Go menu (macOS-DESIGN §5.5): the sidebar sections, Surprise, Search, and Back.
 struct GoCommands_macOS: Commands {
     let store: AppStore
 
@@ -208,6 +207,8 @@ struct GoCommands_macOS: Commands {
                     .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
             }
             Divider()
+            Button("Surprise") { store.selectedTab = .home; store.push(Route.surprise) }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
             Button("Search") { store.openSearch() }
                 .keyboardShortcut("f", modifiers: .command)
             Button("Back") { store.goBack() }

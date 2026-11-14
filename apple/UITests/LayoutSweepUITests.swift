@@ -4,6 +4,8 @@ import XCTest
 /// every page attached. The last page of a screen must end above the tab bar and mini player.
 final class LayoutSweepUITests: DeviceTestCase {
     func testHome() { sweep(tab("home"), "home") }
+    func testRecord() { sweep(tab("record"), "record", pages: 9) }
+    /// Stations is Home's push (Decision 075); its door opens Home, then the screen.
     func testStations() { sweep(tab("stations"), "stations", pages: 9) }
     func testLibrary() { sweep(tab("library"), "library", pages: 9) }
     func testSurprise() { sweep(tab("surprise"), "surprise") }
@@ -30,7 +32,7 @@ final class LayoutSweepUITests: DeviceTestCase {
         sweep(app, name, pages: 9)
     }
 
-    func testMiniStations() { withMini("Stations", "mini-stations") }
+    func testMiniRecord() { withMini("Record", "mini-record") }
     func testMiniLibrary() { withMini("Library", "mini-library") }
     func testMiniHome() { withMini("Home", "mini-home") }
     func testMiniBrowse() { withMini("Browse", "mini-browse") }
@@ -39,19 +41,19 @@ final class LayoutSweepUITests: DeviceTestCase {
     /// A 71-character title: the head board holds it to three lines and its facts stay on screen.
     func testLongTitleSeries() { sweep(tab("browse", ["APP_START_ITEM": "librivox2469"]), "series-long-title") }
 
-    /// A script's page, the cast sheet and the recorder in its three modes. Nothing is recorded: the
-    /// Record button is never pressed. The production made here is deleted again.
+    /// Record, a play, Record This, the cast sheet and the recorder in its three modes. Nothing is
+    /// recorded: the Record button is never pressed. The production made here is deleted again.
     func testCreate() {
-        let app = tab("browse")
-        app.buttons["Kind"].tap()
-        app.buttons["Plays"].tap(); sleep(3)
+        let app = tab("record")
+        sweep(app, "create-record", pages: 3)
+        for _ in 0..<3 { app.swipeDown(velocity: .fast) }
         let tile = app.buttons.matching(identifier: "show-tile").firstMatch
         XCTAssertTrue(tile.waitForExistence(timeout: 20), "a script tile")
         tile.tap(); sleep(3)
         sweep(app, "create-script", pages: 4)
         for _ in 0..<4 { app.swipeDown() }
-        let start = app.buttons["Start an ear drama"]
-        XCTAssertTrue(start.waitForExistence(timeout: 5), "Start an ear drama")
+        let start = app.buttons["Record This"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5), "Record This")
         start.tap(); sleep(3)
         sweep(app, "create-cast", pages: 6)
         for _ in 0..<6 { app.swipeDown() }
