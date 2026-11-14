@@ -689,13 +689,25 @@ apps bundle (`catalog/plays/castable-scripts.json`) are all in it with the same 
   `sort_name`, `kind` (`stage` | `radio`), `authors` (display names), `year` (only when the
   record carries evidence of one; otherwise absent), `collection` (when the record names a
   volume and the text prints the play's own title), `voices` (roles with at least three
-  lines, the ones a person can cast), `roles` (all named speakers), `lines` (speeches),
+  lines, the ones a person can cast; the build counts `script_parse.CASTABLE_LINES`, five speeches, MEASURED
+  2026-11-14), `roles` (all named speakers), `cast` (each named speaker's speeches, largest first, one
+  number per role: what a list draws as the cast window and fingerprint without the script;
+  Decision 076), `lines` (speeches),
   `words` (spoken words), `minutes` (`ceil(words / wordsPerMinute)`, approximate, at least 1),
   `rights` (`bucket` and `evidence`: claim plus a link a reader can open), `source`
   (`name`, `url`), `path` (`scripts/<id>.json`, relative to the index).
 - `scripts/<id>.json`: `{format: 1, scripts: [<one entry>]}`, the shape of
   `castable-scripts.json`, so one decoder reads both. An entry carries `roles` and `lines`
-  (the parser's exact slices; stage directions and spoken parts kept apart).
+  (the parser's exact slices; stage directions and spoken parts kept apart), and, when the text
+  prints any, `sections`: `[{line, source}]`, each act, scene, prologue, epilogue or induction
+  heading the parser set aside (so it is not a line), verbatim, at the id of the line it opens
+  (Decision 076 S0; `script_parse.section_level`, golden cases in
+  `catalog/tests/golden/script_sections.json`). A heading printed with more on its line stays a
+  stage direction and is found there by the same classifier; a client's contents are both
+  (`PlaysCore.sectionsOf`). `sections` does not enter `revision` (lines only). MEASURED 2026-11-14:
+  385 of 532 plays carry `sections` (3,289 headings), 18 more have headings only as directions,
+  129 print none. The bundled `castable-scripts.json` was not rebuilt and carries no `sections`;
+  its plays' contents come from their direction lines until it is.
 
 A client may show a play from the index alone (title, voices, minutes) and fetches
 `scripts/<id>.json` only to cast it. The guard is `catalog/tests/test_play_library.py`: shape

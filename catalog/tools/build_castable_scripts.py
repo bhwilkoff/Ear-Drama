@@ -94,6 +94,9 @@ def script_entry(record, rights, parsed):
         "rights": {"bucket": rights["bucket"], "evidence": rights["evidence"]},
         "roles": [{"name": r["name"], "lines": r["lines"], "words": r["words"]} for r in parsed["roles"]],
         "lines": lines,
+        # Printed act and scene headings the parser set aside, verbatim, each at the line it opens
+        # (Decision 076, S0). A heading printed as a stage direction stays a line.
+        **({"sections": parsed["sections"]} if parsed.get("sections") else {}),
     }
 
 

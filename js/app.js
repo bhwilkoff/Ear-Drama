@@ -38,13 +38,13 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'invite', 'drama', 'search', 'library'];
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'reader', 'invite', 'drama', 'search', 'library'];
   const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', record: 'record', search: 'search',
                     library: 'library', invite: 'invite' };
   /* Decision 075: five sections. Stations and Surprise are pages Home opens, so they light Home;
      a play and a production light Record. */
   const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'home',
-                   surprise: 'home', record: 'record', plays: 'record', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
+                   surprise: 'home', record: 'record', plays: 'record', reader: 'record', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
   /** Older names (Decisions 068, 075): an old ?view= opens the new section, and the address is rewritten. */
   const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'record' };
   const PAGE = 60;
@@ -504,6 +504,7 @@
     if (p.get('series')) return { view: 'show', key: p.get('series'), p };
     if (p.get('person')) return { view: 'person', id: p.get('person'), p };
     if (p.get('drama')) return { view: 'drama', id: p.get('drama'), p };
+    if (p.get('read')) return { view: 'reader', id: p.get('read'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
     const old = p.get('view');
     const playsInBrowse = old === 'browse' && p.get('kind') === 'plays';
@@ -516,10 +517,16 @@
   }
 
   let firstRoute = true;
+  /** Where the reader was opened from in this tab, so Close goes back there; null for a link opened cold. */
+  let readerFrom = null;
   function route() {
     takeRoomLink();
     takeInviteLink();
     const r = parseRoute();
+    // The reader (WEB-DESIGN §4.16) takes the whole height: the tab bar and sidebar step aside.
+    if (r.view === 'reader' && !document.body.classList.contains('reading')) readerFrom = firstRoute ? null : location.href;
+    document.body.classList.toggle('reading', r.view === 'reader');
+    if (r.view !== 'reader') Reader.close();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
     const tab = TAB_OF[r.view];
     document.querySelectorAll('[data-nav]').forEach(a => {
@@ -529,7 +536,7 @@
     });
     if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, invite: renderInvite, drama: renderDrama, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, reader: renderReader, invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
@@ -775,7 +782,7 @@
   /* Record a play on Home (§4.2 item 7): today's play, then this browser's open parts. */
   function renderTodaysPlay(box) {
     homeRow(box, 'Record a play', async () => {
-      const scripts = await API.castableScripts();
+      const scripts = await API.playLibrary();
       const open = await PlaysUI.openParts(playsHelpers).catch((e) => { console.error(e); return null; });
       return { script: PlaysCore.todaysPlay(scripts, API.localDate(new Date(clockNow()))), open };
     }, ({ script, open }, content) => {
@@ -798,6 +805,7 @@
     board.querySelector(':scope > .g-window').replaceWith(castWindow(script));
     return el('div', { class: 'home-play' }, board,
       el('div', { class: 'actions actions-one actions-start' }, PlaysUI.startButton(script, playsHelpers, { primary: true }),
+        PlaysUI.readLink(script.id),
         el('a', { class: 'btn btn-ghost', href: `?play=${encodeURIComponent(script.id)}` }, 'Parts')));
   }
 
@@ -812,24 +820,46 @@
 
   /** A play tile (§4.15): the cast drawn in the window, one bar per speaking part, largest first. */
   function castWindow(script) {
-    const parts = PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id));
-    const most = parts.length ? parts[0].lineCount : 1;
+    const parts = PlaysCore.castOf(script);
+    const most = parts.length ? parts[0] || 1 : 1;
     const shown = parts.slice(0, 7);
     return el('span', { class: 'g-window pl-cast', 'aria-hidden': 'true', dataset: { fill: 'block', n: String(shown.length) } },
-      ...shown.map(p => el('i', { style: `width: ${Math.max(6, Math.round(100 * p.lineCount / most))}%` })),
+      ...shown.map(n => el('i', { style: `width: ${Math.max(6, Math.round(100 * n / most))}%` })),
       parts.length > shown.length ? el('span', { class: 'pl-cast-more tabular' }, `+${parts.length - shown.length}`) : null);
   }
   function playTile(script) {
     const win = castWindow(script);
     const v = PlaysCore.voicesOf(script);
-    return el('li', { class: 'g-tile-li' },
+    return el('li', { class: 'g-tile-li pl-tile-li' },
       el('a', { class: 'g-tile', href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: PlaysUI.BOARD },
                 'aria-label': [script.title, ...playFacts(script)].filter(Boolean).join(', ') },
         win,
         el('span', { class: 'g-name', dataset: { step: String(API.nameStep(script.title)) } }, script.title),
         PlaysUI.fingerprint(script),
         el('span', { class: 'g-facts caption' }, el('span', {}, `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`),
-          el('span', {}, `About ${num.format(PlaysCore.minutesOf(script))} min`))));
+          el('span', {}, `About ${num.format(PlaysCore.minutesOf(script))} min`))),
+      PlaysUI.readLink(script.id, { icon: true }));
+  }
+
+  /** A grid of play tiles drawn in batches (§4.15): the first PLAY_BATCH, then the next each time the end nears. */
+  const PLAY_BATCH = 60;
+  function playGrid(list, label) {
+    const ul = el('ul', { class: 'g-grid', 'aria-label': label });
+    let shown = 0;
+    const more = el('div', { class: 'pl-more', 'aria-hidden': 'true' });
+    const add = () => {
+      const next = list.slice(shown, shown + PLAY_BATCH);
+      ul.append(...next.map(playTile));
+      shown += next.length;
+      if (shown >= list.length) { obs && obs.disconnect(); more.remove(); }
+    };
+    const obs = typeof IntersectionObserver === 'function' && list.length > PLAY_BATCH
+      ? new IntersectionObserver((es) => { if (es.some(e => e.isIntersecting)) add(); }, { root: $('main-content'), rootMargin: '800px 0px' })
+      : null;
+    add();
+    if (obs && shown < list.length) { obs.observe(more); return el('div', {}, ul, more); }
+    if (!obs) while (shown < list.length) add();
+    return ul;
   }
 
   function renderRecord(r) {
@@ -846,13 +876,13 @@
 
     const f = { voices: r.p.get('voices') || '', length: r.p.get('length') || '', kind: r.p.get('kind') || '',
                 sort: PLAY_SORT[r.p.get('sort')] ? r.p.get('sort') : 'voices' };
-    homeRow(todayBox, null, () => API.castableScripts(), (scripts, c) => {
+    homeRow(todayBox, null, () => API.playLibrary(), (scripts, c) => {
       const s = PlaysCore.todaysPlay(scripts, API.localDate(new Date(clockNow())));
       if (!s) return false;
       c.append(todaysPlayBoard(s));
       return true;
     });
-    homeRow(playsBox, null, () => API.castableScripts(), (scripts, c) => {
+    homeRow(playsBox, null, () => API.playLibrary(), (scripts, c) => {
       if (!scripts.length) { c.append(stateBox('empty', { text: 'No plays yet.' })); return true; }
       const facet = { voices: PlaysCore.voiceBand, length: PlaysCore.lengthBand, kind: (s) => (KIND_LABEL[s.kind] ? s.kind : null) };
       const keep = (s, skip) => Object.keys(facet).every(k => k === skip || !f[k] || facet[k](s) === f[k]);
@@ -891,7 +921,7 @@
         c.append(stateBox('empty', { text: 'Nothing matches these filters.', action: { label: 'Clear filters', href: '?view=record' } }));
         return true;
       }
-      c.append(el('ul', { class: 'g-grid', 'aria-label': PLAY_SORT[f.sort] }, ...list.map(playTile)));
+      c.append(playGrid(list, PLAY_SORT[f.sort]));
       return true;
     });
     PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) madeBox.replaceChildren(sec); }).catch((e) => console.error(e));
@@ -1300,12 +1330,12 @@
              author: PlaysCore.authorLine(script), episodes: 0, first: null, genre: null, networks: null };
   }
   function playMeta(script) {
-    const parts = PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length;
+    const parts = PlaysCore.partCountOf(script);
     return [PlaysCore.authorLine(script), plural(parts, 'part', 'parts')].filter(Boolean).join(' · ');
   }
   function playRow(script) {
     const sub = eventLine([PlaysCore.authorLine(script),
-      plural(PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')]);
+      plural(PlaysCore.partCountOf(script), 'part', 'parts')]);
     return el('li', { class: 'series-row g-row ear-drama-only' },
       el('a', { class: 'g-link', href: `?play=${encodeURIComponent(script.id)}` },
         pictureWindow({ name: script.title, picture: null, genre: PlaysUI.BOARD }, 48),
@@ -1313,7 +1343,7 @@
           sub ? el('span', { class: 'ep-sub' }, sub) : null)));
   }
   /** The plays, or none when the file does not load: Browse and Search still list the series. */
-  const castable = () => API.castableScripts().catch((err) => { console.error(err); return []; });
+  const castable = () => API.playLibrary().catch((err) => { console.error(err); return []; });
 
   function fillSelect(sel, allLabel, counts, current, label = (k) => k) {
     sel.replaceChildren(el('option', { value: '' }, allLabel));
@@ -1442,7 +1472,7 @@
       let shown = 0;
       const more = el('button', { type: 'button', class: 'btn btn-ghost' }, 'Show more');
       const tileOf = (s) => (s.kind === 'plays'
-        ? showTile({ key: s.key, name: s.name, genre: PlaysUI.BOARD, first: null, picture: null }, { href: `?play=${encodeURIComponent(s.key)}`, facts: [s.author, plural(PlaysCore.castParts(s.script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')], mark: PlaysUI.fingerprint(s.script) })
+        ? showTile({ key: s.key, name: s.name, genre: PlaysUI.BOARD, first: null, picture: null }, { href: `?play=${encodeURIComponent(s.key)}`, facts: [s.author, plural(PlaysCore.partCountOf(s.script), 'part', 'parts')], mark: PlaysUI.fingerprint(s.script) })
         : showTile(s));
       const az = f.sort === 'name';
       const letters = az ? API.azLetters(list.map(key)) : [];
@@ -2029,6 +2059,29 @@
   function renderPlays(r) {
     PlaysUI.render(r, playsHelpers);
   }
+  /** The script reader (WEB-DESIGN §4.16): `?read={id}`, optionally `&line={line id}`. */
+  let readerSeq = 0;
+  function renderReader(r) {
+    const body = $('reader-body');
+    const my = ++readerSeq;
+    if (Reader.openID() === r.id && body.firstChild) return;
+    setTitle('Read');
+    body.replaceChildren(stateBox('loading'));
+    const close = () => {
+      if (readerFrom) history.back();
+      else navigate(`?play=${encodeURIComponent(r.id)}`, true);
+    };
+    API.playScript(r.id).then((script) => {
+      if (my !== readerSeq || $('view-reader').hidden) return;
+      if (!script) { body.replaceChildren(stateBox('missing')); return; }
+      setTitle(script.title);
+      Reader.open(body, script, { line: r.p.get('line'), onClose: close });
+    }).catch((err) => {
+      if (my !== readerSeq) return;
+      console.error(err);
+      body.replaceChildren(stateBox(problem(err), { retry: () => renderReader(r) }));
+    });
+  }
   function renderInvite() {
     setTitle('Invitation');
     PlaysUI.renderInvite($('invite-body'), playsHelpers);
@@ -2103,7 +2156,7 @@
         picks.append(pickBox('A play', headBoard({ series: { name: script.title, genre: PlaysUI.BOARD, picture: null },
           name: script.title, href: `?play=${encodeURIComponent(script.id)}`,
           facts: [PlaysCore.authorLine(script),
-            plural(PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id)).length, 'part', 'parts')],
+            plural(PlaysCore.partCountOf(script), 'part', 'parts')],
           first: null, last: null }),
           el('div', { class: 'actions' }, PlaysUI.startButton(script, playsHelpers))));
       }

@@ -73,22 +73,44 @@ const PlaysCore = (() => {
     return `${first} ${last}`;
   }
   /** An author as the record names them for reading: `display` ("George Melville Baker"), else the filed name turned. */
-  const authorName = (a) => (a.display && a.display.trim()) || displayName(a.name);
+  const authorName = (a) => (typeof a === 'string' ? a : (a.display && a.display.trim()) || displayName(a.name));
+  /** The authors for reading; an index row already carries display names. */
   const authorLine = (script) =>
-    (script.authors || []).filter(a => a.name || a.display).map(authorName).join(', ');
+    (script.authors || []).filter(a => typeof a === 'string' ? a.trim() : a.name || a.display).map(authorName).join(', ');
 
   /* ---- Browsing the library (WEB-DESIGN §4.15, Decision 075) ---- */
 
   /** Words a minute for a play's length: speech read aloud. A length is "About N min", never exact. */
   const WORDS_PER_MINUTE = 150;
-  /** Speaking parts. */
-  const voicesOf = (script) => (script.roles && script.roles.length ? script.roles.length
-    : castParts(script).filter(x => isSpeaking(x.id)).length);
-  /** Minutes from the words its parts speak, at least 1. */
+  /** A role a person can cast has at least this many speeches (catalog/tools/script_parse.py CASTABLE_LINES). */
+  const CASTABLE_LINES = 5;
+  /*
+   * Every browse surface takes either a full script or a row of the play library's index
+   * (contract §4.1: `voices`, `minutes`, `cast`, display-name `authors`), so a list of 1,500
+   * plays never fetches a script. The index's own numbers win; a full script computes the same.
+   */
+  /** The voices a person can cast: the index's `voices`, else roles with CASTABLE_LINES speeches. */
+  function voicesOf(script) {
+    if (typeof script.voices === 'number') return script.voices;
+    const roles = script.roles || [];
+    if (roles.length && roles.every(r => typeof r.lines === 'number')) return roles.filter(r => r.lines >= CASTABLE_LINES).length;
+    return roles.length ? roles.length : castParts(script).filter(x => isSpeaking(x.id)).length;
+  }
+  /** Minutes from the words its parts speak, at least 1 (the index's `minutes` when it has them). */
   function minutesOf(script) {
+    if (typeof script.minutes === 'number') return Math.max(1, script.minutes);
     const words = (script.roles || []).reduce((n, r) => n + (r.words || 0), 0);
     return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
   }
+  /** Each speaking part's speeches, largest first: the index's `cast`, else counted from the lines. */
+  function castOf(script) {
+    if (Array.isArray(script.cast)) return script.cast;
+    if (Array.isArray(script.lines)) return castParts(script).filter(x => isSpeaking(x.id)).map(x => x.lineCount);
+    // An index row published before `cast` (roles is a count there) draws no cast, never throws.
+    return Array.isArray(script.roles) ? script.roles.map(r => r.lines || 0).sort((a, b) => b - a) : [];
+  }
+  /** Named speaking parts, of any size. */
+  const partCountOf = (script) => castOf(script).length || (typeof script.roles === 'number' ? script.roles : 0);
   const VOICE_BANDS = [['1-2', 1, 2], ['3-5', 3, 5], ['6-10', 6, 10], ['11+', 11, Infinity]];
   const LENGTH_BANDS = [['short', 0, 29], ['mid', 30, 60], ['long', 61, Infinity]];
   const bandOf = (bands, n) => (bands.find(([, lo, hi]) => n >= lo && n <= hi) || [null])[0];
@@ -370,6 +392,178 @@ const PlaysCore = (() => {
     if (runUp) return before.slice(-2);
     const last = before[before.length - 1];
     return last && linePart(last) !== me ? [last] : [];
+  }
+
+  /* ---- Reading (Decision 076, S0 and S1): sections, contents, search, open parts ---- */
+
+  /*
+   * Acts and scenes are not lines: the parser sets a printed heading aside (a script's `sections`,
+   * contract §4.1, each `{line, source}` at the line it opens), or keeps it as a stage direction
+   * when it carries more. sectionLevel mirrors catalog/tools/script_parse.py section_level; both
+   * run catalog/tests/golden/script_sections.json.
+   */
+  const SEC_NUM = '(?:[IVXLC]+|\\d+|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|FIRST|SECOND|THIRD|FOURTH|'
+    + 'FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|LAST|PRIMUS|SECUNDUS|TERTIUS|QUARTUS|QUINTUS)';
+  const SEC_ORD = '(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|LAST)';
+  const SECTION_ACT = new RegExp(`^[\\W_]*(?:ACT(?:US)?\\.?\\s+(${SEC_NUM})\\b|(?:THE\\s+)?(${SEC_ORD})\\s+ACT\\b)`, 'i');
+  const SECTION_SCENE = new RegExp(`^[\\W_]*(?:SC(?:ENE|ENA|OENA)\\.?\\s+${SEC_NUM}\\b|(?:THE\\s+)?${SEC_ORD}\\s+SCENE\\b)`, 'i');
+  const SECTION_PART = /^[\W_]*(?:PROLOGUE|EPILOGUE|INDUCTION)[\W_]*$/i;
+  const firstLine = (text) => String(text || '').trim().split('\n')[0].trim();
+  /** 'act', 'scene', 'part' (a prologue, epilogue or induction), or null. */
+  function sectionLevel(text) {
+    const f = firstLine(text);
+    if (SECTION_ACT.test(f)) return 'act';
+    if (SECTION_SCENE.test(f)) return 'scene';
+    if (SECTION_PART.test(f)) return 'part';
+    return null;
+  }
+  /** A heading as the reader names it: its first printed line, italic marks and runs of spaces dropped. */
+  const sectionTitle = (text) => firstLine(text).replace(/_/g, '').replace(/\s+/g, ' ').trim();
+  /** The act's number as printed, upper-cased ("ACT I. SCENE II." -> "I"), or null. */
+  function actKey(text) {
+    const m = SECTION_ACT.exec(firstLine(text));
+    return m ? (m[1] || m[2]).toUpperCase() : null;
+  }
+
+  const sectionCache = new WeakMap();
+  /**
+   * Every section of a script in reading order: `{ line, index, level, title, act, isLine }`. An act
+   * heading that repeats the act in hand is a scene; a heading with no speech under it is left out.
+   * `isLine` is true when the heading is itself a stage-direction line (drawn as that line);
+   * false when it is a printed heading the parser set aside (the reader draws it before `line`).
+   */
+  function sectionsOf(script) {
+    if (sectionCache.has(script)) return sectionCache.get(script);
+    const at = new Map((script.lines || []).map((l, i) => [l.id, i]));
+    const out = [];
+    let order = 0;
+    for (const s of script.sections || []) {
+      const level = sectionLevel(s.source);
+      const index = at.get(s.line);
+      if (level && index !== undefined) out.push({ line: s.line, index, level, title: sectionTitle(s.source), act: actKey(s.source), isLine: false, order: order++ });
+    }
+    (script.lines || []).forEach((l, index) => {
+      if (l.kind === 'speech') return;
+      const level = sectionLevel(l.source);
+      if (level) out.push({ line: l.id, index, level, title: sectionTitle(l.source), act: actKey(l.source), isLine: true, order: order++ });
+    });
+    out.sort((a, b) => a.index - b.index || (a.isLine - b.isLine) || a.order - b.order);
+    // An act heading repeating the act in hand ("ACT I. SCENE II." after "ACT I.") is a scene of it.
+    let act = null;
+    for (const s of out) {
+      delete s.order;
+      if (s.level === 'act' && act && s.act && s.act === act) s.level = 'scene';
+      else if (s.level === 'act') act = s.act;
+      else if (s.level === 'part') act = null;
+    }
+    // A section with no speech before the next one of its rank or higher is a printed list of the
+    // acts (front matter), not a place in the play: it is left out of the contents.
+    const speechBefore = [0];
+    (script.lines || []).forEach((l, i) => { speechBefore[i + 1] = speechBefore[i] + (l.kind === 'speech' ? 1 : 0); });
+    const rank = (s) => (s.level === 'scene' ? 1 : 0);
+    const kept = out.filter((s, i) => {
+      const next = out.slice(i + 1).find(t => rank(t) <= rank(s));
+      const end = next ? next.index : (script.lines || []).length;
+      return speechBefore[end] - speechBefore[s.index] > 0;
+    });
+    sectionCache.set(script, kept);
+    return kept;
+  }
+
+  /** The contents: acts (and prologues, epilogues) with their scenes; a scene before any act, or after an epilogue, stands alone. */
+  function contentsOf(script) {
+    const out = [];
+    let act = null;
+    for (const s of sectionsOf(script)) {
+      if (s.level === 'act') {
+        act = { ...s, scenes: [] };
+        out.push(act);
+      } else if (s.level === 'scene' && act) {
+        act.scenes.push(s);
+      } else {
+        out.push({ ...s, scenes: [] });
+        if (s.level === 'part') act = null;
+      }
+    }
+    return out;
+  }
+
+  /** The act and the scene a line falls in: `{ act, scene }`, each a contents entry or null. */
+  function placeOf(script, lineIndex) {
+    let act = null, scene = null;
+    for (const top of contentsOf(script)) {
+      if (top.index > lineIndex) break;
+      act = top; scene = null;
+      for (const s of top.scenes) { if (s.index > lineIndex) break; scene = s; }
+    }
+    return { act, scene };
+  }
+
+  /** The printed words of a line, as one string: a speech's pieces joined, else its block. */
+  const lineText = (line) => (line.kind === 'speech' && Array.isArray(line.parts)
+    ? line.parts.map(pieceText).join(' ') : line.source || '');
+
+  /** Folds case, accents, curly quotes and runs of space, keeping where each folded character came from. */
+  function fold(text) {
+    let out = '';
+    const from = [];
+    let space = false;
+    for (let i = 0; i < text.length; i++) {
+      let f = text[i];
+      if (/\s/.test(f)) {
+        if (space) continue;
+        space = true; out += ' '; from.push(i); continue;
+      }
+      space = false;
+      f = f.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+      for (const ch of f) { out += ch; from.push(i); }
+    }
+    return { out, from };
+  }
+  const foldCache = new WeakMap();
+  /**
+   * Search in a script (Decision 076): every line whose printed words hold the query, ignoring case,
+   * accents, curly quotes and line breaks. `{ total, hits: [{ line, index, role, before, match, after }] }`,
+   * the first `limit` hits in reading order, with up to `span` characters either side.
+   */
+  function searchScript(script, query, { limit = 100, span = 40 } = {}) {
+    const q = fold(String(query || '').trim()).out;
+    if (q.length < 2) return { total: 0, hits: [] };
+    let folded = foldCache.get(script);
+    if (!folded) { folded = (script.lines || []).map(l => { const t = lineText(l); return { t, ...fold(t) }; }); foldCache.set(script, folded); }
+    const hits = [];
+    let total = 0;
+    folded.forEach((f, index) => {
+      const at = f.out.indexOf(q);
+      if (at < 0) return;
+      total += 1;
+      if (hits.length >= limit) return;
+      const start = f.from[at];
+      const end = f.from[at + q.length - 1] + 1;
+      const line = script.lines[index];
+      const b = Math.max(0, start - span);
+      hits.push({ line: line.id, index, role: line.kind === 'speech' ? line.role : null,
+        before: (b > 0 ? '…' : '') + f.t.slice(b, start).replace(/\s+/g, ' ').trimStart(),
+        match: f.t.slice(start, end).replace(/\s+/g, ' '),
+        after: f.t.slice(end, end + span).replace(/\s+/g, ' ').trimEnd() + (end + span < f.t.length ? '…' : '') });
+    });
+    return { total, hits };
+  }
+
+  /** A part's lines in reading order, as indexes into script.lines. */
+  const lineIndexesOf = (script, part) => (script.lines || []).reduce((a, l, i) => (linePart(l) === part ? (a.push(i), a) : a), []);
+  /** The first of `part`'s lines after `index` (direction 1) or before it (-1), or -1 when none. */
+  function nextLineOf(script, part, index, direction = 1) {
+    const mine = lineIndexesOf(script, part);
+    if (direction > 0) { const n = mine.find(i => i > index); return n === undefined ? -1 : n; }
+    for (let k = mine.length - 1; k >= 0; k--) if (mine[k] < index) return mine[k];
+    return -1;
+  }
+
+  /** The speaking parts of a production still open (never sound effects or stage directions). */
+  function openSpeakingParts(p, script) {
+    const parts = script ? castParts(script).map(x => x.id) : Object.keys(p.parts || {});
+    return parts.filter(id => isSpeaking(id) && stateOf(p, id).status === 'open');
   }
 
   function refusalText(r) {
@@ -684,12 +878,13 @@ const PlaysCore = (() => {
     DIRECTIONS, SOUND, STANDIN, TAKE_RATE, ROOM_TONE_SECONDS, DEFAULT_GAP, TARGET_LUFS, PEAK_CEILING,
     BLEED_LOUD_FRACTION, now, uuid, clone,
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
-    WORDS_PER_MINUTE, voicesOf, minutesOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay,
+    WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay,
     linesFor, speechLineIDs, castParts,
     newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
-    cueLines, refusalText, listenPlan, runPlan, discardRun, PART_HUES, partHue, MODES, lengthLine, authorFacts,
+    cueLines, sectionLevel, sectionTitle, actKey, sectionsOf, contentsOf, placeOf, lineText, fold, searchScript,
+    lineIndexesOf, nextLineOf, openSpeakingParts, refusalText, listenPlan, runPlan, discardRun, PART_HUES, partHue, MODES, lengthLine, authorFacts,
     MixFailure, gain, buildTimeline, renderMix,
     integratedLoudness, samplePeak, rms, thresholdFor, LineEndDetector, lineWindow, CueMeter,
     wavHeader, pcmBytes, encodeWav, decodeWav,

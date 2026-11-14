@@ -644,6 +644,37 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     class**). The manifest's https filters stay as §3.4 has them. A TV draws
     none of it.
 
+- **§4.17 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 binding on
+  the verbs; WEB-DESIGN §4.16 the sibling; port spec
+  `docs/research/design/R2-reader-port-brief.md`). **Read** (a `TextButton`
+  beside Record this, and a book `IconButton` on each Record tile) opens
+  `Route.Reader(scriptId, lineId?)`, full screen over the bottom bar, no
+  account. A `TopAppBar` (Close, the title over the act and scene, then
+  Contents, Search and Text icons with content descriptions); a bottom bar
+  with **I'm playing** (an `ExposedDropdownMenuBox`), Next line, Hide my
+  lines (an `IconToggleButton`) and the page count.
+  - **Pages by default**: the script paginated with `TextMeasurer` at the
+    current font scale into pages, shown in a `HorizontalPager` (a slide,
+    never a curl; `beyondViewportPageCount = 1`). Two facing pages when the
+    window size class is expanded (a tablet, an open foldable in book
+    posture) and the reader has the width (`currentWindowAdaptiveInfo()`),
+    one otherwise. Turns: swipe; a tap on the outer fifth; hardware keys and
+    pedals (DPAD left/right/up/down, PAGE_UP/PAGE_DOWN, SPACE) through
+    `onPreviewKeyEvent`; and an opt-in **Volume keys turn pages** in Text.
+    **Scroll** (a setting): a `LazyColumn` keyed by line id.
+  - **Position** is a line id per script in `SharedPreferences` with the
+    part; a font-scale, text size, spacing, rotation or fold change
+    re-paginates and `scrollToPage` the page holding that line
+    (`rememberSaveable` survives the configuration change).
+  - **Text**, **Contents**, **Search** are `ModalBottomSheet`s (size over
+    seven steps on top of the system font scale, spacing, Pages / Scroll;
+    acts with scenes; a search field over `PlaysCore.search`).
+  - **I'm playing**: the part's lines carry a start rule and tint in its
+    hue; Hide my lines draws its words as rounded bars in the hue (still
+    measured, so pages stay put); a tap peeks one.
+  - Not on a TV (Android TV and Fire TV get a read-along panel later, as
+    tvOS-DESIGN §4.13).
+
 ## §5 The player
 
 - **§5.1 One engine.** `PlaybackEngine` owns the Media3 player; the
