@@ -1,6 +1,7 @@
 package com.example.appname.plays
 
 import android.content.Context
+import androidx.core.content.edit
 import android.content.Intent
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
@@ -160,5 +161,5 @@ class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : 
 class PrefsCastStore(context: Context) : CastStore {
     private val prefs = context.applicationContext.getSharedPreferences(VoiceCasting.KEY, Context.MODE_PRIVATE)
     override fun read(): String? = prefs.getString(VoiceCasting.KEY, null)
-    override fun write(text: String) { prefs.edit().putString(VoiceCasting.KEY, text).apply() }
+    override fun write(text: String) { prefs.edit { putString(VoiceCasting.KEY, text) } }
 }

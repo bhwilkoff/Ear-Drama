@@ -603,7 +603,7 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     LaunchedEffect(sheet) { if (sheet.isEmpty()) runCatching { focus.requestFocus() } }
 
     val place = remember(posIndex, script) { ScriptReading.placeOf(script, posIndex) }
-    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+    val wide = with(LocalDensity.current) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() } >= 600.dp
 
     fun stopHearing() {
         hearJob?.cancel()
