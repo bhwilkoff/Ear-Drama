@@ -243,20 +243,27 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §3 Navigation shell
 
-- **§3.1 Sections are actions** (Decision 068, owner 2026-10-24: *"we
-  should focus on actions and not content type ... we should mimic the
-  items from Archive Watch"*). **Five tabs, hard set: Home, Browse,
-  Stations, Search, Library** (`Tab`, `navigation/Routes.kt`), with
-  Material icons Home, Explore, Radio, Search, and Bookmarks.
-  **Surprise** is the Home top bar's one action (Shuffle), pushing
-  `Route.Surprise`, as Archive Watch's ANDROID-DESIGN ("The Home top bar
-  carries a shuffle action → Surprise grid"). `NavigationSuiteScaffold`
+- **§3.1 Five sections, Record among them** (Decision 075, owner
+  2026-11-14: *"It is entirely unclear what the app is or how to use it
+  easily"*; *"The ability/functionality for recording new Ear Dramas is
+  significantly buried"*). **Five tabs, hard set: Home, Browse, Record,
+  Search, Library** (`Tab`, `navigation/Routes.kt`), with Material icons
+  Home, Explore, Mic, Search, and Bookmarks. **Stations** is pushed from
+  Home (`Route.Radio`, from On the air's "All stations" and the Listen
+  door) and **Surprise** is the Home top bar's one action (Shuffle),
+  pushing `Route.Surprise`; neither is a tab. `NavigationSuiteScaffold`
   draws a bar, a rail, or a drawer by window size; five items is inside
-  Material's three to five. No tab is named for a content type: plays sit
-  in Browse and Search beside the series, "Start an ear drama" is on a
-  play's page, and Library lists Ear dramas. A TV records nothing
-  (PLAYS-DESIGN §2), so there the plays, the Surprise play, and Ear
-  dramas are not shown.
+  Material's three to five. Each tab owns one verb: Home what is on now
+  and where to start, Browse every show by facet, Record making an ear
+  drama (your productions, then the plays), Search find, Library yours.
+  "Record this" sits beside Play on any page with a castable script.
+  **On a TV** (Android TV, Fire TV) there is no Record tab: a TV records
+  nothing (PLAYS-DESIGN §2), so the rail shows Home, Browse, Search,
+  Library, Home has no Record a play door or row, and the plays, the
+  Surprise play, and Ear dramas are not shown.
+  - *Replaced* (2026-11-14, Decision 075): "**Five tabs, hard set: Home,
+    Browse, Stations, Search, Library** ... No tab is named for a content
+    type: plays sit in Browse and Search beside the series".
   - *Replaced*: "Six tabs, hard set: Listen, Series, Radio, Plays,
     Search, Library ... Plays records, so a TV shows the other five."
 - **§3.2 One route registry.** Every destination is a case of the sealed
@@ -289,14 +296,29 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 
 ## §4 Surfaces
 
-- **§4.1 Home** (was Listen) is a `LazyColumn` of shelves, each a header over a
-  `LazyRow` of 220 dp cards: Continue listening, then Following (the
-  series the listener follows as cards, newest follow first, each
-  opening its page; the web's order, web §4.2), then the published
-  shelves in order (R13). A shelf with no rows is not drawn. The top
-  bar's action is Surprise (§4.14).
-- **§4.2 Browse** (was Series) lists radio series and stage plays
-  together. A Kind chip (Any kind, Series, Plays) and a "Has a script"
+- **§4.1 Home** (Decision 075; the web's §4.2 holds the shared sections
+  and data rules) is a `LazyColumn`, the top bar's action Surprise
+  (§4.14). Top to bottom: **On the air** (an `ElevatedCard` on the board:
+  tonight's slot on now, else the first genre station with a playable
+  slot, as a `GrammarRow`, then **Listen live**, a filled `Button` in
+  ink, and **All stations**, an `OutlinedButton` pushing `Route.Radio`;
+  absent when nothing is on); **Continue** (only with history); **three
+  doors**, one `Row` of three equal `OutlinedCard`s, a Material icon over
+  a verb (Listen `Radio`, Find a show `Explore`, Record a play `Mic`);
+  **Start a show** (`FilterChip`s, "Most downloaded" then each published
+  genre, over a `LazyRow` of 220 dp tiles with a Play `IconButton`);
+  **By length** (Under 15 min, About 30 min, An hour, from `byLength`;
+  absent while unpublished); **Record a play** (Today's play,
+  `todaysPlay` in `plays/`, as `PlayHeadBoard` with Record this and
+  Parts, then Open parts from this device's productions); **This day in
+  radio**; **Most heard voices**; **Made here**. Each section has its own
+  loading, error (Try again) and offline state; a section whose rule
+  yields nothing is not drawn.
+  - *Replaced* (2026-11-14): "a `LazyColumn` of shelves ... Continue
+    listening, then Following ..., then the published shelves in order".
+- **§4.2 Browse** (was Series) lists radio series; the plays moved to
+  Record (§4.9a, Decision 075), so the Kind chip and every clause below
+  about plays in Browse are replaced. A Kind chip (Any kind, Series, Plays) and a "Has a script"
   chip lead its row of `FilterChip`s; a play carries no genre, decade, or
   network, so setting one narrows to series, and "Has a script" keeps the
   rows whose record carries a usable script: the plays, and the series
@@ -369,9 +391,10 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.8 Episode rows carry two targets**: the row opens Detail ("Open
   episode") and the trailing button plays ("Play" and the title).
 - **§4.9 Ear dramas** (`docs/PLAYS-DESIGN.md` binds what it does;
-  `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). No tab
-  of their own (Decision 068): a play is a row in Browse and Search, and
-  a person's productions are Library's Ear dramas (§4.6). A play stands
+  `ui/screens/PlaysScreens.kt`, `RecordingScreen.kt`, `plays/`). Record
+  is their tab (§4.9a, Decision 075); a play is also a row in Search, and
+  a person's productions lead Record and stay in Library's Ear dramas
+  (§4.6). *Replaced* (2026-11-14): "No tab of their own (Decision 068)". A play stands
   on the drama board (`PLAY_BOARD`, `board.drama`; the genre is never
   named on screen), in Browse's tiles and Search's and Surprise's rows
   as well as its own page (D3-6). The play's page (`playPage`) is
@@ -381,7 +404,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   lines", nothing invented, and the cast fingerprint in the mark slot
   (`CastFingerprint`: one bar, a segment per speaking part by its share
   of the lines, largest first, 1 px apart, in the board's one onBoard
-  color); then "Start an ear drama" (was "Cast this play"; ink, the
+  color); then "Record this" (was "Start an ear drama", Decision 075,
+  and before that "Cast this play"; ink, the
   primary action), the parts as `PartCard`s in a grid (`PartGrid`: two
   across, three from 840 dp; a face, the name in the display face, "N
   lines", the 24-bar `PresenceStrip` in the part's hue), then the rights
@@ -540,6 +564,19 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   D-pad stops with the ring, the code field takes focus, and Share is
   absent.
 
+- **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;
+  not on a TV). The tab's root is a `LazyColumn`: **Yours** (this device's
+  productions and the shared ones not yet opened, each "n of m lines
+  recorded", "Finished" or "Shared"; absent when empty), **Today's play**
+  (`PlayHeadBoard` with Record this and Parts), **Plays** under a row of
+  `FilterChip`s with menus (Voices 1-2 / 3-5 / 6-10 / 11+; Length Under
+  30 min / 30-60 min / Over an hour, `minutesOf` at 150 words a minute;
+  Kind Radio play / Stage play; Sort Fewest voices, Shortest, A to Z),
+  each play a tile whose window draws its cast (one bar per speaking
+  part, largest first, up to seven, in the board's one color, "+N" for the rest; the Today's play board wears the same window)
+  with "N voices · About M min", then **Made here**. Author lines use
+  each author's `display` name.
+
 - **§4.14 Surprise** (`ui/screens/SurpriseScreen.kt`; Archive Watch
   PARITY §5) is a `LazyColumn` of three picks drawn when it opens, and a
   Shuffle action in its top bar: **an episode** (a served, recommendable
@@ -547,7 +584,7 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   with Play; **an evening** (one of `tonight.json`'s evenings), its date
   and network, with Play, which plays its first surviving slot from the
   start, never live and never a queue; **a play** (one castable script)
-  with "Start an ear drama", not on a TV. Each plays or starts in one
+  with "Record this", not on a TV. Each plays or starts in one
   tap. `kotlin.random.Random`: nothing needs to match another device. No
   copy is written; a pick with no data is absent.
 - **§4.15 A person** (`ui/screens/PersonScreen.kt`, `Route.Person`;

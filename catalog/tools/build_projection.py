@@ -521,7 +521,8 @@ def build(src, dst, clean_only=False, loudness=None, transcripts=None, scripts=N
             "listenShelves": SH.listen_shelves(
                 d.execute("SELECT id, series_key, air_date, num, no_recommend, title FROM episodes"),
                 {k: (g, n) for k, g, n in d.execute("SELECT key, genre, episodes FROM series")},
-                downloads=series_dl)}
+                downloads=series_dl,
+                lengths=dict(d.execute("SELECT id, length_s FROM episodes WHERE length_s IS NOT NULL")))}
     for k, v in meta.items():
         d.execute("INSERT INTO meta VALUES (?,?)", (k, json.dumps(v)))
     d.execute("INSERT INTO episodes_fts (episodes_fts) VALUES ('optimize')")   # one b-tree, before VACUUM

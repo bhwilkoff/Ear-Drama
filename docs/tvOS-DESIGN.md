@@ -83,15 +83,26 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
 
 ## §2 Information architecture
 
-- **§2.1 Six sidebar entries, hard set** (Decision 068: sections are
-  actions, as Archive Watch's tvOS-DESIGN §2.2): Home, Browse, Stations,
-  Search, Library, Surprise, in a `TabView` with `.sidebarAdaptable`;
-  Search uses `Tab(role: .search)`. Stations is the TV's most natural
-  entry ("Tonight in 1942", §4.8). Surprise is the phone's
-  (`docs/iOS-DESIGN.md` §4.11) without the play: the TV records nothing
-  (PLAYS-DESIGN §6), so Browse, Search, and Surprise show no plays.
-  Library shows the shared Ear dramas this person is in, to listen to
-  (§4.12).
+- **§2.1 Four sidebar entries, hard set** (Decision 075, owner
+  2026-11-14; Decision 075's five less Record): Home, Browse, Search,
+  Library, in a `TabView` with `.sidebarAdaptable`; Search uses
+  `Tab(role: .search)`. **Record is n/a on the TV**: it has no microphone
+  and records nothing (PLAYS-DESIGN §6, §11.7 rule 12), so there is no
+  Record entry, no Record a Play door or row, no Today's play, and no
+  Record This; Browse, Search, and Surprise show no plays. Library keeps
+  the shared Ear dramas this person is in, to listen to (§4.12): that is
+  all "making" means on a TV. **Home opens on what is on the air**: its
+  hero is On the air (tonight's slot on now, else the first genre station
+  with a playable slot), with **Listen Live** as the default focus, then
+  **All Stations** (pushes Stations, §4.8, the TV's most natural place
+  to lean back) and **Surprise** (pushes §4.10) in the same action row;
+  then Continue, two doors as wide cards (Listen, Find a Show; the third,
+  Record a Play, is absent), Start a Show, By Length, This Day in Radio,
+  and Most Heard Voices as shelves (the web's §4.2 rules, the TV's
+  idiom). Neither Stations nor Surprise is a sidebar entry.
+  - *Replaced* (2026-11-14, Decision 075): "Six sidebar entries, hard set
+    (Decision 068 ...): Home, Browse, Stations, Search, Library, Surprise
+    ... Stations is the TV's most natural entry ("Tonight in 1942", §4.8)".
   - *Replaced*: "... and Library no Ear dramas."
   - *Replaced*: "Five tabs, hard set: Listen, Series, Radio, Library,
     Search ... No Plays tab."

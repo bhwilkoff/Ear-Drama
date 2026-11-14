@@ -135,9 +135,10 @@ const PlaysUI = (() => {
   const canShare = () => API.plays.available() && API.account.signedIn();
   const signIn = () => { if (typeof AccountUI !== 'undefined') AccountUI.openSheet(); };
 
-  async function renderMine(body, helpers) {
+  /** The productions list. Record passes `onEmpty` (the section goes, no sentence) and `classes: false`. */
+  async function renderMine(body, helpers, opts = {}) {
     h = helpers;
-    lastDraw = () => renderMine(body, helpers);
+    lastDraw = () => renderMine(body, helpers, opts);
     const my = ++token;
     body.replaceChildren(h.stateBox('loading'));
     try {
@@ -154,6 +155,7 @@ const PlaysUI = (() => {
       if (my !== token) return;
     }
     const rows = S.libraryRows(store, remote);
+    if (!rows.length && opts.onEmpty) { body.replaceChildren(); opts.onEmpty(); return; }
     if (!rows.length) out.push(h.stateBox('empty', { text: 'No ear dramas yet.' }));
     else {
       const ul = h.el('ul', { class: 'play-list' });
@@ -175,12 +177,32 @@ const PlaysUI = (() => {
       }
       out.push(ul);
     }
-    if (canShare()) {
+    if (canShare() && opts.classes !== false) {
       const classes = await classesBox(my);
       if (my !== token) return;
       out.push(classes);
     }
     body.replaceChildren(...out);
+  }
+
+  /** Home's Open parts (WEB-DESIGN §4.2 item 7): this browser's productions with a part still open,
+      newest first, as rows; null when there are none. */
+  async function openParts(helpers) {
+    h = h || helpers;
+    await openStore();
+    const open = store.productions.filter(p => Object.values(p.parts || {}).some(x => x && x.status === 'open'))
+      .sort((a, b) => (b.created || 0) - (a.created || 0)).slice(0, 5);
+    if (!open.length) return null;
+    const ul = helpers.el('ul', { class: 'play-list', 'aria-labelledby': 'open-parts-h' });
+    for (const p of open) {
+      const script = await store.script(p);
+      ul.append(helpers.el('li', { class: 'play-row' },
+        helpers.el('a', { class: 'play-link', href: `?production=${encodeURIComponent(p.id)}` },
+          helpers.el('span', { class: 'body-strong' }, p.title),
+          helpers.el('span', { class: 'caption' }, progressLine(p, script)))));
+    }
+    return helpers.el('section', { class: 'block home-open-parts' },
+      helpers.el('h3', { class: 'section-header', id: 'open-parts-h' }, 'Open parts'), ul);
   }
 
   /** A shared production this browser has not opened: made here from the bundle's script (§11.7 rule 11). */
@@ -286,7 +308,7 @@ const PlaysUI = (() => {
         error.textContent = 'This browser could not save a production.';
         start.disabled = false;
       }
-    } }, 'Start an ear drama');
+    } }, 'Record this');
     box.append(start, error);
     return box;
   }
@@ -1555,7 +1577,7 @@ const PlaysUI = (() => {
     const ul = h.el('ul', { class: 'rail g-rail', 'aria-labelledby': 'dramas-h' });
     page.rows.slice(0, 12).forEach(d => ul.append(dramaTile(d, page.scripts)));
     return h.el('section', { class: 'shelf' },
-      h.el('div', { class: 'block-head' }, h.el('h2', { class: 'section-header', id: 'dramas-h' }, 'New ear dramas'),
+      h.el('div', { class: 'block-head' }, h.el('h2', { class: 'section-header', id: 'dramas-h' }, 'Made here'),
         h.el('a', { class: 'caption', href: '?view=browse&scope=dramas' }, 'All')), ul);
   }
 
@@ -1869,5 +1891,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { render, renderInvite, renderDrama, renderDramas, newDramas, renderMine: (body, helpers) => { watchAccount(); return renderMine(body, helpers); }, startButton, leave, fingerprint, BOARD };
+  return { render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, leave, fingerprint, BOARD };
 })();

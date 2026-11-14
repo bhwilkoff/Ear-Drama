@@ -72,8 +72,51 @@ const PlaysCore = (() => {
     if (!first || /^\d/.test(first)) return filed;
     return `${first} ${last}`;
   }
+  /** An author as the record names them for reading: `display` ("George Melville Baker"), else the filed name turned. */
+  const authorName = (a) => (a.display && a.display.trim()) || displayName(a.name);
   const authorLine = (script) =>
-    (script.authors || []).map(a => a.name).filter(Boolean).map(displayName).join(', ');
+    (script.authors || []).filter(a => a.name || a.display).map(authorName).join(', ');
+
+  /* ---- Browsing the library (WEB-DESIGN §4.15, Decision 075) ---- */
+
+  /** Words a minute for a play's length: speech read aloud. A length is "About N min", never exact. */
+  const WORDS_PER_MINUTE = 150;
+  /** Speaking parts. */
+  const voicesOf = (script) => (script.roles && script.roles.length ? script.roles.length
+    : castParts(script).filter(x => isSpeaking(x.id)).length);
+  /** Minutes from the words its parts speak, at least 1. */
+  function minutesOf(script) {
+    const words = (script.roles || []).reduce((n, r) => n + (r.words || 0), 0);
+    return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
+  }
+  const VOICE_BANDS = [['1-2', 1, 2], ['3-5', 3, 5], ['6-10', 6, 10], ['11+', 11, Infinity]];
+  const LENGTH_BANDS = [['short', 0, 29], ['mid', 30, 60], ['long', 61, Infinity]];
+  const bandOf = (bands, n) => (bands.find(([, lo, hi]) => n >= lo && n <= hi) || [null])[0];
+  const voiceBand = (script) => bandOf(VOICE_BANDS, voicesOf(script));
+  const lengthBand = (script) => bandOf(LENGTH_BANDS, minutesOf(script));
+
+  /** FNV-1a 64 over the UTF-8 bytes, as a BigInt (cross-platform-determinism: never a JS number). */
+  function fnv1a64(str) {
+    let h = 0xcbf29ce484222325n;
+    for (const b of new TextEncoder().encode(str)) {
+      h ^= BigInt(b);
+      h = (h * 0x100000001b3n) & 0xffffffffffffffffn;
+    }
+    return h;
+  }
+  /**
+   * Today's play (WEB-DESIGN §4.2): the script whose FNV-1a 64 of "play:{YYYY-MM-DD}:{id}" is
+   * smallest, ties by id, on the person's own calendar date. Order-independent, so every
+   * platform with the same library and date picks the same play. Null for an empty library.
+   */
+  function todaysPlay(scripts, dateKey) {
+    let best = null, bestH = null;
+    for (const s of scripts || []) {
+      const h = fnv1a64(`play:${dateKey}:${s.id}`);
+      if (best === null || h < bestH || (h === bestH && s.id < best.id)) { best = s; bestH = h; }
+    }
+    return best;
+  }
 
   const linesFor = (script, part) => script.lines.filter(l => linePart(l) === part);
   const speechLineIDs = (script) => script.lines.filter(l => l.kind === 'speech').map(l => l.id);
@@ -314,7 +357,7 @@ const PlaysCore = (() => {
   function authorFacts(script) {
     return (script.authors || []).filter(a => a.name).map(a => {
       const years = a.born && a.died ? ` (${a.born}–${a.died})` : a.born ? ` (b. ${a.born})` : a.died ? ` (d. ${a.died})` : '';
-      return displayName(a.name) + years;
+      return authorName(a) + years;
     }).join(', ');
   }
 
@@ -640,7 +683,8 @@ const PlaysCore = (() => {
   return {
     DIRECTIONS, SOUND, STANDIN, TAKE_RATE, ROOM_TONE_SECONDS, DEFAULT_GAP, TARGET_LUFS, PEAK_CEILING,
     BLEED_LOUD_FRACTION, now, uuid, clone,
-    role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorLine,
+    role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
+    WORDS_PER_MINUTE, voicesOf, minutesOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay,
     linesFor, speechLineIDs, castParts,
     newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused,
     fingerprint, isFinished, stableStringify,

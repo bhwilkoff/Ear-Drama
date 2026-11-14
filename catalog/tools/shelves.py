@@ -5,7 +5,8 @@ selects from served rows; nothing here writes a title, a blurb, or a pick (R13).
 `listen_shelves` is the published list: `onThisDay` first (a query by rule,
 since it depends on the person's date), then `mostDownloaded` (archive.org's
 own download counts, Decision 067), then one `genreFirsts` per genre in
-GENRES order, each with its episode ids precomputed.
+GENRES order, then one `byLength` per length band (Decision 075), each with
+its episode ids precomputed.
 
 Episode rows are (id, series_key, air_date, num, no_recommend[, title]); series
 is key -> (genre, served episode count).
@@ -14,9 +15,16 @@ import re
 
 from genres import GENRES
 
-RULES = ("onThisDay", "mostDownloaded", "genreFirsts")
+RULES = ("onThisDay", "mostDownloaded", "genreFirsts", "byLength")
 # The only keys a published shelf may carry: no free text, so no copy can ride along.
-KEYS = {"onThisDay": {"rule"}, "mostDownloaded": {"rule", "episodes"}, "genreFirsts": {"rule", "genre", "episodes"}}
+KEYS = {"onThisDay": {"rule"}, "mostDownloaded": {"rule", "episodes"}, "genreFirsts": {"rule", "genre", "episodes"},
+        "byLength": {"rule", "band", "episodes"}}
+# Decision 075's length doors, in seconds [low, high). The words on screen are
+# the client's ("Under 15 min", "About 30 min", "An hour"), each true of every
+# episode in its band. Under five minutes is a fragment, a promo or a station
+# break, not a place to start. MEASURED 2026-11-14 on 1,357 dated episodes over
+# 12 sampled days: 28% under 16 min, 65% 16-35, 7% over 35, median 28.
+LENGTH_BANDS = (("under15", 300, 900), ("about30", 1500, 2100), ("hour", 3000, 4200))
 SHELF_LIMIT = 20
 # A genre gets a shelf when this many served series each have a recommendable
 # episode. MEASURED 2026-10-23 on the 2026-10-22 projection: every genre has 39
@@ -87,6 +95,19 @@ def genre_firsts(episodes, series, genre, limit=SHELF_LIMIT):
     return [first[k][0] for k in keys[:limit]]
 
 
+def by_length(episodes, lengths, series, band, downloads=None, limit=SHELF_LIMIT):
+    """Decision 075: for each served series with a recommendable episode whose
+    length falls in the band, its earliest such episode (front matter skipped,
+    oldest first, as `firsts`); most downloaded series first, then most served
+    episodes, ties by key. `lengths` is episode id -> seconds."""
+    lo, hi = next((a, b) for k, a, b in LENGTH_BANDS if k == band)
+    downloads = downloads or {}
+    inside = [e for e in episodes if isinstance(lengths.get(e[0]), (int, float)) and lo <= lengths[e[0]] < hi]
+    first = firsts(inside, lambda k: bool(series.get(k)))
+    keys = sorted(first, key=lambda k: (-downloads.get(k, 0), -series[k][1], k))
+    return [first[k][0] for k in keys[:limit]]
+
+
 def series_downloads(default_copies, downloads):
     """Series key -> archive.org's own download count summed over the distinct items
     that hold its served episodes' default copies. `default_copies` is (series key,
@@ -120,9 +141,10 @@ def most_downloaded(episodes, by_series, limit=SHELF_LIMIT):
     return [first[k][0] for k in keys[:limit]]
 
 
-def listen_shelves(episodes, series, min_series=MIN_SERIES, downloads=None):
+def listen_shelves(episodes, series, min_series=MIN_SERIES, downloads=None, lengths=None):
     """`downloads` is series key -> `series_downloads`; without it there is no
-    popularity shelf (an older registry that never read the counts)."""
+    popularity shelf (an older registry that never read the counts). `lengths`
+    is episode id -> seconds; without it there are no length shelves."""
     episodes = list(episodes)
     with_rec = {}
     for e in episodes:
@@ -136,6 +158,10 @@ def listen_shelves(episodes, series, min_series=MIN_SERIES, downloads=None):
     for g in GENRES:
         if len(with_rec.get(g, ())) >= min_series:
             out.append({"rule": "genreFirsts", "genre": g, "episodes": genre_firsts(episodes, series, g)})
+    for band, _, _ in (LENGTH_BANDS if lengths else ()):
+        ids = by_length(episodes, lengths, series, band, downloads)
+        if len(ids) >= min_series:
+            out.append({"rule": "byLength", "band": band, "episodes": ids})
     return out
 
 
@@ -155,7 +181,9 @@ def violations(shelves, served, recommended):
             add("a shelf carries only its rule's keys (no text)", sorted(set(s) ^ KEYS[rule]))
         if rule == "genreFirsts" and s.get("genre") not in GENRES:
             add("a genre shelf names one of the eight genres", s.get("genre"))
-        if rule in ("genreFirsts", "mostDownloaded"):
+        if rule == "byLength" and s.get("band") not in {b for b, _, _ in LENGTH_BANDS}:
+            add("a length shelf names one of the bands", s.get("band"))
+        if rule in ("genreFirsts", "mostDownloaded", "byLength"):
             for i in s.get("episodes") or []:
                 if i not in served:
                     add("every published episode is served", i)

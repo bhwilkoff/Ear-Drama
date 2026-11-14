@@ -223,33 +223,31 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 ## §3 Navigation shell
 
-- **§3.1 Sections are actions** (Decision 068, owner 2026-10-24: *"we
-  should focus on actions and not content type ... we should mimic the
-  items from Archive Watch"*). **iPhone: five tabs, hard set, Home,
-  Browse, Stations, Search, Library**, as Archive Watch's iOS-DESIGN
-  §2.1 (Stations in Channels' place), with Search's
-  `Tab(role: .search)` so the system places it. **Surprise** is a push
-  from a toolbar button on Home (`Route.surprise`, the shuffle symbol),
-  as Archive Watch's §2.6: modes are pushes on the phone. At regular
-  width (iPad, the open Duo) the sidebar also lists Surprise, a `Tab`
-  hidden from the tab bar (`.defaultVisibility(.hidden, for: .tabBar)`)
-  and added only at regular width, so the phone's bar never grows a More
-  tab; narrowing to compact width hands a selected Surprise back to Home.
-  **The Surprise tab exists only while there IS a sidebar** (the Duo,
-  2026-11-14, `build/qa/duo-2026-11-14/01-home.png`): the open Duo in
-  landscape is regular width but puts the tabs in its vertical strip, and
-  the strip shows every tab whatever its `defaultVisibility`, so Surprise
-  stood in the strip beside Home's own shuffle button. The tab is added
-  only when `hSize == .regular` AND iOS 27's `isTabViewSidebarAvailable`
-  is not false (Archive Watch §2.8); in the strip, Surprise is Home's push
-  as on the phone.
-  Each section owns one verb (Archive Watch §12.2): Home chosen for you,
-  Browse everything by facet, Stations lean back on one clock, Search
-  find, Library yours. No section is named for a content type: plays sit
-  in Browse and Search beside the series, and recording is "Start an ear
-  drama" on a play's page. `AppTab` (`apple/Core/Store/AppStore.swift`)
-  holds the six; adding any other amends this rule first. There is no
-  Settings tab or gear.
+- **§3.1 Five sections, Record among them** (Decision 075, owner
+  2026-11-14: *"It is entirely unclear what the app is or how to use it
+  easily"*; *"The ability/functionality for recording new Ear Dramas is
+  significantly buried"*). **iPhone, iPad and the Duo: five tabs, hard
+  set, Home, Browse, Record, Search, Library**, with Search's
+  `Tab(role: .search)` so the system places it. The same five on every
+  width: the tab bar on iPhone, the sidebar on iPad, the vertical strip on
+  the open Duo. **Stations** is a push from Home (`Route.stations`, from
+  On the air's "All Stations" and the Listen door) and **Surprise** a push
+  from Home's toolbar button (`Route.surprise`, the shuffle symbol), as
+  Archive Watch's §2.6: modes are pushes on the phone. Neither is a tab at
+  any width, so the Duo's strip shows nothing twice (the 2026-11-14 Duo
+  pass, `build/qa/duo-2026-11-14/01-home.png`).
+  Each section owns one verb (Archive Watch §12.2): Home what is on now
+  and where to start, Browse every show by facet, Record making an ear
+  drama (your productions, then the plays), Search find, Library yours.
+  **Record this** sits beside Play on any page with a castable script.
+  `AppTab` (`apple/Core/Store/AppStore.swift`) holds the five; adding any
+  other amends this rule first. There is no Settings tab or gear.
+  - *Replaced* (2026-11-14, Decision 075): "**iPhone: five tabs, hard
+    set, Home, Browse, Stations, Search, Library** ... At regular width
+    (iPad, the open Duo) the sidebar also lists Surprise ... No section is
+    named for a content type: plays sit in Browse and Search beside the
+    series, and recording is "Start an ear drama" on a play's page.
+    `AppTab` ... holds the six".
   - *Replaced*: "Six tabs, hard set: Listen, Series, Radio, Plays,
     Library, Search. Radio follows Series, as on the web."
 - **§3.2 One shell for both form factors.** `TabView(selection:)` with
@@ -269,15 +267,31 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 ## §4 Surfaces
 
-- **§4.1 Home** (was Listen) is a `List`: Continue listening (the ten most recent
-  in progress), then Following (the series the person follows, newest
-  follow first as the web lists them, each a `SeriesRowLabel` pushing its
-  page), then the catalog's published shelves in order (R13). A section draws only
-  with rows. Each episode row's context menu offers Play. The toolbar's
-  one item is Surprise (a `Label` with the shuffle symbol), pushing
-  §4.11.
-- **§4.2 Browse** (was Series) is a `List` of radio series and stage
-  plays together, under a horizontally scrolling row of capsule chips,
+- **§4.1 Home** (Decision 075; the sections and data rules are the web's
+  §4.2, shared; this is the iOS idiom). A `ScrollView` of sections, the
+  large title "Home", and one toolbar item, Surprise (a `Label` with the
+  shuffle symbol), pushing §4.11. Top to bottom: **On the air** (tonight's
+  slot on now, else the first genre station with a playable slot; a
+  grammar row, then **Listen Live** `.borderedProminent` in ink and **All
+  Stations** `.bordered`, pushing `Route.stations`; absent when nothing is
+  on); **Continue** (the ten most recent in progress, only with history);
+  **three doors** in one `Grid` row of three equal buttons, an SF Symbol
+  over a verb (Listen `dot.radiowaves.left.and.right`, Find a Show
+  `square.grid.2x2`, Record a Play `mic`), Listen pushing Stations, the
+  other two selecting the Browse and Record tabs; **Start a Show** (a
+  segmented `Picker` of "Most downloaded" and each published genre, over a
+  horizontal rail of first-episode tiles, each with a Play button);
+  **By Length** (Under 15 min, About 30 min, An hour; the `byLength`
+  shelves; absent while unpublished); **Record a Play** (Today's play board,
+  `PlayScript.todaysPlay`, with Record This and Parts, then Open Parts from
+  this device's productions); **This Day in Radio**; **Most Heard Voices**;
+  **Made Here**. Each section has its own loading, error (with Try Again)
+  and offline state and is absent when its rule yields nothing.
+  - *Replaced* (2026-11-14): "a `List`: Continue listening ..., then
+    Following ..., then the catalog's published shelves in order (R13)".
+- **§4.2 Browse** (was Series) is a `List` of radio series (the plays
+  moved to Record, §4.14, Decision 075: the Kind chip goes, and so does
+  every sentence below about plays in Browse), under a horizontally scrolling row of capsule chips,
   as Archive Watch's iOS-DESIGN §4.2a: Kind, Genre, Decade, Network,
   each a native `Menu` naming its current value, and "Has a script", a
   toggle, then "Sort: Popular", a `Menu` of the orders that is never
@@ -449,7 +463,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   with Play; **an evening** (one of `tonight.json`'s evenings), its date
   and network, with Play, which plays its first surviving slot from the
   start, never live and never a queue; **a play** (one castable script),
-  its title and author, with "Start an ear drama". Each plays or starts
+  its title and author, with "Record This". Each plays or starts
   in one tap. The draw is the platform's own random: nothing needs to
   match another device. No copy is written; a pick with no data is
   absent.
@@ -478,12 +492,27 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   Keychain and the sync cursor, last sync, and last error leave the
   device. Sync runs on sign-in, on Sync Now, and when the app comes to
   the front or leaves it.
+- **§4.14 Record** (Decision 075; the web's §4.15 is the shared rule). A
+  tab whose root is a `List`: **Yours** (this device's productions and the
+  shared ones not yet opened, each row "N of M lines recorded",
+  "Finished" or "Shared"; absent when empty), **Today's Play** (the board
+  with Record This and Parts), **Plays** (the castable library under a
+  chip bar like Browse's: Voices 1-2 / 3-5 / 6-10 / 11+, Length Under 30
+  min / 30-60 min / Over an hour from `PlayScript.minutes` at 150 words a
+  minute, Kind Radio play / Stage play, and "Sort: Fewest voices", a
+  `Menu` of Fewest voices, Shortest, A to Z), each play a tile whose window
+  draws its cast (one bar per speaking part, largest first, up to seven,
+  in the board's one color, "+N" for the rest; the Today's play board wears the same window) with "N voices · About M min";
+  then **Made Here**. The author line is each author's `display` name.
+  Pushes `PlayRoute.script` and the cast sheet as before.
+
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's
   page is a `List`: its title, the author with their years when the
   record has them, the record's year when present, its length as
   "N parts · N lines" (speaking parts, every line), the rights
-  line, and "Start an ear drama"; nothing else marks it. The cast sheet
+  line, and "Record This" (Decision 075, was "Start an ear drama");
+  nothing else marks it. The cast sheet
   lists the parts largest first; every open part has Take Part, in any
   order, and the suggested one (`Relay.next`) is `.borderedProminent`,
   the rest `.bordered`, with no caption saying why. One part records at

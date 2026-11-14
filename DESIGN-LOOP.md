@@ -33,7 +33,8 @@ none of them is cut; a field that helps none of them is hidden.
 
 ## Binding constraints (unchanged by this loop unless the owner says so)
 
-- Decision 068's shell: Home, Browse, Stations, Surprise, Search, Library.
+- Decision 075's shell (owner, 2026-11-14; replaced 068's six): Home, Browse,
+  Record, Search, Library; Stations opens from Home, Surprise is a Home button.
   The loop may propose changing it; only the owner changes it.
 - Only essential words on screen; no AI-written lists or copy (data or a human
   editor); unclaimed recordings never called public domain.

@@ -578,6 +578,24 @@ const API = (() => {
    * an empty shelf dropped. A catalog without the key falls back to index/listen.json's genre
    * shelves of series (`rule: 'genre'`).
    */
+  /** Decision 075's length bands (contract §5.1 `byLength`), in their published order. */
+  const LENGTH_BANDS = ['under15', 'about30', 'hour'];
+  /**
+   * Home's rows (WEB-DESIGN §4.2): the manifest's episode shelves as rules with ids, not yet
+   * read, so each row fetches only the chip on screen. Unknown rules and empty lists are dropped.
+   */
+  async function homeShelves(get = getJSON) {
+    const m = await get('manifest.json');
+    const list = Array.isArray(m.listenShelves) ? m.listenShelves : [];
+    const ids = (s) => Array.isArray(s.episodes) && s.episodes.length > 0;
+    return {
+      start: list.filter(s => s && ((s.rule === 'mostDownloaded' && ids(s)) || (s.rule === 'genreFirsts' && ids(s) && s.genre)))
+        .map(s => ({ key: s.rule === 'mostDownloaded' ? 'popular' : s.genre, rule: s.rule, genre: s.genre || null, episodes: s.episodes })),
+      length: LENGTH_BANDS.map(b => list.find(s => s && s.rule === 'byLength' && s.band === b && ids(s)))
+        .filter(Boolean).map(s => ({ key: s.band, rule: s.rule, episodes: s.episodes })),
+    };
+  }
+
   async function listenShelves(date = new Date(), get = getJSON) {
     const m = await get('manifest.json');
     if (!Array.isArray(m.listenShelves)) {
@@ -592,6 +610,9 @@ const API = (() => {
       }
       if (s && s.rule === 'genreFirsts' && Array.isArray(s.episodes)) {
         return { rule: 'genreFirsts', genre: s.genre, rows: await episodesByIds(s.episodes, get) };
+      }
+      if (s && s.rule === 'byLength' && LENGTH_BANDS.includes(s.band) && Array.isArray(s.episodes)) {
+        return { rule: 'byLength', band: s.band, rows: await episodesByIds(s.episodes, get) };
       }
       return null;
     }));
@@ -1530,7 +1551,7 @@ const API = (() => {
     rooms, plays, isOffline, offlineLine,
     DataError, dataBase, getJSON, fnv1a, shardOf, tokens, termFile, rowsOf, byDownloads, artOf, artURL, ART_STEPS, wideAspect, artAspect, artShape, cropRect, cropBlobURL,
     monogram, blockSize, nameStep, headNameStep, windowFill, eventParts, RUN_AXIS, runSpan, runBars, undatedBare, azLetter, azLetters, gradeOf, SHOW_MIN, isShow, genreOrder, dayYears, nightShows, decadeField, fieldSide, pathQuery, shareLink,
-    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, seriesPage, episodeDetail, arcOf,
+    manifest, seriesIndex, leadPicture, onAirOf, episodeFacts, mediumDate, titleDates, looksLikeIdentifier, recordingLabel, recordingNamed, safeLink, aboutParagraphs, aboutLink, showFacts, recordingFacts, listen, thisDay, onThisDay, episodesByIds, sameDay, listenShelves, homeShelves, LENGTH_BANDS, seriesPage, episodeDetail, arcOf,
     forwarding, forwardingOf,
     searchSeries, searchEpisodeNumbers, searchDocs, rightsLine,
     personPage, lifeYears, personGroups, searchPeople, voices,

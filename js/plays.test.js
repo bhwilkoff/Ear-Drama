@@ -543,6 +543,33 @@ test('a play is marked only by facts from its record (Decision 067)', () => {
   eq(C.lengthLine(script), `3 parts · ${script.lines.length} lines`, 'speaking parts and every line, as Apple and Android count');
 });
 
+test('an author reads by the record\'s display name, never the filed form (Decision 075)', () => {
+  const script = { ...fixtureScript(), authors: [{ name: 'Baker, George M. (George Melville)', display: 'George Melville Baker' },
+                                                 { name: 'Carlton, Henry Fisk' }] };
+  eq(C.authorLine(script), 'George Melville Baker, Henry Fisk Carlton', 'display first, else the filed name turned');
+});
+
+test('today\'s play: the golden rotation every platform runs (catalog/tests/golden/todays_play.json)', () => {
+  const g = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog', 'tests', 'golden', 'todays_play.json'), 'utf8'));
+  g.hashes.forEach(h => eq(C.fnv1a64(h.text).toString(16).padStart(16, '0'), h.fnv1a64, `fnv1a64 of ${JSON.stringify(h.text)}`));
+  g.cases.forEach(c => {
+    const got = C.todaysPlay((c.ids || g.ids).map(id => ({ id })), c.date);
+    eq(got ? got.id : null, c.want, `${c.date} over ${(c.ids || g.ids).length} ids`);
+  });
+  const reversed = [...g.ids].reverse().map(id => ({ id }));
+  eq(C.todaysPlay(reversed, g.cases[0].date).id, g.cases[0].want, 'order-independent');
+  ok(new Set(g.cases.slice(0, 8).map(c => c.want)).size > 1, 'control: the pick changes with the date');
+});
+
+test('a play\'s voices and minutes, and their bands (WEB-DESIGN §4.15)', () => {
+  const s = { ...fixtureScript(), roles: [{ name: 'A', words: 3000 }, { name: 'B', words: 1500 }, { name: 'C', words: 10 }] };
+  eq(C.voicesOf(s), 3, 'one voice per role');
+  eq(C.minutesOf(s), 30, '4,510 words at 150 a minute');
+  eq([C.voiceBand(s), C.lengthBand(s)], ['3-5', 'mid'], 'bands');
+  eq(C.lengthBand({ roles: [{ words: 100 }] }), 'short', 'at least a minute, under 30 is short');
+  eq(C.voiceBand({ roles: Array.from({ length: 11 }, () => ({ words: 1 })) }), '11+', 'eleven and up');
+});
+
 /** A store whose every write is counted, over a production half recorded. */
 async function halfRecorded() {
   const script = fixtureScript();

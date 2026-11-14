@@ -1,19 +1,20 @@
 /**
  * Ear Drama on the web: the views, the router, and the player's face.
  *
- * Routes (every view has a URL; the https twins of the apps' links). The six
- * sections are actions (Decision 068, WEB-DESIGN §4.1):
- *   ?view=home                        Home (also the bare site)
- *   ?view=browse&kind=&script=1&genre=&decade=&network=&sort=   Browse: series and plays
- *   ?view=stations                    Stations: Tonight in 19xx on the one clock
- *   ?view=surprise                    Surprise: three random picks
+ * Routes (every view has a URL; the https twins of the apps' links). Five sections,
+ * Home, Browse, Record, Search, Library (Decision 075, WEB-DESIGN §4.1):
+ *   ?view=home&start=&length=         Home (also the bare site): On the air, the doors, rule rows
+ *   ?view=browse&script=1&genre=&decade=&network=&sort=   Browse: the series
+ *   ?view=record&voices=&length=&kind=&sort=   Record: yours, today's play, the plays
+ *   ?view=stations                    Stations (opened from Home): Tonight in 19xx on the one clock
+ *   ?view=surprise                    Surprise (Home's button): three random picks
  *   ?series={key}&season={1948-49|undated}       a series page
  *   ?item={episode id}                episode Detail
  *   ?view=search&q=                   Search
  *   ?view=library&tab=continue|queue|following|history|dramas    Library (this device)
  *   ?play={script id}, ?production={id}, ?production={id}&part={part id}
  *                                     an ear drama (js/plays-ui.js; this browser only)
- * The names before 068 (listen, series, radio, plays) are rewritten in place.
+ * Older names are rewritten in place: listen, series, radio; plays and browse&kind=plays open Record.
  *   ?room={CODE}                      Listen Together's join sheet, over the view (§4.12)
  *   /invite#{TOKEN}, #invite={TOKEN}  an ear drama invite, its own page (?view=invite; §4.10a)
  *   ?drama={id}                       a finished ear drama (/drama/{id})
@@ -37,13 +38,15 @@
   const $ = (id) => document.getElementById(id);
   /* Views are named by their section ids in index.html (view-listen is Home, view-series Browse,
      view-radio Stations); the URL and the nav use the section names. */
-  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'plays', 'invite', 'drama', 'search', 'library'];
-  const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', search: 'search',
+  const VIEWS = ['listen', 'series', 'show', 'episode', 'person', 'radio', 'surprise', 'record', 'plays', 'invite', 'drama', 'search', 'library'];
+  const VIEW_OF = { home: 'listen', browse: 'series', stations: 'radio', surprise: 'surprise', record: 'record', search: 'search',
                     library: 'library', invite: 'invite' };
-  const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'stations',
-                   surprise: 'surprise', plays: 'browse', invite: 'home', drama: 'browse', search: 'search', library: 'library' };
-  /** Decision 068's renames: an old ?view= opens the new section, and the address is rewritten. */
-  const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'browse' };
+  /* Decision 075: five sections. Stations and Surprise are pages Home opens, so they light Home;
+     a play and a production light Record. */
+  const TAB_OF = { listen: 'home', series: 'browse', show: 'browse', episode: 'browse', person: 'browse', radio: 'home',
+                   surprise: 'home', record: 'record', plays: 'record', invite: 'record', drama: 'browse', search: 'search', library: 'library' };
+  /** Older names (Decisions 068, 075): an old ?view= opens the new section, and the address is rewritten. */
+  const RENAMED = { listen: 'home', series: 'browse', radio: 'stations', plays: 'record' };
   const PAGE = 60;
 
   /* ================================================================
@@ -75,7 +78,12 @@
     share: 'M18 16a3 3 0 0 0-2.4 1.2l-7-3.5a3 3 0 0 0 0-1.4l7-3.5A3 3 0 1 0 15 7l-7 3.5a3 3 0 1 0 0 3l7 3.5A3 3 0 1 0 18 16z',
     up: 'M12 8l-6 6 1.4 1.4 4.6-4.6 4.6 4.6L18 14z',
     down: 'M12 16l6-6-1.4-1.4-4.6 4.6-4.6-4.6L6 10z',
-    remove: 'M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6z',  };
+    remove: 'M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6z',
+    radio: 'M20 6H8.3l8.3-3.4L15.9 1 3.2 6.2C2.5 6.4 2 7.2 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm0 2v3h-2V9h-2v2H4V8zM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6z',
+    find: 'M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z',
+    mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1a7 7 0 0 0 6-6.9z',
+    shuffle: 'M10.6 9.2 5.4 4 4 5.4l5.2 5.2zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4zm.3 9.4-1.4 1.4 3.1 3.1-2 2H20v-5.5l-2 2z',
+  };
   function icon(name) {
     const ns = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(ns, 'svg');
@@ -498,9 +506,10 @@
     if (p.get('drama')) return { view: 'drama', id: p.get('drama'), p };
     if (p.get('production') || p.get('play')) return { view: 'plays', p };
     const old = p.get('view');
-    if (RENAMED[old]) {
-      if (old === 'plays') p.set('kind', 'plays');
-      p.set('view', RENAMED[old]);
+    const playsInBrowse = old === 'browse' && p.get('kind') === 'plays';
+    if (RENAMED[old] || playsInBrowse) {
+      p.set('view', playsInBrowse ? 'record' : RENAMED[old]);
+      if (p.get('view') === 'record') { p.delete('kind'); p.delete('script'); }
       history.replaceState(null, '', `?${p}${location.hash}`);
     }
     return { view: VIEW_OF[p.get('view')] || 'listen', p };
@@ -512,8 +521,7 @@
     takeInviteLink();
     const r = parseRoute();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
-    // A production is the person's own, so it sits under Library; a play's page under Browse.
-    const tab = r.view === 'plays' && r.p.get('production') ? 'library' : TAB_OF[r.view];
+    const tab = TAB_OF[r.view];
     document.querySelectorAll('[data-nav]').forEach(a => {
       const on = a.dataset.nav === tab;
       a.classList.toggle('active', on);
@@ -521,7 +529,7 @@
     });
     if (r.view !== 'plays' && r.view !== 'invite' && r.view !== 'drama') PlaysUI.leave();
     ({ listen: renderListen, series: renderBrowse, show: renderShow, episode: renderEpisode, person: renderPerson,
-       radio: renderRadio, surprise: renderSurprise, plays: renderPlays, invite: renderInvite, drama: renderDrama, search: renderSearch,
+       radio: renderRadio, surprise: renderSurprise, record: renderRecord, plays: renderPlays, invite: renderInvite, drama: renderDrama, search: renderSearch,
        library: renderLibrary })[r.view](r);
     if (!firstRoute) {
       $('main-content').scrollTop = 0;
@@ -569,54 +577,324 @@
      LISTEN
   ================================================================ */
 
-  function renderListen() {
+  /* Home (WEB-DESIGN §4.2, Decision 075): what is on the air, three doors, then rows each filled
+     by one published rule. Every row is its own box with its own four states, so one file that
+     fails never blanks the page; a row whose rule yields nothing is absent. */
+  function renderListen(r) {
     setTitle();
     const body = $('listen-body');
-    body.replaceChildren();
+    const liveBox = el('div', { class: 'home-live-box' });
+    const contBox = el('div');
+    const startBox = el('div');
+    const lengthBox = el('div');
+    const recordBox = el('div', { class: 'ear-drama-only' });
+    const dayBox = el('div');
+    const voicesBox = el('div');
+    const madeBox = el('div', { class: 'ear-drama-only' });
+    body.replaceChildren(liveBox, contBox, homeDoors(), startBox, lengthBox, recordBox, dayBox, voicesBox, madeBox);
 
+    renderLiveBlock(liveBox);
     const cont = Store.inProgress(10);
     if (cont.length) {
-      body.append(el('section', { class: 'block', 'aria-labelledby': 'cont-h' },
-        el('h2', { class: 'section-header', id: 'cont-h' }, 'Continue listening'),
+      contBox.append(el('section', { class: 'block', 'aria-labelledby': 'cont-h' },
+        el('h2', { class: 'section-header', id: 'cont-h' }, 'Continue'),
         episodeList(cont, { showSeries: true })));
     }
-    const follows = Store.follows();
-    if (follows.length) body.append(shelf('Following', follows, 'follow'));
-
-    // The day board and the night, then the most downloaded shows (WEB-DESIGN §6.4c).
-    const today = new Date();
-    const homeBox = el('div');
-    body.append(homeBox);
-    load(homeBox, async () => {
-      const [rows, idx, , dramas, voices] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(),
-        API.manifest().then(m => { manifest = m; }), PlaysUI.newDramas(playsHelpers).catch((e) => { console.error(e); return null; }),
-        API.voices(12).catch(() => [])]);
-      return { rows, idx, dramas, voices };
-    }, ({ rows, idx, dramas, voices }) => {
-      const shows = idx.rows.filter(s => API.isShow(s.episodes));
-      if (!rows.length && !shows.length) {
-        homeBox.append(stateBox('empty', { text: 'Nothing in the catalog yet.' }));
-        return;
-      }
-      if (rows.length) homeBox.append(dayAndNight(rows, idx, today));
-      if (shows.length) {
-        const key = s => s.sortName || s.name;
-        const top = [...shows].sort(API.byDownloads((a, b) => key(a).localeCompare(key(b), 'en', { sensitivity: 'base' }))).slice(0, 12);
-        const h = el('h2', { class: 'section-header', id: 'popular-h' }, 'Most downloaded');
-        const ul = el('ul', { class: 'rail g-rail', 'aria-labelledby': 'popular-h' });
-        top.forEach(s => ul.append(showTile(s)));
-        homeBox.append(el('section', { class: 'shelf' },
-          el('div', { class: 'block-head' }, h, el('a', { class: 'caption', href: '?view=browse' }, `All ${num.format(shows.length)} shows`)), ul));
-      }
-      if (voices.length) {
-        homeBox.append(el('section', { class: 'shelf', 'aria-labelledby': 'voices-h' },
-          el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id: 'voices-h' }, 'Most heard voices'),
-            el('a', { class: 'caption', href: '?view=browse&scope=voices' }, 'All voices')),
-          el('ul', { class: 'g-faces-rail' }, ...voices.slice(0, 12).map(p => voiceFace(p))),
-          pictureCredit(voices.slice(0, 12).map(p => p.art))));
-      }
-      if (dramas) homeBox.append(dramas);
+    const shelves = API.homeShelves();
+    homeChipRow(startBox, 'start', 'Start a show', r.p.get('start'), async () => {
+      const [s, m] = await Promise.all([shelves, API.manifest()]);
+      manifest = m;
+      return s.start.map(x => ({ ...x, label: x.rule === 'mostDownloaded' ? 'Most downloaded' : genreLabel(x.genre) }));
     });
+    homeChipRow(lengthBox, 'length', 'By length', r.p.get('length'), async () =>
+      (await shelves).length.map(x => ({ ...x, label: BAND_LABEL[x.key] })));
+    if (!onTV()) renderTodaysPlay(recordBox);
+    homeRow(dayBox, null, async () => {
+      const today = new Date();
+      const [rows, idx, m] = await Promise.all([API.thisDay(today, undefined, Infinity), API.seriesIndex(), API.manifest()]);
+      manifest = m;
+      return { rows, idx, today };
+    }, ({ rows, idx, today }, box) => {
+      if (!rows.length) return false;
+      box.append(dayAndNight(rows, idx, today));
+      return true;
+    });
+    homeRow(voicesBox, ['Most heard voices', el('a', { class: 'caption', href: '?view=browse&scope=voices' }, 'All voices')],
+      () => API.voices(12), (voices, box) => {
+        if (!voices.length) return false;
+        box.append(el('ul', { class: 'g-faces-rail' }, ...voices.slice(0, 12).map(p => voiceFace(p))),
+          pictureCredit(voices.slice(0, 12).map(p => p.art)));
+        return true;
+      });
+    if (!onTV()) {
+      PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) madeBox.replaceChildren(sec); })
+        .catch((e) => console.error(e));
+    }
+  }
+
+  const BAND_LABEL = { under15: 'Under 15 min', about30: 'About 30 min', hour: 'An hour' };
+
+  /** A Home row: its heading (or none, for the day board's own), then the loader's result, or the
+      row's own problem state with Try again. `render` returns false when the rule yields nothing,
+      and the row is removed. */
+  let homeRowSeq = 0;
+  function homeRow(box, head, loader, render) {
+    const id = `home-row-${++homeRowSeq}`;
+    const content = el('div');
+    const [title, ...right] = [].concat(head || []);
+    const sec = el('section', { class: 'shelf', 'aria-labelledby': title ? id : null },
+      title ? el('div', { class: 'block-head' }, el('h2', { class: 'section-header', id }, title), ...right) : null, content);
+    box.replaceChildren(sec);
+    load(content, loader, (data, c) => { if (render(data, c) === false) box.replaceChildren(); });
+  }
+
+  /** The three doors: the app's three jobs, one row, a verb under an icon each. */
+  function homeDoors() {
+    const door = (href, ic, label, cls = '') => el('a', { class: `home-door ${cls}`.trim(), href }, icon(ic),
+      el('span', { class: 'home-door-lab' }, label));
+    return el('nav', { class: 'home-doors', 'aria-label': 'Start here' },
+      door('?view=stations', 'radio', 'Listen'), door('?view=browse', 'find', 'Find a show'),
+      door('?view=record', 'mic', 'Record a play', 'ear-drama-only'));
+  }
+
+  /** An episode as a show tile with Play on it: its series' window and name, the title and length. */
+  function episodeTile(ep, idx) {
+    const s = (idx && idx.byKey.get(ep.series)) || { key: ep.series, name: ep.seriesName || '' };
+    const li = showTile(s, { href: `?item=${encodeURIComponent(ep.id)}`, facts: [epTitle(ep), fmtLength(ep.length)] });
+    li.classList.add('g-tile-playable');
+    if (ep.url) {
+      li.append(el('button', { type: 'button', class: 'icon-btn icon-btn-primary g-tile-play',
+        'aria-label': `Play ${epTitle(ep)}, ${s.name}`, onclick: () => Player.load({ ...ep, title: epTitle(ep) }) }, icon('play')));
+    }
+    return li;
+  }
+
+  /** A row of chips over a rail of first episodes: each chip a published shelf (`start=`/`length=` in the URL). */
+  function homeChipRow(box, param, title, wanted, loader) {
+    homeRow(box, title, loader, (shelves, content) => {
+      if (!shelves.length) return false;
+      let on = shelves.find(s => s.key === wanted) || shelves[0];
+      const railBox = el('div');
+      const chips = shelves.length > 1 ? el('div', { class: 'segmented segmented-scroll home-chips', role: 'group', 'aria-label': title },
+        ...shelves.map(s => el('button', { type: 'button', 'aria-pressed': String(s === on), onclick: (e) => {
+          if (s === on) return;
+          on = s;
+          chips.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b === e.currentTarget)));
+          const p = new URLSearchParams(location.search);
+          p.set('view', 'home');
+          if (s === shelves[0]) p.delete(param); else p.set(param, s.key);
+          history.replaceState(null, '', `?${p}`);
+          fill();
+        } }, s.label))) : null;
+      const fill = () => load(railBox, () => Promise.all([API.episodesByIds(on.episodes), API.seriesIndex()]), ([eps, idx], b) => {
+        if (!eps.length) { b.append(stateBox('empty', { text: 'Nothing here yet.' })); return; }
+        b.append(el('ul', { class: 'rail g-rail', 'aria-label': on.label }, ...eps.map(ep => episodeTile(ep, idx))));
+      });
+      if (!chips) content.previousElementSibling.querySelector('h2').textContent = `${title}: ${on.label}`;
+      content.append(...[chips, railBox].filter(Boolean));
+      fill();
+      return true;
+    });
+  }
+
+  /* On the air (§4.2 item 2): tonight's slot on now, else the first genre station with a playable
+     slot; Listen live is Stations' own tune-in. Repainted on the clock and on the player. */
+  let homeLive = null;        // { box, day, stations }
+  let homeLiveTimer = null;
+  function renderLiveBlock(box) {
+    clearInterval(homeLiveTimer);
+    homeLive = null;
+    load(box, async () => {
+      const [day, stations] = await Promise.all([API.tonight(API.localDate(new Date(clockNow()))),
+        API.stations().catch((e) => { console.error(e); return []; })]);
+      return { day, stations };
+    }, (data) => {
+      homeLive = { box, ...data };
+      paintLiveBlock();
+      homeLiveTimer = setInterval(() => {
+        if ($('view-listen').hidden || !homeLive) { clearInterval(homeLiveTimer); return; }
+        paintLiveBlock();
+      }, 15000);
+    });
+  }
+  function onAirNow(day, stations, now) {
+    const year = day ? day.evening.slice(0, 4) : null;
+    if (day) {
+      const w = API.onAir(day.slots, now);
+      const s = w.index >= 0 ? day.slots[w.index] : null;
+      if (s && s.episode && !s.withheld) return { kicker: `Tonight in ${year}`, slot: s, day };
+    }
+    let note = null;
+    if (day && API.onAir(day.slots, now).phase === 'before') {
+      note = `Tonight in ${year} · Starts at ${localClock.format(new Date(day.slots[0].utc_start))}`;
+    }
+    for (const st of stations) {
+      const on = API.onNow(st.slots, now);
+      if (on && !on.slot.withheld && on.slot.episode) return { kicker: st.name, slot: on.slot, station: st, note };
+    }
+    return null;
+  }
+  function paintLiveBlock() {
+    if (!homeLive) return;
+    const { box, day, stations } = homeLive;
+    const now = clockNow();
+    const on = onAirNow(day, stations, now);
+    if (!on) { box.replaceChildren(); return; }
+    const ep = on.slot.episode;
+    const mins = Math.max(0, Math.floor((now - Date.parse(on.slot.utc_start)) / 60000));
+    const tuned = Boolean(live && (on.station ? live.station === on.station.genre : live.day === on.day));
+    const name = on.kicker;
+    const go = el('button', { type: 'button', class: 'btn btn-primary btn-live-home', 'aria-pressed': tuned ? 'true' : null,
+      'aria-label': tuned ? `Listening live to ${name}, stop` : `Listen live to ${name}` }, icon('live'),
+      el('span', {}, tuned ? 'Listening live' : 'Listen live'));
+    go.addEventListener('click', async () => {
+      if (tuned) { Player.pause(); stopLive(); paintLiveBlock(); return; }
+      go.disabled = true;
+      try {
+        if (on.station) await tuneInStation(on.station);
+        else tuneIn(on.day, await eveningDetails(on.day));
+      } catch (err) {
+        console.error(err);
+        go.disabled = false;
+        announce('This did not load.');
+      }
+      paintLiveBlock();
+    });
+    box.replaceChildren(el('section', { class: 'home-live', 'aria-labelledby': 'live-h' },
+      el('p', { class: 'g-kicker caption', id: 'live-h' }, name),
+      el('a', { class: 'g-link home-live-row', href: `?item=${encodeURIComponent(ep.id)}` },
+        pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 64),
+        el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, ep.series),
+          eventLine([ep.title, `${mins} min in`]))),
+      on.note ? el('p', { class: 'caption home-live-note' }, on.note) : null,
+      el('div', { class: 'actions home-live-actions' }, go,
+        el('a', { class: 'btn btn-ghost', href: '?view=stations' }, 'All stations'))));
+  }
+  Player.onChange(() => { if (homeLive && !$('view-listen').hidden) paintLiveBlock(); });
+
+  /* Record a play on Home (§4.2 item 7): today's play, then this browser's open parts. */
+  function renderTodaysPlay(box) {
+    homeRow(box, 'Record a play', async () => {
+      const scripts = await API.castableScripts();
+      const open = await PlaysUI.openParts(playsHelpers).catch((e) => { console.error(e); return null; });
+      return { script: PlaysCore.todaysPlay(scripts, API.localDate(new Date(clockNow()))), open };
+    }, ({ script, open }, content) => {
+      if (!script) return false;
+      content.append(todaysPlayBoard(script));
+      if (open) content.append(open);
+      return true;
+    });
+  }
+  function playFacts(script) {
+    const v = PlaysCore.voicesOf(script);
+    return [PlaysCore.authorLine(script), `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`,
+      `About ${num.format(PlaysCore.minutesOf(script))} min`];
+  }
+  function todaysPlayBoard(script) {
+    const board = headBoard({ series: { name: script.title, genre: PlaysUI.BOARD, picture: null }, kicker: 'Today’s play',
+      name: script.title, href: `?play=${encodeURIComponent(script.id)}`, facts: playFacts(script),
+      mark: PlaysUI.fingerprint(script, 'g-head-strip pl-print-head') });
+    // The play's window draws its cast, as its tile does (§4.15), never a monogram.
+    board.querySelector(':scope > .g-window').replaceWith(castWindow(script));
+    return el('div', { class: 'home-play' }, board,
+      el('div', { class: 'actions actions-one actions-start' }, PlaysUI.startButton(script, playsHelpers, { primary: true }),
+        el('a', { class: 'btn btn-ghost', href: `?play=${encodeURIComponent(script.id)}` }, 'Parts')));
+  }
+
+  /* ================================================================
+     RECORD (WEB-DESIGN §4.15, Decision 075): yours, today's play, the plays by facet, made here
+  ================================================================ */
+
+  const VOICE_LABEL = { '1-2': '1 or 2 voices', '3-5': '3 to 5 voices', '6-10': '6 to 10 voices', '11+': '11 or more voices' };
+  const LEN_LABEL = { short: 'Under 30 min', mid: '30 to 60 min', long: 'Over an hour' };
+  const KIND_LABEL = { radio: 'Radio play', stage: 'Stage play' };
+  const PLAY_SORT = { voices: 'Fewest voices first', short: 'Shortest first', name: 'A to Z' };
+
+  /** A play tile (§4.15): the cast drawn in the window, one bar per speaking part, largest first. */
+  function castWindow(script) {
+    const parts = PlaysCore.castParts(script).filter(x => PlaysCore.isSpeaking(x.id));
+    const most = parts.length ? parts[0].lineCount : 1;
+    const shown = parts.slice(0, 7);
+    return el('span', { class: 'g-window pl-cast', 'aria-hidden': 'true', dataset: { fill: 'block', n: String(shown.length) } },
+      ...shown.map(p => el('i', { style: `width: ${Math.max(6, Math.round(100 * p.lineCount / most))}%` })),
+      parts.length > shown.length ? el('span', { class: 'pl-cast-more tabular' }, `+${parts.length - shown.length}`) : null);
+  }
+  function playTile(script) {
+    const win = castWindow(script);
+    const v = PlaysCore.voicesOf(script);
+    return el('li', { class: 'g-tile-li' },
+      el('a', { class: 'g-tile', href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: PlaysUI.BOARD },
+                'aria-label': [script.title, ...playFacts(script)].filter(Boolean).join(', ') },
+        win,
+        el('span', { class: 'g-name', dataset: { step: String(API.nameStep(script.title)) } }, script.title),
+        PlaysUI.fingerprint(script),
+        el('span', { class: 'g-facts caption' }, el('span', {}, `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`),
+          el('span', {}, `About ${num.format(PlaysCore.minutesOf(script))} min`))));
+  }
+
+  function renderRecord(r) {
+    setTitle('Record');
+    const body = $('record-body');
+    const yoursList = el('div');
+    const yours = el('section', { class: 'block', 'aria-labelledby': 'yours-h' },
+      el('h2', { class: 'section-header', id: 'yours-h' }, 'Yours'), yoursList);
+    const todayBox = el('div');
+    const playsBox = el('div');
+    const madeBox = el('div');
+    body.replaceChildren(yours, todayBox, playsBox, madeBox);
+    PlaysUI.renderMine(yoursList, playsHelpers, { classes: false, onEmpty: () => yours.remove() });
+
+    const f = { voices: r.p.get('voices') || '', length: r.p.get('length') || '', kind: r.p.get('kind') || '',
+                sort: PLAY_SORT[r.p.get('sort')] ? r.p.get('sort') : 'voices' };
+    homeRow(todayBox, null, () => API.castableScripts(), (scripts, c) => {
+      const s = PlaysCore.todaysPlay(scripts, API.localDate(new Date(clockNow())));
+      if (!s) return false;
+      c.append(todaysPlayBoard(s));
+      return true;
+    });
+    homeRow(playsBox, null, () => API.castableScripts(), (scripts, c) => {
+      if (!scripts.length) { c.append(stateBox('empty', { text: 'No plays yet.' })); return true; }
+      const facet = { voices: PlaysCore.voiceBand, length: PlaysCore.lengthBand, kind: (s) => (KIND_LABEL[s.kind] ? s.kind : null) };
+      const keep = (s, skip) => Object.keys(facet).every(k => k === skip || !f[k] || facet[k](s) === f[k]);
+      const here = (over) => {
+        const p = new URLSearchParams({ view: 'record' });
+        const v = { ...f, ...over };
+        for (const k of ['voices', 'length', 'kind']) if (v[k]) p.set(k, v[k]);
+        if (v.sort !== 'voices') p.set('sort', v.sort);
+        return `?${p}`;
+      };
+      const select = (k, label, labels, all) => {
+        const counts = new Map(Object.keys(labels).map(x => [x, scripts.filter(s => keep(s, k) && facet[k](s) === x).length]));
+        return el('label', { class: 'filter' }, el('span', { class: 'caption' }, label),
+          el('select', { name: k, onchange: (e) => navigate(here({ [k]: e.target.value }), true) },
+            el('option', { value: '' }, all),
+            ...Object.entries(labels).filter(([x]) => counts.get(x) || f[k] === x)
+              .map(([x, l]) => el('option', { value: x, selected: f[k] === x }, `${l} (${num.format(counts.get(x))})`))));
+      };
+      const sortSel = el('label', { class: 'filter' }, el('span', { class: 'caption' }, 'Sort'),
+        el('select', { name: 'sort', onchange: (e) => navigate(here({ sort: e.target.value }), true) },
+          ...Object.entries(PLAY_SORT).map(([x, l]) => el('option', { value: x, selected: f.sort === x }, l))));
+      const filters = el('div', { class: 'filters' }, select('voices', 'Voices', VOICE_LABEL, 'Any number'),
+        select('length', 'Length', LEN_LABEL, 'Any length'), select('kind', 'Kind', KIND_LABEL, 'Any kind'), sortSel);
+      const byName = (a, b) => (a.sort_name || a.title).localeCompare(b.sort_name || b.title, 'en', { sensitivity: 'base' });
+      const sorters = {
+        voices: (a, b) => PlaysCore.voicesOf(a) - PlaysCore.voicesOf(b) || byName(a, b),
+        short: (a, b) => PlaysCore.minutesOf(a) - PlaysCore.minutesOf(b) || byName(a, b),
+        name: byName,
+      };
+      const list = scripts.filter(s => keep(s, null)).sort(sorters[f.sort]);
+      const h = el('h2', { class: 'section-header', id: 'plays-list-h' }, 'Plays');
+      const count = el('p', { class: 'caption' }, el('span', { class: 'nw' }, plural(list.length, 'play', 'plays')), ' · ',
+        el('span', { class: 'nw' }, PLAY_SORT[f.sort]));
+      c.append(h, filters, count);
+      if (!list.length) {
+        c.append(stateBox('empty', { text: 'Nothing matches these filters.', action: { label: 'Clear filters', href: '?view=record' } }));
+        return true;
+      }
+      c.append(el('ul', { class: 'g-grid', 'aria-label': PLAY_SORT[f.sort] }, ...list.map(playTile)));
+      return true;
+    });
+    PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) madeBox.replaceChildren(sec); }).catch((e) => console.error(e));
   }
 
   /** The day board (the years this date was on the air, stacked by genre) and the night picked on it. */
@@ -1081,16 +1359,16 @@
       PlaysUI.renderDramas($('browse-body'), $('browse-count'), playsHelpers);
       return;
     }
-    const kind = ['series', 'plays'].includes(r.p.get('kind')) ? r.p.get('kind') : '';
+    const kind = '';   // Decision 075: the plays are Record's; Browse lists series
     const f = { kind, script: r.p.get('script') === '1', genre: r.p.get('genre') || '', decade: r.p.get('decade') || '',
                 network: r.p.get('network') || '', sort: r.p.get('sort') || 'popular', singles: r.p.get('singles') === '1' };
     const body = $('browse-body');
     $('f-sort').value = f.sort;
     $('f-script').checked = f.script;
     load(body, async () => {
-      const [idx, m, scripts] = await Promise.all([API.seriesIndex(), API.manifest(), onTV() ? [] : castable()]);
+      const [idx, m] = await Promise.all([API.seriesIndex(), API.manifest()]);
       manifest = m;
-      return { rows: [...idx.rows.map(s => ({ ...s, kind: 'series', hasScript: !onTV() && s.scripts > 0 })), ...scripts.map(playItem)] };
+      return { rows: idx.rows.map(s => ({ ...s, kind: 'series', hasScript: !onTV() && s.scripts > 0 })) };
     }, ({ rows }) => {
       const count = (list, fn) => {
         const c = new Map();
@@ -1098,9 +1376,6 @@
         return c;
       };
       const byCount = (c) => new Map([...c].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(b[0])));
-      const kinds = count(browseFilter(rows, f, 'kind'), s => s.kind);
-      fillSelect($('f-kind'), 'Any kind', new Map(['series', 'plays'].filter(k => kinds.has(k)).map(k => [k, kinds.get(k)])),
-        f.kind, k => (k === 'plays' ? 'Plays' : 'Series'));
       const scripted = browseFilter(rows, f, 'script').filter(s => s.hasScript).length;
       $('f-script-label').textContent = `Has a script (${num.format(scripted)})`;
       $('f-script-label').parentElement.hidden = !scripted && !f.script;
@@ -1126,7 +1401,7 @@
       const here = (over) => {
         const p = new URLSearchParams({ view: 'browse' });
         const v = { ...f, ...over };
-        for (const k of ['kind', 'genre', 'decade', 'network', 'sort']) if (v[k] && !(k === 'sort' && v[k] === 'popular')) p.set(k, v[k]);
+        for (const k of ['genre', 'decade', 'network', 'sort']) if (v[k] && !(k === 'sort' && v[k] === 'popular')) p.set(k, v[k]);
         if (v.script) p.set('script', '1');
         if (v.singles) p.set('singles', '1');
         return `?${p}`;
@@ -1205,7 +1480,7 @@
 
   $('browse-filters').addEventListener('change', () => {
     const p = new URLSearchParams({ view: 'browse' });
-    for (const k of ['kind', 'genre', 'decade', 'network', 'sort']) {
+    for (const k of ['genre', 'decade', 'network', 'sort']) {
       const v = $(`f-${k}`).value;
       if (v && !(k === 'sort' && v === 'popular')) p.set(k, v);
     }

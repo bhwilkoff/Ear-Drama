@@ -1,0 +1,77 @@
+{
+ "rule": "the id whose FNV-1a 64 of 'play:{date}:{id}' (UTF-8) is smallest, ties by id",
+ "hashes": [
+  {
+   "text": "",
+   "fnv1a64": "cbf29ce484222325"
+  },
+  {
+   "text": "a",
+   "fnv1a64": "af63dc4c8601ec8c"
+  },
+  {
+   "text": "play:2026-11-14:gut-2265",
+   "fnv1a64": "b5884f80385212e8"
+  },
+  {
+   "text": "lib-café-1",
+   "fnv1a64": "c53d75503fc4a2dd"
+  }
+ ],
+ "ids": [
+  "gut-28051",
+  "gut-2265",
+  "gut-49295",
+  "gut-7364",
+  "gut-5071",
+  "gut-12039",
+  "lib-café-1",
+  "usda-0001"
+ ],
+ "cases": [
+  {
+   "date": "2026-01-01",
+   "want": "gut-28051"
+  },
+  {
+   "date": "2026-02-28",
+   "want": "gut-7364"
+  },
+  {
+   "date": "2026-02-29",
+   "want": "usda-0001"
+  },
+  {
+   "date": "2026-11-14",
+   "want": "gut-28051"
+  },
+  {
+   "date": "2026-11-15",
+   "want": "lib-café-1"
+  },
+  {
+   "date": "2026-12-31",
+   "want": "lib-café-1"
+  },
+  {
+   "date": "2027-06-01",
+   "want": "gut-28051"
+  },
+  {
+   "date": "2030-07-04",
+   "want": "lib-café-1"
+  },
+  {
+   "date": "2026-11-14",
+   "ids": [
+    "gut-28051"
+   ],
+   "want": "gut-28051"
+  },
+  {
+   "date": "2026-11-14",
+   "ids": [],
+   "want": null
+  }
+ ]
+}

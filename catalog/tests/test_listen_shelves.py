@@ -112,7 +112,8 @@ def strings(x):
 
 def no_text(shelves, served):
     """Every string a published list carries is a rule, a genre key, or a served id: no copy rides along."""
-    return sorted(s for s in strings(shelves) if s not in set(SH.RULES) | set(G.GENRES) | served)
+    return sorted(s for s in strings(shelves)
+                  if s not in set(SH.RULES) | set(G.GENRES) | {b for b, _, _ in SH.LENGTH_BANDS} | served)
 
 
 def genre_order(shelves):
@@ -144,6 +145,7 @@ with tempfile.TemporaryDirectory() as tmp:
     check("control: the earlier never-recommended and hidden episodes are passed over",
           {eid("d4", "1939-05-25", 1), eid("d4", "1941-01-01", 1)} & set(drama), set())
     check("control: a series with no genre is on no genre shelf", any(i.startswith("x1|") for s in shelves
+                                                                      if s["rule"] == "genreFirsts"
                                                                       for i in s.get("episodes", [])), False)
     mystery = next(s for s in shelves if s.get("genre") == "mystery")["episodes"]
     check("native: unclaimed rows count and show", mystery[0], eid("m1", "1943-05-25", 46))
@@ -320,6 +322,26 @@ def real_shape(name, shelves, served, rec):
         check(f"{name}: onThisDay leads", shelves[:1], [{"rule": "onThisDay"}])
         order = genre_order(shelves)
         check(f"{name}: genres in GENRES order", order, [g for g in G.GENRES if g in order])
+
+
+# --- byLength (Decision 075): each band's earliest in-band episode per series --
+# (id, series, air_date, num, no_recommend, title)
+LE = [("a|1", "a", "1940-01-01", 1, None, "Dramatis Personae"), ("a|2", "a", "1940-01-08", 2, None, "One"),
+      ("a|3", "a", "1940-01-15", 3, None, "Two"), ("b|1", "b", "1941-01-01", 1, "WWII propaganda", "x"),
+      ("b|2", "b", "1941-01-08", 2, None, "y"), ("c|1", "c", None, None, None, "z"), ("d|1", "d", "1939-01-01", 1, None, "w")]
+LS = {"a": ("drama", 3), "b": ("drama", 9), "c": ("comedy", 1), "d": ("drama", 1)}
+LL = {"a|1": 1700, "a|2": 1700, "a|3": 1800, "b|1": 1800, "b|2": 1600, "c|1": 1900, "d|1": 299}
+check("byLength: front matter and no_recommend skipped, most episodes first",
+      SH.by_length(LE, LL, LS, "about30"), ["b|2", "a|2", "c|1"])
+check("byLength: downloads lead", SH.by_length(LE, LL, LS, "about30", {"c": 5}), ["c|1", "b|2", "a|2"])
+check("byLength: the band's floor is exclusive below 300 s", SH.by_length(LE, LL, LS, "under15"), [])
+check("byLength: published only past MIN_SERIES", [s["rule"] for s in SH.listen_shelves(LE, LS, lengths=LL)], ["onThisDay"])
+check("byLength: published with a low floor", [s for s in SH.listen_shelves(LE, LS, min_series=3, lengths=LL) if s["rule"] == "byLength"],
+      [{"rule": "byLength", "band": "about30", "episodes": ["b|2", "a|2", "c|1"]}])
+check("byLength: no lengths, no length shelves", [s["rule"] for s in SH.listen_shelves(LE, LS, min_series=1)].count("byLength"), 0)
+check("byLength: an unknown band is a violation",
+      list(SH.violations([{"rule": "byLength", "band": "long", "episodes": ["a|2"]}], {"a|2"}, {"a|2"})),
+      ["a length shelf names one of the bands"])
 
 
 real = os.environ.get("PROJECTION") or os.path.join(os.path.dirname(__file__), "..", "out", "publish", "ear-drama.sqlite")

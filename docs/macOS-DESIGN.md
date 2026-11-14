@@ -104,15 +104,22 @@ Mac uses the same Core, so the same code holds them:
 
 ## §3 Navigation shell
 
-- **§3.1 Six sidebar sections, hard set** (Decision 068: sections are
-  actions, as Archive Watch's macOS sidebar): Home, Browse, Stations,
-  Surprise, Search, Library, in `AppTab` order
-  (`apple/Core/Store/AppStore.swift`), ⌘1 to ⌘6 in the Go menu (§5.5).
-  Plays are rows in Browse and Search; "Start an ear drama" on a play's
-  page, or on an episode whose `script` is set, opens the production's
-  window; Library lists Ear dramas. Surprise
-  is `docs/iOS-DESIGN.md` §4.11 in the detail column. A new section
-  amends this rule first.
+- **§3.1 Five sidebar sections, hard set** (Decision 075, owner
+  2026-11-14: *"It is entirely unclear what the app is or how to use it
+  easily"*): Home, Browse, Record, Search, Library, in `AppTab` order
+  (`apple/Core/Store/AppStore.swift`), ⌘1 to ⌘5 in the Go menu (§5.5).
+  Home is iOS-DESIGN §4.1 as a `WidePage` (§4.0a): On the air, Continue,
+  the three doors as three equal buttons in one row, then the rule rows.
+  **Stations** is pushed in Home's stack (On the air's All Stations, the
+  Listen door) and **Surprise** by Home's toolbar button (⇧⌘S in the Go
+  menu); neither is a sidebar section. **Record** is iOS-DESIGN §4.14 as
+  a `WidePage`: Yours, Today's play, the plays under the chip bar, Made
+  here. "Record This" beside Play on a play's page, or on an episode
+  whose `script` is set, opens the production's window; Library still
+  lists Ear dramas. A new section amends this rule first.
+  - *Replaced* (2026-11-14, Decision 075): "Six sidebar sections, hard
+    set (Decision 068 ...): Home, Browse, Stations, Surprise, Search,
+    Library ... ⌘1 to ⌘6 ... Plays are rows in Browse and Search".
   - *Replaced*: "Six sidebar sections, hard set: Listen, Series, Radio,
     Plays, Search, Library ... Radio follows Series as on the web and is
     ⌘3."

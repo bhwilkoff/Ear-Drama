@@ -407,7 +407,8 @@ def build(src, out, include_unclaimed=False, transcripts=None):
         "genreNames": GENRE_NAMES,
         "listenShelves": SH.listen_shelves([(e[0], e[1], e[2], e[4], e[10], e[5]) for e in eps.values()],
                                            {k: (r[2], r[5]) for k, r in series.items()},
-                                           downloads=series_dl),
+                                           downloads=series_dl,
+                                           lengths={e[0]: e[7] for e in eps.values() if e[7]}),
         "rightsLines": RIGHTS_LINES, "variantLines": VARIANT_LINES, "partialLine": PARTIAL_LINE,
     }
     manifest["bytes"] = measure(out)
