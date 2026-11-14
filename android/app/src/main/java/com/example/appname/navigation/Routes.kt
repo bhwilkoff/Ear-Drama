@@ -27,6 +27,8 @@ sealed interface Route : NavKey {
     @Serializable data object Surprise : Route
     /** A castable script: its rights line, its parts, and "Start an ear drama". */
     @Serializable data class Script(val id: String) : Route
+    /** The script reader (ANDROID-DESIGN §4.17), full screen over the tab bar; [lineId] opens at that line, else where this device left off. */
+    @Serializable data class Reader(val scriptId: String, val lineId: String? = null) : Route
     /** A production's cast sheet. */
     @Serializable data class Production(val id: String) : Route
     /** The invitation page for the token the session holds (never in the key: a token is not saved state). */

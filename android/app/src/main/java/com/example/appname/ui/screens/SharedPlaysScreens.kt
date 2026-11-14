@@ -559,7 +559,7 @@ internal fun inviteStatus(status: String, lineCount: Int): String = when (status
 
 /** A shared production this person is in that this device has not opened (rule 11). */
 @Composable
-fun RemoteProductionRow(row: com.example.appname.plays.RemoteRow, onOpenProduction: (String) -> Unit) {
+fun RemoteProductionRow(row: com.example.appname.plays.RemoteRow, onOpenProduction: (String) -> Unit, detail: String? = null) {
     val sharing = LocalAppContainer.current.sharing
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
@@ -567,6 +567,7 @@ fun RemoteProductionRow(row: com.example.appname.plays.RemoteRow, onOpenProducti
     Column {
         ListItem(
             headlineContent = { Text(row.title, style = MaterialTheme.typography.titleMedium) },
+            supportingContent = detail?.let { { Text(it, style = MaterialTheme.typography.labelMedium) } },
             modifier = Modifier.clickable(enabled = !busy, onClickLabel = "Open production") {
                 busy = true
                 error = null

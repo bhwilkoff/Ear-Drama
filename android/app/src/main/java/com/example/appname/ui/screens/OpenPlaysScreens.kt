@@ -41,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -184,7 +185,12 @@ fun InvitationScreen(onBack: () -> Unit, onOpenProduction: (String) -> Unit) {
             s is InviteState.Failed -> EmptyMessage(s.line, Modifier.padding(padding), action = EmptyAction("Try again") { attempt++ })
             s is InviteState.Ready -> {
                 val inv = s.invite
-                val script = (library as? PlaysLibrary.State.Ready)?.scripts?.let { PlaysShare.scriptFor(it, inv.scriptID, inv.scriptRevision) }
+                val script by produceState(
+                    (library as? PlaysLibrary.State.Ready)?.scripts?.let { PlaysShare.scriptFor(it, inv.scriptID, inv.scriptRevision) },
+                    inv.scriptID, inv.scriptRevision,
+                ) {
+                    if (value == null) value = runCatching { container.plays.script(inv.scriptID) }.getOrNull()?.takeIf { it.revision == inv.scriptRevision }
+                }
                 val lineOrder = remember(script) { script?.lines?.map { it.id }.orEmpty() }
                 InviteContent(
                     inv = inv,

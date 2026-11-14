@@ -14,6 +14,7 @@ import com.example.appname.data.UserStore
 import com.example.appname.data.WorkManagerDownloadTransport
 import com.example.appname.playback.PlaybackEngine
 import com.example.appname.plays.FinishedList
+import com.example.appname.plays.KtorLibraryTransport
 import com.example.appname.plays.OpenPlaysApi
 import com.example.appname.plays.PlaysApi
 import com.example.appname.plays.PlaysLibrary
@@ -38,7 +39,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val downloads = DownloadStore(File(context.filesDir, "downloads"), WorkManagerDownloadTransport(context))
     val playback = PlaybackEngine(context, api, catalog, user, downloads)
     val queue by lazy { QueueVerbs(user, playback) }
-    val plays = PlaysLibrary(context)
+    val plays = PlaysLibrary(context, KtorLibraryTransport(api.client))
     val isTelevision = context.isTelevision()
     val live = LiveRadio(
         play = { detail, startMs -> playback.play(detail.episode, startMs = startMs, queue = false) },
@@ -61,6 +62,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
             plays.store,
             { accounts.account.value?.userId },
             { plays.load(); (plays.state.value as? PlaysLibrary.State.Ready)?.scripts.orEmpty() },
+            libraryScript = { id, revision -> plays.script(id)?.takeIf { it.revision == revision } },
         )
     }
 

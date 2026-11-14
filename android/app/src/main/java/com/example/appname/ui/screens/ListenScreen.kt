@@ -72,6 +72,7 @@ fun ListenScreen(
     onOpenRecord: () -> Unit,
     onOpenScript: (String) -> Unit,
     onOpenProduction: (String) -> Unit,
+    onRead: (String) -> Unit = {},
     onOpenDrama: (String) -> Unit = {},
     onDramas: () -> Unit = onBrowse,
     onOpenPerson: (String) -> Unit = {},
@@ -148,7 +149,7 @@ fun ListenScreen(
                 item(key = "length") { ChipShelfRow("By length", published.length, onOpenEpisode, onOpenSeries) }
             }
             if (!television) {
-                item(key = "record") { TodaysPlayHome(onOpenScript, onOpenProduction) }
+                item(key = "record") { TodaysPlayHome(onOpenScript, onOpenProduction, onRead) }
             }
             if (year != null && years != null && night != null && dayData != null) {
                 item(key = "day") {
@@ -207,9 +208,9 @@ fun ListenScreen(
 
 /** Record a play on Home: today's play with Record this and Parts, then this device's open parts. */
 @Composable
-private fun TodaysPlayHome(onOpenScript: (String) -> Unit, onOpenProduction: (String) -> Unit) {
+private fun TodaysPlayHome(onOpenScript: (String) -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit) {
     androidx.compose.foundation.layout.Column {
-        TodaysPlay(onOpenScript, onOpenProduction, heading = { SectionHeader("Record a play") })
+        TodaysPlay(onOpenScript, onOpenProduction, onRead, heading = { SectionHeader("Record a play") })
         OpenPartsRows(onOpenProduction)
     }
 }

@@ -33,34 +33,34 @@ object PlayFacets {
 
     enum class Facet { Voices, Length, Kind }
 
-    fun optionOf(script: PlayScript, facet: Facet): String? = when (facet) {
+    fun optionOf(script: PlayListing, facet: Facet): String? = when (facet) {
         Facet.Voices -> script.voiceBand
         Facet.Length -> script.lengthBand
         Facet.Kind -> script.kind.takeIf { it in KIND }
     }
 
     /** The scripts that hold every chosen facet, except [skip]'s (so its own options are counted against the other two). */
-    fun matching(scripts: List<PlayScript>, filter: Filter, skip: Facet? = null): List<PlayScript> =
+    fun <T : PlayListing> matching(scripts: List<T>, filter: Filter, skip: Facet? = null): List<T> =
         scripts.filter { s -> Facet.entries.all { f -> f == skip || filter.chosen(f) == null || optionOf(s, f) == filter.chosen(f) } }
 
-    fun count(scripts: List<PlayScript>, filter: Filter, facet: Facet, option: String): Int =
+    fun count(scripts: List<PlayListing>, filter: Filter, facet: Facet, option: String): Int =
         matching(scripts, filter, skip = facet).count { optionOf(it, facet) == option }
 
     /** A facet's options worth offering: those with plays, and the one chosen even with none. */
-    fun options(scripts: List<PlayScript>, filter: Filter, facet: Facet, labels: Map<String, String>): List<Triple<String, String, Int>> =
+    fun options(scripts: List<PlayListing>, filter: Filter, facet: Facet, labels: Map<String, String>): List<Triple<String, String, Int>> =
         labels.mapNotNull { (key, label) ->
             val n = count(scripts, filter, facet, key)
             if (n > 0 || filter.chosen(facet) == key) Triple(key, label, n) else null
         }
 
-    private fun name(s: PlayScript) = s.sortName ?: s.title
+    private fun name(s: PlayListing) = s.sortName ?: s.title
 
-    fun sorted(scripts: List<PlayScript>, sort: String): List<PlayScript> {
-        val byName = compareBy<PlayScript, String>(String.CASE_INSENSITIVE_ORDER) { name(it) }
+    fun <T : PlayListing> sorted(scripts: List<T>, sort: String): List<T> {
+        val byName = compareBy<T, String>(String.CASE_INSENSITIVE_ORDER) { name(it) }
         return when (sort) {
-            "short" -> scripts.sortedWith(compareBy<PlayScript> { it.minutes }.then(byName))
+            "short" -> scripts.sortedWith(compareBy<T> { it.minutes }.then(byName))
             "name" -> scripts.sortedWith(byName)
-            else -> scripts.sortedWith(compareBy<PlayScript> { it.voices }.then(byName))
+            else -> scripts.sortedWith(compareBy<T> { it.voices }.then(byName))
         }
     }
 }

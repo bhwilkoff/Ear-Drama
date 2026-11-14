@@ -113,18 +113,20 @@ data class ScriptLine(
 
 @Serializable
 data class PlayScript(
-    val id: String,
+    override val id: String,
     val revision: String,
-    val kind: String,
-    val title: String,
+    override val kind: String,
+    override val title: String,
     val authors: List<Author> = emptyList(),
     val source: Source,
     val rights: Rights,
     val roles: List<Role> = emptyList(),
     val lines: List<ScriptLine>,
-    val year: Int? = null,
-    @SerialName("sort_name") val sortName: String? = null,
-) {
+    override val year: Int? = null,
+    @SerialName("sort_name") override val sortName: String? = null,
+    /** Printed headings the parser set aside (contract §4.1); the bundled scripts carry none. */
+    val sections: List<ScriptSection> = emptyList(),
+) : PlayListing {
     @Serializable data class Author(val name: String? = null, val display: String? = null, val born: Int? = null, val died: Int? = null) {
         /** The record's own display name, else the filed name read forward. */
         val shown: String? get() = display?.trim()?.takeIf { it.isNotEmpty() } ?: name?.let(::displayName)
@@ -134,10 +136,10 @@ data class PlayScript(
     @Serializable data class Rights(val bucket: String, val evidence: List<Evidence> = emptyList())
     @Serializable data class Role(val name: String, val lines: Int, val words: Int)
 
-    val authorLine: String get() = authors.mapNotNull { it.shown }.joinToString(", ")
+    override val authorLine: String get() = authors.mapNotNull { it.shown }.joinToString(", ")
 
     /** The author with born and died years where the record has them. */
-    val authorWithYears: String
+    override val authorWithYears: String
         get() = authors.mapNotNull { a ->
             val name = a.shown ?: return@mapNotNull null
             val years = when {
@@ -160,14 +162,15 @@ data class PlayScript(
 
     fun lines(part: PartID): List<ScriptLine> = lines.filter { it.part == part }
 
-    /** Speaking parts: the record's roles, else the speaking parts counted from the lines. */
-    val voices: Int get() = if (roles.isNotEmpty()) roles.size else castParts.count { it.id.isSpeaking }
+    /** Voices a person can cast: roles with five speeches, as the published index counts them. */
+    override val voices: Int get() = ScriptReading.voicesOf(this)
 
     /** Minutes from the words its parts speak at 150 a minute, at least 1; a length is "About N min", never exact. */
-    val minutes: Int get() = maxOf(1, Math.round(roles.sumOf { it.words } / WORDS_PER_MINUTE.toDouble()).toInt())
+    override val minutes: Int get() = ScriptReading.minutesOf(this)
 
-    val voiceBand: String? get() = VOICE_BANDS.firstOrNull { voices in it.lo..it.hi }?.key
-    val lengthBand: String? get() = LENGTH_BANDS.firstOrNull { minutes in it.lo..it.hi }?.key
+    override val cast: List<Int> get() = ScriptReading.castOf(this)
+
+    override val speechCount: Int get() = lines.count { it.kind == ScriptLine.Kind.Speech }
 
     /**
      * The parts on the cast sheet: speaking parts largest first (by lines, then
@@ -225,9 +228,9 @@ data class PlayScript(
         }
 
         /** The day's play: the id whose hash of "play:{dateKey}:{id}" is smallest, ties by id; null for none. */
-        fun todaysPlay(scripts: List<PlayScript>, dateKey: String): PlayScript? =
-            scripts.map { it to fnv1a64("play:$dateKey:${it.id}") }
-                .minWithOrNull(compareBy<Pair<PlayScript, ULong>> { it.second }.thenBy { it.first.id })?.first
+        fun <T : PlayListing> todaysPlay(plays: List<T>, dateKey: String): T? =
+            plays.map { it to fnv1a64("play:$dateKey:${it.id}") }
+                .minWithOrNull(compareBy<Pair<T, ULong>> { it.second }.thenBy { it.first.id })?.first
 
         val PART_HUES = listOf("mystery", "scifi", "western", "serial", "documentary", "comedy", "news")
         const val PRESENCE_BINS = 24
