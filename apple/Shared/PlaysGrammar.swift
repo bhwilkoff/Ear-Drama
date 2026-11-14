@@ -168,6 +168,8 @@ struct PartCard<Actions: View>: View {
     var current = false
     /// Makes the card's face, name and strip one button, for a part that opens its lines.
     var onOpen: (() -> Void)? = nil
+    /// The voice a part no one holds is read in (§2.8): a button, so it sits beside the card's own button, not inside it.
+    var voiceChip: AnyView? = nil
     @ViewBuilder let actions: () -> Actions
 
     var body: some View {
@@ -177,6 +179,7 @@ struct PartCard<Actions: View>: View {
             } else {
                 info
             }
+            if let voiceChip { voiceChip }
             actions()
         }
         .padding(Spacing.s3)

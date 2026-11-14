@@ -19,13 +19,14 @@ nonisolated enum ListenEntry: Equatable, Sendable {
 extension Relay {
     /// Every script line in order: its usable take, or for a speech line
     /// without one the words to read live. A direction or sound line without a
-    /// take is skipped.
-    nonisolated static func listenPlan(_ production: Production, _ script: PlayScript) -> [ListenEntry] {
+    /// take is skipped, unless `reads` says its part has been given a voice (§2.8 rule 7).
+    nonisolated static func listenPlan(_ production: Production, _ script: PlayScript,
+                                       reads: ((PartID) -> Bool)? = nil) -> [ListenEntry] {
         script.lines.compactMap { line in
             if let take = production.usableTake(for: line.id) {
                 return .take(lineID: line.id, part: line.part, take: take)
             }
-            guard line.kind == .speech else { return nil }
+            guard line.kind == .speech || (reads?(line.part) ?? false) else { return nil }
             return .voice(lineID: line.id, part: line.part, text: line.spokenText)
         }
     }

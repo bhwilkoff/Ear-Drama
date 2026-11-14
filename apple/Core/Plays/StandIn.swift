@@ -32,35 +32,30 @@ protocol StandInVoice: AnyObject {
 /// in a live listen-through, through `speak` (C10, §5 rule 6; `ListenSpeaker`).
 final class SystemStandInVoice: StandInVoice {
     private let synthesizer = AVSpeechSynthesizer()
-    private var assigned: [PartID: Int] = [:]
-    private lazy var voices = Self.castableVoices()
+    private let cast: VoiceCast?
 
-    init() {
+    /// `cast` is the production's one cast (§2.8): the same voice for a part here and in the listen-through.
+    init(cast: VoiceCast? = nil) {
+        self.cast = cast
         #if os(iOS)
         synthesizer.usesApplicationAudioSession = true
         #endif
     }
 
-    static func castableVoices() -> [AVSpeechSynthesisVoice] { DeviceVoices.castable() }
-
-    /// Voices repeat on a device with few of them; pitch tells two parts on one
-    /// voice apart, and the character's name on screen does the identifying.
-    static let pitches = DeviceVoices.pitches
-
     func render(_ text: String, part: PartID, rate: Float) async -> StandInAudio? {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !words.isEmpty else { return nil }
-        let index = assigned[part] ?? {
-            let next = assigned.count
-            assigned[part] = next
-            return next
-        }()
         let utterance = AVSpeechUtterance(string: words)
-        if !voices.isEmpty {
-            utterance.voice = voices[index % voices.count]
-            utterance.pitchMultiplier = Self.pitches[(index / voices.count) % Self.pitches.count]
+        var told = false
+        if let cast {
+            let r = cast.resolve(part)
+            guard r.read || r.none else { return nil }
+            if let setting = SpeechSetting.of(r, sessionRate: Double(rate)) {
+                setting.apply(to: utterance)
+                told = true
+            }
         }
-        utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * rate)
+        if !told { utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, AVSpeechUtteranceDefaultSpeechRate * rate) }
         let collector = SpeechCollector()
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             collector.done = done

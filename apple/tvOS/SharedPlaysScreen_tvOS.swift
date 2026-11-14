@@ -205,6 +205,7 @@ struct SharedPlayScreen_tvOS: View {
         }
         fetching = false
         let plan = SharedListen.plan(rec, script: script, files: files)
+        live.setCast(.production(rec.id, script: script))
         await live.run(plan) { folder.appending(path: $0.file) }
     }
 

@@ -101,10 +101,17 @@ final class ReaderModel {
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private let defaults: UserDefaults
+    /// The play's own cast (`s:<script>`): the Voices sheet edits it and Hear the Cast reads through it (§2.8).
+    @ObservationIgnored let voices: VoiceCastModel
+    /// Hear the Cast: the script read aloud from the first line on the page, the page following each line.
+    @ObservationIgnored private(set) lazy var table = TableRead(
+        script: script, speaker: SystemListenSpeaker(cast: voices.cast),
+        onLine: { [weak self] id in if let id { self?.go(to: id) } })
 
     init(script: PlayScript, startLine: String?, door: ReaderDoor? = nil, defaults: UserDefaults = .standard) {
         self.script = script
         self.defaults = defaults
+        self.voices = VoiceCastModel(cast: .script(script))
         let structure = ScriptStructure(script)
         self.structure = structure
         var prefs = ReaderStore.prefs(defaults)
@@ -317,6 +324,15 @@ final class ReaderModel {
         }
     }
 
+    func hearTheCast() {
+        if table.isPlaying {
+            table.stop()
+        } else {
+            let from = position
+            Task { await table.play(from: from) }
+        }
+    }
+
     /// The speaking parts, largest first, as the I'm Playing menu offers them (sound and directions never).
     var playable: [CastPart] { script.castParts.filter { $0.id.isSpeaking } }
 }
@@ -407,6 +423,8 @@ private struct ReaderScreen: View {
                         .presentationDetents([.medium, .large])
                 case .text: ReaderTextSettings(model: model)
                         .presentationDetents([.medium])
+                case .voices: ReaderVoices(model: model.voices, script: model.script, dismiss: { sheet = nil })
+                        .presentationDetents([.medium, .large])
                 }
             }
         #endif
@@ -421,6 +439,7 @@ private struct ReaderScreen: View {
                 }
             }
             .clipped()
+            if model.table.isPlaying, let line = model.table.line { hearing(line) }
             if let dock { dock }
             bottomBar
         }
@@ -432,7 +451,13 @@ private struct ReaderScreen: View {
         #endif
         .toolbar { toolbar }
         .onChange(of: body17, initial: true) { _, size in model.base = size }
+        .repaintsOnVoiceChange(model.voices)
+        .onDisappear { model.table.stop() }
         .onAppear {
+            if app.readerDoor?.hear == true {
+                app.readerDoor = nil
+                Task { try? await Task.sleep(for: .seconds(1)); model.hearTheCast() }
+            }
             if let door = model.doorSheet {
                 model.doorSheet = nil
                 sheet = ReaderSheet(rawValue: door)
@@ -443,6 +468,7 @@ private struct ReaderScreen: View {
             switch which {
             case .search: ReaderSearch(model: model, dismiss: { sheet = nil }).frame(width: 340, height: 420)
             case .text: ReaderTextSettings(model: model).frame(width: 300)
+            case .voices: ReaderVoices(model: model.voices, script: model.script).frame(width: 380, height: 460)
             case .contents: EmptyView()
             }
         }
@@ -460,12 +486,14 @@ private struct ReaderScreen: View {
             Button { sheet = .contents } label: { Label("Contents", systemImage: "list.bullet") }
             Button { sheet = .search } label: { Label("Search", systemImage: "magnifyingglass") }
             Button { sheet = .text } label: { Label("Text", systemImage: "textformat.size") }
+            Button { sheet = .voices } label: { Label("Voices", systemImage: "person.wave.2") }
         }
         #else
         ToolbarItemGroup(placement: .primaryAction) {
             Button { sheet = .search } label: { Label("Search", systemImage: "magnifyingglass") }
                 .keyboardShortcut("f", modifiers: .command)
             Button { sheet = .text } label: { Label("Text", systemImage: "textformat.size") }
+            Button { sheet = .voices } label: { Label("Voices", systemImage: "person.wave.2") }
         }
         #endif
     }
@@ -483,7 +511,6 @@ private struct ReaderScreen: View {
                 Label(model.part?.title ?? "I\u{2019}m Playing", systemImage: "theatermasks")
                     .lineLimit(1)
             }
-            .fixedSize()
             .accessibilityIdentifier("reader-part")
             Button { model.nextMine(1) } label: { Label("Next Line", systemImage: "arrow.down.to.line") }
                 .labelStyle(.iconOnly)
@@ -494,8 +521,17 @@ private struct ReaderScreen: View {
                 .labelStyle(.iconOnly)
                 .disabled(model.part == nil)
                 .accessibilityIdentifier("reader-hide")
+            Button { model.hearTheCast() } label: {
+                Label(model.table.isPlaying ? "Stop" : "Hear the Cast",
+                      systemImage: model.table.isPlaying ? "stop.fill" : "play.fill")
+            }
+            .labelStyle(HearTheCastLabelStyle())
+            .accessibilityIdentifier("reader-hear-cast")
             Spacer(minLength: 0)
             Text(verbatim: model.pageLabel)
+                .lineLimit(1)
+                .fixedSize()
+                .layoutPriority(1)
                 .font(TypeRamp.tabular)
                 .foregroundStyle(Color.brandTextMuted)
                 .accessibilityIdentifier("reader-page-label")
@@ -504,6 +540,19 @@ private struct ReaderScreen: View {
         .padding(.horizontal, Spacing.s4)
         .padding(.vertical, Spacing.s2)
         .background(Color.brandSurface)
+    }
+
+    /// One line while the cast reads: a device voice never passes as a person (§5 rule 3).
+    private func hearing(_ line: ScriptLine) -> some View {
+        Label("Device voice \u{00B7} \(line.role ?? line.part.title)", systemImage: "waveform")
+            .font(TypeRamp.caption)
+            .foregroundStyle(Color.brandSecondary)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Spacing.s4)
+            .padding(.vertical, Spacing.s1)
+            .background(Color.brandSurface)
+            .accessibilityIdentifier("reader-hearing")
     }
 
     // MARK: Pages
@@ -554,8 +603,21 @@ private struct ReaderScreen: View {
     }
 }
 
+/// Icon only on a phone, the words from regular width.
+private struct HearTheCastLabelStyle: LabelStyle {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    func makeBody(configuration: Configuration) -> some View {
+        #if os(macOS)
+        Label(configuration)
+        #else
+        if sizeClass == .regular { Label(configuration) } else { configuration.icon }
+        #endif
+    }
+}
+
 private enum ReaderSheet: String, Identifiable {
-    case contents, search, text
+    case contents, search, text, voices
     var id: String { rawValue }
 }
 

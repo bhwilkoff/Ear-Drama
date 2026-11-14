@@ -91,6 +91,8 @@ final class AppStore {
     var reading: ReaderTarget?
     /// A launch door's settings for the reader, taken once when the reader opens.
     var readerDoor: ReaderDoor?
+    /// A launch door's play: its cast sheet opens (DEBUG doors only).
+    var productionDoor: String?
 
     /// Player-level mute. A door launch sets it (APP_MUTE); the player reads
     /// it, so a harness run is silent unless it opts in.
@@ -245,6 +247,7 @@ final class AppStore {
         }
         if doors.autoplay { isPlayerPresented = true }
         if doors.sleepMenu { isSleepMenuPresented = true }
+        productionDoor = doors.production
         if let script = doors.reader {
             readerDoor = doors.readerDoor
             reading = ReaderTarget(scriptID: script, line: doors.readerDoor.line)
@@ -276,4 +279,5 @@ nonisolated struct ReaderDoor: Equatable, Sendable {
     var sheet: String?
     var page: Int?
     var prefs: String?
+    var hear = false
 }

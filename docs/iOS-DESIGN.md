@@ -653,8 +653,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§4.12c The voices on the cast sheet** (Decision 076 S2; PLAYS-DESIGN §2.8 is
   binding; owner 2026-11-14: *"The virtual voices who play the different parts should
   also be intuitive."*; the web's WEB-DESIGN §4.10 for the shared words; port spec
-  `docs/research/design/R2-voices-port-brief.md`). Planned (PARITY ⏳). Every part no
-  person holds shows its voice in the part card's status line beside the dashed ring:
+  `docs/research/design/R2-voices-port-brief.md`). Built 2026-11-14 (PARITY 🚧; ✅ when
+  the owner hears it on a device). Every part no person holds shows its voice as a
+  button under the part card's presence strip (the card's face, name and strip are one
+  button already, and a button does not nest in a button), `caption` in the link color:
   the voice's `name` ("Ava (Premium)", "Samantha (Enhanced)"), "Not read" for Stage
   directions and Sound effects, and `exclamationmark.triangle` before the name when the
   cast voice is not installed and the auto-cast voice reads instead. Tapping it pushes
@@ -665,13 +667,24 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   `.enhanced`, `.default`), the person's own language, then name; each row a selection
   row (checkmark) with a `play.circle` button that `speak`s **the part's first line**
   in that voice. The section footer is "Add voices in Settings > Accessibility > Spoken
-  Content > Voices." with a button that opens `UIApplication.openSettingsURLString`
-  (no API lists or starts a voice download; R2 §2.7). Auto-cast alternates the voices'
+  Content > Voices." with an **Open Settings** button that opens
+  `UIApplication.openSettingsURLString` (the app's own page: no API lists, starts a
+  voice download or opens the Accessibility pane; R2 §2.7). The Settings path is the
+  one the brief states; the iOS 26 pane name could not be confirmed from here (no
+  agent drives Settings), so it stays UNVERIFIED until the owner reads it on a device.
+  The sort is quality first (the largest part gets the best voice), then the person's
+  own language, then name; the web's order, no longer Apple's old language-first one. Auto-cast alternates the voices'
   own `gender` (`.male`, `.female`; `.unspecified` counts as none). Voices are chosen
   by `identifier`, never `AVSpeechSynthesisVoice(language:)`. The cast is a
   `VoiceCast` in `Core/Plays` read by `SystemStandInVoice`, `LiveListen` and the
-  reader's Hear the Cast; stored in `UserDefaults` (`ed.cast`, keyed `p:<production>`
-  and `s:<script>`), never in `production.json`, never synced. The reader gets a
+  reader's Hear the Cast (`VoiceCast.swift`, `VoiceCastModel.swift`, `SpeechSetting`:
+  one place builds an utterance's voice, pitch and rate); stored in `UserDefaults`
+  (`ed.cast`, keyed `p:<production>` and `s:<script>`, the newest 80), never in
+  `production.json`, never synced. Recast All sits with Discard Unused Takes; the
+  chips repaint on `AVSpeechSynthesizer.availableVoicesDidChangeNotification`. Debug
+  doors (DEBUG only): `APP_PRODUCTION=<script id>` opens a production's cast sheet,
+  `APP_PICKER=role:NAME` its picker, `APP_READER_HEAR=1` Hear the Cast; `APP_MUTE=1`
+  mutes the synthesizer (volume 0, a line still takes its time). The reader gets a
   Voices toolbar item and Hear the Cast (§4.15). Personal Voice stays the
   listen-through toggle it is (§4.12) and is not in the picker.
 - **§4.12a A shared ear drama** (phase 2; PLAYS-DESIGN §11.7, binding:

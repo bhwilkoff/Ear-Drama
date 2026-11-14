@@ -8,6 +8,7 @@ import SwiftUI
 /// pushes from Home, never tabs, so the Duo's strip shows nothing twice.
 struct ContentView_iOS: View {
     @Environment(AppStore.self) private var store
+    @Environment(PlaysLibrary.self) private var plays
 
     var body: some View {
         @Bindable var store = store
@@ -33,6 +34,13 @@ struct ContentView_iOS: View {
         .sheet(isPresented: $store.isPlayerPresented) {
             PlayerSheet_iOS()
                 .presentationDragIndicator(.visible)
+        }
+        .task(id: store.productionDoor) {
+            guard let id = store.productionDoor else { return }
+            store.productionDoor = nil
+            guard let script = try? await plays.script(id: id), let made = try? plays.store.create(script) else { return }
+            store.selectedTab = .record
+            store.push(PlayRoute.production(made.id))
         }
         .fullScreenCover(item: $store.reading) { target in
             NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line) }
