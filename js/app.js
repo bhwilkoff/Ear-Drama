@@ -808,7 +808,7 @@
   const VOICE_LABEL = { '1-2': '1 or 2 voices', '3-5': '3 to 5 voices', '6-10': '6 to 10 voices', '11+': '11 or more voices' };
   const LEN_LABEL = { short: 'Under 30 min', mid: '30 to 60 min', long: 'Over an hour' };
   const KIND_LABEL = { radio: 'Radio play', stage: 'Stage play' };
-  const PLAY_SORT = { voices: 'Fewest voices first', short: 'Shortest first', name: 'A to Z' };
+  const PLAY_SORT = { voices: 'Fewest voices', short: 'Shortest', name: 'A to Z' };
 
   /** A play tile (§4.15): the cast drawn in the window, one bar per speaking part, largest first. */
   function castWindow(script) {

@@ -559,7 +559,7 @@ web app follows today.
        hour (`length=short|mid|long`).
      - **Kind**: Radio play, Stage play, from the record's `kind`
        (`kind=radio|stage`).
-     - **Sort**: Fewest voices first (the default), Shortest first, A to Z
+     - **Sort**: Fewest voices (the default), Shortest, A to Z (no "first": the select is labeled Sort, and the longer words clipped at 375 px)
        (`sort=voices|short|name`). The grid's heading is the sort's own
        name, true of every row.
      Each play is a **play tile** in the show tile's grammar (§6.4b), the
