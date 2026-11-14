@@ -521,7 +521,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
     the current size class and Dynamic Type, shown in a horizontal paging
     `ScrollView` (`.scrollTargetBehavior(.paging)`), a slide, never a
     curl. Two facing pages when the reader has a regular-width area of at
-    least 900 pt (iPad landscape, the open Duo, a wide window); one
+    least 860 pt, measured: the open Duo is 867 to 951 pt beside the strip, an 11-inch iPad in portrait 834 (iPad landscape, the open Duo, a wide window); one
     otherwise. Turns: swipe; a tap on the outer fifth of either side;
     hardware keys ← → ↑ ↓, Page Up/Down, Space and Shift-Space (pedals),
     with the reader holding key focus (`.focusable()`, `.onKeyPress`) so an

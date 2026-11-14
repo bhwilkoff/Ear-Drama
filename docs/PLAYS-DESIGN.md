@@ -230,7 +230,7 @@ macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along pa
 1. **A Read door on every castable play** (its page, Record's play tiles, Today's play), no
    account, no part, no microphone. One seam opens the reader: `open(scriptID, at: lineID?)`.
 2. **Pages by default** (owner ruling, over the research's scroll): a slide, never a curl;
-   two facing pages when the reading area is wide (web 900 px; Apple and Android at regular
+   two facing pages when the reading area is wide (860 pt or px on every platform; Apple and Android at regular
    or expanded width with the reader holding the whole width); turns by keys (arrows, Page
    Up/Down, Space; pedals send these), by a tap on the outer fifth of either side, and by a
    swipe. **Scroll** is a setting, remembered per device.

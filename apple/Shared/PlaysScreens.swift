@@ -42,6 +42,12 @@ struct StartEarDramaButton: View {
         scriptID = script.id
     }
 
+    /// A play known by its id alone (an episode's link): the whole script is fetched when the button is pressed.
+    init(scriptID: String) {
+        script = nil
+        self.scriptID = scriptID
+    }
+
     /// A play known by its library row: the whole script is fetched when the button is pressed.
     init(row: PlayRow) {
         script = nil

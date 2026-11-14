@@ -226,8 +226,8 @@ struct ScriptReadingTests {
     }
 
     @Test func turnsSpreadsSwipesTapsAndKeys() {
-        let per: [Int] = [ReaderMath.perSpread(899), ReaderMath.perSpread(900), ReaderMath.perSpread(1440)]
-        #expect(per == [1, 2, 2])
+        let per: [Int] = [ReaderMath.perSpread(834), ReaderMath.perSpread(859), ReaderMath.perSpread(860), ReaderMath.perSpread(951), ReaderMath.perSpread(1440)]
+        #expect(per == [1, 1, 2, 2, 2], "two pages from 860 pt: the open Duo (867 to 951) spreads, an 11-inch iPad in portrait does not")
         let single: [Int] = [ReaderMath.turn(0, delta: -1, per: 1, count: 10), ReaderMath.turn(0, delta: 1, per: 1, count: 10),
                              ReaderMath.turn(9, delta: 1, per: 1, count: 10)]
         #expect(single == [0, 1, 9], "one page, clamped")

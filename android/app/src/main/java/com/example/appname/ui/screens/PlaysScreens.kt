@@ -81,6 +81,8 @@ import com.example.appname.plays.MixPlayback
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
 import com.example.appname.plays.PlayScript
+import com.example.appname.plays.PlayLibraryFeed
+import com.example.appname.plays.PlayRow
 import com.example.appname.plays.PlaysLibrary
 import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
@@ -135,6 +137,17 @@ fun rememberCastablePlays(): List<PlayScript> {
     LaunchedEffect(television) { if (!television) plays.load() }
     if (television) return emptyList()
     return (state as? PlaysLibrary.State.Ready)?.scripts.orEmpty()
+}
+
+/** The library's play rows (the whole published library, else the bundle's), or none on a TV. */
+@Composable
+fun rememberCastableRows(): List<PlayRow> {
+    val television = LocalIsTelevision.current
+    val plays = LocalAppContainer.current.plays
+    val rows by plays.rows.collectAsState()
+    LaunchedEffect(television) { if (!television) plays.loadRows() }
+    if (television) return emptyList()
+    return (rows as? PlayLibraryFeed.Rows.Ready)?.rows.orEmpty()
 }
 
 /** Word-prefix, as every search here (§3.4): each typed word begins a word of the title or author. */

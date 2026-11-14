@@ -92,7 +92,7 @@ fun EpisodeScreen(
     onOpenPerson: (String) -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val plays = rememberCastablePlays()
+    val playRows = rememberCastableRows()
     val detail by rememberCatalogQuery(id, watchUser = true) { db ->
         db.episodeDetail(id)?.let { it to container.user.progress(it.episode.id) }
     }
@@ -134,7 +134,7 @@ fun EpisodeScreen(
                         queue = { folded -> QueueToggle(row.id, folded) },
                         share = { folded -> ShareButton(episodeShareTitle(row), SiteLinks.episode(row.id), folded) },
                         download = { folded -> DownloadButton(d, folded) },
-                        earDrama = plays.firstOrNull { it.id == d.script }?.let { script ->
+                        earDrama = playRows.firstOrNull { it.id == d.script }?.let { script ->
                             @Composable { StartEarDramaButton(script, onOpenProduction) }
                         },
                     )

@@ -67,15 +67,6 @@ struct PlaysLibraryTests {
         #expect(none.state == .unavailable)
     }
 
-    @Test func aRowPublishedBeforeCastTakesItFromTheBundledPlay() async {
-        let bundled = playScript("gut-1")
-        let old = Data(#"{"format":1,"plays":[{"id":"gut-1","title":"T","voices":2,"roles":2,"minutes":3,"path":"scripts/gut-1.json"},{"id":"gut-2","title":"U","voices":2,"roles":2,"minutes":3}]}"#.utf8)
-        let (lib, _) = library(bundle: [bundled]) { path in path == "library/index.json" ? old : nil }
-        await lib.load()
-        #expect(lib.rows.first?.castLines == bundled.castLines && !(lib.rows.first?.castLines.isEmpty ?? true))
-        #expect(lib.rows.last?.castLines.isEmpty == true, "a play the bundle does not hold draws no cast, and does not throw")
-    }
-
     @Test func aLibraryScriptOpensFromItsFileAndABundledOneFromTheBundle() async throws {
         let remote = playScript("gut-1", title: "From the library")
         let (lib, _) = library(bundle: [playScript("bundled-1", title: "From the bundle")]) { path in

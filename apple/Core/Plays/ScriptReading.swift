@@ -402,7 +402,7 @@ nonisolated enum ReaderMath {
     /// Line spacing as a line height, in multiples of the type size.
     static let spacing: [ReaderPrefs.Spacing: Double] = [.tight: 1.35, .normal: 1.55, .loose: 1.8]
     /// Two facing pages once the reading area is this wide (points).
-    static let spreadMin: CGFloat = 900
+    static let spreadMin: CGFloat = 860
 
     /// How many pages one screen shows: two from `spreadMin`, else one.
     static func perSpread(_ width: CGFloat) -> Int { width >= spreadMin ? 2 : 1 }

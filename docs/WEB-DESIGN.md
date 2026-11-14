@@ -680,7 +680,7 @@ web app follows today.
      direction is that line, drawn as a heading. No line numbers.
   4. **Pages** (the default, owner ruling): the script laid out in CSS
      columns inside the page area, one page per screen, **two facing
-     pages from 900 px** of reading width. A turn **slides** the strip of
+     pages from 860 px** of reading width. A turn **slides** the strip of
      pages (a 240 ms transform; none under Reduce Motion), never a curl.
      Turns: → ↓ Page Down Space (and a pedal's arrows) on, ← ↑ Page Up
      Shift-Space back, Home and End; a tap or click on the outer fifth of

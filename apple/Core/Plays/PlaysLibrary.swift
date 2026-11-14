@@ -49,7 +49,7 @@ final class PlaysLibrary {
         }.value
         scripts = library?.scripts ?? []
         if let cached {
-            rows = withBundledCast(cached)
+            rows = cached
             fromLibrary = true
             state = .ready
             Task { await refreshIndex() }
@@ -64,21 +64,14 @@ final class PlaysLibrary {
     private func refreshIndex() async {
         guard let data = try? await fetch("library/index.json"),
               let index = try? JSONDecoder().decode(PlayRowIndex.self, from: data), !index.plays.isEmpty else { return }
-        rows = withBundledCast(index.plays)
+        rows = index.plays
         fromLibrary = true
         let cache = cache
         Task.detached(priority: .utility) { Self.write(data, to: cache.appending(path: "index.json"), in: cache) }
     }
 
-    /// A row published before the index carried `cast` takes it from the bundle's script of the same play.
-    private func withBundledCast(_ list: [PlayRow]) -> [PlayRow] {
-        list.map { row in
-            guard row.castIndex == nil, let bundled = script(row.id) else { return row }
-            var filled = row
-            filled.castIndex = bundled.castLines
-            return filled
-        }
-    }
+    /// True when the library's index or the bundle lists the play.
+    func has(_ id: String) -> Bool { rows.contains { $0.id == id } || script(id) != nil }
 
     /// The bundled script, when it is one of the bundle's.
     func script(_ id: String) -> PlayScript? { scripts.first { $0.id == id } }
@@ -104,6 +97,13 @@ final class PlaysLibrary {
         if let found = script(id) { return found }
         if let failure { throw failure }
         return nil
+    }
+
+    /// A shared production's script at the revision it was cast from: the library's file or the bundle's, nil when
+    /// neither holds that revision (a library-only play opens, joins and records like a bundled one).
+    func script(id: String, revision: String) async -> PlayScript? {
+        let found = (try? await script(id: id)) ?? nil
+        return found.flatMap { $0.revision == revision ? $0 : nil }
     }
 
     /// The script a production was cast from, as stored with it.

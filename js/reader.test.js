@@ -188,7 +188,7 @@ test('ReaderCore: the line a page shows first is the one carried over', () => {
 });
 
 test('ReaderCore: turns, spreads, swipes, taps and keys', () => {
-  eq([R.perSpread(899), R.perSpread(900), R.perSpread(1440)], [1, 2, 2], 'two pages from 900 px');
+  eq([834, 859, 860, 951, 1440].map(R.perSpread), [1, 1, 2, 2, 2], 'two pages from 860 px');
   eq([R.turn(0, -1, 1, 10), R.turn(0, 1, 1, 10), R.turn(9, 1, 1, 10)], [0, 1, 9], 'one page, clamped');
   eq([R.turn(0, 1, 2, 9), R.turn(3, 1, 2, 9), R.turn(7, 1, 2, 9), R.turn(8, 1, 2, 9)], [2, 4, 8, 8], 'spreads start on even pages');
   eq([R.pageAt(0, 400), R.pageAt(399.6, 400), R.pageAt(1200, 400)], [0, 1, 3], 'a column\'s page');

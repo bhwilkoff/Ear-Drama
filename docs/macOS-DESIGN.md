@@ -223,7 +223,7 @@ only here:
   the detail; the toolbar carries **I'm Playing** (a `Picker`), Next Line, Hide
   My Lines, Search (`.searchable` in the toolbar, results as a popover list) and
   Text (a popover: size, spacing, Pages / Scroll).
-  - **Pages by default**, two facing pages once the detail is 900 pt wide or
+  - **Pages by default**, two facing pages once the detail is 860 pt wide or
     more (most windows), one when narrower; a slide on turn. Keys through a
     **Reader** menu (`.commands`, `FocusedValues`): → ← ↓ ↑, Page Down/Up,
     Space and Shift-Space, Home and End, J and K for my next and previous line,
