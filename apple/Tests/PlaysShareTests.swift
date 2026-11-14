@@ -32,12 +32,12 @@ private func shareLine(_ id: String, _ role: String?, _ kind: ScriptLine.Kind = 
 }
 
 /// MOLLY 3 lines, FIBBER 2, one sound cue.
-private func shareScript() -> PlayScript {
+private func shareScript(revision: String = "r1") -> PlayScript {
     let lines = [
         shareLine("L1", "MOLLY"), shareLine("L2", "FIBBER"), shareLine("L3", nil, .sound),
         shareLine("L4", "MOLLY"), shareLine("L5", "FIBBER"), shareLine("L6", "MOLLY"),
     ]
-    return PlayScript(id: "gut-share", revision: "r1", kind: "radio", title: "Shared Fixture", authors: [],
+    return PlayScript(id: "gut-share", revision: revision, kind: "radio", title: "Shared Fixture", authors: [],
                       source: .init(name: "Fixture", url: "https://example.org"),
                       rights: .init(bucket: "script_source_cleared", evidence: []),
                       roles: [.init(name: "MOLLY", lines: 3, words: 3), .init(name: "FIBBER", lines: 2, words: 2)],
@@ -98,6 +98,7 @@ private final class StubWorker: PlaysTransport {
     var removedLines: [String] = []
     var audioFetched: [String] = []
     var audio: [String: Data] = [:]
+    var inviteView: InviteView?
 
     init(_ rec: SharedRecord) { self.rec = rec }
 
@@ -120,7 +121,10 @@ private final class StubWorker: PlaysTransport {
     func create(scriptID: String, revision: String, cast: [PlaysShare.CastLine], displayName: String?) async throws -> SharedRecord { rec }
     func list() async throws -> [RemoteProduction] { [] }
     func invite(_ pid: String) async throws -> MadeInvite { throw unused }
-    func viewInvite(_ token: String) async throws -> InviteView { throw unused }
+    func viewInvite(_ token: String) async throws -> InviteView {
+        if let inviteView { return inviteView }
+        throw unused
+    }
     func joinByInvite(_ token: String, part: PartID, displayName: String?) async throws -> SharedRecord { rec }
     func claim(_ pid: String, part: PartID) async throws -> SharedRecord { rec }
     func partAction(_ pid: String, part: PartID, action: String) async throws -> SharedRecord { rec }
@@ -452,6 +456,64 @@ struct PlaysShareLibraryTests {
         let made = try PlaysShare.localFor(store: store, pid: "P9", script: script)
         let again = try PlaysShare.localFor(store: store, pid: "P9", script: script)
         #expect(made.id == again.id && store.productions.count == 1)
+    }
+}
+
+// MARK: - A play only the library holds
+
+private struct NoNetwork: Error {}
+
+/// A library whose bundle is empty and whose site serves `gut-share`: the play a shared production is made from
+/// exists only in the published library.
+private func libraryOnly(revision: String = "r1") -> PlaysLibrary {
+    let script = shareScript(revision: revision)
+    let file = try! JSONEncoder().encode(CastableLibrary(format: 1, scripts: [script]))
+    let index = Data(#"{"format":1,"count":1,"plays":[{"id":"gut-share","revision":"\#(revision)","title":"Shared Fixture","kind":"radio","authors":[],"voices":2,"roles":2,"cast":[3,2],"lines":6,"words":10,"minutes":1,"path":"scripts/gut-share.json"}]}"#.utf8)
+    let dir = FileManager.default.temporaryDirectory.appending(path: "share-lib-\(UUID().uuidString)")
+    return PlaysLibrary(store: ProductionStore(root: dir.appending(path: "Plays")),
+                        fetch: { path in
+                            switch path {
+                            case "library/index.json": return index
+                            case "library/scripts/gut-share.json": return file
+                            default: throw NoNetwork()
+                            }
+                        },
+                        cache: dir.appending(path: "Cache"), bundled: { CastableLibrary(format: 1, scripts: []) })
+}
+
+struct PlaysShareLibraryOnlyTests {
+    private func invite(revision: String = "r1") -> InviteView {
+        InviteView(id: "P1", scriptID: "gut-share", scriptRevision: revision, title: "Shared Fixture", parts: [], next: nil, member: false)
+    }
+
+    @Test func openingASharedProductionOfALibraryOnlyPlayMakesItHere() async throws {
+        let lib = libraryOnly()
+        #expect(lib.scripts.isEmpty)
+        let shared = SharedPlays(api: StubWorker(mollyIsMine()), me: { me })
+        let made = await shared.open("P1", plays: lib)
+        #expect(made != nil && shared.invitationRefusal == nil)
+        #expect(lib.store.productions.count == 1)
+    }
+
+    @Test func anInvitationToALibraryOnlyPlayIsNotRefusedAndCanBeJoined() async throws {
+        let lib = libraryOnly()
+        let stub = StubWorker(mollyIsMine())
+        stub.inviteView = invite()
+        let shared = SharedPlays(api: stub, me: { me })
+        await shared.viewInvitation("tok", plays: lib)
+        #expect(shared.invitation != nil && shared.invitationRefusal == nil)
+        let made = await shared.join("tok", part: fibber, name: "Bo", plays: lib)
+        #expect(made != nil)
+    }
+
+    @Test func aRevisionTheLibraryLacksIsStillRefused() async throws {
+        let lib = libraryOnly()
+        let stub = StubWorker(mollyIsMine())
+        stub.inviteView = invite(revision: "r9")
+        let shared = SharedPlays(api: stub, me: { me })
+        await shared.viewInvitation("tok", plays: lib)
+        #expect(shared.invitationRefusal == PlaysShare.line(PlaysRefusal.code("revision_mismatch")))
+        #expect(await shared.join("tok", part: fibber, name: "Bo", plays: lib) == nil)
     }
 }
 

@@ -235,7 +235,7 @@ struct SeriesBrowseScreen: View {
     /// whose script this device's bundle holds.
     private func shownSeries(_ all: [SeriesRow]) -> [SeriesRow] {
         guard hasScript else { return all }
-        return all.filter { scripted[$0.key]?.contains { plays.script($0) != nil } == true }
+        return all.filter { scripted[$0.key]?.contains { plays.has($0) } == true }
     }
     private var isFiltered: Bool { hasScript || genre != nil || network != nil || decade != nil }
     private var heading: String {
@@ -846,8 +846,8 @@ struct EpisodeScreen: View {
                 .listRowBackground(Color.clear)
 
                 // Decision 068: an episode linked to a castable script this bundle holds.
-                if let id = detail.script, let script = plays.script(id) {
-                    StartEarDramaButton(script: script)
+                if let id = detail.script, plays.has(id) {
+                    StartEarDramaButton(scriptID: id)
                         .pageAction()
                         .listRowInsets(rowInsets)
                         .listRowSeparator(.hidden)

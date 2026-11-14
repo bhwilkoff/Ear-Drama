@@ -179,12 +179,12 @@ final class SharedPlays {
     }
 
     /// Opens a shared production this device has not opened: the record, then
-    /// the bundle's script at its revision, then the production here.
+    /// the script at its revision (library or bundle), then the production here.
     func open(_ pid: String, plays: PlaysLibrary) async -> Production? {
         do {
             let rec = try await api.get(pid)
             records[pid] = rec
-            let script = PlaysShare.scriptFor(plays.scripts, id: rec.scriptID, revision: rec.scriptRevision)
+            let script = await plays.script(id: rec.scriptID, revision: rec.scriptRevision)
             let local = try PlaysShare.localFor(store: plays.store, pid: pid, script: script)
             try PlaysShare.follow(plays.store, localID: local.id, rec: rec, me: me())
             invitationRefusal = nil
@@ -199,7 +199,7 @@ final class SharedPlays {
         do {
             let view = try await api.viewInvite(token)
             invitation = view
-            invitationRefusal = PlaysShare.scriptFor(plays.scripts, id: view.scriptID, revision: view.scriptRevision) == nil
+            invitationRefusal = await plays.script(id: view.scriptID, revision: view.scriptRevision) == nil
                 ? PlaysShare.line(PlaysRefusal.code("revision_mismatch")) : nil
         } catch {
             invitation = nil
@@ -209,7 +209,7 @@ final class SharedPlays {
 
     func join(_ token: String, part: PartID, name: String, plays: PlaysLibrary) async -> Production? {
         guard let view = invitation else { return nil }
-        let script = PlaysShare.scriptFor(plays.scripts, id: view.scriptID, revision: view.scriptRevision)
+        let script = await plays.script(id: view.scriptID, revision: view.scriptRevision)
         do {
             let (rec, local) = try await PlaysShare.join(api: api, store: plays.store, token: token, part: part,
                                                          displayName: name, script: script)

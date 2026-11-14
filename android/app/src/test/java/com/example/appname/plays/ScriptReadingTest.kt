@@ -201,7 +201,7 @@ class ScriptReadingTest {
     }
 
     @Test fun `ReaderMath - turns, spreads, swipes, taps and keys`() {
-        assertEquals(listOf(1, 2, 2), listOf(899f, 900f, 1440f).map { ReaderMath.perSpread(it) })
+        assertEquals(listOf(1, 1, 2, 2, 2), listOf(834f, 859f, 860f, 951f, 1440f).map { ReaderMath.perSpread(it) })
         assertEquals(listOf(0, 1, 9), listOf(ReaderMath.turn(0, -1, 1, 10), ReaderMath.turn(0, 1, 1, 10), ReaderMath.turn(9, 1, 1, 10)))
         assertEquals(listOf(2, 4, 8, 8), listOf(ReaderMath.turn(0, 1, 2, 9), ReaderMath.turn(3, 1, 2, 9), ReaderMath.turn(7, 1, 2, 9), ReaderMath.turn(8, 1, 2, 9)))
         assertEquals(

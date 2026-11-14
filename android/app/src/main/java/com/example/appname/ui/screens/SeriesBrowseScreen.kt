@@ -132,7 +132,7 @@ fun SeriesBrowseScreen(
         }
     }
     var hasScript by rememberSaveable { mutableStateOf(false) }
-    val allPlays = rememberCastablePlays()
+    val allPlays = rememberCastableRows()
     var genre by rememberSaveable { mutableStateOf<String?>(null) }
     var decade by rememberSaveable { mutableStateOf<Int?>(null) }
     var network by rememberSaveable { mutableStateOf<String?>(null) }

@@ -17,7 +17,7 @@ const ReaderCore = (() => {
   const SPACING = { tight: 1.35, normal: 1.55, loose: 1.8 };
   const LAYOUTS = ['pages', 'scroll'];
   /** Two facing pages once the reading area is this wide (CSS pixels). */
-  const SPREAD_MIN = 900;
+  const SPREAD_MIN = 860;
 
   /** Settings as stored (or not): anything unknown falls back to the default. Pages by default (owner, Decision 076). */
   function normalizePrefs(raw) {

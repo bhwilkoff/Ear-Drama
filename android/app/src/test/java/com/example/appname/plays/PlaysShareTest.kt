@@ -495,4 +495,19 @@ class PlaysShareTest {
         assertTrue(PlaysShare.uploadsOpen(rec))
         assertFalse(PlaysShare.uploadsOpen(rec.copy(uploads = false)))
     }
+
+    @Test fun `a play only the library holds joins and opens through the library lookup`() = runBlocking {
+        val bundleEmpty: suspend () -> List<PlayScript> = { emptyList() }
+        val joinStore = MemoryShareStore()
+        val sharing = SharedPlays(FakeApi(), joinStore, { me }, bundleEmpty, libraryScript = { id, rev -> script.takeIf { it.id == id && it.revision == rev } })
+        val joined = sharing.join("tok", molly.raw, "Bo", script.id, script.revision)
+        assertEquals(script.id, joined.scriptID)
+        val openStore = MemoryShareStore()
+        val opener = SharedPlays(FakeApi(), openStore, { me }, bundleEmpty, libraryScript = { id, rev -> script.takeIf { it.id == id && it.revision == rev } })
+        assertEquals(script.id, opener.openRemote("pid-9").scriptID)
+        // Control: with no library lookup the same join is refused, so the test sees the lookup work.
+        val bare = SharedPlays(FakeApi(), MemoryShareStore(), { me }, bundleEmpty)
+        val refused = runCatching { bare.join("tok", molly.raw, "Bo", script.id, script.revision) }.exceptionOrNull()
+        assertEquals("revision_mismatch", (refused as? PlaysException)?.code)
+    }
 }

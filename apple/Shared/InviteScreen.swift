@@ -50,7 +50,7 @@ struct InviteScreen: View {
     @State private var name = ""
     @State private var hearing: String?
 
-    private static let scripts = CastableLibrary.load()?.scripts ?? []
+    @State private var script: PlayScript?
     private let api = WorkerOpenPlays(api: .shared)
 
     var body: some View {
@@ -95,9 +95,8 @@ struct InviteScreen: View {
         }
     }
 
-    private func page(_ inv: OpenInvite) -> some View {
-        let script = PlaysShare.scriptFor(Self.scripts, id: inv.scriptID, revision: inv.scriptRevision)
-        return ScrollView {
+    @ViewBuilder private func page(_ inv: OpenInvite) -> some View {
+        ScrollView {
             VStack(alignment: .leading, spacing: Spacing.s4) {
                 HeadBoard(kicker: "Ear drama \u{00B7} In progress", name: inv.title, genre: PlayScript.boardGenre, art: nil,
                           first: nil, last: nil, facts: script.map(PlayHead.facts) ?? [],
@@ -195,8 +194,10 @@ struct InviteScreen: View {
     private func read() async {
         if case .loaded = phase {} else { phase = .loading }
         do {
-            phase = .loaded(try await api.openInvite(token))
+            let inv = try await api.openInvite(token)
             await plays.load()
+            script = await plays.script(id: inv.scriptID, revision: inv.scriptRevision)
+            phase = .loaded(inv)
             if account.isSignedIn { await shared.viewInvitation(token, plays: plays) }
         } catch {
             phase = .failed(PlaysShare.line(error))

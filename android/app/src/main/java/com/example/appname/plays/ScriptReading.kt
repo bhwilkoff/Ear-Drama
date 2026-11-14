@@ -337,7 +337,7 @@ object ReaderMath {
     val LAYOUTS = listOf("pages", "scroll")
 
     /** Two facing pages once the reading area is this wide (dp). */
-    const val SPREAD_MIN = 900
+    const val SPREAD_MIN = 860
 
     /** Settings as stored (or not): anything unknown falls back to the default. Pages by default (owner, Decision 076). */
     fun normalizePrefs(layout: Any?, size: Any?, spacing: Any?): ReaderPrefs {

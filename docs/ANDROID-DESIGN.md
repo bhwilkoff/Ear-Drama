@@ -674,8 +674,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   - **Pages by default**: the script paginated with `TextMeasurer` at the
     current font scale into pages, shown in a `HorizontalPager` (a slide,
     never a curl; `beyondViewportPageCount = 1`). Two facing pages when the
-    window size class is expanded (a tablet, an open foldable in book
-    posture) and the reader has the width (`currentWindowAdaptiveInfo()`),
+    reader holds 860 dp or more (a tablet, an open foldable in book
+    posture; the same rule as Apple and web, `ReaderMath.SPREAD_MIN`),
     one otherwise. Turns: swipe; a tap on the outer fifth; hardware keys and
     pedals (DPAD left/right/up/down, PAGE_UP/PAGE_DOWN, SPACE) through
     `onPreviewKeyEvent`; and an opt-in **Volume keys turn pages** in Text.
