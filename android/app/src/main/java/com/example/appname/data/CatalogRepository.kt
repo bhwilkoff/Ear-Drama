@@ -39,10 +39,7 @@ class CatalogRepository(
         private const val STALE_AFTER_MS = 6L * 60 * 60 * 1000
     }
 
-    private val dbFile get() = File(context.filesDir, "catalog.sqlite")
-    private val etagFile get() = File(context.filesDir, "catalog.etag")
-    private val sourceFile get() = File(context.filesDir, "catalog.source")
-    private val lastCheckFile get() = File(context.filesDir, "catalog.lastcheck")
+    private val files = CatalogFiles(context.filesDir, MIN_FULL_BYTES, CatalogDatabase::validate)
 
     @Volatile var db: CatalogDatabase? = null
         private set
@@ -68,51 +65,31 @@ class CatalogRepository(
     private val seedStamp get() = "seed:${BuildConfig.VERSION_CODE}"
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
-        val stamp = sourceFile.takeIf { it.exists() }?.readText()?.trim()
-        // A new app build carries a newer seed; a cached seed copy from an
-        // older build is replaced, a downloaded full catalog is kept.
-        if (!dbFile.exists() || (stamp != "full" && stamp != seedStamp)) copySeed()
-        var opened = CatalogDatabase.open(dbFile.path)
-        if (opened == null && sourceFile.readTextOrNull() == "full") {
-            discardDownloaded()
-            copySeed()
-            opened = CatalogDatabase.open(dbFile.path)
-        }
-        swap(opened, if (opened == null) CatalogSource.None else sourceOf(sourceFile.readTextOrNull()))
+        val opened = files.openAtLaunch(seedStamp, ::copySeed, CatalogDatabase::open)
+        swap(opened, if (opened == null) CatalogSource.None else sourceOf(files.readSource()))
         _ready.value = true
     }
 
     private fun sourceOf(stamp: String?) = if (stamp == "full") CatalogSource.Full else CatalogSource.Seed
-
-    private fun File.readTextOrNull(): String? = takeIf { it.exists() }?.readText()?.trim()
-
-    private fun discardDownloaded() {
-        dbFile.delete()
-        etagFile.delete()
-        sourceFile.delete()
-    }
 
     /** Copies the bundled seed; false when this build carries none. */
     private fun copySeed(): Boolean = try {
         context.assets.open(SEED_ASSET).use { input ->
             val staging = File(context.filesDir, "catalog.sqlite.seed")
             staging.outputStream().use { input.copyTo(it, 64 * 1024) }
-            check(staging.renameTo(dbFile))
+            check(staging.renameTo(files.live))
         }
-        sourceFile.writeText(seedStamp)
+        files.source.writeText(seedStamp)
         true
     } catch (_: Throwable) {
         false
     }
 
-    fun isStale(): Boolean {
-        val last = lastCheckFile.readTextOrNull()?.toLongOrNull() ?: return true
-        return System.currentTimeMillis() - last >= STALE_AFTER_MS
-    }
+    fun isStale(): Boolean = files.isStale(System.currentTimeMillis(), STALE_AFTER_MS)
 
-    /** The foreground path: a no-op inside the stale window. */
+    /** The foreground path: a no-op inside the stale window, unless nothing is served. */
     suspend fun refreshIfStale() {
-        if (isStale()) refresh()
+        if (db == null || isStale()) refresh()
     }
 
     /** A second caller while one runs returns at once; its result is what that caller wanted. */
@@ -121,27 +98,32 @@ class CatalogRepository(
         refreshMutex.withLock { withContext(Dispatchers.IO) { refreshInner() } }
     }
 
+    /**
+     * "Last checked" is stamped only once a check has finished (a 304, a 404
+     * before the first publish, or a swap), so a download a kill interrupts
+     * is retried at the next launch instead of waiting out the stale window.
+     */
     private suspend fun refreshInner() {
-        val etag = etagFile.readTextOrNull().takeIf { sourceFile.readTextOrNull() == "full" }
-        val staging = File(context.filesDir, "catalog.sqlite.staging")
+        val etag = files.etag.takeIf { it.exists() && files.readSource() == "full" }?.readText()?.trim()
         try {
             api.conditionalGet(CATALOG_URL, etag).use { response ->
-                lastCheckFile.writeText(System.currentTimeMillis().toString())
-                val body = response.body ?: return
-                inflateRawDeflate(body, staging)
-                if (staging.length() < MIN_FULL_BYTES) return
-                if (!CatalogDatabase.validate(staging.path)) return
+                val body = response.body
+                if (body == null) {
+                    if (response.code == 304 || response.code == 404) files.markChecked(System.currentTimeMillis())
+                    return
+                }
+                inflateRawDeflate(body, files.staging)
+                files.writeStagingEtag(response.etag)
                 val old = db
-                if (!staging.renameTo(dbFile)) return
-                sourceFile.writeText("full")
-                swap(CatalogDatabase.open(dbFile.path), CatalogSource.Full)
+                if (!files.promoteStaging()) return
+                swap(CatalogDatabase.open(files.live.path), CatalogSource.Full)
                 old?.closeWhenIdle()
-                response.etag?.let { etagFile.writeText(it) }
+                files.markChecked(System.currentTimeMillis())
             }
         } catch (_: Throwable) {
             // Offline, a 404 before the first publish, or a torn download: keep what is served.
         } finally {
-            staging.delete()
+            files.discardStaging()
         }
     }
 

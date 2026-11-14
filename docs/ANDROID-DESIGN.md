@@ -838,6 +838,23 @@ file (`StandInNeverStoredTest`). No analytics.
   and a remote is no way to type an Apple ID. The account row is absent on
   a TV signed out; an account signed in on that device still syncs, as
   `android-tv`, with Sync now, Sign out, and Delete account (§4.11).
+- **§9.2a The TV safe area and the focus claim** (2026-11-14, from the
+  Google TV Streamer check; owner: *"The android tv should be available
+  too. Are you testing features on everything?"*). On a TV the whole app
+  sits inside a safe area of 48 dp at each side and 27 dp at the top and
+  bottom (Google's TV layout guidance: 5% of the 960 x 540 dp screen, so
+  96 x 54 px at 1080p), applied once around the tab surface
+  (`TvSafeHorizontal`, `TvSafeVertical`): the rail, every top bar, the
+  rows and chips, and the mini player are inside it, and the background
+  still fills the screen. A focused control at least 400 dp wide wears
+  the ring without the 1.06 scale, so a wide row never grows under the
+  rail or into the cut. Initial focus (`ClaimTvFocus`) is requested where
+  the target is drawn, once its content has loaded, every frame until it
+  takes, and never after the listener has pressed a key since the screen
+  opened (`TvFocusClock`): a claim that waits on data must not pull focus
+  back from the rail. Surprise claims its first Play. Down from Home's
+  On the air row lands on Listen live, not All stations. Home keeps its
+  rows across navigation (`ScreenMemo`), so Back draws it at once.
 - **§9.3 Wear OS** (`android/wear/`) is Continue, saying "Waiting on the
   phone" until the phone hands its history over; minSdk 30.
 - **§9.4** Update `PARITY.md` in the same change set.

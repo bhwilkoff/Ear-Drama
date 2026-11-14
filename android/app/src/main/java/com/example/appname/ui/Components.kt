@@ -75,25 +75,49 @@ sealed interface Loadable<out T> {
  * Runs [query] against the open catalog, re-running whenever the catalog
  * swaps (dbVersion), a [keys] value changes, or (with [watchUser]) the
  * listener's own records change.
- * The previous value stays on screen while a re-run is in flight.
+ * The previous value stays on screen while a re-run is in flight. With
+ * [memo], a screen that leaves and re-enters composition (Home after Back or
+ * a tab switch) draws its last value at once and re-runs behind it.
  */
 @Composable
 fun <T> rememberCatalogQuery(
     vararg keys: Any?,
     watchUser: Boolean = false,
+    memo: String? = null,
     query: suspend (CatalogDatabase) -> T,
 ): State<Loadable<T>> {
     val container = LocalAppContainer.current
     val dbVersion by container.catalog.dbVersion.collectAsState()
     val userChanges by container.user.changes.collectAsState()
     val userKey = if (watchUser) userChanges else 0
-    return produceState<Loadable<T>>(Loadable.Loading, dbVersion, userKey, *keys) {
+    val initial: Loadable<T> = memo?.let { ScreenMemo.get<Loadable.Ready<T>>(it) } ?: Loadable.Loading
+    return produceState(initial, dbVersion, userKey, *keys) {
         val db = container.catalog.awaitDb()
         value = if (db == null) Loadable.NoCatalog else try {
-            Loadable.Ready(query(db))
+            Loadable.Ready(query(db)).also { ready -> memo?.let { ScreenMemo.put(it, ready) } }
         } catch (_: Throwable) {
             Loadable.Failed
         }
+    }
+}
+
+/**
+ * The last value each named screen query produced, for the life of the
+ * process. Navigation drops a screen's composition, and with it every
+ * produceState; this is what lets the screen come back drawn (2026-11-14:
+ * Home blanked to a spinner on every return).
+ */
+/** stations.json as Home and Stations last read it. */
+const val STATIONS_MEMO = "stations"
+
+object ScreenMemo {
+    private val values = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
+    @Suppress("UNCHECKED_CAST")
+    fun <T> get(name: String): T? = values[name] as? T
+
+    fun put(name: String, value: Any) {
+        values[name] = value
     }
 }
 

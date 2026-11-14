@@ -1,8 +1,10 @@
 package com.example.appname.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Explore
@@ -10,6 +12,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -97,6 +100,9 @@ fun AppRoot(
     val stack = stacks.getValue(selected)
 
     LaunchedEffect(muted) { container.playback.muted = muted }
+    // Before any screen's focus claim runs: a key pressed from here on belongs to the new screen.
+    val top = stack.lastOrNull()
+    LaunchedEffect(selected, top) { TvFocusClock.screenOpened() }
 
     // The ONE place the inbox is drained: deep links and test doors alike.
     LaunchedEffect(inbox.size) {
@@ -168,7 +174,13 @@ fun AppRoot(
         LocalOnline provides online,
     ) {
         HapticEvents()
+        // §9.2a: on a TV the whole app sits inside the safe area; the background still fills the screen.
+        val safeArea = if (container.isTelevision) {
+            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = TvSafeHorizontal, vertical = TvSafeVertical)
+        } else Modifier
         NavigationSuiteScaffold(
+            modifier = safeArea,
             layoutType = if (reading) NavigationSuiteType.None
             else NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo()),
             navigationSuiteItems = {

@@ -28,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -38,6 +40,7 @@ import com.example.appname.plays.PlayScript
 import com.example.appname.radio.RadioClock
 import com.example.appname.radio.TonightDay
 import com.example.appname.ui.CenteredBox
+import com.example.appname.ui.ClaimTvFocus
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.HeadBoard
 import com.example.appname.ui.PlayHeadBoard
@@ -108,6 +111,11 @@ fun SurpriseScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSc
             EmptyMessage("Nothing to pick from yet.", Modifier.padding(padding))
             return@Scaffold
         }
+        // On a TV the first Play takes focus once the draw is in (ANDROID-DESIGN §9.2).
+        val firstPlay = remember { FocusRequester() }
+        val claimEpisode = p.episode != null
+        val claimEvening = !claimEpisode && p.first != null
+        if (claimEpisode || claimEvening) ClaimTvFocus(firstPlay, draw)
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
             p.episode?.let { row ->
                 item(key = "episode-h") { SectionHeader("An episode") }
@@ -119,7 +127,7 @@ fun SurpriseScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSc
                         onOpen = { onOpenEpisode(row.id) },
                     )
                 }
-                item(key = "episode-play") { PlayPick("Play") { container.playback.play(row) } }
+                item(key = "episode-play") { PlayPick("Play", Modifier.focusRequester(firstPlay)) { container.playback.play(row) } }
             }
             p.evening?.let { day ->
                 val lead = p.first?.episode
@@ -133,7 +141,7 @@ fun SurpriseScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSc
                 p.first?.let { detail ->
                     item(key = "evening-play") {
                         // From its start, never live, and nothing queued behind it.
-                        PlayPick("Play") {
+                        PlayPick("Play", if (claimEvening) Modifier.focusRequester(firstPlay) else Modifier) {
                             container.live.stop()
                             container.playback.play(detail.episode, startMs = 0, queue = false)
                         }
@@ -155,9 +163,9 @@ fun SurpriseScreen(onBack: () -> Unit, onOpenEpisode: (String) -> Unit, onOpenSc
 }
 
 @Composable
-private fun PlayPick(label: String, onClick: () -> Unit) {
+private fun PlayPick(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Column(Modifier.padding(horizontal = Spacing.S4.dp)) {
-        Button(onClick = onClick, colors = playButtonColors(), modifier = Modifier.tvFocusMark()) {
+        Button(onClick = onClick, colors = playButtonColors(), modifier = modifier.tvFocusMark()) {
             Icon(Icons.Filled.PlayArrow, contentDescription = null)
             Text(label, Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
         }

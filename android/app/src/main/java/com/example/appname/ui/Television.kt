@@ -11,15 +11,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.unit.dp
+import com.example.appname.BuildConfig
 import com.example.appname.ui.theme.OnAir
-import kotlinx.coroutines.delay
 
 /**
  * Android TV and Fire TV are a runtime branch of the one app, never a fork or
@@ -37,31 +40,77 @@ fun Context.isTelevision(): Boolean {
 val LocalIsTelevision = staticCompositionLocalOf { false }
 
 /**
+ * The TV safe area (ANDROID-DESIGN §9.2a; Google's TV layout guidance): 5% of
+ * the 960 x 540 dp screen, 48 dp at each side and 27 dp at the top and bottom,
+ * applied once around the whole app so the rail, the top bars, the rows and
+ * the mini player all sit inside it. The background still fills the screen.
+ */
+val TvSafeHorizontal = 48.dp
+val TvSafeVertical = 27.dp
+
+/** Rows at least this wide wear the ring without the scale (§9.2a). */
+private val WIDE = 400.dp
+
+/**
  * On a TV the focused card is marked by a ring and a scale, never color alone
- * (the focus contract). Elsewhere it changes nothing.
+ * (the focus contract). A wide row is not scaled: growing it about its centre
+ * pushes its edges under the rail and into the overscan. Elsewhere it changes
+ * nothing.
  */
 @Composable
 fun Modifier.tvFocusMark(): Modifier {
     if (!LocalIsTelevision.current) return this
     var focused by remember { mutableStateOf(false) }
+    var wide by remember { mutableStateOf(false) }
+    val widePx = with(LocalDensity.current) { WIDE.roundToPx() }
     val ring = OnAir.colors.link
     return this
+        .onSizeChanged { wide = it.width >= widePx }
         .onFocusChanged { focused = it.isFocused }
-        .scale(if (focused) 1.06f else 1f)
+        .scale(if (focused && !wide) 1.06f else 1f)
         .then(if (focused) Modifier.border(3.dp, ring, MaterialTheme.shapes.medium) else Modifier)
 }
 
 /**
- * Claims initial focus on a TV, retrying while the target's lazy row has not
- * composed yet. Exactly one surface per screen calls this.
+ * When the listener last pressed a key, and when the screen on top last
+ * changed (MainActivity and AppRoot write these). A screen's initial focus is
+ * claimed only while no key has been pressed since it opened, so a claim that
+ * waits on data never pulls focus back from where the listener has moved
+ * (2026-11-14: Home's late claim took focus from the rail after Back).
+ */
+object TvFocusClock {
+    @Volatile var lastKeyNanos: Long = 0L
+        private set
+    @Volatile var screenOpenedNanos: Long = 0L
+        private set
+
+    fun keyPressed() { lastKeyNanos = System.nanoTime() }
+    fun screenOpened() { screenOpenedNanos = System.nanoTime() }
+    val listenerHasMoved: Boolean get() = lastKeyNanos > screenOpenedNanos
+}
+
+/**
+ * Claims initial focus on a TV. Call it where the target is drawn, once the
+ * content it belongs to has loaded: it then tries every frame until the
+ * target is attached and takes focus, and stops as soon as the listener
+ * presses a key on this screen. Exactly one surface per screen calls this.
  */
 @Composable
 fun ClaimTvFocus(requester: FocusRequester, key: Any?) {
     if (!LocalIsTelevision.current) return
     LaunchedEffect(key) {
-        repeat(20) {
-            if (runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) return@LaunchedEffect
-            delay(50)
+        var frames = 0
+        while (!TvFocusClock.listenerHasMoved && frames < MAX_CLAIM_FRAMES) {
+            if (runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) {
+                if (BuildConfig.DEBUG) println("[Focus] claimed after $frames frames (key=$key)")
+                return@LaunchedEffect
+            }
+            frames++
+            withFrameNanos { }
         }
+        if (BuildConfig.DEBUG) println("[Focus] claim stopped after $frames frames (moved=${TvFocusClock.listenerHasMoved}, key=$key)")
     }
 }
+
+/** A target that has not attached within about 10 s of frames is not coming. */
+private const val MAX_CLAIM_FRAMES = 600

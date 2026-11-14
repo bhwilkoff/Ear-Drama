@@ -83,15 +83,15 @@ fun ListenScreen(
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd")) }
     val dateLabel = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d", Locale.US)) }
     // Continue re-runs on every saved position; the rest only on a catalog swap.
-    val continuing by rememberCatalogQuery(watchUser = true) { db ->
+    val continuing by rememberCatalogQuery(watchUser = true, memo = "home.continue") { db ->
         db.episodes(container.user.inProgress().map { it.episodeId }).distinctBy { it.id }
     }
-    val day by rememberCatalogQuery(today) { db ->
+    val day by rememberCatalogQuery(today, memo = "home.day") { db ->
         val rows = db.dayRows(today)
         DayData(rows, rows.map { it.seriesKey }.distinct().mapNotNull { k -> db.series(k)?.let { k to it } }.toMap())
     }
-    val shelves by rememberCatalogQuery { db -> db.homeShelves() }
-    val voices by rememberCatalogQuery { db -> db.voices(TOP) }
+    val shelves by rememberCatalogQuery(memo = "home.shelves") { db -> db.homeShelves() }
+    val voices by rememberCatalogQuery(memo = "home.voices") { db -> db.voices(TOP) }
     var picked by rememberSaveable(today) { mutableStateOf<Int?>(null) }
     var allNight by rememberSaveable(today, picked) { mutableStateOf(false) }
     val cont = (continuing as? Loadable.Ready)?.value.orEmpty()
