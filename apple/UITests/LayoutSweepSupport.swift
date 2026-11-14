@@ -26,15 +26,41 @@ extension DeviceTestCase {
         }
     }
 
+    /// What is on screen, as the frames and labels of its elements: it changes when the content scrolled and
+    /// is the same when it did not, whatever the scroll indicator or a running animation paints.
+    private func contentSignature(_ app: XCUIApplication) -> String {
+        let kinds: [XCUIElementQuery] = [app.cells, app.staticTexts, app.buttons, app.images]
+        return kinds.flatMap { $0.allElementsBoundByIndex.prefix(60) }.filter { $0.exists }
+            .map { "\($0.elementType.rawValue):\($0.label.prefix(24)):\(Int($0.frame.minY)):\(Int($0.frame.minX))" }
+            .joined(separator: "|")
+    }
+
+    /// One page up by a drag inside the scroll view's own frame, above the floating bar; `swipeUp` on the
+    /// app did not scroll in landscape on the iPhone 12.
+    private func scrollPage(_ app: XCUIApplication, far: Bool = false) {
+        let area = [app.scrollViews, app.collectionViews, app.tables].map { $0.firstMatch }.first { $0.exists && $0.frame.height > 100 }
+        let frame = area?.frame ?? app.frame
+        let top = frame.minY + frame.height * (far ? 0.12 : 0.3)
+        let bottom = frame.minY + frame.height * (far ? 0.7 : 0.6)
+        let x = frame.midX
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let from = origin.withOffset(CGVector(dx: x, dy: bottom))
+        let to = origin.withOffset(CGVector(dx: x, dy: top))
+        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.1)
+    }
+
     func sweep(_ app: XCUIApplication, _ name: String, pages: Int = 3) {
         shot(app, "\(name)-p00")
-        var last = app.screenshot().pngRepresentation
+        var last = (XCUIScreen.main.screenshot().pngRepresentation, contentSignature(app))
         for i in 1...pages {
-            app.swipeUp()
-            usleep(600_000)
-            let now = app.screenshot().pngRepresentation
-            if now == last { assertEndClears(app, name); break }
-            last = now
+            var moved = false
+            for far in [false, true] {
+                scrollPage(app, far: far)
+                usleep(700_000)
+                let now = (XCUIScreen.main.screenshot().pngRepresentation, contentSignature(app))
+                if now.0 != last.0 || now.1 != last.1 { last = now; moved = true; break }
+            }
+            if !moved { assertEndClears(app, name); break }
             shot(app, "\(name)-p\(String(format: "%02d", i))")
         }
     }
