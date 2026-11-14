@@ -98,7 +98,7 @@ def is_volume(raw, record):
         return False
     whole = 0
     for _, title, text in segs:
-        if volume_play_title(title, record) and P.parse(text, "stage").get("clean"):
+        if volume_play_title(title, record) and P.parse(text, "stage", title).get("clean"):
             whole += 1
             if whole == 2:
                 return True
@@ -116,7 +116,9 @@ def role_artifact(entry):
     title = entry["title"].upper().strip(" .")
     for r in entry["roles"]:
         name = r["name"].upper().strip(" .")
-        if BARE_HONORIFIC.match(name) or HEADING_ROLE.match(name) or name == title or name == "THE " + title:
+        if BARE_HONORIFIC.match(name) or HEADING_ROLE.match(name):
+            return r["name"]
+        if (name == title or name == "THE " + title) and r["lines"] < P.CASTABLE_LINES:
             return r["name"]
     return None
 
@@ -131,7 +133,7 @@ def volume_entries(record, rights, raw, report):
     out = []
     for n, title, text in P.split_volume(raw):
         report["split_segments"] = report.get("split_segments", 0) + 1
-        parsed = P.parse(text, "stage")
+        parsed = P.parse(text, "stage", title)
         why = None
         printed = volume_play_title(title, record)
         if parsed.get("status") != "parsed":
@@ -279,7 +281,7 @@ def build(plays, ctx, read_text, protect=()):
             uncached += 1
             continue
         seen += 1
-        parsed = P.parse(text, record["kind"])
+        parsed = P.parse(text, record["kind"], record.get("title"))
         if record["kind"] == "stage" and parsed.get("status") == "parsed" and p["id"] not in protect and (
                 "several_plays_in_one_text" in parsed["issues"] or (parsed.get("clean") and is_volume(text, record))):
             report["volumes"] = report.get("volumes", 0) + 1

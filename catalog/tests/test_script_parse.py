@@ -342,6 +342,56 @@ def a_label_may_carry_an_honorific():
     assert {x["name"] for x in r["roles"]} == {"MRS. ROBERTS", "ROBERTS"}, r["roles"]
 
 
+HONORIFIC_LINES = [
+    ("MRS. AUSTIN.", "[She is young and beautiful.] Why do you do this, line {i}?"),
+    ("DR. RANK.", "I am the most wretched of all my patients, line {i}."),
+    ("M. PERRICHON.", "Madame, you will permit me, line {i}."),
+    ("CAPT. HOLT.", "Steady now, all hands, line {i}."),
+    ("MME. CHENU.", "Mais non, line {i}."),
+]
+
+
+@case
+def an_honorific_abbreviation_is_part_of_the_speaker_name():
+    # real shapes: "MRS. AUSTIN. [She ...]" (The Second-Story Man), "MRS. MARWOOD." (The Way of the World)
+    body = "\n\n".join(f"{n} {t.format(i=i)}\n\nSMITH. And an answer said back, {i}."
+                       for i in range(12) for n, t in HONORIFIC_LINES)
+    r = P.parse("*** START OF THE PROJECT GUTENBERG EBOOK X ***\n\nTHE PLAY\n\nACT I.\n\n" + body
+                + "\n\nTHE END\n\n*** END OF THE PROJECT GUTENBERG EBOOK X ***\n", "stage")
+    names = {x["name"] for x in r["roles"]}
+    assert {"MRS. AUSTIN", "DR. RANK", "M. PERRICHON", "CAPT. HOLT", "MME. CHENU", "SMITH"} <= names, names
+    assert not names & {"MRS", "DR", "M", "CAPT", "MME"}, names
+    scene = P.parse("*** START OF THE PROJECT GUTENBERG EBOOK X ***\n\nTHE PLAY\n\nACT I.\n\n" + body.replace("SMITH. And", "MRS. FAINALL, FOIBLE.\n\nSMITH. And")
+                    + "\n\nTHE END\n\n*** END OF THE PROJECT GUTENBERG EBOOK X ***\n", "stage")
+    assert "MRS" not in {x["name"] for x in scene["roles"]}, scene["roles"]
+    assert next(x for x in r["roles"] if x["name"] == "MRS. AUSTIN")["lines"] == 12
+
+
+@case
+def an_abbreviation_outside_the_honorific_list_still_ends_at_the_period():
+    body = "\n\n".join(f"SMITH. A line of the scene, said plainly and at some length, {i}, {FILLER[:60]}.\n\nZED. And an answer said back, {i}."
+                       for i in range(20))
+    r = P.parse("*** START OF THE PROJECT GUTENBERG EBOOK X ***\n\nTHE PLAY\n\nACT I.\n\n" + body
+                + "\n\nTHE END\n\n*** END OF THE PROJECT GUTENBERG EBOOK X ***\n", "stage")
+    assert {x["name"] for x in r["roles"]} == {"SMITH", "ZED"}, r["roles"]
+
+
+@case
+def the_title_over_a_cast_list_is_not_a_speaker():
+    # real shape: Julius Caesar (gut-1522), a cast list opening with the title in capitals and no
+    # CHARACTERS heading; Macbeth-style eponymous parts that really speak stay roles
+    body = "\n\n".join(f"BRUTUS. A line of the scene, said plainly and at some length, {i}, {FILLER[:60]}.\n\n"
+                       f"CAESAR. And an answer said back, {i}.\n\nJULIUS CAESAR. I speak too, {i}." for i in range(20))
+    head = ("*** START OF THE PROJECT GUTENBERG EBOOK JULIUS CAESAR ***\n\nTitle: Julius Caesar\n\n"
+            "JULIUS CAESAR\nOCTAVIUS CAESAR, Triumvir after his death.\nMARCUS BRUTUS, Conspirator.\n\nACT I.\n\n")
+    r = P.parse("Title: Julius Caesar\n" + head + body + "\n\nTHE END\n\n*** END OF THE PROJECT GUTENBERG EBOOK X ***\n", "stage")
+    jc = [x for x in r["roles"] if x["name"] == "JULIUS CAESAR"]
+    assert jc and jc[0]["lines"] >= 20, r["roles"]
+    r = P.parse("Title: Julius Caesar\n" + head + body.replace("JULIUS CAESAR. I speak too", "BRUTUS. I speak too")
+                + "\n\nTHE END\n\n*** END OF THE PROJECT GUTENBERG EBOOK X ***\n", "stage")
+    assert "JULIUS CAESAR" not in {x["name"] for x in r["roles"]}, r["roles"]
+
+
 @case
 def every_word_set_aside_is_still_accounted_for():
     for raw in (FARCE, FOLIO_NOTE):
