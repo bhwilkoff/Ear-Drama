@@ -81,7 +81,10 @@ SOUNDWORD = re.compile(r"\b(knock\w*|sound|door|crowd|noise|bell|shot|thunder|wi
                        r"footsteps|horse|hoof\w*|crash|ring\w*|whistle|applause|laughter)\b", re.I)
 
 # ---- stage conventions (08b §2.4) ----------------------------------------------------------------
-CAP = r"[A-ZÀ-Þ][A-ZÀ-Þ0-9.'’\- ]{0,40}?"
+# A title abbreviation is part of the name it opens ("MRS. AUSTIN.", "DR. RANK.", "M. PERRICHON."), so
+# the period after it does not end the speaker. A closed list: any other abbreviation still ends there.
+TITLE_ABBR = r"(?:MRS?|MS|MISS|DR|ST|SIR|LT|CAPT|COL|GEN|REV|PROF|HON|MME|MLLE|MM|MESSRS|MONS|M)"
+CAP = r"(?:%s\.\s+|(?!%s\.\s))[A-ZÀ-Þ][A-ZÀ-Þ0-9.'’\- ]{0,40}?" % (TITLE_ABBR, TITLE_ABBR)
 S_ROLE_OWN = re.compile(r"^_?(?P<role>%s)_?\.?\s*(?P<d>\[[^\]]*\]|\(_[^)]*_\)|\([^)]*\))?\s*$" % CAP)
 S_ROLE_COLON = re.compile(r"^_?(?P<role>%s)_?\s*:\s*(?P<text>.+)$" % CAP, re.S)
 S_ROLE_INLINE = re.compile(r"^_?(?P<role>%s)_?\.\s+(?P<text>\S.+)$" % CAP, re.S)
@@ -120,7 +123,7 @@ def section_level(text):
 # Lists that belong to the cast list without starting another one ("COSTUMES.").
 CASTSUB = re.compile(r"^_?(COSTUMES?|PROPERTIES|SCENERY|TIME OF (?:PLAYING|PERFORMANCE|REPRESENTATION))_?\.?:?\s*$",
                      re.I)
-CAST_ENTRY = re.compile(r"^\s*_?(?:MRS?\.\s+|MISS\s+|DR\.\s+)?[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+(?:\s+[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+){0,3}_?[,.]")
+CAST_ENTRY = re.compile(r"^\s*_?(?:%s\.\s+|MISS\s+)?[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+(?:\s+[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+){0,3}_?[,.]" % TITLE_ABBR)
 # Where the play itself begins: a cast list, an act or scene heading, a first entrance.
 PLAY_MARK = re.compile(r"^_?\[?(?:(?:ACT|ACTUS|SCENE|SCENA|SCOENA|SC[ÆE]NA|PROLOGUE|INDUCTION|"
                        r"(?:THE\s+)?(?:FIRST|SECOND|THIRD|FOURTH|FIFTH)\s+ACT)\b|[IVX]+\.\s+_?[A-Z])", re.I)
@@ -414,7 +417,7 @@ def _mark_commercials(items):
 # ---- stage ---------------------------------------------------------------------------------------
 
 def _not_label(role):
-    return role in NOT_LABEL or role.split()[0] in NOT_LABEL or bool(HEADING.match(role)) \
+    return role in NOT_LABEL or role.split()[0] in NOT_LABEL or bool(re.fullmatch(TITLE_ABBR, role)) or bool(HEADING.match(role)) \
         or bool(ENTRANCE.match(role)) or bool(NOT_STAGE_ROLE.match(role.upper()))
 
 
@@ -652,7 +655,26 @@ def roles_only_before_play(items):
     return [role for role, ks in at.items() if len(ks) >= CASTABLE_LINES and max(ks) < mark]
 
 
-def parse(raw, kind):
+def _title_key(t):
+    t = re.sub(r"\s*[:,(].*$", "", t.replace("’", "'"))
+    return re.sub(r"^THE\s+", "", re.sub(r"[^A-Z0-9' ]", "", t.upper()).strip())
+
+
+def _title_block_is_not_a_speech(raw, items, title):
+    """A cast list or title page that opens with the play's own title in capitals ("JULIUS CAESAR" over
+    its dramatis personae) reads as that title speaking, once. A title role that speaks only that once is
+    set aside as front matter; an eponymous part that really speaks ("MACBETH.") has many lines and stays."""
+    m = re.search(r"^Title:[ \t]*(.+)$", raw, re.M)
+    key = _title_key(m.group(1) if m else title or "")
+    if not key:
+        return
+    spoken = collections.Counter(i["role"] for i in items if i["kind"] == "speech")
+    for it in items:
+        if it["kind"] == "speech" and spoken[it["role"]] == 1 and _title_key(it["role"]) == key:
+            it["kind"] = "front"
+
+
+def parse(raw, kind, title=None):
     """kind: "radio" (a broadcast script) or "stage" (a Gutenberg play text)."""
     text = gutenberg_body(raw) if kind == "stage" or GUT_START.search(raw) else raw
     if kind == "radio":
@@ -671,6 +693,8 @@ def parse(raw, kind):
         return {"status": "failed", "issues": [stub], "words": len(text.split())}
     if stub:
         return {"status": "stub", "stub_kind": stub, "words": len(text.split())}
+    if kind == "stage":
+        _title_block_is_not_a_speech(raw, items, title)
     lines, roles, unclassified = [], collections.OrderedDict(), []
     sections, pending = [], []
     for it in items:

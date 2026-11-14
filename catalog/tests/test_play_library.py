@@ -226,7 +226,11 @@ def a_title_that_names_no_play_is_not_used():
 @case
 def a_role_read_out_of_a_cast_list_is_an_artifact():
     ent = lambda *names: {"title": "Hedda Gabler", "roles": [{"name": n, "lines": 9, "words": 9} for n in names]}
-    assert L.role_artifact(ent("HEDDA", "MRS")) == "MRS" and L.role_artifact(ent("HEDDA", "HEDDA GABLER"))
+    assert L.role_artifact(ent("HEDDA", "MRS")) == "MRS"
+    once = {"title": "Hedda Gabler", "roles": [{"name": "HEDDA GABLER", "lines": 1, "words": 40}]}
+    assert L.role_artifact(once) == "HEDDA GABLER"
+    eponymous = {"title": "Macbeth", "roles": [{"name": "MACBETH", "lines": 146, "words": 3000}]}
+    assert L.role_artifact(eponymous) is None
     assert L.role_artifact(ent("HEDDA", "STROPHE I")) and L.role_artifact(ent("HEDDA", "MRS. ELVSTED")) is None
 
 
