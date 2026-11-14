@@ -9,6 +9,7 @@ that still carries a habit after this pass is unreadable (`readable`) and is com
   polish_person                a person's name: a doubled first capital ("JOhnny") set right
   recording_label              the clean name of the item a copy comes from, or None
 """
+import html
 import re
 
 import field_defects as FD
@@ -52,10 +53,17 @@ _QUOTE_MOJI = re.compile("â[\u0080-\u009f€™œ“”˜‹›‘’]+")
 _SPLIT_TOKENS = re.compile(r"(\W+)")
 
 
+def unescape(t):
+    """HTML entities decoded exactly once, and only the ';'-terminated ones ("&amp;" -> "&", "&amp;amp;" -> "&amp;";
+    a bare "&not" or "&copy" in running text stays)."""
+    return FD.HTML_ENTITY.sub(lambda m: html.unescape(m.group(0)), t)
+
+
 def fix_encoding(t):
     """The text with a mis-decoded UTF-8 run set right, or None when characters were lost beyond repair."""
     if t is None:
         return None
+    t = unescape(t)
     if re.search("[ÂÃâ][\u0080-¿ŒœŠšŸŽžˆ˜–-›€™]", t):
         for _ in range(3):
             for enc in (_CP1252, "latin-1"):
@@ -226,7 +234,7 @@ def polish_character(ch):
 
 
 def polish_person(name):
-    n = (name or "").strip()
+    n = unescape((name or "").strip())
     n = re.sub(r"\b([A-Z])([A-Z])([a-z]{2,})\b", lambda m: m.group(1) + m.group(2).lower() + m.group(3), n)
     n = re.sub(r"\b([A-Z][a-z]{2,})([A-Z][a-z]{2,})\b", lambda m: m.group(1) + " " + m.group(2)
                if not re.match(r"(?:Mc|Mac|De|La|Le|Di|Van|Von|O)[A-Z]", m.group(0)) else m.group(0), n)
