@@ -71,9 +71,8 @@ struct PlayerSheet_iOS: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "chevron.down")
+                        Label("Close player", systemImage: "chevron.down")
                     }
-                    .accessibilityLabel("Close player")
                 }
                 if let item = player.item {
                     ToolbarItemGroup(placement: .primaryAction) {
@@ -86,9 +85,8 @@ struct PlayerSheet_iOS: View {
                         Button {
                             transcriptOpen = true
                         } label: {
-                            Image(systemName: "text.quote")
+                            Label(Transcript.label, systemImage: "text.quote")
                         }
-                        .accessibilityLabel(Transcript.label)
                     }
                 }
             }

@@ -9,6 +9,12 @@ import SwiftUI
 struct ContentView_iOS: View {
     @Environment(AppStore.self) private var store
     @Environment(\.horizontalSizeClass) private var hSize
+    /// nil below iOS 27 or before the first report: the size class alone decides.
+    @State private var sidebarAvailable: Bool?
+
+    /// The Duo's vertical strip shows every tab, hidden or not, so Surprise is a
+    /// tab only where a sidebar can list it (iOS-DESIGN §3.1).
+    private var showsSurpriseTab: Bool { hSize == .regular && sidebarAvailable != false }
 
     var body: some View {
         @Bindable var store = store
@@ -30,7 +36,7 @@ struct ContentView_iOS: View {
             }
             // Hidden "for: .tabBar" alone it would still count toward the phone's
             // bar and grow a More tab (Archive Watch, seen on the iPhone 12).
-            if hSize == .regular {
+            if showsSurpriseTab {
                 Tab(AppTab.surprise.title, systemImage: AppTab.surprise.symbol, value: AppTab.surprise) {
                     stack(.surprise) { SurpriseScreen() }
                 }
@@ -40,8 +46,8 @@ struct ContentView_iOS: View {
         .tabViewStyle(.sidebarAdaptable)
         // At compact width Surprise is Home's push, never a tab: a door, or a
         // window narrowed while it was selected, hands it to Home.
-        .onChange(of: [store.selectedTab == .surprise, hSize == .regular], initial: true) {
-            guard store.selectedTab == .surprise, hSize != .regular else { return }
+        .onChange(of: [store.selectedTab == .surprise, showsSurpriseTab], initial: true) {
+            guard store.selectedTab == .surprise, !showsSurpriseTab else { return }
             store.selectedTab = .home
             store.push(Route.surprise)
         }
@@ -57,6 +63,27 @@ struct ContentView_iOS: View {
             root().routeDestinations()
         }
         .modifier(MiniPlayerInset())
+        .background { SidebarAvailabilityProbe(available: $sidebarAvailable) }
+    }
+}
+
+/// Reports whether the tab view can show a sidebar (iOS 27; the environment value
+/// is only meaningful inside a tab's content). Below 27 it reports nothing.
+private struct SidebarAvailabilityProbe: View {
+    @Binding var available: Bool?
+    var body: some View {
+        if #available(iOS 27, *) { Probe27(available: $available) } else { Color.clear }
+    }
+
+    @available(iOS 27, *)
+    private struct Probe27: View {
+        @Binding var available: Bool?
+        @Environment(\.isTabViewSidebarAvailable) private var sidebar
+        var body: some View {
+            Color.clear.onChange(of: sidebar, initial: true) { _, a in
+                if available != a { available = a }
+            }
+        }
     }
 }
 
