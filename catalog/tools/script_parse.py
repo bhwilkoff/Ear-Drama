@@ -710,6 +710,67 @@ def printed_title(text, lines):
     return None
 
 
+# ---- a collected volume ---------------------------------------------------------------------------
+
+PREAMBLE_REACH, SHORT_PARA_WORDS, SAME_PLAY_PARAS = 6, 12, 60
+
+
+def split_volume(raw):
+    """A collected stage volume as its plays, in text order: [(n, text)], n counting from 1 every
+    play the volume holds (not only the ones that later parse clean), so a play keeps its number
+    when the parser improves. A play begins at its first cast list or first-act heading (a cast
+    list followed by that play's first act is one play), and takes the short title paragraphs
+    just before it, up to the previous play's END or CURTAIN. Its title is the nearest title-like
+    paragraph above that mark (the title page sits directly over the cast list)."""
+    text = gutenberg_body(raw)
+    paras = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    marks = []
+    for i, p in enumerate(paras):
+        first, n = p.split("\n")[0].strip(), len(p.split("\n"))
+        if CASTHEAD.match(first):
+            marks.append((i, "cast"))
+        elif n <= 3 and FIRST_ACT.match(first) and len(first.split()) <= 6 and not re.search(r"[—:–]", first):
+            marks.append((i, "act"))
+    starts = []
+    for i, kind in marks:
+        if starts and starts[-1]["acts"] == 0 and i - starts[-1]["at"] <= SAME_PLAY_PARAS and (
+                kind == "act" or i - starts[-1]["last"] <= 15):
+            starts[-1]["acts"] += kind == "act"
+            starts[-1]["last"] = i
+        else:
+            starts.append({"at": i, "last": i, "acts": int(kind == "act")})
+    cuts, titles = [], []
+    for k, s in enumerate(starts):
+        floor = starts[k - 1]["at"] + 1 if k else 0
+        j = s["at"]
+        while j > floor and s["at"] - j < PREAMBLE_REACH:
+            q = paras[j - 1]
+            if END_HEAD.match(q.split("\n")[0].strip()) or len(q.split("\n")) > 3 or len(q.split()) > SHORT_PARA_WORDS \
+                    or SEPARATOR.match(q):
+                break
+            j -= 1
+        cuts.append(j)
+        titles.append(next((t for t in map(_volume_title, reversed(paras[j:s["at"]])) if t), None))
+    cuts.append(len(paras))
+    return [(k + 1, titles[k], "\n\n".join(paras[cuts[k]:cuts[k + 1]])) for k in range(len(starts))]
+
+
+FORM_WORD = re.compile(r"^(A|AN)\s+(?:[\w-]+\s+)?(COMEDY|TRAGEDY|FARCE|DRAMA|PLAY|MASQUE|PASTORAL|OPERA|HISTORY|TRAGI-?COMEDY)\b|^IN\s+\w+\s+ACTS?\b|^\w+-ACT\b")
+
+
+def _volume_title(para):
+    """A play's own title as the volume prints it above the play: a short capitals paragraph that is
+    not a heading, a byline, a form word ("A COMEDY"), a bracket, or a footnote. None when the
+    volume prints none there."""
+    head = para.split("\n")[0].strip(" _.")
+    if not head or len(para.split("\n")) > 2 or "_" in head or re.search(r"[()]", head) or len(head.split()) > 10 or head.upper() != head \
+            or not re.search(r"[A-Z]{2}", head) or re.search(r"[\[\]\d]", head):
+        return None
+    if HEADING.match(head) or CASTHEAD.match(head) or head.startswith("BY ") or FORM_WORD.match(head):
+        return None
+    return head
+
+
 # ---- the measurement -----------------------------------------------------------------------------
 
 HERE = os.path.dirname(os.path.abspath(__file__))

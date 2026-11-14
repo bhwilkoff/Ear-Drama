@@ -677,22 +677,40 @@ The castable play library is published beside the catalog, not bundled: at
 `catalog/out/plays-library/` and copied by `tools/assemble_site.sh`. It holds every
 Project Gutenberg play whose rights bucket is castable (`script_rights.judge`) AND whose text
 parses clean (`script_parse`: parsed, at least two roles with three or more lines, one play in
-the text, not mostly front or back matter, at most 5% of blocks unclassified, no castable role whose every line precedes the first cast list or act heading; a title cut off by the record's punctuation is held back too). The 15 plays the
-apps bundle (`catalog/plays/castable-scripts.json`) are all in it with the same id and
-`revision`; the bundle stays the offline floor.
+the text, not mostly front or back matter, at most 5% of blocks unclassified, no castable role whose every line precedes the first cast list or act heading; a title cut off by the record's punctuation, or the name of a volume ("Hecuba and other plays"), is held back too). The 15 plays the
+apps bundle (`catalog/plays/castable-scripts.json`, pinned to `BUNDLE_IDS` in
+`build_castable_scripts.py`) are all in it with the same id and `revision`; the bundle stays the
+offline floor.
 
 - `index.json`: `{format: 1, count, wordsPerMinute: 150, report, plays: [...]}`, plays in
   `(sort_name, id)` order. `report` is the build's own counts (`parsed`, `clean`, `failures` by
-  reason, `bundled`, `bundled_missing_from_library`).
-  Each play row: `id` (`gut-<Gutenberg ebook number>`, the record's own, never reissued),
-  `revision` (hash of the lines; a changed text keeps its id and changes this), `title`,
-  `sort_name`, `kind` (`stage` | `radio`), `authors` (display names), `year` (only when the
-  record carries evidence of one; otherwise absent), `collection` (when the record names a
-  volume and the text prints the play's own title), `voices` (roles with at least three
+  reason, `volumes`, `split_clean`, `split_failures`, `bundled`, `bundled_missing_from_library`)
+  and its two ledgers: `duplicates_dropped` (every id left out as a copy of another, with the id
+  kept, the overlap, and the reason) and `same_title_and_author_different_text_kept`.
+  Each play row: `id`, `revision` (hash of the lines; a changed text keeps its id and changes this),
+  `title`, `sort_name`, `kind` (`stage` | `radio`), `authors` (display names), `year` (only when the
+  record carries evidence of one; otherwise absent), `collection` (when the play comes from a
+  volume: the record's own volume title), `voices` (roles with at least three
   lines, the ones a person can cast), `roles` (all named speakers), `lines` (speeches),
   `words` (spoken words), `minutes` (`ceil(words / wordsPerMinute)`, approximate, at least 1),
   `rights` (`bucket` and `evidence`: claim plus a link a reader can open), `source`
   (`name`, `url`), `path` (`scripts/<id>.json`, relative to the index).
+- `id`: `gut-<ebook>` for a text that is one play (the record's own number, never reissued), and
+  `gut-<ebook>-<n>` for a play split out of a collected volume. `n` counts from 1 every play the
+  volume holds, in text order, whether or not it later parses clean, so a play keeps its number
+  when the parser improves; a volume's plays are never renumbered by a neighbor failing. A split
+  play carries the volume's rights evidence and source (the volume is the record that cleared it) and
+  the volume's one author; a volume with several authors is not split (it does not say which wrote
+  which). A play is split only when the volume prints its title (a short capitals line above its cast
+  list); a play with no printed title, or whose roles show a parsing artifact (a bare "MRS", the title
+  as a speaker, a strophe or tableau marker), is left out and counted in `split_failures`.
+- One work, one id: when several ids carry the same work (editions, a volume's play beside its own
+  ebook), the library keeps one. A bundled play always wins; then the single-play text over a volume's
+  play; then the fuller cast list, the longer text, the lower number. Same work means the spoken
+  text overlaps by at least 55% of the smaller (5-word shingles), or by 20% when the normalized
+  title and authors also match; texts of very different length are never the same work. Every drop is
+  listed in `report.duplicates_dropped`; same title and author with different text (two translations)
+  are both kept and listed.
 - `scripts/<id>.json`: `{format: 1, scripts: [<one entry>]}`, the shape of
   `castable-scripts.json`, so one decoder reads both. An entry carries `roles` and `lines`
   (the parser's exact slices; stage directions and spoken parts kept apart).
@@ -700,7 +718,18 @@ apps bundle (`catalog/plays/castable-scripts.json`) are all in it with the same 
 A client may show a play from the index alone (title, voices, minutes) and fetches
 `scripts/<id>.json` only to cast it. The guard is `catalog/tests/test_play_library.py`: shape
 and cross-file consistency of the real artifact when built, a fixture build always, and
-broken controls (a missing script file, an index row without rights evidence).
+broken controls (a missing script file, an index row without rights evidence, a volume with two
+authors, a bundle taken for its plays, an archive with a stray or climbing member).
+
+**Publishing.** The library is not built in CI (it needs the rsync mirror of ~1,700 texts). It is
+packed (`catalog/tools/play_library_archive.py`, deterministic tar.xz of `plays-library/`) and
+uploaded as `plays-library-YYYY-MM-DD.tar.xz` (`-2`, `-3` for a same-day rebuild; never
+overwritten) to the rolling `plays-library` Release by `tools/refresh_play_library.sh` (rsync harvest,
+build, tests, pack, upload, read the Release's size and sha256 back). `tools/assemble_site.sh` uses
+`catalog/out/plays-library` when a run built it and otherwise runs `tools/fetch_play_library.py`, which
+downloads the newest asset, checks size and sha256 against the Release, unpacks it, and runs
+`catalog/tools/check_play_library.py` (shape, cross-file consistency, at least 100 plays). Any failure
+stops the site build; the deploy never ships an empty or partial shelf.
 
 ## 5. Query verbs
 

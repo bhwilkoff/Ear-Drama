@@ -97,6 +97,13 @@ def a_play_record_keeps_its_own_title():
     assert entry["title"] == "Trifles: A Play" and "collection" not in entry, entry["title"]
 
 
+@case
+def the_bundle_is_pinned_to_its_fifteen_plays():
+    assert len(B.BUNDLE_IDS) == 15 and len(set(B.BUNDLE_IDS)) == 15
+    shipped = [s["id"] for s in json.load(open(B.OUT))["scripts"]]
+    assert sorted(shipped) == sorted(B.BUNDLE_IDS), "plays/castable-scripts.json and BUNDLE_IDS differ"
+
+
 def main():
     failed = 0
     for fn in CASES:
