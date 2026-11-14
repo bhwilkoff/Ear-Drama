@@ -28,6 +28,9 @@ const PlaysUI = (() => {
   let mix = null;
   /** The live listen-through on the production page, ended when the page changes. */
   let listen = null;
+  /** The voice pickers' preview voice, and the cast sheet's voiceschanged unsubscribe (§2.8). */
+  let preview = null;
+  let voicesOff = null;
   /** The last page drawn, redrawn when someone signs in or out here. */
   let lastDraw = null;
   const S = PlaysShare;
@@ -268,6 +271,14 @@ const PlaysUI = (() => {
     return st.performer || 'Recorded';
   }
 
+  /** The voice chip of a part no person holds; the picker's preview speaks through one muted-aware voice. */
+  function voiceChip(script, cast, part, chips, onChange) {
+    if (!preview) preview = StandInVoice.create({ muted });
+    const c = CastUI.chip({ script, cast, voice: preview, part, onChange });
+    chips.push(c);
+    return c;
+  }
+
   /** A part's face: a performer is a filled circle on the part's mark; the device voice a dashed ring. */
   function face(script, part, { who = null, voice = false, ok = false, size = '', live = false, now = false } = {}) {
     const f = h.el('span', { class: `pl-face${voice ? ' voice' : ''}${size ? ` ${size}` : ''}${live ? ' live' : ''}${now ? ' now' : ''}`,
@@ -296,7 +307,7 @@ const PlaysUI = (() => {
   /** A part card: face, name, length, where it speaks, then who holds it and its one action. */
   function partCard(script, part, { who = null, voice = false, ok = false, mine = false, status = null, href = null, actions = null } = {}) {
     const name = h.el('span', { class: 'pl-part-name' }, part.title);
-    return h.el('li', { class: `pl-part${mine ? ' mine' : ''}`, dataset: status ? { status } : {} },
+    return h.el('li', { class: `pl-part${mine ? ' mine' : ''}`, dataset: typeof status === 'string' ? { status } : {} },
       h.el('span', { class: 'pl-part-head' }, face(script, part.id, { who, voice, ok, size: 'sm' }),
         href ? h.el('a', { class: 'pl-part-link', href }, name) : name),
       h.el('span', { class: 'caption tabular pl-part-len' }, lines(part.lineCount)),
@@ -437,6 +448,10 @@ const PlaysUI = (() => {
     const performer = h.el('input', { class: 'field-input', type: 'text', name: 'performer', autocomplete: 'name', id: 'pl-performer',
                                       placeholder: 'Your name', value: performerName });
     performer.addEventListener('input', () => { performerName = performer.value; });
+    const cast = CastUI.castFor({ script, production: p.id });
+    const chips = [];
+    if (voicesOff) voicesOff();
+    voicesOff = StandInVoice.onVoices(() => chips.forEach(c => c.isConnected && c.paint()));
     const cards = C.castParts(script).map(part => {
       const st = C.stateOf(p, part.id);
       const actions = h.el('div', { class: 'pl-part-acts' });
@@ -462,14 +477,28 @@ const PlaysUI = (() => {
       const held = st.status === 'recording' || st.status === 'done';
       const kept = part.lineCount - C.missingLines(p, script, part.id).length;
       const who = st.performer || null;
+      // A part no person holds shows the voice that reads it (PLAYS-DESIGN §2.8; WEB-DESIGN §4.10).
+      const voiced = st.status === 'open' && ['Device voice', 'Open'].includes(heardAs(p, script, part.id));
       const status = st.status === 'recording' ? `${who || 'Recording'} · ${num.format(kept)} of ${num.format(part.lineCount)}`
         : st.status === 'done' ? (who ? `${who} · recorded` : 'Recorded')
-          : st.status === 'silent' ? 'Left silent' : heardAs(p, script, part.id);
+          : st.status === 'silent' ? 'Left silent'
+            : voiced ? voiceChip(script, cast, part.id, chips, () => {
+              // A voice for directions or sound changes what the listen-through reads: plan it again.
+              if (!C.isSpeaking(part.id) && !(listen && listen.playing)) rerender();
+            }) : heardAs(p, script, part.id);
       return partCard(script, part, { who, voice: !held, ok: st.status === 'done', mine: st.status === 'recording',
                                       status, href: partHref(part.id), actions });
     });
 
     const manage = h.el('div', { class: 'actions' });
+    if (chips.length) {
+      manage.append(h.el('button', { type: 'button', class: 'btn', onclick: () => {
+        cast.recast();
+        h.announce('Recast');
+        if (listen && listen.playing) chips.forEach(c => c.paint());
+        else rerender();
+      } }, 'Recast all'));
+    }
     if (C.unusedTakes(p).length) {
       manage.append(h.el('button', { type: 'button', class: 'btn', onclick: async () => {
         await store.discardUnusedTakes(id);
@@ -495,6 +524,7 @@ const PlaysUI = (() => {
       if (!confirm(`Delete ${p.title}? Every take is removed from this browser.`)) return;
       if (mix && mix.id === p.id) { URL.revokeObjectURL(mix.url); mix = null; }
       await store.delete(p.id);
+      VoiceCast.forget(VoiceCast.productionKey(p.id));
       h.navigate('?view=library&tab=dramas', true);
     } }, 'Delete production');
   }
@@ -990,7 +1020,7 @@ const PlaysUI = (() => {
     const control = h.el('button', { type: 'button', class: 'btn btn-primary' });
     const l = ListenThrough.create({
       production: p, script, store,
-      audio: LiveAudio.create({ muted }), voice: StandInVoice.create({ muted }),
+      audio: LiveAudio.create({ muted }), voice: StandInVoice.create({ muted, cast: CastUI.castFor({ script, production: p.id }) }),
       onChange: () => paint(),
     });
     listen = l;
@@ -1092,7 +1122,7 @@ const PlaysUI = (() => {
     const p = store.production(rec.id);
     if (typeof Player !== 'undefined') Player.pause();
     const audio = LiveAudio.create({ muted });
-    const voice = StandInVoice.create({ muted });
+    const voice = StandInVoice.create({ muted, cast: CastUI.castFor({ script: rec.script, production: rec.id }) });
     const r = rec;
     const s = RecordingSession.create({
       production: p, script: rec.script, part: rec.part, store, audio, voice,

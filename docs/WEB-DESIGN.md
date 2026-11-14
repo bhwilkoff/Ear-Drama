@@ -348,6 +348,41 @@ web app follows today.
     - *Replaced*: "Only the relay's next part offers "Take part" ..." and
       "Listen through (§2.6, C5: offered only when every speaking line has
       a human take), Export once finished".
+  - **The voices on the cast sheet** (Decision 076 S2; PLAYS-DESIGN §2.8 is
+    binding; owner 2026-11-14: *"The virtual voices who play the different
+    parts should also be intuitive."*). Every part no person holds (open,
+    or Left silent) shows its **voice chip** in the status slot, under the
+    dashed ring: a quiet button with the voice's own name ("Samantha",
+    "Daniel (Enhanced)"), "Not read" for Stage directions and Sound effects
+    until given a voice, then any speed or pitch off normal, muted ("1.2×,
+    pitch −1": auto-cast's second round on a voice is pitched, and the chip
+    says so), and the warning glyph before the name when the cast voice is
+    not in this browser and the auto-cast one reads instead.
+    A held part shows its performer as before. The chip opens the **voice
+    picker**, a `<dialog>` (full screen on a phone, a card from 600 px, the
+    reader's sheet): the part's name; the missing-voice warning when there
+    is one ("Ava is not in this browser."); **Speed** and **Pitch**, each a
+    − value + stepper (speed 0.5× to 2× by 0.1, pitch −5 to +5 steps of
+    0.1); then **On this device**, the browser's local English voices
+    (`localService`; never an online voice) best first: names carrying
+    Premium, then Enhanced, Natural or Neural, then the person's own
+    language, the default, the name (`VoiceCast.systemVoices`); for
+    directions and sound a "Not read" row first. Each row is a radio (the
+    voice's name, its language code beside it as a caption) and a Hear
+    button that reads **this part's first line** in that voice, live and
+    unrecorded (`StandInVoice.speakAs`). Choosing is kept at once; there is
+    no Save. The list ends with "Your system's speech settings add
+    voices." (a fact the page cannot otherwise show). No voice at all:
+    "This browser has no voice on this device." **Recast all** sits with
+    Discard unused takes and Delete production. The cast lives in this
+    browser only (`localStorage` `ed.cast`, keyed `p:<production>` and, for
+    the reader, `s:<script>`; newest 80 kept), is never synced or shared
+    (Q8), and leaves with Delete production. Voices arrive late in Chrome
+    (`getVoices()` is empty until `voiceschanged`): chips draw once the list
+    lands, and auto-cast waits for a non-empty list. Code:
+    `js/voice-cast.js` (the model, auto-cast, fallback, storage; no speech
+    API), `js/cast-ui.js` (chip, picker, the reader's Voices list), and
+    `js/plays-voice.js` (the only file that touches `speechSynthesis`).
   - **Recording** (`?production=&part=`): signed out, the page says
     "Recording needs an account." with a Sign in button that opens the
     account sheet (§4.11), and nothing else (owner 2026-10-23: always, even
@@ -624,11 +659,11 @@ web app follows today.
      the view is its own scroller, never `position: fixed` (§10, Safari).
      A **top bar**: Close (back where the person came from, else the
      play's page), the play's title over the act and scene the reading
-     position is in (a caption, one line, truncated), then three icon
+     position is in (a caption, one line, truncated), then four icon
      buttons with labels for assistive tech: **Contents**, **Search**,
-     **Text** (Aa). A **bottom bar**: **I'm playing** (a native select:
+     **Text** (Aa), **Voices** (item 13). A **bottom bar**: **I'm playing** (a native select:
      Nobody, then the speaking parts largest first with their line
-     counts), and once a part is chosen **Next line** and **Hide my
+     counts), **Hear the cast** (item 13), and once a part is chosen **Next line** and **Hide my
      lines** (a toggle, `aria-pressed`), then the page count ("12 of 140",
      "11–12 of 140" for a spread; a percentage in Scroll). Both bars stay
      put, so nothing reflows when they would come and go.
@@ -695,6 +730,18 @@ web app follows today.
      (S5). The reader's `go(lineID)` and `follow(lineID)` (light a line and
      keep it in view; a touch stops following) are the read-along's seam,
      and an empty dock under the page area is the studio's (S3).
+  13. **Voices and Hear the cast** (Decision 076 S2, PLAYS-DESIGN §2.8). A
+     fourth top-bar icon, **Voices**, opens the play's cast in a sheet: each
+     part (speaking parts largest first, then Sound effects and Stage
+     directions) with its voice chip, the same picker as the cast sheet,
+     and Recast all. This cast is the play's (`s:<script>`), and a
+     production made later starts from it. In the bottom bar, **Hear the
+     cast** (a play icon; Stop while reading; its label from 560 px) reads
+     from the first line on the page to the end, each part in its voice,
+     directions and sound only when given one; the reader follows the
+     spoken line (`follow`, a touch stops following, the page turns with
+     it), and the dock under the page says "Device voice" with the part's
+     name while it reads. It writes nothing (§5) and stops on Close.
   12. **States.** Loading: the spinner in the page area. A failed read:
      "This did not load." with Try again. Offline without the script:
      "You are offline." An id in neither file: "Not in the catalog."

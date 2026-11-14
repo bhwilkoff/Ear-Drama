@@ -258,6 +258,63 @@ macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along pa
 9. **Nothing is written by the app**: every word on the page is the script's; the reader
    adds no summary, no character notes, no suggestions.
 
+### §2.8 Casting the device voices (Decision 076, phase S2; binding on every platform)
+
+The owner, 2026-11-14: *"The virtual voices who play the different parts should also be
+intuitive."* Research: `docs/research/design/R2-script-reader-and-studio.md` §4.4 and Q7,
+Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESIGN §4.10
+"The cast sheet" and §4.16 item 13, iOS-DESIGN §4.12c, macOS-DESIGN §4.5c, ANDROID-DESIGN
+§4.9b; tvOS reads the cast only, tvOS-DESIGN §4.13).
+
+1. **The unit is an engine and a voice id.** A part's casting is
+   `{ engine, voice, name, rate, pitch }`: `engine` is `system` (the platform's own
+   synthesizer), `kokoro` (downloadable voices, phase S6; absent until then) or `none`
+   (Not read); `voice` is the engine's stable identifier (web `voiceURI`, Apple
+   `AVSpeechSynthesisVoice.identifier`, Android `Voice.getName()`), **never a language**
+   (an iOS 26 report says a voice requested by language ignores the person's Settings
+   choice); `name` is the voice's own display name, kept so a vanished voice can be named;
+   `rate` 0.5 to 2 and `pitch` 0.5 to 1.5 multiply the platform's normal.
+2. **One cast, everywhere on the device.** The recorder's cues, Hear it read, Run-up, Run
+   through, the listen-through and the reader's Hear the cast all read the same
+   assignment through one seam (`VoiceCast` on every stack), so a part sounds the same
+   wherever it plays. A production's cast is keyed by the production; the reader's,
+   with no production, by the play; a new production starts from its play's cast when
+   the person cast it in the reader. *Replaced*: each player assigning voices in the order
+   parts first spoke in that session (R2 §8 item 1).
+3. **Each device keeps its own cast** (Q8): never synced, never uploaded, never part of a
+   shared production. A shared production starts from auto-cast on each device.
+4. **Auto-cast** fills every part once, when the cast is first made on a device with at
+   least one voice: speaking parts in cast order (largest first) take **distinct** voices,
+   the best voice first (the platform's quality tier, then the person's own language,
+   then the system default, then the name), so the largest part gets the best voice;
+   where the platform reports a voice's own gender (Apple `gender`; the web and Android
+   report none), each next part takes the best remaining voice of the other reported
+   gender. It **never reads a character's name, a cast list's words, or the script** to
+   guess a character's gender (Q7 (a)). When voices run out the list starts again at the
+   next pitch (1.0, 0.86, 1.14, 0.93, 1.07), so two parts on one voice can be told apart.
+   "Recast all" runs it again. Golden-tested on every stack: the same voice list gives the
+   same cast, and renaming every part changes nothing.
+5. **Every choice is overridable**: a part's voice, speed and pitch, at any time, from the
+   cast sheet (and the reader's Voices sheet), each change kept at once.
+6. **The picker previews the part's own first line** in the voice tapped (the play's own
+   words, never a sample sentence), live, never stored (§5). Only local voices are listed
+   (§5 rule 5), grouped by engine ("On this device"; "Downloaded" arrives with S6), best
+   first, each by the name the platform gives it (which carries its tier: "Ava (Premium)",
+   "Samantha (Enhanced)"). A way to add voices is offered where the platform has one
+   (Apple: Settings > Accessibility > Spoken Content > Voices; Android: the engine's
+   installer; the web: a line saying the system's speech settings add voices).
+7. **Stage directions and Sound effects are Not read by default** (Q12 (a)) and offer a
+   voice like any part; when they have one, the listen-through and Hear the cast read
+   their unrecorded lines. The recorder's cues never read them (a cue is the line before
+   yours).
+8. **A voice that vanishes falls back visibly.** When a cast voice is not on this device
+   (another browser, a removed download), the part is read by its auto-cast voice and its
+   chip says so with the warning glyph; the picker names the missing voice ("Ava is not
+   on this device."). The person's choice is kept, and returns when the voice does.
+9. **A voice never passes as a person.** The chip sits beside the dashed ring, every line a
+   device voice reads is labeled "Device voice", and nothing of a device voice is stored
+   (§5).
+
 ### The platform idioms
 
 Same verbs, native idioms (`cross-platform-parity-discipline`).
@@ -566,11 +623,14 @@ So, on every platform:
    (owner 2026-10-23): spoken with `speak`, never written to a buffer, a file,
    a cue, or a mix, so Apple's public-sharing limit is never reached.
 
-Voices are assigned per part from what the device has, by `gender` on Apple
-where the script states one and by a small hand map on Android, with pitch and
-rate varied so two parts on one voice can be told apart. A fresh iPhone may
-have only a few English voices, so the character's name on screen does the
-identifying, and the app points to Settings for more.
+Voices are cast per part by §2.8: one assignment on the device, auto-cast from
+the voices' own quality and (where the platform reports it) the voices' own
+gender, never a character's, and every choice the person's to change. A fresh
+iPhone may have only a few English voices, so the character's name on screen
+does the identifying, and the picker points to Settings for more.
+- *Replaced* (2026-11-14, R2 §8 item 2, it was never built): "Voices are
+  assigned per part from what the device has, by `gender` on Apple where the
+  script states one and by a small hand map on Android".
 
 ---
 

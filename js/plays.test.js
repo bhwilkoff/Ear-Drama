@@ -27,7 +27,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const ROOT = path.resolve(__dirname, '..');
-for (const f of ['plays-core.js', 'plays-store.js', 'plays-voice.js', 'plays-session.js']) {
+for (const f of ['plays-core.js', 'plays-store.js', 'voice-cast.js', 'plays-voice.js', 'plays-session.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(__dirname, f), 'utf8'), { filename: f });
 }
 const C = vm.runInThisContext('PlaysCore');

@@ -278,6 +278,10 @@ The only shapes; a new one needs a new rule.
   part's hue, "Device voice" beside a line the device reads. It follows the
   audio by line id (the same `follow(line)` seam as the readers) and never takes
   focus: focus stays on the transport. Planned, not built (PARITY.md ⏳).
+  The listen-through on the TV reads open parts with the device's cast (PLAYS-DESIGN
+  §2.8, Decision 076 S2): the same `VoiceCast` auto-cast from the TV's own voices,
+  kept in `UserDefaults` (never Application Support, which tvOS devices refuse); the TV has no picker (the cast is changed on a
+  phone, tablet or Mac, and each device keeps its own).
 
 ## §5 The player
 

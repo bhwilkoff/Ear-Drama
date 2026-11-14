@@ -25,6 +25,10 @@ const Reader = (() => {
     next: 'M20 12l-1.41-1.41L13 16.17V4h-2v12.17l-5.58-5.59L4 12l8 8 8-8z',
     hide: 'M12 7a5 5 0 0 1 4.64 6.83l2.92 2.92A11.8 11.8 0 0 0 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16A4.9 4.9 0 0 1 12 7zM2 4.27l2.74 2.74A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84L19.73 22 21 20.73 3.27 3 2 4.27zm5.53 5.53 1.55 1.55A3 3 0 0 0 12 15c.22 0 .44-.03.65-.08l1.55 1.55A5 5 0 0 1 7.53 9.8z',
     cue: 'M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.5 4.5 0 0 0 16.5 12z',
+    voices: 'M9 13c2.67 0 8 1.34 8 4v3H1v-3c0-2.66 5.33-4 8-4zm0-2a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm7.76-7.64C18.78 5.12 18.78 9 16.76 11l-1.68-1.69a3 3 0 0 0 0-3.27zM20.07 1C24 5.05 23.97 11.11 20.07 15l-1.63-1.63c2.77-3.18 2.77-7.72 0-10.74z',
+    play: 'M8 5v14l11-7z',
+    stop: 'M7 7h10v10H7z',
+    wave: 'M3 10h2v4H3zm4-3h2v10H7zm4-4h2v18h-2zm4 4h2v10h-2zm4 3h2v4h-2z',
     close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
   };
   function svg(name) {
@@ -52,6 +56,7 @@ const Reader = (() => {
   const num = new Intl.NumberFormat('en-US');
   const readJSON = (key) => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; } };
   const writeJSON = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* private window */ } };
+  const muted = () => typeof location !== 'undefined' && new URLSearchParams(location.search).get('mute') === '1';
   const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /** The open reader, or null. */
@@ -349,6 +354,40 @@ const Reader = (() => {
     return d;
   }
 
+  /* ---- Voices and Hear the cast (§4.16 item 13, PLAYS-DESIGN §2.8) ---- */
+
+  function voicesSheet(st) {
+    const list = CastUI.list({ script: st.script, cast: st.cast, voice: st.voice });
+    const d = sheet('Voices', list);
+    d.addEventListener('toggle', () => { if (d.open) list.paint(); });
+    return d;
+  }
+
+  /** Reads from the first line on the page to the end; the reader follows each line, the dock labels it. */
+  function hearCast(st) {
+    if (st.table && st.table.playing) { st.table.stop(); return; }
+    if (typeof Player !== 'undefined' && Player.pause) Player.pause();
+    st.following = true;
+    st.table = TableRead.create({
+      script: st.script, voice: st.voice,
+      onLine: (line) => { st.handle.follow(line ? line.id : null); paintDock(st, line); },
+      onChange: () => paintHear(st),
+    });
+    st.table.play(Math.max(0, st.pos));
+  }
+  function paintHear(st) {
+    const on = !!(st.table && st.table.playing);
+    st.hearBtn.replaceChildren(svg(on ? 'stop' : 'play'), el('span', { class: 'rd-tool-lab' }, on ? 'Stop' : 'Hear the cast'));
+    st.hearBtn.setAttribute('aria-label', on ? 'Stop' : 'Hear the cast');
+    // No voice in this browser (or not yet: Chrome fills the list late): nothing to hear.
+    st.hearBtn.disabled = !on && !st.voice.available();
+    if (!on) paintDock(st, null);
+  }
+  function paintDock(st, line) {
+    st.dock.hidden = !line;
+    st.dock.replaceChildren(...(line ? [el('p', { class: 'caption device-voice rd-voice-now' }, svg('wave'), 'Device voice · ', C.partTitle(C.linePart(line)))] : []));
+  }
+
   /* ---- Input: keys, taps, swipes, wheels ---- */
 
   function onKey(e) {
@@ -463,22 +502,30 @@ const Reader = (() => {
     const hideBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool', 'aria-pressed': 'false', hidden: true }, svg('hide'), el('span', { class: 'rd-tool-lab' }, 'Hide my lines'));
     const iconBtn = (name, label, onclick) => el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': label, title: label, onclick }, svg(name));
     const dock = el('div', { class: 'rd-dock', hidden: true });
+    const hearBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool rd-hear' });
     const root = el('div', { class: 'rd' });
-    const st = { root, script, flow, clip, stage, where, pageLab, nextBtn, hideBtn, lines, dock, prefs: prefsNow(),
+    const cast = CastUI.castFor({ script });
+    const st = { root, script, flow, clip, stage, where, pageLab, nextBtn, hideBtn, hearBtn, lines, dock, prefs: prefsNow(),
+                 cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
                  pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, following: true };
     st.contents = contentsSheet(st);
     st.search = searchSheet(st);
     st.text = textSheet(st);
+    st.voices = voicesSheet(st);
     root.append(
       el('header', { class: 'rd-bar rd-top' },
         iconBtn('back', 'Close', () => (opts.onClose ? opts.onClose() : history.back())),
         el('div', { class: 'rd-titles' }, el('p', { class: 'body-strong rd-title' }, script.title), where),
         iconBtn('contents', 'Contents', () => st.contents.showModal()),
         iconBtn('search', 'Search', () => st.search.showModal()),
-        iconBtn('text', 'Text', () => st.text.showModal())),
+        iconBtn('text', 'Text', () => st.text.showModal()),
+        iconBtn('voices', 'Voices', () => st.voices.showModal())),
       stage, dock,
-      el('footer', { class: 'rd-bar rd-bottom' }, el('label', { class: 'rd-part' }, partSel), nextBtn, hideBtn, pageLab),
-      st.contents, st.search, st.text);
+      el('footer', { class: 'rd-bar rd-bottom' }, el('label', { class: 'rd-part' }, partSel), hearBtn, nextBtn, hideBtn, pageLab),
+      st.contents, st.search, st.text, st.voices);
+    hearBtn.addEventListener('click', () => hearCast(st));
+    paintHear(st);
+    st.voicesOff = StandInVoice.onVoices(() => { if (cur === st) paintHear(st); });
     partSel.addEventListener('change', () => setPart(st, partSel.value));
     nextBtn.addEventListener('click', () => myLine(st, 1));
     hideBtn.addEventListener('click', () => setHiding(st, !st.hiding));
@@ -497,7 +544,8 @@ const Reader = (() => {
       document.fonts.addEventListener('loadingdone', st.fontsDone);
     }
     stage.focus({ preventScroll: true });
-    return handle(st);
+    st.handle = handle(st);
+    return st.handle;
   }
 
   function handle(st) {
@@ -521,6 +569,8 @@ const Reader = (() => {
   function close() {
     if (!cur) return;
     document.removeEventListener('keydown', onKey);
+    if (cur.table) cur.table.stop();
+    if (cur.voicesOff) cur.voicesOff();
     if (cur.resize) cur.resize.disconnect();
     if (document.fonts && cur.fontsDone) document.fonts.removeEventListener('loadingdone', cur.fontsDone);
     for (const d of cur.root.querySelectorAll('dialog[open]')) d.close();
