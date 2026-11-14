@@ -89,6 +89,8 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 071: Downloads are a whole run in the apps, asked first; the web downloads nothing
 - 072: Invite-only takes need an account, not the CC0 consent
 - 073: One archive.org item per production, one file per line, named so a retry can only overwrite
+- 074: Take-down notices: a complete notice removes on its own, and nobody's details are public
+- 075: Five sections with Record among them; Home opens on what is on the air (answered 2026-11-14)
 
 ---
 
@@ -1089,3 +1091,30 @@ The deploy needs migration `0005_takedowns.sql` on D1 `eardrama`, the Worker sec
 `TAKEDOWN_TOKEN` (`wrangler secret put`), the same value as the repository secret
 `TAKEDOWN_TOKEN`, and `wrangler deploy` (adds the `TAKEDOWN_LIMITER` binding). No
 platform app change: each already links to the web page (PARITY.md).
+
+## 075: Five sections with Record among them; Home opens on what is on the air (answered 2026-11-14)
+
+**Rule**: the app's sections are **Home · Browse · Record · Search · Library**.
+Home opens on what is on the air now with Listen live (tonight's evening, else a
+genre station), then three doors (Listen, Find a show, Record a play), then rows
+each filled by a published data rule. Stations opens from Home's live block;
+Surprise is a Home toolbar button. Record holds the person's productions, then the
+plays, browsable by voices, length and kind. "Record this" sits beside Play on any
+page with a castable script. No sentence explaining the app: the live block and the
+doors say it. The play library grows to every rights-cleared Gutenberg play that
+parses clean, published beside the catalog. Radio scripts come next from the USDA
+typescript harvest (OCR repair, per-script authors), not from the Generic Radio
+Workshop. Replaces Decision 068's six sections.
+
+**Why**: the owner, 2026-11-14: *"It is entirely unclear what the app is or how to
+use it easily... Right now, it just shows as a database of old content"* and *"The
+ability/functionality for recording new Ear Dramas is significantly buried."*
+Research (`docs/research/design/R2-home-and-create.md`): Home opened on a chart with
+no Play button; the recorder sat 3-4 taps behind a hidden filter; radio apps make
+their purpose plain by leading with what is on now; creation stays visible when the
+button sits on the thing itself. The owner chose these options from that report;
+on radio scripts they chose the USDA harvest over asking GRW.
+
+**How to apply**: the binding design docs' tab rules change first (iOS, iPad, macOS,
+tvOS, web, Android), then PARITY.md, then the build. Ranking stays rule-based
+(`values-based-feed-ranking`); every row names its data rule.
