@@ -37,6 +37,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.focusable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Search
@@ -65,6 +68,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -99,6 +103,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -134,6 +139,11 @@ import com.example.appname.plays.ReaderPrefs
 import com.example.appname.plays.ReaderStore
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
+import com.example.appname.plays.TableRead
+import com.example.appname.ui.VoicePickerSheet
+import com.example.appname.ui.VoicesSheet
+import com.example.appname.ui.rememberCast
+import com.example.appname.ui.rememberDeviceVoices
 import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
@@ -146,6 +156,7 @@ import com.example.appname.ui.theme.genreColor
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -551,6 +562,14 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     var flash by remember { mutableStateOf<Int?>(null) }
     var jump by remember { mutableIntStateOf(0) }
     var sheet by rememberSaveable { mutableStateOf("") }
+    val container = LocalAppContainer.current
+    val deviceVoices = rememberDeviceVoices()
+    val castHandle = rememberCast(deviceVoices, script, null)
+    val scope = rememberCoroutineScope()
+    var pickingVoice by remember { mutableStateOf<PartID?>(null) }
+    var hearing by remember { mutableStateOf<ScriptLine?>(null) }
+    var hearingOn by remember { mutableStateOf(false) }
+    var hearJob by remember { mutableStateOf<Job?>(null) }
     var pageLabel by remember { mutableStateOf("") }
     val posIndex = remember(posId, script) { script.lines.indexOfFirst { it.id == posId }.coerceAtLeast(0) }
     val mine = remember(part, script) { part?.let { ScriptReading.lineIndexesOf(script, PartID(it)).toSet() }.orEmpty() }
@@ -584,6 +603,16 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     LaunchedEffect(sheet) { if (sheet.isEmpty()) runCatching { focus.requestFocus() } }
 
     val place = remember(posIndex, script) { ScriptReading.placeOf(script, posIndex) }
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+
+    fun stopHearing() {
+        hearJob?.cancel()
+        hearJob = null
+        hearingOn = false
+        hearing = null
+        castHandle?.speaker?.cancel()
+    }
+    DisposableEffect(script.id) { onDispose { hearJob?.cancel() } }
 
     /** Goes to a line: the position is that line wherever it falls, and the stage turns to it. */
     fun goTo(index: Int, outline: Boolean) {
@@ -592,6 +621,26 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
         peeked = null
         if (outline) flash = index
         jump++
+    }
+
+    /** Hear the cast: from the first line on the page to the end, each part in its voice, the page following. */
+    fun startHearing() {
+        val h = castHandle ?: return
+        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+        hearingOn = true
+        haptics(Haptic.Selection)
+        hearJob = scope.launch {
+            try {
+                TableRead(script, h.speaker) { line ->
+                    hearing = line
+                    if (line != null) goTo(script.lines.indexOfFirst { it.id == line.id }, outline = false)
+                }.play(posIndex)
+            } finally {
+                hearingOn = false
+                hearing = null
+                hearJob = null
+            }
+        }
     }
 
     fun myLine(direction: Int) {
@@ -630,8 +679,9 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
                         }
                     }
                 },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
+                navigationIcon = { IconButton(onClick = { stopHearing(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
                 actions = {
+                    if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
                     IconButton(onClick = { sheet = "contents" }) { Icon(Icons.Filled.Toc, contentDescription = "Contents") }
                     IconButton(onClick = { sheet = "search" }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
                     IconButton(onClick = { sheet = "text" }) { Icon(Icons.Filled.FormatSize, contentDescription = "Text") }
@@ -640,8 +690,20 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
         },
         bottomBar = {
             Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+              Column(Modifier.navigationBarsPadding()) {
+                hearing?.let { line ->
+                    Text(
+                        "Device voice \u00b7 ${line.part.title}",
+                        Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)
+                            .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Spacing.S2.dp, vertical = Spacing.S1.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = Spacing.S2.dp, vertical = Spacing.S1.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     var menu by remember { mutableStateOf(false) }
@@ -669,6 +731,15 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
                         }
                     }
                     Spacer(Modifier.weight(1f))
+                    if (castHandle != null) {
+                        TextButton(onClick = { if (hearingOn) stopHearing() else startHearing() }) {
+                            Icon(
+                                if (hearingOn) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                                contentDescription = if (hearingOn) "Stop" else "Hear the cast",
+                            )
+                            if (wide) Text(if (hearingOn) "Stop" else "Hear the cast", Modifier.padding(start = Spacing.S1.dp))
+                        }
+                    }
                     if (part != null) {
                         IconButton(onClick = { myLine(1) }) { Icon(Icons.Filled.VerticalAlignBottom, contentDescription = "Next line") }
                         IconToggleButton(checked = hiding, onCheckedChange = { hiding = it; peeked = null; haptics(Haptic.Selection) }) {
@@ -682,6 +753,7 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
                         modifier = Modifier.padding(horizontal = Spacing.S2.dp),
                     )
                 }
+              }
             }
         },
     ) { padding ->
@@ -725,6 +797,7 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     }
 
     when (sheet) {
+        "voices" -> castHandle?.let { h -> VoicesSheet(h, script, onPick = { pickingVoice = it }, onDismiss = { sheet = "" }) }
         "contents" -> ContentsSheet(script, posIndex, onGo = { sheet = ""; goTo(it, outline = false) }, onDismiss = { sheet = "" })
         "search" -> SearchSheet(script, onGo = { sheet = ""; goTo(it, outline = true) }, onDismiss = { sheet = "" })
         "text" -> TextSheet(
@@ -733,6 +806,7 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
             onDismiss = { sheet = "" },
         )
     }
+    if (castHandle != null) pickingVoice?.let { VoicePickerSheet(castHandle, script, it) { pickingVoice = null } }
 }
 
 @Composable

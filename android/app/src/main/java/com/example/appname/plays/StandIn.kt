@@ -7,8 +7,6 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.speech.tts.Voice
-import java.util.Locale
 import java.util.UUID
 import kotlin.concurrent.thread
 import kotlinx.coroutines.CompletableDeferred
@@ -39,10 +37,10 @@ interface StandInVoice {
  * callback hands over the samples. Only voices that need no network are used
  * (§5 rule 5), so a script line is never sent to a speech server.
  */
-class SystemStandInVoice(context: Context) : StandInVoice {
+class SystemStandInVoice(context: Context, private val cast: VoiceCast) : StandInVoice {
     private val ready = CompletableDeferred<Boolean>()
     private val tts = TextToSpeech(context.applicationContext) { status -> ready.complete(status == TextToSpeech.SUCCESS) }
-    private val assigned = HashMap<PartID, Int>()
+    private val setter = TtsSetter(tts)
     @Volatile private var pending: Collector? = null
 
     init {
@@ -61,25 +59,10 @@ class SystemStandInVoice(context: Context) : StandInVoice {
         })
     }
 
-    private fun castableVoices(): List<Voice> {
-        val here = Locale.getDefault()
-        return (tts.voices ?: emptySet()).filter {
-            !it.isNetworkConnectionRequired && it.locale.language == "en" &&
-                TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features
-        }.sortedWith(
-            compareByDescending<Voice> { it.locale == here }.thenByDescending { it.quality }.thenBy { it.name },
-        )
-    }
-
     override suspend fun render(text: String, part: PartID, rate: Float): StandInAudio? {
         val words = text.trim()
         if (words.isEmpty() || !ready.await()) return null
-        val voices = castableVoices()
-        if (voices.isEmpty()) return null
-        val index = assigned.getOrPut(part) { assigned.size }
-        tts.voice = voices[index % voices.size]
-        tts.setPitch(PITCHES[(index / voices.size) % PITCHES.size])
-        tts.setSpeechRate(rate)
+        if (!cast.prepare(part, setter, rate)) return null
         val collector = Collector(UUID.randomUUID().toString())
         pending = collector
         try {
@@ -151,8 +134,6 @@ class SystemStandInVoice(context: Context) : StandInVoice {
     }
 
     private companion object {
-        /** Voices repeat on a device with few of them; pitch tells two parts on one voice apart. */
-        val PITCHES = floatArrayOf(1.0f, 0.86f, 1.14f, 0.93f, 1.07f)
         const val RENDER_TIMEOUT_MS = 30_000L
     }
 }

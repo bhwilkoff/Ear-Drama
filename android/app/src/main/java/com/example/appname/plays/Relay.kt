@@ -98,12 +98,17 @@ object Relay {
         data class Voice(override val lineID: String, override val part: PartID, val text: String) : ListenEntry
     }
 
-    /** The live listen-through: a usable take per line where there is one, else a speech line's words for the device voice; silent sound and direction lines are left out. */
-    fun listenPlan(production: Production, script: PlayScript): List<ListenEntry> = script.lines.mapNotNull { line ->
+    /**
+     * The live listen-through: a usable take per line where there is one, else a speech line's words for the
+     * device voice; silent sound and direction lines are left out, unless [reads] says their part has a
+     * voice (Decision 076 S2: directions and sound are Not read until given one). Null keeps the old plan.
+     */
+    fun listenPlan(production: Production, script: PlayScript, reads: ((PartID) -> Boolean)? = null): List<ListenEntry> = script.lines.mapNotNull { line ->
         val usable = production.usableTake(line.id)
         when {
             usable != null -> ListenEntry.TakeEntry(line.id, line.part, usable)
             line.kind == ScriptLine.Kind.Speech -> ListenEntry.Voice(line.id, line.part, line.spokenText)
+            reads != null && line.spokenText.isNotBlank() && reads(line.part) -> ListenEntry.Voice(line.id, line.part, line.spokenText)
             else -> null
         }
     }

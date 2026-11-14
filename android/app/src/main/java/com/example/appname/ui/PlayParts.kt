@@ -280,7 +280,7 @@ fun lineCountText(n: Int) = if (n == 1) "1 line" else "$n lines"
 
 /**
  * A part card: the face, the part's name in the display face, its lines, the presence strip, the
- * who line, and the verbs the page gives it. [highlight] outlines the part being recorded (a full
+ * who line (or [whoSlot], a part's voice chip, in its place), and the verbs the page gives it. [highlight] outlines the part being recorded (a full
  * outline, never a one-sided stripe).
  */
 @Composable
@@ -292,6 +292,7 @@ fun PartCard(
     modifier: Modifier = Modifier,
     who: String? = null,
     highlight: Boolean = false,
+    whoSlot: (@Composable () -> Unit)? = null,
     actions: (@Composable () -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(12.dp)
@@ -316,7 +317,7 @@ fun PartCard(
             }
             Text(lineCountText(part.lineCount), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             PresenceStrip(script, part.id)
-            if (who != null) Text(who, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            if (whoSlot != null) whoSlot() else if (who != null) Text(who, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             if (actions != null) {
                 Spacer(Modifier.weight(1f))
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) { actions() }

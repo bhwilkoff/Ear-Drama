@@ -222,6 +222,7 @@ fun LazyListScope.sharedCastRows(
     pendingByPart: Map<String, Int>,
     onRecord: (PartID) -> Unit,
     onReplace: (PartID, String) -> Unit,
+    voiceChip: (@Composable (PartID) -> Unit)? = null,
 ) {
     if (rec == null) return
     val recordingNow = PlaysShare.recordingPart(rec)
@@ -245,6 +246,7 @@ fun LazyListScope.sharedCastRows(
             busy = sheet.busy,
             sheet = sheet,
             onRecord = { onRecord(part.id) },
+            voiceChip = voiceChip?.let { chip -> { chip(part.id) } },
         )
         }
     }
@@ -444,6 +446,7 @@ private fun SharedCastRow(
     busy: Boolean,
     sheet: SharedSheet,
     onRecord: () -> Unit,
+    voiceChip: (@Composable () -> Unit)? = null,
 ) {
     val raw = part.id.raw
     val name = state.performer?.let { " · $it" }.orEmpty()
@@ -462,6 +465,7 @@ private fun SharedCastRow(
         modifier = modifier,
         who = status,
         highlight = state.status == "recording" && mine,
+        whoSlot = if (state.status == "open") voiceChip else null,
     ) {
         when (state.status) {
             "recording" -> if (mine) {

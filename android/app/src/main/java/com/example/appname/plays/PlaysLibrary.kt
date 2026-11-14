@@ -67,6 +67,7 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
     suspend fun delete(productionId: String) = withContext(Dispatchers.IO) {
         store.delete(productionId)
         cast.remove(productionId)
+        VoiceCasting.forget(VoiceCasting.productionKey(productionId), PrefsCastStore(context))
     }
 
     suspend fun renderMix(id: String): File = withContext(Dispatchers.Default) {

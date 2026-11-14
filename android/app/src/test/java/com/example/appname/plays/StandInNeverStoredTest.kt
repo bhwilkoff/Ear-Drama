@@ -185,7 +185,9 @@ class StandInNeverStoredTest {
         }
         val live = File("src/main/java/com/example/appname/plays/LiveListen.kt").readText()
         assertFalse("the live listen never synthesizes to a file", live.contains("synthesizeToFile"))
-        assertTrue("the live listen uses only local voices", live.contains("!it.isNetworkConnectionRequired"))
+        val voices = File("src/main/java/com/example/appname/plays/VoiceCast.kt").readText()
+        assertTrue("the voices cast are local ones only", voices.contains("!it.networkRequired") && File("src/main/java/com/example/appname/plays/DeviceVoices.kt").readText().contains("isNetworkConnectionRequired"))
+        assertFalse("the cast speaker never synthesizes to a file", File("src/main/java/com/example/appname/plays/DeviceVoices.kt").readText().contains("synthesizeToFile"))
     }
 
     /** Only the take and mix writers write audio, and the stand-in source touches no file at all. */
