@@ -91,6 +91,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 073: One archive.org item per production, one file per line, named so a retry can only overwrite
 - 074: Take-down notices: a complete notice removes on its own, and nobody's details are public
 - 075: Five sections with Record among them; Home opens on what is on the air (answered 2026-11-14)
+- 076: A script reader of its own, pages first; the studio lives inside it; Kokoro for downloadable voices (answered 2026-11-14)
 
 ---
 
@@ -1118,3 +1119,32 @@ on radio scripts they chose the USDA harvest over asking GRW.
 **How to apply**: the binding design docs' tab rules change first (iOS, iPad, macOS,
 tvOS, web, Android), then PARITY.md, then the build. Ranking stays rule-based
 (`values-based-feed-ranking`); every row names its data rule.
+
+## 076: A script reader of its own, pages first; the studio lives inside it; Kokoro for downloadable voices (answered 2026-11-14)
+
+**Rule**: every castable play has a **Read** door (no account) that opens a reader
+of its own: **pages by default** (a slide, never a curl; two pages when wide),
+continuous scroll as a setting; contents by act and scene, search, text settings,
+and "I'm playing ___" (highlight my lines, jump to my next, hide them to rehearse).
+The studio opens from inside the reader: tap any line to record or re-record it,
+every take kept, a take list per line. The three recording modes (Run through,
+Line by line, Step) stay, as three ways the reader moves. Each part gets a voice on
+the cast sheet; one shared assignment everywhere (the recorder and the listen-through
+today keep separate maps, a defect). Auto-cast never guesses a character's gender.
+Downloadable voices: **Kokoro-82M** (Apache-2.0) on every platform, Kitten nano as a
+light option if its license checks; eSpeak (GPL) and Piper (GPLv3 engine) stay out;
+model audio is a live stand-in, never stored. The owner took the research's
+recommendations on the rest: typed marks everywhere plus Pencil ink on iPad, anchored
+to lines; marks on the device first, synced later; marks private; each device keeps
+its own cast; a closed phone shows the script with a compact record dock; TVs get a
+read-along panel only; stage directions not read by default.
+
+**Why**: the owner, 2026-11-14: *"You should be able to read a script and turn pages
+and mark them up and do all of the things that a good book/script reading experience
+should contain... It should be easy to go back and forth within the script and
+rerecord any line."* Research: `docs/research/design/R2-script-reader-and-studio.md`.
+The owner chose pages over the recommended scroll default.
+
+**How to apply**: build by that report's phases (S0 data, S1 reader, S2 voices on
+the cast sheet, S3 studio in the reader, S4 wide and Duo layouts, S5 marks, S6 Kokoro,
+S7 polish), each on every platform. Design docs and PARITY.md first.
