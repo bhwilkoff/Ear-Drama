@@ -145,6 +145,12 @@ private final class RenderRig {
         let script = self.script
         try both("play-page", widths: [phone, (900, 1500)]) { PlayPageBody(script: script) }
         let p = try production()
+        let fake = [CastVoice(id: "ava", name: "Ava (Premium)", language: "en-US", tier: 2, gender: .female),
+                    CastVoice(id: "tom", name: "Tom", language: "en-US", tier: 1, gender: .male),
+                    CastVoice(id: "kate", name: "Kate (Enhanced)", language: "en-GB", tier: 1, gender: .female)]
+        let voices = VoiceCastModel(cast: VoiceCast(key: "p:render", parts: script.castParts.map(\.id), voices: { fake },
+                                                    storage: .memory()))
+        voices.cast.set(script.castParts[2].id) { $0 = VoiceCastEntry(engine: .system, voice: "zoe", name: "Zoe (Premium)", rate: 1.2) }
         try both("cast-sheet", widths: [(390, 1560), (900, 1200)]) {
             VStack(alignment: .leading, spacing: Spacing.s4) {
                 HeadBoard(kicker: "Ear drama", name: script.title, genre: PlayScript.boardGenre, art: nil, first: nil,
@@ -154,7 +160,8 @@ private final class RenderRig {
                 }
                 PartGrid {
                     ForEach(script.castParts) { part in
-                        LocalPartCard(production: p, script: script, part: part, open: {}, take: {}, leaveSilent: {}, reopen: {})
+                        LocalPartCard(production: p, script: script, part: part, voices: voices, pickVoice: { _ in }, open: {}, take: {},
+                                      leaveSilent: {}, reopen: {})
                     }
                 }
             }

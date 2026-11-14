@@ -25,6 +25,9 @@ import Foundation
 ///   APP_READER_PART a part ("role:HAMLET") to play, APP_READER_HIDE=1 to hide its lines, APP_READER_SHEET
 ///   contents | search | text, APP_READER_PAGE a page to turn to, APP_READER_PREFS the settings as JSON
 ///
+/// - APP_PRODUCTION=<script id>: open a production's cast sheet on that play (made if none exists; iOS and macOS);
+///   APP_PICKER=role:NAME opens that part's voice picker, APP_READER_HEAR=1 starts Hear the Cast in the reader
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
@@ -42,6 +45,8 @@ struct LaunchDoors: Sendable, Equatable {
     var resetUserState = false
     var reader: String?
     var readerDoor = ReaderDoor()
+    var production: String?
+    var picker: String?
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -69,7 +74,10 @@ struct LaunchDoors: Sendable, Equatable {
             readerDoor: ReaderDoor(line: environment["APP_READER_LINE"], part: environment["APP_READER_PART"],
                                    hide: environment["APP_READER_HIDE"] == "1", sheet: environment["APP_READER_SHEET"],
                                    page: environment["APP_READER_PAGE"].flatMap { Int($0) },
-                                   prefs: environment["APP_READER_PREFS"])
+                                   prefs: environment["APP_READER_PREFS"],
+                                   hear: environment["APP_READER_HEAR"] == "1"),
+            production: environment["APP_PRODUCTION"],
+            picker: environment["APP_PICKER"]
         )
     }
 

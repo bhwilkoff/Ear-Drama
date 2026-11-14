@@ -333,9 +333,21 @@ struct CastSheet: View {
     let replace: (PartID, String) -> Void
     @Environment(PlaysLibrary.self) private var plays
     @Environment(SharedPlays.self) private var shared
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var taking: PartID?
     @State private var performer = ""
     @State private var refusal: String?
+    @State private var voices: VoiceCastModel
+    @State private var pickerPart: PartID?
+
+    init(production: Production, script: PlayScript, open: @escaping (PartID) -> Void,
+         replace: @escaping (PartID, String) -> Void) {
+        self.production = production
+        self.script = script
+        self.open = open
+        self.replace = replace
+        _voices = State(initialValue: VoiceCastModel(cast: .production(production.id, script: script)))
+    }
 
     var body: some View {
         let rec = shared.record(for: production, in: plays.store)
@@ -377,9 +389,26 @@ struct CastSheet: View {
                         }
                     }
                 }
+                Button("Recast All") { voices.recast() }
+                    #if os(iOS)
+                    .sensoryFeedback(Haptic.selection.feedback, trigger: voices.revision)
+                    #endif
             }
         }
         .listStyle(.plain)
+        .repaintsOnVoiceChange(voices)
+        #if os(iOS)
+        .onAppear { if let door = LaunchDoors.current.picker { pickerPart = PartID(rawValue: door) } }
+        .navigationDestination(item: Binding(get: { sizeClass == .compact ? pickerPart : nil }, set: { pickerPart = $0 })) { part in
+            VoicePickerScreen(model: voices, script: script, part: part)
+        }
+        .sheet(item: Binding(get: { sizeClass == .regular ? pickerPart : nil }, set: { pickerPart = $0 })) { part in
+            NavigationStack {
+                VoicePickerScreen(model: voices, script: script, part: part) { pickerPart = nil }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        #endif
         .alert("Take this part", isPresented: Binding(get: { taking != nil }, set: { if !$0 { taking = nil } })) {
             TextField("Your name", text: $performer)
             Button("Take Part") { take() }
@@ -396,7 +425,8 @@ struct CastSheet: View {
     }
 
     @ViewBuilder private func card(_ part: CastPart) -> some View {
-        LocalPartCard(production: production, script: script, part: part, open: { open(part.id) },
+        LocalPartCard(production: production, script: script, part: part, voices: voices,
+                      pickVoice: { pickerPart = $0 }, open: { open(part.id) },
                       take: { performer = ""; taking = part.id },
                       leaveSilent: { apply { try Relay.leaveSilent(part.id, in: $0, script: script) } },
                       reopen: { apply { try Relay.reopen(part.id, in: $0, script: script) } })
@@ -429,6 +459,8 @@ struct LocalPartCard: View {
     let production: Production
     let script: PlayScript
     let part: CastPart
+    let voices: VoiceCastModel
+    let pickVoice: (PartID) -> Void
     let open: () -> Void
     let take: () -> Void
     let leaveSilent: () -> Void
@@ -438,7 +470,8 @@ struct LocalPartCard: View {
         let state = production.state(of: part.id)
         let next = Relay.next(production, script)
         PartCard(script: script, part: part, holder: holder(state), recorded: state.status == .done,
-                 who: who(state), current: state.status == .recording, onOpen: open) {
+                 who: state.status == .open ? nil : who(state), current: state.status == .recording, onOpen: open,
+                 voiceChip: state.status == .open ? chip : nil) {
             switch state.status {
             case .recording:
                 Button("Record", action: open).buttonStyle(.play(.ink))
@@ -455,6 +488,14 @@ struct LocalPartCard: View {
                     .disabled(Relay.current(production, script) != nil)
             }
         }
+    }
+
+    private var chip: AnyView {
+        #if os(iOS)
+        AnyView(VoiceChip(model: voices, part: part.id) { pickVoice(part.id) })
+        #else
+        AnyView(VoiceChip(model: voices, script: script, part: part.id))
+        #endif
     }
 
     private func holder(_ state: PartState) -> PartHolder {
@@ -524,6 +565,7 @@ private struct DeleteProductionDialog: ViewModifier {
         content.confirmationDialog("Delete \(production.title)?", isPresented: $isPresented) {
             Button("Delete Production and Its Recordings", role: .destructive) {
                 try? plays.store.delete(production.id)
+                VoiceCast.forget(production: production.id)
                 done()
             }
         } message: {
@@ -588,10 +630,16 @@ struct ListenThrough: View {
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AudioPlayer.self) private var player
     @State private var mix = MixPlayback()
-    @State private var live = LiveListenThrough.system()
+    @State private var live: LiveListenThrough
     @State private var mixing = false
     @State private var error: String?
     @State private var listenedFrom: String?
+
+    init(production: Production, script: PlayScript) {
+        self.production = production
+        self.script = script
+        _live = State(initialValue: .system(cast: .production(production.id, script: script)))
+    }
 
     var body: some View {
         let missing = Relay.missingSpeech(production, script).count
@@ -718,7 +766,8 @@ struct ListenThrough: View {
         player.pause()
         error = nil
         let store = plays.store
-        await live.run(Relay.listenPlan(latest, script)) { store.takeURL(latest, $0) }
+        let reads: (PartID) -> Bool = { [live] part in !part.isSpeaking && live.reads(part) }
+        await live.run(Relay.listenPlan(latest, script, reads: reads)) { store.takeURL(latest, $0) }
     }
 }
 

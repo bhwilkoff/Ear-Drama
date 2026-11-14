@@ -201,8 +201,11 @@ only here:
   sound) with "Voice Settings…" opening an inspector popover (Speed and Pitch
   `Stepper`s, each voice's Hear button reading the part's first line). The footer's
   path is System Settings > Accessibility > Read & Speak (or Spoken Content) >
-  System Voice > Manage Voices (the pane name and its `x-apple.systempreferences:`
-  URL to verify on macOS 26 before shipping; R2 §2.7 marks the name UNVERIFIED). Planned (PARITY ⏳).
+  System Voice > Manage Voices; the footer's **Open Settings** opens
+  `x-apple.systempreferences:com.apple.Accessibility-Settings.extension` (the
+  Accessibility pane; the pane's own name and an anchor to Spoken Content are
+  UNVERIFIED on macOS 26, R2 §2.7). Built 2026-11-14 (PARITY 🚧): the chip is a `Menu`
+  in the part card, "Voice Settings..." opens the picker `Form` in a popover.
 - **§4.5a A shared ear drama** is `docs/iOS-DESIGN.md` §4.12a (PLAYS-DESIGN
   §11.7, binding: the same verbs and words on every platform) in the
   production's window: Share, Invite, Upload, and People sit in the cast

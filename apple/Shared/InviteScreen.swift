@@ -243,6 +243,7 @@ struct InviteScreen: View {
             plan = plan.filter { if case let .take(_, p, _) = $0 { p.rawValue == part } else { false } }
         }
         let dir = folder
+        live.setCast(.production(rec.id, script: script))
         await live.run(plan) { dir.appending(path: $0.file) }
         hearing = nil
     }

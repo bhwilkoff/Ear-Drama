@@ -281,7 +281,9 @@ The only shapes; a new one needs a new rule.
   The listen-through on the TV reads open parts with the device's cast (PLAYS-DESIGN
   §2.8, Decision 076 S2): the same `VoiceCast` auto-cast from the TV's own voices,
   kept in `UserDefaults` (never Application Support, which tvOS devices refuse); the TV has no picker (the cast is changed on a
-  phone, tablet or Mac, and each device keeps its own).
+  phone, tablet or Mac, and each device keeps its own). Built 2026-11-14: the shared
+  play's Listen Through sets `VoiceCast.production(rec.id, script:)` on its speaker
+  before the run; build-verified only (no TV pass this round).
 
 ## §5 The player
 

@@ -12,6 +12,7 @@ import SwiftUI
 struct ContentView_macOS: View {
     @Environment(AppStore.self) private var store
     @Environment(AudioPlayer.self) private var player
+    @Environment(PlaysLibrary.self) private var plays
     @Environment(\.openWindow) private var openWindow
 
     private var section: Binding<AppTab?> {
@@ -60,6 +61,12 @@ struct ContentView_macOS: View {
             guard player.item != nil else { return .ignored }
             player.togglePlayPause()
             return .handled
+        }
+        .task(id: store.productionDoor) {
+            guard let id = store.productionDoor else { return }
+            store.productionDoor = nil
+            guard let script = try? await plays.script(id: id), let made = try? plays.store.create(script) else { return }
+            openWindow(id: ProductionWindow_macOS.id, value: made.id)
         }
         #if DEBUG
         .task { await DoorFile_macOS.watch(store) }

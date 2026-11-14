@@ -129,7 +129,7 @@ struct RecordingScreen: View {
         preflight = .ready
         player.pause()
         let session = RecordingSession(production: production, script: script, part: part, store: plays.store,
-                                       audio: audio, voice: SystemStandInVoice())
+                                       audio: audio, voice: SystemStandInVoice(cast: .production(production.id, script: script)))
         session.setMode(.remembered())
         self.session = session
         index = startLine.flatMap { id in session.lines.firstIndex { $0.id == id } } ?? firstUnrecorded(session)

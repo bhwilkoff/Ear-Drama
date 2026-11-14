@@ -8,6 +8,15 @@ import Foundation
 protocol ListenSpeaker: AnyObject {
     func speak(_ text: String, part: PartID, personalVoice: Bool) async
     func stop()
+    /// Whether the cast reads `part` at all (directions and sound are Not read until given a voice).
+    func reads(_ part: PartID) -> Bool
+    /// The production's one cast (§2.8), set before a run by a screen that did not have it at init.
+    func setCast(_ cast: VoiceCast)
+}
+
+extension ListenSpeaker {
+    func reads(_ part: PartID) -> Bool { true }
+    func setCast(_ cast: VoiceCast) {}
 }
 
 /// Plays one human take from its file, to its end.
@@ -33,9 +42,13 @@ final class LiveListenThrough {
         self.player = player
     }
 
-    static func system() -> LiveListenThrough {
-        LiveListenThrough(speaker: SystemListenSpeaker(), player: SystemTakePlayer())
+    static func system(cast: VoiceCast? = nil) -> LiveListenThrough {
+        LiveListenThrough(speaker: SystemListenSpeaker(cast: cast), player: SystemTakePlayer())
     }
+
+    func setCast(_ cast: VoiceCast) { speaker.setCast(cast) }
+
+    func reads(_ part: PartID) -> Bool { speaker.reads(part) }
 
     func run(_ plan: [ListenEntry], takeURL: (Take) -> URL) async {
         guard !isRunning else { return }
@@ -66,28 +79,6 @@ final class LiveListenThrough {
     }
 }
 
-/// The device's English voices a part may be read in, best first, and the
-/// pitches that tell two parts on one voice apart. The recorder's stand-in
-/// (`SystemStandInVoice`) and the listen-through read the same list; the TV,
-/// which records nothing, has only the listen-through.
-enum DeviceVoices {
-    static func castable() -> [AVSpeechSynthesisVoice] {
-        let language = AVSpeechSynthesisVoice.currentLanguageCode()
-        let english = AVSpeechSynthesisVoice.speechVoices().filter {
-            $0.language.hasPrefix("en")
-                && !$0.voiceTraits.contains(.isPersonalVoice)
-                && !$0.voiceTraits.contains(.isNoveltyVoice)
-        }
-        return english.sorted {
-            if ($0.language == language) != ($1.language == language) { return $0.language == language }
-            if $0.quality != $1.quality { return $0.quality.rawValue > $1.quality.rawValue }
-            return $0.identifier < $1.identifier
-        }
-    }
-
-    static let pitches: [Float] = [1.0, 0.86, 1.14, 0.93, 1.07]
-}
-
 /// The device's voices, spoken aloud. A Personal Voice is used only here and
 /// only through `speak` (§5 rule 6): never `write(_:toBufferCallback:)`, a
 /// file, a recording cue, or the mix.
@@ -95,13 +86,17 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
     private let synthesizer = AVSpeechSynthesizer()
     private var finished: CheckedContinuation<Void, Never>?
     private var speaking: ObjectIdentifier?
-    private var assigned: [PartID: Int] = [:]
-    private lazy var voices = DeviceVoices.castable()
+    private var cast: VoiceCast?
 
-    override init() {
+    init(cast: VoiceCast? = nil) {
+        self.cast = cast
         super.init()
         synthesizer.delegate = self
     }
+
+    func setCast(_ cast: VoiceCast) { self.cast = cast }
+
+    func reads(_ part: PartID) -> Bool { cast?.resolve(part).read ?? true }
 
     #if os(iOS) || os(macOS)
     static var personalVoiceStatus: AVSpeechSynthesizer.PersonalVoiceAuthorizationStatus {
@@ -118,19 +113,16 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
     #endif
 
     func speak(_ text: String, part: PartID, personalVoice: Bool) async {
-        let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let words = DeviceVoices.said(text)
         guard !words.isEmpty else { return }
         let utterance = AVSpeechUtterance(string: words)
+        utterance.volume = SpeechMute.volume
         if personalVoice, let mine = Self.personalVoice() {
             utterance.voice = mine
-        } else if !voices.isEmpty {
-            let index = assigned[part] ?? {
-                let next = assigned.count
-                assigned[part] = next
-                return next
-            }()
-            utterance.voice = voices[index % voices.count]
-            utterance.pitchMultiplier = DeviceVoices.pitches[(index / voices.count) % DeviceVoices.pitches.count]
+        } else if let cast {
+            let r = cast.resolve(part)
+            guard r.read || r.none else { return }
+            SpeechSetting.of(r)?.apply(to: utterance)
         }
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             finished = done
@@ -195,3 +187,15 @@ final class SystemTakePlayer: NSObject, ListenTakePlayer, AVAudioPlayerDelegate 
     }
 }
 #endif
+
+/// Debug doors mute the synthesizer: an utterance still takes its time, but makes no sound (APP_MUTE).
+nonisolated enum SpeechMute {
+    static let volume: Float = {
+        #if DEBUG
+        let info = ProcessInfo.processInfo
+        return info.environment["APP_MUTE"] == "1" || info.arguments.contains("-APP_MUTE") ? 0 : 1
+        #else
+        return 1
+        #endif
+    }()
+}
