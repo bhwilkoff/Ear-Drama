@@ -546,6 +546,26 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   - The line is addressable by id (an `id` per line view, `ScrollViewReader`)
     and each printed run keeps its offset into `lineText`, for marks (S5),
     the read-along's `follow(line)`, and the studio dock (S3).
+  - **The Ear Drama page** (PLAYS-DESIGN §2.7 rule 10, binding; frames in
+    `docs/research/design/R2-play-typography.md`). Port `ReaderCore.layoutOf`,
+    `isVerse` and `cueTail` to `PlayScript` in Core with the web's fixtures as
+    golden cases (the run-in speaker, emphasis, the sound lane, brackets,
+    verse). In TextKit 2: the name is `.headline` in the part's hue on its own
+    paragraph with `NSParagraphStyle` keep-with-next; the words `.body`; at
+    compact width the name stands over the words, and when a page is 30 em or
+    wider (iPad, the open Duo) it moves into a right-aligned 8.5 em gutter
+    (`headIndent` for the words, a tab-stop column for the name). Verse is a
+    paragraph per printed line with `headIndent` 1.5 em for turnovers; a
+    direction inside a speech italic `.secondary` with the parentheses added
+    as attributes (never in the stored text); a stage direction an indented
+    italic `.secondary` paragraph with a part named in capitals in its hue;
+    a cue a row with `speaker.wave.2` and the cue in `.caption` capitals on
+    a `.quaternary` fill. The front page (title `.largeTitle`, authors,
+    Parts in their hues), an act opening a page, a scene `.title2`; a page
+    that opens inside a speech heads with "NAME (cont'd)" in `.caption`. I'm
+    Playing tints the part's speeches with a leading rule and underlines the
+    cue (`.underlineStyle` in the hue). VoiceOver reads a speech as the name,
+    then the words (one accessibility element per speech).
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's

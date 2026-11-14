@@ -233,6 +233,11 @@ only here:
   - The position is a line id per script in `UserDefaults`, kept through
     window resizes and text size changes (re-paginate, return to the line).
   - The studio (S3) becomes the window's `.inspector`; the reader is the same.
+  - **The page is the Ear Drama page** (PLAYS-DESIGN §2.7 rule 10; iOS-DESIGN
+    §4.15 for the shared TextKit set-up). Most Mac windows give a page of 30 em
+    or more, so the speaker's name sits in the right-aligned gutter; a narrow
+    window stacks it over the words. Text size changes (⌘+ ⌘−) re-evaluate the
+    gutter with the re-pagination.
 
 ## §5 The player
 

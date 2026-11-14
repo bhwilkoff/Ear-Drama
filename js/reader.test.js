@@ -252,5 +252,58 @@ test('runs: every printed run maps back to its line\'s words (the anchor marks w
     [true, false, false, false], 'no space before closing punctuation or after an opening one');
 });
 
+test('the page: verse keeps its lines, a transcriber\'s wrapping is reflowed', () => {
+  ok(R.isVerse(['When shall we three meet again?\nIn thunder, lightning, or in rain?']), 'a couplet is verse');
+  ok(R.isVerse(['This is the sergeant\nWho, like a good and hardy soldier, fought\n’Gainst my captivity.']), 'a capital after a quote');
+  ok(!R.isVerse(['I attribute it to the superior quality of the wine, sir. I have often\nobserved that in married households']), 'a lowercase turnover is prose');
+  ok(!R.isVerse(['Why is it that at a bachelor’s establishment the servants invariably\nDrink the champagne? I ask merely for information, and nothing more than\nThat, sir, as anyone would.']), 'rows as long as a wrapped line are prose');
+  ok(!R.isVerse(['Who is there?']), 'no break, nothing to keep');
+});
+
+test('the page: a speech run into another is attributed to its speaker; cues get the sound lane', () => {
+  const roles = ['CHARTERIS', 'GRACE'];
+  const line = { id: 'L1', kind: 'speech', role: 'CHARTERIS', parts: [{ say: 'Of course. Why not?\nGRACE' }, { direction: 'reflecting' }, { say: '. Never mind why.' }] };
+  const lay = R.layoutOf(line, roles);
+  eq(lay.speeches.map(s => s.role), ['CHARTERIS', 'GRACE'], 'two speakers');
+  eq(lay.speeches[1].name && [lay.speeches[1].name.text, lay.speeches[1].name.at], ['GRACE', 20], 'the printed name, at its offset');
+  eq(lay.speeches[1].rows[0].runs.map(r => [r.text, r.said]), [['reflecting', false], ['Never mind why.', true]], 'the label period is not drawn');
+  ok(!lay.verse, 'a run-in break is not verse');
+  const radio = R.layoutOf({ id: 'L2', kind: 'speech', role: 'HANCOCK', parts: [{ direction: 'sound of gavel' }, { say: 'Order!' }, { sound: 'knock' }, { say: 'Come in.' }] }, ['HANCOCK']);
+  eq(radio.speeches[0].rows.map(r => r.cue), [true, false, true, false], 'a sound piece and a sound-of aside are cue rows');
+  const block = R.layoutOf({ id: 'L3', kind: 'direction', source: '[_Exeunt._]' }, []);
+  eq(block.rows[0].runs.map(r => [r.kind, r.text]), [['plain', 'Exeunt.']], 'brackets left undrawn; a wholly italic direction stays italic');
+  eq(R.layoutOf({ id: 'L4', kind: 'direction', source: '[Enter Lane.' }, []).rows[0].runs.map(r => r.text), ['Enter Lane.'], 'an unclosed bracket');
+  const stress = R.layoutOf({ id: 'L5', kind: 'speech', role: 'A', parts: [{ say: 'It is the first in which' }, { direction: 'I' }, { say: 'have been serious.' }, { direction: 'Sits.' }, { say: 'Well.' }] }, ['A']);
+  eq(stress.speeches[0].rows[0].runs.map(r => [r.text, r.said]), [['It is the first in which', true], ['I', true], ['have been serious.', true], ['Sits.', false], ['Well.', true]],
+    'an italic word between lowercase said words is emphasis; a sentence direction stays a direction');
+  eq(R.cueTail('I could love anybody. Any pretty woman, that is.'), 22, 'the cue is the last sentence');
+  eq(R.cueTail('Who is there?'), 0, 'one sentence is all cue');
+});
+
+test('the page: every drawn run still maps back to its line\'s words (marks anchor through layoutOf)', () => {
+  const picked = [...bundle.map(s => ({ s })), ...libraryScripts(40)];
+  let n = 0, split = 0;
+  for (const { s } of picked) {
+    const roles = (s.roles || []).map(r => r.name);
+    for (const line of s.lines) {
+      const text = C.lineText(line).replace(/\n/g, ' ');
+      const lay = R.layoutOf(line, roles);
+      const runs = [];
+      for (const sp of lay.speeches || [{ rows: lay.rows }]) {
+        if (sp.name) runs.push(sp.name);
+        for (const rw of sp.rows) runs.push(...rw.runs);
+      }
+      if (lay.speeches && lay.speeches.length > 1) split += 1;
+      for (const r of runs) {
+        n += 1;
+        const want = r.text.replace(/\n/g, ' ');
+        if (text.slice(r.at, r.at + want.length) !== want) throw new Error(`${s.id} ${line.id}: run at ${r.at} reads ${JSON.stringify(text.slice(r.at, r.at + want.length))}, not ${JSON.stringify(want)}`);
+      }
+    }
+  }
+  ok(n > 1000, `runs checked (${n})`);
+  ok(split > 0, 'some script runs a speech into another (the parser miss the page attributes)');
+});
+
 console.log(`${passes}/${passes + failures} passed${failures ? `, ${failures} FAILED` : ''}`);
 process.exit(failures ? 1 : 0);
