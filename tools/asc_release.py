@@ -291,7 +291,7 @@ def editable_version(aid, platform, create, dry):
     return made["data"]
 
 
-def set_notes(version_id, notes, locale, dry):
+def set_notes(version_id, notes, locale, dry, first_version=False):
     locs = call(f"v1/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=50")["data"]
     loc = next((l for l in locs if l["attributes"]["locale"] == locale), None)
     if loc is None:
@@ -301,9 +301,16 @@ def set_notes(version_id, notes, locale, dry):
     if dry:
         print(f"    would set What's New ({len(notes)} chars)")
         return True
-    call(f"v1/appStoreVersionLocalizations/{loc['id']}", method="PATCH", body={"data": {
-        "type": "appStoreVersionLocalizations", "id": loc["id"],
-        "attributes": {"whatsNew": notes}}})
+    try:
+        call(f"v1/appStoreVersionLocalizations/{loc['id']}", method="PATCH", body={"data": {
+            "type": "appStoreVersionLocalizations", "id": loc["id"],
+            "attributes": {"whatsNew": notes}}})
+    except ASCError as e:
+        # Connect has no What's New on an app's first version.
+        if first_version and e.status == 409 and "whatsNew" in str(e):
+            print("    first version of the app: Connect takes no What's New; skipped")
+            return True
+        raise
     print("    set What's New")
     return True
 
@@ -418,7 +425,8 @@ def ship(aid, args):
                 await_build(aid, number, platform, args.wait_build_minutes)
             ok = attach(aid, ver["id"], number, platform, args.dry_run)
             if notes:
-                ok = set_notes(ver["id"], notes, args.locale, args.dry_run) and ok
+                first = len(versions(aid, platform)) == 1
+                ok = set_notes(ver["id"], notes, args.locale, args.dry_run, first) and ok
             if args.release_type and not args.dry_run:
                 call(f"v1/appStoreVersions/{ver['id']}", method="PATCH", body={"data": {
                     "type": "appStoreVersions", "id": ver["id"],
