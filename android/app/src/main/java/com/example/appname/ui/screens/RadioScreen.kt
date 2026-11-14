@@ -79,6 +79,8 @@ import com.example.appname.ui.LocalAppContainer
 import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.LocalOnline
 import com.example.appname.ui.OFFLINE_LINE
+import com.example.appname.ui.STATIONS_MEMO
+import com.example.appname.ui.ScreenMemo
 import com.example.appname.ui.episodeTitle
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.playButtonColors
@@ -133,9 +135,10 @@ fun RadioScreen(onOpenEpisode: (String) -> Unit, onBack: () -> Unit) {
         )
     }
     // A missing or unreachable stations file leaves Tonight alone, as before any station existed.
-    val stations by produceState(emptyList<Station>(), attempt) {
+    // Home just read the same file: start from its copy so Listen live is known from the first frame.
+    val stations by produceState(ScreenMemo.get<List<Station>>(STATIONS_MEMO) ?: emptyList(), attempt) {
         value = try {
-            container.api.stations()
+            container.api.stations().also { ScreenMemo.put(STATIONS_MEMO, it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -234,7 +237,7 @@ private fun Evening(
                         detail = detail,
                         isNow = index == onAir.index,
                         television = television,
-                        modifier = if (index == 0) Modifier.focusRequester(firstSlot) else Modifier,
+                        modifier = if (entry === entries.first()) Modifier.focusRequester(firstSlot) else Modifier,
                         onOpen = { detail?.let { onOpenEpisode(it.episode.id) } },
                         onPlay = {
                             if (detail != null) {
@@ -256,6 +259,8 @@ private fun Evening(
                             contentPadding = PaddingValues(0.dp),
                             modifier = Modifier
                                 .padding(horizontal = Spacing.S4.dp)
+                                // A run of gaps can be the evening's first stop: the TV's fallback focus lands here then.
+                                .then(if (entry === entries.first()) Modifier.focusRequester(firstSlot) else Modifier)
                                 .tvFocusMark()
                                 .semantics { selected = isOpen },
                         ) {
@@ -398,6 +403,7 @@ private fun StationRow(
 ) {
     val episode = slot?.playableEpisode
     GrammarRow(
+        modifier = modifier,
         title = name,
         visual = { m ->
             if (episode != null) SeriesKeyWindow(episode.id.substringBefore('|'), episode.series, m)

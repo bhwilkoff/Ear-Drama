@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
@@ -78,6 +79,8 @@ import com.example.appname.ui.LocalOnline
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.OFFLINE_LINE
 import com.example.appname.ui.PlayHeadBoard
+import com.example.appname.ui.STATIONS_MEMO
+import com.example.appname.ui.ScreenMemo
 import com.example.appname.ui.SectionHeader
 import com.example.appname.ui.SeriesKeyWindow
 import com.example.appname.ui.ShowTile
@@ -108,6 +111,8 @@ private sealed interface LiveLoad {
     data object Failed : LiveLoad
     data class Ready(val evening: RadioEvening?, val stations: List<Station>) : LiveLoad
 }
+
+private const val LIVE_MEMO = "home.live"
 
 /** A problem in one row's own place: the line, then Try again. */
 @Composable
@@ -156,11 +161,12 @@ fun OnAirBlock(
     val date = RadioClock.localDate(now)
     val dbVersion by container.catalog.dbVersion.collectAsState()
     var attempt by remember { mutableIntStateOf(0) }
-    val load by produceState<LiveLoad>(LiveLoad.Loading, date, dbVersion, attempt) {
+    // Back on Home, the last block draws at once while it reloads behind it.
+    val load by produceState(ScreenMemo.get<LiveLoad.Ready>(LIVE_MEMO) ?: LiveLoad.Loading, date, dbVersion, attempt) {
         if (value is LiveLoad.Failed) value = LiveLoad.Loading
         // A stations file that is missing or unreachable leaves tonight alone (as Stations does).
         val stations = try {
-            container.api.stations()
+            container.api.stations().also { ScreenMemo.put(STATIONS_MEMO, it) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -171,7 +177,7 @@ fun OnAirBlock(
             RadioLoad.Failed -> LiveLoad.Failed
             is RadioLoad.Evening -> LiveLoad.Ready(r.evening, stations)
             else -> LiveLoad.Ready(null, stations)
-        }
+        }.also { if (it is LiveLoad.Ready) ScreenMemo.put(LIVE_MEMO, it) }
     }
     val state = load
     val on = (state as? LiveLoad.Ready)?.let { HomeLive.now(it.evening, it.stations, now) }
@@ -196,7 +202,10 @@ fun OnAirBlock(
                         modifier = Modifier.semantics { heading() },
                     )
                     Row(
-                        Modifier.fillMaxWidth().tvFocusMark().clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
+                        Modifier.fillMaxWidth().tvFocusMark()
+                            // Down goes to Listen live, never past it to All stations (§9.2).
+                            .focusProperties { down = liveFocus }
+                            .clickable(onClickLabel = "Open episode") { onOpenEpisode(episode.id) },
                         horizontalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

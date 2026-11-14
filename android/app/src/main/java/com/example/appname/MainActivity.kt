@@ -2,6 +2,7 @@ package com.example.appname
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +19,7 @@ import com.example.appname.navigation.InboxRequest
 import com.example.appname.navigation.LaunchDoors
 import com.example.appname.ui.AppRoot
 import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.TvFocusClock
 import com.example.appname.ui.isTelevision
 import com.example.appname.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -62,6 +64,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Every key down tells a pending focus claim the listener has started moving (§9.2). */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) TvFocusClock.keyPressed()
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onNewIntent(intent: Intent) {
