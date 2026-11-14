@@ -514,7 +514,7 @@ works elsewhere, and checks again.
 | ~~Pick a palette direction~~ DONE 2026-10-23: On Air, Decision 064 (tick 60) | M0 tokens and icon | done |
 | ~~Settings > Pages > Source: GitHub Actions~~ DONE 2026-10-23 (c76c602; Site deploy runs on push, latest green run 40807437388) | the web's data on Pages | done |
 | ~~Register a DMCA agent at copyright.gov ($6)~~ DONE 2026-10-23: DMCA-1083942; `DMCA_AGENT_REGISTERED` true; the take-down page still wants the agent's details as registered | unclaimed episodes on the public web | done |
-| Request the CarPlay audio entitlement (developer.apple.com/contact/carplay) | the CarPlay stub, later the car | now; Apple is slow |
+| ~~Request the CarPlay audio entitlement (developer.apple.com/contact/carplay)~~ DONE 2026-11-14: submitted (App Type Audio, addendum accepted by the owner); Apple replies by email | the CarPlay stub, later the car | waiting on Apple |
 | ~~Enable Sign in with Apple and Group Activities~~ DONE 2026-10-24 (the Services ID row below; `CODE_SIGN_ENTITLEMENTS` is on in `project.yml`, signed cloud builds upload). Still unseen: a real Apple sign-in or SharePlay session | Apple sign-in (M5), SharePlay (M6) | done |
 | ~~Create the App Store Connect record and the seven signing secrets~~ DONE: cloud builds upload from 2026-10-24 (run 40132845448), latest 1.0.92 (run 40808331721) | TestFlight | done |
 | ~~Create the Play Console app and the upload key~~ DONE: the app by the owner 2026-10-24; the upload key and the five repo secrets by the owner 2026-10-28 (`tools/setup_play_upload_key.sh`) | Play internal | done |
