@@ -185,13 +185,13 @@ private final class RenderRig {
         let today = try XCTUnwrap(PlayBrowse.todaysPlay(library.scripts, dateKey: "2026-11-14"))
         try both("record-today", widths: [phone, (900, 700)]) {
             VStack(alignment: .leading, spacing: Spacing.s4) {
-                TodaysPlayBoard(script: today)
+                TodaysPlayBoard(row: PlayRow(script: today))
                 HomeDoors()
             }
             .padding(Spacing.s4)
         }
         try both("record-plays", widths: [phone, (900, 1500)]) {
-            ShowGrid(items: scripts) { script, width in PlayTile(script: script, width: width) }
+            ShowGrid(items: scripts) { script, width in PlayTile(script: PlayRow(script: script), width: width) }
                 .padding(Spacing.s4)
         }
     }

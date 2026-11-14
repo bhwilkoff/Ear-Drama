@@ -12,6 +12,7 @@ import SwiftUI
 struct ContentView_macOS: View {
     @Environment(AppStore.self) private var store
     @Environment(AudioPlayer.self) private var player
+    @Environment(\.openWindow) private var openWindow
 
     private var section: Binding<AppTab?> {
         Binding(get: { store.selectedTab }, set: { if let tab = $0 { store.selectedTab = tab } })
@@ -47,6 +48,12 @@ struct ContentView_macOS: View {
         }
         .navigationTitle(player.item?.episode.displayTitle ?? "Ear Drama")
         .frame(minWidth: 920, minHeight: 560)
+        // A launch door asks for a script; the Mac reads in its own window.
+        .onChange(of: store.reading, initial: true) { _, target in
+            guard let target else { return }
+            openWindow(id: ReaderWindow_macOS.id, value: target.scriptID)
+            store.reading = nil
+        }
         // Space plays and pauses here, never as a menu key (macOS-DESIGN §5.3):
         // a focused text field takes the key first, so typing never pauses.
         .onKeyPress(.space) {

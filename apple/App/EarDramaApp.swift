@@ -118,6 +118,7 @@ struct EarDramaApp: App {
             GoCommands_macOS(store: store)
             PlaybackCommands_macOS(player: player, store: store, downloads: downloads, room: room, queue: queue)
             RecordingCommands_macOS()
+            ReaderCommands_macOS()
             HelpCommands_macOS()
         }
         #endif
@@ -150,6 +151,15 @@ struct EarDramaApp: App {
             }
         }
         .defaultSize(width: 960, height: 720)
+        WindowGroup("Script", id: ReaderWindow_macOS.id, for: String.self) { $id in
+            if let id {
+                ReaderWindow_macOS(scriptID: id)
+                    .environment(plays)
+                    .environment(store)
+                    .tint(Color.brandSecondary)
+            }
+        }
+        .defaultSize(width: 1280, height: 800)
         #endif
     }
 

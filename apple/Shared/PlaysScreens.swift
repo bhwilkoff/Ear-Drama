@@ -27,31 +27,52 @@ enum PlayRoute: Hashable {
 /// "Record This" (PLAYS-DESIGN §2.1; was "Start an ear drama", Decision 075): makes the production and opens
 /// its cast sheet, in place on iPhone and iPad and in its own window on the Mac.
 struct StartEarDramaButton: View {
-    let script: PlayScript
+    private let script: PlayScript?
+    private let scriptID: String
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AppStore.self) private var app
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
     @State private var error: String?
+    @State private var starting = false
+
+    init(script: PlayScript) {
+        self.script = script
+        scriptID = script.id
+    }
+
+    /// A play known by its library row: the whole script is fetched when the button is pressed.
+    init(row: PlayRow) {
+        script = nil
+        scriptID = row.id
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s2) {
             Button {
-                start()
+                Task { await start() }
             } label: {
                 Label("Record This", systemImage: "mic")
             }
             .pageAction(primary: true)
+            .disabled(starting)
             if let error {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
             }
         }
     }
 
-    private func start() {
+    private func start() async {
+        starting = true
+        defer { starting = false }
         do {
-            let production = try plays.store.create(script)
+            let loaded = if let script { script } else { try await plays.script(id: scriptID) }
+            guard let whole = loaded else {
+                error = "This play could not be found."
+                return
+            }
+            let production = try plays.store.create(whole)
             #if os(macOS)
             openWindow(id: ProductionWindow_macOS.id, value: production.id)
             #else
@@ -160,8 +181,8 @@ enum ProductionProgress {
     }
 }
 
-struct ScriptRow: View {
-    let script: PlayScript
+struct ScriptRow<Play: PlayListing>: View {
+    let script: Play
 
     var body: some View {
         // R11a: a play's row leads with its tile, the title's letter (plays carry no genre).
@@ -169,7 +190,7 @@ struct ScriptRow: View {
             ArtTile(name: script.title, genre: PlayScript.boardGenre, face: nil)
             VStack(alignment: .leading, spacing: Spacing.s1) {
                 Text(verbatim: script.title).font(TypeRamp.bodyStrong)
-                Text(verbatim: [script.authorLine, "\(script.castParts.filter { $0.id.isSpeaking }.count) parts"]
+                Text(verbatim: [script.authorLine, "\(script.castLines.count) parts"]
                     .filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(TypeRamp.caption)
                     .foregroundStyle(Color.brandTextMuted)
@@ -184,16 +205,31 @@ struct ScriptRow: View {
 struct PlayScriptScreen: View {
     let id: String
     @Environment(PlaysLibrary.self) private var plays
+    @State private var script: PlayScript?
+    @State private var failed = false
 
     var body: some View {
-        if let script = plays.script(id) {
-            ScrollView { PlayPageBody(script: script) }
-            .navigationTitle(script.title)
-            .task { await plays.load() }
-        } else {
-            EmptyState("Play not found", systemImage: "questionmark.square.dashed")
-                .task { await plays.load() }
+        Group {
+            if let script {
+                ScrollView { PlayPageBody(script: script) }
+                    .navigationTitle(script.title)
+            } else if failed {
+                VStack(spacing: Spacing.s3) {
+                    EmptyState("Play not found", systemImage: "questionmark.square.dashed")
+                    Button("Try Again") { failed = false; Task { await load() } }.buttonStyle(.bordered)
+                }
+            } else {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
+        .task(id: id) { await load() }
+    }
+
+    private func load() async {
+        script = plays.script(id)
+        if script != nil { return }
+        script = (try? await plays.script(id: id)) ?? nil
+        failed = script == nil
     }
 }
 
@@ -206,7 +242,10 @@ struct PlayPageBody: View {
             HeadBoard(kicker: PlayHead.kicker(script), name: script.title, genre: PlayScript.boardGenre, art: nil,
                       first: nil, last: nil, facts: PlayHead.facts(script),
                       credits: script.authorLineWithYears, castScript: script)
-            ActionRow { StartEarDramaButton(script: script) }
+            ActionRow {
+                StartEarDramaButton(script: script)
+                ReadButton(scriptID: script.id)
+            }
             Text("Parts").font(TypeRamp.sectionHeader)
             PartGrid {
                 ForEach(script.castParts) { part in

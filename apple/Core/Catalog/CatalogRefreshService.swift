@@ -19,6 +19,8 @@ nonisolated enum CatalogSource {
     static let tonightURL = URL(string: "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/tonight.json")!
     /// The genre stations' schedules (contract §8), beside tonight.json.
     static let stationsURL = URL(string: "https://github.com/bhwilkoff/Ear-Drama/releases/download/catalog-latest/stations.json")!
+    /// The play library's folder on the site (contract §4.1): `library/index.json` and `library/scripts/<id>.json`.
+    static let playsURL = URL(string: "https://eardrama.org/data/plays/")!
     /// The bundled seed's resource name (copied in by the project's
     /// "Bundle catalog seed" build phase; see apple/README.md).
     static let seedResource = "ear-drama-seed"

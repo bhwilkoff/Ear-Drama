@@ -87,6 +87,10 @@ final class AppStore {
     var isPlayerPresented = false
     /// The sleep timer's choices are showing (a door can open them).
     var isSleepMenuPresented = false
+    /// The script reader is open on this play (iPhone and iPad, a full-screen cover; the Mac opens a window).
+    var reading: ReaderTarget?
+    /// A launch door's settings for the reader, taken once when the reader opens.
+    var readerDoor: ReaderDoor?
 
     /// Player-level mute. A door launch sets it (APP_MUTE); the player reads
     /// it, so a harness run is silent unless it opts in.
@@ -241,6 +245,10 @@ final class AppStore {
         }
         if doors.autoplay { isPlayerPresented = true }
         if doors.sleepMenu { isSleepMenuPresented = true }
+        if let script = doors.reader {
+            readerDoor = doors.readerDoor
+            reading = ReaderTarget(scriptID: script, line: doors.readerDoor.line)
+        }
         return true
     }
 
@@ -249,5 +257,23 @@ final class AppStore {
         paths = [:]
         isPlayerPresented = false
         isSleepMenuPresented = false
+        reading = nil
     }
+}
+
+/// A play the reader is open on, and the line to open at when asked.
+nonisolated struct ReaderTarget: Identifiable, Hashable, Sendable {
+    let scriptID: String
+    var line: String?
+    var id: String { scriptID }
+}
+
+/// What a launch door sets in the reader (DEBUG only; `LaunchDoors`).
+nonisolated struct ReaderDoor: Equatable, Sendable {
+    var line: String?
+    var part: String?
+    var hide = false
+    var sheet: String?
+    var page: Int?
+    var prefs: String?
 }

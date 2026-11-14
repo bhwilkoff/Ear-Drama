@@ -26,10 +26,10 @@ struct RecordScreen: View {
                     .gridRow()
                 }
             case .ready:
-                if let script = PlayBrowse.todaysPlay(plays.scripts, dateKey: RadioClock.localDate()) {
-                    PageSection { TodaysPlayBoard(script: script).gridRow() }
+                if let row = PlayBrowse.todaysPlay(plays.rows, dateKey: RadioClock.localDate()) {
+                    PageSection { TodaysPlayBoard(row: row).gridRow() }
                 }
-                PlaysLibrarySection(scripts: plays.scripts, filter: $filter)
+                PlaysLibrarySection(scripts: plays.rows, filter: $filter)
             }
             MadeHereSection()
         }
@@ -78,10 +78,12 @@ struct YoursSection: View {
 
 /// The castable library under its facets: three chips that count what each choice leaves, and the order.
 struct PlaysLibrarySection: View {
-    let scripts: [PlayScript]
+    let scripts: [PlayRow]
     @Binding var filter: PlayFilter
     @State private var shown = Self.page
+    @State private var measured: CGFloat = 0
 
+    /// The Mac draws a page of plays at a time; a phone's list builds its rows as they scroll.
     private static let page = 60
 
     var body: some View {
@@ -101,6 +103,8 @@ struct PlaysLibrarySection: View {
                 Text(verbatim: "\(countText(list.count, "play", "plays")) \u{00B7} \(filter.sort.title)")
                     .font(TypeRamp.caption)
                     .foregroundStyle(Color.brandTextMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
                     .gridRow()
                     .accessibilityIdentifier("plays-count")
                 if list.isEmpty {
@@ -112,15 +116,16 @@ struct PlaysLibrarySection: View {
                     }
                     .gridRow()
                 } else {
-                    ShowGrid(items: Array(list.prefix(shown))) { script, width in
-                        PlayTile(script: script, width: width)
-                    }
-                    .gridRow()
+                    #if os(macOS)
+                    PlayGrid(rows: Array(list.prefix(shown)), width: measured)
                     if list.count > shown {
                         Button("Show more") { shown += Self.page }
                             .buttonStyle(.borderless)
                             .font(TypeRamp.caption)
                     }
+                    #else
+                    PlayGrid(rows: list, width: measured)
+                    #endif
                 }
             }
         } header: {
@@ -203,19 +208,52 @@ struct PlaysLibrarySection: View {
 /// A play as the show tile: the cast drawn in the window, the name, the cast fingerprint where a show's
 /// run strip stands, and "N voices" with "About M min".
 struct PlayTile: View {
-    let script: PlayScript
+    let script: PlayRow
     var width: CGFloat = ShowTile.defaultWidth
 
     var body: some View {
         TileLink(value: PlayRoute.script(script.id), series: Self.row(script), width: width,
-                 facts: [script.voicesText, script.minutesText], castScript: script)
+                 facts: [script.voicesText, script.minutesText], cast: script.cast)
+            .overlay(alignment: .topTrailing) { ReadTileButton(scriptID: script.id, title: script.title) }
             .accessibilityIdentifier("play-tile")
     }
 
     /// A play carries no genre, picture or run: it stands on the drama board and its cast is its mark.
-    static func row(_ script: PlayScript) -> SeriesRow {
+    static func row(_ script: some PlayListing) -> SeriesRow {
         SeriesRow(key: script.id, name: script.title, genre: PlayScript.boardGenre, firstDate: nil, lastDate: nil,
                   networks: [], episodeCount: 0)
+    }
+}
+
+/// The plays as rows of tiles. Each row of tiles is a row of the page's list, so a library of 650 plays builds
+/// only the rows on screen; the width is the caller's (measured on a row beside it), as Browse's is.
+struct PlayGrid: View {
+    let rows: [PlayRow]
+    let width: CGFloat
+
+    private struct Chunk: Identifiable {
+        let items: [PlayRow]
+        var id: String { items[0].id }
+    }
+
+    var body: some View {
+        let gap = BrowseLayout.gap
+        let columns = BrowseLayout.columns(width: width, tileMin: ShowTile.defaultWidth)
+        let tileWidth = BrowseLayout.tileWidth(width: width, columns: columns)
+        if width > 0 {
+            ForEach(stride(from: 0, to: rows.count, by: columns).map { Chunk(items: Array(rows[$0..<min($0 + columns, rows.count)])) }) { chunk in
+                HStack(alignment: .top, spacing: gap) {
+                    ForEach(chunk.items) { PlayTile(script: $0, width: tileWidth) }
+                }
+                .frame(width: width, alignment: .leading)
+                .sharesNameHeight()
+                #if os(macOS)
+                .environment(\.tileFillsRow, true)
+                .fixedSize(horizontal: false, vertical: true)
+                #endif
+                .gridRow()
+            }
+        }
     }
 }
 #endif

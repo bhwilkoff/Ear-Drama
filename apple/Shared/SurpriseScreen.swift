@@ -13,7 +13,7 @@ struct SurpriseScreen: View {
     @State private var episode: EpisodeRow?
     @State private var series: SeriesRow?
     @State private var evening: SurpriseEvening?
-    @State private var script: PlayScript?
+    @State private var script: PlayRow?
     @State private var loaded = false
     @State private var draw = 0
 
@@ -57,10 +57,13 @@ struct SurpriseScreen: View {
                         NavigationLink(value: PlayRoute.script(script.id)) {
                             HeadBoard(kicker: nil, name: script.title, genre: PlayScript.boardGenre, art: nil,
                                       first: nil, last: nil, facts: PlayHead.facts(script),
-                                      credits: script.authorLineWithYears, castScript: script)
+                                      credits: PlayHead.credits(script), cast: script.cast)
                         }
                         .buttonStyle(.plain)
-                        StartEarDramaButton(script: script)
+                        ActionRow {
+                            StartEarDramaButton(row: script)
+                            ReadButton(scriptID: script.id)
+                        }
                     }
                 }
             }
@@ -81,7 +84,7 @@ struct SurpriseScreen: View {
             async let picked = catalog.randomEpisode()
             async let night = SurprisePicks.evening(catalog: catalog)
             await plays.load()
-            script = plays.scripts.randomElement()
+            script = plays.rows.randomElement()
             episode = await picked
             evening = await night
             if let key = episode?.seriesKey { series = await catalog.series([key]).first } else { series = nil }

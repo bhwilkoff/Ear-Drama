@@ -34,6 +34,9 @@ struct ContentView_iOS: View {
             PlayerSheet_iOS()
                 .presentationDragIndicator(.visible)
         }
+        .fullScreenCover(item: $store.reading) { target in
+            NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line) }
+        }
     }
 
     private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {

@@ -234,22 +234,32 @@ struct PictureWindow: View {
 /// the largest part's (6 % at least), the first thicker, all in the board's one ink; "+N" for the rest.
 /// It stands where a show's picture or monogram stands, never beside it.
 struct CastWindow: View {
-    let script: PlayScript
+    let cast: CastSummary
     var genre: String? = PlayScript.boardGenre
     let side: CGFloat
 
+    init(cast: CastSummary, genre: String? = PlayScript.boardGenre, side: CGFloat) {
+        self.cast = cast
+        self.genre = genre
+        self.side = side
+    }
+
+    init(script: PlayScript, genre: String? = PlayScript.boardGenre, side: CGFloat) {
+        self.init(cast: CastSummary(script: script), genre: genre, side: side)
+    }
+
     var body: some View {
-        let cast = script.castWindowBars
-        let most = Double(max(1, cast.shown.first?.lineCount ?? 1))
+        let cast = cast.window
+        let most = Double(max(1, cast.shown.first ?? 1))
         let ink = Color.onBoard(genre)
         let inner = side * 0.76
         ZStack {
             Color.board(genre)
             VStack(alignment: .leading, spacing: side * 0.06) {
-                ForEach(Array(cast.shown.enumerated()), id: \.offset) { index, part in
+                ForEach(Array(cast.shown.enumerated()), id: \.offset) { index, lineCount in
                     Capsule()
                         .fill(ink)
-                        .frame(width: inner * max(0.06, Double(part.lineCount) / most),
+                        .frame(width: inner * max(0.06, Double(lineCount) / most),
                                height: max(4, side * (index == 0 ? 0.11 : 0.07)))
                 }
             }
@@ -320,21 +330,31 @@ struct RunStrip: View {
 /// width is its share of the play's lines, largest first, a 1 pt gap between. On a board every segment
 /// takes the board's one ink; off a board each takes its part's mark.
 struct CastFingerprint: View {
-    let script: PlayScript
+    let cast: CastSummary
     /// The board the bar stands on; nil draws the part marks.
     var onBoard: String? = nil
     var height: CGFloat = 12
 
+    init(cast: CastSummary, onBoard: String? = nil, height: CGFloat = 12) {
+        self.cast = cast
+        self.onBoard = onBoard
+        self.height = height
+    }
+
+    init(script: PlayScript, onBoard: String? = nil, height: CGFloat = 12) {
+        self.init(cast: CastSummary(script: script), onBoard: onBoard, height: height)
+    }
+
     var body: some View {
-        let shares = script.castShares
+        let shares = cast.shares
         GeometryReader { geo in
             let gap: CGFloat = 1
             let usable = max(0, geo.size.width - gap * CGFloat(max(0, shares.count - 1)))
             HStack(spacing: gap) {
-                ForEach(Array(shares.enumerated()), id: \.offset) { _, share in
+                ForEach(Array(shares.enumerated()), id: \.offset) { share in
                     Rectangle()
-                        .fill(onBoard.map { Color.onBoard($0) } ?? Color.genre(script.partHue(share.part)) ?? Color.brandTextMuted)
-                        .frame(width: usable * CGFloat(share.share))
+                        .fill(onBoard.map { Color.onBoard($0) } ?? Color.genre(CastSummary.hue(at: share.offset)) ?? Color.brandTextMuted)
+                        .frame(width: usable * CGFloat(share.element))
                 }
             }
             .frame(width: geo.size.width, height: height, alignment: .leading)
@@ -403,6 +423,8 @@ struct ShowTile: View {
     var facts: [String]? = nil
     /// A play: its cast fingerprint stands where the run strip would.
     var castScript: PlayScript? = nil
+    /// The same, for a play known only by its library row.
+    var cast: CastSummary? = nil
     @Environment(\.sharedNameHeight) private var sharedNameHeight
     #if os(macOS)
     @Environment(\.tileFillsRow) private var fillsRow
@@ -429,8 +451,8 @@ struct ShowTile: View {
     var body: some View {
         let ink = Color.onBoard(series.genre)
         VStack(alignment: .leading, spacing: 6) {
-            if let castScript {
-                CastWindow(script: castScript, genre: series.genre, side: width - 12)
+            if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
+                CastWindow(cast: cast, genre: series.genre, side: width - 12)
             } else {
                 PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12)
             }
@@ -443,8 +465,8 @@ struct ShowTile: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .background(GeometryReader { Color.clear.preference(key: NameHeightKey.self, value: $0.size.height) })
                 .frame(maxWidth: .infinity, minHeight: sharedNameHeight, maxHeight: sharedNameHeight, alignment: .topLeading)
-            if let castScript {
-                CastFingerprint(script: castScript, onBoard: series.genre, height: 18)
+            if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
+                CastFingerprint(cast: cast, onBoard: series.genre, height: 18)
             } else {
                 RunStrip(first: series.firstDate, last: series.lastDate, genre: series.genre, years: series.yearCounts)
             }
@@ -478,7 +500,7 @@ struct ShowTile: View {
         #endif
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(series.name)
-        .accessibilityValue(castScript != nil ? (facts ?? []).joined(separator: ", ") : series.metaLine)
+        .accessibilityValue(castScript != nil || cast != nil ? (facts ?? []).joined(separator: ", ") : series.metaLine)
     }
 }
 
@@ -771,6 +793,8 @@ struct HeadBoard: View {
     var credits: String? = nil
     /// A play: its cast fingerprint stands in the mark slot where a show has its run strip.
     var castScript: PlayScript? = nil
+    /// The same, for a play known only by its library row.
+    var cast: CastSummary? = nil
     /// The page's buttons, on the board where it runs across a tablet; a phone keeps them under it.
     var actions: AnyView? = nil
     @Environment(AppStore.self) private var store
@@ -863,8 +887,8 @@ struct HeadBoard: View {
     }
 
     @ViewBuilder private var mark: some View {
-        if let castScript {
-            CastFingerprint(script: castScript, onBoard: genre, height: Self.stripHeight(forWidth: width) / 3)
+        if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
+            CastFingerprint(cast: cast, onBoard: genre, height: Self.stripHeight(forWidth: width) / 3)
         } else if first != nil || last != nil || !(years ?? []).isEmpty {
             RunStrip(first: first, last: last, genre: genre, height: Self.stripHeight(forWidth: width), years: years, ownSpan: true)
         }
@@ -872,8 +896,8 @@ struct HeadBoard: View {
 
     /// A play's board draws its cast in the window; every other board its picture or title block.
     @ViewBuilder private var window: some View {
-        if let castScript {
-            CastWindow(script: castScript, genre: genre, side: windowSide)
+        if let cast = cast ?? castScript.map(CastSummary.init(script:)) {
+            CastWindow(cast: cast, genre: genre, side: windowSide)
         } else {
             PictureWindow(art: art, name: name, genre: genre, side: windowSide)
         }
