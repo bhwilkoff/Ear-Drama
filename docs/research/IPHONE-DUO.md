@@ -192,3 +192,15 @@ script beside a recording)?
 - **A (recommended).** Keep recording; the outer display shows the script with
   record/stop, and nothing is lost.
 - B. Pause the take on the fold.
+
+## 8. Outer display, seen 2026-11-14 (closed phone)
+
+Frames: `build/qa/duo-2026-11-14/outer/` (1398x2034, display `987-654-321`), captured by
+launch door with `devicectl device capture screenshot --display-unique-id <active display>`.
+Home, Browse, Stations, Search and Library all fill the outer display; the status bar and
+the five tabs sit in the right-edge strip, with Home's Surprise button in it. Nothing is
+boxed or clipped on the left. Browse's chip row runs under the strip on the right (a scroll
+peek, by the left/right rule). Library on a new device is five empty-state cards (the R2
+audit's finding). The recorder was not seen: XCUITest screenshots capture the primary
+(outer) display, which is black while the phone is open, and `ios_uitest.py` reported the
+run PASS with two all-black frames: a harness defect (its blind-frame check missed them).
