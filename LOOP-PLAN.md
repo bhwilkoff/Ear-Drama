@@ -521,7 +521,7 @@ works elsewhere, and checks again.
 | ~~Apple Services ID and Google OAuth clients~~ Done 2026-10-24: Services ID `app.eardrama.signin`; Google clients for web, iOS/Mac, Android debug (`app.eardrama.debug`) and Android Play (`app.eardrama`, Play signing SHA-1); consent screen published; Worker audiences deployed; Apple entitlements on | sign-in | before M5's play gate |
 | ~~A Cloudflare Worker and D1 for Ear Drama~~ DONE 2026-10-23: 78e2a4d (D1, migrations 0001-0003) and 095cbb4 (eardrama-api.benwilkoff.workers.dev, in `js/config.js`) | M5 to M8 | done |
 | ~~An Ear Drama archive.org account and its S3 keys~~ DONE 2026-10-29: the owner set Worker secrets `IA_S3_ACCESS_KEY` and `IA_S3_SECRET_KEY` (listed by `wrangler secret list`); Publish opens when P14's uploader deploys | play uploads | done |
-| ~~The take-down email address~~ DONE 2026-10-29: ben@learningischange.com (owner) in `js/site.js`; the take-down page's reply-time sentence is still the owner's (`<!-- OWNER -->` in takedown/index.html) | the take-down page | before the public launch |
+| ~~The take-down email address~~ DONE 2026-10-29: ben@learningischange.com (owner) in `js/site.js`; the reply time is 48 hours (owner 2026-11-14) | the take-down page | before the public launch |
 | Approve the consent screen and store words | M8, M10 | as drafted |
 | ~~Enable App Groups~~ DONE 2026-10-28: the owner signed in; `group.app.eardrama` registered in the portal and assigned to `app.eardrama` and `app.eardrama.TopShelf`; entitlements on | the Apple TV Top Shelf's Continue items | done |
 | ~~Cut the cache Release with portrait sizes and face boxes~~ DONE 2026-10-28 by the owner: catalog-2026-10-28, 5 assets digest-matched | sized, face-cropped portraits | done |
