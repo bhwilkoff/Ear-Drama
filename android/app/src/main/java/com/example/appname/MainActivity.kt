@@ -1,8 +1,9 @@
 package com.example.appname
 
 import android.content.Intent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import android.os.Bundle
-import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -60,16 +61,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 CompositionLocalProvider(LocalIsTelevision provides television) {
-                    AppRoot(container = container, inbox = inbox, muted = playerMuted, forceOffline = forceOffline)
+                    // Every key down tells a pending focus claim the listener has started moving (§9.2).
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.onPreviewKeyEvent {
+                            if (it.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) TvFocusClock.keyPressed()
+                            false
+                        },
+                    ) {
+                        AppRoot(container = container, inbox = inbox, muted = playerMuted, forceOffline = forceOffline)
+                    }
                 }
             }
         }
-    }
-
-    /** Every key down tells a pending focus claim the listener has started moving (§9.2). */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN) TvFocusClock.keyPressed()
-        return super.dispatchKeyEvent(event)
     }
 
     override fun onNewIntent(intent: Intent) {
