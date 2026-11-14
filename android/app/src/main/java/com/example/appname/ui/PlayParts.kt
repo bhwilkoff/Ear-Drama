@@ -4,6 +4,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -52,6 +54,7 @@ import com.example.appname.plays.Production
 import com.example.appname.ui.theme.OnAir
 import com.example.appname.ui.theme.Spacing
 import com.example.appname.ui.theme.genreColor
+import com.example.appname.ui.theme.boardColor
 import com.example.appname.ui.theme.onBoardColor
 import com.example.appname.ui.theme.onGenreColor
 
@@ -196,6 +199,53 @@ fun CastFingerprint(script: PlayScript, modifier: Modifier = Modifier, onBoard: 
     }
 }
 
+private const val CAST_SHOWN = 7
+
+/**
+ * The cast window (Decision 075): a play's picture slot draws its cast, one bar per speaking part,
+ * largest first up to seven, stacked top to bottom, each as wide as its lines over the largest
+ * part's (at least 6 %), the first thicker, all in the board's one onBoard color; "+N" at the
+ * bottom right when there are more. It replaces the monogram wherever a play wears a window.
+ */
+@Composable
+fun CastWindow(script: PlayScript, modifier: Modifier = Modifier) {
+    val parts = remember(script) { script.castParts.filter { it.id.isSpeaking } }
+    val shown = parts.take(CAST_SHOWN)
+    val most = (parts.firstOrNull()?.lineCount ?: 1).coerceAtLeast(1)
+    val on = onBoardColor(PLAY_BOARD, OnAir.colors.dark)
+    val shape = RoundedCornerShape(4.dp)
+    Box(
+        modifier
+            .clip(shape)
+            .background(boardColor(PLAY_BOARD, OnAir.colors.dark))
+            .border(1.dp, on.copy(alpha = 0.32f), shape)
+            .clearAndSetSemantics {},
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            if (shown.isEmpty()) return@Canvas
+            val pad = size.width * 0.12f
+            val room = size.height - pad * 2
+            // The first bar is 1.6 units thick, the rest 1, with 0.7 between.
+            val unit = room / (1.6f + (shown.size - 1) + 0.7f * (shown.size - 1))
+            var y = pad
+            shown.forEachIndexed { i, part ->
+                val h = if (i == 0) unit * 1.6f else unit
+                val w = (size.width - pad * 2) * maxOf(0.06f, part.lineCount.toFloat() / most)
+                drawRect(on, Offset(pad, y), Size(w, h))
+                y += h + unit * 0.7f
+            }
+        }
+        if (parts.size > shown.size) {
+            Text(
+                "+${parts.size - shown.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = on,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 6.dp, bottom = 4.dp),
+            )
+        }
+    }
+}
+
 /** The ear drama head board's mark: the cast fingerprint at the strip's place, in the board's own onBoard color. */
 @Composable
 fun PlayHeadBoard(script: PlayScript, kicker: String, modifier: Modifier = Modifier, title: String = script.title) {
@@ -210,6 +260,7 @@ fun PlayHeadBoard(script: PlayScript, kicker: String, modifier: Modifier = Modif
         last = null,
         modifier = modifier,
         credits = script.authorWithYears.ifEmpty { null },
+        window = { m -> CastWindow(script, m) },
         mark = { h ->
             val on = onBoardColor(PLAY_BOARD, OnAir.colors.dark)
             Box(Modifier.height(h), contentAlignment = Alignment.BottomStart) { CastFingerprint(script, onBoard = on, height = 10.dp) }

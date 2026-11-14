@@ -367,7 +367,13 @@ sealed interface PublishedShelf {
     /** Decision 067: the series archive.org's listeners downloaded most, by their first episodes. Only ever published. */
     data class MostDownloaded(val episodes: List<String>) : PublishedShelf
 
+    /** Decision 075: the first episodes of the shows that run [band] (`under15`, `about30`, `hour`). */
+    data class ByLength(val band: String, val episodes: List<String>) : PublishedShelf
+
     companion object {
+        /** The length bands, in the order Home draws them. */
+        val LENGTH_BANDS = listOf("under15", "about30", "hour")
+
         /** The published list, or null when the value is not a JSON array (an older catalog). Unknown rules are skipped. */
         fun parse(json: String): List<PublishedShelf>? {
             val list = runCatching { Json.parseToJsonElement(json) }.getOrNull() as? JsonArray ?: return null
@@ -386,12 +392,29 @@ sealed interface PublishedShelf {
                             ?: return@mapNotNull null
                         MostDownloaded(ids)
                     }
+                    "byLength" -> {
+                        val band = (s["band"] as? JsonPrimitive)?.contentOrNull?.takeIf { it in LENGTH_BANDS } ?: return@mapNotNull null
+                        val ids = (s["episodes"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+                            ?: return@mapNotNull null
+                        ByLength(band, ids)
+                    }
                     else -> null
                 }
             }
         }
     }
 }
+
+/** One door of Home's Start a show or By length: a chip [label] over the published episode [ids], in order. */
+data class HomeShelf(val key: String, val label: String, val ids: List<String>)
+
+/** Home's published rows (Decision 075): Start a show's chips and By length's, each only when it names episodes. */
+data class HomeShelves(val start: List<HomeShelf>, val length: List<HomeShelf>)
+
+private val LENGTH_LABEL = mapOf("under15" to "Under 15 min", "about30" to "About 30 min", "hour" to "An hour")
+
+/** The chip label for a `byLength` band. */
+fun lengthLabel(band: String): String = LENGTH_LABEL.getValue(band)
 
 /** A Listen shelf ready to draw: [heading] names a rule's own shelf; otherwise [genre] null is This day in radio. */
 data class ListenShelf(val key: String, val genre: String?, val rows: List<EpisodeRow>, val heading: String? = null)

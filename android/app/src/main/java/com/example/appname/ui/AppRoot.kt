@@ -7,7 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -45,6 +45,7 @@ import com.example.appname.ui.screens.MiniPlayer
 import com.example.appname.ui.screens.PersonScreen
 import com.example.appname.ui.screens.ProductionScreen
 import com.example.appname.ui.screens.RadioScreen
+import com.example.appname.ui.screens.RecordScreen
 import com.example.appname.ui.screens.RecordingScreen
 import com.example.appname.ui.screens.ScriptScreen
 import com.example.appname.ui.screens.PlayerSheet
@@ -57,7 +58,7 @@ import com.example.appname.ui.screens.TranscriptScreen
 private fun Tab.icon(): ImageVector = when (this) {
     Tab.Home -> Icons.Filled.Home
     Tab.Browse -> Icons.Filled.Explore
-    Tab.Stations -> Icons.Filled.Radio
+    Tab.Record -> Icons.Filled.Mic
     Tab.Search -> Icons.Filled.Search
     Tab.Library -> Icons.Filled.Bookmarks
 }
@@ -98,12 +99,13 @@ fun AppRoot(
         while (inbox.isNotEmpty()) {
             when (val request = inbox.removeAt(0)) {
                 is InboxRequest.Tab -> when {
-                    // Surprise is Home's push, never a tab (ANDROID-DESIGN §3.1).
-                    request.tab.equals("surprise", ignoreCase = true) -> {
+                    // Stations and Surprise are Home's pushes, never tabs (ANDROID-DESIGN §3.1).
+                    Tab.pushedFromHome(request.tab) != null -> {
                         selected = Tab.Home
-                        stacks.getValue(Tab.Home).navigateTo(Route.Surprise)
+                        stacks.getValue(Tab.Home).navigateTo(Tab.pushedFromHome(request.tab)!!)
                     }
-                    else -> Tab.named(request.tab)?.let { selected = it }
+                    // A TV records nothing: its Record door opens nothing.
+                    else -> Tab.named(request.tab)?.takeUnless { it == Tab.Record && container.isTelevision }?.let { selected = it }
                 }
                 is InboxRequest.Item -> stacks.getValue(selected).navigateTo(Route.Episode(request.id))
                 is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
@@ -157,7 +159,7 @@ fun AppRoot(
         HapticEvents()
         NavigationSuiteScaffold(
             navigationSuiteItems = {
-                Tab.entries.forEach { tab ->
+                Tab.entries.filter { !(container.isTelevision && it == Tab.Record) }.forEach { tab ->
                     item(
                         selected = tab == selected,
                         onClick = {
@@ -182,11 +184,23 @@ fun AppRoot(
                         onBack = back,
                         entryProvider = entryProvider {
                             entry<Route.Listen> {
-                                ListenScreen(onOpenEpisode = openEpisode, onOpenSeries = openSeries, onSurprise = { stack.navigateTo(Route.Surprise) }, onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse }, onOpenDrama = openDrama, onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse }, onOpenPerson = openPerson, onVoices = { haptics(Haptic.Selection); browseVoices = true; selected = Tab.Browse })
+                                ListenScreen(
+                                    onOpenEpisode = openEpisode, onOpenSeries = openSeries,
+                                    onSurprise = { stack.navigateTo(Route.Surprise) },
+                                    onBrowse = { haptics(Haptic.Selection); selected = Tab.Browse },
+                                    onOpenDrama = openDrama,
+                                    onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse },
+                                    onOpenPerson = openPerson,
+                                    onVoices = { haptics(Haptic.Selection); browseVoices = true; selected = Tab.Browse },
+                                    onOpenStations = { stack.navigateTo(Route.Radio) },
+                                    onOpenRecord = { haptics(Haptic.Selection); selected = Tab.Record },
+                                    onOpenScript = openScript,
+                                    onOpenProduction = openProduction,
+                                )
                             }
                             entry<Route.SeriesBrowse> {
                                 SeriesBrowseScreen(
-                                    onOpenSeries = openSeries, onOpenScript = openScript,
+                                    onOpenSeries = openSeries,
                                     genreRequest = browseGenre, onGenreRequestHandled = { browseGenre = null },
                                     dramasRequest = browseDramas, onDramasRequestHandled = { browseDramas = false },
                                     voicesRequest = browseVoices, onVoicesRequestHandled = { browseVoices = false },
@@ -202,7 +216,13 @@ fun AppRoot(
                                     onOpenProduction = openProduction,
                                 )
                             }
-                            entry<Route.Radio> { RadioScreen(onOpenEpisode = openEpisode) }
+                            entry<Route.Radio> { RadioScreen(onOpenEpisode = openEpisode, onBack = back) }
+                            entry<Route.Record> {
+                                RecordScreen(
+                                    onOpenScript = openScript, onOpenProduction = openProduction, onOpenDrama = openDrama,
+                                    onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse },
+                                )
+                            }
                             entry<Route.Search> {
                                 SearchScreen(
                                     onOpenSeries = openSeries,

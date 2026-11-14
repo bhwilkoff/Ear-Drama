@@ -177,7 +177,7 @@ abstract class PlaysRenderBase {
         shoot("play-page$suffix") {
             Box(Modifier.width(width).height(1500.dp)) {
                 LazyColumn(Modifier.fillMaxSize()) {
-                    playPage(script, television = false, onOpenProduction = {}, start = { Button(onClick = {}, colors = playButtonColors()) { Text("Start an ear drama") } })
+                    playPage(script, television = false, onOpenProduction = {}, start = { Button(onClick = {}, colors = playButtonColors()) { Text("Record this") } })
                 }
             }
         }

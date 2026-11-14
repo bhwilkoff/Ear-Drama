@@ -123,19 +123,23 @@ data class PlayScript(
     val roles: List<Role> = emptyList(),
     val lines: List<ScriptLine>,
     val year: Int? = null,
+    @SerialName("sort_name") val sortName: String? = null,
 ) {
-    @Serializable data class Author(val name: String? = null, val born: Int? = null, val died: Int? = null)
+    @Serializable data class Author(val name: String? = null, val display: String? = null, val born: Int? = null, val died: Int? = null) {
+        /** The record's own display name, else the filed name read forward. */
+        val shown: String? get() = display?.trim()?.takeIf { it.isNotEmpty() } ?: name?.let(::displayName)
+    }
     @Serializable data class Source(val name: String, val url: String)
     @Serializable data class Evidence(val claim: String? = null, val src: String? = null)
     @Serializable data class Rights(val bucket: String, val evidence: List<Evidence> = emptyList())
     @Serializable data class Role(val name: String, val lines: Int, val words: Int)
 
-    val authorLine: String get() = authors.mapNotNull { it.name }.joinToString(", ") { displayName(it) }
+    val authorLine: String get() = authors.mapNotNull { it.shown }.joinToString(", ")
 
     /** The author with born and died years where the record has them. */
     val authorWithYears: String
         get() = authors.mapNotNull { a ->
-            val name = a.name?.let(::displayName) ?: return@mapNotNull null
+            val name = a.shown ?: return@mapNotNull null
             val years = when {
                 a.born != null && a.died != null -> " (${a.born}\u2013${a.died})"
                 a.born != null -> " (b. ${a.born})"
@@ -155,6 +159,15 @@ data class PlayScript(
         }
 
     fun lines(part: PartID): List<ScriptLine> = lines.filter { it.part == part }
+
+    /** Speaking parts: the record's roles, else the speaking parts counted from the lines. */
+    val voices: Int get() = if (roles.isNotEmpty()) roles.size else castParts.count { it.id.isSpeaking }
+
+    /** Minutes from the words its parts speak at 150 a minute, at least 1; a length is "About N min", never exact. */
+    val minutes: Int get() = maxOf(1, Math.round(roles.sumOf { it.words } / WORDS_PER_MINUTE.toDouble()).toInt())
+
+    val voiceBand: String? get() = VOICE_BANDS.firstOrNull { voices in it.lo..it.hi }?.key
+    val lengthBand: String? get() = LENGTH_BANDS.firstOrNull { minutes in it.lo..it.hi }?.key
 
     /**
      * The parts on the cast sheet: speaking parts largest first (by lines, then
@@ -197,6 +210,25 @@ data class PlayScript(
     }
 
     companion object {
+        const val WORDS_PER_MINUTE = 150
+        val VOICE_BANDS = listOf(Band("1-2", 1, 2), Band("3-5", 3, 5), Band("6-10", 6, 10), Band("11+", 11, Int.MAX_VALUE))
+        val LENGTH_BANDS = listOf(Band("short", 0, 29), Band("mid", 30, 60), Band("long", 61, Int.MAX_VALUE))
+
+        /** FNV-1a 64 over the UTF-8 bytes, in unsigned 64-bit math (the golden: catalog/tests/golden/todays_play.json). */
+        fun fnv1a64(text: String): ULong {
+            var h = 0xcbf29ce484222325uL
+            for (b in text.toByteArray(Charsets.UTF_8)) {
+                h = h xor (b.toLong() and 0xFF).toULong()
+                h *= 0x100000001b3uL
+            }
+            return h
+        }
+
+        /** The day's play: the id whose hash of "play:{dateKey}:{id}" is smallest, ties by id; null for none. */
+        fun todaysPlay(scripts: List<PlayScript>, dateKey: String): PlayScript? =
+            scripts.map { it to fnv1a64("play:$dateKey:${it.id}") }
+                .minWithOrNull(compareBy<Pair<PlayScript, ULong>> { it.second }.thenBy { it.first.id })?.first
+
         val PART_HUES = listOf("mystery", "scifi", "western", "serial", "documentary", "comedy", "news")
         const val PRESENCE_BINS = 24
 
@@ -208,6 +240,9 @@ data class PlayScript(
         }
     }
 }
+
+/** A facet band: [key] holds every count from [lo] to [hi]. */
+data class Band(val key: String, val lo: Int, val hi: Int)
 
 data class CastPart(val id: PartID, val lineCount: Int) {
     val title: String get() = id.title
