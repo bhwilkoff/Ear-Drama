@@ -47,6 +47,8 @@ const Player = (() => {
   const RETRY_S = 1;
   const STALL_S = 30;       // wanted data, no new bytes, no movement for this long: a failed load
   let watch = { mark: null, since: 0 };
+  let wanted = false;       // the person (or a load that autoplays) wants it playing; a recovery keeps that, never more
+  let requested = null;     // the copy the last load asked for, before any recovery moved to another
   let pausing = false;      // the pause in flight is the person's (or the timer's), not an interruption
   let interrupted = false;  // the browser paused us (a call, another tab's audio); resuming rewinds REWIND_S
   let following = false;    // a Listen Together guest: the host drives, so the person's transport verbs do nothing
@@ -63,12 +65,20 @@ const Player = (() => {
    * `at` starts it at a given second instead of its resume point (the Radio tab's one clock, R10).
    */
   function load(ep, { autoplay = true, at: startAt = null, arc: inArc = true } = {}) {
+    // The episode already on the player: Play resumes it where it stands, never reloads it.
+    if (current && current.id === ep.id && startAt === null && requested === (ep.url || null)
+        && audio.src && !audio.ended && !audio.error && !lastError) {
+      if (autoplay) play();
+      return;
+    }
     current = Store.card(ep);
+    requested = current.url;
+    wanted = autoplay;
     readArc(inArc ? ep.id : null);
     fired = false;
     interrupted = false;
     lastError = null;
-    recovery = { alts: (ep.alts || []).filter(u => u !== ep.url), retried: false, token: (recovery ? recovery.token : 0) + 1, play: autoplay };
+    recovery = { alts: (ep.alts || []).filter(u => u !== ep.url), retried: false, token: (recovery ? recovery.token : 0) + 1 };
     if (!audio.paused) pausing = true;
     // The copy is fetched with CORS only when it may be leveled: a copy fetched without it
     // would play silent through the graph (attachLeveler waits for one fetched with it).
@@ -94,6 +104,9 @@ const Player = (() => {
 
   function play() {
     fired = false;
+    wanted = true;
+    // A copy that failed while paused is opened again at its place, rather than pressed in vain.
+    if (current && lastError && !audio.ended) reopen();
     attachLeveler();
     if (interrupted) {
       interrupted = false;
@@ -110,6 +123,7 @@ const Player = (() => {
     return p;
   }
   function pause() {
+    wanted = false;
     if (audio.paused) return;
     pausing = true;
     audio.pause();
@@ -335,7 +349,7 @@ const Player = (() => {
       corsReady = false;
       if (audio.removeAttribute) audio.removeAttribute('crossorigin');
       audio.src = current.url;
-      play();
+      if (wanted) play();
       emit('level');
       return;
     }
@@ -360,7 +374,7 @@ const Player = (() => {
       current = { ...current, url };
     }
     const at = audio.currentTime || 0;
-    const wasPlaying = r.play || !audio.paused;
+    const wasPlaying = wanted;
     setTimeout(() => {
       if (!recovery || recovery.token !== r.token) return;
       audio.src = url;
@@ -369,6 +383,16 @@ const Player = (() => {
       emit('load');
     }, wait);
     return true;
+  }
+  /** The current copy again at its place: the person pressed Play on a failed load. */
+  function reopen() {
+    const saved = Store.position(current.id);
+    const at = audio.currentTime || (saved ? saved.t : 0);
+    lastError = null;
+    if (recovery) recovery.retried = false;
+    audio.src = current.url;
+    audio.addEventListener('loadedmetadata', () => { if (at) audio.currentTime = at; }, { once: true });
+    emit('load');
   }
   const diag = () => /[?&]diag=1\b/.test(location.search || '') || (typeof localStorage !== 'undefined' && localStorage.getItem('ed.diag') === '1');
   function bufferedEnd() {

@@ -48,8 +48,8 @@ Hard-won refinements to the core:
   from the network), gained no new bytes, and did not move its position for
   30 s is treated as failed and goes through LoadRecovery (one jittered
   retry, the next recording by rank, then the error). A load still receiving
-  bytes is never killed however slow (the precise-timing scan of a
-  headerless VBR MP3 takes 23 s), a deliberate pause never counts, and a
+  bytes is never killed however slow (a precise-timing scan reads the
+  whole file first), a deliberate pause never counts, and a
   local download never does. This is not a throughput floor: any growth
   resets it. Signals: Apple `loadedTimeRanges` plus the access log's
   `numberOfBytesTransferred`, with `timeControlStatus` (`StallWatchdog`,
@@ -60,6 +60,24 @@ Hard-won refinements to the core:
   `localStorage ed.diag=1` (web), `log.tag.EarDramaDiag DEBUG` (Android).
   Each platform's test drives a fake clock and a fake loader: no bytes for
   30 s triggers, a trickle and a pause never do.
+- **Never read the whole file before the first sound** (Ear Drama,
+  2026-11-14). `AVURLAssetPreferPreciseDurationAndTimingKey` on an MP3 with
+  no Xing/VBRI table downloads the entire file before AVPlayer plays, while
+  `timeControlStatus` already reads `.playing` with a frozen clock: measured
+  1.2 to 44 s to first audio on a Mac (a 70 MB file) against 0.6 to 2.2 s
+  without it. Open network audio without it, hold play until the item is
+  ready and the file's first 64 KB of frame headers are read, and reopen
+  with precise timing only for a variable-bitrate file with no
+  Xing/Info/VBRI table. The catalog length cannot find those files: for them
+  it is the same bitrate estimate (a file listed at 1956 s decodes to
+  1757 s). A download keeps precise timing: it is read locally. Measure starts with caching defeated (a query string per
+  trial): AVFoundation caches a file inside one process, and an arm that
+  runs second is flattered.
+- **Play on the loaded item resumes it; a retry keeps the pause.** Play on
+  the episode already on the player resumes in place (a reload re-buffers,
+  and with precise timing re-downloaded the file). A failure while paused is
+  retried paused; Play on a load that failed for good opens it again at its
+  place.
 - **Host-wide connection discipline**: hammering one host's MAIN endpoints
   (metadata/images) rate-limits the whole IP and breaks even unrelated
   playback in the household. Cap connections per host, share sessions,

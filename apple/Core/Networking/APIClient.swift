@@ -46,6 +46,24 @@ actor APIClient {
         return String(decoding: data, as: UTF8.self)
     }
 
+    /// A byte range of a recording on archive.org (`StartTiming.sniff` reads its frame headers).
+    /// Short timeout: the player is waiting on it to start.
+    func bytes(of url: URL, range: ClosedRange<Int>) async throws -> Data {
+        var request = URLRequest(url: url, timeoutInterval: 4)
+        request.setValue("bytes=\(range.lowerBound)-\(range.upperBound)", forHTTPHeaderField: "Range")
+        let (stream, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse, 200...299 ~= http.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        // A host that ignores the range sends the whole file: stop at what was asked for.
+        var data = Data(capacity: range.count)
+        for try await byte in stream {
+            data.append(byte)
+            if data.count >= range.count { break }
+        }
+        return data
+    }
+
     /// The published evenings (contract §8), or nil when no file is published.
     /// A static file beside the catalog, not a Worker: no token.
     func tonight(from url: URL = CatalogSource.tonightURL) async throws -> TonightFile? {

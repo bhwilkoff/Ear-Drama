@@ -155,6 +155,13 @@ final class AudioPlayer {
     /// (a Radio slot); `queue: false` plays nothing after it.
     func play(_ detail: EpisodeDetail, recording: Recording? = nil, from offset: Double? = nil, queue: Bool = true) {
         if isFollowing { onLeaveRoom() }
+        // The episode already on the player: Play resumes it where it stands, never reloads it.
+        if offset == nil, let current = item, current.episode.id == detail.episode.id,
+           recording == nil || recording == current.recording, player.currentItem != nil, !isAtEnd {
+            playsQueue = queue
+            resume()
+            return
+        }
         load(detail, recording: recording, from: offset, queue: queue, rate: speed)
     }
 
@@ -202,6 +209,27 @@ final class AudioPlayer {
     @ObservationIgnored private var seeksInFlight = 0
     /// Bumps on every load and stop, so a late retry for an older item does nothing.
     @ObservationIgnored private var loadToken = 0
+    /// Whether the person wants the current item playing. A retry after a failure keeps it: a load
+    /// that fails while paused comes back paused.
+    @ObservationIgnored private var wantsPlay = false
+    /// A network copy not yet timed, opened without precise timing and held paused until it is
+    /// ready and its first frames have been read (`StartTiming`).
+    private struct TimingCheck {
+        let item: ObjectIdentifier
+        let url: URL
+        let recording: Recording
+        let detail: EpisodeDetail
+        let length: Double?
+        var ready = false
+        var frames: StartTiming.Frames?
+    }
+    @ObservationIgnored private var timingCheck: TimingCheck?
+    /// Each network copy timed this session: true when it needs precise timing.
+    @ObservationIgnored private var preciseByURL: [URL: Bool] = [:]
+    /// Reads a byte range of a recording; the shared client by default, a fake in tests.
+    @ObservationIgnored var readBytes: @Sendable (URL, ClosedRange<Int>) async -> Data? = { url, range in
+        try? await APIClient.shared.bytes(of: url, range: range)
+    }
 
     /// Puts one recording on the player, at `start`, playing at `rate` (nil: paused).
     private func open(_ recording: Recording, detail: EpisodeDetail, start: Double?, rate: Float?) {
@@ -210,11 +238,16 @@ final class AudioPlayer {
         // Archive VBR MP3s often lack a Xing/VBRI table, so AVFoundation's quick
         // estimate scales the first frame's bitrate: a 23-minute file read as an
         // hour, and a seek past its real end stalled (iPhone 12, 2026-10-27).
-        let asset = AVURLAsset(url: source.url, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        // Precise timing fixes that by reading the whole file before the first
+        // sound, so only such a file gets it (`StartTiming`); a download reads
+        // locally and keeps it.
+        let known: Bool? = source.isLocal ? true : preciseByURL[source.url]
+        let precise = known == true
+        let asset = AVURLAsset(url: source.url, options: precise ? [AVURLAssetPreferPreciseDurationAndTimingKey: true] : [:])
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.audioTimePitchAlgorithm = .timeDomain
         let serial = ObjectIdentifier(playerItem).hashValue & 0xFFF
-        diag("open #\(serial) \(source.isLocal ? "local" : "net") rank \(recording.rank) start \(start.map { Int($0) } ?? -1) rate \(rate ?? 0)")
+        diag("open #\(serial) \(source.isLocal ? "local" : "net")\(precise ? " precise" : "") rank \(recording.rank) start \(start.map { Int($0) } ?? -1) rate \(rate ?? 0)")
         itemStatusObservation = playerItem.observe(\.status, options: [.new]) { @Sendable [weak self] observed, _ in
             let status = observed.status.rawValue
             let detail = Self.diagnoses && observed.status == .failed ? Self.diagnosis(observed) : ""
@@ -228,7 +261,10 @@ final class AudioPlayer {
             Task { @MainActor in
                 // A late report from an item a retry already replaced must not replace the retry.
                 guard let current = self?.player.currentItem, ObjectIdentifier(current) == observedID else { return }
-                if ready { self?.recovery?.loaded() }
+                if ready {
+                    self?.recovery?.loaded()
+                    self?.timingChecked(current)
+                }
                 guard failed else { return }
                 print("[AudioPlayer] item failed: \(message ?? "unknown")")
                 self?.itemFailed(problem)
@@ -236,6 +272,11 @@ final class AudioPlayer {
         }
         stallWatch.reset()
         seeksInFlight = 0
+        wantsPlay = rate != nil
+        timingCheck = known != nil ? nil : TimingCheck(
+            item: ObjectIdentifier(playerItem), url: source.url, recording: recording, detail: detail,
+            length: recording.lengthSeconds ?? detail.episode.lengthSeconds)
+        if timingCheck != nil { readFrames(source.url, item: ObjectIdentifier(playerItem)) }
         player.replaceCurrentItem(with: playerItem)
         player.isMuted = isMuted
         player.volume = 1
@@ -245,7 +286,52 @@ final class AudioPlayer {
             player.seek(to: CMTime(seconds: start, preferredTimescale: 600))
         }
         player.defaultRate = speed
-        if let rate { player.playImmediately(atRate: rate) } else { player.pause() }
+        if let rate, timingCheck == nil { player.playImmediately(atRate: rate) } else { player.pause() }
+        showTransport()
+    }
+
+    /// Reads the held copy's first frames alongside AVPlayer's own load.
+    private func readFrames(_ url: URL, item: ObjectIdentifier) {
+        let read = readBytes
+        Task { [weak self] in
+            let frames = await StartTiming.sniff(url, read: read)
+            guard let self, self.timingCheck?.item == item else { return }
+            self.timingCheck?.frames = frames
+            self.decideTiming()
+        }
+    }
+
+    /// The held item is ready to play.
+    private func timingChecked(_ playerItem: AVPlayerItem) {
+        guard timingCheck?.item == ObjectIdentifier(playerItem) else { return }
+        timingCheck?.ready = true
+        decideTiming()
+    }
+
+    /// Once the held item is ready and its frames are read: a constant-bitrate file or one with a
+    /// table plays as it is; a variable-bitrate file with no table opens again with precise timing
+    /// at the same place (unreadable frames fall back to the catalog length).
+    private func decideTiming() {
+        guard let check = timingCheck, check.ready, let frames = check.frames,
+              let playerItem = player.currentItem, ObjectIdentifier(playerItem) == check.item else { return }
+        timingCheck = nil
+        let estimate = playerItem.duration.seconds
+        let precise = StartTiming.needsPrecise(frames, estimated: estimate, catalog: check.length)
+        preciseByURL[check.url] = precise
+        diag("timing \(frames) estimate \(Self.whole(estimate)) of \(Self.whole(check.length ?? -1))\(precise ? ": precise" : "")")
+        if precise {
+            open(check.recording, detail: check.detail, start: elapsed > 0 ? elapsed : nil, rate: wantsPlay ? speed : nil)
+            return
+        }
+        if wantsPlay { player.playImmediately(atRate: speed) }
+        showTransport()
+    }
+
+    /// Whether the item stopped at its end (nothing followed it).
+    private var isAtEnd: Bool {
+        guard let current = player.currentItem else { return false }
+        let end = current.duration.seconds
+        return end.isFinite && end > 0 && player.currentTime().seconds >= end - 0.5
     }
 
     /// One retry after a jittered wait, then the next recording in rank order, then the error.
@@ -257,7 +343,7 @@ final class AudioPlayer {
         }
         let step = prematureEnd ? plan.endedTooSoon(jitter: Double.random(in: 0.5...1.5)) : plan.failed(jitter: Double.random(in: 0.5...1.5))
         recovery = plan
-        diag("step \(step) elapsed \(Int(elapsed))")
+        diag("step \(step) elapsed \(Self.whole(elapsed))")
         let token = loadToken
         switch step {
         case .giveUp:
@@ -266,14 +352,19 @@ final class AudioPlayer {
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .seconds(delay))
                 guard let self, token == self.loadToken else { return }
-                self.open(plan.current, detail: context.detail, start: self.elapsed > 0 ? self.elapsed : nil, rate: context.rate)
+                self.open(plan.current, detail: context.detail, start: self.elapsed > 0 ? self.elapsed : nil, rate: self.retryRate(context))
             }
         case .fallback(let next):
             item = Item(episode: context.detail.episode, recording: next, face: context.detail.face)
             duration = next.lengthSeconds ?? context.detail.episode.lengthSeconds
-            open(next, detail: context.detail, start: elapsed > 0 ? elapsed : nil, rate: context.rate)
+            open(next, detail: context.detail, start: elapsed > 0 ? elapsed : nil, rate: retryRate(context))
             publishNowPlaying()
         }
+    }
+
+    /// A retry plays only if the person still wants it playing, at the load's rate.
+    private func retryRate(_ context: LoadContext) -> Float? {
+        wantsPlay ? (context.rate ?? speed) : nil
     }
 
     /// Whether this item plays the queue after it (a Radio slot and a room do not).
@@ -339,15 +430,30 @@ final class AudioPlayer {
             onGuestHold(false)
             return
         }
-        guard item != nil else { return }
+        guard let current = item else { return }
         // A listener pressing Play after the timer stopped them is awake.
         if sleep.mode == .fired { sleep.cancel() }
         player.volume = 1
         activateSession()
+        wantsPlay = true
+        if timingCheck != nil {
+            showTransport()
+            return
+        }
+        // A load that failed for good (or was torn down) opens again at its place.
+        if player.currentItem == nil || player.currentItem?.status == .failed, let context = loadContext {
+            let recording = recovery?.current ?? current.recording
+            errorMessage = nil
+            recovery = LoadRecovery(chosen: recording, among: context.detail.recordings)
+            open(recording, detail: context.detail, start: elapsed > 0 ? elapsed : nil, rate: speed)
+            return
+        }
+        if isAtEnd { player.seek(to: .zero) }
         player.playImmediately(atRate: speed)
     }
 
     func pause() {
+        wantsPlay = false
         if isFollowing {
             isHeld = true
             player.pause()
@@ -355,6 +461,7 @@ final class AudioPlayer {
             return
         }
         player.pause()
+        showTransport()
         saveProgress()
         onTransport(.paused)
     }
@@ -378,14 +485,14 @@ final class AudioPlayer {
     private func seekExactly(to seconds: Double) {
         elapsed = seconds
         seeksInFlight += 1
-        diag("seek \(Int(seconds)) item \(player.currentItem?.status.rawValue ?? -1)")
+        diag("seek \(Self.whole(seconds)) item \(player.currentItem?.status.rawValue ?? -1)")
         player.seek(to: CMTime(seconds: seconds, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero) { @Sendable [weak self] finished in
             Task { @MainActor in
                 guard let self else { return }
                 self.seeksInFlight = max(0, self.seeksInFlight - 1)
                 guard Self.diagnoses else { return }
                 let now = self.player.currentTime().seconds
-                self.diag("seeked \(Int(seconds)) finished \(finished) now \(now.isFinite ? Int(now) : -1)")
+                self.diag("seeked \(Self.whole(seconds)) finished \(finished) now \(Self.whole(now))")
             }
         }
         publishNowPlaying()
@@ -421,12 +528,17 @@ final class AudioPlayer {
         case .none:
             break
         case .pause(let position):
+            wantsPlay = false
             player.pause()
             seekExactly(to: position)
         case .seek(let position, let play):
             seekExactly(to: position)
-            if play { player.playImmediately(atRate: rate) }
+            if play {
+                wantsPlay = true
+                player.playImmediately(atRate: rate)
+            }
         case .play(let position, let playRate):
+            wantsPlay = true
             seekExactly(to: position)
             player.playImmediately(atRate: Float(playRate))
         case .rate(let nudged):
@@ -438,6 +550,8 @@ final class AudioPlayer {
     func stop() {
         loadToken += 1
         recovery = nil
+        wantsPlay = false
+        timingCheck = nil
         saveProgress()
         player.pause()
         player.replaceCurrentItem(with: nil)
@@ -470,7 +584,7 @@ final class AudioPlayer {
         if let d = player.currentItem?.duration.seconds, d.isFinite, d > 0 { duration = d }
         if Self.diagnoses {
             diagLine = diagnosisLine()
-            if Int(now.timeIntervalSince1970) % 5 == 0 { print("[PlaybackDiag] clock \(Int(seconds)) \(diagLine ?? "")") }
+            if Int(now.timeIntervalSince1970) % 5 == 0 { print("[PlaybackDiag] clock \(Self.whole(seconds)) \(diagLine ?? "")") }
         }
         watchForStall(now: now)
 
@@ -480,6 +594,7 @@ final class AudioPlayer {
             let output = sleep.tick(now: now, remainingInEpisode: remaining)
             player.volume = output.volume
             if output.shouldPause {
+                wantsPlay = false
                 player.pause()
                 saveProgress()
                 onTransport(.sleepFired)
@@ -498,7 +613,7 @@ final class AudioPlayer {
         let loaded = current.loadedTimeRanges.reduce(0.0) { $0 + $1.timeRangeValue.duration.seconds }
         let transferred = current.accessLog()?.events.reduce(0.0) { $0 + Double(max($1.numberOfBytesTransferred, 0)) } ?? 0
         let verdict = stallWatch.observe(
-            now: now.timeIntervalSinceReferenceDate, wantsData: player.timeControlStatus != .paused,
+            now: now.timeIntervalSinceReferenceDate, wantsData: player.timeControlStatus != .paused || holdsStart,
             bytes: loaded + transferred, position: elapsed, seeking: seeksInFlight > 0)
         guard verdict == .stalled else { return }
         if Self.diagnoses { print("[AudioPlayer] watchdog: stalled \(Int(StallWatchdog.limit)) s, no bytes, no movement; recovering. \(diagnosisLine()) bytes \(Int(transferred))") }
@@ -510,16 +625,26 @@ final class AudioPlayer {
 
     private func timeControlChanged(_ status: AVPlayer.TimeControlStatus) {
         diag("tcs \(status.rawValue) \(player.reasonForWaitingToPlay?.rawValue ?? "")")
-        isPlaying = status != .paused
-        isBuffering = status == .waitingToPlayAtSpecifiedRate
-        if status == .paused { saveProgress() }
-        publishNowPlaying()
+        if status == .paused, !holdsStart { saveProgress() }
+        showTransport()
         onRoomChange()
+    }
+
+    /// A network item held for its timing check while the person wants it playing: it shows as
+    /// starting, not paused.
+    private var holdsStart: Bool { timingCheck != nil && wantsPlay }
+
+    /// The play and buffering state the views and Now Playing show.
+    private func showTransport() {
+        let status = player.timeControlStatus
+        isPlaying = status != .paused || holdsStart
+        isBuffering = status == .waitingToPlayAtSpecifiedRate || holdsStart
+        publishNowPlaying()
     }
 
     private func itemDidEnd() {
         guard let current = item else { return }
-        diag("ended at \(Int(player.currentTime().seconds)) of \(Int(player.currentItem?.duration.seconds ?? -1))")
+        diag("ended at \(Self.whole(player.currentTime().seconds)) of \(Self.whole(player.currentItem?.duration.seconds ?? -1))")
         let known = recovery?.current.lengthSeconds ?? loadContext?.detail.episode.lengthSeconds
         if LoadRecovery.endedTooSoon(position: player.currentTime().seconds, expected: known) {
             itemFailed(Connectivity.playerProblem(nil), prematureEnd: true)
@@ -593,10 +718,13 @@ final class AudioPlayer {
         guard let item = player.currentItem else { return "diag \(status) no item" }
         let ranges = item.loadedTimeRanges.map { r -> String in
             let t = r.timeRangeValue
-            return "\(Int(t.start.seconds))+\(Int(t.duration.seconds))"
+            return "\(Self.whole(t.start.seconds))+\(Self.whole(t.duration.seconds))"
         }.joined(separator: ",")
-        return diagEvents.joined(separator: " | ") + " || diag \(status) rate \(player.rate) item \(item.status.rawValue) keepUp \(item.isPlaybackLikelyToKeepUp) empty \(item.isPlaybackBufferEmpty) t \(Int(item.currentTime().seconds)) dur \(Int(item.duration.seconds.isFinite ? item.duration.seconds : -1)) loaded [\(ranges)]"
+        return diagEvents.joined(separator: " | ") + " || diag \(status) rate \(player.rate) item \(item.status.rawValue) keepUp \(item.isPlaybackLikelyToKeepUp) empty \(item.isPlaybackBufferEmpty) t \(Self.whole(item.currentTime().seconds)) dur \(Self.whole(item.duration.seconds)) loaded [\(ranges)]"
     }
+
+    /// A clock reading for a diagnostic line: an unknown time (NaN, indefinite) is -1, never a trap.
+    nonisolated static func whole(_ seconds: Double) -> Int { seconds.isFinite ? Int(seconds) : -1 }
 
     nonisolated static func diagnosis(_ item: AVPlayerItem) -> String {
         var parts: [String] = []
@@ -608,7 +736,7 @@ final class AudioPlayer {
         if let event = item.errorLog()?.events.last {
             parts.append("log \(event.errorDomain) \(event.errorStatusCode) \(event.errorComment ?? "") \(event.uri ?? "")")
         }
-        parts.append("at \(Int(item.currentTime().seconds))s")
+        parts.append("at \(whole(item.currentTime().seconds))s")
         return "[" + parts.joined(separator: "; ") + "]"
     }
 

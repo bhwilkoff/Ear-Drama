@@ -283,7 +283,8 @@ class PlaybackEngine(
             val offline = error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
                 error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
             scope.launch {
-                if (!recover()) {
+                // Media3 keeps play-when-ready through an error: a load that failed while paused comes back paused.
+                if (!recover(play = playerOrNull?.playWhenReady == true)) {
                     _state.value = _state.value.copy(failed = true, offline = offline, isPlaying = false)
                 }
             }
@@ -314,7 +315,7 @@ class PlaybackEngine(
                     }
                     stallWatch.reset()
                     p.pause()
-                    if (!recover()) _state.value = _state.value.copy(failed = true, isPlaying = false)
+                    if (!recover(play = true)) _state.value = _state.value.copy(failed = true, isPlaying = false)
                 }
                 if (!p.playWhenReady || p.playbackState == Player.STATE_IDLE || p.playbackState == Player.STATE_ENDED) break
                 delay(1000)
@@ -327,9 +328,10 @@ class PlaybackEngine(
 
     /**
      * One retry of the same copy after a jittered wait, then the next copy in rank order, then
-     * the error (resilient-media-streaming). False when nothing is left to try.
+     * the error (resilient-media-streaming). False when nothing is left to try. [play] is whether
+     * the person wanted it playing; the retry keeps that, never more.
      */
-    private suspend fun recover(): Boolean {
+    private suspend fun recover(play: Boolean): Boolean {
         val p = playerOrNull ?: return false
         val index = p.currentMediaItemIndex
         val row = episodes.getOrNull(index) ?: return false
@@ -354,7 +356,7 @@ class PlaybackEngine(
         p.replaceMediaItem(index, mediaItem(row, next, card = index == 0))
         p.seekTo(index, at)
         p.prepare()
-        p.play()
+        p.playWhenReady = play
         return true
     }
 
@@ -367,6 +369,10 @@ class PlaybackEngine(
      */
     fun play(episode: EpisodeRow, url: String? = null, startMs: Long? = null, queue: Boolean = true) {
         ensureSession()
+        if (PlayerNumbers.resumesInPlace(loadedId(), episode.id, loadedUrl(), url, startMs, playerOrNull?.playbackState)) {
+            if (playerOrNull?.isPlaying != true) togglePlay()
+            return
+        }
         scope.launch {
             val taken = takeQueue(episode.id, url, startMs, queue) ?: return@launch
             val p = player
@@ -524,10 +530,19 @@ class PlaybackEngine(
             sleep.onUserPlay()
             syncPauseAtEnd()
             if (p.playbackState == Player.STATE_ENDED) p.seekToDefaultPosition()
+            // A load that failed for good opens again at its place, rather than waiting on nothing.
+            if (p.playbackState == Player.STATE_IDLE && p.mediaItemCount > 0) {
+                _state.value = _state.value.copy(failed = false, offline = false)
+                p.prepare()
+            }
             p.play()
         }
         publish()
     }
+
+    /** The episode on the player now, and the catalog copy it plays. */
+    private fun loadedId(): String? = playerOrNull?.currentMediaItem?.mediaId
+    private fun loadedUrl(): String? = playerOrNull?.currentMediaItemIndex?.let { urls.getOrNull(it) }
 
     fun skipBack() { playerOrNull?.seekBack(); publish() }
     fun skipForward() { playerOrNull?.seekForward(); publish() }
