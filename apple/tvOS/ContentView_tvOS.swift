@@ -16,24 +16,19 @@ struct ContentView_tvOS: View {
     var body: some View {
         @Bindable var store = store
         TabView(selection: Binding(get: { store.selectedTab }, set: { store.selectResettingPrevious($0) })) {
-            // tvOS-DESIGN §2.1 (Decision 068): Archive Watch's sidebar, Surprise listed.
+            // tvOS-DESIGN §2.1 (Decision 075): four entries; Stations and Surprise open from Home's
+            // hero, and there is no Record (the TV has no microphone).
             Tab(AppTab.home.title, systemImage: AppTab.home.symbol, value: AppTab.home) {
                 stack(.home) { ListenScreen_tvOS() }
             }
             Tab(AppTab.browse.title, systemImage: AppTab.browse.symbol, value: AppTab.browse) {
                 stack(.browse) { SeriesBrowseScreen_tvOS() }
             }
-            Tab(AppTab.stations.title, systemImage: AppTab.stations.symbol, value: AppTab.stations) {
-                stack(.stations) { RadioScreen_tvOS() }
-            }
             Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
                 stack(.search) { SearchScreen_tvOS() }
             }
             Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
                 stack(.library) { LibraryScreen_tvOS() }
-            }
-            Tab(AppTab.surprise.title, systemImage: AppTab.surprise.symbol, value: AppTab.surprise) {
-                stack(.surprise) { SurpriseScreen_tvOS() }
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -109,6 +104,7 @@ private struct RouteDestinations_tvOS: ViewModifier {
             case let .person(id): PersonScreen_tvOS(id: id).id(route)
             case .account: AccountScreen_tvOS()
             case .surprise: SurpriseScreen_tvOS()
+            case .stations: RadioScreen_tvOS()
             case let .drama(pid): FinishedDramaScreen(id: pid)
             case .invitation: EmptyView()
             }
@@ -126,77 +122,78 @@ extension View {
 private struct ListenScreen_tvOS: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
-    @Environment(FollowedSeries.self) private var follows
     @Environment(AppStore.self) private var app
     @Environment(AudioPlayer.self) private var player
+    @Environment(LiveRadio.self) private var radio
     @State private var day: HomeDay?
-    @State private var top: [SeriesRow] = []
+    @State private var shelves = HomeShelves()
     @State private var loaded = false
     @State private var continuing: [EpisodeRow] = []
-    @State private var following: [SeriesRow] = []
-    @State private var finished = FinishedStore.shared
     @State private var voices: [PersonRow] = []
+    @State private var onAirLoad: OnAirLoad = .loading
+    @State private var now = Date()
+    @State private var onAirSeries: SeriesRow?
+    @State private var tuning = false
+    @State private var attempt = 0
     @FocusState private var heroFocused: Bool
 
-    private static let topCount = 12
     private static let voiceCount = 12
+
+    private var onAir: OnAirNow? {
+        if case let .ready(day, stations) = onAirLoad { return OnAirNow.pick(day: day, stations: stations, now: now) }
+        return nil
+    }
+
+    private struct Key: Hashable { let date: String; let attempt: Int }
 
     var body: some View {
         Group {
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
-                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && voices.isEmpty && finished.plays.isEmpty {
-                    EmptyState("Nothing to list yet", systemImage: "radio")
-                } else {
-                    ScrollView(.vertical) {
-                        LazyVStack(alignment: .leading, spacing: TV.rowGap) {
-                            hero
-                            firstRow
-                            if !following.isEmpty {
-                                TVShelf(title: "Following") {
-                                    ForEach(following) { TileLink(value: Route.series($0.key), series: $0) }
-                                }
-                            }
-                            if let day, let peak = day.years.peak {
-                                DayStrip_tvOS(model: day, year: peak)
-                            }
-                            if !top.isEmpty {
-                                TVShelf(title: "Most downloaded") {
-                                    Button("All \(top.count.formatted()) shows") { app.selectResettingPrevious(.browse) }
-                                } content: {
-                                    ForEach(top.prefix(Self.topCount)) { TileLink(value: Route.series($0.key), series: $0) }
-                                }
-                            }
-                            if !voices.isEmpty {
-                                TVShelf(title: "Most heard voices") {
-                                    Button("All") { app.openBrowseVoices() }
-                                } content: {
-                                    ForEach(voices) { VoiceLink(row: $0) }
-                                }
-                            }
-                            if !finished.plays.isEmpty {
-                                TVShelf(title: "New ear dramas") {
-                                    Button("All") { app.openBrowseDramas() }
-                                } content: {
-                                    ForEach(finished.plays.prefix(6)) { FinishedTile(play: $0) }
-                                }
+                ScrollView(.vertical) {
+                    LazyVStack(alignment: .leading, spacing: TV.rowGap) {
+                        hero
+                        continueShelf
+                        doors
+                        HomeChipShelf_tvOS(title: "Start a show", chips: shelves.start)
+                        HomeChipShelf_tvOS(title: "By length", chips: shelves.length)
+                        nightShelf
+                        if let day, let peak = day.years.peak {
+                            DayStrip_tvOS(model: day, year: peak)
+                        }
+                        if !voices.isEmpty {
+                            TVShelf(title: "Most heard voices") {
+                                Button("All") { app.openBrowseVoices() }
+                            } content: {
+                                ForEach(voices) { VoiceLink(row: $0) }
                             }
                         }
-                        .padding(.bottom, 60)
                     }
-                    .defaultFocus($heroFocused, true)
+                    .padding(.bottom, 60)
                 }
+                .defaultFocus($heroFocused, true)
             } else {
                 ProgressView()
             }
         }
-        .task { await finished.load() }
+        .task(id: Key(date: RadioClock.localDate(now), attempt: attempt)) {
+            onAirLoad = await OnAirLoad.load(now: now)
+        }
+        .task {
+            while !Task.isCancelled {
+                guard (try? await Task.sleep(for: .seconds(15))) != nil else { return }
+                now = Date()
+            }
+        }
+        .task(id: onAir?.episode.id) {
+            guard let key = onAir.map({ GrammarSlot.seriesKey($0.episode.id) }) else { onAirSeries = nil; return }
+            onAirSeries = await catalog.series([key]).first
+        }
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
             let loadedDay = await HomeDay.load(catalog)
-            top = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: .popular)
-                .filter { ShowLine.isShow($0.episodeCount) }
+            shelves = await catalog.homeShelves()
             day = loadedDay.years.years.isEmpty ? nil : loadedDay
             voices = await catalog.voices(limit: Self.voiceCount)
             loaded = true
@@ -204,21 +201,49 @@ private struct ListenScreen_tvOS: View {
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
         }
-        .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
-            following = await catalog.series(follows.followedKeys)
-        }
     }
 
-    /// §4.1: the episode in progress, else this day's busiest year, its first show with a picture.
+    /// §4.1: the episode in progress, else this day's busiest year, its first show with a picture. Only when
+    /// nothing is on the air: the hero is On the air otherwise.
     private func lead(_ day: HomeDay?) -> HomeDay.Show? {
         guard let day, let peak = day.years.peak else { return nil }
         let shows = day.night(peak).shows
         return shows.first { $0.series.windowArt != nil } ?? shows.first
     }
 
+    /// The episode standing as the hero when nothing is on the air, so its shelf does not repeat it.
+    private var fallbackContinue: EpisodeRow? { onAir == nil ? continuing.first : nil }
+    private var fallbackLeadID: String? { onAir == nil && continuing.isEmpty ? lead(day)?.id : nil }
+
     @ViewBuilder private var hero: some View {
-        if let episode = continuing.first {
-            TVHero(kicker: "Continue listening", title: episode.seriesName, subtitle: episode.displayTitle,
+        if let on = onAir {
+            let listening = on.isLive(radio)
+            TVHero(kicker: on.kicker, title: on.episode.series, subtitle: on.episode.title,
+                   facts: ["\(on.minutesIn(now)) min in"],
+                   genre: onAirSeries?.genre, art: onAirSeries?.windowArt, pictureName: on.episode.series,
+                   clearance: TV.rootClearance) {
+                Button {
+                    if listening {
+                        on.stopListening(live: radio, player: player)
+                    } else {
+                        tuning = true
+                        Task {
+                            await on.tuneIn(catalog: catalog, live: radio, player: player, muted: app.isMuted)
+                            tuning = false
+                        }
+                    }
+                } label: {
+                    Label(listening ? "Listening Live" : "Listen Live",
+                          systemImage: listening ? "waveform" : "dot.radiowaves.left.and.right")
+                }
+                .focused($heroFocused)
+                .disabled(tuning)
+                .accessibilityIdentifier("listen-live")
+                Button { app.push(Route.stations) } label: { Label("All Stations", systemImage: "radio") }
+                Button { app.push(Route.surprise) } label: { Label("Surprise", systemImage: "shuffle") }
+            }
+        } else if let episode = continuing.first {
+            TVHero(kicker: "Continue", title: episode.seriesName, subtitle: episode.displayTitle,
                    facts: [AirDate.medium(episode.airDate), episode.durationText], genre: episode.seriesGenre,
                    art: episode.seriesWindowArt, progress: history.progress(for: episode.id), clearance: TV.rootClearance) {
                 heroActions(episode, verb: "Resume")
@@ -228,6 +253,12 @@ private struct ListenScreen_tvOS: View {
                    facts: [day.nightHeading(peak), show.episode.durationText], genre: show.series.genre,
                    art: show.series.windowArt, clearance: TV.rootClearance) {
                 heroActions(show.episode, verb: "Play")
+            }
+        } else {
+            TVHero(title: "Ear Drama", genre: nil, art: nil, clearance: TV.rootClearance) {
+                Button { app.push(Route.stations) } label: { Label("All Stations", systemImage: "radio") }
+                    .focused($heroFocused)
+                Button { app.push(Route.surprise) } label: { Label("Surprise", systemImage: "shuffle") }
             }
         }
     }
@@ -244,53 +275,121 @@ private struct ListenScreen_tvOS: View {
         }
         .focused($heroFocused)
         NavigationLink(value: Route.episode(episode.id)) { Text("Details") }
+        Button { app.push(Route.stations) } label: { Label("All Stations", systemImage: "radio") }
+        Button { app.push(Route.surprise) } label: { Label("Surprise", systemImage: "shuffle") }
     }
 
-    /// §4.1: the rest of Continue listening and that night's shows are one row of wide cards, each
-    /// group under its own heading, so a single episode in progress never stands beside an empty screen.
-    @ViewBuilder private var firstRow: some View {
-        let rest = Array(continuing.dropFirst())
+    @ViewBuilder private var continueShelf: some View {
+        let rest = fallbackContinue == nil ? continuing : Array(continuing.dropFirst())
+        if !rest.isEmpty {
+            TVShelf(title: "Continue") {
+                ForEach(rest) { TVEpisodeLink(episode: $0) }
+            }
+        }
+    }
+
+    /// Two doors as wide cards (the third, Record a Play, is absent: the TV records nothing).
+    private var doors: some View {
+        TVShelf {
+            doorCard("Listen", "dot.radiowaves.left.and.right") { app.push(Route.stations) }
+            doorCard("Find a Show", AppTab.browse.symbol) { app.selectResettingPrevious(.browse) }
+        }
+    }
+
+    private func doorCard(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: Spacing.s3) {
+                Image(systemName: symbol).font(.system(size: 64))
+                Text(verbatim: title).font(TypeRamp.sectionHeader)
+            }
+            .frame(width: TV.wideCard.width, height: TV.wideCard.height)
+        }
+        .buttonStyle(.card)
+        .accessibilityIdentifier("door-\(title)")
+    }
+
+    /// That night's shows, one row of wide cards under their own heading, pictures first.
+    @ViewBuilder private var nightShelf: some View {
         let peak = day?.years.peak
         let night = peak.flatMap { day?.night($0) }
-        let leadID = continuing.isEmpty ? lead(day)?.id : nil
-        let others = night?.shows.filter { $0.id != leadID } ?? []
-        // §3.0: pictures lead.
+        let others = night?.shows.filter { $0.id != fallbackLeadID } ?? []
         let shows = others.filter { $0.series.windowArt != nil } + others.filter { $0.series.windowArt == nil }
-        if !rest.isEmpty || !shows.isEmpty {
-            TVShelf {
-                if !rest.isEmpty {
-                    group("Continue listening", fact: nil) {
-                        ForEach(rest) { TVEpisodeLink(episode: $0) }
+        if !shows.isEmpty, let day, let peak, let night {
+            VStack(alignment: .leading, spacing: Spacing.s6) {
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.s4) {
+                    Text(verbatim: day.nightHeading(peak)).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).lineLimit(1).fixedSize()
+                    if night.singles > 0 {
+                        Text(verbatim: countText(night.singles, "single recording", "single recordings"))
+                            .font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).lineLimit(1).fixedSize()
                     }
                 }
-                if !shows.isEmpty, let day, let peak, let night {
-                    group(day.nightHeading(peak),
-                          fact: night.singles > 0 ? countText(night.singles, "single recording", "single recordings") : nil) {
-                        ForEach(shows) { show in
-                            NavigationLink(value: Route.episode(show.episode.id)) {
-                                TVWideCard(art: show.series.windowArt, name: show.series.name, genre: show.series.genre,
-                                           title: show.series.name, sub: show.episode.displayTitle, foot: show.episode.durationText)
-                            }
-                            .buttonStyle(.card)
-                            .contextMenu { QueueMenuItem(episodeID: show.episode.id) }
+                .accessibilityAddTraits(.isHeader)
+                TVShelf {
+                    ForEach(shows) { show in
+                        NavigationLink(value: Route.episode(show.episode.id)) {
+                            TVWideCard(art: show.series.windowArt, name: show.series.name, genre: show.series.genre,
+                                       title: show.series.name, sub: show.episode.displayTitle, foot: show.episode.durationText)
                         }
+                        .buttonStyle(.card)
+                        .contextMenu { QueueMenuItem(episodeID: show.episode.id) }
                     }
                 }
             }
         }
     }
+}
 
-    private func group<Content: View>(_ title: String, fact: String?, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Spacing.s6) {
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s4) {
-                Text(verbatim: title).font(TypeRamp.sectionHeader).foregroundStyle(Color.brandText).lineLimit(1).fixedSize()
-                if let fact {
-                    Text(verbatim: fact).font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted).lineLimit(1).fixedSize()
+/// Start a show and By length on the TV: a row of choices over a shelf of first-episode tiles. Press opens
+/// the episode, where Play is the first focus (tvOS-DESIGN §2.1).
+private struct HomeChipShelf_tvOS: View {
+    let title: String
+    let chips: [HomeChip]
+    @Environment(CatalogStore.self) private var catalog
+    @State private var picked: String?
+    @State private var series: [String: SeriesRow] = [:]
+
+    var body: some View {
+        if let on = chips.first(where: { $0.id == picked }) ?? chips.first {
+            VStack(alignment: .leading, spacing: Spacing.s2) {
+                SectionHead(title: chips.count == 1 ? "\(title): \(on.title)" : title) { EmptyView() }
+                if chips.count > 1 {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: Spacing.s4) {
+                            ForEach(chips) { chip in
+                                Button { picked = chip.id } label: {
+                                    if chip.id == on.id {
+                                        Label(chip.title, systemImage: "checkmark")
+                                    } else {
+                                        Text(verbatim: chip.title)
+                                    }
+                                }
+                                .accessibilityAddTraits(chip.id == on.id ? .isSelected : [])
+                            }
+                        }
+                        .padding(.vertical, Spacing.s2)
+                    }
+                    .scrollClipDisabled()
+                    .scrollIndicators(.hidden)
+                    .focusSection()
+                }
+                TVShelf {
+                    ForEach(on.episodes) { episode in
+                        TileLink(value: Route.episode(episode.id), series: row(episode),
+                                 facts: [episode.displayTitle, episode.lengthLabel].compactMap { $0 })
+                    }
                 }
             }
-            .accessibilityAddTraits(.isHeader)
-            HStack(alignment: .top, spacing: TV.cardGap) { content() }
+            .task(id: on.id) {
+                let rows = await catalog.series(Array(Set(on.episodes.map(\.seriesKey))))
+                series = Dictionary(rows.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
+            }
         }
+    }
+
+    private func row(_ episode: EpisodeRow) -> SeriesRow {
+        series[episode.seriesKey] ?? SeriesRow(key: episode.seriesKey, name: episode.seriesName, genre: episode.seriesGenre,
+                                               firstDate: nil, lastDate: nil, networks: [], episodeCount: 0,
+                                               face: episode.seriesFace, picture: episode.seriesPicture)
     }
 }
 

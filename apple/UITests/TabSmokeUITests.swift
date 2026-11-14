@@ -10,8 +10,10 @@ final class TabSmokeUITests: DeviceTestCase {
         XCTAssertEqual(app.state, .runningForeground)
     }
 
-    func testHome() { check("home", "This day in radio|Continue") }
-    func testBrowse() { check("browse", "Kind|Genre|Decade") }
+    func testHome() { check("home", "Listen Live|Find a Show|Record a Play|Continue") }
+    func testBrowse() { check("browse", "Genre|Decade") }
+    func testRecord() { check("record", "Today.s play|Voices|Plays|Yours") }
+    /// Stations and Surprise are Home's pushes (Decision 075): their doors open Home, then the screen.
     func testStations() { check("stations", "Tonight in") }
     func testSurprise() { check("surprise", "An episode|An evening") }
     func testSearch() { check("search", "Titles, people, spoken words|Search titles") }

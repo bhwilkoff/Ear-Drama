@@ -42,13 +42,15 @@ PROC = APPLE_EXECUTABLE
 # expect_any below is content from the DETAIL column only.
 ANCHOR = APP_ANCHOR_RX  # see tools/app_config.py
 
-# APP_START_TAB takes the sidebar's sections (home|browse|stations|surprise|search|
-# library, Decision 068; apple/macOS/ContentView_macOS.swift); the regexes are not yet calibrated
+# APP_START_TAB takes the sidebar's sections (home|browse|record|search|
+# library, Decision 075 (stations and surprise open Home and push); apple/macOS/ContentView_macOS.swift); the regexes are not yet calibrated
 # against a capture. Two frames are taken (~6 s and ~13 s after launch), so a
 # door-seconds bound must end before ~13 s.
 SCENARIOS = {
     "home":        ({HOOK_START_TAB: "home"},
                     {"expect_any": r"Home"}),
+    "record":      ({HOOK_START_TAB: "record"},
+                    {"expect_any": r"Today.s play|Voices|Plays|Yours"}),
     "search":      ({HOOK_START_TAB: "search"},
                     {"expect_any": r"Search"}),
     "item":        ({HOOK_START_ITEM: QA_ITEM_ID, HOOK_MUTE: "1"},

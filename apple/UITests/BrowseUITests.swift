@@ -9,21 +9,17 @@ final class BrowseUITests: DeviceTestCase {
 
     func testFilterChipAndSort() throws {
         let app = launch(["APP_START_TAB": "browse", "APP_DOOR_SECONDS": "120"])
-        let kind = app.buttons["Kind"]
-        XCTAssertTrue(kind.waitForExistence(timeout: 30), "Kind chip")
+        let script = app.buttons["Has a script"]
+        XCTAssertTrue(script.waitForExistence(timeout: 30), "Has a script chip")
         XCTAssertTrue(app.buttons.matching(identifier: "show-tile").firstMatch.waitForExistence(timeout: 30), "show tiles")
         shot(app, "01-browse")
 
-        kind.tap()
-        let plays = app.buttons["Plays"]
-        XCTAssertTrue(plays.waitForExistence(timeout: 5), "Kind menu offers Plays")
-        plays.tap()
-        XCTAssertTrue(app.buttons["Plays"].waitForExistence(timeout: 5), "chip shows the selection")
+        script.tap()
         XCTAssertTrue(app.buttons["Clear filters"].waitForExistence(timeout: 5), "Clear appears once a filter is set")
-        shot(app, "02-kind-plays")
+        shot(app, "02-has-a-script")
 
         app.buttons["Clear filters"].tap()
-        XCTAssertTrue(app.buttons["Kind"].waitForExistence(timeout: 5), "cleared")
+        XCTAssertTrue(app.buttons["Has a script"].waitForExistence(timeout: 5), "cleared")
         XCTAssertFalse(app.buttons["Clear filters"].exists, "Clear leaves with the last filter")
 
         let popular = app.buttons["Sort: Popular"]

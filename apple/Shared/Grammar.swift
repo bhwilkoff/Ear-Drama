@@ -229,6 +229,46 @@ struct PictureWindow: View {
     }
 }
 
+/// A play's window (Decision 075, one rule for every play): the cast drawn in the square slot, one
+/// horizontal bar per speaking part, largest first and at most seven, each as wide as its lines over
+/// the largest part's (6 % at least), the first thicker, all in the board's one ink; "+N" for the rest.
+/// It stands where a show's picture or monogram stands, never beside it.
+struct CastWindow: View {
+    let script: PlayScript
+    var genre: String? = PlayScript.boardGenre
+    let side: CGFloat
+
+    var body: some View {
+        let cast = script.castWindowBars
+        let most = Double(max(1, cast.shown.first?.lineCount ?? 1))
+        let ink = Color.onBoard(genre)
+        let inner = side * 0.76
+        ZStack {
+            Color.board(genre)
+            VStack(alignment: .leading, spacing: side * 0.06) {
+                ForEach(Array(cast.shown.enumerated()), id: \.offset) { index, part in
+                    Capsule()
+                        .fill(ink)
+                        .frame(width: inner * max(0.06, Double(part.lineCount) / most),
+                               height: max(4, side * (index == 0 ? 0.11 : 0.07)))
+                }
+            }
+            .frame(width: inner, alignment: .leading)
+            if cast.more > 0 {
+                Text(verbatim: "+\(cast.more)")
+                    .font(TypeRamp.caption.weight(.semibold))
+                    .foregroundStyle(ink)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(side * 0.06)
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(ink.opacity(0.32), lineWidth: 1) }
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - The run strip
 
 /// The years from the first to the last broadcast on the fixed 1930 to 1962 axis: the baseline at
@@ -389,7 +429,11 @@ struct ShowTile: View {
     var body: some View {
         let ink = Color.onBoard(series.genre)
         VStack(alignment: .leading, spacing: 6) {
-            PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12)
+            if let castScript {
+                CastWindow(script: castScript, genre: series.genre, side: width - 12)
+            } else {
+                PictureWindow(art: series.windowArt, name: series.name, genre: series.genre, side: width - 12)
+            }
             Text(verbatim: series.name.uppercased())
                 .font(GrammarType.tileName(step: Grammar.nameStep(series.name)))
                 .foregroundStyle(ink)
@@ -826,11 +870,20 @@ struct HeadBoard: View {
         }
     }
 
+    /// A play's board draws its cast in the window; every other board its picture or title block.
+    @ViewBuilder private var window: some View {
+        if let castScript {
+            CastWindow(script: castScript, genre: genre, side: windowSide)
+        } else {
+            PictureWindow(art: art, name: name, genre: genre, side: windowSide)
+        }
+    }
+
     private var board: some View {
         Group {
             if beside {
                 HStack(alignment: .top, spacing: Spacing.s6) {
-                    PictureWindow(art: art, name: name, genre: genre, side: windowSide)
+                    window
                     VStack(alignment: .leading, spacing: Spacing.s3) {
                         words
                         mark
@@ -840,7 +893,7 @@ struct HeadBoard: View {
             } else {
                 VStack(alignment: .leading, spacing: Spacing.s3) {
                     HStack(alignment: .top, spacing: Spacing.s4) {
-                        PictureWindow(art: art, name: name, genre: genre, side: windowSide)
+                        window
                         words
                     }
                     mark

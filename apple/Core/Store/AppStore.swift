@@ -1,18 +1,17 @@
 import SwiftUI
 
-/// The top-level verbs, as Archive Watch's (Decision 068; iOS-DESIGN §3.1):
-/// sections are actions, never content types. The Mac and TV sidebars list all
-/// six; iPhone's tab bar holds five, and Surprise is a push from Home's toolbar
-/// (`Route.surprise`), listed in the sidebar only at regular width.
+/// The top-level verbs (Decision 075; iOS-DESIGN §3.1): Home what is on and where to start, Browse
+/// every show by facet, Record making an ear drama, Search, Library. Stations and Surprise are pushes
+/// from Home (`Route.stations`, `Route.surprise`), never sections. The TV lists four: it records
+/// nothing (tvOS-DESIGN §2.1), so `.record` is never selected there.
 enum AppTab: String, CaseIterable, Identifiable, Hashable {
-    case home, browse, stations, surprise, search, library
+    case home, browse, record, search, library
     var id: String { rawValue }
     var title: String {
         switch self {
         case .home: "Home"
         case .browse: "Browse"
-        case .stations: "Stations"
-        case .surprise: "Surprise"
+        case .record: "Record"
         case .search: "Search"
         case .library: "Library"
         }
@@ -21,19 +20,29 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .home: "house"
         case .browse: "square.grid.2x2"
-        case .stations: "radio"
-        case .surprise: "shuffle"
+        case .record: "mic"
         case .search: "magnifyingglass"
         case .library: "books.vertical"
         }
     }
 
-    /// A door's or link's name for a section, the names before Decision 068
-    /// included: listen is Home, series Browse, radio Stations, plays Browse.
+    /// A door's or link's name for a section, the older names included: listen is Home, series
+    /// Browse, plays Record (Decision 075), and radio, stations and surprise open Home and then push
+    /// that screen (`push(forDoor:)`).
     init?(door raw: String) {
-        let renamed = ["listen": "home", "series": "browse", "radio": "stations", "plays": "browse"]
+        let renamed = ["listen": "home", "series": "browse", "plays": "record",
+                       "radio": "home", "stations": "home", "surprise": "home"]
         guard let tab = AppTab(rawValue: renamed[raw.lowercased()] ?? raw.lowercased()) else { return nil }
         self = tab
+    }
+
+    /// The screen a door pushes on its section once it is open: the sections that became pushes.
+    static func push(forDoor raw: String) -> Route? {
+        switch raw.lowercased() {
+        case "radio", "stations": .stations
+        case "surprise": .surprise
+        default: nil
+        }
     }
 }
 
@@ -47,8 +56,10 @@ enum Route: Hashable {
     case person(String)
     /// Library's account row (iOS-DESIGN §4.10). Never a deep link.
     case account
-    /// Surprise pushed from Home's toolbar on iPhone (iOS-DESIGN §4.11).
+    /// Surprise pushed from Home's toolbar (iOS-DESIGN §4.11).
     case surprise
+    /// Stations pushed from Home's On the air and the Listen door (iOS-DESIGN §3.1, Decision 075).
+    case stations
     /// A finished ear drama's page (DEEP_LINKS.md `drama/{pid}`).
     case drama(String)
     /// An invite link's page (DEEP_LINKS.md): readable signed out. Never on a TV.
@@ -176,9 +187,15 @@ final class AppStore {
         for request in pending {
             switch request {
             case .tab(let raw):
-                if let tab = AppTab(door: raw) {
+                if let found = AppTab(door: raw) {
+                    #if os(tvOS)
+                    let tab: AppTab = found == .record ? .home : found
+                    #else
+                    let tab = found
+                    #endif
                     selectedTab = tab
                     paths[tab] = NavigationPath()
+                    if let route = AppTab.push(forDoor: raw) { push(route) }
                 }
             case .item(let id):
                 push(Route(id: id))

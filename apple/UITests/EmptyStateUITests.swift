@@ -17,7 +17,7 @@ final class EmptyStateUITests: DeviceTestCase {
         let browse = hittable(app, "empty-action")
         XCTAssertTrue(browse.waitForExistence(timeout: 5), "the Browse action")
         browse.tap()
-        XCTAssertTrue(text(app, matching: "Kind|Genre|Decade").waitForExistence(timeout: 15), "Browse opened")
+        XCTAssertTrue(text(app, matching: "Genre|Decade").waitForExistence(timeout: 15), "Browse opened")
         shot(app, "empty-library-browse")
     }
 

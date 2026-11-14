@@ -127,6 +127,8 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
         let name: String?
         let born: Int?
         let died: Int?
+        /// How the record names the author for reading ("George Melville Baker"); the filed name is turned when absent.
+        var display: String? = nil
     }
     struct Source: Codable, Hashable, Sendable {
         let name: String
@@ -158,23 +160,36 @@ nonisolated struct PlayScript: Codable, Identifiable, Sendable {
     let rights: Rights
     let roles: [Role]
     let lines: [ScriptLine]
+    /// The key the A to Z order sorts on (`sort_name`), when the record has one.
+    var sortName: String? = nil
+
+    private enum CodingKeys: String, CodingKey {
+        case id, revision, kind, title, authors, year, source, rights, roles, lines
+        case sortName = "sort_name"
+    }
+
+    /// An author as the record names them for reading: `display`, else the filed name turned.
+    static func authorName(_ author: Author) -> String? {
+        if let display = author.display?.trimmingCharacters(in: .whitespaces), !display.isEmpty { return display }
+        return author.name.map(displayName)
+    }
 
     var authorLine: String {
-        authors.compactMap(\.name).map(Self.displayName).joined(separator: ", ")
+        authors.compactMap(Self.authorName).joined(separator: ", ")
     }
 
     /// The authors with their years where the record has them:
     /// "Henry Fisk Carlton (1893–1973)".
     var authorLineWithYears: String {
         authors.compactMap { author in
-            author.name.map { name in
+            Self.authorName(author).map { name in
                 let years = switch (author.born, author.died) {
                 case let (born?, died?): " (\(born)–\(died))"
                 case let (born?, nil): " (b. \(born))"
                 case let (nil, died?): " (d. \(died))"
                 case (nil, nil): ""
                 }
-                return Self.displayName(name) + years
+                return name + years
             }
         }
         .joined(separator: ", ")

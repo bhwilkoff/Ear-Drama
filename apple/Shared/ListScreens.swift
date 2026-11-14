@@ -15,6 +15,7 @@ struct RouteDestinations: ViewModifier {
             case let .person(id): PersonScreen(id: id).id(route)
             case .account: AccountScreen()
             case .surprise: SurpriseScreen()
+            case .stations: RadioScreen()
             case let .drama(pid): FinishedDramaScreen(id: pid)
             case let .invitation(token): InviteScreen(token: token)
             }
@@ -62,70 +63,38 @@ struct ListenScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(ListeningHistory.self) private var history
     @Environment(AppStore.self) private var store
-    @Environment(FollowedSeries.self) private var follows
     @State private var day: HomeDay?
-    @State private var top: [SeriesRow] = []
+    @State private var shelves = HomeShelves()
     @State private var loaded = false
     @State private var continuing: [EpisodeRow] = []
-    @State private var following: [SeriesRow] = []
     @State private var year: Int?
     @State private var allNight = false
-    @State private var finished = FinishedStore.shared
     @State private var voices: [PersonRow] = []
 
     private static let nightFirst = 6
-    private static let topCount = 12
-    private static let dramaCount = 6
     private static let voiceCount = 12
 
     private var selectedYear: Int? { year ?? day?.years.peak }
 
     var body: some View {
         PageBody {
+            HomeOnAirSection()
+            if !continuing.isEmpty {
+                continuingRows
+            }
+            HomeDoors()
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
-                if !continuing.isEmpty {
-                    continuingRows
-                }
-                if !following.isEmpty {
-                    PageSection("Following") {
-                        ScrollView(.horizontal) {
-                            HStack(alignment: .top, spacing: Spacing.s3) {
-                                ForEach(following) { row in
-                                    PushLink(value: Route.series(row.key)) { ShowTile(series: row) }
-                                        .buttonStyle(.plain)
-                                }
-                            }
-                            .sharesNameHeight()
-                            .padding(.horizontal, Spacing.s4)
-                            .padding(.vertical, Spacing.s2)
-                        }
-                        .scrollIndicators(.hidden)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
-                        .pageBleed()
-                    }
-                }
+                HomeChipSection(title: "Start a show", chips: shelves.start)
+                HomeChipSection(title: "By length", chips: shelves.length)
+                HomeRecordSection()
                 if let day, let selected = selectedYear {
                     PageSection {
                         DayBoard(model: day, selected: Binding(get: { selected }, set: { year = $0; allNight = false }))
                             .gridRow()
                     }
                     nightSection(day, selected)
-                }
-                if !top.isEmpty {
-                    PageSection {
-                        ShowGrid(items: top, first: Self.topCount) { row, width in
-                            TileLink(value: Route.series(row.key), series: row, width: width)
-                        }
-                        .gridRow()
-                    } header: {
-                        SectionHead(title: "Most downloaded") {
-                            Button("All \(top.count.formatted()) shows") { store.selectResettingPrevious(.browse) }
-                                .buttonStyle(.borderless)
-                        }
-                    }
                 }
                 if !voices.isEmpty {
                     PageSection {
@@ -143,52 +112,32 @@ struct ListenScreen: View {
                         }
                     }
                 }
-                if !finished.plays.isEmpty {
-                    PageSection {
-                        ShowGrid(items: Array(finished.plays.prefix(Self.dramaCount))) { play, width in
-                            FinishedTile(play: play, width: width)
-                        }
-                        .gridRow()
-                    } header: {
-                        SectionHead(title: "New ear dramas") {
-                            Button("All") { store.openBrowseDramas() }
-                                .buttonStyle(.borderless)
-                        }
-                    }
-                }
-                if continuing.isEmpty && following.isEmpty && day == nil && top.isEmpty && voices.isEmpty && finished.plays.isEmpty {
-                    EmptyState("Nothing to list yet", systemImage: "radio")
-                }
+                MadeHereSection()
             } else {
-                SkeletonRows()
+                SkeletonRows(count: 3)
             }
         }
-        .task { await finished.load() }
         .navigationTitle("Home")
         #if os(iOS)
-        // iPhone's way to Surprise (iOS-DESIGN §3.1, Archive Watch §2.6: a push).
+        // The way to Surprise (iOS-DESIGN §3.1, §4.1): a push, never a section.
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { store.push(Route.surprise) } label: { Label("Surprise", systemImage: AppTab.surprise.symbol) }
+                Button { store.push(Route.surprise) } label: { Label("Surprise", systemImage: "shuffle") }
+                    .accessibilityIdentifier("surprise")
             }
         }
         #endif
         .task(id: catalog.loadKey) {
             guard catalog.state == .ready else { return }
             let loadedDay = await HomeDay.load(catalog)
-            let shows = await catalog.seriesBrowse(genre: nil, network: nil, decade: nil, sort: .popular)
-                .filter { ShowLine.isShow($0.episodeCount) }
+            shelves = await catalog.homeShelves()
             day = loadedDay.years.years.isEmpty ? nil : loadedDay
-            top = shows
             voices = await catalog.voices(limit: Self.voiceCount)
             year = nil
             loaded = true
         }
         .task(id: history.inProgressIDs.joined(separator: "\n") + "#\(catalog.loadKey)") {
             continuing = await catalog.episodes(Array(history.inProgressIDs.prefix(10)))
-        }
-        .task(id: follows.followedKeys.joined(separator: "\n") + "#\(catalog.loadKey)") {
-            following = await catalog.series(follows.followedKeys)
         }
     }
 
@@ -201,7 +150,7 @@ struct ListenScreen: View {
             .pageRow()
             .playContextMenu(episode.id)
         }
-        return PageRows("Continue listening") { rows }
+        return PageRows("Continue") { rows }
     }
 
     @ViewBuilder private func nightSection(_ day: HomeDay, _ selected: Int) -> some View {
@@ -228,7 +177,7 @@ struct ListenScreen: View {
     }
 }
 
-private extension View {
+extension View {
     /// A row that carries its own Play: no chevron beside it, so the title keeps the width (375 pt).
     func playRowLink() -> some View {
         #if os(tvOS)
@@ -247,12 +196,6 @@ private extension View {
 
 // MARK: - Browse (iOS-DESIGN §4.2; was Series)
 
-/// What Browse lists: a radio series, or a stage play (Decision 068).
-enum BrowseKind: String, CaseIterable, Hashable {
-    case series, plays
-    var title: String { self == .series ? "Series" : "Plays" }
-}
-
 struct SeriesBrowseScreen: View {
     @Environment(CatalogStore.self) private var catalog
     @Environment(PlaysLibrary.self) private var plays
@@ -261,7 +204,6 @@ struct SeriesBrowseScreen: View {
     /// The same list with the genre and decade filters off: the field counts over it (R11c).
     @State private var fieldBase: [SeriesRow] = []
     @State private var facets: (genres: [String], networks: [String], decades: [Int]) = ([], [], [])
-    @State private var kind: BrowseKind?
     @State private var hasScript = false
     /// Series key -> the castable script ids its episodes link (contract §3.1).
     @State private var scripted: [String: [String]] = [:]
@@ -281,31 +223,21 @@ struct SeriesBrowseScreen: View {
     }
 
     private struct PageKey: Hashable {
-        let genre: String?, network: String?, decade: Int?, sort: SeriesSort, kind: BrowseKind?, hasScript: Bool, singles: Bool
+        let genre: String?, network: String?, decade: Int?, sort: SeriesSort, hasScript: Bool, singles: Bool
     }
 
-    private enum Item: Identifiable {
-        case show(SeriesRow), play(PlayScript)
-        var id: String {
-            switch self {
-            case let .show(row): "s|" + row.key
-            case let .play(script): "p|" + script.id
-            }
-        }
+    private struct Item: Identifiable {
+        let row: SeriesRow
+        var id: String { row.key }
     }
 
-    /// A play carries no genre, network, or decade, so those narrow to series;
-    /// "Has a script" keeps the plays and the series with a linked episode
+    /// Plays live on Record (Decision 075); "Has a script" keeps the series with a linked episode
     /// whose script this device's bundle holds.
-    private var showsSeries: Bool { kind != .plays }
     private func shownSeries(_ all: [SeriesRow]) -> [SeriesRow] {
-        guard showsSeries else { return [] }
         guard hasScript else { return all }
         return all.filter { scripted[$0.key]?.contains { plays.script($0) != nil } == true }
     }
-    private var showsPlays: Bool { kind != .series && genre == nil && network == nil && decade == nil }
-    private var shownPlays: [PlayScript] { showsPlays ? plays.scripts : [] }
-    private var isFiltered: Bool { kind != nil || hasScript || genre != nil || network != nil || decade != nil }
+    private var isFiltered: Bool { hasScript || genre != nil || network != nil || decade != nil }
     private var heading: String {
         switch sort {
         case .popular: "Most downloaded first"
@@ -345,7 +277,7 @@ struct SeriesBrowseScreen: View {
             }
         }
         .overlay {
-            if scope == .shows, catalog.state != .unavailable, let series, shownSeries(series).isEmpty, shownPlays.isEmpty {
+            if scope == .shows, catalog.state != .unavailable, let series, shownSeries(series).isEmpty {
                 EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
                            action: .init(title: "Clear Filters") { clear() })
             }
@@ -407,7 +339,7 @@ struct SeriesBrowseScreen: View {
             guard catalog.state == .ready else { return }
             fieldBase = await catalog.seriesBrowse(genre: nil, network: network, decade: nil, sort: sort)
         }
-        .onChange(of: PageKey(genre: genre, network: network, decade: decade, sort: sort, kind: kind,
+        .onChange(of: PageKey(genre: genre, network: network, decade: decade, sort: sort,
                               hasScript: hasScript, singles: singles)) { shown = BrowseScreenPage.size }
     }
 
@@ -415,41 +347,22 @@ struct SeriesBrowseScreen: View {
         let listed = shownSeries(all)
         let shows = listed.filter { ShowLine.isShow($0.episodeCount) }
         let lesser = listed.filter { !ShowLine.isShow($0.episodeCount) }
-        return (singles ? lesser : shows).map(Item.show) + (singles ? [] : shownPlays.map(Item.play))
+        return (singles ? lesser : shows).map(Item.init)
     }
 
-    private func azKey(_ item: Item) -> String {
-        switch item {
-        case let .show(row): row.sortName ?? row.name
-        case let .play(script): script.title
-        }
-    }
+    private func azKey(_ item: Item) -> String { item.row.sortName ?? item.row.name }
 
     private func azLetters(_ items: [Item]) -> [String] { Grammar.azLetters(items.map(azKey)) }
 
-    /// The shown items by A to Z letter, each group in the catalog's order; a play joins its letter by title.
+    /// The shown items by A to Z letter, each group in the catalog's order.
     private func azGroups(_ items: [Item]) -> [(letter: String, items: [Item])] {
         var by: [String: [Item]] = [:]
         for item in items { by[Grammar.azLetter(azKey(item)), default: []].append(item) }
-        return azLetters(items).map { l in
-            var group = by[l] ?? []
-            if group.contains(where: { if case .play = $0 { true } else { false } }) {
-                group.sort { azKey($0).localizedCaseInsensitiveCompare(azKey($1)) == .orderedAscending }
-            }
-            return (l, group)
-        }
+        return azLetters(items).map { ($0, by[$0] ?? []) }
     }
 
-    @ViewBuilder private func tileView(_ item: Item, width: CGFloat) -> some View {
-        switch item {
-        case let .show(row):
-            TileLink(value: Route.series(row.key), series: row, width: width)
-        case let .play(script):
-            TileLink(value: PlayRoute.script(script.id), series: Self.tileRow(script), width: width,
-                     facts: [script.authorLine, countText(script.castParts.filter { $0.id.isSpeaking }.count, "part", "parts")]
-                         .filter { !$0.isEmpty },
-                     castScript: script)
-        }
+    private func tileView(_ item: Item, width: CGFloat) -> some View {
+        TileLink(value: Route.series(item.row.key), series: item.row, width: width)
     }
 
     /// A to Z: one List section per letter, each tile row its own lazy row, so the system's index
@@ -496,12 +409,12 @@ struct SeriesBrowseScreen: View {
                 VStack(alignment: .leading, spacing: Spacing.s4) {
                     HStack(alignment: .firstTextBaseline, spacing: Spacing.s3) {
                         Text(verbatim: singles ? countText(lesser.count, "single recording", "single recordings")
-                             : countText(shows.count + shownPlays.count, "show", "shows"))
+                             : countText(shows.count, "show", "shows"))
                             .font(TypeRamp.bodyStrong)
                             .foregroundStyle(Color.brandText)
                         Spacer(minLength: 0)
                         if singles || !lesser.isEmpty {
-                            Button(singles ? countText(shows.count + shownPlays.count, "show", "shows")
+                            Button(singles ? countText(shows.count, "show", "shows")
                                    : countText(lesser.count, "single recording", "single recordings")) { singles.toggle() }
                                 .buttonStyle(.borderless)
                                 .font(TypeRamp.caption)
@@ -577,13 +490,7 @@ struct SeriesBrowseScreen: View {
         }
     }
 
-    /// A play on the show tile: no picture and no run (plays carry none); it stands on the drama
-    /// board, whose name is never said, and its cast fingerprint is its mark.
-    private static func tileRow(_ script: PlayScript) -> SeriesRow {
-        SeriesRow(key: script.id, name: script.title, genre: PlayScript.boardGenre, firstDate: nil, lastDate: nil, networks: [], episodeCount: 0)
-    }
-
-    private func clear() { kind = nil; hasScript = false; genre = nil; network = nil; decade = nil }
+    private func clear() { hasScript = false; genre = nil; network = nil; decade = nil }
 
     /// Archive Watch's iOS-DESIGN §4.2a: the filters are chips you can see,
     /// each a native Menu naming its value; Clear leads once anything is set.
@@ -594,12 +501,6 @@ struct SeriesBrowseScreen: View {
                     Button("Clear") { clear() }
                         .buttonStyle(.borderless)
                         .accessibilityLabel("Clear filters")
-                }
-                chip(kind?.title ?? "Kind", on: kind != nil) {
-                    Picker("Kind", selection: $kind) {
-                        Text("Any kind").tag(BrowseKind?.none)
-                        ForEach(BrowseKind.allCases, id: \.self) { Text($0.title).tag(BrowseKind?.some($0)) }
-                    }
                 }
                 chip(genre.map(GenreDisplay.name) ?? "Genre", on: genre != nil) {
                     Picker("Genre", selection: $genre) {

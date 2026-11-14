@@ -53,17 +53,14 @@ def detail_share_twin(text):
 
 
 def phone_shell_is_five_verbs(text, home):
-    """iOS-DESIGN §3.1 (Decision 068): iPhone's bar is Home, Browse, Stations,
-    Search, Library; Surprise is listed only at regular width AND while a sidebar
-    can list it (the Duo's vertical strip shows hidden tabs, 2026-11-14), hidden
-    from the bar, and Home's toolbar pushes it."""
+    """iOS-DESIGN §3.1 (Decision 075): the bar is Home, Browse, Record, Search, Library at
+    every width; no Surprise tab and no gate that lists one (the Duo's strip shows hidden tabs,
+    2026-11-14); Stations and Surprise are Home's pushes."""
     tabs = re.findall(r"Tab\(AppTab\.(\w+)\.title", text)
-    at = text.find("Tab(AppTab.surprise.title")
-    gate = text.rfind("if showsSurpriseTab {", 0, at)
-    rule = "showsSurpriseTab: Bool { hSize == .regular && sidebarAvailable != false }"
-    return (tabs == ["home", "browse", "stations", "search", "library", "surprise"]
-            and gate != -1 and rule in text and "isTabViewSidebarAvailable" in text and ".defaultVisibility(.hidden, for: .tabBar)" in text[at:]
-            and "store.push(Route.surprise)" in home)
+    return (tabs == ["home", "browse", "record", "search", "library"]
+            and "showsSurpriseTab" not in text and "AppTab.surprise" not in text
+            and "AppTab.stations" not in text and "store.push(Route.surprise)" in home
+            and "store.push(Route.stations)" in read("apple/Shared/HomeRows.swift"))
 
 
 def haptics_through_mapping(files):
@@ -149,9 +146,10 @@ def main():
          tv.replace("                        NowPlayingEntry_tvOS()\n", "")),
         ("tvOS Detail has Versions", tv_versions, tv, tv.replace("VersionsSection_tvOS(detail: detail)", "EmptyView()")),
         ("iPhone's bar is five verbs; Surprise from Home", lambda t: phone_shell_is_five_verbs(t, detail), phone,
-         phone.replace("if showsSurpriseTab {", "if true {")),
-        ("the Surprise tab waits for a sidebar", lambda t: phone_shell_is_five_verbs(t, detail), phone,
-         phone.replace(" && sidebarAvailable != false", "")),
+         phone.replace("Tab(AppTab.record.title, systemImage: AppTab.record.symbol, value: AppTab.record)",
+                       "Tab(AppTab.stations.title, systemImage: AppTab.stations.symbol, value: AppTab.stations)")),
+        ("no Surprise tab gate returns", lambda t: phone_shell_is_five_verbs(t, detail), phone,
+         phone + "\nprivate var showsSurpriseTab: Bool { true }\n"),
         ("Detail shares the https twin", detail_share_twin, detail,
          detail.replace("SiteLinks.episode(episode.id)", "episode.transcriptURL!")),
         ("haptics go through Haptic", haptics_through_mapping, swift,

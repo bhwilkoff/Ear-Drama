@@ -3,18 +3,11 @@ import SwiftUI
 
 /// iPhone and iPad: one TabView whose style adapts (a tab bar on iPhone, a
 /// sidebar on iPad), one NavigationStack per tab, and the shared destination
-/// registry on every stack. iOS-DESIGN §3.1 (Decision 068): iPhone's five tabs
-/// are Archive Watch's verbs; Surprise is a push from Home's toolbar, and only
-/// at regular width does the sidebar list it.
+/// registry on every stack. iOS-DESIGN §3.1 (Decision 075): five tabs at every
+/// width, Home, Browse, Record, Search, Library; Stations and Surprise are
+/// pushes from Home, never tabs, so the Duo's strip shows nothing twice.
 struct ContentView_iOS: View {
     @Environment(AppStore.self) private var store
-    @Environment(\.horizontalSizeClass) private var hSize
-    /// nil below iOS 27 or before the first report: the size class alone decides.
-    @State private var sidebarAvailable: Bool?
-
-    /// The Duo's vertical strip shows every tab, hidden or not, so Surprise is a
-    /// tab only where a sidebar can list it (iOS-DESIGN §3.1).
-    private var showsSurpriseTab: Bool { hSize == .regular && sidebarAvailable != false }
 
     var body: some View {
         @Bindable var store = store
@@ -25,8 +18,8 @@ struct ContentView_iOS: View {
             Tab(AppTab.browse.title, systemImage: AppTab.browse.symbol, value: AppTab.browse) {
                 stack(.browse) { SeriesBrowseScreen() }
             }
-            Tab(AppTab.stations.title, systemImage: AppTab.stations.symbol, value: AppTab.stations) {
-                stack(.stations) { RadioScreen() }
+            Tab(AppTab.record.title, systemImage: AppTab.record.symbol, value: AppTab.record) {
+                stack(.record) { RecordScreen() }
             }
             Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
                 stack(.search) { SearchScreen_iOS() }
@@ -34,23 +27,8 @@ struct ContentView_iOS: View {
             Tab(AppTab.library.title, systemImage: AppTab.library.symbol, value: AppTab.library) {
                 stack(.library) { LibraryScreen() }
             }
-            // Hidden "for: .tabBar" alone it would still count toward the phone's
-            // bar and grow a More tab (Archive Watch, seen on the iPhone 12).
-            if showsSurpriseTab {
-                Tab(AppTab.surprise.title, systemImage: AppTab.surprise.symbol, value: AppTab.surprise) {
-                    stack(.surprise) { SurpriseScreen() }
-                }
-                .defaultVisibility(.hidden, for: .tabBar)
-            }
         }
         .tabViewStyle(.sidebarAdaptable)
-        // At compact width Surprise is Home's push, never a tab: a door, or a
-        // window narrowed while it was selected, hands it to Home.
-        .onChange(of: [store.selectedTab == .surprise, showsSurpriseTab], initial: true) {
-            guard store.selectedTab == .surprise, !showsSurpriseTab else { return }
-            store.selectedTab = .home
-            store.push(Route.surprise)
-        }
         .modifier(HapticFeedback_iOS())
         .sheet(isPresented: $store.isPlayerPresented) {
             PlayerSheet_iOS()
@@ -63,36 +41,7 @@ struct ContentView_iOS: View {
             root().routeDestinations()
         }
         .modifier(MiniPlayerInset())
-        .background { SidebarAvailabilityProbe(available: $sidebarAvailable) }
     }
-}
-
-/// Reports whether the tab view can show a sidebar (iOS 27; the environment value
-/// is only meaningful inside a tab's content). Below 27 it reports nothing.
-private struct SidebarAvailabilityProbe: View {
-    @Binding var available: Bool?
-    var body: some View {
-        #if compiler(>=6.4)
-        if #available(iOS 27, *) { Probe27(available: $available) } else { Color.clear }
-        #else
-        Color.clear
-        #endif
-    }
-
-    // The iOS 27 SDK (Swift 6.4) has the value; the App Store workflow still builds
-    // with Xcode 26.6 until its runner moves (IPHONE-DUO.md §7 Q1).
-    #if compiler(>=6.4)
-    @available(iOS 27, *)
-    private struct Probe27: View {
-        @Binding var available: Bool?
-        @Environment(\.isTabViewSidebarAvailable) private var sidebar
-        var body: some View {
-            Color.clear.onChange(of: sidebar, initial: true) { _, a in
-                if available != a { available = a }
-            }
-        }
-    }
-    #endif
 }
 
 /// The mini player sits inside each tab's stack, above the tab bar, on every

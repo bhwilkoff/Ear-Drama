@@ -6,8 +6,9 @@ import Foundation
 /// (HOOK_START_TAB, HOOK_START_ITEM, HOOK_AUTOPLAY, HOOK_MUTE,
 /// HOOK_DOOR_SECONDS, HOOK_SLEEP_MENU).
 ///
-/// - APP_START_TAB: home | browse | stations | surprise | search | library (the
-///   names before Decision 068, listen | series | radio | plays, still open)
+/// - APP_START_TAB: home | browse | record | search | library (Decision 075); stations and
+///   surprise open Home and then push that screen; the older listen | series | radio | plays
+///   still open (plays is Record). The TV has no Record: it opens Home.
 /// - APP_START_ITEM: a series key or an episode id, pushed on that tab
 /// - APP_AUTOPLAY=1: play APP_START_ITEM and show the player
 /// - APP_SLEEP_MENU=1: open the sleep timer's choices on the player

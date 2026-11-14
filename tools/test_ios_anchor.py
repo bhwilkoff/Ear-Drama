@@ -13,7 +13,7 @@ import app_config  # noqa: E402
 
 PLAYER = ("5:41 SOS • X Minus One The Sense of Wonder 1956-04-24 • NBC 12:58 -14:57 "
           "15 30 1x C Sleep")
-TABS = "5:49 SOS Edit Library Queue Home Browse Stations Library Search"
+TABS = "5:49 SOS Edit Library Queue Home Browse Record Library Search"
 SPRINGBOARD = ("5:52 Weather Stocks Find My Podcasts Books Fitness Contacts Files Preview "
                "Translate Freeform Journal Tidbits Archive Watch Ear Drama Search SOS "
                "Home Watch Utilities Tips")
@@ -31,7 +31,7 @@ def main():
         bad.append("tab bar frame not anchored")
     if hit(SPRINGBOARD):
         bad.append("Springboard frame anchored (negative control)")
-    if re.search(r"Home|Browse|Stations|Library", SPRINGBOARD):
+    if re.search(r"Home|Browse|Record|Library", SPRINGBOARD):
         pass  # the old anchor matched this frame, which is why it was replaced
     print("FAIL: " + "; ".join(bad) if bad else "ok: ios anchor (3 real frames)")
     return 1 if bad else 0

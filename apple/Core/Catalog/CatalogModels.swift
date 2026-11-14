@@ -523,12 +523,21 @@ nonisolated enum ShelfRule: Hashable, Sendable, Identifiable {
     /// Decision 067: the series archive.org's listeners downloaded most, each
     /// by its first surviving episode. Only ever published; never run here.
     case mostDownloaded
+    /// Decision 075: the first episode of each series whose episode runs in a length band
+    /// (`under15`, `about30`, `hour`). Only ever published; never run here.
+    case byLength(String)
+
+    /// Decision 075's bands, in their published order, with the client's word for each.
+    static let lengthBands: [(band: String, title: String)] = [
+        ("under15", "Under 15 min"), ("about30", "About 30 min"), ("hour", "An hour"),
+    ]
 
     var id: String {
         switch self {
         case let .onThisDay(m, d): "day-\(m)-\(d)"
         case let .genreFirsts(g): "genre-\(g)"
         case .mostDownloaded: "most-downloaded"
+        case let .byLength(b): "length-\(b)"
         }
     }
 
@@ -537,6 +546,7 @@ nonisolated enum ShelfRule: Hashable, Sendable, Identifiable {
         case .onThisDay: "This day in radio"
         case let .genreFirsts(g): GenreDisplay.name(g)
         case .mostDownloaded: "Most downloaded"
+        case let .byLength(b): Self.lengthBands.first { $0.band == b }?.title ?? b
         }
     }
 }
@@ -548,6 +558,7 @@ nonisolated enum PublishedShelf: Hashable, Sendable {
     case onThisDay
     case genreFirsts(genre: String, episodes: [String])
     case mostDownloaded(episodes: [String])
+    case byLength(band: String, episodes: [String])
 
     /// The published list, or nil when the value is not a JSON array (an
     /// older catalog). A rule this build does not know is skipped.
@@ -564,6 +575,10 @@ nonisolated enum PublishedShelf: Hashable, Sendable {
             case "mostDownloaded":
                 guard let ids = s["episodes"] as? [String] else { return nil }
                 return .mostDownloaded(episodes: ids)
+            case "byLength":
+                guard let band = s["band"] as? String, ShelfRule.lengthBands.contains(where: { $0.band == band }),
+                      let ids = s["episodes"] as? [String] else { return nil }
+                return .byLength(band: band, episodes: ids)
             default: return nil
             }
         }
