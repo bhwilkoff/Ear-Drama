@@ -23,6 +23,16 @@ object PlayerNumbers {
     fun rewound(positionMs: Long): Long = (positionMs - RESUME_REWIND_MS).coerceAtLeast(0)
 
     /**
+     * Whether Play on [episodeId] resumes the item already on the player where it stands instead
+     * of loading it again: the same episode and copy ([url] null is its default, so the loaded copy
+     * stands), no start of its own ([startMs], a Radio slot), and a load still alive (ready or
+     * buffering; an idle or ended one loads afresh).
+     */
+    fun resumesInPlace(loadedId: String?, episodeId: String, loadedUrl: String?, url: String?, startMs: Long?, state: Int?): Boolean =
+        loadedId == episodeId && startMs == null && (url == null || url == loadedUrl) &&
+            (state == androidx.media3.common.Player.STATE_READY || state == androidx.media3.common.Player.STATE_BUFFERING)
+
+    /**
      * Where a saved position resumes: exactly where it was saved, as on the web.
      * Only an interruption rewinds ([rewound]); a finished episode starts over,
      * and so does a place at or past the catalog's [lengthMs] less the finished

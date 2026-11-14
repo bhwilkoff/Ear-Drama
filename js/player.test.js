@@ -437,6 +437,69 @@ test('a place at or past 95 % of the catalog length starts over, even when the s
   assertEq(late.audio.currentTime, 0, 'past the end: starts over');
 });
 
+test('Play on the episode already on the player resumes it where it stands, without a reload', () => {
+  const { Player, audio } = boot();
+  const kinds = [];
+  Player.onChange(k => kinds.push(k));
+  Player.load(ep);
+  audio.currentTime = 812;
+  Player.pause();
+  kinds.length = 0;
+  Player.load(ep);
+  assertEq(audio.paused, false, 'playing again');
+  assertEq(audio.currentTime, 812, 'at the same place');
+  assertEq(kinds.includes('load'), false, 'not reloaded');
+  Player.pause();
+  Player.load(ep, { at: 60 });
+  assertEq(kinds.includes('load'), true, 'control: a slot with its own start loads afresh');
+  Player.load({ ...ep, url: 'https://archive.org/download/x/other.mp3' });
+  assertEq(audio.src, 'https://archive.org/download/x/other.mp3', 'control: another copy of the episode loads');
+});
+
+test('a copy that fails while paused comes back paused, at its place', () => {
+  const later = [];
+  const { Player, audio } = boot({ setTimeout: (fn) => { later.push(fn); return 0; } });
+  Player.load(ep);
+  audio.currentTime = 400;
+  Player.pause();
+  audio.error = { code: 2 };
+  audio.fire('error');
+  audio.error = null;
+  while (later.length) later.shift()();
+  assertEq(audio.paused, true, 'the recovery does not start what the person paused');
+  audio.fire('loadedmetadata');
+  assertEq(audio.currentTime, 400, 'and it keeps the place');
+  Player.play();
+  audio.error = { code: 2 };
+  audio.fire('error');
+  audio.error = null;
+  while (later.length) later.shift()();
+  assertEq(audio.paused, false, 'control: a copy that fails while playing plays again');
+});
+
+test('Play on a copy that failed for good opens it again at the saved place', () => {
+  const later = [];
+  const { Player, Store, audio } = boot({ setTimeout: (fn) => { later.push(fn); return 0; } });
+  const kinds = [];
+  Player.onChange(k => kinds.push(k));
+  Player.load(ep);
+  audio.duration = 1800;
+  audio.currentTime = 900;
+  Player.pause();
+  const fail = () => { audio.error = { code: 2 }; audio.currentTime = 0; audio.fire('error'); while (later.length) later.shift()(); };
+  fail(); fail();
+  assertEq(kinds.includes('error'), true, 'the error is shown');
+  assertEq(Store.position(ep.id).t, 900, 'the place was saved at the pause');
+  kinds.length = 0;
+  audio.paused = true;
+  Player.play();
+  assertEq(kinds.includes('load'), true, 'the copy is opened again');
+  assertEq(audio.paused, false, 'and plays');
+  audio.error = null;
+  audio.fire('loadedmetadata');
+  assertEq(audio.currentTime, 900, 'from the saved place');
+});
+
 (async () => {
   let passed = 0, failed = 0;
   for (const { name, fn } of tests) {

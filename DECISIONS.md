@@ -92,6 +92,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 074: Take-down notices: a complete notice removes on its own, and nobody's details are public
 - 075: Five sections with Record among them; Home opens on what is on the air (answered 2026-11-14)
 - 076: A script reader of its own, pages first; the studio lives inside it; Kokoro for downloadable voices (answered 2026-11-14)
+- 077: Audio starts without reading the whole file; Play on the loaded episode resumes it
 
 ---
 
@@ -1148,3 +1149,40 @@ The owner chose pages over the recommended scroll default.
 **How to apply**: build by that report's phases (S0 data, S1 reader, S2 voices on
 the cast sheet, S3 studio in the reader, S4 wide and Duo layouts, S5 marks, S6 Kokoro,
 S7 polish), each on every platform. Design docs and PARITY.md first.
+## 077: Audio starts without reading the whole file; Play on the loaded episode resumes it
+
+**Rule**: Apple opens a network recording WITHOUT
+`AVURLAssetPreferPreciseDurationAndTimingKey`, holds play until the item is
+ready and its first 64 KB of frame headers are read (`StartTiming.sniff`,
+past an ID3 tag if need be), and reopens it with precise timing, at the same
+place, only when the frames vary and the first frame carries no
+Xing/Info/VBRI table. Unreadable frames fall back to the quick duration
+against the catalog length (5%). A download keeps precise timing. On every
+platform, Play on the episode already on the player resumes it in place
+(no reload); a load that fails while paused is retried paused; Play on a
+load that failed for good opens it again at its place.
+
+**Why**: the owner, 2026-11-14: *"The playback of items from Archive.org
+seems to take a very long time to get started... Additionally, resuming play
+from a paused show doesn't resume the show correctly."* Measured on a Mac
+(muted, real archive.org files, a query string per trial so nothing is
+cached): with precise timing AVPlayer downloads the WHOLE file before the
+first sound, 1.2 to 44 s (a 70 MB file), while `timeControlStatus` already
+reads `.playing` and the clock stands still; without it, 0.6 to 2.2 s. The
+real AudioPlayer, tap to a moving clock: 2.7 to 12.3 s before, 1.5 to 3.1 s
+after. The 1.0.73 reason for precise timing is real but narrow: of 79 sampled
+files only a few are variable-bitrate with no table, and for those the
+catalog length is itself a bitrate estimate (Challenge of the Yukon
+1949-12-09: listed 1956 s, decodes to 1757 s), so only the frames can find
+them. Every Play button reloaded the item, and with precise timing each
+resume re-downloaded the file; every platform's recovery started what the
+person had paused.
+
+**How to apply**: never put the precise-timing key back on network items
+wholesale. A start measurement interleaves arms or repeats them; caching
+flatters whichever arm runs second (`PlaybackStartProbeTests`,
+`ED_START_PROBE=1`). Android (`Mp3Seeking`) and the web still time a
+variable-bitrate file with no table from the catalog length or the
+browser's estimate, so a resume there can land off by the length error
+(about 10% on the Yukon file): not fixed here.
+
