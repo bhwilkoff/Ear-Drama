@@ -63,19 +63,20 @@ env:
 jobs:
   build:
     # MOVING TARGET — keep this on the newest RELEASED macOS runner image (see header note).
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5
 
-      - name: Select a released Xcode (clears the ITMS-90111 SDK floor)
+      - name: Select the newest non-beta Xcode
         run: |
-          # MOVING TARGET — prefer the newest released Xcode present on the runner. Update the
-          # glob when Apple's floor moves (a build number ending in a lowercase letter is a BETA
-          # and is still rejected for App Review — pick a GA/RC).
-          XC="$(ls -d /Applications/Xcode_26.6*.app 2>/dev/null | sort -V | tail -1)"
-          [ -n "$XC" ] || XC="$(ls -d /Applications/Xcode_26.*.app 2>/dev/null | sort -V | tail -1)"
-          [ -n "$XC" ] || XC="$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -iv beta | sort -V | tail -1)"
+          XC=""
+          for app in $(ls -d /Applications/Xcode_*.app | sort -V); do
+            real="$(cd "$app" && pwd -P)"
+            case "$real" in *[Bb]eta*) continue ;; esac
+            XC="$real"
+          done
+          [ -n "$XC" ] || { echo "::error::no non-beta Xcode on this image"; exit 1; }
           echo "Selected Xcode: $XC"
           sudo xcode-select -s "$XC"
           echo "DEVELOPER_DIR=$XC/Contents/Developer" >> "$GITHUB_ENV"
