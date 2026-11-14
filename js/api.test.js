@@ -726,6 +726,28 @@ test('show facts: years, network, star, count; blanks drop out', () => {
   assertEq(API.showFacts({}, '', '3 episodes').join('|'), 'Undated|3 episodes');
 });
 
+test('the play library: the index when published, the bundle when not; a script from its own file (WEB-DESIGN §4.15, §4.16)', async () => {
+  const bundle = { scripts: [{ id: 'gut-1', revision: 'a', title: 'One', lines: [{ id: 'L0001', kind: 'speech', role: 'A', parts: [{ say: 'x' }] }] }] };
+  const index = { format: 1, plays: [{ id: 'gut-1', title: 'One', path: 'scripts/gut-1.json', voices: 2 }, { id: 'gut-2', title: 'Two', path: 'scripts/gut-2.json', voices: 3 }] };
+  const files = { 'plays/castable-scripts.json': bundle, 'plays/library/index.json': index,
+                  'plays/library/scripts/gut-2.json': { format: 1, scripts: [{ id: 'gut-2', title: 'Two', lines: [] }] } };
+  const seen = [];
+  const get = async (p) => { seen.push(p); if (!(p in files)) throw new API.DataError('missing', p); return files[p]; };
+  assertEq((await API.playLibrary(get)).map(p => p.id).join(), 'gut-1,gut-2', 'the index rows');
+  assert(!seen.includes('plays/castable-scripts.json'), 'the bundle is not read for the list');
+  assertEq((await API.playScript('gut-2', get)).title, 'Two', 'a script from the library file');
+  assertEq((await API.playScript('gut-1', get)).lines.length, 1, 'a script the library file lacks comes from the bundle');
+  assertEq(await API.playScript('gut-9', get), null, 'neither has it: null');
+  delete files['plays/library/index.json'];
+  assertEq((await API.playLibrary(get)).map(p => p.id).join(), 'gut-1', 'no index: the bundle');
+  assertEq((await API.playScript('gut-1', get)).title, 'One', 'and its scripts');
+  const offline = async (p) => { if (p.startsWith('plays/library/scripts/')) throw new API.DataError('offline', p); return get(p); };
+  files['plays/library/index.json'] = index;
+  let threw = null;
+  try { await API.playScript('gut-2', offline); } catch (e) { threw = e.kind; }
+  assertEq(threw, 'offline', 'a library script that cannot load and is not bundled reports why');
+});
+
 // --- RUNNER ----------------------------------------------------------
 
 async function run() {

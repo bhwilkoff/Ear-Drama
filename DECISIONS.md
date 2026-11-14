@@ -1084,8 +1084,8 @@ case closes. Nothing a requester wrote reaches Actions logs or issues.
 
 **Why**: the owner, 2026-11-04: *"Let's keep personal details out of the public
 repo... All of these proposals seem incredibly reasonable."* (Archive Watch's note,
-its Decision 175; the owner is the registered agent, DMCA-1083942, reply time one
-week.) The full rule, signals and tests are catalog Decision 029.
+its Decision 175; the owner is the registered agent, DMCA-1083942; reply time 48
+hours, owner 2026-11-14, was one week.) The full rule, signals and tests are catalog Decision 029.
 
 **How to apply**: a Worker change reruns `cd worker && npm test && npm run test:mutations`;
 a change to `catalog/tools/takedown_*.py` reruns `catalog/tests/test_takedown_check.py`.

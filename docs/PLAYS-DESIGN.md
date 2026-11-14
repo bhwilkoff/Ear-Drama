@@ -219,6 +219,45 @@ Every platform does the same seven things, in its own idiom.
    or Cast to a television, or export the file through the share sheet. An
    export is the person's own act, not the app publishing.
 
+### §2.7 Reading a script (Decision 076, phase S1; binding on every platform)
+
+The owner, 2026-11-14: *"You should be able to read a script and turn pages and mark them
+up and do all of the things that a good book/script reading experience should contain."*
+Research: `docs/research/design/R2-script-reader-and-studio.md` §4.1. The verbs, the same
+everywhere; each platform's design doc says the idiom (WEB-DESIGN §4.16, iOS-DESIGN §4.15,
+macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along panel only).
+
+1. **A Read door on every castable play** (its page, Record's play tiles, Today's play), no
+   account, no part, no microphone. One seam opens the reader: `open(scriptID, at: lineID?)`.
+2. **Pages by default** (owner ruling, over the research's scroll): a slide, never a curl;
+   two facing pages when the reading area is wide (web 900 px; Apple and Android at regular
+   or expanded width with the reader holding the whole width); turns by keys (arrows, Page
+   Up/Down, Space; pedals send these), by a tap on the outer fifth of either side, and by a
+   swipe. **Scroll** is a setting, remembered per device.
+3. **The reading position is a line id**, saved per script per device with the part chosen,
+   and kept through every re-layout (text size, spacing, rotation, window size): the reader
+   turns to the page holding the line that was first on the page. Pages are never stored.
+4. **Contents** by act and scene, from `sectionsOf` / `contentsOf` in each stack's plays
+   core: a printed heading the parser set aside (the script's `sections`, contract §4.1) or
+   a stage direction that is a heading (`sectionLevel`, golden cases in
+   `catalog/tests/golden/script_sections.json`); an act heading repeating the act in hand is
+   its scene. Each entry is the first line of its printed heading, never a name we write.
+5. **Search in the script**: case, accents, curly quotes and line breaks folded; results as
+   the speaker and the words around the match; a tap goes to the line.
+6. **Text settings**: size (seven steps, 87.5% to 175% of the reading body, on top of the
+   system's own text size), line spacing (Tight, Normal, Loose), layout (Pages, Scroll).
+7. **"I'm playing ___"**: one speaking part (sound and directions are never offered).
+   It highlights that part's lines in its hue, gives **Next line** (and the previous, by key),
+   and **Hide my lines**: the part's spoken words drawn as bars in its hue, names and
+   printed directions left showing, the text keeping its place; a tap peeks a line until
+   the next turn or tap.
+8. **Built for what comes next**: each line is addressable by its id, and each printed run
+   knows its offset into the line's printed words (`lineText`), so a mark is
+   (script, revision, line id, start, end) (S5); `go(line)` and `follow(line)` are the
+   read-along's seam; the studio (S3) docks inside the reader.
+9. **Nothing is written by the app**: every word on the page is the script's; the reader
+   adds no summary, no character notes, no suggestions.
+
 ### The platform idioms
 
 Same verbs, native idioms (`cross-platform-parity-discipline`).

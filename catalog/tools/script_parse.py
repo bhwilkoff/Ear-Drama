@@ -96,6 +96,30 @@ HEADING = re.compile(r"^_?(ACT|SCENE|CURTAIN|END|THE END|PERSONS|CHARACTERS|DRAM
                      r"(?:THE )?SECOND ACT|(?:THE )?THIRD ACT|(?:THE )?FOURTH ACT|(?:THE )?FIFTH ACT|PROLOGUE|EPILOGUE|"
                      r"PLAYS|CONTENTS|PREFACE|INTRODUCTION|NOTE|FOOTNOTES?|"
                      r"TRANSCRIBER|ILLUSTRATIONS?|CHAPTER|BOOK|PART|APPENDIX|INDEX|FINIS)\b", re.I)
+# A section of the play, for a reader's contents (Decision 076, phase S0): an act, a scene, or a
+# prologue / epilogue / induction standing alone. Mirrored by js/plays-core.js `sectionLevel`; the
+# cases both must agree on are catalog/tests/golden/script_sections.json.
+_SEC_NUM = (r"(?:[IVXLC]+|\d+|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|FIRST|SECOND|THIRD|FOURTH|"
+            r"FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|LAST|PRIMUS|SECUNDUS|TERTIUS|QUARTUS|QUINTUS)")
+_SEC_ORD = r"(?:FIRST|SECOND|THIRD|FOURTH|FIFTH|SIXTH|SEVENTH|EIGHTH|NINTH|TENTH|LAST)"
+SECTION_ACT = re.compile(r"^[\W_]*(?:ACT(?:US)?\.?\s+%s\b|(?:THE\s+)?%s\s+ACT\b)" % (_SEC_NUM, _SEC_ORD), re.I)
+SECTION_SCENE = re.compile(r"^[\W_]*(?:SC(?:ENE|ENA|OENA)\.?\s+%s\b|(?:THE\s+)?%s\s+SCENE\b)" % (_SEC_NUM, _SEC_ORD),
+                           re.I)
+SECTION_PART = re.compile(r"^[\W_]*(?:PROLOGUE|EPILOGUE|INDUCTION)[\W_]*$", re.I)
+
+
+def section_level(text):
+    """'act', 'scene', 'part' (prologue, epilogue, induction), or None, from a block's first line."""
+    first = (text or "").strip().split("\n")[0].strip()
+    if SECTION_ACT.match(first):
+        return "act"
+    if SECTION_SCENE.match(first):
+        return "scene"
+    if SECTION_PART.match(first):
+        return "part"
+    return None
+
+
 # Lists that belong to the cast list without starting another one ("COSTUMES.").
 CASTSUB = re.compile(r"^_?(COSTUMES?|PROPERTIES|SCENERY|TIME OF (?:PLAYING|PERFORMANCE|REPRESENTATION))_?\.?:?\s*$",
                      re.I)
@@ -672,13 +696,19 @@ def parse(raw, kind, title=None):
     if kind == "stage":
         _title_block_is_not_a_speech(raw, items, title)
     lines, roles, unclassified = [], collections.OrderedDict(), []
+    sections, pending = [], []
     for it in items:
+        if it["kind"] == "heading" and section_level(it["source"]):
+            pending.append(it["source"])
         if it["kind"] in ("cast", "heading", "note", "front", "back"):
             continue
         if it["kind"] == "other":
             unclassified.append(it["source"])
             continue
         lid = f"L{len(lines) + 1:04d}"
+        # A printed heading the parser sets aside is kept, verbatim, as a section at the line it opens.
+        sections.extend({"line": lid, "source": src} for src in pending)
+        pending = []
         if it["kind"] == "speech":
             parts = (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
             r = roles.setdefault(it["role"], {"name": it["role"], "lines": 0, "words": 0})
@@ -712,7 +742,7 @@ def parse(raw, kind, title=None):
                                           "several_plays_in_one_text", "mostly_set_aside", "role_only_before_play"))
     return {"status": "parsed", "clean": clean, "issues": issues, "roles": list(roles.values()),
             "castable_roles": len(castable), "lines": lines, "unclassified": unclassified,
-            "unclassified_share": round(share, 3), "aliases": aliases, "words": len(text.split()),
+            "unclassified_share": round(share, 3), "aliases": aliases, "sections": sections, "words": len(text.split()),
             "set_aside": {k: sum(1 for i in items if i["kind"] == k) for k in ("front", "back")},
             "set_aside_share": round(aside_share, 3), "printed_title": printed_title(text, lines)}
 

@@ -269,6 +269,16 @@ The only shapes; a new one needs a new rule.
   first card, never the heading. No bio is written (R13). Back pops to Detail
   or Search (§1.5).
 
+- **§4.13 Scripts on the TV: a read-along panel only** (Decision 076: "TVs get a
+  read-along panel only"; PLAYS-DESIGN §2.7 is the reader everywhere else). No
+  Read door, no pages, no contents, no search, no marks, no recording. When a
+  production's Listen Through plays (§4.12), and later an episode whose script we
+  may show, a panel under the transport shows the current line with one before
+  and one after, at 29 pt or larger (the body floor), the speaker's name in the
+  part's hue, "Device voice" beside a line the device reads. It follows the
+  audio by line id (the same `follow(line)` seam as the readers) and never takes
+  focus: focus stays on the transport. Planned, not built (PARITY.md ⏳).
+
 ## §5 The player
 
 - **§5.1 One engine**, the shared `AudioPlayer`, with the `.playback`

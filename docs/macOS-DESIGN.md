@@ -204,6 +204,27 @@ only here:
   the window. Coming back to the app re-reads the record. The invitation shows in
   Library's Ear dramas in the main window, and Open or Take Part opens
   the production's own window.
+- **§4.7 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 binding on
+  the verbs; `docs/iOS-DESIGN.md` §4.15 for the shared SwiftUI view; port spec
+  `docs/research/design/R2-reader-port-brief.md`). **Read** on a play's page,
+  Today's Play and each Record tile opens the script in **its own window**
+  (`WindowGroup(for: ScriptReaderID.self)`, one per script, restored with the
+  window), never a sheet: a Mac reads in a resizable window. A `NavigationSplitView`
+  with **Contents** as the sidebar (acts with their scenes, the one holding the
+  position selected; toggle with the standard sidebar button) and the pages as
+  the detail; the toolbar carries **I'm Playing** (a `Picker`), Next Line, Hide
+  My Lines, Search (`.searchable` in the toolbar, results as a popover list) and
+  Text (a popover: size, spacing, Pages / Scroll).
+  - **Pages by default**, two facing pages once the detail is 900 pt wide or
+    more (most windows), one when narrower; a slide on turn. Keys through a
+    **Reader** menu (`.commands`, `FocusedValues`): → ← ↓ ↑, Page Down/Up,
+    Space and Shift-Space, Home and End, J and K for my next and previous line,
+    ⌘F Search, ⌘+ and ⌘− text size, ⌘0 the default size; a trackpad two-finger
+    swipe turns; a click on the outer fifth of a page turns. **Scroll** is a
+    setting.
+  - The position is a line id per script in `UserDefaults`, kept through
+    window resizes and text size changes (re-paginate, return to the line).
+  - The studio (S3) becomes the window's `.inspector`; the reader is the same.
 
 ## §5 The player
 

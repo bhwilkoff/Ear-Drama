@@ -2,7 +2,8 @@
 Gutenberg play whose rights are castable AND whose text parses clean, as an index plus
 one script file per play. Nothing here writes a word; each script is the parser's exact
 slices (build_castable_scripts.script_entry), so a play the apps already bundle comes out
-byte-identical here (same id, same revision).
+here with the same id and revision (and the same entry as a fresh bundle build; the shipped
+bundle predates `sections`, Decision 076 S0).
 
     python3 tools/harvest_gutenberg_plays.py --rsync-castable   # caches every cleared text
     python3 tools/build_play_library.py                         # writes out/plays-library/
@@ -249,6 +250,9 @@ def index_row(entry):
         "authors": [a["display"] for a in entry["authors"] if a.get("display")],
         "voices": voices,
         "roles": len(entry["roles"]),
+        # Each named role's speeches, largest first: the cast window and fingerprint a list draws
+        # without fetching the script (Decision 076, WEB-DESIGN §4.15).
+        "cast": sorted((r["lines"] for r in entry["roles"]), reverse=True),
         "lines": sum(1 for l in entry["lines"] if l["kind"] == "speech"),
         "words": words,
         "minutes": max(1, math.ceil(words / WORDS_PER_MINUTE)),

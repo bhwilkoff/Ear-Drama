@@ -139,6 +139,40 @@ def the_check_fails_without_rights_evidence():
         raise AssertionError("a play with no rights evidence passed the check")
 
 
+GOLDEN_SECTIONS = os.path.join(os.path.dirname(__file__), "golden", "script_sections.json")
+
+
+@case
+def section_headings_agree_with_the_golden_cases():
+    for c in json.load(open(GOLDEN_SECTIONS))["cases"]:
+        assert P.section_level(c["text"]) == c["level"], (c["text"], P.section_level(c["text"]), c["level"])
+
+
+@case
+def a_printed_act_heading_the_parser_sets_aside_is_a_section():
+    text = stage("ACTS").replace("SCENE: The kitchen.", "ACT I.\n\nSCENE: The kitchen.")
+    half = text.index("SHERIFF. Answer 30,")
+    text = text[:half] + "ACT II.\n\n" + text[half:]
+    parsed = P.parse(text, "stage")
+    secs = parsed["sections"]
+    assert [s["source"] for s in secs] == ["ACT I.", "ACT II."], secs
+    ids = [l["id"] for l in parsed["lines"]]
+    assert secs[0]["line"] == ids[0], (secs[0], ids[:2])
+    second = next(l for l in parsed["lines"] if "Answer 30," in (l.get("source") or ""))
+    assert secs[1]["line"] == second["id"], (secs[1], second["id"])
+    entry = B.script_entry(L.R.from_gutenberg(PLAYS[0]), L.R.judge(L.R.from_gutenberg(PLAYS[0]), CTX), parsed)
+    assert entry["sections"] == secs
+    plain = B.script_entry(L.R.from_gutenberg(PLAYS[0]), L.R.judge(L.R.from_gutenberg(PLAYS[0]), CTX), P.parse(TEXTS["1"], "stage"))
+    assert "sections" not in plain, "a play with no printed heading carries no sections key"
+
+
+@case
+def an_index_row_carries_its_cast_largest_first():
+    entries, _ = fixture_build()
+    row = L.index_row(entries[0])
+    assert row["cast"] == sorted((r["lines"] for r in entries[0]["roles"]), reverse=True) and len(row["cast"]) == row["roles"]
+
+
 @case
 def the_real_artifact_has_the_documented_shape():
     if not os.path.exists(os.path.join(L.OUT, "index.json")):
