@@ -614,6 +614,20 @@ def stub_check(text, items=None):
     return None
 
 
+def roles_only_before_play(items):
+    """Castable roles whose every speech comes before the play's first cast list or act/scene
+    heading: front matter read as dialogue, so the role is not in the play."""
+    mark = next((k for k, it in enumerate(items) if it["kind"] == "cast" or (it["kind"] == "heading" and (
+        PLAY_MARK.match(it["source"]) or LATIN_HEAD.match(it["source"])))), None)
+    if mark is None:
+        return []
+    at = {}
+    for k, it in enumerate(items):
+        if it["kind"] == "speech":
+            at.setdefault(it["role"], []).append(k)
+    return [role for role, ks in at.items() if len(ks) >= CASTABLE_LINES and max(ks) < mark]
+
+
 def parse(raw, kind):
     """kind: "radio" (a broadcast script) or "stage" (a Gutenberg play text)."""
     text = gutenberg_body(raw) if kind == "stage" or GUT_START.search(raw) else raw
@@ -668,8 +682,10 @@ def parse(raw, kind):
         issues.append("mostly_set_aside")
     if aliases:
         issues.append("possible_aliases")
+    if kind == "stage" and roles_only_before_play(items):
+        issues.append("role_only_before_play")
     clean = not any(i in issues for i in ("unclassified_over_5pct", "fewer_than_two_castable_roles",
-                                          "several_plays_in_one_text", "mostly_set_aside"))
+                                          "several_plays_in_one_text", "mostly_set_aside", "role_only_before_play"))
     return {"status": "parsed", "clean": clean, "issues": issues, "roles": list(roles.values()),
             "castable_roles": len(castable), "lines": lines, "unclassified": unclassified,
             "unclassified_share": round(share, 3), "aliases": aliases, "words": len(text.split()),

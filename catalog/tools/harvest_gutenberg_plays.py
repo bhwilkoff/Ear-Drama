@@ -20,6 +20,12 @@ the source year LibriVox recorded for its reading of this exact text.
 
     python3 tools/harvest_gutenberg_plays.py            # catalog + RDF, no texts
     python3 tools/harvest_gutenberg_plays.py --texts 20 # plus a seeded sample of texts
+    python3 tools/harvest_gutenberg_plays.py --rsync-castable   # every rights-cleared play's text, one rsync session
+
+Decision 075: the library is every rights-cleared play that parses clean. Texts for all of
+them come over the project's own rsync mirror (aleph.gutenberg.org::gutenberg, the route its
+mirroring page documents for bulk copies): one session, a file list of the three plain-text
+names per id, no per-file website requests.
 Output: .cache/gutenberg/plays.json
 """
 import bz2
@@ -30,6 +36,8 @@ import json
 import os
 import random
 import re
+import shutil
+import subprocess
 import sys
 import tarfile
 import time
@@ -175,6 +183,52 @@ def fetch_text(pid):
     return None
 
 
+RSYNC = "aleph.gutenberg.org::gutenberg"
+
+
+def rsync_dir(pid):
+    return "/".join(pid[:-1]) if len(pid) > 1 else "0"
+
+
+def rsync_texts(pids):
+    """Fetch the plain texts of `pids` that are not cached, in one rsync session. Of the names a
+    book may carry, -0.txt (UTF-8) wins over .txt over -8.txt, as fetch_text's order does."""
+    todo = [p for p in sorted(pids) if not os.path.exists(text_path(p))]
+    if not todo:
+        return 0
+    stage = os.path.join(ia.CACHE, "gutenberg", "rsync")
+    os.makedirs(stage, exist_ok=True)
+    names = [f"{rsync_dir(p)}/{p}/{p}{suf}.txt" for p in todo for suf in ("-0", "", "-8")]
+    listing = os.path.join(stage, "files-from.txt")
+    with open(listing, "w") as f:
+        f.write("\n".join(names) + "\n")
+    # Exit 23/24 mean some listed names do not exist (a book has one of three names): expected.
+    r = subprocess.run(["rsync", "-rt", "--files-from", listing, "--timeout=120", RSYNC + "/", stage + "/"],
+                       capture_output=True, text=True)
+    if r.returncode not in (0, 23, 24):
+        raise SystemExit(f"rsync failed ({r.returncode}): {r.stderr[-400:]}")
+    got = 0
+    for p in todo:
+        for suf in ("-0", "", "-8"):
+            src = os.path.join(stage, rsync_dir(p), p, f"{p}{suf}.txt")
+            if os.path.exists(src):
+                os.makedirs(os.path.dirname(text_path(p)), exist_ok=True)
+                shutil.copyfile(src, text_path(p))
+                got += 1
+                break
+    shutil.rmtree(stage)
+    return got
+
+
+def castable_ids(plays):
+    import datetime
+    import script_rights as R
+    ev = json.load(open(R.EDITORIAL))
+    ren = json.load(gzip.open(os.path.join(R.CACHE, "cce_drama_renewals.json.gz"), "rt"))
+    ctx = {"renewals": R.renewal_index(ren), "takedowns": ev.get("takedowns", {}), "today": datetime.date.today()}
+    return [p["id"][4:] for p in plays if R.judge(R.from_gutenberg(p), ctx)["castable"]]
+
+
 def front_matter_year(path):
     t = open(path, encoding="utf-8", errors="replace").read()
     a = re.search(r"\*\*\* ?START OF TH(?:E|IS) PROJECT GUTENBERG[^\n]*\n", t)
@@ -232,6 +286,11 @@ def main():
             if y and (p["year"] is None or y < p["year"]):
                 p["year"], p["year_basis"] = y, "front_matter_copyright"
                 p["evidence"].append({"claim": line[:160], "src": p["source_url"]})
+    if "--rsync-castable" in sys.argv:
+        ids = castable_ids(plays)
+        got = rsync_texts(ids)
+        have = sum(os.path.exists(text_path(p)) for p in ids)
+        print(f"rights-cleared {len(ids)}, fetched {got}, cached {have}", file=sys.stderr)
     ia.write_json(os.path.join(out, "plays.json"), {"catalog_rows": len(cat), "drama_all_languages": len(drama),
                                                    "english": len(english), "rdf_read": len(rdf), "plays": plays})
     print(f"{len(cat)} texts, {len(drama)} drama, {len(english)} English, {len(rdf)} RDF records", file=sys.stderr)

@@ -16,6 +16,11 @@ rsync -a --exclude='/.git' --exclude='/.github' --exclude='/.claude' --exclude='
 cp -R "$web" "$out/data"
 mkdir -p "$out/data/plays"
 cp catalog/plays/castable-scripts.json "$out/data/plays/"
+# The full play library (Decision 075), when this run built one: index.json + scripts/<id>.json.
+if [ -s catalog/out/plays-library/index.json ]; then
+  mkdir -p "$out/data/plays/library"
+  cp -R catalog/out/plays-library/. "$out/data/plays/library/"
+fi
 # A real page at every served /series/{key} and /episode/{id}, so a preview bot reads a 200 with a
 # card; a path it does not write stays with 404.html.
 # The finished ear dramas come from the Worker's open listing; if it cannot be read, the drama

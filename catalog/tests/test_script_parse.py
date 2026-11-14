@@ -582,8 +582,9 @@ GUTENBERG_TEXTS = os.path.join(os.path.dirname(__file__), "..", ".cache", "guten
 
 @case
 def cached_texts_no_castable_role_lives_only_before_the_play():
-    """Shape only, over every cached text: a castable role (5+ lines) never has all its
-    lines before the play's first cast list or act/scene heading."""
+    """Shape only, over every cached text: a castable role (5+ lines) with all its lines
+    before the play's first cast list or act/scene heading makes the parse unclean (the
+    full 1,721-text cache has 78 such texts, 2026-11-14)."""
     import glob
     files = sorted(glob.glob(os.path.join(GUTENBERG_TEXTS, "*.txt")))
     if not files:
@@ -591,17 +592,10 @@ def cached_texts_no_castable_role_lives_only_before_the_play():
         return
     bad = []
     for f in files:
-        items, _ = P._stage_items(P.gutenberg_body(open(f, encoding="utf-8", errors="replace").read()))
-        mark = next((k for k, it in enumerate(items) if it["kind"] == "cast" or (it["kind"] == "heading" and (
-            P.PLAY_MARK.match(it["source"]) or P.LATIN_HEAD.match(it["source"])))), None)
-        if mark is None:
-            continue
-        at = {}
-        for k, it in enumerate(items):
-            if it["kind"] == "speech":
-                at.setdefault(it["role"], []).append(k)
-        bad += [(os.path.basename(f), role) for role, ks in at.items() if len(ks) >= P.CASTABLE_LINES
-                and max(ks) < mark]
+        raw = open(f, encoding="utf-8", errors="replace").read()
+        items, _ = P._stage_items(P.gutenberg_body(raw))
+        if P.roles_only_before_play(items) and P.parse(raw, "stage").get("clean"):
+            bad.append(os.path.basename(f))
     assert not bad, bad
 
 
