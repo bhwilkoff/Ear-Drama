@@ -2,7 +2,7 @@
 import SwiftUI
 
 // Record (iOS-DESIGN §4.14, macOS-DESIGN §3.1, Decision 075): the section for making an ear drama. Yours,
-// Today's play, the plays by voices, length and kind, then Made here. Not compiled for the TV: it has no
+// Today's Scene (Decision 079), the plays by voices, length and kind, then Made here. Not compiled for the TV: it has no
 // microphone and records nothing (tvOS-DESIGN §2.1).
 
 struct RecordScreen: View {
@@ -26,8 +26,8 @@ struct RecordScreen: View {
                     .gridRow()
                 }
             case .ready:
-                if let row = PlayBrowse.todaysPlay(plays.rows, dateKey: RadioClock.localDate()) {
-                    PageSection { TodaysPlayBoard(row: row).gridRow() }
+                if let row = PlayScript.todaysScene(plays.rows, dateKey: RadioClock.localDate()) {
+                    PageSection { TodaysSceneCard(row: row).gridRow() }
                 }
                 PlaysLibrarySection(scripts: plays.rows, filter: $filter)
             }

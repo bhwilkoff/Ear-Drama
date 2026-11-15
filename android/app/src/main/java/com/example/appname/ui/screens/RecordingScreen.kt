@@ -59,7 +59,6 @@ import com.example.appname.plays.RecordingSession.Phase
 import com.example.appname.plays.Relay
 import com.example.appname.plays.SystemStandInVoice
 import com.example.appname.plays.TakeAudio
-import com.example.appname.ui.AccountRow
 import com.example.appname.ui.rememberCast
 import com.example.appname.ui.rememberDeviceVoices
 import com.example.appname.ui.Haptic
@@ -100,9 +99,12 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
     var refusal by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(Unit) {
+        plays.store.hold(productionId)
         onDispose {
             session?.end()
             voice?.close()
+            plays.store.release(productionId)
+            plays.leftStudio(productionId)
         }
     }
 
@@ -141,10 +143,7 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
         if (granted) begin(pendingEcho) else preflight = Preflight.MicrophoneDenied
     }
 
-    val account by container.accounts.account.collectAsState()
-
     fun start(echoCancelled: Boolean) {
-        if (account == null) return
         pendingEcho = echoCancelled
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             begin(echoCancelled)
@@ -197,7 +196,6 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
                     haptics = haptics,
                 )
                 else -> StartPanel(
-                    signedIn = account != null,
                     preflight = preflight,
                     failure = (phase as? Phase.Failed)?.message,
                     onStart = { start(echoCancelled = false) },
@@ -215,7 +213,6 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
 
 @Composable
 private fun StartPanel(
-    signedIn: Boolean,
     preflight: Preflight,
     failure: String?,
     onStart: () -> Unit,
@@ -228,10 +225,6 @@ private fun StartPanel(
         verticalArrangement = Arrangement.spacedBy(Spacing.S4.dp, Alignment.CenterVertically),
     ) {
         when {
-            !signedIn -> {
-                Text("Recording needs an account.", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                AccountRow()
-            }
             preflight == Preflight.Ready -> {
                 Icon(Icons.Filled.Headphones, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
                 Button(onClick = onStart, colors = recordButtonColors()) {

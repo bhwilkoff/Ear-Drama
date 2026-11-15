@@ -367,6 +367,7 @@ struct ProductionWindow_macOS: View {
                            replacing: replacing)
             }
             .navigationTitle(production.title)
+            .modifier(ProductionPresenceModifier(id: productionID))
         } else {
             EmptyState("Production not found", systemImage: "questionmark.square.dashed")
         }

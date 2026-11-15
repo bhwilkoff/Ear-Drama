@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -50,6 +51,24 @@ class TodaysPlayTest {
             val ids = (o["ids"] as? JsonArray) ?: g["ids"]!!.jsonArray
             val date = o["date"]!!.jsonPrimitive.content
             assertEquals(date, o["want"]!!.jsonPrimitive.contentOrNull, PlayScript.todaysPlay(scripts(ids), date)?.id)
+        }
+    }
+
+    @Test fun `today's scene is today's play over the scene pool, case for case`() {
+        val scene = golden()["scene"]!!.jsonObject
+        val rows = scene["rows"]!!.jsonArray.map {
+            val o = it.jsonObject
+            val id = o["id"]!!.jsonPrimitive.content
+            PlayRow(id = id, title = id, voices = o["voices"]!!.jsonPrimitive.int, minutes = o["minutes"]!!.jsonPrimitive.int)
+        }
+        val cases = scene["cases"]!!.jsonArray
+        assertTrue(cases.size >= 5)
+        cases.forEach { c ->
+            val o = c.jsonObject
+            val ids = (o["ids"] as? JsonArray)?.map { it.jsonPrimitive.content }?.toSet()
+            val pool = if (ids == null) rows else rows.filter { it.id in ids }
+            val date = o["date"]!!.jsonPrimitive.content
+            assertEquals("$date ${ids ?: "all"}", o["want"]!!.jsonPrimitive.contentOrNull, PlayScript.todaysScene(pool, date)?.id)
         }
     }
 

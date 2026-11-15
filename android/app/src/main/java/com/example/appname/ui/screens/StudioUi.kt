@@ -119,12 +119,9 @@ import com.example.appname.plays.SystemStandInVoice
 import com.example.appname.plays.Take
 import com.example.appname.plays.TakeAudio
 import com.example.appname.plays.VoiceCast
-import com.example.appname.ui.AccountRow
 import com.example.appname.ui.CastHandle
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
-import com.example.appname.ui.LocalOnline
-import com.example.appname.ui.OFFLINE_LINE
 import com.example.appname.ui.VoiceChip
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.AppSemantics
@@ -316,7 +313,15 @@ fun rememberStudio(target: StudioTarget?, script: PlayScript, line: String?, han
     }
     if (model != null) {
         (model.audio as? DeviceLiveAudio)?.muted = muted
-        DisposableEffect(model) { onDispose { model.close() } }
+        DisposableEffect(model) {
+            val id = model.target.production
+            container.plays.store.hold(id)
+            onDispose {
+                model.close()
+                container.plays.store.release(id)
+                container.plays.leftStudio(id)
+            }
+        }
     }
     return model
 }
@@ -414,8 +419,6 @@ private fun StudioGateView(model: StudioModel) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val account by container.accounts.account.collectAsState()
-    val online = LocalOnline.current
     val phase by model.session.phase.collectAsState()
 
     fun begin(echo: Boolean) {
@@ -425,7 +428,6 @@ private fun StudioGateView(model: StudioModel) {
         if (granted) begin(model.pendingEcho) else model.gate = StudioGate.MicrophoneDenied
     }
     fun start(echo: Boolean) {
-        if (account == null && !model.stubbed) return
         model.pendingEcho = echo
         if (model.stubbed || ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             begin(echo)
@@ -449,10 +451,6 @@ private fun StudioGateView(model: StudioModel) {
             ) {
                 Text("Quiet, please. Recording the room.", style = MaterialTheme.typography.titleMedium)
                 Text("${p.secondsLeft}", style = MaterialTheme.typography.displaySmall)
-            }
-            account == null && !model.stubbed -> {
-                Text("Recording needs an account.", textAlign = TextAlign.Center, style = MaterialTheme.typography.titleMedium)
-                if (online) AccountRow() else Text(OFFLINE_LINE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> when (model.gate) {
                 StudioGate.Ready -> {

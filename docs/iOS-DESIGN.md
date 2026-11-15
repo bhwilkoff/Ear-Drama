@@ -282,18 +282,43 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   segmented `Picker` of "Most downloaded" and each published genre, over a
   horizontal rail of first-episode tiles, each with a Play button);
   **By Length** (Under 15 min, About 30 min, An hour; the `byLength`
-  shelves; absent while unpublished); **Record a Play** (Today's play board,
-  `PlayScript.todaysPlay`, with Record This and Parts, then Open Parts from
-  this device's productions); **This Day in Radio**; **Most Heard Voices**;
+  shelves; absent while unpublished); **Record a Play** (Today's Scene,
+  below, then Open Parts); **This Day in Radio**; **Most Heard Voices**;
   **Made Here**. Each section has its own loading, error (with Try Again)
   and offline state and is absent when its rule yields nothing.
+  - **Today's Scene** (Decision 079, owner 2026-11-15; WEB-DESIGN §4.2 item 7
+    is the shared rule; port brief `docs/research/design/R2-design-review.md`
+    §6): `PlayScript.todaysScene(rows, date)`, the `todaysPlay` hash over the
+    scene pool (two voices and at most 20 min; else 2-3 voices and at most 30;
+    else every play), golden `catalog/tests/golden/todays_play.json` `scene`.
+    One card on the drama board: the kicker "Today's Scene", the title, an
+    event line (author · N voices · About M min) linking to the play page; the
+    opening as a page on the print ground (the first four speeches, each its
+    role name in `.caption.weight(.semibold)` over its said words, three lines
+    at most, a 3 pt rule in the part's hue; `PlayScript.opening(n:)`, else the
+    index row's `opening`); then one row that never wraps: **Try a Line**
+    (`.borderedProminent` in ink, `mic`: the reader's Record path for the
+    answering voice, the second speaker of the opening, else the second part,
+    opening the studio on that part's first line with its cue underlined),
+    **Hear It** (`.bordered`: the opening read live by the play's one cast in
+    device voices, `AVSpeechSynthesizer` through `VoiceCast`, lighting the
+    speech being read; it becomes Stop, pauses the player first, stops when
+    the view goes, keeps nothing; absent with no voice) and **Read**. Record
+    a Play moves up between Start a Show and By Length.
+  - **Made Here, leading** (Decision 079; WEB-DESIGN §4.2 item 7a): while
+    there are one to five finished ear dramas, Made Here is drawn directly
+    under the three doors instead of last; at six or more it returns to the
+    end.
+  - *Replaced* (2026-11-15, Decision 079): "**Record a Play** (Today's play
+    board, `PlayScript.todaysPlay`, with Record This and Parts, ...) drawn
+    after By Length".
   - *Replaced* (2026-11-14): "a `List`: Continue listening ..., then
     Following ..., then the catalog's published shelves in order (R13)".
   - *Pending port* (2026-11-15 design review, `docs/research/design/R2-design-review.md`
     §6; WEB-DESIGN §4.2 items 1, 2 and 7, §4.15): the navigation title on Home
     is **Ear Drama**; On the air's kicker reads "On the air · {source}" after
-    an ink dot; **Record a Play** moves up between Start a Show and By Length
-    and draws **Today's Scene** in place of Today's play: `todaysScene` (the
+    an ink dot (Today's Scene and the move are built, above, Decision 079), and
+    the rest of this note: `todaysScene` (the
     `todaysPlay` hash over two voices and at most 20 min, else 2-3 voices and
     at most 30), the title block on the drama board, the first four speeches
     as a page (role name over said words, three lines at most, a rule in the
@@ -508,8 +533,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§4.14 Record** (Decision 075; the web's §4.15 is the shared rule). A
   tab whose root is a `List`: **Yours** (this device's productions and the
   shared ones not yet opened, each row "N of M lines recorded",
-  "Finished" or "Shared"; absent when empty), **Today's Play** (the board
-  with Record This and Parts), **Plays** (the castable library under a
+  "Finished" or "Shared"; a production with no take is never a row and is
+  deleted when the studio closes without one and whenever the store loads,
+  PLAYS-DESIGN §2.3 rule 3a; absent when empty), **Today's Scene** (§4.1's
+  card; *replaced* 2026-11-15: "Today's Play (the board with Record This
+  and Parts)"), **Plays** (the castable library under a
   chip bar like Browse's: Voices 1-2 / 3-5 / 6-10 / 11+, Length Under 30
   min / 30-60 min / Over an hour from `PlayScript.minutes` at 150 words a
   minute, Kind Radio play / Stage play, and "Sort: Fewest voices", a
@@ -522,7 +550,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 - **§4.15 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 is binding
   on the verbs, WEB-DESIGN §4.16 is the sibling; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** sits beside
-  Record This on a play's page, on Today's Play, and as a book button on
+  Record This on a play's page, on Today's Scene, and as a book button on
   each Record tile; it needs no account. The reader is a
   `fullScreenCover(item:)` (never `isPresented`, ios-production-gotchas)
   over the tab, so the tab bar steps aside: a toolbar with Close, the
@@ -611,8 +639,10 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
       cancel, J / K my next and previous line, R record again, Return keep.
     - Delete Unused Takes asks with a `confirmationDialog` naming the count; a
       take's Delete is a swipe action and a context-menu item, absent on the
-      chosen take. Headphones, sign-in, room tone and the microphone prompt are
-      §4.12's, shown in the dock.
+      chosen take. Headphones, room tone and the microphone prompt are
+      §4.12's, shown in the dock; no account line ever stands beside the record
+      control (Decision 079, F11). Leaving the studio with no take deletes a
+      local, unshared production (PLAYS-DESIGN §2.3 rule 3a).
   - **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 binding; web sibling WEB-DESIGN
     §4.16 item 15; port spec `docs/research/design/R2-marks-port-brief.md`). Core
     gains `MarksCore` (the anchor, `snapWords`, `pointAfter`, the overlap rules,
@@ -698,9 +728,12 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   order, and the suggested one (`Relay.next`) is `.borderedProminent`,
   the rest `.bordered`, with no caption saying why. One part records at
   a time; taking another while one records shows the refusal. At Start
-  Recording a signed-out person sees "Recording needs an account." and
-  the account sign-in buttons (§4.10's) in its place; taking a part,
-  reading along, and listening need none. Listen Through is always
+  Recording no account is asked (Decision 079; *replaced* 2026-11-15: "a
+  signed-out person sees "Recording needs an account." and the account
+  sign-in buttons"). Signed out, beginning a production while another on
+  this device holds a take shows "A second production needs an account."
+  and §4.10's sign-in buttons in a sheet instead of the studio
+  (PLAYS-DESIGN §2.3); Share asks as below. Listen Through is always
   offered: a complete play plays its rendered mix (the end marks it
   Finished); an incomplete one runs `Relay.listenPlan` live, takes from
   their files and the other speaking lines read by `AVSpeechSynthesizer`

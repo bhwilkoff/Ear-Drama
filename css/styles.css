@@ -1173,7 +1173,7 @@ li.pl-lx.sel .pl-mine { margin-left: 0; }
 }
 .account-sheet::backdrop { background: var(--color-text); opacity: 0.4; }
 .account-sheet .section-header { margin: var(--space-2) 0 var(--space-3); }
-.account-sheet .caption { margin-bottom: var(--space-4); }
+.account-sheet .caption, .account-sheet .account-reason { margin-bottom: var(--space-4); }
 .account-sheet .facts { margin-bottom: var(--space-2); }
 .account-close { display: grid; margin-left: calc(-1 * var(--space-2)); }
 .account-close svg { width: 24px; height: 24px; fill: currentColor; }

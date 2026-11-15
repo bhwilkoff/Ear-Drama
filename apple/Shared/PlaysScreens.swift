@@ -21,7 +21,7 @@ enum PlayRoute: Hashable {
 // MARK: - Record this
 
 // Record is a section of its own (Decision 075): the plays, by facet, and the person's
-// productions. Recording starts from the play's own page, Today's play, Surprise's play,
+// productions. Recording starts from the play's own page, Today's Scene, Surprise's play,
 // or an episode whose script is castable.
 
 /// "Record This" (PLAYS-DESIGN §2.1; was "Start an ear drama", Decision 075): makes the production and opens
@@ -31,11 +31,13 @@ struct StartEarDramaButton: View {
     private let scriptID: String
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AppStore.self) private var app
+    @Environment(AccountStore.self) private var account
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
     @State private var error: String?
     @State private var starting = false
+    @State private var asking = false
 
     init(script: PlayScript) {
         self.script = script
@@ -67,26 +69,41 @@ struct StartEarDramaButton: View {
                 Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(Color.semanticError)
             }
         }
+        .sheet(isPresented: $asking) { SecondProductionSheet() }
     }
 
+    /// A production with no take of this play is reused; signed out, a new one while another holds a take asks for an
+    /// account instead (PLAYS-DESIGN §2.3 rules 3 and 3a).
     private func start() async {
         starting = true
         defer { starting = false }
+        let store = plays.store
+        if let empty = StudioCore.reusableEmpty(store.productions, isShared: { store.share($0) != nil }, scriptID: scriptID) {
+            open(empty.id)
+            return
+        }
+        if StudioCore.needsAccount(productions: store.productions, signedIn: account.status != .signedOut, makingNew: true) {
+            asking = true
+            return
+        }
         do {
             let loaded = if let script { script } else { try await plays.script(id: scriptID) }
             guard let whole = loaded else {
                 error = "This play could not be found."
                 return
             }
-            let production = try plays.store.create(whole)
-            #if os(macOS)
-            openWindow(id: ProductionWindow_macOS.id, value: production.id)
-            #else
-            app.push(PlayRoute.production(production.id))
-            #endif
+            open(try store.create(whole).id)
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    private func open(_ id: String) {
+        #if os(macOS)
+        openWindow(id: ProductionWindow_macOS.id, value: id)
+        #else
+        app.push(PlayRoute.production(id))
+        #endif
     }
 }
 
@@ -313,6 +330,10 @@ struct ProductionScreen: View {
     }
 
     var body: some View {
+        content.modifier(ProductionPresenceModifier(id: id))
+    }
+
+    @ViewBuilder private var content: some View {
         if let production = plays.store.production(id), let script = plays.castScript(for: production) {
             Group {
                 if sizeClass == .regular {
@@ -340,6 +361,24 @@ struct ProductionScreen: View {
         } else {
             EmptyState("Production not found", systemImage: "questionmark.square.dashed")
         }
+    }
+}
+
+/// The productions whose cast sheet is on screen: leaving the studio never deletes one of them (PLAYS-DESIGN §2.3 rule
+/// 3a; the store's load clears it later if it stays empty).
+enum ProductionPresence {
+    private static var open: [String: Int] = [:]
+    static func shows(_ id: String) -> Bool { (open[id] ?? 0) > 0 }
+    static func appear(_ id: String) { open[id, default: 0] += 1 }
+    static func disappear(_ id: String) { open[id] = max(0, (open[id] ?? 0) - 1) }
+}
+
+struct ProductionPresenceModifier: ViewModifier {
+    let id: String
+    func body(content: Content) -> some View {
+        content
+            .onAppear { ProductionPresence.appear(id) }
+            .onDisappear { ProductionPresence.disappear(id) }
     }
 }
 

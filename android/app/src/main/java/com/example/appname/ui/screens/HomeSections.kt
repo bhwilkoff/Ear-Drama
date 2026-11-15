@@ -1,11 +1,7 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.material.icons.outlined.MenuBook
 import com.example.appname.plays.PlayLibraryFeed
-import com.example.appname.plays.PlayListing
 import com.example.appname.plays.SharedPlays
-import com.example.appname.ui.ActionRow
-import com.example.appname.ui.FoldButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -63,8 +59,6 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.HomeShelf
 import com.example.appname.data.SeriesRow
-import com.example.appname.plays.PlaysLibrary
-import com.example.appname.plays.PlayScript
 import com.example.appname.radio.HomeLive
 import com.example.appname.radio.RadioClock
 import com.example.appname.radio.RadioEvening
@@ -78,7 +72,6 @@ import com.example.appname.ui.LocalIsTelevision
 import com.example.appname.ui.LocalOnline
 import com.example.appname.ui.Loadable
 import com.example.appname.ui.OFFLINE_LINE
-import com.example.appname.ui.PlayHeadBoard
 import com.example.appname.ui.STATIONS_MEMO
 import com.example.appname.ui.ScreenMemo
 import com.example.appname.ui.SectionHeader
@@ -101,7 +94,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // Home's sections (ANDROID-DESIGN §4.1, Decision 075): On the air, the three doors, the chip rows
-// (Start a show, By length), and Today's play. Each has its own loading, error and offline state.
+// (Start a show, By length), and Record a play. Each has its own loading, error and offline state.
 
 private const val REPAINT_MS = 15_000L
 private val RailTileWidth = 220.dp
@@ -385,61 +378,6 @@ fun rememberPlayRows(): PlayLibraryFeed.Rows {
     val rows by plays.rows.collectAsState()
     LaunchedEffect(Unit) { plays.loadRows() }
     return rows
-}
-
-/**
- * Today's play (Decision 075): `todaysPlay` of the day, as the head board with its cast window,
- * then "Record this", "Parts" and Read on one row. Absent with no plays; a library that failed reads as a
- * problem line with Try again.
- */
-@Composable
-fun TodaysPlayBoard(
-    play: PlayListing,
-    onOpenScript: (String) -> Unit,
-    onOpenProduction: (String) -> Unit,
-    onRead: (String) -> Unit = {},
-) {
-    Column {
-        PlayHeadBoard(
-            play,
-            kicker = "Today\u2019s play",
-            modifier = Modifier.clickable(onClickLabel = "Open play") { onOpenScript(play.id) },
-        )
-        ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
-            StartEarDramaButton(play, onOpenProduction)
-            OutlinedButton(onClick = { onOpenScript(play.id) }, modifier = Modifier.tvFocusMark()) { Text("Parts") }
-            if (!LocalIsTelevision.current) {
-                FoldButton(Icons.Outlined.MenuBook, "Read", fit.folded, { onRead(play.id) }, description = "Read ${play.title}")
-            }
-        }
-    }
-}
-
-/** The day's play from the library, or why there is none: [Ready] null means absent. */
-@Composable
-fun TodaysPlay(
-    onOpenScript: (String) -> Unit,
-    onOpenProduction: (String) -> Unit,
-    onRead: (String) -> Unit = {},
-    heading: (@Composable () -> Unit)? = null,
-) {
-    val plays = LocalAppContainer.current.plays
-    val state = rememberPlayRows()
-    val scope = rememberCoroutineScope()
-    when (state) {
-        PlayLibraryFeed.Rows.Loading -> { heading?.invoke(); RowSpinner() }
-        PlayLibraryFeed.Rows.Unavailable -> {
-            heading?.invoke()
-            RowProblem("The plays could not be read.", onRetry = { scope.launch { plays.feed.retry(); plays.loadRows() } })
-        }
-        is PlayLibraryFeed.Rows.Ready -> {
-            val play = remember(state) { PlayScript.todaysPlay(state.rows, RadioClock.localDate()) }
-            if (play != null) {
-                heading?.invoke()
-                TodaysPlayBoard(play, onOpenScript, onOpenProduction, onRead)
-            }
-        }
-    }
 }
 
 /**

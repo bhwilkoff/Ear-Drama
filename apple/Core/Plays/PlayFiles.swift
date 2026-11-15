@@ -110,6 +110,15 @@ final class ProductionStore {
                 shares[production.id] = share
             }
         }
+        for id in StudioCore.emptyLocal(productions, isShared: { shares[$0] != nil }) { try? delete(id) }
+    }
+
+    /// Leaving the studio with no take: a local, unshared production with no take is deleted (PLAYS-DESIGN §2.3 rule
+    /// 3a). True when it went.
+    @discardableResult
+    func removeIfEmpty(_ id: String) -> Bool {
+        guard let p = production(id), StudioCore.emptyLocal([p], isShared: { shares[$0] != nil }) == [id] else { return false }
+        return (try? delete(id)) != nil
     }
 
     func shareURL(_ id: String) -> URL { folder(id).appending(path: "share.json") }

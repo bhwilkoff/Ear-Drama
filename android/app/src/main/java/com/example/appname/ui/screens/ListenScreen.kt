@@ -15,6 +15,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.focusRequester
+import com.example.appname.plays.FinishedList
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
 import com.example.appname.data.dayYears
@@ -77,9 +80,14 @@ fun ListenScreen(
     onDramas: () -> Unit = onBrowse,
     onOpenPerson: (String) -> Unit = {},
     onVoices: () -> Unit = onBrowse,
+    onOpenStudio: OpenStudio = { _, _, _, _ -> },
 ) {
     val container = LocalAppContainer.current
     val television = LocalIsTelevision.current
+    // Made here leads, under the doors, while there are one to five finished ear dramas (Decision 079).
+    val finished by container.finished.state.collectAsState()
+    LaunchedEffect(television) { if (!television) container.finished.load() }
+    val madeLeads = !television && ((finished as? FinishedList.State.Ready)?.plays?.size ?: 0) in 1..MADE_HERE_LEADS
     val today = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MM-dd")) }
     val dateLabel = remember { LocalDate.now().format(DateTimeFormatter.ofPattern("MMMM d", Locale.US)) }
     // Continue re-runs on every saved position; the rest only on a catalog swap.
@@ -141,15 +149,18 @@ fun ListenScreen(
                 }
             }
             item(key = "doors") { HomeDoors(onListen = onOpenStations, onFind = onBrowse, onRecord = onOpenRecord) }
+            if (madeLeads) item(key = "made") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
             val published = (shelves as? Loadable.Ready)?.value
             if (published == null) {
                 if (shelves is Loadable.Loading) item(key = "start-wait") { RowSpinner() }
             } else {
                 item(key = "start") { ChipShelfRow("Start a show", published.start, onOpenEpisode, onOpenSeries) }
-                item(key = "length") { ChipShelfRow("By length", published.length, onOpenEpisode, onOpenSeries) }
             }
             if (!television) {
-                item(key = "record") { TodaysPlayHome(onOpenScript, onOpenProduction, onRead) }
+                item(key = "record") { RecordAPlayHome(onOpenScript, onOpenProduction, onRead, onOpenStudio) }
+            }
+            if (published != null) {
+                item(key = "length") { ChipShelfRow("By length", published.length, onOpenEpisode, onOpenSeries) }
             }
             if (year != null && years != null && night != null && dayData != null) {
                 item(key = "day") {
@@ -201,16 +212,18 @@ fun ListenScreen(
                 }
                 item(key = "voices") { VoicesShelf(heard, onOpenPerson) }
             }
-            item(key = "made") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
+            if (!madeLeads) item(key = "made") { NewEarDramas(onOpen = onOpenDrama, onAll = onDramas) }
         }
     }
 }
 
-/** Record a play on Home: today's play with Record this and Parts, then this device's open parts. */
+private const val MADE_HERE_LEADS = 5
+
+/** Record a play on Home: today's scene with Try a line, Hear it and Read, then this person's open parts. */
 @Composable
-private fun TodaysPlayHome(onOpenScript: (String) -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit) {
+private fun RecordAPlayHome(onOpenScript: (String) -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit, onOpenStudio: OpenStudio) {
     androidx.compose.foundation.layout.Column {
-        TodaysPlay(onOpenScript, onOpenProduction, onRead, heading = { SectionHeader("Record a play") })
+        TodaysScene(onOpenScript, onRead, onOpenStudio, heading = { SectionHeader("Record a play") })
         OpenPartsRows(onOpenProduction)
     }
 }

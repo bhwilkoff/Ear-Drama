@@ -177,14 +177,17 @@ const AccountUI = (() => {
   /* ---- The account sheet: a <dialog>, opened from the row ---- */
 
   let sheet = null;
+  let reason = null;
   function ensureSheet() {
     if (sheet) return sheet;
     sheet = el('dialog', { class: 'account-sheet', 'aria-labelledby': 'account-h' });
-    sheet.addEventListener('close', () => { sheet.replaceChildren(); });
+    sheet.addEventListener('close', () => { sheet.replaceChildren(); reason = null; });
     document.body.append(sheet);
     return sheet;
   }
-  function openSheet() {
+  /** `{ reason }`: why the account is asked at this moment ("Sharing needs an account."), said in place of the caption. */
+  function openSheet(opts) {
+    reason = opts && typeof opts.reason === 'string' ? opts.reason : null;
     const d = ensureSheet();
     paintSheet();
     if (!d.open) d.showModal();
@@ -198,7 +201,8 @@ const AccountUI = (() => {
     if (!acct.signedIn()) {
       sheet.replaceChildren(close,
         el('h2', { id: 'account-h', class: 'section-header' }, 'Sign in'),
-        el('p', { class: 'caption' }, 'What this device has played is kept and added to your account.'),
+        reason ? el('p', { class: 'body account-reason' }, reason)
+          : el('p', { class: 'caption' }, 'What this device has played is kept and added to your account.'),
         signInButtons(() => { paintSheet(); if (hasSync) syncNow(); }));
       return;
     }

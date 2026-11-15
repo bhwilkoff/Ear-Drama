@@ -493,7 +493,7 @@ object PlaysShare {
      * shared ones this person is in that this device has not opened yet, newest first.
      */
     fun libraryRows(store: ShareStore, remote: List<RemoteRow>?): List<LibraryRow> {
-        val rows = store.all().map { LibraryRow(it, store.share(it.id)?.pid) }.toMutableList()
+        val rows = store.all().map { LibraryRow(it, store.share(it.id)?.pid) }.filter { it.pid != null || !it.local!!.isEmpty }.toMutableList()
         val here = rows.mapNotNull { it.pid }.toSet()
         for (r in remote.orEmpty()) if (r.id !in here) rows += LibraryRow(null, r.id, r)
         fun whenOf(r: LibraryRow): Double = r.local?.let { it.created + FOUNDATION_OFFSET_S } ?: ((r.remote?.updatedAt ?: 0) / 1000.0)

@@ -598,7 +598,8 @@
     const dayBox = el('div');
     const voicesBox = el('div');
     const madeBox = el('div', { class: 'ear-drama-only' });
-    body.replaceChildren(liveBox, contBox, homeDoors(), startBox, recordBox, lengthBox, dayBox, voicesBox, madeBox);
+    const leadBox = el('div', { class: 'ear-drama-only' });
+    body.replaceChildren(liveBox, contBox, homeDoors(), leadBox, startBox, recordBox, lengthBox, dayBox, voicesBox, madeBox);
 
     renderLiveBlock(liveBox);
     const cont = Store.inProgress(10);
@@ -634,7 +635,7 @@
         return true;
       });
     if (!onTV()) {
-      PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) madeBox.replaceChildren(sec); })
+      PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) (sec.dataset.lead ? leadBox : madeBox).replaceChildren(sec); })
         .catch((e) => console.error(e));
     }
   }
@@ -834,9 +835,10 @@
         const at = myLine && myLine.id ? `&line=${encodeURIComponent(myLine.id)}` : '';
         navigate(`?read=${encodeURIComponent(id)}&production=${encodeURIComponent(pid)}&part=${encodeURIComponent(mine)}${at}`);
       } catch (e) {
+        tryBtn.disabled = false;
+        if (Studio.askAccount(e)) return;
         console.error(e);
         err.textContent = 'This browser could not save a production.';
-        tryBtn.disabled = false;
       }
     });
     const hear = el('button', { type: 'button', class: 'btn btn-ghost pl-scene-hear', hidden: true }, 'Hear it');
@@ -2166,6 +2168,7 @@
         const id = await Studio.begin(script, p);
         navigate(`?read=${encodeURIComponent(script.id)}&production=${encodeURIComponent(id)}&part=${encodeURIComponent(p)}`, true);
       } catch (err) {
+        if (Studio.askAccount(err)) return;
         console.error(err);
         announce('This browser could not save a production.');
       }

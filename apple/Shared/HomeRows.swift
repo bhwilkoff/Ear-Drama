@@ -267,27 +267,7 @@ struct EpisodeTile: View {
 
 // MARK: - Record a play
 
-/// Today's play on its board (the cast in its window), Record This under it with Parts.
-struct TodaysPlayBoard: View {
-    let row: PlayRow
-    @Environment(AppStore.self) private var store
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s3) {
-            HeadBoard(kicker: "Today\u{2019}s play", name: row.title, genre: PlayScript.boardGenre, art: nil, first: nil,
-                      last: nil, facts: [row.authorLine, row.voicesText, row.minutesText], cast: row.cast)
-            ActionRow {
-                StartEarDramaButton(row: row)
-                ReadButton(scriptID: row.id)
-                Button { store.push(PlayRoute.script(row.id)) } label: { ActionLabel(title: "Parts", systemImage: "list.bullet") }
-                    .pageAction()
-            }
-        }
-        .accessibilityIdentifier("todays-play")
-    }
-}
-
-/// Home's Record a play: Today's play, then this device's productions with a part still open.
+/// Home's Record a play: Today's Scene (Decision 079), then the shared productions with a part still open.
 struct HomeRecordSection: View {
     @Environment(PlaysLibrary.self) private var plays
 
@@ -309,9 +289,9 @@ struct HomeRecordSection: View {
                     SectionHead(title: "Record a play") { EmptyView() }
                 }
             case .ready:
-                if let row = PlayBrowse.todaysPlay(plays.rows, dateKey: RadioClock.localDate()) {
+                if let row = PlayScript.todaysScene(plays.rows, dateKey: RadioClock.localDate()) {
                     PageSection {
-                        TodaysPlayBoard(row: row).gridRow()
+                        TodaysSceneCard(row: row).gridRow()
                     } header: {
                         SectionHead(title: "Record a play") { EmptyView() }
                     }
@@ -366,15 +346,17 @@ struct OpenPartsRows: View {
 
 // MARK: - Made here
 
-/// The finished ear dramas, newest first (the old "New ear dramas"): absent when there are none.
+/// The finished ear dramas, newest first (the old "New ear dramas"): absent when there are none. Home draws it twice,
+/// `leading` under the three doors and last, and each copy shows only where `FinishedDramas.leadsHome` puts it.
 struct MadeHereSection: View {
+    var leading: Bool? = nil
     @Environment(AppStore.self) private var store
     @State private var finished = FinishedStore.shared
     private static let count = 6
 
     var body: some View {
         Group {
-            if !finished.plays.isEmpty {
+            if !finished.plays.isEmpty, leading.map({ $0 == FinishedDramas.leadsHome(count: finished.plays.count) }) ?? true {
                 PageSection {
                     ShowGrid(items: Array(finished.plays.prefix(Self.count))) { play, width in
                         FinishedTile(play: play, width: width)

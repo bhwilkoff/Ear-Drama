@@ -308,17 +308,41 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   **Start a show** (`FilterChip`s, "Most downloaded" then each published
   genre, over a `LazyRow` of 220 dp tiles with a Play `IconButton`);
   **By length** (Under 15 min, About 30 min, An hour, from `byLength`;
-  absent while unpublished); **Record a play** (Today's play,
-  `todaysPlay` in `plays/`, as `PlayHeadBoard` with Record this and
-  Parts, then Open parts from this device's productions); **This day in
-  radio**; **Most heard voices**; **Made here**. Each section has its own
-  loading, error (Try again) and offline state; a section whose rule
-  yields nothing is not drawn.
+  absent while unpublished); **Record a play** (Today's scene, below,
+  then Open parts); **This day in radio**; **Most heard voices**; **Made
+  here**. Each section has its own loading, error (Try again) and offline
+  state; a section whose rule yields nothing is not drawn.
+  - **Today's scene** (Decision 079, owner 2026-11-15; WEB-DESIGN §4.2 item 7
+    is the shared rule; port brief `docs/research/design/R2-design-review.md`
+    §6): `todaysScene(rows, date)` in `plays/`, the `todaysPlay` hash over
+    the scene pool (two voices and at most 20 min; else 2-3 voices and at
+    most 30; else every play), golden `catalog/tests/golden/todays_play.json`
+    `scene`. One card on the drama board: the kicker "Today's scene", the
+    title, an event line (author · N voices · About M min) opening the play
+    page; the opening as a page on the print ground (the first four
+    speeches, each its role name in `labelMedium` over its said words, three
+    lines at most, a 3 dp rule in the part's hue; `openingOf`, else the index
+    row's `opening`); then one `Row` that never wraps: **Try a line**
+    (filled `Button` in ink, `Mic`: the reader's Record path for the
+    answering voice, the second speaker of the opening, else the second
+    part, opening the studio on that part's first line with its cue
+    underlined), **Hear it** (`OutlinedButton`: the opening read live by the
+    play's one cast in device voices through `TextToSpeech`, lighting the
+    speech being read; it becomes Stop, pauses the player first, stops when
+    the screen leaves, keeps nothing; absent with no voice) and **Read**.
+    Record a play moves up between Start a show and By length. Not on a TV.
+  - **Made here, leading** (Decision 079; WEB-DESIGN §4.2 item 7a): while
+    there are one to five finished ear dramas, Made here is drawn directly
+    under the three doors instead of last; at six or more it returns to the
+    end.
+  - *Replaced* (2026-11-15, Decision 079): "**Record a play** (Today's play,
+    `todaysPlay` in `plays/`, as `PlayHeadBoard` with Record this and
+    Parts, ...) drawn after By length".
   - *Pending port* (2026-11-15 design review, `docs/research/design/R2-design-review.md`
     §6; WEB-DESIGN §4.2 items 1, 2 and 7, §4.15): the top app bar title on Home
     is **Ear Drama**; On the air's kicker reads "On the air · {source}" after
-    an ink dot; **Record a play** moves up between Start a show and By length
-    and draws **Today's scene** in place of Today's play: `todaysScene` (the
+    an ink dot (Today's scene and the move are built, above, Decision 079),
+    and the rest of this note: `todaysScene` (the
     `todaysPlay` hash over two voices and at most 20 min, else 2-3 voices and
     at most 30), the title block on the drama board, the first four speeches
     as a page (role name over said words, three lines at most, a rule in the
@@ -441,10 +465,14 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   words on screen and "Device voice" on those lines, and a Stop; a live
   listen writes nothing and never marks the play listened through.
   Export shows whenever the play is complete, rendering the mix if it
-  is missing or stale, with no caption. Recording needs an account:
-  signed out, the Start recording step shows "Recording needs an
-  account." and the Library account row's sign-in sheet instead of the
-  button; taking a part, reading, and listening need none. Recording asks for the microphone at Start recording,
+  is missing or stale, with no caption. Recording needs no account
+  (Decision 079; *replaced* 2026-11-15: "signed out, the Start recording
+  step shows "Recording needs an account." and the Library account row's
+  sign-in sheet instead of the button"), and no account line stands
+  beside the record control (F11). Signed out, beginning a
+  production while another on this device holds a take shows "A second
+  production needs an account." and the account row's sign-in sheet
+  instead of the studio (PLAYS-DESIGN §2.3). Recording asks for the microphone at Start recording,
   checks the route (headphones, or a refusal line with "Record without
   headphones", which turns on echo cancellation and marks the takes
   `aec`), counts five seconds of room tone, then opens the recorder in
@@ -605,8 +633,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
 - **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;
   not on a TV). The tab's root is a `LazyColumn`: **Yours** (this device's
   productions and the shared ones not yet opened, each "n of m lines
-  recorded", "Finished" or "Shared"; absent when empty), **Today's play**
-  (`PlayHeadBoard` with Record this and Parts), **Plays** under a row of
+  recorded", "Finished" or "Shared"; a production with no take is never a
+  row and is deleted when the studio closes without one and whenever the
+  store loads, PLAYS-DESIGN §2.3 rule 3a; absent when empty), **Today's
+  scene** (§4.1's card; *replaced* 2026-11-15: "Today's play
+  (`PlayHeadBoard` with Record this and Parts)"), **Plays** under a row of
   `FilterChip`s with menus (Voices 1-2 / 3-5 / 6-10 / 11+; Length Under
   30 min / 30-60 min / Over an hour, `minutesOf` at 150 words a minute;
   Kind Radio play / Stage play; Sort Fewest voices, Shortest, A to Z),

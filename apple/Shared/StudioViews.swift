@@ -39,6 +39,7 @@ final class StudioModel {
     /// Set when the part is done and the studio should close.
     var finished = false
     @ObservationIgnored private var doorTaken = false
+    @ObservationIgnored private var ended = false
     @ObservationIgnored private let audio: LiveAudio
     @ObservationIgnored private let store: ProductionStore
     @ObservationIgnored let stubbed: Bool
@@ -60,6 +61,7 @@ final class StudioModel {
         session.setMode(.remembered())
         studio = StudioController(session: session, store: plays.store, line: line)
         listen = .system(cast: .production(production.id, script: script))
+        ProductionPresence.appear(production.id)
     }
 
     var shared: Bool { store.share(target.production) != nil }
@@ -80,8 +82,7 @@ final class StudioModel {
     }
 
     /// The microphone is asked for here, at Start Recording, never at launch; the route is checked and refused (§4.3).
-    func begin(echoCancelled: Bool, signedIn: Bool, player: AudioPlayer) async {
-        guard signedIn || stubbed else { return }
+    func begin(echoCancelled: Bool, player: AudioPlayer) async {
         if !stubbed {
             guard await AVAudioApplication.requestRecordPermission() else {
                 gate = .microphoneDenied
@@ -142,10 +143,34 @@ final class StudioModel {
         }
     }
 
-    /// Leaving the reader ends the session and closes the microphone, as leaving the recorder did.
+    /// Signed out, a production with no take while another on this device holds one is a second production: the gate
+    /// asks for an account in place of Start Recording (PLAYS-DESIGN §2.3 rule 3; the reader's own Record lands here).
+    func needsAccount(signedIn: Bool) -> Bool {
+        guard !stubbed else { return false }
+        let empty = !(store.production(target.production)?.hasTake ?? false)
+        return StudioCore.needsAccount(productions: store.productions, signedIn: signedIn, makingNew: empty)
+    }
+
+    /// Leaving the reader ends the session and closes the microphone, as leaving the recorder did. A local, unshared
+    /// production left with no take is deleted (rule 3a) once any take still being written has landed, and never while
+    /// its cast sheet is on screen.
     func end() {
         listen.stop()
         session.end()
+        guard !ended else { return }
+        ended = true
+        let store = store, session = session, id = target.production
+        ProductionPresence.disappear(id)
+        Task {
+            var waited = 0
+            while session.isBusy, waited < 40 {
+                try? await Task.sleep(for: .milliseconds(250))
+                waited += 1
+            }
+            try? await Task.sleep(for: .seconds(2))
+            guard !ProductionPresence.shows(id) else { return }
+            store.removeIfEmpty(id)
+        }
     }
 
     /// APP_STUDIO_PHASE with the stub engine only (DEBUG): idle starts the studio, listening opens a take on the current
@@ -153,7 +178,7 @@ final class StudioModel {
     func openDoor(player: AudioPlayer) async {
         guard stubbed, !doorTaken, let phase = StudioDoor.current.phase else { return }
         doorTaken = true
-        await begin(echoCancelled: false, signedIn: true, player: player)
+        await begin(echoCancelled: false, player: player)
         switch phase {
         case "listening":
             setMode(.lines)
@@ -303,8 +328,8 @@ struct StudioControls: View {
                     Text(verbatim: "\(seconds)").font(TypeRamp.sectionHeader).monospacedDigit()
                 }
                 .accessibilityElement(children: .combine)
-            } else if !account.isSignedIn && !model.stubbed {
-                Text("Recording needs an account.").font(TypeRamp.bodyStrong)
+            } else if model.needsAccount(signedIn: account.status != .signedOut) {
+                Text("A second production needs an account.").font(TypeRamp.bodyStrong)
                 if catalog.isOnline {
                     if account.status == .signedOut { SignInButtons().frame(maxWidth: 320) }
                 } else {
@@ -315,7 +340,7 @@ struct StudioControls: View {
                 switch model.gate {
                 case .ready:
                     Button {
-                        Task { await model.begin(echoCancelled: false, signedIn: account.isSignedIn, player: player) }
+                        Task { await model.begin(echoCancelled: false, player: player) }
                     } label: {
                         Label("Start Recording", systemImage: "mic").frame(maxWidth: 320)
                     }
@@ -329,16 +354,16 @@ struct StudioControls: View {
                 case .needsHeadphones:
                     Text("Plug in headphones.").foregroundStyle(Color.semanticError)
                     HStack {
-                        Button("Check Again") { Task { await model.begin(echoCancelled: false, signedIn: account.isSignedIn, player: player) } }
+                        Button("Check Again") { Task { await model.begin(echoCancelled: false, player: player) } }
                             .buttonStyle(.play(.way))
                         Button("Record Without Headphones") {
-                            Task { await model.begin(echoCancelled: true, signedIn: account.isSignedIn, player: player) }
+                            Task { await model.begin(echoCancelled: true, player: player) }
                         }
                         .buttonStyle(.play(.way))
                     }
                 case .airPlay:
                     Text("AirPlay delays sound too much to record. Choose headphones.").foregroundStyle(Color.semanticError)
-                    Button("Check Again") { Task { await model.begin(echoCancelled: false, signedIn: account.isSignedIn, player: player) } }
+                    Button("Check Again") { Task { await model.begin(echoCancelled: false, player: player) } }
                         .buttonStyle(.play(.way))
                 }
             }

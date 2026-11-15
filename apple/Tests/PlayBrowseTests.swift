@@ -39,6 +39,57 @@ struct PlayBrowseTests {
         }
     }
 
+    @Test func todaysSceneMatchesTheGoldenFile() throws {
+        let data = try Data(contentsOf: repoRoot.appendingPathComponent("catalog/tests/golden/todays_play.json"))
+        let golden = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let scene = try #require(golden["scene"] as? [String: Any])
+        let rows = try #require(scene["rows"] as? [[String: Any]]).map { r in
+            try JSONDecoder().decode(PlayRow.self, from: JSONSerialization.data(withJSONObject: r.merging(["title": "T"]) { a, _ in a }))
+        }
+        let cases = try #require(scene["cases"] as? [[String: Any]])
+        #expect(cases.count >= 10)
+        var differs = false
+        for c in cases {
+            let date = try #require(c["date"] as? String)
+            let pool = (c["ids"] as? [String]).map { ids in rows.filter { ids.contains($0.id) } } ?? rows
+            #expect(PlayScript.todaysScene(pool, dateKey: date)?.id == c["want"] as? String, "\(date) over \(pool.count)")
+            if c["ids"] == nil, PlayBrowse.todaysPlay(rows, dateKey: date)?.id != c["want"] as? String { differs = true }
+        }
+        #expect(differs, "control: the scene is not today's play over every row")
+    }
+
+    @Test func sceneFallsBackThroughThePools() throws {
+        func row(_ id: String, _ voices: Int, _ minutes: Int) throws -> PlayRow {
+            try JSONDecoder().decode(PlayRow.self, from: Data(#"{"id":"\#(id)","title":"T","voices":\#(voices),"minutes":\#(minutes)}"#.utf8))
+        }
+        let lib = [try row("long2", 2, 255), try row("a", 2, 12), try row("b", 2, 17), try row("c", 3, 25), try row("big", 12, 175)]
+        #expect(PlayBrowse.scenePool(lib).map(\.id) == ["a", "b"])
+        #expect(PlayBrowse.scenePool([lib[0], lib[3], lib[4]]).map(\.id) == ["c"])
+        #expect(PlayBrowse.scenePool([lib[0], lib[4]]).count == 2)
+        #expect(PlayScript.todaysScene([PlayRow](), dateKey: "2026-11-15") == nil)
+    }
+
+    @Test func theOpeningIsSaidWordsCleaned() throws {
+        let script = PlayScript(id: "o", revision: "r1", kind: "stage", title: "T", authors: [],
+                                source: .init(name: "S", url: "https://example.org"),
+                                rights: .init(bucket: "script_source_cleared", evidence: []), roles: [],
+                                lines: [ScriptLine(id: "L1", kind: .direction, source: "_Night._"),
+                                        ScriptLine(id: "L2", kind: .speech, role: "JIM", parts: [.direction("low"), .say("That's  a _full_ one.")]),
+                                        ScriptLine(id: "L3", kind: .speech, role: "BILL", parts: [.direction("enters")]),
+                                        ScriptLine(id: "L4", kind: .speech, role: "BILL", parts: [.say(". Why--hullo.")]),
+                                        ScriptLine(id: "L5", kind: .speech, role: "JIM", parts: [.say("-- Well.")])])
+        let o = script.opening(n: 4)
+        #expect(o.map { "\($0.name)|\($0.text)|\($0.lineID ?? "")" } == ["JIM|That's a full one.|L2", "BILL|Why\u{2014}hullo.|L4", "JIM|Well.|L5"])
+        #expect(o.first?.part == .role("JIM"))
+        #expect(script.opening(n: 1).count == 1)
+        let json = #"{"id":"x","title":"T","opening":[{"role":"A","text":"One."},{"role":"B","text":" "},{"role":"B","text":"Two."}]}"#
+        let row = try JSONDecoder().decode(PlayRow.self, from: Data(json.utf8))
+        #expect(row.opening(n: 4).map { $0.name + $0.text } == ["AOne.", "BTwo."])
+        #expect(row.opening(n: 4).allSatisfy { $0.lineID == nil })
+        let bare = try JSONDecoder().decode(PlayRow.self, from: Data(#"{"id":"y","title":"T","voices":2}"#.utf8))
+        #expect(bare.opening(n: 4).isEmpty, "a row published before `opening` has none")
+    }
+
     @Test func voicesMinutesAndBandsMatchTheWebValues() {
         let three = play("a", roles: [("A", 3000), ("B", 1500), ("C", 10)])
         #expect(three.voices == 3 && three.minutes == 30)
@@ -146,5 +197,87 @@ struct OnAirTests {
     @Test func nothingOnIsNoBlock() {
         #expect(OnAirNow.pick(day: nil, stations: [], now: Date(timeIntervalSince1970: 500)) == nil)
         #expect(OnAirNow.pick(day: Self.evening, stations: [Self.station], now: Date(timeIntervalSince1970: 9000)) == nil)
+    }
+}
+
+// A first take needs no account; a production with no take stays out of sight (Decision 079, PLAYS-DESIGN §2.3 rule 3a).
+struct FirstTakeTests {
+    private static func script() -> PlayScript {
+        PlayScript(id: "s", revision: "r1", kind: "radio", title: "T", authors: [], source: .init(name: "S", url: "https://example.org"),
+                   rights: .init(bucket: "script_source_cleared", evidence: []),
+                   roles: [.init(name: "A", lines: 5, words: 10), .init(name: "B", lines: 5, words: 10)],
+                   lines: [ScriptLine(id: "L1", kind: .speech, role: "A", parts: [.say("Hello.")]),
+                           ScriptLine(id: "L2", kind: .speech, role: "B", parts: [.say("Hi.")])])
+    }
+
+    private static func take(_ id: String) -> Take {
+        Take(id: id, lineID: "L1", part: .role("A"), file: "\(id).wav", created: .now, frames: 10, sampleRate: 48_000,
+             capture: .direct, heard: [:], loudness: nil, peak: 0.1, bleed: false)
+    }
+
+    private static func root() -> URL {
+        FileManager.default.temporaryDirectory.appending(path: "first-take-\(UUID().uuidString)", directoryHint: .isDirectory)
+    }
+
+    @Test func aSecondProductionAsksForAnAccountSignedOutOnly() {
+        let empty = Production(script: Self.script())
+        var taken = Production(script: Self.script())
+        taken.add(Self.take("t"))
+        #expect(!StudioCore.needsAccount(productions: [], signedIn: false, makingNew: true), "the first production needs none")
+        #expect(!StudioCore.needsAccount(productions: [empty], signedIn: false, makingNew: true), "an empty one does not count")
+        #expect(StudioCore.needsAccount(productions: [empty, taken], signedIn: false, makingNew: true))
+        #expect(!StudioCore.needsAccount(productions: [taken], signedIn: true, makingNew: true), "signed in, nothing is asked")
+        #expect(!StudioCore.needsAccount(productions: [taken], signedIn: false, makingNew: false), "continuing one asks nothing")
+        #expect(!empty.hasTake && taken.hasTake)
+    }
+
+    @Test func anEmptyProductionOfThePlayIsReused() {
+        let other = Production(id: "o", script: Self.script(), created: Date(timeIntervalSince1970: 3))
+        let old = Production(id: "e1", script: Self.script(), created: Date(timeIntervalSince1970: 1))
+        let new = Production(id: "e2", script: Self.script(), created: Date(timeIntervalSince1970: 2))
+        var taken = Production(id: "t", script: Self.script(), created: Date(timeIntervalSince1970: 4))
+        taken.add(Self.take("t"))
+        #expect(StudioCore.reusableEmpty([old, new, taken, other], isShared: { $0 == "o" }, scriptID: "s")?.id == "e2")
+        #expect(StudioCore.reusableEmpty([taken], isShared: { _ in false }, scriptID: "s") == nil)
+        #expect(StudioCore.reusableEmpty([new], isShared: { _ in false }, scriptID: "other") == nil)
+    }
+
+    @Test func theStoreDeletesEmptyUnsharedProductionsWhenItLoads() throws {
+        let store = ProductionStore(root: Self.root())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let empty = try store.create(Self.script())
+        let shared = try store.create(Self.script())
+        try store.setShare(shared.id, ProductionShare(pid: "pid-x"))
+        var taken = try store.create(Self.script())
+        taken.add(Self.take("t"))
+        try store.save(taken)
+        #expect(store.productions.count == 3, "a store already loaded keeps what it made")
+        let rows = PlaysShare.libraryRows(store, remote: [])
+        #expect(Set(rows.map(\.id)) == [shared.id, taken.id], "Yours lists a local production once it holds a take")
+        let next = ProductionStore(root: store.root)
+        #expect(Set(next.productions.map(\.id)) == [shared.id, taken.id], "the empty one is gone on the next load")
+        #expect(!FileManager.default.fileExists(atPath: next.folder(empty.id).path), "with its folder")
+    }
+
+    @Test func leavingTheStudioWithNoTakeDeletesOnlyAnEmptyUnsharedProduction() throws {
+        let store = ProductionStore(root: Self.root())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let empty = try store.create(Self.script())
+        let shared = try store.create(Self.script())
+        try store.setShare(shared.id, ProductionShare(pid: "pid-y"))
+        var taken = try store.create(Self.script())
+        taken.add(Self.take("t"))
+        try store.save(taken)
+        #expect(store.removeIfEmpty(empty.id))
+        #expect(!store.removeIfEmpty(shared.id))
+        #expect(!store.removeIfEmpty(taken.id))
+        #expect(Set(store.productions.map(\.id)) == [shared.id, taken.id])
+        #expect(!FileManager.default.fileExists(atPath: store.folder(empty.id).path))
+    }
+
+    @Test func madeHereLeadsUnderTheDoorsWhileThereAreOneToFive() {
+        #expect(!FinishedDramas.leadsHome(count: 0))
+        #expect(FinishedDramas.leadsHome(count: 1) && FinishedDramas.leadsHome(count: 5))
+        #expect(!FinishedDramas.leadsHome(count: 6))
     }
 }

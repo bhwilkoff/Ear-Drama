@@ -21,6 +21,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -184,6 +185,10 @@ fun AppRoot(
     val openDrama: (String) -> Unit = { id -> stack.navigateTo(Route.Drama(id)) }
     val openProduction: (String) -> Unit = { id -> stack.navigateTo(Route.Production(id)) }
     val openReader: (String) -> Unit = { id -> stack.navigateTo(Route.Reader(id)) }
+    val openStudio: com.example.appname.ui.screens.OpenStudio = { id, line, production, part ->
+        stack.navigateTo(Route.Reader(id, line, production, part))
+    }
+    val accountAsk by container.plays.accountAsk.collectAsState()
     // Reading is full screen (§4.17): the tab bar, the mini player and the offline line step aside.
     val reading = stack.lastOrNull() is Route.Reader
 
@@ -241,6 +246,7 @@ fun AppRoot(
                                     onOpenScript = openScript,
                                     onOpenProduction = openProduction,
                                     onRead = openReader,
+                                    onOpenStudio = openStudio,
                                 )
                             }
                             entry<Route.SeriesBrowse> {
@@ -267,6 +273,7 @@ fun AppRoot(
                                     onOpenScript = openScript, onOpenProduction = openProduction, onOpenDrama = openDrama,
                                     onDramas = { haptics(Haptic.Selection); browseDramas = true; selected = Tab.Browse },
                                     onRead = openReader,
+                                    onOpenStudio = openStudio,
                                 )
                             }
                             entry<Route.Search> {
@@ -366,5 +373,7 @@ fun AppRoot(
         if (roomSheet) {
             ListenTogetherSheet(initialCode = roomCode, onDismiss = { roomSheet = false; roomCode = "" })
         }
+        // A production that could not begin without an account (Decision 079): the reason and the sign-in, in place of the studio.
+        accountAsk?.let { why -> SignInSheet(why) { container.plays.accountAsk.value = null } }
     }
 }

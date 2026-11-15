@@ -50,7 +50,7 @@ SCENARIOS = {
     "home":        ({HOOK_START_TAB: "home"},
                     {"expect_any": r"Home"}),
     "record":      ({HOOK_START_TAB: "record"},
-                    {"expect_any": r"Today.s play|Voices|Plays|Yours"}),
+                    {"expect_any": r"Today.s (play|scene)|Voices|Plays|Yours"}),
     "search":      ({HOOK_START_TAB: "search"},
                     {"expect_any": r"Search"}),
     "item":        ({HOOK_START_ITEM: QA_ITEM_ID, HOOK_MUTE: "1"},

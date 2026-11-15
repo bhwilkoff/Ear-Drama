@@ -161,10 +161,6 @@ class ProductionStore(val root: File) : ShareStore {
     private val _productions = MutableStateFlow<List<Production>>(emptyList())
     val productions: StateFlow<List<Production>> = _productions
 
-    init {
-        load()
-    }
-
     fun folder(id: String) = File(root, id)
     fun takesFolder(id: String) = File(folder(id), "takes")
     fun roomToneFolder(id: String) = File(folder(id), "roomtone")
@@ -209,15 +205,28 @@ class ProductionStore(val root: File) : ShareStore {
         }
     }
 
+    /** Productions this store made: the studio may still be open on one, so only leaving it removes them. */
+    private val madeHere = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val holds = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    init {
+        load()
+    }
+
+    /** Reads every production, removing the empty, unshared ones an earlier visit left (PLAYS-DESIGN §2.3 rule 3a). */
     fun load() {
-        _productions.value = (root.listFiles() ?: emptyArray()).mapNotNull { dir ->
+        val read = (root.listFiles() ?: emptyArray()).sortedBy { it.name }.mapNotNull { dir ->
             val record = File(dir, "production.json")
             if (!record.isFile) null else runCatching { json.decodeFromString(Production.serializer(), record.readText()) }.getOrNull()
-        }.sortedByDescending { it.created }
+        }
+        val gone = Production.abandoned(read) { it in madeHere || holds.containsKey(it) || share(it) != null }.toSet()
+        gone.forEach { folder(it).deleteRecursively() }
+        _productions.value = read.filter { it.id !in gone }.sortedByDescending { it.created }
     }
 
     override fun create(script: PlayScript): Production {
         val production = Production.create(script)
+        madeHere += production.id
         takesFolder(production.id).mkdirs()
         roomToneFolder(production.id).mkdirs()
         writeAtomically(File(folder(production.id), "script.json"), json.encodeToString(PlayScript.serializer(), script))
@@ -248,6 +257,18 @@ class ProductionStore(val root: File) : ShareStore {
         folder(id).deleteRecursively()
         links.remove(id)
         _productions.value = _productions.value.filter { it.id != id }
+    }
+
+    /** A screen showing the production (its cast sheet, the studio) holds it, so it is never removed out from under that screen. */
+    fun hold(id: String) { holds.merge(id, 1, Int::plus) }
+
+    fun release(id: String) { holds.computeIfPresent(id) { _, n -> (n - 1).takeIf { it > 0 } } }
+
+    /** Leaving the studio with no take removes a local, unshared production no screen holds (PLAYS-DESIGN §2.3 rule 3a). */
+    fun dropIfEmpty(id: String) {
+        if (holds.containsKey(id)) return
+        val production = production(id) ?: return
+        if (Production.abandoned(listOf(production), { share(it) != null }).isNotEmpty()) delete(id)
     }
 
     /** Delete unused takes: every unchosen take (or, with [lines], those lines') and its file goes; returns how many. */

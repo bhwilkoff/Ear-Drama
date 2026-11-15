@@ -356,7 +356,8 @@ enum PlaysShare {
     /// shared ones this person is in that this device has not opened yet,
     /// newest first.
     static func libraryRows(_ store: ProductionStore, remote: [RemoteProduction]) -> [LibraryRow] {
-        var rows = store.productions.map { LibraryRow(local: $0, pid: store.share($0.id)?.pid) }
+        var rows = store.productions.filter { StudioCore.isListed($0, shared: store.share($0.id) != nil) }
+            .map { LibraryRow(local: $0, pid: store.share($0.id)?.pid) }
         let here = Set(rows.compactMap(\.pid))
         for r in remote where !here.contains(r.id) { rows.append(LibraryRow(pid: r.id, remote: r)) }
         func when(_ r: LibraryRow) -> Double {

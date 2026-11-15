@@ -234,6 +234,43 @@ data class PlayScript(
             plays.map { it to fnv1a64("play:$dateKey:${it.id}") }
                 .minWithOrNull(compareBy<Pair<T, ULong>> { it.second }.thenBy { it.first.id })?.first
 
+        /** The scene pool (Decision 079): two voices and at most 20 min; else 2-3 voices and at most 30; else every play. */
+        fun <T : PlayListing> scenePool(plays: List<T>): List<T> {
+            for ((lo, hi, most) in SCENE_POOLS) {
+                val pool = plays.filter { it.voices in lo..hi && it.minutes <= most }
+                if (pool.isNotEmpty()) return pool
+            }
+            return plays
+        }
+
+        /** Today's scene: [todaysPlay]'s hash over [scenePool], so every platform with the same library and date picks the same play. */
+        fun <T : PlayListing> todaysScene(plays: List<T>, dateKey: String): T? = todaysPlay(scenePool(plays), dateKey)
+
+        private val SCENE_POOLS = listOf(Triple(2, 2, 20), Triple(2, 3, 30))
+        private val LEADING_STOP = Regex("^[.,:;\u2014-]+\\s*")
+        private val SPACE = Regex("\\s+")
+
+        private fun cleanSaid(text: String): String =
+            text.replace("_", "").replace(SPACE, " ").trim().replace(LEADING_STOP, "").replace("--", "\u2014")
+
+        /** The first [n] speeches with said words: from the script's lines, else from the index row's `opening` (contract §4.1). */
+        fun openingOf(play: PlayListing, n: Int = 4): List<OpeningSpeech> = when (play) {
+            is PlayScript -> play.lines.asSequence()
+                .filter { it.kind == ScriptLine.Kind.Speech }
+                .mapNotNull { l -> cleanSaid(l.spokenText).takeIf { it.isNotEmpty() }?.let { OpeningSpeech(l.part, l.role.orEmpty(), it, l.id) } }
+                .take(n).toList()
+            is PlayRow -> play.opening.orEmpty().take(n)
+                .mapNotNull { o -> cleanSaid(o.text).takeIf { it.isNotEmpty() }?.let { OpeningSpeech(PartID.role(o.role), o.role, it, null) } }
+            else -> emptyList()
+        }
+
+        /** The voice Try a line takes: the one that answers (the opening's second speaker), else the second part. */
+        fun answeringPart(opening: List<OpeningSpeech>, script: PlayScript?): PartID? {
+            val speakers = opening.map { it.part }.distinct()
+            val parts = script?.castParts?.map { it.id }?.filter { it.isSpeaking } ?: speakers
+            return speakers.getOrNull(1) ?: parts.firstOrNull { it != speakers.firstOrNull() } ?: speakers.firstOrNull() ?: parts.firstOrNull()
+        }
+
         val PART_HUES = listOf("mystery", "scifi", "western", "serial", "documentary", "comedy", "news")
         const val PRESENCE_BINS = 24
 
@@ -245,6 +282,9 @@ data class PlayScript(
         }
     }
 }
+
+/** One speech of a play's opening: its part, the role as printed, the said words cleaned, and its line (null from an index row). */
+data class OpeningSpeech(val part: PartID, val name: String, val text: String, val lineId: String?)
 
 /** A facet band: [key] holds every count from [lo] to [hi]. */
 data class Band(val key: String, val lo: Int, val hi: Int)

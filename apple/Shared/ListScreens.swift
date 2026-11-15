@@ -83,12 +83,13 @@ struct ListenScreen: View {
                 continuingRows
             }
             HomeDoors()
+            MadeHereSection(leading: true)
             if catalog.state == .unavailable {
                 CatalogUnavailableView()
             } else if loaded {
                 HomeChipSection(title: "Start a show", chips: shelves.start)
-                HomeChipSection(title: "By length", chips: shelves.length)
                 HomeRecordSection()
+                HomeChipSection(title: "By length", chips: shelves.length)
                 if let day, let selected = selectedYear {
                     PageSection {
                         DayBoard(model: day, selected: Binding(get: { selected }, set: { year = $0; allNight = false }))
@@ -112,7 +113,7 @@ struct ListenScreen: View {
                         }
                     }
                 }
-                MadeHereSection()
+                MadeHereSection(leading: false)
             } else {
                 SkeletonRows(count: 3)
             }

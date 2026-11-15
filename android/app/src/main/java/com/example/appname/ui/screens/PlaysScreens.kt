@@ -1,6 +1,6 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import com.example.appname.plays.PlayListing
 import com.example.appname.ui.FoldButton
 import com.example.appname.ui.EmptyAction
@@ -53,6 +53,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -80,6 +81,7 @@ import com.example.appname.plays.LiveListen
 import com.example.appname.plays.MixPlayback
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
+import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.PlayLibraryFeed
 import com.example.appname.plays.PlayRow
@@ -179,7 +181,10 @@ fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
     )
 }
 
-/** "Start an ear drama" (PLAYS-DESIGN §2.1): makes the production and opens its cast sheet. */
+/**
+ * "Start an ear drama" (PLAYS-DESIGN §2.1): opens the play's empty production while it lasts, else makes one, and opens its
+ * cast sheet; signed out with a take already here, the root asks for an account instead (Decision 079).
+ */
 @Composable
 fun StartEarDramaButton(script: PlayListing, onOpenProduction: (String) -> Unit) {
     val plays = LocalAppContainer.current.plays
@@ -190,9 +195,9 @@ fun StartEarDramaButton(script: PlayListing, onOpenProduction: (String) -> Unit)
             scope.launch {
                 runCatching {
                     val whole = script as? PlayScript ?: plays.script(script.id) ?: error("This play is not on this device.")
-                    plays.create(whole)
+                    StudioOpen.recordThis(plays, whole)
                 }
-                    .onSuccess { onOpenProduction(it.id) }
+                    .onSuccess { id -> id?.let(onOpenProduction) }
                     .onFailure { error = it.message ?: "The production could not be saved." }
             }
         }) {
@@ -287,7 +292,7 @@ private fun RightsLine(script: PlayScript) {
 @Composable
 fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit = {}) {
     val plays = LocalAppContainer.current.plays
-    var attempt by remember { mutableStateOf(0) }
+    var attempt by remember { mutableIntStateOf(0) }
     val loaded by produceState<PlayLoad>(PlayLoad.Loading, id, attempt) {
         value = PlayLoad.Loading
         value = try {
@@ -342,7 +347,7 @@ fun LazyListScope.playPage(
         item(key = "actions") {
             ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
                 start()
-                if (onRead != null) FoldButton(Icons.Outlined.MenuBook, "Read", fit.folded, onRead, description = "Read ${script.title}")
+                if (onRead != null) FoldButton(Icons.AutoMirrored.Outlined.MenuBook, "Read", fit.folded, onRead, description = "Read ${script.title}")
             }
         }
     }
@@ -382,6 +387,11 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
     val productions by plays.store.productions.collectAsState()
     val production = productions.firstOrNull { it.id == id }
     val script = rememberCastScript(id)
+    // The cast sheet holds its production: an empty one is never removed out from under it (PLAYS-DESIGN §2.3 rule 3a).
+    DisposableEffect(id) {
+        plays.store.hold(id)
+        onDispose { plays.store.release(id) }
+    }
     var refusal by remember { mutableStateOf<String?>(null) }
     var taking by remember { mutableStateOf<PartID?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
