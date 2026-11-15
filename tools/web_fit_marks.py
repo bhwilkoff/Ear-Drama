@@ -295,7 +295,6 @@ def main():
             if w in (320, 375, 430, 1440):
                 cdp.call('Page.navigate', {'url': f'http://127.0.0.1:{port}/?play={studio_script["id"]}&mute=1'}, timeout=30)
                 if not wait("[...document.querySelectorAll('button')].some(b => /Record this/.test(b.textContent))", 'Record this'): return
-                ev(WS.SIGN_IN)
                 ev("[...document.querySelectorAll('button')].find(b => /Record this/.test(b.textContent)).click()")
                 if not wait("document.querySelector('button[aria-label^=\"Take part\"]')", 'Take part'): return
                 ev("document.querySelector('button.btn-primary[aria-label^=\"Take part\"], button[aria-label^=\"Take part\"]').click()")
