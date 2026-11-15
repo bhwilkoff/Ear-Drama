@@ -700,6 +700,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         /// The studio's current line (a script line index) and how it is outlined.
         var current: Int? = nil
         var outline: Outline = .ink
+        /// The read-along's line heard (a script line index), lit for any speaker (PLAYS-DESIGN §2.11).
+        var along: Int? = nil
         /// The take state of each of my lines on the page (the studio).
         var takes: [Int: StudioCore.LineState] = [:]
         /// The reader's marks (PLAYS-DESIGN §2.10) on this script, the line index of each id, and the selection (a range of the page string).
@@ -873,6 +875,22 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                 cg.addPath(path)
                 cg.strokePath()
                 cg.restoreGState()
+            }
+        }
+
+        // The read-along's line: a soft ink tint across the whole line, whoever speaks it.
+        if let heard = marks.along {
+            var lo = CGFloat.greatestFiniteMagnitude, hi = -CGFloat.greatestFiniteMagnitude
+            for (i, line) in lines.enumerated() {
+                let loc = CTLineGetStringRange(line).location
+                guard loc < string.length, (string.attributes(at: loc, effectiveRange: nil)[.edLine] as? Int) == heard else { continue }
+                lo = min(lo, info[i].band.minY)
+                hi = max(hi, info[i].band.maxY)
+            }
+            if lo < hi {
+                let rect = CGRect(x: -Self.inset, y: lo - 3, width: textWidth + 2 * Self.inset, height: hi - lo + 6)
+                cg.setFillColor(theme.ink.copy(alpha: 0.10) ?? theme.ink)
+                cg.fill(rect)
             }
         }
 

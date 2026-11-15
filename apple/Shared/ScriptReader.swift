@@ -92,6 +92,12 @@ final class ReaderModel {
     private(set) var failed = false
     /// The studio attached (PLAYS-DESIGN §2.9): its part is "I'm playing", its lines are unbreakable on the page.
     var studio: StudioModel?
+    /// The read-along (PLAYS-DESIGN §2.11): a production's listen-through, the reader following the line heard.
+    var along: AlongModel?
+    /// The line heard, lit on the page, and whether Back to the Line is offered.
+    private(set) var alongLine: Int?
+    private(set) var backToLine = false
+    @ObservationIgnored private var follow = ReadAlong.Follow()
     /// A launch door's sheet and page, each taken once (DEBUG doors only).
     var doorSheet: String?
     @ObservationIgnored private var doorPage: Int?
@@ -292,7 +298,29 @@ final class ReaderModel {
         persist()
     }
 
+    /// The listen-through reached `id` (nil when it ends): light it, and turn to it unless the person turned away.
+    func alongHeard(_ id: String?) {
+        let step = follow.line(id)
+        alongLine = id.flatMap { structure.indexByID[$0] }
+        backToLine = step.back
+        if step.turn, let id { go(to: id) }
+    }
+
+    /// A touch on the page: the read-along stops turning it.
+    func userMoved() {
+        guard along != nil, follow.following else { return }
+        follow.away()
+    }
+
+    func backToTheLine() {
+        backToLine = false
+        if let id = follow.back() { go(to: id) }
+    }
+
+    func resumeFollowing() { _ = follow.back(); backToLine = false }
+
     func turn(_ delta: Int) {
+        userMoved()
         if prefs.layout == .scroll {
             go(toIndex: min(max(0, position + delta * max(1, visibleCount - 1)), script.lines.count - 1))
             return
@@ -303,6 +331,7 @@ final class ReaderModel {
     }
 
     func turnToEdge(last: Bool) {
+        userMoved()
         if prefs.layout == .scroll {
             go(toIndex: last ? script.lines.count - 1 : 0)
             return
@@ -509,12 +538,12 @@ struct ScriptReaderView: View {
         }
         .background(Color.brandBackground)
         .task(id: scriptID) { await load() }
-        .onDisappear { studioModel?.end() }
+        .onDisappear { studioModel?.end(); model?.along?.stop() }
     }
 
     private func load() async {
         failed = false
-        if let target = studio {
+        if let target = studio, !target.isAlong {
             // The production's own copy of the script, never the library's, so line ids match the takes.
             guard let s = StudioModel(target: target, plays: plays, line: startLine) else {
                 failed = true
@@ -526,6 +555,17 @@ struct ScriptReaderView: View {
             s.studio.onFollow = { [weak made] id in made?.go(to: id) }
             controller?.model = made
             studioModel = s
+            model = made
+            return
+        }
+        if let target = studio, target.isAlong {
+            guard let production = plays.store.production(target.production), let found = plays.castScript(for: production) else {
+                failed = true
+                return
+            }
+            let made = ReaderModel(script: found, startLine: startLine, door: app.readerDoor, production: target.production)
+            made.along = AlongModel(production: production, script: found, plays: plays)
+            controller?.model = made
             model = made
             return
         }
@@ -550,6 +590,7 @@ private struct ReaderScreen: View {
     var studio: StudioModel?
     @Environment(AppStore.self) private var app
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(AudioPlayer.self) private var player
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
     @Environment(\.undoManager) private var undoManager
@@ -640,6 +681,9 @@ private struct ReaderScreen: View {
             }
             .clipped()
             if model.table.isPlaying, let line = model.table.line { hearing(line) }
+            if let along = model.along, let entry = along.listen.current, entry.isDeviceVoice,
+               let line = model.script.lines.first(where: { $0.id == entry.lineID }) { hearing(line) }
+            if model.backToLine { backToLineButton() }
             if let dock { dock }
             #if os(iOS)
             if let studio, !wide { StudioDock(model: studio).modifier(AvoidsFold()) }
@@ -659,6 +703,7 @@ private struct ReaderScreen: View {
         .onChange(of: body17, initial: true) { _, size in model.base = size }
         .repaintsOnVoiceChange(model.voices)
         .onDisappear { model.table.stop() }
+        .onChange(of: model.along?.listen.current?.lineID) { _, id in model.alongHeard(id) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
         #if os(iOS)
@@ -728,7 +773,39 @@ private struct ReaderScreen: View {
     }
 
     @ViewBuilder private var bottomBar: some View {
-        if let studio { studioBar(studio) } else { readerBar }
+        if let studio { studioBar(studio) } else if let along = model.along { alongBar(along) } else { readerBar }
+    }
+
+    /// Read along (§2.11): Listen Through is the transport; Back to the Line shows after a touch turned the page away.
+    private func alongBar(_ along: AlongModel) -> some View {
+        HStack(spacing: Spacing.s3) {
+            Button { model.resumeFollowing(); along.toggle(from: model.position, player: player) } label: {
+                Label(along.listen.isRunning ? "Stop" : "Listen Through", systemImage: along.listen.isRunning ? "stop.fill" : "play.fill")
+            }
+            .labelStyle(HearTheCastLabelStyle())
+            .accessibilityIdentifier("reader-listen-through")
+            Spacer(minLength: 0)
+            Text(verbatim: model.pageLabel)
+                .lineLimit(1)
+                .fixedSize()
+                .layoutPriority(1)
+                .font(TypeRamp.tabular)
+                .foregroundStyle(Color.brandTextMuted)
+                .accessibilityIdentifier("reader-page-label")
+        }
+        .buttonStyle(.bordered)
+        .padding(.horizontal, Spacing.s4)
+        .padding(.vertical, Spacing.s2)
+        .background(Color.brandSurface)
+    }
+
+    private func backToLineButton() -> some View {
+        Button { model.backToTheLine() } label: { Label("Back to the Line", systemImage: "arrow.uturn.backward") }
+            .buttonStyle(.bordered)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.s1)
+            .background(Color.brandSurface)
+            .accessibilityIdentifier("reader-back-to-line")
     }
 
     /// In the studio the bar keeps Hide My Lines and the page count; the dock is the transport, and the Studio button
@@ -845,6 +922,7 @@ private struct ReaderScreen: View {
         }
         .scrollTargetBehavior(.paging)
         .scrollPosition(id: $model.spread)
+        .onScrollPhaseChange { _, phase in if phase == .interacting { model.userMoved() } }
         .scrollIndicators(.hidden)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { model.areaChanged($0) }
         .overlay { if model.layout == nil { ProgressView() } }
@@ -869,6 +947,7 @@ private struct ReaderScreen: View {
             .frame(maxWidth: .infinity)
         }
         .scrollPosition($model.scroll)
+        .onScrollPhaseChange { _, phase in if phase == .interacting { model.userMoved() } }
         .onScrollTargetVisibilityChange(idType: String.self, threshold: 0.5) { model.visible($0) }
         .onGeometryChange(for: CGSize.self) { $0.size } action: { model.areaChanged($0) }
         .task { model.scroll.scrollTo(id: model.script.lines[model.position].id, anchor: .top) }
@@ -998,6 +1077,7 @@ private struct ReaderPageView: View {
         marks.marks = model.visibleMarks
         marks.lineIndex = model.structure.indexByID
         marks.selection = model.selection
+        marks.along = model.alongLine
         if let studio = model.studio {
             marks.current = studio.studio.current.flatMap { model.structure.indexByID[$0] }
             marks.outline = Self.outline(studio)
@@ -1101,6 +1181,7 @@ private struct ReaderLineView: View {
                 block(line)
             }
         }
+        .background(model.alongLine == index ? Color.brandText.opacity(0.10) : Color.clear)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.isHidden(index) ? "Show line" : ReaderPageView.spoken(line))
         .accessibilityAddTraits(model.isHidden(index) ? .isButton : [])
