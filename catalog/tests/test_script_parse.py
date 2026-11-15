@@ -644,9 +644,194 @@ def cached_texts_no_castable_role_lives_only_before_the_play():
     for f in files:
         raw = open(f, encoding="utf-8", errors="replace").read()
         items, _ = P._stage_items(P.gutenberg_body(raw))
+        P._one_speaker_one_role(items)  # as parse() does: "SL" beside "SLEN" (gut-1116) is Slender
         if P.roles_only_before_play(items) and P.parse(raw, "stage").get("clean"):
             bad.append(os.path.basename(f))
     assert not bad, bad
+
+
+# ---- the typography defects (R2-play-typography §4, 2026-11-14); every fixture is a real shape ----
+
+def _stage_play(paras, filler=("GRACE", "CHARTERIS", "HODSON", "ROY", "BERTHA", "JACK", "MADHAV"), n=8):
+    """A play: `n` plain speeches by each filler role (so each is a known role), then `paras`."""
+    plain = [f"{s}. A plain line {i} of the scene, said at some length by {s.title()}." for i in range(n) for s in filler]
+    return ("*** START OF THE PROJECT GUTENBERG EBOOK X ***\n\nTHE PLAY\n\nACT I.\n\n" + "\n\n".join(plain + list(paras))
+            + "\n\nTHE END\n\n*** END OF THE PROJECT GUTENBERG EBOOK X ***\n")
+
+
+def _speech(r, start):
+    return next(l for l in r["lines"] if l["kind"] == "speech" and l["source"].startswith(start))
+
+
+RUN_IN = [
+    "CHARTERIS. Of course. Why not?",
+    "GRACE (reflecting). Never mind why. Now tell me, is this your first\nlove affair?",
+    "CHARTERIS (amazed at the simplicity of the question). No, bless my\nsoul. No--nor my second, nor my third.",
+    "GRACE. But I mean your first serious one.",
+    "HODSON [hesitant]. Is it a dangerous part you're going to, sir?",
+    "ROY (_rising_). Hallo! Little Pitcher’s ears are wide open.",
+    "BERTHA.--What time is it now?",
+    "COL. Tell your master, Mr. Newcomb, that I will see him this evening.",
+    "JACK.[Sullenly.]  No.",
+    "MADHAV Poor child, it is very hard to keep him indoors all day.",
+    "SEELCHEN sits gazing through the window at the peaks.",
+    "GRACE. The end of it.",
+]
+
+
+@case
+def a_speaker_with_a_direction_before_the_period_opens_a_speech():
+    # real shapes: Shaw (gut-5071 "GRACE (reflecting). Never"), gut-3612 "HODSON [hesitant].", gut-48538
+    # "ROY (_rising_).", gut-8500-1 "BERTHA.--What", gut-49295 "COL. Tell", gut-2906 "JACK.[Sullenly.]",
+    # gut-6523 "MADHAV Poor child"; each was folded into the speech before it
+    r = P.parse(_stage_play(RUN_IN).replace("MADHAV. A plain line 0", "COL. A plain line 0"), "stage")
+    assert r["status"] == "parsed", r
+    got = [(l["role"], l["parts"][0]) for l in r["lines"][-11:]]
+    want = [("CHARTERIS", {"say": "Of course. Why not?"}),
+            ("GRACE", {"direction": "reflecting"}),
+            ("CHARTERIS", {"direction": "amazed at the simplicity of the question"}),
+            ("GRACE", {"say": "But I mean your first serious one."}),
+            ("HODSON", {"direction": "hesitant"}),
+            ("ROY", {"direction": "rising"}),
+            ("BERTHA", {"say": "What time is it now?"}),
+            ("COL", {"say": "Tell your master, Mr. Newcomb, that I will see him this evening."}),
+            ("JACK", {"direction": "Sullenly."}),
+            ("MADHAV", {"say": "Poor child, it is very hard to keep him indoors all day.\n"
+                                "SEELCHEN sits gazing through the window at the peaks."}),
+            ("GRACE", {"say": "The end of it."})]
+    assert got == want, got
+    grace = _speech(r, "GRACE (reflecting)")
+    assert grace["parts"][1] == {"say": "Never mind why. Now tell me, is this your first love affair?"}, grace["parts"]
+    madhav = _speech(r, "MADHAV Poor")
+    assert "SEELCHEN" in madhav["source"], "a capitals name before a lowercase verb is not a speaker"
+    assert "SEELCHEN" not in {x["name"] for x in r["roles"]}
+
+
+@case
+def a_speech_split_out_keeps_the_ids_of_the_lines_around_it():
+    # marks and takes anchor to line ids: a speech the parser used to fold into the one before it takes that
+    # line's id plus a letter, so every line it found before keeps its id
+    r = P.parse(_stage_play(RUN_IN).replace("MADHAV. A plain line 0", "COL. A plain line 0"), "stage")
+    ids = [l["id"] for l in r["lines"]][-11:]
+    k = int(ids[0][1:])
+    assert ids == [f"L{k:04d}", f"L{k:04d}a", f"L{k:04d}b", f"L{k + 1:04d}"] + [f"L{k + 1:04d}{c}" for c in "abcdef"] \
+        + [f"L{k + 2:04d}"], ids
+
+
+@case
+def a_paragraph_of_names_and_italic_business_is_a_direction():
+    # real shape: gut-44233-3 "LINDGREN _appears in the doorway_." and "AXEL _is startled ... of_ LINDGREN.",
+    # folded into the speech above as said words
+    r = P.parse(_stage_play(["ROY. Well, Axel, we'll see you later then.", "GRACE _appears in the doorway_.",
+                             "JACK _is startled for a moment at the sight of_ GRACE.", "GRACE. Hello."]), "stage")
+    tail = [(l["id"][-1].isalpha(), l["kind"], l["source"][:10]) for l in r["lines"][-4:]]
+    assert tail == [(False, "speech", "ROY. Well,"), (True, "direction", "GRACE _app"), (True, "direction", "JACK _is s"),
+                    (False, "speech", "GRACE. Hel")], tail
+
+
+@case
+def an_italic_word_inside_a_sentence_is_said_with_emphasis():
+    # real shapes: gut-5071 L0010 "in which _I_ have been", gut-844 L0013 "I believe it _is_ a very", gut-5071 L0020
+    r = P.parse(_stage_play([
+        "CHARTERIS (with a certain hesitation). Yes. (There is a pause. She is\nnot convinced.) It is the first in which _I_ have been serious.",
+        "GRACE. I believe it _is_ a very pleasant state.",
+        "JACK. Oh, yes: _I_ broke it off, you know.",
+        "ROY. Come here, Bess. _Aside._ She is a fool.",
+        "BERTHA. I will go _aside_ now and think.",
+        "MADHAV. I tell you _he_ said so, and _he turns_ away.",
+    ]), "stage")
+    ch = _speech(r, "CHARTERIS (with a certain")
+    assert ch["parts"] == [{"direction": "with a certain hesitation"}, {"say": "Yes."},
+                           {"direction": "There is a pause. She is not convinced."}, {"say": "It is the first in which"},
+                           {"say": "I"}, {"say": "have been serious."}], ch["parts"]
+    assert ch["em"] == [4], ch.get("em")
+    g = _speech(r, "GRACE. I believe")
+    assert g["parts"] == [{"say": "I believe it"}, {"say": "is"}, {"say": "a very pleasant state."}] and g["em"] == [1], g
+    assert _speech(r, "JACK. Oh, yes")["em"] == [1]
+    roy, bertha = _speech(r, "ROY. Come here"), _speech(r, "BERTHA. I will go")
+    assert {"direction": "Aside."} in roy["parts"] and "em" not in roy, roy
+    assert {"direction": "aside"} in bertha["parts"] and "em" not in bertha, bertha
+    madhav = _speech(r, "MADHAV. I tell you")
+    assert madhav["em"] == [1] and {"direction": "he turns"} in madhav["parts"], madhav
+
+
+@case
+def a_stage_play_has_no_mic_positions_and_a_spoken_parenthesis_is_said():
+    # real shapes: "which he (in breefe) obeyes" (gut-1122), Macbeth's Captain (gut-1533 L0019), a stage
+    # "(In a low voice)" read as a mic cue (gut-44233-4)
+    r = P.parse(_stage_play([
+        "CHARTERIS. On Fortinbras, which he (in breefe) obeyes, and so it ends.",
+        "GRACE. Come. (In a low voice) Here.",
+        "SOLDIER.\nDoubtful it stood;\nAs two spent swimmers that do cling together\nAnd choke their art. The merciless Macdonwald\n"
+        "(Worthy to be a rebel, for to that\nThe multiplying villainies of nature\nDo swarm upon him) from the Western Isles\n"
+        "Of kerns and gallowglasses is supplied;",
+        "ROY. I tell you (rising) that it is so.",
+        "JACK. I tell you (to him) that it is so.",
+        "BERTHA. Don't forget us, and (_mock courtesy_) send us a box.",
+    ]), "stage")
+    assert not [p for l in r["lines"] for p in l.get("parts") or [] if "mic" in p], "a mic cue in a stage play"
+    ch = _speech(r, "CHARTERIS. On Fortinbras")
+    assert all("say" in p for p in ch["parts"]) and "in breefe" in " ".join(p["say"] for p in ch["parts"]), ch["parts"]
+    assert {"direction": "In a low voice"} in _speech(r, "GRACE. Come.")["parts"]
+    sol = _speech(r, "SOLDIER.")
+    assert all("say" in p for p in sol["parts"]) and "Worthy to be a rebel" in " ".join(p["say"] for p in sol["parts"]), sol
+    assert {"direction": "rising"} in _speech(r, "ROY. I tell you")["parts"]
+    assert {"direction": "to him"} in _speech(r, "JACK. I tell you")["parts"]
+    assert {"direction": "mock courtesy"} in _speech(r, "BERTHA. Don't forget")["parts"], "an italic parenthesis is business"
+
+
+@case
+def a_radio_sound_cue_in_parentheses_is_a_sound():
+    # real shape: gut-28051 L0006 "(sound of gavel)", a direction beside the same cue in brackets as a sound
+    raw = RADIO.replace("FIBBER: Doc! Come in, come in.", "FIBBER: (sound of gavel) Doc! Come in, come in. (going to the door)")
+    r = P.parse(raw, "radio")
+    fib = next(l for l in r["lines"] if l["role"] == "FIBBER" and "Doc!" in l["source"])
+    assert fib["parts"][0] == {"sound": "sound of gavel"}, fib["parts"]
+    assert fib["parts"][-1] == {"direction": "going to the door"}, fib["parts"]
+    assert next(l for l in r["lines"] if l["role"] == "DOC")["parts"][0] == {"mic": "OFF"}
+
+
+@case
+def a_direction_keeps_its_italic_marks_balanced():
+    # real shape: gut-49295 "(_Exeunt_, R., POLLY _and_ BIJAH.)" stored as "Exeunt_, R., ..."
+    r = P.parse(_stage_play(["ROY. Come with me. (_Exeunt_, R., POLLY _and_ BIJAH.)", "JACK (_rising_). Go."]), "stage")
+    assert _speech(r, "ROY. Come with")["parts"][-1] == {"direction": "_Exeunt_, R., POLLY _and_ BIJAH."}
+    assert _speech(r, "JACK (_rising_)")["parts"][0] == {"direction": "rising"}
+
+
+@case
+def a_heading_with_more_on_its_line_is_a_direction_not_a_speaker():
+    # real shapes: gut-35242 "FOURTH SCENE. A haymow. ...", gut-35342 "TABLEAU II. A Saloon ...", gut-63198 "TABLEAU."
+    r = P.parse(_stage_play(["FOURTH SCENE. A haymow. Melchior lies on his back in the fresh hay.", "GRACE. Hello.",
+                             "TABLEAU II. A Saloon with bay windows opening on a Terrace.", "ROY. Hello.",
+                             "TABLEAU. Eugene in chair. Lizzie bending over him, R.", "JACK. Hello."]), "stage")
+    names = {x["name"] for x in r["roles"]}
+    assert not names & {"FOURTH SCENE", "TABLEAU II", "TABLEAU"}, names
+    kinds = {l["source"][:12]: l["kind"] for l in r["lines"]}
+    assert kinds["FOURTH SCENE"] == kinds["TABLEAU II. "] == kinds["TABLEAU. Eug"] == "direction", kinds
+
+
+@case
+def abbreviated_labels_of_one_speaker_are_one_role():
+    # real shape: gut-2265 (Folio Hamlet) "Bar."/"Barn." for Barnardo, "Hor."/"Hora." for Horatio
+    r = P.parse(FOLIO_NOTE, "stage")
+    names = {x["name"] for x in r["roles"]}
+    assert len(names & {"BAR", "BARN"}) == 1 and "FRAN" in names, names
+    # two speakers whose names share a start, each printed as a name, stay two
+    two = _stage_play(["Enter JOHN and JOHNSON."] + [f"JOHN. I am John, {i}.\n\nJOHNSON. I am Johnson, {i}." for i in range(6)])
+    names = {x["name"] for x in P.parse(two, "stage")["roles"]}
+    assert {"JOHN", "JOHNSON"} <= names, names
+
+
+@case
+def a_one_letter_misprint_of_a_speaker_is_that_speaker():
+    # real shape: gut-5071 "GRAVEN. Don't rub it in, Julia" once, beside CRAVEN's 68 speeches
+    raw = _stage_play(["GRAVEN. Don't rub it in, Julia: it's not kind."], filler=("CRAVEN", "JULIA", "JOHN"), n=16)
+    r = P.parse(raw.replace("ACT I.", "CHARACTERS\n\nCRAVEN\nJULIA\nJOHN\nJOAN\n\nACT I.").replace(
+        "THE END", "JOAN. I am Joan.\n\nTHE END"), "stage")
+    names = {x["name"]: x["lines"] for x in r["roles"]}
+    assert "GRAVEN" not in names and names["CRAVEN"] == 17, names
+    assert names.get("JOAN") == 1, "a one-off speaker the cast list names stays"
 
 
 def main():

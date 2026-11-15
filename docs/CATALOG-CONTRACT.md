@@ -709,15 +709,23 @@ offline floor.
   list); a play with no printed title, or whose roles show a parsing artifact (a bare "MRS", the title
   as a speaker, a strophe or tableau marker), is left out and counted in `split_failures`.
 - One work, one id: when several ids carry the same work (editions, a volume's play beside its own
-  ebook), the library keeps one. A bundled play always wins; then the single-play text over a volume's
+  ebook), the library keeps one. A bundled play always wins; then the better edition (more speeches
+  under full speaker names, then more that keep their verse lines: `build_play_library.edition`, so a
+  modern Shakespeare beats a Folio text with "Bar."/"Barn."); then the single-play text over a volume's
   play; then the fuller cast list, the longer text, the lower number. Same work means the spoken
   text overlaps by at least 55% of the smaller (5-word shingles), or by 20% when the normalized
   title and authors also match; texts of very different length are never the same work. Every drop is
   listed in `report.duplicates_dropped`; same title and author with different text (two translations)
   are both kept and listed.
+- Line ids (`L0001`, `L0002`, ... in text order) are what marks and takes anchor to, so a parser change
+  never renumbers them: a speech the parser used to fold into the line above it and now finds on its
+  own takes that line's id plus a letter (`L0009`, `L0009a`, `L0009b`, `L0010`; `L0000a` before the
+  first line). The first such change was the run-in speech fix of 2026-11-14 (R2-play-typography §4).
 - `scripts/<id>.json`: `{format: 1, scripts: [<one entry>]}`, the shape of
   `castable-scripts.json`, so one decoder reads both. An entry carries `roles` and `lines`
-  (the parser's exact slices; stage directions and spoken parts kept apart), and, when the text
+  (the parser's exact slices; stage directions and spoken parts kept apart; a speech may carry `em`,
+  the indexes of its `say` parts printed in italics, the speaker's emphasis, said like any other; `mic`
+  parts occur in radio scripts only), and, when the text
   prints any, `sections`: `[{line, source}]`, each act, scene, prologue, epilogue or induction
   heading the parser set aside (so it is not a line), verbatim, at the id of the line it opens
   (Decision 076 S0; `script_parse.section_level`, golden cases in

@@ -38,6 +38,8 @@ def compact_line(line):
     if line["kind"] == "speech":
         out["role"] = line["role"]
         out["parts"] = line["parts"]
+        if line.get("em"):
+            out["em"] = line["em"]
     else:
         out["source"] = line["source"]
     return out

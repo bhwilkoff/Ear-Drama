@@ -232,6 +232,10 @@ def a_role_read_out_of_a_cast_list_is_an_artifact():
     eponymous = {"title": "Macbeth", "roles": [{"name": "MACBETH", "lines": 146, "words": 3000}]}
     assert L.role_artifact(eponymous) is None
     assert L.role_artifact(ent("HEDDA", "STROPHE I")) and L.role_artifact(ent("HEDDA", "MRS. ELVSTED")) is None
+    # the Doctor printed "DR." (gut-70635-5, 23 speeches) speaks; a "DR" of a line or two is still an artifact
+    assert L.role_artifact(ent("HEDDA", "DR")) is None
+    assert L.role_artifact({"title": "Hedda Gabler", "roles": [{"name": "DR", "lines": 1, "words": 4}]}) == "DR"
+    assert L.role_artifact(ent("HEDDA", "FOURTH SCENE")) == "FOURTH SCENE"
 
 
 def dup_entry(eid, lines, volume=False, voices=2):
@@ -252,6 +256,26 @@ def one_work_under_several_ids_is_kept_once_and_every_drop_is_listed():
     assert sorted(r["dropped"] for r in rows) == ["gut-5", "gut-9-3"] and all(r["kept"] == "gut-2" for r in rows)
     kept, rows, _ = L.dedupe(entries, protect={"gut-5"})
     assert [e["id"] for e in kept] == ["gut-5"], "a bundled play is never the one dropped"
+
+
+@case
+def the_edition_with_full_speaker_names_and_verse_lines_is_kept():
+    # real shapes: gut-2265 (Folio Hamlet: "BAR"/"HAM" beside "Enter Barnardo", "Hamlet", prose-run lines) and
+    # gut-1524 (modern: "BARNARDO", "HAMLET", verse lines kept); the Folio has the fuller cast and the lower number
+    folio = dup_entry("gut-2", 400, voices=9)
+    folio["roles"][:2] = [{"name": "HAM", "lines": 9, "words": 9}, {"name": "BAR", "lines": 9, "words": 9}]
+    folio["lines"] = [{"kind": "direction", "source": "Enter Barnardo and Hamlet."},
+                      {"kind": "speech", "role": "HAM", "parts": folio["lines"][0]["parts"]}]
+    modern = dup_entry("gut-5", 400, voices=3)
+    modern["roles"][:2] = [{"name": "HAMLET", "lines": 9, "words": 9}, {"name": "BARNARDO", "lines": 9, "words": 9}]
+    words = modern["lines"][0]["parts"][0]["say"].split()
+    modern["lines"] = [{"kind": "direction", "source": "Enter Barnardo and Hamlet."},
+                       {"kind": "speech", "role": "HAMLET", "parts": [{"say": " ".join(words[:200]) + "\n" + " ".join(words[200:])}]}]
+    kept, rows, _ = L.dedupe([folio, modern])
+    assert [e["id"] for e in kept] == ["gut-5"], [e["id"] for e in kept]
+    assert rows[0]["dropped"] == "gut-2" and "edition" in rows[0]["reason"], rows
+    kept, _, _ = L.dedupe([folio, modern], protect={"gut-2"})
+    assert [e["id"] for e in kept] == ["gut-2"], "a bundled play is still never the one dropped"
 
 
 @case

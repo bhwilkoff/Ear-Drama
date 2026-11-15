@@ -139,6 +139,12 @@ What was considered and left out:
 
 ## 4. Data problems (for the parser; exact examples)
 
+**Status 2026-11-14:** D1 to D7 and D9 are fixed in `script_parse.py` (each with a real-shape test in
+`catalog/tests/test_script_parse.py`); emphasis is now a said part listed in the line's `em`, which the
+page draws in italic. D5's dedupe now prefers the better edition, but the bundled Folio *Hamlet*
+(gut-2265) stays until `BUNDLE_IDS` changes (a Decision); its BAR/BARN-style variants are merged. D8 and
+inline Folio labels ("Fra.", "Volt.") remain.
+
 The page works around D1, D2 and D6 for display only. Casting, recording, the voices and
 `lineIndexesOf` still read the parser's lines, so every item below needs a fix in
 `catalog/tools/script_parse.py`.

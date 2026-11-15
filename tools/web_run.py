@@ -27,11 +27,14 @@ from app_config import *  # app identity + calibrated thresholds
 import argparse
 import base64
 import json
+import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -107,41 +110,95 @@ class CDP(WS):
         raise TimeoutError(method)
 
 
-def _launch(profile):
-    """Headless Chrome on a fresh profile. Port 0 lets Chrome pick a free port and
-    write it to DevToolsActivePort, so two sweeps can never collide on one."""
+# Startup work a capture never needs, each measured as a stall on a loaded Mac (2026-11-14): the macOS
+# Keychain read for a fresh profile's "Safe Storage" key, which serializes against every other Chrome and
+# agent session, and the first-run fetches (components, field trials, sync).
+QUIET = ["--use-mock-keychain", "--password-store=basic", "--disable-background-networking",
+         "--disable-component-update", "--disable-sync", "--disable-default-apps", "--disable-extensions",
+         "--no-service-autorun", "--metrics-recording-only"]
+# How long Chrome may take to announce its DevTools endpoint. It bounds a wedged browser, not a slow one:
+# on 2026-11-14, under a load average of 8 to 15, a fresh profile took 0.4 s to 31 s to serve /json/list,
+# so the old fixed 20 s read "never exposed a debuggable page" on a browser that was merely starting.
+LAUNCH_DEADLINE_S = 90.0
+
+
+def _launch(profile, deadline_s=LAUNCH_DEADLINE_S):
+    """Headless Chrome on a fresh profile, in its own process group (so _kill can wait for every helper
+    process, not only the browser). Port 0 lets Chrome pick a free port, so two sweeps never collide on one.
+    Ready is Chrome's own announcement on stderr ("DevTools listening on ws://..."), then a page target
+    from /json/list; a failure says which stage it reached and when."""
     proc = subprocess.Popen(
         [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--mute-audio",
-         "--no-first-run", "--no-default-browser-check",
-         "--disable-features=Translate,MediaRouter",
+         "--no-first-run", "--no-default-browser-check", *QUIET,
+         "--disable-features=Translate,MediaRouter,OptimizationHints",
          "--remote-debugging-port=0", f"--user-data-dir={profile}", "about:blank"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    port_file = Path(profile) / "DevToolsActivePort"
-    deadline = time.time() + 20
-    while time.time() < deadline:
+        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, errors="replace",
+        start_new_session=True)
+    announced = []
+    ready = threading.Event()
+
+    def drain():
+        # Read stderr to the end, so a chatty Chrome never blocks on a full pipe.
+        for line in proc.stderr:
+            m = re.search(r"DevTools listening on (ws://\S+)", line)
+            if m and not announced:
+                announced.append(m.group(1))
+                ready.set()
+
+    threading.Thread(target=drain, daemon=True).start()
+    t0 = time.time()
+    while not ready.wait(0.1):
         if proc.poll() is not None:
             raise RuntimeError(f"Chrome exited at launch (rc={proc.returncode})")
+        if time.time() - t0 > deadline_s:
+            _kill(proc)
+            raise RuntimeError(f"Chrome never announced DevTools in {deadline_s:.0f} s")
+    t_ws = time.time() - t0
+    port = int(urlsplit(announced[0]).port)
+    last = None
+    while time.time() - t0 < deadline_s:
+        if proc.poll() is not None:
+            raise RuntimeError(f"Chrome exited after announcing DevTools (rc={proc.returncode})")
         try:
-            port = int(port_file.read_text().split()[0])
-            pages = json.loads(urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/json/list", timeout=3).read())
+            pages = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{port}/json/list", timeout=5).read())
             page = next((p for p in pages if p.get("type") == "page"), None)
             if page:
                 return proc, page["webSocketDebuggerUrl"]
-        except (OSError, ValueError, IndexError):
-            pass
+            last = f"{len(pages)} target(s), no page"
+        except (OSError, ValueError) as e:
+            last = f"{type(e).__name__}: {e}"
         time.sleep(0.1)
     _kill(proc)
-    raise RuntimeError("Chrome never exposed a debuggable page")
+    raise RuntimeError(f"Chrome announced DevTools at {t_ws:.1f} s but listed no page in {deadline_s:.0f} s ({last})")
 
 
 def _kill(proc):
-    proc.terminate()
+    """Stop Chrome and wait until its whole process group is gone. Waiting on the browser process alone
+    left helper processes running into the next launch (3 of them once, 2026-11-14)."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
     try:
         proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        proc.kill()
+        os.killpg(proc.pid, signal.SIGKILL)
         proc.wait(timeout=5)
+    deadline, killed = time.time() + 5, False
+    while True:
+        try:
+            os.killpg(proc.pid, 0)
+        except (ProcessLookupError, PermissionError):
+            return
+        if time.time() > deadline:
+            if killed:
+                raise RuntimeError(f"Chrome's helper processes (group {proc.pid}) outlived SIGKILL")
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                return
+            deadline, killed = time.time() + 5, True
+        time.sleep(0.05)
 
 
 def shoot(url, w, h, path, ready_rx, deadline_s=READY_DEADLINE_S):

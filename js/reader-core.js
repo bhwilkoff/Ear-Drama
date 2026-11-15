@@ -199,6 +199,8 @@ const ReaderCore = (() => {
         const words = String(p.direction || '').replace(/_/g, '').trim().split(/\s+/);
         if (words.length <= 3 && /^\s*\p{Ll}/u.test(next.say || '') && !/[.!?]["’”]?\s*$/.test(prev.say || '')) stressed.add(i);
       });
+      // The parser's own emphasis (catalog `em`: the said parts printed in italics, 2026-11-14).
+      for (const i of Array.isArray(line.em) ? line.em : []) stressed.add(i);
       for (const r of runs) if (stressed.has(r.piece)) { r.said = true; r.kind = 'em'; }
     }
     const byPiece = new Map();
