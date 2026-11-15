@@ -802,7 +802,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
         }
         if (running == null && !mixing && !LocalIsTelevision.current) {
             OutlinedButton(onClick = onReadAlong) {
-                Icon(Icons.Outlined.MenuBook, contentDescription = null)
+                Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = null)
                 Text("Read along", Modifier.padding(start = Spacing.S2.dp))
             }
         }
