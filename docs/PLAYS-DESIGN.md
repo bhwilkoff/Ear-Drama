@@ -369,9 +369,10 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    (§5).
 10. **Downloaded voices (Kokoro, Decision 078; S6d Android first).** The picker's
    "Downloaded" group, under "On this device", holds one button until the model is here:
-   **Download voices (107 MB)** (the size is the platform manifest's: 107 MB for the q8 model
-   Android reads, R2-kokoro-feasibility S6a), never started for the person, on any network.
-   While it downloads: a progress bar, "34 MB of 107 MB" and Cancel; a stopped download resumes
+   **Download voices (126 MB)** (the size is everything the platform fetches: on Android the
+   on-demand engine module, 19 MB, and the q8 model, 107 MB; R2-kokoro-feasibility S6a), never
+   started for the person, on any network. While it downloads: one progress bar over both,
+   "34 MB of 126 MB" and Cancel (Play's own confirmation first when Play asks for one); a stopped download resumes
    where it stopped (HTTP Range), each file is checked against the manifest's SHA-256 and
    a mismatch is deleted ("The download failed." and Try again). Once here: the 28 voices,
    best grade first, each named "Heart (Kokoro)" so it is never mistaken for a system voice

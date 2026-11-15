@@ -13,6 +13,7 @@ import com.example.appname.data.DownloadStore
 import com.example.appname.data.UserStore
 import com.example.appname.data.WorkManagerDownloadTransport
 import com.example.appname.kokoro.KokoroModelStore
+import com.example.appname.kokoro.KokoroModule
 import com.example.appname.kokoro.KokoroReader
 import com.example.appname.kokoro.KtorRangeFetch
 import com.example.appname.playback.PlaybackEngine
@@ -53,16 +54,24 @@ class AppContainer(context: Context, scope: CoroutineScope) {
      * leaving the picker does not stop it.
      */
     val kokoro: KokoroReader by lazy {
-        KokoroReader(KokoroModelStore(File(context.filesDir, "kokoro/v2"), KtorRangeFetch(api.client)), phonemes = { id -> plays.phonemes(id) })
+        KokoroReader(
+            KokoroModelStore(File(context.filesDir, "kokoro/v2"), KtorRangeFetch(api.client)),
+            phonemes = { id -> plays.phonemes(id) },
+            engineReady = { kokoroModule.state.value is KokoroModule.State.Installed },
+        )
     }
+
+    /** The engine, an on-demand Play module installed with the voices (owner 2026-11-15). */
+    val kokoroModule: KokoroModule by lazy { KokoroModule(context) }
     private val appScope = scope
     private var voiceDownload: Job? = null
 
-    /** "Download voices": one download at a time; a partial file resumes. */
+    /** "Download voices": the engine module from Play, then the model; one at a time; a partial file resumes. */
     fun downloadVoices() {
         if (voiceDownload?.isActive == true) return
         kokoro.store.clearFailure()
-        voiceDownload = appScope.launch { kokoro.store.download() }
+        kokoroModule.clearFailure()
+        voiceDownload = appScope.launch { if (kokoroModule.install()) kokoro.store.download() }
     }
 
     fun cancelVoiceDownload() {
@@ -76,6 +85,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
         appScope.launch {
             kokoro.unload()
             kokoro.store.delete()
+            kokoroModule.uninstall()
         }
     }
     val live = LiveRadio(

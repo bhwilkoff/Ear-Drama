@@ -446,6 +446,7 @@ unless marked; q8 model throughout; 4 intra-op threads, 1 inter-op, unpinned, un
 | arena + shrink, 80 | 1.32.0 | 0.254 / 0.293 | 833 / 1,359 ms | 576 MB | pass |
 | arena off, 150, 5 threads pinned to the big cores (CPUs 6 to 9) | 1.31.1 | 0.611 / 0.705 | 2,702 / 5,292 ms | 516 MB | pass, barely on speed |
 | **Shipped: arena + shrink, 100, the v2 download through the app's own store** | 1.31.1 | **10 minutes**, 231 lines, 1,945 s of audio: **0.303** / 0.356 (max 0.469) | **1,172 / 2,128 ms** | **579 MB** | **PASS** |
+| **Shipped, through the on-demand `:kokoro` module** (debug bundle, `bundletool --local-testing`; the bench installed the module first: Pending, 34.5 MB downloaded, Installed) | 1.31.1 | **10 minutes**, 240 lines, 1,981 s of audio: **0.297** / 0.350 (max 0.389) | **1,101 / 2,091 ms** | **579 MB** | **PASS** |
 
 Peak PSS sits at 574 to 581 MB for every piece cap of 100 or less, so it is set by the model and
 runtime (about 405 MB once loaded) plus one short render, not by how long the run lasts; thermal
@@ -454,14 +455,24 @@ status stayed 0 (headroom 0.6 to 0.76) in every run. The shipped run began with 
 579 MB. The margin is about 20 MB, so a change to the piece cap, the thread count or the ORT
 version reruns this bench before it ships.
 
-**What shipped (Android, 2026-11-15).** `KokoroEngines.SHIPPED` (arena on, shrink after every
-render, 4 threads), `Kokoro.PIECE_SYMBOLS = 100`, the q8 model as `kokoro-v2-manifest.json` on
-the `kokoro-model` Release (92,361,116 + 14,622,720 + 3,497 bytes; `tools/publish_kokoro_model.py
---version 2 --native q8 --native-only`; v1 untouched for Apple and the web), and
-`kokoroInRelease = true` in `app/build.gradle.kts`. That switch decides whether a release carries
-`src/ort/` (ONNX Runtime and the renderer) or `src/noort/` (no engine, no `libonnxruntime.so`);
-ONNX Runtime adds 34.2 MB on arm64-v8a (uncompressed in the APK; Play delivers one ABI), 24.2 MB
-armeabi-v7a, 40.8 / 40.7 MB x86_64 / x86. Not run: NNAPI and XNNPACK on the q8 graph (XNNPACK
+**What shipped (Android, 2026-11-15).** The q8 model as `kokoro-v2-manifest.json` on the
+`kokoro-model` Release (92,361,116 + 14,622,720 + 3,497 bytes; `tools/publish_kokoro_model.py
+--version 2 --native q8 --native-only`; v1 untouched for Apple and the web), the shipped session as
+`OrtKokoroRenderer.Options()` (arena on, shrink after every render, 4 threads) and
+`Kokoro.PIECE_SYMBOLS = 100`. **Download on demand** (owner, same day): ONNX Runtime and the
+renderer are the on-demand Play Feature Delivery module `:kokoro`, fetched with the model when the
+person taps Download voices, so the base install does not grow by the engine. Measured with
+bundletool 1.18.3 on the release bundles for an arm64-v8a phone: the base download is 5,660,271
+bytes against main's 5,590,972 (+69 KB: the Play feature-delivery library and the install states;
+the universal release APK 15,096,874 against 14,964,829), and the module is 18,651,788 bytes
+(17.3 to 20.9 MB across the four ABIs), so the button reads 126 MB. The first local-testing
+install crashed the base at launch: ONNX Runtime's AAR declares a startup provider, module
+components merge into the base manifest, and the base could not find the class; the module's
+manifest now removes it (`KokoroModuleTest` checks, with a control). The second install loaded the
+module but not the runtime: ONNX Runtime on Android loads only its JNI library and leaves
+`libonnxruntime.so` to the linker, which does not search SplitCompat's folder for a module installed
+while the app runs; the module's entry point now loads `onnxruntime` by name first.
+Not run: NNAPI and XNNPACK on the q8 graph (XNNPACK
 did not help q8f16; the q8 graph's integer MatMuls are not XNNPACK ops), and the onnx-community
 `model_uint8` variants (177 MB and 114 MB: bigger downloads than q8, and q8 already passes).
 

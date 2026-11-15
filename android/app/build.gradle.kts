@@ -33,11 +33,6 @@ abstract class CopyCatalogSeed : DefaultTask() {
     }
 }
 
-// Kokoro voices in release builds (Decision 078): on since the q8 model with a shrinking arena and 100-symbol pieces
-// passed the S6a gate on the Pixel 8a (RTF <= 0.7, peak PSS < 600 MB; R2-kokoro-feasibility). Off, the release carries
-// neither ONNX Runtime nor the renderer (src/noort). `-PkokoroInRelease=false` builds that release (to compare sizes).
-val kokoroInRelease = providers.gradleProperty("kokoroInRelease").orNull?.toBoolean() ?: true
-
 val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
 }
@@ -147,18 +142,15 @@ android {
         }
     }
 
-    // ONNX Runtime and the Kokoro renderer live in src/ort; a release without them gets src/noort (no engine) and
-    // carries no libonnxruntime.so.
-    sourceSets {
-        getByName("debug").kotlin.directories.add("src/ort/java")
-        getByName("release").kotlin.directories.add(if (kokoroInRelease) "src/ort/java" else "src/noort/java")
-    }
+    // Kokoro voices' engine (ONNX Runtime + the renderer): the on-demand module :kokoro, fetched with the voices when
+    // the person taps Download voices (owner 2026-11-15), so the base install carries none of it.
+    dynamicFeatures += setOf(":kokoro")
 
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
-            // Kokoro voices (Decision 078): on in DEBUG for the bench and the frames; release follows kokoroInRelease.
+            // Kokoro voices (Decision 078); the engine itself is the on-demand :kokoro module.
             buildConfigField("boolean", "KOKORO_VOICES", "true")
             isDebuggable = true
         }
@@ -166,7 +158,7 @@ android {
             // R8 always on for release — single highest-impact perf knob.
             isMinifyEnabled = true
             isShrinkResources = true
-            buildConfigField("boolean", "KOKORO_VOICES", kokoroInRelease.toString())
+            buildConfigField("boolean", "KOKORO_VOICES", "true")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -257,8 +249,8 @@ dependencies {
     implementation(libs.sqlite)
     implementation(libs.sqlite.bundled)
 
-    // Downloadable voices (Kokoro-82M, Decision 078): ONNX Runtime, MIT, CPU provider
-    if (kokoroInRelease) implementation(libs.onnxruntime.android) else debugImplementation(libs.onnxruntime.android)
+    // Downloadable voices (Kokoro-82M, Decision 078): installs the on-demand :kokoro module (ONNX Runtime lives there)
+    implementation(libs.play.feature.delivery)
 
     // Playback: Media3 session service + ExoPlayer
     implementation(libs.bundles.media3)

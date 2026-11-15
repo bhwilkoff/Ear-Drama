@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.appname.BuildConfig
 import com.example.appname.kokoro.KokoroLive
 import com.example.appname.kokoro.KokoroModelStore
+import com.example.appname.kokoro.KokoroModule
 import com.example.appname.kokoro.KokoroReader
 import com.example.appname.plays.CastSpeaker
 import com.example.appname.plays.CastVoice
@@ -127,8 +128,9 @@ class CastHandle(
 fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: String?): CastHandle? {
     val context = LocalContext.current
     val muted = com.example.appname.navigation.LocalPlayerMuted.current
-    // Behind a flag until the S6a gate passes on the Pixel 8a (PARITY "Downloadable voices"): none at all when off.
-    val kokoro = LocalAppContainer.current.takeIf { BuildConfig.KOKORO_VOICES }?.kokoro
+    // Behind a flag (PARITY "Downloadable voices"): none at all when off.
+    val container = LocalAppContainer.current
+    val kokoro = container.takeIf { BuildConfig.KOKORO_VOICES }?.kokoro
     val handle = remember(source, script?.id, productionId) {
         script?.let {
             val cast = VoiceCast(
@@ -150,6 +152,9 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
                 if (s is KokoroModelStore.State.Ready) kokoro.prepare(handle.playId)
                 handle.changed()
             }
+        }
+        if (kokoro != null) LaunchedEffect(handle) {
+            container.kokoroModule.state.distinctUntilChanged { a, b -> a::class == b::class }.collect { handle.changed() }
         }
     }
     return handle
@@ -247,6 +252,7 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
     val install = remember(handle) { handle.source.installIntent() }
     val kokoroState by (handle.kokoro?.store?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow<KokoroModelStore.State>(KokoroModelStore.State.Absent) })
         .collectAsState()
+    val moduleState by LocalAppContainer.current.kokoroModule.state.collectAsState()
 
     fun stopHearing() {
         job?.cancel()
@@ -346,7 +352,7 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
             }
             val kokoro = handle.kokoro
             if (kokoro != null) {
-                downloadedGroup(kokoro, kokoroState, handle.playId, current, hearing, onHear = { hear(it) }) { v ->
+                downloadedGroup(kokoro, kokoroState, moduleState, handle.playId, current, hearing, onHear = { hear(it) }) { v ->
                     val e = handle.cast.entry(part)
                     val base = if (e == null || e.engine == VoiceCastEntry.NONE) VoiceCastEntry(VoiceCastEntry.KOKORO, v.id, v.name) else e
                     change { base.copy(engine = VoiceCastEntry.KOKORO, voice = v.id, name = v.name) }
@@ -358,14 +364,16 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
 }
 
 /**
- * The picker's "Downloaded" group (PLAYS-DESIGN §2.8 rule 6, Decision 078; ANDROID-DESIGN §4.9b): before the model is
- * here, one Download voices button with its size; while it downloads, the progress and Cancel; once here, the 28 Kokoro
- * voices with their previews, Delete, and the attribution the model's licenses ask for. A play the catalog published no
- * phonemes for says so instead of listing voices that would not read it.
+ * The picker's "Downloaded" group (PLAYS-DESIGN §2.8 rule 6, Decision 078; ANDROID-DESIGN §4.9b): before the voices are
+ * here, one Download voices button with the size of the engine module and the model together; while Play fetches the
+ * module and then the app fetches the model, one progress line over both and Cancel (Play's own confirmation when it
+ * asks first); once here, the 28 Kokoro voices with their previews, Delete, and the attribution the model's licenses
+ * ask for. A play the catalog published no phonemes for says so instead of listing voices that would not read it.
  */
 private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
     kokoro: KokoroReader,
     state: KokoroModelStore.State,
+    module: KokoroModule.State,
     playId: String,
     current: String?,
     hearing: String?,
@@ -380,8 +388,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    when (val s = state) {
-        is KokoroModelStore.State.Ready -> {
+    val here = state is KokoroModelStore.State.Ready && module is KokoroModule.State.Installed
+    when {
+        here -> {
             if (kokoro.hasPhonemes(playId) == false) {
                 item(key = "kokoro-none") {
                     Text(
@@ -411,23 +420,53 @@ private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
                 )
             }
         }
-        is KokoroModelStore.State.Downloading -> item(key = "kokoro-progress") {
+        module is KokoroModule.State.NeedsConfirmation -> item(key = "kokoro-confirm") {
             val container = LocalAppContainer.current
-            val total = s.total.coerceAtLeast(1)
-            val said = "${KokoroModelStore.megabytes(s.done)} of ${KokoroModelStore.megabytes(total)}"
+            val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.StartIntentSenderForResult(),
+            ) { }
+            Row(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp), verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.material3.OutlinedButton(onClick = { container.kokoroModule.confirm(module, launcher) }) { Text("Continue download") }
+                TextButton(onClick = { container.cancelVoiceDownload() }) { Text("Cancel") }
+            }
+        }
+        module is KokoroModule.State.Pending || module is KokoroModule.State.Installing ||
+            module is KokoroModule.State.Downloading || state is KokoroModelStore.State.Downloading -> item(key = "kokoro-progress") {
+            val container = LocalAppContainer.current
+            val modelBytes = kokoro.store.downloadBytes()
+            // Module and model as one download: Play's bytes first, then the model's after them.
+            val (done, total) = when {
+                module is KokoroModule.State.Downloading -> module.done to module.total + modelBytes
+                state is KokoroModelStore.State.Downloading -> {
+                    val m = container.kokoroModule.bytesThisInstall
+                    (m + state.done) to (m + state.total)
+                }
+                else -> -1L to 0L
+            }
+            val said = when {
+                module is KokoroModule.State.Pending -> "Waiting"
+                module is KokoroModule.State.Installing -> "Installing"
+                else -> "${KokoroModelStore.megabytes(done)} of ${KokoroModelStore.megabytes(total.coerceAtLeast(1))}"
+            }
             Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
-                androidx.compose.material3.LinearProgressIndicator(
-                    progress = { (s.done.toFloat() / total).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Downloading voices, $said" },
-                )
+                val label = Modifier.fillMaxWidth().semantics { contentDescription = "Downloading voices, $said" }
+                if (done >= 0) {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { (done.toFloat() / total.coerceAtLeast(1)).coerceIn(0f, 1f) },
+                        modifier = label,
+                    )
+                } else {
+                    androidx.compose.material3.LinearProgressIndicator(modifier = label)
+                }
                 Row(Modifier.fillMaxWidth().padding(top = Spacing.S1.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(said, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     TextButton(onClick = { container.cancelVoiceDownload() }) { Text("Cancel") }
                 }
             }
         }
-        is KokoroModelStore.State.Absent, is KokoroModelStore.State.Failed -> {
-            if (s is KokoroModelStore.State.Failed) {
+        else -> {
+            val failed = state is KokoroModelStore.State.Failed || module is KokoroModule.State.Failed
+            if (failed) {
                 item(key = "kokoro-failed") {
                     Text(
                         "The download failed.",
@@ -439,13 +478,15 @@ private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
             }
             item(key = "kokoro-download") {
                 val container = LocalAppContainer.current
+                val bytes = (if (state is KokoroModelStore.State.Ready) 0L else kokoro.store.downloadBytes()) +
+                    (if (module is KokoroModule.State.Installed) 0L else container.kokoroModule.downloadBytes())
                 androidx.compose.material3.OutlinedButton(
                     onClick = { container.downloadVoices() },
                     Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp),
                 ) {
                     Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                     Text(
-                        "${if (s is KokoroModelStore.State.Failed) "Try again" else "Download voices"} (${KokoroModelStore.megabytes(kokoro.store.downloadBytes())})",
+                        "${if (failed) "Try again" else "Download voices"} (${KokoroModelStore.megabytes(bytes)})",
                         Modifier.padding(start = Spacing.S2.dp),
                     )
                 }

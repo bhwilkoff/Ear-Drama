@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ear Drama</string>
+    <!-- The on-demand :kokoro module, as Play names it while it downloads. -->
+    <string name="kokoro_module_title">Downloaded voices</string>
 </resources>

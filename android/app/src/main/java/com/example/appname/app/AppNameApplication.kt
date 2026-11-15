@@ -58,6 +58,12 @@ class AppNameApplication : Application(), SingletonImageLoader.Factory, Configur
      * manifest), so a download job the system wakes the process for never runs
      * before [container] exists.
      */
+    /** An installed on-demand module (Kokoro's engine) is loadable from the first class this process reads. */
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(base)
+        com.google.android.play.core.splitcompat.SplitCompat.install(this)
+    }
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().build()
 

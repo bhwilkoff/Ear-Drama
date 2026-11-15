@@ -633,7 +633,8 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   **Downloaded** (Kokoro, Decision 078, S6d; PLAYS-DESIGN §2.8 rule 10; built
   2026-11-15, PARITY 🚧): below "On this device" and Get more voices, the picker's
   "Downloaded" heading, then an `OutlinedButton` with the download icon, "Download voices
-  (107 MB)"; while downloading a `LinearProgressIndicator` with "34 MB of 107 MB" and a
+  (126 MB)" (the engine module and the model); while downloading a `LinearProgressIndicator`
+  with "34 MB of 126 MB" and a
   Cancel `TextButton`; once here the 28 Kokoro voices as the same radio rows with play
   buttons ("Heart (Kokoro)", best grade first), a "Delete downloaded voices (107 MB)"
   `TextButton`, and the attribution line in `labelMedium`. The model (`kokoro-v2-manifest.json`'s
@@ -643,16 +644,22 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   with `Range`, checked by SHA-256, kept under `filesDir/kokoro/v2`. `kokoro/KokoroReader.kt`
   reads the play's `phonemes/<id>.json` through the library transport, renders on ONNX
   Runtime (`OrtKokoroRenderer`, CPU, in 100-symbol pieces with an arena that shrinks after every
-  render: `KokoroEngines.SHIPPED`) on one background thread, refuses NaN or silent
+  render) on one background thread, refuses NaN or silent
   renders, and marks every buffer synthetic; `KokoroLive` plays a line once through an
   `AudioTrack` (nothing at all when muted) for Hear the cast, the listen-through and the
   preview, and `plays/KokoroStandIn.kt` hands the recorder's cue path a `StandInAudio`.
-  DEBUG only: `KokoroBenchActivity` (the S6a bench, `src/debug/`). The whole group, the engine
-  and the cue path sit behind `BuildConfig.KOKORO_VOICES`, which follows `kokoroInRelease` in
-  `app/build.gradle.kts`: on since the S6a gate passed on the Pixel 8a 2026-11-15
-  (R2-kokoro-feasibility, "S6a on the Pixel 8a"). ONNX Runtime and the renderer live in
-  `src/ort/` (debug always, release when the switch is on); off, a release gets `src/noort/`'s
-  `KokoroEngines` with no engine and carries no `libonnxruntime.so`.
+  DEBUG only: `KokoroBenchActivity` (the S6a bench, `src/debug/`). **Download on demand** (owner 2026-11-15): ONNX Runtime and
+  `OrtKokoroRenderer` are the on-demand Play Feature Delivery module `:kokoro`, never in the
+  base install. Download voices first asks Play for the module (`kokoro/KokoroModule.kt`,
+  `SplitInstallManager`), then fetches the model; the button's size and the one progress line
+  count both. The states: "Waiting" (pending), the bytes (downloading), "Installing", Play's own
+  sheet behind **Continue download** when it asks first, "The download failed." with Try again,
+  and the voices once both are here. The base reaches the engine only through `KokoroEngines`
+  (by reflection, `SplitCompat` in the Application); Delete removes the model and asks Play to
+  uninstall the module. A build not from Play (a sideloaded APK, Fire TV) cannot install it and
+  says the download failed. The bench and local runs use `bundletool build-apks --local-testing`.
+  The whole group and the cue path sit behind `BuildConfig.KOKORO_VOICES` (on; the S6a gate
+  passed on the Pixel 8a 2026-11-15, R2-kokoro-feasibility "S6a on the Pixel 8a").
 
 
 - **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;

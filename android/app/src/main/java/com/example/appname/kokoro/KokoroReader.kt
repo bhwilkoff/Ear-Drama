@@ -27,6 +27,8 @@ class KokoroReader(
     private val worker: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
     /** Symbols per render: smaller pieces start sooner and peak lower (the S6a bench). */
     private val maxSymbols: Int = Kokoro.PIECE_SYMBOLS,
+    /** Whether the engine is here (the on-demand `:kokoro` module); the model alone reads nothing. */
+    private val engineReady: () -> Boolean = { true },
 ) {
     private class Loaded(val renderer: KokoroRenderer, val vocab: Map<String, Long>)
 
@@ -38,7 +40,7 @@ class KokoroReader(
     @Volatile var lastRefusal: String? = null
         private set
 
-    fun ready(): Boolean = store.state.value is KokoroModelStore.State.Ready
+    fun ready(): Boolean = store.state.value is KokoroModelStore.State.Ready && engineReady()
 
     /** The castable Kokoro voices now: none until the model is downloaded. */
     fun voices() = Kokoro.castable(ready())

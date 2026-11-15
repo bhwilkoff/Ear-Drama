@@ -36,6 +36,7 @@ mlkit-text = "16.0.1"          # Latin OCR; bundled
 firebase-bom = "34.13.0"
 play-services-auth = "21.4.0"
 play-billing = "7.1.1"
+feature-delivery = "2.1.0"       # Play Feature Delivery: the on-demand :kokoro module (owner 2026-11-15)
 glance = "1.2.0"               # widgets
 wear-compose = "1.7.1"         # Compose for Wear OS (the :wear stub)
 media3 = "1.11.1"
@@ -154,6 +155,7 @@ firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
 
 # --- Play Billing (when subscription ships)
 play-billing = { module = "com.android.billingclient:billing-ktx", version.ref = "play-billing" }
+play-feature-delivery = { module = "com.google.android.play:feature-delivery", version.ref = "feature-delivery" }
 
 # --- Widgets (Glance — when scoped)
 glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
@@ -179,6 +181,7 @@ test-core = { module = "androidx.test:core-ktx", version = "1.7.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-dynamic-feature = { id = "com.android.dynamic-feature", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

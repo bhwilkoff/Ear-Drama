@@ -27,6 +27,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "AppName"
 include(":app")
+// Kokoro voices' engine (ONNX Runtime), an on-demand Play Feature Delivery module: never in the base install.
+include(":kokoro")
 // The Wear OS stub (Decision 056): its own app, sharing no code with :app yet.
 include(":wear")
 // Add as the project grows:

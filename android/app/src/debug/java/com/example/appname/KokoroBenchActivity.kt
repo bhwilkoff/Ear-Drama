@@ -10,10 +10,9 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.example.appname.app.AppNameApplication
 import com.example.appname.kokoro.Kokoro
-import ai.onnxruntime.OrtSession
 import com.example.appname.kokoro.KokoroModelStore
 import com.example.appname.kokoro.KokoroReader
-import com.example.appname.kokoro.OrtKokoroRenderer
+import com.example.appname.kokoro.KokoroEngines
 import com.example.appname.plays.PlayLibraryFeed
 import com.example.appname.plays.ScriptLine
 import kotlinx.coroutines.CoroutineScope
@@ -67,35 +66,29 @@ class KokoroBenchActivity : Activity() {
 
     private suspend fun bench(minutes: Int, count: Int) {
         val container = (application as AppNameApplication).container
-        val level = when (intent.getStringExtra("opt")) {
-            "none" -> OrtSession.SessionOptions.OptLevel.NO_OPT
-            "basic" -> OrtSession.SessionOptions.OptLevel.BASIC_OPT
-            "extended" -> OrtSession.SessionOptions.OptLevel.EXTENDED_OPT
-            else -> OrtSession.SessionOptions.OptLevel.ALL_OPT
+        // The engine is the on-demand :kokoro module: install it the way the picker does when it is not here.
+        if (!KokoroEngines.present()) {
+            say("installing the :kokoro module")
+            val watch = scope.launch { container.kokoroModule.state.collect { say("  module $it") } }
+            val ok = container.kokoroModule.install()
+            watch.cancel()
+            if (!ok) { say("module install failed: ${container.kokoroModule.state.value}"); return }
         }
-        // The shipped settings unless an extra overrides one.
-        val d = com.example.appname.kokoro.KokoroEngines.SHIPPED
-        val arena = intent.getBooleanExtra("arena", d.arena)
-        val o = OrtKokoroRenderer.Options(
-            threads = intent.getIntExtra("threads", d.threads),
-            level = if (intent.hasExtra("opt")) level else d.level,
-            xnnpack = intent.getBooleanExtra("xnnpack", d.xnnpack),
-            nnapi = intent.getBooleanExtra("nnapi", d.nnapi),
-            arena = arena,
-            memPattern = intent.getBooleanExtra("mempattern", arena),
-            shrink = intent.getBooleanExtra("shrink", d.shrink),
-            spin = intent.getBooleanExtra("spin", d.spin),
-            affinity = intent.getStringExtra("affinity") ?: d.affinity,
-            prepack = intent.getBooleanExtra("prepack", d.prepack),
-            initializersOutsideArena = intent.getBooleanExtra("initdev", d.initializersOutsideArena),
-        )
+        val factory = KokoroEngines.factory() ?: run { say("module installed but the engine does not load"); return }
+        // Session settings as text, from the extras (none: the shipped session).
+        val settings = buildMap {
+            if (intent.hasExtra("threads")) put("threads", intent.getIntExtra("threads", 4).toString())
+            for (k in listOf("opt", "affinity")) intent.getStringExtra(k)?.let { put(k, it) }
+            for (k in listOf("xnnpack", "nnapi", "arena", "mempattern", "shrink", "spin", "prepack", "initdev")) {
+                if (intent.hasExtra(k)) put(k, intent.getBooleanExtra(k, false).toString())
+            }
+        }
         val piece = intent.getIntExtra("piece", Kokoro.PIECE_SYMBOLS)
-        // The app's store and phonemes, with the session options under test.
         val reader = KokoroReader(container.kokoro.store, { id -> container.plays.phonemes(id) }, { p, table ->
-            OrtKokoroRenderer.load(intent.getStringExtra("model")?.let { java.io.File(getExternalFilesDir(null), it).path } ?: p.model.path, table, o)
+            factory.load(intent.getStringExtra("model")?.let { java.io.File(getExternalFilesDir(null), it).path } ?: p.model.path, table, settings)
         }, maxSymbols = piece)
         val store = reader.store
-        say("device ${android.os.Build.MODEL} sdk ${android.os.Build.VERSION.SDK_INT} cores ${Runtime.getRuntime().availableProcessors()} ort ${ai.onnxruntime.OrtEnvironment.getEnvironment().version} $o piece $piece model ${intent.getStringExtra("model") ?: "from the store"}")
+        say("device ${android.os.Build.MODEL} sdk ${android.os.Build.VERSION.SDK_INT} cores ${Runtime.getRuntime().availableProcessors()} ${factory.runtime} ${factory.describe(settings)} piece $piece model ${intent.getStringExtra("model") ?: "from the store"}")
         if (store.state.value !is KokoroModelStore.State.Ready) {
             say("downloading the model")
             val watch = scope.launch {

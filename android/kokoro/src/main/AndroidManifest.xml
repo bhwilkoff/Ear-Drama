@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:dist="http://schemas.android.com/apk/distribution"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- On demand only: Play installs it when the person taps Download voices; never at install time. -->
+    <dist:module
+        dist:instant="false"
+        dist:title="@string/kokoro_module_title">
+        <dist:delivery>
+            <dist:on-demand />
+        </dist:delivery>
+        <dist:fusing dist:include="true" />
+    </dist:module>
+
+    <application>
+        <!-- ONNX Runtime's AAR declares a startup provider. A module's components merge into the base manifest, so the
+             base would try to start a class it does not carry until the module is installed, and crash at launch
+             (seen on the Pixel 8a 2026-11-15). The engine needs no provider. -->
+        <provider
+            android:name="ai.onnxruntime.TelemetryInitializer"
+            android:authorities="${applicationId}.onnxruntime_telemetry_initializer"
+            tools:node="remove" />
+    </application>
+</manifest>

@@ -280,7 +280,7 @@ class StandInNeverStoredTest {
         assertEquals(listOf("ui/Other.kt"), writeViolations("x/ui/Other.kt", "tts.synthesizeToFile(text, params, file, id)"))
         // Kokoro (S6d): the sources that hold rendered audio touch no file writer, and the model store holds no audio.
         assertTrue("the Kokoro sources are where the guard looks", kokoroAudio.all { k -> sourceRoots.any { File("$it/com/example/appname/$k").isFile } })
-        assertEquals(listOf("kokoro/OrtKokoroRenderer.kt"), writeViolations("x/kokoro/OrtKokoroRenderer.kt", "File(dir, \"line.pcm\").writeBytes(b)"))
+        assertEquals(listOf("kokoroengine/OrtKokoroRenderer.kt"), writeViolations("x/kokoroengine/OrtKokoroRenderer.kt", "File(dir, \"line.pcm\").writeBytes(b)"))
         assertEquals(listOf("kokoro/KokoroEngine.kt"), writeViolations("x/kokoro/KokoroEngine.kt", "val f = File(dir, \"line.pcm\")"))
         assertEquals(listOf("kokoro/KokoroReader.kt"), writeViolations("x/kokoro/KokoroReader.kt", "paths.voices.writeBytes(samples)"))
         assertEquals(listOf("kokoro/KokoroLive.kt"), writeViolations("x/kokoro/KokoroLive.kt", "FileOutputStream(f).use { }"))
@@ -290,10 +290,10 @@ class StandInNeverStoredTest {
     }
 
     /** Kokoro's audio path: rendered in memory, played once, handed to the cue; never near a file writer (Decision 078). */
-    /** Main, and the engine's own source sets (src/ort carries ONNX Runtime; src/noort is the release without it). */
-    private val sourceRoots = listOf("src/main/java", "src/ort/java", "src/noort/java")
+    /** Main, and the on-demand engine module (:kokoro, ONNX Runtime). */
+    private val sourceRoots = listOf("src/main/java", "../kokoro/src/main/java")
 
-    private val kokoroAudio = listOf("kokoro/KokoroEngine.kt", "kokoro/OrtKokoroRenderer.kt", "kokoro/KokoroReader.kt", "kokoro/KokoroLive.kt", "plays/KokoroStandIn.kt")
+    private val kokoroAudio = listOf("kokoro/KokoroEngine.kt", "kokoroengine/OrtKokoroRenderer.kt", "kokoro/KokoroReader.kt", "kokoro/KokoroLive.kt", "plays/KokoroStandIn.kt")
     private val kokoroForbidden = listOf(
         "FileOutputStream", "RandomAccessFile", "outputStream(", "writeBytes", "writeText", "appendBytes", "filesDir", "cacheDir",
         "WavSink", "TakeAudio.write", "MediaMuxer", "AacMixSink", "synthesizeToFile",

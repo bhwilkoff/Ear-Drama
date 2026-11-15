@@ -20,3 +20,6 @@
 
 # ONNX Runtime (Kokoro voices): its native library calls back into these classes by name over JNI.
 -keep class ai.onnxruntime.** { *; }
+
+# The on-demand :kokoro module's entry point, reached from the base by reflection (KokoroEngines).
+-keep class com.example.appname.kokoroengine.OrtEngineFactory { public <init>(); }
