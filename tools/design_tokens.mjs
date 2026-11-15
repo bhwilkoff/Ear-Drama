@@ -81,6 +81,10 @@ export function onGenres(t) { return group(t, 'onGenre'); }
 export function boards(t) { return group(t, 'board'); }
 export function onBoards(t) { return group(t, 'onBoard'); }
 
+// A person's highlight hues in the script reader (PLAYS-DESIGN 2.10): the tint
+// behind marked words. Emitted on every platform.
+export function marks(t) { return group(t, 'mark'); }
+
 // The print mount (D2c-3): the ground a contained picture sits on and the hairline
 // edge around every picture window, the edge as a color at an opacity per mode.
 // Emitted on every platform (D3-1).
@@ -205,6 +209,7 @@ function webVars(t, mode) {
     ...onGenres(t).map((g) => `--color-on-genre-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
     ...boards(t).map((g) => `--color-board-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
     ...onBoards(t).map((g) => `--color-on-board-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
+    ...marks(t).map((g) => `--color-mark-${kebab(g.name)}: ${g[mode].toUpperCase()};`),
     ...(printMount(t) ? [
       `--color-print-ground: ${printMount(t).ground[mode].toUpperCase()};`,
       `--color-print-edge: ${rgba(printMount(t).edge[mode], printMount(t).edge.opacity[mode])};`,
@@ -353,6 +358,7 @@ function appleDesign(t) {
   lookup('onGenre', onGenres(t), 'Text on a genre mark used as a fill (a part\'s initial); the page text for a key the palette does not name.', 'brandText');
   lookup('board', boards(t), 'A genre\'s board, the block a tile or head stands on; the neutral surfaceAlt for a show with no genre.', 'brandSurfaceAlt');
   lookup('onBoard', onBoards(t), 'The one color everything on a board takes; the page text on the neutral board.', 'brandText');
+  lookup('mark', marks(t), 'A highlight\'s tint in the script reader (PLAYS-DESIGN 2.10); yellow for a hue the palette does not name.', marks(t).length ? `mark${pascal(marks(t)[0].name)}` : 'brandSurfaceAlt');
   const pm = printMount(t);
   if (pm) {
     L.push('');
@@ -504,6 +510,7 @@ function androidColor(t, pkg) {
   kt('ON-GENRE: text on a genre mark used as a fill; the page text for an unnamed key', 'OnGenre', 'onGenreColor', onGenres(t), 'BrandText');
   kt('BOARDS (D2c-1): the block a tile or head stands on; surfaceAlt for a show with no genre', 'Board', 'boardColor', boards(t), 'BrandSurfaceAlt');
   kt('ON-BOARD: the one color everything on a board takes; the page text on the neutral board', 'OnBoard', 'onBoardColor', onBoards(t), 'BrandText');
+  kt('MARKS (PLAYS-DESIGN 2.10): a highlight\'s tint in the script reader; yellow for an unnamed hue', 'Mark', 'markColor', marks(t), marks(t).length ? `Mark${pascal(marks(t)[0].name)}` : 'BrandSurfaceAlt');
   const pm = printMount(t);
   if (pm) {
     const a8 = (h, a) => `0x${Math.round(a * 255).toString(16).padStart(2, '0').toUpperCase()}${hex6(h)}`;
@@ -586,6 +593,7 @@ function androidColorsXml(t, mode) {
     ...genres(t).map((g) => `    <color name="genre_${g.name}">#FF${hex6(g[mode])}</color>`),
     ...boards(t).map((g) => `    <color name="board_${g.name}">#FF${hex6(g[mode])}</color>`),
     ...onBoards(t).map((g) => `    <color name="on_board_${g.name}">#FF${hex6(g[mode])}</color>`),
+    ...marks(t).map((g) => `    <color name="mark_${g.name}">#FF${hex6(g[mode])}</color>`),
     ...(printMount(t) ? [
       `    <color name="print_ground">#FF${hex6(printMount(t).ground[mode])}</color>`,
       `    <color name="print_edge">#${Math.round(printMount(t).edge.opacity[mode] * 255).toString(16).padStart(2, '0').toUpperCase()}${hex6(printMount(t).edge[mode])}</color>`,

@@ -1,0 +1,116 @@
+{
+  "about": "Decision 076 S5, PLAYS-DESIGN 2.10: where a reader's mark lands. Every stack runs these cases: `snap` grows a selection [start, end) in `text` to whole words (null when only space is selected); `point` is where a breath, pause or beat goes for a selection ending at `end`; `anchor` makes `mark` (line, start, end, kind) on `before` with that stack's make(), then re-anchors it to `after` with place(): `want` is the line id and offsets it lands at, or \"lost\" when it is kept, untouched, as not placed. Offsets count into the line's printed words (lineText: a speech's pieces joined by one space, else its source).",
+  "snap": [
+    {"text": "Why not? Never mind why.", "start": 11, "end": 14, "want": [9, 14]},
+    {"text": "Why not? Never mind why.", "start": 8, "end": 9, "want": null},
+    {"text": "Why not? Never mind why.", "start": 9, "end": 21, "want": [9, 23]},
+    {"text": "It is the first in which _I_ have been serious.", "start": 26, "end": 27, "want": [25, 28]},
+    {"text": "a well-known  face", "start": 4, "end": 6, "want": [2, 12]},
+    {"text": "  Away!  ", "start": 0, "end": 9, "want": [2, 7]}
+  ],
+  "point": [
+    {"text": "Yes--the first thing tomorrow morning, and then", "end": 33, "want": 38},
+    {"text": "Yes--the first thing tomorrow morning, and then", "end": 38, "want": 38},
+    {"text": "Yes--the first thing tomorrow morning, and then", "end": 39, "want": 38},
+    {"text": "What, ho! Away.", "end": 2, "want": 5},
+    {"text": "Done", "end": 4, "want": 4}
+  ],
+  "anchor": [
+    {
+      "name": "same revision: placed as stored",
+      "before": {"revision": "r1", "lines": [{"id": "L0001", "kind": "speech", "role": "GRACE", "parts": [{"say": "Never mind why. I love you."}]}]},
+      "after": {"revision": "r1", "lines": [{"id": "L0001", "kind": "speech", "role": "GRACE", "parts": [{"say": "Never mind why. I love you."}]}]},
+      "mark": {"line": "L0001", "start": 16, "end": 26, "kind": "highlight"},
+      "want": ["L0001", 16, 26]
+    },
+    {
+      "name": "words added before the mark in its line: the mark moves with its words",
+      "before": {"revision": "r1", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "I love you."}]}]},
+      "after": {"revision": "r2", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Oh, Grace. I love you."}]}]},
+      "mark": {"line": "L0001", "start": 2, "end": 6, "kind": "underline"},
+      "want": ["L0001", 13, 17]
+    },
+    {
+      "name": "a run-in speech split out (L0009 to L0009 and L0009a): the mark follows its words to the new id",
+      "before": {"revision": "r1", "lines": [
+        {"id": "L0008", "kind": "speech", "role": "GRACE", "parts": [{"say": "Why?"}]},
+        {"id": "L0009", "kind": "speech", "role": "CHARTERIS", "parts": [{"say": "Of course. Why not?\nGRACE"}, {"direction": "reflecting"}, {"say": ". Never mind why. I love you."}]},
+        {"id": "L0010", "kind": "speech", "role": "CHARTERIS", "parts": [{"say": "Never mind why."}]}
+      ]},
+      "after": {"revision": "r2", "lines": [
+        {"id": "L0008", "kind": "speech", "role": "GRACE", "parts": [{"say": "Why?"}]},
+        {"id": "L0009", "kind": "speech", "role": "CHARTERIS", "parts": [{"say": "Of course. Why not?"}]},
+        {"id": "L0009a", "kind": "speech", "role": "GRACE", "parts": [{"direction": "reflecting"}, {"say": "Never mind why. I love you."}]},
+        {"id": "L0010", "kind": "speech", "role": "CHARTERIS", "parts": [{"say": "Never mind why."}]}
+      ]},
+      "mark": {"line": "L0009", "start": 39, "end": 53, "kind": "highlight"},
+      "want": ["L0009a", 11, 25]
+    },
+    {
+      "name": "the same word twice in a line: context keeps the second",
+      "before": {"revision": "r1", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "No, I said no to him."}]}]},
+      "after": {"revision": "r2", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "No, no, I said no to him."}]}]},
+      "mark": {"line": "L0001", "start": 11, "end": 13, "kind": "underline"},
+      "want": ["L0001", 15, 17]
+    },
+    {
+      "name": "the marked words are gone: not placed",
+      "before": {"revision": "r1", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Away with him, to the tower."}]}]},
+      "after": {"revision": "r2", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Away with him."}]}]},
+      "mark": {"line": "L0001", "start": 15, "end": 27, "kind": "note"},
+      "want": "lost"
+    },
+    {
+      "name": "a breath re-anchored by its context when the line changes",
+      "before": {"revision": "r1", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Yes--the first thing tomorrow morning, and then we go."}]}]},
+      "after": {"revision": "r2", "lines": [{"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Yes, the very first thing tomorrow morning, and then we go."}]}]},
+      "mark": {"line": "L0001", "start": 38, "end": 38, "kind": "breath"},
+      "want": ["L0001", 43, 43]
+    },
+    {
+      "name": "one short word with no matching context elsewhere: not placed, never guessed",
+      "before": {"revision": "r1", "lines": [
+        {"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Yes."}]},
+        {"id": "L0002", "kind": "speech", "role": "B", "parts": [{"say": "Well, I suppose so."}]}
+      ]},
+      "after": {"revision": "r2", "lines": [
+        {"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Yes."}]},
+        {"id": "L0002", "kind": "speech", "role": "B", "parts": [{"say": "Something else entirely."}]},
+        {"id": "L0003", "kind": "speech", "role": "A", "parts": [{"say": "And I am here."}]}
+      ]},
+      "mark": {"line": "L0002", "start": 6, "end": 7, "kind": "highlight"},
+      "want": "lost"
+    },
+    {
+      "name": "a line id the revision no longer has: the nearest line holding the words",
+      "before": {"revision": "r1", "lines": [
+        {"id": "L0003", "kind": "speech", "role": "A", "parts": [{"say": "Come here."}]},
+        {"id": "L0004", "kind": "direction", "source": "[He crosses to the window and opens it.]"},
+        {"id": "L0005", "kind": "speech", "role": "B", "parts": [{"say": "It is cold."}]}
+      ]},
+      "after": {"revision": "r2", "lines": [
+        {"id": "L0003", "kind": "speech", "role": "A", "parts": [{"say": "Come here."}]},
+        {"id": "L0005", "kind": "speech", "role": "B", "parts": [{"say": "It is cold."}]},
+        {"id": "L0006", "kind": "direction", "source": "[He crosses to the window and opens it.]"}
+      ]},
+      "mark": {"line": "L0004", "start": 1, "end": 24, "kind": "highlight"},
+      "want": ["L0006", 1, 24]
+    },
+    {
+      "name": "the same words in two other lines: the nearer line wins",
+      "before": {"revision": "r1", "lines": [
+        {"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Hark, the bell tolls."}]},
+        {"id": "L0002", "kind": "speech", "role": "B", "parts": [{"say": "Hark, the bell tolls for thee."}]},
+        {"id": "L0003", "kind": "speech", "role": "A", "parts": [{"say": "Go."}]}
+      ]},
+      "after": {"revision": "r2", "lines": [
+        {"id": "L0001", "kind": "speech", "role": "A", "parts": [{"say": "Hark, the bell tolls."}]},
+        {"id": "L0002", "kind": "speech", "role": "B", "parts": [{"say": "Silence."}]},
+        {"id": "L0003", "kind": "speech", "role": "A", "parts": [{"say": "Go. Hark, the bell tolls."}]},
+        {"id": "L0004", "kind": "speech", "role": "B", "parts": [{"say": "Hark, the bell tolls."}]}
+      ]},
+      "mark": {"line": "L0002", "start": 6, "end": 20, "kind": "underline"},
+      "want": ["L0001", 6, 20]
+    }
+  ]
+}

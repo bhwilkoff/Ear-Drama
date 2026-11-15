@@ -661,9 +661,9 @@ web app follows today.
      the view is its own scroller, never `position: fixed` (§10, Safari).
      A **top bar**: Close (back where the person came from, else the
      play's page), the play's title over the act and scene the reading
-     position is in (a caption, one line, truncated), then four icon
+     position is in (a caption, one line, truncated), then five icon
      buttons with labels for assistive tech: **Contents**, **Search**,
-     **Text** (Aa), **Voices** (item 13). A **bottom bar**: **I'm playing** (a native select:
+     **Text** (Aa), **Voices** (item 13), **Marks** (item 15). A **bottom bar**: **I'm playing** (a native select:
      Nobody, then the speaking parts largest first with their line
      counts), **Hear the cast** (item 13), and once a part is chosen **Next line** and **Hide my
      lines** (a toggle, `aria-pressed`), then the page count ("12 of 140",
@@ -862,6 +862,67 @@ web app follows today.
        top (close, the part over the play, "K of N" kept), the strip ... the
        dock. At 1100 px and wider, "In this scene" (faces) on the left and
        this line's aids and the keys on the right" (§4.10b's fixed slots).
+  15. **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 is binding on the
+     verbs; owner 2026-11-14: *"...and mark them up and do all of the
+     things that a good book/script reading experience should contain."*).
+     Code: `js/marks-core.js` (no DOM: the anchor, snapping to words, the
+     overlap rules, re-anchoring a revision, the notebook's order, storage
+     and the export rows), `js/marks.js` (the bar, drawing, the notebook);
+     tests `js/marks.test.js` and the golden
+     `catalog/tests/golden/marks_anchor.json`; frames
+     `tools/web_fit_marks.py`.
+     - **Selecting**: the browser's own selection (the Selection API) over
+       the page's runs; each run's `data-at` maps a selection's ends to
+       (line id, offset), and a selection across lines becomes one anchor
+       per line. Nothing in the page blocks selection except Hide my lines'
+       bars (`user-select: none`, as before).
+     - **The mark bar** (`.mk-bar`): while a selection inside the page is
+       not empty, a floating bar of six 44 px buttons sits centered over the
+       page's foot, above the dock and the bottom bar (never beside the
+       selection, so it never meets the browser's own selection menu on a
+       phone): Highlight (a swatch in the last hue), Underline, Breath,
+       Pause, Beat, Note, each an inline SVG (R-ICON-1) with an
+       `aria-label` and a `title` naming its key. A tap on a mark opens the
+       same bar for that mark: a highlight's four hue swatches (radios) and
+       Delete; Delete for an underline, breath or pause; Edit and Delete for
+       a beat or a note. After a delete the bar shows **Undo** until the
+       next mark, tap or page turn. Esc, a tap elsewhere or a turn closes
+       it. A press on the bar never clears the selection
+       (`pointerdown` default prevented).
+     - **Drawing**: highlights, underlines and notes' dotted rules are
+       painted with the CSS Custom Highlight API (`CSS.highlights`, one
+       `Highlight` per hue, one for underlines, one for notes; styled by
+       `::highlight(ed-mk-…)` with `--color-mark-*`), so the page's text and
+       layout never change for them. Breath, pause, beat and a note's glyph
+       are empty inline elements (`.mk`) set into the run at their offset,
+       their glyph drawn by `::before` / `::after` from `data-label`, so no
+       character ever joins the script's text (`textContent` and every
+       offset stay the script's); a point mark lays the pages out again.
+       Browsers without the Highlight API (Safari before 17.2, Firefox
+       before 140) draw the point marks and list everything in the
+       notebook, but paint no tint or rule; nothing else changes.
+     - **Beat and note** open a `<dialog>` (the reader's sheet): the marked
+       words as a caption, then a field (a beat's label, `maxlength` 24; a
+       note's `<textarea>`), Save and, for an existing mark, Delete.
+     - **The notebook**: a fifth top-bar icon, **Marks**, opens a sheet:
+       a **Show marks** switch (`ed.marks.prefs`), then every mark in script
+       order (rows: glyph in its hue, the speaker in caption type, the
+       words, a beat's label, a note), a tap closing the sheet and going to
+       the line with the outline (`goIndex(..., { flash: true })`); then
+       "Not placed" with each lost mark's words, note and a Delete. Empty:
+       "Select words on the page to mark them."
+     - **Keys**, with a selection in the page (the reader's handler, so
+       nothing reaches the player): `H`, `U`, `/`, `P`, `B`, `N`, Esc.
+       The studio's Space, `J`, `K`, `R` and Return are unchanged.
+     - **Storage**: `localStorage` `ed.marks.<script id>`, `{format: 1,
+       script, marks: [...]}`, every access guarded; a failed write shows
+       "Marks are not being saved on this device." with the warning glyph
+       in the bar and the notebook. **Export my data** (Library) adds
+       `marks[]` (docs/EXPORT.md).
+     - **With the studio**: the page's marks are drawn under the studio's
+       take state and outlines; a tap on a mark opens the mark, any other
+       tap on my line makes it current (`Studio.tap` runs after the marks').
+
 
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's
   scroll except Home's (Decision 075) and on each site page: Credits, Privacy, Take-down requests,

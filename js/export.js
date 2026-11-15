@@ -1,6 +1,6 @@
 /**
- * Export (Human-Shaped principle 11): a person's own listening history, follows, queue, and takes
- * list as a JSON file, and the history as CSV. Built here from what the device holds; nothing is
+ * Export (Human-Shaped principle 11): a person's own listening history, follows, queue, takes list,
+ * and script marks (PLAYS-DESIGN §2.10) as a JSON file, and the history as CSV. Built here from what the device holds; nothing is
  * sent anywhere. The same keys on every platform (docs/EXPORT.md).
  */
 const DataExport = (() => {
@@ -8,8 +8,11 @@ const DataExport = (() => {
 
   const iso = (ms) => (ms ? new Date(ms).toISOString() : null);
 
-  /** `store` is Store; `productions` is the plays store's productions (records only, never audio). */
-  function build(store, productions = [], now = Date.now()) {
+  /**
+   * `store` is Store; `productions` is the plays store's productions (records only, never audio);
+   * `marks` is MarksCore.exportRows(localStorage), every play's marks on this device.
+   */
+  function build(store, productions = [], now = Date.now(), marks = []) {
     const positions = (id) => store.position(id) || {};
     return {
       app: 'Ear Drama',
@@ -27,6 +30,7 @@ const DataExport = (() => {
         production: p.id, title: p.title, created: iso(p.created),
         takes: (p.takes || []).map(t => ({ ...t, chosen: (p.chosen || {})[t.lineID] === t.id })),
       })),
+      marks: marks.map(m => ({ ...m })),
     };
   }
 

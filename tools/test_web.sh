@@ -3,7 +3,7 @@
 # packaged-TV origin rules, Pulse's charts and page, the design tokens (every
 # platform's token file matches design-tokens.json), the service worker's
 # routing and shell, plays phase 1 (relay, takes, timeline, mix, no stored
-# device voice), the script reader (sections, contents, search, pages, the position kept), the studio in the reader (mode movement, take states, delete only unchosen takes, record again keeps takes), plays phase 2 against a stubbed Worker (the uploads switch,
+# device voice), the script reader (sections, contents, search, pages, the position kept), marks (anchoring, re-anchoring a revision, offsets through the page, overlap, storage), the studio in the reader (mode movement, take states, delete only unchosen takes, record again keeps takes), plays phase 2 against a stubbed Worker (the uploads switch,
 # no consent on upload, Publish shut, no flagged upload, any open part, invite links), sign-in and sync against a stubbed Worker (refresh, merge,
 # last write wins, deletion), Listen Together against a stubbed Worker built
 # from worker/src/room-protocol.js (join, leave, drift, handoff, an ended
@@ -24,6 +24,7 @@ DEFAULT_SUITES="js/api.test.js
   js/player.test.js
   js/plays.test.js
   js/reader.test.js
+  js/marks.test.js
   js/studio.test.js
   js/voice-cast.test.js
   js/kokoro.test.js

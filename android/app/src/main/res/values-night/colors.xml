@@ -31,6 +31,10 @@
     <color name="on_board_news">#FFF2F2F4</color>
     <color name="on_board_documentary">#FFF2F2F4</color>
     <color name="on_board_serial">#FFF2F2F4</color>
+    <color name="mark_yellow">#FF5C4A10</color>
+    <color name="mark_green">#FF1F4A2B</color>
+    <color name="mark_blue">#FF1D3D63</color>
+    <color name="mark_pink">#FF5B2743</color>
     <color name="print_ground">#FF2A2A2E</color>
     <color name="print_edge">#29F2F2F4</color>
 </resources>

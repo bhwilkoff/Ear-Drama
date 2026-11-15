@@ -90,7 +90,7 @@ def launch(profile):
         [web_run.CHROME, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--mute-audio', '--no-first-run',
          '--no-default-browser-check', '--autoplay-policy=no-user-gesture-required', '--disable-features=Translate,MediaRouter',
          '--remote-debugging-port=0', f'--user-data-dir={profile}', 'about:blank'],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     port_file = Path(profile) / 'DevToolsActivePort'
     t0 = time.time()
     while time.time() - t0 < 20:

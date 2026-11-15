@@ -31,6 +31,7 @@ const Reader = (() => {
     wave: 'M3 10h2v4H3zm4-3h2v10H7zm4-4h2v18h-2zm4 4h2v10h-2zm4 3h2v4h-2z',
     mic: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11z',
     close: 'M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
+    marks: 'M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2zm0 15-5-2.18L7 18V5h10v13z',
   };
   function svg(name) {
     const ns = 'http://www.w3.org/2000/svg';
@@ -244,6 +245,7 @@ const Reader = (() => {
     clearPeeks(st);
     paintHeads(st);
     paintWhere(st);
+    if (st.marks) st.marks.turned();
     save(st);
   }
 
@@ -340,6 +342,7 @@ const Reader = (() => {
    * the cue each is heard on: the last words of the speech before it, underlined in the part's hue.
    */
   function setPart(st, part) {
+    if (st.marks) st.marks.undraw();
     st.part = part || null;
     st.mine = [];
     for (const n of st.root.querySelectorAll('.rd-cueword')) n.classList.remove('rd-cueword');
@@ -363,6 +366,7 @@ const Reader = (() => {
     st.recBtn.hidden = !st.part || !st.onRecord;
     if (!st.part) setHiding(st, false);
     else paintHidden(st);
+    if (st.marks) st.marks.draw();
     save(st);
   }
   /** Marks the last sentence of a speech's last said words (splitting their run, each half keeping its offset). */
@@ -584,6 +588,7 @@ const Reader = (() => {
     });
     st.clip.addEventListener('pointermove', (e) => {
       if (!drag || !drag.touch) return;
+      if (!drag.moved && st.marks && st.marks.selecting()) { drag = null; return; }
       const dx = e.clientX - drag.x;
       if (!drag.moved && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - drag.y)) {
         drag.moved = true;
@@ -607,7 +612,12 @@ const Reader = (() => {
     st.clip.addEventListener('click', (e) => {
       if (swallow) { swallow = false; return; }
       st.following = false;
+      // A selection's own click: the mark bar has it (PLAYS-DESIGN §2.10).
+      if (st.marks && st.marks.selecting()) return;
       const line = e.target.closest('.rd-line');
+      // A tap on a mark opens it (§2.10 rule 6), unless the line is hidden (a tap there peeks).
+      const hidden = st.hiding && line && line.classList.contains('rd-mine') && !line.classList.contains('rd-peek');
+      if (!hidden && st.marks && st.marks.tap(e)) return;
       // The studio (PLAYS-DESIGN §2.9 rule 2): a tap on one of my lines makes it current, never a page turn.
       if (st.studio && st.studio.tap(e.target, line)) {
         if (st.hiding && line && line.classList.contains('rd-mine')) peek(st, line);
@@ -673,6 +683,7 @@ const Reader = (() => {
     const hideBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool', 'aria-pressed': 'false', hidden: true }, svg('hide'), el('span', { class: 'rd-tool-lab' }, 'Hide my lines'));
     const iconBtn = (name, label, onclick) => el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': label, title: label, onclick }, svg(name));
     const dock = el('div', { class: 'rd-dock', hidden: true });
+    const markHost = el('div', { class: 'mk-host' });
     const hearBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool rd-hear' });
     // Record (PLAYS-DESIGN §2.9 rule 1): with a part chosen, the studio opens here.
     const recBtn = el('button', { type: 'button', class: 'btn btn-ghost rd-tool rd-rec-btn', hidden: true, 'aria-label': 'Record' },
@@ -685,7 +696,7 @@ const Reader = (() => {
     const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, recBtn, footer, side, lines, dock, prefs: prefsNow(),
                  onRecord: opts.onRecord || null, studio: null, partSel: null,
                  cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
-                 pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, following: true };
+                 pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, following: true, marks: null };
     st.contents = contentsSheet(st);
     st.search = searchSheet(st);
     st.text = textSheet(st);
@@ -697,8 +708,9 @@ const Reader = (() => {
         iconBtn('contents', 'Contents', () => st.contents.showModal()),
         iconBtn('search', 'Search', () => st.search.showModal()),
         iconBtn('text', 'Text', () => st.text.showModal()),
-        iconBtn('voices', 'Voices', () => st.voices.showModal())),
-      el('div', { class: 'rd-main' }, el('div', { class: 'rd-col' }, stage, dock, footer), side),
+        iconBtn('voices', 'Voices', () => st.voices.showModal()),
+        typeof Marks !== 'undefined' ? iconBtn('marks', 'Marks', () => st.marks && st.marks.openNotebook()) : null),
+      el('div', { class: 'rd-main' }, el('div', { class: 'rd-col' }, stage, markHost, dock, footer), side),
       st.contents, st.search, st.text, st.voices);
     st.partSel = partSel;
     footer.append(el('label', { class: 'rd-part' }, partSel), hearBtn, recBtn, nextBtn, hideBtn, pageLab);
@@ -718,6 +730,8 @@ const Reader = (() => {
     const startPart = opts.studio ? opts.studio.part : saved.part;
     if (startPart && parts.some(p => p.id === startPart)) { partSel.value = startPart; setPart(st, startPart); }
     if (opts.studio && typeof Studio !== 'undefined') st.studio = Studio.attach(studioApi(st, opts), opts.studio);
+    if (typeof Marks !== 'undefined') st.marks = Marks.attach(marksApi(st, markHost));
+    if (st.marks) st.marks.draw();
     layout(st, at);
     // A face that arrives late (the heading face loads when a heading first shows) moves every line:
     // lay out again, keeping the position.
@@ -755,6 +769,7 @@ const Reader = (() => {
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('keydown', onMyLineKey, true);
     if (cur.studio) cur.studio.detach();
+    if (cur.marks) cur.marks.detach();
     if (cur.table) cur.table.stop();
     if (cur.voicesOff) cur.voicesOff();
     if (cur.resize) cur.resize.disconnect();
@@ -766,6 +781,24 @@ const Reader = (() => {
   const openID = () => (cur ? cur.script.id : null);
   /** The open reader's script and studio, so a route to the same address does not open it again. */
   const openKey = () => (cur ? cur.key : null);
+
+  /** What the marks (js/marks.js, PLAYS-DESIGN §2.10) may touch: the page's lines, a host for the bar, the sheets, going to a line. */
+  function marksApi(st, barHost) {
+    const ids = new Map(st.script.lines.map((l, i) => [l.id, i]));
+    let storage = null;
+    try { storage = window.localStorage; } catch { storage = null; }
+    return {
+      root: st.root, flow: st.flow, script: st.script, lines: st.lines, barHost, el, sheet, storage,
+      index: (id) => (ids.has(id) ? ids.get(id) : -1),
+      go: (id, flash = false) => { const i = ids.get(id); if (i !== undefined) goIndex(st, i, { flash }); },
+      /** A point mark moves words: lay out again, keeping the first line that starts on this page on screen. */
+      relayout: () => {
+        if (st.prefs.layout !== 'pages') { layout(st, st.pos); return; }
+        const i = st.starts.findIndex(p => p >= st.page);
+        layout(st, i >= 0 ? i : st.pos);
+      },
+    };
+  }
 
   /**
    * What the studio (js/studio.js, PLAYS-DESIGN §2.9) may touch: the page's lines, the dock and the

@@ -137,6 +137,23 @@ fun onBoardColor(key: String?, dark: Boolean): Color = when (key) {
     else -> if (dark) BrandTextDark else BrandTextLight
 }
 
+// --- MARKS (PLAYS-DESIGN 2.10): a highlight's tint in the script reader; yellow for an unnamed hue ---
+val MarkYellowLight = Color(0xFFFBE38E)
+val MarkYellowDark = Color(0xFF5C4A10)
+val MarkGreenLight = Color(0xFFCDEBC5)
+val MarkGreenDark = Color(0xFF1F4A2B)
+val MarkBlueLight = Color(0xFFCFE2F8)
+val MarkBlueDark = Color(0xFF1D3D63)
+val MarkPinkLight = Color(0xFFF7D2E3)
+val MarkPinkDark = Color(0xFF5B2743)
+fun markColor(key: String?, dark: Boolean): Color = when (key) {
+    "yellow" -> if (dark) MarkYellowDark else MarkYellowLight
+    "green" -> if (dark) MarkGreenDark else MarkGreenLight
+    "blue" -> if (dark) MarkBlueDark else MarkBlueLight
+    "pink" -> if (dark) MarkPinkDark else MarkPinkLight
+    else -> if (dark) MarkYellowDark else MarkYellowLight
+}
+
 // --- PRINT MOUNT (D2c-3): the ground a contained picture sits on; the hairline edge around every window ---
 val PrintGroundLight = Color(0xFFEDEDED)
 val PrintGroundDark = Color(0xFF2A2A2E)

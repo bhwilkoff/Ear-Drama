@@ -27,13 +27,15 @@ Store.toggleFollow({ key: 'a', name: 'A Show' });
 const productions = [{ id: 'p1', title: 'Play', created: 1000, chosen: { l1: 't1' },
   takes: [{ id: 't1', lineID: 'l1' }, { id: 't2', lineID: 'l1' }] }];
 
-const data = DataExport.build(Store, productions, Date.parse('2026-10-30T12:00:00Z'));
+const marks = [{ script: 'gut-5071', title: 'The Philanderer', revision: 'r1', line: 'L0009a', start: 11, end: 25, kind: 'highlight', text: 'Never mind why', hue: 'yellow', label: null, note: null, created: '2026-11-15T12:00:00.000Z', updated: '2026-11-15T12:00:00.000Z' }];
+const data = DataExport.build(Store, productions, Date.parse('2026-10-30T12:00:00Z'), marks);
 assert.strictEqual(data.exportedAt, '2026-10-30T12:00:00.000Z');
 assert.deepStrictEqual(data.history.map(h => h.episode), ['a|2', 'a|1'], 'history, newest first');
 assert.strictEqual(data.history[1].positionSeconds, 600, 'the resume point travels with the row');
 assert.deepStrictEqual(data.following, [{ series: 'a', name: 'A Show' }]);
 assert.deepStrictEqual(data.queue.map(q => [q.position, q.episode]), [[1, 'a|3']]);
 assert.deepStrictEqual(data.takes[0].takes.map(t => [t.id, t.chosen]), [['t1', true], ['t2', false]]);
+assert.deepStrictEqual(data.marks, marks, 'the script marks travel as given (MarksCore.exportRows)');
 
 const csv = DataExport.historyCsv(data).split('\r\n');
 assert.strictEqual(csv[0], 'episode,title,seriesName,airDate,listenedAt,positionSeconds,durationSeconds');
@@ -42,6 +44,6 @@ assert.ok(csv[2].includes('"The ""Quoted"", Show"'), 'a quote is doubled');
 assert.strictEqual(csv.length, 4, 'header, two rows, trailing newline');
 
 const empty = DataExport.build({ history: () => [], follows: () => [], queue: () => [], position: () => null }, []);
-assert.deepStrictEqual([empty.history, empty.following, empty.queue, empty.takes], [[], [], [], []]);
+assert.deepStrictEqual([empty.history, empty.following, empty.queue, empty.takes, empty.marks], [[], [], [], [], []]);
 assert.strictEqual(DataExport.historyCsv(empty), 'episode,title,seriesName,airDate,listenedAt,positionSeconds,durationSeconds\r\n');
 console.log('export: all passed');

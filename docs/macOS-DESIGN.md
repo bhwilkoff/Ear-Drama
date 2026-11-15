@@ -253,6 +253,19 @@ only here:
     or more, so the speaker's name sits in the right-aligned gutter; a narrow
     window stacks it over the words. Text size changes (⌘+ ⌘−) re-evaluate the
     gutter with the re-pagination.
+  - **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 binding; the shared Core and
+    drawing are iOS-DESIGN §4.15 "Marks"; port spec
+    `docs/research/design/R2-marks-port-brief.md`). A drag selects words with the
+    pointer; a **Marks** menu (`.commands`) carries Highlight ⌘⇧H, Underline ⌘U,
+    Breath ⌘/, Pause ⌘⇧/, Beat ⌘⇧B, Note ⌘⇧N and Show Marks ⌘⇧M (a Mac takes no
+    bare letter keys in a document window: they would type), and the same six sit
+    in the selection's context menu (right-click), with the four hues as a
+    submenu of Highlight. A click on a mark opens a small popover (`.popover`) with
+    the hues or the label or the note, and Delete; ⌘Z undoes a delete
+    (`UndoManager`). The notebook is a second sidebar section under Contents
+    (**Marks**, in script order, a click going to the line; **Not Placed** after
+    it), so it sits beside the pages instead of over them. Pencil ink from an
+    iPad draws read-only at its line; the Mac makes no ink.
 
 ## §5 The player
 
