@@ -95,8 +95,11 @@ nonisolated struct ScriptLine: Codable, Hashable, Sendable, Identifiable {
     let role: String?
     let parts: [LinePart]?
     let source: String?
+    /// Indexes into `parts` of the said parts the source printed in italics (the speaker's stress).
+    let em: [Int]?
 
-    init(id: String, kind: Kind, role: String? = nil, parts: [LinePart]? = nil, source: String? = nil) {
+    init(id: String, kind: Kind, role: String? = nil, parts: [LinePart]? = nil, source: String? = nil, em: [Int]? = nil) {
+        self.em = em
         self.id = id
         self.kind = kind
         self.role = role

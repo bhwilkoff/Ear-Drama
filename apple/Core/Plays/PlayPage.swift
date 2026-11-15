@@ -162,6 +162,7 @@ nonisolated enum PlayPage {
                 let ended = emphasisEnd.firstMatch(in: prev, range: NSRange(location: 0, length: (prev as NSString).length)) != nil
                 if words.count <= 3, lower, !ended { stressed.insert(i) }
             }
+            stressed.formUnion(line.em ?? [])
             for i in runs.indices where stressed.contains(runs[i].piece) { runs[i].said = true; runs[i].kind = .em }
         }
         // A direction printed wholly in italic marks ("[_Exeunt._]") is italic, not turned roman.
