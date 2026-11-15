@@ -80,7 +80,13 @@ class ApiClient @Inject constructor() {
      * Tonight in 19xx (contract §8) from the catalog's Release, or null when
      * none is published (404). Throws on any other failed status or no network.
      */
-    suspend fun tonight(url: String = TONIGHT_URL): TonightFile? = withContext(Dispatchers.IO) {
+    suspend fun tonight(url: String = TONIGHT_URL): TonightFile? =
+        if (url == TONIGHT_URL) tonightDay.get { fetchTonight(url) } else fetchTonight(url)
+
+    private val tonightDay = DayCache<TonightFile>()
+    private val stationsDay = DayCache<List<Station>>()
+
+    private suspend fun fetchTonight(url: String): TonightFile? = withContext(Dispatchers.IO) {
         okHttp.newCall(Request.Builder().url(url).header("Accept", "application/json").build()).execute().use { response ->
             if (response.code == 404) return@use null
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")
@@ -92,7 +98,11 @@ class ApiClient @Inject constructor() {
      * The genre stations (contract §8) beside tonight.json, or an empty list
      * when none is published (404). Throws on any other failed status.
      */
-    suspend fun stations(url: String = STATIONS_URL): List<Station> = withContext(Dispatchers.IO) {
+    suspend fun stations(url: String = STATIONS_URL): List<Station> =
+        (if (url == STATIONS_URL) stationsDay.get { fetchStations(url).ifEmpty { null } } else fetchStations(url))
+            ?: emptyList()
+
+    private suspend fun fetchStations(url: String): List<Station> = withContext(Dispatchers.IO) {
         okHttp.newCall(Request.Builder().url(url).header("Accept", "application/json").build()).execute().use { response ->
             if (response.code == 404) return@use emptyList()
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} for $url")

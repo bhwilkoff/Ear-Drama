@@ -30,7 +30,7 @@ class DeviceVoiceSource(context: Context) {
     internal val tts = TextToSpeech(app) { status ->
         started = status == TextToSpeech.SUCCESS
         ready.complete(started)
-        refresh()
+        refreshOffMain()
     }
 
     /** Counts every change of the voice list, so a screen can repaint. */
@@ -41,9 +41,15 @@ class DeviceVoiceSource(context: Context) {
 
     suspend fun awaitReady(): Boolean = ready.await()
 
+    /** The engine's voice list is a binder call that parcels every voice: never on the main thread. */
+    fun refreshOffMain() {
+        Thread({ refresh() }, "voices-refresh").start()
+    }
+
     fun refresh() {
         if (!started) return
         val raw = runCatching {
+            val defaultName = runCatching { tts.defaultVoice?.name }.getOrNull()
             (tts.voices ?: emptySet()).map {
                 RawVoice(
                     name = it.name,
@@ -51,7 +57,7 @@ class DeviceVoiceSource(context: Context) {
                     quality = it.quality,
                     networkRequired = it.isNetworkConnectionRequired,
                     notInstalled = TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED in (it.features ?: emptySet()),
-                    isDefault = it.name == runCatching { tts.defaultVoice?.name }.getOrNull(),
+                    isDefault = it.name == defaultName,
                 )
             }
         }.getOrDefault(emptyList())
@@ -93,6 +99,8 @@ internal class TtsSetter(private val tts: TextToSpeech) : VoiceSetter {
 class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : LineSpeaker {
     @Volatile private var speaking: CompletableDeferred<Unit>? = null
     @Volatile private var speakingId: String? = null
+    /** The test door's mute (appname_mute): lines pass in time but nothing is voiced. */
+    @Volatile var muted: Boolean = false
     private val setter = TtsSetter(source.tts)
 
     init {
@@ -130,6 +138,10 @@ class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : 
     }
 
     private suspend fun say(words: String): Boolean {
+        if (muted) {
+            kotlinx.coroutines.delay(300L)
+            return true
+        }
         val id = UUID.randomUUID().toString()
         val done = CompletableDeferred<Unit>()
         speaking = done

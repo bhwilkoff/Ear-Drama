@@ -85,8 +85,23 @@ object TvFocusClock {
         private set
 
     fun keyPressed() { lastKeyNanos = System.nanoTime() }
-    fun screenOpened() { screenOpenedNanos = System.nanoTime() }
+    fun screenOpened() {
+        screenOpenedNanos = System.nanoTime()
+        if (firstScreenNanos == 0L) firstScreenNanos = screenOpenedNanos
+    }
+    @Volatile private var firstScreenNanos: Long = 0L
     val listenerHasMoved: Boolean get() = lastKeyNanos > screenOpenedNanos
+
+    /**
+     * The process's first claim is still pending: a key pressed while the first screen was loading
+     * moved focus into the rail (the only focusable thing), which is not a choice, so until that
+     * screen's content claims focus only keys pressed after the content appeared count.
+     */
+    @Volatile var firstClaimPending: Boolean = true
+        private set
+
+    fun firstClaimDone() { firstClaimPending = false }
+    fun movedSince(nanos: Long): Boolean = if (firstClaimPending && screenOpenedNanos == firstScreenNanos) lastKeyNanos > nanos else listenerHasMoved
 }
 
 /**
@@ -100,15 +115,17 @@ fun ClaimTvFocus(requester: FocusRequester, key: Any?) {
     if (!LocalIsTelevision.current) return
     LaunchedEffect(key) {
         var frames = 0
-        while (!TvFocusClock.listenerHasMoved && frames < MAX_CLAIM_FRAMES) {
+        val begun = System.nanoTime()
+        while (!TvFocusClock.movedSince(begun) && frames < MAX_CLAIM_FRAMES) {
             if (runCatching { requester.requestFocus(FocusDirection.Enter) }.getOrDefault(false)) {
+                TvFocusClock.firstClaimDone()
                 if (BuildConfig.DEBUG) println("[Focus] claimed after $frames frames (key=$key)")
                 return@LaunchedEffect
             }
             frames++
             withFrameNanos { }
         }
-        if (BuildConfig.DEBUG) println("[Focus] claim stopped after $frames frames (moved=${TvFocusClock.listenerHasMoved}, key=$key)")
+        if (BuildConfig.DEBUG) println("[Focus] claim stopped after $frames frames (moved=${TvFocusClock.movedSince(begun)}, key=$key)")
     }
 }
 

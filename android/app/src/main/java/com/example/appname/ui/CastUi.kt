@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -85,7 +86,7 @@ fun rememberDeviceVoices(): DeviceVoiceSource {
     val source = remember { DeviceVoiceSource(context) }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(source, lifecycle) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) source.refresh() }
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_RESUME) source.refreshOffMain() }
         lifecycle.addObserver(observer)
         onDispose {
             lifecycle.removeObserver(observer)
@@ -111,6 +112,7 @@ class CastHandle(val source: DeviceVoiceSource, val cast: VoiceCast, val speaker
 @Composable
 fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: String?): CastHandle? {
     val context = LocalContext.current
+    val muted = com.example.appname.navigation.LocalPlayerMuted.current
     val handle = remember(source, script?.id, productionId) {
         script?.let {
             val cast = VoiceCast(
@@ -124,6 +126,7 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
         }
     }
     if (handle != null) {
+        handle.speaker.muted = muted
         LaunchedEffect(handle) { source.rev.collect { handle.changed() } }
     }
     return handle
@@ -183,7 +186,7 @@ private fun firstLine(script: PlayScript, part: PartID): String =
 @Composable
 private fun Stepper(label: String, value: Double, range: ClosedFloatingPointRange<Double>, enabled: Boolean, show: (Double) -> String, onChange: (Double) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.width(72.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, Modifier.widthIn(min = 72.dp), softWrap = false, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedIconButton(onClick = { onChange(Math.round((value - VoiceCasting.STEP) * 100) / 100.0) }, enabled = enabled && value > range.start + 1e-9) {
             Icon(Icons.Filled.Remove, contentDescription = "$label lower")
         }
