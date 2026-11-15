@@ -317,7 +317,7 @@ const Reader = (() => {
   function paintWhere(st) {
     const { act, scene } = C.placeOf(st.script, Math.max(0, st.pos));
     st.where.textContent = [act && act.title, scene && scene.title].filter(Boolean).join(' · ');
-    if (st.prefs.layout === 'pages') st.count && (st.pageLab.textContent = R.pageLabel(st.page, st.per, st.count));
+    if (st.prefs.layout === 'pages') st.count && paintPageLab(st, R.pageLabel(st.page, st.per, st.count));
     else {
       const max = st.stage.scrollHeight - st.stage.clientHeight;
       st.pageLab.textContent = `${Math.round(100 * (max > 0 ? st.stage.scrollTop / max : 1))}%`;
@@ -521,6 +521,12 @@ const Reader = (() => {
     });
     st.table.play(Math.max(0, st.pos));
   }
+  /** "12 of 140": the "of" is its own span so a phone's bar can draw a slash instead (css .rd-of). */
+  function paintPageLab(st, label) {
+    const i = label.indexOf(' of ');
+    if (i < 0) { st.pageLab.textContent = label; return; }
+    st.pageLab.replaceChildren(label.slice(0, i), el('span', { class: 'rd-of' }, ' of '), label.slice(i + 4));
+  }
   function paintHear(st) {
     const on = !!(st.table && st.table.playing);
     st.hearBtn.replaceChildren(svg(on ? 'stop' : 'play'), el('span', { class: 'rd-tool-lab' }, on ? 'Stop' : 'Hear the cast'));
@@ -546,13 +552,26 @@ const Reader = (() => {
     if (st.hiding && t && t.classList && t.classList.contains('rd-mine') && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault(); peek(st, t); return;
     }
-    if (st.part && (e.key === 'j' || e.key === 'k')) { e.preventDefault(); myLine(st, e.key === 'j' ? 1 : -1); return; }
     if (st.prefs.layout !== 'pages') return;
     if (t && t.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
     const k = R.keyTurn(e.key, e.shiftKey);
     if (!k) return;
     e.preventDefault();
     step(st, k);
+  }
+
+  /* J and K, captured ahead of the player's own j/k (back 10 s, play/pause) while the plain reader is open; the studio takes them itself. */
+  function onMyLineKey(e) {
+    const st = cur;
+    const step = R.myLineStep(e.key);
+    if (!step || !st || !st.part || st.studio || !st.root.isConnected || st.root.closest('[hidden]')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (st.root.querySelector('dialog[open]') || document.querySelector('dialog[open]')) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    myLine(st, step);
   }
 
   function wire(st) {
@@ -695,6 +714,7 @@ const Reader = (() => {
     applyPrefs(st);
     wire(st);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onMyLineKey, true);
     const startPart = opts.studio ? opts.studio.part : saved.part;
     if (startPart && parts.some(p => p.id === startPart)) { partSel.value = startPart; setPart(st, startPart); }
     if (opts.studio && typeof Studio !== 'undefined') st.studio = Studio.attach(studioApi(st, opts), opts.studio);
@@ -733,6 +753,7 @@ const Reader = (() => {
   function close() {
     if (!cur) return;
     document.removeEventListener('keydown', onKey);
+    window.removeEventListener('keydown', onMyLineKey, true);
     if (cur.studio) cur.studio.detach();
     if (cur.table) cur.table.stop();
     if (cur.voicesOff) cur.voicesOff();

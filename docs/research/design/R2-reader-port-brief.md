@@ -22,7 +22,7 @@ keyboard on the iPad, `adb shell input keyevent` on the Pixel).
   `placeOf`, `lineText`, `fold`, `searchScript`, `lineIndexesOf`, `nextLineOf`,
   `openSpeakingParts`, and the row-or-script browse helpers `voicesOf`, `minutesOf`,
   `castOf`, `partCountOf` (with `CASTABLE_LINES = 5`).
-- `js/reader-core.js`: `normalizePrefs` (`SIZES`, `SPACING`, `SPREAD_MIN = 900`),
+- `js/reader-core.js`: `normalizePrefs` (`SIZES`, `SPACING`, `SPREAD_MIN = 860`),
   `lineAtPage`, `turn`, `spreadStart`, `swipeTurn`, `tapZone`, `keyTurn`, `pageLabel`,
   `remember`, `runsOf`, `spaceBetween`.
 - `js/reader.js`: the view (DOM, CSS columns, input). `js/reader.test.js`: every case below.
@@ -142,7 +142,7 @@ when it loads, the bundle otherwise; a script opens from `scripts/<id>.json`, el
   `starts` / `ends` arrays) from the `.scriptLine` attribute at each fragment.
 - Page size: the reader's content area minus 24 pt margins; text size = Dynamic Type body ×
   the reader step (use `UIFontMetrics(forTextStyle: .body).scaledFont`; on the Mac the system
-  body size). Per screen: two pages when the content width ≥ 900 pt (`ReaderMath.perSpread`),
+  body size). Per screen: two pages when the content width ≥ 860 pt (`ReaderMath.perSpread`),
   else one; the measure is capped at 36 em per page and centered.
 - Re-paginate on: size class or width change (`onGeometryChange`), Dynamic Type
   (`@Environment(\.dynamicTypeSize)`), a prefs change. Keep the **position line**: after
@@ -195,7 +195,7 @@ when it loads, the bundle otherwise; a script opens from `scripts/<id>.json`, el
 - Seams for later phases: `ScriptReaderView` takes an optional `dock: AnyView` slot (S3 studio)
   and exposes `follow(lineID)` through a small `@Observable ReaderController` (S1 read-along on
   the listen-through can call it; tvOS's panel shares `placeOf` and `lineText` only).
-- iPad and the open Duo: the same view; two facing pages at ≥ 900 pt. No `ArrangementView` in
+- iPad and the open Duo: the same view; two facing pages at ≥ 860 pt. No `ArrangementView` in
   S1 (that is S4's studio split). Closed Duo: one page.
 
 **Apple tests**
@@ -232,7 +232,7 @@ when it loads, the bundle otherwise; a script opens from `scripts/<id>.json`, el
   start the next page at that line's start offset (`getLineStart`). Record `starts` / `ends` per
   line id from the annotations. Font scale: `LocalDensity.current.fontScale` × the reader step.
 - Pages per screen: two when `currentWindowAdaptiveInfo().windowSizeClass` is expanded width and
-  the reader has ≥ 900 dp, else one. Re-measure on size, font scale, fold posture and prefs;
+  the reader has ≥ 860 dp, else one. Re-measure on size, font scale, fold posture and prefs;
   keep the position line exactly as Apple does (no backward drift).
 
 **Turning**

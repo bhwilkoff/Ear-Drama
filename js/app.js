@@ -511,20 +511,19 @@
     if (RENAMED[old] || playsInBrowse) {
       p.set('view', playsInBrowse ? 'record' : RENAMED[old]);
       if (p.get('view') === 'record') { p.delete('kind'); p.delete('script'); }
-      history.replaceState(null, '', `?${p}${location.hash}`);
+      history.replaceState(history.state, '', `?${p}${location.hash}`);
     }
     return { view: VIEW_OF[p.get('view')] || 'listen', p };
   }
 
   let firstRoute = true;
-  /** Where the reader was opened from in this tab, so Close goes back there; null for a link opened cold. */
-  let readerFrom = null;
+  /** Entries the app itself pushed in this tab (history.state.i): 0 for a link opened cold, where back could leave the site. */
+  const inApp = () => !!(history.state && history.state.i > 0);
   function route() {
     takeRoomLink();
     takeInviteLink();
     const r = parseRoute();
     // The reader (WEB-DESIGN §4.16) takes the whole height: the tab bar and sidebar step aside.
-    if (r.view === 'reader' && !document.body.classList.contains('reading')) readerFrom = firstRoute ? null : location.href;
     document.body.classList.toggle('reading', r.view === 'reader');
     if (r.view !== 'reader') Reader.close();
     VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== r.view; });
@@ -552,7 +551,7 @@
     if (code === null) return;
     p.delete('room');
     const q = p.toString();
-    history.replaceState(null, '', q ? `?${q}` : location.pathname);
+    history.replaceState(history.state, '', q ? `?${q}` : location.pathname);
     TogetherUI.open(code);
   }
 
@@ -561,13 +560,13 @@
     const tok = PlaysShare.inviteToken(location);
     if (!tok) return;
     PlaysShare.holdInvite(tok);
-    history.replaceState(null, '', '?view=invite');
+    history.replaceState(history.state, '', '?view=invite');
   }
 
   function setTitle(...parts) { document.title = [...parts.filter(Boolean), 'Ear Drama'].join(' · '); }
 
   function navigate(href, replace = false) {
-    if (replace) history.replaceState(null, '', href); else history.pushState(null, '', href);
+    if (replace) history.replaceState(history.state, '', href); else history.pushState({ i: ((history.state && history.state.i) || 0) + 1 }, '', href);
     route();
   }
 
@@ -690,7 +689,7 @@
           const p = new URLSearchParams(location.search);
           p.set('view', 'home');
           if (s === shelves[0]) p.delete(param); else p.set(param, s.key);
-          history.replaceState(null, '', `?${p}`);
+          history.replaceState(history.state, '', `?${p}`);
           fill();
         } }, s.label))) : null;
       const fill = () => load(railBox, () => Promise.all([API.episodesByIds(on.episodes), API.seriesIndex()]), ([eps, idx], b) => {
@@ -1567,7 +1566,7 @@
       if (s.key !== r.key) {   // a moved series key (contract §3.5): the address names the series it now is
         const p = new URLSearchParams(r.p);
         p.set('series', s.key);
-        history.replaceState(null, '', `?${p}${location.hash}`);
+        history.replaceState(history.state, '', `?${p}${location.hash}`);
       }
       setTitle(s.name);
       const following = Store.isFollowing(s.key);
@@ -1590,7 +1589,7 @@
         b.addEventListener('click', () => {
           const p = new URLSearchParams({ series: s.key });
           if (v) p.set('season', v);
-          history.replaceState(null, '', `?${p}`);
+          history.replaceState(history.state, '', `?${p}`);
           seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
           drawEpisodes(v);
         });
@@ -1657,7 +1656,7 @@
       const script = d.script && !onTV() ? (await castable()).find(x => x.id === d.script) || null : null;
       return { d, s, genre, rightsLine: lines[0], m: lines[1], script };
     }, ({ d, s, genre, rightsLine, m, script }) => {
-      if (d.id !== r.id) history.replaceState(null, '', `?item=${encodeURIComponent(d.id)}`);
+      if (d.id !== r.id) history.replaceState(history.state, '', `?item=${encodeURIComponent(d.id)}`);
       const seriesName = s ? s.name : d.series;
       const title = epTitle(d);
       setTitle(title, API.mediumDate(d.date), seriesName);
@@ -1830,7 +1829,7 @@
         b.addEventListener('click', () => {
           const q = new URLSearchParams({ person: p.id });
           if (v === 'newest') q.set('order', 'newest');
-          history.replaceState(null, '', `?${q}`);
+          history.replaceState(history.state, '', `?${q}`);
           seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
           draw(v === 'newest');
         });
@@ -2045,7 +2044,7 @@
     searchTimer = setTimeout(() => {
       const p = new URLSearchParams({ view: 'search' });
       if (q) p.set('q', q);
-      history.replaceState(null, '', `?${p}`);
+      history.replaceState(history.state, '', `?${p}`);
       runSearch(q);
     }, 180);
   });
@@ -2076,8 +2075,8 @@
     setTitle('Read');
     body.replaceChildren(stateBox('loading'));
     const close = () => {
-      if (readerFrom) history.back();
-      else navigate(studio ? `?production=${encodeURIComponent(prod)}` : `?play=${encodeURIComponent(r.id)}`, true);
+      const to = ReaderCore.closeTo(inApp(), studio, prod, r.id);
+      if (to === 'back') history.back(); else navigate(to, true);
     };
     /** The reader's Record (§4.16 item 14): the production this part records in, then the studio. Not on a TV. */
     const onRecord = document.documentElement.classList.contains('tv') ? null : async (script, p) => {

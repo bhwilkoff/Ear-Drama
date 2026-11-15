@@ -305,5 +305,12 @@ test('the page: every drawn run still maps back to its line\'s words (marks anch
   ok(split > 0, 'some script runs a speech into another (the parser miss the page attributes)');
 });
 
+test('Close: back only from inside the app; a cold link goes to the play or its production', () => {
+  eq(R.closeTo(true, false, null, 'p1'), 'back', 'opened in the app');
+  eq(R.closeTo(false, false, null, 'p 1'), '?play=p%201', 'cold read');
+  eq(R.closeTo(false, true, 'pr1', 'p1'), '?production=pr1', 'cold studio');
+  eq([R.myLineStep('j'), R.myLineStep('K'), R.myLineStep('x')], [1, -1, 0], 'J and K');
+});
+
 console.log(`${passes}/${passes + failures} passed${failures ? `, ${failures} FAILED` : ''}`);
 process.exit(failures ? 1 : 0);

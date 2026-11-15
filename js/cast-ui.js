@@ -178,20 +178,31 @@ const CastUI = (() => {
     return d;
   }
 
-  /** The reader's Voices: every part with its chip, then Recast all. */
+  /**
+   * The reader's Voices: every part with its chip, then Recast all. A part someone else holds in a
+   * shared production shows that person's name instead of a chip (`setNames({ partId: name })`).
+   */
   function list({ script, cast, voice, onChange = () => {} }) {
-    const chips = [];
-    const rows = C.castParts(script).map(p => {
-      const c = chip({ script, cast, voice, part: p.id, onChange });
-      chips.push(c);
-      return el('li', { class: 'vc-cast-row' },
-        el('span', { class: 'vc-cast-part' }, el('span', { class: 'body-strong' }, p.title),
-          el('span', { class: 'caption tabular' }, `${p.lineCount === 1 ? '1 line' : `${p.lineCount.toLocaleString('en-US')} lines`}`)), c);
-    });
+    let chips = [];
+    let names = {};
+    const ul = el('ul', { class: 'vc-cast-list' });
+    function draw() {
+      chips = [];
+      ul.replaceChildren(...C.castParts(script).map(p => {
+        let end;
+        if (names[p.id]) end = el('span', { class: 'vc-cast-who body', 'data-part': p.id }, names[p.id]);
+        else { end = chip({ script, cast, voice, part: p.id, onChange }); chips.push(end); }
+        return el('li', { class: 'vc-cast-row', dataset: { part: p.id } },
+          el('span', { class: 'vc-cast-part' }, el('span', { class: 'body-strong' }, p.title),
+            el('span', { class: 'caption tabular' }, `${p.lineCount === 1 ? '1 line' : `${p.lineCount.toLocaleString('en-US')} lines`}`)), end);
+      }));
+    }
+    draw();
     const recast = el('button', { type: 'button', class: 'btn', onclick: () => { cast.recast(); paint(); onChange(); } }, 'Recast all');
-    const box = el('div', { class: 'vc-cast' }, el('ul', { class: 'vc-cast-list' }, rows), el('div', { class: 'actions' }, recast));
+    const box = el('div', { class: 'vc-cast' }, ul, el('div', { class: 'actions' }, recast));
     function paint() { chips.forEach(c => c.paint()); }
     box.paint = paint;
+    box.setNames = (m) => { names = m || {}; draw(); };
     return box;
   }
 

@@ -1303,7 +1303,14 @@ body.reading #main-content { overflow: hidden; }
 .rd-tool[aria-pressed="true"] { background: var(--color-surface-alt); border-color: transparent; }
 .rd-page { flex: none; min-width: 4.5em; text-align: right; }
 /* A phone's bar holds the part, four tools and the page: tighter gaps, so the part's name still reads. */
-@media (max-width: 399px) { .rd-bottom { gap: 4px; } .rd-bottom .rd-tool { padding: 0 6px; min-width: 36px; } .rd-page { min-width: 0; } }
+@media (max-width: 399px) {
+  .rd-bottom { gap: 4px; }
+  .rd-bottom .rd-tool { padding: 0 4px; min-width: 34px; }
+  .rd-part-sel { padding: 0 2px 0 6px; font-size: 14px; }
+  .rd-page { min-width: 0; font-size: 12px; }
+  .rd-of { font-size: 0; }
+  .rd-of::after { content: "/"; font-size: 12px; }
+}
 .rd-stage { flex: 1; min-height: 0; position: relative; padding: var(--space-6) var(--space-2) var(--space-4); outline: none; }
 @media (min-width: 600px) { .rd-stage { padding-left: var(--space-6); padding-right: var(--space-6); } }
 /* The page: a 14 px inner margin, so the tint of "my" speeches is never cut at a page's edge. */
@@ -1546,6 +1553,7 @@ body.reading #main-content { overflow: hidden; }
   padding: var(--space-1) 0; border-bottom: 1px solid var(--color-border); }
 .vc-cast-part { display: flex; flex-direction: column; min-width: 0; }
 .vc-cast-part .caption { color: var(--color-text-muted); }
+.vc-cast-who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-muted); }
 .vc-cast-row .vc-chip { margin: 0; flex: 0 1 auto; min-width: 0; }
 .rd-voice-now { display: flex; align-items: center; gap: 6px; margin: 0; padding: var(--space-2) var(--space-4); color: var(--color-text-muted);
   border-top: 1px solid var(--color-border); }
