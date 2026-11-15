@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- DEBUG only: the Kokoro bench (R2-kokoro-feasibility §6 S6a). Never in a release build. -->
+        <activity
+            android:name="com.example.appname.KokoroBenchActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault"
+            android:keepScreenOn="true" />
+    </application>
+</manifest>

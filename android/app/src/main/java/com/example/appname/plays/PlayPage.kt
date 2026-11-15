@@ -115,7 +115,7 @@ object PlayPage {
         // emphasis the parser took for a direction: drawn as said, in italic.
         if (isSpeech) {
             val stressed = HashSet<Int>()
-            parts!!.forEachIndexed { i, p ->
+            parts.forEachIndexed { i, p ->
                 val prev = parts.getOrNull(i - 1)
                 val next = parts.getOrNull(i + 1)
                 if (p !is LinePart.Direction || prev !is LinePart.Say || next !is LinePart.Say) return@forEachIndexed
@@ -162,7 +162,7 @@ object PlayPage {
             return PageLine(rows = listOf(PageRow(cue, false, out.filter { it.text.isNotEmpty() }.toMutableList())))
         }
 
-        val ps = parts!!
+        val ps = parts
         fun isCue(i: Int): Boolean {
             val p = ps.getOrNull(i) ?: return false
             return p is LinePart.Sound || (p is LinePart.Direction && isCueWords(p.text))

@@ -119,5 +119,19 @@ class PlayLibraryFeed(
         return null
     }
 
+    /**
+     * A play's published phonemes (contract §4.1 `phonemes/<id>.json`, Decision 078) as text, for the downloaded voices;
+     * null when the index names none (a held play, or no published index: the bundle carries no phonemes). Never cached on
+     * disk. Throws when the file could not be fetched.
+     */
+    suspend fun phonemes(id: String): String? {
+        loadRows()
+        val now = _rows.value as? Rows.Ready ?: return null
+        if (!now.published) return null
+        val path = now.rows.firstOrNull { it.id == id }?.phonemes ?: return null
+        return transport.get(path)
+    }
+
     private fun decode(text: String, id: String): PlayScript? = PlayScriptFile.decode(text).scripts.firstOrNull { it.id == id }
+
 }

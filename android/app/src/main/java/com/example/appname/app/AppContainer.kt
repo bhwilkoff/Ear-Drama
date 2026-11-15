@@ -12,6 +12,10 @@ import com.example.appname.data.CatalogRepository
 import com.example.appname.data.DownloadStore
 import com.example.appname.data.UserStore
 import com.example.appname.data.WorkManagerDownloadTransport
+import com.example.appname.kokoro.KokoroModelStore
+import com.example.appname.kokoro.KokoroModule
+import com.example.appname.kokoro.KokoroReader
+import com.example.appname.kokoro.KtorRangeFetch
 import com.example.appname.playback.PlaybackEngine
 import com.example.appname.plays.FinishedList
 import com.example.appname.plays.KtorLibraryTransport
@@ -29,7 +33,9 @@ import io.ktor.client.statement.bodyAsText
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** The app's singletons, built once in [AppNameApplication]. */
 class AppContainer(context: Context, scope: CoroutineScope) {
@@ -41,6 +47,47 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val queue by lazy { QueueVerbs(user, playback) }
     val plays = PlaysLibrary(context, KtorLibraryTransport(api.client)).also { p -> p.signedIn = { accounts.account.value != null } }
     val isTelevision = context.isTelevision()
+
+    /**
+     * The downloaded voices (Decision 078, S6d): the model under `filesDir/kokoro/v2`, fetched on the one Ktor client only
+     * when the person asks, the play's phonemes through the library's client. The download runs in the app's scope so
+     * leaving the picker does not stop it.
+     */
+    val kokoro: KokoroReader by lazy {
+        KokoroReader(
+            KokoroModelStore(File(context.filesDir, "kokoro/v2"), KtorRangeFetch(api.client)),
+            phonemes = { id -> plays.phonemes(id) },
+            engineReady = { kokoroModule.state.value is KokoroModule.State.Installed },
+        )
+    }
+
+    /** The engine, an on-demand Play module installed with the voices (owner 2026-11-15). */
+    val kokoroModule: KokoroModule by lazy { KokoroModule(context) }
+    private val appScope = scope
+    private var voiceDownload: Job? = null
+
+    /** "Download voices": the engine module from Play, then the model; one at a time; a partial file resumes. */
+    fun downloadVoices() {
+        if (voiceDownload?.isActive == true) return
+        kokoro.store.clearFailure()
+        kokoroModule.clearFailure()
+        voiceDownload = appScope.launch { if (kokoroModule.install()) kokoro.store.download() }
+    }
+
+    fun cancelVoiceDownload() {
+        voiceDownload?.cancel()
+        voiceDownload = null
+    }
+
+    /** "Delete downloaded voices": the model goes; parts cast to a Kokoro voice fall back visibly (§2.8 rule 8). */
+    fun deleteVoices() {
+        cancelVoiceDownload()
+        appScope.launch {
+            kokoro.unload()
+            kokoro.store.delete()
+            kokoroModule.uninstall()
+        }
+    }
     val live = LiveRadio(
         play = { detail, startMs -> playback.play(detail.episode, startMs = startMs, queue = false) },
         pause = { playback.pause() },

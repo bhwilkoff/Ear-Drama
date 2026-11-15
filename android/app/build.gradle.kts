@@ -142,16 +142,23 @@ android {
         }
     }
 
+    // Kokoro voices' engine (ONNX Runtime + the renderer): the on-demand module :kokoro, fetched with the voices when
+    // the person taps Download voices (owner 2026-11-15), so the base install carries none of it.
+    dynamicFeatures += setOf(":kokoro")
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            // Kokoro voices (Decision 078); the engine itself is the on-demand :kokoro module.
+            buildConfigField("boolean", "KOKORO_VOICES", "true")
             isDebuggable = true
         }
         release {
             // R8 always on for release — single highest-impact perf knob.
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField("boolean", "KOKORO_VOICES", "true")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -241,6 +248,9 @@ dependencies {
     // Catalog: the published SQLite file, read through the bundled driver
     implementation(libs.sqlite)
     implementation(libs.sqlite.bundled)
+
+    // Downloadable voices (Kokoro-82M, Decision 078): installs the on-demand :kokoro module (ONNX Runtime lives there)
+    implementation(libs.play.feature.delivery)
 
     // Playback: Media3 session service + ExoPlayer
     implementation(libs.bundles.media3)
