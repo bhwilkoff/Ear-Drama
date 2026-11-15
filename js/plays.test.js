@@ -561,6 +561,30 @@ test('today\'s play: the golden rotation every platform runs (catalog/tests/gold
   ok(new Set(g.cases.slice(0, 8).map(c => c.want)).size > 1, 'control: the pick changes with the date');
 });
 
+test('today\'s scene: today\'s play among the short plays for two (WEB-DESIGN §4.2, §4.15)', () => {
+  const row = (id, voices, minutes) => ({ id, voices, minutes });
+  const lib = [row('long2', 2, 255), row('a', 2, 12), row('b', 2, 17), row('c', 3, 25), row('big', 12, 175)];
+  eq(C.scenePool(lib).map(s => s.id).join(','), 'a,b', 'two voices, at most 20 minutes');
+  eq(C.todaysScene(lib, '2026-11-15').id, C.todaysPlay([lib[1], lib[2]], '2026-11-15').id, 'todaysPlay over the pool');
+  eq(C.scenePool([lib[0], lib[3], lib[4]]).map(s => s.id).join(','), 'c', 'else two or three voices, at most 30');
+  eq(C.scenePool([lib[0], lib[4]]).length, 2, 'else every play');
+  eq(C.todaysScene([], '2026-11-15'), null, 'an empty library has no scene');
+});
+
+test('the opening speeches: said words only, from the lines or the index row (contract §4.1)', () => {
+  const s = { lines: [{ id: 'L1', kind: 'direction', source: '_Night._' },
+    { id: 'L2', kind: 'speech', role: 'JIM', parts: [{ direction: 'low' }, { say: "That's  a _full_ one." }] },
+    { id: 'L3', kind: 'speech', role: 'BILL', parts: [{ direction: 'enters' }] },
+    { id: 'L4', kind: 'speech', role: 'BILL', parts: [{ say: '. Why--hullo.' }] }] };
+  const o = C.openingOf(s);
+  eq(o.map(x => `${x.name}|${x.text}|${x.id}`).join(' / '), "JIM|That's a full one.|L2 / BILL|Why\u2014hullo.|L4", 'directions and silent speeches skipped');
+  eq(o[0].part, 'role:JIM', 'the part id');
+  eq(C.openingOf(s, 1).length, 1, 'at most n');
+  const idx = C.openingOf({ opening: [{ role: 'A', text: 'One.' }, { role: 'B', text: ' ' }, { role: 'B', text: 'Two.' }] });
+  eq(idx.map(x => x.name + x.text).join(','), 'AOne.,BTwo.', 'an index row\'s opening, blanks dropped');
+  eq(C.openingOf({ voices: 2 }).length, 0, 'a row published before `opening` has none');
+});
+
 test('a play\'s voices and minutes, and their bands (WEB-DESIGN §4.15)', () => {
   const s = { ...fixtureScript(), roles: [{ name: 'A', words: 3000 }, { name: 'B', words: 1500 }, { name: 'C', words: 10 }] };
   eq(C.voicesOf(s), 3, 'one voice per role');

@@ -117,6 +117,8 @@ Mac uses the same Core, so the same code holds them:
   here. "Record This" beside Play on a play's page, or on an episode
   whose `script` is set, opens the production's window; Library still
   lists Ear dramas. A new section amends this rule first.
+  - *Pending port* (2026-11-15 design review): Home and Record take iOS-DESIGN's
+    pending Home rule (Today's Scene, the heading, the kicker) in the `WidePage`.
   - *Replaced* (2026-11-14, Decision 075): "Six sidebar sections, hard
     set (Decision 068 ...): Home, Browse, Stations, Surprise, Search,
     Library ... ⌘1 to ⌘6 ... Plays are rows in Browse and Search".

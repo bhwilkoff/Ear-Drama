@@ -111,11 +111,15 @@ web app follows today.
   by playing it, then names the three jobs, then offers rows each filled by
   one published data rule. No sentence explains the app; no blurb; every
   heading is a verb or the name of the rule that fills it. Top to bottom:
-  1. **The heading row**: "Home" and a **Surprise** button (icon and
+  1. **The heading row**: the app's name, **Ear Drama**, as the page
+     title (the tab and the sidebar say Home; the page says what this is,
+     2026-11-15 review, `docs/research/design/R2-design-review.md` F1), and a **Surprise** button (icon and
      label, ghost) at its right, which opens `?view=surprise`.
-  2. **On the air**: one block on the board. While tonight's evening
+  2. **On the air**: one block on the board. Its kicker always opens with
+     a steady ink dot and "On the air ·" (live is ink, never red: red is
+     recording only, Decision 064), then the source. While tonight's evening
      (`tonight.json`, the person's own date) is on the air, it leads:
-     kicker "Tonight in 19xx", the slot on now as a grammar row (its show's
+     kicker "On the air · Tonight in 19xx", the slot on now as a grammar row (its show's
      window, the series, an event line of the episode and "N min in");
      otherwise the first genre station in `stations.json` with a playable
      slot on now, kicker the station's name, and, before the evening, a
@@ -140,23 +144,47 @@ web app follows today.
   6. **By length**: chips **Under 15 min**, **About 30 min**, **An hour**
      over a rail of episodes, from the `byLength` shelves (contract §5.1,
      one per band; `length=` in the URL). Absent while the manifest has none.
-  7. **Record a play**: **Today's play**, one play board (the title block on
-     the drama board, the cast fingerprint in the mark slot, the author, the
-     voice count and minutes as facts) with **Record this** (ink), **Read**
-     (§4.16) and **Parts** (ghost links). The play is
-     `PlaysCore.todaysPlay(plays, date)` over the published play library
-     (§4.15, contract §4.1; the bundled fifteen when the library does not
-     load): the play whose
-     FNV-1a 64 of `play:{YYYY-MM-DD}:{id}` (UTF-8) is smallest, on the
-     person's own calendar date, so every device reading the same library on that date shows the
-     same play (`cross-platform-determinism`; golden cases in
-     `catalog/tests/golden/todays_play.json`, run by every stack). Under it,
-     **Open parts**: shared productions someone else directs that this
-     signed-in person belongs to, each with a speaking part still open, as
-     rows ("N open parts": speaking parts only, never sound effects or stage
-     directions, `PlaysCore.openSpeakingParts`), at most five, drawn only when
-     there are some. A person's own unfinished production is never here: it
-     belongs to Record's Yours (§4.15). Not on a TV.
+  7. **Record a play: Today's scene**, drawn between Start a show (item 5)
+     and By length (item 6): the 2026-11-15 review (F4) moved it up from
+     below both listening rails, out of a newcomer's first two screens, and
+     it parts two rails that often open on the same shows. One card on the
+     drama board. The title block (kicker "Today's scene", the title in the
+     page-title type, an event line of author, "N voices", "About M min")
+     links to the play page. Under it, **the opening** as a page on the
+     print ground: the play's first four speeches, each its role's name
+     (caption, strong) over its said words (at most three lines), a 3 px
+     rule in the part's hue at its left (`PlaysCore.partHue`). The words are
+     the play's own (`PlaysCore.openingOf`); no caption, no blurb. Then one
+     button row: **Try a line** (ink, the microphone icon) begins a
+     production for the voice that answers (the second speaker of the
+     opening, else the second part, `Studio.begin`, which reuses this
+     browser's production of the play when there is one) and opens the
+     studio in the reader on that part's first line
+     (`?read=&production=&part=&line=`), where the cast's device voice reads
+     the line before it; **Hear it** (ghost) reads the opening aloud, live,
+     in the cast's device voices (`StandInVoice` over the play's one cast,
+     `CastUI.castFor`), lighting the speech being read, and becomes
+     **Stop**; it pauses the player, keeps no sound, stops on any route
+     change, and is absent when the device has no voice or the script did
+     not load; **Read** (ghost, §4.16). The play is
+     `PlaysCore.todaysScene(plays, date)`: `todaysPlay`'s hash over the
+     scene pool (two voices and at most 20 minutes; else two or three voices
+     and at most 30; else every play), so every device reading the same
+     library on that date shows the same scene, and `todaysPlay`'s golden
+     cases still hold. The script is fetched for the card; if it fails, the
+     card draws from the index row's `opening` and Try a line fetches it on
+     the press. Under the card, **Open parts**: shared productions someone
+     else directs that this signed-in person belongs to, each with a
+     speaking part still open, as rows ("N open parts": speaking parts only,
+     never sound effects or stage directions,
+     `PlaysCore.openSpeakingParts`), at most five, drawn only when there are
+     some. A person's own unfinished production is never here: it belongs
+     to Record's Yours (§4.15). Not on a TV.
+     - *Replaced* (2026-11-15, design review): "**Today's play**, one play
+       board ... with **Record this** (ink), **Read** and **Parts**", picked
+       by `todaysPlay` over every play, drawn after By length. On the day of
+       the review it offered a newcomer a 175-minute, 12-voice Jonson, as a
+       board of bars with no word of the play on it.
      - *Replaced* (2026-11-14, owner): "**Open parts**: this browser's
        productions with a part still open" (it listed the person's own
        productions, and counted sound and directions as open parts).
@@ -305,7 +333,7 @@ web app follows today.
     Surprise, Home's Record a play row and door, and Library's Ear
     dramas), as Android TV does; TVs play back only (research 08 §5).
   - **Record is their section** (Decision 075, §4.15). The plays are
-    Record's library and rows in Search (§4.6), Today's play on Home
+    Record's library and rows in Search (§4.6), Today's scene on Home
     (§4.2), and a pick on Surprise (§4.13); a person's productions lead
     Record and stay in Library's Ear dramas (§4.7). Each play shows its
     title, author, part count, and its rights evidence claims verbatim,
@@ -595,8 +623,9 @@ web app follows today.
      row its title and "N of M lines recorded", "Finished" or "Shared".
      Absent when there are none: the empty state is a real play, below,
      never a sentence about recording.
-  2. **Today's play**: the same board as Home's (§4.2 item 7) with
-     **Record this**, **Read** and **Parts**.
+  2. **Today's scene**: the same card as Home's (§4.2 item 7), with
+     **Try a line**, **Hear it** and **Read**. (*Replaced* 2026-11-15:
+     Today's play's board with Record this, Read and Parts.)
   3. **Plays**: the published play library (`API.playLibrary`: contract
      §4.1's `plays/library/index.json`, 532 plays on 2026-11-14 and growing;
      when it does not load, the bundled `castable-scripts.json`), with three
@@ -615,14 +644,22 @@ web app follows today.
        hour (`length=short|mid|long`).
      - **Kind**: Radio play, Stage play, from the record's `kind`
        (`kind=radio|stage`).
-     - **Sort**: Fewest voices (the default), Shortest, A to Z (no "first": the select is labeled Sort, and the longer words clipped at 375 px)
+     - **Sort**: Fewest voices (the default; ties shortest first, then A
+       to Z, so a 255-minute dialogue for two no longer sits among the
+       twelve-minute ones), Shortest, A to Z (no "first": the select is labeled Sort, and the longer words clipped at 375 px)
        (`sort=voices|short|name`). The grid's heading is the sort's own
        name, true of every row.
-     Each play is a **play tile** in the show tile's grammar (§6.4b), the
-     cast drawn in place of the monogram: the window holds one bar per
+     Each play is a **play tile** in the show tile's grammar (§6.4b). When
+     its index row carries `opening` (contract §4.1: the first two
+     speeches, each `{role, text}`, cut near 90 characters at a word), the
+     window is **a page**: on the print ground, each speech its role's name
+     (strong) then its words, caption type, at most three lines each, so a
+     list of plays reads as scripts you could speak (2026-11-15 review, F6).
+     A row without `opening` draws the cast in place of the monogram: the window holds one bar per
      speaking part, largest first, up to seven, each as wide as its lines over the largest part's (at least 6%),
-     in the board's one color as the fingerprint is, "+N" for the rest (Home's and Record's Today's play board wears the same window); the
-     name in the tile's type; the cast fingerprint in the strip slot; the
+     in the board's one color as the fingerprint is, "+N" for the rest ; the
+     name in the tile's type, at most four lines (a longer Gutenberg title
+     stops there; the play page carries the whole); the cast fingerprint in the strip slot; the
      facts are "N voices" and "About M min". The author line uses each
      author's `display` name, never the filed form ("George M. (George
      Melville) Baker"). A tile opens the play's page (§4.10); a **Read**
@@ -652,7 +689,7 @@ web app follows today.
   runs), `PlaysCore` (sections, contents, search, a part's next line);
   tests `js/reader.test.js`. Not on a TV (TVs get a read-along panel only).
   1. **Doors.** **Read** sits on a play's page beside Record this
-     (§4.10), on Today's play on Home and Record (§4.2, §4.15), and under
+     (§4.10), on Today's scene on Home and Record (§4.2, §4.15), and under
      every Record play tile. Reading needs no account, no part and no
      microphone. The script comes from the play library's
      `scripts/<id>.json` (contract §4.1), else the bundled file.

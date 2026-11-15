@@ -709,6 +709,10 @@ offline floor.
   role: what a list draws as the cast window and fingerprint without the script; Decision 076),
   `lines` (speeches),
   `words` (spoken words), `minutes` (`ceil(words / wordsPerMinute)`, approximate, at least 1),
+  `opening` (the first two speeches with said words, each `{role, text}`: the role as printed and
+  its said words with italic marks and a leading stray stop dropped, cut at a word near 90
+  characters with "…"; what a play tile shows in its window without the script, WEB-DESIGN §4.15;
+  added 2026-11-15, so a client treats a row without it as having none),
   `rights` (`bucket` and `evidence`: claim plus a link a reader can open), `source`
   (`name`, `url`), `path` (`scripts/<id>.json`, relative to the index).
 - `id`: `gut-<ebook>` for a text that is one play (the record's own number, never reissued), and

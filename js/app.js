@@ -523,6 +523,7 @@
     takeRoomLink();
     takeInviteLink();
     const r = parseRoute();
+    stopScene();
     // The reader (WEB-DESIGN §4.16) takes the whole height: the tab bar and sidebar step aside.
     document.body.classList.toggle('reading', r.view === 'reader');
     if (r.view !== 'reader') Reader.close();
@@ -597,7 +598,7 @@
     const dayBox = el('div');
     const voicesBox = el('div');
     const madeBox = el('div', { class: 'ear-drama-only' });
-    body.replaceChildren(liveBox, contBox, homeDoors(), startBox, lengthBox, recordBox, dayBox, voicesBox, madeBox);
+    body.replaceChildren(liveBox, contBox, homeDoors(), startBox, recordBox, lengthBox, dayBox, voicesBox, madeBox);
 
     renderLiveBlock(liveBox);
     const cont = Store.inProgress(10);
@@ -750,6 +751,7 @@
     const mins = Math.max(0, Math.floor((now - Date.parse(on.slot.utc_start)) / 60000));
     const tuned = Boolean(live && (on.station ? live.station === on.station.genre : live.day === on.day));
     const name = on.kicker;
+    const kicker = [el('span', { class: 'home-live-dot', 'aria-hidden': 'true' }), `On the air · ${name}`];
     const go = el('button', { type: 'button', class: 'btn btn-primary btn-live-home', 'aria-pressed': tuned ? 'true' : null,
       'aria-label': tuned ? `Listening live to ${name}, stop` : `Listen live to ${name}` }, icon('live'),
       el('span', {}, tuned ? 'Listening live' : 'Listen live'));
@@ -767,7 +769,7 @@
       paintLiveBlock();
     });
     box.replaceChildren(el('section', { class: 'home-live', 'aria-labelledby': 'live-h' },
-      el('p', { class: 'g-kicker caption', id: 'live-h' }, name),
+      el('p', { class: 'g-kicker caption', id: 'live-h' }, ...kicker),
       el('a', { class: 'g-link home-live-row', href: `?item=${encodeURIComponent(ep.id)}` },
         pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 64),
         el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, ep.series),
@@ -778,35 +780,109 @@
   }
   Player.onChange(() => { if (homeLive && !$('view-listen').hidden) paintLiveBlock(); });
 
-  /* Record a play on Home (§4.2 item 7): today's play, then this browser's open parts. */
+  /* Record a play on Home (§4.2 item 5): today's scene, then the open parts of shared productions. */
   function renderTodaysPlay(box) {
     homeRow(box, 'Record a play', async () => {
-      const scripts = await API.playLibrary();
-      const open = await PlaysUI.openParts(playsHelpers).catch((e) => { console.error(e); return null; });
-      return { script: PlaysCore.todaysPlay(scripts, API.localDate(new Date(clockNow()))), open };
-    }, ({ script, open }, content) => {
-      if (!script) return false;
-      content.append(todaysPlayBoard(script));
+      const [scene, open] = await Promise.all([loadScene(),
+        PlaysUI.openParts(playsHelpers).catch((e) => { console.error(e); return null; })]);
+      return { scene, open };
+    }, ({ scene, open }, content) => {
+      if (!scene) return false;
+      content.append(sceneCard(scene));
       if (open) content.append(open);
       return true;
     });
   }
+
+  /** Today's scene: its library row, and the whole script when it loads (the card falls back to the row's opening). */
+  async function loadScene() {
+    const row = PlaysCore.todaysScene(await API.playLibrary(), API.localDate(new Date(clockNow())));
+    if (!row) return null;
+    const whole = Array.isArray(row.lines) ? row : await API.playScript(row.id).catch((e) => { console.error(e); return null; });
+    return { row, whole };
+  }
+
+  /* Today's scene (§4.2 item 5, §4.15 item 2): a short play for two on the drama board, its opening
+     speeches set as a page in the play's own words, then Try a line (the studio on the second voice's
+     first line, the first voice read by the cast), Hear it (the opening read aloud live by the cast's
+     device voices, never kept) and Read. */
+  let sceneVoice = null;
+  function sceneCard({ row, whole }) {
+    const script = whole || row;
+    const id = row.id;
+    const lines = PlaysCore.openingOf(script, 4);
+    const v = PlaysCore.voicesOf(row);
+    const facts = [PlaysCore.authorLine(row), `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`, `About ${num.format(PlaysCore.minutesOf(row))} min`];
+    const hueOf = (part) => (whole ? PlaysCore.partHue(whole, part) : '') || 'none';
+    const page = el('ol', { class: 'pl-scene-page', 'aria-label': 'The opening' },
+      ...lines.map(l => el('li', { class: 'pl-scene-sp', dataset: { hue: hueOf(l.part) } },
+        el('span', { class: 'pl-scene-who' }, l.name), el('span', { class: 'pl-scene-said' }, l.text))));
+    // The voice you take is the one that answers: the second speaker in the opening, else the second part.
+    const speakers = [...new Set(lines.map(l => l.part))];
+    const parts = whole ? PlaysCore.castParts(whole).map(p => p.id).filter(p => p.startsWith('role:')) : speakers;
+    const mine = speakers[1] || parts.find(p => p !== speakers[0]) || speakers[0] || parts[0];
+    const myLine = lines.find(l => l.part === mine);
+    const err = el('span', { class: 'caption refusal', role: 'alert' });
+    const tryBtn = el('button', { type: 'button', class: 'btn btn-primary' }, icon('mic'), el('span', {}, 'Try a line'));
+    tryBtn.addEventListener('click', async () => {
+      tryBtn.disabled = true;
+      stopScene();
+      try {
+        const full = whole || await API.playScript(id);
+        if (!full) throw new Error('script not found');
+        const pid = await Studio.begin(full, mine);
+        const at = myLine && myLine.id ? `&line=${encodeURIComponent(myLine.id)}` : '';
+        navigate(`?read=${encodeURIComponent(id)}&production=${encodeURIComponent(pid)}&part=${encodeURIComponent(mine)}${at}`);
+      } catch (e) {
+        console.error(e);
+        err.textContent = 'This browser could not save a production.';
+        tryBtn.disabled = false;
+      }
+    });
+    const hear = el('button', { type: 'button', class: 'btn btn-ghost pl-scene-hear', hidden: true }, 'Hear it');
+    const items = [...page.children];
+    hear.addEventListener('click', async () => {
+      if (sceneVoice) { stopScene(); return; }
+      const cast = CastUI.castFor({ script: whole });
+      const voice = StandInVoice.create({ muted: r0Muted(), cast });
+      const run = sceneVoice = { voice, hear, items };
+      if (typeof Player !== 'undefined' && Player.pause) Player.pause();
+      hear.textContent = 'Stop';
+      hear.setAttribute('aria-pressed', 'true');
+      for (let i = 0; i < lines.length && sceneVoice === run; i++) {
+        items.forEach((li, k) => li.classList.toggle('pl-scene-now', k === i));
+        await voice.speak(lines[i].text, lines[i].part);
+      }
+      if (sceneVoice === run) stopScene();
+    });
+    // Hear it needs the whole script (the cast) and a voice on this device; Chrome lists voices late.
+    const showHear = () => { hear.hidden = !(whole && lines.length && StandInVoice.voices().length); };
+    showHear();
+    if (whole) StandInVoice.onVoices(showHear);
+    return el('section', { class: 'pl-scene', dataset: { genre: PlaysUI.BOARD }, 'aria-labelledby': `scene-${id}` },
+      el('a', { class: 'pl-scene-head', href: `?play=${encodeURIComponent(id)}` },
+        el('p', { class: 'g-kicker caption' }, 'Today’s scene'),
+        el('h3', { class: 'pl-scene-title', id: `scene-${id}` }, row.title),
+        eventLine(facts.filter(Boolean))),
+      lines.length ? page : null,
+      el('div', { class: 'actions actions-one pl-scene-actions' }, tryBtn, hear, PlaysUI.readLink(id)), err);
+  }
+  function stopScene() {
+    const run = sceneVoice;
+    if (!run) return;
+    sceneVoice = null;
+    run.voice.cancel();
+    run.items.forEach(li => li.classList.remove('pl-scene-now'));
+    run.hear.textContent = 'Hear it';
+    run.hear.removeAttribute('aria-pressed');
+  }
+  const r0Muted = () => new URLSearchParams(location.search).get('mute') === '1';
   function playFacts(script) {
     const v = PlaysCore.voicesOf(script);
     return [PlaysCore.authorLine(script), `${num.format(v)} ${v === 1 ? 'voice' : 'voices'}`,
       `About ${num.format(PlaysCore.minutesOf(script))} min`];
   }
-  function todaysPlayBoard(script) {
-    const board = headBoard({ series: { name: script.title, genre: PlaysUI.BOARD, picture: null }, kicker: 'Today’s play',
-      name: script.title, href: `?play=${encodeURIComponent(script.id)}`, facts: playFacts(script),
-      mark: PlaysUI.fingerprint(script, 'g-head-strip pl-print-head') });
-    // The play's window draws its cast, as its tile does (§4.15), never a monogram.
-    board.querySelector(':scope > .g-window').replaceWith(castWindow(script));
-    return el('div', { class: 'home-play' }, board,
-      el('div', { class: 'actions actions-one actions-start' }, PlaysUI.startButton(script, playsHelpers, { primary: true }),
-        PlaysUI.readLink(script.id),
-        el('a', { class: 'btn btn-ghost', href: `?play=${encodeURIComponent(script.id)}` }, 'Parts')));
-  }
+
 
   /* ================================================================
      RECORD (WEB-DESIGN §4.15, Decision 075): yours, today's play, the plays by facet, made here
@@ -826,8 +902,15 @@
       ...shown.map(n => el('i', { style: `width: ${Math.max(6, Math.round(100 * n / most))}%` })),
       parts.length > shown.length ? el('span', { class: 'pl-cast-more tabular' }, `+${parts.length - shown.length}`) : null);
   }
+  /** A play tile's window: its opening speeches as a page (the row's `opening`), else its cast drawn. */
+  function openingWindow(script) {
+    const lines = PlaysCore.openingOf(script, 2);
+    if (!lines.length) return null;
+    return el('span', { class: 'g-window pl-open', 'aria-hidden': 'true' },
+      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), el('span', { class: 'pl-open-said' }, l.text))));
+  }
   function playTile(script) {
-    const win = castWindow(script);
+    const win = openingWindow(script) || castWindow(script);
     const v = PlaysCore.voicesOf(script);
     return el('li', { class: 'g-tile-li pl-tile-li' },
       el('a', { class: 'g-tile', href: `?play=${encodeURIComponent(script.id)}`, dataset: { genre: PlaysUI.BOARD },
@@ -875,10 +958,9 @@
 
     const f = { voices: r.p.get('voices') || '', length: r.p.get('length') || '', kind: r.p.get('kind') || '',
                 sort: PLAY_SORT[r.p.get('sort')] ? r.p.get('sort') : 'voices' };
-    homeRow(todayBox, null, () => API.playLibrary(), (scripts, c) => {
-      const s = PlaysCore.todaysPlay(scripts, API.localDate(new Date(clockNow())));
-      if (!s) return false;
-      c.append(todaysPlayBoard(s));
+    homeRow(todayBox, null, loadScene, (scene, c) => {
+      if (!scene) return false;
+      c.append(sceneCard(scene));
       return true;
     });
     homeRow(playsBox, null, () => API.playLibrary(), (scripts, c) => {
@@ -907,7 +989,7 @@
         select('length', 'Length', LEN_LABEL, 'Any length'), select('kind', 'Kind', KIND_LABEL, 'Any kind'), sortSel);
       const byName = (a, b) => (a.sort_name || a.title).localeCompare(b.sort_name || b.title, 'en', { sensitivity: 'base' });
       const sorters = {
-        voices: (a, b) => PlaysCore.voicesOf(a) - PlaysCore.voicesOf(b) || byName(a, b),
+        voices: (a, b) => PlaysCore.voicesOf(a) - PlaysCore.voicesOf(b) || PlaysCore.minutesOf(a) - PlaysCore.minutesOf(b) || byName(a, b),
         short: (a, b) => PlaysCore.minutesOf(a) - PlaysCore.minutesOf(b) || byName(a, b),
         name: byName,
       };
