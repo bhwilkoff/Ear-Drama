@@ -37,7 +37,7 @@ final class AppReviewTourUITests: DeviceTestCase {
 
     func testTour() throws {
         // Warm launch: the recorder starts once the app runs; the recorded launch is the cold one below.
-        var app = launch(["APP_DOOR_SECONDS": "900"])
+        var app = launch(["APP_DOOR_SECONDS": "900", "APP_RESET_PRODUCTIONS": "1"])
         sleep(14)
         app.terminate()
         sleep(3)
@@ -115,31 +115,26 @@ final class AppReviewTourUITests: DeviceTestCase {
         if field.waitForExistence(timeout: 10) {
             field.tap()
             if app.keyboards.firstMatch.waitForExistence(timeout: 4) {
-                field.typeText("Gang Busters")
-                pause(1)
-                app.keyboards.buttons["search"].firstMatch.exists ? app.keyboards.buttons["search"].firstMatch.tap() : ()
+                field.typeText("Gang Busters\n")
             }
         }
         sleep(4)
         dump(app, "search")
 
-        // Record: a play, Read, two pages, Contents, I'm playing, the studio.
+        // Record: a play, Read, two pages, Contents, I'm playing, the studio (Sign in with Apple, then the dock).
         mark("record")
         openTab(app, "Record")
         sleep(3)
         dump(app, "record")
-        var opened = false
-        if let tile = firstHittable(app.buttons.matching(identifier: "play-tile"), app: app) {
-            tile.tap(); opened = true
-        } else {
-            app.swipeUp(); pause()
-            if let tile = firstHittable(app.buttons.matching(identifier: "play-tile"), app: app) { tile.tap(); opened = true }
-        }
-        if opened {
+        // Today's play carries its own Read button on the Record tab.
+        let todaysRead = app.buttons.matching(NSPredicate(format: "identifier == 'todays-play' AND label == 'Read'")).firstMatch
+        let anyRead = app.buttons.matching(NSPredicate(format: "label == 'Read' OR label BEGINSWITH 'Read '")).firstMatch
+        let readButton = todaysRead.waitForExistence(timeout: 8) ? todaysRead : anyRead
+        if readButton.exists {
             mark("play-page")
-            sleep(3)
             dump(app, "play-page")
-            if tap(app.buttons["read-button"], wait: 8) {
+            readButton.tap()
+            if true {
                 mark("reader")
                 sleep(4)
                 dump(app, "reader")
@@ -167,8 +162,30 @@ final class AppReviewTourUITests: DeviceTestCase {
                 if tap(app.buttons["reader-record"], wait: 5) {
                     sleep(5)
                     dump(app, "studio")
-                    // Signed out, the studio's gate asks for an account; signed in, the take list and Record.
-                    if tap(app.buttons["studio-takes"], wait: 2) { sleep(3); app.swipeDown(); pause() }
+                    let signIn = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Sign in with Apple'")).firstMatch
+                    if tap(signIn, wait: 6) {
+                        mark("apple-sheet")
+                        // The owner rests a finger on Touch ID. Signed in, the gate offers Start Recording
+                        // (never pressed: no microphone take is made).
+                        var signedIn = false
+                        for _ in 0..<45 {
+                            sleep(2)
+                            if app.buttons["studio-start"].exists || app.buttons["studio-takes"].exists { signedIn = true; break }
+                        }
+                        if signedIn {
+                            mark("signed-in")
+                            sleep(3)
+                            dump(app, "studio-signed-in")
+                            if tap(app.buttons["studio-takes"], wait: 2) { sleep(3); app.swipeDown(); pause() }
+                            pause(2)
+                        } else {
+                            mark("apple-sheet-cancel")
+                            let sb = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+                            let cancel = sb.buttons.matching(NSPredicate(format: "label IN {'Cancel', 'Close'}")).firstMatch
+                            if cancel.exists { cancel.tap() } else { app.swipeDown(velocity: .fast) }
+                            pause(2)
+                        }
+                    }
                 }
                 mark("close-reader")
                 let closeStudio = app.buttons["Close"]
@@ -212,9 +229,28 @@ final class AppReviewTourUITests: DeviceTestCase {
         let cell = app.cells.matching(NSPredicate(format: "label BEGINSWITH 'Account'")).firstMatch
         mark("account")
         if !tap(account, wait: 4) { tap(cell, wait: 4) }
-        sleep(5)
+        sleep(4)
         dump(app, "account")
+        let deleteAccount = app.buttons["Delete Account"]
+        if deleteAccount.waitForExistence(timeout: 3) {
+            // Signed in: delete the account, as a person may.
+            pause(2)
+            mark("delete-account")
+            if tap(deleteAccount, wait: 3) {
+                pause(2)
+                let confirm = app.buttons.matching(identifier: "Delete Account").allElementsBoundByIndex.last { $0.isHittable }
+                confirm?.tap()
+                mark("delete-confirm")
+                // Apple may ask for Touch ID once more: wait for the signed-out account.
+                let again = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Sign in with Apple'")).firstMatch
+                for _ in 0..<45 {
+                    if again.exists { break }
+                    sleep(2)
+                }
+            }
+        }
+        sleep(3)
         mark("end")
-        sleep(2)
+        sleep(3)
     }
 }

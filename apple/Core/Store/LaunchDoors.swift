@@ -18,6 +18,8 @@ import Foundation
 /// - APP_RESET_USER_STATE=1: the listening history, queue and followed shows are erased before the
 ///   stores open, so a UI test starts from a new listener's lists, not an earlier run's (the tap tier
 ///   sets it on every launch)
+/// - APP_RESET_PRODUCTIONS=1: this device's productions (Record, Yours) are deleted before the stores open
+///   (the App Review recording starts from none)
 /// - APP_EMPTY_LIBRARY=1: Library drawn as a new listener's, for its empty
 ///   state (fakes the lists, never clears them)
 ///
@@ -45,6 +47,7 @@ struct LaunchDoors: Sendable, Equatable {
     var forceOffline = false
     var emptyLibrary = false
     var resetUserState = false
+    var resetProductions = false
     var reader: String?
     var readerDoor = ReaderDoor()
     var production: String?
@@ -72,6 +75,7 @@ struct LaunchDoors: Sendable, Equatable {
             forceOffline: environment["APP_FORCE_OFFLINE"] == "1",
             emptyLibrary: environment["APP_EMPTY_LIBRARY"] == "1",
             resetUserState: environment["APP_RESET_USER_STATE"] == "1",
+            resetProductions: environment["APP_RESET_PRODUCTIONS"] == "1",
             reader: environment["APP_READER"],
             readerDoor: ReaderDoor(line: environment["APP_READER_LINE"], part: environment["APP_READER_PART"],
                                    hide: environment["APP_READER_HIDE"] == "1", sheet: environment["APP_READER_SHEET"],
@@ -96,4 +100,13 @@ struct LaunchDoors: Sendable, Equatable {
         }
         return true
     }
+
+    #if os(iOS) || os(macOS)
+    @discardableResult
+    static func resetProductionsIfAsked(_ doors: LaunchDoors = .current) -> Bool {
+        guard doors.resetProductions else { return false }
+        try? FileManager.default.removeItem(at: ProductionStore.defaultRoot)
+        return true
+    }
+    #endif
 }
