@@ -93,6 +93,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 075: Five sections with Record among them; Home opens on what is on the air (answered 2026-11-14)
 - 076: A script reader of its own, pages first; the studio lives inside it; Kokoro for downloadable voices (answered 2026-11-14)
 - 077: Audio starts without reading the whole file; Play on the loaded episode resumes it
+- 078: Kokoro voices: phonemes built in the catalog; apps first; the web on WebGPU only (answered 2026-11-15)
 
 ---
 
@@ -1186,3 +1187,26 @@ variable-bitrate file with no table from the catalog length or the
 browser's estimate, so a resume there can land off by the length error
 (about 10% on the Yukon file): not fixed here.
 
+
+## 078: Kokoro voices: phonemes built in the catalog; apps first; the web on WebGPU only (answered 2026-11-15)
+
+**Rule**: the catalog builds every castable line's phonemes once (misaki under its
+Apache license, plus project lexicons for role names, elisions and early-modern
+spellings; never eSpeak) and publishes them per play with a correction file and a
+report of guessed words; no device converts text to phonemes. Native apps run the
+q8f16 model (~86 MB + voices, ~101 MB) from a GitHub Release asset; build order
+Android (ONNX Runtime), then Apple (our own Core ML conversion, no third-party
+Swift packages). The web offers Kokoro only where WebGPU works, with the fp32
+model (~326 MB) served from eardrama.org in parts under 50 MB, gated by a
+self-test after download; other browsers keep the built-in voices. Never fp16
+(NaN audio). misaki's dictionaries are used under the package's Apache license and
+the author is asked to document their source. A Kokoro voice is a live stand-in,
+never stored (Decision 076).
+
+**Why**: the owner chose these options on 2026-11-15 from
+`docs/research/design/R2-kokoro-feasibility.md`: 98.1% of play words get a
+pronunciation with the build-time fixes; q8f16 matches fp32 by Whisper WER;
+browsers run q8 slower than real time and fp16 produces NaN.
+
+**How to apply**: phases S6a to S6f in that report, each with its gate; the phone
+benchmark (iPhone 12, Pixel 8a) is S6a's gate.
