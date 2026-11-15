@@ -2152,12 +2152,13 @@
     const prod = r.p.get('production');
     const part = r.p.get('part');
     const studio = !!(prod && part);
-    const key = studio ? `${r.id} ${prod} ${part}` : r.id;
+    const along = !!(prod && !part && r.p.get('along'));
+    const key = studio ? `${r.id} ${prod} ${part}` : along ? `${r.id} ${prod} along` : r.id;
     if (Reader.openKey() === key && body.firstChild) return;
     setTitle('Read');
     body.replaceChildren(stateBox('loading'));
     const close = () => {
-      const to = ReaderCore.closeTo(inApp(), studio, prod, r.id);
+      const to = ReaderCore.closeTo(inApp(), studio || along, prod, r.id);
       if (to === 'back') history.back(); else navigate(to, true);
     };
     /** The reader's Record (§4.16 item 14): the production this part records in, then the studio. Not on a TV. */
@@ -2170,7 +2171,7 @@
         announce('This browser could not save a production.');
       }
     };
-    const load = studio
+    const load = studio || along
       ? PlaysUI.openStore().then(async (store) => {
         const p = store.production(prod);
         return p ? { script: await store.script(p), store } : { script: null };
@@ -2184,6 +2185,7 @@
         line: r.p.get('line'), onClose: close, navigate,
         onRecord: onRecord ? (p) => onRecord(script, p) : null,
         studio: studio ? { production: prod, part, store, line: r.p.get('line') } : null,
+        along: along ? { production: prod, store } : null,
       });
     }).catch((err) => {
       if (my !== readerSeq) return;

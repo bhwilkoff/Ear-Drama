@@ -71,9 +71,11 @@ import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.example.appname.plays.CastPart
 import com.example.appname.plays.LiveListen
@@ -86,6 +88,7 @@ import com.example.appname.plays.PlayRow
 import com.example.appname.plays.PlaysLibrary
 import com.example.appname.plays.PlaysShare
 import com.example.appname.plays.Production
+import com.example.appname.plays.ReadAlong
 import com.example.appname.plays.Relay
 import com.example.appname.ui.AccountRow
 import com.example.appname.ui.CastHandle
@@ -115,6 +118,7 @@ import com.example.appname.ui.formatClock
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.OnAir
+import com.example.appname.ui.theme.genreColor
 import com.example.appname.ui.playButtonColors
 import com.example.appname.ui.theme.Spacing
 import java.io.File
@@ -377,7 +381,7 @@ internal fun ErrorLine(text: String) {
 
 /** Who takes which part (§2.2-2.5). Parts are listed largest first; any open part can be taken, one recording at a time (Decision 067, C7). */
 @Composable
-fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit, onReplace: (PartID, String) -> Unit = { _, _ -> }) {
+fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit, onReplace: (PartID, String) -> Unit = { _, _ -> }, onReadAlong: () -> Unit = {}) {
     val plays = LocalAppContainer.current.plays
     val productions by plays.store.productions.collectAsState()
     val production = productions.firstOrNull { it.id == id }
@@ -455,7 +459,7 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
         LazyColumn(Modifier.fillMaxSize(), contentPadding = padding) {
             item(key = "head") { PlayHeadBoard(script, kicker = "Ear drama", title = production.title) }
             item(key = "listen") {
-                Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet, castHandle) }
+                Box(Modifier.padding(top = Spacing.S3.dp)) { ListenThrough(production, script, sheet, castHandle, onReadAlong) }
             }
             if (!television && link == null) {
                 item(key = "share") {
@@ -656,7 +660,7 @@ private fun DeleteProductionDialog(production: Production, onDismiss: () -> Unit
  * Export is offered whenever the play is complete.
  */
 @Composable
-private fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?, voices: CastHandle?) {
+private fun ListenThrough(production: Production, script: PlayScript, shared: SharedSheet?, voices: CastHandle?, onReadAlong: () -> Unit) {
     val container = LocalAppContainer.current
     val plays = container.plays
     val context = LocalContext.current
@@ -786,6 +790,12 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
                 Text("Listen through", Modifier.padding(start = Spacing.S2.dp))
             }
         }
+        if (running == null && !mixing && !LocalIsTelevision.current) {
+            OutlinedButton(onClick = onReadAlong) {
+                Icon(Icons.Outlined.MenuBook, contentDescription = null)
+                Text("Read along", Modifier.padding(start = Spacing.S2.dp))
+            }
+        }
         if (complete && running == null) {
             OutlinedButton(onClick = {
                 scope.launch {
@@ -817,6 +827,14 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
 private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -> Unit, onReport: ((String) -> Unit)?) {
     val entry by listen.current.collectAsState()
     val line = entry?.let { e -> script.lines.firstOrNull { it.id == e.lineID } }
+    if (LocalIsTelevision.current) {
+        ReadAlongPanel(script, entry)
+        OutlinedButton(onClick = onStop) {
+            Icon(Icons.Filled.Stop, contentDescription = null)
+            Text("Stop", Modifier.padding(start = Spacing.S2.dp))
+        }
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.S2.dp), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         if (entry is Relay.ListenEntry.Voice) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -835,6 +853,42 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
     val heard = entry as? Relay.ListenEntry.TakeEntry
     if (onReport != null && heard != null && heard.take.file.startsWith("m-")) {
         TextButton(onClick = { onReport(heard.take.id) }) { Text("Report") }
+    }
+}
+
+/**
+ * The read-along panel on a TV (PLAYS-DESIGN §2.11 rule 5, ANDROID-DESIGN §4.17): the line heard with one before and
+ * one after, the speaker in the part's hue, "Device voice" on a line the device reads. 28 sp body (the tvOS 29 pt
+ * floor), no marks, no recording, never focusable: focus stays on Stop.
+ */
+@Composable
+private fun ReadAlongPanel(script: PlayScript, entry: Relay.ListenEntry?) {
+    val dark = OnAir.colors.dark
+    val (before, now, after) = ReadAlong.panel(script.lines, entry?.lineID ?: return)
+    Column(
+        Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
+    ) {
+        listOf(before to false, now to true, after to false).forEach { (line, current) ->
+            if (line == null) return@forEach
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        line.part.title,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.SemiBold),
+                        color = genreColor(script.partHue(line.part), dark) ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (current && entry is Relay.ListenEntry.Voice) {
+                        Text("Device voice", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Text(
+                    line.spokenText,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp, fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal),
+                    color = if (current) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 

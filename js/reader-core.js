@@ -325,6 +325,50 @@ const ReaderCore = (() => {
   /** J and K (either case) move to my next and previous line: +1, -1, else 0. */
   const myLineStep = (key) => (key === 'j' || key === 'J' ? 1 : key === 'k' || key === 'K' ? -1 : 0);
 
-  return { closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
+  /* ---- The read-along (PLAYS-DESIGN §2.11): the script follows the listen-through ---- */
+
+  /** The line the listen plan's entry `index` speaks; null past either end. */
+  const alongLine = (plan, index) => (index >= 0 && index < plan.length ? plan[index].lineID : null);
+
+  /**
+   * The line a rendered mix is speaking at `seconds`: the last placement that has begun, and
+   * null once the last has ended. A gap between lines keeps the line before it.
+   */
+  function alongLineAt(placements, rate, seconds) {
+    const f = seconds * rate;
+    let at = null;
+    for (const p of placements) {
+      if (p.start <= f) at = p; else break;
+    }
+    if (!at) return null;
+    const last = at === placements[placements.length - 1];
+    return last && f >= at.start + at.frames ? null : at.lineID;
+  }
+
+  /**
+   * Whether the reader turns itself to the line heard. A swipe, tap or scroll (`away`) stops it
+   * and offers "Back to the line" while something plays; `back` returns the line now heard and
+   * follows again.
+   */
+  function alongFollow() {
+    let following = true;
+    let now = null;
+    const out = () => ({ turn: following && now !== null, back: !following && now !== null });
+    return {
+      line(id) { now = id; return out(); },
+      away() { following = false; },
+      back() { following = true; return now; },
+      get following() { return following; },
+    };
+  }
+
+  /** The TV panel's three lines: the one before, the one heard, the one after (null at an end). */
+  function alongPanel(script, lineID) {
+    const i = script.lines.findIndex(l => l.id === lineID);
+    if (i < 0) return [null, null, null];
+    return [script.lines[i - 1] || null, script.lines[i], script.lines[i + 1] || null];
+  }
+
+  return { alongLine, alongLineAt, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
            spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
 })();

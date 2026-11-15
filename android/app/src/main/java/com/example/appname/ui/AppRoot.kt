@@ -324,7 +324,7 @@ fun AppRoot(
                             }
                             entry<Route.Reader> { route ->
                                 ReaderScreen(
-                                    route.scriptId, route.lineId, route.productionId, route.part, onBack = back,
+                                    route.scriptId, route.lineId, route.productionId, route.part, route.along, onBack = back,
                                     onOpenStudio = { production, part, line ->
                                         // Record in the reader replaces it with the reader holding the studio: depth stays the same.
                                         if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
@@ -338,7 +338,11 @@ fun AppRoot(
                                     container.plays.store.production(route.id)?.let { stack.add(Route.Reader(it.scriptID, line, route.id, part.raw)) }
                                     Unit
                                 }
-                                ProductionScreen(route.id, onBack = back, onRecord = { part -> openStudio(part, null) }, onReplace = { part, line -> openStudio(part, line) })
+                                val readAlong = {
+                                    container.plays.store.production(route.id)?.let { stack.add(Route.Reader(it.scriptID, null, route.id, null, along = true)) }
+                                    Unit
+                                }
+                                ProductionScreen(route.id, onBack = back, onRecord = { part -> openStudio(part, null) }, onReplace = { part, line -> openStudio(part, line) }, onReadAlong = readAlong)
                             }
                             entry<Route.Recording> { route ->
                                 RecordingScreen(route.production, PartID(route.part), onBack = back, startLine = route.line)

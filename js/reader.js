@@ -278,6 +278,7 @@ const Reader = (() => {
 
   function step(st, delta) {
     if (st.prefs.layout !== 'pages') return;
+    away(st);
     const to = delta === 'first' ? 0 : delta === 'last' ? st.count - 1 : R.turn(st.page, delta, st.per, st.count);
     if (R.spreadStart(to, st.per) !== st.page) setPage(st, to, true);
   }
@@ -517,7 +518,7 @@ const Reader = (() => {
   function hearCast(st) {
     if (st.table && st.table.playing) { st.table.stop(); return; }
     if (typeof Player !== 'undefined' && Player.pause) Player.pause();
-    st.following = true;
+    st.fol.back();
     st.table = TableRead.create({
       script: st.script, voice: st.voice,
       onLine: (line) => { st.handle.follow(line ? line.id : null); paintDock(st, line); },
@@ -539,6 +540,40 @@ const Reader = (() => {
     st.hearBtn.disabled = !on && !st.voice.available();
     if (!on) paintDock(st, null);
   }
+  /** A touch on the text stops the read-along turning the page. */
+  function away(st) { st.fol.away(); }
+  function paintBack(st, on) { if (st.backBtn) st.backBtn.hidden = !on; }
+
+  /** "Read along" (PLAYS-DESIGN §2.11): the production's listen-through, the reader following each line heard. */
+  function alongToggle(st) {
+    const a = st.along;
+    if (a.listen && a.listen.playing) { a.listen.stop(); return; }
+    if (typeof Player !== 'undefined' && Player.pause) Player.pause();
+    st.fol.back();
+    if (!a.listen) {
+      const production = a.store.production(a.production);
+      a.listen = ListenThrough.create({
+        production, script: st.script, store: a.store, audio: LiveAudio.create({ muted: muted() }), voice: st.voice,
+        onChange: () => paintAlong(st),
+      });
+    }
+    if (a.listen.plan.length) a.listen.play();
+  }
+  function paintAlong(st) {
+    const a = st.along;
+    if (!a || cur !== st) return;
+    const l = a.listen;
+    const on = !!(l && l.playing);
+    st.hearBtn.replaceChildren(svg(on ? 'stop' : 'play'), el('span', { class: 'rd-tool-lab' }, on ? 'Stop' : 'Listen through'));
+    st.hearBtn.setAttribute('aria-label', on ? 'Stop' : 'Listen through');
+    const entry = on ? l.current() : null;
+    const line = entry && st.script.lines.find(x => x.id === entry.lineID);
+    st.handle.follow(line ? line.id : null);
+    st.dock.hidden = !(line && entry.source === 'voice');
+    st.dock.replaceChildren(...(line && entry.source === 'voice'
+      ? [el('p', { class: 'caption device-voice rd-voice-now' }, svg('wave'), 'Device voice · ', C.partTitle(C.linePart(line)))] : []));
+  }
+
   function paintDock(st, line) {
     st.dock.hidden = !line;
     st.dock.replaceChildren(...(line ? [el('p', { class: 'caption device-voice rd-voice-now' }, svg('wave'), 'Device voice · ', C.partTitle(C.linePart(line)))] : []));
@@ -605,13 +640,14 @@ const Reader = (() => {
       swallow = true;
       const turnBy = cancel ? 0 : R.swipeTurn(d.dx, e.timeStamp - d.t, st.clip.clientWidth);
       const to = turnBy ? R.turn(st.page, turnBy, st.per, st.count) : st.page;
+      if (turnBy) away(st);
       setPage(st, to, true);
     };
     st.clip.addEventListener('pointerup', (e) => end(e, false));
     st.clip.addEventListener('pointercancel', (e) => end(e, true));
     st.clip.addEventListener('click', (e) => {
       if (swallow) { swallow = false; return; }
-      st.following = false;
+      away(st);
       // A selection's own click: the mark bar has it (PLAYS-DESIGN §2.10).
       if (st.marks && st.marks.selecting()) return;
       const line = e.target.closest('.rd-line');
@@ -632,8 +668,9 @@ const Reader = (() => {
       const z = R.tapZone(e.clientX - r.left, r.width);
       if (z !== 'middle') step(st, z === 'prev' ? -1 : 1);
     });
+    st.stage.addEventListener('touchmove', () => away(st), { passive: true });
     st.stage.addEventListener('wheel', (e) => {
-      if (st.prefs.layout !== 'pages') return;
+      if (st.prefs.layout !== 'pages') { away(st); return; }
       e.preventDefault();
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (e.timeStamp - wheelAt > 350) wheel = 0;
@@ -692,11 +729,11 @@ const Reader = (() => {
     const side = el('aside', { class: 'st-side', 'aria-label': 'Studio', hidden: true });
     const footer = el('footer', { class: 'rd-bar rd-bottom' });
     // A production's studio reads the production's cast; the reader alone, the play's (§2.8 rule 2).
-    const cast = opts.studio ? CastUI.castFor({ script, production: opts.studio.production }) : CastUI.castFor({ script });
+    const cast = opts.studio || opts.along ? CastUI.castFor({ script, production: (opts.studio || opts.along).production }) : CastUI.castFor({ script });
     const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, recBtn, footer, side, lines, dock, prefs: prefsNow(),
                  onRecord: opts.onRecord || null, studio: null, partSel: null,
                  cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
-                 pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, following: true, marks: null };
+                 pos: at, page: 0, per: 1, unit: 1, count: 1, starts: [], ends: [], part: null, hiding: false, peeked: null, fol: R.alongFollow(), along: null, backBtn: null, marks: null };
     st.contents = contentsSheet(st);
     st.search = searchSheet(st);
     st.text = textSheet(st);
@@ -715,9 +752,17 @@ const Reader = (() => {
     st.partSel = partSel;
     footer.append(el('label', { class: 'rd-part' }, partSel), hearBtn, recBtn, nextBtn, hideBtn, pageLab);
     recBtn.addEventListener('click', () => { if (st.part && st.onRecord) st.onRecord(st.part); });
-    hearBtn.addEventListener('click', () => hearCast(st));
-    paintHear(st);
-    st.voicesOff = StandInVoice.onVoices(() => { if (cur === st) paintHear(st); });
+    st.backBtn = el('button', { type: 'button', class: 'btn rd-back-line', hidden: true, onclick: () => st.handle.refollow() }, 'Back to the line');
+    dock.after(st.backBtn);
+    if (opts.along) {
+      st.along = { production: opts.along.production, store: opts.along.store, listen: null };
+      hearBtn.addEventListener('click', () => alongToggle(st));
+      paintAlong(st);
+    } else {
+      hearBtn.addEventListener('click', () => hearCast(st));
+      paintHear(st);
+    }
+    st.voicesOff = StandInVoice.onVoices(() => { if (cur === st) { if (st.along) paintAlong(st); else paintHear(st); } });
     partSel.addEventListener('change', () => setPart(st, partSel.value));
     nextBtn.addEventListener('click', () => myLine(st, 1));
     hideBtn.addEventListener('click', () => setHiding(st, !st.hiding));
@@ -755,12 +800,14 @@ const Reader = (() => {
       follow: (id) => {
         const i = index(id);
         st.lines.forEach(n => n.classList.remove('rd-now'));
+        const o = st.fol.line(i < 0 ? null : id);
+        paintBack(st, o.back);
         if (i < 0) return;
         st.lines[i].classList.add('rd-now');
-        if (st.following) goIndex(st, i);
+        if (o.turn) goIndex(st, i);
       },
       /** Back to following after a touch stopped it. */
-      refollow: () => { st.following = true; const n = st.root.querySelector('.rd-now'); if (n) goIndex(st, st.lines.indexOf(n)); },
+      refollow: () => { const id = st.fol.back(); paintBack(st, false); const i = index(id); if (i >= 0) goIndex(st, i); },
     };
   }
 
@@ -771,6 +818,7 @@ const Reader = (() => {
     if (cur.studio) cur.studio.detach();
     if (cur.marks) cur.marks.detach();
     if (cur.table) cur.table.stop();
+    if (cur.along && cur.along.listen) cur.along.listen.end();
     if (cur.voicesOff) cur.voicesOff();
     if (cur.resize) cur.resize.disconnect();
     if (document.fonts && cur.fontsDone) document.fonts.removeEventListener('loadingdone', cur.fontsDone);
@@ -814,7 +862,7 @@ const Reader = (() => {
       go: (id, flash = false) => { const i = index(id); if (i >= 0) goIndex(st, i, { flash }); },
       /** The read-along: lights the line heard and keeps it in view while following; null clears it. */
       follow: (id) => st.handle && st.handle.follow(id),
-      refollow: () => { st.following = true; },
+      refollow: () => { st.fol.back(); paintBack(st, false); },
       relayout: () => layout(st, st.pos),
       /** In studio mode the bottom bar is the transport: I'm playing, Next line, Hear the cast and Record step aside. */
       studioMode: (on) => {

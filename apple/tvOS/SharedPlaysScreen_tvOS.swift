@@ -105,7 +105,7 @@ struct SharedPlayScreen_tvOS: View {
                     .disabled(fetching)
                     .accessibilityIdentifier("shared-listen")
                     if fetching { ProgressView() }
-                    if let entry = live.current { NowReading_tvOS(entry: entry, script: script) }
+                    if let entry = live.current { ReadAlongPanel_tvOS(entry: entry, script: script) }
                 } else {
                     Text(PlaysShare.line(PlaysRefusal.code("revision_mismatch"))).foregroundStyle(Color.brandTextMuted)
                 }
@@ -225,23 +225,39 @@ struct SharedPlayScreen_tvOS: View {
     }
 }
 
-/// The line being heard: its speaker, and "Device voice" when the device reads it (§5 rule 3).
-private struct NowReading_tvOS: View {
+/// The read-along panel (PLAYS-DESIGN §2.11 rule 5, tvOS-DESIGN §4.13): the line heard with one before and one after,
+/// the speaker in the part's hue, "Device voice" when the device reads it. Body 29 pt or larger, no marks, no
+/// recording, never focusable: focus stays on the transport.
+private struct ReadAlongPanel_tvOS: View {
     let entry: ListenEntry
     let script: PlayScript
 
     var body: some View {
-        let line = script.lines.first { $0.id == entry.lineID }
+        let panel = ReadAlong.panel(script.lines, around: entry.lineID)
+        VStack(alignment: .leading, spacing: Spacing.s3) {
+            if let before = panel.before { row(before, now: false) }
+            if let current = panel.current { row(current, now: true) }
+            if let after = panel.after { row(after, now: false) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("read-along-panel")
+    }
+
+    private func row(_ line: ScriptLine, now: Bool) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s1) {
             HStack(spacing: Spacing.s2) {
-                Text(line?.part.title ?? "").font(TypeRamp.bodyStrong)
-                if entry.isDeviceVoice {
-                    Text("Device voice").font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+                Text(line.part.title)
+                    .font(TypeRamp.bodyStrong)
+                    .foregroundStyle(Color.genre(script.partHue(line.part)) ?? Color.brandTextMuted)
+                if now, entry.isDeviceVoice {
+                    Text("Device voice").font(TypeRamp.body).foregroundStyle(Color.brandTextMuted)
                 }
             }
-            if let line { Text(line.spokenText).font(TypeRamp.body) }
+            Text(line.spokenText)
+                .font(now ? TypeRamp.bodyStrong : TypeRamp.body)
+                .foregroundStyle(now ? Color.brandText : Color.brandTextMuted)
         }
-        .accessibilityElement(children: .combine)
     }
 }
 

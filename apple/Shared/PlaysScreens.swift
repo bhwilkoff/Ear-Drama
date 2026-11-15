@@ -696,6 +696,9 @@ struct ListenThrough: View {
                     }
                     .pageAction(primary: true)
                     if complete { export.pageAction() }
+                    #if os(iOS) || os(macOS)
+                    ReadAlongButton(production: production)
+                    #endif
                 }
                 if !complete { PersonalVoiceToggle(live: live) }
             }

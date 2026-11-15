@@ -279,6 +279,9 @@ nonisolated struct StudioTarget: Codable, Hashable, Sendable {
     /// The part's raw id ("role:MOLLY").
     let part: String
     var partID: PartID { PartID(rawValue: part) }
+    /// A read-along (PLAYS-DESIGN §2.11): the production's script followed by its listen-through; no part, no recording.
+    static func along(_ production: String) -> StudioTarget { StudioTarget(production: production, part: "") }
+    var isAlong: Bool { part.isEmpty }
 }
 
 /// What a launch door sets in the reader (DEBUG only; `LaunchDoors`).
