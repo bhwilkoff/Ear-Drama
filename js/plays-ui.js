@@ -956,8 +956,10 @@ const PlaysUI = (() => {
    */
   function listenThrough(p, script, rerender) {
     const box = h.el('section', { class: 'block listen', 'aria-label': 'Listen through' });
+    const along = h.el('a', { class: 'btn btn-ghost read-along', href: `?read=${encodeURIComponent(p.scriptID || script.id)}&production=${encodeURIComponent(p.id)}&along=1` }, 'Read along');
     if (!C.isComplete(p, script)) {
       liveListen(box, p, script);
+      box.append(along);
       return box;
     }
     const from = C.fingerprint(p);
@@ -1005,6 +1007,7 @@ const PlaysUI = (() => {
 
     box.append(play, slot, status);
     if (mix && mix.id === p.id && mix.from === from) attach(false);
+    box.append(along);
     box.append(h.el('div', { class: 'actions' }, h.el('button', { type: 'button', class: 'btn', onclick: async () => {
       try { await store.exportMix(p.id, LiveAudio.offlineContext); } catch (err) { console.error(err); status.textContent = 'The mix did not export.'; }
     } }, 'Export')));

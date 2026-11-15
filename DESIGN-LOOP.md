@@ -403,3 +403,4 @@ Tracks (R = research doc, B = build):
 - 2026-11-15: marks merged on Apple (410 macOS tests) and Android (lintRelease green). Marks now on web, Apple, Android; Pencil ink ⏳.
 - 2026-11-15 tick: launched Kokoro S6a bench + S6d Android engine (Opus) and Pencil ink on iPad (Sonnet). App Review: reply sent, waiting.
 - 2026-11-15: design review merged (Today's scene, Home names the app, Record row second, opening lines on tiles). Owner answered 4 questions → Decision 079; agent implementing on all platforms + library refresh with openings.
+- 2026-11-15: read-along merged (web, Apple incl. tvOS panel, Android incl. TV panel; 430 macOS tests; no device frames yet; finished dramas lack per-line timing). Kokoro Android: engine built, S6a gate fails (q8f16 NaN on Android ORT; q8 memory 845–1364 MB or too slow); NOT merged (would add ~34 MB); tuning agent running.

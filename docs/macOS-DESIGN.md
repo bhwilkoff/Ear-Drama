@@ -217,6 +217,10 @@ only here:
   the window. Coming back to the app re-reads the record. The invitation shows in
   Library's Ear dramas in the main window, and Open or Take Part opens
   the production's own window.
+- **§4.7a Read along** (PLAYS-DESIGN §2.11; iOS-DESIGN §4.15a is the same view): the
+  production window's Read along is the reader in follow mode; Space stops and starts the
+  listen-through; scrolling or a key turn stops the turning and **Back to the line**
+  (a toolbar button) returns.
 - **§4.7 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 binding on
   the verbs; `docs/iOS-DESIGN.md` §4.15 for the shared SwiftUI view; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** on a play's page,

@@ -37,6 +37,8 @@ sealed interface Route : NavKey {
         val lineId: String? = null,
         val productionId: String? = null,
         val part: String? = null,
+        /** Read along (PLAYS-DESIGN §2.11): with [productionId] and no [part], the reader follows the production's listen-through. */
+        val along: Boolean = false,
     ) : Route
     /** A production's cast sheet. */
     @Serializable data class Production(val id: String) : Route

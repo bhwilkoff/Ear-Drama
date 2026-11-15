@@ -519,6 +519,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   then **Made Here**. The author line is each author's `display` name.
   Pushes `PlayRoute.script` and the cast sheet as before.
 
+- **§4.15a Read along** (PLAYS-DESIGN §2.11 binding; web sibling WEB-DESIGN §4.16a).
+  A production's **Read along** opens the reader in follow mode with Listen through as
+  the bottom bar's transport; `ReadAlong` (Core) maps the listen plan's line id to
+  `ReaderController.follow`; a drag or tap stops the turning and **Back to the line**
+  returns. iPad and Mac share the view; takes and cast voices follow alike.
 - **§4.15 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 is binding
   on the verbs, WEB-DESIGN §4.16 is the sibling; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** sits beside
