@@ -51,6 +51,8 @@ final class EngineLiveAudio: LiveAudio {
     init() {
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: TakeAudio.format)
+        // The mute door (APP_MUTE) silences every cue and take played back; the microphone is untouched.
+        player.volume = SpeechMute.volume
     }
 
     func outputRoute() -> AudioRoute {

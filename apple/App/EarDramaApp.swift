@@ -160,6 +160,18 @@ struct EarDramaApp: App {
             }
         }
         .defaultSize(width: 1280, height: 800)
+        WindowGroup("Studio", id: StudioWindow_macOS.id, for: StudioWindowValue.self) { $value in
+            if let value {
+                StudioWindow_macOS(value: value)
+                    .environment(plays)
+                    .environment(store)
+                    .environment(account)
+                    .environment(player)
+                    .environment(catalog)
+                    .tint(Color.brandSecondary)
+            }
+        }
+        .defaultSize(width: 1280, height: 820)
         #endif
     }
 

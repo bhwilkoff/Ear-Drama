@@ -187,12 +187,29 @@ final class ProductionStore {
         shares[id] = nil
     }
 
-    func discardUnusedTakes(_ id: String) throws {
-        guard var production = production(id) else { return }
-        for take in production.discardUnused() {
+    /// Deletes the unchosen takes and their files (every line, or only `lines`) and returns how many went.
+    @discardableResult
+    func discardUnusedTakes(_ id: String, lines: Set<String>? = nil) throws -> Int {
+        guard var production = production(id) else { return 0 }
+        let gone = production.discardUnused(lines: lines)
+        for take in gone {
             try? FileManager.default.removeItem(at: takeURL(production, take))
         }
         try save(production)
+        return gone.count
+    }
+
+    /// Deletes one unchosen take and its file; false when refused (the chosen take, or no such take).
+    @discardableResult
+    func deleteTake(_ id: String, takeID: String) throws -> Bool {
+        guard var production = production(id) else { return false }
+        let gone = production.deleteTake(takeID)
+        guard !gone.isEmpty else { return false }
+        for take in gone {
+            try? FileManager.default.removeItem(at: takeURL(production, take))
+        }
+        try save(production)
+        return true
     }
 
     /// Discard the run (Run through's review): its takes and their files go, each line back to its prior take.

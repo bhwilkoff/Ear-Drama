@@ -296,18 +296,30 @@ private struct RightsLine: View {
 struct ProductionScreen: View {
     let id: String
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
     @Environment(AppStore.self) private var app
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.openWindow) private var openWindow
     @State private var selected: PartID?
     @State private var replacing: String?
+
+    /// A part being recorded opens the reader with the studio (PLAYS-DESIGN §2.9 rule 1); any other part its lines.
+    private func open(_ part: PartID, line: String?, script: PlayScript, otherwise: () -> Void) {
+        if let target = StudioOpen.target(for: part, production: id, replacing: line, plays: plays, shared: shared) {
+            StudioOpen.open(target, scriptID: script.id, line: line, app: app, openWindow: openWindow)
+        } else {
+            otherwise()
+        }
+    }
 
     var body: some View {
         if let production = plays.store.production(id), let script = plays.castScript(for: production) {
             Group {
                 if sizeClass == .regular {
                     HStack(spacing: 0) {
-                        CastSheet(production: production, script: script, open: { selected = $0; replacing = nil },
-                                  replace: { selected = $0; replacing = $1 })
+                        CastSheet(production: production, script: script,
+                                  open: { part in open(part, line: nil, script: script) { selected = part; replacing = nil } },
+                                  replace: { part, line in open(part, line: line, script: script) { selected = part; replacing = line } })
                             .frame(width: 340)
                         Divider()
                         PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script),
@@ -316,9 +328,11 @@ struct ProductionScreen: View {
                     }
                 } else {
                     CastSheet(production: production, script: script, open: { part in
-                        app.push(PlayRoute.recording(production: production.id, part: part))
+                        open(part, line: nil, script: script) { app.push(PlayRoute.recording(production: production.id, part: part)) }
                     }, replace: { part, line in
-                        app.push(PlayRoute.recording(production: production.id, part: part, line: line))
+                        open(part, line: line, script: script) {
+                            app.push(PlayRoute.recording(production: production.id, part: part, line: line))
+                        }
                     })
                 }
             }
@@ -608,13 +622,28 @@ struct PartDetail: View {
     /// cast sheet (iPad, the Mac window) the panel simply turns to the lines.
     var dismissWhenDone = false
 
+    @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @Environment(AppStore.self) private var app
+    @Environment(\.openWindow) private var openWindow
+
     var body: some View {
-        if let part, production.state(of: part).status == .recording || replacing != nil {
-            RecordingScreen(productionID: production.id, part: part, startLine: replacing, dismissWhenDone: dismissWhenDone).id(part)
-        } else if let part {
-            List(script.lines(for: part)) { line in
-                ScriptLineText(line: line)
-                    .modifier(ReportTakeMenu(production: production, script: script, lineID: line.id))
+        if let part {
+            // The part being recorded is recorded in the reader (PLAYS-DESIGN §2.9); this panel keeps its lines.
+            let studio = StudioOpen.target(for: part, production: production.id, replacing: replacing, plays: plays, shared: shared)
+            List {
+                if let studio {
+                    Button {
+                        StudioOpen.open(studio, scriptID: script.id, line: replacing, app: app, openWindow: openWindow)
+                    } label: {
+                        Label("Open the Studio", systemImage: "mic")
+                    }
+                    .accessibilityIdentifier("open-studio")
+                }
+                ForEach(script.lines(for: part)) { line in
+                    ScriptLineText(line: line)
+                        .modifier(ReportTakeMenu(production: production, script: script, lineID: line.id))
+                }
             }
             .navigationTitle(part.title)
         } else {

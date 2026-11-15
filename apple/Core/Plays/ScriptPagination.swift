@@ -148,6 +148,9 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     let contd: [Int: ReaderContd]
     /// Whether the speaker's name stands in a gutter beside the words (a page of 30 em or more).
     let gutter: Bool
+    /// The studio's part (its role name): its speeches never split across pages (PLAYS-DESIGN §2.9), and the page
+    /// keeps `footRoom` below the text so the current line's outline is never clipped.
+    let keepRole: String?
     private let framesetter: CTFramesetter
     private let frames = NSCache<NSNumber, FrameBox>()
 
@@ -155,6 +158,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     static let inset: CGFloat = 14
     /// Room above the text for a carried-over speech's head.
     static let headRoom: CGFloat = 22
+    /// Room below the text in the studio, for the current line's outline.
+    static let footRoom: CGFloat = 8
 
     private final class FrameBox { let frame: CTFrame; init(_ f: CTFrame) { frame = f } }
 
@@ -164,7 +169,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     var textSize: CGSize { CGSize(width: pageSize.width - 2 * Self.inset, height: pageSize.height) }
 
     private init(string: NSAttributedString, framesetter: CTFramesetter, pageSize: CGSize, style: ReaderStyle, pages: [NSRange],
-                 lineRanges: [NSRange], hueOfLine: [Int], hueByRole: [String: Int], contd: [Int: ReaderContd], gutter: Bool) {
+                 lineRanges: [NSRange], hueOfLine: [Int], hueByRole: [String: Int], contd: [Int: ReaderContd], gutter: Bool,
+                 keepRole: String?) {
         self.string = string
         self.framesetter = framesetter
         self.pageSize = pageSize
@@ -175,6 +181,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         self.hueByRole = hueByRole
         self.contd = contd
         self.gutter = gutter
+        self.keepRole = keepRole
         func pageOf(_ offset: Int) -> Int {
             var lo = 0, hi = pages.count - 1
             while lo < hi {
@@ -195,7 +202,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     }
 
     /// Cuts `script` into pages of `pageSize` at `style`. Throws when its task is cancelled (a newer layout is wanted).
-    static func build(_ script: PlayScript, structure: ScriptStructure, style: ReaderStyle, pageSize: CGSize) throws -> ReaderLayout {
+    static func build(_ script: PlayScript, structure: ScriptStructure, style: ReaderStyle, pageSize: CGSize,
+                      keepRole: String? = nil) throws -> ReaderLayout {
         let size = style.size
         let lineHeight = (size * CGFloat(style.leading)).rounded()
         let textWidth = pageSize.width - 2 * inset
@@ -493,6 +501,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             if groupFirst[p.group] == nil { groupFirst[p.group] = i }
             groupLast[p.group] = i
         }
+        var speechEnd: [Int: Int] = [:]
+        for p in paras where p.speechStart >= 0 { speechEnd[p.speechStart] = max(speechEnd[p.speechStart] ?? 0, p.end) }
         func paraIndex(_ loc: Int) -> Int {
             var lo = 0, hi = paras.count - 1
             while lo < hi {
@@ -513,6 +523,11 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                 guard end < total, end > start else { break }
                 let pi = paraIndex(end - 1)
                 let p = paras[pi]
+                // In the studio my speech is one block: it goes whole to the next page (one longer than a page breaks).
+                if let keep = keepRole, p.role == keep, p.speechStart > start, (speechEnd[p.speechStart] ?? 0) > end {
+                    end = p.speechStart
+                    continue
+                }
                 if end < p.end {
                     if p.group >= 0 {
                         if p.start > start { end = p.start; continue }
@@ -562,7 +577,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
         if pages.isEmpty { pages = [NSRange(location: 0, length: 0)] }
         return ReaderLayout(string: out, framesetter: framesetter, pageSize: pageSize, style: style, pages: pages,
-                            lineRanges: ranges, hueOfLine: structure.hueOfLine, hueByRole: hueByRole, contd: contd, gutter: gutterOn)
+                            lineRanges: ranges, hueOfLine: structure.hueOfLine, hueByRole: hueByRole, contd: contd, gutter: gutterOn,
+                            keepRole: keepRole)
     }
 
     // MARK: Where things are
@@ -629,7 +645,13 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         var background: CGColor
         /// The quiet block behind a sound cue.
         var block: CGColor
+        /// The record red (the studio's outline while a cue plays or the microphone is open) and the warning color.
+        var record: CGColor? = nil
+        var warning: CGColor? = nil
     }
+
+    /// How the studio outlines the current line (§2.9 rule 2).
+    enum Outline: Sendable { case ink, armed, recording }
 
     struct Marks {
         /// The role of the part being played, or nil.
@@ -637,6 +659,86 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         var hide = false
         /// Hidden lines the person has tapped open.
         var peeked: Set<Int> = []
+        /// The studio's current line (a script line index) and how it is outlined.
+        var current: Int? = nil
+        var outline: Outline = .ink
+        /// The take state of each of my lines on the page (the studio).
+        var takes: [Int: StudioCore.LineState] = [:]
+    }
+
+    /// Where a take-state mark sits after a speaker's name, in the text's own coordinates (y up from the text foot).
+    struct TakeMarkSpot {
+        let line: Int
+        let state: StudioCore.LineState
+        let glyph: CGRect
+        let count: CGPoint?
+        /// The name and the mark together: the button's area.
+        let hit: CGRect
+    }
+
+    private var markFont: ReaderFont { ReaderFonts.sans(style.size * 0.8125, weight: .semibold) }
+
+    /// One mark per line of mine on the page, after the speaker's name; in the gutter the name is right-aligned, so the
+    /// mark sits under it when the speech goes on, else before it.
+    func takeMarkSpots(page: Int, role: String, takes: [Int: StudioCore.LineState]) -> [TakeMarkSpot] {
+        guard !takes.isEmpty else { return [] }
+        let frame = self.frame(page)
+        let lines = CTFrameGetLines(frame) as! [CTLine]
+        var origins = [CGPoint](repeating: .zero, count: lines.count)
+        CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+        let g = style.size * 0.8125
+        var seen = Set<Int>()
+        var out: [TakeMarkSpot] = []
+        for (i, line) in lines.enumerated() {
+            for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+                let attrs = CTRunGetAttributes(run) as NSDictionary
+                guard (attrs[NSAttributedString.Key.edInk] as? Int) == ReaderInk.speaker.rawValue,
+                      (attrs[NSAttributedString.Key.edRole] as? String) == role,
+                      let at = attrs[NSAttributedString.Key.edLine] as? Int, let state = takes[at], !seen.contains(at) else { continue }
+                seen.insert(at)
+                var asc: CGFloat = 0, desc: CGFloat = 0, lead: CGFloat = 0
+                _ = CTLineGetTypographicBounds(line, &asc, &desc, &lead)
+                let rr = CTRunGetStringRange(run)
+                let o = origins[i]
+                let x0 = CTLineGetOffsetForStringIndex(line, rr.location, nil)
+                let x1 = CTLineGetOffsetForStringIndex(line, rr.location + rr.length, nil)
+                let lineEnd = CTLineGetStringRange(line).location + CTLineGetStringRange(line).length
+                let beside = gutter && rr.location + rr.length + 1 < lineEnd
+                let countText = state.state == .chosen ? "\(state.takes)" : nil
+                let countW = countText.map { ($0 as NSString).size(withAttributes: [.font: markFont]).width + 3 } ?? 0
+                let width = g + countW
+                var x: CGFloat, y: CGFloat
+                if !beside {
+                    x = o.x + x1 + g * 0.5
+                    y = o.y
+                } else if i + 1 < lines.count, sameSpeech(lines[i + 1], attrs[NSAttributedString.Key.edSpeech] as? Int) {
+                    x = o.x + x1 - width
+                    y = origins[i + 1].y
+                } else {
+                    x = max(-Self.inset + 2, o.x + x0 - width - g * 0.4)
+                    y = o.y
+                }
+                let glyph = CGRect(x: x, y: y - 1, width: g, height: g)
+                let count = countText.map { _ in CGPoint(x: x + g + 3, y: y) }
+                let name = CGRect(x: o.x + x0, y: o.y - desc, width: x1 - x0, height: asc + desc)
+                out.append(TakeMarkSpot(line: at, state: state, glyph: glyph, count: count,
+                                        hit: name.union(CGRect(x: x, y: y - desc, width: width, height: asc + desc)).insetBy(dx: -6, dy: -6)))
+            }
+        }
+        return out
+    }
+
+    /// Whether a frame line opens inside the given speech (the mark may sit under the name only then).
+    private func sameSpeech(_ line: CTLine, _ speech: Int?) -> Bool {
+        guard let speech else { return false }
+        let loc = CTLineGetStringRange(line).location
+        guard loc < string.length else { return false }
+        return (string.attributes(at: loc, effectiveRange: nil)[.edSpeech] as? Int) == speech
+    }
+
+    /// A rectangle in the text's coordinates as the page's view draws it (top-left origin, the head room above).
+    func viewRect(_ r: CGRect) -> CGRect {
+        CGRect(x: Self.inset + r.minX, y: Self.headRoom + pageSize.height - r.maxY, width: r.width, height: r.height)
     }
 
     /// Draws one page into a context whose origin is the top-left of the page's view, y down (a SwiftUI `Canvas`
@@ -697,6 +799,39 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             cg.fill(rect)
             cg.setFillColor(c)
             cg.fill(CGRect(x: rect.minX, y: rect.minY, width: 3, height: rect.height))
+        }
+
+        // The studio's current line: outlined in ink, dashed record red while its cue plays, solid while the microphone is open.
+        if let current = marks.current, let me = marks.role {
+            var lo = CGFloat.greatestFiniteMagnitude, hi = -CGFloat.greatestFiniteMagnitude
+            for (i, line) in lines.enumerated() {
+                let loc = CTLineGetStringRange(line).location
+                guard loc < string.length else { continue }
+                let attrs = string.attributes(at: loc, effectiveRange: nil)
+                guard (attrs[.edLine] as? Int) == current, (attrs[.edRole] as? String) == me else { continue }
+                lo = min(lo, info[i].band.minY)
+                hi = max(hi, info[i].band.maxY)
+            }
+            if lo < hi {
+                let rect = CGRect(x: -Self.inset + 5, y: lo - 5, width: textWidth + 2 * Self.inset - 10, height: hi - lo + 10)
+                let path = CGPath(roundedRect: rect, cornerWidth: 6, cornerHeight: 6, transform: nil)
+                cg.saveGState()
+                switch marks.outline {
+                case .ink:
+                    cg.setStrokeColor(theme.ink)
+                    cg.setLineWidth(1.5)
+                case .armed:
+                    cg.setStrokeColor(theme.record ?? theme.ink)
+                    cg.setLineWidth(2)
+                    cg.setLineDash(phase: 0, lengths: [6, 4])
+                case .recording:
+                    cg.setStrokeColor(theme.record ?? theme.ink)
+                    cg.setLineWidth(2.5)
+                }
+                cg.addPath(path)
+                cg.strokePath()
+                cg.restoreGState()
+            }
         }
 
         var glyph: CGImage?
@@ -765,6 +900,32 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                 cg.fillPath()
             }
         }
+
+        // Each of my lines' take state after the speaker's name (§2.9 rule 3).
+        if let me = marks.role {
+            let hue = hueColor(hueByRole[me] ?? -1)
+            for spot in takeMarkSpots(page: page, role: me, takes: marks.takes) {
+                let color: CGColor
+                let symbol: String
+                switch spot.state.state {
+                case .none: color = theme.muted; symbol = "circle"
+                case .chosen: color = hue; symbol = "circle.fill"
+                case .flagged: color = theme.warning ?? theme.muted; symbol = "exclamationmark.triangle.fill"
+                }
+                if let image = ReaderGlyph.symbol(symbol, size: style.size * 0.8125, color: color) {
+                    let h = spot.glyph.height * 0.95
+                    let w = h * CGFloat(image.width) / CGFloat(image.height)
+                    cg.draw(image, in: CGRect(x: spot.glyph.minX, y: spot.glyph.minY, width: w, height: h))
+                }
+                if let at = spot.count {
+                    let s = NSAttributedString(string: "\(spot.state.takes)", attributes: [
+                        .font: markFont, NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
+                    ])
+                    cg.textPosition = at
+                    CTLineDraw(CTLineCreateWithAttributedString(s), cg)
+                }
+            }
+        }
     }
 }
 
@@ -792,17 +953,19 @@ nonisolated struct DirectionNames: Sendable {
 nonisolated enum ReaderGlyph {
     static let scale: CGFloat = 3
 
-    static func speaker(size: CGFloat, color: CGColor) -> CGImage? {
+    static func speaker(size: CGFloat, color: CGColor) -> CGImage? { symbol("speaker.wave.2", size: size, color: color) }
+
+    static func symbol(_ name: String, size: CGFloat, color: CGColor) -> CGImage? {
         #if canImport(UIKit)
         let config = UIImage.SymbolConfiguration(pointSize: size, weight: .semibold)
-        guard let base = UIImage(systemName: "speaker.wave.2", withConfiguration: config) else { return nil }
+        guard let base = UIImage(systemName: name, withConfiguration: config) else { return nil }
         let tinted = base.withTintColor(UIColor(cgColor: color), renderingMode: .alwaysOriginal)
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
         return UIGraphicsImageRenderer(size: tinted.size, format: format).image { _ in tinted.draw(at: .zero) }.cgImage
         #else
         let config = NSImage.SymbolConfiguration(pointSize: size, weight: .semibold)
-        guard let base = NSImage(systemSymbolName: "speaker.wave.2", accessibilityDescription: nil)?.withSymbolConfiguration(config),
+        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(config),
               let tint = NSColor(cgColor: color) else { return nil }
         let image = NSImage(size: base.size, flipped: false) { rect in
             base.draw(in: rect)

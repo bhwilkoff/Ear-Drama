@@ -52,7 +52,12 @@ final class RecordingSession {
         var takes: [RunNote]
     }
 
-    private(set) var phase: Phase = .idle
+    private(set) var phase: Phase = .idle {
+        didSet { onPhase?(self) }
+    }
+    /// A second observer of every phase change, called as the phase is set (the studio follows `cue` and
+    /// `listening` lines with it, PLAYS-DESIGN §2.9 rule 5).
+    @ObservationIgnored var onPhase: ((RecordingSession) -> Void)?
     private(set) var mode: Mode = .step
     private(set) var run: Run?
     /// The microphone's recent loudness (0...1), newest last, for the level meter while a line records.
@@ -375,6 +380,11 @@ final class RecordingSession {
 
     func choose(_ take: Take) {
         mutate { $0.choose(take.id) }
+    }
+
+    /// Reads the store's record again, after something outside the session changed it (a take deleted).
+    func reload() {
+        production = store.production(production.id) ?? production
     }
 
     /// Changes the store's current record, never a stale copy: the cast sheet
