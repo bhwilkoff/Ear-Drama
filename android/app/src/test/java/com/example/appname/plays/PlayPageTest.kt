@@ -67,6 +67,17 @@ class PlayPageTest {
             listOf("It is the first in which" to true, "I" to true, "have been serious." to true, "Sits." to false, "Well." to true),
             stress.speeches[0].rows[0].runs.map { it.text to it.said },
         )
+        val em = PlayPage.layoutOf(
+            ScriptLine("L5", ScriptLine.Kind.Speech, role = "A", parts = listOf(say("I said"), say("never,"), say("not ever.")), em = listOf(1)), listOf("A"),
+        )
+        assertEquals(
+            listOf(ScriptReading.RunKind.Say, ScriptReading.RunKind.Em, ScriptReading.RunKind.Say),
+            em.speeches[0].rows[0].runs.map { it.kind },
+        )
+        assertTrue(em.speeches[0].rows[0].runs.all { it.said })
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val decoded = json.decodeFromString(ScriptLine.serializer(), """{"id":"L6","kind":"speech","role":"A","parts":[{"say":"a"},{"say":"b"}],"em":[1]}""")
+        assertEquals(listOf(1), decoded.em)
         assertEquals(22, PlayPage.cueTail("I could love anybody. Any pretty woman, that is."))
         assertEquals(0, PlayPage.cueTail("Who is there?"))
     }

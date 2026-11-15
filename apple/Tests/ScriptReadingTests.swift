@@ -361,7 +361,7 @@ struct ScriptReadingTests {
         #expect(!PlayPage.isVerse(["Who is there?"]), "no break, nothing to keep")
     }
 
-    @Test func aSpeechRunIntoAnotherIsAttributedToItsSpeakerAndCuesGetTheSoundLane() {
+    @Test func aSpeechRunIntoAnotherIsAttributedToItsSpeakerAndCuesGetTheSoundLane() throws {
         let roles = ["CHARTERIS", "GRACE"]
         let lay = PlayPage.layoutOf(page("CHARTERIS", [.say("Of course. Why not?\nGRACE"), .direction("reflecting"), .say(". Never mind why.")]), roles: roles)
         #expect(lay.speeches.map(\.role) == ["CHARTERIS", "GRACE"], "two speakers")
@@ -377,6 +377,11 @@ struct ScriptReadingTests {
         #expect(stress.speeches[0].rows[0].runs.map { [$0.text, "\($0.said)"] }
                 == [["It is the first in which", "true"], ["I", "true"], ["have been serious.", "true"], ["Sits.", "false"], ["Well.", "true"]],
                 "an italic word between lowercase said words is emphasis; a sentence direction stays a direction")
+        let em = PlayPage.layoutOf(ScriptLine(id: "L5", kind: .speech, role: "A", parts: [.say("I said"), .say("never,"), .say("not ever.")], em: [1]), roles: ["A"])
+        #expect(em.speeches[0].rows[0].runs.map(\.kind) == [.say, .em, .say], "the parser's em part is drawn in italic")
+        #expect(em.speeches[0].rows[0].runs.allSatisfy { $0.said })
+        let decoded = try JSONDecoder().decode(ScriptLine.self, from: Data(#"{"id":"L6","kind":"speech","role":"A","parts":[{"say":"a"},{"say":"b"}],"em":[1]}"#.utf8))
+        #expect(decoded.em == [1], "the catalog's em indexes decode")
         #expect(PlayPage.cueTail("I could love anybody. Any pretty woman, that is.") == 22, "the cue is the last sentence")
         #expect(PlayPage.cueTail("Who is there?") == 0, "one sentence is all cue")
     }

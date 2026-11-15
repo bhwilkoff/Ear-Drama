@@ -124,6 +124,7 @@ object PlayPage {
                 val lower = first != null && first.isLowerCase()
                 if (words.size <= 3 && lower && !EMPHASIS_END.containsMatchIn(prev.text)) stressed += i
             }
+            line.em?.let { stressed += it }
             for (r in runs) if (r.piece in stressed) {
                 r.said = true
                 r.kind = ScriptReading.RunKind.Em

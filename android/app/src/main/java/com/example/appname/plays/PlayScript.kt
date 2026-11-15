@@ -86,6 +86,8 @@ data class ScriptLine(
     val role: String? = null,
     val parts: List<LinePart>? = null,
     val source: String? = null,
+    /** Indexes into [parts] of the said parts the source printed in italics (the speaker's stress). */
+    val em: List<Int>? = null,
 ) {
     @Serializable
     enum class Kind {

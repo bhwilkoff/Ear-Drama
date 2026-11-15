@@ -541,6 +541,12 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                         if n1 >= 3, let at = lineStarts.last(where: { $0 >= p.start && $0 < end }) { end = at; continue }
                         if p.start > start { end = p.start; continue }
                     }
+                    // A name set inside a direction ("(Extends arms; BIJAH") is not left at the foot either.
+                    if end >= 2, out.attribute(.edInk, at: end - 2, effectiveRange: nil) as? Int == ReaderInk.speaker.rawValue {
+                        let n1 = lineStarts.filter { $0 >= p.start && $0 < end }.count
+                        if n1 >= 3, let at = lineStarts.last(where: { $0 >= p.start && $0 < end }) { end = at; continue }
+                        if p.start > start { end = p.start; continue }
+                    }
                     break
                 }
                 if p.keepNext, p.start > start { end = p.start; continue }
