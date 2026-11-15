@@ -629,6 +629,15 @@ function writeViolations(file, source) {
   if (/\b(speechSynthesis|SpeechSynthesisUtterance)\b/.test(source) && file !== 'plays-voice.js') out.push(`${file}: speaks`);
   if (file.startsWith('plays-') && file !== 'plays-store.js'
       && /\bindexedDB\b|createWritable|getDirectory\s*\(|\.download\s*=/.test(source)) out.push(`${file}: persists`);
+  // Kokoro (S6 prototype): the voice and its worker render and play, and keep nothing; the model
+  // file keeps model bytes, and has no audio path.
+  if ((file === 'kokoro-voice.js' || file === 'kokoro-worker.js')
+      && /\bindexedDB\b|\bcaches\.|localStorage|sessionStorage|createWritable|getDirectory\s*\(|\.download\s*=|\bBlob\b|createObjectURL|PlayStore/.test(source)) {
+    out.push(`${file}: keeps synthetic audio`);
+  }
+  if (file === 'kokoro-model.js' && /AudioContext|AudioBuffer|createBufferSource|speechSynthesis|PlayStore/.test(source)) {
+    out.push(`${file}: has an audio path`);
+  }
   if (file === 'plays-voice.js'
       && /AudioContext|getUserMedia|MediaStream|\bBlob\b|ArrayBuffer|Float32Array|encodeWav|PlayStore|indexedDB|fetch\s*\(|audioWorklet/.test(source)) {
     out.push(`${file}: has an audio path`);
@@ -647,6 +656,10 @@ test('only the store writes play audio, and the device voice has no audio path',
   eq(writeViolations('plays-voice.js', 'const b = new Blob([x]);').length, 1, 'control: a writer in the voice file is caught');
   eq(writeViolations('plays-ui.js', 'PlaysCore.encodeWav(s, 48000)').length, 1, 'control: an encoder in the UI is caught');
   eq(writeViolations('app.js', 'new MediaRecorder(stream)').length, 1, 'control: a recorder anywhere is caught');
+  eq(writeViolations('kokoro-voice.js', "caches.open('x').then(c => c.put(u, r))").length, 1, 'control: a cache write in the Kokoro voice is caught');
+  eq(writeViolations('kokoro-worker.js', "indexedDB.open('x')").length, 1, 'control: storage in the Kokoro worker is caught');
+  eq(writeViolations('kokoro-voice.js', 'URL.createObjectURL(new Blob([s]))').length, 1, 'control: a Blob of Kokoro audio is caught');
+  eq(writeViolations('kokoro-model.js', 'new AudioContext()').length, 1, 'control: an audio path in the model file is caught');
 });
 
 test('the device voice offers only local English voices and is silent when muted', async () => {

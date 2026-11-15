@@ -26,6 +26,7 @@ DEFAULT_SUITES="js/api.test.js
   js/reader.test.js
   js/studio.test.js
   js/voice-cast.test.js
+  js/kokoro.test.js
   js/plays-share.test.js
   js/account.test.js
   js/export.test.js

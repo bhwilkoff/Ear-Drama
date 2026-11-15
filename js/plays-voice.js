@@ -38,9 +38,18 @@ const StandInVoice = (() => {
   /** The words as spoken: printed italic marks never read. */
   const said = (text) => (text || '').replace(/_/g, '').trim();
 
+  /**
+   * `kokoro` is the downloadable voices' engine (js/kokoro-voice.js, a prototype behind ?kokoro=1):
+   * a part cast to a Kokoro voice is handed to it, and read by its system fallback voice when
+   * Kokoro cannot read the line. This file still holds no audio: the engine plays and keeps nothing.
+   */
   function create({ muted = false, synth = sys(),
                     Utterance = (typeof SpeechSynthesisUtterance !== 'undefined' ? SpeechSynthesisUtterance : null),
-                    language = lang(), cast = null } = {}) {
+                    language = lang(), cast = null,
+                    kokoro } = {}) {
+    // Looked up at each read, not at creation: the engine appears once the model has booted.
+    // An explicit `kokoro` (tests: a fake, or null for none) always wins.
+    const engine = () => (kokoro !== undefined ? kokoro : (typeof KokoroVoice !== 'undefined' ? KokoroVoice.engine() : null));
     const assigned = new Map();
     let list = [];
     const refresh = () => { list = synth ? VoiceCast.systemVoices(synth.getVoices(), language) : []; };
@@ -52,6 +61,15 @@ const StandInVoice = (() => {
       if (!assigned.has(part)) assigned.set(part, assigned.size);
       const index = assigned.get(part);
       return { read: true, voice: list[index % list.length], rate: 1, pitch: PITCHES[Math.floor(index / list.length) % PITCHES.length] };
+    }
+
+    /** The system voice that reads a Kokoro part's line Kokoro cannot read: the part's auto-cast system voice. */
+    function systemFallback(part) {
+      const sysOnly = list.filter(v => v.engine === 'system');
+      if (!sysOnly.length) return null;
+      const parts = cast ? cast.parts : [part];
+      const auto = VoiceCast.autoCast(parts, sysOnly)[part];
+      return (auto && sysOnly.find(v => v.id === auto.voice)) || sysOnly[0];
     }
 
     function utter(words, v, rate, pitch) {
@@ -89,18 +107,34 @@ const StandInVoice = (() => {
         if (!words || !synth || !Utterance || !list.length) return Promise.resolve(false);
         const r = cast ? cast.resolve(part) : loose(part);
         if (!r.read || !r.voice) return Promise.resolve(false);
+        if (r.voice.engine === 'kokoro') {
+          const fallback = () => {
+            const v = systemFallback(part);
+            return v ? utter(words, v, r.rate * rate, r.pitch) : false;
+          };
+          const k = engine();
+          if (!k) return Promise.resolve(fallback());
+          return k.speak(words, r.voice.id, { rate: r.rate * rate, pitch: r.pitch }).then(read => (read ? true : fallback()));
+        }
         return utter(words, r.voice, r.rate * rate, r.pitch);
       },
 
       /** The picker's preview: `text` (the part's own first line) in a voice not yet chosen. Live, never kept. */
       speakAs(text, voice, { rate = 1, pitch = 1 } = {}) {
         const words = said(text);
-        if (!words || !synth || !Utterance || !voice) return Promise.resolve(false);
+        if (!words || !voice) return Promise.resolve(false);
+        if (voice.engine === 'kokoro') {
+          if (synth) synth.cancel();
+          const k = engine();
+          return k ? k.speak(words, voice.id, { rate, pitch }) : Promise.resolve(false);
+        }
+        if (!synth || !Utterance) return Promise.resolve(false);
         synth.cancel();
+        if (engine()) engine().cancel();
         return utter(words, voice, rate, pitch);
       },
 
-      cancel() { if (synth) synth.cancel(); },
+      cancel() { if (synth) synth.cancel(); if (engine()) engine().cancel(); },
     };
   }
 

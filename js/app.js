@@ -2594,6 +2594,21 @@
   Player.setRate(Store.rate());
   const doorSeconds = Number(params.get('door_seconds'));
   if (doorSeconds > 0) setTimeout(() => navigate('?view=home'), doorSeconds * 1000);
+  /* Kokoro voices (Decision 076 S6 PROTOTYPE): loaded only with ?kokoro=1 (kept until ?kokoro=0);
+     ?kokoro_manifest= points it at a model manifest. Without the flag nothing loads. */
+  (() => {
+    let on = params.get('kokoro') === '1';
+    try { if (!on && params.get('kokoro') !== '0') on = localStorage.getItem('ed.kokoro') === '1'; } catch { /* no storage: flag off */ }
+    if (!on) return;
+    const load = (src) => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.append(s);
+    });
+    load('js/kokoro-model.js').then(() => load('js/kokoro-voice.js'))
+      .then(() => KokoroVoice.boot({ manifestURL: params.get('kokoro_manifest') || undefined }))
+      .catch(e => console.error('kokoro prototype', e));
+  })();
   /* Offline (WEB-DESIGN §7.3): a status line while the browser reports no network; what was
      opened before still opens from the service worker's copies. */
   const paintOnline = () => { $('offline-note').hidden = !API.offlineLine(); };
