@@ -299,12 +299,15 @@ test('joining makes the production here once, from the bundle\'s script at its r
 test('Library\'s Ear dramas: this browser\'s, then the shared ones not opened here', async () => {
   const { store, local } = await sharedLocal();
   const solo = await store.create(fixtureScript());
+  await store.save({ ...solo, takes: [{ id: 't', lineID: 'L0003', file: 'a.wav' }] });
+  const empty = await store.create(fixtureScript());
   const rows = S.libraryRows(store, [{ id: 'pid-1', title: 'Good Grammar', updated_at: 0 },
                                       { id: 'pid-far', title: 'Far Away', updated_at: 5 }]);
   eq(rows.length, 3, 'two here and one remote');
+  ok(!rows.some(r => r.local && r.local.id === empty.id), 'a production with no take is not a row (Decision 079)');
   eq(rows.filter(r => r.pid === 'pid-1').map(r => r.local && r.local.id), [local.id], 'a shared one here is listed once');
   eq(rows.filter(r => !r.local).map(r => r.pid), ['pid-far'], 'the remote one');
-  ok(rows.some(r => r.local && r.local.id === solo.id && r.pid === null), 'an unshared one stays');
+  ok(rows.some(r => r.local && r.local.id === solo.id && r.pid === null), 'an unshared one with a take stays');
 });
 
 test('the served consent words become a lead and a list, none changed', () => {

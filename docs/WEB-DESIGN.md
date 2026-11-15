@@ -161,7 +161,10 @@ web app follows today.
      browser's production of the play when there is one) and opens the
      studio in the reader on that part's first line
      (`?read=&production=&part=&line=`), where the cast's device voice reads
-     the line before it; **Hear it** (ghost) reads the opening aloud, live,
+     the line before it, signed in or out (Decision 079: the first take needs
+     no account; signed out with another production already holding a take,
+     the press opens the account sheet over "A second production needs an
+     account." instead, PLAYS-DESIGN §2.3); **Hear it** (ghost) reads the opening aloud, live,
      in the cast's device voices (`StandInVoice` over the play's one cast,
      `CastUI.castFor`), lighting the speech being read, and becomes
      **Stop**; it pauses the player, keeps no sound, stops on any route
@@ -188,11 +191,18 @@ web app follows today.
      - *Replaced* (2026-11-14, owner): "**Open parts**: this browser's
        productions with a part still open" (it listed the person's own
        productions, and counted sound and directions as open parts).
+  7a. **Made here, leading** (Decision 079, owner 2026-11-15, R2 review Q3):
+     while there are finished ear dramas and fewer than six, item 10's row
+     is drawn here, directly under the three doors (before Start a show),
+     and not at the end: the first proof of what an ear drama sounds like
+     sits where a newcomer looks first. At six or more it returns to item
+     10. The row, its tiles and "All" are item 10's; nothing else changes.
   8. **This day in radio**: the day board and the night picked on it
      (§6.4c), unchanged, moved down.
   9. **Most heard voices**: the faces rail (`voices`), "All voices".
   10. **Made here**: finished ear dramas, newest first, each its tile, "All";
-     absent when there are none.
+     absent when there are none; drawn at item 7a instead while there are
+     one to five.
 
   The footer's site links leave Home (§4.8). **States** (§7.1): each row
   is its own box with its own loading, empty, error, and offline state, so
@@ -411,11 +421,10 @@ web app follows today.
     `js/voice-cast.js` (the model, auto-cast, fallback, storage; no speech
     API), `js/cast-ui.js` (chip, picker, the reader's Voices list), and
     `js/plays-voice.js` (the only file that touches `speechSynthesis`).
-  - **Recording** (`?production=&part=`): signed out, the page says
-    "Recording needs an account." with a Sign in button that opens the
-    account sheet (§4.11), and nothing else (owner 2026-10-23: always, even
-    a play never shared). Signed in, before anything, the
-    headphones refusal. The web cannot see the audio route (Safari lists no
+  - **Recording** (`?production=&part=`): signed in or out (Decision 079;
+    *replaced* 2026-11-15: "signed out, the page says "Recording needs an
+    account." with a Sign in button ... and nothing else"), before
+    anything, the headphones refusal. The web cannot see the audio route (Safari lists no
     outputs, and Chrome's labels name devices, not the route in use), so
     the page says "Headphones on" over "This browser cannot tell whether
     they are on." and Start recording stays disabled until the person checks
@@ -621,8 +630,11 @@ web app follows today.
   1. **Yours**: this browser's productions and the shared ones it has not
      opened, the list Library's Ear dramas draws (§4.7), newest first, each
      row its title and "N of M lines recorded", "Finished" or "Shared".
-     Absent when there are none: the empty state is a real play, below,
-     never a sentence about recording.
+     A production with no take is never a row (Decision 079, PLAYS-DESIGN
+     §2.3 rule 3a): it is deleted when the studio closes without a take and
+     whenever the store loads, so "After Taps · 0 of 594" never appears,
+     once or twice. Absent when there are none: the empty state is a real
+     play, below, never a sentence about recording.
   2. **Today's scene**: the same card as Home's (§4.2 item 7), with
      **Try a line**, **Hear it** and **Read**. (*Replaced* 2026-11-15:
      Today's play's board with Record this, Read and Parts.)
@@ -892,17 +904,19 @@ web app follows today.
        keeps in a review; arrows and Page keys turn pages as before.
      - **States**, in the dock's status area, each in place of the
        transport until it clears: this browser cannot record ("This browser
-       cannot record."); signed out ("Recording needs an account." and Sign
-       in, which opens the account sheet; offline, Sign in is disabled and
-       "You are offline." follows); headphones (§4.10's "Headphones on", "This
+       cannot record."); headphones (§4.10's "Headphones on", "This
        browser cannot tell whether they are on.", the check and Start
        recording, every session); room tone ("Quiet, please. Recording the
        room." and the countdown); a refused or missing microphone and a take
        not saved (§4.10's words, in the error color, with Start recording
-       again). Offline while signed in records as usual.
+       again). Signed out or offline records as usual: no account line ever
+       stands beside the record control (Decision 079, F11; *replaced*
+       2026-11-15: "signed out ("Recording needs an account." and Sign in
+       ...)").
      - **Leaving**: Close goes back to the cast sheet (or where the person
        came from); leaving the reader ends the session and stops the
-       microphone, as leaving the recorder did.
+       microphone, as leaving the recorder did A local, unshared production
+       left with no take is deleted then (PLAYS-DESIGN §2.3 rule 3a).
      - *Replaced*: the recorder's own page (`?production=&part=`): "the
        top (close, the part over the play, "K of N" kept), the strip ... the
        dock. At 1100 px and wider, "In this scene" (faces) on the left and

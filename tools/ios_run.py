@@ -62,7 +62,7 @@ SCENARIOS = {
     "home":        {"env": {HOOK_START_TAB: "home"}, "minutes": 0.6,
                     "expect_any": r"Listen Live|Find a Show|Record a Play|Continue"},
     "record":      {"env": {HOOK_START_TAB: "record"}, "minutes": 0.6,
-                    "expect_any": r"Today.s play|Voices|Plays|Yours"},
+                    "expect_any": r"Today.s (play|scene)|Voices|Plays|Yours"},
     "search":      {"env": {HOOK_START_TAB: "search"}, "minutes": 0.6,
                     "expect_any": r"Titles, series, people|Search titles"},
     "browse":      {"env": {HOOK_START_TAB: "browse"}, "minutes": 0.6,

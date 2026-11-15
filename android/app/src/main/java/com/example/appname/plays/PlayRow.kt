@@ -27,7 +27,11 @@ data class PlayRow(
     val rights: PlayScript.Rights? = null,
     val source: PlayScript.Source? = null,
     val path: String = "",
+    /** The first speeches as the index cuts them (contract §4.1), for a play drawn without its script. */
+    val opening: List<Opening>? = null,
 ) : PlayListing {
+    @Serializable data class Opening(val role: String = "", val text: String = "")
+
     override val authorLine: String get() = authors.filter { it.isNotBlank() }.joinToString(", ")
     override val authorWithYears: String get() = authorLine
     override val speechCount: Int get() = lines

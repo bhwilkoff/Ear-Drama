@@ -430,7 +430,11 @@ struct PlaysShareLibraryTests {
         let script = shareScript()
         let store = temporaryStore()
         let shared = try sharedProduction(store, script, [])
-        let plain = try store.create(script)
+        var plain = try store.create(script)
+        plain.add(Take(id: "t", lineID: script.lines[0].id, part: script.lines[0].part, file: "t.wav", created: .now, frames: 10,
+                       sampleRate: 48_000, capture: .direct, heard: [:], loudness: nil, peak: 0.1, bleed: false))
+        try store.save(plain)
+        let empty = try store.create(script)
         let remote = [
             RemoteProduction(id: "P1", title: "Here already", scriptID: "gut-share", director: me, updatedAt: 0),
             RemoteProduction(id: "P2", title: "Not here", scriptID: "gut-share", director: "user-bo",
@@ -442,6 +446,7 @@ struct PlaysShareLibraryTests {
         #expect(rows.first?.pid == "P2" && rows.first?.local == nil)
         #expect(rows.last?.pid == "P3")
         #expect(Set(rows.compactMap(\.local?.id)) == [shared.id, plain.id])
+        #expect(!rows.contains { $0.local?.id == empty.id }, "a local production with no take is not a row (Decision 079)")
         #expect(rows.first { $0.local?.id == shared.id }?.pid == "P1")
         #expect(!rows.contains { $0.remote?.id == "P1" })
     }

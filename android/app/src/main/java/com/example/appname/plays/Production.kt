@@ -88,6 +88,8 @@ data class Production(
     /** The chosen takes `mix.m4a` was rendered from; a different set means the mix is stale. */
     val mixedFrom: String? = null,
 ) {
+    val isEmpty: Boolean get() = takes.isEmpty()
+
     fun state(part: PartID): PartState = parts[part] ?: PartState()
 
     fun take(id: String): Take? = takes.firstOrNull { it.id == id }
@@ -162,6 +164,14 @@ data class Production(
     val isFinished: Boolean get() = listenedThrough && mixedFrom == chosenFingerprint
 
     companion object {
+        /** Signed out, a production on this device that holds a take makes the next one a second (Decision 079); an empty one does not count. */
+        fun secondNeedsAccount(productions: List<Production>, signedIn: Boolean): Boolean =
+            !signedIn && productions.any { !it.isEmpty }
+
+        /** Local, unshared productions with no take: removed rather than listed (PLAYS-DESIGN §2.3 rule 3a). */
+        fun abandoned(productions: List<Production>, isShared: (String) -> Boolean): List<String> =
+            productions.filter { it.isEmpty && !isShared(it.id) }.map { it.id }
+
         fun create(script: PlayScript, id: String = UUID.randomUUID().toString().uppercase()) = Production(
             id = id,
             scriptID = script.id,

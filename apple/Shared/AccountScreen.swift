@@ -145,7 +145,7 @@ struct AccountScreen: View {
 
 /// Signed out: Apple's button first, Google under it (App Review 4.8), and
 /// the last error. The account screen's, and Start Recording's (PLAYS-DESIGN
-/// §2.3: recording needs an account).
+/// §2.3: sharing and a second production need an account).
 struct SignInButtons: View {
     @Environment(AccountStore.self) private var account
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession

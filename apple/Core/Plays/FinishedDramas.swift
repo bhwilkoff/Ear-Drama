@@ -10,6 +10,10 @@ nonisolated enum FinishedDramas {
         plays.sorted { ($0.publishedAt, $0.id) > ($1.publishedAt, $1.id) }
     }
 
+    /// Made Here leads Home right under the three doors while there are one to five finished ear dramas; at six or
+    /// more it returns to the end (Decision 079).
+    static func leadsHome(count: Int) -> Bool { (1...5).contains(count) }
+
     /// Credits with a name: a deleted account's lines stay on the item, uncredited, never given a name.
     static func named(_ credits: [FinishedPlay.Credit]) -> [FinishedPlay.Credit] {
         credits.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }

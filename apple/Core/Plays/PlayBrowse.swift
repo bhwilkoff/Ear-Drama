@@ -224,6 +224,83 @@ nonisolated enum PlayBrowse {
         }
         return best
     }
+
+    /// The scene pools in order (WEB-DESIGN §4.2, Decision 079): two voices and at most 20 minutes, else two or three
+    /// voices and at most 30; else every play.
+    static let scenePools: [(voices: ClosedRange<Int>, minutes: Int)] = [(2...2, 20), (2...3, 30)]
+
+    /// The plays Today's scene picks from: the first pool with any play in it, else every play.
+    static func scenePool<S: PlayListing>(_ scripts: [S]) -> [S] {
+        for pool in scenePools {
+            let kept = scripts.filter { pool.voices.contains($0.voices) && $0.minutes <= pool.minutes }
+            if !kept.isEmpty { return kept }
+        }
+        return scripts
+    }
+
+    /// Today's scene: Today's play's hash over the scene pool, so every platform with the same library and date picks
+    /// the same play (`catalog/tests/golden/todays_play.json` `scene`). Nil for an empty library.
+    static func todaysScene<S: PlayListing>(_ scripts: [S], dateKey: String) -> S? {
+        todaysPlay(scenePool(scripts), dateKey: dateKey)
+    }
+}
+
+/// One of a play's opening speeches: the part, the role as printed, its said words cleaned for the page, and the line
+/// (nil when it came from the index row's `opening`).
+nonisolated struct OpeningSpeech: Equatable, Sendable, Identifiable {
+    let part: PartID
+    let name: String
+    let text: String
+    let lineID: String?
+    var id: String { lineID ?? "\(name)|\(text)" }
+
+    /// The words as a page shows them: emphasis marks dropped, whitespace collapsed, a leading stray `.,:;—-` dropped,
+    /// and `--` set as an em dash (the web's `openingOf`).
+    static func clean(_ text: String) -> String {
+        var t = text.replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+        t = t.replacingOccurrences(of: #"^[.,:;\x{2014}-]+\s*"#, with: "", options: .regularExpression)
+        return t.replacingOccurrences(of: "--", with: "\u{2014}")
+    }
+}
+
+nonisolated extension PlayScript {
+    /// The first `n` speeches with said words, in script order.
+    func opening(n: Int = 4) -> [OpeningSpeech] {
+        var out: [OpeningSpeech] = []
+        for line in lines where line.kind == .speech {
+            let text = OpeningSpeech.clean(line.spokenText)
+            guard !text.isEmpty else { continue }
+            out.append(OpeningSpeech(part: line.part, name: line.role ?? "", text: text, lineID: line.id))
+            if out.count >= n { break }
+        }
+        return out
+    }
+
+    static func todaysScene<S: PlayListing>(_ rows: [S], dateKey: String) -> S? {
+        PlayBrowse.todaysScene(rows, dateKey: dateKey)
+    }
+
+    /// The voice Try a Line gives a person: the one that answers, the second speaker of the opening, else the second
+    /// speaking part, else the first.
+    func answeringPart(_ opening: [OpeningSpeech]) -> PartID? {
+        var speakers: [PartID] = []
+        for s in opening where !speakers.contains(s.part) { speakers.append(s.part) }
+        let parts = castParts.map(\.id).filter(\.isSpeaking)
+        if speakers.count > 1 { return speakers[1] }
+        return parts.first { $0 != speakers.first } ?? speakers.first ?? parts.first
+    }
+}
+
+nonisolated extension PlayRow {
+    /// The index row's opening speeches (contract §4.1, already cut short), blanks dropped, at most `n`.
+    func opening(n: Int = 4) -> [OpeningSpeech] {
+        (openingIndex ?? []).prefix(n).compactMap { o in
+            let text = OpeningSpeech.clean(o.text)
+            return text.isEmpty ? nil : OpeningSpeech(part: .role(o.role), name: o.role, text: text, lineID: nil)
+        }
+    }
 }
 
 nonisolated extension Production {

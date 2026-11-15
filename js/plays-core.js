@@ -206,6 +206,13 @@ const PlaysCore = (() => {
     };
   }
 
+  /* A first take needs no account; a second production does (Decision 079, PLAYS-DESIGN §2.3). A
+     production with no take is never listed and does not count. */
+  const isEmptyProduction = (p) => !(p.takes && p.takes.length);
+  const secondProductionNeedsAccount = (productions, signedIn) => !signedIn && (productions || []).some(p => !isEmptyProduction(p));
+  /** Made here leads Home under the doors while there are one to five finished ear dramas (WEB-DESIGN §4.2 item 7a). */
+  const madeHereLeads = (count, more) => !more && count > 0 && count < 6;
+
   const stateOf = (p, part) => p.parts[part] || { status: 'open' };
   const takeById = (p, id) => p.takes.find(t => t.id === id) || null;
   const chosenTake = (p, lineID) => (p.chosen[lineID] ? takeById(p, p.chosen[lineID]) : null);
@@ -932,7 +939,7 @@ const PlaysCore = (() => {
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
     WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
-    newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
+    newProduction, isEmptyProduction, secondProductionNeedsAccount, madeHereLeads, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,
     Refusal, order, current, next, take, finish, leaveSilent, reopen, missingLines, missingSpeech, needsRetake, isComplete,
     cueLines, sectionLevel, sectionTitle, actKey, sectionsOf, contentsOf, placeOf, lineText, fold, searchScript,

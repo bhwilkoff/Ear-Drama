@@ -353,7 +353,7 @@ class PlaysShareTest {
 
     @Test fun `library rows merge the device and the Worker`() {
         val store = MemoryShareStore()
-        val old = Production.create(script).copy(id = "old", created = 100.0)
+        val old = Production.create(script).copy(id = "old", created = 100.0).add(take("t-old", "L0003", PartID.role("MOLLY"), 4_800))
         val recent = Production.create(script).copy(id = "recent", created = 5_000.0)
         store.save(old)
         store.save(recent)

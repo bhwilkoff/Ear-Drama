@@ -11,7 +11,12 @@ object StudioOpen {
     /** The production the studio records into, or null when the part could not be taken (another part records, the part is not open). */
     suspend fun resolve(plays: PlaysLibrary, script: PlayScript, part: PartID): String? {
         val store = plays.store
-        return when (val pick = StudioCore.productionFor(store.all(), { store.share(it) != null }, script, part)) {
+        val pick = StudioCore.productionFor(store.all(), { store.share(it) != null }, script, part)
+        if (StudioCore.asksAccount(pick, store.all(), plays.signedIn())) {
+            plays.accountAsk.value = SECOND_PRODUCTION
+            return null
+        }
+        return when (pick) {
             is StudioCore.Pick.Resume -> pick.id
             is StudioCore.Pick.Take -> {
                 val production = store.production(pick.id) ?: return null
@@ -28,4 +33,17 @@ object StudioOpen {
             }
         }
     }
+
+    /** Record this: the play's empty production while it lasts, else a new one; null when a second production needs an account. */
+    suspend fun recordThis(plays: PlaysLibrary, script: PlayScript): String? {
+        val store = plays.store
+        StudioCore.reusable(store.all(), { store.share(it) != null }, script.id)?.let { return it }
+        if (Production.secondNeedsAccount(store.all(), plays.signedIn())) {
+            plays.accountAsk.value = SECOND_PRODUCTION
+            return null
+        }
+        return plays.create(script).id
+    }
+
+    const val SECOND_PRODUCTION = "A second production needs an account."
 }

@@ -73,5 +73,161 @@
    "ids": [],
    "want": null
   }
- ]
+ ],
+ "scene": {
+  "rule": "todays play over the first non-empty pool: voices == 2 and minutes <= 20; 2 <= voices <= 3 and minutes <= 30; every play",
+  "rows": [
+   {
+    "id": "gut-28051",
+    "voices": 2,
+    "minutes": 17
+   },
+   {
+    "id": "gut-2265",
+    "voices": 2,
+    "minutes": 20
+   },
+   {
+    "id": "gut-49295",
+    "voices": 2,
+    "minutes": 21
+   },
+   {
+    "id": "gut-7364",
+    "voices": 3,
+    "minutes": 12
+   },
+   {
+    "id": "gut-5071",
+    "voices": 1,
+    "minutes": 5
+   },
+   {
+    "id": "gut-12039",
+    "voices": 12,
+    "minutes": 175
+   },
+   {
+    "id": "lib-café-1",
+    "voices": 2,
+    "minutes": 9
+   },
+   {
+    "id": "usda-0001",
+    "voices": 4,
+    "minutes": 15
+   }
+  ],
+  "cases": [
+   {
+    "date": "2026-01-01",
+    "want": "gut-28051"
+   },
+   {
+    "date": "2026-02-28",
+    "want": "gut-28051"
+   },
+   {
+    "date": "2026-02-29",
+    "want": "gut-2265"
+   },
+   {
+    "date": "2026-11-14",
+    "want": "gut-28051"
+   },
+   {
+    "date": "2026-11-15",
+    "want": "lib-café-1"
+   },
+   {
+    "date": "2026-12-31",
+    "want": "lib-café-1"
+   },
+   {
+    "date": "2027-06-01",
+    "want": "gut-28051"
+   },
+   {
+    "date": "2030-07-04",
+    "want": "lib-café-1"
+   },
+   {
+    "date": "2026-01-01",
+    "ids": [
+     "gut-49295",
+     "gut-7364",
+     "gut-12039",
+     "usda-0001"
+    ],
+    "want": "gut-7364"
+   },
+   {
+    "date": "2026-02-28",
+    "ids": [
+     "gut-49295",
+     "gut-7364",
+     "gut-12039",
+     "usda-0001"
+    ],
+    "want": "gut-7364"
+   },
+   {
+    "date": "2026-02-29",
+    "ids": [
+     "gut-49295",
+     "gut-7364",
+     "gut-12039",
+     "usda-0001"
+    ],
+    "want": "gut-7364"
+   },
+   {
+    "date": "2026-11-14",
+    "ids": [
+     "gut-49295",
+     "gut-7364",
+     "gut-12039",
+     "usda-0001"
+    ],
+    "want": "gut-7364"
+   },
+   {
+    "date": "2026-01-01",
+    "ids": [
+     "gut-5071",
+     "gut-12039"
+    ],
+    "want": "gut-5071"
+   },
+   {
+    "date": "2026-02-28",
+    "ids": [
+     "gut-5071",
+     "gut-12039"
+    ],
+    "want": "gut-12039"
+   },
+   {
+    "date": "2026-02-29",
+    "ids": [
+     "gut-5071",
+     "gut-12039"
+    ],
+    "want": "gut-5071"
+   },
+   {
+    "date": "2026-11-14",
+    "ids": [
+     "gut-5071",
+     "gut-12039"
+    ],
+    "want": "gut-5071"
+   },
+   {
+    "date": "2026-11-15",
+    "ids": [],
+    "want": null
+   }
+  ]
+ }
 }

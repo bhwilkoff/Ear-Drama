@@ -113,12 +113,17 @@ Mac uses the same Core, so the same code holds them:
   **Stations** is pushed in Home's stack (On the air's All Stations, the
   Listen door) and **Surprise** by Home's toolbar button (⇧⌘S in the Go
   menu); neither is a sidebar section. **Record** is iOS-DESIGN §4.14 as
-  a `WidePage`: Yours, Today's play, the plays under the chip bar, Made
+  a `WidePage`: Yours, Today's Scene, the plays under the chip bar, Made
   here. "Record This" beside Play on a play's page, or on an episode
   whose `script` is set, opens the production's window; Library still
   lists Ear dramas. A new section amends this rule first.
-  - *Pending port* (2026-11-15 design review): Home and Record take iOS-DESIGN's
-    pending Home rule (Today's Scene, the heading, the kicker) in the `WidePage`.
+  - **Today's Scene and Made Here leading** (Decision 079): Home and Record
+    take iOS-DESIGN §4.1's Today's Scene card and Made Here rule in the
+    `WidePage`; Try a Line opens the production's window on the answering
+    voice's first line (§4.5), Read the script's window (§4.7). Signed out,
+    a second production asks for an account in a sheet, as iOS.
+  - *Pending port* (2026-11-15 design review): the heading and the kicker of
+    iOS-DESIGN's pending Home note.
   - *Replaced* (2026-11-14, Decision 075): "Six sidebar sections, hard
     set (Decision 068 ...): Home, Browse, Stations, Surprise, Search,
     Library ... ⌘1 to ⌘6 ... Plays are rows in Browse and Search".
@@ -185,8 +190,10 @@ only here:
   on right-click.
 - **§4.5 An ear drama** is `docs/iOS-DESIGN.md` §4.12 in the
   production's window: any open part can be taken, the suggested one
-  prominent; Start Recording needs an account and offers the same
-  sign-in buttons in the window; Listen Through runs live at any time;
+  prominent; recording needs no account (Decision 079; *replaced*
+  2026-11-15: "Start Recording needs an account and offers the same
+  sign-in buttons in the window"), and a production left with no take is
+  deleted when its window closes (PLAYS-DESIGN §2.3 rule 3a); Listen Through runs live at any time;
   Export appears whenever the play is complete.
 - **§4.5b Making a part** is `docs/iOS-DESIGN.md` §4.12b (D3-6; owner ruling 4,
   quoted there) in the production's window: the same head board, part cards,
@@ -224,7 +231,7 @@ only here:
 - **§4.7 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 binding on
   the verbs; `docs/iOS-DESIGN.md` §4.15 for the shared SwiftUI view; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** on a play's page,
-  Today's Play and each Record tile opens the script in **its own window**
+  Today's Scene and each Record tile opens the script in **its own window**
   (`WindowGroup(for: ScriptReaderID.self)`, one per script, restored with the
   window), never a sheet: a Mac reads in a resizable window. A `NavigationSplitView`
   with **Contents** as the sidebar (acts with their scenes, the one holding the

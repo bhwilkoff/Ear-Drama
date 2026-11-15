@@ -274,7 +274,8 @@ const PlaysShare = (() => {
    * shared ones this person is in that this browser has not opened yet, newest first.
    */
   function libraryRows(store, remote) {
-    const rows = store.productions.map(p => ({ local: p, pid: (store.share(p.id) || {}).pid || null }));
+    const rows = store.productions.map(p => ({ local: p, pid: (store.share(p.id) || {}).pid || null }))
+      .filter(r => r.pid || !C.isEmptyProduction(r.local));
     const here = new Set(rows.map(r => r.pid).filter(Boolean));
     for (const r of remote || []) if (!here.has(r.id)) rows.push({ local: null, pid: r.id, remote: r });
     const when = (r) => (r.local ? r.local.created + 978307200 : (r.remote.updated_at || 0) / 1000);

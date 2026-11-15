@@ -47,14 +47,30 @@ const Studio = (() => {
   /** The store PlaysUI keeps, so the cast sheet and the studio read one record. */
   const openStore = () => PlaysUI.openStore();
 
+  /** Signed out, a second production asks for an account at the press (Decision 079, PLAYS-DESIGN §2.3). */
+  const SECOND = 'A second production needs an account.';
+  function accountNeeded() {
+    const e = new Error(SECOND);
+    e.account = true;
+    return e;
+  }
+  /** True when the press stopped for the account: the sign-in sheet opens with the reason. */
+  function askAccount(e) {
+    if (!e || !e.account) return false;
+    if (typeof AccountUI !== 'undefined') AccountUI.openSheet({ reason: e.message });
+    return true;
+  }
+
   /**
    * The reader's Record (§2.9 rule 1): the production to record this part in, taking the part or
-   * making the production when it must. Resolves to the production's id.
+   * making the production when it must. Resolves to the production's id; rejects with `account` set
+   * when making one would be a signed-out person's second.
    */
   async function begin(script, part) {
     const store = await openStore();
     const whole = Array.isArray(script.lines) ? script : await API.playScript(script.id);
     const pick = SC.productionFor(store.productions, (id) => !!store.share(id), whole, part);
+    if (pick.make && C.secondProductionNeedsAccount(store.productions, API.account.signedIn())) throw accountNeeded();
     let p = pick.make ? await store.create(whole) : store.production(pick.id);
     if (pick.make && navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
     if (pick.make || pick.take) {
@@ -145,22 +161,11 @@ const Studio = (() => {
       return 'Recording did not start.';
     }
 
-    /** The account, the headphones, then Start recording (PLAYS-DESIGN §2.3, §4.3), in place of the status row. */
+    /** The headphones, then Start recording (PLAYS-DESIGN §2.9 rule 9, §4.3), in place of the status row.
+        No account is asked: a first take needs none (Decision 079). */
     function gate() {
       const box = el('div', { class: 'st-gate' });
       if (!LiveAudio.supported()) { box.append(el('p', { class: 'body' }, 'This browser cannot record.')); return box; }
-      if (!API.account.signedIn()) {
-        const avail = API.account.available();
-        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        box.append(...[el('p', { class: 'body' }, 'Recording needs an account.'),
-          el('button', { type: 'button', class: 'btn btn-primary', disabled: offline || !(avail.apple || avail.google), onclick: () => {
-            AccountUI.openSheet();
-            const d = document.querySelector('dialog.account-sheet');
-            if (d) d.addEventListener('close', () => paint(), { once: true });
-          } }, 'Sign in'),
-          offline ? el('p', { class: 'caption refusal' }, 'You are offline.') : null].filter(Boolean));
-        return box;
-      }
       const start = el('button', { type: 'button', class: 'btn btn-record st-go', disabled: !ss.headphones,
                                    onclick: () => { if (typeof Player !== 'undefined' && Player.pause) Player.pause(); s.begin(); paint(); } },
         icon('record', 'i-inline'), 'Start recording');
@@ -484,6 +489,13 @@ const Studio = (() => {
         if (ss.preview) { ss.preview.pause(); URL.revokeObjectURL(ss.preview.src); }
         s.end();
         if (sheet.open) sheet.close();
+        // Left with no take, and not for this production's cast sheet: an abandoned try is deleted (§2.3 rule 3a).
+        // Checked once a take still being written at the close has had time to land in the record.
+        setTimeout(() => {
+          const still = typeof location !== 'undefined' && new URLSearchParams(location.search).get('production') === id;
+          const left = store.production(id);
+          if (!still && left && C.isEmptyProduction(left) && !store.share(id)) store.delete(id).catch((e) => console.error(e));
+        }, 2000);
       },
       core, session: s,
     };
@@ -513,5 +525,5 @@ const Studio = (() => {
     return ctl;
   }
 
-  return { attach, begin };
+  return { attach, begin, askAccount, SECOND };
 })();

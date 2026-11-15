@@ -17,12 +17,15 @@ recorded). Then the next person would take one of the simulated parts and
 record that."* Decision 059 put phases 1 and 2 in 1.0, with radio scripts and
 public-domain stage plays both castable when their own record carries the
 rights evidence, and no approval queue. This page is phase 1, which is the
-relay on one device, with no server and nothing uploaded; recording needs an
-account (owner 2026-10-23).
+relay on one device, with no server and nothing uploaded; a first take needs
+no account (Decision 079, owner 2026-11-15; it replaced "recording needs an
+account", owner 2026-10-23).
 
 The device voice is a scene partner, never a performer.
 
 ---
+
+> **Owner, 2026-11-15** (Decision 079, from `docs/research/design/R2-design-review.md` Q1, Q2): a newcomer records without signing in; takes stay on the device; an account is asked for only to share, invite, publish, or start a second production, at that moment and with the reason. A production appears in Yours only after its first take, and one that stays empty is removed. *"I would like for people to get excited about recording new Ear Dramas."* This replaces the 2026-10-23 rule "Recording needs an account, always" everywhere below (§2.3, §2.9 rule 9, §6, §8 rule 4, §9); Decision 072's invite-only takes still need an account.
 
 > **Owner, 2026-10-29** (DESIGN-LOOP): an invite link shows everything signed out (the play, parts, who is in, playable takes); claiming and recording need an account. Finished ear dramas are listed and credited on Ear Drama's own pages. Recording has three modes: Run through, Line by line, Step. These supersede any narrower rule below; §11.1, §11.5 and §11.7 rule 3 are rewritten for the first two (Worker side built 2026-10-29: docs/WORKER.md "Open reads"). The recording modes are written into §2.4 (D3-6, 2026-10-30).
 
@@ -145,12 +148,30 @@ Every platform does the same seven things, in its own idiom.
    part, in any order (C7, owner 2026-10-23). The largest open part is
    suggested first (its "Take part" is the prominent one), never forced; one
    part records at a time on one device, because there is one microphone.
-   **Recording needs an account, always**, even for a play that is never
-   shared (owner 2026-10-23): at Start recording a signed-out person sees
-   "Recording needs an account." and the platform's sign-in instead. Taking a
-   part, reading along, and listening need none. Then the app checks the
+   **A first take needs no account** (Decision 079, owner 2026-11-15): a
+   signed-out person records, and the takes stay on the device (§6). The
+   account is asked for at the moment it is needed, in place of the act, with
+   the reason and the platform's sign-in: Share ("Sharing needs an
+   account."), Invite and Publish (behind Share), taking a part in someone
+   else's production ("Taking a part needs an account.", Decision 072), and
+   **a second production**: signed out, beginning a production (Record this,
+   Try a line, the cast sheet) while another production on this device
+   already holds a take shows "A second production needs an account." and
+   sign-in instead of opening the studio. A production with no take does not
+   count; it is reused or removed (rule 3a). Signed in, nothing is asked.
+   (*Replaced*, owner 2026-10-23: "Recording needs an account, always ... at
+   Start recording a signed-out person sees "Recording needs an account."".)
+   Then the app checks the
    audio route and asks for headphones (§4.3), records five seconds of room
    tone with a visible countdown, and opens the script at their first scene.
+3a. **A production with no take stays out of sight** (Decision 079, F10 of
+   the 2026-11-15 review: "After Taps · 0 of 594 lines recorded" listed
+   twice). Yours lists a production only once it holds a take; a shared one
+   is listed whatever it holds. A local, unshared production with no take is
+   deleted when the person leaves the studio without recording, and every
+   time the store loads (which also clears those made before this rule), so
+   an abandoned try never becomes a row. Try a line and Record this reuse it
+   while it lasts. Deleting one removes its folder, as Delete production does.
 4. **Record, in one of three modes** (owner ruling 4, 2026-10-29: *"One
    option should let you record and have the other parts play (either human
    voices or generated voices for parts that haven't been taken yet) and it
@@ -412,11 +433,12 @@ three modes) is unchanged in what the engine does; this section is where it happ
    starts or pauses); `J` / `K` my next and previous line; `R` records the current line again
    (Again in a review); Return keeps (Step's review, a run's review); the arrows and Page keys
    keep turning pages.
-9. **Before the first take, unchanged from §2.3**: the account (signed out: "Recording needs an
-   account." and sign-in, nothing else), headphones (§4.3), the microphone asked for at Start
-   recording, five seconds of room tone, each shown in the dock. A refused microphone, a missing
-   one, a take that did not save, and being offline while signed out each say so in the dock;
-   offline while signed in records as usual (everything is on the device, §6).
+9. **Before the first take** (§2.3, Decision 079): headphones (§4.3), the microphone asked for at
+   Start recording, five seconds of room tone, each shown in the dock. No account is asked here,
+   signed in or out, online or off: the dock says one thing, and the record control and an account
+   line never share a screen (F11). A refused microphone, a missing one and a take that did not
+   save each say so in the dock. (*Replaced* 2026-11-15: "the account (signed out: "Recording needs
+   an account." and sign-in, nothing else) ... being offline while signed out each say so".)
 10. **Nothing new is stored.** Takes, the chosen map, room tone and the production record are
     §6's; device voices stay live and unstored (§5); take upload and publish rules are Decisions
     072 and 073's, unchanged. The reader's position and marks stay the reader's.
@@ -877,8 +899,9 @@ does the identifying, and the picker points to Settings for more.
 ## §6. What is stored where on the device
 
 Phase 1 keeps everything on the device that made it. Nothing is uploaded, and
-no record leaves the device unless the person exports the finished play. The
-account recording needs (§8 rule 4) holds no take.
+no record leaves the device unless the person exports the finished play.
+Recording needs no account (§8 rule 4); an account, when there is one, holds
+no take.
 
 | What | Apple (iPhone, iPad, Mac) | Android | Web |
 |---|---|---|---|
@@ -940,8 +963,10 @@ why it is open to everyone, children included (08c §6.2).
    cast list, or a description. Stage directions are shown as printed.
 3. A synthetic voice is never written to a stored file, never part of a mix,
    and always labeled as a device voice where it plays (§5).
-4. Phase 1 uploads nothing. Recording needs an account, always (owner
-   2026-10-23); listening and reading along do not.
+4. Phase 1 uploads nothing. A first take needs no account (Decision 079,
+   owner 2026-11-15); sharing, inviting, publishing, joining someone else's
+   production and a second production do (§2.3). Listening and reading
+   along never do.
 5. A take is immutable; choosing a different take never deletes the old one
    until the person discards it. A take is deleted only by the person's own act
    (its Delete, Delete unused takes, Discard the run), and never the chosen one
@@ -963,7 +988,7 @@ Answered by the owner on 2026-10-23 (Decision 067), and built in batch 0b:
 | C7 | Relay order? | Any order; the largest open part is suggested first, never forced (§2.3) |
 | C9 | "Individual author died by 1955" as evidence? | Accepted: `script_author_died`, castable (§3) |
 | C10 | Commercials? Personal Voice? | Commercials stay, each its own part (a speech inside commercial *n* is the part "ROLE (COMMERCIAL n)"); Personal Voice offered live only (§5 rule 6) |
-| New | Does a local, never-shared recording need an account? | Yes, always (§2.3, §8 rule 4) |
+| New | Does a local, never-shared recording need an account? | Yes, always (§2.3, §8 rule 4). *Replaced* 2026-11-15 (Decision 079): no for the first production; an account for a second, and to share |
 
 Still open:
 
