@@ -5,7 +5,11 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -63,6 +67,26 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
 
     fun cachedCastScript(productionId: String): PlayScript? = cast[productionId]
 
+    /** Whether someone is signed in (the container sets it): a second production asks for an account (Decision 079). */
+    var signedIn: () -> Boolean = { true }
+
+    /** Why the sign-in sheet is up, set where a production could not begin without an account; the root shows it. */
+    val accountAsk = MutableStateFlow<String?>(null)
+
+    private val leaving = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /**
+     * Leaving the studio: once a take still being written has landed, a production with no take is removed, unless a
+     * screen (its cast sheet) holds it again by then (PLAYS-DESIGN §2.3 rule 3a).
+     */
+    fun leftStudio(productionId: String) {
+        leaving.launch {
+            delay(LEAVE_SETTLE_MS)
+            withContext(Dispatchers.IO) { store.dropIfEmpty(productionId) }
+            if (store.production(productionId) == null) cast.remove(productionId)
+        }
+    }
+
     suspend fun create(script: PlayScript): Production = withContext(Dispatchers.IO) {
         store.create(script).also { cast[it.id] = script }
     }
@@ -77,6 +101,8 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
         store.renderMix(id) { AacMixSink(it) }
     }
 }
+
+private const val LEAVE_SETTLE_MS = 2_000L
 
 /** Plays a rendered mix on this device; a seek forward means the listen was not all the way through. */
 class MixPlayback {

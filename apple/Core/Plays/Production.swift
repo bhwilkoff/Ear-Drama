@@ -150,4 +150,7 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     }
 
     var isFinished: Bool { listenedThrough && mixedFrom == chosenFingerprint }
+
+    /// At least one take, of any part: what makes a production count (Decision 079).
+    var hasTake: Bool { !takes.isEmpty }
 }

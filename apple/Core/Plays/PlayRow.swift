@@ -28,9 +28,17 @@ nonisolated struct PlayRow: Codable, Hashable, Sendable, Identifiable, PlayListi
     var source: PlayScript.Source? = nil
     /// `scripts/<id>.json`, relative to the index.
     var path: String? = nil
+    /// The first speeches with said words, each the role as printed and its words (contract §4.1).
+    var openingIndex: [Speech]? = nil
+
+    struct Speech: Codable, Hashable, Sendable {
+        let role: String
+        let text: String
+    }
 
     private enum CodingKeys: String, CodingKey {
         case id, revision, title, kind, authors, year, collection, lines, words, rights, source, path
+        case openingIndex = "opening"
         case sortName = "sort_name"
         case indexVoices = "voices"
         case roleCount = "roles"
@@ -57,6 +65,7 @@ nonisolated struct PlayRow: Codable, Hashable, Sendable, Identifiable, PlayListi
         rights = try c.decodeIfPresent(Rights.self, forKey: .rights)
         source = try c.decodeIfPresent(PlayScript.Source.self, forKey: .source)
         path = try c.decodeIfPresent(String.self, forKey: .path)
+        openingIndex = try? c.decodeIfPresent([Speech].self, forKey: .openingIndex)
     }
 
     /// A bundled script as a row, for the library that has not loaded: the same numbers the index would carry.
@@ -76,6 +85,7 @@ nonisolated struct PlayRow: Codable, Hashable, Sendable, Identifiable, PlayListi
         indexMinutes = script.minutes
         rights = Rights(bucket: script.rights.bucket, evidence: script.rights.evidence)
         source = script.source
+        openingIndex = script.opening(n: 2).map { Speech(role: $0.name, text: $0.text) }
     }
 
     var voices: Int { indexVoices ?? 0 }

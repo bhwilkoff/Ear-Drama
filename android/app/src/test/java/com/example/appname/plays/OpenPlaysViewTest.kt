@@ -37,6 +37,27 @@ class OpenPlaysViewTest {
         assertNull(OpenPlaysView.published(0))
     }
 
+    private fun script(revision: String = "r1") = PlayScript(
+        id = "s", revision = revision, kind = "radio", title = "T",
+        source = PlayScript.Source("S", "https://example.org"), rights = PlayScript.Rights("script_source_cleared", emptyList()),
+        lines = (1..4).map { ScriptLine("L$it", ScriptLine.Kind.Speech, role = "A", parts = listOf(LinePart.Say("w$it"))) },
+    )
+    private val files = listOf(ReadAlong.DramaFile("u4", 4), ReadAlong.DramaFile("u2", 2))
+
+    @Test fun `a file number is its line's 1-based place in the script, a silent line leaving a gap`() {
+        val plan = ReadAlong.dramaPlan(files.sortedBy { it.seq }, script(), "r1")
+        assertEquals(listOf("L2", "L4"), plan?.map { it.lineId })
+        assertEquals(listOf("u2", "u4"), plan?.map { it.url })
+        assertEquals(listOf("L2", "L4", null, null), listOf(0, 1, 2, -1).map { ReadAlong.fileLine(plan!!, it) })
+    }
+
+    @Test fun `no line timeline without the matching revision or a number the script has`() {
+        assertNull(ReadAlong.dramaPlan(files, script("r2"), "r1"))
+        assertNull(ReadAlong.dramaPlan(files, script(), null))
+        assertNull(ReadAlong.dramaPlan(listOf(ReadAlong.DramaFile("u9", 9)), script(), "r1"))
+        assertNull(ReadAlong.dramaPlan(emptyList(), script(), "r1"))
+    }
+
     private fun take(id: String, line: String, part: String) = OpenTake(id, line, part)
     private val invite = OpenInvite(
         id = "P", scriptID = "s", scriptRevision = "r", title = "T",
@@ -71,10 +92,22 @@ class OpenPlaysViewTest {
         assertEquals("https://archive.org/download/it/b%20side.mp3", ArchivePick.pick("it", m))
     }
 
-    @Test fun `a whole-play file comes before numbered per-line ones`() {
+    @Test fun `a whole-play file comes before numbered per-line ones, and a numbered file is never the whole play`() {
         val m = meta(file("0001-A.mp3", "VBR MP3"), file("whole.mp3", "128Kbps MP3"), file("0002-B.mp3", "VBR MP3"))
         assertEquals("https://archive.org/download/it/whole.mp3", ArchivePick.pick("it", m))
-        assertEquals("https://archive.org/download/it/0001-A.mp3", ArchivePick.pick("it", meta(file("0002-B.mp3", "VBR MP3"), file("0001-A.mp3", "VBR MP3"))))
+        assertNull(ArchivePick.pick("it", meta(file("0002-B.mp3", "VBR MP3"), file("0001-A.mp3", "VBR MP3"))))
+    }
+
+    @Test fun `numbered line files play in order, one MP3 each, and only once every line has its MP3`() {
+        val done = meta(
+            file("0004-B.wav", "WAV"), file("0004-B.mp3", "VBR MP3"), file("0002-A.wav", "WAV"), file("0002-A.mp3", "VBR MP3"),
+            file("0003-A.mp3", "64Kbps MP3", ""","private":"true""""), file("history/files/0002-A.mp3~1~", "VBR MP3"),
+        )
+        assertEquals(listOf(2, 4), ArchivePick.lines("it", done).map { it.seq })
+        assertEquals("https://archive.org/download/it/0004-B.mp3", ArchivePick.lines("it", done).last().url)
+        val deriving = meta(file("0001-A.wav", "WAV"), file("0001-A.mp3", "VBR MP3"), file("0002-B.wav", "WAV"))
+        assertTrue("a line without its MP3 yet is a drama still being prepared", ArchivePick.lines("it", deriving).isEmpty())
+        assertTrue(ArchivePick.lines("it", "not json").isEmpty())
     }
 
     @Test fun `no MP3 yet is no file, not a broken one`() {

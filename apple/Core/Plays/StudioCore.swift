@@ -53,6 +53,25 @@ nonisolated enum StudioCore {
         return .make
     }
 
+    /// A first take needs no account; a second production does (Decision 079, PLAYS-DESIGN §2.3 rule 3): signed out,
+    /// making a new production while another on this device holds a take. A production with no take does not count.
+    static func needsAccount(productions: [Production], signedIn: Bool, makingNew: Bool) -> Bool {
+        !signedIn && makingNew && productions.contains(where: \.hasTake)
+    }
+
+    /// The newest local, unshared production of the play with no take: Record This and Try a Line reuse it (rule 3a).
+    static func reusableEmpty(_ productions: [Production], isShared: (String) -> Bool, scriptID: String) -> Production? {
+        productions.filter { $0.scriptID == scriptID && !$0.hasTake && !isShared($0.id) }.max { $0.created < $1.created }
+    }
+
+    /// The productions to delete: local, unshared, with no take (rule 3a).
+    static func emptyLocal(_ productions: [Production], isShared: (String) -> Bool) -> [String] {
+        productions.filter { !$0.hasTake && !isShared($0.id) }.map(\.id)
+    }
+
+    /// Whether Yours and Library list a production: a shared one always, a local one once it holds a take.
+    static func isListed(_ production: Production, shared: Bool) -> Bool { shared || production.hasTake }
+
     /// How a take-state mark reads to VoiceOver: "No take", "3 takes, take 2 chosen", or the re-take.
     static func spoken(_ state: LineState) -> String {
         switch state.state {

@@ -328,6 +328,12 @@ const PlaysUI = (() => {
         // A library row (WEB-DESIGN §4.15) carries no lines: the whole script is fetched to cast it.
         const whole = Array.isArray(script.lines) ? script : await API.playScript(script.id);
         if (!whole) throw new Error('script not found');
+        // Signed out, a second production asks for an account here, with the reason (Decision 079).
+        if (C.secondProductionNeedsAccount(store.productions, API.account.signedIn())) {
+          start.disabled = false;
+          if (typeof AccountUI !== 'undefined') AccountUI.openSheet({ reason: 'A second production needs an account.' });
+          return;
+        }
         const p = await store.create(whole);
         helpers.navigate(`?production=${encodeURIComponent(p.id)}`, $('view-plays').hidden === false);
       } catch (err) {
@@ -1196,7 +1202,9 @@ const PlaysUI = (() => {
     if (!page.rows.length) return null;
     const ul = h.el('ul', { class: 'rail g-rail', 'aria-labelledby': 'dramas-h' });
     page.rows.slice(0, 12).forEach(d => ul.append(dramaTile(d, page.scripts)));
-    return h.el('section', { class: 'shelf' },
+    // Fewer than six lead Home under the doors (WEB-DESIGN §4.2 item 7a, Decision 079).
+    const lead = C.madeHereLeads(page.rows.length, !!page.next);
+    return h.el('section', { class: 'shelf', dataset: lead ? { lead: '1' } : {} },
       h.el('div', { class: 'block-head' }, h.el('h2', { class: 'section-header', id: 'dramas-h' }, 'Made here'),
         h.el('a', { class: 'caption', href: '?view=browse&scope=dramas' }, 'All')), ul);
   }
@@ -1269,6 +1277,14 @@ const PlaysUI = (() => {
     return got;
   }
 
+  /** A finished drama's read-along plan (PLAYS-DESIGN §2.11 rule 6) for `script`, or null when its audio has no
+      line timeline: a whole recording, files still being made, or another revision of the script. */
+  async function dramaAlong(d, script) {
+    if (!script || d.script_id !== script.id) return null;
+    return ReaderCore.dramaPlan(await archiveAudio(d.archive_url), script, d.script_revision);
+  }
+  async function dramaAlongFor(pid, script) { return dramaAlong(await API.plays.finishedOne(pid), script); }
+
   /** A finished ear drama's page: the board with its credits, Listen, and the bill. */
   async function renderDrama(body, helpers, pid) {
     h = helpers;
@@ -1321,6 +1337,10 @@ const PlaysUI = (() => {
         });
       }
       listen.replaceChildren(button);
+      dramaAlong(d, script).then((plan) => {
+        if (!plan || my !== token) return;
+        listen.append(h.el('a', { class: 'btn btn-ghost read-along', href: `?read=${encodeURIComponent(script.id)}&finished=${encodeURIComponent(d.id)}&along=1` }, 'Read along'));
+      }).catch((err) => console.error(err));
     }).catch((err) => { console.error(err); waiting(); });
     body.replaceChildren(...[board, acts,
       d.credits && d.credits.length ? h.el('section', { class: 'block', 'aria-labelledby': 'bill-h' },
@@ -1507,5 +1527,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { openStore, render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
+  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
 })();

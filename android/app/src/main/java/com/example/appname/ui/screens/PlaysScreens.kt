@@ -53,6 +53,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -82,6 +83,7 @@ import com.example.appname.plays.LiveListen
 import com.example.appname.plays.MixPlayback
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PartState
+import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.PlayLibraryFeed
 import com.example.appname.plays.PlayRow
@@ -183,7 +185,10 @@ fun PlayListItem(script: PlayScript, onOpen: () -> Unit) {
     )
 }
 
-/** "Start an ear drama" (PLAYS-DESIGN §2.1): makes the production and opens its cast sheet. */
+/**
+ * "Start an ear drama" (PLAYS-DESIGN §2.1): opens the play's empty production while it lasts, else makes one, and opens its
+ * cast sheet; signed out with a take already here, the root asks for an account instead (Decision 079).
+ */
 @Composable
 fun StartEarDramaButton(script: PlayListing, onOpenProduction: (String) -> Unit) {
     val plays = LocalAppContainer.current.plays
@@ -194,9 +199,9 @@ fun StartEarDramaButton(script: PlayListing, onOpenProduction: (String) -> Unit)
             scope.launch {
                 runCatching {
                     val whole = script as? PlayScript ?: plays.script(script.id) ?: error("This play is not on this device.")
-                    plays.create(whole)
+                    StudioOpen.recordThis(plays, whole)
                 }
-                    .onSuccess { onOpenProduction(it.id) }
+                    .onSuccess { id -> id?.let(onOpenProduction) }
                     .onFailure { error = it.message ?: "The production could not be saved." }
             }
         }) {
@@ -291,7 +296,7 @@ private fun RightsLine(script: PlayScript) {
 @Composable
 fun ScriptScreen(id: String, onBack: () -> Unit, onOpenProduction: (String) -> Unit, onRead: (String) -> Unit = {}) {
     val plays = LocalAppContainer.current.plays
-    var attempt by remember { mutableStateOf(0) }
+    var attempt by remember { mutableIntStateOf(0) }
     val loaded by produceState<PlayLoad>(PlayLoad.Loading, id, attempt) {
         value = PlayLoad.Loading
         value = try {
@@ -386,6 +391,11 @@ fun ProductionScreen(id: String, onBack: () -> Unit, onRecord: (PartID) -> Unit,
     val productions by plays.store.productions.collectAsState()
     val production = productions.firstOrNull { it.id == id }
     val script = rememberCastScript(id)
+    // The cast sheet holds its production: an empty one is never removed out from under it (PLAYS-DESIGN §2.3 rule 3a).
+    DisposableEffect(id) {
+        plays.store.hold(id)
+        onDispose { plays.store.release(id) }
+    }
     var refusal by remember { mutableStateOf<String?>(null) }
     var taking by remember { mutableStateOf<PartID?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
@@ -828,7 +838,7 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
     val entry by listen.current.collectAsState()
     val line = entry?.let { e -> script.lines.firstOrNull { it.id == e.lineID } }
     if (LocalIsTelevision.current) {
-        ReadAlongPanel(script, entry)
+        ReadAlongPanel(script, entry?.lineID, entry is Relay.ListenEntry.Voice)
         OutlinedButton(onClick = onStop) {
             Icon(Icons.Filled.Stop, contentDescription = null)
             Text("Stop", Modifier.padding(start = Spacing.S2.dp))
@@ -862,9 +872,9 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
  * floor), no marks, no recording, never focusable: focus stays on Stop.
  */
 @Composable
-private fun ReadAlongPanel(script: PlayScript, entry: Relay.ListenEntry?) {
+internal fun ReadAlongPanel(script: PlayScript, lineId: String?, deviceVoice: Boolean) {
     val dark = OnAir.colors.dark
-    val (before, now, after) = ReadAlong.panel(script.lines, entry?.lineID ?: return)
+    val (before, now, after) = ReadAlong.panel(script.lines, lineId ?: return)
     Column(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
         verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
@@ -878,7 +888,7 @@ private fun ReadAlongPanel(script: PlayScript, entry: Relay.ListenEntry?) {
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.SemiBold),
                         color = genreColor(script.partHue(line.part), dark) ?: MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (current && entry is Relay.ListenEntry.Voice) {
+                    if (current && deviceVoice) {
                         Text("Device voice", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

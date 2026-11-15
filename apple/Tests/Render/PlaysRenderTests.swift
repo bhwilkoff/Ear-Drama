@@ -182,17 +182,20 @@ private final class RenderRig {
         }
     }
 
-    /// Decision 075: Today's play on its board with the cast in the window, every library play as a tile,
+    /// Decision 079: Today's Scene's opening page on the drama board, every library play as a tile,
     /// and Home's three doors. (The chip bar is a Menu, which ImageRenderer cannot draw.)
     func recordAndHomePieces() throws {
         let library = try JSONDecoder().decode(CastableLibrary.self, from: Data(contentsOf: URL(filePath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appending(path: "catalog/plays/castable-scripts.json")))
         let scripts = PlayBrowse.list(library.scripts, PlayFilter())
-        let today = try XCTUnwrap(PlayBrowse.todaysPlay(library.scripts, dateKey: "2026-11-14"))
+        let today = try XCTUnwrap(PlayScript.todaysScene(library.scripts, dateKey: "2026-11-14"))
+        let opening = today.opening(n: 4)
         try both("record-today", widths: [phone, (900, 700)]) {
             VStack(alignment: .leading, spacing: Spacing.s4) {
-                TodaysPlayBoard(row: PlayRow(script: today))
+                ScenePage(opening: opening, hue: { SceneScript.hue(today, $0) }, current: opening.dropFirst().first?.id)
+                    .padding(Spacing.s4)
+                    .background(Color.board(PlayScript.boardGenre), in: RoundedRectangle(cornerRadius: Radius.card))
                 HomeDoors()
             }
             .padding(Spacing.s4)

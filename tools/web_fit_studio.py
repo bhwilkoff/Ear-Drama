@@ -6,8 +6,8 @@ Nothing is heard and nothing is recorded from a real microphone. Before the page
 stub that lists a fixed set of voices and ends each utterance after 0.6 s without speaking, and
 `navigator.mediaDevices.getUserMedia` is a stub: a 160 Hz oscillator in its own AudioContext, never connected
 to the speakers, whose level the harness sets (`__micGain`), or a refusal (`NotAllowedError`) while
-`__denyMic` is set. Chrome runs with --mute-audio. The account is stubbed signed in after the page loads (no
-reload follows), so recording is reachable without a real sign-in.
+`__denyMic` is set. Chrome runs with --mute-audio. The account is signed out throughout: a first take needs
+none (Decision 079), and the studio must say one thing (F11).
 
 For each width and theme: cast a real play (Record this), Take part on the largest part (the cast sheet's
 door, which must land in the reader's studio), then: the headphones gate; Start recording with the
@@ -17,7 +17,7 @@ stops; R records it again; the take list (a sheet below the spread width, the pa
 it: the wide frame); delete the unchosen take.
 
 Fails on: the cast sheet's door not opening the studio; a sideways scroll; a bottom bar taller than 72 px or
-a dock row that wraps; the panel not beside the script at 1440 px or beside it below 860 px; a take-state
+a dock row that wraps; any account line in the studio, or no Start recording, while signed out; the panel not beside the script at 1440 px or beside it below 860 px; a take-state
 badge missing from a line of the part; the current line not outlined; no refusal when the microphone is
 refused; the recording state not drawn; Record again not keeping the first take; a Delete offered on the
 chosen take; a delete that leaves the take.
@@ -29,7 +29,9 @@ chosen take; a delete that leaves the take.
 The play is picked from the bundled castable scripts, never named: the first with four or more speaking parts.
 
 Negative control (2026-11-14): js/studio.js with `who.append(b)` and `badges.set(lid, b)` removed fails with
-"a line of the part has no take state: 0 badges for 81 lines".
+"a line of the part has no take state: 0 badges for 81 lines". Negative control (2026-11-15): js/studio.js as of
+0bc1bc0 (the signed-out "Recording needs an account." gate) fails with "signed out, the studio shows an account
+line (F11)".
 """
 import base64, json, os, subprocess, sys, tempfile, time, urllib.request
 from pathlib import Path
@@ -82,7 +84,6 @@ STUB = r"""(() => {
   window.confirm = () => true;
 })();"""
 
-SIGN_IN = "API.account.signedIn = () => true; API.account.available = () => ({ apple: true, google: true }); true"
 
 
 def launch(profile):
@@ -93,7 +94,7 @@ def launch(profile):
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     port_file = Path(profile) / 'DevToolsActivePort'
     t0 = time.time()
-    while time.time() - t0 < 20:
+    while time.time() - t0 < web_run.LAUNCH_DEADLINE_S:
         try:
             port = int(port_file.read_text().split()[0])
             pages = json.loads(urllib.request.urlopen(f'http://127.0.0.1:{port}/json/list', timeout=3).read())
@@ -186,7 +187,7 @@ def main():
 
             cdp.call('Page.navigate', {'url': f'http://127.0.0.1:{port}/?play={script["id"]}&mute=1'}, timeout=30)
             if not wait("[...document.querySelectorAll('button')].some(b => /Record this/.test(b.textContent))", 'Record this'): return
-            ev(SIGN_IN)
+            if ev("API.account.signedIn()"): bad('the harness is meant to run signed out')
             ev("[...document.querySelectorAll('button')].find(b => /Record this/.test(b.textContent)).click()")
             if not wait("document.querySelector('button[aria-label^=\"Take part\"]')", 'Take part'): return
             ev("document.querySelector('button.btn-primary[aria-label^=\"Take part\"], button[aria-label^=\"Take part\"]').click()")
@@ -196,6 +197,8 @@ def main():
             n_badges = ev("document.querySelectorAll('.rd-take').length")
             if n_badges != largest['lines']: bad(f'a line of the part has no take state: {n_badges} badges for {largest["lines"]} lines')
             if not ev("!!document.querySelector('.rd-line.rd-cur')"): bad('no current line is outlined')
+            if ev("/needs an account/i.test(document.querySelector('.st-dock').textContent)"): bad('signed out, the studio shows an account line (F11)')
+            if not ev("!!document.querySelector('.st-go')"): bad('signed out, the studio has no Start recording (Decision 079)')
             fit('gate')
             if w in (375, 1440): shot('gate')
             # The microphone refused.

@@ -10,6 +10,10 @@ nonisolated enum FinishedDramas {
         plays.sorted { ($0.publishedAt, $0.id) > ($1.publishedAt, $1.id) }
     }
 
+    /// Made Here leads Home right under the three doors while there are one to five finished ear dramas; at six or
+    /// more it returns to the end (Decision 079).
+    static func leadsHome(count: Int) -> Bool { (1...5).contains(count) }
+
     /// Credits with a name: a deleted account's lines stay on the item, uncredited, never given a name.
     static func named(_ credits: [FinishedPlay.Credit]) -> [FinishedPlay.Credit] {
         credits.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -51,6 +55,31 @@ nonisolated enum FinishedDramas {
                 c?.path += name
                 return c?.url
             }
+    }
+}
+
+/// One line file of a published item and the script line it speaks.
+nonisolated struct FinishedLine: Equatable, Sendable {
+    let url: URL
+    let lineID: String
+    /// The line's 1-based place in the script, the file's own number.
+    let seq: Int
+}
+
+extension FinishedDramas {
+    /// A published drama's line timeline (PLAYS-DESIGN 2.11 rule 6): the item holds one file per line, `0042-PART.wav`,
+    /// its number the line's 1-based place in the script, so the file playing names the line heard. Nil when the
+    /// numbering cannot be vouched for: no revision from the Worker, a script of another revision, a number the script
+    /// does not have, or no line files.
+    static func linePlan(metadata: Data, identifier: String, script: PlayScript, revision: String?) -> [FinishedLine]? {
+        guard let revision, revision == script.revision else { return nil }
+        var plan: [FinishedLine] = []
+        for url in lineFiles(metadata: metadata, identifier: identifier) {
+            guard let digits = url.lastPathComponent.split(separator: "-").first, let seq = Int(digits),
+                  script.lines.indices.contains(seq - 1) else { return nil }
+            plan.append(FinishedLine(url: url, lineID: script.lines[seq - 1].id, seq: seq))
+        }
+        return plan.isEmpty ? nil : plan
     }
 }
 

@@ -362,6 +362,65 @@ const ReaderCore = (() => {
     };
   }
 
+
+  /**
+   * A finished drama's listen plan (PLAYS-DESIGN §2.11 rule 6): the archive.org item holds one file per
+   * line, `0042-PART.wav`, the number being the line's 1-based place in the script, so the line a file
+   * speaks needs no timing. `picked` is the item's `{ lines, seqs }`; the plan is `[{ lineID, url }]` in
+   * file order, or null when the numbering cannot be vouched for: one whole recording, no `revision`
+   * from the Worker, a script of another revision, or a number the script does not have.
+   */
+  function dramaPlan(picked, script, revision) {
+    if (!picked || !picked.lines || !picked.seqs || !revision || !script || script.revision !== revision) return null;
+    const plan = [];
+    for (let i = 0; i < picked.lines.length; i++) {
+      const line = script.lines[picked.seqs[i] - 1];
+      if (!line) return null;
+      plan.push({ lineID: line.id, url: picked.lines[i] });
+    }
+    return plan.length ? plan : null;
+  }
+
+  /**
+   * The finished drama played file by file, the same handle as the production's listen-through
+   * (`plan`, `current()`, `playing`, `play()`, `stop()`, `end()`): the line heard is the file playing.
+   * `audio(url)` makes an element-like `{ play(): Promise, pause(), muted }` (injected, so no sound here).
+   */
+  function dramaListen(plan, { audio, muted = () => false, onChange = () => {} }) {
+    const s = { plan, index: 0, playing: false };
+    let run = 0;
+    let el = null;
+    s.current = () => {
+      const id = s.playing ? alongLine(plan, s.index) : null;
+      return id ? { lineID: id, source: 'take' } : null;
+    };
+    const stopEl = () => { if (el) { const e = el; el = null; e.pause(); } };
+    s.play = () => {
+      if (s.playing || !plan.length) return;
+      const mine = ++run;
+      s.playing = true;
+      if (s.index >= plan.length) s.index = 0;
+      onChange(s);
+      (async () => {
+        while (mine === run && s.index < plan.length) {
+          el = audio(plan[s.index].url);
+          el.muted = muted();
+          onChange(s);
+          try { await el.play(); } catch { /* an unreadable file is skipped, never guessed over */ }
+          if (mine !== run) return;
+          s.index += 1;
+        }
+        s.playing = false;
+        s.index = 0;
+        el = null;
+        onChange(s);
+      })();
+    };
+    s.stop = () => { run += 1; s.playing = false; s.index = 0; stopEl(); onChange(s); };
+    s.end = () => { run += 1; s.playing = false; stopEl(); };
+    return s;
+  }
+
   /** The TV panel's three lines: the one before, the one heard, the one after (null at an end). */
   function alongPanel(script, lineID) {
     const i = script.lines.findIndex(l => l.id === lineID);
@@ -369,6 +428,6 @@ const ReaderCore = (() => {
     return [script.lines[i - 1] || null, script.lines[i], script.lines[i + 1] || null];
   }
 
-  return { alongLine, alongLineAt, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
+  return { alongLine, alongLineAt, dramaPlan, dramaListen, alongFollow, alongPanel, closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
            spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
 })();

@@ -551,11 +551,17 @@ const Reader = (() => {
     if (typeof Player !== 'undefined' && Player.pause) Player.pause();
     st.fol.back();
     if (!a.listen) {
-      const production = a.store.production(a.production);
-      a.listen = ListenThrough.create({
-        production, script: st.script, store: a.store, audio: LiveAudio.create({ muted: muted() }), voice: st.voice,
-        onChange: () => paintAlong(st),
-      });
+      // A finished drama (a published item) follows its own files; a production follows its listen plan.
+      a.listen = a.dramaPlan
+        ? R.dramaListen(a.dramaPlan, {
+          audio: (url) => { const x = new Audio(url); return { get muted() { return x.muted; }, set muted(v) { x.muted = v; }, pause: () => { x.pause(); x.dispatchEvent(new Event('ended')); },
+            play: () => new Promise((done) => { x.addEventListener('ended', done, { once: true }); x.addEventListener('error', done, { once: true }); x.play().catch(done); }) }; },
+          muted, onChange: () => paintAlong(st),
+        })
+        : ListenThrough.create({
+          production: a.store.production(a.production), script: st.script, store: a.store, audio: LiveAudio.create({ muted: muted() }), voice: st.voice,
+          onChange: () => paintAlong(st),
+        });
     }
     if (a.listen.plan.length) a.listen.play();
   }
@@ -729,7 +735,7 @@ const Reader = (() => {
     const side = el('aside', { class: 'st-side', 'aria-label': 'Studio', hidden: true });
     const footer = el('footer', { class: 'rd-bar rd-bottom' });
     // A production's studio reads the production's cast; the reader alone, the play's (§2.8 rule 2).
-    const cast = opts.studio || opts.along ? CastUI.castFor({ script, production: (opts.studio || opts.along).production }) : CastUI.castFor({ script });
+    const cast = opts.studio || (opts.along && opts.along.production) ? CastUI.castFor({ script, production: (opts.studio || opts.along).production }) : CastUI.castFor({ script });
     const st = { root, script, flow, clip, stage, heads, where, pageLab, nextBtn, hideBtn, hearBtn, recBtn, footer, side, lines, dock, prefs: prefsNow(),
                  onRecord: opts.onRecord || null, studio: null, partSel: null,
                  cast, voice: StandInVoice.create({ muted: muted(), cast }), table: null,
@@ -755,7 +761,7 @@ const Reader = (() => {
     st.backBtn = el('button', { type: 'button', class: 'btn rd-back-line', hidden: true, onclick: () => st.handle.refollow() }, 'Back to the line');
     dock.after(st.backBtn);
     if (opts.along) {
-      st.along = { production: opts.along.production, store: opts.along.store, listen: null };
+      st.along = { production: opts.along.production, store: opts.along.store, dramaPlan: opts.along.dramaPlan || null, listen: null };
       hearBtn.addEventListener('click', () => alongToggle(st));
       paintAlong(st);
     } else {

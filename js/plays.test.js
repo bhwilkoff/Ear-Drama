@@ -183,6 +183,41 @@ test('the cast sheet lists parts largest first, with directions and sound as par
   eq(C.displayName('Baker, 1832-1890'), 'Baker, 1832-1890', 'control: a date is not a first name');
 });
 
+/* ---- A first take without an account; empty productions (Decision 079, PLAYS-DESIGN §2.3) ---- */
+
+test('signed out, a second production asks for an account; an empty one does not count', () => {
+  const script = fixtureScript();
+  const empty = C.newProduction(script);
+  const taken = { ...C.newProduction(script), takes: [{ id: 't', lineID: 'L0003' }] };
+  eq(C.secondProductionNeedsAccount([], false), false, 'the first production needs none');
+  eq(C.secondProductionNeedsAccount([empty], false), false, 'a production with no take does not count');
+  eq(C.secondProductionNeedsAccount([empty, taken], false), true, 'one with a take makes the next a second');
+  eq(C.secondProductionNeedsAccount([taken], true), false, 'signed in, nothing is asked');
+  eq([C.isEmptyProduction(empty), C.isEmptyProduction(taken)], [true, false], 'empty means no take');
+});
+
+test('Made here leads Home while there are one to five finished ear dramas (WEB-DESIGN §4.2 item 7a)', () => {
+  eq([0, 1, 5, 6, 12].map(n => C.madeHereLeads(n, false)), [false, true, true, false, false], 'one to five lead');
+  eq(C.madeHereLeads(3, true), false, 'a further page means more than a page, never fewer than six');
+});
+
+test('the store deletes a local production with no take when it loads; shared and taken ones stay', async () => {
+  const script = fixtureScript();
+  const backend = PlayStore.memoryBackend();
+  const store = PlayStore.open(backend);
+  await store.load();
+  const empty = await store.create(script);
+  const shared = await store.create(script);
+  await store.setShare(shared.id, { pid: 'pid-x' });
+  const taken = await store.create(script);
+  await store.save({ ...taken, takes: [{ id: 't', lineID: 'L0003', file: 'a.wav' }] });
+  eq(store.productions.length, 3, 'a store already loaded keeps what it made');
+  const next = PlayStore.open(backend);
+  await next.load();
+  eq(next.productions.map(p => p.id).sort(), [shared.id, taken.id].sort(), 'the empty one is gone on the next load');
+  eq(await backend.keys(`${empty.id}/`), [], 'with its folder');
+});
+
 /* ---- Takes ---- */
 
 test('a re-take is chosen, and the old take stays until discarded (§8 rule 5)', async () => {
@@ -569,6 +604,16 @@ test('today\'s scene: today\'s play among the short plays for two (WEB-DESIGN §
   eq(C.scenePool([lib[0], lib[3], lib[4]]).map(s => s.id).join(','), 'c', 'else two or three voices, at most 30');
   eq(C.scenePool([lib[0], lib[4]]).length, 2, 'else every play');
   eq(C.todaysScene([], '2026-11-15'), null, 'an empty library has no scene');
+});
+
+test('today\'s scene: the golden every platform runs (todays_play.json `scene`, Decision 079)', () => {
+  const g = JSON.parse(fs.readFileSync(path.join(ROOT, 'catalog', 'tests', 'golden', 'todays_play.json'), 'utf8')).scene;
+  g.cases.forEach(c => {
+    const rows = c.ids ? g.rows.filter(r => c.ids.includes(r.id)) : g.rows;
+    const got = C.todaysScene(rows, c.date);
+    eq(got ? got.id : null, c.want, `${c.date} over ${rows.length} rows`);
+  });
+  ok(g.cases.some(c => !c.ids && C.todaysPlay(g.rows, c.date).id !== c.want), 'control: the scene is not today\'s play over every row');
 });
 
 test('the opening speeches: said words only, from the lines or the index row (contract §4.1)', () => {

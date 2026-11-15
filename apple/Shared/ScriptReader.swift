@@ -543,6 +543,21 @@ struct ScriptReaderView: View {
 
     private func load() async {
         failed = false
+        if let target = studio, target.isDrama {
+            let play: FinishedPlay?
+            if let known = FinishedStore.shared.plays.first(where: { $0.id == target.production }) { play = known }
+            else { play = try? await WorkerOpenPlays(api: .shared).finished(id: target.production) }
+            guard let play, let found = try? await plays.script(id: play.scriptID),
+                  await FinishedListen.canFollow(play, script: found) else {
+                failed = true
+                return
+            }
+            let made = ReaderModel(script: found, startLine: startLine, door: app.readerDoor)
+            made.along = AlongModel(play: play, script: found)
+            controller?.model = made
+            model = made
+            return
+        }
         if let target = studio, !target.isAlong {
             // The production's own copy of the script, never the library's, so line ids match the takes.
             guard let s = StudioModel(target: target, plays: plays, line: startLine) else {
@@ -681,8 +696,8 @@ private struct ReaderScreen: View {
             }
             .clipped()
             if model.table.isPlaying, let line = model.table.line { hearing(line) }
-            if let along = model.along, let entry = along.listen.current, entry.isDeviceVoice,
-               let line = model.script.lines.first(where: { $0.id == entry.lineID }) { hearing(line) }
+            if let along = model.along, along.deviceVoice,
+               let line = model.script.lines.first(where: { $0.id == along.lineID }) { hearing(line) }
             if model.backToLine { backToLineButton() }
             if let dock { dock }
             #if os(iOS)
@@ -703,7 +718,7 @@ private struct ReaderScreen: View {
         .onChange(of: body17, initial: true) { _, size in model.base = size }
         .repaintsOnVoiceChange(model.voices)
         .onDisappear { model.table.stop() }
-        .onChange(of: model.along?.listen.current?.lineID) { _, id in model.alongHeard(id) }
+        .onChange(of: model.along?.lineID) { _, id in model.alongHeard(id) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
         #if os(iOS)
@@ -779,8 +794,8 @@ private struct ReaderScreen: View {
     /// Read along (§2.11): Listen Through is the transport; Back to the Line shows after a touch turned the page away.
     private func alongBar(_ along: AlongModel) -> some View {
         HStack(spacing: Spacing.s3) {
-            Button { model.resumeFollowing(); along.toggle(from: model.position, player: player) } label: {
-                Label(along.listen.isRunning ? "Stop" : "Listen Through", systemImage: along.listen.isRunning ? "stop.fill" : "play.fill")
+            Button { model.resumeFollowing(); along.toggle(from: model.position, player: player, muted: app.isMuted) } label: {
+                Label(along.isRunning ? "Stop" : "Listen Through", systemImage: along.isRunning ? "stop.fill" : "play.fill")
             }
             .labelStyle(HearTheCastLabelStyle())
             .accessibilityIdentifier("reader-listen-through")

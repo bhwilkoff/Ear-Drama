@@ -227,6 +227,9 @@ describe("a first publish", () => {
     const names = [...item.files.keys()];
     expect(names.length).toBe(speakingLines.length);
     expect([...names].sort()).toEqual(names.slice().sort());
+    // The read-along's contract (PLAYS-DESIGN 2.11): a file's number is its line's 1-based place in the script,
+    // so a client names the line a file speaks from the file name and the script alone.
+    expect(names.map((n) => small.lines[Number(n.slice(0, 4)) - 1].id)).toEqual(speakingLines);
     expect(fake.puts().map((r) => r.path.split("/").pop())).toEqual([...names].sort());
     expect([...item.files.values()].filter((f) => f.derive).length).toBe(1);
     expect(item.files.get(names.at(-1)).derive).toBe(true);

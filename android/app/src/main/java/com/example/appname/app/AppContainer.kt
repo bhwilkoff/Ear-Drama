@@ -44,7 +44,7 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val downloads = DownloadStore(File(context.filesDir, "downloads"), WorkManagerDownloadTransport(context))
     val playback = PlaybackEngine(context, api, catalog, user, downloads)
     val queue by lazy { QueueVerbs(user, playback) }
-    val plays = PlaysLibrary(context, KtorLibraryTransport(api.client))
+    val plays = PlaysLibrary(context, KtorLibraryTransport(api.client)).also { p -> p.signedIn = { accounts.account.value != null } }
     val isTelevision = context.isTelevision()
 
     /**

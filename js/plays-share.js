@@ -274,7 +274,8 @@ const PlaysShare = (() => {
    * shared ones this person is in that this browser has not opened yet, newest first.
    */
   function libraryRows(store, remote) {
-    const rows = store.productions.map(p => ({ local: p, pid: (store.share(p.id) || {}).pid || null }));
+    const rows = store.productions.map(p => ({ local: p, pid: (store.share(p.id) || {}).pid || null }))
+      .filter(r => r.pid || !C.isEmptyProduction(r.local));
     const here = new Set(rows.map(r => r.pid).filter(Boolean));
     for (const r of remote || []) if (!here.has(r.id)) rows.push({ local: null, pid: r.id, remote: r });
     const when = (r) => (r.local ? r.local.created + 978307200 : (r.remote.updated_at || 0) / 1000);
@@ -323,8 +324,10 @@ const PlaysShare = (() => {
       const had = byLine.get(key);
       if (!had || LINE_RANK.indexOf(extOf(f.name)) < LINE_RANK.indexOf(extOf(had.name))) byLine.set(key, f);
     }
-    const lines = [...byLine.keys()].sort().map(k => href(byLine.get(k)));
-    return lines.length ? { lines } : null;
+    const keys = [...byLine.keys()].sort();
+    const lines = keys.map(k => href(byLine.get(k)));
+    // The file number is the line's 1-based place in the script (worker/src/plays-archive.js fileName).
+    return lines.length ? { lines, seqs: keys.map(k => parseInt(k, 10)) } : null;
   }
 
   /* ---- One plain line for each refusal (AGENTS.md: a refusal, a warning, or a fact) ---- */

@@ -29,7 +29,10 @@ data class PlayRow(
     val path: String = "",
     /** `phonemes/<id>.json` when the catalog published the play's phonemes (Decision 078); absent for a held play. */
     val phonemes: String? = null,
+    /** The first speeches as the index cuts them (contract §4.1), for a play drawn without its script. */
+    val opening: List<Opening>? = null,
 ) : PlayListing {
+    @Serializable data class Opening(val role: String = "", val text: String = "")
 
     override val authorLine: String get() = authors.filter { it.isNotBlank() }.joinToString(", ")
     override val authorWithYears: String get() = authorLine

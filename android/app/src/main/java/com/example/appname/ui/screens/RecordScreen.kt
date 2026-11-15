@@ -59,7 +59,7 @@ private fun LazyGridScope.wide(key: Any, content: @Composable () -> Unit) {
 
 /**
  * Record (ANDROID-DESIGN §4.9a, Decision 075; not on a TV): Yours (this device's productions and the
- * shared ones not yet opened; absent when none), Today's play, Plays under three facets and a sort, then
+ * shared ones not yet opened; absent when none), Today's scene, Plays under three facets and a sort, then
  * Made here. Each section has its own states; a section whose rule yields nothing is not drawn. The plays come
  * from the published library (contract §4.1), the bundle its floor, and are cells of a lazy grid: 650 and more.
  */
@@ -71,6 +71,7 @@ fun RecordScreen(
     onOpenDrama: (String) -> Unit,
     onDramas: () -> Unit,
     onRead: (String) -> Unit = {},
+    onOpenStudio: OpenStudio = { _, _, _, _ -> },
 ) {
     val container = LocalAppContainer.current
     val productions by container.plays.store.productions.collectAsState()
@@ -119,7 +120,7 @@ fun RecordScreen(
                         }
                     }
                 }
-                wide("today") { TodaysPlay(onOpenScript, onOpenProduction, onRead) }
+                wide("today") { TodaysScene(onOpenScript, onRead, onOpenStudio) }
                 wide("plays-h") { SectionHeader("Plays") }
                 when (state) {
                     PlayLibraryFeed.Rows.Loading -> wide("plays-wait") { RowSpinner() }

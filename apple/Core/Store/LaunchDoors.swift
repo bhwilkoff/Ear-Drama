@@ -33,6 +33,8 @@ import Foundation
 /// - APP_PRODUCTION=<script id>: open a production's cast sheet on that play (made if none exists; iOS and macOS);
 ///   APP_PICKER=role:NAME opens that part's voice picker, APP_READER_HEAR=1 starts Hear the Cast in the reader
 ///
+/// - APP_SCENE=try | hear: presses Today's Scene's Try a Line or Hear It once (iOS and macOS; read by `SceneDoor`)
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a

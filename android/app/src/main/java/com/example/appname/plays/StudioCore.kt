@@ -60,6 +60,14 @@ object StudioCore {
         return Pick.Make
     }
 
+    /** Beginning a new production while signed out asks for an account once another here holds a take (Decision 079). */
+    fun asksAccount(pick: Pick, productions: List<Production>, signedIn: Boolean): Boolean =
+        pick == Pick.Make && Production.secondNeedsAccount(productions, signedIn)
+
+    /** The play's newest unshared production with no take, which Record this reuses while it lasts (§2.3 rule 3a). */
+    fun reusable(productions: List<Production>, isShared: (String) -> Boolean, scriptID: String): String? =
+        productions.filter { it.scriptID == scriptID && it.isEmpty && !isShared(it.id) }.maxByOrNull { it.created }?.id
+
     /** How a take-state mark reads to TalkBack: "No take", "3 takes, take 2 chosen", or the re-take. */
     fun spoken(state: LineState): String = when (state.state) {
         LineState.Kind.None -> "No take"

@@ -116,6 +116,10 @@ const PlayStore = (() => {
               const raw = await backend.get(sharePath(p.id)).catch(() => null);
               if (raw) { try { shares.set(p.id, JSON.parse(raw)); } catch { /* unreadable: not shared */ } }
             }));
+            // An abandoned try never becomes a row (Decision 079, PLAYS-DESIGN §2.3 rule 3a).
+            for (const p of productions.filter(x => C.isEmptyProduction(x) && !shares.has(x.id))) {
+              await store.delete(p.id).catch(() => {});
+            }
             return productions;
           })();
           loaded.catch(() => { loaded = null; });

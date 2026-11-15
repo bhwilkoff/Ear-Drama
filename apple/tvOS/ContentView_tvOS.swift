@@ -157,6 +157,7 @@ private struct ListenScreen_tvOS: View {
                         continueShelf
                         doors
                         HomeChipShelf_tvOS(title: "Start a show", chips: shelves.start)
+                        TodaysScene_tvOS()
                         HomeChipShelf_tvOS(title: "By length", chips: shelves.length)
                         nightShelf
                         if let day, let peak = day.years.peak {

@@ -598,7 +598,8 @@
     const dayBox = el('div');
     const voicesBox = el('div');
     const madeBox = el('div', { class: 'ear-drama-only' });
-    body.replaceChildren(liveBox, contBox, homeDoors(), startBox, recordBox, lengthBox, dayBox, voicesBox, madeBox);
+    const leadBox = el('div', { class: 'ear-drama-only' });
+    body.replaceChildren(liveBox, contBox, homeDoors(), leadBox, startBox, recordBox, lengthBox, dayBox, voicesBox, madeBox);
 
     renderLiveBlock(liveBox);
     const cont = Store.inProgress(10);
@@ -634,7 +635,7 @@
         return true;
       });
     if (!onTV()) {
-      PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) madeBox.replaceChildren(sec); })
+      PlaysUI.newDramas(playsHelpers).then((sec) => { if (sec) (sec.dataset.lead ? leadBox : madeBox).replaceChildren(sec); })
         .catch((e) => console.error(e));
     }
   }
@@ -834,9 +835,10 @@
         const at = myLine && myLine.id ? `&line=${encodeURIComponent(myLine.id)}` : '';
         navigate(`?read=${encodeURIComponent(id)}&production=${encodeURIComponent(pid)}&part=${encodeURIComponent(mine)}${at}`);
       } catch (e) {
+        tryBtn.disabled = false;
+        if (Studio.askAccount(e)) return;
         console.error(e);
         err.textContent = 'This browser could not save a production.';
-        tryBtn.disabled = false;
       }
     });
     const hear = el('button', { type: 'button', class: 'btn btn-ghost pl-scene-hear', hidden: true }, 'Hear it');
@@ -2152,13 +2154,14 @@
     const prod = r.p.get('production');
     const part = r.p.get('part');
     const studio = !!(prod && part);
-    const along = !!(prod && !part && r.p.get('along'));
-    const key = studio ? `${r.id} ${prod} ${part}` : along ? `${r.id} ${prod} along` : r.id;
+    const fin = r.p.get('finished');
+    const along = !!((prod || fin) && !part && r.p.get('along'));
+    const key = studio ? `${r.id} ${prod} ${part}` : along ? `${r.id} ${prod || fin} along` : r.id;
     if (Reader.openKey() === key && body.firstChild) return;
     setTitle('Read');
     body.replaceChildren(stateBox('loading'));
     const close = () => {
-      const to = ReaderCore.closeTo(inApp(), studio || along, prod, r.id);
+      const to = fin && along ? (inApp() ? 'back' : `?drama=${encodeURIComponent(fin)}`) : ReaderCore.closeTo(inApp(), studio || along, prod, r.id);
       if (to === 'back') history.back(); else navigate(to, true);
     };
     /** The reader's Record (§4.16 item 14): the production this part records in, then the studio. Not on a TV. */
@@ -2167,25 +2170,29 @@
         const id = await Studio.begin(script, p);
         navigate(`?read=${encodeURIComponent(script.id)}&production=${encodeURIComponent(id)}&part=${encodeURIComponent(p)}`, true);
       } catch (err) {
+        if (Studio.askAccount(err)) return;
         console.error(err);
         announce('This browser could not save a production.');
       }
     };
-    const load = studio || along
+    const load = fin && along
+      ? API.playScript(r.id).then(async (script) => ({ script, dramaPlan: script ? await PlaysUI.dramaAlongFor(fin, script) : null }))
+      : studio || along
       ? PlaysUI.openStore().then(async (store) => {
         const p = store.production(prod);
         return p ? { script: await store.script(p), store } : { script: null };
       })
       : API.playScript(r.id).then(script => ({ script }));
-    load.then(({ script, store }) => {
+    load.then(({ script, store, dramaPlan }) => {
       if (my !== readerSeq || $('view-reader').hidden) return;
+      if (fin && along && !dramaPlan) { body.replaceChildren(stateBox('missing')); return; }
       if (!script) { body.replaceChildren(stateBox('missing')); return; }
       setTitle(script.title);
       Reader.open(body, script, {
         line: r.p.get('line'), onClose: close, navigate,
         onRecord: onRecord ? (p) => onRecord(script, p) : null,
         studio: studio ? { production: prod, part, store, line: r.p.get('line') } : null,
-        along: along ? { production: prod, store } : null,
+        along: along ? (fin ? { dramaPlan } : { production: prod, store }) : null,
       });
     }).catch((err) => {
       if (my !== readerSeq) return;

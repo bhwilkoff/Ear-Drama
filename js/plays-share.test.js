@@ -299,12 +299,15 @@ test('joining makes the production here once, from the bundle\'s script at its r
 test('Library\'s Ear dramas: this browser\'s, then the shared ones not opened here', async () => {
   const { store, local } = await sharedLocal();
   const solo = await store.create(fixtureScript());
+  await store.save({ ...solo, takes: [{ id: 't', lineID: 'L0003', file: 'a.wav' }] });
+  const empty = await store.create(fixtureScript());
   const rows = S.libraryRows(store, [{ id: 'pid-1', title: 'Good Grammar', updated_at: 0 },
                                       { id: 'pid-far', title: 'Far Away', updated_at: 5 }]);
   eq(rows.length, 3, 'two here and one remote');
+  ok(!rows.some(r => r.local && r.local.id === empty.id), 'a production with no take is not a row (Decision 079)');
   eq(rows.filter(r => r.pid === 'pid-1').map(r => r.local && r.local.id), [local.id], 'a shared one here is listed once');
   eq(rows.filter(r => !r.local).map(r => r.pid), ['pid-far'], 'the remote one');
-  ok(rows.some(r => r.local && r.local.id === solo.id && r.pid === null), 'an unshared one stays');
+  ok(rows.some(r => r.local && r.local.id === solo.id && r.pid === null), 'an unshared one with a take stays');
 });
 
 test('the served consent words become a lead and a list, none changed', () => {
@@ -381,6 +384,7 @@ test('a finished drama\'s audio: a whole-play MP3, else the numbered line files 
                  f('0003-X.wav', 'WAV', { private: true }), f('history/files/0004-Y.wav~1~', 'WAV')];
   const got = S.pickAudio(line1, 'item');
   eq(got.lines.map(u => u.split('/').pop()), ['0001-EBEN.mp3', '0002-OAK.wav'], 'numbered files in order, best format each, no private or old revision');
+  eq(got.seqs, [1, 2], 'each file carries its line number (the line\'s place in the script)');
   ok(!got.whole, 'a numbered MP3 is never the whole play');
   const whole = S.pickAudio([...line1, f('play_64kb.mp3', '64Kbps MP3'), f('play.mp3', 'VBR MP3')], 'item');
   eq(whole.whole, 'https://archive.org/download/item/play.mp3', 'a whole-play MP3 wins, in the catalog\'s order');

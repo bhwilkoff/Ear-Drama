@@ -88,8 +88,8 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   Library, in a `TabView` with `.sidebarAdaptable`; Search uses
   `Tab(role: .search)`. **Record is n/a on the TV**: it has no microphone
   and records nothing (PLAYS-DESIGN §6, §11.7 rule 12), so there is no
-  Record entry, no Record a Play door or row, no Today's play, and no
-  Record This; Browse, Search, and Surprise show no plays. Library keeps
+  Record entry, no Record a Play door or row, no Today's play, no Try a
+  Line, and no Record This (Today's Scene is on Home, to hear); Browse, Search, and Surprise show no plays. Library keeps
   the shared Ear dramas this person is in, to listen to (§4.12): that is
   all "making" means on a TV. **Home opens on what is on the air**: its
   hero is On the air (tonight's slot on now, else the first genre station
@@ -97,9 +97,22 @@ The common text is in `docs/WEB-DESIGN.md` and `docs/iOS-DESIGN.md`
   **All Stations** (pushes Stations, §4.8, the TV's most natural place
   to lean back) and **Surprise** (pushes §4.10) in the same action row;
   then Continue, two doors as wide cards (Listen, Find a Show; the third,
-  Record a Play, is absent), Start a Show, By Length, This Day in Radio,
-  and Most Heard Voices as shelves (the web's §4.2 rules, the TV's
-  idiom). Neither Stations nor Surprise is a sidebar entry.
+  Record a Play, is absent), Start a Show, **Today's Scene**, By Length,
+  This Day in Radio, and Most Heard Voices as shelves (the web's §4.2
+  rules, the TV's idiom). Neither Stations nor Surprise is a sidebar entry.
+  - **Today's Scene on the TV** (Decision 079: "Today's scene ... replaces
+    Today's play on every platform"; the TV never had Today's play): the
+    same pick as every platform (`PlayScript.todaysScene`, golden
+    `todays_play.json` `scene`), one wide card in its own focus section:
+    the kicker, the title, author · N voices · About M min, and the opening
+    as a page (the first four speeches, the role name in the part's hue
+    over the said words, 29 pt or larger, two lines each at most), then
+    **Hear It** alone: the opening read live by the device's voices through
+    the play's one cast, lighting the speech being read, becoming Stop,
+    pausing the player first, stopping when Home leaves, keeping nothing.
+    No **Try a Line** (the TV has no microphone and records nothing,
+    PLAYS-DESIGN §6) and no **Read** (§4.13, Decision 076: no Read door on
+    a TV). The card is a listening invitation; focus lands on Hear It.
   - *Replaced* (2026-11-14, Decision 075): "Six sidebar entries, hard set
     (Decision 068 ...): Home, Browse, Stations, Search, Library, Surprise
     ... Stations is the TV's most natural entry ("Tonight in 1942", §4.8)".
@@ -282,6 +295,9 @@ The only shapes; a new one needs a new rule.
   studio, take lists and Record never appear here. **No marks** (PLAYS-DESIGN
   §2.10): marks are made where there is a selection, a keyboard or a pencil, and
   are private to the device that made them; the read-along panel draws none.
+  A **finished ear drama's** Listen (the shared `FinishedDramaScreen`) shows the same panel
+  under the transport while its line files play, the file playing being the line heard
+  (PLAYS-DESIGN §2.11 rule 6); a recording with no line timeline plays with no panel.
   The listen-through on the TV reads open parts with the device's cast (PLAYS-DESIGN
   §2.8, Decision 076 S2): the same `VoiceCast` auto-cast from the TV's own voices,
   kept in `UserDefaults` (never Application Support, which tvOS devices refuse); the TV has no picker (the cast is changed on a
