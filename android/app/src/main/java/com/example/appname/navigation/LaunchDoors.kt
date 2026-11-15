@@ -23,7 +23,7 @@ sealed interface InboxRequest {
     data class Drama(val pid: String) : InboxRequest
 
     /** DEBUG door `appname_start_read`: the reader on a play, at [line] when given. */
-    data class Read(val id: String, val line: String? = null) : InboxRequest
+    data class Read(val id: String, val line: String? = null, val studioPart: String? = null) : InboxRequest
 
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
@@ -48,11 +48,22 @@ data class LaunchDoors(
     val forceOffline: Boolean = false,
     /** `play-id` or `play-id@L0042`. */
     val startRead: String? = null,
+    /** `appname_start_studio`: a role name; with [startRead], presses Record in the reader for that part (the studio). */
+    val startStudio: String? = null,
+    /** `appname_studio_stub`: the studio's engine opens no microphone and plays nothing (DEBUG frames, never real room audio). */
+    val studioStub: Boolean = false,
+    /** `appname_studio_phase`: with the stub, `listening` starts a take on the current line, `takes` opens the take list. */
+    val studioPhase: String? = null,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
             startTab?.let(InboxRequest::Tab), startItem?.let(InboxRequest::Item),
-            startRead?.let { InboxRequest.Read(it.substringBefore('@'), it.substringAfter('@', "").ifEmpty { null }) },
+            startRead?.let {
+                InboxRequest.Read(
+                    it.substringBefore('@'), it.substringAfter('@', "").ifEmpty { null },
+                    studioPart = startStudio?.takeIf { s -> s.isNotBlank() }?.let { s -> com.example.appname.plays.PartID.role(s).raw },
+                )
+            },
         )
 
     companion object {
@@ -62,6 +73,9 @@ data class LaunchDoors(
         const val EXTRA_DOOR_SECONDS = "appname_door_seconds"
         const val EXTRA_FORCE_OFFLINE = "appname_force_offline"
         const val EXTRA_START_READ = "appname_start_read"
+        const val EXTRA_START_STUDIO = "appname_start_studio"
+        const val EXTRA_STUDIO_STUB = "appname_studio_stub"
+        const val EXTRA_STUDIO_PHASE = "appname_studio_phase"
 
         /** [extras] is the intent's extras as a map; `am start` sends --es/--ez/--ei types. */
         fun from(extras: Map<String, Any?>, debug: Boolean): LaunchDoors {
@@ -73,7 +87,19 @@ data class LaunchDoors(
                 doorSeconds = extras[EXTRA_DOOR_SECONDS].let { it as? Int ?: it?.toString()?.toIntOrNull() },
                 forceOffline = extras[EXTRA_FORCE_OFFLINE].let { it == true || it == "1" || it == "true" },
                 startRead = extras[EXTRA_START_READ]?.toString(),
+                startStudio = extras[EXTRA_START_STUDIO]?.toString(),
+                studioStub = extras[EXTRA_STUDIO_STUB].let { it == true || it == "1" || it == "true" },
+                studioPhase = extras[EXTRA_STUDIO_PHASE]?.toString(),
             )
         }
     }
+}
+
+/**
+ * What the DEBUG doors say about the studio's engine, set once by MainActivity and read where the studio is built. Never set
+ * in a release build, so the microphone is always the real one there.
+ */
+object StudioDoor {
+    @Volatile var stub = false
+    @Volatile var phase: String? = null
 }

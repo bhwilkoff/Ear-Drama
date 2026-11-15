@@ -136,11 +136,24 @@ data class Production(
             return takes.filter { it.id !in keep }
         }
 
-    /** Every take that is not a line's chosen one, removed; the store deletes their files (§6). */
-    fun discardUnused(): Pair<Production, List<Take>> {
-        val gone = unusedTakes
+    /**
+     * Every take that is not a line's chosen one, removed; the store deletes their files (§6). With [lines], only those
+     * lines' unchosen takes go (the studio's Delete unused takes is one part's).
+     */
+    fun discardUnused(lines: Set<String>? = null): Pair<Production, List<Take>> {
+        val gone = unusedTakes.filter { lines == null || it.lineID in lines }
         val ids = gone.map { it.id }.toSet()
         return copy(takes = takes.filter { it.id !in ids }) to gone
+    }
+
+    /**
+     * One take removed, only when it is not its line's chosen take (the chosen take is the one the play uses and, in a
+     * shared production, the one uploaded). Returns what went so the store deletes the file; nothing when refused.
+     */
+    fun deleteTake(takeID: String): Pair<Production, List<Take>> {
+        val take = take(takeID) ?: return this to emptyList()
+        if (chosen[take.lineID] == takeID) return this to emptyList()
+        return copy(takes = takes.filter { it.id != takeID }) to listOf(take)
     }
 
     val chosenFingerprint: String

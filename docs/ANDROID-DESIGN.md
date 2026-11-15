@@ -735,6 +735,14 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     the dock sits below the hinge (`currentWindowAdaptiveInfo().windowPosture`).
     Hardware keys and pedals: SPACE record / stop, J / K my lines, R again,
     ENTER keep.
+    The studio reads in Pages even when Scroll is set (a line is whole only
+    on a page); Scroll returns when the studio is left. The DEBUG doors
+    `appname_start_studio` (a role name, with `appname_start_read`),
+    `appname_studio_stub` (an engine that opens no microphone and plays
+    nothing; a heard line is a synthetic tone, never room audio) and
+    `appname_studio_phase` (`idle`, `listening`, `takes`) exist for frames; the
+    mute door silences take playback and cue voices too. A voice chip names a
+    voice by its distinguishing part (a region in initials, the number kept).
 
 ## §5 The player
 

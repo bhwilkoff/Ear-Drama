@@ -13,6 +13,8 @@ object ReaderPagination {
      * it opens a page; [keepWithNext] keeps a block on the page of what follows it (a name, a heading); [breakBefore]
      * opens a page (an act, the first speech after the front). A block of a speech has its [speech] id, and
      * [speechStart] when it is the speech's first, so a page that opens inside a speech can head itself "NAME (cont'd)".
+     * With [keepSpeech] (the studio's part: PLAYS-DESIGN §2.9) a speech's blocks stay on one page, so the line being
+     * recorded is whole on screen; a speech longer than a page still breaks.
      * A verse block's [rowStarts] are the visual lines its printed rows begin on: it splits only between rows,
      * keeping two rows at either side; any other block keeps two lines at either side.
      */
@@ -25,6 +27,7 @@ object ReaderPagination {
         val speech: Int = -1,
         val speechStart: Boolean = false,
         val rowStarts: IntArray? = null,
+        val keepSpeech: Boolean = false,
     )
 
     /** Visual lines [from, to) of block [block], drawn from [top] to [bottom] on its page. */
@@ -76,6 +79,15 @@ object ReaderPagination {
         for ((b, block) in blocks.withIndex()) {
             val hs = block.heights
             if (block.breakBefore && cur.isNotEmpty()) flush()
+            if (block.keepSpeech && block.speechStart && block.speech >= 0 && cur.isNotEmpty()) {
+                var whole = block.gapBefore
+                var n = b
+                while (n < blocks.size && blocks[n].speech == block.speech) {
+                    whole += (if (n == b) 0f else blocks[n].gapBefore) + blocks[n].heights.sum()
+                    n++
+                }
+                if (y + whole > pageHeight && whole <= pageHeight) flush()
+            }
             if (block.keepWithNext && cur.isNotEmpty()) {
                 val next = blocks.getOrNull(b + 1)
                 val need = block.gapBefore + hs.sum() + (next?.let { it.gapBefore + it.heights.take(leadLines(it)).sum() } ?: 0f)

@@ -27,15 +27,24 @@ sealed interface Route : NavKey {
     @Serializable data object Surprise : Route
     /** A castable script: its rights line, its parts, and "Start an ear drama". */
     @Serializable data class Script(val id: String) : Route
-    /** The script reader (ANDROID-DESIGN §4.17), full screen over the tab bar; [lineId] opens at that line, else where this device left off. */
-    @Serializable data class Reader(val scriptId: String, val lineId: String? = null) : Route
+    /**
+     * The script reader (ANDROID-DESIGN §4.17), full screen over the tab bar; [lineId] opens at that line, else where this
+     * device left off. With [productionId] and [part] (a raw `PartID`) the studio is attached (PLAYS-DESIGN §2.9): the script
+     * is the production's own copy, and the part's lines record in the page.
+     */
+    @Serializable data class Reader(
+        val scriptId: String,
+        val lineId: String? = null,
+        val productionId: String? = null,
+        val part: String? = null,
+    ) : Route
     /** A production's cast sheet. */
     @Serializable data class Production(val id: String) : Route
     /** The invitation page for the token the session holds (never in the key: a token is not saved state). */
     @Serializable data object Invitation : Route
     /** A finished ear drama's page. */
     @Serializable data class Drama(val id: String) : Route
-    /** One part being recorded, line by line; [part] is the raw `PartID`. [line] set: replacing that one line on a published play (P12). */
+    /** The recorder before the studio moved into the reader (S3): no door opens it any more; [part] is the raw `PartID`. */
     @Serializable data class Recording(val production: String, val part: String, val line: String? = null) : Route
 }
 

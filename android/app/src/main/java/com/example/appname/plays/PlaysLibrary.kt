@@ -82,6 +82,9 @@ class MixPlayback {
         private set
     var onEnded: (() -> Unit)? = null
 
+    /** The test door's mute (appname_mute): the file plays in time at zero volume. */
+    var muted = false
+
     val isPlaying: Boolean get() = player?.isPlaying == true
     val durationMs: Int get() = player?.duration ?: 0
     val positionMs: Int get() = player?.currentPosition ?: 0
@@ -96,6 +99,7 @@ class MixPlayback {
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build(),
             )
             setDataSource(file.path)
+            if (muted) setVolume(0f, 0f)
             setOnCompletionListener { onEnded?.invoke() }
             prepare()
         }

@@ -89,6 +89,7 @@ fun AppRoot(
     var browseGenre by remember { mutableStateOf<String?>(null) }
     var browseDramas by remember { mutableStateOf(false) }
     var browseVoices by remember { mutableStateOf(false) }
+    var studioDoor by remember { mutableStateOf<InboxRequest.Read?>(null) }
     var roomSheet by rememberSaveable { mutableStateOf(false) }
     var roomCode by rememberSaveable { mutableStateOf("") }
     val haptics = rememberHaptics()
@@ -103,6 +104,18 @@ fun AppRoot(
     // Before any screen's focus claim runs: a key pressed from here on belongs to the new screen.
     val top = stack.lastOrNull()
     LaunchedEffect(selected, top) { TvFocusClock.screenOpened() }
+
+    LaunchedEffect(studioDoor) {
+        val door = studioDoor ?: return@LaunchedEffect
+        val part = door.studioPart ?: return@LaunchedEffect
+        val resolved = runCatching {
+            container.plays.script(door.id)?.let { script ->
+                com.example.appname.plays.StudioOpen.resolve(container.plays, script, PartID(part))
+            }
+        }.getOrNull()
+        stacks.getValue(Tab.Record).navigateTo(Route.Reader(door.id, door.line, resolved, resolved?.let { part }))
+        studioDoor = null
+    }
 
     // The ONE place the inbox is drained: deep links and test doors alike.
     LaunchedEffect(inbox.size) {
@@ -138,7 +151,13 @@ fun AppRoot(
                 // A TV lists no ear dramas yet (PARITY), so a drama link opens nothing there.
                 is InboxRequest.Drama -> if (!container.isTelevision) stacks.getValue(selected).navigateTo(Route.Drama(request.pid))
                 is InboxRequest.Read -> if (!container.isTelevision) {
-                    stacks.getValue(Tab.Record).navigateTo(Route.Reader(request.id, request.line))
+                    // The studio door presses the reader's Record for the part (PLAYS-DESIGN §2.9 rule 1), off this loop:
+                    // a suspension here would be cancelled by the next inbox change.
+                    if (request.studioPart != null) {
+                        studioDoor = request
+                    } else {
+                        stacks.getValue(Tab.Record).navigateTo(Route.Reader(request.id, request.line))
+                    }
                     selected = Tab.Record
                 }
                 InboxRequest.EndDoor -> {
@@ -303,13 +322,23 @@ fun AppRoot(
                                     stack.add(Route.Production(id))
                                 })
                             }
-                            entry<Route.Reader> { route -> ReaderScreen(route.scriptId, route.lineId, onBack = back) }
+                            entry<Route.Reader> { route ->
+                                ReaderScreen(
+                                    route.scriptId, route.lineId, route.productionId, route.part, onBack = back,
+                                    onOpenStudio = { production, part, line ->
+                                        // Record in the reader replaces it with the reader holding the studio: depth stays the same.
+                                        if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)
+                                        stack.add(Route.Reader(route.scriptId, line, production, part))
+                                    },
+                                )
+                            }
                             entry<Route.Production> { route ->
-                                ProductionScreen(route.id, onBack = back, onRecord = { part ->
-                                    stack.add(Route.Recording(route.id, part.raw))
-                                }, onReplace = { part, line ->
-                                    stack.add(Route.Recording(route.id, part.raw, line))
-                                })
+                                // Take Part, Record and Open Part open the reader with the studio (PLAYS-DESIGN §2.9 rule 1).
+                                val openStudio = { part: PartID, line: String? ->
+                                    container.plays.store.production(route.id)?.let { stack.add(Route.Reader(it.scriptID, line, route.id, part.raw)) }
+                                    Unit
+                                }
+                                ProductionScreen(route.id, onBack = back, onRecord = { part -> openStudio(part, null) }, onReplace = { part, line -> openStudio(part, line) })
                             }
                             entry<Route.Recording> { route ->
                                 RecordingScreen(route.production, PartID(route.part), onBack = back, startLine = route.line)

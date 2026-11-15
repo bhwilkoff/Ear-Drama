@@ -313,4 +313,16 @@ class VoiceCastTest {
         assertEquals(2, stopper.spoken.size)
         assertNull("the follower is told it ended", followed.last())
     }
+
+    @Test fun `a chip names a voice by its distinguishing part - a region in initials, the number kept`() {
+        assertEquals("English (US) 3", chipVoiceName("English (United States) 3"))
+        assertEquals("English (UK)", chipVoiceName("English (United Kingdom)"))
+        assertEquals("English (Australia) 2", chipVoiceName("English (Australia) 2"))
+        assertEquals("No Voice", chipVoiceName("No Voice"))
+        assertEquals(
+            "two voices of one locale stay apart",
+            2,
+            setOf(chipVoiceName("English (United States) 1"), chipVoiceName("English (United States) 2")).size,
+        )
+    }
 }

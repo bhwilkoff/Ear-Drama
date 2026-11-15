@@ -297,6 +297,17 @@ fun VoiceCast.prepare(part: PartID, setter: VoiceSetter, sessionRate: Float = 1f
     return true
 }
 
+private val PLACE = Regex("\\(([^)]+)\\)")
+
+/**
+ * A voice's name as a chip reads it: a region of several words is its initials ("English (United States) 3" is
+ * "English (US) 3"), so the part that tells two voices apart (the number) is still there on a narrow chip and a large font.
+ */
+fun chipVoiceName(name: String): String = PLACE.replace(name) { m ->
+    val words = m.groupValues[1].trim().split(Regex("\\s+"))
+    if (words.size > 1) "(" + words.joinToString("") { it.take(1).uppercase() } + ")" else m.value
+}
+
 /** A voice's speed as the chip and picker say it: "1.0×", "1.25×". */
 fun speedText(v: Double): String {
     val twoPlaces = Math.round(v * 100) % 10 != 0L

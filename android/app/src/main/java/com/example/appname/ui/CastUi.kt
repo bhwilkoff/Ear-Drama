@@ -68,6 +68,7 @@ import com.example.appname.plays.Resolved
 import com.example.appname.plays.VoiceCast
 import com.example.appname.plays.VoiceCasting
 import com.example.appname.plays.VoiceCastEntry
+import com.example.appname.plays.chipVoiceName
 import com.example.appname.plays.pitchText
 import com.example.appname.plays.speedText
 import com.example.appname.ui.theme.AppSemantics
@@ -164,11 +165,11 @@ fun VoiceChip(handle: CastHandle, part: PartID, onClick: () -> Unit, modifier: M
         label = {
             Text(
                 buildAnnotatedString {
-                    append(d.text)
+                    append(chipVoiceName(d.text))
                     if (d.tune.isNotEmpty()) withStyle(SpanStyle(color = muted)) { append("  ${d.tune}") }
                 },
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                overflow = TextOverflow.StartEllipsis,
             )
         },
         leadingIcon = if (d.warn) ({

@@ -94,6 +94,8 @@ class MainActivity : ComponentActivity() {
         val doors = LaunchDoors.from(map, debug = BuildConfig.DEBUG)
         if (doors.mute) playerMuted = true
         if (doors.forceOffline) forceOffline = true
+        if (doors.studioStub) com.example.appname.navigation.StudioDoor.stub = true
+        doors.studioPhase?.let { com.example.appname.navigation.StudioDoor.phase = it }
         inbox += doors.requests()
         doors.doorSeconds?.let { seconds ->
             lifecycleScope.launch {

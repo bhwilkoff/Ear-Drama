@@ -81,6 +81,9 @@ class DeviceLiveAudio(context: Context) : LiveAudio {
     private var reader: Thread? = null
     @Volatile private var onChunk: ((FloatArray) -> Unit)? = null
     @Volatile private var playbackStopped = false
+
+    /** The test door's mute (appname_mute): a cue or a take passes in time but nothing is heard. */
+    @Volatile var muted: Boolean = false
     private val lock = Any()
     private val captured = ArrayList<FloatArray>()
 
@@ -135,6 +138,11 @@ class DeviceLiveAudio(context: Context) : LiveAudio {
         } ?: return
         if (samples.isEmpty()) return
         playbackStopped = false
+        if (muted) {
+            val until = System.currentTimeMillis() + MUTED_CUE_MS
+            while (!playbackStopped && System.currentTimeMillis() < until) delay(20)
+            return
+        }
         val usage = if (echoCancelled) AudioAttributes.USAGE_VOICE_COMMUNICATION else AudioAttributes.USAGE_MEDIA
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
@@ -158,6 +166,10 @@ class DeviceLiveAudio(context: Context) : LiveAudio {
 
     override fun stopPlayback() {
         playbackStopped = true
+    }
+
+    private companion object {
+        const val MUTED_CUE_MS = 300L
     }
 
     override fun beginCapture(onChunk: (FloatArray) -> Unit) {
