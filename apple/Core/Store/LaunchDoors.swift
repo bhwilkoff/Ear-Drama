@@ -15,6 +15,7 @@ import Foundation
 /// - APP_MUTE=1 (or the `-APP_MUTE` launch argument): the player is muted
 /// - APP_FORCE_OFFLINE=1: the offline state, for a screenshot (fakes the
 ///   state, never the network)
+/// - APP_READER_RESET_MARKS=1: erases the opened play's marks first (R2-marks-port-brief frames).
 /// - APP_RESET_USER_STATE=1: the listening history, queue and followed shows are erased before the
 ///   stores open, so a UI test starts from a new listener's lists, not an earlier run's (the tap tier
 ///   sets it on every launch)
@@ -78,7 +79,8 @@ struct LaunchDoors: Sendable, Equatable {
                                    page: environment["APP_READER_PAGE"].flatMap { Int($0) },
                                    prefs: environment["APP_READER_PREFS"],
                                    hear: environment["APP_READER_HEAR"] == "1",
-                                   studio: environment["APP_READER_STUDIO"] == "1"),
+                                   studio: environment["APP_READER_STUDIO"] == "1",
+                                   resetMarks: environment["APP_READER_RESET_MARKS"] == "1"),
             production: environment["APP_PRODUCTION"],
             picker: environment["APP_PICKER"]
         )

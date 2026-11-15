@@ -35,6 +35,12 @@ nonisolated extension NSAttributedString.Key {
     /// The role whose speech comes in on this run (the cue), and its hue; underlined when that part is being played.
     static let edCueRole = NSAttributedString.Key("ed.cue.role")
     static let edCueHue = NSAttributedString.Key("ed.cue.hue")
+    /// A printed speaker name (the gutter or run-in label): drawn, never selected, never marked.
+    static let edName = NSAttributedString.Key("ed.name")
+    /// Where the appended run began in the page string, so a run another attribute split still knows its offset.
+    static let edBase = NSAttributedString.Key("ed.base")
+    /// The id of the point mark whose gap this figure space is.
+    static let edGap = NSAttributedString.Key("ed.gap")
 }
 
 nonisolated enum ReaderInk: Int, Sendable {
@@ -203,7 +209,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
 
     /// Cuts `script` into pages of `pageSize` at `style`. Throws when its task is cancelled (a newer layout is wanted).
     static func build(_ script: PlayScript, structure: ScriptStructure, style: ReaderStyle, pageSize: CGSize,
-                      keepRole: String? = nil) throws -> ReaderLayout {
+                      keepRole: String? = nil, points: [Mark] = []) throws -> ReaderLayout {
         let size = style.size
         let lineHeight = (size * CGFloat(style.leading)).rounded()
         let textWidth = pageSize.width - 2 * inset
@@ -247,13 +253,36 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             return p
         }
 
+        // A point mark takes room: figure spaces (no-break, ed.offset -1, so never a word) right after its word, in the
+        // page string only, so the page re-paginates and the text itself is untouched.
+        let figure = ("\u{2007}" as NSString).size(withAttributes: [.font: ReaderFonts.serif(size)]).width
+        var gaps: [Int: [Int: (id: String, count: Int)]] = [:]
+        for m in points where !m.isSpan {
+            guard let li = structure.indexByID[m.line] else { continue }
+            gaps[li, default: [:]][m.start] = (m.id, max(1, Int((MarkGeometry.pointWidth(m, size: size) / max(1, figure)).rounded())))
+        }
+
         func append(_ text: String, font: ReaderFont, ink: ReaderInk, hue: Int = -1, at: Int, extra: [NSAttributedString.Key: Any] = [:]) {
             var attrs: [NSAttributedString.Key: Any] = [
-                .font: font, .edInk: ink.rawValue, .edLine: ctxLine, .edHue: hue, .edOffset: at,
+                .font: font, .edInk: ink.rawValue, .edLine: ctxLine, .edHue: hue, .edOffset: at, .edBase: out.length,
                 NSAttributedString.Key(kCTForegroundColorFromContextAttributeName as String): true,
             ]
             if let r = ctxRole { attrs[.edRole] = r; attrs[.edSpeech] = ctxSpeech }
             for (k, v) in extra { attrs[k] = v }
+            let units = text.utf16.count
+            if at >= 0, let g = gaps[ctxLine], let p = g.keys.filter({ at < $0 && $0 <= at + units }).min(), let gap = g[p] {
+                let k = p - at
+                let ns = text as NSString
+                gaps[ctxLine]?[p] = nil
+                out.append(NSAttributedString(string: ns.substring(to: k), attributes: attrs))
+                var g = attrs
+                g[.edOffset] = -1
+                g[.edBase] = out.length
+                g[.edGap] = gap.id
+                out.append(NSAttributedString(string: String(repeating: "\u{2007}", count: gap.count), attributes: g))
+                if k < units { append(ns.substring(from: k), font: font, ink: ink, hue: hue, at: at + k, extra: extra) }
+                return
+            }
             out.append(NSAttributedString(string: text, attributes: attrs))
         }
 
@@ -420,7 +449,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                     let beside = gutterOn && !name.isEmpty && !sp.rows.isEmpty && !firstIsCue && nameWidth <= gutterW
                     let base: CGFloat = beside ? col : 0
                     func appendName() {
-                        append(name, font: nameFont(), ink: .speaker, hue: hue, at: nameAt, extra: [.kern: size * 0.02])
+                        append(name, font: nameFont(), ink: .speaker, hue: hue, at: nameAt, extra: [.kern: size * 0.02, .edName: true])
                     }
 
                     if !beside, !name.isEmpty {
@@ -637,7 +666,7 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
     }
 
     /// The vertical extent a line occupies: its line height, the baseline's descent below it.
-    fileprivate static func band(origin: CGPoint, asc: CGFloat, desc: CGFloat, style: ReaderStyle) -> CGRect {
+    static func band(origin: CGPoint, asc: CGFloat, desc: CGFloat, style: ReaderStyle) -> CGRect {
         let height = max(asc + desc, (style.size * CGFloat(style.leading)).rounded())
         return CGRect(x: 0, y: origin.y - desc, width: 0, height: height)
     }
@@ -654,6 +683,9 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         /// The record red (the studio's outline while a cue plays or the microphone is open) and the warning color.
         var record: CGColor? = nil
         var warning: CGColor? = nil
+        /// The four highlight hues (`Color.mark(_:)`) by key, and the selection tint.
+        var markHues: [String: CGColor] = [:]
+        var selection: CGColor? = nil
     }
 
     /// How the studio outlines the current line (§2.9 rule 2).
@@ -670,6 +702,10 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         var outline: Outline = .ink
         /// The take state of each of my lines on the page (the studio).
         var takes: [Int: StudioCore.LineState] = [:]
+        /// The reader's marks (PLAYS-DESIGN §2.10) on this script, the line index of each id, and the selection (a range of the page string).
+        var marks: [Mark] = []
+        var lineIndex: [String: Int] = [:]
+        var selection: NSRange? = nil
     }
 
     /// Where a take-state mark sits after a speaker's name, in the text's own coordinates (y up from the text foot).
@@ -840,6 +876,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
             }
         }
 
+        drawMarkFills(page: page, in: cg, theme: theme, marks: marks)
+
         var glyph: CGImage?
         for (i, line) in lines.enumerated() {
             let origin = origins[i]
@@ -906,6 +944,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                 cg.fillPath()
             }
         }
+
+        drawMarkRules(page: page, in: cg, theme: theme, marks: marks)
 
         // Each of my lines' take state after the speaker's name (§2.9 rule 3).
         if let me = marks.role {

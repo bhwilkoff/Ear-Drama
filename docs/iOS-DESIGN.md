@@ -642,6 +642,21 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
       VoiceOver: each mark is an accessibility custom action on its speech
       ("Highlight: first thing"), and the notebook lists them all.
     - Export: `DataExport` adds `marks[]` (docs/EXPORT.md).
+    - **As shipped, 2026-11-15** (where the build settled what the paragraphs above
+      left open; this bullet wins). The page is a SwiftUI `Canvas`, so selection is
+      the reader's own over the Core Text frame, not `UITextInteraction`: a press on a
+      word selects it (`MarkSelecting`'s `SelectionLayer`, a `UIViewRepresentable`
+      over each spread), dragging grows the selection by words, two handles move its
+      edges, the paging scroll stands still meanwhile, and the system's
+      `UIEditMenuInteraction` carries the six verbs (Highlight shows the last hue). A tap
+      on a mark opens a small popover (`.presentationCompactAdaptation(.popover)`, the
+      Mac's too) with the four hues, Edit for a beat or note, and Delete; Delete
+      shows "Deleted" with Undo and registers with the `UndoManager`. A point mark's
+      room is figure spaces (U+2007, `ed.offset` -1, never a word) set in the page
+      string right after its word, so the page re-paginates and the script's text is
+      untouched; a kern on the word was tried and Core Text drops it once the whole
+      script is one string. Marks draw on the Pages layout; Scroll (one SwiftUI `Text`
+      a line) draws none yet. Pencil ink is ⏳ (PARITY): typed marks shipped first.
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's
