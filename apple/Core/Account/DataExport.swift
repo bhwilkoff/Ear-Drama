@@ -60,12 +60,26 @@ nonisolated struct DataExport: Sendable, Equatable {
         var updated: Date
     }
 
+    /// One line's Pencil ink (docs/EXPORT.md `ink[]`): the stroke count and the `PKDrawing` data, base64, in the
+    /// line block's own units (`width` points of text column).
+    struct InkRow: Sendable, Equatable {
+        var script: String
+        var title: String?
+        var revision: String?
+        var line: String
+        var strokes: Int
+        var width: Double
+        var updated: Date
+        var drawing: String
+    }
+
     var exportedAt: Date
     var history: [History]
     var following: [Follow]
     var queue: [Queued]
     var takes: [Production]
     var marks: [MarkRow] = []
+    var ink: [InkRow] = []
 
     static let historyColumns = ["episode", "title", "seriesName", "airDate", "listenedAt", "positionSeconds", "durationSeconds"]
 
@@ -102,6 +116,10 @@ nonisolated struct DataExport: Sendable, Equatable {
                 drop([("script", m.script), ("title", m.title), ("revision", m.revision), ("line", m.line), ("start", m.start),
                       ("end", m.end), ("kind", m.kind), ("text", m.text), ("hue", m.hue), ("label", m.label), ("note", m.note),
                       ("created", Self.iso(m.created)), ("updated", Self.iso(m.updated))])
+            },
+            "ink": ink.map { i in
+                drop([("script", i.script), ("title", i.title), ("revision", i.revision), ("line", i.line), ("strokes", i.strokes),
+                      ("width", i.width), ("updated", Self.iso(i.updated)), ("drawing", i.drawing)])
             },
         ]
         return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])

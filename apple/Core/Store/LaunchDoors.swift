@@ -84,7 +84,10 @@ struct LaunchDoors: Sendable, Equatable {
                                    prefs: environment["APP_READER_PREFS"],
                                    hear: environment["APP_READER_HEAR"] == "1",
                                    studio: environment["APP_READER_STUDIO"] == "1",
-                                   resetMarks: environment["APP_READER_RESET_MARKS"] == "1"),
+                                   resetMarks: environment["APP_READER_RESET_MARKS"] == "1",
+                                   ink: environment["APP_READER_INK"] == "1",
+                                   inkFinger: environment["APP_READER_INK_FINGER"] == "1",
+                                   inkDemo: environment["APP_READER_INK_DEMO"] == "1"),
             production: environment["APP_PRODUCTION"],
             picker: environment["APP_PICKER"]
         )

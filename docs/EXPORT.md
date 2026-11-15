@@ -22,6 +22,8 @@ share or save sheet. Nothing is uploaded, and no account is needed.
 - `takes[]`: `production`, `title`, `created`, and `takes[]` with `id`, `lineID`, `created`, `chosen` (plus `part` and `seconds` on the apps). The recordings' audio is not in the file; it stays in the app.
 - `marks[]` (PLAYS-DESIGN §2.10, Decision 076 S5): every script mark on the device, one row a mark: `script`, `title`, `revision`, `line`, `start`, `end` (offsets into the line's printed words), `kind` (`highlight`, `underline`, `breath`, `pause`, `beat`, `note`), `text` (the marked words; empty for a point mark), `hue` (a highlight's), `label` (a beat's), `note` (a note's), `created`, `updated`. Web, iOS, iPadOS, macOS (`MarkStore.exportRows`, `DataExport.marks`) and Android since 2026-11-15. A mark a revision could not place is exported as stored.
 
+- `ink[]` (PLAYS-DESIGN §2.10 rule 1, iPad Pencil ink): one row a line that has ink: `script`, `title`, `revision`, `line`, `strokes` (the count), `width` (the text column's width in points the strokes' units are measured in) and `drawing` (the line's `PKDrawing` data, base64: the whole ink, so nothing is lost and it can be read back). Chosen over a bare count so an export is a complete copy of the person's own work; the data is in the line block's coordinates, so it does not depend on a page. iOS, iPadOS and macOS (`InkStore.exportRows`, `DataExport.ink`); the web and Android hold no ink and omit the key. Ink a revision could not place is exported as stored.
+
 A field the device does not know is `null`, never invented. An empty library
 exports empty lists, not an error.
 
@@ -34,5 +36,5 @@ Cells with a comma, quote or line break are quoted, quotes doubled; lines end
 
 ## Checks
 
-`js/export.test.js`, `apple/Tests/DataExportTests.swift`,
+`js/export.test.js`, `apple/Tests/DataExportTests.swift`, `apple/Tests/InkTests.swift`,
 `android/.../data/DataExportTest.kt`, `android/.../plays/MarksCoreTest.kt`.
