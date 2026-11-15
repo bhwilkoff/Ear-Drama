@@ -403,7 +403,7 @@ three modes) is unchanged in what the engine does; this section is where it happ
    The record control is always on screen (Q9 (a)).
 7. **Wide: the script on one side, the studio on the other.** When the reader has 860 pt (px,
    dp) or more, the studio's panel stands beside the script: the current line's take list, the
-   cast with each part's voice or performer (§2.8's chips and picker), **Listen through from
+   cast with each part's voice (§2.8's chips and picker), or, for a part another member holds in a shared production, that person's chosen name in place of the chip, **Listen through from
    here**, Delete unused takes, Done with this part, and the keys. The script keeps the rest of
    the width (two facing pages when it still holds 860). On the open iPhone Duo this is the
    reader's wide layout, later an `ArrangementView` (S4); on a Mac the window's inspector; on an

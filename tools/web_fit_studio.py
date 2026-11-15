@@ -247,6 +247,13 @@ def main():
             elif not (rows[1]['on'] and rows[1]['checked'] and not rows[0]['on']): bad(f'the newest take is not the chosen one: {rows}')
             if any(r['on'] and r['del'] for r in rows): bad('a Delete is offered on the chosen take')
             if dark is False or w in (375, 1440): shot('takes' if w < 860 else 'wide')
+            # A part another member holds names them, not a voice (the chip's row is replaced).
+            if dark is False or w in (375, 1440):
+                got = ev("(() => { const box = document.querySelector('.st-sec .vc-cast'); const ids = [...box.querySelectorAll('.vc-cast-row')].slice(1, 3).map(r => r.dataset.part); box.setNames({ [ids[0]]: 'Ada Lovelace', [ids[1]]: 'Grace H.' }); return JSON.stringify([...box.querySelectorAll('.vc-cast-who')].map(n => n.textContent)); })()")
+                if json.loads(got) != ['Ada Lovelace', 'Grace H.']: bad(f'the cast does not show the performers: {got}')
+                if ev("document.querySelectorAll('.st-sec .vc-cast-row .vc-chip').length") != ev("document.querySelectorAll('.st-sec .vc-cast-row').length") - 2: bad('a held part still shows a voice chip')
+                shot('cast-names')
+                ev("document.querySelector('.st-sec .vc-cast').setNames({})")
             if ev("(() => { const d = document.querySelector('dialog.st-sheet[open]'); return !!d && d.scrollWidth > d.clientWidth + 1; })()"): bad('the take list sheet scrolls sideways')
             ev("document.querySelector('.st-takes .st-del').click()")
             if not wait(f"document.querySelectorAll('.st-takes .st-take').length === 1 && document.querySelector('#{cur} .rd-take-n').textContent === '1'", 'the deleted take gone', 5): return

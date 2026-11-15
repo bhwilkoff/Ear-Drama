@@ -286,6 +286,16 @@ test('the reader\'s Record continues the part, else takes it where it is open, e
   eq(SC.productionFor([done], notShared, script, MOLLY), { make: true }, 'a part already done is not reopened from the reader');
 });
 
+test('the cast shows the performer of a part someone else holds, never mine, open or silent ones', () => {
+  const rec = {
+    parts: { a: { status: 'recording', performer: 'Ada', user_id: 'u2' }, b: { status: 'done', user_id: 'u3' },
+             c: { status: 'recording', performer: 'Me', user_id: 'u1' }, d: { status: 'open' }, e: { status: 'silent', user_id: 'u2' } },
+    members: [{ user_id: 'u1', display_name: 'Me' }, { user_id: 'u2', display_name: 'A. L.' }, { user_id: 'u3', display_name: 'Grace H' }],
+  };
+  eq(SC.heldBy(rec, 'u1'), { a: 'Ada', b: 'Grace H' }, 'their chosen name, else their member name');
+  eq(SC.heldBy(null, 'u1'), {}, 'no record, no names');
+});
+
 (async () => {
   for (const [name, fn] of results) {
     try { await fn(); passes += 1; console.log(`  ok    ${name}`); }

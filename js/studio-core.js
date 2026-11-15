@@ -161,5 +161,22 @@ const StudioCore = (() => {
     return st;
   }
 
-  return { startLine, lineState, productionFor, create };
+  /**
+   * Who holds each part someone else has in a shared production: { part id: name }. The name is the
+   * one the holder chose for the part, else their name among the members. Open and silent parts and
+   * this person's own are left out.
+   */
+  function heldBy(rec, me) {
+    const out = {};
+    if (!rec || !rec.parts) return out;
+    for (const [id, s] of Object.entries(rec.parts)) {
+      if (!s || !['recording', 'done'].includes(s.status) || !s.user_id || s.user_id === me) continue;
+      const m = (rec.members || []).find(x => x.user_id === s.user_id);
+      const name = String(s.performer || (m && m.display_name) || '').trim();
+      if (name) out[id] = name;
+    }
+    return out;
+  }
+
+  return { heldBy, startLine, lineState, productionFor, create };
 })();

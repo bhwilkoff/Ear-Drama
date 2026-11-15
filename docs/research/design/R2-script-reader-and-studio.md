@@ -58,7 +58,7 @@ Rules this design is held to (not restated below):
 5. Wide layouts: the script is the primary pane and the studio the supporting pane:
    SwiftUI `ArrangementView` split on the open iPhone Duo (iOS 27.1, gated), the
    same two panes in an `HStack` on iPad and iOS below 27.1, a Mac window with an
-   inspector, `SupportingPaneScaffold` on Android, two columns on the web at 900 px.
+   inspector, `SupportingPaneScaffold` on Android, two columns on the web at 860 px.
    Closed Duo: the script with a compact record dock.
 6. Downloadable voices: **Kokoro-82M** (Apache-2.0 weights, 28 English voices,
    ~86-92 MB q8 ONNX) on all three stacks, with the GPL eSpeak phonemizer kept out;
@@ -564,7 +564,7 @@ is the supporting pane.** At compact width the studio collapses into the dock an
 | Mac | A production is a window: Contents sidebar (acts, scenes, my lines), the Reader, the studio as an `.inspector` (toggle ⌥⌘I); menu bar "Recording" menu with every shortcut | `NavigationSplitView` + `.inspector` |
 | Android phone | Reader + bottom dock, sheets | Compose `Scaffold` |
 | Android tablet / foldable open (expanded) | Script and studio side by side; tabletop posture puts the dock below the hinge | `SupportingPaneScaffold`, `currentWindowAdaptiveInfo().windowPosture` |
-| Web ≥ 900 px | Two columns: reader (reading measure) and studio column (360 px); below 900 px reader + sticky dock | CSS grid, container queries |
+| Web ≥ 860 px | Two columns: reader (reading measure) and studio column (360 px); below 860 px reader + sticky dock | CSS grid, container queries |
 | tvOS | No studio (below) | |
 
 Duo details from Apple (via Archive Watch IPHONE-DUO.md): toolbar items need a symbol

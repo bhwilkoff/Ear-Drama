@@ -314,6 +314,15 @@ const ReaderCore = (() => {
     return at;
   }
 
-  return { SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
+  /** Where Close goes: back when the reader was opened from inside the app, else the play's page (or the production). */
+  function closeTo(inApp, studio, production, id) {
+    if (inApp) return 'back';
+    return studio ? `?production=${encodeURIComponent(production)}` : `?play=${encodeURIComponent(id)}`;
+  }
+
+  /** J and K (either case) move to my next and previous line: +1, -1, else 0. */
+  const myLineStep = (key) => (key === 'j' || key === 'J' ? 1 : key === 'k' || key === 'K' ? -1 : 0);
+
+  return { closeTo, myLineStep, SIZES, DEFAULT_SIZE, SPACING, LAYOUTS, SPREAD_MIN, GUTTER_MIN_EM, normalizePrefs, perSpread, pageAt, pageCount, lineAtPage,
            spreadStart, turn, swipeTurn, tapZone, keyTurn, pageLabel, remember, runsOf, spaceBetween, isVerse, layoutOf, cueTail };
 })();

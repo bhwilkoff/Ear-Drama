@@ -359,6 +359,14 @@ const Studio = (() => {
     }
 
     const castBox = CastUI.list({ script, cast: api.cast, voice: api.voice });
+    // A part another member holds shows who they are, not a voice (shared productions only).
+    const link = store.share ? store.share(id) : null;
+    if (link && typeof API !== 'undefined' && API.plays && API.account && API.account.signedIn()) {
+      API.plays.get(link.pid).then((rec) => {
+        if (ss.detached || !rec) return;
+        castBox.setNames(SC.heldBy(rec, API.account.state().user_id));
+      }).catch((err) => console.error(err));
+    }
     const listenBtn = el('button', { type: 'button', class: 'btn btn-way st-listen', onclick: () => listenFromHere() });
     function listenFromHere() {
       if (ss.listen && ss.listen.playing) { ss.listen.stop(); return; }
