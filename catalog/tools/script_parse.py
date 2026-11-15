@@ -10,9 +10,16 @@ words of the source less its brackets and the speaker's label.
 A line is
     {"id": "L0007", "kind": "speech"|"sound"|"music"|"direction",
      "role": "FIBBER" | None, "source": "<the block as printed>",
-     "parts": [{"say": ...}, {"direction": ...}, {"mic": ...}, {"sound": ...}]}
+     "parts": [{"say": ...}, {"direction": ...}, {"mic": ...}, {"sound": ...}],
+     "em": [2]}                       # optional: indexes of said parts printed in italics (emphasis)
 Stage directions are kept apart from speech (their own parts or lines) so the
 people casting a stage play can decide how to read them for radio (Decision 059).
+`mic` and `sound` parts are radio conventions; a stage play's spans are directions or said words.
+
+Line ids are positional (L0001, L0002, ... in text order) and marks and takes anchor to them, so a
+parser change must not renumber them. A speech the parser used to fold into the line above it and now
+finds on its own (the R2-play-typography §4 run-in fix, 2026-11-14) is marked `split` and takes that
+line's id plus a letter: L0009, L0009a, L0009b, L0010. Any later change that finds new lines does the same.
 
 A stage text's play is found before it is parsed (measured 2026-10-23 over every cached
 Gutenberg text): it begins at the earliest cast list, act or scene heading, or first
@@ -84,7 +91,11 @@ SOUNDWORD = re.compile(r"\b(knock\w*|sound|door|crowd|noise|bell|shot|thunder|wi
 # A title abbreviation is part of the name it opens ("MRS. AUSTIN.", "DR. RANK.", "M. PERRICHON."), so
 # the period after it does not end the speaker. A closed list: any other abbreviation still ends there.
 TITLE_ABBR = r"(?:MRS?|MS|MISS|DR|ST|SIR|LT|CAPT|COL|GEN|REV|PROF|HON|MME|MLLE|MM|MESSRS|MONS|M)"
-CAP = r"(?:%s\.\s+|(?!%s\.\s))[A-ZÀ-Þ][A-ZÀ-Þ0-9.'’\- ]{0,40}?" % (TITLE_ABBR, TITLE_ABBR)
+# A rank printed alone as the label ("COL. Tell your master", gut-49295): the abbreviation is the whole
+# name when what follows its period is a sentence or a direction, not a name in capitals.
+BARE_TITLE = r"(?:MRS?|MS|MISS|DR|SIR|LT|CAPT|COL|GEN|REV|PROF|MME|MLLE)"
+CAP = r"(?:%s(?=\.(?:\s+(?:[A-ZÀ-Þ][a-zà-ÿ]+|I)(?=[\s,;:!?.'’—-])|\s*[(\[]|--))|(?:%s\.\s+|(?!%s\.\s))[A-ZÀ-Þ][A-ZÀ-Þ0-9.'’\- ]{0,40}?)" % (
+    BARE_TITLE, TITLE_ABBR, TITLE_ABBR)
 S_ROLE_OWN = re.compile(r"^_?(?P<role>%s)_?\.?\s*(?P<d>\[[^\]]*\]|\(_[^)]*_\)|\([^)]*\))?\s*$" % CAP)
 S_ROLE_COLON = re.compile(r"^_?(?P<role>%s)_?\s*:\s*(?P<text>.+)$" % CAP, re.S)
 S_ROLE_INLINE = re.compile(r"^_?(?P<role>%s)_?\.\s+(?P<text>\S.+)$" % CAP, re.S)
@@ -106,6 +117,9 @@ SECTION_ACT = re.compile(r"^[\W_]*(?:ACT(?:US)?\.?\s+%s\b|(?:THE\s+)?%s\s+ACT\b)
 SECTION_SCENE = re.compile(r"^[\W_]*(?:SC(?:ENE|ENA|OENA)\.?\s+%s\b|(?:THE\s+)?%s\s+SCENE\b)" % (_SEC_NUM, _SEC_ORD),
                            re.I)
 SECTION_PART = re.compile(r"^[\W_]*(?:PROLOGUE|EPILOGUE|INDUCTION)[\W_]*$", re.I)
+# A heading in capitals that a label pattern would read as a speaker ("FOURTH SCENE. A haymow.",
+# "TABLEAU II. A Saloon ...", "DIALOGUE"): a direction when more follows it, never a role.
+HEADING_SPEAKER = re.compile(r"^(?:THE\s+)?%s\s+(?:SCENE|ACT|TABLEAU)$|^TABLEAU(?:\s+(?:[IVXLC]+|\d+))?$|^DIALOGUE$" % _SEC_ORD)
 
 
 def section_level(text):
@@ -170,26 +184,82 @@ def gutenberg_body(raw):
     return t[a.end() if a else 0: b.start() if b else len(t)]
 
 
+# The words a stage direction opens with (R2-play-typography §4, measured 2026-11-14 over the library):
+# an italic or parenthesized span that starts with one is a direction even inside a sentence.
+DIRECTION_WORDS = frozenset("""aside apart alone solus within aloud together offstage exit exeunt enter enters exits
+re-enter reenter manet pause pauses to sings sing laughs laugh smiles sighs sobs weeps cries rises sits stands kneels
+bows turns goes crosses looks points reads writes nods starts shouts calls whispers dies falls comes runs embraces kisses
+music softly loudly quickly slowly angrily sadly gravely coldly warmly tenderly sharply hastily eagerly impatiently
+quietly ironically sarcastically coolly dryly drily gently firmly bitterly timidly nervously excitedly earnestly
+he she they both all each sotto""".split())
+PRONOUNS = frozenset("he she they both all each".split())
+NOT_PARTICIPLE = frozenset("nothing something anything everything thing things king kings ring wing evening morning "
+                           "darling sterling shilling farthing lightning pudding wedding stocking ceiling".split())
+INTO_SCENE = re.compile(r"^(?:in|with|at|on|from|into|under|behind)\s+(?:a|an|the|his|her|their|my|its|one)\b", re.I)
+RADIO_SOUND = re.compile(r"^(?:sounds?|noises?|sfx|sound\s+effects?)\b", re.I)
+
+
+def _directional(inner):
+    """A span whose words read as stage business: a direction word, a participle ("rising"), or
+    "in a low voice"-style placing."""
+    words = inner.split()
+    first = re.sub(r"[^a-z'\-]", "", words[0].lower()) if words else ""
+    if first in PRONOUNS and len(words) == 1:
+        return False  # "_he_ said so": a pronoun alone is stressed; "_he turns_" is business
+    return first in DIRECTION_WORDS or (first.endswith("ing") and first not in NOT_PARTICIPLE) or bool(INTO_SCENE.match(inner))
+
+
+def _inside_sentence(before, after):
+    """Between words of one sentence: what comes before does not end one, what follows runs on."""
+    return bool(before) and not re.search(r"[.!?][\"'’”)]*$", before) and bool(re.match(r"[a-zà-ÿ,;:?!’'”\-]", after))
+
+
 def split_parts(text, italic=True):
     """Speech text -> parts, each an exact slice of `text`. Bracketed or italic spans are
-    directions (mic words become `mic`, effect words `sound`); everything else is `say`.
-    A radio script brackets its directions, so there an italic word ("the _Mayflower_")
-    is spoken (italic=False)."""
+    directions; everything else is `say`. A radio script brackets its directions, so there an
+    italic word ("the _Mayflower_") is spoken (italic=False), and only there is a mic position (`mic`)
+    told apart from a direction. An effect in brackets ("[Knock]") is a `sound` in either.
+
+    In a stage play, a span inside a sentence that does not read as stage business is spoken
+    (R2-play-typography §4): a short italic word is the speaker's emphasis ("in which _I_ have
+    been"), returned as its own `say` part flagged `_em` (parse() lifts the flag into the line's
+    `em`), and a parenthesis is printed punctuation ("which he (in breefe) obeyes", Macbeth's
+    "(Worthy to be a rebel ... him) from the Western Isles"), kept inside the said words."""
     parts, pos = [], 0
     for m in (DIR_SPAN if italic else DIR_SPAN_BRACKETS).finditer(text):
+        raw = m.group(0)
+        inner = raw[1:-1].strip()
+        if inner.startswith("_") and inner.endswith("_") and "_" not in inner[1:-1]:
+            inner = inner[1:-1].strip()
+        before = text[pos:m.start()].strip() or (parts[-1].get("say", "") if parts else "")
+        after = text[m.end():].lstrip()
+        if italic and inner and raw[0] == "(" and "_" not in raw and not inner.endswith(".") \
+                and not _directional(inner) and _inside_sentence(before, after):
+            continue
         say = text[pos:m.start()].strip()
         if say:
             parts.append({"say": say})
-        inner = m.group(0)[1:-1].strip(" _")
-        if inner:
-            kind = "mic" if MIC.match(inner) else "sound" if (SOUNDWORD.search(inner) and m.group(0)[0] == "[") \
-                else "direction"
-            parts.append({kind: inner})
         pos = m.end()
+        if not inner:
+            continue
+        if italic and raw[0] == "_" and len(inner.split()) <= 3 and not inner.endswith(".") \
+                and not _directional(inner) and _inside_sentence(before, after):
+            parts.append({"say": inner, "_em": True})
+        elif italic:
+            parts.append({"sound" if SOUNDWORD.search(inner) and raw[0] == "[" else "direction": inner})
+        else:
+            kind = "mic" if MIC.match(inner) else "sound" if (
+                (SOUNDWORD.search(inner) and raw[0] == "[") or RADIO_SOUND.match(inner)) else "direction"
+            parts.append({kind: inner})
     tail = text[pos:].strip()
     if tail:
         parts.append({"say": tail})
     return parts
+
+
+def _radio_lead(d):
+    """A radio label's own direction ("FIBBER: (CHUCKLING)", "DOC: (OFF)"): a mic position, an effect, or a direction."""
+    return [{"mic" if MIC.match(d) else "sound" if RADIO_SOUND.match(d) else "direction": d}]
 
 
 def _role(r):
@@ -318,9 +388,7 @@ def _radio_items(text):
     for label, b, extra in merged:
         if label:
             d = label.group("d")
-            lead = [{"direction": d[1:-1].strip(" _")}] if d and d[1:-1].strip(" _") else []
-            if lead and MIC.match(lead[0]["direction"]):
-                lead = [{"mic": lead[0]["direction"]}]
+            lead = _radio_lead(d[1:-1].strip(" _")) if d and d[1:-1].strip(" _") else []
             items.append({"kind": "speech", "role": _role(label.group("name")), "source": b + "\n" + extra,
                           "text": extra, "lead": lead})
             note = False
@@ -348,9 +416,7 @@ def _radio_items(text):
                 items.append({"kind": "sound", "source": b})
                 continue
             text = b[m.start("text"):]
-            lead = [{"direction": m.group("paren").strip()}] if m.group("paren") else []
-            if lead and MIC.match(lead[0]["direction"]):
-                lead = [{"mic": lead[0]["direction"]}]
+            lead = _radio_lead(m.group("paren").strip()) if m.group("paren") else []
             items.append({"kind": "speech", "role": role, "source": b, "text": text, "lead": lead})
             continue
         if note:
@@ -478,7 +544,16 @@ def _stage_paras(text, labels, names=None):
 def _caps_role(role):
     r = role.strip(" ._")
     return len(role.split()) <= 4 and not HEADING.match(role) and r.upper() == r and bool(re.search(r"[A-ZÀ-Þ]{2}", r)) \
-        and not NOT_STAGE_ROLE.match(r) and not ROMAN.match(r)
+        and not NOT_STAGE_ROLE.match(r) and not ROMAN.match(r) and not HEADING_SPEAKER.match(r)
+
+
+def _rank_before_name(m, names):
+    """A rank read as the whole label when the word after it is a name the play prints, ending the label
+    ("MRS. Rous. [Placidly.]", gut-2908); "COL. Ruth, ..." is the Colonel speaking."""
+    if not re.fullmatch(BARE_TITLE, m.group("role")):
+        return False
+    after = re.match(r"\.\s*([^\W\d_]+)\.", m.string[m.end("role"):])
+    return bool(after) and after.group(1).upper() in names
 
 
 def _speaker(line, labels, names):
@@ -487,8 +562,53 @@ def _speaker(line, labels, names):
         return _role(_label(m.group("role"), labels, names))
     for rx in (S_ROLE_OWN, S_ROLE_COLON, S_ROLE_INLINE):
         m = rx.match(line)
-        if m and _caps_role(m.group("role")):
+        if m and _caps_role(m.group("role")) and not _rank_before_name(m, names):
             return _role(m.group("role"))
+    return None
+
+
+# A speaker whose direction comes before the period, or who has no period (R2-play-typography §4, D1):
+# "GRACE (reflecting). Never", "HODSON [hesitant]. Is it", "ROY (_rising_). Hallo", "JACK.[Sullenly.]  No.",
+# "BERTHA.--What", "ALL, (_but CODDLE_).--Astonishing", "ZINA:" over its speech, "MADHAV Poor child". Read only
+# for a role the play already names as a speaker, so a capitals name opening a direction is not one.
+S_ROLE_LEAD = re.compile(r"^_?(?P<role>%s)_?(?:[.,]?\s*(?P<d>\[[^\]]*\]|\(_[^)]*_\)|\([^)]*\)|_\([^)]*\)_|_\[[^\]]*\]_)"
+                         r"_?[.:,]?(?:--|—)?|\.(?:--|—)|:$)\s*(?P<text>.*)$" % CAP, re.S)
+S_ROLE_BARE = re.compile(r"^(?P<role>[A-ZÀ-Þ][A-ZÀ-Þ'’\-]+(?: [A-ZÀ-Þ][A-ZÀ-Þ'’\-]+){0,2}) (?P<text>(?:I\b|[A-ZÀ-Þ][a-zà-ÿ'’]).*)$", re.S)
+
+
+ITALIC = re.compile(r"(?<![A-Za-z0-9])_[^_\n]+_(?![A-Za-z0-9])")
+
+
+def _business(joined, known):
+    """A paragraph of stage business printed as names in capitals and italic words ("LINDGREN _appears in the
+    doorway_.", "AXEL _is startled at the sight of_ LINDGREN."): it opens with a known speaker, and outside its
+    italics holds only known speakers' names, "and", and punctuation."""
+    rest = ITALIC.sub(" ", joined)
+    if rest == joined or re.search(r"[(\[]", joined):
+        return False
+    words = re.findall(r"[^\W\d_]+(?:['’][^\W\d_]+)?", rest)
+    names = {w for r in known for w in r.split()}
+    lead = next(iter(words), "")
+    return bool(words) and any(joined.startswith(r) for r in known if r.split()[0] == lead) \
+        and all(w in names or w.lower() in ("and", "with") for w in words)
+
+
+def _lead_speaker(joined, known):
+    """(role, lead parts, text) for a paragraph that opens with a known speaker in one of the S_ROLE_LEAD /
+    S_ROLE_BARE shapes, or None. The text is empty for a label standing over its speech ("ZINA:")."""
+    m = S_ROLE_LEAD.match(joined)
+    d = m and m.group("d")
+    if m and d and re.fullmatch(r"[\[(]\d+[\])]", d.strip("_")):
+        m = None
+    if m and _role(m.group("role")) in known and _caps_role(m.group("role")) and (
+            d or m.group("text") or joined.rstrip().endswith(":")):
+        inner = d.strip("_")[1:-1].strip() if d else ""
+        if inner.startswith("_") and inner.endswith("_") and "_" not in inner[1:-1]:
+            inner = inner[1:-1].strip()
+        return _role(m.group("role")), ([{"direction": inner}] if inner else []), m.group("text").strip()
+    m = S_ROLE_BARE.match(joined)
+    if m and _role(m.group("role")) in known and _caps_role(m.group("role")) and not ENTRANCE.match(m.group("text")):
+        return _role(m.group("role")), [], m.group("text").strip()
     return None
 
 
@@ -549,6 +669,7 @@ def _stage_items(text):
     paras = _stage_paras(body, labels, names)
     items = [{"kind": "front", "source": p} for p in raw[:start]]
     pending, pending_src, incast, casts, last_role = None, None, False, 0, None
+    known = {r for r in (_speaker(p.split("\n")[0].strip(), labels, names) for p, _ in paras) if r}
     for p, cont in paras:
         if items and items[-1]["kind"] in ("speech", "heading", "cast"):
             last_role = items[-1].get("role")
@@ -574,7 +695,7 @@ def _stage_items(text):
             continue
         m = S_ROLE_OWN.match(first)
         if m and len(m.group("role").split()) <= 4 and not HEADING.match(m.group("role")) \
-                and not NOT_STAGE_ROLE.match(m.group("role").strip(" ._")):
+                and not NOT_STAGE_ROLE.match(m.group("role").strip(" ._")) and not HEADING_SPEAKER.match(m.group("role").strip(" ._")):
             rest = "\n".join(l.strip() for l in lines[1:]).strip()
             lead = [{"direction": m.group("d").strip("[]() _")}] if m.group("d") else []
             if rest:
@@ -591,26 +712,53 @@ def _stage_items(text):
             pending = None
             continue
         m = S_ROLE_COLON.match(joined) or S_ROLE_INLINE.match(joined)
+        if m and _rank_before_name(m, names):
+            m = None
         if m and ROMAN.match(m.group("role").strip(" ._")):
             items.append({"kind": "heading", "source": p})
             pending = None
             continue
         if m and _caps_role(m.group("role")):
-            items.append({"kind": "speech", "role": _role(m.group("role")), "source": p, "text": m.group("text")})
+            item = {"kind": "speech", "role": _role(m.group("role")), "source": p, "text": m.group("text")}
+            if re.fullmatch(BARE_TITLE, m.group("role")) and not pending and not (cont and last_role):
+                item["split"] = True
+            items.append(item)
             pending = None
             continue
         if pending and re.match(r"^_?(SCENE|PLACE|TIME)\b", joined):
             pending = None
         if pending:
             items.append({"kind": "speech", "role": pending[0], "source": pending_src + "\n" + p, "text": joined,
-                          "lead": pending[1]})
+                          "lead": pending[1], **({"split": True} if pending[2:] == (True,) else {})})
             pending = None
             continue
-        if re.match(r"^[\[(_]", joined) or ENTRANCE.match(joined) or (m and NOT_STAGE_ROLE.match(m.group("role"))):
+        if re.match(r"^[\[(_]", joined) or ENTRANCE.match(joined) or (m and NOT_STAGE_ROLE.match(m.group("role"))) \
+                or (m and HEADING_SPEAKER.match(m.group("role").strip(" ._"))) or HEADING_SPEAKER.match(first.strip(" ._:")):
             items.append({"kind": "direction", "source": p})
+            if HEADING_SPEAKER.match(joined.strip(" ._:")):
+                items[-1]["opens"] = True  # "TABLEAU." over the picture it names: the paragraph after is its text
+            continue
+        # A speaker printed with the direction before the period (or with no period): before 2026-11-14 the parser
+        # folded such a paragraph into the speech above it, so the speech it opens is marked `split` and takes that
+        # line's id plus a letter (parse), leaving every other line's id as it was.
+        found = _lead_speaker(joined, known)
+        if not found and _business(joined, known):
+            # "LINDGREN _appears in the doorway_.": names and italic business, folded into the speech above before
+            items.append({"kind": "direction", "source": p, **({"split": True} if not (cont and last_role) else {})})
+            continue
+        if found:
+            split = not (cont and last_role)
+            if found[2]:
+                items.append({"kind": "speech", "role": found[0], "source": p, "text": found[2], "lead": found[1],
+                              **({"split": True} if split else {})})
+            else:
+                pending, pending_src = (found[0], found[1], split), p
             continue
         if cont and last_role:
             items.append({"kind": "speech", "role": last_role, "source": p, "text": joined, "continues": True})
+            continue
+        if items and items[-1].pop("opens", False):
+            items[-1]["source"] += "\n\n" + p
             continue
         if items and items[-1]["kind"] == "speech":
             items[-1]["source"] += "\n\n" + p
@@ -674,6 +822,86 @@ def _title_block_is_not_a_speech(raw, items, title):
             it["kind"] = "front"
 
 
+def _letters(n):
+    """1 -> "a", 26 -> "z", 27 -> "aa": the suffix of a line split out of the line before it."""
+    out = ""
+    while n:
+        n, r = divmod(n - 1, 26)
+        out = chr(97 + r) + out
+    return out
+
+
+COLLECTIVE = frozenset("ALL BOTH OMNES CHORUS SEVERAL OTHERS MEN WOMEN MAN WOMAN BOY GIRL VOICE VOICES".split())
+
+
+def _printed_names(items):
+    """The names the play prints outside its speech labels: every capitalized word of its cast list and its
+    directions, in capitals."""
+    out = set()
+    for it in items:
+        if it["kind"] in ("cast", "direction"):
+            out.update(w.upper() for w in re.findall(r"\b[A-ZÀ-Þ][A-Za-zÀ-ÿ'’]{2,}\b", it["source"]))
+    return out
+
+
+def _variant(w):
+    return re.sub(r"(?<=.{3})[ES]$", "", w)
+
+
+def _one_speaker_one_role(items):
+    """One speaker printed under several labels is one role (R2-play-typography §4, D5 and D7):
+
+    - Abbreviations of one name ("BAR"/"BARN" for Barnardo, "QU"/"QUEEN"/"QUEENE"): single-word labels where one
+      starts the others, when every name the play prints (cast list, directions) that starts with the shortest
+      is one name, up to a final E or S ("Queene"), which the longest label starts. A shortest label that is
+      itself printed as a name is someone else ("JOHN" beside "JOHNSON"), and a collective ("ALL") is never merged.
+    - A misprint ("GRAVEN" once beside CRAVEN's 68 speeches, gut-5071): a label of at most two speeches, five or
+      more letters, one letter from exactly one castable role, and printed nowhere but its own label.
+    The role kept is the label with the most speeches (the longer on a tie). Names it relabels, in place."""
+    speech = [it for it in items if it["kind"] == "speech"]
+    count = collections.Counter(it["role"] for it in speech)
+    printed = _printed_names(items)
+    words = [r for r in count if re.fullmatch(r"[A-ZÀ-Þ]+", r) and r not in COLLECTIVE]
+    parent = {}
+
+    def find(x):
+        while parent.get(x, x) != x:
+            x = parent[x]
+        return x
+
+    for s in sorted(words, key=len):
+        longer = [l for l in words if l != s and l.startswith(s)]
+        if not longer or s in printed:
+            continue
+        top = max(longer, key=len)
+        if any(not top.startswith(l) for l in longer):
+            continue
+        named = {_variant(w) for w in printed if w.startswith(s)}
+        if len(named) != 1 or not next(iter(named)).startswith(_variant(top)):
+            continue
+        for l in longer:
+            parent[find(l)] = find(s)
+    rename = {}
+    groups = collections.defaultdict(list)
+    for r in words:
+        groups[find(r)].append(r)
+    for g in groups.values():
+        if len(g) > 1:
+            keep = max(g, key=lambda r: (count[r], len(r)))
+            rename.update({r: keep for r in g if r != keep})
+    big = [r for r in count if count[r] >= CASTABLE_LINES]
+    odd = [r for r in words if count[r] <= 2 and len(r) >= 5 and r not in rename and r not in printed]
+    spoken = {w.upper() for it in speech for w in re.findall(r"[A-Za-zÀ-ÿ]+", it.get("text", ""))} if odd else set()
+    for r in odd:
+        if r in spoken:
+            continue
+        near = [b for b in big if len(b) == len(r) and b != r and sum(x != y for x, y in zip(b, r)) == 1]
+        if len(near) == 1:
+            rename[r] = rename.get(near[0], near[0])
+    for it in speech:
+        it["role"] = rename.get(it["role"], it["role"])
+
+
 def parse(raw, kind, title=None):
     """kind: "radio" (a broadcast script) or "stage" (a Gutenberg play text)."""
     text = gutenberg_body(raw) if kind == "stage" or GUT_START.search(raw) else raw
@@ -695,8 +923,9 @@ def parse(raw, kind, title=None):
         return {"status": "stub", "stub_kind": stub, "words": len(text.split())}
     if kind == "stage":
         _title_block_is_not_a_speech(raw, items, title)
+        _one_speaker_one_role(items)
     lines, roles, unclassified = [], collections.OrderedDict(), []
-    sections, pending = [], []
+    sections, pending, numbered, letters = [], [], 0, 0
     for it in items:
         if it["kind"] == "heading" and section_level(it["source"]):
             pending.append(it["source"])
@@ -705,16 +934,23 @@ def parse(raw, kind, title=None):
         if it["kind"] == "other":
             unclassified.append(it["source"])
             continue
-        lid = f"L{len(lines) + 1:04d}"
+        if it.get("split"):
+            letters += 1
+            lid = f"L{numbered:04d}{_letters(letters)}"
+        else:
+            numbered, letters = numbered + 1, 0
+            lid = f"L{numbered:04d}"
         # A printed heading the parser sets aside is kept, verbatim, as a section at the line it opens.
         sections.extend({"line": lid, "source": src} for src in pending)
         pending = []
         if it["kind"] == "speech":
             parts = (it.get("lead") or []) + split_parts(it["text"], italic=kind == "stage")
+            em = [k for k, p in enumerate(parts) if p.pop("_em", False)]
             r = roles.setdefault(it["role"], {"name": it["role"], "lines": 0, "words": 0})
             r["lines"] += 1
             r["words"] += sum(len(p["say"].split()) for p in parts if "say" in p)
-            lines.append({"id": lid, "kind": "speech", "role": it["role"], "source": it["source"], "parts": parts})
+            lines.append({"id": lid, "kind": "speech", "role": it["role"], "source": it["source"], "parts": parts,
+                          **({"em": em} if em else {})})
         else:
             lines.append({"id": lid, "kind": it["kind"], "role": None, "source": it["source"]})
     blocks = len(lines) + len(unclassified)

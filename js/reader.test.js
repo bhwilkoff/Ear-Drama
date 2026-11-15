@@ -276,6 +276,9 @@ test('the page: a speech run into another is attributed to its speaker; cues get
   const stress = R.layoutOf({ id: 'L5', kind: 'speech', role: 'A', parts: [{ say: 'It is the first in which' }, { direction: 'I' }, { say: 'have been serious.' }, { direction: 'Sits.' }, { say: 'Well.' }] }, ['A']);
   eq(stress.speeches[0].rows[0].runs.map(r => [r.text, r.said]), [['It is the first in which', true], ['I', true], ['have been serious.', true], ['Sits.', false], ['Well.', true]],
     'an italic word between lowercase said words is emphasis; a sentence direction stays a direction');
+  const em = R.layoutOf({ id: 'L6', kind: 'speech', role: 'A', parts: [{ say: 'It is the first in which' }, { say: 'I' }, { say: 'have been serious.' }], em: [1] }, ['A']);
+  eq(em.speeches[0].rows[0].runs.map(r => [r.text, r.kind, r.said]), [['It is the first in which', 'say', true], ['I', 'em', true], ['have been serious.', 'say', true]],
+    'a part the catalog marks `em` is said, in italic');
   eq(R.cueTail('I could love anybody. Any pretty woman, that is.'), 22, 'the cue is the last sentence');
   eq(R.cueTail('Who is there?'), 0, 'one sentence is all cue');
 });

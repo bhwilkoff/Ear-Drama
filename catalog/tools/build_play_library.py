@@ -113,11 +113,12 @@ HEADING_ROLE = re.compile(r"^(THE (SUBJECT|SUMMARY|ARGUMENT)\b|(ANTI)?STROPHE\b|
 def role_artifact(entry):
     """A role the parser read out of something that is not a speaker: a bare honorific (a cast list's
     "MRS. CRILLY" split at the period), the play's own title, a translator's heading, or a chorus
-    or tableau marker. Names it, or None."""
+    or tableau marker. Names it, or None. "DR." with a castable part is the Doctor speaking (gut-70635-5)."""
     title = entry["title"].upper().strip(" .")
     for r in entry["roles"]:
         name = r["name"].upper().strip(" .")
-        if BARE_HONORIFIC.match(name) or HEADING_ROLE.match(name):
+        if (BARE_HONORIFIC.match(name) and not (name.startswith("DR") and r["lines"] >= P.CASTABLE_LINES)) \
+                or HEADING_ROLE.match(name):
             return r["name"]
         if (name == title or name == "THE " + title) and r["lines"] < P.CASTABLE_LINES:
             return r["name"]
@@ -182,13 +183,34 @@ def work_key(entry):
     return title, tuple(sorted(a["name"] for a in entry["authors"] if a.get("name")))
 
 
+def edition(entry):
+    """How well a text of a play keeps it, in quarters so that two good texts tie (higher is better):
+    (speeches whose speaker is a full name, speeches that keep their verse lines). A speaker is abbreviated when a direction prints a longer
+    name it starts ("HAM" beside "Enter Hamlet"); verse lines are kept when a speech holds a line break.
+    A Folio text (gut-2265 Hamlet: "Bar."/"Barn.", every speech run onto one line) scores below a modern
+    edition (gut-1524) of the same play."""
+    printed = set()
+    for l in entry["lines"]:
+        if l["kind"] == "direction":
+            printed.update(w.upper() for w in re.findall(r"\b[A-ZÀ-Þ][A-Za-zÀ-ÿ]{2,}\b", l.get("source") or ""))
+    speech = [l for l in entry["lines"] if l["kind"] == "speech"]
+    if not speech:
+        return (0, 0)
+    short = {r["name"] for r in entry["roles"] if " " not in r["name"]
+             and any(w.startswith(r["name"]) and len(w) >= len(r["name"]) + 2 for w in printed)}
+    full = sum(l["role"] not in short for l in speech) / len(speech)
+    verse = sum(any("\n" in p.get("say", "") for p in l["parts"]) for l in speech) / len(speech)
+    return (int(full * 4), int(verse * 4))
+
+
 def prefer(entry, protect):
-    """Higher wins: a bundled play (never reissued), then a single-play text over a volume's
-    play, then the fuller cast list, then the longer text, then the lower ebook number."""
+    """Higher wins: a bundled play (never reissued), then the better edition (full speaker names, then
+    verse lines kept: `edition`), then a single-play text over a volume's play, then the fuller cast list,
+    then the longer text, then the lower ebook number."""
     voices = sum(1 for r in entry["roles"] if r["lines"] >= P.CASTABLE_LINES)
     words = sum(r["words"] for r in entry["roles"])
     ebook = [int(x) for x in entry["id"][4:].split("-")]
-    return (entry["id"] in protect, "collection" not in entry or entry["id"][4:].isdigit(), voices, words,
+    return (entry["id"] in protect, edition(entry), "collection" not in entry or entry["id"][4:].isdigit(), voices, words,
             [-x for x in ebook])
 
 
@@ -228,7 +250,8 @@ def dedupe(entries, protect=()):
         rows.append({"kept": k["id"], "dropped": e["id"], "title": e["title"], "kept_title": k["title"],
                      "overlap": near[e["id"]][k["id"]],
                      "reason": "same work; kept " + ("the bundled play" if k["id"] in protect else
-                               "the single-play text" if "collection" in e and "collection" not in k
+                               "the better edition (full speaker names, verse lines)" if edition(k) > edition(e)
+                               else "the single-play text" if "collection" in e and "collection" not in k
                                else "the fuller cast and text")})
     rows.sort(key=lambda r: (r["kept"], r["dropped"]))
     keys = collections.defaultdict(list)
