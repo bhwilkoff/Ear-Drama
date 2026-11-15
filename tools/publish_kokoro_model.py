@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Publish the Kokoro voice model (Decision 078) as versioned assets of the `kokoro-model` Release.
 
-    python3 tools/publish_kokoro_model.py WORK_DIR [--version 1] [--no-upload]
+    python3 tools/publish_kokoro_model.py WORK_DIR [--version 1] [--native q8f16|q8] [--native-only] [--no-upload]
 
 Fetches the pinned ONNX export from Hugging Face into WORK_DIR (or reuses files already there), checks
 every file against the SHA-256 Hugging Face records for it at that revision, builds the 28-voice table,
 and uploads, never overwriting an existing asset:
 
-  kokoro-vN-model_q8f16.onnx     the native model (Apple, Android: CPU paths; R2-kokoro-feasibility §3)
+  kokoro-vN-model_q8f16.onnx     the native model (Apple, Android: CPU paths; R2-kokoro-feasibility §3), or with
+                                 --native q8, kokoro-vN-model_q8.onnx (model_quantized.onnx: fp32 activations; the
+                                 q8f16 file renders NaN on ONNX Runtime Android, S6a)
   kokoro-vN-voices-en.bin        28 English voices, one float32 table (28 x 510 x 256), VOICES order
   kokoro-vN-tokenizer.json       the phoneme vocabulary
   kokoro-vN-manifest.json        the native manifest: each file's asset name, role, bytes, SHA-256, license
@@ -15,6 +17,7 @@ and uploads, never overwriting an existing asset:
   kokoro-vN-web-manifest.json    the web manifest, with paths as served under <site>/data/kokoro/ and each
                                  file's Release `asset`; tools/fetch_kokoro_model.py places it at site build
 
+--native-only publishes the native files and manifest alone (the web keeps the version it has).
 Every asset's size and SHA-256 are read back from the Release after the upload. Stdlib only, plus `gh`.
 """
 import hashlib
@@ -37,6 +40,7 @@ VOICES = ["af_heart", "af_alloy", "af_aoede", "af_bella", "af_jessica", "af_kore
           "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx", "am_puck",
           "am_santa", "bf_alice", "bf_emma", "bf_isabella", "bf_lily", "bm_daniel", "bm_fable", "bm_george", "bm_lewis"]
 VOICE_BYTES = 510 * 256 * 4
+NATIVE = {"q8f16": "onnx/model_q8f16.onnx", "q8": "onnx/model_quantized.onnx"}
 PART = 45_000_000  # under 50 MB in either unit (Pages warns at 50 MB and refuses 100 MB)
 
 
@@ -83,15 +87,20 @@ def gh(*args):
 
 
 def main():
-    args = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith("--") and sys.argv[i - 1] != "--version"]
+    args = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith("--") and sys.argv[i - 1] not in ("--version", "--native")]
     if not args:
         sys.exit(__doc__)
     work = args[0]
     version = int(sys.argv[sys.argv.index("--version") + 1]) if "--version" in sys.argv else 1
+    precision = sys.argv[sys.argv.index("--native") + 1] if "--native" in sys.argv else "q8f16"
+    if precision not in NATIVE:
+        sys.exit(f"--native must be one of {sorted(NATIVE)}")
+    native_only = "--native-only" in sys.argv
     pre = f"kokoro-v{version}-"
+    model_name = f"{pre}model_{precision}.onnx"
     onnx, voices, root = hf_tree("onnx"), hf_tree("voices"), hf_tree("")
-    q8 = fetch(work, "onnx/model_q8f16.onnx", onnx["onnx/model_q8f16.onnx"])
-    fp32 = fetch(work, "onnx/model.onnx", onnx["onnx/model.onnx"])
+    q8 = fetch(work, NATIVE[precision], onnx[NATIVE[precision]])
+    fp32 = None if native_only else fetch(work, "onnx/model.onnx", onnx["onnx/model.onnx"])
     tok = fetch(work, "tokenizer.json", root["tokenizer.json"])
     out = os.path.join(work, "publish")
     os.makedirs(out, exist_ok=True)
@@ -102,7 +111,7 @@ def main():
             b = open(p, "rb").read()
             assert len(b) == VOICE_BYTES, (v, len(b))
             t.write(b)
-    files = {pre + "model_q8f16.onnx": q8, pre + "tokenizer.json": tok, pre + "voices-en.bin": table}
+    files = {model_name: q8, pre + "tokenizer.json": tok, pre + "voices-en.bin": table}
     for name, src in list(files.items()):
         dst = os.path.join(out, name)
         if src != dst:
@@ -111,30 +120,32 @@ def main():
             os.link(src, dst) if os.stat(src).st_dev == os.stat(out).st_dev else open(dst, "wb").write(open(src, "rb").read())
     common = {"format": 1, "version": version, "name": "Kokoro-82M v1.0", "source": SOURCE, "attribution": ATTRIBUTION,
               "voices": VOICES, "voiceShape": [510, 256], "sampleRate": 24000}
-    native = {**common, "precision": "q8f16", "files": [
-        entry(os.path.join(out, pre + "model_q8f16.onnx"), pre + "model_q8f16.onnx", "model"),
+    native = {**common, "precision": precision, "files": [
+        entry(os.path.join(out, model_name), model_name, "model"),
         entry(table, pre + "voices-en.bin", "voices"),
         entry(os.path.join(out, pre + "tokenizer.json"), pre + "tokenizer.json", "vocab")]}
     parts = []
-    with open(fp32, "rb") as f:
+    with open(fp32 or os.devnull, "rb") as f:
         for i, b in enumerate(iter(lambda: f.read(PART), b"")):
             name = f"{pre}web-model.onnx.part{i:02d}"
             open(os.path.join(out, name), "wb").write(b)
             parts.append({"path": f"model.onnx.part{i:02d}", "asset": name, "bytes": len(b),
                           "sha256": hashlib.sha256(b).hexdigest()})
-    web = {**common, "precision": "fp32", "backend": "webgpu", "files": [
+    web = None if native_only else {**common, "precision": "fp32", "backend": "webgpu", "files": [
         {"path": "model.onnx", "role": "model", "bytes": os.path.getsize(fp32), "sha256": sha(fp32), "license": LICENSE,
          "parts": parts},
         {**entry(table, "voices-en.bin", "voices"), "asset": pre + "voices-en.bin"},
         {**entry(tok, "tokenizer.json", "vocab"), "asset": pre + "tokenizer.json"}]}
     for name, doc in ((pre + "manifest.json", native), (pre + "web-manifest.json", web)):
+        if doc is None:
+            continue
         with open(os.path.join(out, name), "w") as f:
             json.dump(doc, f, indent=1)
             f.write("\n")
-    names = sorted(n for n in os.listdir(out) if n.startswith(pre))
+    names = sorted(n for n in os.listdir(out) if n.startswith(pre) and (not native_only or "web-" not in n))
     total = sum(os.path.getsize(os.path.join(out, n)) for n in names)
     print(f"{len(names)} assets, {total} bytes: native {sum(f['bytes'] for f in native['files'])}, "
-          f"web {sum(f['bytes'] for f in web['files'])} ({len(parts)} model parts)")
+          f"web {sum(f['bytes'] for f in web['files']) if web else 0} ({len(parts)} model parts)")
     if "--no-upload" in sys.argv:
         return
     if subprocess.run(["gh", "release", "view", TAG, "-R", REPO], capture_output=True).returncode != 0:

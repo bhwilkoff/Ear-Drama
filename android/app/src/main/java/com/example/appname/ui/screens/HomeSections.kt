@@ -1,6 +1,6 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import com.example.appname.plays.PlayLibraryFeed
 import com.example.appname.plays.PlayListing
 import com.example.appname.plays.SharedPlays
@@ -409,7 +409,7 @@ fun TodaysPlayBoard(
             StartEarDramaButton(play, onOpenProduction)
             OutlinedButton(onClick = { onOpenScript(play.id) }, modifier = Modifier.tvFocusMark()) { Text("Parts") }
             if (!LocalIsTelevision.current) {
-                FoldButton(Icons.Outlined.MenuBook, "Read", fit.folded, { onRead(play.id) }, description = "Read ${play.title}")
+                FoldButton(Icons.AutoMirrored.Outlined.MenuBook, "Read", fit.folded, { onRead(play.id) }, description = "Read ${play.title}")
             }
         }
     }

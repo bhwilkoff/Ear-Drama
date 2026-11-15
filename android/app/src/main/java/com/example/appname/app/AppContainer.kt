@@ -48,12 +48,12 @@ class AppContainer(context: Context, scope: CoroutineScope) {
     val isTelevision = context.isTelevision()
 
     /**
-     * The downloaded voices (Decision 078, S6d): the model under `filesDir/kokoro/v1`, fetched on the one Ktor client only
+     * The downloaded voices (Decision 078, S6d): the model under `filesDir/kokoro/v2`, fetched on the one Ktor client only
      * when the person asks, the play's phonemes through the library's client. The download runs in the app's scope so
      * leaving the picker does not stop it.
      */
     val kokoro: KokoroReader by lazy {
-        KokoroReader(KokoroModelStore(File(context.filesDir, "kokoro/v1"), KtorRangeFetch(api.client)), phonemes = { id -> plays.phonemes(id) })
+        KokoroReader(KokoroModelStore(File(context.filesDir, "kokoro/v2"), KtorRangeFetch(api.client)), phonemes = { id -> plays.phonemes(id) })
     }
     private val appScope = scope
     private var voiceDownload: Job? = null

@@ -23,10 +23,10 @@ import kotlinx.coroutines.withContext
 class KokoroReader(
     val store: KokoroModelStore,
     private val phonemes: suspend (playId: String) -> String?,
-    private val loader: (KokoroModelStore.Paths, FloatArray) -> KokoroRenderer = { p, table -> OrtKokoroRenderer.load(p.model.path, table) },
+    private val loader: (KokoroModelStore.Paths, FloatArray) -> KokoroRenderer = KokoroEngines::load,
     private val worker: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
     /** Symbols per render: smaller pieces start sooner and peak lower (the S6a bench). */
-    private val maxSymbols: Int = Kokoro.MAX_TOKENS,
+    private val maxSymbols: Int = Kokoro.PIECE_SYMBOLS,
 ) {
     private class Loaded(val renderer: KokoroRenderer, val vocab: Map<String, Long>)
 
@@ -81,10 +81,10 @@ class KokoroReader(
     }
 
     /** Loads the model now (the bench's load time; a first line otherwise loads it). */
-    suspend fun warm(): Boolean = runCatching { engine() != null }.getOrDefault(false)
+    suspend fun warm(): Boolean = runCatching { engine() != null }.onFailure { lastRefusal = "load threw ${it::class.simpleName}: ${it.message}" }.getOrDefault(false)
 
     /**
-     * The line's renders, one per piece of at most [Kokoro.MAX_TOKENS] symbols, handed to [onPiece] as each is made.
+     * The line's renders, one per piece of at most [maxSymbols] symbols, handed to [onPiece] as each is made.
      * False when Kokoro cannot read the line or the FIRST piece is refused (nothing was handed over, so the system
      * voice can read it); a later refused piece ends the line there.
      */

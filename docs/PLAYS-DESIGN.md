@@ -348,13 +348,14 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    (§5).
 10. **Downloaded voices (Kokoro, Decision 078; S6d Android first).** The picker's
    "Downloaded" group, under "On this device", holds one button until the model is here:
-   **Download voices (101 MB)**, never started for the person, on any network. While it
-   downloads: a progress bar, "34 MB of 101 MB" and Cancel; a stopped download resumes
+   **Download voices (107 MB)** (the size is the platform manifest's: 107 MB for the q8 model
+   Android reads, R2-kokoro-feasibility S6a), never started for the person, on any network.
+   While it downloads: a progress bar, "34 MB of 107 MB" and Cancel; a stopped download resumes
    where it stopped (HTTP Range), each file is checked against the manifest's SHA-256 and
    a mismatch is deleted ("The download failed." and Try again). Once here: the 28 voices,
    best grade first, each named "Heart (Kokoro)" so it is never mistaken for a system voice
    of the same name, each with the same preview of the part's own first line; then
-   **Delete downloaded voices (101 MB)**; then the attribution the licenses ask for
+   **Delete downloaded voices (107 MB)**; then the attribution the licenses ask for
    ("Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS
    (CC BY 4.0)."). Auto-cast never casts a Kokoro voice (downloading recasts nothing); a
    Kokoro voice is a person's choice. A line is read by Kokoro only from the play's

@@ -46,7 +46,10 @@ class KokoroBenchActivity : Activity() {
         setContentView(ScrollView(this).apply { addView(out) })
         val minutes = intent.getIntExtra("minutes", 10)
         val count = intent.getIntExtra("lines", 50)
-        job = scope.launch { runCatching { bench(minutes, count) }.onFailure { say("FAILED ${it::class.simpleName}: ${it.message}") } }
+        job = scope.launch {
+            runCatching { bench(minutes, count) }.onFailure { say("FAILED ${it::class.simpleName}: ${it.message}") }
+            say("BENCH END")
+        }
     }
 
     override fun onDestroy() {
@@ -64,22 +67,35 @@ class KokoroBenchActivity : Activity() {
 
     private suspend fun bench(minutes: Int, count: Int) {
         val container = (application as AppNameApplication).container
-        val threads = intent.getIntExtra("threads", 4)
         val level = when (intent.getStringExtra("opt")) {
             "none" -> OrtSession.SessionOptions.OptLevel.NO_OPT
             "basic" -> OrtSession.SessionOptions.OptLevel.BASIC_OPT
             "extended" -> OrtSession.SessionOptions.OptLevel.EXTENDED_OPT
             else -> OrtSession.SessionOptions.OptLevel.ALL_OPT
         }
-        val xnnpack = intent.getBooleanExtra("xnnpack", false)
-        val arena = intent.getBooleanExtra("arena", true)
-        val piece = intent.getIntExtra("piece", Kokoro.MAX_TOKENS)
+        // The shipped settings unless an extra overrides one.
+        val d = com.example.appname.kokoro.KokoroEngines.SHIPPED
+        val arena = intent.getBooleanExtra("arena", d.arena)
+        val o = OrtKokoroRenderer.Options(
+            threads = intent.getIntExtra("threads", d.threads),
+            level = if (intent.hasExtra("opt")) level else d.level,
+            xnnpack = intent.getBooleanExtra("xnnpack", d.xnnpack),
+            nnapi = intent.getBooleanExtra("nnapi", d.nnapi),
+            arena = arena,
+            memPattern = intent.getBooleanExtra("mempattern", arena),
+            shrink = intent.getBooleanExtra("shrink", d.shrink),
+            spin = intent.getBooleanExtra("spin", d.spin),
+            affinity = intent.getStringExtra("affinity") ?: d.affinity,
+            prepack = intent.getBooleanExtra("prepack", d.prepack),
+            initializersOutsideArena = intent.getBooleanExtra("initdev", d.initializersOutsideArena),
+        )
+        val piece = intent.getIntExtra("piece", Kokoro.PIECE_SYMBOLS)
         // The app's store and phonemes, with the session options under test.
         val reader = KokoroReader(container.kokoro.store, { id -> container.plays.phonemes(id) }, { p, table ->
-            OrtKokoroRenderer.load(intent.getStringExtra("model")?.let { java.io.File(getExternalFilesDir(null), it).path } ?: p.model.path, table, threads, level, xnnpack, arena)
+            OrtKokoroRenderer.load(intent.getStringExtra("model")?.let { java.io.File(getExternalFilesDir(null), it).path } ?: p.model.path, table, o)
         }, maxSymbols = piece)
         val store = reader.store
-        say("device ${android.os.Build.MODEL} sdk ${android.os.Build.VERSION.SDK_INT} cores ${Runtime.getRuntime().availableProcessors()} threads $threads opt $level xnnpack $xnnpack arena $arena piece $piece model ${intent.getStringExtra("model") ?: "q8f16"}")
+        say("device ${android.os.Build.MODEL} sdk ${android.os.Build.VERSION.SDK_INT} cores ${Runtime.getRuntime().availableProcessors()} ort ${ai.onnxruntime.OrtEnvironment.getEnvironment().version} $o piece $piece model ${intent.getStringExtra("model") ?: "from the store"}")
         if (store.state.value !is KokoroModelStore.State.Ready) {
             say("downloading the model")
             val watch = scope.launch {
@@ -114,7 +130,7 @@ class KokoroBenchActivity : Activity() {
         val t0 = SystemClock.elapsedRealtime()
         val ok = reader.warm()
         val loadMs = SystemClock.elapsedRealtime() - t0
-        say("model load ${loadMs} ms ok=$ok pss before ${pssBefore / 1024} MB after ${Debug.getPss() / 1024} MB")
+        say("model load ${loadMs} ms ok=$ok${if (!ok) " (" + reader.lastRefusal + ")" else ""} pss before ${pssBefore / 1024} MB after ${Debug.getPss() / 1024} MB")
         if (!ok) return
 
         val rtfs = ArrayList<Double>()

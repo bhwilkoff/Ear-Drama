@@ -252,6 +252,7 @@ of its own. **The comparison between precisions is the measurement.**
 | 28 English voices, one table (28 × 510 × 256 float32) | 14,622,720 |
 | Vocabulary (`tokenizer.json`) | 3,497 |
 | **Total download** | **100,659,802 (101 MB)** |
+| Android since S6a: q8 model (`model_quantized.onnx`, fp32 activations) instead of q8f16, `kokoro-v2-manifest.json` | 92,361,116; total **106,987,333 (107 MB)** |
 | Phonemes per play, on demand | ~10 to 130 KB gzipped |
 | Web only: fp32 model instead of q8f16 (§3.3) | 325,532,232 (326 MB) |
 | Web only: onnxruntime-web runtime (WASM, or JSEP for WebGPU) | 14.8 MB or 29.5 MB, self-hosted |
@@ -402,7 +403,7 @@ detail and its 93k silver entries.
 - misaki's stemmer misses `-ied` past tenses ("denied") and spells unknown ALL-CAPS words
   letter by letter. Both are handled by the build rules, not by patching misaki.
 
-## S6a on the Pixel 8a (Android, 2026-11-15): the gate FAILS
+## S6a on the Pixel 8a (Android, 2026-11-15): the gate PASSES with the q8 model
 
 `KokoroBenchActivity` (DEBUG only, `android/app/src/debug/`), muted (no AudioTrack opened), 50 real
 lines from three published plays (`gut-1782`, `gut-44302-3`, `gut-70684-2`; 118 characters on average),
@@ -421,13 +422,48 @@ PSS is the whole app process (about 215 MB before the model loads); later runs a
 
 The same q8f16 file and the same inputs (tokens from published phonemes, the voice table's row)
 render sound on desktop onnxruntime 1.31.1 on an Apple M-series CPU (47,400 finite samples, peak
-0.54), so the NaN is ONNX Runtime Android's fp16 path, not our inputs. The render guard did its job:
-every NaN line went to the system voice. **Android Kokoro stays behind `BuildConfig.KOKORO_VOICES`
-(off in release).** What would pass needs a decision: a q8 asset in the native manifest for Android
-(+6 MB) and a session that holds both lines (for example the arena on with a cap, or one long-lived
-arena per piece size), measured again on the bench; or an ONNX Runtime release whose fp16 kernels
-are sound on arm64 Android. The engine also adds `libonnxruntime.so`: 34.2 MB on arm64-v8a
-(uncompressed in the APK; Play delivers one ABI), 24.2 MB armeabi-v7a, 40.8 / 40.7 MB x86_64 / x86.
+0.54), so the NaN is ONNX Runtime Android's fp16 path, not our inputs. ONNX Runtime 1.32.0
+(2026-11-13, which fixes Arm64 fp16 grouped `Conv` packing) still renders it all-NaN (1 minute,
+0 of 5 lines, 1,379 MB), so Android does not wait for a fix: it reads the q8 model.
+
+**Second round (same bench, same 50 lines).** The arena keeps the largest render's buffers and
+grows by doubling, which is where the memory went; without it every allocation goes to the system
+allocator, which is where the speed went. The fix keeps the arena and hands its chunks back after
+every render (`RunOptions` `memory.enable_memory_arena_shrinkage = cpu:0`), and caps a piece at
+100 symbols (the existing splitter: sentence end, else comma, else space). Rows are 3 minutes
+unless marked; q8 model throughout; 4 intra-op threads, 1 inter-op, unpinned, unless marked.
+
+| Session | ORT | RTF mean / p95 | First audio p50 / p95 | Peak PSS | Gate |
+|---|---|---|---|---|---|
+| arena + shrink, 150-symbol pieces | 1.31.1 | 0.262 / 0.330 | 1,167 / 2,570 ms | 759 MB | fail (memory) |
+| arena + shrink, 150, memory pattern off | 1.31.1 | 0.345 / 0.382 | 1,477 / 3,187 ms | 734 MB | fail (memory) |
+| arena + shrink, 150, initializers outside the arena | 1.31.1 | 0.259 / 0.298 | 1,100 / 2,544 ms | 761 MB | fail (memory) |
+| arena + shrink, 120 | 1.31.1 | 0.317 / 0.341 | 1,335 / 2,290 ms | 603 MB | fail (memory, by 3 MB) |
+| **arena + shrink, 100** | 1.31.1 | 0.327 / 0.370 | 1,383 / 2,395 ms | 577 MB | **pass** |
+| arena + shrink, 100, prepacking off | 1.31.1 | 0.331 / 0.369 | 1,379 / 2,333 ms | 574 MB | pass |
+| arena + shrink, 100 | 1.32.0 | 0.323 / 0.362 | 1,404 / 2,259 ms | 581 MB | pass |
+| arena + shrink, 100, memory pattern off | 1.32.0 | 0.339 / 0.366 | 1,385 / 2,356 ms | 577 MB | pass |
+| arena + shrink, 80 | 1.32.0 | 0.254 / 0.293 | 833 / 1,359 ms | 576 MB | pass |
+| arena off, 150, 5 threads pinned to the big cores (CPUs 6 to 9) | 1.31.1 | 0.611 / 0.705 | 2,702 / 5,292 ms | 516 MB | pass, barely on speed |
+| **Shipped: arena + shrink, 100, the v2 download through the app's own store** | 1.31.1 | **10 minutes**, 231 lines, 1,945 s of audio: **0.303** / 0.356 (max 0.469) | **1,172 / 2,128 ms** | **579 MB** | **PASS** |
+
+Peak PSS sits at 574 to 581 MB for every piece cap of 100 or less, so it is set by the model and
+runtime (about 405 MB once loaded) plus one short render, not by how long the run lasts; thermal
+status stayed 0 (headroom 0.6 to 0.76) in every run. The shipped run began with the download
+(PSS 299 MB before the model loaded, against about 240 MB in the other runs) and still peaked at
+579 MB. The margin is about 20 MB, so a change to the piece cap, the thread count or the ORT
+version reruns this bench before it ships.
+
+**What shipped (Android, 2026-11-15).** `KokoroEngines.SHIPPED` (arena on, shrink after every
+render, 4 threads), `Kokoro.PIECE_SYMBOLS = 100`, the q8 model as `kokoro-v2-manifest.json` on
+the `kokoro-model` Release (92,361,116 + 14,622,720 + 3,497 bytes; `tools/publish_kokoro_model.py
+--version 2 --native q8 --native-only`; v1 untouched for Apple and the web), and
+`kokoroInRelease = true` in `app/build.gradle.kts`. That switch decides whether a release carries
+`src/ort/` (ONNX Runtime and the renderer) or `src/noort/` (no engine, no `libonnxruntime.so`);
+ONNX Runtime adds 34.2 MB on arm64-v8a (uncompressed in the APK; Play delivers one ABI), 24.2 MB
+armeabi-v7a, 40.8 / 40.7 MB x86_64 / x86. Not run: NNAPI and XNNPACK on the q8 graph (XNNPACK
+did not help q8f16; the q8 graph's integer MatMuls are not XNNPACK ops), and the onnx-community
+`model_uint8` variants (177 MB and 114 MB: bigger downloads than q8, and q8 already passes).
 
 ## Sources
 

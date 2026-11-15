@@ -1,6 +1,6 @@
 package com.example.appname.ui.screens
 
-import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import com.example.appname.plays.PlayListing
 import com.example.appname.ui.FoldButton
 import com.example.appname.ui.EmptyAction
@@ -346,7 +346,7 @@ fun LazyListScope.playPage(
         item(key = "actions") {
             ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
                 start()
-                if (onRead != null) FoldButton(Icons.Outlined.MenuBook, "Read", fit.folded, onRead, description = "Read ${script.title}")
+                if (onRead != null) FoldButton(Icons.AutoMirrored.Outlined.MenuBook, "Read", fit.folded, onRead, description = "Read ${script.title}")
             }
         }
     }
@@ -792,7 +792,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
         }
         if (running == null && !mixing && !LocalIsTelevision.current) {
             OutlinedButton(onClick = onReadAlong) {
-                Icon(Icons.Outlined.MenuBook, contentDescription = null)
+                Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = null)
                 Text("Read along", Modifier.padding(start = Spacing.S2.dp))
             }
         }

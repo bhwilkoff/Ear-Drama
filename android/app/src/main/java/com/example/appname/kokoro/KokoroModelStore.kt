@@ -178,10 +178,11 @@ class KokoroModelStore(
 
     companion object {
         const val RELEASE = "https://github.com/bhwilkoff/Ear-Drama/releases/download/kokoro-model/"
-        const val MANIFEST = "kokoro-v1-manifest.json"
+        // v2: the q8 model (fp32 activations); v1's q8f16 renders NaN on ONNX Runtime Android (R2-kokoro-feasibility S6a).
+        const val MANIFEST = "kokoro-v2-manifest.json"
 
-        /** kokoro-v1-manifest.json's three files: 86,033,585 + 14,622,720 + 3,497 bytes. */
-        const val KNOWN_BYTES = 100_659_802L
+        /** kokoro-v2-manifest.json's three files: 92,361,116 + 14,622,720 + 3,497 bytes. */
+        const val KNOWN_BYTES = 106_987_333L
         private const val MAX_MANIFEST = 1 shl 20
 
         fun sha256(file: File): String {
@@ -197,7 +198,7 @@ class KokoroModelStore(
             return md.digest().joinToString("") { "%02x".format(it) }
         }
 
-        /** "101 MB": decimal megabytes, as the stores and the Files app count. */
+        /** "107 MB": decimal megabytes, as the stores and the Files app count. */
         fun megabytes(bytes: Long): String = "${Math.round(bytes / 1_000_000.0)} MB"
     }
 }

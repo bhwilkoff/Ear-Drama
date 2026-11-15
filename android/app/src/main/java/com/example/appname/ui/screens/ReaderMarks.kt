@@ -26,7 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FormatUnderlined
-import androidx.compose.material.icons.filled.StickyNote2
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -452,7 +452,7 @@ private fun MarkGlyph(m: Mark, dark: Boolean, ink: androidx.compose.ui.graphics.
     when (m.kind) {
         "highlight" -> Box(Modifier.size(22.dp).clip(CircleShape).background(markColor(m.hue, dark)).border(1.dp, MaterialTheme.colorScheme.outline, CircleShape))
         "underline" -> Icon(Icons.Filled.FormatUnderlined, contentDescription = null, tint = ink)
-        "note" -> Icon(Icons.Filled.StickyNote2, contentDescription = null, tint = ink)
+        "note" -> Icon(Icons.AutoMirrored.Filled.StickyNote2, contentDescription = null, tint = ink)
         "breath" -> Text("/", style = MaterialTheme.typography.titleMedium, color = ink)
         else -> Text("//", style = MaterialTheme.typography.titleMedium, color = ink)
     }

@@ -28,7 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -442,7 +442,7 @@ fun PlayTile(
         }
         if (onRead != null) {
             IconButton(onClick = onRead, modifier = Modifier.align(Alignment.TopEnd).size(48.dp).tvFocusMark()) {
-                Icon(Icons.Outlined.MenuBook, contentDescription = "Read ${script.title}", tint = on)
+                Icon(Icons.AutoMirrored.Outlined.MenuBook, contentDescription = "Read ${script.title}", tint = on)
             }
         }
     }

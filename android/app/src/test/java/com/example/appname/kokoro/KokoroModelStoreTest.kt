@@ -23,7 +23,7 @@ class KokoroModelStoreTest {
         val store = KokoroModelStore(root, server)
         assertEquals(KokoroModelStore.State.Absent, store.state.value)
         assertTrue("constructing the store fetched nothing", server.requests.isEmpty())
-        assertEquals("101 MB", KokoroModelStore.megabytes(store.downloadBytes()))
+        assertEquals("107 MB", KokoroModelStore.megabytes(store.downloadBytes()))
         store.download()
         assertEquals(KokoroModelStore.State.Ready, store.state.value)
         val p = store.paths()!!

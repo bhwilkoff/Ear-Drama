@@ -41,6 +41,8 @@ object Kokoro {
 
     /** Symbols per render: Kokoro rushes past ~400 (VOICES.md) and stops at 510. */
     const val MAX_TOKENS = 400
+    /** Symbols per render on a phone: a render's working memory grows with its length (S6a: 100 keeps the Pixel 8a under 600 MB). */
+    const val PIECE_SYMBOLS = 100
     const val STYLE = 256
     const val ROWS = 510
     const val SAMPLE_RATE = 24_000
