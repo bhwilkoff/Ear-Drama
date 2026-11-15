@@ -105,11 +105,36 @@ final class ReaderModel {
     var showMarks = true {
         didSet {
             guard showMarks != oldValue else { return }
+            if !showMarks { inkMode = false }
             MarkStore.savePrefs(show: showMarks, hue: markHue, defaults)
             relayout(keep: position)
         }
     }
     var markHue = MarkHue.all[0]
+    // Pencil ink (PLAYS-DESIGN §2.10 rule 1; InkCore.swift, ReaderInk.swift): per line, in block units.
+    var inks: [String: LineInk] = [:]
+    /// Ink a revision could not place: kept as stored, listed as Not Placed.
+    var lostInks: [LineInk] = []
+    /// Ink mode (iPad): the Pencil draws on the page; a finger still turns pages.
+    var inkMode = false {
+        didSet {
+            guard inkMode != oldValue else { return }
+            if inkMode {
+                clearSelection()
+                markTarget = nil
+                if !showMarks { showMarks = true }
+            }
+        }
+    }
+    /// Counts every change to the ink (the page image is cached by it) and, apart, the changes the canvas did not make.
+    var inkVersion = 0
+    var inkEpoch = 0
+    @ObservationIgnored let inkStore = InkStore()
+    @ObservationIgnored var inkImages: [String: InkImageBox] = [:]
+    #if os(iOS)
+    @ObservationIgnored lazy var inkTools = InkTools()
+    #endif
+    @ObservationIgnored var inkFinger = false
     /// The selected words, a range of the page string, and the word the selection grows from.
     var selection: NSRange?
     @ObservationIgnored var selectionAnchor: NSRange?
@@ -159,6 +184,14 @@ final class ReaderModel {
         showMarks = markPrefs.show
         markHue = markPrefs.hue
         if placed.changed { persistMarks() }
+        if door?.resetMarks == true { try? inkStore.save(scriptID: script.id, title: nil, []) }
+        let inkPlaced = InkCore.place(script, inkStore.load(script.id))
+        inks = Dictionary(inkPlaced.placed.map { ($0.line, $0) }, uniquingKeysWith: { a, _ in a })
+        lostInks = inkPlaced.lost
+        if inkPlaced.changed { persistInks() }
+        inkFinger = door?.inkFinger == true
+        if door?.inkDemo == true { seedDemoInk(from: index) }
+        inkMode = door?.ink == true
         if let name = door?.part ?? saved?.part, script.castParts.contains(where: { $0.id.rawValue == name && $0.id.isSpeaking }) {
             let id = PartID(rawValue: name)
             part = id
@@ -675,6 +708,11 @@ private struct ReaderScreen: View {
             Button { sheet = .text } label: { Label("Text", systemImage: "textformat.size") }
             Button { sheet = .voices } label: { Label("Voices", systemImage: "person.wave.2") }
             Button { sheet = .marks } label: { Label("Marks", systemImage: "bookmark") }
+            if ReaderModel.canDrawInk, model.prefs.layout == .pages {
+                Toggle(isOn: $model.inkMode) { Label("Ink", systemImage: "pencil.tip") }
+                    .toggleStyle(.button)
+                    .accessibilityIdentifier("ink-toggle")
+            }
         }
         #else
         ToolbarItemGroup(placement: .primaryAction) {
@@ -952,6 +990,7 @@ private struct ReaderPageView: View {
     let layout: ReaderLayout
     let page: Int
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         var marks = ReaderLayout.Marks(role: model.part?.roleName, hide: model.hide, peeked: model.peeked)
@@ -965,7 +1004,9 @@ private struct ReaderPageView: View {
             marks.takes = takes
         }
         let scheme = scheme
-        return Canvas { context, _ in
+        let ink = model.inkImage(layout, page: page, dark: scheme == .dark, scale: displayScale)
+        let scale = displayScale
+        return Canvas { context, size in
             // The token colors are dynamic: resolved against the scheme the page is in, not the thread's appearance.
             func cg(_ color: Color) -> CGColor { Self.cgColor(color, dark: scheme == .dark) }
             let muted = cg(Color.brandTextMuted)
@@ -976,8 +1017,12 @@ private struct ReaderPageView: View {
                                            markHues: Dictionary(uniqueKeysWithValues: MarkHue.all.map { ($0, cg(Color.mark($0))) }),
                                            selection: cg(Color.brandSecondary).copy(alpha: 0.30))
             context.withCGContext { layout.draw(page: page, in: $0, theme: theme, marks: marks) }
+            if let ink { context.draw(Image(decorative: ink, scale: scale), in: CGRect(origin: .zero, size: size)) }
         }
         .frame(width: layout.pageSize.width, height: layout.pageSize.height + ReaderLayout.headRoom + model.pageFoot, alignment: .top)
+        #if os(iOS)
+        .overlay { InkOverlay(model: model, layout: layout, page: page) }
+        #endif
         .accessibilityChildren {
             ForEach(Array(layout.lines(onPage: page)), id: \.self) { i in
                 if let state = takes[i], let studio = model.studio {

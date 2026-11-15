@@ -272,7 +272,11 @@ struct MarkSelecting: ViewModifier {
 
     func body(content: Content) -> some View {
         #if os(iOS)
-        content.overlay { SelectionLayer(model: model, spread: spread, selection: model.selection) }
+        if model.inkMode {
+            content
+        } else {
+            content.overlay { SelectionLayer(model: model, spread: spread, selection: model.selection) }
+        }
         #else
         content
             .simultaneousGesture(DragGesture(minimumDistance: 4)
@@ -620,7 +624,7 @@ struct MarksNotebook: View {
             Section {
                 Toggle("Show Marks", isOn: $model.showMarks).accessibilityIdentifier("marks-show")
             }
-            if rows.isEmpty, model.lostMarks.isEmpty {
+            if rows.isEmpty, model.lostMarks.isEmpty, model.inks.isEmpty, model.lostInks.isEmpty {
                 Text("Select words on the page to mark them.")
                     .font(TypeRamp.body)
                     .foregroundStyle(Color.brandTextMuted)
@@ -629,9 +633,15 @@ struct MarksNotebook: View {
                 Section {
                     ForEach(rows) { m in row(m) }
                 }
-                if !model.lostMarks.isEmpty {
+                if !model.inks.isEmpty {
+                    Section("Ink") {
+                        ForEach(model.inkOrder) { i in inkRow(i, placed: true) }
+                    }
+                }
+                if !model.lostMarks.isEmpty || !model.lostInks.isEmpty {
                     Section("Not Placed") {
                         ForEach(model.lostMarks) { m in lostRow(m) }
+                        ForEach(model.lostInks) { i in inkRow(i, placed: false) }
                     }
                 }
             }
@@ -692,10 +702,73 @@ struct MarksNotebook: View {
             .accessibilityLabel("\(m.kind.title): \(m.isSpan ? m.text : (m.label ?? ""))")
     }
 
+    private func inkRow(_ i: LineInk, placed: Bool) -> some View {
+        InkNotebookRow(model: model, ink: i, placed: placed, dismiss: dismiss)
+    }
+
     private func lostRow(_ m: Mark) -> some View {
         label(m)
             .swipeActions { Button("Delete", role: .destructive) { model.deleteLost(m.id) } }
             .contextMenu { Button("Delete", role: .destructive) { model.deleteLost(m.id) } }
+    }
+}
+
+/// One line's ink in the notebook: its strokes as a picture, the speaker, the line's first words. A placed one
+/// goes to its line; one not placed is only listed, and deletable.
+private struct InkNotebookRow: View {
+    let model: ReaderModel
+    let ink: LineInk
+    let placed: Bool
+    var dismiss: (() -> Void)?
+    @Environment(\.colorScheme) private var scheme
+
+    private var speaker: String? {
+        guard let i = model.structure.indexByID[ink.line] else { return nil }
+        let line = model.script.lines[i]
+        return line.kind == .speech ? line.role : nil
+    }
+
+    private var label: some View {
+        HStack(alignment: .center, spacing: Spacing.s3) {
+            Group {
+                if let cg = InkRender.thumbnail(ink, dark: scheme == .dark) {
+                    Image(decorative: cg, scale: 2).resizable().scaledToFit()
+                } else {
+                    Image(systemName: "pencil.tip")
+                }
+            }
+            .frame(width: 72, height: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                if let role = speaker {
+                    Text(verbatim: role).font(TypeRamp.caption.weight(.semibold)).foregroundStyle(Color.brandTextMuted)
+                }
+                Text(verbatim: ink.text).font(TypeRamp.body).lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    var body: some View {
+        Group {
+            if placed {
+                Button {
+                    model.go(to: ink.line)
+                    dismiss?()
+                } label: { label }
+                    .buttonStyle(.plain)
+            } else {
+                label
+            }
+        }
+        .swipeActions { Button("Delete", role: .destructive) { remove() } }
+        .contextMenu { Button("Delete", role: .destructive) { remove() } }
+        .accessibilityIdentifier(placed ? "ink-row" : "ink-lost-row")
+    }
+
+    private func remove() {
+        if placed { model.deleteInk(ink.line) } else { model.deleteLostInk(ink.id) }
     }
 }
 

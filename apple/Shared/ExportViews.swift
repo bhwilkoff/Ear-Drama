@@ -89,7 +89,7 @@ struct ExportSection: View {
                                     chosen: p.chosen[t.lineID] == t.id)
                 })
             },
-            marks: MarkStore().exportRows())
+            marks: MarkStore().exportRows(), ink: InkStore().exportRows())
     }
 }
 #endif

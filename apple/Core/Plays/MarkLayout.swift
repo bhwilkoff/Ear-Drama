@@ -86,7 +86,7 @@ nonisolated struct MarkSpan {
 }
 
 nonisolated extension ReaderLayout {
-    private func frameLines(_ page: Int) -> (lines: [CTLine], origins: [CGPoint]) {
+    func frameLines(_ page: Int) -> (lines: [CTLine], origins: [CGPoint]) {
         let frame = self.frame(page)
         let lines = CTFrameGetLines(frame) as! [CTLine]
         var origins = [CGPoint](repeating: .zero, count: lines.count)
@@ -94,7 +94,7 @@ nonisolated extension ReaderLayout {
         return (lines, origins)
     }
 
-    private func metrics(_ line: CTLine) -> (asc: CGFloat, desc: CGFloat) {
+    func metrics(_ line: CTLine) -> (asc: CGFloat, desc: CGFloat) {
         var asc: CGFloat = 0, desc: CGFloat = 0, lead: CGFloat = 0
         _ = CTLineGetTypographicBounds(line, &asc, &desc, &lead)
         return (asc, desc)

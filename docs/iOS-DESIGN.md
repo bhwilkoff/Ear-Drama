@@ -656,7 +656,23 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
       string right after its word, so the page re-paginates and the script's text is
       untouched; a kern on the word was tried and Core Text drops it once the whole
       script is one string. Marks draw on the Pages layout; Scroll (one SwiftUI `Text`
-      a line) draws none yet. Pencil ink is ⏳ (PARITY): typed marks shipped first.
+      a line) draws none yet. Pencil ink is below.
+    - **Pencil ink as shipped, 2026-11-15** (`InkCore.swift`, `ReaderInk.swift`; this bullet wins over the
+      per-block-canvas paragraph above). One `PKCanvasView` per page, not per line block, so a circle or arrow in
+      the margin is possible; each stroke belongs to the line its first point is in (else the nearest), and is
+      stored in that line's block coordinates: origin the block's top-left, units points at the text column's width
+      when drawn, a line that runs onto the next page one block of stacked pieces. Drawn scaled by the column's
+      width over the stored width, so ink moves with its line on a reflow, a new text size and a page turn.
+      **Ink** (`pencil.tip`, a `Toggle` in the toolbar, iPad on Pages only) turns the layer on: the Pencil draws
+      (`.pencilOnly`), a finger still turns pages, the system's `PKToolPicker` offers pen, pencil, marker and the
+      eraser that takes a whole stroke (no lasso: a moved stroke would have no line). Selection is off while Ink is
+      on. Stored per script beside the marks (`Marks/<script id>.ink`, each line's `PKDrawing` data). A revision
+      keeps a line's ink when its words are unchanged (or moves it to the one id exactly those words moved to);
+      otherwise it is listed under **Not Placed** with a picture, never drawn over other words. iPhone and Mac draw
+      the same ink read-only (an image of the strokes in the page's `Canvas`). Show Marks off hides the ink;
+      Hide My Lines hides a hidden line's. The notebook lists inked lines (picture, speaker, first words). Scroll
+      draws none, like the typed marks. Export: `ink[]` (docs/EXPORT.md). DEBUG doors `APP_READER_INK=1`,
+      `APP_READER_INK_FINGER=1` (a finger draws) and `APP_READER_INK_DEMO=1` (three stored strokes).
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's
