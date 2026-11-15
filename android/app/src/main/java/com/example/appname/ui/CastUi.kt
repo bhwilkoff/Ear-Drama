@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.appname.BuildConfig
+import com.example.appname.kokoro.KokoroLive
+import com.example.appname.kokoro.KokoroModelStore
+import com.example.appname.kokoro.KokoroReader
 import com.example.appname.plays.CastSpeaker
 import com.example.appname.plays.CastVoice
 import com.example.appname.plays.DeviceVoiceSource
@@ -74,6 +80,7 @@ import com.example.appname.plays.speedText
 import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.theme.Spacing
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 // The voices on the cast sheet and in the reader (ANDROID-DESIGN §4.9b, PLAYS-DESIGN §2.8, Decision 076 S2): the chip
@@ -99,7 +106,13 @@ fun rememberDeviceVoices(): DeviceVoiceSource {
 
 /** One cast and its speaker for a screen; [tick] changes whenever a choice or the voice list does, so chips repaint. */
 @Stable
-class CastHandle(val source: DeviceVoiceSource, val cast: VoiceCast, val speaker: CastSpeaker) {
+class CastHandle(
+    val source: DeviceVoiceSource,
+    val cast: VoiceCast,
+    val speaker: CastSpeaker,
+    val kokoro: KokoroReader? = null,
+    val playId: String = "",
+) {
     var tick by mutableIntStateOf(0)
         private set
 
@@ -114,6 +127,8 @@ class CastHandle(val source: DeviceVoiceSource, val cast: VoiceCast, val speaker
 fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: String?): CastHandle? {
     val context = LocalContext.current
     val muted = com.example.appname.navigation.LocalPlayerMuted.current
+    // Behind a flag until the S6a gate passes on the Pixel 8a (PARITY "Downloadable voices"): none at all when off.
+    val kokoro = LocalAppContainer.current.takeIf { BuildConfig.KOKORO_VOICES }?.kokoro
     val handle = remember(source, script?.id, productionId) {
         script?.let {
             val cast = VoiceCast(
@@ -122,13 +137,20 @@ fun rememberCast(source: DeviceVoiceSource, script: PlayScript?, productionId: S
                 voices = source::voices,
                 store = PrefsCastStore(context),
                 seed = productionId?.let { _ -> VoiceCasting.scriptKey(it.id) },
+                downloaded = { kokoro?.voices().orEmpty() },
             )
-            CastHandle(source, cast, CastSpeaker(source, cast))
+            CastHandle(source, cast, CastSpeaker(source, cast, kokoro?.let(::KokoroLive), it.id), kokoro, it.id)
         }
     }
     if (handle != null) {
         handle.speaker.muted = muted
         LaunchedEffect(handle) { source.rev.collect { handle.changed() } }
+        if (kokoro != null) LaunchedEffect(handle) {
+            kokoro.store.state.distinctUntilChanged { a, b -> a::class == b::class }.collect { s ->
+                if (s is KokoroModelStore.State.Ready) kokoro.prepare(handle.playId)
+                handle.changed()
+            }
+        }
     }
     return handle
 }
@@ -223,6 +245,8 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
     var hearing by remember { mutableStateOf<String?>(null) }
     var job by remember { mutableStateOf<Job?>(null) }
     val install = remember(handle) { handle.source.installIntent() }
+    val kokoroState by (handle.kokoro?.store?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow<KokoroModelStore.State>(KokoroModelStore.State.Absent) })
+        .collectAsState()
 
     fun stopHearing() {
         job?.cancel()
@@ -320,9 +344,118 @@ fun VoicePickerSheet(handle: CastHandle, script: PlayScript, part: PartID, onDis
                     ) { Text("Get more voices") }
                 }
             }
+            val kokoro = handle.kokoro
+            if (kokoro != null) {
+                downloadedGroup(kokoro, kokoroState, handle.playId, current, hearing, onHear = { hear(it) }) { v ->
+                    val e = handle.cast.entry(part)
+                    val base = if (e == null || e.engine == VoiceCastEntry.NONE) VoiceCastEntry(VoiceCastEntry.KOKORO, v.id, v.name) else e
+                    change { base.copy(engine = VoiceCastEntry.KOKORO, voice = v.id, name = v.name) }
+                    haptics(Haptic.Selection)
+                }
+            }
         }
     }
 }
+
+/**
+ * The picker's "Downloaded" group (PLAYS-DESIGN §2.8 rule 6, Decision 078; ANDROID-DESIGN §4.9b): before the model is
+ * here, one Download voices button with its size; while it downloads, the progress and Cancel; once here, the 28 Kokoro
+ * voices with their previews, Delete, and the attribution the model's licenses ask for. A play the catalog published no
+ * phonemes for says so instead of listing voices that would not read it.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.downloadedGroup(
+    kokoro: KokoroReader,
+    state: KokoroModelStore.State,
+    playId: String,
+    current: String?,
+    hearing: String?,
+    onHear: (CastVoice) -> Unit,
+    onPick: (CastVoice) -> Unit,
+) {
+    item(key = "downloaded") {
+        Text(
+            "Downloaded",
+            Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    when (val s = state) {
+        is KokoroModelStore.State.Ready -> {
+            if (kokoro.hasPhonemes(playId) == false) {
+                item(key = "kokoro-none") {
+                    Text(
+                        "Not available for this play.",
+                        Modifier.padding(horizontal = Spacing.S4.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                items(kokoro.voices(), key = { "k:" + it.id }) { v ->
+                    VoiceRow(v.name, null, current == v.id, v.id, hearing == v.id, v.id, onHear = { onHear(v) }) { onPick(v) }
+                }
+            }
+            item(key = "kokoro-delete") {
+                val container = LocalAppContainer.current
+                TextButton(onClick = { container.deleteVoices() }, Modifier.padding(horizontal = Spacing.S2.dp)) {
+                    Text("Delete downloaded voices (${KokoroModelStore.megabytes(kokoro.store.downloadBytes())})")
+                }
+            }
+            item(key = "kokoro-credit") {
+                Text(
+                    KOKORO_CREDIT,
+                    Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        is KokoroModelStore.State.Downloading -> item(key = "kokoro-progress") {
+            val container = LocalAppContainer.current
+            val total = s.total.coerceAtLeast(1)
+            val said = "${KokoroModelStore.megabytes(s.done)} of ${KokoroModelStore.megabytes(total)}"
+            Column(Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S2.dp)) {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { (s.done.toFloat() / total).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Downloading voices, $said" },
+                )
+                Row(Modifier.fillMaxWidth().padding(top = Spacing.S1.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(said, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    TextButton(onClick = { container.cancelVoiceDownload() }) { Text("Cancel") }
+                }
+            }
+        }
+        is KokoroModelStore.State.Absent, is KokoroModelStore.State.Failed -> {
+            if (s is KokoroModelStore.State.Failed) {
+                item(key = "kokoro-failed") {
+                    Text(
+                        "The download failed.",
+                        Modifier.padding(horizontal = Spacing.S4.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AppSemantics.colors.error,
+                    )
+                }
+            }
+            item(key = "kokoro-download") {
+                val container = LocalAppContainer.current
+                androidx.compose.material3.OutlinedButton(
+                    onClick = { container.downloadVoices() },
+                    Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp),
+                ) {
+                    Icon(Icons.Filled.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(
+                        "${if (s is KokoroModelStore.State.Failed) "Try again" else "Download voices"} (${KokoroModelStore.megabytes(kokoro.store.downloadBytes())})",
+                        Modifier.padding(start = Spacing.S2.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** The attribution Kokoro-82M's card and the CC BY data sets in its training ask for (R2-kokoro-feasibility §2). */
+const val KOKORO_CREDIT = "Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS (CC BY 4.0)."
 
 @Composable
 private fun VoiceRow(name: String, note: String?, selected: Boolean, rawId: String?, hearing: Boolean, hint: String, onHear: (() -> Unit)?, onPick: () -> Unit) {

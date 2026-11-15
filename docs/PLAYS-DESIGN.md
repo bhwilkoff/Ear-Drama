@@ -300,7 +300,7 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
 
 1. **The unit is an engine and a voice id.** A part's casting is
    `{ engine, voice, name, rate, pitch }`: `engine` is `system` (the platform's own
-   synthesizer), `kokoro` (downloadable voices, phase S6; absent until then) or `none`
+   synthesizer), `kokoro` (the downloaded Kokoro-82M voices, phase S6; rule 10) or `none`
    (Not read); `voice` is the engine's stable identifier (web `voiceURI`, Apple
    `AVSpeechSynthesisVoice.identifier`, Android `Voice.getName()`), **never a language**
    (an iOS 26 report says a voice requested by language ignores the person's Settings
@@ -330,7 +330,7 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
    cast sheet (and the reader's Voices sheet), each change kept at once.
 6. **The picker previews the part's own first line** in the voice tapped (the play's own
    words, never a sample sentence), live, never stored (§5). Only local voices are listed
-   (§5 rule 5), grouped by engine ("On this device"; "Downloaded" arrives with S6), best
+   (§5 rule 5), grouped by engine ("On this device"; "Downloaded", rule 10), best
    first, each by the name the platform gives it (which carries its tier: "Ava (Premium)",
    "Samantha (Enhanced)"). A way to add voices is offered where the platform has one
    (Apple: Settings > Accessibility > Spoken Content > Voices; Android: the engine's
@@ -346,6 +346,26 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
 9. **A voice never passes as a person.** The chip sits beside the dashed ring, every line a
    device voice reads is labeled "Device voice", and nothing of a device voice is stored
    (§5).
+10. **Downloaded voices (Kokoro, Decision 078; S6d Android first).** The picker's
+   "Downloaded" group, under "On this device", holds one button until the model is here:
+   **Download voices (101 MB)**, never started for the person, on any network. While it
+   downloads: a progress bar, "34 MB of 101 MB" and Cancel; a stopped download resumes
+   where it stopped (HTTP Range), each file is checked against the manifest's SHA-256 and
+   a mismatch is deleted ("The download failed." and Try again). Once here: the 28 voices,
+   best grade first, each named "Heart (Kokoro)" so it is never mistaken for a system voice
+   of the same name, each with the same preview of the part's own first line; then
+   **Delete downloaded voices (101 MB)**; then the attribution the licenses ask for
+   ("Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS
+   (CC BY 4.0)."). Auto-cast never casts a Kokoro voice (downloading recasts nothing); a
+   Kokoro voice is a person's choice. A line is read by Kokoro only from the play's
+   published phonemes (contract §4.1); a play with none (held for review) says "Not
+   available for this play." in place of the voices, and a Kokoro part's line Kokoro
+   cannot read (no phonemes, no model, a render with any non-finite sample or only
+   silence) is read by the part's auto-cast system voice, never skipped and never
+   phonemized on the device. After Delete a part cast to a Kokoro voice falls back
+   visibly (rule 8) and its choice returns with the download. A Kokoro render is held in
+   memory, played once, and refused by every writer (§5).
+
 
 ### §2.9 The studio inside the reader (Decision 076, phase S3; binding on every platform that records)
 

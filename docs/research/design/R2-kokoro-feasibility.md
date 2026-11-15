@@ -402,7 +402,35 @@ detail and its 93k silver entries.
 - misaki's stemmer misses `-ied` past tenses ("denied") and spells unknown ALL-CAPS words
   letter by letter. Both are handled by the build rules, not by patching misaki.
 
+## S6a on the Pixel 8a (Android, 2026-11-15): the gate FAILS
+
+`KokoroBenchActivity` (DEBUG only, `android/app/src/debug/`), muted (no AudioTrack opened), 50 real
+lines from three published plays (`gut-1782`, `gut-44302-3`, `gut-70684-2`; 118 characters on average),
+the voices in turn, ONNX Runtime Android 1.31.1 CPU, 4 intra-op threads, thermal status 0 throughout.
+PSS is the whole app process (about 215 MB before the model loads); later runs also sample PSS every
+200 ms during renders, since a render's own peak is freed before the between-line sample.
+
+| Model, session | Minutes | RTF mean / p95 | First audio p50 / p95 | Peak PSS | Gate |
+|---|---|---|---|---|---|
+| **q8f16 (the published model)**, arena on | 1 | n/a: **every sample NaN**, 49 s for one 154-character line, 2.2 GB | n/a | 2.2 GB | fail |
+| q8f16, no graph optimization / XNNPACK | 1 each | same NaN | n/a | 2.2 GB | fail |
+| q8 (`model_quantized.onnx`, 92.4 MB), arena on, 400-symbol pieces | **10** (259 lines, 1,896 s of audio) | **0.295** / 0.344 | 1,186 / 5,453 ms | **1,364 MB** | fail (memory) |
+| q8, arena on, 150-symbol pieces | 3 | 0.297 / 0.345 | 1,243 / 2,711 ms | 845 MB | fail (memory) |
+| q8, arena off, 400 | 3 | 0.612 / 0.781 | 2,640 / 9,558 ms | 402 MB (between lines only) | fail (speed) |
+| q8, arena off, 150 | 3 | **0.793** / 0.867 | 3,775 / 7,908 ms | **517 MB** | fail (speed) |
+
+The same q8f16 file and the same inputs (tokens from published phonemes, the voice table's row)
+render sound on desktop onnxruntime 1.31.1 on an Apple M-series CPU (47,400 finite samples, peak
+0.54), so the NaN is ONNX Runtime Android's fp16 path, not our inputs. The render guard did its job:
+every NaN line went to the system voice. **Android Kokoro stays behind `BuildConfig.KOKORO_VOICES`
+(off in release).** What would pass needs a decision: a q8 asset in the native manifest for Android
+(+6 MB) and a session that holds both lines (for example the arena on with a cap, or one long-lived
+arena per piece size), measured again on the bench; or an ONNX Runtime release whose fp16 kernels
+are sound on arm64 Android. The engine also adds `libonnxruntime.so`: 34.2 MB on arm64-v8a
+(uncompressed in the APK; Play delivers one ABI), 24.2 MB armeabi-v7a, 40.8 / 40.7 MB x86_64 / x86.
+
 ## Sources
+
 
 <https://huggingface.co/hexgrad/Kokoro-82M>, <https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md>,
 <https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX>, <https://github.com/hexgrad/misaki>,

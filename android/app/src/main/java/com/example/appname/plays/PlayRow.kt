@@ -27,7 +27,10 @@ data class PlayRow(
     val rights: PlayScript.Rights? = null,
     val source: PlayScript.Source? = null,
     val path: String = "",
+    /** `phonemes/<id>.json` when the catalog published the play's phonemes (Decision 078); absent for a held play. */
+    val phonemes: String? = null,
 ) : PlayListing {
+
     override val authorLine: String get() = authors.filter { it.isNotBlank() }.joinToString(", ")
     override val authorWithYears: String get() = authorLine
     override val speechCount: Int get() = lines

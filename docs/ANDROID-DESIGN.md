@@ -589,6 +589,26 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   reports no voice gender, so auto-cast alternates by voice only. The cast is a
   `VoiceCast` in `plays/` read by `SystemStandInVoice`, the live listen-through and the
   reader's Hear the cast; kept in `SharedPreferences` (`ed.cast`), never synced.
+  **Downloaded** (Kokoro, Decision 078, S6d; PLAYS-DESIGN §2.8 rule 10; built
+  2026-11-15, PARITY 🚧): below "On this device" and Get more voices, the picker's
+  "Downloaded" heading, then an `OutlinedButton` with the download icon, "Download voices
+  (101 MB)"; while downloading a `LinearProgressIndicator` with "34 MB of 101 MB" and a
+  Cancel `TextButton`; once here the 28 Kokoro voices as the same radio rows with play
+  buttons ("Heart (Kokoro)", best grade first), a "Delete downloaded voices (101 MB)"
+  `TextButton`, and the attribution line in `labelMedium`. The model (the native manifest's
+  three files from the Release `kokoro-model`) is fetched by `kokoro/KokoroModelStore.kt`
+  on the one Ktor client in the app's scope (leaving the sheet does not stop it), resumed
+  with `Range`, checked by SHA-256, kept under `filesDir/kokoro/v1`. `kokoro/KokoroReader.kt`
+  reads the play's `phonemes/<id>.json` through the library transport, renders on ONNX
+  Runtime (`OrtKokoroRenderer`, CPU) on one background thread, refuses NaN or silent
+  renders, and marks every buffer synthetic; `KokoroLive` plays a line once through an
+  `AudioTrack` (nothing at all when muted) for Hear the cast, the listen-through and the
+  preview, and `plays/KokoroStandIn.kt` hands the recorder's cue path a `StandInAudio`.
+  DEBUG only: `KokoroBenchActivity` (the S6a bench, `src/debug/`). The whole group, the engine
+  and the cue path sit behind `BuildConfig.KOKORO_VOICES` (on in DEBUG, off in release) until
+  the S6a gate passes on the Pixel 8a (R2-kokoro-feasibility, "S6a on the Pixel 8a").
+
+
 - **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;
   not on a TV). The tab's root is a `LazyColumn`: **Yours** (this device's
   productions and the shared ones not yet opened, each "n of m lines

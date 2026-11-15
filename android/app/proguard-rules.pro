@@ -17,3 +17,6 @@
 # Crash on R8 errors (don't silently strip) — easier debugging.
 -printusage build/outputs/mapping/release/usage.txt
 -printseeds build/outputs/mapping/release/seeds.txt
+
+# ONNX Runtime (Kokoro voices): its native library calls back into these classes by name over JNI.
+-keep class ai.onnxruntime.** { *; }

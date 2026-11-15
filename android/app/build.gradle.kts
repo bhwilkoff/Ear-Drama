@@ -146,12 +146,16 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            // Kokoro voices (Decision 078) behind a flag: on in DEBUG for the bench and the frames, off in release
+            // until the S6a gate passes on the Pixel 8a (the q8f16 model renders NaN on ONNX Runtime Android).
+            buildConfigField("boolean", "KOKORO_VOICES", "true")
             isDebuggable = true
         }
         release {
             // R8 always on for release — single highest-impact perf knob.
             isMinifyEnabled = true
             isShrinkResources = true
+            buildConfigField("boolean", "KOKORO_VOICES", "false")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
@@ -241,6 +245,9 @@ dependencies {
     // Catalog: the published SQLite file, read through the bundled driver
     implementation(libs.sqlite)
     implementation(libs.sqlite.bundled)
+
+    // Downloadable voices (Kokoro-82M, Decision 078): ONNX Runtime, MIT, CPU provider
+    implementation(libs.onnxruntime.android)
 
     // Playback: Media3 session service + ExoPlayer
     implementation(libs.bundles.media3)
