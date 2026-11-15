@@ -208,6 +208,7 @@ class ProductionStore(val root: File) : ShareStore {
     /** Productions this store made: the studio may still be open on one, so only leaving it removes them. */
     private val madeHere = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private val holds = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val pendingTakes = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     init {
         load()
@@ -219,7 +220,7 @@ class ProductionStore(val root: File) : ShareStore {
             val record = File(dir, "production.json")
             if (!record.isFile) null else runCatching { json.decodeFromString(Production.serializer(), record.readText()) }.getOrNull()
         }
-        val gone = Production.abandoned(read) { it in madeHere || holds.containsKey(it) || share(it) != null }.toSet()
+        val gone = Production.abandoned(read) { it in madeHere || holds.containsKey(it) || pendingTakes.containsKey(it) || share(it) != null }.toSet()
         gone.forEach { folder(it).deleteRecursively() }
         _productions.value = read.filter { it.id !in gone }.sortedByDescending { it.created }
     }
@@ -264,9 +265,27 @@ class ProductionStore(val root: File) : ShareStore {
 
     fun release(id: String) { holds.computeIfPresent(id) { _, n -> (n - 1).takeIf { it > 0 } } }
 
+    /** A take being written for [id]: the production is never removed until [block] has finished (Decision 079). */
+    fun <T> takeWrite(id: String, block: () -> T): T {
+        pendingTakes.merge(id, 1, Int::plus)
+        try {
+            return block()
+        } finally {
+            pendingTakes.computeIfPresent(id) { _, n -> (n - 1).takeIf { it > 0 } }
+        }
+    }
+
+    fun hasPendingTake(id: String): Boolean = pendingTakes.containsKey(id)
+
+    /** Leaving the studio: waits for this production's take writes to settle, then drops it if it is still empty. */
+    suspend fun dropWhenSettled(id: String) {
+        while (hasPendingTake(id)) kotlinx.coroutines.delay(10)
+        dropIfEmpty(id)
+    }
+
     /** Leaving the studio with no take removes a local, unshared production no screen holds (PLAYS-DESIGN §2.3 rule 3a). */
     fun dropIfEmpty(id: String) {
-        if (holds.containsKey(id)) return
+        if (holds.containsKey(id) || pendingTakes.containsKey(id)) return
         val production = production(id) ?: return
         if (Production.abandoned(listOf(production), { share(it) != null }).isNotEmpty()) delete(id)
     }

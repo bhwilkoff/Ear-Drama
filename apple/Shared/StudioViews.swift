@@ -152,25 +152,16 @@ final class StudioModel {
     }
 
     /// Leaving the reader ends the session and closes the microphone, as leaving the recorder did. A local, unshared
-    /// production left with no take is deleted (rule 3a) once any take still being written has landed, and never while
+    /// production left with no take is deleted (rule 3a) once its take writes have settled, and never while
     /// its cast sheet is on screen.
     func end() {
         listen.stop()
         session.end()
         guard !ended else { return }
         ended = true
-        let store = store, session = session, id = target.production
+        let store = store, id = target.production
         ProductionPresence.disappear(id)
-        Task {
-            var waited = 0
-            while session.isBusy, waited < 40 {
-                try? await Task.sleep(for: .milliseconds(250))
-                waited += 1
-            }
-            try? await Task.sleep(for: .seconds(2))
-            guard !ProductionPresence.shows(id) else { return }
-            store.removeIfEmpty(id)
-        }
+        Task { await store.removeWhenSettled(id, isHeld: { ProductionPresence.shows(id) }) }
     }
 
     /// APP_STUDIO_PHASE with the stub engine only (DEBUG): idle starts the studio, listening opens a take on the current

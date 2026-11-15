@@ -140,7 +140,7 @@ const RecordingSession = (() => {
       if (ended) return null;
       const kept = { samples: cap.samples.subarray(from, to), sampleRate: cap.sampleRate };
       if (!kept.samples.length) return null;
-      try {
+      const work = (async () => {
         const atRate = await audio.toTakeRate(kept);
         const file = await store.writeTake(atRate, s.production, lineID);
         const take = {
@@ -153,6 +153,10 @@ const RecordingSession = (() => {
         mutate(p => C.addTake(p, take));
         s.lastTakeBleed = bleed;
         return take;
+      })();
+      if (store.trackTake) store.trackTake(s.production.id, work);
+      try {
+        return await work;
       } catch (e) {
         console.error('take', e);
         set({ kind: 'failed', reason: 'save' });

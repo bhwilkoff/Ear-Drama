@@ -181,14 +181,17 @@ final class RecordingSession {
         heldStandIns = []
         guard !ended, !kept.samples.isEmpty else { return nil }
         do {
-            let file = try store.writeTake(kept, production: production, lineID: lineID)
-            let take = Take(id: UUID().uuidString, lineID: lineID, part: part, file: file, created: .now,
-                            frames: kept.samples.count, sampleRate: kept.sampleRate,
-                            capture: echoCancelled ? .aec : .direct, heard: heard,
-                            loudness: BS1770.integratedLoudness(kept.samples, sampleRate: kept.sampleRate),
-                            peak: BS1770.samplePeak(kept.samples), bleed: bleed)
-            mutate { $0.add(take) }
-            lastTakeBleed = bleed
+            let take = try store.withTakeWrite(production.id) {
+                let file = try store.writeTake(kept, production: production, lineID: lineID)
+                let take = Take(id: UUID().uuidString, lineID: lineID, part: part, file: file, created: .now,
+                                frames: kept.samples.count, sampleRate: kept.sampleRate,
+                                capture: echoCancelled ? .aec : .direct, heard: heard,
+                                loudness: BS1770.integratedLoudness(kept.samples, sampleRate: kept.sampleRate),
+                                peak: BS1770.samplePeak(kept.samples), bleed: bleed)
+                mutate { $0.add(take) }
+                lastTakeBleed = bleed
+                return take
+            }
             return take
         } catch {
             phase = .failed(error.localizedDescription)

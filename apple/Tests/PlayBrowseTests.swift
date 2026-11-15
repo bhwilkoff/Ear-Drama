@@ -275,6 +275,39 @@ struct FirstTakeTests {
         #expect(!FileManager.default.fileExists(atPath: store.folder(empty.id).path))
     }
 
+    @Test func aTakeWrittenAfterTheOldTwoSecondWindowSurvivesWithItsProduction() async throws {
+        let store = ProductionStore(root: Self.root())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let made = try store.create(Self.script())
+        let id = made.id
+        let leaving = Task { await store.removeWhenSettled(id) }
+        try store.withTakeWrite(id) {
+            Thread.sleep(forTimeInterval: 2.5)
+            #expect(!store.removeIfEmpty(id), "a pending write is never removed under")
+            var p = try #require(store.production(id))
+            p.add(Self.take("late"))
+            try store.save(p)
+        }
+        #expect(!(await leaving.value), "not removed")
+        #expect(store.production(id)?.hasTake == true)
+    }
+
+    @Test func anEmptyProductionWithNoPendingWritesIsRemovedOnLeave() async throws {
+        let store = ProductionStore(root: Self.root())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let made = try store.create(Self.script())
+        #expect(await store.removeWhenSettled(made.id))
+        #expect(store.production(made.id) == nil)
+    }
+
+    @Test func aHeldProductionIsNeverPrunedOnLeave() async throws {
+        let store = ProductionStore(root: Self.root())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let made = try store.create(Self.script())
+        #expect(!(await store.removeWhenSettled(made.id, isHeld: { true })))
+        #expect(store.production(made.id) != nil)
+    }
+
     @Test func madeHereLeadsUnderTheDoorsWhileThereAreOneToFive() {
         #expect(!FinishedDramas.leadsHome(count: 0))
         #expect(FinishedDramas.leadsHome(count: 1) && FinishedDramas.leadsHome(count: 5))

@@ -490,12 +490,9 @@ const Studio = (() => {
         s.end();
         if (sheet.open) sheet.close();
         // Left with no take, and not for this production's cast sheet: an abandoned try is deleted (§2.3 rule 3a).
-        // Checked once a take still being written at the close has had time to land in the record.
-        setTimeout(() => {
-          const still = typeof location !== 'undefined' && new URLSearchParams(location.search).get('production') === id;
-          const left = store.production(id);
-          if (!still && left && C.isEmptyProduction(left) && !store.share(id)) store.delete(id).catch((e) => console.error(e));
-        }, 2000);
+        // Only after the take writes of this session have settled, so a take still landing is never lost.
+        const held = () => typeof location !== 'undefined' && new URLSearchParams(location.search).get('production') === id;
+        store.discardIfAbandoned(id, held).catch((e) => console.error(e));
       },
       core, session: s,
     };
