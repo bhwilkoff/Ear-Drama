@@ -1,0 +1,14 @@
+# The play-phoneme build's own environment (Decision 078), made by tools/setup_phoneme_env.sh.
+# Build time only: nothing here ships in an app or on the site; its output (phoneme strings) is data.
+# Licenses checked 2026-11-15 (docs/research/design/R2-kokoro-feasibility.md §1):
+#   misaki 0.9.4 Apache-2.0, installed WITHOUT its [en] extra, which pulls eSpeak (GPL) in.
+#   spaCy MIT, en_core_web_sm MIT, num2words LGPL (run here, never distributed), numpy BSD.
+#   g2p_en Apache-2.0 is installed by the setup script with --no-deps: only its 3.3 MB network
+#   (checkpoint20.npz) is read, never its code, so nltk is never imported or downloaded.
+misaki==0.9.4
+addict==2.4.0
+regex==2026.11.9
+num2words==0.5.14
+spacy==3.8.18
+numpy==2.5.4
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

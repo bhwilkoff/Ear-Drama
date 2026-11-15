@@ -6,6 +6,9 @@
  * The model is data, like the play library: fetched only when the person asks (the size shown
  * first), each file checked against the SHA-256 its manifest records, kept in Cache Storage,
  * and deletable. A manifest without a permissive license recorded for every file is refused.
+ * A file too large for the site (the 326 MB fp32 model; Pages refuses files over 100 MB) is served
+ * in `parts` under 50 MB (tools/fetch_kokoro_model.py): each part is checked and kept on its own,
+ * so a broken download resumes at the part it lost, and the whole is checked once assembled.
  *
  * This file holds model bytes only and no audio path: js/plays.test.js scans it for one.
  */
@@ -15,7 +18,7 @@ const KokoroModel = (() => {
   const FLAG = 'ed.kokoro';
   const CACHE = 'ed-kokoro-v1';
   const LICENSES = ['Apache-2.0', 'MIT', 'BSD-2-Clause', 'BSD-3-Clause'];
-  const DEFAULT_MANIFEST = 'data/voices/kokoro/manifest.json';
+  const DEFAULT_MANIFEST = 'data/kokoro/manifest.json';
 
   /** Whether the prototype is on in this browser: ?kokoro=1 turns it on, ?kokoro=0 off. */
   function enabled(search = (typeof location !== 'undefined' ? location.search : ''), storage = store()) {
@@ -39,6 +42,14 @@ const KokoroModel = (() => {
       if (!Number.isInteger(f.bytes) || f.bytes <= 0) return { ok: false, reason: `${f.path}: no size` };
       if (!/^[0-9a-f]{64}$/.test(f.sha256 || '')) return { ok: false, reason: `${f.path}: no SHA-256` };
       if (!LICENSES.includes(f.license)) return { ok: false, reason: `${f.path}: license ${f.license || 'missing'} is not permissive` };
+      if (f.parts !== undefined) {
+        if (!Array.isArray(f.parts) || !f.parts.length) return { ok: false, reason: `${f.path}: no parts` };
+        for (const p of f.parts) {
+          if (!p || typeof p.path !== 'string' || !/^[\w./-]+$/.test(p.path) || p.path.includes('..')) return { ok: false, reason: `${f.path}: bad part path` };
+          if (!Number.isInteger(p.bytes) || p.bytes <= 0 || !/^[0-9a-f]{64}$/.test(p.sha256 || '')) return { ok: false, reason: `${p.path}: no size or SHA-256` };
+        }
+        if (f.parts.reduce((n, p) => n + p.bytes, 0) !== f.bytes) return { ok: false, reason: `${f.path}: parts do not add up` };
+      }
     }
     return { ok: true, reason: null };
   }
@@ -56,6 +67,22 @@ const KokoroModel = (() => {
     let ready = false;
     const base = new URL(manifestURL, typeof location !== 'undefined' ? location.href : 'https://eardrama.org/');
     const urlOf = (f) => new URL(f.path, base).href;
+    const piecesOf = (f) => f.parts || [f];
+    const join = (bufs) => {
+      const out = new Uint8Array(bufs.reduce((n, b) => n + b.byteLength, 0));
+      let at = 0;
+      for (const b of bufs) { out.set(new Uint8Array(b), at); at += b.byteLength; }
+      return out;
+    };
+    async function cachedBytes(c, f) {
+      const bufs = [];
+      for (const p of piecesOf(f)) {
+        const r = await c.match(urlOf(p));
+        if (!r) return null;
+        bufs.push(await r.arrayBuffer());
+      }
+      return bufs.length === 1 ? new Uint8Array(bufs[0]) : join(bufs);
+    }
 
     async function loadManifest() {
       if (manifest) return manifest;
@@ -76,7 +103,7 @@ const KokoroModel = (() => {
         const m = await loadManifest().catch(() => null);
         if (!m) return false;
         const c = await cachesImpl.open(CACHE);
-        for (const f of m.files) if (!(await c.match(urlOf(f)))) { ready = false; return false; }
+        for (const f of m.files) for (const p of piecesOf(f)) if (!(await c.match(urlOf(p)))) { ready = false; return false; }
         ready = true;
         return true;
       },
@@ -88,23 +115,30 @@ const KokoroModel = (() => {
         const total = totalBytes(m);
         let done = 0;
         for (const f of m.files) {
-          if (await c.match(urlOf(f))) { done += f.bytes; onProgress(done, total); continue; }
-          const r = await fetchImpl(urlOf(f));
-          if (!r.ok || !r.body) throw new Error(`${f.path}: ${r.status}`);
-          const reader = r.body.getReader();
-          const parts = [];
-          for (;;) {
-            const { value, done: end } = await reader.read();
-            if (end) break;
-            parts.push(value);
-            done += value.byteLength;
-            onProgress(done, total);
+          for (const p of piecesOf(f)) {
+            if (await c.match(urlOf(p))) { done += p.bytes; onProgress(done, total); continue; }
+            const r = await fetchImpl(urlOf(p));
+            if (!r.ok || !r.body) throw new Error(`${p.path}: ${r.status}`);
+            const reader = r.body.getReader();
+            const chunks = [];
+            for (;;) {
+              const { value, done: end } = await reader.read();
+              if (end) break;
+              chunks.push(value);
+              done += value.byteLength;
+              onProgress(done, total);
+            }
+            const buf = join(chunks);
+            if (buf.byteLength !== p.bytes || (await sha256(buf)) !== p.sha256) throw new Error(`${p.path}: checksum mismatch`);
+            await c.put(urlOf(p), new Response(buf, { headers: { 'content-type': 'application/octet-stream' } }));
           }
-          const buf = new Uint8Array(parts.reduce((n, p) => n + p.byteLength, 0));
-          let at = 0;
-          for (const p of parts) { buf.set(p, at); at += p.byteLength; }
-          if (buf.byteLength !== f.bytes || (await sha256(buf)) !== f.sha256) throw new Error(`${f.path}: checksum mismatch`);
-          await c.put(urlOf(f), new Response(buf, { headers: { 'content-type': 'application/octet-stream' } }));
+          if (f.parts) {
+            const whole = await cachedBytes(c, f);
+            if (!whole || whole.byteLength !== f.bytes || (await sha256(whole)) !== f.sha256) {
+              for (const p of f.parts) await c.delete(urlOf(p));
+              throw new Error(`${f.path}: the assembled parts do not match`);
+            }
+          }
         }
         ready = true;
       },
@@ -113,8 +147,8 @@ const KokoroModel = (() => {
         const m = await loadManifest();
         const f = m.files.find(x => x.role === role);
         const c = await cachesImpl.open(CACHE);
-        const r = f && await c.match(urlOf(f));
-        return r ? r.arrayBuffer() : null;
+        const b = f && await cachedBytes(c, f);
+        return b ? b.buffer : null;
       },
       manifest: () => manifest,
       async remove() { ready = false; if (cachesImpl) await cachesImpl.delete(CACHE); },

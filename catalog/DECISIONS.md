@@ -1425,3 +1425,27 @@ no record we read names the BBC (001); OTRR's log re-dates five "Tarzan - Lord o
 off their own names (016's next pass); "Philip Marlowe #053 10-08-49" (MM-DD-YY beside a number) and "Chandu 118
 48-12" (a month only) are still read wrong; a two-digit year read for a genuine 1920-31 broadcast uploaded after the
 20YY reading would be re-read (none in the corpus); Android's search row shows no "Undated" (a client gap, not data).
+
+## 038 — Play phonemes are built here, from misaki, rules, an editor, CMUdict, and only then a guess (Decision 078)
+*Date: 2026-11-15*
+
+Every speech line of the play library gets its phonemes in the catalog (`tools/build_play_phonemes.py`,
+`docs/CATALOG-CONTRACT.md` 4.1); no device converts text to phonemes. For a word misaki 0.9.4 does not know
+(run with no fallback, so no eSpeak): `plays/phoneme-corrections.json`, then rules that are kept only when
+the lexicon knows the result (`tools/play_phonemes.derive`), then CMUdict, then g2p_en's network, which is
+the only step counted as guessed. A play with more than 5% of its words guessed gets no phoneme file until
+an editor looks; its Kokoro parts are read by the system voice.
+
+**Why**: the owner chose phonemes in the catalog (Decision 078). CMUdict was added beyond the spike's plan:
+misaki lacks common first names (Leonard, Sylvia, Percy, Cordelia), and the spike measured the guesser
+right on only 19% of unseen names. CMUdict is BSD-style (notice kept in `play_phonemes.CMUDICT_NOTICE`),
+pinned by commit and SHA-256, and build-time only. MEASURED 2026-11-15 on the 803-play library
+(10,857,947 words): 104,855 words by rule, 70,887 by CMUdict, 109,764 guessed (1.01%; the spike's figure
+for misaki plus five rules was 1.86%), 791 plays with phonemes, 12 held. The rest of the guesses are names
+(Rosmer, Torvald, Gaveston) and dialect spellings (wid, dere, jes), which a person must judge.
+
+**How to apply**: correct a word in `plays/phoneme-corrections.json` (a play's own entry under `plays`);
+add a rule only with a fixture case in `tests/test_play_phonemes.py` and only if it is accepted when the
+lexicon knows the result. Review the top of `phonemes-report.json` after each library refresh. A new
+dictionary or guesser is a new third-party data dependency: its license is checked first, and nothing
+GPL runs, even at build time.

@@ -10,6 +10,7 @@ cross-file consistency, never which plays exist.
 """
 import json
 import os
+import shutil
 import sys
 import tarfile
 import tempfile
@@ -19,6 +20,7 @@ import build_castable_scripts as B
 import build_play_library as L
 import check_play_library as C
 import play_library_archive as A
+import play_phonemes as PH
 import script_parse as P
 
 CASES = []
@@ -178,7 +180,9 @@ def the_real_artifact_has_the_documented_shape():
     if not os.path.exists(os.path.join(L.OUT, "index.json")):
         print("  (no built library in out/plays-library; fixture shape only)")
         return
-    idx = check_library(L.OUT)
+    built = json.load(open(os.path.join(L.OUT, "index.json")))
+    # a library built with its phonemes (the publishable kind) must carry them for the shipped share
+    idx = check_library(L.OUT, 1, C.MIN_PHONEME_SHARE if "phonemes" in built else 0.0)
     bundle = json.load(open(L.BUNDLE))["scripts"]
     have = {p["id"]: p for p in idx["plays"]}
     for s in bundle:
@@ -289,7 +293,29 @@ def different_plays_and_a_bundle_are_not_taken_for_duplicates():
     assert shared == [["gut-1", "gut-2", "gut-3"]], "same title and author, different text: reported, kept"
 
 
-def sized_library(d, n):
+def add_phonemes(d, skip=()):
+    """Fixture phoneme files (Decision 078) for every play in the library at d, as build_play_phonemes writes
+    them: one row per speech line with words, the index row pointing at its file, the report beside it."""
+    idx = json.load(open(os.path.join(d, "index.json")))
+    os.makedirs(os.path.join(d, "phonemes"), exist_ok=True)
+    held = 0
+    for p in idx["plays"]:
+        if p["id"] in skip:
+            held += 1
+            continue
+        s = json.load(open(os.path.join(d, p["path"])))["scripts"][0]
+        rows = [{"id": l["id"], "t": PH.line_text(l), "us": "lˈIn"} for l in s["lines"]
+                if l["kind"] == "speech" and PH.line_text(l)]
+        json.dump(PH.phoneme_file(s, rows, "fixture"), open(os.path.join(d, "phonemes", f"{p['id']}.json"), "w"),
+                  ensure_ascii=False)
+        p["phonemes"] = f"phonemes/{p['id']}.json"
+    idx["phonemes"] = {"format": 1, "g2p": "fixture", "dialects": ["us", "gb"], "report": "phonemes-report.json",
+                       "plays": len(idx["plays"]) - held, "held_for_review": held}
+    json.dump({"format": 1}, open(os.path.join(d, "phonemes-report.json"), "w"))
+    json.dump(idx, open(os.path.join(d, "index.json"), "w"), ensure_ascii=False)
+
+
+def sized_library(d, n, phonemes=True):
     """A library of n copies of the fixture play under distinct ids, for the archive tests."""
     entries, report = fixture_build()
     many = []
@@ -299,6 +325,8 @@ def sized_library(d, n):
         e["sort_name"] = f"play {k:04d}"
         many.append(e)
     L.write(many, report, d)
+    if phonemes:
+        add_phonemes(d)
 
 
 @case
@@ -325,7 +353,8 @@ def a_library_below_the_floor_is_not_packed_or_unpacked():
                 break
             raise AssertionError("a 3-play library was packed")
         with tarfile.open(a, "w:xz") as tar:
-            for name in ("index.json",) + tuple(f"scripts/{n}" for n in sorted(os.listdir(os.path.join(src, "scripts")))):
+            for name in ("index.json", "phonemes-report.json") + tuple(
+                    f"{f}/{n}" for f in ("scripts", "phonemes") for n in sorted(os.listdir(os.path.join(src, f)))):
                 tar.add(os.path.join(src, name), arcname="plays-library/" + name)
         try:
             A.unpack(a, os.path.join(d, "out"))
@@ -349,6 +378,87 @@ def an_archive_with_a_stray_or_climbing_member_is_refused():
             except ValueError:
                 continue
             raise AssertionError(f"an archive holding {bad} was unpacked")
+
+
+@case
+def phoneme_files_agree_with_the_index_and_their_scripts():
+    entries, report = fixture_build()
+    with tempfile.TemporaryDirectory() as d:
+        L.write(entries, report, d)
+        add_phonemes(d)
+        idx = check_library(d, 1, 1.0)
+        assert idx["plays"][0]["phonemes"] == "phonemes/gut-1.json"
+
+
+@case
+def a_broken_phoneme_set_fails_the_check():
+    entries, report = fixture_build()
+
+    def broken(fn):
+        with tempfile.TemporaryDirectory() as d:
+            L.write(entries, report, d)
+            add_phonemes(d)
+            fn(d)
+            try:
+                check_library(d)
+            except (AssertionError, FileNotFoundError):
+                return True
+        return False
+
+    def edit_file(d, f):
+        path = os.path.join(d, "phonemes", "gut-1.json")
+        doc = json.load(open(path))
+        f(doc)
+        json.dump(doc, open(path, "w"), ensure_ascii=False)
+
+    def edit_index(d, f):
+        path = os.path.join(d, "index.json")
+        idx = json.load(open(path))
+        f(idx)
+        json.dump(idx, open(path, "w"), ensure_ascii=False)
+
+    controls = {
+        "a file the index does not name": lambda d: edit_index(d, lambda i: i["plays"][0].pop("phonemes")),
+        "an index row whose file is gone": lambda d: os.remove(os.path.join(d, "phonemes", "gut-1.json")),
+        "a line whose words differ from the script": lambda d: edit_file(d, lambda doc: doc["lines"][0].update(t="Other.")),
+        "an out-of-date revision": lambda d: edit_file(d, lambda doc: doc.update(revision="0")),
+        "a count that disagrees": lambda d: edit_index(d, lambda i: i["phonemes"].update(plays=5)),
+        "no report": lambda d: os.remove(os.path.join(d, "phonemes-report.json")),
+    }
+    for name, fn in controls.items():
+        assert broken(fn), f"the check passed a library with {name}"
+
+
+@case
+def writing_the_library_again_drops_its_stale_phonemes():
+    entries, report = fixture_build()
+    with tempfile.TemporaryDirectory() as d:
+        L.write(entries, report, d)
+        add_phonemes(d)
+        L.write(entries, report, d)
+        assert not os.path.exists(os.path.join(d, "phonemes")) and not os.path.exists(os.path.join(d, "phonemes-report.json"))
+        check_library(d)
+
+
+@case
+def a_library_without_enough_phonemes_is_not_packed():
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "src")
+        sized_library(src, C.MIN_PLAYS, phonemes=False)
+        try:
+            A.pack(src, os.path.join(d, "a.tar.xz"))
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError("a library without phonemes was packed")
+        shutil.rmtree(src)
+        sized_library(src, C.MIN_PLAYS, phonemes=False)
+        add_phonemes(src, skip={f"gut-{1000 + k}" for k in range(C.MIN_PLAYS // 2)})
+        try:
+            A.pack(src, os.path.join(d, "a.tar.xz"))
+        except AssertionError:
+            return
+        raise AssertionError("a library with phonemes for half its plays was packed")
 
 
 def main():

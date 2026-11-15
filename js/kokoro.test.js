@@ -12,6 +12,8 @@
  *     speechSynthesis was handed the Kokoro voice object (no such system voice) instead of a system voice.
  *   "a player made before the model boots": with the engine read once at creation (as first
  *     written), the player kept null and never used Kokoro (negative control run 2026-11-15).
+ *   2026-11-15 (S6a, the web model in parts): the four part checks in "a file served in parts" accepted
+ *     a bad manifest, and "a model served in parts" fetched model.onnx whole (404), against the S6 file.
  * The source scan in js/plays.test.js gained the kokoro- files (a cache write in the voice file,
  * an AudioContext in the model file), each control seen caught.
  */
@@ -163,6 +165,55 @@ test('a manifest is refused without a permissive license, a size and a SHA-256 f
   eq(KokoroModel.accept({ format: 1, files: [{ ...f, sha256: 'abc' }] }).ok, false, 'no SHA-256');
   eq(KokoroModel.accept({ format: 1, files: [{ ...f, path: '../x' }] }).ok, false, 'a path outside the folder');
   eq(KokoroModel.sizeText(KokoroModel.totalBytes({ files: [f, { ...f, bytes: 14622720 }] })), '101 MB', 'the size shown before download');
+});
+
+test('a file served in parts is accepted only when its parts are checked and add up', () => {
+  const part = (i, bytes) => ({ path: `model.onnx.part${i}`, bytes, sha256: String(i).repeat(64).slice(0, 64) });
+  const f = { path: 'model.onnx', role: 'model', bytes: 30, sha256: 'a'.repeat(64), license: 'Apache-2.0', parts: [part(0, 20), part(1, 10)] };
+  eq(KokoroModel.accept({ format: 1, files: [f] }).ok, true, 'two parts adding up to the whole');
+  eq(KokoroModel.accept({ format: 1, files: [{ ...f, bytes: 31 }] }).ok, false, 'parts that do not add up');
+  eq(KokoroModel.accept({ format: 1, files: [{ ...f, parts: [part(0, 20), { ...part(1, 10), sha256: 'x' }] }] }).ok, false, 'a part without a SHA-256');
+  eq(KokoroModel.accept({ format: 1, files: [{ ...f, parts: [{ ...part(0, 30), path: '../m' }] }] }).ok, false, 'a part outside the folder');
+  eq(KokoroModel.accept({ format: 1, files: [{ ...f, parts: [] }] }).ok, false, 'no parts');
+});
+
+async function hex(bytes) {
+  const d = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function fakeCaches() {
+  const store = new Map();
+  const cache = {
+    match: async (u) => (store.has(u) ? new Response(store.get(u)) : undefined),
+    put: async (u, r) => { store.set(u, new Uint8Array(await r.arrayBuffer())); },
+    delete: async (u) => store.delete(u),
+  };
+  return { store, open: async () => cache, delete: async () => { store.clear(); return true; } };
+}
+
+test('a model served in parts downloads part by part, is checked whole, and reads back as one file', async () => {
+  const whole = new Uint8Array(30).map((_, i) => i * 7);
+  const a = whole.slice(0, 20), b = whole.slice(20);
+  const manifest = { format: 1, files: [{ path: 'model.onnx', role: 'model', bytes: 30, sha256: await hex(whole), license: 'Apache-2.0',
+    parts: [{ path: 'model.onnx.part00', bytes: 20, sha256: await hex(a) }, { path: 'model.onnx.part01', bytes: 10, sha256: await hex(b) }] }] };
+  const served = { 'manifest.json': JSON.stringify(manifest), 'model.onnx.part00': a, 'model.onnx.part01': b };
+  const fetched = [];
+  const fetchImpl = async (u) => { const k = u.split('/').pop(); fetched.push(k); return served[k] ? new Response(served[k]) : new Response('', { status: 404 }); };
+  const caches = fakeCaches();
+  const m = KokoroModel.create({ manifestURL: 'https://eardrama.org/data/kokoro/manifest.json', fetchImpl, cachesImpl: caches });
+  eq(await m.check(), false, 'nothing downloaded yet');
+  await m.download();
+  eq(fetched.filter(k => k !== 'manifest.json'), ['model.onnx.part00', 'model.onnx.part01'], 'each part fetched once; the whole never asked for');
+  eq(await m.check(), true, 'ready');
+  eq([...new Uint8Array(await m.bytes('model'))], [...whole], 'the parts read back as the whole file');
+
+  const bad = fakeCaches();
+  served['model.onnx.part01'] = new Uint8Array(10);
+  const m2 = KokoroModel.create({ manifestURL: 'https://eardrama.org/data/kokoro/manifest.json', fetchImpl, cachesImpl: bad });
+  let refused = false;
+  try { await m2.download(); } catch (e) { refused = /checksum/.test(e.message); }
+  eq(refused, true, 'a corrupt part is refused');
+  eq(await m2.check(), false, 'and the model is not ready');
 });
 
 test('long speeches render in pieces under the token limit, cut at punctuation, nothing lost', () => {

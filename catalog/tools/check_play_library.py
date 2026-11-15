@@ -11,14 +11,21 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import play_phonemes as PH
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT = os.path.join(HERE, "..", "out", "plays-library")
 FORMAT = 1
 MIN_PLAYS = 100
+# A shipped library carries phonemes (Decision 078) for at least this share of its plays; the rest are
+# held for an editor (play_phonemes.HOLD_GUESSED_SHARE) and read by the system voice.
+MIN_PHONEME_SHARE = 0.8
 
 
-def check_library(root, min_plays=1):
-    """Shape and consistency of a built library; returns the index. Raises AssertionError."""
+def check_library(root, min_plays=1, min_phoneme_share=0.0):
+    """Shape and consistency of a built library; returns the index. Raises AssertionError. With
+    min_phoneme_share > 0 the library must carry phonemes for at least that share of its plays."""
     idx = json.load(open(os.path.join(root, "index.json")))
     assert idx["format"] == FORMAT and isinstance(idx["plays"], list)
     assert idx["count"] == len(idx["plays"]) >= min_plays, f"{len(idx['plays'])} plays, need at least {min_plays}"
@@ -51,16 +58,37 @@ def check_library(root, min_plays=1):
         speech = [l for l in s["lines"] if l["kind"] == "speech"]
         assert len(speech) == p["lines"]
         assert all(l["role"] and l["parts"] for l in speech)
+        if "phonemes" in p:
+            assert p["phonemes"] == f"phonemes/{p['id']}.json", (p["id"], p["phonemes"])
+            PH.check_phoneme_file(json.load(open(os.path.join(root, p["phonemes"]), encoding="utf-8")), s)
+    check_phonemes(root, idx, min_phoneme_share)
     return idx
+
+
+def check_phonemes(root, idx, min_share):
+    """The phoneme files (docs/CATALOG-CONTRACT.md 4.1) agree with the index; each was checked against its
+    script in check_library."""
+    with_ps = sorted(f"{p['id']}.json" for p in idx["plays"] if "phonemes" in p)
+    folder = os.path.join(root, "phonemes")
+    files = sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+    assert files == with_ps, "phonemes/ and the index name different plays"
+    meta = idx.get("phonemes")
+    if with_ps or meta:
+        assert meta and meta["format"] == PH.FORMAT and meta["dialects"] == list(PH.DIALECTS), meta
+        assert meta["plays"] == len(with_ps), (meta["plays"], len(with_ps))
+        assert meta["plays"] + meta["held_for_review"] == len(idx["plays"]), meta
+        assert os.path.exists(os.path.join(root, meta["report"])), "no phoneme report"
+    share = len(with_ps) / max(1, len(idx["plays"]))
+    assert share >= min_share, f"phonemes for {len(with_ps)} of {len(idx['plays'])} plays, need {min_share:.0%}"
 
 
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else DEFAULT
     try:
-        idx = check_library(root, MIN_PLAYS)
+        idx = check_library(root, MIN_PLAYS, MIN_PHONEME_SHARE)
     except (AssertionError, OSError, ValueError, KeyError) as e:
         sys.exit(f"play library at {root} failed its shape check: {e!r}")
-    print(f"play library ok: {idx['count']} plays at {root}")
+    print(f"play library ok: {idx['count']} plays, {idx['phonemes']['plays']} with phonemes, at {root}")
 
 
 if __name__ == "__main__":
