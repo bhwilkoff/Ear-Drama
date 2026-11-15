@@ -1,0 +1,13 @@
+{
+ "format": 1,
+ "about": "Editorial pronunciations for the Kokoro voices (Decision 078). An entry overrides misaki's lexicon, the build rules and the neural guess. Keys match without regard to case. An entry is {\"ps\": phonemes} for both dialects, {\"us\": ..., \"gb\": ...}, or {\"like\": a respelling the lexicon reads}. \"plays\" holds entries for one play only, keyed by play id. The build's report (phonemes-report.json in the play library) lists every guessed word by frequency: review its top, then add entries here. Symbols: misaki's (catalog/tools/play_phonemes.py VOCAB).",
+ "words": {
+  "tis": {"ps": "tˈɪz", "note": "'tis; misaki's lexicon reads tis as 'teez'"},
+  "mistris": {"like": "mistress", "note": "early-modern spelling"},
+  "maiestie": {"like": "majesty", "note": "early-modern spelling"},
+  "monsieur": {"us": "məsjˈɜɹ", "gb": "məsjˈɜː"},
+  "samhain": {"ps": "sˈWən", "note": "R2-kokoro-feasibility §2.4: the guesser said sˈæmhɪn"},
+  "signior": {"us": "sˈinjəɹ", "gb": "sˈiːnjə", "note": "seen-yor; 289 uses in the 2026-11-15 build"}
+ },
+ "plays": {}
+}

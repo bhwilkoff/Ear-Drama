@@ -3,9 +3,9 @@
     python3 tools/play_library_archive.py pack   [DIR] OUT.tar.xz     # DIR default catalog/out/plays-library
     python3 tools/play_library_archive.py unpack ARCHIVE DIR          # refuses an unsafe or malformed archive
 
-The archive holds `plays-library/index.json` and `plays-library/scripts/<id>.json`, nothing else, in sorted
-order with no owner or time, so the same library packs to the same bytes. `unpack` refuses a member that
-is not one of those two shapes (a path that climbs out, a link, a stray file), then runs the shape check
+The archive holds `plays-library/index.json`, `scripts/<id>.json`, `phonemes/<id>.json` and
+`phonemes-report.json` (Decision 078), nothing else, in sorted order with no owner or time, so the same
+library packs to the same bytes. `unpack` refuses a member that is not one of those shapes (a path that climbs out, a link, a stray file), then runs the shape check
 over what it wrote; a bad archive raises, so a caller never ships it.
 """
 import os
@@ -19,12 +19,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_play_library as C
 
 TOP = "plays-library"
-MEMBER = re.compile(r"^plays-library/(index\.json|scripts/gut-\d+(-\d+)?\.json)$")
+MEMBER = re.compile(r"^plays-library/(index\.json|phonemes-report\.json|(scripts|phonemes)/gut-\d+(-\d+)?\.json)$")
 
 
 def pack(src, out):
-    C.check_library(src, C.MIN_PLAYS)
-    names = ["index.json"] + [f"scripts/{n}" for n in sorted(os.listdir(os.path.join(src, "scripts")))]
+    C.check_library(src, C.MIN_PLAYS, C.MIN_PHONEME_SHARE)
+    names = ["index.json", "phonemes-report.json"] + [f"{d}/{n}" for d in ("phonemes", "scripts")
+                                                       for n in sorted(os.listdir(os.path.join(src, d)))]
     with tarfile.open(out, "w:xz", preset=9) as tar:
         for name in names:
             info = tar.gettarinfo(os.path.join(src, name), arcname=f"{TOP}/{name}")
@@ -48,7 +49,7 @@ def unpack(archive, dest):
             if not any(m.name == f"{TOP}/index.json" for m in members):
                 raise ValueError("archive has no index.json")
             tar.extractall(tmp, members=members, filter="data")
-        idx = C.check_library(os.path.join(tmp, TOP), C.MIN_PLAYS)
+        idx = C.check_library(os.path.join(tmp, TOP), C.MIN_PLAYS, C.MIN_PHONEME_SHARE)
         shutil.rmtree(dest, ignore_errors=True)
         os.makedirs(os.path.dirname(os.path.abspath(dest)), exist_ok=True)
         shutil.move(os.path.join(tmp, TOP), dest)

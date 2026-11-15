@@ -26,6 +26,10 @@ fi
 python3 catalog/tools/check_play_library.py catalog/out/plays-library
 mkdir -p "$out/data/plays/library"
 cp -R catalog/out/plays-library/. "$out/data/plays/library/"
+# The web's Kokoro voice model (Decision 078): the fp32 model in parts under 50 MB, the voice table and the
+# vocabulary, from the newest kokoro-vN-web-manifest.json on the `kokoro-model` Release
+# (tools/publish_kokoro_model.py). Every file is checked against the manifest and the Release, or the build stops.
+python3 tools/fetch_kokoro_model.py "$out/data/kokoro"
 # A real page at every served /series/{key} and /episode/{id}, so a preview bot reads a 200 with a
 # card; a path it does not write stays with 404.html.
 # The finished ear dramas come from the Worker's open listing; if it cannot be read, the drama
@@ -37,7 +41,8 @@ python3 catalog/tools/build_share_pages.py "$web" "$out" --finished "$finished"
 test -e "$out/.nojekyll" || { echo "::error::$out/.nojekyll is missing; not deploying"; exit 1; }
 for f in index.html 404.html CNAME manifest.json css/styles.css js/app.js \
          .well-known/apple-app-site-association .well-known/assetlinks.json \
-         data/manifest.json data/index/series.json data/plays/castable-scripts.json data/plays/library/index.json; do
+         data/manifest.json data/index/series.json data/plays/castable-scripts.json data/plays/library/index.json \
+         data/plays/library/phonemes-report.json data/kokoro/manifest.json; do
   test -s "$out/$f" || { echo "::error::$out/$f is missing or empty; not deploying"; exit 1; }
 done
 echo "site files: $(find "$out" -type f | wc -l); data files: $(find "$out/data" -type f | wc -l); $(du -sh "$out" | cut -f1)"

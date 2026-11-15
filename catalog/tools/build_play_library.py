@@ -8,11 +8,14 @@ bundle predates `sections`, Decision 076 S0).
     python3 tools/harvest_gutenberg_plays.py --rsync-castable   # caches every cleared text
     python3 tools/build_play_library.py                         # writes out/plays-library/
     python3 tools/build_play_library.py --check                 # build in memory, write nothing, print the report
+    python3 tools/build_play_library.py --no-phonemes           # skip the phoneme step (not publishable)
 
 Output (catalog/out/plays-library/, served at <site>/data/plays/library/):
     index.json              one row per play; the shelf Record browses
     scripts/<id>.json       {"format": 1, "scripts": [<one script entry>]}: the same shape as
                             plays/castable-scripts.json, so one decoder reads both
+    phonemes/<id>.json      each speech line's phonemes for the Kokoro voices, written by
+                            build_play_phonemes.py in catalog/.venv-phonemes (Decision 078)
 
 The id is the record's own (`gut-<Gutenberg ebook number>`), never reissued; a script whose
 text changes keeps its id and gets a new `revision`. A play split out of a collected volume is
@@ -26,6 +29,8 @@ import json
 import math
 import os
 import re
+import shutil
+import subprocess
 import sys
 import zlib
 
@@ -358,6 +363,10 @@ def write(entries, report, out=OUT):
     for name in sorted(os.listdir(os.path.join(out, "scripts"))):
         if name not in keep:
             os.remove(os.path.join(out, "scripts", name))
+    # The phonemes are derived from the scripts just written: never keep a stale set (build_play_phonemes.py).
+    shutil.rmtree(os.path.join(out, "phonemes"), ignore_errors=True)
+    if os.path.exists(os.path.join(out, "phonemes-report.json")):
+        os.remove(os.path.join(out, "phonemes-report.json"))
     with open(os.path.join(out, "index.json"), "w", encoding="utf-8") as f:
         json.dump(index_doc(entries, report), f, ensure_ascii=False, separators=(",", ":"))
         f.write("\n")
@@ -386,6 +395,21 @@ def main():
         write(entries, report)
         size = sum(os.path.getsize(os.path.join(OUT, "scripts", n)) for n in os.listdir(os.path.join(OUT, "scripts")))
         print(f"wrote {len(entries)} scripts, {size} bytes, to {os.path.relpath(OUT)}", file=sys.stderr)
+        if "--no-phonemes" not in sys.argv:
+            phonemes()
+
+
+PHONEME_PYTHON = os.environ.get("PHONEME_PYTHON") or os.path.join(HERE, "..", ".venv-phonemes", "bin", "python")
+
+
+def phonemes():
+    """Every play's phonemes (Decision 078), in the phoneme environment (misaki and spaCy, build time only)."""
+    if not os.path.exists(PHONEME_PYTHON):
+        sys.exit(f"no phoneme environment at {PHONEME_PYTHON}: run bash tools/setup_phoneme_env.sh "
+                 "(or pass --no-phonemes for a library that cannot be published)")
+    rc = subprocess.call([PHONEME_PYTHON, os.path.join(HERE, "build_play_phonemes.py"), OUT])
+    if rc:
+        sys.exit(f"build_play_phonemes.py failed ({rc})")
 
 
 if __name__ == "__main__":

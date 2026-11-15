@@ -4,7 +4,9 @@
 #     bash tools/refresh_play_library.sh [--no-upload] [--no-harvest]
 #
 # rsync harvest (every rights-cleared Gutenberg play's text, one rsync session) -> build
-# (catalog/tools/build_play_library.py) -> tests (catalog/tests/test_play_library.py) -> pack ->
+# (catalog/tools/build_play_library.py, which runs the phoneme step, build_play_phonemes.py, in
+# catalog/.venv-phonemes: bash catalog/tools/setup_phoneme_env.sh once) -> tests
+# (catalog/tests/test_play_library.py, test_play_phonemes.py with the phoneme env's python) -> pack ->
 # upload `plays-library-YYYY-MM-DD.tar.xz` to the rolling `plays-library` Release -> check the Release's own
 # size and sha256 against the file. tools/assemble_site.sh downloads the newest asset at the next site build
 # (tools/fetch_play_library.py), so a refresh reaches the site on the next deploy, with no workflow edit.
@@ -33,9 +35,12 @@ cd "$ROOT/catalog" || die "no catalog/ beside tools/"
 if [ "$harvest" = 1 ]; then
   python3 tools/harvest_gutenberg_plays.py --rsync-castable || die "harvest failed"
 fi
+[ -x .venv-phonemes/bin/python ] || die "no phoneme environment: run bash catalog/tools/setup_phoneme_env.sh"
 python3 tools/build_play_library.py || die "build failed"
 python3 tests/test_play_library.py || die "play library tests failed"
+.venv-phonemes/bin/python tests/test_play_phonemes.py || die "phoneme tests failed"
 python3 tools/check_play_library.py || die "shape check failed"
+python3 -c "import json; s = json.load(open('out/plays-library/phonemes-report.json'))['summary']; print('phonemes:', {k: s[k] for k in ('plays', 'with_phonemes', 'words', 'guessed', 'guessed_share', 'rule', 'dictionary')})"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

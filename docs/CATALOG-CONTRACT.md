@@ -30,6 +30,8 @@ field here; it never computes one.
 | `ear-drama-seed.sqlite` | bundled in each native app | first launch offline | a small slice (clean pools plus the Radio tab's next week); *size to measure* |
 | `data/index/`, `data/series/{key}.json`, `data/episodes/{shard}.json`, `data/search/` | GitHub Pages, deployed by Actions with the site (never committed) | web, smart-TV web, Roku | §4, built by `catalog/tools/build_web_projection.py`; MEASURED 2026-10-22, gate closed: 14,670 episodes in 656 series, 7.2 MB raw |
 | `tonight.json` | `catalog-latest` beside the database, and `data/tonight.json` on Pages | every client's Radio tab | §8; the web's copy withholds what the web projection does not serve |
+| `kokoro-vN-manifest.json`, `kokoro-vN-model_q8f16.onnx`, `kokoro-vN-voices-en.bin`, `kokoro-vN-tokenizer.json` | rolling Release `kokoro-model`, versioned assets, never overwritten | Apple and Android, when a person downloads the voices (Decision 078) | Kokoro-82M v1.0 (Apache-2.0, onnx-community export at `1939ad2a8e41`), built by `tools/publish_kokoro_model.py`, which checks each file against Hugging Face's own SHA-256. The manifest lists each file's asset name, role, bytes, SHA-256 and license, plus the voice order (28 English voices, a 28 x 510 x 256 float32 table), sample rate and attribution. v1: 100,659,802 bytes (model 86.0 MB q8f16, voices 14.6 MB). A Release asset answers `Range` with 206, so a native download resumes; it is not CORS-readable, so the web reads its own copy |
+| `data/kokoro/manifest.json`, `model.onnx.partNN`, `voices-en.bin`, `tokenizer.json` | GitHub Pages, placed by `tools/fetch_kokoro_model.py` at each site build from `kokoro-vN-web-manifest.json` and `kokoro-vN-web-model.onnx.partNN` on the same Release (never committed) | the web, WebGPU only (Decision 078) | the fp32 model (325.5 MB; q8 is slower than real time in a browser, fp16 renders NaN) in 8 parts under 50 MB, each with its bytes and SHA-256 in the manifest's `parts`, plus the whole model's; `js/kokoro-model.js` keeps each part on its own (a broken download resumes by part) and checks the whole once assembled. 340,158,449 bytes in all |
 | `radiologs.tar.xz` | rolling Release `radiologs-latest` | the pipeline only | the measured evenings (`evenings.jsonl`: station, time, program as printed, matched episode) and the log links (`log-urls.json`); facts only, never the newspaper pages, which stay JJ's (docs/research/evenings.md §1) |
 | `loudness.json.gz` (and `loudness.prev.json.gz`, the one before) | rolling Release `loudness-latest` | the pipeline only | the loudness measurements by episode id, with errors and `suspect` rows kept as evidence; written by `.github/workflows/catalog-loudness.yml`, read by the publish step into §3.1's `loudness_i` and `loudness_tp`; never read by a client |
 | `transcripts.json.gz` (and `transcripts.prev.json.gz`, the one before) | rolling Release `transcripts-latest` | the pipeline only | archive.org's automatic transcript of each served episode's default copy, by episode id, with the URL it was read from and the on-screen gate's verdict and features (`catalog/tools/fetch_transcripts.py`); misses and errors kept as evidence; written by `.github/workflows/catalog-transcripts.yml`, read by the publish step into §3.1's `has_transcript` and `transcript_url` and §3.4's search index; never read by a client. MEASURED 2026-10-22: 8,999 candidates; 233 fetched made 1.77 MB, so the full cache is about 68 MB gzipped (about 181 MB of text, median 21 KB a transcript) |
@@ -746,6 +748,35 @@ offline floor.
   129 print none. The bundled `castable-scripts.json` was not rebuilt and carries no `sections`;
   its plays' contents come from their direction lines until it is.
 
+- `phonemes/<id>.json` (Decision 078): each speech line's phonemes for the downloadable Kokoro voices, so no
+  device ever converts text to phonemes. `{format: 1, id, revision, g2p, lines: [{id, t, us, gb?}]}`: `id` and
+  `revision` are the script's (a stale file fails the check); `g2p` names the build; each row is one speech line
+  whose words hold a letter, `t` its words exactly as a client keys them (the said parts joined by a space,
+  italic marks `_` dropped, whitespace folded: `play_phonemes.line_text`, `PlaysCore.spokenText` +
+  `KokoroVoice.keyOf`), `us` the US phonemes, `gb` the British ones only where they differ (a UK voice reads
+  `gb || us`). Every symbol is in Kokoro's vocabulary (`play_phonemes.KOKORO_VOCAB`). The index row carries
+  `phonemes: "phonemes/<id>.json"` when the file exists, and the index carries
+  `phonemes: {format, g2p, dialects: ["us", "gb"], report: "phonemes-report.json", plays, held_for_review}`.
+  A play whose guessed share of words is above 5% (`HOLD_GUESSED_SHARE`; a foreign-language text, a dialect
+  play) has no file until an editor looks: its Kokoro parts are read by the part's system voice.
+  Built by `catalog/tools/build_play_phonemes.py` in `catalog/.venv-phonemes`
+  (`catalog/tools/setup_phoneme_env.sh`, build time only, never in a client): misaki 0.9.4 (Apache-2.0, US and
+  GB lexicons, spaCy tags, no fallback, so no eSpeak), then for a word misaki lacks, in order,
+  `catalog/plays/phoneme-corrections.json` (editorial; a play's own entries first, and a library entry also
+  overrides a word misaki knows), the build rules (`play_phonemes.derive`: elisions, early-modern spellings,
+  archaic endings, capitals, accents, compounds, each kept only when the lexicon knows the result), CMUdict
+  (BSD-style, pinned by commit and SHA-256; mostly names; its GB form approximated), and last g2p_en's
+  Apache-2.0 network (counted as guessed). An unknown word in capitals is a word, never spelled letter by
+  letter. `phonemes-report.json` lists, per play, words, guessed, rule, dictionary, held, and the play's
+  guessed words; and the library's guessed words by frequency with the plays they occur in: the editor's
+  review list, and `sources` (each source's license; CMUdict's copyright notice). MEASURED 2026-11-15
+  (`plays-library-2026-11-15-2.tar.xz`, 803 plays, 10,857,947 words): 104,855 words by rule, 70,887 by
+  CMUdict, 109,764 guessed (1.01%), 791 plays with phonemes, 12 held; phoneme files 238.5 MB on disk
+  (78.0 MB gzipped), the whole library 340 MB on disk, 74.4 MB as the tar.xz asset.
+  The guard is `catalog/tests/test_play_phonemes.py` (rules on a fixture lexicon, the correction file, broken
+  phoneme files) and the phoneme half of `check_play_library.check_library`; a library is packed, unpacked and
+  shipped only with phonemes for at least 80% of its plays (`MIN_PHONEME_SHARE`).
+
 A client may show a play from the index alone (title, voices, minutes) and fetches
 `scripts/<id>.json` only to cast it. The guard is `catalog/tests/test_play_library.py`: shape
 and cross-file consistency of the real artifact when built, a fixture build always, and
@@ -756,7 +787,8 @@ authors, a bundle taken for its plays, an archive with a stray or climbing membe
 packed (`catalog/tools/play_library_archive.py`, deterministic tar.xz of `plays-library/`) and
 uploaded as `plays-library-YYYY-MM-DD.tar.xz` (`-2`, `-3` for a same-day rebuild; never
 overwritten) to the rolling `plays-library` Release by `tools/refresh_play_library.sh` (rsync harvest,
-build, tests, pack, upload, read the Release's size and sha256 back). `tools/assemble_site.sh` uses
+build with phonemes, tests, pack, upload, read the Release's size and sha256 back). The archive holds
+`index.json`, `phonemes-report.json`, `scripts/<id>.json` and `phonemes/<id>.json`, nothing else. `tools/assemble_site.sh` uses
 `catalog/out/plays-library` when a run built it and otherwise runs `tools/fetch_play_library.py`, which
 downloads the newest asset, checks size and sha256 against the Release, unpacks it, and runs
 `catalog/tools/check_play_library.py` (shape, cross-file consistency, at least 100 plays). Any failure

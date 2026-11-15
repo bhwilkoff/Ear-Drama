@@ -387,7 +387,13 @@ detail and its 93k silver entries.
   speech lines carry Shaw's stage description and "CRAVEN . Henrik? CUTHBERTSON . Ibsen,
   man", so any voice, and the reader, gives those words to Julia. Speaker names written
   `NAME .` (space before the period) are not recognized as speaker turns. It is a
-  `script_parse.py` defect, not fixed here.
+  `script_parse.py` defect, not fixed here. *Update, S6a (2026-11-15)*: the spike read a library
+  built before the run-in speech fix (becc7bb, D1: "GRACE (reflecting). Never" opens its own
+  speech). The " ." was the join of the say parts around a split-out direction ("CRAVEN" +
+  "(puzzled)" + ". Henrik?"), not a spacing in the text. Measured on the current build
+  (revision 731aac4167ab, the published one): 0 speeches in The Philanderer carry another
+  speaker's name (the spike's copy, revision 6ec7307c62e9: 200, 32 of them Julia's). A literal
+  "NAME ." occurs in the cached texts only in cast lists.
 
 - `VoiceCast.resolve` matched only `engine: 'system'`, so the S2 code could never resolve
   a Kokoro casting (fixed here, tested).
