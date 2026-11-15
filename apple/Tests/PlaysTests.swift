@@ -960,3 +960,229 @@ struct RecordingModeTests {
         s.end()
     }
 }
+
+// MARK: - The studio inside the reader (PLAYS-DESIGN §2.9; Decision 076 S3)
+
+// The mirror of js/studio.test.js, case for case, against the shipped StudioController over the shipped
+// RecordingSession and take model, with fakes that play and record nothing (FakeLiveAudio, SignatureVoice).
+// Broken controls, 2026-11-14, each against a mutated copy and seen to fail: StudioController.keep() in Step
+// leaving the current line where it was (the Step case); Production.deleteTake without the chosen-take refusal
+// (the delete case and the direct case); Production.discardUnused ignoring `lines` (the part-scoped case and the
+// direct case); Production.add replacing the line's takes instead of adding one (the Record again case).
+struct StudioTests {
+    private let molly = PartID.role("MOLLY")
+    private let fibber = PartID.role("FIBBER")
+
+    private func studio(part: PartID = .role("MOLLY"), line: String? = nil) async throws
+        -> (st: StudioController, s: RecordingSession, store: ProductionStore) {
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        var production = try store.create(script)
+        production = try Relay.take(part, performer: nil, in: production, script: script)
+        try store.save(production)
+        let s = RecordingSession(production: production, script: script, part: part, store: store,
+                                 audio: FakeLiveAudio(leaky: false), voice: SignatureVoice(), sleep: { _ in }, announce: {})
+        await s.begin(echoCancelled: false)
+        return (StudioController(session: s, store: store, line: line), s, store)
+    }
+
+    // MARK: The current line and the take states
+
+    @Test func theStudioOpensAtThePartsFirstLineWithNoTakeOrAtTheLineAskedFor() {
+        let script = fixtureScript()
+        var p = Production(script: script)
+        #expect(StudioCore.startLine(p, script, part: molly, ask: nil) == "L0003", "no takes: the part's first line")
+        p.add(take("a", line: "L0003", part: molly, frames: 1))
+        #expect(StudioCore.startLine(p, script, part: molly, ask: nil) == "L0006", "the first line still without a take")
+        #expect(StudioCore.startLine(p, script, part: molly, ask: "L0009") == "L0009", "a line of the part that was asked for wins")
+        #expect(StudioCore.startLine(p, script, part: molly, ask: "L0002") == "L0006", "another part's line is not mine to record")
+        for id in ["L0006", "L0007", "L0009", "L0011"] { p.add(take("t\(id)", line: id, part: molly, frames: 1)) }
+        #expect(StudioCore.startLine(p, script, part: molly, ask: nil) == "L0003", "every line taken: the first line")
+    }
+
+    @Test func eachOfMyLinesShowsNoneItsTakesWithTheChosenOneOrTheFlag() {
+        let script = fixtureScript()
+        var p = Production(script: script)
+        #expect(StudioCore.lineState(p, "L0003") == .init(state: .none, takes: 0, chosen: 0), "no take")
+        p.add(take("a", line: "L0003", part: molly, frames: 1))
+        p.add(take("b", line: "L0003", part: molly, frames: 1))
+        #expect(StudioCore.lineState(p, "L0003") == .init(state: .chosen, takes: 2, chosen: 2), "the newest take is chosen")
+        p.choose("a")
+        #expect(StudioCore.lineState(p, "L0003") == .init(state: .chosen, takes: 2, chosen: 1), "choosing an older take")
+        p.add(take("c", line: "L0003", part: molly, frames: 1, bleed: true))
+        #expect(StudioCore.lineState(p, "L0003") == .init(state: .flagged, takes: 3, chosen: 3), "a flagged chosen take")
+        #expect(StudioCore.spoken(StudioCore.lineState(p, "L0003")) == "Re-take: the microphone heard the device voice")
+        p.choose("b")
+        #expect(StudioCore.spoken(StudioCore.lineState(p, "L0003")) == "3 takes, take 2 chosen")
+        #expect(StudioCore.takesLabel(StudioCore.lineState(p, "L0003")) == "Take 2 of 3")
+    }
+
+    @Test func nextAndPreviousMoveByMyLinesOnlyFromWhereverTheCurrentLineIs() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        #expect(st.current == "L0003", "opens at the first line")
+        st.move(1); #expect(st.current == "L0006", "next of mine skips the others")
+        st.move(1); st.move(1); st.move(1); #expect(st.current == "L0011", "to the last")
+        st.move(1); #expect(st.current == "L0011", "stays on the last")
+        st.move(-1); #expect(st.current == "L0009", "previous")
+        #expect(!st.select("L0008"), "another part's line cannot be current")
+        #expect(st.current == "L0009", "unchanged")
+        #expect(st.select("L0006"), "a tap on one of my lines")
+        #expect(st.current == "L0006", "it is current")
+        s.end()
+    }
+
+    // MARK: The three ways the reader moves
+
+    @Test func stepATakeOpensItsReviewKeepMakesMyNextLineCurrentAndWaits() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.step)
+        await st.primary()
+        #expect(s.phase == .review(lineID: "L0003"), "the take's review")
+        #expect(st.current == "L0003", "still on the line just taken")
+        st.keep()
+        #expect(st.current == "L0006", "Keep moves to my next line")
+        #expect(s.phase == .idle, "and waits for a tap")
+        #expect(st.lineState("L0006").state == .none, "it did not record the next line")
+        s.end()
+    }
+
+    @Test func lineByLineAfterATakeTheLineStaysCurrentReadyToRecordAgain() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.lines)
+        st.select("L0007")
+        await st.primary()
+        #expect(s.phase == .idle, "ready")
+        #expect(st.current == "L0007", "the same line")
+        #expect(st.lineState("L0007").takes == 1, "one take")
+        s.end()
+    }
+
+    @Test func runThroughTheCurrentLineFollowsTheRunThroughMyLinesWhichRecordAsTheyCome() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.run)
+        st.select("L0006")
+        var seen: [String] = []
+        st.onFollow = { seen.append($0) }
+        await st.primary()
+        #expect(s.phase == .runReview, "the run ends on its review")
+        #expect(s.runTakes.map(\.lineID) == ["L0006", "L0007", "L0009", "L0011"], "every line of mine from the current one")
+        #expect(seen.contains("L0005") && seen.contains("L0008"), "the reader followed the other parts' lines as they were heard")
+        #expect(st.current == "L0011", "the current line followed to my last line")
+        st.keep()
+        #expect(s.run == nil, "Keep keeps the run")
+        s.end()
+    }
+
+    // MARK: Takes: choose, delete, delete unused, record again
+
+    @Test func recordAgainKeepsEveryOlderTakeAndChoosesTheNewOne() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.lines)
+        await st.primary()
+        let first = st.takes("L0003").map(\.id)
+        await st.again()
+        let takes = st.takes("L0003")
+        #expect(takes.count == 2, "two takes")
+        #expect(takes.first?.id == first.first, "the first take is still there")
+        #expect(store.production(s.production.id)?.chosen["L0003"] == takes.last?.id, "the new take is chosen")
+        s.end()
+    }
+
+    @Test func choosingATakeNeverDeletesOnlyAnUnchosenTakeCanBeDeletedByThePerson() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        s.setMode(.lines)
+        await st.primary()
+        await st.again()
+        let both = st.takes("L0003")
+        try #require(both.count == 2)
+        let (a, b) = (both[0], both[1])
+        st.choose(a)
+        #expect(store.production(s.production.id)?.chosen["L0003"] == a.id, "chosen")
+        #expect(st.takes("L0003").count == 2, "choosing deleted nothing")
+        #expect(!st.deleteTake(a), "the chosen take is refused")
+        #expect(st.takes("L0003").count == 2, "still two")
+        #expect(st.deleteTake(b), "an unchosen take goes")
+        #expect(st.takes("L0003").map(\.id) == [a.id], "one left")
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: store.takesFolder(s.production.id).path)) ?? []
+        #expect(!files.contains(b.file), "its file is gone")
+        #expect(files.contains(a.file), "the chosen take's file stays")
+        #expect(s.production.takes.count == 1, "the session reads the record without it")
+        s.end()
+    }
+
+    @Test func deleteUnusedTakesRemovesOnlyThisPartsUnchosenTakes() async throws {
+        let (st, s, store) = try await studio()
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var p = try #require(store.production(s.production.id))
+        p.add(take("f1", line: "L0010", part: fibber, frames: 1))
+        p.add(take("f2", line: "L0010", part: fibber, frames: 1))
+        try store.save(p)
+        s.reload()
+        s.setMode(.lines)
+        await st.primary()
+        await st.again()
+        st.move(1)
+        await st.primary()
+        #expect(st.unused.count == 1, "one unused take of mine")
+        #expect(st.deleteUnused() == 1, "one deleted")
+        let after = try #require(store.production(s.production.id))
+        #expect(after.takes.filter { $0.part == fibber }.map(\.id) == ["f1", "f2"], "another part's unused take stays")
+        #expect(st.takes("L0003").count == 1, "my line keeps its chosen take")
+        #expect(st.takes("L0006").count == 1, "and the other")
+        s.end()
+    }
+
+    @Test func deleteTakeRefusesTheChosenTakeAndDiscardUnusedTakesALineList() {
+        let script = fixtureScript()
+        var p = Production(script: script)
+        p.add(take("a", line: "L0003", part: molly, frames: 1))
+        p.add(take("b", line: "L0003", part: molly, frames: 1))
+        p.add(take("c", line: "L0002", part: fibber, frames: 1))
+        p.add(take("d", line: "L0002", part: fibber, frames: 1))
+        var q = p
+        #expect(q.deleteTake("b").isEmpty, "the chosen take stays")
+        #expect(q.deleteTake("a").map(\.id) == ["a"], "an unchosen take goes")
+        #expect(q.takes.map(\.id) == ["b", "c", "d"], "the rest stay")
+        var u = p
+        #expect(u.discardUnused(lines: ["L0003"]).map(\.id) == ["a"], "only the lines named")
+        var all = p
+        #expect(all.discardUnused().map(\.id) == ["a", "c"], "no list: every line, as the cast sheet does")
+    }
+
+    // MARK: Where the reader's Record records
+
+    @Test func theReadersRecordContinuesThePartElseTakesItWhereItIsOpenElseMakesAProduction() {
+        let script = fixtureScript()
+        func mk(_ id: String, _ created: TimeInterval, _ parts: [PartID: PartState.Status] = [:], of play: PlayScript? = nil)
+            -> Production {
+            var p = Production(id: id, script: play ?? script, created: Date(timeIntervalSince1970: created))
+            for (part, status) in parts { p.parts[part] = PartState(status: status) }
+            return p
+        }
+        let notShared: (String) -> Bool = { _ in false }
+        #expect(StudioCore.productionFor([], isShared: notShared, script: script, part: molly) == .make, "nothing yet: a new production")
+        let open = mk("p1", 1)
+        #expect(StudioCore.productionFor([open], isShared: notShared, script: script, part: molly) == .take("p1"), "an open part is taken")
+        let busy = mk("p2", 2, [fibber: .recording])
+        #expect(StudioCore.productionFor([busy, open], isShared: notShared, script: script, part: molly) == .take("p1"),
+                "not where another part records")
+        let mine = mk("p3", 0, [molly: .recording])
+        #expect(StudioCore.productionFor([busy, open, mine], isShared: notShared, script: script, part: molly) == .resume("p3"),
+                "the part already recording wins")
+        #expect(StudioCore.productionFor([busy, open, mine], isShared: { $0 == "p3" }, script: script, part: molly) == .take("p1"),
+                "never a shared production")
+        let other = PlayScript(id: "gut-9", revision: "r1", kind: "radio", title: "Other", authors: [],
+                               source: script.source, rights: script.rights, roles: script.roles, lines: script.lines)
+        #expect(StudioCore.productionFor([mk("p4", 9, of: other)], isShared: notShared, script: script, part: molly) == .make,
+                "never another play's")
+        let done = mk("p5", 9, [molly: .done])
+        #expect(StudioCore.productionFor([done], isShared: notShared, script: script, part: molly) == .make,
+                "a part already done is not reopened from the reader")
+    }
+}

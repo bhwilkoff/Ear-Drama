@@ -90,6 +90,8 @@ final class ReaderModel {
         didSet { if base != oldValue { relayout() } }
     }
     private(set) var failed = false
+    /// The studio attached (PLAYS-DESIGN §2.9): its part is "I'm playing", its lines are unbreakable on the page.
+    var studio: StudioModel?
     /// A launch door's sheet and page, each taken once (DEBUG doors only).
     var doorSheet: String?
     @ObservationIgnored private var doorPage: Int?
@@ -108,10 +110,12 @@ final class ReaderModel {
         script: script, speaker: SystemListenSpeaker(cast: voices.cast),
         onLine: { [weak self] id in if let id { self?.go(to: id) } })
 
-    init(script: PlayScript, startLine: String?, door: ReaderDoor? = nil, defaults: UserDefaults = .standard) {
+    init(script: PlayScript, startLine: String?, door: ReaderDoor? = nil, defaults: UserDefaults = .standard,
+         production: String? = nil, studioPart: PartID? = nil) {
         self.script = script
         self.defaults = defaults
-        self.voices = VoiceCastModel(cast: .script(script))
+        // The studio reads the production's cast (§2.8 rule 2); the reader alone, the play's.
+        self.voices = VoiceCastModel(cast: production.map { .production($0, script: script) } ?? .script(script))
         let structure = ScriptStructure(script)
         self.structure = structure
         var prefs = ReaderStore.prefs(defaults)
@@ -124,6 +128,10 @@ final class ReaderModel {
             let id = PartID(rawValue: name)
             part = id
             mine = Set(ScriptReading.lineIndexes(of: id, in: script))
+        }
+        if let studioPart {
+            part = studioPart
+            mine = Set(ScriptReading.lineIndexes(of: studioPart, in: script))
         }
         if door?.hide == true, part != nil { hide = true }
         doorSheet = door?.sheet
@@ -150,13 +158,16 @@ final class ReaderModel {
         let per = ReaderMath.perSpread(area.width)
         let style = ReaderStyle(base: base, scale: prefs.scale, leading: prefs.lineHeight)
         let width = min(((area.width - 2 * Self.margin - CGFloat(per - 1) * Self.gutter) / CGFloat(per)).rounded(.down), style.size * 36)
-        let height = (area.height - 2 * Self.margin - ReaderLayout.headRoom).rounded(.down)
+        let keep = studio?.part.roleName
+        let foot = keep == nil ? 0 : ReaderLayout.footRoom
+        let height = (area.height - 2 * Self.margin - ReaderLayout.headRoom - foot).rounded(.down)
         let script = script, structure = structure
         kick = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
             guard !Task.isCancelled else { return }
             let work = Task.detached(priority: .userInitiated) {
-                try ReaderLayout.build(script, structure: structure, style: style, pageSize: CGSize(width: width, height: height))
+                try ReaderLayout.build(script, structure: structure, style: style, pageSize: CGSize(width: width, height: height),
+                                       keepRole: keep)
             }
             self?.build = work
             let built = try? await work.value
@@ -234,6 +245,7 @@ final class ReaderModel {
     }
 
     func tap(at point: CGPoint) {
+        if studioTap(point) { return }
         switch ReaderMath.tapZone(x: point.x, width: area.width) {
         case .prev: turn(-1)
         case .next: turn(1)
@@ -261,6 +273,10 @@ final class ReaderModel {
 
     /// My next (1) or previous (-1) line; past the last, the first again.
     func nextMine(_ direction: Int) {
+        if let studio {
+            if studio.studio.move(direction), let id = studio.studio.current { go(to: id) }
+            return
+        }
         guard let part else { return }
         var i = ScriptReading.nextLine(of: part, after: position, direction: direction, in: script)
         if i == nil, direction > 0 { i = ScriptReading.nextLine(of: part, after: -1, in: script) }
@@ -286,24 +302,64 @@ final class ReaderModel {
 
     /// A tap on a hidden line shows it until the next tap or turn.
     private func peekAt(_ point: CGPoint) {
-        guard hide, let layout, let s = spread else {
+        guard hide, let layout, let at = pagePoint(point) else {
             peeked = []
             return
         }
+        if let line = layout.line(at: at.local, page: at.page), mine?.contains(line) == true { peek(line); return }
+        peeked = []
+    }
+
+    /// The page under a point of the spread, and the point in that page's text column (top-left origin).
+    private func pagePoint(_ point: CGPoint) -> (page: Int, local: CGPoint)? {
+        guard let layout, let s = spread else { return nil }
         let pageW = layout.pageSize.width
         let total = CGFloat(per) * pageW + CGFloat(per - 1) * Self.gutter
         let left = (area.width - total) / 2
-        let top = (area.height - layout.pageSize.height - ReaderLayout.headRoom) / 2 + ReaderLayout.headRoom
+        let viewH = layout.pageSize.height + ReaderLayout.headRoom + pageFoot
+        let top = (area.height - viewH) / 2 + ReaderLayout.headRoom
         for k in 0..<per {
             let page = s * per + k
             guard page < layout.pageCount else { continue }
             let x0 = left + CGFloat(k) * (pageW + Self.gutter)
             let local = CGPoint(x: point.x - x0, y: point.y - top)
             guard local.x >= -8, local.x <= pageW + 8 else { continue }
-            if let line = layout.line(at: local, page: page), mine?.contains(line) == true { peek(line); return }
+            return (page, local)
         }
-        peeked = []
+        return nil
     }
+
+    /// The room under a page's text: the studio keeps 8 pt for the current line's outline.
+    var pageFoot: CGFloat { layout?.keepRole == nil ? 0 : ReaderLayout.footRoom }
+
+    // MARK: The studio on the page
+
+    /// The take state of each of my lines on a page (the studio's marks).
+    func studioTakes(onPage page: Int) -> [Int: StudioCore.LineState] {
+        guard let studio, let layout, let mine else { return [:] }
+        var out: [Int: StudioCore.LineState] = [:]
+        for i in layout.lines(onPage: page) where mine.contains(i) { out[i] = studio.studio.lineState(script.lines[i].id) }
+        return out
+    }
+
+    /// A tap on my line's name or its mark opens its take list; elsewhere on one of my lines it becomes current. Either
+    /// way the page does not turn (§2.9 rule 2).
+    private func studioTap(_ point: CGPoint) -> Bool {
+        guard let studio, let me = part?.roleName, let layout, let at = pagePoint(point) else { return false }
+        let up = CGPoint(x: at.local.x - ReaderLayout.inset, y: layout.pageSize.height - at.local.y)
+        if let spot = layout.takeMarkSpots(page: at.page, role: me, takes: studioTakes(onPage: at.page)).first(where: { $0.hit.contains(up) }) {
+            studio.openTakes(script.lines[spot.line].id)
+            return true
+        }
+        if let line = layout.line(at: at.local, page: at.page), mine?.contains(line) == true {
+            studio.studio.select(script.lines[line].id)
+            return true
+        }
+        return false
+    }
+
+    /// The studio has started: Space and the other keys are the studio's.
+    var studioActive: Bool { studio?.started == true }
 
     // MARK: Text size
 
@@ -353,18 +409,21 @@ private enum UIAccessibilityReduceMotion {
 struct ScriptReaderView: View {
     let scriptID: String
     var startLine: String?
+    /// The studio attached: the production's own script, the part, the recorder (PLAYS-DESIGN §2.9).
+    var studio: StudioTarget?
     var dock: AnyView?
     var controller: ReaderController?
     @Environment(PlaysLibrary.self) private var plays
     @Environment(AppStore.self) private var app
     @State private var script: PlayScript?
     @State private var model: ReaderModel?
+    @State private var studioModel: StudioModel?
     @State private var failed = false
 
     var body: some View {
         Group {
             if let model {
-                ReaderScreen(model: model, dock: dock)
+                ReaderScreen(model: model, dock: dock, studio: studioModel)
             } else if failed {
                 VStack(spacing: Spacing.s3) {
                     EmptyState("This play could not be opened", systemImage: "wifi.slash")
@@ -376,10 +435,26 @@ struct ScriptReaderView: View {
         }
         .background(Color.brandBackground)
         .task(id: scriptID) { await load() }
+        .onDisappear { studioModel?.end() }
     }
 
     private func load() async {
         failed = false
+        if let target = studio {
+            // The production's own copy of the script, never the library's, so line ids match the takes.
+            guard let s = StudioModel(target: target, plays: plays, line: startLine) else {
+                failed = true
+                return
+            }
+            let made = ReaderModel(script: s.script, startLine: s.studio.current, door: app.readerDoor,
+                                   production: target.production, studioPart: target.partID)
+            made.studio = s
+            s.studio.onFollow = { [weak made] id in made?.go(to: id) }
+            controller?.model = made
+            studioModel = s
+            model = made
+            return
+        }
         do {
             guard let found = try await plays.script(id: scriptID) else {
                 failed = true
@@ -398,11 +473,16 @@ struct ScriptReaderView: View {
 private struct ReaderScreen: View {
     @Bindable var model: ReaderModel
     var dock: AnyView?
+    var studio: StudioModel?
     @Environment(AppStore.self) private var app
+    @Environment(PlaysLibrary.self) private var plays
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
     @ScaledMetric(relativeTo: .body) private var body17: CGFloat = 17
     @State private var sheet: ReaderSheet?
     @State private var showContents = false
+    /// The reader holds 860 pt: the studio stands beside the script (§2.9 rule 7), measured, never the idiom.
+    @State private var wide = false
 
     var body: some View {
         #if os(macOS)
@@ -412,9 +492,14 @@ private struct ReaderScreen: View {
         } detail: {
             reader
         }
+        .modifier(StudioInspector(studio: studio, voices: model.voices))
         .focusedSceneValue(\.reader, model)
+        .focusedSceneValue(\.studio, studio)
+        .onChange(of: studio?.finished ?? false) { _, done in if done { dismiss() } }
         #else
-        reader
+        arranged
+            .onGeometryChange(for: Bool.self) { $0.size.width >= ReaderMath.spreadMin } action: { wide = $0 }
+            .onChange(of: studio?.finished ?? false) { _, done in if done { app.reading = nil } }
             .sheet(item: $sheet) { which in
                 switch which {
                 case .contents: ReaderContents(model: model, dismiss: { sheet = nil })
@@ -430,6 +515,40 @@ private struct ReaderScreen: View {
         #endif
     }
 
+    #if os(iOS)
+    /// The script and, once the reader holds 860 pt with the studio attached, the studio's pane beside it: an
+    /// `ArrangementView` on iOS 27.1 (the open iPhone Duo), a plain side-by-side before it.
+    @ViewBuilder private var arranged: some View {
+        if let studio, wide {
+            #if compiler(>=6.4)
+            if #available(iOS 27.1, *) {
+                ArrangementView { reader } secondary: { pane(studio) }
+                    .arrangementViewStyle(.split.axes(.horizontal))
+            } else {
+                sideBySide(studio)
+            }
+            #else
+            sideBySide(studio)
+            #endif
+        } else {
+            reader
+        }
+    }
+
+    private func sideBySide(_ studio: StudioModel) -> some View {
+        HStack(spacing: 0) {
+            reader
+            Divider()
+            pane(studio).frame(width: 360)
+        }
+    }
+
+    private func pane(_ studio: StudioModel) -> some View {
+        NavigationStack { StudioPanel(model: studio, voices: model.voices, full: true) }
+            .modifier(AvoidsFold())
+    }
+    #endif
+
     private var reader: some View {
         VStack(spacing: 0) {
             // Held to the safe area: the Duo's strip and a notch are inside it, and a scroll view draws under them.
@@ -441,6 +560,9 @@ private struct ReaderScreen: View {
             .clipped()
             if model.table.isPlaying, let line = model.table.line { hearing(line) }
             if let dock { dock }
+            #if os(iOS)
+            if let studio, !wide { StudioDock(model: studio).modifier(AvoidsFold()) }
+            #endif
             bottomBar
         }
         .background(Color.brandBackground)
@@ -453,7 +575,21 @@ private struct ReaderScreen: View {
         .onChange(of: body17, initial: true) { _, size in model.base = size }
         .repaintsOnVoiceChange(model.voices)
         .onDisappear { model.table.stop() }
+        .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
+        .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
+        #if os(iOS)
+        .sheet(isPresented: Binding(get: { studio?.sheet ?? false }, set: { studio?.sheet = $0 })) {
+            if let studio {
+                NavigationStack { StudioPanel(model: studio, voices: model.voices, close: { studio.sheet = false }) }
+                    .presentationDetents([.medium, .large])
+            }
+        }
+        #endif
         .onAppear {
+            if app.readerDoor?.studio == true, studio == nil, let part = model.part {
+                app.readerDoor?.studio = false
+                record(part)
+            }
             if app.readerDoor?.hear == true {
                 app.readerDoor = nil
                 Task { try? await Task.sleep(for: .seconds(1)); model.hearTheCast() }
@@ -490,6 +626,9 @@ private struct ReaderScreen: View {
         }
         #else
         ToolbarItemGroup(placement: .primaryAction) {
+            if let studio {
+                Button { studio.inspector.toggle() } label: { Label("Studio", systemImage: "slider.horizontal.3") }
+            }
             Button { sheet = .search } label: { Label("Search", systemImage: "magnifyingglass") }
                 .keyboardShortcut("f", modifiers: .command)
             Button { sheet = .text } label: { Label("Text", systemImage: "textformat.size") }
@@ -498,7 +637,48 @@ private struct ReaderScreen: View {
         #endif
     }
 
-    private var bottomBar: some View {
+    @ViewBuilder private var bottomBar: some View {
+        if let studio { studioBar(studio) } else { readerBar }
+    }
+
+    /// In the studio the bar keeps Hide My Lines and the page count; the dock is the transport, and the Studio button
+    /// opens the sheet (on a phone the review hides both so its three buttons fit at 320 pt).
+    private func studioBar(_ studio: StudioModel) -> some View {
+        HStack(spacing: Spacing.s3) {
+            Toggle(isOn: $model.hide) { Label("Hide My Lines", systemImage: "eye.slash") }
+                .toggleStyle(.button)
+                .labelStyle(.iconOnly)
+                .accessibilityIdentifier("reader-hide")
+            #if os(iOS)
+            if !wide, !(studio.inReview) {
+                Button { studio.sheet = true } label: { Label("Studio", systemImage: "slider.horizontal.3") }
+                    .accessibilityIdentifier("studio-button")
+            }
+            #endif
+            Spacer(minLength: 0)
+            if wide || !studio.inReview {
+                Text(verbatim: model.pageLabel)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .font(TypeRamp.tabular)
+                    .foregroundStyle(Color.brandTextMuted)
+                    .accessibilityIdentifier("reader-page-label")
+            }
+        }
+        .buttonStyle(.bordered)
+        .padding(.horizontal, Spacing.s4)
+        .padding(.vertical, Spacing.s2)
+        .background(Color.brandSurface)
+    }
+
+    /// Record (§2.9 rule 1): continue the part where it records, else take it, else a new production; the studio opens.
+    private func record(_ part: PartID) {
+        guard let target = StudioOpen.resolve(plays, script: model.script, part: part) else { return }
+        let line = model.script.lines.indices.contains(model.position) ? model.script.lines[model.position].id : nil
+        StudioOpen.open(target, scriptID: model.script.id, line: line, app: app, openWindow: openWindow)
+    }
+
+    private var readerBar: some View {
         HStack(spacing: Spacing.s3) {
             Menu {
                 Picker("I\u{2019}m Playing", selection: $model.part) {
@@ -527,6 +707,11 @@ private struct ReaderScreen: View {
             }
             .labelStyle(HearTheCastLabelStyle())
             .accessibilityIdentifier("reader-hear-cast")
+            if let part = model.part {
+                Button { record(part) } label: { Label("Record", systemImage: "mic") }
+                    .labelStyle(.iconOnly)
+                    .accessibilityIdentifier("reader-record")
+            }
             Spacer(minLength: 0)
             Text(verbatim: model.pageLabel)
                 .lineLimit(1)
@@ -646,7 +831,16 @@ private struct ReaderKeys: ViewModifier {
             .focused($focused)
             .onAppear { focused = true }
             .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .pageUp, .pageDown, .space, .home, .end,
-                               KeyEquivalent("j"), KeyEquivalent("k")]) { press in
+                               KeyEquivalent("j"), KeyEquivalent("k"), KeyEquivalent("r"), .return]) { press in
+                // The studio's keys come first (§2.9 rule 8): Space records, stops or cancels; R again; Return keeps.
+                if model.studioActive, let studio = model.studio {
+                    switch press.key {
+                    case .space: studio.primary(); return .handled
+                    case KeyEquivalent("r"): studio.again(); return .handled
+                    case .return: studio.keep(); return .handled
+                    default: break
+                    }
+                }
                 switch press.key {
                 case .rightArrow, .downArrow, .pageDown: model.turn(1)
                 case .leftArrow, .upArrow, .pageUp: model.turn(-1)
@@ -693,26 +887,46 @@ private struct ReaderPageView: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let marks = ReaderLayout.Marks(role: model.part?.roleName, hide: model.hide, peeked: model.peeked)
+        var marks = ReaderLayout.Marks(role: model.part?.roleName, hide: model.hide, peeked: model.peeked)
+        let takes = model.studioTakes(onPage: page)
+        if let studio = model.studio {
+            marks.current = studio.studio.current.flatMap { model.structure.indexByID[$0] }
+            marks.outline = Self.outline(studio)
+            marks.takes = takes
+        }
         let scheme = scheme
-        Canvas { context, _ in
+        return Canvas { context, _ in
             // The token colors are dynamic: resolved against the scheme the page is in, not the thread's appearance.
             func cg(_ color: Color) -> CGColor { Self.cgColor(color, dark: scheme == .dark) }
             let muted = cg(Color.brandTextMuted)
             let theme = ReaderLayout.Theme(ink: cg(Color.brandText), muted: muted,
                                            hues: PlayScript.partHues.map { Color.genre($0).map(cg) ?? muted },
-                                           background: cg(Color.brandBackground), block: cg(Color.brandSurfaceAlt))
+                                           background: cg(Color.brandBackground), block: cg(Color.brandSurfaceAlt),
+                                           record: cg(StudioPalette.record), warning: cg(Color.semanticWarning))
             context.withCGContext { layout.draw(page: page, in: $0, theme: theme, marks: marks) }
         }
-        .frame(width: layout.pageSize.width, height: layout.pageSize.height + ReaderLayout.headRoom)
+        .frame(width: layout.pageSize.width, height: layout.pageSize.height + ReaderLayout.headRoom + model.pageFoot, alignment: .top)
         .accessibilityChildren {
             ForEach(Array(layout.lines(onPage: page)), id: \.self) { i in
-                if model.isHidden(i) {
+                if let state = takes[i], let studio = model.studio {
+                    Button("\(Self.spoken(model.script.lines[i])). \(StudioCore.spoken(state))") {
+                        studio.openTakes(model.script.lines[i].id)
+                    }
+                } else if model.isHidden(i) {
                     Button("Show line") { model.peek(i) }
                 } else {
                     Text(verbatim: Self.spoken(model.script.lines[i]))
                 }
             }
+        }
+    }
+
+    /// Ink on the current line; dashed record red while a cue leads to it; solid while the microphone is open.
+    static func outline(_ studio: StudioModel) -> ReaderLayout.Outline {
+        switch studio.session.phase {
+        case .listening: .recording
+        case let .cue(id, _): studio.session.run != nil || !studio.studio.mine.contains(id) ? .armed : .ink
+        default: .ink
         }
     }
 
@@ -1200,13 +1414,14 @@ struct ReaderCommands_macOS: Commands {
             Button("Previous Page") { reader?.turn(-1) }.keyboardShortcut(.leftArrow, modifiers: []).disabled(reader == nil)
             Button("Page Down") { reader?.turn(1) }.keyboardShortcut(.pageDown, modifiers: []).disabled(reader == nil)
             Button("Page Up") { reader?.turn(-1) }.keyboardShortcut(.pageUp, modifiers: []).disabled(reader == nil)
-            Button("Turn Page") { reader?.turn(1) }.keyboardShortcut(.space, modifiers: []).disabled(reader == nil)
+            // In a studio Space is the record control's (the Recording menu).
+            Button("Turn Page") { reader?.turn(1) }.keyboardShortcut(.space, modifiers: []).disabled(reader == nil || reader?.studio != nil)
             Button("Turn Page Back") { reader?.turn(-1) }.keyboardShortcut(.space, modifiers: .shift).disabled(reader == nil)
             Button("First Page") { reader?.turnToEdge(last: false) }.keyboardShortcut(.home, modifiers: []).disabled(reader == nil)
             Button("Last Page") { reader?.turnToEdge(last: true) }.keyboardShortcut(.end, modifiers: []).disabled(reader == nil)
             Divider()
-            Button("My Next Line") { reader?.nextMine(1) }.keyboardShortcut("j", modifiers: []).disabled(reader?.part == nil)
-            Button("My Previous Line") { reader?.nextMine(-1) }.keyboardShortcut("k", modifiers: []).disabled(reader?.part == nil)
+            Button("My Next Line") { reader?.nextMine(1) }.keyboardShortcut("j", modifiers: []).disabled(reader?.part == nil || reader?.studio != nil)
+            Button("My Previous Line") { reader?.nextMine(-1) }.keyboardShortcut("k", modifiers: []).disabled(reader?.part == nil || reader?.studio != nil)
             Divider()
             Button("Bigger Text") { reader?.bigger() }.keyboardShortcut("+", modifiers: .command).disabled(reader == nil)
             Button("Smaller Text") { reader?.smaller() }.keyboardShortcut("-", modifiers: .command).disabled(reader == nil)

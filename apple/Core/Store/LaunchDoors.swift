@@ -23,7 +23,9 @@ import Foundation
 ///
 /// - APP_READER=<script id>: open the script reader on that play (iOS and macOS); APP_READER_LINE a line id to open at,
 ///   APP_READER_PART a part ("role:HAMLET") to play, APP_READER_HIDE=1 to hide its lines, APP_READER_SHEET
-///   contents | search | text, APP_READER_PAGE a page to turn to, APP_READER_PREFS the settings as JSON
+///   contents | search | text, APP_READER_PAGE a page to turn to, APP_READER_PREFS the settings as JSON,
+///   APP_READER_STUDIO=1 presses Record (the studio, PLAYS-DESIGN §2.9); APP_STUDIO_STUB=1 records and plays nothing
+///   (no microphone) and APP_STUDIO_PHASE=listening | takes shows a take recording or the take list (StudioDoor)
 ///
 /// - APP_PRODUCTION=<script id>: open a production's cast sheet on that play (made if none exists; iOS and macOS);
 ///   APP_PICKER=role:NAME opens that part's voice picker, APP_READER_HEAR=1 starts Hear the Cast in the reader
@@ -75,7 +77,8 @@ struct LaunchDoors: Sendable, Equatable {
                                    hide: environment["APP_READER_HIDE"] == "1", sheet: environment["APP_READER_SHEET"],
                                    page: environment["APP_READER_PAGE"].flatMap { Int($0) },
                                    prefs: environment["APP_READER_PREFS"],
-                                   hear: environment["APP_READER_HEAR"] == "1"),
+                                   hear: environment["APP_READER_HEAR"] == "1",
+                                   studio: environment["APP_READER_STUDIO"] == "1"),
             production: environment["APP_PRODUCTION"],
             picker: environment["APP_PICKER"]
         )

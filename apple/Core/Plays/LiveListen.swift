@@ -162,6 +162,7 @@ final class SystemTakePlayer: NSObject, ListenTakePlayer, AVAudioPlayerDelegate 
 
     func play(_ url: URL) async {
         guard let player = try? AVAudioPlayer(contentsOf: url) else { return }
+        player.volume = SpeechMute.volume
         player.delegate = self
         self.player = player
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in

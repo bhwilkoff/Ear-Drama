@@ -257,12 +257,13 @@ struct PlaybackCommands_macOS: Commands {
     let queue: ListeningQueue
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.recordingControls) private var recording
+    @FocusedValue(\.studio) private var studio
 
     var body: some Commands {
         CommandMenu("Controls") {
             // Disabled while a part records, so the microphone never hears the episode.
             Button(player.isPlaying ? "Pause" : "Play") { player.togglePlayPause() }
-                .disabled(player.item == nil || recording != nil)
+                .disabled(player.item == nil || recording != nil || studio?.started == true)
             Button("Back 15 Seconds") { player.skip(by: -AudioPlayer.Skip.back) }
                 .keyboardShortcut(.leftArrow, modifiers: .command)
                 .disabled(player.item == nil || player.isFollowing)
@@ -340,14 +341,26 @@ struct ProductionWindow_macOS: View {
     static let id = "production"
     let productionID: String
     @Environment(PlaysLibrary.self) private var plays
+    @Environment(SharedPlays.self) private var shared
+    @Environment(AppStore.self) private var app
+    @Environment(\.openWindow) private var openWindow
     @State private var selected: PartID?
     @State private var replacing: String?
+
+    /// A part being recorded opens its studio window (macOS-DESIGN §4.7); any other part its lines here.
+    private func open(_ part: PartID, line: String?, script: PlayScript) {
+        selected = part
+        replacing = line
+        if let target = StudioOpen.target(for: part, production: productionID, replacing: line, plays: plays, shared: shared) {
+            StudioOpen.open(target, scriptID: script.id, line: line, app: app, openWindow: openWindow)
+        }
+    }
 
     var body: some View {
         if let production = plays.store.production(productionID), let script = plays.castScript(for: production) {
             NavigationSplitView {
-                CastSheet(production: production, script: script, open: { selected = $0; replacing = nil },
-                          replace: { selected = $0; replacing = $1 })
+                CastSheet(production: production, script: script, open: { open($0, line: nil, script: script) },
+                          replace: { open($0, line: $1, script: script) })
                     .navigationSplitViewColumnWidth(min: 280, ideal: 320)
             } detail: {
                 PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script),
@@ -364,9 +377,19 @@ struct ProductionWindow_macOS: View {
 /// hidden, when no part is being recorded.
 struct RecordingCommands_macOS: Commands {
     @FocusedValue(\.recordingControls) private var recording
+    @FocusedValue(\.studio) private var studio
 
     var body: some Commands {
         CommandMenu("Recording") {
+            if let studio {
+                StudioCommandItems(studio: studio)
+            } else {
+                legacy
+            }
+        }
+    }
+
+    @ViewBuilder private var legacy: some View {
             Button(recording?.isListening == true ? "Stop" : recording?.session.run != nil ? "Pause" : "Record") {
                 recording?.recordOrStop()
             }
@@ -391,7 +414,6 @@ struct RecordingCommands_macOS: Commands {
             }
             .keyboardShortcut("r", modifiers: [.command, .shift])
             .disabled(recording == nil || recording!.session.isBusy || recording!.session.run != nil)
-        }
     }
 }
 

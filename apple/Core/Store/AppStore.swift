@@ -268,7 +268,17 @@ final class AppStore {
 nonisolated struct ReaderTarget: Identifiable, Hashable, Sendable {
     let scriptID: String
     var line: String?
-    var id: String { scriptID }
+    /// The studio attached (PLAYS-DESIGN §2.9): the reader opens on the production's own script with the part.
+    var studio: StudioTarget?
+    var id: String { scriptID + (studio.map { "|" + $0.production + "|" + $0.part } ?? "") }
+}
+
+/// A production and one of its parts: the studio's one seam (`open(scriptID, at:, studio:)`).
+nonisolated struct StudioTarget: Codable, Hashable, Sendable {
+    let production: String
+    /// The part's raw id ("role:MOLLY").
+    let part: String
+    var partID: PartID { PartID(rawValue: part) }
 }
 
 /// What a launch door sets in the reader (DEBUG only; `LaunchDoors`).
@@ -280,4 +290,6 @@ nonisolated struct ReaderDoor: Equatable, Sendable {
     var page: Int?
     var prefs: String?
     var hear = false
+    /// APP_READER_STUDIO=1: with APP_READER_PART, press the reader's Record (the studio opens).
+    var studio = false
 }

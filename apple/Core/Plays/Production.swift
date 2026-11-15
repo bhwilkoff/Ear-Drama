@@ -110,12 +110,21 @@ nonisolated struct Production: Codable, Identifiable, Equatable, Sendable {
     }
 
     /// Removes every take that is not a line's chosen one and returns them, so
-    /// the store deletes their files (§6, "discard unused takes").
-    mutating func discardUnused() -> [Take] {
-        let gone = unusedTakes
+    /// the store deletes their files (§6, "discard unused takes"). With `lines`,
+    /// only unchosen takes of those lines go (the studio's Delete Unused Takes is one part's, §2.9 rule 4).
+    mutating func discardUnused(lines: Set<String>? = nil) -> [Take] {
+        let gone = unusedTakes.filter { lines?.contains($0.lineID) ?? true }
         let ids = Set(gone.map(\.id))
         takes.removeAll { ids.contains($0.id) }
         return gone
+    }
+
+    /// Deletes one take, the person's own act (§2.9 rule 4): only when it is not its line's chosen take, the
+    /// one the play uses. Returns what went, so the store deletes its file; the chosen take is refused (empty).
+    mutating func deleteTake(_ takeID: String) -> [Take] {
+        guard let take = take(takeID), chosen[take.lineID] != takeID else { return [] }
+        takes.removeAll { $0.id == takeID }
+        return [take]
     }
 
     /// Discards a run: every take it made is removed and each line goes back to the take it had

@@ -43,7 +43,7 @@ struct ContentView_iOS: View {
             store.push(PlayRoute.production(made.id))
         }
         .fullScreenCover(item: $store.reading) { target in
-            NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line) }
+            NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line, studio: target.studio) }
         }
     }
 

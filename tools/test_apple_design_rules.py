@@ -94,7 +94,7 @@ def red_means_recording(files):
     set only where recording happens, and the recording controls take it."""
     rx = re.compile(r"\bbrand(On)?Record\b")
     outside = [p for p, t in files.items()
-               if not p.endswith(("Shared/RecordingScreen.swift", "Shared/PlaysGrammar.swift", "Core/Design.swift")) and rx.search(t)]
+               if not p.endswith(("Shared/RecordingScreen.swift", "Shared/StudioViews.swift", "Shared/PlaysGrammar.swift", "Core/Design.swift")) and rx.search(t)]
     rec = files.get("apple/Shared/RecordingScreen.swift", "")
     grammar = files.get("apple/Shared/PlaysGrammar.swift", "")
     return (not outside and rec.count("Color.brandRecord") >= 3
