@@ -19,6 +19,9 @@ import kotlin.coroutines.resume
 class LiveListen(private val takesFolder: File, private val speaker: CastSpeaker) {
     private var playback: MixPlayback? = null
 
+    /** The test door's mute (appname_mute): takes play at zero volume (the cast speaker has its own). */
+    @Volatile var muted = false
+
     private val _current = MutableStateFlow<Relay.ListenEntry?>(null)
 
     /** The entry being heard now, for the speaker and words on screen. */
@@ -40,7 +43,7 @@ class LiveListen(private val takesFolder: File, private val speaker: CastSpeaker
     }
 
     private suspend fun playTake(file: File) {
-        val player = MixPlayback()
+        val player = MixPlayback().also { it.muted = muted }
         playback = player
         try {
             withContext(Dispatchers.Main.immediate) {

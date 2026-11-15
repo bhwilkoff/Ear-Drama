@@ -127,4 +127,21 @@ class ReaderPaginationTest {
         assertEquals("the page that opens on the speech start is not", -1, contd[0])
         assertEquals("the act page is not", -1, contd[paged.pages.indexOfFirst { p -> p.segs.any { it.block == 2 } }])
     }
+
+    @Test fun `in the studio my speech stays whole on a page, one longer than a page still breaks`() {
+        fun speech(owner: Int, id: Int, lines: Int, keep: Boolean) = listOf(
+            ReaderPagination.Block(owner, FloatArray(1) { 10f }, 6f, keepWithNext = true, speech = id, speechStart = true, keepSpeech = keep),
+            ReaderPagination.Block(owner, FloatArray(lines) { 10f }, 0f, speech = id, keepSpeech = keep),
+        )
+        // Page 100 tall: a two-line speech (30), then a six-line one (76): with the studio off it splits across the
+        // pages, with it on it moves whole to the next; one longer than a page (130) breaks either way.
+        for (keep in listOf(false, true)) {
+            val blocks = speech(0, 1, 2, keep) + speech(1, 2, 6, keep)
+            val paged = ReaderPagination.paginate(blocks, 2, 100f)
+            val pagesOfSecond = paged.pages.indices.filter { p -> paged.pages[p].segs.any { blocks[it.block].speech == 2 } }
+            if (keep) assertEquals("whole on one page", 1, pagesOfSecond.size) else assertTrue("splits when the studio is off", pagesOfSecond.size > 1)
+        }
+        val long = speech(0, 1, 12, true)
+        assertTrue("a speech longer than a page still breaks", ReaderPagination.paginate(long, 1, 100f).count > 1)
+    }
 }

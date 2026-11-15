@@ -662,6 +662,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val haptics = rememberHaptics()
+    val muted = com.example.appname.navigation.LocalPlayerMuted.current
     val mix = remember { MixPlayback() }
     var mixing by remember { mutableStateOf(false) }
     var loaded by remember { mutableStateOf(false) }
@@ -766,7 +767,7 @@ private fun ListenThrough(production: Production, script: PlayScript, shared: Sh
             else -> Button(onClick = {
                 if (container.playback.state.value.isPlaying) container.playback.togglePlay()
                 val cast = voices ?: return@Button
-                val listen = LiveListen(plays.store.takesFolder(production.id), cast.speaker)
+                val listen = LiveListen(plays.store.takesFolder(production.id), cast.speaker).also { it.muted = muted }
                 live = listen
                 liveJob = scope.launch {
                     try {

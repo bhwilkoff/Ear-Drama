@@ -250,11 +250,23 @@ class ProductionStore(val root: File) : ShareStore {
         _productions.value = _productions.value.filter { it.id != id }
     }
 
-    fun discardUnusedTakes(id: String) {
-        val production = production(id) ?: return
-        val (kept, gone) = production.discardUnused()
+    /** Delete unused takes: every unchosen take (or, with [lines], those lines') and its file goes; returns how many. */
+    fun discardUnusedTakes(id: String, lines: Set<String>? = null): Int {
+        val production = production(id) ?: return 0
+        val (kept, gone) = production.discardUnused(lines)
         gone.forEach { takeFile(production, it).delete() }
         save(kept)
+        return gone.size
+    }
+
+    /** One unchosen take and its file (the person's act); false when the take is the line's chosen one or unknown. */
+    fun deleteTake(id: String, takeID: String): Boolean {
+        val production = production(id) ?: return false
+        val (kept, gone) = production.deleteTake(takeID)
+        if (gone.isEmpty()) return false
+        gone.forEach { takeFile(production, it).delete() }
+        save(kept)
+        return true
     }
 
     /** Discard the run (Run through's review): its takes and their files go, each line back to its prior take. */

@@ -43,12 +43,21 @@ import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FormatSize
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Toc
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.layout.AnimatedPane
+import androidx.compose.material3.adaptive.layout.SupportingPaneScaffold
+import androidx.compose.material3.adaptive.layout.calculatePaneScaffoldDirective
+import androidx.compose.material3.adaptive.navigation.rememberSupportingPaneScaffoldNavigator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,6 +80,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -86,6 +96,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -144,6 +156,10 @@ import com.example.appname.plays.ReaderMath
 import com.example.appname.plays.ReaderPagination
 import com.example.appname.plays.ReaderPrefs
 import com.example.appname.plays.ReaderStore
+import com.example.appname.plays.RecordingSession
+import com.example.appname.plays.Relay
+import com.example.appname.plays.StudioCore
+import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
 import com.example.appname.plays.TableRead
@@ -155,6 +171,8 @@ import com.example.appname.ui.EmptyAction
 import com.example.appname.ui.EmptyMessage
 import com.example.appname.ui.Haptic
 import com.example.appname.ui.LocalAppContainer
+import com.example.appname.ui.LocalIsTelevision
+import com.example.appname.ui.theme.AppSemantics
 import com.example.appname.ui.rememberHaptics
 import com.example.appname.ui.theme.DisplayFontFamily
 import com.example.appname.ui.theme.OnAir
@@ -181,6 +199,13 @@ private val PageVertical = 16.dp
 private val PageHead = 28.dp
 private val RuleInset = 10.dp
 
+/** Room below the text in the studio, so the current line's outline is never clipped at a page foot (PLAYS-DESIGN §2.9). */
+private val StudioFoot = 8.dp
+private val StudioPaneWidth = 360.dp
+private const val MARK_GLYPH_EM = 0.95f
+/** The room a take mark needs beside a name in the gutter: the glyph, a two-digit count and a gap. */
+private const val MARK_RESERVE_EM = 2.3f
+
 private sealed interface Loaded {
     data object Loading : Loaded
     data object Missing : Loaded
@@ -190,13 +215,21 @@ private sealed interface Loaded {
 
 /** The reader over one play, full screen: it opens at [startLine], else where this device last left off. */
 @Composable
-fun ReaderScreen(scriptId: String, startLine: String?, onBack: () -> Unit) {
+fun ReaderScreen(
+    scriptId: String,
+    startLine: String?,
+    productionId: String? = null,
+    part: String? = null,
+    onBack: () -> Unit,
+    onOpenStudio: (String, String, String?) -> Unit = { _, _, _ -> },
+) {
     val plays = LocalAppContainer.current.plays
     var attempt by remember { mutableStateOf(0) }
-    val loaded by produceState<Loaded>(Loaded.Loading, scriptId, attempt) {
+    val loaded by produceState<Loaded>(Loaded.Loading, scriptId, productionId, attempt) {
         value = Loaded.Loading
         value = try {
-            plays.script(scriptId)?.let { Loaded.Ready(it) } ?: Loaded.Missing
+            // With the studio the script is the production's own copy, so its line ids match the takes.
+            (productionId?.let { plays.castScript(it) } ?: plays.script(scriptId))?.let { Loaded.Ready(it) } ?: Loaded.Missing
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -209,7 +242,10 @@ fun ReaderScreen(scriptId: String, startLine: String?, onBack: () -> Unit) {
         }
         Loaded.Missing -> ReaderFrame(onBack) { EmptyMessage("This play is not on this device.") }
         is Loaded.Failed -> ReaderFrame(onBack) { EmptyMessage(l.line, action = EmptyAction("Try again") { attempt++ }) }
-        is Loaded.Ready -> ReaderBody(l.script, startLine, onBack)
+        is Loaded.Ready -> ReaderBody(
+            l.script, startLine, if (productionId != null && part != null) StudioTarget(productionId, PartID(part)) else null,
+            onBack, onOpenStudio,
+        )
     }
 }
 
@@ -287,6 +323,7 @@ private fun buildBlocks(
     gutter: Boolean,
     measurer: TextMeasurer,
     density: Density,
+    studioRole: String? = null,
 ): List<Blk> {
     val bodySp = BODY_SP * scale
     val bodyPx = with(density) { bodySp.sp.toPx() }
@@ -403,7 +440,7 @@ private fun buildBlocks(
                 val firstIsCue = sp.rows.firstOrNull()?.cue == true
                 val nameStyled = nameText(name, hue)
                 val beside = gutter && name.isNotEmpty() && sp.rows.isNotEmpty() && !firstIsCue &&
-                    measurer.measure(nameStyled, style()).size.width <= GUTTER_EM * bodyPx
+                    measurer.measure(nameStyled, style()).size.width + (if (sp.role == studioRole) MARK_RESERVE_EM * bodyPx else 0f) <= GUTTER_EM * bodyPx
                 val base = if (beside) COL_EM else 0f
                 var first = true
                 var lastTail: Triple<Int, Int, String>? = null
@@ -520,6 +557,8 @@ private data class FlowSpec(
     val dark: Boolean,
     val per: Int,
     val insetPx: Int,
+    /** The studio's part (its role name): its speeches stay whole on a page and carry take marks. */
+    val studioRole: String? = null,
 )
 
 private fun textWidth(flow: ReaderFlow, b: Blk): Int = (flow.contentPx - (b.xOffEm * flow.bodyPx).toInt()).coerceAtLeast(1)
@@ -534,7 +573,7 @@ private suspend fun computeFlow(
     val bodyPx = with(density) { (BODY_SP * spec.prefs.scale).sp.toPx() }
     val gutter = spec.colPx / bodyPx >= PlayPage.GUTTER_MIN_EM
     val measurer = TextMeasurer(resolver, density, LayoutDirection.Ltr)
-    val blocks = buildBlocks(script, pal, spec.prefs.scale, spec.prefs.leading, gutter, measurer, density)
+    val blocks = buildBlocks(script, pal, spec.prefs.scale, spec.prefs.leading, gutter, measurer, density, spec.studioRole)
     val contentPx = (spec.colPx - spec.insetPx).coerceAtLeast(1)
     val firstBlock = IntArray(script.lines.size) { -1 }
     blocks.forEachIndexed { b, blk -> if (firstBlock[blk.owner] < 0) firstBlock[blk.owner] = b }
@@ -548,7 +587,7 @@ private suspend fun computeFlow(
         val rows = if (b.rowOffsets.size > 1) b.rowOffsets.map { l.getLineForOffset(it) }.distinct().toIntArray() else null
         ReaderPagination.Block(
             b.owner, FloatArray(l.lineCount) { l.getLineBottom(it) - l.getLineTop(it) }, b.gapEm * bodyPx, b.keepWithNext,
-            b.breakBefore, b.speech, b.speechStart, rows,
+            b.breakBefore, b.speech, b.speechStart, rows, keepSpeech = spec.studioRole != null && b.role == spec.studioRole,
         )
     }
     val paged = ReaderPagination.paginate(measured, script.lines.size, spec.pageHeightPx.toFloat())
@@ -575,7 +614,78 @@ private class Ink(
     val insetPx: Float,
     val bodyPx: Float,
     val glyph: androidx.compose.ui.graphics.painter.Painter,
+    val warn: androidx.compose.ui.graphics.painter.Painter,
+    val measurer: TextMeasurer,
+    val targetPx: Float,
 )
+
+/** How the studio outlines the current line (§2.9 rule 2): ink, dashed record red while its cue plays, solid while the microphone is open. */
+private enum class StudioOutline { Ink, Armed, Recording }
+
+/** What the page draws for the studio: its part, the current line (a script line index), and each of my lines' take state. */
+private class StudioPaint(
+    val role: String,
+    val current: Int?,
+    val outline: StudioOutline,
+    val states: Map<Int, StudioCore.LineState>,
+    val record: Color,
+    val warning: Color,
+    val ink: Color,
+)
+
+private class MarkSpot(val glyph: Rect, val textX: Float, val cy: Float, val hit: Rect)
+
+/**
+ * Where a line's take-state mark sits (§2.9 rule 3), in the slice's coordinates: after the speaker's name when it stands above
+ * its words; in the gutter the name is right-aligned beside the words, so the mark stands before it. The hit area is the name
+ * and the mark together, at least a finger tall.
+ */
+private fun markSpot(m: Measured, blk: Blk, ink: Ink, top: Float, state: StudioCore.LineState): MarkSpot? {
+    val lay = (if (blk.kind == Kind.Name) m.text else m.name) ?: return null
+    val g = ink.bodyPx * MARK_GLYPH_EM
+    val gap = ink.bodyPx * 0.3f
+    val countW = if (state.state == StudioCore.LineState.Kind.Chosen) ink.bodyPx * (0.25f + 0.55f * state.takes.toString().length) else 0f
+    val width = g + countW
+    val lineH = lay.getLineBottom(0) - lay.getLineTop(0)
+    val cy = top + lineH / 2
+    val nameL: Float
+    val nameR: Float
+    val left: Float
+    if (blk.kind == Kind.Name) {
+        val x0 = ink.insetPx + blk.xOffEm * ink.bodyPx
+        nameL = x0 + lay.getLineLeft(0)
+        nameR = x0 + lay.getLineRight(0)
+        left = nameR + gap
+    } else {
+        nameL = ink.insetPx + lay.getLineLeft(0)
+        nameR = ink.insetPx + lay.getLineRight(0)
+        left = nameL - gap - width
+    }
+    val half = maxOf(lineH, ink.targetPx) / 2
+    val hit = Rect(minOf(nameL, left) - 6f, cy - half, maxOf(nameR, left + width) + 6f, cy + half)
+    return MarkSpot(Rect(left, cy - g / 2, left + g, cy + g / 2), left + g + ink.bodyPx * 0.25f, cy, hit)
+}
+
+private fun DrawScope.drawMark(spot: MarkSpot, state: StudioCore.LineState, blk: Blk, ink: Ink, studio: StudioPaint) {
+    val hue = blk.hue ?: ink.accent
+    val c = spot.glyph.center
+    val r = spot.glyph.width / 2
+    when (state.state) {
+        StudioCore.LineState.Kind.None -> drawCircle(ink.muted, r * 0.8f, c, style = Stroke(ink.ruleWidth * 0.5f))
+        StudioCore.LineState.Kind.Chosen -> {
+            drawCircle(hue, r * 0.85f, c)
+            val text = ink.measurer.measure(
+                androidx.compose.ui.text.AnnotatedString(state.takes.toString()),
+                TextStyle(fontSize = (CAPTION_EM * ink.bodyPx).toSp(), fontWeight = FontWeight.SemiBold, color = hue),
+            )
+            drawText(text, topLeft = Offset(spot.textX, spot.cy - text.size.height / 2f))
+        }
+        StudioCore.LineState.Kind.Flagged -> translate(spot.glyph.left, spot.glyph.top) {
+            with(ink.warn) { draw(Size(spot.glyph.width, spot.glyph.height), colorFilter = ColorFilter.tint(studio.warning)) }
+        }
+    }
+}
+
 
 private fun DrawScope.drawSlice(
     m: Measured,
@@ -588,6 +698,7 @@ private fun DrawScope.drawSlice(
     hidden: Boolean,
     flash: Boolean,
     underline: Boolean,
+    studio: StudioPaint? = null,
 ) {
     val layout = m.text
     val tone = blk.hue ?: ink.accent
@@ -620,6 +731,9 @@ private fun DrawScope.drawSlice(
         }
         drawText(layout, topLeft = Offset(x0, shift))
         m.name?.let { if (from == 0) drawText(it, topLeft = Offset(ink.insetPx, shift)) }
+        if (studio != null && from == 0 && blk.speechStart && blk.role == studio.role) {
+            studio.states[blk.owner]?.let { state -> markSpot(m, blk, ink, top, state)?.let { drawMark(it, state, blk, ink, studio) } }
+        }
         val cue = blk.cueRange
         if (underline && cue != null) {
             val first = layout.getLineForOffset(cue.first)
@@ -674,6 +788,8 @@ private fun PageView(
     headPx: Float,
     onPeek: (Int) -> Unit,
     modifier: Modifier,
+    studio: StudioPaint? = null,
+    onTakes: (Int) -> Unit = {},
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -712,8 +828,41 @@ private fun PageView(
                         tint = mineRole != null && b.role == mineRole && b.kind != Kind.Heading,
                         hidden = hideable(b, mineRole, hiding, peeked), flash = b.owner == flash,
                         underline = mineRole != null && b.cueRole == mineRole,
+                        studio = studio,
                     )
                 }
+                if (studio?.current != null) {
+                    val mine = segs.filter { flow.blocks[it.block].let { b -> b.owner == studio.current && b.role == studio.role } }
+                    if (mine.isNotEmpty()) {
+                        val margin = 6.dp.toPx()
+                        val top = mine.first().top - ink.pad - margin
+                        val bottom = mine.last().bottom + ink.pad + margin
+                        val stroke = when (studio.outline) {
+                            StudioOutline.Ink -> Stroke(1.5.dp.toPx())
+                            StudioOutline.Armed -> Stroke(2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
+                            StudioOutline.Recording -> Stroke(2.5.dp.toPx())
+                        }
+                        drawRoundRect(
+                            if (studio.outline == StudioOutline.Ink) studio.ink else studio.record,
+                            Offset(2.dp.toPx(), top), Size(size.width - 4.dp.toPx(), bottom - top), CornerRadius(8.dp.toPx()), style = stroke,
+                        )
+                    }
+                }
+            }
+        }
+        if (studio != null) {
+            segs.forEachIndexed { s, seg ->
+                val b = flow.blocks[seg.block]
+                if (seg.from != 0 || !b.speechStart || b.role != studio.role) return@forEachIndexed
+                val state = studio.states[b.owner] ?: return@forEachIndexed
+                val spot = markSpot(layouts[s], b, ink, seg.top, state) ?: return@forEachIndexed
+                Box(
+                    Modifier
+                        .offset { IntOffset(spot.hit.left.toInt(), (spot.hit.top + headPx).toInt()) }
+                        .size(with(density) { spot.hit.width.toDp() }, with(density) { spot.hit.height.toDp() })
+                        .clickable(role = Role.Button, onClickLabel = "Open the take list") { onTakes(b.owner) }
+                        .semantics(mergeDescendants = true) { contentDescription = StudioCore.spoken(state) },
+                )
             }
         }
         segs.forEach { seg ->
@@ -739,8 +888,13 @@ private fun PageView(
 private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
     val density = LocalDensity.current
     val glyph = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeUp)
-    return remember(pal, flow, glyph) {
-        Ink(pal.accent, pal.block, pal.muted, with(density) { 3.dp.toPx() }, flow.bodyPx * LINE_GAP_EM / 3, with(density) { RuleInset.toPx() }, flow.bodyPx, glyph)
+    val warn = rememberVectorPainter(Icons.Filled.Warning)
+    val measurer = rememberTextMeasurer()
+    return remember(pal, flow, glyph, warn, measurer) {
+        Ink(
+            pal.accent, pal.block, pal.muted, with(density) { 3.dp.toPx() }, flow.bodyPx * LINE_GAP_EM / 3, with(density) { RuleInset.toPx() },
+            flow.bodyPx, glyph, warn, measurer, with(density) { 44.dp.toPx() },
+        )
     }
 }
 
@@ -797,32 +951,44 @@ private fun readerKeyName(key: Key): String? = when (key) {
     else -> null
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3AdaptiveApi::class)
 @Composable
-private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Unit) {
+private fun ReaderBody(
+    script: PlayScript,
+    startLine: String?,
+    studioTarget: StudioTarget?,
+    onBack: () -> Unit,
+    onOpenStudio: (String, String, String?) -> Unit,
+) {
     val context = LocalContext.current
     val store = remember { ReaderStore(context.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE)) }
     val haptics = rememberHaptics()
     val density = LocalDensity.current
     val resolver = LocalFontFamilyResolver.current
     val dark = OnAir.colors.dark
+    val container = LocalAppContainer.current
+    val muted = com.example.appname.navigation.LocalPlayerMuted.current
+    val television = LocalIsTelevision.current
+    val deviceVoices = rememberDeviceVoices()
+    val castHandle = rememberCast(deviceVoices, script, studioTarget?.production)
+    val studio = rememberStudio(studioTarget, script, startLine, castHandle)
     var prefs by remember { mutableStateOf(store.prefs()) }
     var volumeKeys by remember { mutableStateOf(store.volumeKeys) }
     val saved = remember(script.id) { store.position(script.id) }
     var posId by rememberSaveable(script.id) {
-        mutableStateOf(script.lines.firstOrNull { it.id == (startLine ?: saved["line"]) }?.id ?: script.lines.firstOrNull()?.id.orEmpty())
+        val open = studio?.studio?.current?.value ?: startLine ?: saved["line"]
+        mutableStateOf(script.lines.firstOrNull { it.id == open }?.id ?: script.lines.firstOrNull()?.id.orEmpty())
     }
     var part by rememberSaveable(script.id) {
-        mutableStateOf(saved["part"]?.takeIf { p -> script.castParts.any { it.id.raw == p && it.id.isSpeaking } })
+        mutableStateOf(
+            studio?.part?.raw ?: saved["part"]?.takeIf { p -> script.castParts.any { it.id.raw == p && it.id.isSpeaking } },
+        )
     }
     var hiding by rememberSaveable(script.id) { mutableStateOf(false) }
     var peeked by remember { mutableStateOf<Int?>(null) }
     var flash by remember { mutableStateOf<Int?>(null) }
     var jump by remember { mutableIntStateOf(0) }
     var sheet by rememberSaveable { mutableStateOf("") }
-    val container = LocalAppContainer.current
-    val deviceVoices = rememberDeviceVoices()
-    val castHandle = rememberCast(deviceVoices, script, null)
     val scope = rememberCoroutineScope()
     var pickingVoice by remember { mutableStateOf<PartID?>(null) }
     var hearing by remember { mutableStateOf<ScriptLine?>(null) }
@@ -838,20 +1004,20 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     }
 
     val onSurface = MaterialTheme.colorScheme.onSurface
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val mutedInk = MaterialTheme.colorScheme.onSurfaceVariant
     val accent = MaterialTheme.colorScheme.primary
     val block = MaterialTheme.colorScheme.surfaceContainerHigh
-    val pal = remember(script, dark, onSurface, muted, accent, block) {
+    val pal = remember(script, dark, onSurface, mutedInk, accent, block) {
         val hues = HashMap<String, Color>()
         script.castParts.filter { it.id.isSpeaking }.forEach { p ->
             genreColor(script.partHue(p.id), dark)?.let { hues[p.id.roleName.orEmpty()] = it }
         }
-        Palette(onSurface, muted, accent, block, hues)
+        Palette(onSurface, mutedInk, accent, block, hues)
     }
 
     LaunchedEffect(posId, part) {
         delay(300)
-        store.savePosition(script.id, posId.ifEmpty { null }, part)
+        store.savePosition(script.id, posId.ifEmpty { null }, if (studio != null) saved["part"] else part)
     }
     LaunchedEffect(flash) {
         if (flash != null) {
@@ -859,10 +1025,15 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
             flash = null
         }
     }
-    LaunchedEffect(sheet) { if (sheet.isEmpty()) runCatching { focus.requestFocus() } }
+    LaunchedEffect(sheet, studio?.sheet) { if (sheet.isEmpty() && studio?.sheet != true) runCatching { focus.requestFocus() } }
 
     val place = remember(posIndex, script) { ScriptReading.placeOf(script, posIndex) }
-    val wide = with(LocalDensity.current) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() } >= 600.dp
+    val windowWidth = with(LocalDensity.current) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() }
+    val wide = windowWidth >= 600.dp
+    val adaptive = currentWindowAdaptiveInfo()
+    val tabletop = adaptive.windowPosture.isTabletop
+    // The studio's panel stands beside the script once the reader has 860 dp, or below the hinge in tabletop (§2.9 rule 7).
+    val paneMode = studio != null && (windowWidth >= 860.dp || tabletop)
 
     fun stopHearing() {
         hearJob?.cancel()
@@ -881,6 +1052,8 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
         if (outline) flash = index
         jump++
     }
+    fun follow(id: String) = goTo(script.lines.indexOfFirst { it.id == id }, outline = false)
+    SideEffect { studio?.studio?.onFollow = { id -> follow(id) } }
 
     /** Hear the cast: from the first line on the page to the end, each part in its voice, the page following. */
     fun startHearing() {
@@ -903,6 +1076,13 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     }
 
     fun myLine(direction: Int) {
+        if (studio != null) {
+            if (studio.studio.move(direction)) {
+                haptics(Haptic.Selection)
+                studio.studio.current.value?.let { follow(it) }
+            }
+            return
+        }
         val p = PartID(part ?: return)
         var i = ScriptReading.nextLineOf(script, p, posIndex, direction)
         if (i < 0 && direction > 0) i = ScriptReading.nextLineOf(script, p, -1, 1)
@@ -912,13 +1092,42 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
         }
     }
 
+    /** Record in the reader's bottom bar: continues the part, takes it where it is open, else makes a production (§2.9 rule 1). */
+    fun record() {
+        val raw = part ?: return
+        scope.launch {
+            StudioOpen.resolve(container.plays, script, PartID(raw))?.let { onOpenStudio(it, raw, posId) }
+        }
+    }
+
+    fun finishPart() {
+        val t = studio ?: return
+        val latest = container.plays.store.production(t.target.production) ?: return
+        try {
+            container.plays.store.save(Relay.finish(t.part, latest, t.script))
+            t.close()
+            onBack()
+        } catch (e: Relay.Refusal) {
+            t.refusal = e.text
+        }
+    }
+
     val keys = Modifier.onPreviewKeyEvent { e: KeyEvent ->
+        val studioKey = studio != null && when (e.key) {
+            Key.Spacebar, Key.HeadsetHook, Key.MediaPlayPause, Key.Enter, Key.NumPadEnter, Key.R -> true
+            else -> false
+        }
         val volume = volumeKeys && (e.key == Key.VolumeDown || e.key == Key.VolumeUp)
         val name = readerKeyName(e.key)
         val letter = part != null && (e.key == Key.J || e.key == Key.K)
-        if (!volume && name == null && !letter) return@onPreviewKeyEvent false
+        if (!studioKey && !volume && name == null && !letter) return@onPreviewKeyEvent false
         if (e.type == KeyEventType.KeyDown) {
             when {
+                studioKey -> when (e.key) {
+                    Key.Enter, Key.NumPadEnter -> studio.studio.keep()
+                    Key.R -> scope.launch { studio.studio.again() }
+                    else -> scope.launch { studio.studio.primary() }
+                }
                 volume -> turner.turn(ReaderMath.Turn.By(if (e.key == Key.VolumeDown) 1 else -1))
                 letter -> myLine(if (e.key == Key.J) 1 else -1)
                 else -> ReaderMath.keyTurn(name!!, e.isShiftPressed)?.let { turner.turn(it) }
@@ -927,108 +1136,122 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
         true
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(script.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (place.label.isNotEmpty()) {
-                            Text(place.label, style = MaterialTheme.typography.labelMedium, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                },
-                navigationIcon = { IconButton(onClick = { stopHearing(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
-                actions = {
-                    if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
-                    IconButton(onClick = { sheet = "contents" }) { Icon(Icons.Filled.Toc, contentDescription = "Contents") }
-                    IconButton(onClick = { sheet = "search" }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
-                    IconButton(onClick = { sheet = "text" }) { Icon(Icons.Filled.FormatSize, contentDescription = "Text") }
-                },
-            )
-        },
-        bottomBar = {
-            Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-              Column(Modifier.navigationBarsPadding()) {
-                hearing?.let { line ->
-                    Text(
-                        "Device voice \u00b7 ${line.part.title}",
-                        Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)
-                            .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = Spacing.S2.dp, vertical = Spacing.S1.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    var menu by remember { mutableStateOf(false) }
-                    Box {
-                        TextButton(onClick = { menu = true }) {
-                            val who = part?.let { PartID(it).title }
-                            Text(
-                                if (who == null) "I’m playing…" else "I’m playing $who",
-                                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 168.dp),
-                            )
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(
-                                text = { Text("Nobody") },
-                                leadingIcon = if (part == null) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
-                                onClick = { menu = false; part = null; hiding = false; peeked = null; haptics(Haptic.Selection) },
-                            )
-                            script.castParts.filter { it.id.isSpeaking }.forEach { p ->
-                                DropdownMenuItem(
-                                    text = { Text("${p.title} · ${p.lineCount}") },
-                                    leadingIcon = if (part == p.id.raw) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
-                                    onClick = { menu = false; part = p.id.raw; peeked = null; haptics(Haptic.Selection) },
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (castHandle != null) {
-                        TextButton(onClick = { if (hearingOn) stopHearing() else startHearing() }) {
-                            Icon(
-                                if (hearingOn) Icons.Filled.Stop else Icons.Filled.PlayArrow,
-                                contentDescription = if (hearingOn) "Stop" else "Hear the cast",
-                            )
-                            if (wide) Text(if (hearingOn) "Stop" else "Hear the cast", Modifier.padding(start = Spacing.S1.dp))
-                        }
-                    }
-                    if (part != null) {
-                        IconButton(onClick = { myLine(1) }) { Icon(Icons.Filled.VerticalAlignBottom, contentDescription = "Next line") }
-                        IconToggleButton(checked = hiding, onCheckedChange = { hiding = it; peeked = null; haptics(Haptic.Selection) }) {
-                            Icon(if (hiding) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "Hide my lines")
-                        }
-                    }
-                    Text(
-                        pageLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = muted,
-                        modifier = Modifier.padding(horizontal = Spacing.S2.dp),
-                    )
-                }
-              }
-            }
-        },
-    ) { padding ->
-        BoxWithConstraints(
-            Modifier.padding(padding).fillMaxSize().clipToBounds().focusRequester(focus).focusable().then(keys),
+    val studioPhase = studio?.session?.phase?.collectAsState()?.value
+    val studioProduction = studio?.session?.production?.collectAsState()?.value
+    val studioCurrent = studio?.studio?.current?.collectAsState()?.value
+    val inReview = studioPhase is RecordingSession.Phase.Review || studioPhase is RecordingSession.Phase.RunReview
+    val recordRed = OnAir.colors.record
+    val warningInk = AppSemantics.colors.warning
+    val paint = if (studio != null && studioProduction != null && mineRole != null) {
+        StudioPaint(
+            role = mineRole,
+            current = studioCurrent?.let { id -> script.lines.indexOfFirst { it.id == id }.takeIf { it >= 0 } },
+            outline = when (studioPhase) {
+                is RecordingSession.Phase.Listening -> StudioOutline.Recording
+                is RecordingSession.Phase.Cue -> StudioOutline.Armed
+                else -> StudioOutline.Ink
+            },
+            states = studio.studio.mine.associate { id ->
+                script.lines.indexOfFirst { it.id == id } to StudioCore.lineState(studioProduction, id)
+            },
+            record = recordRed,
+            warning = warningInk,
+            ink = onSurface,
+        )
+    } else {
+        null
+    }
+
+    /** The reader's own bar: the part, Hide my lines and the page count; Record once a part is chosen; the Studio button on a phone. */
+    val bar: @Composable () -> Unit = {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.S2.dp, vertical = Spacing.S1.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            val bodyPx = with(density) { (BODY_SP * prefs.scale).sp.toPx() }
+            if (studio != null) {
+                Text(
+                    studio.part.title, Modifier.weight(1f).padding(horizontal = Spacing.S2.dp),
+                    style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    color = genreColor(script.partHue(studio.part), dark) ?: onSurface,
+                )
+            } else {
+                var menu by remember { mutableStateOf(false) }
+                Box(Modifier.weight(1f)) {
+                    TextButton(onClick = { menu = true }) {
+                        val who = part?.let { PartID(it).title }
+                        Text(
+                            if (who == null) "I’m playing…" else "I’m playing $who",
+                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 168.dp),
+                        )
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Nobody") },
+                            leadingIcon = if (part == null) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
+                            onClick = { menu = false; part = null; hiding = false; peeked = null; haptics(Haptic.Selection) },
+                        )
+                        script.castParts.filter { it.id.isSpeaking }.forEach { p ->
+                            DropdownMenuItem(
+                                text = { Text("${p.title} · ${p.lineCount}") },
+                                leadingIcon = if (part == p.id.raw) ({ Icon(Icons.Filled.Check, contentDescription = null) }) else null,
+                                onClick = { menu = false; part = p.id.raw; peeked = null; haptics(Haptic.Selection) },
+                            )
+                        }
+                    }
+                }
+                if (castHandle != null) {
+                    TextButton(onClick = { if (hearingOn) stopHearing() else startHearing() }) {
+                        Icon(
+                            if (hearingOn) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                            contentDescription = if (hearingOn) "Stop" else "Hear the cast",
+                        )
+                        if (wide) Text(if (hearingOn) "Stop" else "Hear the cast", Modifier.padding(start = Spacing.S1.dp))
+                    }
+                }
+                if (part != null) {
+                    IconButton(onClick = { myLine(1) }) { Icon(Icons.Filled.VerticalAlignBottom, contentDescription = "Next line") }
+                }
+            }
+            if (part != null) {
+                IconToggleButton(checked = hiding, onCheckedChange = { hiding = it; peeked = null; haptics(Haptic.Selection) }) {
+                    Icon(if (hiding) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "Hide my lines")
+                }
+            }
+            if (studio == null && part != null && !television) {
+                IconButton(onClick = { record() }) { Icon(Icons.Filled.Mic, contentDescription = "Record") }
+            }
+            // A review hides the page count and the Studio button so its three buttons fit at 320 dp.
+            if (studio != null && !paneMode && !inReview) {
+                IconButton(onClick = { studio.sheet = true }) { Icon(Icons.Filled.Tune, contentDescription = "Studio") }
+            }
+            if (!inReview) {
+                Text(
+                    pageLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = mutedInk,
+                    modifier = Modifier.padding(horizontal = Spacing.S2.dp),
+                )
+            }
+        }
+    }
+
+    val pickVoice: (PartID) -> Unit = { pickingVoice = it }
+
+    /** The page: pages (the studio always reads in pages, so a line is whole), or Scroll when no studio is attached. */
+    val stage: @Composable () -> Unit = {
+        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().focusRequester(focus).focusable().then(keys)) {
+            val shownPrefs = if (studio != null && !prefs.pages) prefs.copy(layout = "pages") else prefs
+            val bodyPx = with(density) { (BODY_SP * shownPrefs.scale).sp.toPx() }
             val per = ReaderMath.perSpread(maxWidth.value)
             val marginPx = with(density) { PageMargin.toPx() }
             val gapPx = with(density) { PageGap.toPx() }
             val vertical = with(density) { PageVertical.toPx() }
             val headPx = with(density) { PageHead.toPx() }
+            val footPx = if (studio != null) with(density) { StudioFoot.toPx() } else 0f
             val colPx = (((constraints.maxWidth - 2 * marginPx - (per - 1) * gapPx) / per).coerceAtMost(36 * bodyPx)).toInt().coerceAtLeast(1)
             val spec = FlowSpec(
-                script.id, colPx, (constraints.maxHeight - headPx - vertical).toInt().coerceAtLeast(1), density.density, density.fontScale,
-                prefs, dark, per, with(density) { RuleInset.toPx() }.toInt(),
+                script.id, colPx, (constraints.maxHeight - headPx - vertical - footPx).toInt().coerceAtLeast(1), density.density, density.fontScale,
+                shownPrefs, dark, per, with(density) { RuleInset.toPx() }.toInt(), studio?.part?.roleName,
             )
             val flow by produceState<ReaderFlow?>(null, spec, pal) { value = computeFlow(script, spec, pal, resolver, density) }
             val f = flow
@@ -1043,6 +1266,14 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
                         vertical = vertical, gap = gapPx,
                         onPos = { posId = script.lines[it].id },
                         onPeek = { peeked = it }, onClearPeek = { peeked = null }, onLabel = { pageLabel = it },
+                        studio = paint,
+                        onSelect = { idx -> if (studio?.studio?.select(script.lines[idx].id) == true) haptics(Haptic.Selection) },
+                        onTakes = { idx ->
+                            studio?.let {
+                                it.studio.select(script.lines[idx].id)
+                                if (!paneMode) it.sheet = true
+                            }
+                        },
                     )
                 }
                 else -> key(f) {
@@ -1056,6 +1287,91 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
         }
     }
 
+    val panel: @Composable (Boolean) -> Unit = { full ->
+        if (studio != null) {
+            StudioPanel(
+                studio, castHandle, muted, full = full, onPickVoice = pickVoice, onFollow = { follow(it) }, onDone = { finishPart() },
+                onTakes = { id -> studio.studio.select(id) },
+            )
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(script.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (place.label.isNotEmpty()) {
+                            Text(place.label, style = MaterialTheme.typography.labelMedium, color = mutedInk, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                },
+                navigationIcon = { IconButton(onClick = { stopHearing(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
+                actions = {
+                    if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
+                    IconButton(onClick = { sheet = "contents" }) { Icon(Icons.Filled.Toc, contentDescription = "Contents") }
+                    IconButton(onClick = { sheet = "search" }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
+                    IconButton(onClick = { sheet = "text" }) { Icon(Icons.Filled.FormatSize, contentDescription = "Text") }
+                },
+            )
+        },
+        bottomBar = {
+            if (!paneMode) {
+                Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                    Column(Modifier.navigationBarsPadding()) {
+                        hearing?.let { line ->
+                            Text(
+                                "Device voice · ${line.part.title}",
+                                Modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp, vertical = Spacing.S1.dp)
+                                    .semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (studio != null) {
+                            StudioDock(studio, onTakes = { id -> studio.studio.select(id); studio.sheet = true })
+                        }
+                        bar()
+                    }
+                }
+            }
+        },
+    ) { padding ->
+        Box(Modifier.padding(padding).fillMaxSize()) {
+            if (paneMode) {
+                val directive = calculatePaneScaffoldDirective(adaptive)
+                val navigator = rememberSupportingPaneScaffoldNavigator<Nothing>(scaffoldDirective = directive)
+                SupportingPaneScaffold(
+                    directive = navigator.scaffoldDirective,
+                    value = navigator.scaffoldValue,
+                    mainPane = {
+                        AnimatedPane {
+                            Column(Modifier.fillMaxSize()) {
+                                Box(Modifier.weight(1f)) { stage() }
+                                Surface(color = MaterialTheme.colorScheme.surfaceContainer) { Column(Modifier.navigationBarsPadding()) { bar() } }
+                            }
+                        }
+                    },
+                    supportingPane = {
+                        AnimatedPane(Modifier.preferredWidth(StudioPaneWidth)) {
+                            Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, modifier = Modifier.fillMaxSize()) { panel(true) }
+                        }
+                    },
+                )
+            } else {
+                stage()
+            }
+        }
+    }
+
+    if (studio != null && studio.sheet && !paneMode) {
+        StudioSheet(
+            studio, castHandle, muted, onPickVoice = pickVoice, onFollow = { follow(it) }, onDone = { finishPart() },
+        )
+    }
     when (sheet) {
         "voices" -> castHandle?.let { h -> VoicesSheet(h, script, onPick = { pickingVoice = it }, onDismiss = { sheet = "" }) }
         "contents" -> ContentsSheet(script, posIndex, onGo = { sheet = ""; goTo(it, outline = false) }, onDismiss = { sheet = "" })
@@ -1090,6 +1406,9 @@ private fun PagesStage(
     onPeek: (Int) -> Unit,
     onClearPeek: () -> Unit,
     onLabel: (String) -> Unit,
+    studio: StudioPaint? = null,
+    onSelect: (Int) -> Unit = {},
+    onTakes: (Int) -> Unit = {},
 ) {
     val per = flow.per
     val spreads = ((paged.count + per - 1) / per).coerceAtLeast(1)
@@ -1134,13 +1453,18 @@ private fun PagesStage(
     SideEffect { turner.turn = turn }
 
     Box(
-        Modifier.fillMaxSize().pointerInput(flow, mineRole, hiding, peeked) {
+        Modifier.fillMaxSize().pointerInput(flow, mineRole, hiding, peeked, studio?.role) {
             detectTapGestures { off ->
                 val spreadW = per * flow.colPx + (per - 1) * gap
                 val left = (size.width - spreadW) / 2
                 val col = Math.floor(((off.x - left) / (flow.colPx + gap)).toDouble()).toInt()
                 val page = if (col in 0 until per) paged.pages.getOrNull(pager.currentPage * per + col) else null
                 val hit = page?.segAt(off.y - headPx)?.let { flow.blocks[it.block] }
+                // A tap on one of my lines in the studio makes it current and does not turn the page.
+                if (hit != null && studio != null && hit.role == studio.role && hit.kind != Kind.Heading && studio.states.containsKey(hit.owner)) {
+                    onSelect(hit.owner)
+                    return@detectTapGestures
+                }
                 if (hit != null && hideable(hit, mineRole, hiding, peeked)) {
                     onPeek(hit.owner)
                     return@detectTapGestures
@@ -1163,6 +1487,7 @@ private fun PagesStage(
                     PageView(
                         spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mineRole, hiding, peeked, flash, headPx, onPeek,
                         Modifier.width(with(density) { flow.colPx.toDp() }).fillMaxSize(),
+                        studio = studio, onTakes = onTakes,
                     )
                 }
             }

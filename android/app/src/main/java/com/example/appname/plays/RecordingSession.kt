@@ -63,6 +63,16 @@ class RecordingSession(
 
     private val _phase = MutableStateFlow<Phase>(Phase.Idle)
     val phase: StateFlow<Phase> = _phase
+
+    /** Called on every phase change, after it is set: the studio follows the line being heard or recorded with it. */
+    var onPhase: ((Phase) -> Unit)? = null
+
+    private var phaseNow: Phase
+        get() = _phase.value
+        set(value) {
+            _phase.value = value
+            onPhase?.invoke(value)
+        }
     private val _production = MutableStateFlow(production)
     val production: StateFlow<Production> = _production
     private val _mode = MutableStateFlow(Mode.Step)
@@ -105,14 +115,14 @@ class RecordingSession(
         try {
             audio.start(echoCancelled)
         } catch (e: Exception) {
-            _phase.value = Phase.Failed(e.message ?: "The microphone could not be opened.")
+            phaseNow = Phase.Failed(e.message ?: "The microphone could not be opened.")
             return
         }
         this.echoCancelled = echoCancelled
         started = true
         audio.beginCapture { }
         for (second in ROOM_TONE_SECONDS downTo 1) {
-            _phase.value = Phase.RoomTone(second)
+            phaseNow = Phase.RoomTone(second)
             wait(1_000)
         }
         val tone = audio.endCapture()
@@ -122,7 +132,7 @@ class RecordingSession(
                 mutate { it.copy(roomTone = it.roomTone + name) }
             }
         }
-        _phase.value = Phase.Idle
+        phaseNow = Phase.Idle
     }
 
     /** Plays the cue lines (a usable human take where one exists, the device voice live where not); [heard] says what each was. */
@@ -131,13 +141,13 @@ class RecordingSession(
             if (!live()) return
             val take = _production.value.usableTake(cue.id)
             if (take != null) {
-                _phase.value = Phase.Cue(cue.id, deviceVoice = false, run = _run.value != null)
+                phaseNow = Phase.Cue(cue.id, deviceVoice = false, run = _run.value != null)
                 audio.play(CueAudio.TakeFile(store.takeFile(_production.value, take)))
                 heard[cue.id] = take.id
             } else {
                 val line = voice.render(cue.spokenText, cue.part, standInRate) ?: continue
                 if (!live()) return
-                _phase.value = Phase.Cue(cue.id, deviceVoice = true, run = _run.value != null)
+                phaseNow = Phase.Cue(cue.id, deviceVoice = true, run = _run.value != null)
                 heldStandIns += line
                 audio.play(CueAudio.StandIn(line))
                 heard[cue.id] = Take.STAND_IN
@@ -149,7 +159,7 @@ class RecordingSession(
     private suspend fun listenAndKeep(lineID: String, heard: Map<String, String>): Take? {
         announce()
         if (!started) return null
-        _phase.value = Phase.Listening(lineID, run = _run.value != null)
+        phaseNow = Phase.Listening(lineID, run = _run.value != null)
         detector = LineEndDetector(TakeAudio.SAMPLE_RATE.toDouble(), roomToneRMS)
         val done = CompletableDeferred<Unit>()
         listening = done
@@ -184,7 +194,7 @@ class RecordingSession(
             lastTakeBleed = bleed
             take
         } catch (e: Exception) {
-            _phase.value = Phase.Failed(e.message ?: "The take could not be saved.")
+            phaseNow = Phase.Failed(e.message ?: "The take could not be saved.")
             null
         }
     }
@@ -216,18 +226,18 @@ class RecordingSession(
         if (!started) return
         if (token != cueToken) {
             heldStandIns = ArrayList()
-            _phase.value = Phase.Idle
+            phaseNow = Phase.Idle
             return
         }
         val take = listenAndKeep(lineID, heard)
         if (!started || _phase.value is Phase.Failed) return
         if (_run.value != null) {
             if (take != null) noteRun(lineID, take, prior)
-            _phase.value = Phase.RunReview
+            phaseNow = Phase.RunReview
         } else if (take == null) {
-            _phase.value = Phase.Idle
+            phaseNow = Phase.Idle
         } else {
-            _phase.value = if (_mode.value == Mode.Step) Phase.Review(lineID) else Phase.Idle
+            phaseNow = if (_mode.value == Mode.Step) Phase.Review(lineID) else Phase.Idle
         }
     }
 
@@ -260,10 +270,10 @@ class RecordingSession(
         }
         if (!started) return
         if (_run.value?.takes.orEmpty().isNotEmpty()) {
-            _phase.value = Phase.RunReview
+            phaseNow = Phase.RunReview
         } else {
             _run.value = null
-            _phase.value = Phase.Idle
+            phaseNow = Phase.Idle
         }
     }
 
@@ -287,7 +297,7 @@ class RecordingSession(
     fun keepRun() {
         if (_run.value == null || !runEnded) return
         _run.value = null
-        _phase.value = Phase.Idle
+        phaseNow = Phase.Idle
     }
 
     /** Discard the run: its takes are deleted and each line goes back to the take it had. */
@@ -297,7 +307,7 @@ class RecordingSession(
         _run.value = null
         store.discardRun(_production.value.id, run.takes)
         _production.value = store.production(_production.value.id) ?: _production.value
-        _phase.value = Phase.Idle
+        phaseNow = Phase.Idle
     }
 
     /** The takes the run on screen made, in script order, each its line's latest. */
@@ -305,7 +315,7 @@ class RecordingSession(
 
     /** After a playback, back to where it started from (a cue or listening phase is never the place to return to). */
     private fun settle(back: Phase) {
-        if (started) _phase.value = if (back is Phase.Cue || back is Phase.Listening) Phase.Idle else back
+        if (started) phaseNow = if (back is Phase.Cue || back is Phase.Listening) Phase.Idle else back
     }
 
     /** The cue alone, heard before recording a line (Line by line's Cue); nothing is kept. */
@@ -326,7 +336,7 @@ class RecordingSession(
         playCues(Relay.cueLines(take.lineID, script, runUp = false), LinkedHashMap())
         heldStandIns = ArrayList()
         if (!started) return
-        _phase.value = Phase.Cue(take.lineID, deviceVoice = false, run = _run.value != null)
+        phaseNow = Phase.Cue(take.lineID, deviceVoice = false, run = _run.value != null)
         audio.play(CueAudio.TakeFile(store.takeFile(_production.value, take)))
         settle(back)
     }
@@ -335,8 +345,13 @@ class RecordingSession(
     fun setMode(mode: Mode): Boolean {
         if (isBusy || _run.value != null) return false
         _mode.value = mode
-        if (_phase.value is Phase.Review) _phase.value = Phase.Idle
+        if (_phase.value is Phase.Review) phaseNow = Phase.Idle
         return true
+    }
+
+    /** Step's review dismissed (Keep): back to ready. */
+    fun dismissReview() {
+        if (phaseNow is Phase.Review) phaseNow = Phase.Idle
     }
 
     /** The one control's second press: stop listening now. */
@@ -350,7 +365,7 @@ class RecordingSession(
         val back = _phase.value
         val line = script.lines.firstOrNull { it.id == lineID } ?: return
         val audioLine = voice.render(line.spokenText, line.part, standInRate) ?: return
-        _phase.value = Phase.Cue(lineID, deviceVoice = true)
+        phaseNow = Phase.Cue(lineID, deviceVoice = true)
         audio.play(CueAudio.StandIn(audioLine))
         settle(back)
     }
@@ -358,12 +373,17 @@ class RecordingSession(
     suspend fun playTake(take: Take) {
         if (!started || isBusy) return
         val back = _phase.value
-        _phase.value = Phase.Cue(take.lineID, deviceVoice = false, run = _run.value != null)
+        phaseNow = Phase.Cue(take.lineID, deviceVoice = false, run = _run.value != null)
         audio.play(CueAudio.TakeFile(store.takeFile(_production.value, take)))
         settle(back)
     }
 
     fun choose(take: Take) = mutate { it.choose(take.id) }
+
+    /** Reads the store's record again, after a take was deleted from outside the session. */
+    fun reload() {
+        _production.value = store.production(_production.value.id) ?: _production.value
+    }
 
     /** Changes the store's current record, never a stale copy: the cast sheet may have moved the relay on. */
     private fun mutate(change: (Production) -> Production) {
@@ -378,7 +398,7 @@ class RecordingSession(
         finishListening()
         audio.stopPlayback()
         audio.stop()
-        _phase.value = Phase.Idle
+        phaseNow = Phase.Idle
     }
 
     private fun hear(chunk: FloatArray) {
