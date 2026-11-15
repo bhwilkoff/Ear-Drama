@@ -36,6 +36,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.focusable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -129,9 +130,15 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.example.appname.plays.LinePart
+import com.example.appname.plays.PageRow
 import com.example.appname.plays.PartID
+import com.example.appname.plays.PlayPage
 import com.example.appname.plays.PlayScript
 import com.example.appname.plays.ReaderMath
 import com.example.appname.plays.ReaderPagination
@@ -171,6 +178,7 @@ private const val LINE_GAP_EM = 0.6f
 private val PageMargin = 24.dp
 private val PageGap = 48.dp
 private val PageVertical = 16.dp
+private val PageHead = 28.dp
 private val RuleInset = 10.dp
 
 private sealed interface Loaded {
@@ -215,7 +223,17 @@ private fun ReaderFrame(onBack: () -> Unit, content: @Composable () -> Unit) {
     }) { padding -> Box(Modifier.padding(padding)) { content() } }
 }
 
-// MARK: Blocks: one per printed line, and one per heading the parser set aside
+// MARK: Blocks: a front page, headings, and per speech a name, its words, and its cues (the Ear Drama page)
+
+private enum class Kind { Front, Heading, Name, Text, Cue, Direction }
+
+private const val GUTTER_EM = 8.5f
+private const val COL_EM = 9.5f
+private const val INDENT_EM = 1.5f
+private const val CAPTION_EM = 0.8125f
+private const val GLYPH_EM = CAPTION_EM * 1.7f
+private const val GAP_EM = 0.7f
+private const val CUE_GAP_EM = 0.2f
 
 private class Blk(
     val owner: Int,
@@ -223,11 +241,30 @@ private class Blk(
     val said: List<IntRange>,
     val style: TextStyle,
     val gapEm: Float,
-    val keepWithNext: Boolean,
-    val hue: Color?,
-    val heading: Boolean,
-    val align: Boolean = false,
+    val kind: Kind,
+    val keepWithNext: Boolean = false,
+    var breakBefore: Boolean = false,
+    /** The speaker's role on a speech's blocks; null for a heading, a direction or the front. */
+    val role: String? = null,
+    val hue: Color? = null,
+    /** Where the text starts, in em from the column's inner edge (a gutter, an indent, a cue's glyph). */
+    val xOffEm: Float = 0f,
+    val speech: Int = -1,
+    val speechStart: Boolean = false,
+    /** The speaker's name, set in the gutter beside the words, when the page is wide. */
+    val name: AnnotatedString? = null,
+    /** Where each printed row of a verse speech begins in [text]. */
+    val rowOffsets: List<Int> = emptyList(),
+    val heading: Boolean = false,
 ) {
+    /** The words a part comes in on, underlined when that part is the one being played. */
+    var cueRole: String? = null
+    var cueHue: Color? = null
+    var cueRange: IntRange? = null
+    var speechEnd = false
+
+    val description: String get() = (name?.text?.let { "$it " }.orEmpty()) + text.text
+
     /** The same words with the said runs drawn transparent (Hide my lines): the layout does not change. */
     val hiddenText: AnnotatedString by lazy {
         buildAnnotatedString {
@@ -237,10 +274,22 @@ private class Blk(
     }
 }
 
-private class Palette(val text: Color, val muted: Color, val accent: Color, val hues: Map<String, Color>)
+private class Palette(val text: Color, val muted: Color, val accent: Color, val block: Color, val hues: Map<String, Color>)
 
-private fun buildBlocks(script: PlayScript, pal: Palette, scale: Float, leading: Float): List<Blk> {
+private val ASIDE_OPEN = Regex("^\\s*[(\\[]")
+private val ASIDE_CLOSE = Regex("[)\\]][.,;:!?]*\\s*$")
+
+private fun buildBlocks(
+    script: PlayScript,
+    pal: Palette,
+    scale: Float,
+    leading: Float,
+    gutter: Boolean,
+    measurer: TextMeasurer,
+    density: Density,
+): List<Blk> {
     val bodySp = BODY_SP * scale
+    val bodyPx = with(density) { bodySp.sp.toPx() }
     fun style(em: Float = 1f, display: Boolean = false) = TextStyle(
         fontSize = (bodySp * em).sp,
         lineHeight = (bodySp * em * leading).sp,
@@ -248,89 +297,202 @@ private fun buildBlocks(script: PlayScript, pal: Palette, scale: Float, leading:
         fontFamily = if (display) DisplayFontFamily else FontFamily.Default,
         fontWeight = if (display) FontWeight.Bold else FontWeight.Normal,
     )
+    fun nameSpan(hue: Color?) = SpanStyle(fontWeight = FontWeight.SemiBold, color = hue ?: pal.muted, letterSpacing = 0.02.em)
+    fun nameText(name: String, hue: Color?) = buildAnnotatedString { withStyle(nameSpan(hue)) { append(name) } }
+
+    val roles = script.roles.map { it.name }
+    val capNames = roles.filter { it.length >= 3 && it == it.uppercase(Locale.US) && it.any { c -> c in 'A'..'Z' } }
+        .sortedByDescending { it.length }
+        .takeIf { it.isNotEmpty() }
+        ?.let { caps -> Regex("(?<![\\p{L}])(?:${caps.joinToString("|") { Regex.escape(it) }})(?![\\p{L}])") }
+
     val before = HashMap<Int, MutableList<ScriptReading.Section>>()
     val heads = HashMap<Int, ScriptReading.Section>()
     for (s in ScriptReading.sectionsOf(script)) {
         if (s.isLine) heads[s.index] = s else before.getOrPut(s.index) { ArrayList() } += s
     }
-    fun headEm(level: ScriptReading.Level) = if (level == ScriptReading.Level.Scene) 1.3f else 1.6f
-    val out = ArrayList<Blk>(script.lines.size + 16)
-    script.lines.forEachIndexed { i, line ->
-        for (s in before[i].orEmpty()) {
-            val centered = s.level != ScriptReading.Level.Scene
-            out += Blk(
-                i,
-                buildAnnotatedString {
-                    if (centered) withStyle(ParagraphStyle(textAlign = TextAlign.Center)) { append(s.title) } else append(s.title)
-                },
-                emptyList(), style(headEm(s.level), display = true), 1.4f, true, null, true,
+    val out = ArrayList<Blk>(script.lines.size * 2 + 16)
+    var pendingBreak = true
+    fun add(b: Blk) {
+        if (pendingBreak) {
+            b.breakBefore = true
+            pendingBreak = false
+        }
+        out += b
+    }
+    fun heading(owner: Int, level: ScriptReading.Level, body: String) {
+        val opens = level != ScriptReading.Level.Scene
+        add(
+            Blk(
+                owner, AnnotatedString(body), emptyList(), style(if (opens) 1.75f else 1.25f, display = true),
+                if (opens) 0f else 1.2f, Kind.Heading, keepWithNext = true, breakBefore = opens, heading = true,
+            ),
+        )
+    }
+
+    // The front of the play: its title, its authors, and its speaking parts in their hues (the key to the colors).
+    if (script.lines.isNotEmpty()) {
+        add(Blk(0, AnnotatedString(script.title), emptyList(), style(1.75f, display = true), 0f, Kind.Front, keepWithNext = true))
+        val by = script.authorLine
+        if (by.isNotEmpty()) {
+            add(Blk(0, buildAnnotatedString { withStyle(SpanStyle(color = pal.muted)) { append(by) } }, emptyList(), style(), 0.3f, Kind.Front, keepWithNext = true))
+        }
+        val speaking = script.castParts.filter { it.id.isSpeaking }
+        if (speaking.isNotEmpty()) {
+            add(Blk(0, buildAnnotatedString { withStyle(SpanStyle(color = pal.muted)) { append("Parts") } }, emptyList(), style(CAPTION_EM), 1.2f, Kind.Front, keepWithNext = true))
+            add(
+                Blk(
+                    0,
+                    buildAnnotatedString {
+                        speaking.forEachIndexed { i, p ->
+                            if (i > 0) append("   ")
+                            withStyle(nameSpan(pal.hues[p.id.roleName.orEmpty()])) { append(p.title) }
+                        }
+                    },
+                    emptyList(), style(), 0.3f, Kind.Front,
+                ),
             )
         }
-        val runs = ScriptReading.runsOf(line)
-        val said = ArrayList<IntRange>()
-        val head = heads[i]
-        val hue = line.role?.let { pal.hues[it] }
-        val text: AnnotatedString
-        val st: TextStyle
-        var gap = LINE_GAP_EM
-        var keep = false
-        when {
-            head != null -> {
-                st = style(headEm(head.level), display = true)
-                gap = 1.4f
-                keep = true
-                text = buildAnnotatedString {
-                    val centered = head.level != ScriptReading.Level.Scene
-                    val body = { for (r in runs) append(r.text) }
-                    if (centered) withStyle(ParagraphStyle(textAlign = TextAlign.Center)) { body() } else body()
-                }
-            }
-            line.kind == ScriptLine.Kind.Speech -> {
-                st = style()
-                text = buildAnnotatedString {
-                    withStyle(
-                        SpanStyle(
-                            fontWeight = FontWeight.SemiBold, fontSize = (bodySp * 0.8125f).sp,
-                            color = hue ?: pal.muted, letterSpacing = 0.6.sp,
-                        ),
-                    ) { append(line.role.orEmpty().uppercase(Locale.US)) }
-                    append(' ')
-                    runs.forEachIndexed { r, run ->
-                        if (r > 0 && run.piece != runs[r - 1].piece && ScriptReading.spaceBetween(runs[r - 1].text, run.text)) append(' ')
-                        val span = when (run.kind) {
-                            ScriptReading.RunKind.Say -> SpanStyle()
-                            ScriptReading.RunKind.Em -> SpanStyle(fontStyle = FontStyle.Italic)
-                            ScriptReading.RunKind.Aside -> SpanStyle(fontStyle = FontStyle.Italic, color = pal.muted)
-                            ScriptReading.RunKind.Plain -> SpanStyle(fontStyle = FontStyle.Normal, color = pal.muted)
-                        }
-                        val start = length
-                        withStyle(span) { append(run.text) }
-                        if (run.said) said += start until length
-                    }
-                }
-            }
-            line.kind == ScriptLine.Kind.Direction -> {
-                st = style()
-                val indent = (bodySp * 1.25f).sp
-                text = buildAnnotatedString {
-                    withStyle(ParagraphStyle(textIndent = TextIndent(indent, indent))) {
-                        for (run in runs) {
-                            val span = if (run.kind == ScriptReading.RunKind.Em) SpanStyle(fontStyle = FontStyle.Normal) else SpanStyle(fontStyle = FontStyle.Italic)
-                            withStyle(span.copy(color = pal.muted)) { append(run.text) }
-                        }
-                    }
-                }
-            }
-            else -> {
-                st = style(0.8125f)
-                text = buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = pal.muted, letterSpacing = 0.6.sp)) {
-                        for (run in runs) append(run.text)
-                    }
-                }
-            }
+        pendingBreak = true
+    }
+
+    /** A direction's words, each part it names in capitals in that part's hue, upright and strong. */
+    fun AnnotatedString.Builder.direction(text: String, italic: Boolean) {
+        val base = SpanStyle(fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal, color = pal.muted)
+        var last = 0
+        fun plain(from: Int, to: Int) {
+            if (to > from) withStyle(base) { append(text.substring(from, to)) }
         }
-        out += Blk(i, text, said, st, gap, keep, hue, head != null)
+        for (m in capNames?.findAll(text).orEmpty()) {
+            plain(last, m.range.first)
+            val hue = pal.hues[m.value]
+            if (hue != null) withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = hue)) { append(m.value) } else withStyle(base) { append(m.value) }
+            last = m.range.last + 1
+        }
+        plain(last, text.length)
+    }
+
+    /** A cue's words on the sound lane, in capitals as the web draws them. */
+    fun AnnotatedString.Builder.cue(row: PageRow) {
+        row.runs.forEachIndexed { n, r ->
+            if (n > 0 && row.runs[n - 1].piece != r.piece) append(' ')
+            val up = r.text.uppercase(Locale.US)
+            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, letterSpacing = 0.06.em)) { append(if (up.length == r.text.length) up else r.text) }
+        }
+    }
+
+    var speechCount = 0
+    var previous: Triple<String, Int, IntRange?>? = null
+
+    script.lines.forEachIndexed { i, line ->
+        for (s in before[i].orEmpty()) heading(i, s.level, s.title)
+        val head = heads[i]
+        if (head != null) {
+            heading(i, head.level, ScriptReading.runsOf(line).joinToString("") { it.text })
+            return@forEachIndexed
+        }
+        val layout = PlayPage.layoutOf(line, roles)
+        if (line.kind == ScriptLine.Kind.Speech && line.parts != null) {
+            for (sp in layout.speeches) {
+                speechCount++
+                val hue = pal.hues[sp.role]
+                previous?.let { (role, at, range) ->
+                    if (range != null && role != sp.role) out[at].apply { cueRole = sp.role; cueHue = hue; cueRange = range }
+                }
+                val name = sp.name?.text ?: sp.role
+                val firstIsCue = sp.rows.firstOrNull()?.cue == true
+                val nameStyled = nameText(name, hue)
+                val beside = gutter && name.isNotEmpty() && sp.rows.isNotEmpty() && !firstIsCue &&
+                    measurer.measure(nameStyled, style()).size.width <= GUTTER_EM * bodyPx
+                val base = if (beside) COL_EM else 0f
+                var first = true
+                var lastTail: Triple<Int, Int, String>? = null
+                if (!beside && name.isNotEmpty()) {
+                    add(Blk(i, nameStyled, emptyList(), style(), GAP_EM, Kind.Name, keepWithNext = sp.rows.isNotEmpty(), role = sp.role, hue = hue, speech = speechCount, speechStart = true))
+                    first = false
+                }
+                var afterName = !first
+                var k = 0
+                while (k < sp.rows.size) {
+                    val row = sp.rows[k]
+                    val gap = when {
+                        first -> GAP_EM
+                        afterName && !row.cue -> 0f
+                        else -> CUE_GAP_EM
+                    }
+                    if (row.cue) {
+                        add(
+                            Blk(
+                                i, buildAnnotatedString { cue(row) }, emptyList(), style(CAPTION_EM), gap, Kind.Cue,
+                                role = sp.role, hue = hue, xOffEm = base + GLYPH_EM, speech = speechCount, speechStart = first,
+                            ),
+                        )
+                        k++
+                    } else {
+                        var end = k
+                        while (end < sp.rows.size && !sp.rows[end].cue) end++
+                        val said = ArrayList<IntRange>()
+                        val offsets = ArrayList<Int>()
+                        var tail: Pair<Int, String>? = null
+                        val text = buildAnnotatedString {
+                            for (r in k until end) {
+                                val rw = sp.rows[r]
+                                offsets += length
+                                val half = rw.indent
+                                val indent = if (layout.verse) TextIndent((bodySp * if (half) 2.5f else 0f).sp, (bodySp * if (half) 4f else INDENT_EM).sp) else TextIndent.None
+                                withStyle(ParagraphStyle(textIndent = indent)) {
+                                    rw.runs.forEachIndexed { n, run ->
+                                        if (n > 0 && rw.runs[n - 1].piece != run.piece && ScriptReading.spaceBetween(rw.runs[n - 1].text, run.text)) append(' ')
+                                        if (run.said) {
+                                            val st = length
+                                            withStyle(if (run.kind == ScriptReading.RunKind.Em) SpanStyle(fontStyle = FontStyle.Italic) else SpanStyle()) { append(run.text) }
+                                            said += st until length
+                                            tail = st to run.text
+                                            return@forEachIndexed
+                                        }
+                                        val whole = rw.runs.filter { it.piece == run.piece && !it.said }.joinToString("") { it.text }
+                                        val opens = (n == 0 || rw.runs[n - 1].piece != run.piece) && !ASIDE_OPEN.containsMatchIn(whole)
+                                        val closes = (n == rw.runs.size - 1 || rw.runs[n + 1].piece != run.piece) && !ASIDE_CLOSE.containsMatchIn(whole)
+                                        if (opens) append('(')
+                                        direction(run.text, italic = run.kind != ScriptReading.RunKind.Plain)
+                                        if (closes) append(')')
+                                    }
+                                }
+                            }
+                        }
+                        add(
+                            Blk(
+                                i, text, said, style(), gap, Kind.Text, role = sp.role, hue = hue, xOffEm = base, speech = speechCount,
+                                speechStart = first, name = if (first && beside) nameStyled else null, rowOffsets = if (layout.verse) offsets else emptyList(),
+                            ),
+                        )
+                        tail?.let { (st, t) -> lastTail = Triple(out.size - 1, st, t) }
+                        k = end
+                    }
+                    first = false
+                    afterName = false
+                }
+                out.lastOrNull()?.takeIf { it.speech == speechCount }?.speechEnd = true
+                lastTail?.let { (at, st, t) ->
+                    val c = PlayPage.cueTail(t)
+                    previous = Triple(sp.role, at, (st + c) until (st + t.length))
+                }
+            }
+            return@forEachIndexed
+        }
+        val row = layout.rows.firstOrNull() ?: PageRow(false, false)
+        val indent = if (gutter) COL_EM else INDENT_EM
+        if (row.cue) {
+            add(Blk(i, buildAnnotatedString { cue(row) }, emptyList(), style(CAPTION_EM), GAP_EM, Kind.Cue, xOffEm = indent + GLYPH_EM))
+        } else {
+            add(
+                Blk(
+                    i,
+                    buildAnnotatedString { for (r in row.runs) direction(r.text, italic = r.kind == ScriptReading.RunKind.Plain) },
+                    emptyList(), style(), GAP_EM, Kind.Direction, xOffEm = indent,
+                ),
+            )
+        }
     }
     return out
 }
@@ -345,6 +507,7 @@ private class ReaderFlow(
     val colPx: Int,
     val firstBlock: IntArray,
     val bodyPx: Float,
+    val gutter: Boolean,
 )
 
 private data class FlowSpec(
@@ -359,6 +522,8 @@ private data class FlowSpec(
     val insetPx: Int,
 )
 
+private fun textWidth(flow: ReaderFlow, b: Blk): Int = (flow.contentPx - (b.xOffEm * flow.bodyPx).toInt()).coerceAtLeast(1)
+
 private suspend fun computeFlow(
     script: PlayScript,
     spec: FlowSpec,
@@ -366,49 +531,111 @@ private suspend fun computeFlow(
     resolver: androidx.compose.ui.text.font.FontFamily.Resolver,
     density: Density,
 ): ReaderFlow = withContext(Dispatchers.Default) {
-    val blocks = buildBlocks(script, pal, spec.prefs.scale, spec.prefs.leading)
     val bodyPx = with(density) { (BODY_SP * spec.prefs.scale).sp.toPx() }
+    val gutter = spec.colPx / bodyPx >= PlayPage.GUTTER_MIN_EM
+    val measurer = TextMeasurer(resolver, density, LayoutDirection.Ltr)
+    val blocks = buildBlocks(script, pal, spec.prefs.scale, spec.prefs.leading, gutter, measurer, density)
     val contentPx = (spec.colPx - spec.insetPx).coerceAtLeast(1)
     val firstBlock = IntArray(script.lines.size) { -1 }
     blocks.forEachIndexed { b, blk -> if (firstBlock[blk.owner] < 0) firstBlock[blk.owner] = b }
     var last = 0
     for (i in firstBlock.indices) if (firstBlock[i] < 0) firstBlock[i] = last else last = firstBlock[i]
-    if (!spec.prefs.pages) return@withContext ReaderFlow(blocks, null, spec.per, contentPx, spec.colPx, firstBlock, bodyPx)
-    val measurer = TextMeasurer(resolver, density, LayoutDirection.Ltr)
+    val flow0 = ReaderFlow(blocks, null, spec.per, contentPx, spec.colPx, firstBlock, bodyPx, gutter)
+    if (!spec.prefs.pages) return@withContext flow0
     val measured = blocks.map { b ->
         ensureActive()
-        val l = measurer.measure(b.text, b.style, constraints = Constraints(maxWidth = contentPx), skipCache = true)
-        ReaderPagination.Block(b.owner, FloatArray(l.lineCount) { l.getLineBottom(it) - l.getLineTop(it) }, b.gapEm * bodyPx, b.keepWithNext)
+        val l = measurer.measure(b.text, b.style, constraints = Constraints(maxWidth = textWidth(flow0, b)), skipCache = true)
+        val rows = if (b.rowOffsets.size > 1) b.rowOffsets.map { l.getLineForOffset(it) }.distinct().toIntArray() else null
+        ReaderPagination.Block(
+            b.owner, FloatArray(l.lineCount) { l.getLineBottom(it) - l.getLineTop(it) }, b.gapEm * bodyPx, b.keepWithNext,
+            b.breakBefore, b.speech, b.speechStart, rows,
+        )
     }
     val paged = ReaderPagination.paginate(measured, script.lines.size, spec.pageHeightPx.toFloat())
-    ReaderFlow(blocks, paged, spec.per, contentPx, spec.colPx, firstBlock, bodyPx)
+    ReaderFlow(blocks, paged, spec.per, contentPx, spec.colPx, firstBlock, bodyPx, gutter)
 }
 
 // MARK: Drawing one block, whole or a page's slice of it
 
+private class Measured(val text: TextLayoutResult, val name: TextLayoutResult?)
+
+private fun measureBlk(measurer: TextMeasurer, flow: ReaderFlow, b: Blk, hidden: Boolean): Measured {
+    val text = measurer.measure(if (hidden) b.hiddenText else b.text, b.style, constraints = Constraints(maxWidth = textWidth(flow, b)))
+    val gw = (GUTTER_EM * flow.bodyPx).toInt()
+    val name = b.name?.let { measurer.measure(it, b.style.copy(textAlign = TextAlign.End), constraints = Constraints(minWidth = gw, maxWidth = gw)) }
+    return Measured(text, name)
+}
+
+private class Ink(
+    val accent: Color,
+    val block: Color,
+    val muted: Color,
+    val ruleWidth: Float,
+    val pad: Float,
+    val insetPx: Float,
+    val bodyPx: Float,
+    val glyph: androidx.compose.ui.graphics.painter.Painter,
+)
+
 private fun DrawScope.drawSlice(
-    layout: TextLayoutResult,
+    m: Measured,
     blk: Blk,
     from: Int,
     top: Float,
     bottom: Float,
-    insetPx: Float,
-    mine: Boolean,
+    ink: Ink,
+    tint: Boolean,
     hidden: Boolean,
     flash: Boolean,
-    accent: Color,
-    ruleWidth: Float,
-    pad: Float,
+    underline: Boolean,
 ) {
-    val tone = blk.hue ?: accent
-    if (mine) {
-        drawRect(tone.copy(alpha = 0.09f), Offset(0f, top - pad), Size(size.width, bottom - top + 2 * pad))
-        drawRect(tone, Offset(0f, top - pad), Size(ruleWidth, bottom - top + 2 * pad))
+    val layout = m.text
+    val tone = blk.hue ?: ink.accent
+    val x0 = ink.insetPx + blk.xOffEm * ink.bodyPx
+    val shift = top - layout.getLineTop(from)
+    if (tint) {
+        val up = if (from == 0 && blk.gapEm < GAP_EM) blk.gapEm * ink.bodyPx else ink.pad
+        val down = if (blk.speechEnd) ink.pad else 0f
+        drawRect(tone.copy(alpha = 0.09f), Offset(0f, top - up), Size(size.width, bottom - top + up + down))
+        drawRect(tone, Offset(0f, top - up), Size(ink.ruleWidth, bottom - top + up + down))
     }
     clipRect(0f, top, size.width, bottom) {
-        drawText(layout, topLeft = Offset(insetPx, top - layout.getLineTop(from)))
+        if (blk.kind == Kind.Cue) {
+            val glyphW = GLYPH_EM * ink.bodyPx
+            for (l in from until layout.lineCount) {
+                val lt = shift + layout.getLineTop(l)
+                if (lt >= bottom - 1f) break
+                val left = x0 + layout.getLineLeft(l) - (if (l == 0) glyphW else 0f) - 6f
+                drawRoundRect(
+                    ink.block, Offset(left, lt + 1f), Size(x0 + layout.getLineRight(l) + 6f - left, layout.getLineBottom(l) - layout.getLineTop(l) - 2f),
+                    CornerRadius(8f, 8f),
+                )
+            }
+            if (from == 0) {
+                val h = CAPTION_EM * ink.bodyPx
+                translate(x0 - glyphW + 2f, shift + layout.getLineTop(0) + (layout.getLineBottom(0) - layout.getLineTop(0) - h) / 2) {
+                    with(ink.glyph) { draw(Size(h, h), colorFilter = ColorFilter.tint(ink.muted)) }
+                }
+            }
+        }
+        drawText(layout, topLeft = Offset(x0, shift))
+        m.name?.let { if (from == 0) drawText(it, topLeft = Offset(ink.insetPx, shift)) }
+        val cue = blk.cueRange
+        if (underline && cue != null) {
+            val first = layout.getLineForOffset(cue.first)
+            val lastLine = layout.getLineForOffset(cue.last)
+            for (l in first..lastLine) {
+                if (l < from) continue
+                val left = if (l == first) layout.getBoundingBox(cue.first).left else layout.getLineLeft(l)
+                val right = if (l == lastLine) layout.getBoundingBox(cue.last).right else layout.getLineRight(l)
+                drawRect(
+                    blk.cueHue ?: tone,
+                    Offset(x0 + left, shift + layout.getLineBaseline(l) + ink.bodyPx * 0.14f),
+                    Size((right - left).coerceAtLeast(2f), ink.ruleWidth * 2 / 3),
+                )
+            }
+        }
         if (hidden) {
-            val shift = top - layout.getLineTop(from)
             for (r in blk.said) {
                 val first = layout.getLineForOffset(r.first)
                 val lastLine = layout.getLineForOffset(r.last)
@@ -417,7 +644,7 @@ private fun DrawScope.drawSlice(
                     val right = if (l == lastLine) layout.getBoundingBox(r.last).right else layout.getLineRight(l)
                     drawRoundRect(
                         tone.copy(alpha = 0.3f),
-                        Offset(insetPx + left, shift + layout.getLineTop(l) + 1f),
+                        Offset(x0 + left, shift + layout.getLineTop(l) + 1f),
                         Size((right - left).coerceAtLeast(2f), layout.getLineBottom(l) - layout.getLineTop(l) - 2f),
                         CornerRadius(6f, 6f),
                     )
@@ -426,51 +653,73 @@ private fun DrawScope.drawSlice(
         }
     }
     if (flash) {
-        drawRect(tone, Offset(1f, top - pad), Size(size.width - 2f, bottom - top + 2 * pad), style = Stroke(width = 2f * 2f))
+        drawRect(tone, Offset(1f, top - ink.pad), Size(size.width - 2f, bottom - top + 2 * ink.pad), style = Stroke(width = 2f * 2f))
     }
 }
+
+private fun hideable(b: Blk, mineRole: String?, hiding: Boolean, peeked: Int?) =
+    hiding && mineRole != null && b.kind == Kind.Text && b.role == mineRole && b.owner != peeked
 
 /** One page: its slices of the blocks it holds, measured now from the same text and width the pagination used. */
 @Composable
 private fun PageView(
+    index: Int,
     page: ReaderPagination.Page?,
     flow: ReaderFlow,
-    accent: Color,
-    mine: Set<Int>,
+    pal: Palette,
+    mineRole: String?,
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
+    headPx: Float,
     onPeek: (Int) -> Unit,
     modifier: Modifier,
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val segs = page?.segs.orEmpty()
-    val layouts = remember(page, flow, hiding, mine, peeked) {
+    val layouts = remember(page, flow, hiding, mineRole, peeked) {
         segs.map { seg ->
             val b = flow.blocks[seg.block]
-            val hidden = hiding && b.owner in mine && b.owner != peeked
-            measurer.measure(if (hidden) b.hiddenText else b.text, b.style, constraints = Constraints(maxWidth = flow.contentPx))
+            measureBlk(measurer, flow, b, hideable(b, mineRole, hiding, peeked))
         }
     }
-    val inset = with(density) { RuleInset.toPx() }
-    val rule = with(density) { 3.dp.toPx() }
-    val description = remember(page, flow) { segs.joinToString(" ") { flow.blocks[it.block].text.text } }
+    val ink = rememberInk(pal, flow)
+    val contd = flow.paged?.contd?.getOrNull(index)?.takeIf { it >= 0 }?.let { flow.blocks[it] }
+    val head = remember(contd, pal) {
+        contd?.role?.takeIf { it.isNotEmpty() }?.let { role ->
+            buildAnnotatedString {
+                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = contd.hue ?: pal.muted)) { append(role) }
+                withStyle(SpanStyle(color = pal.muted)) { append(" (cont’d)") }
+            }
+        }
+    }
+    val headLayout = remember(head, flow) {
+        head?.let { measurer.measure(it, TextStyle(fontSize = with(density) { (CAPTION_EM * flow.bodyPx).toSp() })) }
+    }
+    val description = remember(page, flow) { segs.joinToString(" ") { flow.blocks[it.block].description } }
     Box(modifier.semantics { contentDescription = description }) {
         Canvas(Modifier.fillMaxSize()) {
-            segs.forEachIndexed { s, seg ->
-                val b = flow.blocks[seg.block]
-                drawSlice(
-                    layouts[s], b, seg.from, seg.top, seg.bottom, inset,
-                    mine = b.owner in mine, hidden = hiding && b.owner in mine && b.owner != peeked,
-                    flash = b.owner == flash, accent = accent, ruleWidth = rule, pad = flow.bodyPx * LINE_GAP_EM / 3,
-                )
+            headLayout?.let {
+                val x = ink.insetPx + (if (flow.gutter) COL_EM * flow.bodyPx else 0f)
+                drawText(it, topLeft = Offset(x, (headPx - it.size.height) / 2))
+            }
+            translate(top = headPx) {
+                segs.forEachIndexed { s, seg ->
+                    val b = flow.blocks[seg.block]
+                    drawSlice(
+                        layouts[s], b, seg.from, seg.top, seg.bottom, ink,
+                        tint = mineRole != null && b.role == mineRole && b.kind != Kind.Heading,
+                        hidden = hideable(b, mineRole, hiding, peeked), flash = b.owner == flash,
+                        underline = mineRole != null && b.cueRole == mineRole,
+                    )
+                }
             }
         }
         segs.forEach { seg ->
             val b = flow.blocks[seg.block]
-            if (hiding && b.owner in mine && b.owner != peeked) {
-                val top = seg.top
+            if (hideable(b, mineRole, hiding, peeked)) {
+                val top = seg.top + headPx
                 Box(
                     Modifier
                         .offset { IntOffset(0, top.toInt()) }
@@ -486,19 +735,24 @@ private fun PageView(
     }
 }
 
+@Composable
+private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
+    val density = LocalDensity.current
+    val glyph = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeUp)
+    return remember(pal, flow, glyph) {
+        Ink(pal.accent, pal.block, pal.muted, with(density) { 3.dp.toPx() }, flow.bodyPx * LINE_GAP_EM / 3, with(density) { RuleInset.toPx() }, flow.bodyPx, glyph)
+    }
+}
+
 /** One block in Scroll: the whole of it, its width the column's. */
 @Composable
-private fun ScrollBlock(blk: Blk, flow: ReaderFlow, accent: Color, mine: Boolean, hiding: Boolean, peeked: Int?, flash: Boolean, onPeek: (Int) -> Unit) {
+private fun ScrollBlock(blk: Blk, flow: ReaderFlow, pal: Palette, mineRole: String?, hiding: Boolean, peeked: Int?, flash: Boolean, onPeek: (Int) -> Unit) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    val hidden = hiding && mine && blk.owner != peeked
-    val layout = remember(blk, flow, hidden) {
-        measurer.measure(if (hidden) blk.hiddenText else blk.text, blk.style, constraints = Constraints(maxWidth = flow.contentPx))
-    }
-    val inset = with(density) { RuleInset.toPx() }
-    val rule = with(density) { 3.dp.toPx() }
-    val height = with(density) { layout.size.height.toDp() }
-    val pad = flow.bodyPx * LINE_GAP_EM / 3
+    val hidden = hideable(blk, mineRole, hiding, peeked)
+    val m = remember(blk, flow, hidden) { measureBlk(measurer, flow, blk, hidden) }
+    val ink = rememberInk(pal, flow)
+    val height = with(density) { m.text.size.height.toDp() }
     Canvas(
         Modifier
             .width(with(density) { flow.colPx.toDp() })
@@ -510,11 +764,15 @@ private fun ScrollBlock(blk: Blk, flow: ReaderFlow, accent: Color, mine: Boolean
                         .clickable(onClickLabel = "Show line") { onPeek(blk.owner) }
                         .semantics { role = Role.Button; contentDescription = "Show line" }
                 } else {
-                    Modifier.semantics { contentDescription = blk.text.text; if (blk.heading) heading() }
+                    Modifier.semantics { contentDescription = blk.description; if (blk.heading) heading() }
                 },
             ),
     ) {
-        drawSlice(layout, blk, 0, 0f, layout.size.height.toFloat(), inset, mine, hidden, flash, accent, rule, pad)
+        drawSlice(
+            m, blk, 0, 0f, m.text.size.height.toFloat(), ink,
+            tint = mineRole != null && blk.role == mineRole && blk.kind != Kind.Heading, hidden = hidden, flash = flash,
+            underline = mineRole != null && blk.cueRole == mineRole,
+        )
     }
 }
 
@@ -572,7 +830,7 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     var hearJob by remember { mutableStateOf<Job?>(null) }
     var pageLabel by remember { mutableStateOf("") }
     val posIndex = remember(posId, script) { script.lines.indexOfFirst { it.id == posId }.coerceAtLeast(0) }
-    val mine = remember(part, script) { part?.let { ScriptReading.lineIndexesOf(script, PartID(it)).toSet() }.orEmpty() }
+    val mineRole = part?.let { PartID(it).roleName }
     val focus = remember { FocusRequester() }
     val turner = remember { Turner() }
     val animationsOff = remember {
@@ -582,12 +840,13 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
     val onSurface = MaterialTheme.colorScheme.onSurface
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val accent = MaterialTheme.colorScheme.primary
-    val pal = remember(script, dark, onSurface, muted, accent) {
+    val block = MaterialTheme.colorScheme.surfaceContainerHigh
+    val pal = remember(script, dark, onSurface, muted, accent, block) {
         val hues = HashMap<String, Color>()
         script.castParts.filter { it.id.isSpeaking }.forEach { p ->
             genreColor(script.partHue(p.id), dark)?.let { hues[p.id.roleName.orEmpty()] = it }
         }
-        Palette(onSurface, muted, accent, hues)
+        Palette(onSurface, muted, accent, block, hues)
     }
 
     LaunchedEffect(posId, part) {
@@ -765,9 +1024,10 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
             val marginPx = with(density) { PageMargin.toPx() }
             val gapPx = with(density) { PageGap.toPx() }
             val vertical = with(density) { PageVertical.toPx() }
+            val headPx = with(density) { PageHead.toPx() }
             val colPx = (((constraints.maxWidth - 2 * marginPx - (per - 1) * gapPx) / per).coerceAtMost(36 * bodyPx)).toInt().coerceAtLeast(1)
             val spec = FlowSpec(
-                script.id, colPx, (constraints.maxHeight - 2 * vertical).toInt().coerceAtLeast(1), density.density, density.fontScale,
+                script.id, colPx, (constraints.maxHeight - headPx - vertical).toInt().coerceAtLeast(1), density.density, density.fontScale,
                 prefs, dark, per, with(density) { RuleInset.toPx() }.toInt(),
             )
             val flow by produceState<ReaderFlow?>(null, spec, pal) { value = computeFlow(script, spec, pal, resolver, density) }
@@ -778,8 +1038,8 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
                 }
                 f.paged != null -> key(f) {
                     PagesStage(
-                        f, f.paged, posIndex = posIndex, jump = jump, mine = mine, hiding = hiding, peeked = peeked, flash = flash,
-                        accent = accent, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
+                        f, f.paged, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = flash,
+                        pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
                         vertical = vertical, gap = gapPx,
                         onPos = { posId = script.lines[it].id },
                         onPeek = { peeked = it }, onClearPeek = { peeked = null }, onLabel = { pageLabel = it },
@@ -787,7 +1047,7 @@ private fun ReaderBody(script: PlayScript, startLine: String?, onBack: () -> Uni
                 }
                 else -> key(f) {
                     ScrollStage(
-                        f, posIndex = posIndex, jump = jump, mine = mine, hiding = hiding, peeked = peeked, flash = flash, accent = accent,
+                        f, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = flash, pal = pal,
                         turner = turner, margin = marginPx, vertical = vertical,
                         onPos = { posId = script.lines[it].id }, onPeek = { peeked = it }, onLabel = { pageLabel = it },
                     )
@@ -815,11 +1075,12 @@ private fun PagesStage(
     paged: ReaderPagination.Paged,
     posIndex: Int,
     jump: Int,
-    mine: Set<Int>,
+    mineRole: String?,
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
-    accent: Color,
+    pal: Palette,
+    headPx: Float,
     animationsOff: Boolean,
     turner: Turner,
     haptics: () -> Unit,
@@ -873,15 +1134,15 @@ private fun PagesStage(
     SideEffect { turner.turn = turn }
 
     Box(
-        Modifier.fillMaxSize().pointerInput(flow, mine, hiding, peeked) {
+        Modifier.fillMaxSize().pointerInput(flow, mineRole, hiding, peeked) {
             detectTapGestures { off ->
                 val spreadW = per * flow.colPx + (per - 1) * gap
                 val left = (size.width - spreadW) / 2
                 val col = Math.floor(((off.x - left) / (flow.colPx + gap)).toDouble()).toInt()
                 val page = if (col in 0 until per) paged.pages.getOrNull(pager.currentPage * per + col) else null
-                val owner = page?.segAt(off.y - vertical)?.let { flow.blocks[it.block].owner }
-                if (hiding && owner != null && owner in mine && owner != peeked) {
-                    onPeek(owner)
+                val hit = page?.segAt(off.y - headPx)?.let { flow.blocks[it.block] }
+                if (hit != null && hideable(hit, mineRole, hiding, peeked)) {
+                    onPeek(hit.owner)
                     return@detectTapGestures
                 }
                 onClearPeek()
@@ -895,12 +1156,12 @@ private fun PagesStage(
     ) {
         HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, key = { it }) { spread ->
             Row(
-                Modifier.fillMaxSize().padding(vertical = with(density) { vertical.toDp() }),
+                Modifier.fillMaxSize().padding(bottom = with(density) { vertical.toDp() }),
                 horizontalArrangement = Arrangement.spacedBy(with(density) { gap.toDp() }, Alignment.CenterHorizontally),
             ) {
                 for (k in 0 until per) {
                     PageView(
-                        paged.pages.getOrNull(spread * per + k), flow, accent, mine, hiding, peeked, flash, onPeek,
+                        spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mineRole, hiding, peeked, flash, headPx, onPeek,
                         Modifier.width(with(density) { flow.colPx.toDp() }).fillMaxSize(),
                     )
                 }
@@ -914,11 +1175,11 @@ private fun ScrollStage(
     flow: ReaderFlow,
     posIndex: Int,
     jump: Int,
-    mine: Set<Int>,
+    mineRole: String?,
     hiding: Boolean,
     peeked: Int?,
     flash: Int?,
-    accent: Color,
+    pal: Palette,
     turner: Turner,
     margin: Float,
     vertical: Float,
@@ -963,7 +1224,7 @@ private fun ScrollStage(
         items(flow.blocks.size, key = { it }) { b ->
             val blk = flow.blocks[b]
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                ScrollBlock(blk, flow, accent, blk.owner in mine, hiding, peeked, blk.owner == flash, onPeek)
+                ScrollBlock(blk, flow, pal, mineRole, hiding, peeked, blk.owner == flash, onPeek)
             }
         }
     }

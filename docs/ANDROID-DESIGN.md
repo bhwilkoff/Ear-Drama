@@ -698,9 +698,9 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     hue; Hide my lines draws its words as rounded bars in the hue (still
     measured, so pages stay put); a tap peeks one.
   - **The Ear Drama page** (PLAYS-DESIGN §2.7 rule 10, binding; frames in
-    `docs/research/design/R2-play-typography.md`). Port `layoutOf`, `isVerse`
-    and `cueTail` to `PlaysCore` (Kotlin) with the web's fixtures as golden
-    tests. Per speech: the name in `titleMedium` in the part's hue over the
+    `docs/research/design/R2-play-typography.md`). `PlayPage.layoutOf`, `isVerse` and `cueTail` (`plays/PlayPage.kt`) carry
+    the web's fixtures as tests; blocks are measured with `TextMeasurer`
+    and cut by `ReaderPagination` (keep-with-next, widow and orphan, verse rows). Per speech: the name in `titleMedium` in the part's hue over the
     words (`bodyMedium`), never the last item measured on a page; when a page
     is 30 em or wider (expanded width) the name sits in a right-aligned
     8.5 em column in a `Row`. Verse is one `Text` per printed line with a
