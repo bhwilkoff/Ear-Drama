@@ -94,6 +94,7 @@ Entries 001-045 are in `docs/decisions/DECISIONS-001-045.md`, verbatim; 046 onwa
 - 076: A script reader of its own, pages first; the studio lives inside it; Kokoro for downloadable voices (answered 2026-11-14)
 - 077: Audio starts without reading the whole file; Play on the loaded episode resumes it
 - 078: Kokoro voices: phonemes built in the catalog; apps first; the web on WebGPU only (answered 2026-11-15)
+- 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
 
 ---
 
@@ -1210,3 +1211,24 @@ browsers run q8 slower than real time and fp16 produces NaN.
 
 **How to apply**: phases S6a to S6f in that report, each with its gate; the phone
 benchmark (iPhone 12, Pixel 8a) is S6a's gate.
+
+## 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
+
+**Rule**: a newcomer can record without signing in; takes stay on the device, and
+an account is asked for only to share, invite, publish, or start a second
+production. A production appears in Yours only after its first take, and one that
+stays empty is removed. Once finished ear dramas exist, they lead Home right under
+the three doors while there are fewer than six, then return to the Made here row.
+Today's scene (a two-voice play of at most 20 minutes, same date hash as Today's
+play, with Try a line and Hear it) replaces Today's play on every platform.
+Replaces the 2026-10-23 rule that recording needs an account (Decision 072's
+invite-only takes still need one).
+
+**Why**: the owner chose these on 2026-11-15 from
+`docs/research/design/R2-design-review.md`: recording took five steps then stopped
+at "Recording needs an account"; empty productions piled up; nothing showed what an
+ear drama sounds like; research (Duolingo, Smule, Nielsen's participation
+inequality) says let people try before asking for commitment.
+
+**How to apply**: binding design docs first, then web, Apple, Android in one batch;
+PARITY rows.

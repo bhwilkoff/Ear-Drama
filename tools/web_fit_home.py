@@ -3,7 +3,8 @@
 375, 390, 430 and 1440 px: Home with no history and with history (Continue leads under On the air),
 during tonight's evening and in the day (a genre station leads), and Record. Fails on a door row or
 button row that wraps apart, a word broken inside itself, a sideways scroll, an overflowing tile name,
-or a Home that drew no On the air block, no doors, or no rows.
+an opening line that runs out sideways, a Home that drew no On the air block, no doors, or no rows, a
+Record with no play tiles, or either page without Today's scene and its opening (2026-11-15 review).
 
 Reads the live catalog (network) in headless Chrome, muted; never presses Play.
 
@@ -13,6 +14,8 @@ Reads the live catalog (network) in headless Chrome, muted; never presses Play.
 
 Negative control: delete `grid-auto-flow: column` from `.home-doors` in css/styles.css; the doors
 stack and "the doors wrap apart" fails.
+Second (2026-11-15): delete `flex-wrap: nowrap;` from `.pl-scene-actions`; at 320 px Try a line, Hear
+it and Read wrap and "a button row wrap apart" fails (it did, before that rule).
 """
 import datetime, json, os, subprocess, sys, tempfile, time
 
@@ -40,11 +43,12 @@ JS = r"""(() => {
   rowsApart('.home-doors', 'the doors');
   rowsApart('.home-live-actions', 'On the air’s buttons');
   rowsApart('.actions-one', 'a button row');
+  root.querySelectorAll('.pl-scene-said, .pl-open-sp').forEach(n => { if (n.scrollWidth > n.clientWidth + 1) bad.push('an opening line runs out sideways'); });
   const de = document.documentElement;
   if (de.scrollWidth > innerWidth) bad.push(`page scrolls sideways: ${de.scrollWidth} > ${innerWidth}`);
   root.querySelectorAll('.g-name').forEach(n => { if (n.scrollWidth > n.clientWidth + 1) bad.push('tile name overflows: ' + n.textContent.slice(0, 30)); });
   // A word broken inside itself: one word's glyphs on two lines.
-  const sel = '.home-door-lab, .btn, .g-name, .ep-title, .section-header, .g-kicker, .segmented button, .tab span, .g-facts span, .g-head-name';
+  const sel = '.pl-open-said, .pl-scene-said, .pl-scene-who, .home-door-lab, .btn, .g-name, .ep-title, .section-header, .g-kicker, .segmented button, .tab span, .g-facts span, .g-head-name';
   document.querySelectorAll(sel).forEach(n => {
     if (!n.getBoundingClientRect().width) return;
     const walk = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
@@ -62,7 +66,8 @@ JS = r"""(() => {
     if (%s && !root.querySelector('.home-live')) bad.push('no On the air block');
     if (!root.querySelector('.g-tile')) bad.push('Home drew no tiles');
     if (%s && !root.querySelector('#cont-h')) bad.push('history but no Continue');
-  } else if (!root.querySelector('.pl-cast')) bad.push('Record drew no play tiles');
+  } else if (!root.querySelector('.pl-cast, .pl-open')) bad.push('Record drew no play tiles');
+  if (!root.querySelector('.pl-scene .pl-scene-sp')) bad.push('no scene card with its opening');
   if (document.querySelector('.state-problem')) bad.push('a problem state is on screen: ' + document.querySelector('.state-problem').textContent.trim().slice(0, 40));
   return JSON.stringify([...new Set(bad)]);
 })()"""

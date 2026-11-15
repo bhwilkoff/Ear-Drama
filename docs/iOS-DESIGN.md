@@ -289,6 +289,19 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   and offline state and is absent when its rule yields nothing.
   - *Replaced* (2026-11-14): "a `List`: Continue listening ..., then
     Following ..., then the catalog's published shelves in order (R13)".
+  - *Pending port* (2026-11-15 design review, `docs/research/design/R2-design-review.md`
+    §6; WEB-DESIGN §4.2 items 1, 2 and 7, §4.15): the navigation title on Home
+    is **Ear Drama**; On the air's kicker reads "On the air · {source}" after
+    an ink dot; **Record a Play** moves up between Start a Show and By Length
+    and draws **Today's Scene** in place of Today's play: `todaysScene` (the
+    `todaysPlay` hash over two voices and at most 20 min, else 2-3 voices and
+    at most 30), the title block on the drama board, the first four speeches
+    as a page (role name over said words, three lines at most, a rule in the
+    part's hue), then **Try a Line** (borderedProminent, `mic`: the studio on
+    the answering voice's first line), **Hear It** (the opening read live by
+    the cast's device voices, never kept) and **Read**. Record's second block
+    is the same card. Play tiles show the index row's `opening` as a page in
+    the window when it is present. Same rules on iPad and Mac.
 - **§4.2 Browse** (was Series) is a `List` of radio series (the plays
   moved to Record, §4.14, Decision 075: the Kind chip goes, and so does
   every sentence below about plays in Browse), under a horizontally scrolling row of capsule chips,
@@ -656,7 +669,23 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
       string right after its word, so the page re-paginates and the script's text is
       untouched; a kern on the word was tried and Core Text drops it once the whole
       script is one string. Marks draw on the Pages layout; Scroll (one SwiftUI `Text`
-      a line) draws none yet. Pencil ink is ⏳ (PARITY): typed marks shipped first.
+      a line) draws none yet. Pencil ink is below.
+    - **Pencil ink as shipped, 2026-11-15** (`InkCore.swift`, `ReaderInk.swift`; this bullet wins over the
+      per-block-canvas paragraph above). One `PKCanvasView` per page, not per line block, so a circle or arrow in
+      the margin is possible; each stroke belongs to the line its first point is in (else the nearest), and is
+      stored in that line's block coordinates: origin the block's top-left, units points at the text column's width
+      when drawn, a line that runs onto the next page one block of stacked pieces. Drawn scaled by the column's
+      width over the stored width, so ink moves with its line on a reflow, a new text size and a page turn.
+      **Ink** (`pencil.tip`, a `Toggle` in the toolbar, iPad on Pages only) turns the layer on: the Pencil draws
+      (`.pencilOnly`), a finger still turns pages, the system's `PKToolPicker` offers pen, pencil, marker and the
+      eraser that takes a whole stroke (no lasso: a moved stroke would have no line). Selection is off while Ink is
+      on. Stored per script beside the marks (`Marks/<script id>.ink`, each line's `PKDrawing` data). A revision
+      keeps a line's ink when its words are unchanged (or moves it to the one id exactly those words moved to);
+      otherwise it is listed under **Not Placed** with a picture, never drawn over other words. iPhone and Mac draw
+      the same ink read-only (an image of the strokes in the page's `Canvas`). Show Marks off hides the ink;
+      Hide My Lines hides a hidden line's. The notebook lists inked lines (picture, speaker, first words). Scroll
+      draws none, like the typed marks. Export: `ink[]` (docs/EXPORT.md). DEBUG doors `APP_READER_INK=1`,
+      `APP_READER_INK_FINGER=1` (a finger draws) and `APP_READER_INK_DEMO=1` (three stored strokes).
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's

@@ -314,6 +314,19 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   radio**; **Most heard voices**; **Made here**. Each section has its own
   loading, error (Try again) and offline state; a section whose rule
   yields nothing is not drawn.
+  - *Pending port* (2026-11-15 design review, `docs/research/design/R2-design-review.md`
+    §6; WEB-DESIGN §4.2 items 1, 2 and 7, §4.15): the top app bar title on Home
+    is **Ear Drama**; On the air's kicker reads "On the air · {source}" after
+    an ink dot; **Record a play** moves up between Start a show and By length
+    and draws **Today's scene** in place of Today's play: `todaysScene` (the
+    `todaysPlay` hash over two voices and at most 20 min, else 2-3 voices and
+    at most 30), the title block on the drama board, the first four speeches
+    as a page (role name over said words, three lines at most, a rule in the
+    part's hue), then **Try a line** (filled `Button`, `Mic`: the studio on
+    the answering voice's first line), **Hear it** (the opening read live by
+    the cast's device voices, never kept) and **Read**. Record's second block
+    is the same card. Play tiles show the index row's `opening` as a page in
+    the window when it is present. Not on a TV.
   - *Replaced* (2026-11-14): "a `LazyColumn` of shelves ... Continue
     listening, then Following ..., then the published shelves in order".
 - **§4.2 Browse** (was Series) lists radio series; the plays moved to

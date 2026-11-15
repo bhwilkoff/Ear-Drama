@@ -176,6 +176,30 @@ def an_index_row_carries_its_cast_largest_first():
 
 
 @case
+def an_index_row_carries_its_opening_speeches_in_their_own_words():
+    entries, _ = fixture_build()
+    e = entries[0]
+    row = L.index_row(e)
+    speeches = [l for l in e["lines"] if l["kind"] == "speech"]
+    assert len(row["opening"]) == min(L.OPENING_SPEECHES, len(speeches)), row["opening"]
+    for o, l in zip(row["opening"], speeches):
+        assert o["role"] == l["role"], (o, l)
+        said = " ".join(p["say"] for p in l["parts"] if "say" in p).replace("_", "")
+        words = o["text"].rstrip("\u2026").split()
+        assert " ".join(said.split()).startswith(" ".join(words)), (o["text"], said)
+        assert len(o["text"]) <= L.OPENING_CHARS + 1, o["text"]
+    long = {"lines": [{"kind": "direction", "source": "_Night._"},
+                      {"kind": "speech", "role": "A", "parts": [{"direction": "low"}, {"say": "word " * 40}]},
+                      {"kind": "speech", "role": "B", "parts": [{"say": ". Who   _is_ it? "}]},
+                      {"kind": "speech", "role": "A", "parts": [{"say": "Me--now."}]}]}
+    got = L.opening_of(long)
+    assert got[0]["role"] == "A" and got[0]["text"].endswith("\u2026") and len(got[0]["text"]) <= L.OPENING_CHARS + 1, got
+    assert "word wor" not in got[0]["text"].replace("word word", ""), "a word is cut inside itself"
+    assert got[1] == {"role": "B", "text": "Who is it?"} and len(got) == 2, got
+    assert L.opening_of({"lines": long["lines"][3:]})[0]["text"] == "Me\u2014now.", "a double hyphen reads as a dash"
+
+
+@case
 def the_real_artifact_has_the_documented_shape():
     if not os.path.exists(os.path.join(L.OUT, "index.json")):
         print("  (no built library in out/plays-library; fixture shape only)")

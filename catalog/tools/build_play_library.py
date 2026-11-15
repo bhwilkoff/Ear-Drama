@@ -266,6 +266,35 @@ def dedupe(entries, protect=()):
     return kept, rows, shared
 
 
+OPENING_SPEECHES = 2
+OPENING_CHARS = 90
+
+
+def opening_of(entry):
+    """The play's first speeches as {role, text}: its own said words, cut at a word near OPENING_CHARS.
+
+    A play tile shows them in its window (WEB-DESIGN §4.15) so a list reads as scripts, without
+    fetching any (Decision 075). Printed italic marks, a speaker's
+    stray stop left at the front (". Come quickly") and repeated whitespace are dropped;
+    a printed double hyphen reads as the dash it stands for."""
+    out = []
+    for line in entry["lines"]:
+        if line["kind"] != "speech":
+            continue
+        said = " ".join(p["say"] for p in line.get("parts", []) if "say" in p)
+        said = re.sub(r"\s+", " ", said.replace("_", "")).strip().lstrip(".,:;\u2014- ").strip().replace("--", "\u2014")
+        if not said:
+            continue
+        if len(said) > OPENING_CHARS:
+            cut = said[:OPENING_CHARS + 1]
+            cut = cut[:cut.rfind(" ")] if " " in cut else cut[:OPENING_CHARS]
+            said = cut.rstrip(" ,;:-—") + "…"
+        out.append({"role": line.get("role", ""), "text": said})
+        if len(out) == OPENING_SPEECHES:
+            break
+    return out
+
+
 def index_row(entry):
     voices = sum(1 for r in entry["roles"] if r["lines"] >= P.CASTABLE_LINES)
     words = sum(r["words"] for r in entry["roles"])
@@ -284,6 +313,7 @@ def index_row(entry):
         "lines": sum(1 for l in entry["lines"] if l["kind"] == "speech"),
         "words": words,
         "minutes": max(1, math.ceil(words / WORDS_PER_MINUTE)),
+        "opening": opening_of(entry),
         "rights": entry["rights"],
         "source": entry["source"],
         "path": f"scripts/{entry['id']}.json",

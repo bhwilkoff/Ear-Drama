@@ -140,6 +140,43 @@ const PlaysCore = (() => {
     return best;
   }
 
+  /*
+   * Today's scene (WEB-DESIGN §4.2, §4.15): today's play among the short ones for two voices, the
+   * invitation a newcomer can finish (two voices, at most 20 minutes; else two or three voices, at
+   * most 30; else every play). Same hash as todaysPlay over that pool, so it ports as a filter.
+   */
+  const SCENE_POOLS = [[2, 2, 20], [2, 3, 30]];
+  function scenePool(scripts) {
+    const all = scripts || [];
+    for (const [lo, hi, most] of SCENE_POOLS) {
+      const pool = all.filter(s => { const v = voicesOf(s); return v >= lo && v <= hi && minutesOf(s) <= most; });
+      if (pool.length) return pool;
+    }
+    return all;
+  }
+  const todaysScene = (scripts, dateKey) => todaysPlay(scenePool(scripts), dateKey);
+
+  /**
+   * The opening speeches as { part, name, text, id }: the play's own said words, from its lines, or
+   * from the index row's `opening` (contract §4.1, already cut short) when no lines are loaded.
+   */
+  function openingOf(script, n = 4) {
+    const clean = (t) => (t || '').replace(/_/g, '').replace(/\s+/g, ' ').trim().replace(/^[.,:;\u2014-]+\s*/, '').replace(/--/g, '\u2014');
+    if (!Array.isArray(script.lines)) {
+      return (Array.isArray(script.opening) ? script.opening : []).slice(0, n)
+        .filter(o => o && clean(o.text)).map(o => ({ part: role(o.role || ''), name: o.role || '', text: clean(o.text), id: null }));
+    }
+    const out = [];
+    for (const l of script.lines) {
+      if (l.kind !== 'speech') continue;
+      const text = clean(spokenText(l));
+      if (!text) continue;
+      out.push({ part: role(l.role || ''), name: l.role || '', text, id: l.id });
+      if (out.length >= n) break;
+    }
+    return out;
+  }
+
   const linesFor = (script, part) => script.lines.filter(l => linePart(l) === part);
   const speechLineIDs = (script) => script.lines.filter(l => l.kind === 'speech').map(l => l.id);
 
@@ -893,7 +930,7 @@ const PlaysCore = (() => {
     DIRECTIONS, SOUND, STANDIN, TAKE_RATE, ROOM_TONE_SECONDS, DEFAULT_GAP, TARGET_LUFS, PEAK_CEILING,
     BLEED_LOUD_FRACTION, now, uuid, clone,
     role, roleName, isSpeaking, partTitle, linePart, pieceKind, pieceText, spokenText, displayName, authorName, authorLine,
-    WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay,
+    WORDS_PER_MINUTE, CASTABLE_LINES, voicesOf, minutesOf, castOf, partCountOf, VOICE_BANDS, LENGTH_BANDS, voiceBand, lengthBand, fnv1a64, todaysPlay, scenePool, todaysScene, openingOf,
     linesFor, speechLineIDs, castParts,
     newProduction, stateOf, takeById, chosenTake, usableTake, takesFor, addTake, choose, unusedTakes, discardUnused, deleteTake,
     fingerprint, isFinished, stableStringify,

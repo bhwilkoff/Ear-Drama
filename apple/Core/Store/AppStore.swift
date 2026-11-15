@@ -294,4 +294,11 @@ nonisolated struct ReaderDoor: Equatable, Sendable {
     var studio = false
     /// APP_READER_RESET_MARKS=1: the play's marks on this device are erased before the reader opens.
     var resetMarks = false
+    /// APP_READER_INK=1: Ink mode is on when the reader opens (iPad); APP_READER_INK_FINGER=1 also lets a finger draw,
+    /// since a Pencil cannot be driven by a test.
+    var ink = false
+    var inkFinger = false
+    /// APP_READER_INK_DEMO=1: three synthetic strokes are stored on the lines from the first one shown (a device whose
+    /// UI automation is not enabled cannot draw them); they are the same stored ink a Pencil makes.
+    var inkDemo = false
 }
