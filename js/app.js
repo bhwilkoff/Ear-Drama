@@ -2212,7 +2212,8 @@
     const gather = async () => {
       let productions = [];
       try { const s = PlayStore.open(); await s.load(); productions = s.productions; } catch { /* no ear dramas to list */ }
-      return DataExport.build(Store, productions);
+      const marks = typeof MarksCore !== 'undefined' ? (() => { try { return MarksCore.exportRows(localStorage); } catch { return []; } })() : [];
+      return DataExport.build(Store, productions, Date.now(), marks);
     };
     row.replaceChildren(
       el('button', { type: 'button', class: 'btn btn-ghost', onclick: async () => {

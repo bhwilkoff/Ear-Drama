@@ -125,6 +125,21 @@ extension Color {
         }
     }
 
+    nonisolated static let markYellow = Color.tokenPair(light: 0xFBE38E, dark: 0x5C4A10)
+    nonisolated static let markGreen = Color.tokenPair(light: 0xCDEBC5, dark: 0x1F4A2B)
+    nonisolated static let markBlue = Color.tokenPair(light: 0xCFE2F8, dark: 0x1D3D63)
+    nonisolated static let markPink = Color.tokenPair(light: 0xF7D2E3, dark: 0x5B2743)
+    /// A highlight's tint in the script reader (PLAYS-DESIGN 2.10); yellow for a hue the palette does not name.
+    nonisolated static func mark(_ key: String?) -> Color {
+        switch key {
+        case "yellow": markYellow
+        case "green": markGreen
+        case "blue": markBlue
+        case "pink": markPink
+        default: markYellow
+        }
+    }
+
     // The print mount: the ground a contained picture sits on, and the hairline edge around every window.
     nonisolated static let printGround = Color.tokenPair(light: 0xEDEDED, dark: 0x2A2A2E)
     nonisolated static let printEdge = Color.tokenPair(light: 0x131316, dark: 0xF2F2F4, lightAlpha: 0.18, darkAlpha: 0.16)

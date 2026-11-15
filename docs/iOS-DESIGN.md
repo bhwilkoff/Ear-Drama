@@ -600,6 +600,48 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
       take's Delete is a swipe action and a context-menu item, absent on the
       chosen take. Headphones, sign-in, room tone and the microphone prompt are
       §4.12's, shown in the dock.
+  - **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 binding; web sibling WEB-DESIGN
+    §4.16 item 15; port spec `docs/research/design/R2-marks-port-brief.md`). Core
+    gains `MarksCore` (the anchor, `snapWords`, `pointAfter`, the overlap rules,
+    `place` over `catalog/tests/golden/marks_anchor.json`, the notebook order) and a
+    `MarkStore` (a JSON file per script in Application Support, `Marks/<script id>.json`,
+    the web's shape; never `UserDefaults`, never iCloud until the sync phase).
+    - **Selecting**: the Core Text page takes a text selection with the system's own
+      handles (`UITextInteraction` over a `UITextInput` adapter of the page, or a
+      read-only `UITextView` per page in TextKit 2, whichever keeps the layout): the
+      selection maps to (line id, offset) through each drawn run's offset. The edit
+      menu (`UIEditMenuInteraction`, iOS 16+) gains **Highlight, Underline, Breath,
+      Pause, Beat, Note** as `UIMenu` actions after the system's Copy and Look Up,
+      the native mark bar (Books' own place for it). A tap on a mark opens the same
+      menu for it: the four hues and Delete for a highlight, Edit and Delete for a
+      beat or note; Delete offers Undo through the shake-free `UndoManager` (the
+      toolbar's Undo, ⌘Z on a keyboard).
+    - **Drawing**: highlights as a fill behind the glyph runs (`Color.mark(_:)`, the
+      generated token), underlines as a 2 pt `.primary` rule, a note's words under a
+      dotted rule with `note.text` after them; breath `/`, pause `//` and beat `//`
+      with its label (`.caption` capitals in a rounded outline) drawn by the layout
+      in the space between two words, never inserted into the attributed text.
+      A point mark re-paginates; a highlight does not.
+    - **Pencil ink** (iPad, Apple Pencil): **Ink** in the reader's toolbar (a
+      `Toggle`, `pencil.tip`) turns on a `PKCanvasView` per line block
+      (`drawingPolicy = .pencilOnly`: a finger still turns pages and selects),
+      sized to the block; its `PKDrawing` is stored with the line's anchor
+      (`Marks/<script id>-ink/<line id>.drawing`), so ink moves with its line on
+      reflow, a new text size (strokes scaled by the size ratio) and a page turn;
+      a line a revision changes keeps its ink only when its text is unchanged,
+      else the drawing is listed in the notebook as not placed (never drawn on
+      other words). `PKToolPicker` is the system's; Scribble writes into a note's
+      field. iPhone and Mac draw the ink read-only at the same anchor.
+    - **Notebook**: **Marks** in the toolbar (`bookmark`, a `Label`) opens a sheet
+      (`.presentationDetents([.medium, .large])`): a Show Marks `Toggle`, then a
+      `List` of every mark in script order (glyph, speaker in `.caption`, the
+      words, a beat's label, a note), a tap closing the sheet and going to the
+      line; **Not Placed** as a second section with swipe-to-delete. Empty:
+      `ContentUnavailableView` "Select words on the page to mark them."
+    - **Keys** (iPad keyboard, with a selection): H, U, /, P, B, N; Esc lets go.
+      VoiceOver: each mark is an accessibility custom action on its speech
+      ("Highlight: first thing"), and the notebook lists them all.
+    - Export: `DataExport` adds `marks[]` (docs/EXPORT.md).
 
 - **§4.12 An ear drama** (`apple/Shared/PlaysScreens.swift`,
   `RecordingScreen.swift`; PLAYS-DESIGN §2, Decision 067). The play's

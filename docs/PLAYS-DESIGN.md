@@ -255,7 +255,7 @@ macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 is a read-along pa
    the next turn or tap.
 8. **Built for what comes next**: each line is addressable by its id, and each printed run
    knows its offset into the line's printed words (`lineText`), so a mark is
-   (script, revision, line id, start, end) (S5); `go(line)` and `follow(line)` are the
+   (script, revision, line id, start, end) (S5, §2.10); `go(line)` and `follow(line)` are the
    read-along's seam; the studio (S3) docks inside the reader.
 9. **Nothing is written by the app**: every word on the page is the script's; the reader
    adds no summary, no character notes, no suggestions.
@@ -420,6 +420,106 @@ three modes) is unchanged in what the engine does; this section is where it happ
 10. **Nothing new is stored.** Takes, the chosen map, room tone and the production record are
     §6's; device voices stay live and unstored (§5); take upload and publish rules are Decisions
     072 and 073's, unchanged. The reader's position and marks stay the reader's.
+
+### §2.10 Marks (Decision 076, phase S5; binding on every platform that reads)
+
+The owner, 2026-11-14: *"You should be able to read a script and turn pages and mark them up
+and do all of the things that a good book/script reading experience should contain."* The
+rulings (Decision 076, the research's recommendations taken): typed marks everywhere plus Apple
+Pencil ink on iPad; anchored to lines, never pages; on the device first, synced later; private.
+Research: `docs/research/design/R2-script-reader-and-studio.md` §2.3 (what actors mark) and §4.2.
+Each platform's design doc says the idiom (WEB-DESIGN §4.16 item 15, iOS-DESIGN §4.15 "Marks",
+macOS-DESIGN §4.7, ANDROID-DESIGN §4.17; tvOS-DESIGN §4.13 has none). Port spec:
+`docs/research/design/R2-marks-port-brief.md`.
+
+The learning test (`learning-orientation-design`, R2 §3): marking a line is how an actor thinks
+about it (where to breathe, what to stress, where the thought turns). The reader keeps that work
+and shows it back; it never proposes a mark, a reading or a note.
+
+1. **Six typed marks**, each the person's own:
+
+   | Mark | What it means | Drawn as |
+   |---|---|---|
+   | **Highlight** | "this matters" | a tint behind the words in one of four hues, yellow (the first), green, blue, pink (`color.mark` in the design tokens: the text and the muted text hold 4.5:1 on each, light and dark) |
+   | **Underline** | stress | a 2 px ink rule under the words (the cue I come in on keeps its own rule in my part's hue) |
+   | **Breath** | breathe here | a `/` between two words, in ink, raised a little |
+   | **Pause** | a longer pause | `//` between two words |
+   | **Beat** | a turn in the thought | `//` and its label (one to three words, at most 24 characters) in caption capitals |
+   | **Note** | the person's own words about the line | the words under a dotted ink rule, a note glyph after them; the note in a sheet |
+
+   Plus **ink** on iPad with Apple Pencil (iOS-DESIGN §4.15): free strokes anchored to a line
+   block, the same anchor rules. Every other platform shows that ink read-only where it can, and
+   draws nothing where it cannot (never a wrong place).
+   Every mark is drawn by the page, outside the script's words: no mark ever adds a character to
+   the text, so offsets, search and the read-along never see one.
+2. **Making a mark**: select words on the page, and a small **mark bar** offers the six:
+   Highlight (in the last hue used), Underline, Breath, Pause, Beat, Note. A span mark
+   (highlight, underline, note) covers the selection, grown to whole words; a point mark (breath,
+   pause, beat) goes at the end of the selection, moved on to the end of its word and any
+   punctuation after it, so "morning, / and" never splits a word. A selection that crosses lines
+   makes one mark per line, the highlights or underlines of one selection kept as a group (a hue
+   change or a delete applies to the group); a note on such a selection anchors to its first line.
+   A speaker's name, a page's added parentheses and the "(cont'd)" head are not text: a selection
+   that starts on one starts at the next word. Keys with a selection: `H` highlight, `U`
+   underline, `/` breath, `P` pause, `B` beat, `N` note, `Esc` lets go.
+3. **The anchor is a line, never a page** (Decision 076): `(scriptID, revision, lineID, start,
+   end)`, offsets into the line's printed words (`lineText`, the same string search and the
+   read-along use; every drawn run keeps its offset into it, §2.7 rule 10), plus the words
+   themselves (`text`) and up to 32 characters either side (`prefix`, `suffix`), as the W3C Web
+   Annotation model's TextPositionSelector and TextQuoteSelector pair them. A point mark has
+   `start == end` and empty `text`. A mark survives reflow, text size, Pages or Scroll, rotation,
+   another window size and a split line id (`L0009a`, contract §4.1) by construction.
+4. **A new revision re-anchors by text** (one algorithm per stack, golden cases in
+   `catalog/tests/golden/marks_anchor.json`):
+   1. The same revision and the slice still reads `text`: placed as stored.
+   2. Else, in the same line id: every place the line holds `text` (a point mark: every place its
+      context meets), scored by how much of `prefix` and `suffix` still match around it; the best
+      wins, ties to the nearest the old offset.
+   3. Else, every other line, nearest first by script order (where the old id sorts: `L0009a`
+      after `L0009`, before `L0010`): the best score wins, ties to the nearest line, and only
+      with evidence: the matched words plus matched context come to 16 characters or more (or
+      all there was).
+   4. Else the mark is **not placed**: kept as it was, untouched, and listed in the notebook under
+      "Not placed" with its words and its note, never dropped silently. It is tried again on the
+      next revision. A placed mark that moved is saved with the new anchor and revision.
+5. **Overlap**: highlights never stack. A highlight that overlaps or touches others in the same
+   line merges with them into one highlight over all their words, in the new hue (the group goes
+   with it). Underlines merge the same way. A highlight and an underline may share words. Notes
+   never merge: each is its own. One point mark a place: a breath, pause or beat where another
+   point mark stands replaces it.
+6. **Changing a mark**: a tap or click on a mark opens the mark bar for it: a highlight's four hues
+   and Delete; Delete alone for an underline, breath or pause; the label and Delete for a beat;
+   the note and Delete for a note (the note and the label open in a sheet with the marked words
+   above the field). A delete is immediate and undoable from the bar ("Undo") until the next
+   mark or page turn: a mark is the person's work, never lost to a mistap.
+7. **Show marks**: one switch (in the notebook) hides or shows every mark on the page, remembered
+   per device. Hidden marks are kept, listed, and still made by the bar (shown again when made).
+8. **The notebook** (Kindle's My Notebook; the reader's **Marks** button): every mark of the play
+   in script order (line, then offset): the mark's glyph and hue, the speaker, the marked words
+   (a point mark's words around it, the mark drawn between them), a beat's label, a note's text.
+   A tap goes to the line, turning the page, and outlines it a moment. "Not placed" follows, for
+   marks a revision lost. Empty: "Select words on the page to mark them." (how to mark is not
+   on the page).
+9. **In the studio** (§2.9): marks show on every line exactly as in the reader, so a person
+   performs from a marked script. A tap on a mark opens the mark; a tap elsewhere on my line makes
+   it current, as before. The studio's keys (Space, `J`, `K`, `R`, Return) keep their meaning; the
+   mark keys act only on a selection.
+10. **Hide my lines** hides a hidden line's marks with its words; a peek shows both.
+11. **On the device, private** (Decision 076): each platform keeps a play's marks under its
+    script id (web `localStorage` `ed.marks.<script id>`, Apple a file per script in Application
+    Support, Android Room). Never uploaded, never in a shared production, never synced until a
+    later phase rides the per-ecosystem sync (`per-ecosystem-sync-islands`), and never shown to
+    another person. They travel only in the person's own data export (`marks[]`, docs/EXPORT.md).
+12. **Four states.** Loading: none of its own (marks come with the script, from the device).
+    Empty: the notebook's line (rule 8). Error: a mark that could not be saved says so in the
+    mark bar and the notebook, with the warning glyph ("Marks are not being saved on this
+    device."); the mark still shows until the reader closes. Offline: nothing to say; marks never
+    touch the network.
+13. **Accessibility**: each mark button is labeled with its key; a point mark is announced
+    ("Breath", "Pause", "Beat: turn"); the notebook is the full, readable list of every mark, so a
+    highlight the screen reader cannot see on the page is still there.
+14. **Nothing written by the app**: no suggested mark, no generated note, no "AI coach" (§2.7
+    rule 9). Every word in a mark is the person's or the script's.
 
 ### The platform idioms
 

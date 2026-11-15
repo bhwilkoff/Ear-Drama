@@ -24,7 +24,7 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { plan, loadTokens, colors, genres, onGenres, boards, onBoards, printMount, edgeOver, oklch, apca, deltaE, contrast, webFonts, ROOT } from './design_tokens.mjs';
+import { plan, loadTokens, colors, genres, onGenres, boards, onBoards, marks, printMount, edgeOver, oklch, apca, deltaE, contrast, webFonts, ROOT } from './design_tokens.mjs';
 
 let failed = 0;
 const ok = (cond, msg) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'}  ${msg}`); if (!cond) failed++; };
@@ -263,6 +263,55 @@ const ng = nativeGaps(nativeFiles, tokens);
 ok(ng.length === 0, `every native platform names every board, onBoard, onGenre and print token (gaps: ${ng.slice(0, 4).join('; ') || 'none'})`);
 const dropped = nativeFiles.map((f) => ({ path: f.path, text: f.text.replace(/.*(boardComedy|BoardComedy|board_comedy).*\n/g, '') }));
 ok(nativeGaps(dropped, tokens).filter((g) => /omedy/.test(g)).length >= 3, 'the native check catches the comedy board missing from Swift, Compose and the resources');
+
+// 5f. A person's highlight hues in the script reader (PLAYS-DESIGN 2.10). Per mode:
+//   - the text and the muted text (a direction inside a speech) hold 4.5:1 on each;
+//   - each stands apart from the page (CIEDE2000 10 or more), from every other
+//     mark hue (15 or more), and from recording red (30 or more);
+//   - in dark mode a tint, never a lamp (APCA Lc 30 or less on the page);
+//   - every native platform names each hue.
+//   Each rule has its own negative control below.
+const markProblems = (t, files) => {
+  const out = [];
+  const ms = marks(t), br = t.color.brand;
+  if (ms.length < 4) out.push(`color.mark has ${ms.length} hues (the reader offers four)`);
+  for (const mode of ['light', 'dark']) {
+    for (const m of ms) {
+      for (const [name, c] of [['text', br.text], ['textMuted', br.textMuted]]) {
+        const r = contrast(c[mode], m[mode]);
+        if (r < 4.5) out.push(`${mode} ${name} on the ${m.name} mark is ${r.toFixed(2)}:1`);
+      }
+      const page = deltaE(m[mode], br.background[mode]);
+      if (page < 10) out.push(`${mode} ${m.name} mark is ${page.toFixed(1)} from the page`);
+      if (br.record && deltaE(m[mode], br.record[mode]) < 30) out.push(`${mode} ${m.name} mark is near recording red`);
+      if (mode === 'dark' && apca(m[mode], br.background[mode]) > 30) out.push(`dark ${m.name} mark glares`);
+    }
+    for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) {
+      const e = deltaE(ms[i][mode], ms[j][mode]);
+      if (e < 15) out.push(`${mode} ${ms[i].name} and ${ms[j].name} marks are ${e.toFixed(1)} apart`);
+    }
+  }
+  for (const f of files || []) {
+    const want = f.path.endsWith('apple/Core/Design.swift') ? ms.map((m) => `static let mark${P(m.name)} =`).concat('static func mark(_ key: String?)')
+      : f.path.endsWith('/ui/theme/Color.kt') ? ms.map((m) => `val Mark${P(m.name)}Dark =`).concat('fun markColor(')
+        : /values(-night)?\/colors\.xml$/.test(f.path) ? ms.map((m) => `name="mark_${m.name}"`)
+          : f.path.endsWith('.css') && f.text.includes('--color-genre-') ? ms.map((m) => `--color-mark-${m.name}:`) : [];
+    for (const needle of want) if (!f.text.includes(needle)) out.push(`${f.path} lacks ${needle}`);
+  }
+  return out;
+};
+const mp = markProblems(tokens, nativeFiles);
+ok(mp.length === 0, `the highlight hues hold: text and muted text at 4.5:1, apart from the page, each other and red, no dark glare, named on every platform (problems: ${mp.slice(0, 4).join('; ') || 'none'})`);
+const negM = (name, edit, expect, files) => {
+  const t = structuredClone(tokens); edit(t);
+  ok(markProblems(t, files).some((p) => p.includes(expect)), `the mark check catches ${name}`);
+};
+negM('a yellow too dark for the muted text', (t) => { t.color.mark.yellow.light = '#B89A2E'; }, 'light textMuted on the yellow mark');
+negM('a mark the color of the page', (t) => { t.color.mark.blue.light = '#FAFBFF'; }, 'light blue mark is');
+negM('two marks the same hue', (t) => { t.color.mark.pink.dark = t.color.mark.yellow.dark; }, 'dark yellow and pink marks');
+negM('a pink in recording red', (t) => { t.color.mark.pink.light = '#B0152F'; }, 'light pink mark is near recording red');
+negM('a lamp in dark mode', (t) => { t.color.mark.green.dark = '#CDEBC5'; }, 'dark green mark glares');
+negM('a hue missing from Swift', () => {}, 'lacks static let markGreen', nativeFiles.map((f) => ({ path: f.path, text: f.text.replace(/.*markGreen.*\n/g, '') })));
 
 // 6. Every face the tokens name is a file the platform ships (Decision 060),
 //    and only the display levels set the display face, with a negative control.

@@ -70,6 +70,13 @@
       "$about": "The mount a picture sits in (uniform-imagery-design section 3, D2c-3): the print ground shows wherever a contained graphic leaves room in its window, so it is the mount's paper and never 'the space the image did not cover'; the edge is the 1 px hairline around every picture window, the text color at a fixed opacity so it reads on the page and on any board. Emitted on every platform (D3-1): CSS variables, Color.printGround and printEdge in Swift, PrintGround and PrintEdge in Compose.",
       "ground": { "light": "#EDEDED", "dark": "#2A2A2E" },
       "edge":   { "light": "#131316", "dark": "#F2F2F4", "opacity": { "light": 0.18, "dark": 0.16 } }
+    },
+    "mark": {
+      "$about": "A person's highlight in the script reader (PLAYS-DESIGN 2.10, Decision 076 S5): the tint behind the marked words, four hues, yellow first. The person's own marks, never chrome, never a genre or a part. Each holds the text and the muted text at 4.5:1 in both modes, stands apart from the page (CIEDE2000 10 or more) and from every other mark hue (15 or more), and stays far from recording red (30 or more); in dark mode a tint, never a lamp (APCA Lc 30 or less on the page). Emitted on every platform: CSS --color-mark-*, Color.markYellow and Color.mark(_:) in Swift, MarkYellowLight/Dark and markColor() in Compose.",
+      "yellow": { "light": "#FBE38E", "dark": "#5C4A10" },
+      "green":  { "light": "#CDEBC5", "dark": "#1F4A2B" },
+      "blue":   { "light": "#CFE2F8", "dark": "#1D3D63" },
+      "pink":   { "light": "#F7D2E3", "dark": "#5B2743" }
     }
   },
   "font": {

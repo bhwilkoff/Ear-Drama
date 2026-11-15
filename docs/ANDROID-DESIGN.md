@@ -743,6 +743,37 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     `appname_studio_phase` (`idle`, `listening`, `takes`) exist for frames; the
     mute door silences take playback and cue voices too. A voice chip names a
     voice by its distinguishing part (a region in initials, the number kept).
+  - **Marks** (Decision 076 S5; PLAYS-DESIGN §2.10 binding; web sibling WEB-DESIGN
+    §4.16 item 15; port spec `docs/research/design/R2-marks-port-brief.md`).
+    `plays/MarksCore.kt` mirrors `js/marks-core.js` (anchor, `snapWords`,
+    `pointAfter`, overlap, `place` over `catalog/tests/golden/marks_anchor.json`,
+    notebook order); marks live in Room (`MarkEntity`, keyed by script id and mark
+    id; never in the backup's cloud rules until the sync phase).
+    - **Selecting**: each measured page takes Compose's own text selection
+      (`SelectionContainer` around the page's blocks, or the measured
+      `TextLayoutResult` hit-tested for a long-press and drag with the system's
+      handles, whichever keeps the page's measured layout); the selection maps to (line id, offset)
+      through each drawn run's offset. The floating text toolbar (`TextToolbar`,
+      the system's own) gains **Highlight, Underline, Breath, Pause, Beat, Note**
+      after Copy, as the Android text-processing menu does; a tap on a mark opens
+      a small `DropdownMenu` anchored to it (the four hues and Delete, Edit and
+      Delete for a beat or note), a delete answered by a `Snackbar` with Undo.
+    - **Drawing**: highlights as a `drawBehind` fill over the run's boxes
+      (`markColor(key, dark)`, the generated token), underlines as a 2 dp
+      `onSurface` rule, a note's dotted rule with the `sticky_note_2` glyph;
+      breath, pause and beat drawn by the page in the gap after their word (the
+      beat's label in `labelSmall` capitals in an outline), never added to the
+      text; a point mark re-measures the page.
+    - **Notebook**: **Marks** (a `bookmark` `IconButton` in the top app bar)
+      opens a `ModalBottomSheet`: a Show marks `Switch`, then a `LazyColumn` in
+      script order (glyph, speaker in `labelMedium`, the words, a beat's label, a
+      note), a tap going to the line; **Not placed** after, each with Delete.
+      Empty: "Select words on the page to mark them."
+    - **Stylus ink** (the Ink API, `androidx.ink`) is a later phase, not parity
+      blocking: an iPad's ink draws nowhere on Android until then (PARITY ⏳).
+    - Hardware keys with a selection: H, U, /, P, B, N; Esc lets go. TalkBack:
+      each mark is a custom accessibility action on its speech.
+    - Export: `DataExport` adds `marks[]` (docs/EXPORT.md).
 
 ## §5 The player
 
