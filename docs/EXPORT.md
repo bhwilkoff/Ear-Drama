@@ -20,7 +20,7 @@ share or save sheet. Nothing is uploaded, and no account is needed.
 - `following[]`: `series`, `name`
 - `queue[]`: `position`, `episode`, `title`, `seriesName`, `airDate`
 - `takes[]`: `production`, `title`, `created`, and `takes[]` with `id`, `lineID`, `created`, `chosen` (plus `part` and `seconds` on the apps). The recordings' audio is not in the file; it stays in the app.
-- `marks[]` (PLAYS-DESIGN §2.10, Decision 076 S5): every script mark on the device, one row a mark: `script`, `title`, `revision`, `line`, `start`, `end` (offsets into the line's printed words), `kind` (`highlight`, `underline`, `breath`, `pause`, `beat`, `note`), `text` (the marked words; empty for a point mark), `hue` (a highlight's), `label` (a beat's), `note` (a note's), `created`, `updated`. Web since 2026-11-15; iOS, iPadOS and macOS since their marks shipped (`MarkStore.exportRows`, `DataExport.marks`); Android adds it with its marks (R2-marks-port-brief.md). A mark a revision could not place is exported as stored.
+- `marks[]` (PLAYS-DESIGN §2.10, Decision 076 S5): every script mark on the device, one row a mark: `script`, `title`, `revision`, `line`, `start`, `end` (offsets into the line's printed words), `kind` (`highlight`, `underline`, `breath`, `pause`, `beat`, `note`), `text` (the marked words; empty for a point mark), `hue` (a highlight's), `label` (a beat's), `note` (a note's), `created`, `updated`. Web, iOS, iPadOS, macOS (`MarkStore.exportRows`, `DataExport.marks`) and Android since 2026-11-15. A mark a revision could not place is exported as stored.
 
 A field the device does not know is `null`, never invented. An empty library
 exports empty lists, not an error.
@@ -35,4 +35,4 @@ Cells with a comma, quote or line break are quoted, quotes doubled; lines end
 ## Checks
 
 `js/export.test.js`, `apple/Tests/DataExportTests.swift`,
-`android/.../data/DataExportTest.kt`.
+`android/.../data/DataExportTest.kt`, `android/.../plays/MarksCoreTest.kt`.

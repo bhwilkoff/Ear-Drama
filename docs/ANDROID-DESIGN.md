@@ -758,6 +758,13 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
       after Copy, as the Android text-processing menu does; a tap on a mark opens
       a small `DropdownMenu` anchored to it (the four hues and Delete, Edit and
       Delete for a beat or note), a delete answered by a `Snackbar` with Undo.
+    - **As built (2026-11-15)**: the page is canvas-drawn, so selection is the measured
+      `TextLayoutResult` hit-tested (long press selects a word, a drag or a handle extends it;
+      a long press that selects nothing is swallowed, never a page turn) and the system's floating
+      toolbar is an `ActionMode` (`TYPE_FLOATING`) with Copy and the six actions. Each block keeps a
+      map of its drawn runs to the line's words; a breath, pause, beat or note's end takes room as
+      page-drawn text in the block (the page re-measures), never in `lineText`. Scroll mode selects
+      within one block.
     - **Drawing**: highlights as a `drawBehind` fill over the run's boxes
       (`markColor(key, dark)`, the generated token), underlines as a 2 dp
       `onSurface` rule, a note's dotted rule with the `sticky_note_2` glyph;
