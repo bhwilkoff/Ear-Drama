@@ -40,6 +40,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.focusable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
@@ -122,6 +123,7 @@ import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -189,6 +191,8 @@ import com.example.appname.plays.StudioCore
 import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
+import com.example.appname.plays.LiveListen
+import com.example.appname.plays.ReadAlong
 import com.example.appname.plays.TableRead
 import com.example.appname.ui.VoicePickerSheet
 import com.example.appname.ui.VoicesSheet
@@ -247,6 +251,7 @@ fun ReaderScreen(
     startLine: String?,
     productionId: String? = null,
     part: String? = null,
+    along: Boolean = false,
     onBack: () -> Unit,
     onOpenStudio: (String, String, String?) -> Unit = { _, _, _ -> },
 ) {
@@ -271,7 +276,7 @@ fun ReaderScreen(
         is Loaded.Failed -> ReaderFrame(onBack) { EmptyMessage(l.line, action = EmptyAction("Try again") { attempt++ }) }
         is Loaded.Ready -> ReaderBody(
             l.script, startLine, if (productionId != null && part != null) StudioTarget(productionId, PartID(part)) else null,
-            onBack, onOpenStudio,
+            onBack, onOpenStudio, alongProduction = productionId.takeIf { along && part == null },
         )
     }
 }
@@ -1474,6 +1479,7 @@ private fun ReaderBody(
     studioTarget: StudioTarget?,
     onBack: () -> Unit,
     onOpenStudio: (String, String, String?) -> Unit,
+    alongProduction: String? = null,
 ) {
     val context = LocalContext.current
     val store = remember { ReaderStore(context.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE)) }
@@ -1614,6 +1620,55 @@ private fun ReaderBody(
     fun follow(id: String) = goTo(script.lines.indexOfFirst { it.id == id }, outline = false)
     SideEffect { studio?.studio?.onFollow = { id -> follow(id) } }
 
+    // Read along (PLAYS-DESIGN §2.11): the production's listen-through, the page following the line heard.
+    val alongMode = alongProduction != null
+    val alongFollow = remember(script.id) { ReadAlong.Follow() }
+    var alongLine by remember { mutableStateOf<String?>(null) }
+    var backShown by remember { mutableStateOf(false) }
+    var alongListen by remember { mutableStateOf<LiveListen?>(null) }
+    var alongJob by remember { mutableStateOf<Job?>(null) }
+    fun alongAway() { if (alongMode && alongFollow.following) alongFollow.away() }
+    fun stopAlong() {
+        alongJob?.cancel()
+        alongJob = null
+        alongListen?.close()
+        alongListen = null
+        alongLine = null
+        backShown = false
+        hearing = null
+    }
+    DisposableEffect(script.id) { onDispose { alongJob?.cancel(); alongListen?.close() } }
+    LaunchedEffect(alongListen) {
+        val l = alongListen ?: return@LaunchedEffect
+        l.current.collect { entry ->
+            val step = alongFollow.line(entry?.lineID)
+            alongLine = entry?.lineID
+            backShown = step.back
+            hearing = if (entry is Relay.ListenEntry.Voice) script.lines.firstOrNull { it.id == entry.lineID } else null
+            if (step.turn && entry != null) follow(entry.lineID)
+        }
+    }
+    fun startAlong() {
+        val h = castHandle ?: return
+        val id = alongProduction ?: return
+        val production = container.plays.store.production(id) ?: return
+        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+        alongFollow.back()
+        backShown = false
+        val ids = script.lines.drop(posIndex).map { it.id }.toSet()
+        val plan = Relay.listenPlan(production, script) { !it.isSpeaking && h.cast.resolve(it).read }.filter { it.lineID in ids }
+        val listen = LiveListen(container.plays.store.takesFolder(id), h.speaker).also { it.muted = muted }
+        alongListen = listen
+        haptics(Haptic.Selection)
+        alongJob = scope.launch {
+            try {
+                listen.run(plan)
+            } finally {
+                if (alongListen === listen) stopAlong()
+            }
+        }
+    }
+
     /** Hear the cast: from the first line on the page to the end, each part in its voice, the page following. */
     fun startHearing() {
         val h = castHandle ?: return
@@ -1719,9 +1774,9 @@ private fun ReaderBody(
                     Key.R -> scope.launch { studio.studio.again() }
                     else -> scope.launch { studio.studio.primary() }
                 }
-                volume -> turner.turn(ReaderMath.Turn.By(if (e.key == Key.VolumeDown) 1 else -1))
+                volume -> { alongAway(); turner.turn(ReaderMath.Turn.By(if (e.key == Key.VolumeDown) 1 else -1)) }
                 letter -> myLine(if (e.key == Key.J) 1 else -1)
-                else -> ReaderMath.keyTurn(name!!, e.isShiftPressed)?.let { turner.turn(it) }
+                else -> ReaderMath.keyTurn(name!!, e.isShiftPressed)?.let { alongAway(); turner.turn(it) }
             }
         }
         true
@@ -1790,7 +1845,13 @@ private fun ReaderBody(
                         }
                     }
                 }
-                if (castHandle != null) {
+                if (castHandle != null && alongMode) {
+                    val on = alongListen != null
+                    TextButton(onClick = { if (on) stopAlong() else startAlong() }) {
+                        Icon(if (on) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = if (on) "Stop" else "Listen through")
+                        if (wide) Text(if (on) "Stop" else "Listen through", Modifier.padding(start = Spacing.S1.dp))
+                    }
+                } else if (castHandle != null) {
                     TextButton(onClick = { if (hearingOn) stopHearing() else startHearing() }) {
                         Icon(
                             if (hearingOn) Icons.Filled.Stop else Icons.Filled.PlayArrow,
@@ -1808,7 +1869,7 @@ private fun ReaderBody(
                     Icon(if (hiding) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = "Hide my lines")
                 }
             }
-            if (studio == null && part != null && !television) {
+            if (studio == null && part != null && !television && !alongMode) {
                 IconButton(onClick = { record() }) { Icon(Icons.Filled.Mic, contentDescription = "Record") }
             }
             // A review hides the page count and the Studio button so its three buttons fit at 320 dp.
@@ -1827,10 +1888,16 @@ private fun ReaderBody(
     }
 
     val pickVoice: (PartID) -> Unit = { pickingVoice = it }
+    val heardIdx = alongLine?.let { id -> script.lines.indexOfFirst { it.id == id }.takeIf { it >= 0 } }
 
     /** The page: pages (the studio always reads in pages, so a line is whole), or Scroll when no studio is attached. */
     val stage: @Composable () -> Unit = {
-        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().focusRequester(focus).focusable().then(keys)) {
+        BoxWithConstraints(
+            Modifier.fillMaxSize().clipToBounds().focusRequester(focus).focusable().then(keys)
+                .pointerInput(alongMode) {
+                    if (alongMode) awaitEachGesture { awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial); alongAway() }
+                },
+        ) {
             val shownPrefs = if (studio != null && !prefs.pages) prefs.copy(layout = "pages") else prefs
             val bodyPx = with(density) { (BODY_SP * shownPrefs.scale).sp.toPx() }
             val per = ReaderMath.perSpread(maxWidth.value)
@@ -1853,7 +1920,7 @@ private fun ReaderBody(
                 }
                 f.paged != null -> key(f) {
                     PagesStage(
-                        f, f.paged, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = flash,
+                        f, f.paged, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = heardIdx ?: flash,
                         pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
                         vertical = vertical, gap = gapPx, ui = ui,
                         onPos = { posId = script.lines[it].id },
@@ -1870,7 +1937,7 @@ private fun ReaderBody(
                 }
                 else -> key(f) {
                     ScrollStage(
-                        f, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = flash, pal = pal,
+                        f, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = heardIdx ?: flash, pal = pal,
                         turner = turner, margin = marginPx, vertical = vertical, ui = ui,
                         onPos = { posId = script.lines[it].id }, onPeek = { peeked = it }, onLabel = { pageLabel = it },
                     )
@@ -1900,7 +1967,7 @@ private fun ReaderBody(
                         }
                     }
                 },
-                navigationIcon = { IconButton(onClick = { stopHearing(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
+                navigationIcon = { IconButton(onClick = { stopHearing(); stopAlong(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
                 actions = {
                     if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
                     IconButton(onClick = { sheet = "marks" }) { Icon(Icons.Filled.Bookmark, contentDescription = "Marks") }
@@ -1924,6 +1991,18 @@ private fun ReaderBody(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
+                        }
+                        if (backShown) {
+                            TextButton(
+                                onClick = {
+                                    backShown = false
+                                    alongFollow.back()?.let { follow(it) }
+                                },
+                                Modifier.align(Alignment.CenterHorizontally),
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null)
+                                Text("Back to the line", Modifier.padding(start = Spacing.S1.dp))
+                            }
                         }
                         if (studio != null) {
                             StudioDock(studio, onTakes = { id -> studio.studio.select(id); studio.sheet = true })
