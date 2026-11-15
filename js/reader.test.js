@@ -305,7 +305,7 @@ test('the page: every drawn run still maps back to its line\'s words (marks anch
     }
   }
   ok(n > 1000, `runs checked (${n})`);
-  ok(split > 0, 'some script runs a speech into another (the parser miss the page attributes)');
+  // No floor on split: the parser now splits run-in speeches itself (catalog, 2026-11-15); the fixture test above covers the page's own split.
 });
 
 test('Close: back only from inside the app; a cold link goes to the play or its production', () => {

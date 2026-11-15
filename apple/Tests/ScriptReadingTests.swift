@@ -411,7 +411,7 @@ struct ScriptReadingTests {
             }
         }
         #expect(n > 1000)
-        #expect(split > 0, "some script runs a speech into another (the parser miss the page attributes)")
+        // No floor on split: the parser now splits run-in speeches itself (2026-11-15); a fixture test covers the page's own split.
     }
 
     @Test func aRealScriptsPagesNeverEndOnANameAndOpenOnAHeadedSpeech() throws {

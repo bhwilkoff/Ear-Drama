@@ -103,6 +103,6 @@ class PlayPageTest {
             }
         }
         assertTrue("runs checked ($n)", n > 1000)
-        assertTrue("some script runs a speech into another", split > 0)
+        // No floor on split: the parser now splits run-in speeches itself (2026-11-15); a fixture test covers the page's own split.
     }
 }
