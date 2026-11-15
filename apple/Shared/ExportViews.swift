@@ -88,7 +88,8 @@ struct ExportSection: View {
                     DataExport.Take(id: t.id, line: t.lineID, part: t.part.rawValue, created: t.created, seconds: t.seconds,
                                     chosen: p.chosen[t.lineID] == t.id)
                 })
-            })
+            },
+            marks: MarkStore().exportRows())
     }
 }
 #endif

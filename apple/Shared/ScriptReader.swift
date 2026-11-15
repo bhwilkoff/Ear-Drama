@@ -98,11 +98,38 @@ final class ReaderModel {
     /// How many lines the scroller shows, so a turn in Scroll moves about a screen.
     @ObservationIgnored private var visibleCount = 8
 
+    // Marks (PLAYS-DESIGN §2.10): the script's marks on this device, never synced; ReaderMarks.swift has the verbs.
+    var marks: [Mark] = []
+    /// Marks a revision could not place: kept as stored, listed as Not Placed.
+    var lostMarks: [Mark] = []
+    var showMarks = true {
+        didSet {
+            guard showMarks != oldValue else { return }
+            MarkStore.savePrefs(show: showMarks, hue: markHue, defaults)
+            relayout(keep: position)
+        }
+    }
+    var markHue = MarkHue.all[0]
+    /// The selected words, a range of the page string, and the word the selection grows from.
+    var selection: NSRange?
+    @ObservationIgnored var selectionAnchor: NSRange?
+    @ObservationIgnored var suppressTap = false
+    @ObservationIgnored var dragStart: Int?
+    /// A tapped mark (its popover), and a Beat or Note being written.
+    var markTarget: MarkTarget?
+    var compose: MarkCompose?
+    var markNotice: String?
+    /// What the last Delete took, for the Undo bar.
+    var removedMarks: [Mark] = []
+    @ObservationIgnored var undoManager: UndoManager?
+    @ObservationIgnored let markStore = MarkStore()
+    @ObservationIgnored var removedTask: Task<Void, Never>?
+
     @ObservationIgnored private var build: Task<ReaderLayout, any Error>?
     @ObservationIgnored private var kick: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var saveTask: Task<Void, Never>?
-    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored let defaults: UserDefaults
     /// The play's own cast (`s:<script>`): the Voices sheet edits it and Hear the Cast reads through it (§2.8).
     @ObservationIgnored let voices: VoiceCastModel
     /// Hear the Cast: the script read aloud from the first line on the page, the page following each line.
@@ -124,6 +151,14 @@ final class ReaderModel {
         let saved = ReaderStore.position(for: script.id, defaults)
         let index = startLine.flatMap { structure.indexByID[$0] } ?? saved?.line.flatMap { structure.indexByID[$0] } ?? 0
         position = index
+        if door?.resetMarks == true { try? markStore.save(scriptID: script.id, title: nil, []) }
+        let placed = MarksCore.place(script, markStore.load(script.id))
+        marks = placed.placed
+        lostMarks = placed.lost
+        let markPrefs = MarkStore.prefs(defaults)
+        showMarks = markPrefs.show
+        markHue = markPrefs.hue
+        if placed.changed { persistMarks() }
         if let name = door?.part ?? saved?.part, script.castParts.contains(where: { $0.id.rawValue == name && $0.id.isSpeaking }) {
             let id = PartID(rawValue: name)
             part = id
@@ -162,12 +197,13 @@ final class ReaderModel {
         let foot = keep == nil ? 0 : ReaderLayout.footRoom
         let height = (area.height - 2 * Self.margin - ReaderLayout.headRoom - foot).rounded(.down)
         let script = script, structure = structure
+        let points = showMarks ? marks.filter { !$0.isSpan } : []
         kick = Task { [weak self] in
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
             guard !Task.isCancelled else { return }
             let work = Task.detached(priority: .userInitiated) {
                 try ReaderLayout.build(script, structure: structure, style: style, pageSize: CGSize(width: width, height: height),
-                                       keepRole: keep)
+                                       keepRole: keep, points: points)
             }
             self?.build = work
             let built = try? await work.value
@@ -182,6 +218,8 @@ final class ReaderModel {
         self.per = per
         position = line
         peeked = []
+        selection = nil
+        selectionAnchor = nil
         var target = built.starts.indices.contains(line) ? ReaderMath.spreadStart(built.starts[line], per: per) / per : 0
         if let page = doorPage {
             doorPage = nil
@@ -245,6 +283,9 @@ final class ReaderModel {
     }
 
     func tap(at point: CGPoint) {
+        if suppressTap { return }
+        if selection != nil { clearSelection(); return }
+        if markTapped(at: point) { return }
         if studioTap(point) { return }
         switch ReaderMath.tapZone(x: point.x, width: area.width) {
         case .prev: turn(-1)
@@ -311,7 +352,7 @@ final class ReaderModel {
     }
 
     /// The page under a point of the spread, and the point in that page's text column (top-left origin).
-    private func pagePoint(_ point: CGPoint) -> (page: Int, local: CGPoint)? {
+    func pagePoint(_ point: CGPoint) -> (page: Int, local: CGPoint)? {
         guard let layout, let s = spread else { return nil }
         let pageW = layout.pageSize.width
         let total = CGFloat(per) * pageW + CGFloat(per - 1) * Self.gutter
@@ -478,6 +519,7 @@ private struct ReaderScreen: View {
     @Environment(PlaysLibrary.self) private var plays
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.undoManager) private var undoManager
     @ScaledMetric(relativeTo: .body) private var body17: CGFloat = 17
     @State private var sheet: ReaderSheet?
     @State private var showContents = false
@@ -487,8 +529,12 @@ private struct ReaderScreen: View {
     var body: some View {
         #if os(macOS)
         NavigationSplitView {
-            ReaderContents(model: model)
-                .navigationSplitViewColumnWidth(min: 220, ideal: 260)
+            VStack(spacing: 0) {
+                ReaderContents(model: model)
+                Divider()
+                MarksNotebook(model: model)
+            }
+            .navigationSplitViewColumnWidth(min: 220, ideal: 260)
         } detail: {
             reader
         }
@@ -509,6 +555,8 @@ private struct ReaderScreen: View {
                 case .text: ReaderTextSettings(model: model)
                         .presentationDetents([.medium])
                 case .voices: ReaderVoices(model: model.voices, script: model.script, dismiss: { sheet = nil })
+                        .presentationDetents([.medium, .large])
+                case .marks: MarksNotebook(model: model, dismiss: { sheet = nil })
                         .presentationDetents([.medium, .large])
                 }
             }
@@ -572,6 +620,9 @@ private struct ReaderScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .toolbar { toolbar }
+        .sheet(item: $model.compose) { c in MarkComposeSheet(model: model, compose: c) }
+        .overlay(alignment: .bottom) { MarkUndoBar(model: model) }
+        .onChange(of: undoManager, initial: true) { _, u in model.undoManager = u }
         .onChange(of: body17, initial: true) { _, size in model.base = size }
         .repaintsOnVoiceChange(model.voices)
         .onDisappear { model.table.stop() }
@@ -605,7 +656,7 @@ private struct ReaderScreen: View {
             case .search: ReaderSearch(model: model, dismiss: { sheet = nil }).frame(width: 340, height: 420)
             case .text: ReaderTextSettings(model: model).frame(width: 300)
             case .voices: ReaderVoices(model: model.voices, script: model.script).frame(width: 380, height: 460)
-            case .contents: EmptyView()
+            case .contents, .marks: EmptyView()
             }
         }
         #endif
@@ -623,6 +674,7 @@ private struct ReaderScreen: View {
             Button { sheet = .search } label: { Label("Search", systemImage: "magnifyingglass") }
             Button { sheet = .text } label: { Label("Text", systemImage: "textformat.size") }
             Button { sheet = .voices } label: { Label("Voices", systemImage: "person.wave.2") }
+            Button { sheet = .marks } label: { Label("Marks", systemImage: "bookmark") }
         }
         #else
         ToolbarItemGroup(placement: .primaryAction) {
@@ -802,7 +854,7 @@ private struct HearTheCastLabelStyle: LabelStyle {
 }
 
 private enum ReaderSheet: String, Identifiable {
-    case contents, search, text, voices
+    case contents, search, text, voices, marks
     var id: String { rawValue }
 }
 
@@ -831,7 +883,14 @@ private struct ReaderKeys: ViewModifier {
             .focused($focused)
             .onAppear { focused = true }
             .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .pageUp, .pageDown, .space, .home, .end,
-                               KeyEquivalent("j"), KeyEquivalent("k"), KeyEquivalent("r"), .return]) { press in
+                               KeyEquivalent("j"), KeyEquivalent("k"), KeyEquivalent("r"), .return, .escape,
+                               KeyEquivalent("h"), KeyEquivalent("u"), KeyEquivalent("/"), KeyEquivalent("p"),
+                               KeyEquivalent("b"), KeyEquivalent("n")]) { press in
+                // With words selected the mark keys come first: H, U, /, P, B, N; Esc lets go.
+                if model.selection != nil {
+                    if press.key == .escape { model.clearSelection(); return .handled }
+                    if let kind = ReaderModel.markKey(press.key) { model.markSelection(kind); return .handled }
+                }
                 // The studio's keys come first (§2.9 rule 8): Space records, stops or cancels; R again; Return keeps.
                 if model.studioActive, let studio = model.studio {
                     switch press.key {
@@ -874,6 +933,14 @@ private struct ReaderSpread: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .onTapGesture(coordinateSpace: .local) { model.tap(at: $0) }
+            .modifier(MarkSelecting(model: model, spread: spread))
+            .popover(item: Binding(get: { model.markTarget.flatMap { $0.spread == spread ? $0 : nil } }, set: { model.markTarget = $0 }),
+                     attachmentAnchor: .rect(.rect(model.markTarget?.rect ?? .zero)), arrowEdge: .top) { target in
+                MarkPopover(model: model, target: target)
+                    #if os(iOS)
+                    .presentationCompactAdaptation(.popover)
+                    #endif
+            }
         } else {
             Color.clear
         }
@@ -889,6 +956,9 @@ private struct ReaderPageView: View {
     var body: some View {
         var marks = ReaderLayout.Marks(role: model.part?.roleName, hide: model.hide, peeked: model.peeked)
         let takes = model.studioTakes(onPage: page)
+        marks.marks = model.visibleMarks
+        marks.lineIndex = model.structure.indexByID
+        marks.selection = model.selection
         if let studio = model.studio {
             marks.current = studio.studio.current.flatMap { model.structure.indexByID[$0] }
             marks.outline = Self.outline(studio)
@@ -902,7 +972,9 @@ private struct ReaderPageView: View {
             let theme = ReaderLayout.Theme(ink: cg(Color.brandText), muted: muted,
                                            hues: PlayScript.partHues.map { Color.genre($0).map(cg) ?? muted },
                                            background: cg(Color.brandBackground), block: cg(Color.brandSurfaceAlt),
-                                           record: cg(StudioPalette.record), warning: cg(Color.semanticWarning))
+                                           record: cg(StudioPalette.record), warning: cg(Color.semanticWarning),
+                                           markHues: Dictionary(uniqueKeysWithValues: MarkHue.all.map { ($0, cg(Color.mark($0))) }),
+                                           selection: cg(Color.brandSecondary).copy(alpha: 0.30))
             context.withCGContext { layout.draw(page: page, in: $0, theme: theme, marks: marks) }
         }
         .frame(width: layout.pageSize.width, height: layout.pageSize.height + ReaderLayout.headRoom + model.pageFoot, alignment: .top)
@@ -916,6 +988,7 @@ private struct ReaderPageView: View {
                     Button("Show line") { model.peek(i) }
                 } else {
                     Text(verbatim: Self.spoken(model.script.lines[i]))
+                        .modifier(MarkActions(model: model, line: i))
                 }
             }
         }
@@ -1426,6 +1499,23 @@ struct ReaderCommands_macOS: Commands {
             Button("Bigger Text") { reader?.bigger() }.keyboardShortcut("+", modifiers: .command).disabled(reader == nil)
             Button("Smaller Text") { reader?.smaller() }.keyboardShortcut("-", modifiers: .command).disabled(reader == nil)
             Button("Default Text Size") { reader?.resetSize() }.keyboardShortcut("0", modifiers: .command).disabled(reader == nil)
+        }
+        CommandMenu("Marks") {
+            Button("Highlight") { reader?.markSelection(.highlight) }.keyboardShortcut("h", modifiers: [.command, .shift])
+                .disabled(reader?.selection == nil)
+            Button("Underline") { reader?.markSelection(.underline) }.keyboardShortcut("u", modifiers: .command)
+                .disabled(reader?.selection == nil)
+            Button("Breath") { reader?.markSelection(.breath) }.keyboardShortcut("/", modifiers: .command)
+                .disabled(reader?.selection == nil)
+            Button("Pause") { reader?.markSelection(.pause) }.keyboardShortcut("/", modifiers: [.command, .shift])
+                .disabled(reader?.selection == nil)
+            Button("Beat") { reader?.markSelection(.beat) }.keyboardShortcut("b", modifiers: [.command, .shift])
+                .disabled(reader?.selection == nil)
+            Button("Note") { reader?.markSelection(.note) }.keyboardShortcut("n", modifiers: [.command, .shift])
+                .disabled(reader?.selection == nil)
+            Divider()
+            Button(reader?.showMarks == false ? "Show Marks" : "Hide Marks") { reader?.showMarks.toggle() }
+                .keyboardShortcut("m", modifiers: [.command, .shift]).disabled(reader == nil)
         }
     }
 }

@@ -25,7 +25,28 @@ nonisolated final class ReaderPageRenderTests: XCTestCase {
             let mine = c.count > 4 ? c[4...].joined(separator: ":") : nil
             let pageW = min(width - 28 - 0, 17 * 36)
             let size = CGSize(width: pageW, height: 720)
-            let layout = try ReaderLayout.build(script, structure: structure, style: ReaderStyle(base: 17, scale: 1, leading: 1.55), pageSize: size)
+            // "!marks" lays sample marks on the lines from the case's line: one of each kind, a selection near the last.
+            let spec = mine ?? ""
+            let withMarks = spec.contains("!marks")
+            var sample: [Mark] = []
+            var selection: NSRange?
+            let from = max(0, (structure.indexByID[c[1]] ?? 0) - 4)
+            if withMarks {
+                let kinds: [MarkKind] = [.highlight, .underline, .breath, .pause, .beat, .note, .highlight]
+                let hues = ["yellow", "green", "blue", "pink"]
+                var k = 0
+                for i in from..<min(script.lines.count, from + 40) where k < kinds.count {
+                    let line = script.lines[i]
+                    let n = ScriptReading.lineText(line).utf16.count
+                    guard n > 24 else { continue }
+                    let made = MarksCore.fromSelection(script, [MarkPiece(line: line.id, start: 6, end: 17)], kinds[k],
+                                                       MarkExtra(hue: hues[k % 4], label: "the turn", note: "n")).first
+                    if let made { sample.append(made) }
+                    k += 1
+                }
+            }
+            let layout = try ReaderLayout.build(script, structure: structure, style: ReaderStyle(base: 17, scale: 1, leading: 1.55), pageSize: size,
+                                                points: sample)
             let index: Int
             if c[1] == "front" { index = 0 } else { index = structure.indexByID[c[1]] ?? 0 }
             let page = c[1] == "front" ? 0 : c[1].hasPrefix("p") ? (Int(c[1].dropFirst()) ?? 0) : layout.starts[index]
@@ -48,13 +69,25 @@ nonisolated final class ReaderPageRenderTests: XCTestCase {
             // A Canvas context is top-left, y down; the bitmap's is bottom-left, so flip it first.
             ctx.translateBy(x: 0, y: view.height)
             ctx.scaleBy(x: 1, y: -1)
-            let hiding = mine?.hasSuffix("!hide") == true
-            let role = mine.flatMap { PartID(rawValue: $0.replacingOccurrences(of: "!hide", with: "")).roleName }
+            let hiding = spec.contains("!hide")
+            let clean = spec.replacingOccurrences(of: "!hide", with: "").replacingOccurrences(of: "!marks", with: "")
+            let role = clean.isEmpty ? nil : PartID(rawValue: clean).roleName
             NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: true)
-            layout.draw(page: page, in: ctx, theme: theme, marks: ReaderLayout.Marks(role: role, hide: hiding))
-            let name = "\(c[0])-\(c[1])-\(c[3])-\(Int(width))\(mine == nil ? "" : "-mine").png"
+            var theme2 = theme
+            theme2.markHues = ["yellow": rgb(dark ? 0x5C4A10 : 0xFBE38E), "green": rgb(dark ? 0x1F4A2B : 0xCDEBC5),
+                               "blue": rgb(dark ? 0x1D3D63 : 0xCFE2F8), "pink": rgb(dark ? 0x5B2743 : 0xF7D2E3)]
+            theme2.selection = rgb(dark ? 0x2A5599 : 0x9CC2F5).copy(alpha: 0.5)
+            if withMarks, let last = sample.last, let r = layout.range(of: last, index: structure.indexByID) {
+                selection = NSRange(location: max(0, r.location - 22), length: 20)
+            }
+            var marks = ReaderLayout.Marks(role: role, hide: hiding)
+            marks.marks = sample
+            marks.lineIndex = structure.indexByID
+            marks.selection = selection
+            layout.draw(page: page, in: ctx, theme: theme2, marks: marks)
+            let name = "\(c[0])-\(c[1])-\(c[3])-\(Int(width))\(clean.isEmpty ? "" : "-mine")\(withMarks ? "-marks" : "").png"
             try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: out.appending(path: name))
-            print("rendered \(name) page \(page) of \(layout.pageCount) gutter \(layout.gutter) contd \(layout.contd.keys.sorted().prefix(6))")
+            print("rendered \(name) page \(page) of \(layout.pageCount) gutter \(layout.gutter) marks \(sample.count) placed \(layout.placed(sample, page: page, index: structure.indexByID).count) lineOnPage \(layout.lines(onPage: page))")
         }
     }
 }

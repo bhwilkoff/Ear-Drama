@@ -292,4 +292,6 @@ nonisolated struct ReaderDoor: Equatable, Sendable {
     var hear = false
     /// APP_READER_STUDIO=1: with APP_READER_PART, press the reader's Record (the studio opens).
     var studio = false
+    /// APP_READER_RESET_MARKS=1: the play's marks on this device are erased before the reader opens.
+    var resetMarks = false
 }

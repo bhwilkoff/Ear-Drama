@@ -265,7 +265,11 @@ only here:
     (`UndoManager`). The notebook is a second sidebar section under Contents
     (**Marks**, in script order, a click going to the line; **Not Placed** after
     it), so it sits beside the pages instead of over them. Pencil ink from an
-    iPad draws read-only at its line; the Mac makes no ink.
+    iPad draws read-only at its line; the Mac makes no ink (ink is ⏳ on every Apple
+    platform for now). As shipped: a drag selects by characters and is grown to whole
+    words when let go, a double-click selects a word, the notebook sits under the
+    Contents in the sidebar, the same `MarkSelecting` / `MarkPopover` as iOS-DESIGN
+    §4.15's "As shipped" bullet.
 
 ## §5 The player
 

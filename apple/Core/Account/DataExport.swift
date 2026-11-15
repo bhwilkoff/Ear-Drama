@@ -43,11 +43,29 @@ nonisolated struct DataExport: Sendable, Equatable {
         var takes: [Take]
     }
 
+    /// One script mark (docs/EXPORT.md `marks[]`): offsets in UTF-16 units into the line's printed words.
+    struct MarkRow: Sendable, Equatable {
+        var script: String
+        var title: String?
+        var revision: String?
+        var line: String
+        var start: Int
+        var end: Int
+        var kind: String
+        var text: String
+        var hue: String?
+        var label: String?
+        var note: String?
+        var created: Date
+        var updated: Date
+    }
+
     var exportedAt: Date
     var history: [History]
     var following: [Follow]
     var queue: [Queued]
     var takes: [Production]
+    var marks: [MarkRow] = []
 
     static let historyColumns = ["episode", "title", "seriesName", "airDate", "listenedAt", "positionSeconds", "durationSeconds"]
 
@@ -79,6 +97,11 @@ nonisolated struct DataExport: Sendable, Equatable {
                           drop([("id", t.id), ("lineID", t.line), ("part", t.part), ("created", Self.iso(t.created)),
                                 ("seconds", t.seconds), ("chosen", t.chosen)])
                       })])
+            },
+            "marks": marks.map { m in
+                drop([("script", m.script), ("title", m.title), ("revision", m.revision), ("line", m.line), ("start", m.start),
+                      ("end", m.end), ("kind", m.kind), ("text", m.text), ("hue", m.hue), ("label", m.label), ("note", m.note),
+                      ("created", Self.iso(m.created)), ("updated", Self.iso(m.updated))])
             },
         ]
         return try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
