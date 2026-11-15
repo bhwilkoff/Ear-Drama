@@ -159,6 +159,9 @@ struct EarDramaApp: App {
                 ReaderWindow_macOS(scriptID: id)
                     .environment(plays)
                     .environment(store)
+                    .environment(account)
+                    .environment(player)
+                    .environment(catalog)
                     .tint(Color.brandSecondary)
             }
         }
