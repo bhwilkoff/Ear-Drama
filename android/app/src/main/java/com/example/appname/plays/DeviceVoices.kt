@@ -94,9 +94,16 @@ internal class TtsSetter(private val tts: TextToSpeech) : VoiceSetter {
 /**
  * The device voice reading one line aloud, live, through the part's cast voice, speed and pitch;
  * a scene partner, never a performer (§5): it is spoken through the system output and never kept.
- * The same speaker previews a voice in the picker with the part's own first line.
+ * The same speaker previews a voice in the picker with the part's own first line. A part cast to a
+ * downloaded voice is read by [kokoro] from [playId]'s published phonemes, and by the part's auto-cast
+ * system voice when Kokoro cannot read the line (no model, no phonemes, a refused render).
  */
-class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : LineSpeaker {
+class CastSpeaker(
+    private val source: DeviceVoiceSource,
+    val cast: VoiceCast,
+    private val kokoro: com.example.appname.kokoro.KokoroLive? = null,
+    private val playId: String? = null,
+) : LineSpeaker {
     @Volatile private var speaking: CompletableDeferred<Unit>? = null
     @Volatile private var speakingId: String? = null
     /** The test door's mute (appname_mute): lines pass in time but nothing is voiced. */
@@ -121,7 +128,13 @@ class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : 
 
     override suspend fun speak(text: String, part: PartID): Boolean {
         val words = said(text)
-        if (words.isEmpty() || !source.awaitReady()) return false
+        if (words.isEmpty()) return false
+        val r = cast.resolve(part)
+        val v = r.voice
+        if (r.read && v != null && v.engine == VoiceCastEntry.KOKORO && kokoro != null && playId != null) {
+            if (kokoro.speak(playId, text, v.id, r.rate, r.pitch, muted)) return true
+        }
+        if (!source.awaitReady()) return false
         if (!cast.prepare(part, setter)) return false
         return say(words)
     }
@@ -129,7 +142,12 @@ class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : 
     /** The picker's preview: [text] in a voice not yet chosen, at the part's speed and pitch. Live, never kept. */
     suspend fun speakAs(text: String, voice: CastVoice, rate: Double, pitch: Double): Boolean {
         val words = said(text)
-        if (words.isEmpty() || !source.awaitReady()) return false
+        if (words.isEmpty()) return false
+        if (voice.engine == VoiceCastEntry.KOKORO) {
+            cancel()
+            return kokoro != null && playId != null && kokoro.speak(playId, text, voice.id, rate, pitch, muted)
+        }
+        if (!source.awaitReady()) return false
         cancel()
         if (!setter.setVoice(voice.id)) return false
         setter.setPitch(pitch.toFloat())
@@ -164,7 +182,9 @@ class CastSpeaker(private val source: DeviceVoiceSource, val cast: VoiceCast) : 
     override fun cancel() {
         source.tts.stop()
         speaking?.complete(Unit)
+        kokoro?.cancel()
     }
+
 
     private fun said(text: String) = text.replace("_", "").trim()
 }

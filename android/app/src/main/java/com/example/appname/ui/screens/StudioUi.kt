@@ -115,6 +115,7 @@ import com.example.appname.plays.StandInAudio
 import com.example.appname.plays.StandInVoice
 import com.example.appname.plays.StudioController
 import com.example.appname.plays.StudioCore
+import com.example.appname.plays.KokoroStandIn
 import com.example.appname.plays.SystemStandInVoice
 import com.example.appname.plays.Take
 import com.example.appname.plays.TakeAudio
@@ -221,10 +222,20 @@ class StudioModel(
 }
 
 /** The device voice for cues, built on first use (a text-to-speech engine is not started for a studio that never records). */
-class LazyStandIn(private val context: Context, private val cast: VoiceCast) : StandInVoice {
+class LazyStandIn(
+    private val context: Context,
+    private val cast: VoiceCast,
+    private val kokoro: com.example.appname.kokoro.KokoroReader? = null,
+    private val playId: String = "",
+) : StandInVoice {
     private var inner: SystemStandInVoice? = null
-    override suspend fun render(text: String, part: PartID, rate: Float): StandInAudio? =
-        (inner ?: SystemStandInVoice(context, cast).also { inner = it }).render(text, part, rate)
+    private val system = object : StandInVoice {
+        override suspend fun render(text: String, part: PartID, rate: Float): StandInAudio? =
+            (inner ?: SystemStandInVoice(context, cast).also { inner = it }).render(text, part, rate)
+    }
+    private val downloaded = KokoroStandIn(cast, system) { text, id, speed -> kokoro?.render(playId, text, id, speed) }
+
+    override suspend fun render(text: String, part: PartID, rate: Float): StandInAudio? = downloaded.render(text, part, rate)
 
     fun close() { inner?.close() }
 }
@@ -293,7 +304,7 @@ fun rememberStudio(target: StudioTarget?, script: PlayScript, line: String?, han
         val production = container.plays.store.production(target.production) ?: return@remember null
         val stub = BuildConfig.DEBUG && StudioDoor.stub
         val audio: LiveAudio = if (stub) StubLiveAudio(hold = StudioDoor.phase == "listening") else DeviceLiveAudio(context)
-        val voice = if (stub) null else LazyStandIn(context, handle.cast)
+        val voice = if (stub) null else LazyStandIn(context, handle.cast, handle.kokoro, handle.playId)
         lateinit var holder: StudioModel
         val accessibility = context.getSystemService(AccessibilityManager::class.java)
         val session = RecordingSession(

@@ -630,6 +630,31 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
   reports no voice gender, so auto-cast alternates by voice only. The cast is a
   `VoiceCast` in `plays/` read by `SystemStandInVoice`, the live listen-through and the
   reader's Hear the cast; kept in `SharedPreferences` (`ed.cast`), never synced.
+  **Downloaded** (Kokoro, Decision 078, S6d; PLAYS-DESIGN §2.8 rule 10; built
+  2026-11-15, PARITY 🚧): below "On this device" and Get more voices, the picker's
+  "Downloaded" heading, then an `OutlinedButton` with the download icon, "Download voices
+  (107 MB)"; while downloading a `LinearProgressIndicator` with "34 MB of 107 MB" and a
+  Cancel `TextButton`; once here the 28 Kokoro voices as the same radio rows with play
+  buttons ("Heart (Kokoro)", best grade first), a "Delete downloaded voices (107 MB)"
+  `TextButton`, and the attribution line in `labelMedium`. The model (`kokoro-v2-manifest.json`'s
+  three files from the Release `kokoro-model`: the q8 model, since v1's q8f16 renders NaN on
+  ONNX Runtime Android) is fetched by `kokoro/KokoroModelStore.kt`
+  on the one Ktor client in the app's scope (leaving the sheet does not stop it), resumed
+  with `Range`, checked by SHA-256, kept under `filesDir/kokoro/v2`. `kokoro/KokoroReader.kt`
+  reads the play's `phonemes/<id>.json` through the library transport, renders on ONNX
+  Runtime (`OrtKokoroRenderer`, CPU, in 100-symbol pieces with an arena that shrinks after every
+  render: `KokoroEngines.SHIPPED`) on one background thread, refuses NaN or silent
+  renders, and marks every buffer synthetic; `KokoroLive` plays a line once through an
+  `AudioTrack` (nothing at all when muted) for Hear the cast, the listen-through and the
+  preview, and `plays/KokoroStandIn.kt` hands the recorder's cue path a `StandInAudio`.
+  DEBUG only: `KokoroBenchActivity` (the S6a bench, `src/debug/`). The whole group, the engine
+  and the cue path sit behind `BuildConfig.KOKORO_VOICES`, which follows `kokoroInRelease` in
+  `app/build.gradle.kts`: on since the S6a gate passed on the Pixel 8a 2026-11-15
+  (R2-kokoro-feasibility, "S6a on the Pixel 8a"). ONNX Runtime and the renderer live in
+  `src/ort/` (debug always, release when the switch is on); off, a release gets `src/noort/`'s
+  `KokoroEngines` with no engine and carries no `libonnxruntime.so`.
+
+
 - **§4.9a Record** (Decision 075; the web's §4.15 is the shared rule;
   not on a TV). The tab's root is a `LazyColumn`: **Yours** (this device's
   productions and the shared ones not yet opened, each "n of m lines

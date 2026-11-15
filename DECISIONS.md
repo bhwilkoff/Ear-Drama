@@ -1212,6 +1212,12 @@ browsers run q8 slower than real time and fp16 produces NaN.
 **How to apply**: phases S6a to S6f in that report, each with its gate; the phone
 benchmark (iPhone 12, Pixel 8a) is S6a's gate.
 
+*Update, S6a Android (2026-11-15)*: ONNX Runtime Android renders the q8f16 model as
+all-NaN (1.31.1 and 1.32.0; sound on desktop), so Android reads the q8 model with
+fp32 activations instead (`kokoro-v2-manifest.json`, ~107 MB), with the CPU arena
+shrunk after every render and 100-symbol pieces: RTF and peak memory pass the gate
+(R2-kokoro-feasibility, "S6a on the Pixel 8a"). Never fp16 on Android either.
+
 ## 079: A first take needs no account; empty productions stay out of sight; Today's scene everywhere (answered 2026-11-15)
 
 **Rule**: a newcomer can record without signing in; takes stay on the device, and

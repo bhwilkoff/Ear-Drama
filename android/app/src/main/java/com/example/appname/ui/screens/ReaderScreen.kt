@@ -51,7 +51,7 @@ import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Toc
+import androidx.compose.material.icons.automirrored.filled.Toc
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -119,7 +119,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.material.icons.filled.StickyNote2
+import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
@@ -1393,7 +1393,7 @@ private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
     val glyph = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeUp)
     val warn = rememberVectorPainter(Icons.Filled.Warning)
     val measurer = rememberTextMeasurer()
-    val note = rememberVectorPainter(Icons.Filled.StickyNote2)
+    val note = rememberVectorPainter(Icons.AutoMirrored.Filled.StickyNote2)
     val dark = OnAir.colors.dark
     return remember(pal, flow, glyph, warn, measurer, note, dark) {
         Ink(
@@ -1537,7 +1537,7 @@ private fun ReaderBody(
     }
     LaunchedEffect(marksModel) { marksModel.load() }
     var composing by remember { mutableStateOf<Composing?>(null) }
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
     var pickingVoice by remember { mutableStateOf<PartID?>(null) }
     var hearing by remember { mutableStateOf<ScriptLine?>(null) }
     var hearingOn by remember { mutableStateOf(false) }
@@ -1786,7 +1786,7 @@ private fun ReaderBody(
                     val text = sel.pieces.joinToString(" ") { pc ->
                         script.lines.firstOrNull { it.id == pc.line }?.let { ScriptReading.lineText(it) }?.substring(pc.start, pc.end).orEmpty()
                     }
-                    clipboard.setText(AnnotatedString(text.replace("_", "")))
+                    scope.launch { clipboard.setClipEntry(androidx.compose.ui.platform.ClipEntry(android.content.ClipData.newPlainText(null, text.replace("_", "")))) }
                 }
                 ui.sel = null
             } else {
@@ -2022,7 +2022,7 @@ private fun ReaderBody(
                 actions = {
                     if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
                     IconButton(onClick = { sheet = "marks" }) { Icon(Icons.Filled.Bookmark, contentDescription = "Marks") }
-                    IconButton(onClick = { sheet = "contents" }) { Icon(Icons.Filled.Toc, contentDescription = "Contents") }
+                    IconButton(onClick = { sheet = "contents" }) { Icon(Icons.AutoMirrored.Filled.Toc, contentDescription = "Contents") }
                     IconButton(onClick = { sheet = "search" }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
                     IconButton(onClick = { sheet = "text" }) { Icon(Icons.Filled.FormatSize, contentDescription = "Text") }
                 },

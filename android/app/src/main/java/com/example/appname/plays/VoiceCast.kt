@@ -12,8 +12,10 @@ import kotlinx.serialization.json.Json
  * cues, the listen-through, the reader's Hear the cast), kept in this device's SharedPreferences
  * only and never synced (Q8).
  *
- * A part's casting is [VoiceCastEntry]: engine `system` (TextToSpeech), `kokoro` (S6; none yet) or
- * `none` (Not read); the voice is the engine's identifier (`Voice.getName()`), never a language.
+ * A part's casting is [VoiceCastEntry]: engine `system` (TextToSpeech), `kokoro` (the downloaded voices, S6d:
+ * kokoro/KokoroReader.kt) or `none` (Not read); the voice is the engine's identifier (`Voice.getName()`, a Kokoro
+ * voice id such as `af_heart`), never a language. Auto-cast casts system voices only, so downloading voices never
+ * recasts a play; a Kokoro voice is a person's choice in the picker.
  * Auto-cast reads only the voices (quality, the person's language, a gender only where the
  * platform reports one for the VOICE, which Android never does); it never reads a part's name or
  * the script (§2.8 rule 4). No speech API here: plays/DeviceVoices.kt is the only file that
@@ -53,6 +55,7 @@ data class CastVoice(
     val quality: Int,
     val gender: String? = null,
     val isDefault: Boolean = false,
+    val engine: String = VoiceCastEntry.SYSTEM,
 ) {
     /** "High quality" as the engine reports it, only from 400 up; nothing otherwise. */
     val qualityNote: String? get() = if (quality >= HIGH_QUALITY) "High quality" else null
@@ -132,7 +135,7 @@ object VoiceCasting {
 
     private fun languageOf(tag: String) = tag.replace('_', '-').substringBefore('-').lowercase()
 
-    private fun entryOf(v: CastVoice, pitch: Double = 1.0) = VoiceCastEntry(VoiceCastEntry.SYSTEM, v.id, v.name, 1.0, pitch)
+    private fun entryOf(v: CastVoice, pitch: Double = 1.0) = VoiceCastEntry(v.engine, v.id, v.name, 1.0, pitch)
 
     /**
      * Auto-cast (§2.8 rule 4). [parts] in cast order (largest first), [voices] best first. Speaking
@@ -181,11 +184,21 @@ object VoiceCasting {
      * where [Resolved.missing] names a cast voice this device lacks and the voice is then the part's
      * auto-cast voice (§2.8 rule 8).
      */
-    fun resolve(entry: VoiceCastEntry?, part: PartID, voices: List<CastVoice>, auto: Map<PartID, VoiceCastEntry>): Resolved {
+    fun resolve(
+        entry: VoiceCastEntry?,
+        part: PartID,
+        voices: List<CastVoice>,
+        auto: Map<PartID, VoiceCastEntry>,
+        downloaded: List<CastVoice> = emptyList(),
+    ): Resolved {
         val e = normalize(entry) ?: auto[part]
         if (e == null || e.engine == VoiceCastEntry.NONE) return Resolved(false, e ?: VoiceCastEntry.NOT_READ, none = voices.isEmpty())
         if (voices.isEmpty()) return Resolved(false, e, none = true)
-        val found = if (e.engine == VoiceCastEntry.SYSTEM) voices.firstOrNull { it.id == e.voice } else null
+        val found = when (e.engine) {
+            VoiceCastEntry.SYSTEM -> voices.firstOrNull { it.id == e.voice }
+            VoiceCastEntry.KOKORO -> downloaded.firstOrNull { it.engine == VoiceCastEntry.KOKORO && it.id == e.voice }
+            else -> null
+        }
         if (found != null) return Resolved(true, e, found, e.rate, e.pitch)
         val a = auto[part]
         val fb = voices.firstOrNull { it.id == a?.voice } ?: voices.first()
@@ -230,8 +243,12 @@ class VoiceCast(
     private val store: CastStore,
     private val seed: String? = null,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val downloaded: () -> List<CastVoice> = { emptyList() },
 ) {
     fun voices(): List<CastVoice> = voices.invoke()
+
+    /** The downloaded (Kokoro) voices now: none until the model is on this device. */
+    fun downloadedVoices(): List<CastVoice> = downloaded.invoke()
 
     /** Fills any part without a casting by auto-cast, once there is a voice to cast; keeps every choice made. */
     @Synchronized
@@ -254,7 +271,22 @@ class VoiceCast(
     fun resolve(part: PartID): Resolved {
         val v = voices()
         val cast = ensure()
-        return VoiceCasting.resolve(cast[part], part, v, VoiceCasting.autoCast(parts, v))
+        return VoiceCasting.resolve(cast[part], part, v, VoiceCasting.autoCast(parts, v), downloadedVoices())
+    }
+
+    /**
+     * The system voice that reads a Kokoro part's line Kokoro cannot read (no phonemes for the play, a refused render):
+     * the part's auto-cast system voice, at the part's speed (§2.8; R2-kokoro-feasibility §6). Null when not read.
+     */
+    fun systemFallback(part: PartID): Resolved? {
+        val r = resolve(part)
+        val voice = r.voice
+        if (!r.read || voice == null) return null
+        if (voice.engine == VoiceCastEntry.SYSTEM) return r
+        val v = voices()
+        val a = VoiceCasting.autoCast(parts, v)[part]
+        val fb = v.firstOrNull { it.id == a?.voice } ?: v.firstOrNull() ?: return null
+        return Resolved(true, r.entry, fb, r.rate, a?.pitch ?: 1.0)
     }
 
     fun entry(part: PartID): VoiceCastEntry? = VoiceCasting.normalize(ensure()[part])
@@ -288,8 +320,9 @@ interface VoiceSetter {
  * session's, and its pitch, set on the engine before each utterance. False when [part] is not read.
  */
 fun VoiceCast.prepare(part: PartID, setter: VoiceSetter, sessionRate: Float = 1f): Boolean {
-    val r = resolve(part)
+    val r = systemFallback(part) ?: return false
     val v = r.voice
+
     if (!r.read || v == null) return false
     if (!setter.setVoice(v.id)) return false
     setter.setPitch(r.pitch.toFloat())

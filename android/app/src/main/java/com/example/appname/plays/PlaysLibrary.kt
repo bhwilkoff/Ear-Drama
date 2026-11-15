@@ -56,6 +56,9 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
     /** One play's whole script: the library's file, else the bundle's; null when neither has it, an error when it could not be fetched. */
     suspend fun script(id: String): PlayScript? = feed.script(id)
 
+    /** A play's published phonemes for the downloaded voices; null for a held play or with no published index. */
+    suspend fun phonemes(id: String): String? = feed.phonemes(id)
+
     private val cast = ConcurrentHashMap<String, PlayScript>()
 
     /** The script a production was cast from, as stored with it, read once off the main thread. */

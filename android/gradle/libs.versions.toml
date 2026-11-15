@@ -40,6 +40,7 @@ glance = "1.2.0"               # widgets
 wear-compose = "1.7.1"         # Compose for Wear OS (the :wear stub)
 media3 = "1.11.1"
 work = "2.11.2"
+onnxruntime = "1.31.1"          # Kokoro voices (Decision 078): MIT; the version the web prototype pins
 sqlite = "2.7.1"               # androidx.sqlite: BundledSQLiteDriver guarantees FTS5 on every device
 turbine = "1.2.0"
 roborazzi = "1.30.1"
@@ -93,6 +94,7 @@ tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 sqlite-bundled-jvm = { module = "androidx.sqlite:sqlite-bundled-jvm", version.ref = "sqlite" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 
 # --- Media3 (the playback session and ExoPlayer)
 work-runtime = { module = "androidx.work:work-runtime", version.ref = "work" }

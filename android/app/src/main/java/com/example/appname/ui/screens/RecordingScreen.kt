@@ -123,7 +123,8 @@ fun RecordingScreen(productionId: String, part: PartID, onBack: () -> Unit, star
         val standIn = voice ?: SystemStandInVoice(context, voiceCast).also { voice = it }
         val accessibility = context.getSystemService(AccessibilityManager::class.java)
         val s = RecordingSession(
-            production, cast, part, plays.store, audio, standIn,
+            production, cast, part, plays.store, audio,
+            com.example.appname.plays.KokoroStandIn(voiceCast, standIn) { text, id, speed -> if (com.example.appname.BuildConfig.KOKORO_VOICES) container.kokoro.render(cast.id, text, id, speed) else null },
             announce = {
                 // TalkBack speaks through the speaker the microphone hears, so it
                 // says "Your line" before listening starts and nothing while it listens.
