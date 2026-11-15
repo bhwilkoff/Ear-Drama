@@ -313,7 +313,9 @@ fun AppRoot(
                                     stack.add(Route.Production(id))
                                 })
                             }
-                            entry<Route.Drama> { route -> DramaScreen(route.id, onBack = back) }
+                            entry<Route.Drama> { route ->
+                                DramaScreen(route.id, onBack = back, onReadAlong = { play, _ -> stack.add(Route.Reader(play.scriptId, null, null, null, along = true, drama = play.id)) })
+                            }
                             entry<Route.Transcript> { route -> TranscriptScreen(route.id, onBack = back) }
                             entry<Route.Script> { route ->
                                 ScriptScreen(route.id, onBack = back, onRead = openReader, onOpenProduction = { id ->
@@ -324,7 +326,7 @@ fun AppRoot(
                             }
                             entry<Route.Reader> { route ->
                                 ReaderScreen(
-                                    route.scriptId, route.lineId, route.productionId, route.part, route.along, onBack = back,
+                                    route.scriptId, route.lineId, route.productionId, route.part, route.along, route.drama, onBack = back,
                                     onOpenStudio = { production, part, line ->
                                         // Record in the reader replaces it with the reader holding the studio: depth stays the same.
                                         if (stack.lastOrNull() == route) stack.removeAt(stack.lastIndex)

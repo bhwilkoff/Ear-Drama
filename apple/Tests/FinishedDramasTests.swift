@@ -22,6 +22,17 @@ struct FinishedDramasTests {
         #expect(FinishedDramas.creditLine(credits, limit: 2) == "Pat, Sam and 1 more")
     }
 
+    @Test func theWorkerSendsTheScriptsRevision() throws {
+        let json = Data("""
+        {"id":"P","script_id":"s","script_revision":"r1","title":"T","source":null,"credits":[],"archive_url":"https://archive.org/details/x","published_at":1}
+        """.utf8)
+        #expect(try JSONDecoder().decode(FinishedPlay.self, from: json).scriptRevision == "r1")
+        let old = Data("""
+        {"id":"P","script_id":"s","title":"T","source":null,"credits":[],"archive_url":"https://archive.org/details/x","published_at":1}
+        """.utf8)
+        #expect(try JSONDecoder().decode(FinishedPlay.self, from: old).scriptRevision == nil)
+    }
+
     @Test func aGoneAccountIsUncreditedNeverNamed() {
         let credits = [FinishedPlay.Credit(part: "role:A", name: ""), FinishedPlay.Credit(part: "role:B", name: "  ")]
         #expect(FinishedDramas.named(credits).isEmpty)
@@ -36,6 +47,41 @@ struct FinishedDramasTests {
         #expect(urls.map(\.lastPathComponent) == ["0001-A.flac", "0002-B.wav", "0010-C Long.wav"])
         #expect(urls.allSatisfy { $0.absoluteString.hasPrefix("https://archive.org/download/eardrama-x/") })
         #expect(FinishedDramas.lineFiles(metadata: Data("nope".utf8), identifier: "x").isEmpty)
+    }
+
+    private func fixture(revision: String = "r1") -> PlayScript {
+        let lines = (1...4).map { ScriptLine(id: "L\($0)", kind: .speech, role: "A", parts: [.say("w\($0)")]) }
+        return PlayScript(id: "s", revision: revision, kind: "radio", title: "T", authors: [],
+                          source: .init(name: "S", url: "https://example.org"),
+                          rights: .init(bucket: "script_source_cleared", evidence: []),
+                          roles: [.init(name: "A", lines: 4, words: 4)], lines: lines)
+    }
+
+    private let gappy = Data("""
+    {"files":[{"name":"0004-A.wav"},{"name":"0002-A.flac"},{"name":"0002-A.mp3"},{"name":"eardrama_meta.xml"}]}
+    """.utf8)
+
+    @Test func aFileNumberIsItsLinesPlaceInTheScript() {
+        let plan = FinishedDramas.linePlan(metadata: gappy, identifier: "x", script: fixture(), revision: "r1")
+        #expect(plan?.map(\.lineID) == ["L2", "L4"])
+        #expect(plan?.map(\.url.lastPathComponent) == ["0002-A.flac", "0004-A.wav"])
+    }
+
+    @Test func noLineTimelineWithoutAMatchingRevisionOrNumber() {
+        #expect(FinishedDramas.linePlan(metadata: gappy, identifier: "x", script: fixture(revision: "r2"), revision: "r1") == nil)
+        #expect(FinishedDramas.linePlan(metadata: gappy, identifier: "x", script: fixture(), revision: nil) == nil)
+        let past = Data("""
+        {"files":[{"name":"0009-A.wav"}]}
+        """.utf8)
+        #expect(FinishedDramas.linePlan(metadata: past, identifier: "x", script: fixture(), revision: "r1") == nil)
+        #expect(FinishedDramas.linePlan(metadata: Data("nope".utf8), identifier: "x", script: fixture(), revision: "r1") == nil)
+    }
+
+    @Test func theLineHeardIsTheFilePlaying() {
+        let plan = FinishedDramas.linePlan(metadata: gappy, identifier: "x", script: fixture(), revision: "r1") ?? []
+        #expect([ReadAlong.line(files: plan, at: 0), ReadAlong.line(files: plan, at: 1)] == ["L2", "L4"])
+        #expect(ReadAlong.line(files: plan, at: 2) == nil)
+        #expect(ReadAlong.line(files: plan, at: -1) == nil)
     }
 
     @Test func theIdentifierIsTheItemPagesLastComponent() {

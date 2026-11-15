@@ -3,10 +3,10 @@
  "source_format": 1,
  "scripts": {
   "gut-49295": {
-   "revision": "34e6f3dbbcb9",
+   "revision": "3a9dfe22694c",
    "title": "After Taps",
-   "cast": "2f9bb4c4e39501bf4bac4dd06b588589d99964fb81b373b25cb2be8305d1c88a",
-   "lines": 657,
+   "cast": "6052e27e03df7d1f5f318fd843fb428a4625437ef382e24154fd34564b892575",
+   "lines": 729,
    "source": "https://www.gutenberg.org/ebooks/49295",
    "rights": {
     "bucket": "script_pd_published_age",
@@ -19,7 +19,7 @@
    }
   },
   "gut-7364": {
-   "revision": "63209a9057fa",
+   "revision": "afac29828b33",
    "title": "The Albany Depot",
    "cast": "dccf767c0778c6237b441aea4f257e9da8b58b8b5aad09b8cd7f0aabdd279d80",
    "lines": 166,
@@ -35,7 +35,7 @@
    }
   },
   "gut-28051": {
-   "revision": "cf7f3741c7c9",
+   "revision": "d9d4b9af25a7",
    "title": "Caesar Rodney's Ride",
    "cast": "d84e8973eceaba4ef3e2c4d55302988d9552f5751a9e91e39c49ca4c2bbe4672",
    "lines": 350,
@@ -51,9 +51,9 @@
    }
   },
   "gut-12039": {
-   "revision": "c963c907912a",
+   "revision": "f722f8d57a39",
    "title": "The Custom of the Country",
-   "cast": "40103fada44070ab299f31588bed05a8c778d73776e1ca0659c7873517f34c78",
+   "cast": "98665b386c0d5955fb43196480de2e32d18bc2884ee3a3a025bbe9b46415d90f",
    "lines": 977,
    "source": "https://www.gutenberg.org/ebooks/12039",
    "rights": {
@@ -67,9 +67,9 @@
    }
   },
   "gut-2265": {
-   "revision": "e3cf30fcf0cc",
+   "revision": "a51232e16da7",
    "title": "Hamlet",
-   "cast": "e63124d9e9fcffe1732185338813a9961aa0cfb5033365f38c595d67634c5bdc",
+   "cast": "4573186f8af6f5b835a5553f14f746767860284ace98cfb8f9141e37a3dde9a3",
    "lines": 1201,
    "source": "https://www.gutenberg.org/ebooks/2265",
    "rights": {
@@ -83,10 +83,10 @@
    }
   },
   "gut-67583": {
-   "revision": "3acb1ae02adb",
+   "revision": "f3bc2f369d12",
    "title": "The Jazz Singer",
-   "cast": "2bd97270e9f2de5eadc73cf388f2eb3e80217c9c2a882d10363b8e73e0e7e391",
-   "lines": 992,
+   "cast": "b9f35c2d5e437a28b7986cae8eacb01a8c85cab33e22fa2818b6f71d80977e14",
+   "lines": 994,
    "source": "https://www.gutenberg.org/ebooks/67583",
    "rights": {
     "bucket": "script_pd_published_age",
@@ -99,7 +99,7 @@
    }
   },
   "gut-1502": {
-   "revision": "95f4398b7008",
+   "revision": "378532c3f170",
    "title": "King Henry VI, Part 3",
    "cast": "6968e055678602cb447b3f3aa426fd82ba9623f93b7b07b01130083b31def721",
    "lines": 986,
@@ -131,10 +131,10 @@
    }
   },
   "gut-5071": {
-   "revision": "6ec7307c62e9",
+   "revision": "731aac4167ab",
    "title": "The Philanderer",
-   "cast": "a7bc6050a0115c77d6f3257a39663f2b3a3d1e06250b4fc1047744a42b8b4595",
-   "lines": 492,
+   "cast": "7574040c3c177093f43efb7c08738cb130da9c4ce85e8d8745e3b00b058d58cc",
+   "lines": 895,
    "source": "https://www.gutenberg.org/ebooks/5071",
    "rights": {
     "bucket": "script_source_cleared",
@@ -163,7 +163,7 @@
    }
   },
   "gut-47826": {
-   "revision": "d1bcacfd08c1",
+   "revision": "e59dc8559b3a",
    "title": "A Tender Attachment",
    "cast": "1123a568e6f11febe2bb3b47ca412cef2254500af7c6446c6c7bf8cdbfc1afb3",
    "lines": 297,
@@ -179,7 +179,7 @@
    }
   },
   "gut-49916": {
-   "revision": "627e3ee71a25",
+   "revision": "4fdf2e5ce556",
    "title": "The Tenth Man",
    "cast": "2c9855adf8b73ab933142d4dbbd94748bbe7ad157f90818d2debf7c8c3f4ff35",
    "lines": 1720,
@@ -195,7 +195,7 @@
    }
   },
   "gut-54702": {
-   "revision": "9dc5ae479fe1",
+   "revision": "7a45f443e5ff",
    "title": "A Translation of Octavia, a Latin Tragedy",
    "cast": "955382229ebc05ce25f56773fb0ba432ea89eeabc6f5593d9d930885d9a68561",
    "lines": 148,
@@ -227,7 +227,7 @@
    }
   },
   "gut-76327": {
-   "revision": "6edbad4e73ae",
+   "revision": "dbd516cbe52c",
    "title": "The true-born Irishman",
    "cast": "5342877e894bcbfa6b6d478f08e683c7827457a0fe8af50c535288505f19a42b",
    "lines": 548,

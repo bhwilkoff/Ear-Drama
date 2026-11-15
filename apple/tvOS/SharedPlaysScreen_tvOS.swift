@@ -105,7 +105,7 @@ struct SharedPlayScreen_tvOS: View {
                     .disabled(fetching)
                     .accessibilityIdentifier("shared-listen")
                     if fetching { ProgressView() }
-                    if let entry = live.current { ReadAlongPanel_tvOS(entry: entry, script: script) }
+                    if let entry = live.current { ReadAlongPanel_tvOS(lineID: entry.lineID, deviceVoice: entry.isDeviceVoice, script: script) }
                 } else {
                     Text(PlaysShare.line(PlaysRefusal.code("revision_mismatch"))).foregroundStyle(Color.brandTextMuted)
                 }
@@ -228,12 +228,13 @@ struct SharedPlayScreen_tvOS: View {
 /// The read-along panel (PLAYS-DESIGN §2.11 rule 5, tvOS-DESIGN §4.13): the line heard with one before and one after,
 /// the speaker in the part's hue, "Device voice" when the device reads it. Body 29 pt or larger, no marks, no
 /// recording, never focusable: focus stays on the transport.
-private struct ReadAlongPanel_tvOS: View {
-    let entry: ListenEntry
+struct ReadAlongPanel_tvOS: View {
+    let lineID: String
+    let deviceVoice: Bool
     let script: PlayScript
 
     var body: some View {
-        let panel = ReadAlong.panel(script.lines, around: entry.lineID)
+        let panel = ReadAlong.panel(script.lines, around: lineID)
         VStack(alignment: .leading, spacing: Spacing.s3) {
             if let before = panel.before { row(before, now: false) }
             if let current = panel.current { row(current, now: true) }
@@ -250,7 +251,7 @@ private struct ReadAlongPanel_tvOS: View {
                 Text(line.part.title)
                     .font(TypeRamp.bodyStrong)
                     .foregroundStyle(Color.genre(script.partHue(line.part)) ?? Color.brandTextMuted)
-                if now, entry.isDeviceVoice {
+                if now, deviceVoice {
                     Text("Device voice").font(TypeRamp.body).foregroundStyle(Color.brandTextMuted)
                 }
             }

@@ -8,6 +8,29 @@ object ReadAlong {
     /** The line the plan's entry [index] speaks; null past either end. */
     fun line(plan: List<Relay.ListenEntry>, index: Int): String? = plan.getOrNull(index)?.lineID
 
+    /** A line file of a published item: its `/download/` URL and its number. */
+    data class DramaFile(val url: String, val seq: Int)
+
+    /** A line file and the script line it speaks. */
+    data class DramaLine(val url: String, val lineId: String, val seq: Int)
+
+    /**
+     * A finished drama's line timeline (PLAYS-DESIGN §2.11 rule 6): the item holds one file per line, `0042-PART.wav`,
+     * its number the line's 1-based place in the script, so the file playing names the line heard. Null when the
+     * numbering cannot be vouched for: no [revision] from the Worker, a script of another revision, a number the
+     * script does not have, or no files.
+     */
+    fun dramaPlan(files: List<DramaFile>, script: PlayScript, revision: String?): List<DramaLine>? {
+        if (revision == null || revision != script.revision || files.isEmpty()) return null
+        return files.map { f ->
+            val line = script.lines.getOrNull(f.seq - 1) ?: return null
+            DramaLine(f.url, line.id, f.seq)
+        }
+    }
+
+    /** The line a finished drama's file [index] speaks; null past either end. */
+    fun fileLine(files: List<DramaLine>, index: Int): String? = files.getOrNull(index)?.lineId
+
     data class Span(val lineID: String, val start: Int, val frames: Int)
 
     /** The line a mix is speaking at [seconds]: the last span begun, null once the last has ended; a gap keeps the line before it. */

@@ -278,9 +278,16 @@ nonisolated struct StudioTarget: Codable, Hashable, Sendable {
     let production: String
     /// The part's raw id ("role:MOLLY").
     let part: String
+    /// A finished drama's read-along (PLAYS-DESIGN 2.11 rule 6): `production` is the finished production's id and this
+    /// the script it follows; nothing local backs it.
+    var dramaScriptID: String? = nil
     var partID: PartID { PartID(rawValue: part) }
     /// A read-along (PLAYS-DESIGN §2.11): the production's script followed by its listen-through; no part, no recording.
     static func along(_ production: String) -> StudioTarget { StudioTarget(production: production, part: "") }
+    static func drama(_ production: String, scriptID: String) -> StudioTarget {
+        StudioTarget(production: production, part: "", dramaScriptID: scriptID)
+    }
+    var isDrama: Bool { dramaScriptID != nil }
     var isAlong: Bool { part.isEmpty }
 }
 

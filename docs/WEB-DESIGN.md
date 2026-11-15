@@ -688,6 +688,11 @@ web app follows today.
   calls `away`, shows **Back to the line** (`.rd-back-line`, under the dock), and
   Back to the line returns and follows again (`ReaderCore.alongFollow`). Frames and
   gate: `tools/web_fit_along.py`. Not on the TV layer (no reader there).
+  A **finished ear drama** (`?drama={id}`) offers **Read along** beside Play when its
+  item's numbered line files map onto the library script (`?read={script id}&finished={id}&along=1`,
+  PLAYS-DESIGN §2.11 rule 6): `ReaderCore.dramaPlan` names each file's line, and
+  `ReaderCore.dramaListen` plays the files in order as the reader's transport (the same
+  handle as `ListenThrough`), the file playing being the line heard.
 - **§4.16 The script reader** (`?read={script id}`; Decision 076, owner
   2026-11-14: *"You should be able to read a script and turn pages and
   mark them up and do all of the things that a good book/script reading

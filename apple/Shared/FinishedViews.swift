@@ -119,7 +119,11 @@ struct FinishedDramaScreen: View {
     @State private var fetched: FinishedPlay?
     @State private var missing: String?
     @State private var listen = FinishedListen()
+    @State private var canFollow = false
     @Environment(\.openURL) private var openURL
+    #if os(iOS) || os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     private var play: FinishedPlay? { finished.plays.first { $0.id == id } ?? fetched }
 
@@ -140,6 +144,10 @@ struct FinishedDramaScreen: View {
         .navigationBarTitleDisplayMode(.inline)
         #endif
         .task(id: id) { await read() }
+        .task(id: play?.archiveURL) {
+            guard let play, let script = FinishedTiles.script(for: play) else { canFollow = false; return }
+            canFollow = await FinishedListen.canFollow(play, script: script)
+        }
         .onDisappear { listen.stop() }
     }
 
@@ -176,7 +184,19 @@ struct FinishedDramaScreen: View {
                         }
                         .pageAction()
                     }
+                    #if os(iOS) || os(macOS)
+                    if canFollow {
+                        Button { openAlong(play) } label: { ActionLabel(title: "Read Along", systemImage: "text.book.closed") }
+                            .pageAction()
+                            .accessibilityIdentifier("drama-read-along")
+                    }
+                    #endif
                 }
+                #if os(tvOS)
+                if let lineID = listen.lineID, let script {
+                    ReadAlongPanel_tvOS(lineID: lineID, deviceVoice: false, script: script)
+                }
+                #endif
                 if listen.state == .preparing { ProgressView() }
                 if case let .failed(line) = listen.state {
                     Label(catalog.isOnline ? line : Connectivity.offlineLine, systemImage: "exclamationmark.triangle")
@@ -207,8 +227,25 @@ struct FinishedDramaScreen: View {
     private func start(_ play: FinishedPlay) async {
         player.pause()
         listen.muted = app.isMuted
+        #if os(tvOS)
+        // The TV's panel follows the files; the phone and Mac follow in the reader.
+        await listen.start(archiveURL: play.archiveURL, script: canFollow ? FinishedTiles.script(for: play) : nil, revision: play.scriptRevision)
+        #else
         await listen.start(archiveURL: play.archiveURL)
+        #endif
     }
+
+    #if os(iOS) || os(macOS)
+    private func openAlong(_ play: FinishedPlay) {
+        listen.stop()
+        let target = StudioTarget.drama(play.id, scriptID: play.scriptID)
+        #if os(macOS)
+        openWindow(id: StudioWindow_macOS.id, value: StudioWindowValue(target: target, line: nil))
+        #else
+        app.reading = ReaderTarget(scriptID: play.scriptID, studio: target)
+        #endif
+    }
+    #endif
 }
 
 /// A part and the name its performer chose; a part whose performer left has no name, never a made-up one.
@@ -251,22 +288,44 @@ final class FinishedListen {
     private(set) var state: State = .idle
     var muted = false
     var isActive: Bool { state == .preparing || state == .playing }
+    /// The script line the file playing speaks (PLAYS-DESIGN 2.11 rule 6); nil while stopped or without a line timeline.
+    private(set) var lineID: String?
 
     @ObservationIgnored private var queue: AVQueuePlayer?
     @ObservationIgnored private var watch: Task<Void, Never>?
 
-    func start(archiveURL: String) async {
+    /// The item's metadata from archive.org: its line files and their lengths.
+    private static func metadata(_ archiveURL: String) async throws -> (Data, String)? {
+        guard let id = FinishedDramas.identifier(archiveURL),
+              let meta = URL(string: "https://archive.org/metadata/\(id)") else { return nil }
+        return (try await URLSession.shared.data(from: meta).0, id)
+    }
+
+    /// Whether the item's audio has a line timeline for `script`: Read Along is offered only then, never a guessed sync.
+    static func canFollow(_ play: FinishedPlay, script: PlayScript) async -> Bool {
+        guard let (data, id) = try? await metadata(play.archiveURL) else { return false }
+        return FinishedDramas.linePlan(metadata: data, identifier: id, script: script, revision: play.scriptRevision) != nil
+    }
+
+    /// Plays the item's line files in order; with `script`, the file playing names the line heard (`lineID`), and
+    /// `from` starts at that line.
+    func start(archiveURL: String, script: PlayScript? = nil, revision: String? = nil, from: String? = nil) async {
         guard !isActive else { return }
         state = .preparing
-        guard let id = FinishedDramas.identifier(archiveURL),
-              let meta = URL(string: "https://archive.org/metadata/\(id)") else {
-            state = .failed("This recording would not play.")
-            return
-        }
         let files: [URL]
+        var plan: [FinishedLine] = []
         do {
-            let (data, _) = try await URLSession.shared.data(from: meta)
-            files = FinishedDramas.lineFiles(metadata: data, identifier: id)
+            guard let (data, id) = try await Self.metadata(archiveURL) else {
+                state = .failed("This recording would not play.")
+                return
+            }
+            if let script, let found = FinishedDramas.linePlan(metadata: data, identifier: id, script: script, revision: revision) {
+                let first = from.flatMap { id in script.lines.firstIndex { $0.id == id } }.map { $0 + 1 } ?? 0
+                plan = found.filter { $0.seq >= first }
+                files = plan.map(\.url)
+            } else {
+                files = FinishedDramas.lineFiles(metadata: data, identifier: id)
+            }
         } catch {
             state = .failed(Connectivity.playerProblem(error))
             return
@@ -287,8 +346,12 @@ final class FinishedListen {
         q.play()
         watch = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(500))
+                try? await Task.sleep(for: .milliseconds(150))
                 guard let self, let q = self.queue else { return }
+                if !plan.isEmpty {
+                    let heard = q.currentItem.flatMap { now in items.firstIndex { $0 === now } }.flatMap { ReadAlong.line(files: plan, at: $0) }
+                    if heard != self.lineID { self.lineID = heard }
+                }
                 if let failed = items.first(where: { $0.status == .failed }) {
                     self.finish(.failed(Connectivity.playerProblem(failed.error)))
                     return
@@ -308,6 +371,7 @@ final class FinishedListen {
         watch = nil
         queue?.pause()
         queue = nil
+        lineID = nil
         state = next
     }
 }

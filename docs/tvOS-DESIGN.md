@@ -282,6 +282,9 @@ The only shapes; a new one needs a new rule.
   studio, take lists and Record never appear here. **No marks** (PLAYS-DESIGN
   §2.10): marks are made where there is a selection, a keyboard or a pencil, and
   are private to the device that made them; the read-along panel draws none.
+  A **finished ear drama's** Listen (the shared `FinishedDramaScreen`) shows the same panel
+  under the transport while its line files play, the file playing being the line heard
+  (PLAYS-DESIGN §2.11 rule 6); a recording with no line timeline plays with no panel.
   The listen-through on the TV reads open parts with the device's cast (PLAYS-DESIGN
   §2.8, Decision 076 S2): the same `VoiceCast` auto-cast from the TV's own voices,
   kept in `UserDefaults` (never Application Support, which tvOS devices refuse); the TV has no picker (the cast is changed on a

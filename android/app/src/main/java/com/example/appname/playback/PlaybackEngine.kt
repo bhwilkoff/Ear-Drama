@@ -691,6 +691,34 @@ class PlaybackEngine(
     fun playFile(row: EpisodeRow, url: String) = playRoomCopy(row, url, 0L, true, 1f)
 
     /**
+     * Plays a finished drama's line files one after another, nothing queued after the last (Decision 073: one file per
+     * line). [rows] and [urls] are parallel; the row playing is [NowPlaying.episode], which is how a read-along names the
+     * line heard (PLAYS-DESIGN 2.11 rule 6).
+     */
+    fun playFiles(rows: List<EpisodeRow>, urls: List<String>) {
+        if (rows.isEmpty() || rows.size != urls.size) return
+        ensureSession()
+        saveNow()
+        episodes = rows
+        recovery = null
+        offer = null
+        this.urls = urls
+        playsQueue = false
+        resumeSaved = false
+        lastFactor = 1f
+        _state.value = _state.value.copy(failed = false, offline = false)
+        onTransport(TransportEvent.Loaded(rows.first().id))
+        val p = player
+        p.setMediaItems(rows.mapIndexed { i, row -> mediaItem(row, urls[i], card = i == 0) }, 0, 0L)
+        applyVolume(1f)
+        p.setPlaybackSpeed(1f)
+        p.prepare()
+        p.playWhenReady = true
+        syncPauseAtEnd()
+        publish()
+    }
+
+    /**
      * A guest plays the host's exact copy (Archive Watch Decision 143): this
      * one item, nothing queued, at the host's place and speed, never this
      * device's saved position.

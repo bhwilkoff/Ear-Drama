@@ -70,9 +70,12 @@ nonisolated struct FinishedPlay: Codable, Equatable, Sendable, Identifiable {
     var archiveURL: String
     /// Milliseconds since 1970 on the Worker's clock.
     var publishedAt: Int64
+    /// The script revision the lines were recorded against; the item's file numbers are that revision's line places.
+    var scriptRevision: String? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, title, source, credits
+        case scriptRevision = "script_revision"
         case scriptID = "script_id"
         case archiveURL = "archive_url"
         case publishedAt = "published_at"

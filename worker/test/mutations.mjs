@@ -193,7 +193,8 @@ const M = [
   ["emptied productions stay listed", "src/plays-open.js", "  \"AND EXISTS (SELECT 1 FROM play_archive_files f WHERE f.production_id = j.production_id AND f.state IN ('pending', 'sent'))\";", "  \"\";"],
   ["deleted performers drop the part", "src/plays-open.js", ': [{ part, name: "" }])', ": [])"],
   ["deleted performers keep their name", "src/plays-open.js", "LEFT JOIN play_members m ON m.production_id = f.production_id AND m.user_id = t.user_id", "LEFT JOIN play_members m ON m.production_id = f.production_id"],
-  ["finished one lists unpublished", "src/plays-open.js", "  const row = await env.DB.prepare(`${FINISHED} AND j.production_id = ?1`)", "  const row = await env.DB.prepare(\"SELECT j.production_id AS id, j.item_url, j.published_at, p.script_id, p.title FROM play_archive_jobs j JOIN play_productions p ON p.id = j.production_id WHERE j.production_id = ?1\")"],
+  ["finished one lists unpublished", "src/plays-open.js", "  const row = await env.DB.prepare(`${FINISHED} AND j.production_id = ?1`)", "  const row = await env.DB.prepare(\"SELECT j.production_id AS id, j.item_url, j.published_at, p.script_id, p.script_revision, p.title FROM play_archive_jobs j JOIN play_productions p ON p.id = j.production_id WHERE j.production_id = ?1\")"],
+  ["finished drops its script revision", "src/plays-open.js", "    script_revision: r.script_revision,\n", ""],
   ["short class codes", "src/plays.js", "export const CLASS_CODE_LENGTH = 8;", "export const CLASS_CODE_LENGTH = 4;"],
   // Take-down cases (Decision 074)
   ["case routes need no token", "src/takedown.js", 'if (!authorized(request, env)) return problem(403, "forbidden");', ""],
