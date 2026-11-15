@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kokoro harness</title>
+<script src="/js/kokoro-model.js"></script>
+<script src="/js/kokoro-voice.js"></script>
+<pre id="log"></pre>
+<script>
+const log = (...a) => { document.getElementById('log').textContent += a.join(' ') + '\n'; };
+const post = (r) => fetch('/result', { method: 'POST', body: JSON.stringify(r) });
+(async () => {
+  const Q = new URLSearchParams(location.search); const MAN = '/lab/' + (Q.get('m') || 'manifest.json'); const EP = Q.get('ep') || 'wasm'; const N = Number(Q.get('n') || 8);
+  const out = { manifest: MAN, ep_asked: EP, ua: navigator.userAgent, cores: navigator.hardwareConcurrency, isolated: self.crossOriginIsolated, steps: [] };
+  try {
+    const t0 = performance.now();
+    const model = KokoroModel.create({ manifestURL: MAN });
+    const man = await model.loadManifest();
+    out.download_bytes = KokoroModel.totalBytes(man);
+    await model.download();
+    out.download_and_verify_ms = Math.round(performance.now() - t0);
+    out.ready = await model.check();
+
+    const [onnx, table, tok] = await Promise.all([model.bytes('model'), model.bytes('voices'), model.bytes('vocab')]);
+    const vocab = JSON.parse(new TextDecoder().decode(tok)).model.vocab;
+    const ph = await (await fetch('/lab/phonemes/gut-1532.json')).json();
+    const w = new Worker('/js/kokoro-worker.js');
+    let seq = 0; const pend = new Map();
+    w.onmessage = (e) => { const p = pend.get(e.data.id); pend.delete(e.data.id); e.data.error ? p.rej(new Error(e.data.error)) : p.res(e.data); };
+    const call = (m, tr = []) => new Promise((res, rej) => { const id = ++seq; pend.set(id, { res, rej }); w.postMessage({ ...m, id }, tr); });
+    const tl = performance.now();
+    const loaded = await call({ type: 'load', model: onnx, voices: table, ep: EP }, [onnx, table]); out.ep = loaded.ep;
+    out.session_load_ms = Math.round(performance.now() - tl);
+    const lines = ph.lines.filter(r => r.us.length > 4);
+    const pick = [lines[0], lines[1], lines[2], lines[5], lines[8], ...lines.filter(r => r.us.length > 250).slice(0, 3)].slice(0, N);
+    let synth = 0, audio = 0;
+    for (const [k, r] of pick.entries()) {
+      const pieces = KokoroVoice.chunks(r.us);
+      let ms = 0, n = 0;
+      const tw = performance.now();
+      for (const p of pieces) {
+        const res = await call({ type: 'synth', tokens: Int32Array.from(KokoroVoice.tokenize(p, vocab)), voice: 0, speed: 1 });
+        n += res.samples.length;
+        let nan = 0, sq = 0; for (const x of res.samples) { if (Number.isNaN(x)) nan++; else sq += x * x; }
+        r._nan = (r._nan || 0) + nan; r._sq = (r._sq || 0) + sq;
+      }
+      ms = performance.now() - tw;
+      if (k > 0) { synth += ms; audio += n / 24000; }
+      out.steps.push({ line: r.id, symbols: r.us.length, pieces: pieces.length, ms: Math.round(ms), audio_s: +(n / 24000).toFixed(2), rtf: +(ms / 1000 / (n / 24000)).toFixed(3), nan: r._nan, rms: +Math.sqrt(r._sq / n).toFixed(4) });
+      log(JSON.stringify(out.steps.at(-1)));
+    }
+    out.rtf_after_first = +(synth / 1000 / audio).toFixed(3);
+    w.terminate();
+
+    if (Q.get('engine') === '0') { await post(out); return; }
+    // The real engine path, muted: prepare the play's phonemes, read a line, resolve true.
+    const engine = KokoroVoice.create({ model, muted: true, workerURL: '/js/kokoro-worker.js' });
+    await engine.prepare('/lab/phonemes/gut-1532.json');
+    const te = performance.now();
+    out.engine_read = await engine.speak(lines[3].t, 'bm_george', { rate: 1, pitch: 1 });
+    out.engine_first_line_ms = Math.round(performance.now() - te);
+    out.engine_unknown_line = await engine.speak('A line no play contains, so no phonemes.', 'af_heart');
+  } catch (e) { out.error = String(e && e.stack || e); }
+  log(JSON.stringify(out));
+  await post(out);
+})();
+</script>

@@ -4,7 +4,7 @@
  * the reader's Hear the cast), kept in this browser only and never synced (Q8).
  *
  * A part's casting is { engine, voice, name, rate, pitch }: engine 'system' (the browser's
- * own voices), 'kokoro' (downloadable voices, S6; none yet) or 'none' (Not read); voice is
+ * own voices), 'kokoro' (downloadable voices, S6; a prototype behind ?kokoro=1) or 'none' (Not read); voice is
  * the engine's identifier (a voiceURI here), never a language. Auto-cast reads only the
  * voices (their quality, the person's language, and a gender only when the platform reports
  * one for the VOICE); it never reads a part's name or the script (§2.8 rule 4).
@@ -109,7 +109,7 @@ const VoiceCast = (() => {
     const e = normalize(entry) || (auto && auto[partID]) || null;
     if (!e || e.engine === 'none') return { read: false, entry: e || { ...NOT_READ }, missing: null, none: !voices.length };
     if (!voices.length) return { read: false, entry: e, missing: null, none: true };
-    const found = e.engine === 'system' ? voices.find(v => v.id === e.voice) : null;
+    const found = voices.find(v => v.engine === e.engine && v.id === e.voice) || null;
     if (found) return { read: true, entry: e, voice: found, rate: e.rate, pitch: e.pitch, missing: null };
     const fb = (auto && auto[partID] && voices.find(v => v.id === auto[partID].voice)) || voices[0];
     const fe = (auto && auto[partID]) || entryOf(fb);

@@ -143,6 +143,33 @@ const CastUI = (() => {
         hearBtn);
     }
 
+    // The downloadable voices (Decision 076 S6 PROTOTYPE): shown only with ?kokoro=1.
+    const dlHead = el('h3', { class: 'caption vc-group', hidden: true }, 'Downloaded');
+    const dlList = el('ul', { class: 'vc-list', role: 'radiogroup', 'aria-label': `Downloaded voices for ${title}`, hidden: true });
+    const dlGet = el('div', { class: 'vc-download', hidden: true });
+    function paintDownloaded(kv) {
+      const on = typeof KokoroModel !== 'undefined' && typeof KokoroVoice !== 'undefined' && KokoroModel.enabled() && KokoroVoice.model();
+      dlHead.hidden = !on;
+      dlList.hidden = !on || !kv.length;
+      dlGet.hidden = !on || kv.length > 0;
+      if (!on) return;
+      dlList.replaceChildren(...kv.map(v => row(v.id, v.name, v.lang, v)));
+      const m = KokoroVoice.model();
+      if (!kv.length && !dlGet.firstChild) {
+        const btn = el('button', { type: 'button', class: 'btn' }, 'Download voices');
+        const note = el('span', { class: 'caption tabular' });
+        m.loadManifest().then(man => { btn.textContent = `Download voices (${KokoroModel.sizeText(KokoroModel.totalBytes(man))})`; })
+          .catch(() => { btn.disabled = true; note.textContent = 'Not available.'; });
+        btn.addEventListener('click', () => {
+          btn.disabled = true;
+          m.download((done, total) => { note.textContent = `${Math.floor((100 * done) / total)}%`; })
+            .then(() => { dlGet.replaceChildren(); paint(); })
+            .catch(() => { btn.disabled = false; note.textContent = 'The download failed.'; });
+        });
+        dlGet.append(btn, note);
+      }
+    }
+
     function paint() {
       const voices = cast.voices();
       const d = describe(cast, part);
@@ -154,9 +181,10 @@ const CastUI = (() => {
       const current = e.engine === 'none' ? 'none' : (d.r.voice ? d.r.voice.id : e.voice);
       const rows = [];
       if (!speaking) rows.push(row('none', 'Not read', null, null));
-      for (const v of voices) rows.push(row(v.id, v.name, v.lang, v));
+      for (const v of voices) if (v.engine !== 'kokoro') rows.push(row(v.id, v.name, v.lang, v));
       stopHearing();
       list.replaceChildren(...rows);
+      paintDownloaded(voices.filter(v => v.engine === 'kokoro'));
       for (const i of list.querySelectorAll('input')) i.checked = i.value === current;
       speed.paint(reading() && voices.length > 0);
       pitch.paint(reading() && voices.length > 0);
@@ -166,7 +194,7 @@ const CastUI = (() => {
     const d = el('dialog', { class: 'rd-sheet vc-sheet', 'aria-label': `Voice for ${title}` },
       el('div', { class: 'rd-sheet-head' }, el('h2', { class: 'section-header' }, title),
         el('button', { type: 'button', class: 'icon-btn rd-icon', 'aria-label': 'Close', onclick: () => d.close() }, svg('close'))),
-      warn, el('div', { class: 'vc-steps' }, speed, pitch), group, list, none, more);
+      warn, el('div', { class: 'vc-steps' }, speed, pitch), group, list, none, more, dlHead, dlList, dlGet);
     d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
     const off = StandInVoice.onVoices(paint);
     d.addEventListener('close', () => { off(); voice.cancel(); d.remove(); });
@@ -208,11 +236,14 @@ const CastUI = (() => {
 
   /** One caster per production (seeded from its play's cast) or per play (the reader). */
   function castFor({ script, production = null }) {
+    const kokoro = typeof KokoroVoice !== 'undefined' ? KokoroVoice : null;
+    if (kokoro) kokoro.prepare(script);
     return V.caster({
       key: production ? V.productionKey(production) : V.scriptKey(script.id),
       seed: production ? V.scriptKey(script.id) : null,
       parts: C.castParts(script),
-      voices: () => StandInVoice.voices(),
+      // Downloaded voices first (the person fetched them to use them): auto-cast and Recast all prefer them.
+      voices: () => [...(kokoro ? kokoro.voices() : []), ...StandInVoice.voices()],
     });
   }
 
