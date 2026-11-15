@@ -129,6 +129,11 @@ nonisolated enum PlayPage {
         return String(utf16CodeUnits: out, count: out.count)
     }
 
+    /// A run's words as drawn: a transcriber's wrap, kept as spaces so offsets hold, is one space on the page.
+    static func drawn(_ text: String) -> String {
+        text.replacingOccurrences(of: " {2,}", with: " ", options: .regularExpression)
+    }
+
     private static func slice(_ s: NSString, _ from: Int, _ to: Int? = nil) -> String {
         let end = min(to ?? s.length, s.length)
         return from >= end ? "" : s.substring(with: NSRange(location: from, length: end - from))

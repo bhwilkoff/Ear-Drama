@@ -545,7 +545,8 @@ private fun buildBlocks(
     }
 
     /** A direction's words, each part it names in capitals in that part's hue, upright and strong. */
-    fun AnnotatedString.Builder.direction(text: String, italic: Boolean) {
+    fun AnnotatedString.Builder.direction(raw: String, italic: Boolean) {
+        val text = PlayPage.drawn(raw)
         val base = SpanStyle(fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal, color = pal.muted)
         var last = 0
         fun plain(from: Int, to: Int) {

@@ -55,6 +55,10 @@ class PlayPageTest {
         )
         assertEquals(listOf(true, false, true, false), radio.speeches[0].rows.map { it.cue })
 
+        val duo = PlayPage.layoutOf(ScriptLine("L4a", ScriptLine.Kind.Direction, source = "JOE _comes down. His clothes are of\n     the familiar kind one sees at street\n     corners; MARY notes his\n     air of dejection._"), listOf("JOE", "MARY"))
+        val drawn = duo.rows[0].runs.joinToString("") { PlayPage.drawn(it.text) }
+        assertTrue("a wrapped direction is drawn with single spaces", !drawn.contains("  "))
+        assertTrue(drawn.contains("of the familiar") && drawn.contains("street corners") && drawn.contains("his air of"))
         val block = PlayPage.layoutOf(ScriptLine("L3", ScriptLine.Kind.Direction, source = "[_Exeunt._]"), emptyList())
         assertEquals(listOf(ScriptReading.RunKind.Plain to "Exeunt."), block.rows[0].runs.map { it.kind to it.text })
         val open = PlayPage.layoutOf(ScriptLine("L4", ScriptLine.Kind.Direction, source = "[Enter Lane."), emptyList())
