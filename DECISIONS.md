@@ -1233,4 +1233,11 @@ inequality) says let people try before asking for commitment.
 **How to apply**: binding design docs first, then web, Apple, Android in one batch;
 PARITY rows.
 
+**Amended 2026-11-15**: the post-leave cleanup has no timer. A production is never
+deleted while a take write for it is pending or a recording session for it is open;
+leaving the studio waits for the production's take writes to settle (web
+`store.discardIfAbandoned`, Apple `removeWhenSettled`, Android `dropWhenSettled`), and one
+still empty then goes unless a screen holds it. **Why**: a take still encoding more than
+2 s after leaving lost both itself and its production.
+
 **078 addendum (owner, 2026-11-15):** Kokoro passed the Android gate (q8, ORT 1.31.1, arena hand-back, 100-symbol pieces; RTF 0.30, peak 579 MB on the Pixel 8a). The engine (~34 MB per device) ships as a Play on-demand feature module fetched with the voices, never in the base install ("Download on demand").

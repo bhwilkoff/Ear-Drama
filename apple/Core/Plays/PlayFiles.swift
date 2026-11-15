@@ -76,6 +76,8 @@ final class ProductionStore {
     /// `share.json` per production id: its link to the Worker (PLAYS-DESIGN §11.7 rule 1).
     private(set) var shares: [String: ProductionShare] = [:]
     private(set) var lastError: String?
+    /// Take writes in flight per production: a production is never removed while one is pending (Decision 079).
+    private var pendingTakes: [String: Int] = [:]
 
     init(root: URL? = nil) {
         self.root = root ?? Self.defaultRoot
@@ -110,15 +112,35 @@ final class ProductionStore {
                 shares[production.id] = share
             }
         }
-        for id in StudioCore.emptyLocal(productions, isShared: { shares[$0] != nil }) { try? delete(id) }
+        for id in StudioCore.emptyLocal(productions, isShared: { shares[$0] != nil }) where pendingTakes[id] == nil { try? delete(id) }
     }
 
     /// Leaving the studio with no take: a local, unshared production with no take is deleted (PLAYS-DESIGN §2.3 rule
     /// 3a). True when it went.
     @discardableResult
     func removeIfEmpty(_ id: String) -> Bool {
-        guard let p = production(id), StudioCore.emptyLocal([p], isShared: { shares[$0] != nil }) == [id] else { return false }
+        guard pendingTakes[id] == nil, let p = production(id), StudioCore.emptyLocal([p], isShared: { shares[$0] != nil }) == [id] else { return false }
         return (try? delete(id)) != nil
+    }
+
+    /// Runs a take's write for `id`; the production is not removed until it has finished.
+    func withTakeWrite<T>(_ id: String, _ body: () throws -> T) rethrows -> T {
+        pendingTakes[id, default: 0] += 1
+        defer {
+            if let n = pendingTakes[id], n > 1 { pendingTakes[id] = n - 1 } else { pendingTakes[id] = nil }
+        }
+        return try body()
+    }
+
+    func hasPendingTake(_ id: String) -> Bool { pendingTakes[id] != nil }
+
+    /// Leaving the studio: waits for this production's take writes to settle, then removes it if it is still empty
+    /// and `isHeld` (a screen showing it) is false. No timer: only the writes decide.
+    @discardableResult
+    func removeWhenSettled(_ id: String, isHeld: () -> Bool = { false }) async -> Bool {
+        while hasPendingTake(id) { try? await Task.sleep(for: .milliseconds(10)) }
+        guard !isHeld() else { return false }
+        return removeIfEmpty(id)
     }
 
     func shareURL(_ id: String) -> URL { folder(id).appending(path: "share.json") }

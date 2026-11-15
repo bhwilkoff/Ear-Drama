@@ -99,6 +99,7 @@ function silentVoice() {
 }
 
 async function studio(part = MOLLY, opts = {}) {
+  const audio = fakeAudio();
   const script = fixtureScript();
   const backend = PlayStore.memoryBackend();
   const store = PlayStore.open(backend);
@@ -106,9 +107,10 @@ async function studio(part = MOLLY, opts = {}) {
   let p = await store.create(script);
   p = C.take(p, script, part, '');
   await store.save(p);
-  const s = RecordingSession.create({ production: p, script, part, store, audio: fakeAudio(), voice: silentVoice(), sleep: async () => {} });
+  const s = RecordingSession.create({ production: p, script, part, store, audio, voice: silentVoice(), sleep: async () => {} });
   await s.begin();
   const st = SC.create({ session: s, script, part, store, line: opts.line || null });
+  if (opts.slowEncode) audio.toTakeRate = async (c) => { await opts.slowEncode; return c; };
   return { st, s, store, backend, script };
 }
 
@@ -294,6 +296,44 @@ test('the cast shows the performer of a part someone else holds, never mine, ope
   };
   eq(SC.heldBy(rec, 'u1'), { a: 'Ada', b: 'Grace H' }, 'their chosen name, else their member name');
   eq(SC.heldBy(null, 'u1'), {}, 'no record, no names');
+});
+
+/* ---- Leaving the studio: an abandoned try goes, a take still being written never does (Decision 079) ---- */
+
+const sleepMs = (ms) => new Promise(r => setTimeout(r, ms));
+
+test('a take whose write lands after the old 2 s window survives, with its production', async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  const { st, s, store } = await studio(MOLLY, { slowEncode: gate });
+  s.setMode('lines');
+  const id = s.production.id;
+  const recording = st.primary();
+  while (!store.pendingTakes(id)) await sleepMs(1);
+  s.end();
+  const cleanup = store.discardIfAbandoned(id, () => false);
+  await sleepMs(2200);
+  release();
+  await recording;
+  eq(await cleanup, false, 'not deleted');
+  ok(store.production(id), 'the production is still there');
+  eq(store.production(id).takes.length, 1, 'with its take');
+  ok(await store.backend.get(`${id}/takes/${store.production(id).takes[0].file}`) !== null, 'and its file');
+});
+
+test('an empty production with no pending writes is removed on leave', async () => {
+  const { s, store } = await studio();
+  const id = s.production.id;
+  s.end();
+  eq(await store.discardIfAbandoned(id, () => false), true, 'removed');
+  eq(store.production(id), null, 'gone');
+});
+
+test('a production a screen holds is never removed', async () => {
+  const { s, store } = await studio();
+  const id = s.production.id;
+  s.end();
+  eq(await store.discardIfAbandoned(id, () => true), false, 'kept');
+  ok(store.production(id), 'still there');
 });
 
 (async () => {

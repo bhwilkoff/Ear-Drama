@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,13 +72,12 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
     private val leaving = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     /**
-     * Leaving the studio: once a take still being written has landed, a production with no take is removed, unless a
+     * Leaving the studio: once every take write for it has settled, a production with no take is removed, unless a
      * screen (its cast sheet) holds it again by then (PLAYS-DESIGN §2.3 rule 3a).
      */
     fun leftStudio(productionId: String) {
         leaving.launch {
-            delay(LEAVE_SETTLE_MS)
-            withContext(Dispatchers.IO) { store.dropIfEmpty(productionId) }
+            withContext(Dispatchers.IO) { store.dropWhenSettled(productionId) }
             if (store.production(productionId) == null) cast.remove(productionId)
         }
     }
@@ -98,8 +96,6 @@ class PlaysLibrary(private val context: Context, transport: LibraryTransport? = 
         store.renderMix(id) { AacMixSink(it) }
     }
 }
-
-private const val LEAVE_SETTLE_MS = 2_000L
 
 /** Plays a rendered mix on this device; a seek forward means the listen was not all the way through. */
 class MixPlayback {
