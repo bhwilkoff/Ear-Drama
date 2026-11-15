@@ -402,3 +402,4 @@ Tracks (R = research doc, B = build):
 - 2026-11-15: App Review reply sent with a 3:12 Duo recording (launch, listening, search, reader, studio, Sign in with Apple completed by the owner's Touch ID, Library); notes set. Resubmit button stays disabled for an Information Needed request; the reviewer resumes from the reply. Kokoro S6a merged (98.99% phoneme coverage; kokoro-model Release; library asset with phonemes). Owner phone released.
 - 2026-11-15: marks merged on Apple (410 macOS tests) and Android (lintRelease green). Marks now on web, Apple, Android; Pencil ink ⏳.
 - 2026-11-15 tick: launched Kokoro S6a bench + S6d Android engine (Opus) and Pencil ink on iPad (Sonnet). App Review: reply sent, waiting.
+- 2026-11-15: design review merged (Today's scene, Home names the app, Record row second, opening lines on tiles). Owner answered 4 questions → Decision 079; agent implementing on all platforms + library refresh with openings.
