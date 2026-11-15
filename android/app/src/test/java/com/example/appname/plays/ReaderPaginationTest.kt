@@ -81,4 +81,50 @@ class ReaderPaginationTest {
         assertEquals(2, paged.ends[0])
         assertEquals(1, ReaderPagination.paginate(emptyList(), 0, 100f).count)
     }
+
+    private fun b(owner: Int, lines: Int, gap: Float = 6f, keep: Boolean = false, breakBefore: Boolean = false, speech: Int = -1, start: Boolean = false, rows: IntArray? = null) =
+        ReaderPagination.Block(owner, FloatArray(lines) { 10f }, gap, keep, breakBefore, speech, start, rows)
+
+    @Test fun `a name is never alone at a page foot`() {
+        // Page of 50: a 3-line block (y 30), a name (to 46), then 4 lines that cannot start under it with fewer than two.
+        val paged = ReaderPagination.paginate(listOf(b(0, 3), b(1, 1, keep = true, speech = 1, start = true), b(1, 4, gap = 0f, speech = 1)), 2, 50f)
+        val namePage = paged.pages.indexOfFirst { p -> p.segs.any { it.block == 1 } }
+        val bodyFirst = paged.pages.indexOfFirst { p -> p.segs.any { it.block == 2 } }
+        assertEquals(namePage, bodyFirst)
+    }
+
+    @Test fun `prose keeps two lines at either side of a break`() {
+        // Room for four of five lines would leave one: cut at three.
+        val widow = ReaderPagination.paginate(listOf(b(0, 1), b(1, 5)), 2, 60f)
+        // Room for one line of three would strand it: the block moves whole.
+        val orphan = ReaderPagination.paginate(listOf(b(0, 2), b(1, 3)), 2, 40f)
+        for (paged in listOf(widow, orphan)) for (p in paged.pages) for (seg in p.segs) {
+            if (seg.block == 1) assertTrue("two lines each side: ${seg.from}..${seg.to}", seg.to - seg.from >= 2)
+        }
+        assertEquals(2, widow.pages.sumOf { p -> p.segs.count { it.block == 1 } })
+    }
+
+    @Test fun `verse splits only between rows, two rows at either side`() {
+        // Six rows of two lines: room for seven lines would end mid-row; the cut is between rows.
+        val rows = intArrayOf(0, 2, 4, 6, 8, 10)
+        val paged = ReaderPagination.paginate(listOf(b(0, 12, gap = 0f, rows = rows)), 1, 70f)
+        for (p in paged.pages) for (seg in p.segs) {
+            assertTrue("a cut on a row start: ${seg.from}..${seg.to}", seg.to == 12 || seg.to in rows)
+            assertTrue("two rows each side", seg.to - seg.from >= 4)
+        }
+        assertEquals(2, paged.count)
+    }
+
+    @Test fun `an act opens a page, and a page opening inside a speech names its speaker`() {
+        val blocks = listOf(
+            b(0, 1, speech = 1, start = true), b(0, 6, gap = 0f, speech = 1),
+            b(1, 1, breakBefore = true, keep = true), b(2, 1, speech = 2, start = true),
+        )
+        val paged = ReaderPagination.paginate(blocks, 3, 40f)
+        assertEquals("the act heading is first on its page", 2, paged.pages.first { p -> p.segs.any { it.block == 2 } }.segs.first().block)
+        val contd = paged.contd.toList()
+        assertTrue("a page that opens in the speech's words is headed: $contd", contd.any { it == 1 })
+        assertEquals("the page that opens on the speech start is not", -1, contd[0])
+        assertEquals("the act page is not", -1, contd[paged.pages.indexOfFirst { p -> p.segs.any { it.block == 2 } }])
+    }
 }
