@@ -521,6 +521,40 @@ and shows it back; it never proposes a mark, a reading or a note.
 14. **Nothing written by the app**: no suggested mark, no generated note, no "AI coach" (§2.7
     rule 9). Every word in a mark is the person's or the script's.
 
+### §2.11 Read along (Decision 076, "TVs get a read-along panel only"; binding on every platform that listens through)
+
+The script follows the voice: while a production's Listen through plays, the reader (§2.7)
+lights the line heard. One seam, one clock: the line comes from the **listen plan**
+(`listenPlan`: take or device voice, each entry names its line id), never from a guess at the
+audio; a rendered mix, which has no plan, finds its line by the timeline's placements
+(`ReaderCore.alongLineAt`). The same line id feeds `follow(lineID)` on every platform.
+
+1. **The door**: **Read along** on a production's page (and Made here), beside Listen through.
+   It opens the reader on the production's own copy of the script in follow mode and the
+   listen-through transport takes the place of Hear the cast in the bottom bar. A finished ear
+   drama (DEEP_LINKS "Finished ear drama") offers Read along only when its audio has a line
+   timeline (per-line files); a single recording with no timings gets the Read door, never a
+   guessed sync.
+2. **Following**: the current line is highlighted with the play typography (the line's speaker
+   in the part's hue); pages turn themselves to the line; the page holds the line in view in
+   Scroll. Takes and cast voices follow alike; a line read by a device voice keeps the
+   "Device voice · PART" strip (§5).
+3. **Turning away**: a swipe, tap, key or scroll on the text stops the turning (the audio goes
+   on) and shows **Back to the line**; that returns to the line now heard and follows again.
+   Nothing is offered while nothing plays. Stop ends the listen-through and the highlight.
+4. **Nothing is written**: no marks are made by the follow, no take, no position other than
+   the reader's usual place. Recording stays out (§2.9): Read along is listening.
+5. **On a TV** (tvOS, Android TV, Fire TV; no reader): a **read-along panel** under the
+   transport while a production's listen-through plays: the line heard with one before and one
+   after (`ReaderCore.alongPanel`), the body at 29 pt or larger (the tvOS floor; Android TV
+   `bodyLarge` at 28 sp is the same size), the speaker's name in the part's hue, "Device voice"
+   beside a line the device reads, inside the title-safe area (5%). No marks, no recording, no
+   Read door, no pages. The panel never takes focus; focus stays on the transport.
+
+The follow logic is tested on each platform against the same cases: the plan's line by index,
+a mix's line by time, turning while following, holding still after a turn-away, and returning
+(`js/reader.test.js`, `ReadAlongTests`, `ReadAlongTest`).
+
 ### The platform idioms
 
 Same verbs, native idioms (`cross-platform-parity-discipline`).

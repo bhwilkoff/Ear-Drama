@@ -277,7 +277,7 @@ The only shapes; a new one needs a new rule.
   and one after, at 29 pt or larger (the body floor), the speaker's name in the
   part's hue, "Device voice" beside a line the device reads. It follows the
   audio by line id (the same `follow(line)` seam as the readers) and never takes
-  focus: focus stays on the transport. Planned, not built (PARITY.md ⏳).
+  focus: focus stays on the transport. Built 2026-11-15 as PLAYS-DESIGN §2.11 rule 5: `ReadAlongPanel` in the Listen Through screen; the line comes from the listen plan, 31 pt body, inside the 5% safe area.
   **No studio** (PLAYS-DESIGN §2.9): the TV records nothing, so the reader's
   studio, take lists and Record never appear here. **No marks** (PLAYS-DESIGN
   §2.10): marks are made where there is a selection, a keyboard or a pencil, and

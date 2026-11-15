@@ -1407,6 +1407,8 @@ body.reading #main-content { overflow: hidden; }
 .rd-now .rd-sp, .rd-line.rd-now:not(.rd-speech) { background: color-mix(in srgb, var(--color-text) 8%, transparent);
   box-shadow: -10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent), 10px 0 0 0 color-mix(in srgb, var(--color-text) 8%, transparent); }
 .rd-dock { flex-shrink: 0; }
+.rd-back-line { align-self: center; margin: var(--space-2) 0; flex-shrink: 0; }
+.rd-back-line[hidden] { display: none; }
 .rd-main { flex: 1; min-height: 0; display: flex; }
 .rd-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .rd-rec-btn { color: var(--color-record); border-color: color-mix(in srgb, var(--color-record) 45%, transparent); }

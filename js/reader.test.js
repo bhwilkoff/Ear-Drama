@@ -315,5 +315,38 @@ test('Close: back only from inside the app; a cold link goes to the play or its 
   eq([R.myLineStep('j'), R.myLineStep('K'), R.myLineStep('x')], [1, -1, 0], 'J and K');
 });
 
+test('read-along: the line heard comes from the listen plan; a mix finds its line by time', () => {
+  const plan = [{ lineID: 'L1', source: 'take' }, { lineID: 'L3', source: 'voice' }, { lineID: 'L4', source: 'take' }];
+  eq([R.alongLine(plan, 0), R.alongLine(plan, 1), R.alongLine(plan, 2)], ['L1', 'L3', 'L4'], 'plan entries in order');
+  eq([R.alongLine(plan, 3), R.alongLine(plan, -1), R.alongLine([], 0)], [null, null, null], 'past the end, none');
+  const pl = [{ lineID: 'L1', start: 0, frames: 100 }, { lineID: 'L2', start: 150, frames: 100 }];
+  const at = (s) => R.alongLineAt(pl, 100, s);
+  eq([at(0), at(0.99), at(1.2), at(1.5), at(2.49), at(2.6)], ['L1', 'L1', 'L1', 'L2', 'L2', null], 'a gap keeps the line before it; past the end, none');
+  eq(R.alongLineAt([], 100, 1), null, 'no placements');
+});
+
+test('read-along: the reader turns itself while following; scrolling away stops it; Back to the line returns', () => {
+  const f = R.alongFollow();
+  eq(f.line('L1'), { turn: true, back: false }, 'first line turns the page');
+  f.away();
+  eq(f.line('L2'), { turn: false, back: true }, 'away: no turn, the return is offered');
+  eq(f.line('L3'), { turn: false, back: true }, 'still away');
+  eq(f.back(), 'L3', 'back returns to the line now heard');
+  eq(f.line('L4'), { turn: true, back: false }, 'following again');
+  f.away();
+  f.line(null);
+  eq(f.back(), null, 'nothing heard, nothing to return to');
+  f.away();
+  eq(f.line(null), { turn: false, back: false }, 'no return offered when nothing plays');
+});
+
+test('read-along: the TV panel shows the line heard and one on each side', () => {
+  const s = { lines: ['A', 'B', 'C'].map((x, i) => ({ id: `L${i}`, kind: 'speech', part: x })) };
+  eq(R.alongPanel(s, 'L1').map(x => x && x.id), ['L0', 'L1', 'L2'], 'middle');
+  eq(R.alongPanel(s, 'L0').map(x => x && x.id), [null, 'L0', 'L1'], 'first has no line before');
+  eq(R.alongPanel(s, 'L2').map(x => x && x.id), ['L1', 'L2', null], 'last has none after');
+  eq(R.alongPanel(s, 'nope'), [null, null, null], 'unknown');
+});
+
 console.log(`${passes}/${passes + failures} passed${failures ? `, ${failures} FAILED` : ''}`);
 process.exit(failures ? 1 : 0);

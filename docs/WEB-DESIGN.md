@@ -643,6 +643,14 @@ web app follows today.
     script" box or Kind filter, as fifteen identical monograms headed
     "Most downloaded first".
 
+- **§4.16a Read along** (`?read={script id}&production={id}&along=1`; PLAYS-DESIGN
+  §2.11 binding). A production's **Read along** link sits beside Listen through. The
+  reader opens on the production's script with `ListenThrough` as its transport (the
+  bottom bar's Listen through / Stop in place of Hear the cast); `onChange` follows the
+  plan entry's line id (`ReaderCore.alongLine`); a swipe, tap, key, wheel or scroll
+  calls `away`, shows **Back to the line** (`.rd-back-line`, under the dock), and
+  Back to the line returns and follows again (`ReaderCore.alongFollow`). Frames and
+  gate: `tools/web_fit_along.py`. Not on the TV layer (no reader there).
 - **§4.16 The script reader** (`?read={script id}`; Decision 076, owner
   2026-11-14: *"You should be able to read a script and turn pages and
   mark them up and do all of the things that a good book/script reading

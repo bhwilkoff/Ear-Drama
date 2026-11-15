@@ -714,8 +714,12 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     their hues); an act opens a page; "NAME (cont'd)" heads a page that opens
     inside a speech; the cue before each of my speeches underlined in my hue.
     TalkBack reads each speech as one node: the name, then the words.
-  - Not on a TV (Android TV and Fire TV get a read-along panel later, as
-    tvOS-DESIGN §4.13).
+  - Not on a TV: Android TV and Fire TV get the read-along panel of
+    tvOS-DESIGN §4.13 (PLAYS-DESIGN §2.11 rule 5), a listen-through panel of
+    the line heard with one before and one after, 28 sp body, no focus.
+  - **Read along** (PLAYS-DESIGN §2.11): a production's Read along opens the
+    reader in follow mode; the listen plan's line id drives `follow`; a touch
+    stops the turning and **Back to the line** returns.
   - **The studio** (Decision 076 S3; PLAYS-DESIGN §2.9 binding; web sibling
     WEB-DESIGN §4.16 item 14; port spec `docs/research/design/R2-studio-port-brief.md`).
     `Route.Reader(scriptId, lineId?, productionId?, part?)`: the cast sheet's
