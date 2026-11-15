@@ -126,7 +126,7 @@ fun ListenScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Home") },
+                title = { Text("Ear Drama") },
                 actions = {
                     IconButton(onClick = onSurprise) { Icon(Icons.Filled.Shuffle, contentDescription = "Surprise") }
                 },

@@ -722,7 +722,8 @@ private struct ReaderScreen: View {
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }
         #if os(iOS)
-        .sheet(isPresented: Binding(get: { studio?.sheet ?? false }, set: { studio?.sheet = $0 })) {
+        .onChange(of: wide) { _, now in if now { studio?.sheet = false } }
+        .sheet(isPresented: Binding(get: { (studio?.sheet ?? false) && !wide }, set: { studio?.sheet = $0 })) {
             if let studio {
                 NavigationStack { StudioPanel(model: studio, voices: model.voices, close: { studio.sheet = false }) }
                     .presentationDetents([.medium, .large])
@@ -1344,8 +1345,9 @@ private struct ReaderLineView: View {
     }
 
     /// A direction's words, a part it names in capitals in that part's hue, upright and strong.
-    private func direction(_ text: String, italic: Bool, names: DirectionNames,
+    private func direction(_ raw: String, italic: Bool, names: DirectionNames,
                            add: (String, Font, Color, Bool, Color?) -> Void) {
+        let text = PlayPage.drawn(raw)
         let ns = text as NSString
         var last = 0
         let base = Font.system(size: size, design: .serif)

@@ -269,7 +269,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
 
 - **§4.1 Home** (Decision 075; the sections and data rules are the web's
   §4.2, shared; this is the iOS idiom). A `ScrollView` of sections, the
-  large title "Home", and one toolbar item, Surprise (a `Label` with the
+  large title "Ear Drama" (the tab and the Mac sidebar say Home), and one toolbar item, Surprise (a `Label` with the
   shuffle symbol), pushing §4.11. Top to bottom: **On the air** (tonight's
   slot on now, else the first genre station with a playable slot; a
   grammar row, then **Listen Live** `.borderedProminent` in ink and **All
@@ -316,7 +316,7 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
     Following ..., then the catalog's published shelves in order (R13)".
   - *Pending port* (2026-11-15 design review, `docs/research/design/R2-design-review.md`
     §6; WEB-DESIGN §4.2 items 1, 2 and 7, §4.15): the navigation title on Home
-    is **Ear Drama**; On the air's kicker reads "On the air · {source}" after
+    is **Ear Drama** (built 2026-11-15; the Mac sidebar keeps "Home"); On the air's kicker reads "On the air · {source}" after
     an ink dot (Today's Scene and the move are built, above, Decision 079), and
     the rest of this note: `todaysScene` (the
     `todaysPlay` hash over two voices and at most 20 min, else 2-3 voices and

@@ -763,7 +763,6 @@ const Reader = (() => {
     if (opts.along) {
       st.along = { production: opts.along.production, store: opts.along.store, dramaPlan: opts.along.dramaPlan || null, listen: null };
       hearBtn.addEventListener('click', () => alongToggle(st));
-      paintAlong(st);
     } else {
       hearBtn.addEventListener('click', () => hearCast(st));
       paintHear(st);
@@ -793,6 +792,7 @@ const Reader = (() => {
     }
     stage.focus({ preventScroll: true });
     st.handle = handle(st);
+    if (st.along) paintAlong(st);
     st.key = opts.studio ? `${script.id} ${opts.studio.production} ${opts.studio.part}` : script.id;
     return st.handle;
   }

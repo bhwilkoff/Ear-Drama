@@ -118,7 +118,7 @@ struct ListenScreen: View {
                 SkeletonRows(count: 3)
             }
         }
-        .navigationTitle("Home")
+        .navigationTitle("Ear Drama")
         #if os(iOS)
         // The way to Surprise (iOS-DESIGN §3.1, §4.1): a push, never a section.
         .toolbar {

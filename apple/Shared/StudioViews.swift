@@ -697,7 +697,7 @@ struct StudioPanel: View {
                     TakeRow(model: model, take: take, number: n + 1, chosen: session.production.chosen[line] == take.id)
                 }
                 if model.started {
-                    Button { model.again(line) } label: { Label("Record Again", systemImage: "mic") }
+                    Button { model.again(line) } label: { Label(takes.isEmpty ? "Record" : "Record Again", systemImage: "mic") }
                         .disabled(session.isBusy || session.run != nil)
                 }
             } header: {

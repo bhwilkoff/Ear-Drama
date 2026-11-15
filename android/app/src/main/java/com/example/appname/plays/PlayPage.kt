@@ -95,6 +95,9 @@ object PlayPage {
     private val EMPHASIS_END = Regex("[.!?][\"’”]?\\s*$")
 
     /** Replaces each break and the space after it with spaces of the same length (the offsets stay put). */
+    /** A run's words as drawn: a transcriber's wrap, kept as spaces so offsets hold, is one space on the page. */
+    fun drawn(text: String): String = text.replace(Regex(" {2,}"), " ")
+
     private fun flatten(text: String): String = text.replace(Regex("\n\\s*")) { " ".repeat(it.value.length) }
 
     private val OPEN_BRACKET = Regex("^\\s*[\\[(]\\s*")

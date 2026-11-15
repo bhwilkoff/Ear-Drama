@@ -788,7 +788,7 @@ fun StudioPanel(
                     colors = wayColors(),
                 ) {
                     Icon(Icons.Filled.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text("Record again", Modifier.padding(start = Spacing.S2.dp))
+                    Text(if (takes.isEmpty()) "Record" else "Record again", Modifier.padding(start = Spacing.S2.dp))
                 }
             }
         }

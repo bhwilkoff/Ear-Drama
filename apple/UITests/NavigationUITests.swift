@@ -114,9 +114,9 @@ final class NavigationUITests: DeviceTestCase {
         guard let a = firstHittable(app) ?? tiles(app).allElementsBoundByIndex.first(where: { $0.isHittable }) else { return XCTFail("no home tile") }
         let aName = name(a)
         a.tap()
-        settle(app, from: "Home")
+        settle(app, from: "Ear Drama")
         let aTitle = title(app)
-        XCTAssertNotEqual(aTitle, "Home", "Home's tile opened a page (\(aName))")
+        XCTAssertNotEqual(aTitle, "Ear Drama", "Home's tile opened a page (\(aName))")
         openTab(app, "Browse")
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "browse tiles")
         app.swipeUp(); app.swipeUp()
@@ -132,6 +132,6 @@ final class NavigationUITests: DeviceTestCase {
         sleep(1)
         XCTAssertEqual(title(app), aTitle, "Home still on its own show")
         back(app)
-        XCTAssertTrue(app.navigationBars["Home"].waitForExistence(timeout: 10), "Back lands on Home")
+        XCTAssertTrue(app.navigationBars["Ear Drama"].waitForExistence(timeout: 10), "Back lands on Home")
     }
 }
