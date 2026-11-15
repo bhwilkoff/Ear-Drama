@@ -175,24 +175,26 @@ class RecordingSession(
         heldStandIns = ArrayList()
         if (!started || kept.samples.isEmpty()) return null
         return try {
-            val file = store.writeTake(kept, _production.value, lineID)
-            val take = Take(
-                id = UUID.randomUUID().toString().uppercase(),
-                lineID = lineID,
-                part = part,
-                file = file,
-                created = ReferenceDate.now(),
-                frames = kept.samples.size,
-                sampleRate = kept.sampleRate,
-                capture = if (echoCancelled) Take.Capture.Aec else Take.Capture.Direct,
-                heard = heard,
-                loudness = BS1770.integratedLoudness(kept.samples, kept.sampleRate),
-                peak = BS1770.samplePeak(kept.samples),
-                bleed = bleed,
-            )
-            mutate { it.add(take) }
-            lastTakeBleed = bleed
-            take
+            store.takeWrite(_production.value.id) {
+                val file = store.writeTake(kept, _production.value, lineID)
+                val take = Take(
+                    id = UUID.randomUUID().toString().uppercase(),
+                    lineID = lineID,
+                    part = part,
+                    file = file,
+                    created = ReferenceDate.now(),
+                    frames = kept.samples.size,
+                    sampleRate = kept.sampleRate,
+                    capture = if (echoCancelled) Take.Capture.Aec else Take.Capture.Direct,
+                    heard = heard,
+                    loudness = BS1770.integratedLoudness(kept.samples, kept.sampleRate),
+                    peak = BS1770.samplePeak(kept.samples),
+                    bleed = bleed,
+                )
+                mutate { it.add(take) }
+                lastTakeBleed = bleed
+                take
+            }
         } catch (e: Exception) {
             phaseNow = Phase.Failed(e.message ?: "The take could not be saved.")
             null

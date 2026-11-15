@@ -88,6 +88,7 @@ const PlayStore = (() => {
     let loaded = null;
     const scripts = new Map();
     const writes = new Map();
+    const pendingTakes = new Map();
 
     const folder = (id) => `${id}/`;
     const recordPath = (id) => `${id}/production.json`;
@@ -117,7 +118,7 @@ const PlayStore = (() => {
               if (raw) { try { shares.set(p.id, JSON.parse(raw)); } catch { /* unreadable: not shared */ } }
             }));
             // An abandoned try never becomes a row (Decision 079, PLAYS-DESIGN §2.3 rule 3a).
-            for (const p of productions.filter(x => C.isEmptyProduction(x) && !shares.has(x.id))) {
+            for (const p of productions.filter(x => C.isEmptyProduction(x) && !shares.has(x.id) && !pendingTakes.has(x.id))) {
               await store.delete(p.id).catch(() => {});
             }
             return productions;
@@ -176,6 +177,30 @@ const PlayStore = (() => {
         const path = takePath(id, file);
         if ((await backend.get(path)) !== null) return;
         await backend.add(path, bytes instanceof ArrayBuffer ? bytes : bufferOf(new Uint8Array(bytes)));
+      },
+
+      /** A take being encoded and written for `id`: the production is not deleted until it settles (Decision 079). */
+      trackTake(id, work) {
+        const set = pendingTakes.get(id) || new Set();
+        pendingTakes.set(id, set);
+        const w = Promise.resolve(work).catch(() => {});
+        set.add(w);
+        w.then(() => { set.delete(w); if (!set.size) pendingTakes.delete(id); });
+        return work;
+      },
+      pendingTakes(id) { const set = pendingTakes.get(id); return set ? set.size : 0; },
+      async settled(id) {
+        while (pendingTakes.has(id)) await Promise.all([...pendingTakes.get(id)]);
+        await (writes.get(id) || Promise.resolve()).catch(() => {});
+      },
+
+      /** Deletes an abandoned try once its take writes have settled; never one held by a screen, shared, or with a take. */
+      async discardIfAbandoned(id, held = () => false) {
+        await store.settled(id);
+        const left = store.production(id);
+        if (!left || held() || !C.isEmptyProduction(left) || store.share(id) || store.pendingTakes(id)) return false;
+        await store.delete(id);
+        return true;
       },
 
       async delete(id) {

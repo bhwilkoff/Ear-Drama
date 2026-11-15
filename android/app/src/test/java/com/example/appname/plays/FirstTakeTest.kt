@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.launch
 import org.junit.Test
 
 /**
@@ -82,5 +83,42 @@ class FirstTakeTest {
         val full = store.create(script).add(take("t1", "L0003", PartID.role("MOLLY"), 4_800)).also(store::save)
         store.dropIfEmpty(full.id)
         assertEquals(full.id, store.production(full.id)?.id)
+    }
+
+    @Test fun `a take written after the old two second window survives with its production`() = kotlinx.coroutines.test.runTest {
+        val store = ProductionStore(temporaryRoot())
+        val made = store.create(script)
+        val leaving = launch { store.dropWhenSettled(made.id) }
+        var written = false
+        val writing = Thread {
+            store.takeWrite(made.id) {
+                Thread.sleep(2_500)
+                store.save(store.production(made.id)!!.add(take("late", "L0003", PartID.role("MOLLY"), 4_800)))
+                written = true
+            }
+        }
+        writing.start()
+        while (!store.hasPendingTake(made.id)) Thread.sleep(5)
+        store.dropIfEmpty(made.id)
+        assertEquals("a pending write is never dropped under", made.id, store.production(made.id)?.id)
+        writing.join()
+        leaving.join()
+        assertTrue(written)
+        assertEquals(1, store.production(made.id)?.takes?.size)
+    }
+
+    @Test fun `an empty production with no pending writes is removed on leave`() = kotlinx.coroutines.test.runTest {
+        val store = ProductionStore(temporaryRoot())
+        val made = store.create(script)
+        store.dropWhenSettled(made.id)
+        assertNull(store.production(made.id))
+    }
+
+    @Test fun `a held production is never pruned on leave`() = kotlinx.coroutines.test.runTest {
+        val store = ProductionStore(temporaryRoot())
+        val made = store.create(script)
+        store.hold(made.id)
+        store.dropWhenSettled(made.id)
+        assertEquals(made.id, store.production(made.id)?.id)
     }
 }
