@@ -2154,13 +2154,14 @@
     const prod = r.p.get('production');
     const part = r.p.get('part');
     const studio = !!(prod && part);
-    const along = !!(prod && !part && r.p.get('along'));
-    const key = studio ? `${r.id} ${prod} ${part}` : along ? `${r.id} ${prod} along` : r.id;
+    const fin = r.p.get('finished');
+    const along = !!((prod || fin) && !part && r.p.get('along'));
+    const key = studio ? `${r.id} ${prod} ${part}` : along ? `${r.id} ${prod || fin} along` : r.id;
     if (Reader.openKey() === key && body.firstChild) return;
     setTitle('Read');
     body.replaceChildren(stateBox('loading'));
     const close = () => {
-      const to = ReaderCore.closeTo(inApp(), studio || along, prod, r.id);
+      const to = fin && along ? (inApp() ? 'back' : `?drama=${encodeURIComponent(fin)}`) : ReaderCore.closeTo(inApp(), studio || along, prod, r.id);
       if (to === 'back') history.back(); else navigate(to, true);
     };
     /** The reader's Record (§4.16 item 14): the production this part records in, then the studio. Not on a TV. */
@@ -2174,21 +2175,24 @@
         announce('This browser could not save a production.');
       }
     };
-    const load = studio || along
+    const load = fin && along
+      ? API.playScript(r.id).then(async (script) => ({ script, dramaPlan: script ? await PlaysUI.dramaAlongFor(fin, script) : null }))
+      : studio || along
       ? PlaysUI.openStore().then(async (store) => {
         const p = store.production(prod);
         return p ? { script: await store.script(p), store } : { script: null };
       })
       : API.playScript(r.id).then(script => ({ script }));
-    load.then(({ script, store }) => {
+    load.then(({ script, store, dramaPlan }) => {
       if (my !== readerSeq || $('view-reader').hidden) return;
+      if (fin && along && !dramaPlan) { body.replaceChildren(stateBox('missing')); return; }
       if (!script) { body.replaceChildren(stateBox('missing')); return; }
       setTitle(script.title);
       Reader.open(body, script, {
         line: r.p.get('line'), onClose: close, navigate,
         onRecord: onRecord ? (p) => onRecord(script, p) : null,
         studio: studio ? { production: prod, part, store, line: r.p.get('line') } : null,
-        along: along ? { production: prod, store } : null,
+        along: along ? (fin ? { dramaPlan } : { production: prod, store }) : null,
       });
     }).catch((err) => {
       if (my !== readerSeq) return;

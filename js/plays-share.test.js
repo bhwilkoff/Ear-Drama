@@ -384,6 +384,7 @@ test('a finished drama\'s audio: a whole-play MP3, else the numbered line files 
                  f('0003-X.wav', 'WAV', { private: true }), f('history/files/0004-Y.wav~1~', 'WAV')];
   const got = S.pickAudio(line1, 'item');
   eq(got.lines.map(u => u.split('/').pop()), ['0001-EBEN.mp3', '0002-OAK.wav'], 'numbered files in order, best format each, no private or old revision');
+  eq(got.seqs, [1, 2], 'each file carries its line number (the line\'s place in the script)');
   ok(!got.whole, 'a numbered MP3 is never the whole play');
   const whole = S.pickAudio([...line1, f('play_64kb.mp3', '64Kbps MP3'), f('play.mp3', 'VBR MP3')], 'item');
   eq(whole.whole, 'https://archive.org/download/item/play.mp3', 'a whole-play MP3 wins, in the catalog\'s order');

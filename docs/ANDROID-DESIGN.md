@@ -763,7 +763,11 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     the line heard with one before and one after, 28 sp body, no focus.
   - **Read along** (PLAYS-DESIGN §2.11): a production's Read along opens the
     reader in follow mode; the listen plan's line id drives `follow`; a touch
-    stops the turning and **Back to the line** returns.
+    stops the turning and **Back to the line** returns. A **finished ear drama's** page
+    plays the item's per-line MP3s as one playlist (`PlaybackEngine.playFiles`, rows
+    `drama:{id}:{n}`) and offers **Read along** beside Listen when the files map onto the
+    script (PLAYS-DESIGN §2.11 rule 6): `Route.Reader(along, drama)`, the row playing being
+    the line heard. On a TV the drama page shows `ReadAlongPanel` under Listen.
   - **The studio** (Decision 076 S3; PLAYS-DESIGN §2.9 binding; web sibling
     WEB-DESIGN §4.16 item 14; port spec `docs/research/design/R2-studio-port-brief.md`).
     `Route.Reader(scriptId, lineId?, productionId?, part?)`: the cast sheet's

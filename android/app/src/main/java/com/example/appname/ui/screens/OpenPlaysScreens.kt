@@ -64,6 +64,8 @@ import com.example.appname.data.SeriesRow
 import com.example.appname.plays.DramaAudio
 import com.example.appname.navigation.SiteLinks
 import com.example.appname.plays.FinishedList
+import com.example.appname.plays.ReadAlong
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import com.example.appname.plays.FinishedPlay
 import com.example.appname.plays.InviteView
 import com.example.appname.plays.OpenInvite
@@ -543,7 +545,7 @@ fun EarDramasList(state: FinishedList.State, onOpen: (String) -> Unit, onRetry: 
 // MARK: A finished ear drama's page
 
 @Composable
-fun DramaScreen(id: String, onBack: () -> Unit) {
+fun DramaScreen(id: String, onBack: () -> Unit, onReadAlong: (FinishedPlay, List<ReadAlong.DramaLine>) -> Unit = { _, _ -> }) {
     val container = LocalAppContainer.current
     var attempt by remember { mutableIntStateOf(0) }
     val result by androidx.compose.runtime.produceState<Result<FinishedPlay>?>(null, id, attempt) {
@@ -576,14 +578,22 @@ fun DramaScreen(id: String, onBack: () -> Unit) {
                 val play = r.getOrThrow()
                 var audio by remember(play.id) { mutableStateOf<DramaAudio>(DramaAudio.Checking) }
                 LaunchedEffect(play.id) { audio = container.finished.audioFor(play) }
+                val script by androidx.compose.runtime.produceState<com.example.appname.plays.PlayScript?>(null, play.scriptId) {
+                    value = try { container.plays.script(play.scriptId) } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+                }
+                val plan = remember(audio, script) { script?.let { s -> (audio as? DramaAudio.Lines)?.let { ReadAlong.dramaPlan(it.files, s, play.scriptRevision) } } }
+                val now by container.playback.state.collectAsState()
+                val heard = ReadAlong.fileLine(plan.orEmpty(), plan.orEmpty().indexOfFirst { dramaRowId(play.id, it.seq) == now.episode?.id }.takeIf { now.isPlaying } ?: -1)
                 DramaContent(
                     play, padding, audio,
                     onPlay = { url ->
-                        container.playback.playFile(
-                            EpisodeRow("drama:${play.id}", "drama:${play.id}", play.title, null, null, null, play.title, null, PLAY_BOARD),
-                            url,
-                        )
+                        container.playback.playFile(dramaRow(play, "drama:${play.id}"), url)
                     },
+                    onPlayLines = { files ->
+                        container.playback.playFiles(files.map { dramaRow(play, dramaRowId(play.id, it.seq)) }, files.map { it.url })
+                    },
+                    onReadAlong = plan?.let { { onReadAlong(play, it) } },
+                    panel = if (LocalIsTelevision.current && heard != null) script?.let { s -> { ReadAlongPanel(s, heard, false) } } else null,
                 )
             }
         }
@@ -592,7 +602,15 @@ fun DramaScreen(id: String, onBack: () -> Unit) {
 
 /** The head board with the credits' voice strip, Listen and Share, then the bill. */
 @Composable
-fun DramaContent(play: FinishedPlay, contentPadding: PaddingValues, audio: DramaAudio = DramaAudio.Checking, onPlay: (String) -> Unit = {}) {
+fun DramaContent(
+    play: FinishedPlay,
+    contentPadding: PaddingValues,
+    audio: DramaAudio = DramaAudio.Checking,
+    onPlay: (String) -> Unit = {},
+    onPlayLines: (List<ReadAlong.DramaFile>) -> Unit = {},
+    onReadAlong: (() -> Unit)? = null,
+    panel: (@Composable () -> Unit)? = null,
+) {
     val uri = LocalUriHandler.current
     val named = play.credits.filter { it.name.isNotBlank() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
@@ -618,17 +636,30 @@ fun DramaContent(play: FinishedPlay, contentPadding: PaddingValues, audio: Drama
             ActionRow(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { fit ->
                 if (audio !is DramaAudio.Deriving) {
                     Button(
-                        onClick = { (audio as? DramaAudio.Ready)?.let { onPlay(it.url) } },
-                        enabled = audio is DramaAudio.Ready,
+                        onClick = {
+                            when (audio) {
+                                is DramaAudio.Ready -> onPlay(audio.url)
+                                is DramaAudio.Lines -> onPlayLines(audio.files)
+                                else -> Unit
+                            }
+                        },
+                        enabled = audio is DramaAudio.Ready || audio is DramaAudio.Lines,
                         colors = playButtonColors(),
                     ) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null)
                         Text("Listen", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
                     }
+                    if (onReadAlong != null && !LocalIsTelevision.current) {
+                        OutlinedButton(onClick = onReadAlong) {
+                            Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null)
+                            Text("Read along", Modifier.padding(start = Spacing.S2.dp), maxLines = 1)
+                        }
+                    }
                 }
                 ShareButton(play.title, SiteLinks.drama(play.id), fit.folded)
             }
         }
+        if (panel != null) item(key = "panel") { Box(Modifier.padding(horizontal = Spacing.S4.dp)) { panel() } }
         item(key = "audio-line") {
             Column(Modifier.padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
                 if (audio is DramaAudio.Deriving) Text("The audio is still being prepared.", style = MaterialTheme.typography.bodyMedium)
@@ -648,3 +679,8 @@ fun DramaContent(play: FinishedPlay, contentPadding: PaddingValues, audio: Drama
         }
     }
 }
+
+/** A finished drama's file as a row for the player: the number is the file's, so the row playing names the line heard. */
+internal fun dramaRowId(pid: String, seq: Int) = "drama:$pid:$seq"
+
+private fun dramaRow(play: FinishedPlay, id: String) = EpisodeRow(id, id, play.title, null, null, null, play.title, null, PLAY_BOARD)

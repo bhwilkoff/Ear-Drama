@@ -5,29 +5,59 @@ import SwiftUI
 /// their files and open lines in the cast's device voices, live and never stored; the reader follows `listen.current`.
 @Observable
 final class AlongModel {
-    let listen: LiveListenThrough
-    @ObservationIgnored private let production: Production
+    /// A production's listen-through; nil for a finished drama.
+    let listen: LiveListenThrough?
+    /// A finished drama's files, the file playing naming the line heard (PLAYS-DESIGN 2.11 rule 6); nil for a production.
+    let drama: FinishedListen?
+    @ObservationIgnored private let production: Production?
+    @ObservationIgnored private let play: FinishedPlay?
     @ObservationIgnored private let script: PlayScript
-    @ObservationIgnored private let store: ProductionStore
+    @ObservationIgnored private let store: ProductionStore?
 
     init(production: Production, script: PlayScript, plays: PlaysLibrary) {
         self.production = production
         self.script = script
+        play = nil
+        drama = nil
         store = plays.store
         listen = .system(cast: .production(production.id, script: script))
     }
 
-    func toggle(from position: Int, player: AudioPlayer) {
-        if listen.isRunning { listen.stop(); return }
+    init(play: FinishedPlay, script: PlayScript) {
+        self.play = play
+        self.script = script
+        production = nil
+        store = nil
+        listen = nil
+        drama = FinishedListen()
+    }
+
+    var isRunning: Bool { listen?.isRunning ?? drama?.isActive ?? false }
+    /// The line heard now.
+    var lineID: String? { listen?.current?.lineID ?? drama?.lineID }
+    /// A line the device reads aloud; a finished drama has only voices.
+    var deviceVoice: Bool { listen?.current?.isDeviceVoice ?? false }
+
+    func toggle(from position: Int, player: AudioPlayer, muted: Bool = false) {
+        if isRunning { stop(); return }
         player.pause()
+        let from = script.lines[min(max(0, position), script.lines.count - 1)...].map(\.id)
+        if let drama, let play {
+            drama.muted = muted
+            Task { await drama.start(archiveURL: play.archiveURL, script: script, revision: play.scriptRevision, from: from.first) }
+            return
+        }
+        guard let listen, let production, let store else { return }
         let latest = store.production(production.id) ?? production
-        let ids = Set(script.lines[min(max(0, position), script.lines.count - 1)...].map(\.id))
+        let ids = Set(from)
         let plan = Relay.listenPlan(latest, script, reads: listen.reads).filter { ids.contains($0.lineID) }
-        let store = store
         Task { await listen.run(plan) { store.takeURL(latest, $0) } }
     }
 
-    func stop() { listen.stop() }
+    func stop() {
+        listen?.stop()
+        drama?.stop()
+    }
 }
 
 /// Read Along on a production's page: opens the reader on the production's own script, following its listen-through.

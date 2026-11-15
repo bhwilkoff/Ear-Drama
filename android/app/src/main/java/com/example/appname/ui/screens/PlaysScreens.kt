@@ -838,7 +838,7 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
     val entry by listen.current.collectAsState()
     val line = entry?.let { e -> script.lines.firstOrNull { it.id == e.lineID } }
     if (LocalIsTelevision.current) {
-        ReadAlongPanel(script, entry)
+        ReadAlongPanel(script, entry?.lineID, entry is Relay.ListenEntry.Voice)
         OutlinedButton(onClick = onStop) {
             Icon(Icons.Filled.Stop, contentDescription = null)
             Text("Stop", Modifier.padding(start = Spacing.S2.dp))
@@ -872,9 +872,9 @@ private fun LiveListenPanel(listen: LiveListen, script: PlayScript, onStop: () -
  * floor), no marks, no recording, never focusable: focus stays on Stop.
  */
 @Composable
-private fun ReadAlongPanel(script: PlayScript, entry: Relay.ListenEntry?) {
+internal fun ReadAlongPanel(script: PlayScript, lineId: String?, deviceVoice: Boolean) {
     val dark = OnAir.colors.dark
-    val (before, now, after) = ReadAlong.panel(script.lines, entry?.lineID ?: return)
+    val (before, now, after) = ReadAlong.panel(script.lines, lineId ?: return)
     Column(
         Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
         verticalArrangement = Arrangement.spacedBy(Spacing.S3.dp),
@@ -888,7 +888,7 @@ private fun ReadAlongPanel(script: PlayScript, entry: Relay.ListenEntry?) {
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.SemiBold),
                         color = genreColor(script.partHue(line.part), dark) ?: MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (current && entry is Relay.ListenEntry.Voice) {
+                    if (current && deviceVoice) {
                         Text("Device voice", style = MaterialTheme.typography.bodyMedium.copy(fontSize = 28.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

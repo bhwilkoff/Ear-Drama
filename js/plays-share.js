@@ -324,8 +324,10 @@ const PlaysShare = (() => {
       const had = byLine.get(key);
       if (!had || LINE_RANK.indexOf(extOf(f.name)) < LINE_RANK.indexOf(extOf(had.name))) byLine.set(key, f);
     }
-    const lines = [...byLine.keys()].sort().map(k => href(byLine.get(k)));
-    return lines.length ? { lines } : null;
+    const keys = [...byLine.keys()].sort();
+    const lines = keys.map(k => href(byLine.get(k)));
+    // The file number is the line's 1-based place in the script (worker/src/plays-archive.js fileName).
+    return lines.length ? { lines, seqs: keys.map(k => parseInt(k, 10)) } : null;
   }
 
   /* ---- One plain line for each refusal (AGENTS.md: a refusal, a warning, or a fact) ---- */

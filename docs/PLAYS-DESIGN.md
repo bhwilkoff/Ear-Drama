@@ -554,8 +554,8 @@ audio; a rendered mix, which has no plan, finds its line by the timeline's place
 1. **The door**: **Read along** on a production's page (and Made here), beside Listen through.
    It opens the reader on the production's own copy of the script in follow mode and the
    listen-through transport takes the place of Hear the cast in the bottom bar. A finished ear
-   drama (DEEP_LINKS "Finished ear drama") offers Read along only when its audio has a line
-   timeline (per-line files); a single recording with no timings gets the Read door, never a
+   drama (DEEP_LINKS "Finished ear drama") offers Read along beside Listen when its audio has
+   a line timeline (rule 6); a single recording with no timings gets the Read door, never a
    guessed sync.
 2. **Following**: the current line is highlighted with the play typography (the line's speaker
    in the part's hue); pages turn themselves to the line; the page holds the line in view in
@@ -573,9 +573,30 @@ audio; a rendered mix, which has no plan, finds its line by the timeline's place
    beside a line the device reads, inside the title-safe area (5%). No marks, no recording, no
    Read door, no pages. The panel never takes focus; focus stays on the transport.
 
+6. **A finished ear drama** (Decision 073: one archive.org item per production, one file per
+   line, named so a retry can only overwrite): the file's name is `NNNN-PART.ext` and `NNNN`
+   is the line's **1-based place in the script** (`fileName` in `worker/src/plays-archive.js`;
+   the cast sheet is the script's lines in order). The clients play the item's line files in
+   order, and the file playing is the line heard, so the timing is exact at file boundaries
+   and needs no durations or guess: web `ReaderCore.dramaPlan` / `dramaListen`, Apple
+   `FinishedDramas.linePlan` + `ReadAlong.line(files:)`, Android `ReadAlong.dramaPlan`
+   (`ArchivePick.lines`). A silent or removed line has no file, so the highlight skips it,
+   never shifts. The numbering holds only for the script revision the lines were recorded
+   against, so the Worker's finished record carries `script_revision` and a client offers
+   Read along only when its own copy of the script has that revision; a Worker that sends
+   none, another revision, a number past the script, one whole recording, or lines still
+   waiting for their MP3 offers no Read along. The door is **Read along** beside Listen on
+   the finished drama's page (web `?read={script id}&finished={production id}&along=1`; iOS,
+   iPadOS and Mac as a reader over the library's script with the item's files as the
+   transport; Android `Route.Reader(along, drama)`); the reader's Listen through plays the
+   files and nothing is written. On a TV (tvOS, Android TV) the drama page's Listen shows the
+   rule 5 panel under it while the files play.
+
 The follow logic is tested on each platform against the same cases: the plan's line by index,
 a mix's line by time, turning while following, holding still after a turn-away, and returning
-(`js/reader.test.js`, `ReadAlongTests`, `ReadAlongTest`).
+(`js/reader.test.js`, `ReadAlongTests`, `ReadAlongTest`); a finished drama's file-to-line
+mapping against the same fixtures (`reader.test.js`, `FinishedDramasTests`, `OpenPlaysViewTest`)
+and the Worker's file-number contract (`worker/test/archive.test.js`).
 
 ### The platform idioms
 

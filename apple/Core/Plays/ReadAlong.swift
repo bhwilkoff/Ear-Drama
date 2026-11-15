@@ -8,6 +8,11 @@ nonisolated enum ReadAlong {
         plan.indices.contains(index) ? plan[index].lineID : nil
     }
 
+    /// The line a finished drama's file `index` speaks; nil past either end. The file playing is the line heard.
+    static func line(files: [FinishedLine], at index: Int) -> String? {
+        files.indices.contains(index) ? files[index].lineID : nil
+    }
+
     struct Span: Equatable, Sendable {
         let lineID: String
         let start: Int

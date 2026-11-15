@@ -814,7 +814,9 @@ struct StudioWindow_macOS: View {
 
     var body: some View {
         Group {
-            if let production = plays.store.production(value.target.production) {
+            if let scriptID = value.target.dramaScriptID {
+                ScriptReaderView(scriptID: scriptID, startLine: value.line, studio: value.target)
+            } else if let production = plays.store.production(value.target.production) {
                 ScriptReaderView(scriptID: production.scriptID, startLine: value.line, studio: value.target)
             } else {
                 EmptyState("Production not found", systemImage: "questionmark.square.dashed")

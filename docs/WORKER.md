@@ -370,7 +370,7 @@ uploading, reporting and blocking need an account.
 |---|---|
 | `GET /open/invite` with header `x-invite: <token>` | the play: `{ id, scriptID, scriptRevision, title, source, parts: [{ id, lineCount, status, performer? }], members: [{ name, director }], takes: [{ id, lineID, part, frames, sampleRate, audio }], chosen, next, archive, expires_at, server_time }`; `Cache-Control: private, max-age=30` |
 | `GET /open/invite/takes/:takeId/audio` with the same header | a chosen, visible take's audio; `private, max-age=300` |
-| `GET /finished?limit=&cursor=` | `{ productions: [{ id, script_id, title, source, credits: [{ part, name }], archive_url, published_at }], next_cursor }`; `limit` 1 to 50 (default 20); `Cache-Control: public, max-age=300, s-maxage=300` |
+| `GET /finished?limit=&cursor=` | `{ productions: [{ id, script_id, script_revision, title, source, credits: [{ part, name }], archive_url, published_at }], next_cursor }`; `limit` 1 to 50 (default 20); `Cache-Control: public, max-age=300, s-maxage=300` |
 | `GET /finished/:pid` | one of the above, `404` if it is not (or no longer) finished |
 
 - **The token rides a header**, never the path or query, so no access log holds
@@ -389,6 +389,14 @@ uploading, reporting and blocking need an account.
 - **Finished means** the archive job is `published` and at least one line is
   still on the item. The order is a stated rule: newest `published_at` first, ties
   by id descending, never engagement. The cursor is `published_at:id`.
+- **The item's files and the read-along** (PLAYS-DESIGN §2.11 rule 6): the published item
+  holds one file per line, `NNNN-PART.wav|flac` (archive.org adds an MP3 of each), where
+  `NNNN` is the line's 1-based place in the script (`fileName(seq, ...)`, `seq` the line's
+  index in the cast sheet plus one; a test pins it). That number plus `script_revision` is
+  all a client needs to say which line a file speaks, so a finished drama's read-along
+  follows file boundaries with no per-line timing stored. A line with no file (silent or
+  removed) is a gap in the numbers, never a renumbering. `script_revision` is the revision
+  the production was recorded against; the numbers mean nothing for another revision.
 - **Credits** run part by part in script order, one `{ part, name }` for each
   performer chosen on a line still on the item. A removed line (P12) drops its
   credit, and a part whose every line is removed drops out. A deleted account's

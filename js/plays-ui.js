@@ -1277,6 +1277,14 @@ const PlaysUI = (() => {
     return got;
   }
 
+  /** A finished drama's read-along plan (PLAYS-DESIGN §2.11 rule 6) for `script`, or null when its audio has no
+      line timeline: a whole recording, files still being made, or another revision of the script. */
+  async function dramaAlong(d, script) {
+    if (!script || d.script_id !== script.id) return null;
+    return ReaderCore.dramaPlan(await archiveAudio(d.archive_url), script, d.script_revision);
+  }
+  async function dramaAlongFor(pid, script) { return dramaAlong(await API.plays.finishedOne(pid), script); }
+
   /** A finished ear drama's page: the board with its credits, Listen, and the bill. */
   async function renderDrama(body, helpers, pid) {
     h = helpers;
@@ -1329,6 +1337,10 @@ const PlaysUI = (() => {
         });
       }
       listen.replaceChildren(button);
+      dramaAlong(d, script).then((plan) => {
+        if (!plan || my !== token) return;
+        listen.append(h.el('a', { class: 'btn btn-ghost read-along', href: `?read=${encodeURIComponent(script.id)}&finished=${encodeURIComponent(d.id)}&along=1` }, 'Read along'));
+      }).catch((err) => console.error(err));
     }).catch((err) => { console.error(err); waiting(); });
     body.replaceChildren(...[board, acts,
       d.credits && d.credits.length ? h.el('section', { class: 'block', 'aria-labelledby': 'bill-h' },
@@ -1515,5 +1527,5 @@ const PlaysUI = (() => {
     return renderScript(body, my, r.p.get('play'));
   }
 
-  return { openStore, render, renderInvite, renderDrama, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
+  return { openStore, render, renderInvite, renderDrama, dramaAlongFor, renderDramas, newDramas, openParts, renderMine: (body, helpers, opts) => { watchAccount(); return renderMine(body, helpers, opts); }, startButton, readLink, leave, fingerprint, BOARD };
 })();

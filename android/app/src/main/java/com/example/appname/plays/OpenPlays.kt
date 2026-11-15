@@ -73,6 +73,8 @@ data class FinishedPlay(
     @SerialName("archive_url") val archiveUrl: String,
     /** Milliseconds since 1970 on the Worker's clock. */
     @SerialName("published_at") val publishedAt: Long = 0,
+    /** The script revision the lines were recorded against; the item's file numbers are that revision's line places. */
+    @SerialName("script_revision") val scriptRevision: String? = null,
 )
 
 /** Newest published first; [nextCursor] goes back as `cursor` for the next page, null ends the list. */
@@ -172,26 +174,50 @@ object ArchivePick {
     fun itemId(archiveUrl: String): String? =
         archiveUrl.substringBefore('?').trimEnd('/').substringAfterLast('/').takeIf { it.isNotEmpty() && "://" !in it }
 
-    /**
-     * The `/download/` URL of an MP3 the item holds: never a private file or an old revision, a whole-play
-     * file before a numbered per-line one, then by name. Null while no MP3 derivative exists yet.
-     */
-    fun pick(item: String, metadata: String): String? {
+    private val NUMBERED = Regex("^(\\d{4})-")
+
+    private fun url(item: String, name: String) =
+        "https://archive.org/download/$item/" + name.split('/').joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+
+    /** The item's public files as (name, format), never a private file or an old revision; empty when unreadable. */
+    private fun files(metadata: String): List<Pair<String, String>> {
         val files = try {
             ShareJson.parseToJsonElement(metadata).jsonObject["files"]?.jsonArray
         } catch (e: Exception) {
             null
-        } ?: return null
-        val names = files.mapNotNull { f ->
+        } ?: return emptyList()
+        return files.mapNotNull { f ->
             val o = f.jsonObject
             val name = o["name"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
             val format = o["format"]?.jsonPrimitive?.contentOrNull.orEmpty()
             val private = o["private"]?.jsonPrimitive?.contentOrNull == "true"
-            name.takeIf { !private && "MP3" in format.uppercase() && !name.startsWith("history/") && !name.contains("~") }
+            (name to format).takeIf { !private && !name.startsWith("history/") && !name.contains("~") }
         }
-        val whole = names.filter { !Regex("^\\d{4}-").containsMatchIn(it) }.sorted()
-        val name = whole.firstOrNull() ?: names.sorted().firstOrNull() ?: return null
-        return "https://archive.org/download/$item/" + name.split('/').joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+    }
+
+    /**
+     * The `/download/` URL of a whole-play MP3 the item holds: never a private file, an old revision or a numbered
+     * per-line file (those are [lines]). Null while the item has no whole-play MP3.
+     */
+    fun pick(item: String, metadata: String): String? {
+        val name = files(metadata).filter { (n, f) -> "MP3" in f.uppercase() && !NUMBERED.containsMatchIn(n) }.map { it.first }.sorted().firstOrNull()
+        return name?.let { url(item, it) }
+    }
+
+    /**
+     * A published item's per-line MP3s in script order (Decision 073: one file per line, `0042-PART.wav`, and archive.org
+     * derives an MP3 of each). Empty until every numbered original has its MP3, so a drama is never played with
+     * lines missing from the middle.
+     */
+    fun lines(item: String, metadata: String): List<ReadAlong.DramaFile> {
+        val all = files(metadata)
+        val numbered = all.filter { NUMBERED.containsMatchIn(it.first) }
+        val wanted = numbered.mapNotNull { NUMBERED.find(it.first)?.groupValues?.get(1)?.toInt() }.toSortedSet()
+        val mp3 = numbered.filter { "MP3" in it.second.uppercase() }
+            .groupBy { NUMBERED.find(it.first)!!.groupValues[1].toInt() }
+            .mapValues { (_, v) -> v.map { it.first }.sorted().first() }
+        if (wanted.isEmpty() || !mp3.keys.containsAll(wanted)) return emptyList()
+        return wanted.map { ReadAlong.DramaFile(url(item, mp3.getValue(it)), it) }
     }
 }
 
@@ -199,6 +225,8 @@ object ArchivePick {
 sealed interface DramaAudio {
     data object Checking : DramaAudio
     data class Ready(val url: String) : DramaAudio
+    /** One MP3 for each line of the item, in script order; a Read along follows the file playing (PLAYS-DESIGN 2.11 rule 6). */
+    data class Lines(val files: List<ReadAlong.DramaFile>) : DramaAudio
     /** archive.org holds no MP3 yet (derivatives are made later). */
     data object Deriving : DramaAudio
     data object Failed : DramaAudio
@@ -213,15 +241,22 @@ class FinishedList(private val api: OpenPlaysApi, private val metadata: suspend 
         audio[play.id]?.let { return it }
         val item = ArchivePick.itemId(play.archiveUrl) ?: return DramaAudio.Failed
         val found = try {
-            ArchivePick.pick(item, metadata(item))?.let { DramaAudio.Ready(it) } ?: DramaAudio.Deriving
+            val md = metadata(item)
+            ArchivePick.pick(item, md)?.let { DramaAudio.Ready(it) }
+                ?: ArchivePick.lines(item, md).takeIf { it.isNotEmpty() }?.let { DramaAudio.Lines(it) }
+                ?: DramaAudio.Deriving
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             return DramaAudio.Failed
         }
-        if (found is DramaAudio.Ready) audio[play.id] = found
+        if (found is DramaAudio.Ready || found is DramaAudio.Lines) audio[play.id] = found
         return found
     }
+
+    /** The drama's line timeline for [script], or null when its audio has none (a whole recording, files still being made, another revision). */
+    suspend fun alongFor(play: FinishedPlay, script: PlayScript): List<ReadAlong.DramaLine>? =
+        (audioFor(play) as? DramaAudio.Lines)?.let { ReadAlong.dramaPlan(it.files, script, play.scriptRevision) }
 
     sealed interface State {
         data object Loading : State

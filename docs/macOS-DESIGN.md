@@ -227,7 +227,9 @@ only here:
 - **§4.7a Read along** (PLAYS-DESIGN §2.11; iOS-DESIGN §4.15a is the same view): the
   production window's Read along is the reader in follow mode; Space stops and starts the
   listen-through; scrolling or a key turn stops the turning and **Back to the line**
-  (a toolbar button) returns.
+  (a toolbar button) returns. A finished ear drama's page opens the same window on the library's
+  script (`StudioTarget.drama`), the item's line files as the transport (PLAYS-DESIGN §2.11
+  rule 6).
 - **§4.7 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 binding on
   the verbs; `docs/iOS-DESIGN.md` §4.15 for the shared SwiftUI view; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** on a play's page,

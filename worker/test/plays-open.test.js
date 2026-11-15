@@ -305,6 +305,7 @@ describe("finished ear dramas are listed and credited", () => {
       {
         id: f.p.id,
         script_id: script.id,
+        script_revision: script.revision,
         title: f.p.title,
         source: MANIFEST.scripts[script.id].source,
         credits: [

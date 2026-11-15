@@ -192,6 +192,9 @@ import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
 import com.example.appname.plays.LiveListen
+import com.example.appname.plays.FinishedList
+import com.example.appname.data.EpisodeRow
+import com.example.appname.ui.PLAY_BOARD
 import com.example.appname.plays.ReadAlong
 import com.example.appname.plays.TableRead
 import com.example.appname.ui.VoicePickerSheet
@@ -241,8 +244,11 @@ private sealed interface Loaded {
     data object Loading : Loaded
     data object Missing : Loaded
     data class Failed(val line: String) : Loaded
-    data class Ready(val script: PlayScript) : Loaded
+    data class Ready(val script: PlayScript, val drama: DramaAlong? = null) : Loaded
 }
+
+/** A finished drama's read-along: its production id and the line each of its files speaks. */
+private class DramaAlong(val pid: String, val plan: List<ReadAlong.DramaLine>)
 
 /** The reader over one play, full screen: it opens at [startLine], else where this device last left off. */
 @Composable
@@ -252,14 +258,23 @@ fun ReaderScreen(
     productionId: String? = null,
     part: String? = null,
     along: Boolean = false,
+    drama: String? = null,
     onBack: () -> Unit,
     onOpenStudio: (String, String, String?) -> Unit = { _, _, _ -> },
 ) {
-    val plays = LocalAppContainer.current.plays
+    val container = LocalAppContainer.current
+    val plays = container.plays
     var attempt by remember { mutableStateOf(0) }
-    val loaded by produceState<Loaded>(Loaded.Loading, scriptId, productionId, attempt) {
+    val loaded by produceState<Loaded>(Loaded.Loading, scriptId, productionId, drama, attempt) {
         value = Loaded.Loading
         value = try {
+            if (drama != null) {
+                val play = (container.finished.state.value as? FinishedList.State.Ready)?.plays?.firstOrNull { it.id == drama } ?: container.openPlays.finished(drama)
+                val script = plays.script(scriptId)
+                val plan = script?.let { container.finished.alongFor(play, it) }
+                value = if (script != null && plan != null) Loaded.Ready(script, DramaAlong(drama, plan)) else Loaded.Missing
+                return@produceState
+            }
             // With the studio the script is the production's own copy, so its line ids match the takes.
             (productionId?.let { plays.castScript(it) } ?: plays.script(scriptId))?.let { Loaded.Ready(it) } ?: Loaded.Missing
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -272,11 +287,12 @@ fun ReaderScreen(
         Loaded.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(Modifier.semantics { contentDescription = "Loading" })
         }
-        Loaded.Missing -> ReaderFrame(onBack) { EmptyMessage("This play is not on this device.") }
+        Loaded.Missing -> ReaderFrame(onBack) { EmptyMessage(if (drama != null) "This recording has no line timeline." else "This play is not on this device.") }
         is Loaded.Failed -> ReaderFrame(onBack) { EmptyMessage(l.line, action = EmptyAction("Try again") { attempt++ }) }
         is Loaded.Ready -> ReaderBody(
             l.script, startLine, if (productionId != null && part != null) StudioTarget(productionId, PartID(part)) else null,
             onBack, onOpenStudio, alongProduction = productionId.takeIf { along && part == null },
+            alongDrama = l.drama.takeIf { along },
         )
     }
 }
@@ -1480,6 +1496,7 @@ private fun ReaderBody(
     onBack: () -> Unit,
     onOpenStudio: (String, String, String?) -> Unit,
     alongProduction: String? = null,
+    alongDrama: DramaAlong? = null,
 ) {
     val context = LocalContext.current
     val store = remember { ReaderStore(context.getSharedPreferences("ed.reader", android.content.Context.MODE_PRIVATE)) }
@@ -1621,7 +1638,8 @@ private fun ReaderBody(
     SideEffect { studio?.studio?.onFollow = { id -> follow(id) } }
 
     // Read along (PLAYS-DESIGN §2.11): the production's listen-through, the page following the line heard.
-    val alongMode = alongProduction != null
+    val alongMode = alongProduction != null || alongDrama != null
+    var dramaOn by remember { mutableStateOf(false) }
     val alongFollow = remember(script.id) { ReadAlong.Follow() }
     var alongLine by remember { mutableStateOf<String?>(null) }
     var backShown by remember { mutableStateOf(false) }
@@ -1629,6 +1647,7 @@ private fun ReaderBody(
     var alongJob by remember { mutableStateOf<Job?>(null) }
     fun alongAway() { if (alongMode && alongFollow.following) alongFollow.away() }
     fun stopAlong() {
+        if (dramaOn) { dramaOn = false; container.playback.stop() }
         alongJob?.cancel()
         alongJob = null
         alongListen?.close()
@@ -1637,7 +1656,25 @@ private fun ReaderBody(
         backShown = false
         hearing = null
     }
-    DisposableEffect(script.id) { onDispose { alongJob?.cancel(); alongListen?.close() } }
+    DisposableEffect(script.id) { onDispose { alongJob?.cancel(); alongListen?.close(); if (dramaOn) container.playback.stop() } }
+    // A finished drama: the file playing is the line heard, the page following it at file boundaries.
+    LaunchedEffect(dramaOn) {
+        val d = alongDrama ?: return@LaunchedEffect
+        if (!dramaOn) return@LaunchedEffect
+        container.playback.state.collect { st ->
+            val seq = d.plan.firstOrNull { dramaRowId(d.pid, it.seq) == st.episode?.id }?.seq
+            val last = d.plan.lastOrNull()?.takeIf { it.seq == seq }
+            if (seq == null || (last != null && !st.isPlaying && st.durationMs > 0 && st.positionMs >= st.durationMs - 250)) {
+                stopAlong()
+                return@collect
+            }
+            val id = script.lines[seq - 1].id
+            val step = alongFollow.line(id)
+            alongLine = id
+            backShown = step.back
+            if (step.turn) follow(id)
+        }
+    }
     LaunchedEffect(alongListen) {
         val l = alongListen ?: return@LaunchedEffect
         l.current.collect { entry ->
@@ -1648,7 +1685,21 @@ private fun ReaderBody(
             if (step.turn && entry != null) follow(entry.lineID)
         }
     }
+    fun startDramaAlong(d: DramaAlong) {
+        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+        alongFollow.back()
+        backShown = false
+        val files = d.plan.filter { it.seq > posIndex }.ifEmpty { d.plan }
+        dramaOn = true
+        haptics(Haptic.Selection)
+        container.playback.playFiles(
+            files.map { f -> dramaRowId(d.pid, f.seq).let { EpisodeRow(it, it, script.title, null, null, null, script.title, null, PLAY_BOARD) } },
+            files.map { it.url },
+        )
+    }
+
     fun startAlong() {
+        alongDrama?.let { return startDramaAlong(it) }
         val h = castHandle ?: return
         val id = alongProduction ?: return
         val production = container.plays.store.production(id) ?: return
@@ -1845,8 +1896,8 @@ private fun ReaderBody(
                         }
                     }
                 }
-                if (castHandle != null && alongMode) {
-                    val on = alongListen != null
+                if ((castHandle != null || alongDrama != null) && alongMode) {
+                    val on = alongListen != null || dramaOn
                     TextButton(onClick = { if (on) stopAlong() else startAlong() }) {
                         Icon(if (on) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = if (on) "Stop" else "Listen through")
                         if (wide) Text(if (on) "Stop" else "Listen through", Modifier.padding(start = Spacing.S1.dp))

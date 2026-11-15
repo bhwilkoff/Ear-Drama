@@ -551,7 +551,11 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   A production's **Read along** opens the reader in follow mode with Listen through as
   the bottom bar's transport; `ReadAlong` (Core) maps the listen plan's line id to
   `ReaderController.follow`; a drag or tap stops the turning and **Back to the line**
-  returns. iPad and Mac share the view; takes and cast voices follow alike.
+  returns. iPad and Mac share the view; takes and cast voices follow alike. A **finished
+  ear drama's** page adds **Read Along** beside Listen when the item's line files map onto the
+  library script (PLAYS-DESIGN §2.11 rule 6): `StudioTarget.drama` opens the reader on the
+  library's script with `AlongModel(play:)`, whose transport is `FinishedListen` (an
+  `AVQueuePlayer` of the item's line files); the file playing is the line heard.
 - **§4.15 The script reader** (Decision 076 S1; PLAYS-DESIGN §2.7 is binding
   on the verbs, WEB-DESIGN §4.16 is the sibling; port spec
   `docs/research/design/R2-reader-port-brief.md`). **Read** sits beside

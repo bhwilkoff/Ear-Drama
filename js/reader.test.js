@@ -28,6 +28,8 @@ function test(name, fn) {
   try { fn(); passes += 1; console.log(`  ok    ${name}`); }
   catch (e) { failures += 1; console.log(`  FAIL  ${name}\n        ${e.message}`); }
 }
+const later = [];
+function atest(name, fn) { later.push([name, fn]); }
 function eq(a, b, msg) {
   const x = JSON.stringify(a), y = JSON.stringify(b);
   if (x !== y) throw new Error(`${msg}: got ${x}, want ${y}`);
@@ -348,5 +350,45 @@ test('read-along: the TV panel shows the line heard and one on each side', () =>
   eq(R.alongPanel(s, 'nope'), [null, null, null], 'unknown');
 });
 
-console.log(`${passes}/${passes + failures} passed${failures ? `, ${failures} FAILED` : ''}`);
-process.exit(failures ? 1 : 0);
+test('read-along, finished drama: a file number is its line\'s 1-based place in the script; a revision mismatch offers nothing', () => {
+  const s = { revision: 'r1', lines: ['A', 'B', 'C', 'D'].map((x, i) => ({ id: `L${i}`, kind: 'speech', part: x })) };
+  const picked = { lines: ['u2', 'u4'], seqs: [2, 4] };
+  eq(R.dramaPlan(picked, s, 'r1'), [{ lineID: 'L1', url: 'u2' }, { lineID: 'L3', url: 'u4' }], 'a silent line leaves a gap, never a shift');
+  eq(R.dramaPlan(picked, s, undefined), null, 'a Worker that sends no revision cannot vouch for the numbering');
+  eq(R.dramaPlan(picked, s, 'r2'), null, 'another revision of the script is another numbering');
+  eq(R.dramaPlan({ lines: ['u9'], seqs: [9] }, s, 'r1'), null, 'a number past the script is no match');
+  eq(R.dramaPlan({ whole: 'u' }, s, 'r1'), null, 'one whole recording has no line timeline');
+  eq(R.dramaPlan(null, s, 'r1'), null, 'nothing playable yet');
+});
+
+atest('read-along, finished drama: the queue follows file boundaries and reports the line of the file heard', async () => {
+  const plan = [{ lineID: 'L1', url: 'a' }, { lineID: 'L3', url: 'b' }, { lineID: 'L4', url: 'c' }];
+  const made = [];
+  const audio = (url) => {
+    const a = { url, muted: false, paused: false, pause() { this.paused = true; this.finish && this.finish(); }, play() { return new Promise((res) => { this.finish = res; made.push(this); }); } };
+    return a;
+  };
+  const seen = [];
+  const q = R.dramaListen(plan, { audio, muted: () => false, onChange: (s) => seen.push(s.current() && s.current().lineID) });
+  eq(q.current(), null, 'nothing is heard before play');
+  q.play();
+  await Promise.resolve(); await Promise.resolve();
+  eq(q.current(), { lineID: 'L1', source: 'take' }, 'the first file');
+  ok(q.playing, 'playing');
+  made[0].finish();
+  await new Promise(r => setTimeout(r, 0));
+  eq(q.current(), { lineID: 'L3', source: 'take' }, 'the second file is the next line heard, by file, not by guess');
+  q.stop();
+  await new Promise(r => setTimeout(r, 0));
+  ok(!q.playing, 'stopped');
+  eq(q.current(), null, 'nothing heard once stopped');
+  eq(seen.at(-1), null, 'the reader is told it stopped');
+});
+
+(async () => {
+  for (const [name, fn] of later) {
+    try { await fn(); passes += 1; console.log(`  ok    ${name}`); } catch (e) { failures += 1; console.log(`  FAIL  ${name}\n        ${e.message}`); }
+  }
+  console.log(`${passes}/${passes + failures} passed${failures ? `, ${failures} FAILED` : ''}`);
+  process.exit(failures ? 1 : 0);
+})();
