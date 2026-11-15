@@ -38,6 +38,21 @@ class DataExportTest {
         assertTrue(production["takes"]!!.jsonArray[0].jsonObject["chosen"]!!.jsonPrimitive.boolean)
     }
 
+    @Test fun `the json carries the marks, one row a mark, an absent field null`() {
+        val rows = listOf(
+            com.example.appname.plays.MarksCore.ExportRow("gut-1", "Play", "r1", "L0001", 9, 20, "highlight", "first thing", "blue", null, null, "2026-11-15T12:00:00Z", "2026-11-15T12:00:00Z"),
+            com.example.appname.plays.MarksCore.ExportRow("gut-1", "Play", null, "L0003", 38, 38, "breath", "", null, null, null, null, null),
+        )
+        val root = Json.parseToJsonElement(sample.copy(marks = rows).json()).jsonObject
+        val marks = root["marks"]!!.jsonArray
+        assertEquals(2, marks.size)
+        assertEquals("highlight", marks[0].jsonObject["kind"]!!.jsonPrimitive.content)
+        assertEquals("blue", marks[0].jsonObject["hue"]!!.jsonPrimitive.content)
+        assertEquals("kotlinx.serialization.json.JsonNull", marks[0].jsonObject["note"]!!.javaClass.name)
+        assertEquals(38, marks[1].jsonObject["start"]!!.jsonPrimitive.content.toInt())
+        assertEquals(0, Json.parseToJsonElement(sample.json()).jsonObject["marks"]!!.jsonArray.size)
+    }
+
     @Test fun `the csv quotes commas and quotes and leaves gaps empty`() {
         val lines = sample.historyCsv().split("\r\n")
         assertEquals(DataExport.HISTORY_COLUMNS.joinToString(","), lines[0])

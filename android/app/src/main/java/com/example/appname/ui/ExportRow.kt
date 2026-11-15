@@ -90,6 +90,7 @@ fun ExportRow(modifier: Modifier = Modifier) {
                     DataExport.Take(t.id, t.lineID, t.part.raw, DataExport.fromReferenceDate(t.created), t.frames / t.sampleRate, p.chosen[t.lineID] == t.id)
                 })
             },
+            marks = com.example.appname.plays.MarksRepository(com.example.appname.plays.MarksDatabase.get(context).marks()).exportRows(),
         )
     }
 

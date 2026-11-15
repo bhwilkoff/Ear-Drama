@@ -27,6 +27,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.lazy.LazyColumn
@@ -110,7 +114,21 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.material.icons.filled.StickyNote2
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.runtime.Stable
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import kotlinx.coroutines.withTimeoutOrNull
+import com.example.appname.ui.theme.markColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -133,6 +151,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextIndent
 import androidx.compose.ui.text.style.TextOverflow
@@ -148,6 +167,14 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import com.example.appname.plays.LinePart
+import com.example.appname.plays.Mark
+import com.example.appname.plays.MarkExtra
+import com.example.appname.plays.MarkPatch
+import com.example.appname.plays.MarksCore
+import com.example.appname.plays.MarksDatabase
+import com.example.appname.plays.MarksPrefsStore
+import com.example.appname.plays.MarksRepository
+import com.example.appname.plays.Piece
 import com.example.appname.plays.PageRow
 import com.example.appname.plays.PartID
 import com.example.appname.plays.PlayPage
@@ -292,7 +319,41 @@ private class Blk(
     /** Where each printed row of a verse speech begins in [text]. */
     val rowOffsets: List<Int> = emptyList(),
     val heading: Boolean = false,
+    /** Where each drawn run of the line's words stands in [text] (marks anchor to the line's words, never to this block). */
+    val map: List<MapSeg> = emptyList(),
+    /** The room [text] holds for a mark's glyph (a breath, a pause, a beat, the end of a note). */
+    val inserts: List<MarkInsert> = emptyList(),
 ) {
+    /** The line's words that block range [bs, be) covers, or null when it covers none (a name, a printed bracket, a glyph). */
+    fun lineRange(bs: Int, be: Int): IntRange? {
+        var s = -1
+        var e = -1
+        for (g in map) {
+            if (g.blk + g.len <= bs || g.blk >= be) continue
+            if (s < 0) s = g.line + maxOf(0, bs - g.blk)
+            e = g.line + minOf(g.len, be - g.blk)
+        }
+        return if (s < 0 || e <= s) null else s until e
+    }
+
+    /** Where the line's words [ls, le) are drawn in this block: from the first to the last, whatever is drawn between. */
+    fun blkRange(ls: Int, le: Int): IntRange? {
+        var s = -1
+        var e = -1
+        for (g in map) {
+            if (g.line + g.len <= ls || g.line >= le) continue
+            if (s < 0) s = g.blk + maxOf(0, ls - g.line)
+            e = g.blk + minOf(g.len, le - g.line)
+        }
+        return if (s < 0 || e <= s) null else s until e
+    }
+
+    /** The offset into the line's words of the character at block offset [off], or null for one the line does not hold. */
+    fun lineAt(off: Int): Int? {
+        for (g in map) if (off >= g.blk && off < g.blk + g.len) return g.line + off - g.blk
+        return null
+    }
+
     /** The words a part comes in on, underlined when that part is the one being played. */
     var cueRole: String? = null
     var cueHue: Color? = null
@@ -310,6 +371,71 @@ private class Blk(
     }
 }
 
+/** A run of the block's text that is the line's words: block offset, line offset, length. */
+private class MapSeg(val blk: Int, val line: Int, val len: Int)
+
+/** A mark's glyph drawn in room the block leaves for it ([label] is a beat's words, inside [range]). */
+private class MarkInsert(val id: String, val kind: String, val range: IntRange, val label: IntRange?)
+
+/**
+ * Builds a block's text while keeping what marks need: each run's place in the line's words ([segs]) and, where a point
+ * mark stands, room for its glyph ([inserts]). The glyph is drawn text of the page's own; the script's words, their
+ * offsets, search and the read-along never see it.
+ */
+private class Mapper(val points: List<PointKey>, val glyph: SpanStyle, val labelStyle: SpanStyle) {
+    val segs = ArrayList<MapSeg>()
+    val inserts = ArrayList<MarkInsert>()
+
+    fun run(b: AnnotatedString.Builder, text: String, at: Int, emit: AnnotatedString.Builder.(String) -> Unit) {
+        var from = 0
+        val here = points.filter { it.at > at && it.at <= at + text.length }
+        for (k in here.map { it.at }.distinct()) {
+            val cut = k - at
+            piece(b, text, at, from, cut, emit)
+            for (p in here) if (p.at == k) insert(b, p)
+            from = cut
+        }
+        piece(b, text, at, from, text.length, emit)
+    }
+
+    private fun piece(b: AnnotatedString.Builder, text: String, at: Int, from: Int, to: Int, emit: AnnotatedString.Builder.(String) -> Unit) {
+        if (to <= from) return
+        segs += MapSeg(b.length, at + from, to - from)
+        b.emit(text.substring(from, to))
+    }
+
+    private fun insert(b: AnnotatedString.Builder, p: PointKey) {
+        val st = b.length
+        var label: IntRange? = null
+        when (p.kind) {
+            "note" -> b.withStyle(glyph) { append("\u2007") }
+            "breath" -> b.withStyle(glyph) { append("\u00A0/") }
+            "pause" -> b.withStyle(glyph) { append("\u00A0//") }
+            else -> {
+                b.withStyle(glyph) { append("\u00A0//") }
+                if (p.label.isNotBlank()) {
+                    b.withStyle(glyph) { append("\u00A0") }
+                    val ls = b.length
+                    b.withStyle(labelStyle) { append(p.label.uppercase(Locale.US)) }
+                    label = ls until b.length
+                }
+            }
+        }
+        inserts += MarkInsert(p.id, p.kind, st until b.length, label)
+    }
+}
+
+/** The words a speech's cue begins at, as a range of the block's text, found through the runs just appended. */
+private fun cueRangeOf(segs: List<MapSeg>, at: Int, text: String): IntRange? {
+    if (segs.isEmpty()) return null
+    fun toBlk(i: Int): Int {
+        val line = at + i
+        for (g in segs) if (line >= g.line && line < g.line + g.len) return g.blk + line - g.line
+        return segs.last().let { it.blk + it.len }
+    }
+    return toBlk(PlayPage.cueTail(text)) until toBlk(text.length)
+}
+
 private class Palette(val text: Color, val muted: Color, val accent: Color, val block: Color, val hues: Map<String, Color>)
 
 private val ASIDE_OPEN = Regex("^\\s*[(\\[]")
@@ -324,6 +450,7 @@ private fun buildBlocks(
     measurer: TextMeasurer,
     density: Density,
     studioRole: String? = null,
+    points: Map<String, List<PointKey>> = emptyMap(),
 ): List<Blk> {
     val bodySp = BODY_SP * scale
     val bodyPx = with(density) { bodySp.sp.toPx() }
@@ -336,6 +463,9 @@ private fun buildBlocks(
     )
     fun nameSpan(hue: Color?) = SpanStyle(fontWeight = FontWeight.SemiBold, color = hue ?: pal.muted, letterSpacing = 0.02.em)
     fun nameText(name: String, hue: Color?) = buildAnnotatedString { withStyle(nameSpan(hue)) { append(name) } }
+    val glyphStyle = SpanStyle(fontWeight = FontWeight.SemiBold, color = pal.text, baselineShift = BaselineShift(0.15f))
+    val labelStyle = SpanStyle(fontSize = (bodySp * CAPTION_EM).sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.06.em, color = pal.text)
+    fun mapperFor(line: ScriptLine) = Mapper(points[line.id].orEmpty(), glyphStyle, labelStyle)
 
     val roles = script.roles.map { it.name }
     val capNames = roles.filter { it.length >= 3 && it == it.uppercase(Locale.US) && it.any { c -> c in 'A'..'Z' } }
@@ -410,11 +540,13 @@ private fun buildBlocks(
     }
 
     /** A cue's words on the sound lane, in capitals as the web draws them. */
-    fun AnnotatedString.Builder.cue(row: PageRow) {
+    fun AnnotatedString.Builder.cue(row: PageRow, mapper: Mapper) {
         row.runs.forEachIndexed { n, r ->
             if (n > 0 && row.runs[n - 1].piece != r.piece) append(' ')
-            val up = r.text.uppercase(Locale.US)
-            withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, letterSpacing = 0.06.em)) { append(if (up.length == r.text.length) up else r.text) }
+            mapper.run(this, r.text, r.at) { piece ->
+                val up = piece.uppercase(Locale.US)
+                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, letterSpacing = 0.06.em)) { append(if (up.length == piece.length) up else piece) }
+            }
         }
     }
 
@@ -443,7 +575,7 @@ private fun buildBlocks(
                     measurer.measure(nameStyled, style()).size.width + (if (sp.role == studioRole) MARK_RESERVE_EM * bodyPx else 0f) <= GUTTER_EM * bodyPx
                 val base = if (beside) COL_EM else 0f
                 var first = true
-                var lastTail: Triple<Int, Int, String>? = null
+                var lastTail: Pair<Int, IntRange?>? = null
                 if (!beside && name.isNotEmpty()) {
                     add(Blk(i, nameStyled, emptyList(), style(), GAP_EM, Kind.Name, keepWithNext = sp.rows.isNotEmpty(), role = sp.role, hue = hue, speech = speechCount, speechStart = true))
                     first = false
@@ -458,10 +590,12 @@ private fun buildBlocks(
                         else -> CUE_GAP_EM
                     }
                     if (row.cue) {
+                        val mapper = mapperFor(line)
                         add(
                             Blk(
-                                i, buildAnnotatedString { cue(row) }, emptyList(), style(CAPTION_EM), gap, Kind.Cue,
+                                i, buildAnnotatedString { cue(row, mapper) }, emptyList(), style(CAPTION_EM), gap, Kind.Cue,
                                 role = sp.role, hue = hue, xOffEm = base + GLYPH_EM, speech = speechCount, speechStart = first,
+                                map = mapper.segs, inserts = mapper.inserts,
                             ),
                         )
                         k++
@@ -470,7 +604,9 @@ private fun buildBlocks(
                         while (end < sp.rows.size && !sp.rows[end].cue) end++
                         val said = ArrayList<IntRange>()
                         val offsets = ArrayList<Int>()
-                        var tail: Pair<Int, String>? = null
+                        val mapper = mapperFor(line)
+                        var tail: IntRange? = null
+                        var hasTail = false
                         val text = buildAnnotatedString {
                             for (r in k until end) {
                                 val rw = sp.rows[r]
@@ -482,16 +618,20 @@ private fun buildBlocks(
                                         if (n > 0 && rw.runs[n - 1].piece != run.piece && ScriptReading.spaceBetween(rw.runs[n - 1].text, run.text)) append(' ')
                                         if (run.said) {
                                             val st = length
-                                            withStyle(if (run.kind == ScriptReading.RunKind.Em) SpanStyle(fontStyle = FontStyle.Italic) else SpanStyle()) { append(run.text) }
+                                            val segStart = mapper.segs.size
+                                            mapper.run(this, run.text, run.at) { piece ->
+                                                withStyle(if (run.kind == ScriptReading.RunKind.Em) SpanStyle(fontStyle = FontStyle.Italic) else SpanStyle()) { append(piece) }
+                                            }
                                             said += st until length
-                                            tail = st to run.text
+                                            tail = cueRangeOf(mapper.segs.subList(segStart, mapper.segs.size), run.at, run.text)
+                                            hasTail = true
                                             return@forEachIndexed
                                         }
                                         val whole = rw.runs.filter { it.piece == run.piece && !it.said }.joinToString("") { it.text }
                                         val opens = (n == 0 || rw.runs[n - 1].piece != run.piece) && !ASIDE_OPEN.containsMatchIn(whole)
                                         val closes = (n == rw.runs.size - 1 || rw.runs[n + 1].piece != run.piece) && !ASIDE_CLOSE.containsMatchIn(whole)
                                         if (opens) append('(')
-                                        direction(run.text, italic = run.kind != ScriptReading.RunKind.Plain)
+                                        mapper.run(this, run.text, run.at) { piece -> direction(piece, italic = run.kind != ScriptReading.RunKind.Plain) }
                                         if (closes) append(')')
                                     }
                                 }
@@ -501,32 +641,38 @@ private fun buildBlocks(
                             Blk(
                                 i, text, said, style(), gap, Kind.Text, role = sp.role, hue = hue, xOffEm = base, speech = speechCount,
                                 speechStart = first, name = if (first && beside) nameStyled else null, rowOffsets = if (layout.verse) offsets else emptyList(),
+                                map = mapper.segs, inserts = mapper.inserts,
                             ),
                         )
-                        tail?.let { (st, t) -> lastTail = Triple(out.size - 1, st, t) }
+                        if (hasTail) lastTail = out.size - 1 to tail
                         k = end
                     }
                     first = false
                     afterName = false
                 }
                 out.lastOrNull()?.takeIf { it.speech == speechCount }?.speechEnd = true
-                lastTail?.let { (at, st, t) ->
-                    val c = PlayPage.cueTail(t)
-                    previous = Triple(sp.role, at, (st + c) until (st + t.length))
-                }
+                lastTail?.let { (at, range) -> previous = Triple(sp.role, at, range) }
             }
             return@forEachIndexed
         }
         val row = layout.rows.firstOrNull() ?: PageRow(false, false)
         val indent = if (gutter) COL_EM else INDENT_EM
+        val mapper = mapperFor(line)
         if (row.cue) {
-            add(Blk(i, buildAnnotatedString { cue(row) }, emptyList(), style(CAPTION_EM), GAP_EM, Kind.Cue, xOffEm = indent + GLYPH_EM))
+            add(
+                Blk(
+                    i, buildAnnotatedString { cue(row, mapper) }, emptyList(), style(CAPTION_EM), GAP_EM, Kind.Cue, xOffEm = indent + GLYPH_EM,
+                    map = mapper.segs, inserts = mapper.inserts,
+                ),
+            )
         } else {
             add(
                 Blk(
                     i,
-                    buildAnnotatedString { for (r in row.runs) direction(r.text, italic = r.kind == ScriptReading.RunKind.Plain) },
-                    emptyList(), style(), GAP_EM, Kind.Direction, xOffEm = indent,
+                    buildAnnotatedString {
+                        for (r in row.runs) mapper.run(this, r.text, r.at) { piece -> direction(piece, italic = r.kind == ScriptReading.RunKind.Plain) }
+                    },
+                    emptyList(), style(), GAP_EM, Kind.Direction, xOffEm = indent, map = mapper.segs, inserts = mapper.inserts,
                 ),
             )
         }
@@ -545,6 +691,8 @@ private class ReaderFlow(
     val firstBlock: IntArray,
     val bodyPx: Float,
     val gutter: Boolean,
+    /** Each script line's id, by index: what a block's owner names, for marks. */
+    val ids: List<String>,
 )
 
 private data class FlowSpec(
@@ -559,6 +707,8 @@ private data class FlowSpec(
     val insetPx: Int,
     /** The studio's part (its role name): its speeches stay whole on a page and carry take marks. */
     val studioRole: String? = null,
+    /** Where the page leaves room for a mark's glyph: a different set is a different layout. */
+    val points: List<PointKey> = emptyList(),
 )
 
 private fun textWidth(flow: ReaderFlow, b: Blk): Int = (flow.contentPx - (b.xOffEm * flow.bodyPx).toInt()).coerceAtLeast(1)
@@ -573,13 +723,14 @@ private suspend fun computeFlow(
     val bodyPx = with(density) { (BODY_SP * spec.prefs.scale).sp.toPx() }
     val gutter = spec.colPx / bodyPx >= PlayPage.GUTTER_MIN_EM
     val measurer = TextMeasurer(resolver, density, LayoutDirection.Ltr)
-    val blocks = buildBlocks(script, pal, spec.prefs.scale, spec.prefs.leading, gutter, measurer, density, spec.studioRole)
+    val blocks = buildBlocks(script, pal, spec.prefs.scale, spec.prefs.leading, gutter, measurer, density, spec.studioRole, spec.points.groupBy { it.line })
+    val ids = script.lines.map { it.id }
     val contentPx = (spec.colPx - spec.insetPx).coerceAtLeast(1)
     val firstBlock = IntArray(script.lines.size) { -1 }
     blocks.forEachIndexed { b, blk -> if (firstBlock[blk.owner] < 0) firstBlock[blk.owner] = b }
     var last = 0
     for (i in firstBlock.indices) if (firstBlock[i] < 0) firstBlock[i] = last else last = firstBlock[i]
-    val flow0 = ReaderFlow(blocks, null, spec.per, contentPx, spec.colPx, firstBlock, bodyPx, gutter)
+    val flow0 = ReaderFlow(blocks, null, spec.per, contentPx, spec.colPx, firstBlock, bodyPx, gutter, ids)
     if (!spec.prefs.pages) return@withContext flow0
     val measured = blocks.map { b ->
         ensureActive()
@@ -591,7 +742,7 @@ private suspend fun computeFlow(
         )
     }
     val paged = ReaderPagination.paginate(measured, script.lines.size, spec.pageHeightPx.toFloat())
-    ReaderFlow(blocks, paged, spec.per, contentPx, spec.colPx, firstBlock, bodyPx, gutter)
+    ReaderFlow(blocks, paged, spec.per, contentPx, spec.colPx, firstBlock, bodyPx, gutter, ids)
 }
 
 // MARK: Drawing one block, whole or a page's slice of it
@@ -617,6 +768,9 @@ private class Ink(
     val warn: androidx.compose.ui.graphics.painter.Painter,
     val measurer: TextMeasurer,
     val targetPx: Float,
+    val text: Color,
+    val dark: Boolean,
+    val note: androidx.compose.ui.graphics.painter.Painter,
 )
 
 /** How the studio outlines the current line (§2.9 rule 2): ink, dashed record red while its cue plays, solid while the microphone is open. */
@@ -687,6 +841,232 @@ private fun DrawScope.drawMark(spot: MarkSpot, state: StudioCore.LineState, blk:
 }
 
 
+// MARK: Marks on the page: what a block draws for them, a selection, and where a touch lands
+
+/** What a block draws for marks: its line's marks (none while hidden or switched off) and the selected range of it. */
+private class MarkLayer(val marks: List<Mark>, val sel: IntRange?, val selTint: Color)
+
+private class LineBox(val line: Int, val left: Float, val right: Float)
+
+/** The visual lines a range of a block's text covers, from [from] on, each as its left and right edge. */
+private fun boxesOf(layout: TextLayoutResult, r: IntRange, from: Int): List<LineBox> {
+    if (r.isEmpty() || r.last >= layout.layoutInput.text.length) return emptyList()
+    val first = layout.getLineForOffset(r.first)
+    val last = layout.getLineForOffset(r.last)
+    val out = ArrayList<LineBox>()
+    for (l in first..last) {
+        if (l < from) continue
+        val left = if (l == first) layout.getBoundingBox(r.first).left else layout.getLineLeft(l)
+        val right = if (l == last) layout.getBoundingBox(r.last).right else layout.getLineRight(l)
+        out += LineBox(l, left, right)
+    }
+    return out
+}
+
+private data class Pos(val blk: Int, val off: Int) : Comparable<Pos> {
+    override fun compareTo(other: Pos) = if (blk != other.blk) blk.compareTo(other.blk) else off.compareTo(other.off)
+}
+
+/** A selection on one page (in Scroll, one block): its two ends as the finger set them, and the line pieces they cover. */
+private class Sel(val a: Pos, val b: Pos, val where: Int, val pieces: List<Piece>) {
+    val lo: Pos get() = if (a <= b) a else b
+    val hi: Pos get() = if (a <= b) b else a
+}
+
+/** What the reader holds for marks: the model, the selection and its toolbar rectangle, and what a tap on a mark asks. */
+@Stable
+private class MarkUi(
+    val model: MarksModel,
+    val dark: Boolean,
+    val onEdit: (Mark) -> Unit,
+    val onDelete: (Mark) -> Unit,
+    val haptic: () -> Unit,
+) {
+    var sel by mutableStateOf<Sel?>(null)
+    var rect by mutableStateOf<Rect?>(null)
+    var dragging by mutableStateOf(false)
+}
+
+/** One drawn slice of a block, in the coordinates of the canvas that holds it. */
+private class SegGeo(
+    val index: Int,
+    val blk: Blk,
+    val m: Measured,
+    val top: Float,
+    val bottom: Float,
+    val from: Int,
+    val to: Int,
+    val x0: Float,
+    val hidden: Boolean,
+) {
+    fun layoutY(y: Float): Float = y.coerceIn(top, bottom - 1f) - top + m.text.getLineTop(from)
+    fun canvasY(layoutY: Float): Float = layoutY - m.text.getLineTop(from) + top
+    val length: Int get() = m.text.layoutInput.text.length
+    fun shows(off: Int): Boolean = m.text.getLineForOffset(off.coerceIn(0, length)).let { it >= from && it < to }
+}
+
+/** The text offset nearest a point of the canvas, in the slice under it (or the nearest). */
+private fun hitPos(geos: List<SegGeo>, p: Offset): Pos? {
+    val g = geos.firstOrNull { p.y < it.bottom } ?: geos.lastOrNull() ?: return null
+    return Pos(g.index, g.m.text.getOffsetForPosition(Offset(p.x - g.x0, g.layoutY(p.y))))
+}
+
+/** The line pieces a selection from [lo] to [hi] covers: per line, the first drawn word's start to the last one's end. */
+private fun piecesOf(flow: ReaderFlow, lo: Pos, hi: Pos): List<Piece> {
+    val out = ArrayList<Piece>()
+    for (bi in lo.blk..hi.blk) {
+        val blk = flow.blocks.getOrNull(bi) ?: continue
+        if (blk.map.isEmpty()) continue
+        val bs = if (bi == lo.blk) lo.off else 0
+        val be = if (bi == hi.blk) hi.off else blk.text.length
+        val r = blk.lineRange(bs, be) ?: continue
+        val id = flow.ids[blk.owner]
+        val last = out.lastOrNull()
+        if (last != null && last.line == id) out[out.lastIndex] = Piece(id, minOf(last.start, r.first), maxOf(last.end, r.last + 1))
+        else out += Piece(id, r.first, r.last + 1)
+    }
+    return out
+}
+
+private fun selRange(sel: Sel?, index: Int, length: Int): IntRange? {
+    if (sel == null || index < sel.lo.blk || index > sel.hi.blk) return null
+    val s = if (index == sel.lo.blk) sel.lo.off else 0
+    val e = if (index == sel.hi.blk) sel.hi.off else length
+    return if (e > s) s until e else null
+}
+
+/** The rectangle a selection covers on its canvas, for the floating toolbar to stand beside. */
+private fun selBounds(geos: List<SegGeo>, sel: Sel): Rect? {
+    var out: Rect? = null
+    for (g in geos) {
+        val r = selRange(sel, g.index, g.length) ?: continue
+        for (bx in boxesOf(g.m.text, r, g.from)) {
+            if (bx.line >= g.to) continue
+            val box = Rect(g.x0 + bx.left, g.canvasY(g.m.text.getLineTop(bx.line)), g.x0 + bx.right, g.canvasY(g.m.text.getLineBottom(bx.line)))
+            out = out?.let { Rect(minOf(it.left, box.left), minOf(it.top, box.top), maxOf(it.right, box.right), maxOf(it.bottom, box.bottom)) } ?: box
+        }
+    }
+    return out
+}
+
+/** Where a selection's handle stands: under its line, at the end of the selection. */
+private fun handleAt(geos: List<SegGeo>, pos: Pos): Offset? {
+    val g = geos.firstOrNull { it.index == pos.blk && it.shows(pos.off) } ?: return null
+    val c = g.m.text.getCursorRect(pos.off.coerceIn(0, g.length))
+    return Offset(g.x0 + c.left, g.canvasY(c.bottom))
+}
+
+/** A mark under a tap, with the rectangle of the words tapped (for its menu to hang from). */
+private fun markAt(geos: List<SegGeo>, ui: MarkUi, flow: ReaderFlow, p: Offset): Pair<Mark, Rect>? {
+    if (!ui.model.show) return null
+    val g = geos.firstOrNull { p.y >= it.top && p.y < it.bottom } ?: return null
+    if (g.hidden) return null
+    val lay = g.m.text
+    val lx = p.x - g.x0
+    val off = lay.getOffsetForPosition(Offset(lx, g.layoutY(p.y)))
+    var hit = -1
+    for (o in intArrayOf(off - 1, off)) {
+        if (o < 0 || o >= g.length) continue
+        val box = lay.getBoundingBox(o)
+        if (lx >= box.left - 4f && lx <= box.right + 4f && g.layoutY(p.y) >= box.top && g.layoutY(p.y) <= box.bottom) {
+            hit = o
+            break
+        }
+    }
+    if (hit < 0) return null
+    val marks = ui.model.byLine[flow.ids[g.blk.owner]].orEmpty()
+    val box = lay.getBoundingBox(hit)
+    val where = Rect(g.x0 + box.left, g.canvasY(box.top), g.x0 + box.right, g.canvasY(box.bottom))
+    g.blk.inserts.firstOrNull { hit in it.range }?.let { ins -> marks.firstOrNull { it.id == ins.id }?.let { return it to where } }
+    val at = g.blk.lineAt(hit) ?: return null
+    return MarksCore.at(marks, flow.ids[g.blk.owner], at).firstOrNull()?.let { it to where }
+}
+
+/**
+ * One touch on a page or a block. A tap on a mark opens it; a tap with a selection let go of it; a long press selects the word
+ * and a drag goes on from it; a handle drags its end. Anything else is left unconsumed, for the reader's own taps and the pager.
+ */
+private suspend fun AwaitPointerEventScope.markTouch(
+    geos: List<SegGeo>,
+    flow: ReaderFlow,
+    ui: MarkUi,
+    where: Int,
+    handleR: Float,
+    onOpen: (Mark, Rect) -> Unit,
+) {
+    val down = awaitFirstDown(requireUnconsumed = false)
+    fun set(a: Pos, b: Pos) {
+        val lo = if (a <= b) a else b
+        val hi = if (a <= b) b else a
+        ui.sel = Sel(a, b, where, piecesOf(flow, lo, hi))
+    }
+    val current = ui.sel?.takeIf { it.where == where }
+    if (current != null) {
+        val pad = handleR * 2.2f
+        val loAt = handleAt(geos, current.lo)?.let { it + Offset(0f, handleR) }
+        val hiAt = handleAt(geos, current.hi)?.let { it + Offset(0f, handleR) }
+        val dLo = loAt?.let { (it - down.position).getDistance() } ?: Float.MAX_VALUE
+        val dHi = hiAt?.let { (it - down.position).getDistance() } ?: Float.MAX_VALUE
+        if (minOf(dLo, dHi) <= pad) {
+            val movingLo = dLo <= dHi
+            val fixed = if (movingLo) current.hi else current.lo
+            ui.dragging = true
+            down.consume()
+            drag(down.id) { ch ->
+                ch.consume()
+                hitPos(geos, ch.position - Offset(0f, handleR * 2.5f))?.let { set(fixed, it) }
+            }
+            ui.dragging = false
+            return
+        }
+    }
+    var finished = false
+    val up = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) { waitForUpOrCancellation().also { finished = true } }
+    if (finished) {
+        if (up == null) return
+        if (ui.sel != null) {
+            ui.sel = null
+            up.consume()
+            return
+        }
+        markAt(geos, ui, flow, up.position)?.let { (m, r) ->
+            up.consume()
+            onOpen(m, r)
+        }
+        return
+    }
+    // A long press that selects nothing is still not a tap: the reader's own tap would turn the page.
+    suspend fun AwaitPointerEventScope.swallow() {
+        waitForUpOrCancellation()?.consume()
+    }
+    val g = geos.firstOrNull { down.position.y >= it.top && down.position.y < it.bottom }
+    if (g != null && g.hidden) return
+    if (g == null || g.blk.map.isEmpty() || g.length == 0) return swallow()
+    val start = hitPos(geos, down.position) ?: return swallow()
+    val word = g.m.text.getWordBoundary(start.off.coerceIn(0, g.length - 1))
+    val wa = Pos(g.index, word.start)
+    val wb = Pos(g.index, word.end)
+    if (flow.blocks[g.index].lineRange(word.start, word.end) == null) return swallow()
+    ui.haptic()
+    set(wa, wb)
+    ui.dragging = true
+    down.consume()
+    drag(down.id) { ch ->
+        ch.consume()
+        val p = hitPos(geos, ch.position) ?: return@drag
+        if (p < wa) set(wb, p) else set(wa, if (p > wb) p else wb)
+    }
+    ui.dragging = false
+}
+
+private fun DrawScope.drawHandles(geos: List<SegGeo>, sel: Sel, color: Color, r: Float, stem: Float) {
+    for (pos in listOf(sel.lo, sel.hi)) {
+        val at = handleAt(geos, pos) ?: continue
+        drawLine(color, at - Offset(0f, 2f), at + Offset(0f, r), strokeWidth = stem)
+        drawCircle(color, r, at + Offset(0f, r))
+    }
+}
+
 private fun DrawScope.drawSlice(
     m: Measured,
     blk: Blk,
@@ -699,6 +1079,7 @@ private fun DrawScope.drawSlice(
     flash: Boolean,
     underline: Boolean,
     studio: StudioPaint? = null,
+    marks: MarkLayer? = null,
 ) {
     val layout = m.text
     val tone = blk.hue ?: ink.accent
@@ -729,8 +1110,65 @@ private fun DrawScope.drawSlice(
                 }
             }
         }
+        if (marks != null && !hidden) {
+            for (mk in marks.marks) {
+                if (mk.kind != "highlight") continue
+                val r = blk.blkRange(mk.start, mk.end) ?: continue
+                for (bx in boxesOf(layout, r, from)) {
+                    drawRoundRect(
+                        markColor(mk.hue, ink.dark), Offset(x0 + bx.left - 1f, shift + layout.getLineTop(bx.line)),
+                        Size(bx.right - bx.left + 2f, layout.getLineBottom(bx.line) - layout.getLineTop(bx.line)), CornerRadius(4f, 4f),
+                    )
+                }
+            }
+        }
+        marks?.sel?.let { r ->
+            for (bx in boxesOf(layout, r, from)) {
+                drawRect(
+                    marks.selTint, Offset(x0 + bx.left, shift + layout.getLineTop(bx.line)),
+                    Size(bx.right - bx.left, layout.getLineBottom(bx.line) - layout.getLineTop(bx.line)),
+                )
+            }
+        }
         drawText(layout, topLeft = Offset(x0, shift))
         m.name?.let { if (from == 0) drawText(it, topLeft = Offset(ink.insetPx, shift)) }
+        if (marks != null && !hidden) {
+            for (mk in marks.marks) {
+                if (mk.kind != "underline" && mk.kind != "note") continue
+                val r = blk.blkRange(mk.start, mk.end) ?: continue
+                val note = mk.kind == "note"
+                for (bx in boxesOf(layout, r, from)) {
+                    val y = shift + layout.getLineBaseline(bx.line) + ink.bodyPx * (if (note) 0.24f else 0.14f)
+                    if (note) {
+                        drawLine(
+                            ink.text, Offset(x0 + bx.left, y), Offset(x0 + bx.right, y), strokeWidth = ink.ruleWidth * 2 / 3,
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(ink.ruleWidth, ink.ruleWidth * 1.3f)),
+                        )
+                    } else {
+                        drawRect(ink.text, Offset(x0 + bx.left, y), Size(bx.right - bx.left, ink.ruleWidth * 2 / 3))
+                    }
+                }
+            }
+            for (ins in blk.inserts) {
+                if (ins.kind == "note") {
+                    if (ins.range.first >= layout.layoutInput.text.length) continue
+                    val box = layout.getBoundingBox(ins.range.first)
+                    val g = ink.bodyPx * 0.62f
+                    translate(x0 + box.center.x - g / 2, shift + (box.top + box.bottom) / 2 - g / 2) {
+                        with(ink.note) { draw(Size(g, g), colorFilter = ColorFilter.tint(ink.text)) }
+                    }
+                } else if (ins.label != null) {
+                    for (bx in boxesOf(layout, ins.label, from)) {
+                        val top = shift + layout.getLineTop(bx.line) + ink.bodyPx * 0.08f
+                        val bottom = shift + layout.getLineBottom(bx.line) - ink.bodyPx * 0.08f
+                        drawRoundRect(
+                            ink.muted, Offset(x0 + bx.left - 3f, top), Size(bx.right - bx.left + 6f, bottom - top), CornerRadius(5f, 5f),
+                            style = Stroke(ink.ruleWidth * 0.4f),
+                        )
+                    }
+                }
+            }
+        }
         if (studio != null && from == 0 && blk.speechStart && blk.role == studio.role) {
             studio.states[blk.owner]?.let { state -> markSpot(m, blk, ink, top, state)?.let { drawMark(it, state, blk, ink, studio) } }
         }
@@ -788,6 +1226,7 @@ private fun PageView(
     headPx: Float,
     onPeek: (Int) -> Unit,
     modifier: Modifier,
+    ui: MarkUi,
     studio: StudioPaint? = null,
     onTakes: (Int) -> Unit = {},
 ) {
@@ -814,7 +1253,37 @@ private fun PageView(
         head?.let { measurer.measure(it, TextStyle(fontSize = with(density) { (CAPTION_EM * flow.bodyPx).toSp() })) }
     }
     val description = remember(page, flow) { segs.joinToString(" ") { flow.blocks[it.block].description } }
-    Box(modifier.semantics { contentDescription = description }) {
+    val geos = remember(segs, layouts, flow, hiding, mineRole, peeked, ink, headPx) {
+        segs.mapIndexed { s, seg ->
+            val b = flow.blocks[seg.block]
+            SegGeo(seg.block, b, layouts[s], seg.top + headPx, seg.bottom + headPx, seg.from, seg.to, ink.insetPx + b.xOffEm * ink.bodyPx, hideable(b, mineRole, hiding, peeked))
+        }
+    }
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    var open by remember { mutableStateOf<Pair<Mark, Rect>?>(null) }
+    val sel = ui.sel?.takeIf { it.where == index }
+    val selTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val handleColor = MaterialTheme.colorScheme.primary
+    val handleR = with(density) { 9.dp.toPx() }
+    LaunchedEffect(sel, geos, origin) { if (sel != null) ui.rect = selBounds(geos, sel)?.translate(origin) }
+    val shownMarks = if (ui.model.show) ui.model.byLine else emptyMap()
+    val markActions = remember(segs, flow, shownMarks) {
+        MarksCore.order(ui.model.script, segs.map { flow.ids[flow.blocks[it.block].owner] }.distinct().flatMap { shownMarks[it].orEmpty() })
+    }
+    val markWhere = Rect(0f, headPx, 1f, headPx + 1f)
+    Box(
+        modifier
+            .semantics {
+                contentDescription = description
+                customActions = markActions.map { m ->
+                    CustomAccessibilityAction("${MARK_LABEL.getValue(m.kind)}: ${m.text.replace("_", "").ifEmpty { m.label.orEmpty() }}") { open = m to markWhere; true }
+                }
+            }
+            .onGloballyPositioned { origin = it.positionInRoot() }
+            .pointerInput(geos, flow) {
+                awaitEachGesture { markTouch(geos, flow, ui, index, handleR, onOpen = { m, r -> open = m to r }) }
+            },
+    ) {
         Canvas(Modifier.fillMaxSize()) {
             headLayout?.let {
                 val x = ink.insetPx + (if (flow.gutter) COL_EM * flow.bodyPx else 0f)
@@ -829,6 +1298,7 @@ private fun PageView(
                         hidden = hideable(b, mineRole, hiding, peeked), flash = b.owner == flash,
                         underline = mineRole != null && b.cueRole == mineRole,
                         studio = studio,
+                        marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[b.owner]].orEmpty() else emptyList(), selRange(sel, seg.block, b.text.length), selTint),
                     )
                 }
                 if (studio?.current != null) {
@@ -848,6 +1318,18 @@ private fun PageView(
                         )
                     }
                 }
+            }
+            if (sel != null) drawHandles(geos, sel, handleColor, handleR, 2.dp.toPx())
+        }
+        open?.let { (m, r) ->
+            Box(Modifier.offset { IntOffset(r.left.toInt(), r.bottom.toInt()) }) {
+                MarkMenu(
+                    m, ui.dark,
+                    onHue = { ui.model.update(m.id, MarkPatch(hue = it)); open = null },
+                    onEdit = { open = null; ui.onEdit(m) },
+                    onDelete = { open = null; ui.onDelete(m) },
+                    onDismiss = { open = null },
+                )
             }
         }
         if (studio != null) {
@@ -890,23 +1372,42 @@ private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
     val glyph = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeUp)
     val warn = rememberVectorPainter(Icons.Filled.Warning)
     val measurer = rememberTextMeasurer()
-    return remember(pal, flow, glyph, warn, measurer) {
+    val note = rememberVectorPainter(Icons.Filled.StickyNote2)
+    val dark = OnAir.colors.dark
+    return remember(pal, flow, glyph, warn, measurer, note, dark) {
         Ink(
             pal.accent, pal.block, pal.muted, with(density) { 3.dp.toPx() }, flow.bodyPx * LINE_GAP_EM / 3, with(density) { RuleInset.toPx() },
-            flow.bodyPx, glyph, warn, measurer, with(density) { 44.dp.toPx() },
+            flow.bodyPx, glyph, warn, measurer, with(density) { 44.dp.toPx() }, pal.text, dark, note,
         )
     }
 }
 
 /** One block in Scroll: the whole of it, its width the column's. */
 @Composable
-private fun ScrollBlock(blk: Blk, flow: ReaderFlow, pal: Palette, mineRole: String?, hiding: Boolean, peeked: Int?, flash: Boolean, onPeek: (Int) -> Unit) {
+private fun ScrollBlock(
+    blk: Blk, index: Int, flow: ReaderFlow, pal: Palette, mineRole: String?, hiding: Boolean, peeked: Int?, flash: Boolean, ui: MarkUi, onPeek: (Int) -> Unit,
+) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
     val hidden = hideable(blk, mineRole, hiding, peeked)
     val m = remember(blk, flow, hidden) { measureBlk(measurer, flow, blk, hidden) }
     val ink = rememberInk(pal, flow)
     val height = with(density) { m.text.size.height.toDp() }
+    val geos = remember(m, blk, index, hidden, ink) {
+        listOf(SegGeo(index, blk, m, 0f, m.text.size.height.toFloat(), 0, m.text.lineCount, ink.insetPx + blk.xOffEm * ink.bodyPx, hidden))
+    }
+    var open by remember { mutableStateOf<Pair<Mark, Rect>?>(null) }
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    val sel = ui.sel?.takeIf { it.where == index }
+    val selTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val handleColor = MaterialTheme.colorScheme.primary
+    val handleR = with(density) { 9.dp.toPx() }
+    LaunchedEffect(sel, geos, origin) { if (sel != null) ui.rect = selBounds(geos, sel)?.translate(origin) }
+    Box(
+        Modifier
+            .onGloballyPositioned { origin = it.positionInRoot() }
+            .pointerInput(geos, flow) { awaitEachGesture { markTouch(geos, flow, ui, index, handleR, onOpen = { mk, r -> open = mk to r }) } },
+    ) {
     Canvas(
         Modifier
             .width(with(density) { flow.colPx.toDp() })
@@ -926,7 +1427,21 @@ private fun ScrollBlock(blk: Blk, flow: ReaderFlow, pal: Palette, mineRole: Stri
             m, blk, 0, 0f, m.text.size.height.toFloat(), ink,
             tint = mineRole != null && blk.role == mineRole && blk.kind != Kind.Heading, hidden = hidden, flash = flash,
             underline = mineRole != null && blk.cueRole == mineRole,
+            marks = MarkLayer(if (ui.model.show) ui.model.byLine[flow.ids[blk.owner]].orEmpty() else emptyList(), selRange(sel, index, blk.text.length), selTint),
         )
+        if (sel != null) drawHandles(geos, sel, handleColor, handleR, 2.dp.toPx())
+    }
+    open?.let { (mk, r) ->
+        Box(Modifier.offset { IntOffset(r.left.toInt(), (r.bottom + with(density) { (flow.bodyPx * blk.gapEm).toDp().toPx() }).toInt()) }) {
+            MarkMenu(
+                mk, ui.dark,
+                onHue = { ui.model.update(mk.id, MarkPatch(hue = it)); open = null },
+                onEdit = { open = null; ui.onEdit(mk) },
+                onDelete = { open = null; ui.onDelete(mk) },
+                onDismiss = { open = null },
+            )
+        }
+    }
     }
 }
 
@@ -990,6 +1505,16 @@ private fun ReaderBody(
     var jump by remember { mutableIntStateOf(0) }
     var sheet by rememberSaveable { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    val marksModel = remember(script.id) {
+        MarksModel(
+            script, MarksRepository(MarksDatabase.get(context).marks()),
+            MarksPrefsStore(context.getSharedPreferences("ed.marks", android.content.Context.MODE_PRIVATE)), scope,
+        )
+    }
+    LaunchedEffect(marksModel) { marksModel.load() }
+    var composing by remember { mutableStateOf<Composing?>(null) }
+    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     var pickingVoice by remember { mutableStateOf<PartID?>(null) }
     var hearing by remember { mutableStateOf<ScriptLine?>(null) }
     var hearingOn by remember { mutableStateOf(false) }
@@ -1013,6 +1538,40 @@ private fun ReaderBody(
             genreColor(script.partHue(p.id), dark)?.let { hues[p.id.roleName.orEmpty()] = it }
         }
         Palette(onSurface, mutedInk, accent, block, hues)
+    }
+
+    val ui = remember(marksModel, dark, haptics) {
+        MarkUi(
+            marksModel, dark,
+            onEdit = { m -> composing = Composing(m.kind, emptyList(), m) },
+            onDelete = { m ->
+                val wasLost = marksModel.isLost(m.id)
+                val removed = marksModel.remove(m.id)
+                scope.launch {
+                    val r = snackbar.showSnackbar("Mark deleted", actionLabel = "Undo", duration = SnackbarDuration.Short)
+                    if (r == SnackbarResult.ActionPerformed) marksModel.restore(removed, if (wasLost) removed.map { it.id }.toSet() else emptySet())
+                }
+            },
+            haptic = { haptics(Haptic.Selection) },
+        )
+    }
+    LaunchedEffect(posId, sheet) { ui.sel = null }
+    LaunchedEffect(composing) { if (composing != null) ui.sel = null }
+
+    /** A mark the selection asks for: a beat or a note opens its sheet first; the rest are made now. */
+    fun markSelection(kind: String) {
+        val s = ui.sel ?: return
+        if (s.pieces.isEmpty()) {
+            ui.sel = null
+            return
+        }
+        if (kind == "beat" || kind == "note") {
+            composing = Composing(kind, s.pieces, null)
+        } else {
+            marksModel.make(kind, s.pieces)
+            haptics(Haptic.Selection)
+        }
+        ui.sel = null
     }
 
     LaunchedEffect(posId, part) {
@@ -1112,6 +1671,25 @@ private fun ReaderBody(
         }
     }
 
+    SelectionToolbar(
+        active = ui.sel != null && !ui.dragging && sheet.isEmpty() && composing == null,
+        rect = ui.rect,
+        onAction = { a ->
+            if (a == "copy") {
+                ui.sel?.let { sel ->
+                    val text = sel.pieces.joinToString(" ") { pc ->
+                        script.lines.firstOrNull { it.id == pc.line }?.let { ScriptReading.lineText(it) }?.substring(pc.start, pc.end).orEmpty()
+                    }
+                    clipboard.setText(AnnotatedString(text.replace("_", "")))
+                }
+                ui.sel = null
+            } else {
+                markSelection(a)
+            }
+        },
+        onGone = { ui.sel = null },
+    )
+
     val keys = Modifier.onPreviewKeyEvent { e: KeyEvent ->
         val studioKey = studio != null && when (e.key) {
             Key.Spacebar, Key.HeadsetHook, Key.MediaPlayPause, Key.Enter, Key.NumPadEnter, Key.R -> true
@@ -1120,9 +1698,22 @@ private fun ReaderBody(
         val volume = volumeKeys && (e.key == Key.VolumeDown || e.key == Key.VolumeUp)
         val name = readerKeyName(e.key)
         val letter = part != null && (e.key == Key.J || e.key == Key.K)
-        if (!studioKey && !volume && name == null && !letter) return@onPreviewKeyEvent false
+        val markKey = ui.sel != null && when (e.key) {
+            Key.H, Key.U, Key.Slash, Key.P, Key.B, Key.N, Key.Escape -> true
+            else -> false
+        }
+        if (!studioKey && !volume && name == null && !letter && !markKey) return@onPreviewKeyEvent false
         if (e.type == KeyEventType.KeyDown) {
             when {
+                markKey -> when (e.key) {
+                    Key.H -> markSelection("highlight")
+                    Key.U -> markSelection("underline")
+                    Key.Slash -> markSelection("breath")
+                    Key.P -> markSelection("pause")
+                    Key.B -> markSelection("beat")
+                    Key.N -> markSelection("note")
+                    else -> ui.sel = null
+                }
                 studioKey -> when (e.key) {
                     Key.Enter, Key.NumPadEnter -> studio.studio.keep()
                     Key.R -> scope.launch { studio.studio.again() }
@@ -1251,9 +1842,10 @@ private fun ReaderBody(
             val colPx = (((constraints.maxWidth - 2 * marginPx - (per - 1) * gapPx) / per).coerceAtMost(36 * bodyPx)).toInt().coerceAtLeast(1)
             val spec = FlowSpec(
                 script.id, colPx, (constraints.maxHeight - headPx - vertical - footPx).toInt().coerceAtLeast(1), density.density, density.fontScale,
-                shownPrefs, dark, per, with(density) { RuleInset.toPx() }.toInt(), studio?.part?.roleName,
+                shownPrefs, dark, per, with(density) { RuleInset.toPx() }.toInt(), studio?.part?.roleName, marksModel.points,
             )
-            val flow by produceState<ReaderFlow?>(null, spec, pal) { value = computeFlow(script, spec, pal, resolver, density) }
+            val ready = marksModel.ready
+            val flow by produceState<ReaderFlow?>(null, spec, pal, ready) { if (ready) value = computeFlow(script, spec, pal, resolver, density) }
             val f = flow
             when {
                 f == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1263,7 +1855,7 @@ private fun ReaderBody(
                     PagesStage(
                         f, f.paged, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = flash,
                         pal = pal, headPx = headPx, animationsOff = animationsOff, turner = turner, haptics = { haptics(Haptic.Selection) },
-                        vertical = vertical, gap = gapPx,
+                        vertical = vertical, gap = gapPx, ui = ui,
                         onPos = { posId = script.lines[it].id },
                         onPeek = { peeked = it }, onClearPeek = { peeked = null }, onLabel = { pageLabel = it },
                         studio = paint,
@@ -1279,7 +1871,7 @@ private fun ReaderBody(
                 else -> key(f) {
                     ScrollStage(
                         f, posIndex = posIndex, jump = jump, mineRole = mineRole, hiding = hiding, peeked = peeked, flash = flash, pal = pal,
-                        turner = turner, margin = marginPx, vertical = vertical,
+                        turner = turner, margin = marginPx, vertical = vertical, ui = ui,
                         onPos = { posId = script.lines[it].id }, onPeek = { peeked = it }, onLabel = { pageLabel = it },
                     )
                 }
@@ -1297,6 +1889,7 @@ private fun ReaderBody(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {
@@ -1310,6 +1903,7 @@ private fun ReaderBody(
                 navigationIcon = { IconButton(onClick = { stopHearing(); onBack() }) { Icon(Icons.Filled.Close, contentDescription = "Close") } },
                 actions = {
                     if (castHandle != null) IconButton(onClick = { sheet = "voices" }) { Icon(Icons.Filled.RecordVoiceOver, contentDescription = "Voices") }
+                    IconButton(onClick = { sheet = "marks" }) { Icon(Icons.Filled.Bookmark, contentDescription = "Marks") }
                     IconButton(onClick = { sheet = "contents" }) { Icon(Icons.Filled.Toc, contentDescription = "Contents") }
                     IconButton(onClick = { sheet = "search" }) { Icon(Icons.Filled.Search, contentDescription = "Search") }
                     IconButton(onClick = { sheet = "text" }) { Icon(Icons.Filled.FormatSize, contentDescription = "Text") }
@@ -1374,6 +1968,15 @@ private fun ReaderBody(
     }
     when (sheet) {
         "voices" -> castHandle?.let { h -> VoicesSheet(h, script, onPick = { pickingVoice = it }, onDismiss = { sheet = "" }) }
+        "marks" -> NotebookSheet(
+            marksModel, dark,
+            onGo = { m ->
+                sheet = ""
+                goTo(script.lines.indexOfFirst { it.id == m.line }, outline = true)
+            },
+            onDelete = { m -> ui.onDelete(m) },
+            onDismiss = { sheet = "" },
+        )
         "contents" -> ContentsSheet(script, posIndex, onGo = { sheet = ""; goTo(it, outline = false) }, onDismiss = { sheet = "" })
         "search" -> SearchSheet(script, onGo = { sheet = ""; goTo(it, outline = true) }, onDismiss = { sheet = "" })
         "text" -> TextSheet(
@@ -1383,7 +1986,28 @@ private fun ReaderBody(
         )
     }
     if (castHandle != null) pickingVoice?.let { VoicePickerSheet(castHandle, script, it) { pickingVoice = null } }
+    composing?.let { c ->
+        val editing = c.editing
+        val draft = remember(c) { if (editing == null) MarksCore.fromSelection(script, c.pieces, c.kind).firstOrNull() else editing }
+        val words = remember(c) { draft?.let { notebookWords(script, it, onSurface) } ?: AnnotatedString("") }
+        MarkEditSheet(
+            c.kind, words, if (c.kind == "note") editing?.note.orEmpty() else editing?.label.orEmpty(),
+            onSave = { text ->
+                if (editing != null) {
+                    marksModel.update(editing.id, if (c.kind == "note") MarkPatch(note = text) else MarkPatch(label = text))
+                } else {
+                    marksModel.make(c.kind, c.pieces, if (c.kind == "note") MarkExtra(note = text) else MarkExtra(label = text))
+                }
+                haptics(Haptic.Selection)
+                composing = null
+            },
+            onDismiss = { composing = null },
+        )
+    }
 }
+
+/** A beat or a note being written: the selection it is for, or the mark being edited. */
+private class Composing(val kind: String, val pieces: List<Piece>, val editing: Mark?)
 
 @Composable
 private fun PagesStage(
@@ -1402,6 +2026,7 @@ private fun PagesStage(
     haptics: () -> Unit,
     vertical: Float,
     gap: Float,
+    ui: MarkUi,
     onPos: (Int) -> Unit,
     onPeek: (Int) -> Unit,
     onClearPeek: () -> Unit,
@@ -1429,6 +2054,7 @@ private fun PagesStage(
             val cur = latestPos
             if (!(paged.ends[cur] >= a && paged.starts[cur] <= b)) onPos(ReaderMath.lineAtPage(paged.starts, paged.ends, a))
             onClearPeek()
+            ui.sel = null
             haptics()
         }
     }
@@ -1487,7 +2113,7 @@ private fun PagesStage(
                     PageView(
                         spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mineRole, hiding, peeked, flash, headPx, onPeek,
                         Modifier.width(with(density) { flow.colPx.toDp() }).fillMaxSize(),
-                        studio = studio, onTakes = onTakes,
+                        ui = ui, studio = studio, onTakes = onTakes,
                     )
                 }
             }
@@ -1509,6 +2135,7 @@ private fun ScrollStage(
     margin: Float,
     vertical: Float,
     onPos: (Int) -> Unit,
+    ui: MarkUi,
     onPeek: (Int) -> Unit,
     onLabel: (String) -> Unit,
 ) {
@@ -1549,7 +2176,7 @@ private fun ScrollStage(
         items(flow.blocks.size, key = { it }) { b ->
             val blk = flow.blocks[b]
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                ScrollBlock(blk, flow, pal, mineRole, hiding, peeked, blk.owner == flash, onPeek)
+                ScrollBlock(blk, b, flow, pal, mineRole, hiding, peeked, blk.owner == flash, ui, onPeek)
             }
         }
     }
