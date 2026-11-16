@@ -204,3 +204,40 @@ peek, by the left/right rule). Library on a new device is five empty-state cards
 audit's finding). The recorder was not seen: XCUITest screenshots capture the primary
 (outer) display, which is black while the phone is open, and `ios_uitest.py` reported the
 run PASS with two all-black frames: a harness defect (its blind-frame check missed them).
+
+## 9. The fit-and-finish pass, 2026-11-16 (open display, landscape)
+
+Owner, holding the first App Store submission: *"let's fix all of the interface
+elements for the duo."* Frames: `build/qa/duo-audit/before/`, `after/` (local),
+inner display `123-456-789`, Debug build from Xcode 27.1, every launch muted. The
+rules this pass wrote are iOS-DESIGN §3.6; each defect below names its rule.
+
+| # | Before (measured on the 951 pt landscape frame) | Rule | After |
+|---|---|---|---|
+| 1 | Record: the Yours card 20 pt from the left and 0 pt from the safe area (13 pt from the strip); Today's Scene 16 pt inside it on both sides | §3.6a, §3.6b | both 24 pt from each edge, one edge |
+| 2 | Home: three left edges (the Continue card 20 pt, On the air 36 pt, its heading 40 pt) | §3.6b | boxes on the card edge, words on the heading's |
+| 3 | Browse: scope and chips 16 pt, count and field 20 pt, tiles to 13 pt from the strip | §3.6a | all 24 pt |
+| 4 | Library, Stations, Account, Downloads: cards 20 pt / 13 pt from the strip | §3.6a | 24 pt / 24 pt from the safe area |
+| 5 | Episode: four left edges (board 36, title 36, transcript card 20, On the air 40) | §3.6b | board on the card edge, title and buttons on the heading's |
+| 6 | Account: Sign in buttons 820 pt wide; Google's a 58 pt capsule beside Apple's 44 pt rectangle | §3.6d | 375 pt, both 44 pt, `Radius.control` |
+| 7 | Cast sheet column (340 pt): board 16 pt in, rows 20 pt in, the switch, sign-in and book buttons touching the divider | §3.6e | 375 pt, every row 16 pt from both edges |
+| 8 | Studio beside the script: the panel's cards flush against the reader | §3.6a | 24 pt |
+| 9 | Reader Text: a 650 pt medium sheet, three controls, two-thirds empty | §3.6c | a popover on the Text button (a sheet on a phone) |
+| 10 | Confirmations on whole views: Downloads Remove / Remove All, Remove a published line, Delete Unused Takes (code; not drawable signed out with no downloads) | §3.6c | each on its button |
+| 11 | (found while fixing) a chip row on the card edge was clipped by the section's rounded corner | §3.6b | rails start on the words edge |
+| 12 | (found while fixing) a modifier wrapped outside the row traits turned Record's chip row into a card | — | measured inside the traits |
+
+Judged right as they were: the series and person pages (`WidePage`, already 24 pt;
+the person's shelf peeks under the strip by the left/right rule), Search, Surprise
+(a centered 720 pt reading column), the sleep timer (on its button), the series
+Download menu, Contents / Search / Voices / Marks and the voice picker (long
+lists, medium sheets). Now Playing stays a page sheet: the player and queue side
+by side (§5.1, Q2) needs iOS-DESIGN §5.3 amended first. Seen in passing, not a Duo
+defect: Surprise's evening board reads "CBS · WTOP ·" with a trailing separator.
+
+Not seen this pass: anything signed in (the Duo is signed out; Block, Delete
+Account and a shared play's lines), the outer display (the phone stayed open), the
+inner display in portrait or partly folded, and Downloads with a download in it.
+XCUITest refused the Duo ("Timed out while enabling automation mode": UI
+Automation wants a person's Touch ID), so frames below the first screen came from
+the DEBUG door `APP_SCROLL_Y`.

@@ -303,7 +303,10 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
   solid genre-less monogram, the crop opening out to the floor (Gunsmoke: 296 px crop in a 300 pt TV tile; also on
   web and Android, with the role rule). Web and Android took the solid monogram, quiet station rows and the role rule 2026-11-04 (web Library's links now sit below its tabs). Still open:
   a tablet's rows carry a black Play each; web's head strip keeps the fixed axis.
-- [ ] **N14 iPhone Duo open layout.** Owner, 2026-11-16: "The spacing between the left column and the
+- [x] **N14 iPhone Duo open layout.** Done 2026-11-16: iOS-DESIGN §3.6 (one page margin from the safe
+  area, box and words edges, dialogs on their buttons, the cast column), twelve defects fixed and seen on
+  the open Duo and the iPad (IPHONE-DUO §9); PlaysScreens Delete production was already on its button.
+  Open: Now Playing + queue side by side (needs §5.3 amended), signed-in screens unseen. Owner, 2026-11-16: "The spacing between the left column and the
   regular content is not right. In fact, most of the interface elements don't seem to be well positioned
   (they are practically on top of one another)." Seen in a Duo open-display frame (Record, landscape, side
   strip on the right): the Yours card runs to within ~20 pt of the strip, its left edge sits 16 pt left of
