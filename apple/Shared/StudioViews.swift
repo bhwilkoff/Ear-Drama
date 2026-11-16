@@ -107,8 +107,13 @@ final class StudioModel {
         if session.setMode(mode) { mode.remember() }
     }
 
-    func primary() { Task { await studio.primary() } }
+    func primary() {
+        quiet()
+        Task { await studio.primary() }
+    }
+
     func again(_ line: String? = nil) {
+        quiet()
         if session.phase == .runReview, line == nil, let last = session.runTakes.last {
             Task { await studio.again(last.lineID) }
         } else {
@@ -117,6 +122,9 @@ final class StudioModel {
     }
 
     func keep() { studio.keep() }
+
+    /// Recording and listening never overlap: a record press stops the listen-through first.
+    private func quiet() { if listen.isRunning { listen.stop() } }
 
     /// Listen Through From Here: the play from the current line, takes from their files and the rest in the cast's
     /// device voices, live and never stored (§2.6, §5); the reader follows.
@@ -425,6 +433,14 @@ private struct StudioStatus: View {
                 HStack(spacing: Spacing.s2) {
                     Text(verbatim: "Line \(place.at) of \(place.of)").font(TypeRamp.tabular).foregroundStyle(Color.brandTextMuted)
                     Spacer(minLength: 0)
+                    if session.mode == .run, session.run == nil, let state, state.state != .none, let line = model.studio.current {
+                        Button { model.again(line) } label: {
+                            Label("Again", systemImage: "arrow.counterclockwise")
+                        }
+                        .buttonStyle(.play(.again))
+                        .disabled(session.isBusy)
+                        .accessibilityIdentifier("studio-again-line")
+                    }
                     if let state {
                         Button {
                             if let line = model.studio.current { model.openTakes(line) }
@@ -512,7 +528,9 @@ struct StudioTransport: View {
                     .accessibilityIdentifier("studio-keep")
                 }
             } else {
+                let hearing = model.listen.isRunning
                 HStack {
+                    Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
                     Button { move(-1) } label: {
                         Label("Previous Line", systemImage: "backward.end").labelStyle(.iconOnly).frame(width: 44, height: 44)
                     }
@@ -526,6 +544,15 @@ struct StudioTransport: View {
                     }
                     .disabled(model.studio.locked || model.studio.current == model.studio.mine.last)
                     .accessibilityIdentifier("studio-next")
+                    Button { model.listenFromHere() } label: {
+                        Label(hearing ? "Stop" : "Listen From Here", systemImage: hearing ? "stop.fill" : "play.fill")
+                            .labelStyle(.iconOnly)
+                            .frame(width: 44, height: 44)
+                            .background(Circle().fill(hearing ? Color.brandSurfaceAlt : Color.clear))
+                    }
+                    .disabled(!hearing && (session.isBusy || session.run != nil))
+                    .accessibilityAddTraits(hearing ? .isSelected : [])
+                    .accessibilityIdentifier("studio-listen")
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.brandSecondary)

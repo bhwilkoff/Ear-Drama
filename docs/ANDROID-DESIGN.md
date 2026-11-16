@@ -777,7 +777,14 @@ The common text is in `docs/WEB-DESIGN.md` §4.5, §5, and §8 and
     the chosen take) and a part-scoped `discardUnused`. Each of my lines shows
     its take state after the name (`radio_button_unchecked`, a filled circle
     with the count in the hue, `warning`), a click target that makes the line
-    current and opens its take list. **Compact**: a bottom dock in the
+    current and opens its take list. Every other part's line a device voice
+    reads carries, after the name, a dashed ring in the part's hue with
+    `GraphicEq` and the voice's short name ("Zoe"), a click target that opens
+    that part's voice picker; none on a line with a usable human take
+    (PLAYS-DESIGN §2.9 rule 3a, 2026-11-15). The transport ends with Listen from
+    here (`PlayArrow`, Stop while it plays); in Run through with no run on, a
+    line holding a take shows **Again** in the status line and that single
+    take's round control reads Cancel / Stop (rules 5, 6). **Compact**: a bottom dock in the
     `Scaffold` (the `SingleChoiceSegmentedButtonRow`, the status line with the
     level meter, Previous / record / Next / Hide my lines), the take list, cast,
     Listen through from here, Delete unused takes and Done with this part in a

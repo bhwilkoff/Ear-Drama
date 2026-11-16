@@ -75,6 +75,9 @@ object StudioCore {
         LineState.Kind.Chosen -> if (state.takes == 1) "1 take" else "${state.takes} takes, take ${state.chosen} chosen"
     }
 
+    /** A device voice's short name on the page: the voice's name with a trailing parenthesized tier removed ("Ava (Premium)" is "Ava"). */
+    fun shortVoiceName(name: String): String = name.replace(Regex("\\s*\\([^)]*\\)\\s*$"), "")
+
     /** The status row's takes button: "Take 2 of 3", "No take", "Re-take". */
     fun takesLabel(state: LineState): String = when (state.state) {
         LineState.Kind.None -> "No take"
@@ -162,6 +165,9 @@ class StudioController(val session: RecordingSession, private val store: Product
         if (session.mode.value == RecordingSession.Mode.Run) {
             if (phase is RecordingSession.Phase.RunReview) return
             if (session.run.value != null) { session.pause(); return }
+            // A single take outside a run (Again on a line gone back to) stops or cancels like Line by line.
+            if (phase is RecordingSession.Phase.Listening) { session.stopListening(); return }
+            if (phase is RecordingSession.Phase.Cue) { session.cancel(); return }
             if (!session.isBusy) session.runThrough(now)
             return
         }

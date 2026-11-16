@@ -375,6 +375,8 @@ private final class FakeLiveAudio: LiveAudio {
     private(set) var played: [CueAudio] = []
     /// While true a cue "plays" until `release()` or `stopPlayback()`, so a run can be paused mid-cue.
     var hold = false
+    /// While true the microphone hears nothing, so a take stays open until Stop.
+    var open = false
     private(set) var waiting = false
     private var gate: CheckedContinuation<Void, Never>?
 
@@ -404,6 +406,7 @@ private final class FakeLiveAudio: LiveAudio {
 
     func beginCapture(_ onChunk: @escaping @MainActor @Sendable ([Float]) -> Void) {
         captures += 1
+        if open && captures > 1 { return }
         let signal: [Float]
         if captures == 1 {
             signal = (0..<48_000).map { _ in Float.random(in: -0.0005...0.0005) }  // room tone
@@ -1090,6 +1093,56 @@ struct StudioTests {
         #expect(takes.count == 2, "two takes")
         #expect(takes.first?.id == first.first, "the first take is still there")
         #expect(store.production(s.production.id)?.chosen["L0003"] == takes.last?.id, "the new take is chosen")
+        s.end()
+    }
+
+    @Test func runThroughRoundControlStopsOrCancelsASingleTakeInsteadOfStartingARun() async throws {
+        let audio = FakeLiveAudio(leaky: false)
+        let script = fixtureScript()
+        let store = ProductionStore(root: temporaryRoot())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        var production = try store.create(script)
+        production = try Relay.take(molly, performer: nil, in: production, script: script)
+        try store.save(production)
+        let s = RecordingSession(production: production, script: script, part: molly, store: store, audio: audio,
+                                 voice: SignatureVoice(), sleep: { _ in }, announce: {})
+        await s.begin(echoCancelled: false)
+        let st = StudioController(session: s, store: store, line: "L0003")
+        s.setMode(.run)
+
+        audio.open = true
+        let again = Task { await st.again("L0003") }
+        for _ in 0..<500 {
+            if case .listening = s.phase { break }
+            await Task.yield()
+        }
+        guard case .listening = s.phase else { Issue.record("the take never opened the microphone"); return }
+        await st.primary()
+        for _ in 0..<500 {
+            if case .listening = s.phase { await Task.yield() } else { break }
+        }
+        var stillListening = false
+        if case .listening = s.phase { stillListening = true; s.stopListening() }
+        await again.value
+        #expect(!stillListening, "the round control stopped the single take")
+        #expect(s.run == nil && s.phase == .idle, "no run began")
+
+        let before = st.takes("L0003").count
+        audio.open = false
+        audio.hold = true
+        let cued = Task { await st.again("L0003") }
+        for _ in 0..<500 where !audio.waiting { await Task.yield() }
+        guard case .cue = s.phase else { Issue.record("no cue played"); return }
+        await st.primary()
+        for _ in 0..<500 {
+            if case .cue = s.phase { await Task.yield() } else { break }
+        }
+        var stillCue = false
+        if case .cue = s.phase { stillCue = true; audio.release() }
+        await cued.value
+        #expect(!stillCue, "the round control cancelled the cue")
+        #expect(s.run == nil, "no run began")
+        #expect(st.takes("L0003").count == before, "the cancelled take recorded nothing")
         s.end()
     }
 

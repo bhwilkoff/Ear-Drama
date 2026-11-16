@@ -205,6 +205,11 @@ class StudioModel(
         }
     }
 
+    /** Recording and listening never overlap: a record press stops a playing listen-through first. */
+    suspend fun primary() { stopListen(); studio.primary() }
+
+    suspend fun again(lineID: String? = null) { stopListen(); studio.again(lineID) }
+
     fun stopListen() {
         listenJob?.cancel()
         listen?.close()
@@ -332,15 +337,15 @@ private fun AccessibilityManager.isTouchExploration() = isTouchExplorationEnable
 
 /** Under the page on a phone (§2.9 rule 6): the mode, one status row, the transport; before the first take, the gate. */
 @Composable
-fun StudioDock(model: StudioModel, onTakes: (String) -> Unit, modifier: Modifier = Modifier) {
+fun StudioDock(model: StudioModel, onTakes: (String) -> Unit, onListen: (() -> Unit)?, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(horizontal = Spacing.S4.dp).padding(top = Spacing.S2.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-        StudioControls(model, onTakes)
+        StudioControls(model, onTakes, onListen)
     }
 }
 
 /** The mode, the status row and the transport, or before the first take the gate. One composable for the dock and the pane. */
 @Composable
-fun StudioControls(model: StudioModel, onTakes: (String) -> Unit) {
+fun StudioControls(model: StudioModel, onTakes: (String) -> Unit, onListen: (() -> Unit)?) {
     val session = model.session
     val phase by session.phase.collectAsState()
     // phase is read first, always: session.started is not state, so only the phase flow tells this composable to run again.
@@ -373,8 +378,8 @@ fun StudioControls(model: StudioModel, onTakes: (String) -> Unit) {
         if (session.setMode(m)) { m.remember(context); haptics(Haptic.Selection) }
     }
     LaunchedEffect(phase is Phase.Listening) { if (phase is Phase.Listening) haptics(Haptic.Selection) }
-    StudioStatus(model, phase, current, onTakes)
-    StudioTransport(model, phase, mode, run != null, current)
+    StudioStatus(model, phase, mode, run != null, current, onTakes)
+    StudioTransport(model, phase, mode, run != null, current, onListen)
 }
 
 private val ModeLabels = listOf(Mode.Run to "Run through", Mode.Lines to "Line by line", Mode.Step to "Step")
@@ -498,8 +503,9 @@ private fun StudioModel.openDoor(start: () -> Unit) {
 private fun clock(seconds: Int) = String.format(Locale.US, "%d:%02d", seconds / 60, seconds % 60)
 
 @Composable
-private fun StudioStatus(model: StudioModel, phase: Phase, current: String?, onTakes: (String) -> Unit) {
+private fun StudioStatus(model: StudioModel, phase: Phase, mode: Mode, running: Boolean, current: String?, onTakes: (String) -> Unit) {
     val session = model.session
+    val scope = rememberCoroutineScope()
     val record = OnAir.colors.record
     val listening = phase is Phase.Listening
     val levels = remember { mutableStateListOf<Float>() }
@@ -545,8 +551,21 @@ private fun StudioStatus(model: StudioModel, phase: Phase, current: String?, onT
             else -> {
                 val place = model.studio.place
                 Text("Line ${place.first} of ${place.second}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(Modifier.weight(1f))
                 val state = current?.let { model.studio.lineState(it) }
+                // Run through's round control runs on from here; a line gone back to is re-taken alone.
+                if (mode == Mode.Run && !running && current != null && state != null && state.state != StudioCore.LineState.Kind.None) {
+                    OutlinedButton(
+                        onClick = { scope.launch { model.again(current) } },
+                        enabled = !session.isBusy,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = record),
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                        modifier = Modifier.heightIn(min = 40.dp),
+                    ) {
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(record))
+                        Text("Again", Modifier.padding(start = Spacing.S2.dp), maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                Box(Modifier.weight(1f))
                 if (state != null) TakesButton(state, model, onClick = { onTakes(current) })
             }
         }
@@ -597,14 +616,14 @@ private fun LevelMeter(levels: List<Float>, red: Color, modifier: Modifier = Mod
 
 /** Previous, the one round control, Next; Step's review Again, With cue, Keep; a run's review Discard or Keep N. */
 @Composable
-private fun StudioTransport(model: StudioModel, phase: Phase, mode: Mode, running: Boolean, current: String?) {
+private fun StudioTransport(model: StudioModel, phase: Phase, mode: Mode, running: Boolean, current: String?, onListen: (() -> Unit)?) {
     val session = model.session
     val studio = model.studio
     val scope = rememberCoroutineScope()
     val padded = Modifier.padding(bottom = Spacing.S2.dp)
     when {
         phase is Phase.Review -> Row(padded.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.S2.dp)) {
-            OutlinedButton(onClick = { scope.launch { studio.again(phase.lineID) } }, modifier = Modifier.weight(1f), colors = wayColors(), contentPadding = ButtonDefaults.TextButtonContentPadding) {
+            OutlinedButton(onClick = { scope.launch { model.again(phase.lineID) } }, modifier = Modifier.weight(1f), colors = wayColors(), contentPadding = ButtonDefaults.TextButtonContentPadding) {
                 Icon(Icons.Filled.Replay, contentDescription = null, modifier = Modifier.size(18.dp))
                 Text("Again", Modifier.padding(start = Spacing.S1.dp), maxLines = 1)
             }
@@ -655,11 +674,17 @@ private fun StudioTransport(model: StudioModel, phase: Phase, mode: Mode, runnin
                     container = if (red) OnAir.colors.record else OnAir.colors.play,
                     content = if (red) OnAir.colors.onRecord else OnAir.colors.onPlay,
                     enabled = !(session.isBusy && !listening && !cueing && !running),
-                    onClick = { scope.launch { studio.primary() } },
+                    onClick = { scope.launch { model.primary() } },
                 )
                 Box(Modifier.weight(1f))
                 IconButton(onClick = { move(model, 1) }, enabled = !locked && current != mine.lastOrNull()) {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next line")
+                }
+                if (onListen != null) {
+                    val hearing = model.listen != null
+                    IconButton(onClick = onListen, enabled = hearing || !locked) {
+                        Icon(if (hearing) Icons.Filled.Stop else Icons.Filled.PlayArrow, contentDescription = if (hearing) "Stop" else "Listen from here")
+                    }
                 }
             }
         }
@@ -689,6 +714,18 @@ private fun RoundControl(label: String, icon: androidx.compose.ui.graphics.vecto
             Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(26.dp))
         }
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Listen through from the current line (or Stop while it plays), or null when there is no cast to read the other parts. */
+@Composable
+fun rememberListenAction(model: StudioModel, handle: CastHandle?, muted: Boolean, onFollow: (String) -> Unit): (() -> Unit)? {
+    val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    if (handle == null) return null
+    return {
+        if (container.playback.state.value.isPlaying) container.playback.togglePlay()
+        model.listenFromHere(scope, handle, container.plays.store, muted, onFollow)
     }
 }
 
@@ -751,7 +788,7 @@ fun StudioPanel(
         if (full) {
             item(key = "controls") {
                 Column(Modifier.padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
-                    StudioControls(model, onTakes)
+                    StudioControls(model, onTakes, rememberListenAction(model, handle, muted, onFollow))
                 }
             }
         }
@@ -764,7 +801,7 @@ fun StudioPanel(
                     IconButton(onClick = { scope.launch { session.playWithCue(take) } }, enabled = !session.isBusy) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = "Play line ${studio.mine.indexOf(take.lineID) + 1} with its cue")
                     }
-                    TextButton(onClick = { scope.launch { studio.again(take.lineID) } }, enabled = !session.isBusy) { Text("Again") }
+                    TextButton(onClick = { scope.launch { model.again(take.lineID) } }, enabled = !session.isBusy) { Text("Again") }
                 }
             }
         } else if (current != null) {
@@ -782,7 +819,7 @@ fun StudioPanel(
             }
             item(key = "again") {
                 OutlinedButton(
-                    onClick = { scope.launch { studio.again(line) } },
+                    onClick = { scope.launch { model.again(line) } },
                     enabled = started && !session.isBusy && run == null,
                     modifier = Modifier.padding(horizontal = Spacing.S4.dp),
                     colors = wayColors(),

@@ -255,7 +255,10 @@ only here:
     `docs/research/design/R2-studio-port-brief.md`): a production's part opens
     the reader window with the studio attached; the **inspector** (`.inspector`,
     toggle ⌥⌘I, 320-380 pt) holds the mode `Picker(.segmented)`, the transport
-    (Previous, record, Next) with the status line and level meter, the current
+    (Previous, record, Next, Listen From Here; 2026-11-15) with the status line
+    (Again in Run Through for a line holding a take) and level meter, the dashed
+    device-voice ring and voice name after each other part's name on the page (a
+    click opens that part's voice picker; PLAYS-DESIGN §2.9 rule 3a), the current
     line's take list (a `List`: play, With Cue, choose, Delete on unchosen takes,
     Record Again), the cast with voices, Listen Through From Here, Delete Unused
     Takes (confirmation with the count) and Done With This Part. A **Recording**

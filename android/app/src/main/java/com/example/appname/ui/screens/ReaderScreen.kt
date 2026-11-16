@@ -121,6 +121,8 @@ import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.material.icons.filled.StickyNote2
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.GraphicEq
+import com.example.appname.ui.describeVoice
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -188,6 +190,7 @@ import com.example.appname.plays.ReaderStore
 import com.example.appname.plays.RecordingSession
 import com.example.appname.plays.Relay
 import com.example.appname.plays.StudioCore
+import com.example.appname.plays.chipVoiceName
 import com.example.appname.plays.StudioOpen
 import com.example.appname.plays.ScriptLine
 import com.example.appname.plays.ScriptReading
@@ -792,6 +795,7 @@ private class Ink(
     val text: Color,
     val dark: Boolean,
     val note: androidx.compose.ui.graphics.painter.Painter,
+    val wave: androidx.compose.ui.graphics.painter.Painter,
 )
 
 /** How the studio outlines the current line (§2.9 rule 2): ink, dashed record red while its cue plays, solid while the microphone is open. */
@@ -806,7 +810,20 @@ private class StudioPaint(
     val record: Color,
     val warning: Color,
     val ink: Color,
+    /** Each other speaking part's device voice, by role; its lines show the ring unless a usable take stands (§2.9 rule 3a). */
+    val rings: Map<String, DeviceVoice> = emptyMap(),
+    /** Script line indexes whose chosen take is usable. */
+    val taken: Set<Int> = emptySet(),
 )
+
+/** What a device-voice ring says: the short name it shows and the name the part's voice is read as. */
+private class DeviceVoice(val part: PartID, val text: String, val label: String)
+
+private fun StudioPaint.ringFor(blk: Blk): DeviceVoice? =
+    if (blk.speechStart && blk.role != null && blk.role != role && blk.owner !in taken) rings[blk.role] else null
+
+private fun measureRing(ink: Ink, d: Density, text: String): TextLayoutResult =
+    ink.measurer.measure(androidx.compose.ui.text.AnnotatedString(text), TextStyle(fontSize = with(d) { (CAPTION_EM * ink.bodyPx).toSp() }, color = ink.muted))
 
 private class MarkSpot(val glyph: Rect, val textX: Float, val cy: Float, val hit: Rect)
 
@@ -815,12 +832,12 @@ private class MarkSpot(val glyph: Rect, val textX: Float, val cy: Float, val hit
  * its words; in the gutter the name is right-aligned beside the words, so the mark stands before it. The hit area is the name
  * and the mark together, at least a finger tall.
  */
-private fun markSpot(m: Measured, blk: Blk, ink: Ink, top: Float, state: StudioCore.LineState): MarkSpot? {
+private fun markSpot(m: Measured, blk: Blk, ink: Ink, top: Float, state: StudioCore.LineState, widthOf: Float? = null): MarkSpot? {
     val lay = (if (blk.kind == Kind.Name) m.text else m.name) ?: return null
     val g = ink.bodyPx * MARK_GLYPH_EM
     val gap = ink.bodyPx * 0.3f
     val countW = if (state.state == StudioCore.LineState.Kind.Chosen) ink.bodyPx * (0.25f + 0.55f * state.takes.toString().length) else 0f
-    val width = g + countW
+    val width = widthOf ?: (g + countW)
     val lineH = lay.getLineBottom(0) - lay.getLineTop(0)
     val cy = top + lineH / 2
     val nameL: Float
@@ -839,6 +856,22 @@ private fun markSpot(m: Measured, blk: Blk, ink: Ink, top: Float, state: StudioC
     val half = maxOf(lineH, ink.targetPx) / 2
     val hit = Rect(minOf(nameL, left) - 6f, cy - half, maxOf(nameR, left + width) + 6f, cy + half)
     return MarkSpot(Rect(left, cy - g / 2, left + g, cy + g / 2), left + g + ink.bodyPx * 0.25f, cy, hit)
+}
+
+/** The ring and the voice's name, after the speaker's name (or before it in the gutter); the hit area is at least a finger tall. */
+private fun ringSpot(m: Measured, blk: Blk, ink: Ink, top: Float, d: Density, voice: DeviceVoice): MarkSpot? =
+    markSpot(m, blk, ink, top, StudioCore.LineState(StudioCore.LineState.Kind.None, 0, 0), ink.bodyPx * (MARK_GLYPH_EM + 0.25f) + measureRing(ink, d, voice.text).size.width)
+
+private fun DrawScope.drawRing(spot: MarkSpot, voice: DeviceVoice, blk: Blk, ink: Ink) {
+    val hue = blk.hue ?: ink.accent
+    val c = spot.glyph.center
+    val r = spot.glyph.width / 2
+    val w = ink.ruleWidth * 0.5f
+    drawCircle(hue, r * 0.9f, c, style = Stroke(w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(w * 2.2f, w * 1.6f))))
+    val g = spot.glyph.width * 0.62f
+    translate(c.x - g / 2, c.y - g / 2) { with(ink.wave) { draw(Size(g, g), colorFilter = ColorFilter.tint(hue)) } }
+    val text = measureRing(ink, this, voice.text)
+    drawText(text, topLeft = Offset(spot.textX, spot.cy - text.size.height / 2f))
 }
 
 private fun DrawScope.drawMark(spot: MarkSpot, state: StudioCore.LineState, blk: Blk, ink: Ink, studio: StudioPaint) {
@@ -1193,6 +1226,9 @@ private fun DrawScope.drawSlice(
         if (studio != null && from == 0 && blk.speechStart && blk.role == studio.role) {
             studio.states[blk.owner]?.let { state -> markSpot(m, blk, ink, top, state)?.let { drawMark(it, state, blk, ink, studio) } }
         }
+        if (studio != null && from == 0) {
+            studio.ringFor(blk)?.let { v -> ringSpot(m, blk, ink, top, this, v)?.let { drawRing(it, v, blk, ink) } }
+        }
         val cue = blk.cueRange
         if (underline && cue != null) {
             val first = layout.getLineForOffset(cue.first)
@@ -1250,6 +1286,7 @@ private fun PageView(
     ui: MarkUi,
     studio: StudioPaint? = null,
     onTakes: (Int) -> Unit = {},
+    onRing: (PartID) -> Unit = {},
 ) {
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
@@ -1368,6 +1405,21 @@ private fun PageView(
                 )
             }
         }
+        if (studio != null) {
+            segs.forEachIndexed { s, seg ->
+                val b = flow.blocks[seg.block]
+                if (seg.from != 0) return@forEachIndexed
+                val voice = studio.ringFor(b) ?: return@forEachIndexed
+                val spot = ringSpot(layouts[s], b, ink, seg.top, density, voice) ?: return@forEachIndexed
+                Box(
+                    Modifier
+                        .offset { IntOffset(spot.hit.left.toInt(), (spot.hit.top + headPx).toInt()) }
+                        .size(with(density) { spot.hit.width.toDp() }, with(density) { spot.hit.height.toDp() })
+                        .clickable(role = Role.Button, onClickLabel = "Choose the voice") { onRing(voice.part) }
+                        .semantics(mergeDescendants = true) { contentDescription = "Device voice for ${voice.part.title}: ${voice.label}" },
+                )
+            }
+        }
         segs.forEach { seg ->
             val b = flow.blocks[seg.block]
             if (hideable(b, mineRole, hiding, peeked)) {
@@ -1394,11 +1446,12 @@ private fun rememberInk(pal: Palette, flow: ReaderFlow): Ink {
     val warn = rememberVectorPainter(Icons.Filled.Warning)
     val measurer = rememberTextMeasurer()
     val note = rememberVectorPainter(Icons.Filled.StickyNote2)
+    val wave = rememberVectorPainter(Icons.Filled.GraphicEq)
     val dark = OnAir.colors.dark
-    return remember(pal, flow, glyph, warn, measurer, note, dark) {
+    return remember(pal, flow, glyph, warn, measurer, note, wave, dark) {
         Ink(
             pal.accent, pal.block, pal.muted, with(density) { 3.dp.toPx() }, flow.bodyPx * LINE_GAP_EM / 3, with(density) { RuleInset.toPx() },
-            flow.bodyPx, glyph, warn, measurer, with(density) { 44.dp.toPx() }, pal.text, dark, note,
+            flow.bodyPx, glyph, warn, measurer, with(density) { 44.dp.toPx() }, pal.text, dark, note, wave,
         )
     }
 }
@@ -1822,8 +1875,8 @@ private fun ReaderBody(
                 }
                 studioKey -> when (e.key) {
                     Key.Enter, Key.NumPadEnter -> studio.studio.keep()
-                    Key.R -> scope.launch { studio.studio.again() }
-                    else -> scope.launch { studio.studio.primary() }
+                    Key.R -> scope.launch { studio.again() }
+                    else -> scope.launch { studio.primary() }
                 }
                 volume -> { alongAway(); turner.turn(ReaderMath.Turn.By(if (e.key == Key.VolumeDown) 1 else -1)) }
                 letter -> myLine(if (e.key == Key.J) 1 else -1)
@@ -1854,6 +1907,13 @@ private fun ReaderBody(
             record = recordRed,
             warning = warningInk,
             ink = onSurface,
+            rings = if (castHandle == null) emptyMap() else script.castParts.map { it.id }
+                .filter { it.isSpeaking && it != studio.part }
+                .associate { p ->
+                    val d = describeVoice(castHandle, p)
+                    p.roleName!! to DeviceVoice(p, if (d.resolved.read && !d.resolved.none) chipVoiceName(StudioCore.shortVoiceName(d.text)) else d.text, d.text)
+                },
+            taken = script.lines.indices.filter { studioProduction.usableTake(script.lines[it].id) != null }.toSet(),
         )
     } else {
         null
@@ -1976,7 +2036,7 @@ private fun ReaderBody(
                         vertical = vertical, gap = gapPx, ui = ui,
                         onPos = { posId = script.lines[it].id },
                         onPeek = { peeked = it }, onClearPeek = { peeked = null }, onLabel = { pageLabel = it },
-                        studio = paint,
+                        studio = paint, onRing = pickVoice,
                         onSelect = { idx -> if (studio?.studio?.select(script.lines[idx].id) == true) haptics(Haptic.Selection) },
                         onTakes = { idx ->
                             studio?.let {
@@ -2056,7 +2116,7 @@ private fun ReaderBody(
                             }
                         }
                         if (studio != null) {
-                            StudioDock(studio, onTakes = { id -> studio.studio.select(id); studio.sheet = true })
+                            StudioDock(studio, onTakes = { id -> studio.studio.select(id); studio.sheet = true }, onListen = rememberListenAction(studio, castHandle, muted) { follow(it) })
                         }
                         bar()
                     }
@@ -2164,6 +2224,7 @@ private fun PagesStage(
     studio: StudioPaint? = null,
     onSelect: (Int) -> Unit = {},
     onTakes: (Int) -> Unit = {},
+    onRing: (PartID) -> Unit = {},
 ) {
     val per = flow.per
     val spreads = ((paged.count + per - 1) / per).coerceAtLeast(1)
@@ -2243,7 +2304,7 @@ private fun PagesStage(
                     PageView(
                         spread * per + k, paged.pages.getOrNull(spread * per + k), flow, pal, mineRole, hiding, peeked, flash, headPx, onPeek,
                         Modifier.width(with(density) { flow.colPx.toDp() }).fillMaxSize(),
-                        ui = ui, studio = studio, onTakes = onTakes,
+                        ui = ui, studio = studio, onTakes = onTakes, onRing = onRing,
                     )
                 }
             }

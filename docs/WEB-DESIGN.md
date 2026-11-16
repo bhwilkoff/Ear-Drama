@@ -872,6 +872,19 @@ web app follows today.
        (`.rd-now`). A tap on one of my lines makes it current (it does not
        turn the page in Pages); a tap on its take state also opens its take
        list. The page itself is unchanged (§4.16 item 3).
+     - **Who reads the other lines** (PLAYS-DESIGN §2.9 rule 3a, 2026-11-15):
+       each other part's speech a device voice will read carries `.rd-vc`
+       after the name: a dashed ring in the part's hue with a waveform, then
+       the voice's short name ("Zoe"; `aria-label` "Device voice for BIJAH:
+       Zoe (Enhanced)"); hidden on a line with a usable human take. A tap
+       opens `CastUI.picker` for that part; a choice repaints every ring.
+     - **Listen from here and Again** (PLAYS-DESIGN §2.9 rules 5 and 6,
+       2026-11-15): the transport ends with a play icon button
+       (`[data-act=listen]`, "Listen from here"; Stop and `aria-pressed`
+       while it plays). In Run through with no run on, a line holding a take
+       shows **Again** (`.st-again-line`, the record outline) in the status
+       row, before its takes; that single take's round control reads Cancel
+       during the cue and Stop while the microphone is open.
      - **The dock** (`.st-dock`, in the reader's dock slot, above the bottom
        bar): the mode control (§4.10b's segments, 36 px), then one status
        row: "Line 3 of 44" and the line's takes ("Take 2 of 3", "No take",

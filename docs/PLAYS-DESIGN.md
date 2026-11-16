@@ -397,6 +397,14 @@ three modes) is unchanged in what the engine does; this section is where it happ
    (no take), the ring filled in the part's hue with the number of takes (a chosen take; every
    line with takes has one), or the warning glyph (the chosen take was flagged by the bleed
    check). It is a button: it makes the line current and opens its **take list**.
+   3a. **Every other part's line says who reads it** (2026-11-15, `R2-studio-review.md` F3; the
+   owner: *"The virtual voices who play the different parts should also be intuitive (before
+   humans re-record them)"*). Beside the speaker's name, where my lines show their take state, a
+   line that a device voice will read carries the dashed ring in the part's hue (§2.8 rule 9; a
+   waveform inside, never a face) and the voice's short name (its own name without the tier in
+   brackets: "Ava", "Zoe"). A tap opens that part's voice picker (§2.8 rule 6), which previews the
+   part's first line. A line with a usable human take shows nothing (the take reads it). Studio
+   only: the reader alone stays bare.
 4. **The take list** (one per line): every take, oldest first, numbered, with its length; the
    chosen one marked. Each row: play it, play it after its cue (With cue), choose it, and delete
    it. **Only an unchosen take can be deleted** (choose another first): the chosen take is the
@@ -411,7 +419,10 @@ three modes) is unchanged in what the engine does; this section is where it happ
      other parts in their human takes or their cast voices (§2.8), the microphone opening on each
      of my lines as it comes and the line-end detector closing it; the reader follows the line
      being heard or recorded, turning its own pages. Pause ends the run; its review is §2.4's
-     (each take with its cue, Again, Keep N takes, Discard the run).
+     (each take with its cue, Again, Keep N takes, Discard the run). **Again** (2026-11-15, F1): with
+     no run on and the current line holding a take, the status row offers Again, which records that
+     line alone (as `R` does); while that single take's cue plays the round control reads Cancel, and
+     while the microphone is open it reads Stop, so going back to retake one line never starts a run.
    - **Line by line**: Record plays the current line's cue and records it; after the take the
      line stays current, ready to record again. Next and Previous move by my lines.
    - **Step**: Record plays the cue and records; the take's review offers Again, With cue and
@@ -420,8 +431,11 @@ three modes) is unchanged in what the engine does; this section is where it happ
    mode control; one status line (the current line's place, "Line 3 of 44", and its takes; while
    the cue plays, the speaker and "Device voice" when a device voice reads it; while the
    microphone is open, "Recording 0:03" and the live level meter); and the transport (Previous,
-   the one round record control, Next), with the take list, the cast and the rest in a sheet.
-   The record control is always on screen (Q9 (a)).
+   the one round record control, Next, then **Listen from here**), with the take list, the cast
+   and the rest in a sheet. The record control is always on screen (Q9 (a)). Listen from here
+   (2026-11-15, F2) is the panel's Listen through from here, one tap from the page on every width:
+   a play icon that becomes Stop while it plays, disabled while a cue, the microphone or a run is
+   on; any record press stops it first.
 7. **Wide: the script on one side, the studio on the other.** When the reader has 860 pt (px,
    dp) or more, the studio's panel stands beside the script: the current line's take list, the
    cast with each part's voice (§2.8's chips and picker), or, for a part another member holds in a shared production, that person's chosen name in place of the chip, **Listen through from

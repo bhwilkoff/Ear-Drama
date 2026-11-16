@@ -16,7 +16,13 @@ Space records the current line (the recording frame: the line outlined red, the 
 stops; R records it again; the take list (a sheet below the spread width, the panel beside the script from
 it: the wide frame); delete the unchosen take.
 
-Fails on: the cast sheet's door not opening the studio; a sideways scroll; a bottom bar taller than 72 px or
+Then (2026-11-15, R2-studio-review): the dashed device-voice ring with the voice's name on every other part's
+line and its tap opening that part's voice picker; Listen from here in the transport; Run through's Again on a line
+gone back to, re-taking that line alone and stopped by the round control.
+
+Fails on: the cast sheet's door not opening the studio; no device-voice ring (or one on my own line, or one
+with no voice name); no Listen from here in the transport; no Again in Run through for a line with a take, or a
+single Run-through take with no Stop; a sideways scroll; a bottom bar taller than 72 px or
 a dock row that wraps; any account line in the studio, or no Start recording, while signed out; the panel not beside the script at 1440 px or beside it below 860 px; a take-state
 badge missing from a line of the part; the current line not outlined; no refusal when the microphone is
 refused; the recording state not drawn; Record again not keeping the first take; a Delete offered on the
@@ -216,6 +222,24 @@ def main():
             if not ev("(() => { const n = document.querySelector('.rd-line.rd-cur'); const cr = document.querySelector('.rd-clip').getBoundingClientRect(); return n && [...n.getClientRects()].some(r => r.right > cr.left && r.left < cr.right); })()"):
                 bad('the current line is not on the page')
             shot('idle')
+            # Another part's line carries the dashed ring and its voice; a tap opens that part's voice picker (§2.9 rule 3a).
+            rings = json.loads(ev("JSON.stringify((() => { const r = [...document.querySelectorAll('.rd-vc')]; return { n: r.length, inMine: r.filter(b => b.closest('.rd-mine')).length, named: r.filter(b => !b.hidden && b.querySelector('.rd-vc-name') && b.querySelector('.rd-vc-name').textContent.trim()).length }; })())"))
+            if not rings['n']: bad("no other part's line shows its device voice")
+            if rings['inMine']: bad(f"{rings['inMine']} of my own lines show a device-voice ring")
+            if rings['named'] != rings['n']: bad(f"{rings['n'] - rings['named']} device-voice rings carry no voice name")
+            ev("(() => { const b = [...document.querySelectorAll('.rd-vc')].find(x => { const r = x.getBoundingClientRect(); return r.width && r.top > 0 && r.bottom < innerHeight; }); if (b) b.click(); })()")
+            if wait("document.querySelector('dialog.vc-sheet[open]')", "the voice picker from a device-voice ring", 5):
+                if w in (375, 1440): shot('voice')
+                ev("document.querySelector('dialog.vc-sheet[open]').close()")
+            # Listen from here sits in the transport, one tap from the page.
+            if not ev("!!document.querySelector('.st-transport [data-act=listen]:not(:disabled)')"): bad('no Listen from here in the transport')
+            else:
+                ev("document.querySelector('.st-transport [data-act=listen]').click()")
+                if wait("document.querySelector('.st-transport [data-act=listen][aria-pressed=true]')", 'Listen from here playing', 5):
+                    fit('listening')
+                    if w in (375, 1440): shot('listening')
+                    ev("document.querySelector('.st-transport [data-act=listen]').click()")
+                    wait("document.querySelector('.st-transport [data-act=listen][aria-pressed=false]')", 'Listen from here stopped', 5)
             # Line by line: Space records the current line.
             ev("[...document.querySelectorAll('.st-mode input')].find(i => i.value === 'lines').click()")
             settle()
@@ -278,6 +302,22 @@ def main():
             if w in (320, 375, 1440): shot('review')
             key('Enter')
             if not wait(f"document.querySelector('.rd-line.rd-cur') && document.querySelector('.rd-line.rd-cur').id !== '{cur}'", "Keep moving to my next line", 5): return
+            # Run through: go back to a line with a take; Again re-takes that line alone, and the round control stops it.
+            ev("[...document.querySelectorAll('.st-mode input')].find(i => i.value === 'run').click()")
+            ev(f"document.getElementById('{cur}').querySelector('.rd-body').click()")
+            if not wait(f"document.querySelector('.rd-line.rd-cur') && document.querySelector('.rd-line.rd-cur').id === '{cur}'", 'the tapped line current again', 5): return
+            if not wait("document.querySelector('.st-dock [data-act=again-line]')", "Run through's Again for a line with a take", 5): return
+            fit('again')
+            if w in (375, 1440): shot('again')
+            before = int(ev(f"(document.querySelector('#{cur} .rd-take-n') || {{ textContent: '0' }}).textContent") or 0)
+            ev("document.querySelector('.st-dock [data-act=again-line]').click()")
+            if not wait("document.querySelector('.st-rec')", 'the microphone open for Again in Run through', 10): return
+            ev("window.__micGain.gain.value = 0.3")
+            time.sleep(0.8)
+            ev("window.__micGain.gain.value = 0.0005")
+            if not ev("!!document.querySelector('.st-transport [data-act=stop]')"): bad('a single take in Run through has no Stop')
+            ev("document.querySelector('.st-transport [data-act=stop]').click()")
+            if not wait(f"document.querySelector('#{cur} .rd-take-n') && document.querySelector('#{cur} .rd-take-n').textContent === '{before + 1}'", 'the line re-taken alone in Run through', 10): return
             # Sync runs against the stubbed account and fails; that is the stub, not the studio.
             errs = [e for e in json.loads(ev("JSON.stringify(window.__errors)")) if not e.startswith('sync ')]
             if errs: bad(f'page errors: {errs}')

@@ -19,6 +19,14 @@ nonisolated enum VoiceChipText {
         return voice.displayName
     }
 
+    /// The studio's ring label: the voice's name without its trailing "(Premium)" or "(Enhanced)".
+    static func short(_ r: ResolvedVoice) -> String {
+        let t = title(r)
+        guard r.read, r.voice != nil, t.hasSuffix(")"), let open = t.lastIndex(of: "(") else { return t }
+        let name = t[..<open].trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? t : name
+    }
+
     static func rate(_ x: Double) -> String { String(format: "%.1f\u{00D7}", x) }
 
     /// Pitch as steps of 0.1 from the voice's own.

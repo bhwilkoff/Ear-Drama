@@ -70,7 +70,9 @@ nonisolated final class ReaderPageRenderTests: XCTestCase {
             ctx.translateBy(x: 0, y: view.height)
             ctx.scaleBy(x: 1, y: -1)
             let hiding = spec.contains("!hide")
+            let ringed = spec.contains("!rings")
             let clean = spec.replacingOccurrences(of: "!hide", with: "").replacingOccurrences(of: "!marks", with: "")
+                .replacingOccurrences(of: "!rings", with: "")
             let role = clean.isEmpty ? nil : PartID(rawValue: clean).roleName
             NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: true)
             var theme2 = theme
@@ -84,8 +86,17 @@ nonisolated final class ReaderPageRenderTests: XCTestCase {
             marks.marks = sample
             marks.lineIndex = structure.indexByID
             marks.selection = selection
+            if ringed {
+                // The studio's rings: every other part's speech line on the page, alternating a short and a long voice name.
+                var n = 0
+                for i in layout.lines(onPage: page) where script.lines[i].kind == .speech {
+                    guard let r = script.lines[i].role, r != role else { continue }
+                    marks.rings[ReaderLayout.RingKey(line: i, role: r)] = n % 2 == 0 ? "Ava" : "Samantha"
+                    n += 1
+                }
+            }
             layout.draw(page: page, in: ctx, theme: theme2, marks: marks)
-            let name = "\(c[0])-\(c[1])-\(c[3])-\(Int(width))\(clean.isEmpty ? "" : "-mine")\(withMarks ? "-marks" : "").png"
+            let name = "\(c[0])-\(c[1])-\(c[3])-\(Int(width))\(clean.isEmpty ? "" : "-mine")\(withMarks ? "-marks" : "")\(ringed ? "-rings" : "").png"
             try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: out.appending(path: name))
             print("rendered \(name) page \(page) of \(layout.pageCount) gutter \(layout.gutter) marks \(sample.count) placed \(layout.placed(sample, page: page, index: structure.indexByID).count) lineOnPage \(layout.lines(onPage: page))")
         }

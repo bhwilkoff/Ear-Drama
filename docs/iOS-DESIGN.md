@@ -628,7 +628,15 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
       (`circle`, `circle.fill` + count in the hue, `exclamationmark.triangle.fill`),
       a `Button` that makes the line current and opens its take list; the current
       line outlined in `.primary`, dashed `record` red while its cue plays, solid
-      while the microphone is open.
+      while the microphone is open. Every other part's line a device voice reads
+      carries, after the name, a dashed ring in the part's hue with `waveform` and
+      the voice's short name ("Zoe"), a `Button` that opens that part's voice picker;
+      none on a line with a usable human take (PLAYS-DESIGN §2.9 rule 3a, 2026-11-15).
+    - **Listen From Here and Again** (2026-11-15, PLAYS-DESIGN §2.9 rules 5, 6):
+      the transport ends with `play.fill` "Listen From Here" (`stop.fill` "Stop"
+      while it plays); in Run Through with no run on, a line holding a take shows
+      **Again** in the status line, and that single take's round control reads
+      Cancel / Stop.
     - **Compact width** (iPhone, the closed Duo, a narrow iPad window): the
       dock is a `.safeAreaInset(edge: .bottom)` under the pages: the mode
       `Picker(.segmented)`, the status line (line place and takes; speaker and
