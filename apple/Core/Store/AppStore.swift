@@ -30,8 +30,12 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
     /// Browse, plays Record (Decision 075), and radio, stations and surprise open Home and then push
     /// that screen (`push(forDoor:)`).
     init?(door raw: String) {
-        let renamed = ["listen": "home", "series": "browse", "plays": "record",
+        var renamed = ["listen": "home", "series": "browse", "plays": "record",
                        "radio": "home", "stations": "home", "surprise": "home"]
+        #if DEBUG
+        // A test door only (the App Review recording: drags do not scroll on an open iPhone Duo).
+        renamed["account"] = "library"
+        #endif
         guard let tab = AppTab(rawValue: renamed[raw.lowercased()] ?? raw.lowercased()) else { return nil }
         self = tab
     }
@@ -41,6 +45,9 @@ enum AppTab: String, CaseIterable, Identifiable, Hashable {
         switch raw.lowercased() {
         case "radio", "stations": .stations
         case "surprise": .surprise
+        #if DEBUG
+        case "account": .account
+        #endif
         default: nil
         }
     }

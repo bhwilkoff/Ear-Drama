@@ -371,15 +371,6 @@ struct PeopleSheet: View {
             .sheet(item: $reporting) { target in
                 ReportSheet(production: production, script: script, takeID: target.takeID, userID: target.userID)
             }
-            .confirmationDialog(blocking.map { "Block \(name($0))?" } ?? "",
-                                isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } })) {
-                Button("Block", role: .destructive) {
-                    guard let member = blocking else { return }
-                    Task { await shared.block(production.id, store: plays.store, userID: member.userID, script: script) }
-                }
-            } message: {
-                Text("You will no longer hear their takes.")
-            }
         }
         #if os(macOS)
         .frame(minWidth: 380, minHeight: 320)
@@ -398,7 +389,20 @@ struct PeopleSheet: View {
             Spacer()
             if !me {
                 Button("Report") { reporting = ReportTarget(userID: member.userID) }.buttonStyle(.borderless)
-                Button("Block", role: .destructive) { blocking = member }.buttonStyle(.borderless)
+                // The dialog hangs off the button itself: on a regular width (iPad, an open
+                // iPhone Duo) iOS draws it as a popover pointing at what it is attached to.
+                Button("Block", role: .destructive) { blocking = member }
+                    .buttonStyle(.borderless)
+                    .confirmationDialog("Block \(name(member))?",
+                                        isPresented: Binding(get: { blocking?.id == member.id },
+                                                             set: { if !$0 { blocking = nil } }),
+                                        titleVisibility: .visible) {
+                        Button("Block", role: .destructive) {
+                            Task { await shared.block(production.id, store: plays.store, userID: member.userID, script: script) }
+                        }
+                    } message: {
+                        Text("You will no longer hear their takes.")
+                    }
             }
         }
     }

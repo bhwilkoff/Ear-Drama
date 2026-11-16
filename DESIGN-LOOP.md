@@ -303,6 +303,17 @@ the main thread reads the frames before anything merges. Left: N5, N7 to N10, N1
   solid genre-less monogram, the crop opening out to the floor (Gunsmoke: 296 px crop in a 300 pt TV tile; also on
   web and Android, with the role rule). Web and Android took the solid monogram, quiet station rows and the role rule 2026-11-04 (web Library's links now sit below its tabs). Still open:
   a tablet's rows carry a black Play each; web's head strip keeps the fixed axis.
+- [ ] **N14 iPhone Duo open layout.** Owner, 2026-11-16: "The spacing between the left column and the
+  regular content is not right. In fact, most of the interface elements don't seem to be well positioned
+  (they are practically on top of one another)." Seen in a Duo open-display frame (Record, landscape, side
+  strip on the right): the Yours card runs to within ~20 pt of the strip, its left edge sits 16 pt left of
+  Today's Scene's, and Today's Scene nearly touches the strip. Audit every screen open on the Duo against
+  `docs/IPAD-DESIGN.md`/iOS-DESIGN size-class rules and the 27.1 side-strip safe area before the Duo
+  screenshot slot is filled (the store slot is empty until then). Same day, owner: the Block confirmation
+  "seems to show from the middle of the screen without an anchor"; cause: a `confirmationDialog` attached to
+  the whole List draws as a popover pointing at the List on a regular width. Fixed for Block (People) and
+  Delete Account by attaching the dialog to its button; still to check the same way: Downloads (Remove all,
+  Remove series), PlaysScreens Delete production, SharedPlaysViews Remove line, StudioViews unused takes.
 - [ ] **N5 Stations day switcher: ask first.** `tonight.json` holds 15 days; no client lets a person
   pick another day. This came from an agent, not the owner: run `learning-orientation-design` and get
   a yes before building.

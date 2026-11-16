@@ -133,13 +133,13 @@ struct AccountScreen: View {
                 Section {
                     Button("Sign Out") { Task { await account.signOut() } }
                     Button("Delete Account", role: .destructive) { confirmDelete = true }
+                        .modifier(DeleteAccountModifier(isPresented: $confirmDelete))
                 }
                 .disabled(account.isWorking)
             }
             ExportSection()
         }
         .navigationTitle("Account")
-        .modifier(DeleteAccountModifier(isPresented: $confirmDelete))
     }
 }
 

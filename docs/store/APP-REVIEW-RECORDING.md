@@ -118,3 +118,23 @@ can show "Hide My Email" instead).
 
 Upload `ear-drama-app-review.mp4` with the reply to the 2.1 message in App
 Store Connect (App Review, the message, attach).
+
+## The second recording (2026-11-16, for the resubmission of 1.0.134)
+
+App Review's Guideline 2.1 message asks for account deletion and the reporting and
+blocking of user content ON CAMERA, which the first recording only described.
+`build/store-video/ear-drama-app-review-2.mp4` (5:46) is the first recording followed
+by `AppReviewModerationUITests.testModeration`: People in a shared production with a
+second member (the Pixel, signed in with Google, directs "Caesar Rodney's Ride"; the
+Duo joined it with `testJoin`), Report and its reasons, Block's confirmation, Account,
+Delete Account confirmed, signed out. The owner's only step is Touch ID on Apple's
+sheets (sign-in in `testJoin`, re-authorization in Delete Account).
+
+Capture is headless (owner 2026-11-16: never open Device Hub or another Mac window):
+two workers loop `xcrun devicectl device capture screenshot --display-unique-id
+123-456-789` (the open Duo's inner display; `devicectl info displays` wrongly marks
+the outer one active) at about 0.7 frames a second, and ffmpeg's concat demuxer turns
+the stamped frames into video. pymobiledevice3's DVT screenshot sees only the outer
+display. Synthesized swipes do not scroll on the open Duo while element taps work, so
+the test reaches Account through the DEBUG door `APP_START_TAB=account`; finding why
+the swipes fail is open (DESIGN-LOOP N14).
