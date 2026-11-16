@@ -15,16 +15,19 @@ mapping below is the whole policy:
     slot          platform  group                                  type
     iphone        IOS       IPHONE_DYNAMIC_ISLAND_MEDIUM_PROFILE   APP_SCREENSHOT
     iphone-large  IOS       IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE    APP_SCREENSHOT
+    iphone-duo    IOS       IPHONE_DUO_PROFILE                     APP_SCREENSHOT
     ipad          IOS       IPAD_13_PROFILE                        APP_SCREENSHOT
     mac           MAC_OS    MAC_PROFILE                            APP_SCREENSHOT
     tv            TV_OS     TV_PROFILE                             APP_SCREENSHOT
     header        IOS       DEFAULT_PROFILE                        PRODUCT_PAGE_HEADER_ASSET
     search        IOS       DEFAULT_PROFILE                        APP_STORE_SEARCH_RESULTS_ASSET
 
-The closed-Duo set (IPHONE_DUO_PROFILE) is deliberately NOT here: it shows the
-iOS 27.1 SDK's side-strip layout, and a store build made with an earlier SDK
-does not have it (store-submission-playbook, "iPhone Duo"). Stage it with the
-first store build made with the 27.1 SDK.
+The Duo set (IPHONE_DUO_PROFILE) shows the iOS 27.1 SDK's layout, which a
+store build made with an earlier SDK does not have (store-submission-playbook,
+"iPhone Duo"). It is staged since 2026-11-16: appstore-build-x27.yml selects
+Xcode 27.2 (run 43644228466), so store builds carry the 27.1+ SDK. Capture it
+on the real Duo with the same SDK (devicectl --display-unique-id picks the outer
+1398x2034 or inner 2007x2853 display).
 """
 
 import argparse
@@ -38,6 +41,7 @@ import asc_release as asc  # noqa: E402
 GROUPS = {
     "iphone": ("IOS", "IPHONE_DYNAMIC_ISLAND_MEDIUM_PROFILE", "APP_SCREENSHOT"),
     "iphone-large": ("IOS", "IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE", "APP_SCREENSHOT"),
+    "iphone-duo": ("IOS", "IPHONE_DUO_PROFILE", "APP_SCREENSHOT"),
     "ipad": ("IOS", "IPAD_13_PROFILE", "APP_SCREENSHOT"),
     "mac": ("MAC_OS", "MAC_PROFILE", "APP_SCREENSHOT"),
     "tv": ("TV_OS", "TV_PROFILE", "APP_SCREENSHOT"),

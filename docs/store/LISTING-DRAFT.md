@@ -89,6 +89,42 @@ Subtitle options for the owner: "Hear old radio. Make new drama" (30); "Classic 
 
 ---
 
+## Screenshot captions
+
+Drafted 2026-11-16 for 1.0.133, for the owner to review. The words on the
+store images: each frame is a real capture from a real device (DEBUG launch
+doors, signed out, history reset), set on the On Air dark page with one
+caption. `tools/store_art.py` holds these strings and builds every slot from
+`build/store-shots/raw/`; change a caption there and re-run it. Slots 1 to 3
+pair a listening screen (LISTEN) with a making screen (MAKE), so both halves
+are in the three thumbnails most shoppers see.
+
+**iPhone, iPad, iPhone Duo** (seven frames; iPad and Duo use the same set):
+
+| # | Caption | Screens | Fact behind it |
+|---|---|---|---|
+| 1 | Hear Old Radio. Make New Drama. | Home (on the air) · Record (Today's Scene) | the subtitle |
+| 2 | Press Play. Then Press Record. | Now Playing (Gunsmoke, "Billy the Kid") · the studio (The Philanderer, Charteris's part, a device voice on Grace) | player and studio as built |
+| 3 | 73,000 Episodes. 800 Plays. | Gunsmoke's series page · the reader (Hamlet, "To be, or not to be", Hamlet's part) | 73,642 episodes (manifest 2026-11-15); 803 plays |
+| 4 | Rehearse With Device Voices | Hear the Cast in the reader ("Device voice · THE VOICE") | device voices read unrecorded parts, never saved |
+| 5 | A Real Evening of Radio, Rebuilt | Stations ("Tonight in 1947") | Decision 058 |
+| 6 | Follow Your Part, Line by Line | the reader with Charteris's lines marked | reader as built |
+| 7 | A Sleep Timer for Bedtime | Now Playing with the sleep timer's choices | Decision 062 |
+
+**Mac** (five frames): 1 to 3 as above; 4 "A Real Evening of Radio, Rebuilt"
+(Stations); 5 "Follow Your Part, Line by Line" (the reader).
+
+**Apple TV** (five frames; the TV has no reader or studio): 1 "Old-Time Radio,
+On the Air Tonight" (Home); 2 "73,000 Episodes to Hear" (a series); 3 "Lean Back
+and Listen" (Now Playing); 4 "A Real Evening of Radio, Rebuilt" (Stations); 5
+"Find a Show by Genre and Decade" (Browse). A read-along frame ("Ear Dramas,
+With the Script Alongside") waits for the first published ear drama: today only
+a DEBUG stand-in can draw that panel.
+
+**Product page header and search results asset** (iOS 27): "Hear Old Radio.
+Make New Drama." in the art safe area, between Now Playing and the studio
+(header), or beside them (search).
+
 ## Google Play
 
 **Title** (30 max): `Ear Drama: Old-Time Radio`
