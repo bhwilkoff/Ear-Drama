@@ -72,7 +72,7 @@ struct VoiceChip: View {
                     if !current.read { Label("Not Read", systemImage: "checkmark") } else { Text("Not Read") }
                 }
             }
-            ForEach(model.voices) { voice in
+            ForEach(model.voices + model.downloaded) { voice in
                 Button { model.choose(part, voice) } label: {
                     if current.read, current.voice?.id == voice.id {
                         Label(voice.displayName, systemImage: "checkmark")
@@ -107,6 +107,9 @@ struct VoicePickerForm: View {
     let part: PartID
     @State private var preview = VoicePreview()
     @State private var playing: String?
+    @State private var kokoro = KokoroModelStore.shared
+    /// Whether this play has published phonemes (nil until asked): a play without them is not read by Kokoro.
+    @State private var phonemes: Bool?
     @Environment(\.openURL) private var openURL
 
     var body: some View {
@@ -163,6 +166,7 @@ struct VoicePickerForm: View {
                     #endif
                 }
             }
+            if KokoroFlag.enabled { downloaded(r, line: line) }
         }
         .formStyle(.grouped)
         .navigationTitle(part.title)
@@ -173,6 +177,56 @@ struct VoicePickerForm: View {
         .repaintsOnVoiceChange(model)
         .onAppear { preview.onChange = { playing = $0 } }
         .onDisappear { preview.stop() }
+        .task(id: kokoro.ready) {
+            model.refresh()
+            if kokoro.ready, KokoroFlag.enabled { phonemes = await KokoroReader.shared.prepare(script.id) }
+        }
+    }
+
+    static let attribution = "Kokoro-82M by hexgrad, Apache-2.0. Trained in part on Koniwa (CC BY 3.0) and SIWIS (CC BY 4.0)."
+
+    /// The Downloaded group (PLAYS-DESIGN §2.8 rule 10): one button until the model is here, its progress while it
+    /// downloads, then the 28 voices, Delete, and the attribution the licenses ask for.
+    @ViewBuilder private func downloaded(_ r: ResolvedVoice, line: String) -> some View {
+        Section {
+            switch kokoro.state {
+            case .absent:
+                Button("Download Voices (\(Kokoro.megabytes(kokoro.downloadBytes)))") { kokoro.download() }
+            case let .downloading(done, total):
+                VStack(alignment: .leading, spacing: Spacing.s1) {
+                    ProgressView(value: Double(min(done, total)), total: Double(max(total, 1)))
+                    Text(verbatim: "\(Kokoro.megabytes(done)) of \(Kokoro.megabytes(total))")
+                        .font(TypeRamp.caption).foregroundStyle(Color.brandTextMuted)
+                }
+                Button("Cancel", role: .cancel) { kokoro.cancel() }
+            case .failed:
+                Label("The download failed.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Color.semanticWarning)
+                Button("Try Again") {
+                    kokoro.clearFailure()
+                    kokoro.download()
+                }
+            case .ready:
+                if phonemes == false {
+                    Text("Not available for this play.").foregroundStyle(Color.brandTextMuted)
+                } else {
+                    ForEach(model.downloaded) { voice in
+                        row(voice, current: r.read && r.voice?.id == voice.id, line: line, rate: r.entry.rate, pitch: r.entry.pitch)
+                    }
+                }
+                Button("Delete Downloaded Voices (\(Kokoro.megabytes(kokoro.downloadBytes)))", role: .destructive) {
+                    Task {
+                        preview.stop()
+                        await kokoro.delete()
+                        model.refresh()
+                    }
+                }
+            }
+        } header: {
+            Text("Downloaded")
+        } footer: {
+            if kokoro.ready { Text(Self.attribution) }
+        }
     }
 
     static var addVoices: String {
@@ -199,7 +253,7 @@ struct VoicePickerForm: View {
             }
             .buttonStyle(.plain)
             Button {
-                preview.toggle(line, voice: voice, rate: rate, pitch: pitch)
+                preview.toggle(line, voice: voice, rate: rate, pitch: pitch, playID: script.id)
             } label: {
                 Image(systemName: playing == voice.id ? "stop.circle" : "play.circle")
                     .font(.title2)

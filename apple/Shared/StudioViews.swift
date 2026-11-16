@@ -55,7 +55,7 @@ final class StudioModel {
         let door = StudioDoor.current
         stubbed = door.stub
         audio = door.stub ? StubLiveAudio() : EngineLiveAudio()
-        let voice: StandInVoice = door.stub ? SilentStandIn() : SystemStandInVoice(cast: .production(production.id, script: script))
+        let voice: StandInVoice = door.stub ? SilentStandIn() : KokoroStandInVoice.app(cast: .production(production.id, script: script))
         session = RecordingSession(production: production, script: script, part: target.partID, store: plays.store,
                                    audio: audio, voice: voice)
         session.setMode(.remembered())

@@ -48,7 +48,9 @@ final class SystemStandInVoice: StandInVoice {
         let utterance = AVSpeechUtterance(string: words)
         var told = false
         if let cast {
-            let r = cast.resolve(part)
+            // A part cast to a downloaded voice reaches here only when Kokoro cannot read the line
+            // (KokoroStandInVoice): its auto-cast system voice reads it.
+            let r = cast.systemFallback(part)
             guard r.read || r.none else { return nil }
             if let setting = SpeechSetting.of(r, sessionRate: Double(rate)) {
                 setting.apply(to: utterance)

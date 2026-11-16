@@ -2,6 +2,7 @@
 """Publish the Kokoro voice model (Decision 078) as versioned assets of the `kokoro-model` Release.
 
     python3 tools/publish_kokoro_model.py WORK_DIR [--version 1] [--native q8f16|q8] [--native-only] [--no-upload]
+    python3 tools/publish_kokoro_model.py WORK_DIR --coreml CONVERTED_DIR --version 3 [--no-upload]
 
 Fetches the pinned ONNX export from Hugging Face into WORK_DIR (or reuses files already there), checks
 every file against the SHA-256 Hugging Face records for it at that revision, builds the 28-voice table,
@@ -18,6 +19,12 @@ and uploads, never overwriting an existing asset:
                                  file's Release `asset`; tools/fetch_kokoro_model.py places it at site build
 
 --native-only publishes the native files and manifest alone (the web keeps the version it has).
+
+--coreml publishes the Apple model instead (S6e): CONVERTED_DIR is tools/convert_kokoro_coreml.py's output (the two
+multifunction .mlpackages and kokoro-coreml-report.json). Each file inside a package becomes one asset (a Release
+asset is a file, and iOS has no unzip API), named kokoro-vN-<its place with / as ->, and
+kokoro-vN-apple-manifest.json lists each with its role (duration, decoder, voices, vocab), the place it takes under
+the app's model folder (`dest`), bytes, SHA-256 and license, plus the buckets the functions take.
 Every asset's size and SHA-256 are read back from the Release after the upload. Stdlib only, plus `gh`.
 """
 import hashlib
@@ -86,8 +93,57 @@ def gh(*args):
         time.sleep(5 * (n + 1))
 
 
+def coreml(work, src, version):
+    """The Apple model's assets in WORK/publish, and their names."""
+    pre = f"kokoro-v{version}-"
+    report = json.load(open(os.path.join(src, "kokoro-coreml-report.json")))
+    voices, root = hf_tree("voices"), hf_tree("")
+    tok = fetch(work, "tokenizer.json", root["tokenizer.json"])
+    out = os.path.join(work, "publish")
+    os.makedirs(out, exist_ok=True)
+    table = os.path.join(out, pre + "voices-en.bin")
+    with open(table, "wb") as t:
+        for v in VOICES:
+            b = open(fetch(work, f"voices/{v}.bin", voices[f"voices/{v}.bin"]), "rb").read()
+            assert len(b) == VOICE_BYTES, (v, len(b))
+            t.write(b)
+    files = []
+
+    def add(path, name, role, dest):
+        dst = os.path.join(out, name)
+        if os.path.abspath(path) != os.path.abspath(dst):
+            if os.path.exists(dst):
+                os.remove(dst)
+            open(dst, "wb").write(open(path, "rb").read())
+        files.append({**entry(dst, name, role), "dest": dest})
+
+    for package, role in (("KokoroDuration.mlpackage", "duration"), ("KokoroDecoder.mlpackage", "decoder")):
+        base = os.path.join(src, package)
+        for top, dirs, fs in os.walk(base):
+            dirs.sort()
+            for f in sorted(fs):
+                full = os.path.join(top, f)
+                place = os.path.relpath(full, src)
+                add(full, pre + place.replace("/", "-"), role, place)
+    add(table, pre + "voices-en.bin", "voices", "voices-en.bin")
+    add(tok, pre + "tokenizer.json", "vocab", "tokenizer.json")
+    manifest = {"format": 1, "version": version, "name": "Kokoro-82M v1.0", "source": report["source"],
+                "attribution": ATTRIBUTION + " Core ML conversion by Ear Drama (tools/convert_kokoro_coreml.py).",
+                "voices": VOICES, "voiceShape": [510, 256], "sampleRate": 24000, "runtime": "coreml",
+                "precision": f"{report['precision']}-{report['weights']}w", "frameBuckets": report["frame_buckets"],
+                "tokenBuckets": report["token_buckets"], "files": files}
+    name = pre + "apple-manifest.json"
+    with open(os.path.join(out, name), "w") as f:
+        json.dump(manifest, f, indent=1)
+        f.write("\n")
+    names = [x["path"] for x in files] + [name]
+    print(f"{len(names)} assets, Apple model {sum(x['bytes'] for x in files)} bytes")
+    return out, names
+
+
 def main():
-    args = [a for i, a in enumerate(sys.argv[1:], 1) if not a.startswith("--") and sys.argv[i - 1] not in ("--version", "--native")]
+    args = [a for i, a in enumerate(sys.argv[1:], 1)
+            if not a.startswith("--") and sys.argv[i - 1] not in ("--version", "--native", "--coreml")]
     if not args:
         sys.exit(__doc__)
     work = args[0]
@@ -96,6 +152,11 @@ def main():
     if precision not in NATIVE:
         sys.exit(f"--native must be one of {sorted(NATIVE)}")
     native_only = "--native-only" in sys.argv
+    if "--coreml" in sys.argv:
+        out, names = coreml(work, sys.argv[sys.argv.index("--coreml") + 1], version)
+        if "--no-upload" not in sys.argv:
+            upload(out, names)
+        return
     pre = f"kokoro-v{version}-"
     model_name = f"{pre}model_{precision}.onnx"
     onnx, voices, root = hf_tree("onnx"), hf_tree("voices"), hf_tree("")
@@ -148,6 +209,10 @@ def main():
           f"web {sum(f['bytes'] for f in web['files']) if web else 0} ({len(parts)} model parts)")
     if "--no-upload" in sys.argv:
         return
+    upload(out, names)
+
+
+def upload(out, names):
     if subprocess.run(["gh", "release", "view", TAG, "-R", REPO], capture_output=True).returncode != 0:
         gh("release", "create", TAG, "-R", REPO, "--latest=false", "--title", "Kokoro voice model",
            "--notes", "Versioned assets built by tools/publish_kokoro_model.py (Decision 078): kokoro-vN-manifest.json "

@@ -7,7 +7,9 @@ import AVFoundation
 // js/voice-cast.js; VoiceCastTests mirrors js/voice-cast.test.js.
 //
 // A part's casting is { engine, voice, name, rate, pitch }: voice is the engine's identifier
-// (`AVSpeechSynthesisVoice.identifier`), never a language. Auto-cast reads only the voices (their
+// (`AVSpeechSynthesisVoice.identifier`, or a Kokoro voice id such as `af_heart` for the downloaded voices,
+// S6e: KokoroEngine.swift), never a language. Auto-cast casts system voices only, so downloading voices never
+// recasts a play; a Kokoro voice is a person's choice in the picker. Auto-cast reads only the voices (their
 // quality, the person's language, and the gender the VOICE reports); it never reads a part's name
 // or the script (§2.8 rule 4).
 
@@ -141,12 +143,17 @@ nonisolated enum VoiceCasting {
     }
 
     static func resolve(_ entry: VoiceCastEntry?, _ part: PartID, _ voices: [CastVoice],
-                        _ auto: [PartID: VoiceCastEntry]) -> ResolvedVoice {
+                        _ auto: [PartID: VoiceCastEntry], downloaded: [CastVoice] = []) -> ResolvedVoice {
         guard let e = entry.flatMap(normalize) ?? auto[part], e.engine != .none else {
             return .notRead(entry.flatMap(normalize) ?? auto[part] ?? .notRead, none: voices.isEmpty)
         }
         if voices.isEmpty { return .notRead(e, none: true) }
-        if e.engine == .system, let found = voices.first(where: { $0.id == e.voice }) {
+        let found: CastVoice? = switch e.engine {
+        case .system: voices.first { $0.id == e.voice }
+        case .kokoro: downloaded.first { $0.engine == .kokoro && $0.id == e.voice }
+        case .none: nil
+        }
+        if let found {
             return ResolvedVoice(read: true, entry: e, voice: found, rate: e.rate, pitch: e.pitch, missing: nil, none: false)
         }
         let fallback = auto[part].flatMap { a in voices.first { $0.id == a.voice } } ?? voices[0]
@@ -229,31 +236,50 @@ nonisolated enum VoiceCastBook {
 nonisolated final class VoiceCast: Sendable {
     let key: String
     let parts: [PartID]
+    /// The play whose published phonemes a Kokoro voice reads (contract §4.1).
+    let playID: String?
     private let seed: String?
     private let voicesNow: @Sendable () -> [CastVoice]
+    private let downloadedNow: @Sendable () -> [CastVoice]
     private let storage: CastStorage
 
-    init(key: String, seed: String? = nil, parts: [PartID], voices: @escaping @Sendable () -> [CastVoice],
+    init(key: String, seed: String? = nil, playID: String? = nil, parts: [PartID],
+         voices: @escaping @Sendable () -> [CastVoice], downloaded: @escaping @Sendable () -> [CastVoice] = { [] },
          storage: CastStorage = .defaults()) {
         self.key = key
         self.seed = seed
+        self.playID = playID
         self.parts = parts
         self.voicesNow = voices
+        self.downloadedNow = downloaded
         self.storage = storage
+    }
+
+    /// The downloaded (Kokoro) voices on this device now: none until the model is here (never on the TV).
+    static let deviceDownloaded: @Sendable () -> [CastVoice] = {
+        #if os(iOS) || os(macOS)
+        KokoroInstall.castable()
+        #else
+        []
+        #endif
     }
 
     /// A production's cast, starting from its play's. The voices are this device's (`DeviceVoices`).
     static func production(_ id: String, script: PlayScript) -> VoiceCast {
-        VoiceCast(key: VoiceCastBook.productionKey(id), seed: VoiceCastBook.scriptKey(script.id),
-                  parts: script.castParts.map(\.id), voices: { DeviceVoices.castable() })
+        VoiceCast(key: VoiceCastBook.productionKey(id), seed: VoiceCastBook.scriptKey(script.id), playID: script.id,
+                  parts: script.castParts.map(\.id), voices: { DeviceVoices.castable() }, downloaded: deviceDownloaded)
     }
 
     /// A play's own cast, the reader's (Hear the cast).
     static func script(_ script: PlayScript) -> VoiceCast {
-        VoiceCast(key: VoiceCastBook.scriptKey(script.id), parts: script.castParts.map(\.id), voices: { DeviceVoices.castable() })
+        VoiceCast(key: VoiceCastBook.scriptKey(script.id), playID: script.id, parts: script.castParts.map(\.id),
+                  voices: { DeviceVoices.castable() }, downloaded: deviceDownloaded)
     }
 
     func voices() -> [CastVoice] { voicesNow() }
+
+    /// The downloaded (Kokoro) voices now: none until the model is on this device.
+    func downloadedVoices() -> [CastVoice] { downloadedNow() }
 
     /// Fills any part without a casting by auto-cast, once there is a voice to cast; keeps every choice made.
     @discardableResult
@@ -279,7 +305,18 @@ nonisolated final class VoiceCast: Sendable {
     func resolve(_ part: PartID) -> ResolvedVoice {
         let v = voicesNow()
         let cast = ensure()
-        return VoiceCasting.resolve(cast[part], part, v, VoiceCasting.autoCast(parts, v))
+        return VoiceCasting.resolve(cast[part], part, v, VoiceCasting.autoCast(parts, v), downloaded: downloadedNow())
+    }
+
+    /// The system voice that reads a Kokoro part's line Kokoro cannot read (no phonemes for the play, a refused
+    /// render): the part's auto-cast system voice at the part's speed (§2.8 rule 10). A system part reads as resolved.
+    func systemFallback(_ part: PartID) -> ResolvedVoice {
+        let r = resolve(part)
+        guard r.read, let voice = r.voice, voice.engine == .kokoro else { return r }
+        let v = voicesNow()
+        let a = VoiceCasting.autoCast(parts, v)[part]
+        guard let fb = v.first(where: { $0.id == a?.voice }) ?? v.first else { return .notRead(r.entry, none: true) }
+        return ResolvedVoice(read: true, entry: r.entry, voice: fb, rate: r.rate, pitch: a?.pitch ?? 1, missing: nil, none: false)
     }
 
     func entry(_ part: PartID) -> VoiceCastEntry? { ensure()[part] }

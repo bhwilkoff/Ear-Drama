@@ -64,6 +64,40 @@ actor APIClient {
         return data
     }
 
+    /// A public file (a GitHub Release asset: the Kokoro model, Decision 078) appended to `file` from its current
+    /// length on, with `Range: bytes=N-`. A server that ignores the range sends the whole file (200), and the file
+    /// starts again. `progress` hears the bytes on disk. No token: it is not a Worker.
+    func download(_ url: URL, appendingTo file: URL, progress: @escaping @Sendable (Int64) -> Void) async throws {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: file.path) { fm.createFile(atPath: file.path, contents: nil) }
+        let handle = try FileHandle(forWritingTo: file)
+        defer { try? handle.close() }
+        var at = Int64(try handle.seekToEnd())
+        var request = URLRequest(url: url, timeoutInterval: 60)
+        if at > 0 { request.setValue("bytes=\(at)-", forHTTPHeaderField: "Range") }
+        let (stream, response) = try await session.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
+        if http.statusCode == 416 { return }  // nothing past the end: the file is whole
+        guard http.statusCode == 200 || http.statusCode == 206 else { throw URLError(.badServerResponse) }
+        if http.statusCode == 200, at > 0 {
+            try handle.truncate(atOffset: 0)
+            at = 0
+        }
+        var chunk = Data(capacity: 1 << 16)
+        for try await byte in stream {
+            chunk.append(byte)
+            if chunk.count == 1 << 16 {
+                try Task.checkCancellation()
+                try handle.write(contentsOf: chunk)
+                at += Int64(chunk.count)
+                chunk.removeAll(keepingCapacity: true)
+                progress(at)
+            }
+        }
+        try handle.write(contentsOf: chunk)
+        progress(at + Int64(chunk.count))
+    }
+
     /// The published evenings (contract §8), or nil when no file is published.
     /// A static file beside the catalog, not a Worker: no token.
     func tonight(from url: URL = CatalogSource.tonightURL) async throws -> TonightFile? {

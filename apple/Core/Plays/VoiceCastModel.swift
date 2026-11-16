@@ -26,6 +26,12 @@ final class VoiceCastModel {
         return cast.voices()
     }
 
+    /// The downloaded (Kokoro) voices: none until the model is here.
+    var downloaded: [CastVoice] {
+        _ = revision
+        return cast.downloadedVoices()
+    }
+
     func set(_ part: PartID, _ change: (inout VoiceCastEntry) -> Void) {
         cast.set(part, change)
         revision += 1
@@ -50,12 +56,32 @@ final class VoiceCastModel {
         synthesizer.delegate = self
     }
 
-    func toggle(_ text: String, voice: CastVoice, rate: Double, pitch: Double) {
+    func toggle(_ text: String, voice: CastVoice, rate: Double, pitch: Double, playID: String? = nil) {
         if playing == voice.id {
             stop()
             return
         }
         synthesizer.stopSpeaking(at: .immediate)
+        #if os(iOS) || os(macOS)
+        KokoroLive.shared.stop()
+        if voice.engine == .kokoro {
+            guard let playID, !DeviceVoices.said(text).isEmpty else {
+                playing = nil
+                return
+            }
+            #if os(iOS)
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+            try? AVAudioSession.sharedInstance().setActive(true)
+            #endif
+            playing = voice.id
+            let id = voice.id
+            Task {
+                _ = await KokoroLive.shared.speak(playID, text, voice: id, rate: rate, pitch: pitch, muted: SpeechMute.volume == 0)
+                if self.playing == id { self.playing = nil }
+            }
+            return
+        }
+        #endif
         let words = DeviceVoices.said(text)
         guard !words.isEmpty, let av = DeviceVoices.avVoice(voice) else {
             playing = nil
@@ -77,6 +103,9 @@ final class VoiceCastModel {
 
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
+        #if os(iOS) || os(macOS)
+        KokoroLive.shared.stop()
+        #endif
         current = nil
         playing = nil
     }

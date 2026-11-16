@@ -215,6 +215,12 @@ only here:
   Accessibility pane; the pane's own name and an anchor to Spoken Content are
   UNVERIFIED on macOS 26, R2 §2.7). Built 2026-11-14 (PARITY 🚧): the chip is a `Menu`
   in the part card, "Voice Settings..." opens the picker `Form` in a popover.
+  **Downloaded** (Kokoro, S6e; `docs/iOS-DESIGN.md` §4.12c's paragraph is the shared
+  text): the popover `Form` carries the same "Downloaded" section (Download Voices with its
+  size, progress and Cancel, the 28 voices with Hear buttons, Delete Downloaded Voices, the
+  attribution footer), and the row's pop-up `Menu` lists the downloaded voices after the
+  system ones once they are here. Same engine and flag as iOS; the Mac bench is the same door
+  (`APP_KOKORO_BENCH=1` in the launch environment).
 - **§4.5a A shared ear drama** is `docs/iOS-DESIGN.md` §4.12a (PLAYS-DESIGN
   §11.7, binding: the same verbs and words on every platform) in the
   production's window: Share, Invite, Upload, and People sit in the cast
