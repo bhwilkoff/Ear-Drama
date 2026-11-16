@@ -344,9 +344,11 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   first screen, the DEBUG door `APP_SCROLL_Y=<points>` scrolls the page
   (`ScrollDoor_iOS.swift`). Every change under §3.6 is seen on the open
   Duo and on the iPad at regular width before it is called done.
-- *Open:* Now Playing and its queue side by side (IPHONE-DUO §5.1, owner
-  Q2) needs §5.3 (the player is a sheet) amended first; the reader and the
-  studio already arrange side by side at 860 pt (§4.15).
+- **§3.6g Now Playing at regular width is two panes** (§5.3, §5.9,
+  Decision 080), and **a fold never stops a take** (§4.15, "Folding
+  during a take"). *Replaced* (open item): "Now Playing and its queue side
+  by side (IPHONE-DUO §5.1, owner Q2) needs §5.3 (the player is a sheet)
+  amended first".
 
 ## §4 Surfaces
 
@@ -736,6 +738,20 @@ device. Audit frames: `build/qa/duo-audit/` (local).
       this becomes `ArrangementView { reader } secondary: { studio }`
       (`.split.axes(.horizontal)`, S4, behind `if #available(iOS 27.1, *)`); the
       toolbar items stay `Label`s so they move into the Duo's vertical strip.
+    - **Folding during a take** (Decision 080; owner 2026-11-16, Q4: *"Keep
+      recording"*). Closing the Duo mid-take changes only the width: the reader
+      lays out at compact width with the dock (the script, the round record
+      control and Stop on the outer display), the take, the run and the cue go
+      on, and opening the phone brings back the pane on the same line. Nothing
+      that records lives in a view: `StudioModel` belongs to the reader's
+      loader (it ends only when the reader closes), `RecordingSession` and the
+      `LiveAudio` engine are Core, and no `onDisappear`, `scenePhase` or size
+      branch inside the reader stops audio (a cast reading, `table`, stops with
+      the loader too). When the hardware reconfigures under a take
+      (`AVAudioEngineConfigurationChange`, an interruption's end) the engine
+      restarts and puts its tap back on the same capture, so the take file
+      holds what came before and after (`FoldContinuityTests`). The 860 pt
+      switch never rebuilds the session, only its controls.
     - **Keys** (iPad keyboard; the reader holds focus): Space record / stop /
       cancel, J / K my next and previous line, R record again, Return keep.
     - Delete Unused Takes asks with a `confirmationDialog` naming the count; a
@@ -1017,8 +1033,21 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   inset while an episode is loaded (`MiniPlayer_iOS`,
   `apple/iOS/PlayerViews_iOS.swift`): title, series, Play or Pause; a
   tap opens the player.
-- **§5.3 The player is a sheet** with its drag indicator
-  (`PlayerSheet_iOS`): series, title, date and network, the scrubber,
+- **§5.3 The player is a sheet at compact width, two panes at regular
+  width** (Decision 080; owner 2026-11-16, Q2: *"Two panes"*). On a phone,
+  the closed Duo and a narrow window it is a sheet with its drag indicator
+  (`PlayerSheet_iOS`). At regular width (the open Duo, an iPad, a wide
+  window) it is a `fullScreenCover` holding an `ArrangementView` (iOS
+  27.1; an `HStack` before it): the player as the primary, what plays next
+  (§5.9) as the secondary, side by side in landscape and stacked in
+  portrait, the system splitting the two around the fold. The presentation
+  is chosen once, by the horizontal size class when the player opens
+  (`PlayerPresentation`), so folding or unfolding never dismisses it: a
+  cover open when the Duo closes stays open and the split shows the player
+  alone; nothing reads the device. Close (`chevron.down`, a `Label`) is the
+  first toolbar item in both, so the Duo's strip carries it at the top.
+  *Replaced*: "**§5.3 The player is a sheet** with its drag indicator
+  (`PlayerSheet_iOS`)". The player itself: series, title, date and network, the scrubber,
   elapsed and remaining time, back 15 s, Play, forward 30 s, then
   speed, the sleep timer, and AirPlay's own `AVRoutePickerView`
   (`RoutePicker_iOS`, labeled "AirPlay"; the `.longFormAudio` session
@@ -1026,6 +1055,21 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   and the offline warning sit under them, and "Next:" names what the
   queue holds. The toolbar carries Close and, when there is one, the
   transcript.
+- **§5.9 What plays next, beside the player** (Decision 080; regular
+  width only: the phone keeps "Next:" on the sheet). `PlayerQueuePane`
+  (`apple/Shared/QueueViews.swift`), a `List` read from the player's own
+  queue, never a new data path: **Up Next**, the arc's next part
+  (`AudioPlayer.upNext` while `arc.nextPart` is set, "Part N of M"); then
+  **Queue**, `ListeningQueue` resolved by `catalog.episodes`, each row
+  dragged to reorder in place (no Edit), swiped or right-clicked to remove,
+  its context menu `QueueRowMenu` (Move up, Move down, Remove): the queue
+  verbs of §12, nothing more, and a tap starts nothing (Decision 067: only
+  the person orders what plays). An empty queue says Library's sentence.
+  **Listening live** the pane is the lineup instead (`LiveRadio.lineup`):
+  each slot from the one on the air to the evening's end, its time, show
+  and episode, "Now" on the slot playing, gaps as `GapLine`; nothing in it
+  plays, since the clock decides. A Listen Together guest sees the same
+  pane; its verbs change only their own queue.
 - **§5.4 The lock screen and Control Center** get title, series, the
   network as artist, position, and rate. Remote commands are skip
   intervals, never next and previous track, because setting both makes
@@ -1227,9 +1271,12 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   full-screen reader, Android a route, and the web a closed section; the
   label is the same everywhere.
 - **§11.4 A tab keeps its stack.** tvOS resets the stack it leaves.
-- **§11.5 The player is a sheet, not a full-screen cover.** Audio has no
-  picture to give the whole screen, and the sheet keeps the tab behind
-  it in view; the TV is the platform where Now Playing fills the screen.
+- **§11.5 The player is a sheet on a phone, not a full-screen cover.**
+  Audio has no picture to give the whole screen, and the sheet keeps the
+  tab behind it in view. At regular width the cover is earned by the
+  second pane (§5.3, Decision 080), as Music's Now Playing on iPad; the TV
+  is the other platform where Now Playing fills the screen. *Replaced*:
+  "**§11.5 The player is a sheet, not a full-screen cover.**"
 
 ## §12 Open (what the code does not yet meet)
 

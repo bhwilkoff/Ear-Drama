@@ -180,6 +180,10 @@ fit, because a performer needs two things at once: the words, and the controls.
 **Q2. Now Playing on the open Duo (and iPad).**
 - **A (recommended).** Player + queue as an `ArrangementView` at regular width (§5.1).
 - B. Keep the sheet everywhere.
+- **Answered 2026-11-16: A, "Two panes."** At regular width the player and what
+  plays next (the arc's next part, the queue reordered in place, a station's lineup
+  when listening live) side by side; the phone keeps the sheet. Decision 080,
+  iOS-DESIGN §5.3 and §5.9; built, §10.
 
 **Q3. A second window on the open Duo and iPad** (two series side by side, or a
 script beside a recording)?
@@ -192,6 +196,9 @@ script beside a recording)?
 - **A (recommended).** Keep recording; the outer display shows the script with
   record/stop, and nothing is lost.
 - B. Pause the take on the fold.
+- **Answered 2026-11-16: A, "Keep recording."** Decision 080, iOS-DESIGN §4.15
+  "Folding during a take", PLAYS-DESIGN §2.9 rule 11; built, §10. The fold itself
+  was not performed (no remote fold).
 
 ## 8. Outer display, seen 2026-11-14 (closed phone)
 

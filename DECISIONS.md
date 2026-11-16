@@ -1247,3 +1247,33 @@ still empty then goes unless a screen holds it. **Why**: a take still encoding m
 2 s after leaving lost both itself and its production.
 
 **078 addendum (owner, 2026-11-15):** Kokoro passed the Android gate (q8, ORT 1.31.1, arena hand-back, 100-symbol pieces; RTF 0.30, peak 579 MB on the Pixel 8a). The engine (~34 MB per device) ships as a Play on-demand feature module fetched with the voices, never in the base install ("Download on demand").
+
+## 080: At regular width Now Playing stands beside what plays next; closing the Duo never stops a take (answered 2026-11-16)
+
+**Rule**: at regular width (the open iPhone Duo, an iPad, a wide window) Now
+Playing opens over the whole window as two panes, the player and what plays next
+(the arc's next part, then the person's queue, reordered by drag in place; while
+listening live, the station's or evening's lineup): an `ArrangementView` split,
+side by side in landscape and stacked in portrait. A compact width keeps the
+sheet. Closing the Duo during a take keeps recording: the take, the session and
+the studio go on, the outer display shows the script with the record control,
+nothing is lost, and opening the phone returns to the studio where it was.
+
+**Why**: the owner held the first App Store submission for the Duo on 2026-11-16:
+*"There is no reason to have the first version of our app not look as good as
+possible on one of the most important devices for new apps that are built for
+the duo (the app store has seen a huge resurgence in apps that are built
+specifically to take advantage of the Duo - let's be a part of that)."* Q2
+(Now Playing): *"Two panes."* Q4 (the fold mid-take): *"Keep recording."* Apple's
+own example of an arrangement is a player beside its Up Next; its HIG asks that
+functionality and state stay the same between displays.
+
+**How to apply**: iOS-DESIGN §5.3 and §11.5 (amended), §5.9 (the queue pane) and
+§4.15's fold rule; PLAYS-DESIGN §2.9 rule 11. Width decides, never the device: the
+presentation is chosen once, when the player opens, so a fold never dismisses it;
+the queue pane reads the player's own queue (`AudioPlayer.upNext`, `ListeningQueue`,
+`LiveRadio`'s lineup) and offers only the queue's own verbs. A take's audio lives in
+Core (`RecordingSession`, the `LiveAudio` engine), never in a view: a re-layout
+starts and stops nothing, and the engine rebuilds its tap into the same capture when
+the hardware reconfigures. PARITY rows "Now Playing beside its queue" and "Folding
+during a take". Android foldables and tablets may mirror both later (⏳).

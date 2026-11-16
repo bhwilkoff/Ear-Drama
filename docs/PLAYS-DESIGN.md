@@ -481,6 +481,12 @@ three modes) is unchanged in what the engine does; this section is where it happ
 10. **Nothing new is stored.** Takes, the chosen map, room tone and the production record are
     §6's; device voices stay live and unstored (§5); take upload and publish rules are Decisions
     072 and 073's, unchanged. The reader's position and marks stay the reader's.
+11. **A fold or a resize never stops a take** (Decision 080; owner 2026-11-16, Q4: *"Keep
+    recording"*). Closing an iPhone Duo, folding an Android foldable, or resizing a window during a
+    take changes the layout only: the take, a run and a cue go on, the compact dock (the script and
+    the round record control) takes over from the panel, nothing is lost, and widening again shows
+    the panel on the same line. The session and the microphone belong to the studio's model, never
+    to a view, and a hardware reconfiguration under a take resumes into the same take.
 
 ### §2.10 Marks (Decision 076, phase S5; binding on every platform that reads)
 
