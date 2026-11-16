@@ -2714,7 +2714,12 @@
   if ('serviceWorker' in navigator && window.isSecureContext && /^https?:$/.test(location.protocol)) {
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
     if (!local || params.get('sw') === '1') {
-      navigator.serviceWorker.register('sw.js').catch(err => console.error('service worker', err));
+      const hadShell = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadShell) $('update-note').hidden = false; });
+      $('update-reload').addEventListener('click', () => location.reload());
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); });
+      }).catch(err => console.error('service worker', err));
     } else {
       navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
     }

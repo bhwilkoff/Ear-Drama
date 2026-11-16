@@ -1117,6 +1117,14 @@ li.pl-lx.sel .pl-mine { margin-left: 0; }
   color: var(--color-text); text-align: center;
 }
 
+/* A new shell took over this open page (WEB-DESIGN §10.1): one line, never an overlay. */
+.update-note:not([hidden]) {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: 0 var(--space-4); border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-alt); color: var(--color-text);
+}
+.update-note .btn { min-height: 36px; padding: 0 var(--space-2); }
+
 /* ---- The quiet footer: the site pages, never featured in the main UI ---- */
 .site-footer {
   display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4);

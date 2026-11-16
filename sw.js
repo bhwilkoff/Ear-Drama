@@ -1,8 +1,9 @@
 /**
  * Ear Drama's service worker (WEB-DESIGN §7).
  *
- *  - The shell (pages, styles, scripts) is cache-first. SHELL_VERSION is bumped
- *    on EVERY web change, or nobody receives the change (§10.1).
+ *  - The shell (pages, styles, scripts) is cache-first. The deploy stamps
+ *    SHELL_VERSION from the shell's bytes (tools/stamp_shell_version.mjs, §10.1);
+ *    the value here is only what a local server runs.
  *  - Catalog data (*.json read with fetch) is network-first with the last good
  *    copy as the fallback, so whatever a person has opened still opens offline.
  *    The castable plays (data/plays/castable-scripts.json) are data like the rest.

@@ -1535,9 +1535,14 @@ web app follows today.
 
 ## §10 Traps this codebase has already paid for
 
-- **§10.1 Bump `SHELL_VERSION` in `sw.js` on every web change.** An
-  unbumped deploy reaches nobody, and `fetch(url, {cache:'no-store'})`
-  does not bypass a service worker.
+- **§10.1 `SHELL_VERSION` is stamped at deploy, never bumped by hand.** An
+  unchanged version reaches nobody (9 web commits went out under one,
+  2026-11-16), and `fetch(url, {cache:'no-store'})` does not bypass a
+  service worker. `tools/assemble_site.sh` runs
+  `tools/stamp_shell_version.mjs`, which hashes `sw.js` and every SHELL
+  file. An open page that a new version takes over shows "A new version
+  is ready" with Reload; it never reloads itself, because a reload loses
+  a take in progress.
 - **§10.2 An author `display` rule beats `[hidden]`.** Write the display
   on `.thing:not([hidden])`.
 - **§10.3 An element turned into `<a>` inherits the bare `a` rule.** A

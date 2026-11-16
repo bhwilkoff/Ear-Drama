@@ -124,7 +124,7 @@ jobs:
         if: steps.ready.outputs.go == 'yes'
         run: |
           site=$(cat CNAME)
-          want=$(grep -o "SHELL_VERSION = '[^']*'" sw.js)
+          want=$(grep -o "SHELL_VERSION = '[^']*'" _site/sw.js)
           for i in 1 2 3 4 5 6; do
             got=$(curl -sS "https://$site/sw.js?run=${{ github.run_id }}" | grep -o "SHELL_VERSION = '[^']*'" || true)
             if [ "$got" = "$want" ]; then echo "[site-deploy] live: $got"; exit 0; fi

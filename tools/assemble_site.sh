@@ -37,6 +37,8 @@ python3 tools/fetch_kokoro_model.py "$out/data/kokoro"
 finished="$(mktemp)"
 curl -fsS --max-time 20 "${FINISHED_URL:-https://eardrama-api.benwilkoff.workers.dev/v1/plays/finished?limit=50}" -o "$finished" || echo '{}' > "$finished"
 python3 catalog/tools/build_share_pages.py "$web" "$out" --finished "$finished"
+# SHELL_VERSION comes from the shell itself (WEB-DESIGN §10.1), never a hand bump.
+node tools/stamp_shell_version.mjs "$out"
 # .nojekyll is empty by design: it must exist, not have size.
 test -e "$out/.nojekyll" || { echo "::error::$out/.nojekyll is missing; not deploying"; exit 1; }
 for f in index.html 404.html CNAME manifest.json css/styles.css js/app.js \

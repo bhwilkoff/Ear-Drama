@@ -58,6 +58,34 @@ for (const f of faces) {
   ok(`the shell carries the font ${f}`, shellPaths.has(pathname));
 }
 
+// The deploy stamps SHELL_VERSION from the shell's own bytes (tools/stamp_shell_version.mjs), so a web
+// change can never ship under the old cache name (9 commits did, 2026-11-16).
+{
+  const { stamp, shellVersion } = await import('./stamp_shell_version.mjs');
+  const os = await import('node:os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ed-stamp-'));
+  fs.writeFileSync(path.join(tmp, 'sw.js'), src);
+  for (const p of SHELL) {
+    const rel = p === './' ? 'index.html' : p.endsWith('/') ? `${p}index.html` : p;
+    fs.mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true });
+    if (!fs.existsSync(path.join(tmp, rel))) fs.writeFileSync(path.join(tmp, rel), `copy of ${rel}`);
+  }
+  const before = shellVersion(tmp);
+  ok('the stamp is a versioned cache name', /^ed-shell-[0-9a-f]{12}$/.test(before), before);
+  ok('the stamp is stable for the same shell', shellVersion(tmp) === before);
+  fs.mkdirSync(path.join(tmp, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(tmp, 'data/manifest.json'), '{"new":"catalog"}');
+  ok('catalog data does not change the stamp', shellVersion(tmp) === before);
+  fs.appendFileSync(path.join(tmp, 'js/app.js'), '\n// edit');
+  const after = shellVersion(tmp);
+  ok('a changed shell script changes the stamp', after !== before);
+  const written = stamp(tmp);
+  const stamped = fs.readFileSync(path.join(tmp, 'sw.js'), 'utf8');
+  ok('stamp() writes the version into sw.js', stamped.includes(`const SHELL_VERSION = '${written}';`));
+  ok('a stamped sw.js keeps its stamp', shellVersion(tmp) === written);
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
 function answered(url, { destination = '', mode = 'no-cors', method = 'GET', headers = {} } = {}) {
   let responded = false;
   handlers.fetch({
