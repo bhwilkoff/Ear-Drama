@@ -125,6 +125,15 @@ final class LiveRadio {
         }
     }
 
+    /// The slots being listened to live, from the one on the air (else the next) to the end, each with its
+    /// resolved episode where the catalog holds one: the queue pane's lineup (iOS-DESIGN §5.9). Read with `day`
+    /// or `station`, which change with it.
+    func lineup(at now: Date) -> [(slot: RadioSlot, detail: EpisodeDetail?)] {
+        guard let slots = listening?.slots else { return [] }
+        let from = RadioClock.onAir(slots, at: now).index ?? slots.firstIndex { $0.utcStart > now } ?? slots.count
+        return slots[from...].map { ($0, $0.playableEpisode.flatMap { details[$0.id] }) }
+    }
+
     func stop() {
         loop?.cancel()
         loop = nil

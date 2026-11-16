@@ -560,7 +560,9 @@ struct ScriptReaderView: View {
         }
         .background(Color.brandBackground)
         .task(id: scriptID) { await load() }
-        .onDisappear { studioModel?.end(); model?.along?.stop() }
+        // The loader, not the reader, ends what plays: the reader is rebuilt when the studio moves between the dock and
+        // the pane (a fold, a rotation, a resize), and a take or a cast reading goes on through that (Decision 080).
+        .onDisappear { studioModel?.end(); model?.along?.stop(); model?.table.stop() }
     }
 
     private func load() async {
@@ -759,7 +761,6 @@ private struct ReaderScreen: View {
         .onChange(of: undoManager, initial: true) { _, u in model.undoManager = u }
         .onChange(of: body17, initial: true) { _, size in model.base = size }
         .repaintsOnVoiceChange(model.voices)
-        .onDisappear { model.table.stop() }
         .onChange(of: model.along?.lineID) { _, id in model.alongHeard(id) }
         .onChange(of: studio?.studio.current) { _, id in if let id { model.go(to: id) } }
         .onChange(of: studio?.listen.current?.lineID) { _, id in if let id { model.go(to: id) } }

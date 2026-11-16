@@ -248,3 +248,21 @@ inner display in portrait or partly folded, and Downloads with a download in it.
 XCUITest refused the Duo ("Timed out while enabling automation mode": UI
 Automation wants a person's Touch ID), so frames below the first screen came from
 the DEBUG door `APP_SCROLL_Y`.
+
+## 10. Two panes and the fold, 2026-11-16 (Decision 080)
+
+- **Now Playing (Q2)**: at regular width a `fullScreenCover` holding an
+  `ArrangementView` split (`PlayerSheet_iOS(panes:)`, `PlayerQueuePane`); the
+  presentation is latched when the player opens (`PlayerPresenter`), so a fold never
+  dismisses it. Seen on the open Duo (inner display, landscape: the player on the left,
+  Queue on the right, Close, queue, share and transcript in the strip), on the iPad Pro
+  12.9 (the same two panes) and on the iPhone 12 (the sheet, unchanged). Frames local.
+  Not seen: a queue with items, an arc's next part, the live lineup, portrait, folded.
+- **The fold mid-take (Q4)**: `EngineLiveAudio` restarts on
+  `AVAudioEngineConfigurationChange` and an interruption's end and puts its tap back on the
+  same `CaptureSink`, which retargets to the new format and keeps every sample; a cast
+  reading stops with the reader's loader, not on the 860 pt switch. `FoldContinuityTests`
+  (2 tests, the mutant that drops a changed-format buffer seen to fail both). The studio
+  pane was seen on the open Duo (stub engine, Recording 0:19). **Not physically tested:**
+  closing the Duo during a real take, the outer display's dock in that moment, and whether
+  a fold reconfigures the audio hardware at all.

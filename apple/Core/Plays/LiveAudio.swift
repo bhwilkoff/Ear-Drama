@@ -47,12 +47,63 @@ final class EngineLiveAudio: LiveAudio {
     private var sink: CaptureSink?
     private var running = false
     private var pending: PlaybackGate?
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
 
     init() {
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: TakeAudio.format)
         // The mute door (APP_MUTE) silences every cue and take played back; the microphone is untouched.
         player.volume = SpeechMute.volume
+        observeReconfiguration()
+    }
+
+    deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    /// A take outlives a change of hardware under it (Decision 080: a fold never stops a take). When the input or
+    /// output changes (a fold, a headset, a route), the engine stops itself and posts a configuration change; an
+    /// interruption that ends leaves it stopped too. Either way it restarts here and its tap goes back on the same
+    /// capture, so the take holds what came before and after.
+    private func observeReconfiguration() {
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) {
+            @Sendable [weak self] _ in
+            MainActor.assumeIsolated { self?.resume() }
+        })
+        #if os(iOS)
+        observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) {
+            @Sendable [weak self] note in
+            let type = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt).flatMap(AVAudioSession.InterruptionType.init)
+            MainActor.assumeIsolated {
+                guard type == .ended else { return }
+                try? AVAudioSession.sharedInstance().setActive(true)
+                self?.resume()
+            }
+        })
+        #endif
+    }
+
+    /// Puts a stopped engine back as it was: the player connected, the tap on the microphone in its new format
+    /// feeding the capture already open, the engine running, a cue playing on.
+    private func resume() {
+        guard running, !engine.isRunning else { return }
+        let playing = player.isPlaying
+        engine.connect(player, to: engine.mainMixerNode, format: TakeAudio.format)
+        if let sink {
+            let input = engine.inputNode
+            let format = input.outputFormat(forBus: 0)
+            sink.retarget(from: format)
+            input.removeTap(onBus: 0)
+            input.installTap(onBus: 0, bufferSize: 2048, format: format, block: sink.block)
+        }
+        engine.prepare()
+        do {
+            try engine.start()
+            if playing { player.play() }
+        } catch {
+            print("[LiveAudio] restart after a reconfiguration failed: \(error)")
+        }
     }
 
     func outputRoute() -> AudioRoute {
@@ -164,12 +215,14 @@ private nonisolated final class PlaybackGate: @unchecked Sendable {
 }
 
 /// The microphone tap's buffer, filled on the audio thread and drained on the
-/// main actor. It converts the hardware format to mono at the take rate.
-private nonisolated final class CaptureSink: @unchecked Sendable {
+/// main actor. It converts the hardware format to mono at the take rate. One
+/// capture outlives a reconfiguration: `retarget` swaps the converter for the
+/// new hardware format and keeps every sample already heard.
+nonisolated final class CaptureSink: @unchecked Sendable {
     private let lock = NSLock()
     private var samples: [Float] = []
-    private let converter: AVAudioConverter?
-    private let inFormat: AVAudioFormat
+    private var converter: AVAudioConverter?
+    private var inFormat: AVAudioFormat
     private let onChunk: @MainActor @Sendable ([Float]) -> Void
 
     init(from format: AVAudioFormat, onChunk: @escaping @MainActor @Sendable ([Float]) -> Void) {
@@ -182,7 +235,27 @@ private nonisolated final class CaptureSink: @unchecked Sendable {
         { @Sendable [self] buffer, _ in self.receive(buffer) }
     }
 
-    private func receive(_ buffer: AVAudioPCMBuffer) {
+    private var currentFormat: AVAudioFormat {
+        lock.lock()
+        defer { lock.unlock() }
+        return inFormat
+    }
+
+    /// The hardware changed under an open capture (a fold, a headset): convert from its new format from here on.
+    func retarget(from format: AVAudioFormat) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard format != inFormat else { return }
+        inFormat = format
+        converter = AVAudioConverter(from: format, to: TakeAudio.format)
+    }
+
+    func receive(_ buffer: AVAudioPCMBuffer) {
+        // A buffer in a format the converter was not made for retargets it rather than being lost.
+        if buffer.format != currentFormat { retarget(from: buffer.format) }
+        lock.lock()
+        let converter = converter, inFormat = inFormat
+        lock.unlock()
         guard let converter else { return }
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * TakeAudio.sampleRate / inFormat.sampleRate) + 64
         guard let out = AVAudioPCMBuffer(pcmFormat: TakeAudio.format, frameCapacity: capacity) else { return }

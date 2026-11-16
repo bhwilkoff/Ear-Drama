@@ -31,10 +31,7 @@ struct ContentView_iOS: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .modifier(HapticFeedback_iOS())
-        .sheet(isPresented: $store.isPlayerPresented) {
-            PlayerSheet_iOS()
-                .presentationDragIndicator(.visible)
-        }
+        .modifier(PlayerPresenter())
         .task(id: store.productionDoor) {
             guard let id = store.productionDoor else { return }
             store.productionDoor = nil
@@ -55,6 +52,35 @@ struct ContentView_iOS: View {
             root().routeDestinations()
         }
         .modifier(MiniPlayerInset())
+    }
+}
+
+/// Now Playing's presentation (iOS-DESIGN §5.3, Decision 080): the sheet at compact width, the whole window as two
+/// panes at regular width. The width is read once, when the player opens; a fold or a resize while it is open
+/// changes its layout, never its presentation, so the player is never dismissed under the person.
+private struct PlayerPresenter: ViewModifier {
+    @Environment(AppStore.self) private var store
+    @Environment(\.horizontalSizeClass) private var width
+    @State private var shown: PlayerPresentation?
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: binding(.sheet)) {
+                PlayerSheet_iOS()
+                    .presentationDragIndicator(.visible)
+            }
+            .fullScreenCover(isPresented: binding(.panes)) {
+                PlayerSheet_iOS(panes: true)
+            }
+            .onChange(of: store.isPlayerPresented, initial: true) { _, open in
+                if open, shown == nil { shown = PlayerPresentation.on(width) }
+                if !open { shown = nil }
+            }
+    }
+
+    private func binding(_ which: PlayerPresentation) -> Binding<Bool> {
+        Binding(get: { store.isPlayerPresented && shown == which },
+                set: { if !$0, shown == which { store.isPlayerPresented = false } })
     }
 }
 

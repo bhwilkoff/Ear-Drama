@@ -38,8 +38,17 @@ struct MiniPlayer_iOS: View {
     }
 }
 
-/// The full player, a sheet over the tabs.
+/// How Now Playing opens (iOS-DESIGN §5.3, Decision 080): a sheet at compact width, the whole window with what plays
+/// next beside it at regular width. Chosen once, as it opens, so folding or unfolding the Duo never dismisses it.
+enum PlayerPresentation: Equatable {
+    case sheet, panes
+
+    static func on(_ width: UserInterfaceSizeClass?) -> PlayerPresentation { width == .regular ? .panes : .sheet }
+}
+
+/// The full player: a sheet over the tabs, or at regular width the primary of two panes beside the queue.
 struct PlayerSheet_iOS: View {
+    var panes = false
     @Environment(AudioPlayer.self) private var player
     @Environment(CatalogStore.self) private var catalog
     @Environment(AppStore.self) private var store
@@ -49,49 +58,90 @@ struct PlayerSheet_iOS: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: Spacing.s6) {
-                    controlsPage
-                        .frame(minHeight: sheetSize.height)
-                    if let item = player.item {
-                        NowPlayingPeople(episode: item.episode) { route in
-                            dismiss()
-                            store.push(route)
-                        }
-                        .padding(.horizontal, Spacing.s6)
-                        .padding(.bottom, Spacing.s6)
-                    }
+            arranged
+                .toolbar { toolbar }
+                .sheet(isPresented: $transcriptOpen) {
+                    if let url = player.item?.episode.transcriptURL { TranscriptSheet_iOS(url: url) }
                 }
+        }
+    }
+
+    /// Two panes: the player and what plays next, split by the system (side by side in landscape, stacked in
+    /// portrait, the player alone on a closed Duo); an `HStack` before iOS 27.1.
+    @ViewBuilder private var arranged: some View {
+        if panes {
+            #if compiler(>=6.4)
+            if #available(iOS 27.1, *) {
+                ArrangementView {
+                    playerPane
+                        .splitArrangementLayoutRatio(minHorizontal: 0.45, idealHorizontal: 0.55, maxHorizontal: 0.65,
+                                                     minVertical: 0.5, idealVertical: 0.6, maxVertical: 0.7)
+                } secondary: {
+                    PlayerQueuePane()
+                }
+                .arrangementViewStyle(.split)
+                .background(Color.brandBackground)
+            } else {
+                sideBySide
             }
-            .scrollBounceBehavior(.basedOnSize)
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { sheetSize = $0 }
-            .background(Color.brandBackground)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Label("Close player", systemImage: "chevron.down")
-                    }
-                }
+            #else
+            sideBySide
+            #endif
+        } else {
+            playerPane
+        }
+    }
+
+    private var sideBySide: some View {
+        HStack(spacing: 0) {
+            playerPane
+            Divider()
+            PlayerQueuePane().frame(maxWidth: 420)
+        }
+        .background(Color.brandBackground)
+    }
+
+    private var playerPane: some View {
+        ScrollView {
+            VStack(spacing: Spacing.s6) {
+                controlsPage
+                    .frame(minHeight: sheetSize.height)
                 if let item = player.item {
-                    ToolbarItemGroup(placement: .primaryAction) {
-                        PlayerQueueButton(episodeID: item.episode.id)
-                        PlayerShareLink(episode: item.episode)
+                    NowPlayingPeople(episode: item.episode) { route in
+                        dismiss()
+                        store.push(route)
                     }
-                }
-                if player.item?.episode.transcriptURL != nil {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            transcriptOpen = true
-                        } label: {
-                            Label(Transcript.label, systemImage: "text.quote")
-                        }
-                    }
+                    .padding(.horizontal, Spacing.s6)
+                    .padding(.bottom, Spacing.s6)
                 }
             }
-            .sheet(isPresented: $transcriptOpen) {
-                if let url = player.item?.episode.transcriptURL { TranscriptSheet_iOS(url: url) }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { sheetSize = $0 }
+        .background(Color.brandBackground)
+    }
+
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItem(placement: .cancellationAction) {
+            Button {
+                dismiss()
+            } label: {
+                Label("Close player", systemImage: "chevron.down")
+            }
+        }
+        if let item = player.item {
+            ToolbarItemGroup(placement: .primaryAction) {
+                PlayerQueueButton(episodeID: item.episode.id)
+                PlayerShareLink(episode: item.episode)
+            }
+        }
+        if player.item?.episode.transcriptURL != nil {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    transcriptOpen = true
+                } label: {
+                    Label(Transcript.label, systemImage: "text.quote")
+                }
             }
         }
     }
@@ -177,7 +227,8 @@ struct PlayerSheet_iOS: View {
                     Text(diag).font(.caption2).monospaced().accessibilityIdentifier("PlaybackDiag")
                 }
                 #endif
-                if let next = player.upNext.first {
+                // Beside the queue pane the line would say what the pane already lists.
+                if !panes, let next = player.upNext.first {
                     Text("Next: \(next.displayTitle)")
                         .font(TypeRamp.caption)
                         .foregroundStyle(Color.brandTextMuted)

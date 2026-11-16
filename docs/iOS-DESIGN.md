@@ -1063,8 +1063,8 @@ device. Audit frames: `build/qa/duo-audit/` (local).
   **Queue**, `ListeningQueue` resolved by `catalog.episodes`, each row
   dragged to reorder in place (no Edit), swiped or right-clicked to remove,
   its context menu `QueueRowMenu` (Move up, Move down, Remove): the queue
-  verbs of §12, nothing more, and a tap starts nothing (Decision 067: only
-  the person orders what plays). An empty queue says Library's sentence.
+  verbs of §12 on Library's own row (its Play plays it now, as in Library),
+  nothing more. An empty queue says Library's sentence.
   **Listening live** the pane is the lineup instead (`LiveRadio.lineup`):
   each slot from the one on the air to the evening's end, its time, show
   and episode, "Now" on the slot playing, gaps as `GapLine`; nothing in it
