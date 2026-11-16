@@ -107,6 +107,9 @@ struct EarDramaApp: App {
                 .environment(plays)
                 .environment(shared)
                 .task { await downloads.reconnect() }
+                #if DEBUG
+                .task { await KokoroBench.runIfAsked() }
+                #endif
                 #endif
                 // Custom-scheme links and Universal Links (applinks:eardrama.org)
                 // never route directly: the request lands in the inbox.

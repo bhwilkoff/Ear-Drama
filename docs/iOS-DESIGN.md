@@ -849,6 +849,31 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   mutes the synthesizer (volume 0, a line still takes its time). The reader gets a
   Voices toolbar item and Hear the Cast (§4.15). Personal Voice stays the
   listen-through toggle it is (§4.12) and is not in the picker.
+  **Downloaded** (Kokoro, Decision 078, S6e; PLAYS-DESIGN §2.8 rule 10; built 2026-11-15,
+  PARITY 🚧): a third `Form` section, "Downloaded", under "On this Device": a
+  **Download Voices (SIZE)** button; while downloading a `ProgressView(value:total:)` with
+  "34 MB of SIZE" in `caption` and a **Cancel** button (`role: .cancel`); a failure is
+  `exclamationmark.triangle.fill` "The download failed." in the warning color with **Try
+  Again**; once here the 28 Kokoro voices as the same selection rows with `play.circle`
+  previews ("Heart (Kokoro)", best grade first, "English (US)" / "English (UK)" under each),
+  then **Delete Downloaded Voices (SIZE)** (`role: .destructive`), and the attribution as the
+  section footer. A play without published phonemes shows "Not available for this play." in
+  place of the voices. The model is our own Core ML conversion (`tools/convert_kokoro_coreml.py`,
+  fp16 compute with int8 weights, 151 MB with the voice table; `kokoro-v3-apple-manifest.json`, to go on the
+  Release `kokoro-model` once the iPhone 12 passes),
+  fetched by `KokoroModelStore` through `APIClient.download` (HTTP Range resume, SHA-256 per
+  file), kept in Application Support/Kokoro (never Caches; excluded from backup), compiled
+  once per version on the device. `KokoroReader` reads the play's `phonemes/<id>.json`, renders
+  100-symbol pieces on `CoreMLKokoroRenderer` (fixed-shape functions per bucket, on the CPU:
+  the Neural Engine's compiler refuses the decoder and the GPU's buffers tripled the footprint on the Mac), refuses a non-finite or silent render and marks every buffer synthetic;
+  `KokoroLive` plays a line once through `AVAudioPlayerNode` (nothing when muted) for Hear the
+  Cast, the listen-through and the preview; `KokoroStandInVoice` hands the recorder's cue a
+  `StandInAudio`. A Kokoro part's line Kokoro cannot read is read by its auto-cast system
+  voice (`VoiceCast.systemFallback`). The group and the engine sit behind `KokoroFlag`: on in
+  DEBUG, in a release build only once the S6a gate passes on the iPhone 12 (off: passed on the Mac
+  2026-11-16, not yet measured on the iPhone; R2-kokoro-feasibility "S6e on the Mac"). DEBUG door:
+  `APP_KOKORO_BENCH=1` (`KokoroBench`, the S6a bench; `APP_KOKORO_BENCH_PLAYS`, `_LINES`,
+  `_MINUTES`, `_UNITS`, `_KEEP`, `_ROOT`).
 - **§4.12a A shared ear drama** (phase 2; PLAYS-DESIGN §11.7, binding:
   "The same verbs on the web, iPhone, iPad, Mac, and Android ... Words on
   screen are these, on every platform"). Logic in `PlaysShare`

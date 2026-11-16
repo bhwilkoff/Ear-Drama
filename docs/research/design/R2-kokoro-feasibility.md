@@ -465,6 +465,29 @@ armeabi-v7a, 40.8 / 40.7 MB x86_64 / x86. Not run: NNAPI and XNNPACK on the q8 g
 did not help q8f16; the q8 graph's integer MatMuls are not XNNPACK ops), and the onnx-community
 `model_uint8` variants (177 MB and 114 MB: bigger downloads than q8, and q8 already passes).
 
+## S6e on the Mac (Apple, 2026-11-16): the gate passes on an M3; the iPhone 12 is not measured yet
+
+Our own conversion (`tools/convert_kokoro_coreml.py`, hexgrad's PyTorch weights at the pinned revision, fp16 compute
+with the source phase and the inverse STFT in fp32, int8 weights): `KokoroDuration` (3 token buckets, 19.9 MB) and
+`KokoroDecoder` (6 frame buckets, 112.0 MB), with the voice table and tokenizer **151,355,119 bytes**, as
+`kokoro-v3-apple-manifest.json` (built locally, **not published**). The converter's own checks passed: the wrappers
+against kokoro's forward, SNR 46.0 dB; every bucket padded against the line alone, worst 50.4 dB. Its Core ML step
+cannot run here: coremltools 9.0 segfaults loading any Core ML model on macOS 27, so every measurement below is the
+Swift engine (`CoreMLKokoroRenderer` through `KokoroReader`), from the macOS test runner
+(`apple/Tests/KokoroBenchTests.swift`).
+
+| Measure | Result |
+|---|---|
+| Quality: Whisper base.en WER, the same 40 published lines (4 plays), Heart / Michael | PyTorch fp32 **5.8% / 6.5%**; our Core ML through the app's engine (100-symbol pieces) **7.3% / 6.2%**; no non-finite line (`kokoro-spike/coreml_asr_check.py`) |
+| Compute units, 4 lines | CPU: works. GPU: works, RTF similar, footprint **977 MB**. `.all`: the Neural Engine compiler refuses the decoder (ANECCompile FAILED) and every render then fails. The engine runs on the CPU |
+| Speed and memory, CPU, 3 minutes, 219 renders of 50 lines from Android's three plays, the 28 voices in turn | **RTF 0.096** (p95 0.285, max 1.05 when a bucket loads), first audio p50 0.29 s / p95 1.32 s (max 5.95 s: a first load of the 512-frame bucket), **peak footprint 350 MB**, 0 refused, thermal nominal: **passes on the Mac** |
+| Size | 151 MB against Android's 107 MB. About 48 MB of the decoder is waste: each `zeros_like` on a select's other side is folded into a constant of its bucket's shape, per function, and int8-stored. Fixing it needs a reconversion on a Mac where coremltools runs |
+
+Not measured: the iPhone 12 (the S6a gate's device for memory) and the iPad; the download through the app's store
+(nothing is on the Release); first loads on a phone, where each decoder bucket's plan is built on first use and the
+engine keeps two loaded (`APP_KOKORO_BENCH_KEEP` changes it). `KokoroFlag.inRelease` stays false until the iPhone run
+passes.
+
 ## Sources
 
 

@@ -122,7 +122,16 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
         } else if let cast {
             let r = cast.resolve(part)
             guard r.read || r.none else { return }
-            SpeechSetting.of(r)?.apply(to: utterance)
+            #if os(iOS) || os(macOS)
+            // A downloaded voice reads from the play's published phonemes; a line it cannot read falls to the
+            // part's auto-cast system voice (PLAYS-DESIGN §2.8 rule 10).
+            if r.read, let v = r.voice, v.engine == .kokoro, let play = cast.playID,
+               await KokoroLive.shared.speak(play, text, voice: v.id, rate: r.rate, pitch: r.pitch,
+                                             muted: SpeechMute.volume == 0) {
+                return
+            }
+            #endif
+            SpeechSetting.of(cast.systemFallback(part))?.apply(to: utterance)
         }
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             finished = done
@@ -133,6 +142,9 @@ final class SystemListenSpeaker: NSObject, ListenSpeaker, AVSpeechSynthesizerDel
 
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
+        #if os(iOS) || os(macOS)
+        KokoroLive.shared.stop()
+        #endif
         resume(nil)
     }
 

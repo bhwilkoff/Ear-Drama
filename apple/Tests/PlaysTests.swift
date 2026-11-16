@@ -32,6 +32,9 @@ import Testing
 //   plays on), which is how that mutant was seen to fail. All seen on 2026-10-30.
 // The stand-in scan carries its own control (`leakyCaptureIsCaught`): when the
 // microphone hears the stand-in, the scan must find it in the take.
+// Kokoro (S6e, 2026-11-15), each seen to fail against a mutated copy: KokoroReader's two SyntheticAudio.mark
+// calls and StandInAudio.init's removed: the Kokoro buffer test sees the take and room-tone writers accept a
+// line, a piece and a cue (7 issues); a FileHandle(forWritingTo:) in KokoroLive.swift: the source guard names it.
 
 // MARK: - Fixtures
 
@@ -348,6 +351,19 @@ struct FlaggedTakeTests {
 
 // MARK: - No synthesized audio reaches a file
 
+/// Any stand-in, keeping what it rendered (the signatures the file scan looks for).
+private final class RecordingVoice: StandInVoice {
+    private let inner: StandInVoice
+    private(set) var rendered: [StandInAudio] = []
+    init(_ inner: StandInVoice) { self.inner = inner }
+
+    func render(_ text: String, part: PartID, rate: Float) async -> StandInAudio? {
+        let a = await inner.render(text, part: part, rate: rate)
+        if let a { rendered.append(a) }
+        return a
+    }
+}
+
 /// A stand-in whose every line is a chirp, so its signal can be looked for.
 private final class SignatureVoice: StandInVoice {
     private(set) var rendered: [StandInAudio] = []
@@ -447,12 +463,14 @@ private func standInFindings(in folder: URL, signatures: [StandInAudio]) throws 
 }
 
 struct StandInNeverStoredTests {
-    private func recordWholePlay(leaky: Bool) async throws -> (findings: [String], signatures: Int, takes: [Take]) {
+    private func recordWholePlay(leaky: Bool, kokoro: Bool = false) async throws
+        -> (findings: [String], signatures: Int, takes: [Take]) {
         let script = fixtureScript()
         let store = ProductionStore(root: temporaryRoot())
         defer { try? FileManager.default.removeItem(at: store.root) }
         var production = try store.create(script)
-        let voice = SignatureVoice()
+        let system = SignatureVoice()
+        let voice: RecordingVoice = kokoro ? RecordingVoice(kokoroVoice(script, system: system)) : RecordingVoice(system)
         for part in Relay.order(script) where part.isSpeaking {
             production = try Relay.take(part, performer: nil, in: production, script: script)
             try store.save(production)
@@ -480,8 +498,63 @@ struct StandInNeverStoredTests {
             _ = try await store.renderMix(production.id)
             #expect(FileManager.default.fileExists(atPath: store.mixURL(production.id).path))
         }
+        if kokoro { #expect(system.rendered.isEmpty, "every cue came from Kokoro, none from the system voice") }
         let findings = try standInFindings(in: store.folder(production.id), signatures: voice.rendered)
         return (findings, voice.rendered.count, try #require(store.production(production.id)).takes)
+    }
+
+    /// Every speaking part cast to a downloaded voice, read by the real KokoroReader (published phonemes, tokenizer,
+    /// guard, marking) over a renderer that returns a chirp per piece instead of running the model; the cue path is
+    /// KokoroStandInVoice.
+    private func kokoroVoice(_ script: PlayScript, system: StandInVoice) -> StandInVoice {
+        let reader = kokoroReader(script)
+        let cast = VoiceCast(key: "p:kokoro-\(UUID().uuidString)", playID: script.id, parts: script.castParts.map(\.id),
+                             voices: { [CastVoice(id: "sys", name: "System", language: "en-US", tier: 2, gender: nil)] },
+                             downloaded: { Kokoro.castable(ready: true) }, storage: .memory())
+        for (i, part) in script.castParts.map(\.id).filter(\.isSpeaking).enumerated() {
+            let v = Kokoro.voices[i * 5 % Kokoro.voices.count]
+            cast.set(part) { $0 = VoiceCastEntry(engine: .kokoro, voice: v.id, name: v.name) }
+        }
+        return KokoroStandInVoice(cast: cast, system: system) { text, id, speed in
+            await reader.render(script.id, text, voice: id, speed: speed)
+        }
+    }
+
+    @Test func noFileHoldsAKokoroStandIn() async throws {
+        let run = try await recordWholePlay(leaky: false, kokoro: true)
+        #expect(run.signatures > 0, "the parts were cued by a Kokoro voice")
+        #expect(run.findings.isEmpty, "no take, room tone, or mix holds a Kokoro line: \(run.findings)")
+        #expect(run.takes.allSatisfy { !$0.bleed })
+        #expect(run.takes.contains { $0.heard.values.contains(Take.standIn) })
+    }
+
+    @Test func aLeakyMicrophoneIsCaughtWithAKokoroVoiceToo() async throws {
+        let run = try await recordWholePlay(leaky: true, kokoro: true)
+        #expect(!run.findings.isEmpty, "the scan must catch a Kokoro line in a file")
+        #expect(run.takes.contains { $0.bleed }, "the bleed check flags the take")
+    }
+
+    /// A Kokoro render, a piece, the whole line or the resampled cue, is refused by every writer, as a system voice's is.
+    @Test func aKokoroBufferIsRefusedByEveryWriter() async throws {
+        let script = fixtureScript()
+        let reader = kokoroReader(script)
+        let line = try #require(await reader.render(script.id, "Come in.", voice: "af_heart", speed: 1))
+        let pieces = PiecesBox()
+        _ = await reader.renderPieces(script.id, "Good night.", voice: "bm_george", speed: 1) { pieces.add($0) }
+        let cue = try #require(await kokoroVoice(script, system: SignatureVoice()).render("Come in.", part: .role("MOLLY"), rate: 1))
+        let store = ProductionStore(root: temporaryRoot())
+        defer { try? FileManager.default.removeItem(at: store.root) }
+        let p = try store.create(script)
+        for (label, samples, rate) in [("line", line, 24_000.0), ("piece", try #require(pieces.all.first), 24_000), ("cue", cue.samples, 48_000)] {
+            let copied = MicrophoneCapture(samples: samples, sampleRate: rate)
+            #expect(throws: SyntheticAudio.Refusal.synthetic, "the take writer refused a Kokoro \(label)") {
+                try store.writeTake(copied, production: p, lineID: "L0003")
+            }
+            #expect(throws: SyntheticAudio.Refusal.synthetic, "the room-tone writer refused a Kokoro \(label)") {
+                try store.writeRoomTone(copied, production: p)
+            }
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: store.takesFolder(p.id).path).isEmpty)
     }
 
     @Test func noFileHoldsAStandIn() async throws {
@@ -516,14 +589,30 @@ struct StandInNeverStoredTests {
         #expect(Self.writeViolations(file: "StandIn.swift", source: "let f = try AVAudioFile(forWriting: url)") ==
                 ["StandIn.swift"], "the guard's control: a writer in the stand-in source is caught")
         #expect(Self.writeViolations(file: "Other.swift", source: "AVAudioFile(forWriting: u)") == ["Other.swift"])
+        // Kokoro (S6e): the sources that hold rendered audio touch no file writer, and the model store holds no audio.
+        for k in Self.kokoroAudio {
+            #expect(FileManager.default.fileExists(atPath: apple.appending(path: "Core/Plays/\(k)").path), "the guard looks at \(k)")
+        }
+        #expect(Self.writeViolations(file: "KokoroLive.swift", source: "let h = try FileHandle(forWritingTo: u)") == ["KokoroLive.swift"])
+        #expect(Self.writeViolations(file: "KokoroEngine.swift", source: "try Data(samples).write(to: url)") == ["KokoroEngine.swift"])
+        #expect(Self.writeViolations(file: "KokoroModelStore.swift", source: "func keep(_ s: [Float]) {}") == ["KokoroModelStore.swift"])
+        #expect(Self.writeViolations(file: "KokoroModelStore.swift", source: "try fm.moveItem(at: part, to: done)").isEmpty)
     }
 
     private static let writers: Set = ["PlayFiles.swift", "MixRenderer.swift"]
+    /// Kokoro's audio path: rendered in memory, played once, handed to the cue; never near a file writer (Decision 078).
+    static let kokoroAudio = ["KokoroEngine.swift", "KokoroLive.swift"]
+    private static let kokoroForbidden = ["AVAudioFile(", ".write(to", "FileHandle(forWriting", "createFile(", "AVAudioRecorder",
+                                          "writeTake", "writeRoomTone", "OutputStream("]
 
     static func writeViolations(file: String, source: String) -> [String] {
         if source.contains("AVAudioFile(forWriting"), !writers.contains(file) { return [file] }
         if file == "StandIn.swift",
            ["AVAudioFile(", "FileManager", ".write(to", "Data("].contains(where: source.contains) { return [file] }
+        if kokoroAudio.contains(file), kokoroForbidden.contains(where: source.contains) { return [file] }
+        if file == "KokoroModelStore.swift", ["[Float]", "AVAudio", "SyntheticAudio", "StandInAudio"].contains(where: source.contains) {
+            return [file]
+        }
         return []
     }
 }

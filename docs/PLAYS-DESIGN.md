@@ -367,10 +367,12 @@ Q8, Q12 (answered (a) each). Each platform's design doc says the idiom (WEB-DESI
 9. **A voice never passes as a person.** The chip sits beside the dashed ring, every line a
    device voice reads is labeled "Device voice", and nothing of a device voice is stored
    (§5).
-10. **Downloaded voices (Kokoro, Decision 078; S6d Android first).** The picker's
+10. **Downloaded voices (Kokoro, Decision 078; S6d Android first, S6e Apple).** The picker's
    "Downloaded" group, under "On this device", holds one button until the model is here:
    **Download voices (107 MB)** (the size is the platform manifest's: 107 MB for the q8 model
-   Android reads, R2-kokoro-feasibility S6a), never started for the person, on any network.
+   Android reads, R2-kokoro-feasibility S6a; Apple reads our own Core ML conversion,
+   `kokoro-v3-apple-manifest.json`, its size in the iOS and macOS design docs; Apple writes
+   it title case, "Download Voices (… MB)"), never started for the person, on any network.
    While it downloads: a progress bar, "34 MB of 107 MB" and Cancel; a stopped download resumes
    where it stopped (HTTP Range), each file is checked against the manifest's SHA-256 and
    a mismatch is deleted ("The download failed." and Try again). Once here: the 28 voices,
