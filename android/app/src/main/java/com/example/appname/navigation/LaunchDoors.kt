@@ -25,6 +25,9 @@ sealed interface InboxRequest {
     /** DEBUG door `appname_start_read`: the reader on a play, at [line] when given. */
     data class Read(val id: String, val line: String? = null, val studioPart: String? = null) : InboxRequest
 
+    /** DEBUG door `appname_start_along`: a finished drama's page with Listen pressed, so its read-along follows the files (a TV too). */
+    data class Along(val pid: String) : InboxRequest
+
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
 }
@@ -54,10 +57,17 @@ data class LaunchDoors(
     val studioStub: Boolean = false,
     /** `appname_studio_phase`: with the stub, `listening` starts a take on the current line, `takes` opens the take list. */
     val studioPhase: String? = null,
+    /**
+     * `appname_start_along`: a finished production's id; its drama page opens and Listen is pressed (muted with the mute door).
+     * `rehearsal` or `rehearsal:<script id>` needs no finished drama (none is published yet): the page opens over a bundled
+     * script and the panel steps through its lines on a timer, playing nothing.
+     */
+    val startAlong: String? = null,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
             startTab?.let(InboxRequest::Tab), startItem?.let(InboxRequest::Item),
+            startAlong?.takeIf { it.isNotBlank() }?.let { InboxRequest.Along(alongPid(it)) },
             startRead?.let {
                 InboxRequest.Read(
                     it.substringBefore('@'), it.substringAfter('@', "").ifEmpty { null },
@@ -67,6 +77,12 @@ data class LaunchDoors(
         )
 
     companion object {
+        const val REHEARSAL_PREFIX = "door-along:"
+
+        /** The drama id the door opens: a production's own, or the rehearsal's `door-along:auto` / `door-along:<script id>`. */
+        fun alongPid(value: String): String =
+            if (value.startsWith("rehearsal")) REHEARSAL_PREFIX + value.substringAfter(':', "auto").ifBlank { "auto" } else value
+
         const val EXTRA_START_TAB = "appname_start_tab"
         const val EXTRA_START_ITEM = "appname_start_item"
         const val EXTRA_MUTE = "appname_mute"
@@ -76,6 +92,7 @@ data class LaunchDoors(
         const val EXTRA_START_STUDIO = "appname_start_studio"
         const val EXTRA_STUDIO_STUB = "appname_studio_stub"
         const val EXTRA_STUDIO_PHASE = "appname_studio_phase"
+        const val EXTRA_START_ALONG = "appname_start_along"
 
         /** [extras] is the intent's extras as a map; `am start` sends --es/--ez/--ei types. */
         fun from(extras: Map<String, Any?>, debug: Boolean): LaunchDoors {
@@ -90,6 +107,7 @@ data class LaunchDoors(
                 startStudio = extras[EXTRA_START_STUDIO]?.toString(),
                 studioStub = extras[EXTRA_STUDIO_STUB].let { it == true || it == "1" || it == "true" },
                 studioPhase = extras[EXTRA_STUDIO_PHASE]?.toString(),
+                startAlong = extras[EXTRA_START_ALONG]?.toString(),
             )
         }
     }
@@ -102,4 +120,9 @@ data class LaunchDoors(
 object StudioDoor {
     @Volatile var stub = false
     @Volatile var phase: String? = null
+}
+
+/** Set by the Along door when it opens a drama: the page presses Listen once, then clears it. Never set in release. */
+object AlongDoor {
+    @Volatile var autoplay: String? = null
 }

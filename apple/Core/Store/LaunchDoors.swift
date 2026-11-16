@@ -35,6 +35,11 @@ import Foundation
 ///
 /// - APP_SCENE=try | hear: presses Today's Scene's Try a Line or Hear It once (iOS and macOS; read by `SceneDoor`)
 ///
+/// - APP_START_ALONG=<production id>: open that finished ear drama's page and press Listen, so its read-along panel
+///   follows the files (the Apple TV's panel; muted with APP_MUTE=1). `rehearsal` or `rehearsal:<script id>` needs no
+///   finished drama (none is published yet): the page opens over a bundled script and the panel steps through its
+///   lines on a timer, playing nothing (DEBUG, tvOS)
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a
@@ -55,6 +60,7 @@ struct LaunchDoors: Sendable, Equatable {
     var readerDoor = ReaderDoor()
     var production: String?
     var picker: String?
+    var along: String?
 
     var isEmpty: Bool { self == LaunchDoors() }
 
@@ -91,7 +97,8 @@ struct LaunchDoors: Sendable, Equatable {
                                    inkFinger: environment["APP_READER_INK_FINGER"] == "1",
                                    inkDemo: environment["APP_READER_INK_DEMO"] == "1"),
             production: environment["APP_PRODUCTION"],
-            picker: environment["APP_PICKER"]
+            picker: environment["APP_PICKER"],
+            along: environment["APP_START_ALONG"].flatMap { $0.isEmpty ? nil : $0 }
         )
     }
 

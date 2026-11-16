@@ -94,6 +94,9 @@ final class AppStore {
     /// A launch door's play: its cast sheet opens (DEBUG doors only).
     var productionDoor: String?
 
+    /// APP_START_ALONG: the finished drama whose page presses Listen once it has loaded; the page clears it.
+    var alongDoor: String?
+
     /// Player-level mute. A door launch sets it (APP_MUTE); the player reads
     /// it, so a harness run is silent unless it opts in.
     var isMuted = false
@@ -248,6 +251,11 @@ final class AppStore {
         if doors.autoplay { isPlayerPresented = true }
         if doors.sleepMenu { isSleepMenuPresented = true }
         productionDoor = doors.production
+        if let along = doors.along {
+            let pid = along.hasPrefix("rehearsal") ? "door-along:" + (along.split(separator: ":", maxSplits: 1).dropFirst().first.map(String.init) ?? "auto") : along
+            alongDoor = pid
+            post(.drama(pid))
+        }
         if let script = doors.reader {
             readerDoor = doors.readerDoor
             reading = ReaderTarget(scriptID: script, line: doors.readerDoor.line)

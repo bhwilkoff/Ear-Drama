@@ -14,6 +14,23 @@ enum FinishedTiles {
 
     static func script(for play: FinishedPlay) -> PlayScript? { scripts.first { $0.id == play.scriptID } }
 
+    #if DEBUG
+    static let rehearsalPrefix = "door-along:"
+
+    /// The Along door's stand-in for a finished drama: a bundled script (the named one, or the first with a real run of
+    /// speech and three parts), never a pinned title. Its page plays nothing.
+    static func rehearsal(_ pid: String) -> FinishedPlay? {
+        guard pid.hasPrefix(rehearsalPrefix) else { return nil }
+        let want = String(pid.dropFirst(rehearsalPrefix.count))
+        let found = want == "auto"
+            ? scripts.first { $0.lines.filter { $0.kind == .speech }.count >= 60 && $0.roles.count >= 3 }
+            : scripts.first { $0.id == want }
+        guard let found else { return nil }
+        return FinishedPlay(id: pid, scriptID: found.id, title: found.title, source: nil, credits: [], archiveURL: "",
+                            publishedAt: 0, scriptRevision: found.revision)
+    }
+    #endif
+
     /// A finished drama on the show tile: the drama board, the title, no picture and no run.
     static func row(_ play: FinishedPlay) -> SeriesRow {
         SeriesRow(key: play.id, name: play.title, genre: PlayScript.boardGenre, firstDate: nil, lastDate: nil,
@@ -146,13 +163,26 @@ struct FinishedDramaScreen: View {
         .task(id: id) { await read() }
         .task(id: play?.archiveURL) {
             guard let play, let script = FinishedTiles.script(for: play) else { canFollow = false; return }
+            #if DEBUG
+            canFollow = FinishedTiles.rehearsal(play.id) != nil ? true : await FinishedListen.canFollow(play, script: script)
+            #else
             canFollow = await FinishedListen.canFollow(play, script: script)
+            #endif
+            #if DEBUG && os(tvOS)
+            if canFollow, app.alongDoor == play.id {
+                app.alongDoor = nil
+                await start(play)
+            }
+            #endif
         }
         .onDisappear { listen.stop() }
     }
 
     private func read() async {
         guard play == nil else { return }
+        #if DEBUG
+        if let stand = FinishedTiles.rehearsal(id) { fetched = stand; return }
+        #endif
         missing = nil
         do {
             fetched = try await WorkerOpenPlays(api: .shared).finished(id: id)
@@ -194,7 +224,7 @@ struct FinishedDramaScreen: View {
                 }
                 #if os(tvOS)
                 if let lineID = listen.lineID, let script {
-                    ReadAlongPanel_tvOS(lineID: lineID, deviceVoice: false, script: script)
+                    ReadAlongPanel_tvOS(lineID: lineID, deviceVoice: false, script: script).padding(.top, Spacing.s4)
                 }
                 #endif
                 if listen.state == .preparing { ProgressView() }
@@ -227,6 +257,12 @@ struct FinishedDramaScreen: View {
     private func start(_ play: FinishedPlay) async {
         player.pause()
         listen.muted = app.isMuted
+        #if DEBUG && os(tvOS)
+        if FinishedTiles.rehearsal(play.id) != nil, let script = FinishedTiles.script(for: play) {
+            listen.rehearse(script)
+            return
+        }
+        #endif
         #if os(tvOS)
         // The TV's panel follows the files; the phone and Mac follow in the reader.
         await listen.start(archiveURL: play.archiveURL, script: canFollow ? FinishedTiles.script(for: play) : nil, revision: play.scriptRevision)
@@ -361,8 +397,27 @@ final class FinishedListen {
         }
     }
 
+    #if DEBUG
+    /// The Along door's rehearsal: steps `lineID` through the script's speech lines every three seconds and plays nothing.
+    func rehearse(_ script: PlayScript) {
+        guard !isActive else { return }
+        let ids = script.lines.filter { $0.kind == .speech }.map(\.id)
+        guard ids.count > 12 else { return }
+        state = .playing
+        watch = Task { [weak self] in
+            var i = 8
+            while !Task.isCancelled, i < ids.count {
+                self?.lineID = ids[i]
+                i += 1
+                try? await Task.sleep(for: .seconds(3))
+            }
+            self?.finish(.idle)
+        }
+    }
+    #endif
+
     func stop() {
-        guard queue != nil || state == .preparing else { return }
+        guard queue != nil || state == .preparing || watch != nil else { return }
         finish(.idle)
     }
 

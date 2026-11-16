@@ -73,8 +73,7 @@ targets:
       # catalog/tools/build_castable_scripts.py; Android bundles the same file.
       - path: catalog/plays/castable-scripts.json
         buildPhase: resources
-        # The TV records nothing and keeps no plays in phase 1 (§6).
-        destinationFilters: [iOS, macOS]
+        # The TV records nothing, but its read-along panel (tvOS-DESIGN 4.13) reads the script of a finished drama.
     dependencies:
       - target: EarDramaTopShelf
         destinationFilters: [tvOS]

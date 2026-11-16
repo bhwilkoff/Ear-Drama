@@ -12,6 +12,14 @@ class LaunchDoorsTest {
     )
 
     @Test
+    fun alongDoorNamesAProductionOrARehearsal() {
+        assertEquals(listOf<InboxRequest>(InboxRequest.Along("p1")), LaunchDoors(startAlong = "p1").requests())
+        assertEquals("door-along:auto", LaunchDoors.alongPid("rehearsal"))
+        assertEquals("door-along:s9", LaunchDoors.alongPid("rehearsal:s9"))
+        assertEquals(LaunchDoors(), LaunchDoors.from(mapOf(LaunchDoors.EXTRA_START_ALONG to "p1"), debug = false))
+    }
+
+    @Test
     fun releaseBuildIgnoresEveryDoor() {
         assertEquals(LaunchDoors(), LaunchDoors.from(extras, debug = false))
     }
