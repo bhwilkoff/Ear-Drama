@@ -45,6 +45,9 @@ struct ContentView_iOS: View {
         .fullScreenCover(item: $store.reading) { target in
             NavigationStack { ScriptReaderView(scriptID: target.scriptID, startLine: target.line, studio: target.studio) }
         }
+        #if DEBUG
+        .onAppear { ScrollDoor.openIfAsked() }
+        #endif
     }
 
     private func stack<Root: View>(_ tab: AppTab, @ViewBuilder root: () -> Root) -> some View {

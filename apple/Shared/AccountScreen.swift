@@ -126,7 +126,8 @@ struct AccountScreen: View {
                     .foregroundStyle(Color.brandTextMuted)
             case .signedOut:
                 Section {
-                    SignInButtons()
+                    // A phone's width at most (iOS-DESIGN §3.6d): at regular width an 800 pt sign-in bar reads as a banner.
+                    SignInButtons().frame(maxWidth: 375, alignment: .leading)
                 }
             case .signedIn(let provider):
                 AccountStatusSection(provider: provider)
@@ -139,6 +140,7 @@ struct AccountScreen: View {
             }
             ExportSection()
         }
+        .pageMargins()
         .navigationTitle("Account")
     }
 }
@@ -156,11 +158,14 @@ struct SignInButtons: View {
             AppleSignInButton()
                 .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
                 .frame(height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: Radius.control))
             if account.isGoogleAvailable {
+                // The same 44 pt height and corner as Apple's button above it: a page's secondary control
+                // (the bordered capsule stood 58 pt tall and round beside Apple's rectangle).
                 Button { Task { await signInWithGoogle() } } label: {
-                    Text("Sign in with Google").frame(maxWidth: .infinity, minHeight: 44)
+                    Text("Sign in with Google").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
+                .pageAction()
             }
             if let error = account.lastError {
                 Label(error, systemImage: "exclamationmark.triangle")

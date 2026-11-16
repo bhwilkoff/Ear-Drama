@@ -649,8 +649,16 @@ struct StudioPanel: View {
                 }
                 .disabled(model.session.isBusy)
                 if !studio.unused.isEmpty {
+                    // The confirmation hangs on this button (iOS-DESIGN §3.6c), not on the panel's List.
                     Button("Delete Unused Takes", role: .destructive) { model.confirmingUnused = true }
                         .disabled(studio.locked)
+                        .confirmationDialog(unusedTitle, isPresented: Binding(get: { model.confirmingUnused },
+                                                                              set: { model.confirmingUnused = $0 }),
+                                            titleVisibility: .visible) {
+                            Button("Delete Unused Takes", role: .destructive) { model.studio.deleteUnused() }
+                        } message: {
+                            Text("The chosen take of each line stays.")
+                        }
                 }
                 if !model.shared {
                     Button("Done With This Part") { model.finish() }
@@ -675,6 +683,8 @@ struct StudioPanel: View {
         }
         #if os(iOS)
         .listStyle(.insetGrouped)
+        // Beside the script at regular width the panel's cards began flush against the reader (iOS-DESIGN §3.6a).
+        .pageMargins()
         .navigationTitle("Studio")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(item: $picking) { part in VoicePickerScreen(model: voices, script: model.script, part: part) }
@@ -685,12 +695,6 @@ struct StudioPanel: View {
         .listStyle(.sidebar)
         #endif
         .repaintsOnVoiceChange(voices)
-        .confirmationDialog(unusedTitle, isPresented: Binding(get: { model.confirmingUnused }, set: { model.confirmingUnused = $0 }),
-                            titleVisibility: .visible) {
-            Button("Delete Unused Takes", role: .destructive) { model.studio.deleteUnused() }
-        } message: {
-            Text("The chosen take of each line stays.")
-        }
         .accessibilityIdentifier("studio-panel")
     }
 

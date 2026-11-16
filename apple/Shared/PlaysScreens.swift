@@ -341,7 +341,7 @@ struct ProductionScreen: View {
                         CastSheet(production: production, script: script,
                                   open: { part in open(part, line: nil, script: script) { selected = part; replacing = nil } },
                                   replace: { part, line in open(part, line: line, script: script) { selected = part; replacing = line } })
-                            .frame(width: 340)
+                            .frame(width: 375)
                         Divider()
                         PartDetail(production: production, script: script, part: selected ?? Relay.current(production, script),
                                    replacing: replacing)
@@ -420,7 +420,9 @@ struct CastSheet: View {
             Section {
                 ListenThrough(production: production, script: script)
             }
+            .modifier(CastColumnRows(on: sizeClass == .regular))
             SharedProductionSection(production: production, script: script)
+                .modifier(CastColumnRows(on: sizeClass == .regular))
             Section {
                 PartGrid {
                     ForEach(script.castParts) { part in
@@ -438,6 +440,7 @@ struct CastSheet: View {
             }
             if let rec, PlaysShare.published(rec) {
                 ChangeLinesSection(production: production, script: script, rec: rec, replace: replace)
+                    .modifier(CastColumnRows(on: sizeClass == .regular))
             }
             Section {
                 DeleteProductionButton(production: production)
@@ -453,6 +456,7 @@ struct CastSheet: View {
                     .sensoryFeedback(Haptic.selection.feedback, trigger: voices.revision)
                     #endif
             }
+            .modifier(CastColumnRows(on: sizeClass == .regular))
         }
         .listStyle(.plain)
         .repaintsOnVoiceChange(voices)
@@ -573,6 +577,26 @@ struct LocalPartCard: View {
         case .done: state.performer.map { "\($0) \u{00B7} recorded" } ?? "Recorded"
         case .silent: "Left silent"
         }
+    }
+}
+
+/// The cast sheet in its 375 pt column at regular width (iOS-DESIGN §3.6e): every row 16 pt from both edges of the
+/// column, where the board and the part cards stand. The plain List's own rows began 20 pt in and ran to the column's
+/// edge, so the Personal Voice switch and the sign-in buttons touched the divider (owner, 2026-11-16: *"The spacing
+/// between the left column and the regular content is not right"*).
+private struct CastColumnRows: ViewModifier {
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if on, #available(iOS 26.0, *) {
+            content.listRowInsets(.horizontal, Spacing.s4)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 

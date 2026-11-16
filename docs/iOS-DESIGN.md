@@ -265,6 +265,89 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   launch doors post to `AppStore.inbox`; `RootView` drains it once, in
   one place.
 
+### §3.6 Regular width on a phone: the open iPhone Duo
+
+Owner, 2026-11-16, holding the first App Store submission for it: *"let's
+fix all of the interface elements for the duo. There is no reason to have
+the first version of our app not look as good as possible on one of the
+most important devices for new apps"*; of the open display: *"The spacing
+between the left column and the regular content is not right. In fact,
+most of the interface elements don't seem to be well positioned (they are
+practically on top of one another)."* The open Duo's inner display is
+regular width, 951 × 669 pt in landscape with the system's vertical strip
+(status, toolbar, tabs) down the right edge, 669 × 951 in portrait with
+horizontal bars. Apple's guidance (HIG "Designing for iPhone Duo"; the
+2026 tech talks): one compact layout and one regular layout cover every
+pose; "Build layouts with layout margins and horizontal safe area insets";
+the strip arrives as a trailing (or leading) safe-area inset, and every
+interactive element stays inside it. These rules hold at **regular width
+anywhere** (the open Duo, an iPad, a wide window); nothing reads the
+device. Audit frames: `build/qa/duo-audit/` (local).
+
+- **§3.6a One page margin, measured from the safe area.** A page's
+  content keeps **24 pt (`Spacing.s6`)** from the display's leading edge
+  and from the trailing safe area, where the strip stands: `WidePage`'s
+  padding, and `pageMargins()` (`PageMargins`, `apple/Shared/PageParts.swift`)
+  on every full-page `List` (`PageBody`, Browse, Library, Account,
+  Stations, Downloads). A List spans the horizontal safe area and counts
+  its content margins from its own edges, so `PageMargins` adds the
+  List's measured safe-area insets to the 24 pt; it changes with the
+  strip as the strip collapses on a scroll, and a margin change rebuilds
+  nothing. *Why:* the system's own grouped margin hugs the safe area,
+  which put every card 13 pt from the strip and 20 pt from the other
+  edge (`before/03-record.png`). A bar pinned above a List (Browse's
+  scope and chips) takes the same margin (`pageBarPadding()`).
+- **§3.6b Two edges for what stands on a page: boxes and words.** In a
+  page List at regular width a **filled block** (a card, a board, a grid
+  of tiles, Today's Scene, the doors) stands on the **box edge**, the
+  grouped cards' own edge (`gridRow()`, `RowLine.box`: no horizontal
+  inset), so every box on the page lines up with the cards. **Unfilled
+  content** (text, a row of buttons, a picture with its words, On the air,
+  an error and its Try Again) stands on the **words edge**, the List's
+  own row margin, where the section headings and the words inside the
+  cards begin (`gridRow(.words)`, the system's inset). A strip that
+  scrolls sideways (chips, a rail of tiles) starts on the words edge and
+  scrolls out to the box edges (`railPadding()`): on the box edge itself
+  the section's rounded corner clipped the first chip. A compact phone
+  keeps its 16 pt for both, as before. *Why:* the Yours card stood 16 pt
+  left of Today's Scene (DESIGN-LOOP N14), and Home's board sat 4 pt off
+  its heading.
+- **§3.6c A confirmation, menu or popover hangs on the control that asked.**
+  At regular width a `confirmationDialog` draws as a popover pointing at
+  the view it is attached to, so it is attached to the button that opens
+  it, never to a List or a screen (Block and Delete Account, 1.0.134;
+  Downloads' Remove and Remove All, Remove a published line, Delete Unused
+  Takes, here; the sleep timer and the series Download menu already were).
+  A short panel opened from a toolbar button (the reader's Text) is a
+  `.popover` on that button with `.presentationCompactAdaptation(.sheet)`,
+  so the phone keeps its sheet. Long lists (Contents, Search, Voices,
+  Marks, the voice picker) stay medium/large sheets. *Why:* the owner saw
+  Block "show from the middle of the screen without an anchor"; the Text
+  sheet stood 650 pt wide and two-thirds empty.
+- **§3.6d A control keeps a phone's measure.** A full-width button or bar
+  in a regular-width card is at most 375 pt wide, leading (the Account
+  page's Sign in with Apple and Google), and sign-in buttons share one
+  height (44 pt) and corner (`Radius.control`). *Why:* an 800 pt sign-in
+  bar reads as a banner, and Google's bordered capsule stood 58 pt tall
+  and round beside Apple's 44 pt rectangle.
+- **§3.6e A column beside a pane keeps its own margins.** A fixed column
+  beside a detail pane (the cast sheet beside a part, `ProductionScreen`,
+  375 pt: a phone's width, the view it is on a phone) gives every row
+  16 pt from both of its edges (`CastColumnRows`), where its board and
+  part cards stand. *Why:* the plain List's rows began 20 pt in and ran to
+  the divider, so the Personal Voice switch and the sign-in buttons
+  touched it (`before/19-production.png`): the owner's "left column".
+- **§3.6f Seeing it.** The open Duo refuses XCUITest until a person
+  confirms UI Automation on it, and XCUITest frames come from the dark
+  outer display, so frames are taken with `devicectl device capture
+  screenshot --display-unique-id <inner>` after a launch door; below the
+  first screen, the DEBUG door `APP_SCROLL_Y=<points>` scrolls the page
+  (`ScrollDoor_iOS.swift`). Every change under §3.6 is seen on the open
+  Duo and on the iPad at regular width before it is called done.
+- *Open:* Now Playing and its queue side by side (IPHONE-DUO §5.1, owner
+  Q2) needs §5.3 (the player is a sheet) amended first; the reader and the
+  studio already arrange side by side at 860 pt (§4.15).
+
 ## §4 Surfaces
 
 - **§4.1 Home** (Decision 075; the sections and data rules are the web's
@@ -580,7 +663,8 @@ The common text lives in `docs/WEB-DESIGN.md` (§4.5, §5, §8) and
   - **Position** is a line id per script in `UserDefaults` with the part,
     restored on open; a Dynamic Type, text size, spacing, rotation or
     window change re-paginates and scrolls to the page holding that line.
-  - **Text** (a sheet, `.presentationDetents([.medium])`): size over
+  - **Text** (a sheet, `.presentationDetents([.medium])`, on a phone; a
+    popover on its toolbar button at regular width, §3.6c): size over
     seven steps on top of Dynamic Type, line spacing, Pages / Scroll.
     **Contents** and **Search** are sheets (a `List` of acts with scenes;
     `.searchable` over `PlayScript.search`).

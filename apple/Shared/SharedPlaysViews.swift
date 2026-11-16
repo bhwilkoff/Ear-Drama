@@ -194,18 +194,24 @@ struct ChangeLinesSection: View {
                 }
             }
             .disabled(shared.busy.contains(production.id))
+        }
+    }
+
+    /// The confirmation hangs on the line's own Remove (iOS-DESIGN §3.6c): on the whole section it drew as a
+    /// popover pointing at nothing at regular width.
+    @ViewBuilder private func remove(_ item: PlaysShare.Change) -> some View {
+        removeControl(item)
             .confirmationDialog("Remove this line from archive.org?",
-                                isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+                                isPresented: Binding(get: { removing?.change.id == item.id }, set: { if !$0 { removing = nil } }),
                                 titleVisibility: .visible) {
                 Button("Remove", role: .destructive) {
                     guard let r = removing else { return }
                     Task { await shared.removeLine(production.id, lineID: r.change.id, reason: r.reason, store: plays.store) }
                 }
             }
-        }
     }
 
-    @ViewBuilder private func remove(_ item: PlaysShare.Change) -> some View {
+    @ViewBuilder private func removeControl(_ item: PlaysShare.Change) -> some View {
         if item.needsReason {
             Menu {
                 ForEach(ReportReason.allCases) { reason in

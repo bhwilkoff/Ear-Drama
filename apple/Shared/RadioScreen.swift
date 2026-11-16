@@ -73,6 +73,7 @@ private struct EveningList: View {
             Section { listing }
             if evening.day.witness?.url != nil, evening.day.witnessLine != nil { Section { witness } }
         }
+        .pageMargins()
         #endif
     }
 

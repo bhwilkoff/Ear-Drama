@@ -136,33 +136,36 @@ struct DownloadsScreen: View {
                             HStack {
                                 Text(group.name)
                                 Spacer(minLength: Spacing.s3)
+                                // Each confirmation hangs on the button that asked (iOS-DESIGN §3.6c): at regular
+                                // width a dialog is a popover, and on the whole List it pointed at nothing.
                                 Button("Remove", role: .destructive) { removingSeries = group.key }
                                     .font(TypeRamp.caption)
                                     .accessibilityLabel("Remove \(group.name) Downloads")
+                                    .confirmationDialog(
+                                        "Remove this series' downloads?",
+                                        isPresented: Binding(get: { removingSeries == group.key },
+                                                             set: { if !$0 { removingSeries = nil } })
+                                    ) {
+                                        Button("Remove Downloads", role: .destructive) { downloads.removeSeries(group.key) }
+                                    }
                             }
                         }
                     }
                     Section {
                         Button("Remove All Downloads", role: .destructive) { confirmingRemoveAll = true }
+                            .confirmationDialog("Remove all downloads?", isPresented: $confirmingRemoveAll) {
+                                Button("Remove All Downloads", role: .destructive) { downloads.removeAll() }
+                            }
                     } footer: {
                         Text(verbatim: "\(downloads.totalBytes.byteText) on this device")
                             .font(TypeRamp.caption)
                             .foregroundStyle(Color.brandTextMuted)
                     }
                 }
+                .pageMargins()
             }
         }
         .navigationTitle("Downloads")
-        .confirmationDialog("Remove all downloads?", isPresented: $confirmingRemoveAll) {
-            Button("Remove All Downloads", role: .destructive) { downloads.removeAll() }
-        }
-        .confirmationDialog(
-            "Remove this series' downloads?",
-            isPresented: Binding(get: { removingSeries != nil }, set: { if !$0 { removingSeries = nil } }),
-            presenting: removingSeries
-        ) { key in
-            Button("Remove Downloads", role: .destructive) { downloads.removeSeries(key) }
-        }
     }
 
     private func removeButton(_ record: DownloadRecord) -> some View {

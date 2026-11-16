@@ -36,7 +36,7 @@ struct HomeOnAirSection: View {
                         Button("Try Again") { load = .loading; attempt += 1 }
                             .pageAction()
                     }
-                    .gridRow()
+                    .gridRow(.words)
                 }
             case let .ready(day, stations):
                 if let on = OnAirNow.pick(day: day, stations: stations, now: now) { block(on) }
@@ -101,7 +101,7 @@ struct HomeOnAirSection: View {
                         .accessibilityIdentifier("all-stations")
                 }
             }
-            .gridRow()
+            .gridRow(.words)
         } header: {
             PageSectionTitle(title: on.kicker)
         }
@@ -195,7 +195,7 @@ private struct ChipBar: View {
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
-            .padding(.horizontal, Spacing.s4)
+            .railPadding()
             .padding(.vertical, Spacing.s1)
         }
         .scrollIndicators(.hidden)
@@ -213,7 +213,7 @@ struct EpisodeRail: View {
                 ForEach(episodes) { EpisodeTile(episode: $0, series: series[$0.seriesKey]) }
             }
             .sharesNameHeight()
-            .padding(.horizontal, Spacing.s4)
+            .railPadding()
             .padding(.vertical, Spacing.s2)
         }
         .scrollIndicators(.hidden)
@@ -284,7 +284,7 @@ struct HomeRecordSection: View {
                             .foregroundStyle(Color.brandTextMuted)
                         Button("Try Again") { Task { await plays.load() } }.pageAction()
                     }
-                    .gridRow()
+                    .gridRow(.words)
                 } header: {
                     SectionHead(title: "Record a play") { EmptyView() }
                 }

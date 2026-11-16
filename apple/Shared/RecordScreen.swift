@@ -23,7 +23,7 @@ struct RecordScreen: View {
                             .foregroundStyle(Color.brandTextMuted)
                         Button("Try Again") { Task { await plays.load() } }.pageAction()
                     }
-                    .gridRow()
+                    .gridRow(.words)
                 }
             case .ready:
                 if let row = PlayScript.todaysScene(plays.rows, dateKey: RadioClock.localDate()) {
@@ -82,6 +82,9 @@ struct PlaysLibrarySection: View {
     @Binding var filter: PlayFilter
     @State private var shown = Self.page
     @State private var measured: CGFloat = 0
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    #endif
 
     /// The Mac draws a page of plays at a time; a phone's list builds its rows as they scroll.
     private static let page = 60
@@ -93,9 +96,16 @@ struct PlaysLibrarySection: View {
                 Text("No plays yet.")
                     .font(TypeRamp.body)
                     .foregroundStyle(Color.brandTextMuted)
-                    .gridRow()
+                    .gridRow(.words)
             } else {
                 chips
+                    #if os(iOS)
+                    // The chips' row spans the card; the tiles' rows (the box line) are that, less 16 pt a side on
+                    // a phone (iOS-DESIGN §3.6b).
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: {
+                        measured = max(0, $0 - (sizeClass == .regular ? 0 : 2 * Spacing.s4))
+                    }
+                    #endif
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -104,8 +114,10 @@ struct PlaysLibrarySection: View {
                     .font(TypeRamp.caption)
                     .foregroundStyle(Color.brandTextMuted)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    #if os(macOS)
                     .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { measured = $0 }
-                    .gridRow()
+                    #endif
+                    .gridRow(.words)
                     .accessibilityIdentifier("plays-count")
                 if list.isEmpty {
                     VStack(alignment: .leading, spacing: Spacing.s2) {
@@ -114,7 +126,7 @@ struct PlaysLibrarySection: View {
                             .foregroundStyle(Color.brandTextMuted)
                         Button("Clear Filters") { filter = filter.cleared }.pageAction()
                     }
-                    .gridRow()
+                    .gridRow(.words)
                 } else {
                     #if os(macOS)
                     PlayGrid(rows: Array(list.prefix(shown)), width: measured)
@@ -182,7 +194,7 @@ struct PlaysLibrarySection: View {
                     }
                 }
             }
-            .padding(.horizontal, Spacing.s4)
+            .railPadding()
             .padding(.vertical, Spacing.s2)
         }
         .scrollIndicators(.hidden)

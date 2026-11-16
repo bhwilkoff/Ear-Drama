@@ -657,14 +657,13 @@ private struct ReaderScreen: View {
         arranged
             .onGeometryChange(for: Bool.self) { $0.size.width >= ReaderMath.spreadMin } action: { wide = $0 }
             .onChange(of: studio?.finished ?? false) { _, done in if done { app.reading = nil } }
-            .sheet(item: $sheet) { which in
+            .sheet(item: Binding(get: { sheet == .text ? nil : sheet }, set: { sheet = $0 })) { which in
                 switch which {
                 case .contents: ReaderContents(model: model, dismiss: { sheet = nil })
                         .presentationDetents([.medium, .large])
                 case .search: ReaderSearch(model: model, dismiss: { sheet = nil })
                         .presentationDetents([.medium, .large])
-                case .text: ReaderTextSettings(model: model)
-                        .presentationDetents([.medium])
+                case .text: EmptyView()
                 case .voices: ReaderVoices(model: model.voices, script: model.script, dismiss: { sheet = nil })
                         .presentationDetents([.medium, .large])
                 case .marks: MarksNotebook(model: model, dismiss: { sheet = nil })
@@ -809,7 +808,16 @@ private struct ReaderScreen: View {
         ToolbarItemGroup(placement: .primaryAction) {
             Button { sheet = .contents } label: { Label("Contents", systemImage: "list.bullet") }
             Button { sheet = .search } label: { Label("Search", systemImage: "magnifyingglass") }
+            // Three controls: a popover on its button at regular width, the medium sheet on a phone (iOS-DESIGN §3.6c;
+            // on the open Duo the sheet stood 650 pt wide and two-thirds empty).
             Button { sheet = .text } label: { Label("Text", systemImage: "textformat.size") }
+                .popover(isPresented: Binding(get: { sheet == .text }, set: { if !$0, sheet == .text { sheet = nil } })) {
+                    ReaderTextSettings(model: model)
+                        .frame(idealWidth: 340)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .presentationCompactAdaptation(.sheet)
+                        .presentationDetents([.medium])
+                }
             Button { sheet = .voices } label: { Label("Voices", systemImage: "person.wave.2") }
             Button { sheet = .marks } label: { Label("Marks", systemImage: "bookmark") }
             if ReaderModel.canDrawInk, model.prefs.layout == .pages {

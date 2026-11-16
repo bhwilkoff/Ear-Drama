@@ -40,6 +40,9 @@ import Foundation
 ///   finished drama (none is published yet): the page opens over a bundled script and the panel steps through its
 ///   lines on a timer, playing nothing (DEBUG, tvOS)
 ///
+/// - APP_SCROLL_Y=<points> (iOS): scrolls the page on screen that far down APP_SCROLL_DELAY seconds after launch
+///   (default 6), for frames of the open iPhone Duo below the first screen (ScrollDoor_iOS)
+///
 /// - APP_DOOR_FILE (Mac): commands read from a file while the app runs (DoorFile_macOS)
 ///
 /// DEBUG-only: in a Release build `current` is always empty, so every door is a

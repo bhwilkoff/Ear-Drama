@@ -105,7 +105,7 @@ struct ListenScreen: View {
                             .listRowSeparator(.hidden)
                             .pageBleed()
                         PictureCredit(arts: voices.map(\.person.art), slot: 84)
-                            .gridRow()
+                            .gridRow(.words)
                     } header: {
                         SectionHead(title: "Most heard voices") {
                             Button("All") { store.openBrowseVoices() }
@@ -188,8 +188,10 @@ extension View {
         #endif
     }
 
-    func gridRow() -> some View {
-        listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
+    /// A clear row in a page's List. `.box` is a filled block (a card, a board, a grid of tiles), `.words` an unfilled
+    /// one (text, a row of buttons); at regular width they stand on different edges (iOS-DESIGN §3.6b).
+    func gridRow(_ line: RowLine = .box, top: CGFloat = Spacing.s2, bottom: CGFloat = Spacing.s2) -> some View {
+        modifier(PageRowInsets(line: line, top: top, bottom: bottom))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
     }
@@ -260,9 +262,7 @@ struct SeriesBrowseScreen: View {
         List {
             if scope == .dramas {
                 FinishedBrowse()
-                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                    .gridRow()
             } else if scope == .voices {
                 VoicesBrowse()
                     .gridRow()
@@ -277,6 +277,7 @@ struct SeriesBrowseScreen: View {
                 SkeletonRows()
             }
         }
+        .pageMargins()
         .overlay {
             if scope == .shows, catalog.state != .unavailable, let series, shownSeries(series).isEmpty {
                 EmptyState("Nothing matches", systemImage: "line.3.horizontal.decrease.circle",
@@ -302,7 +303,7 @@ struct SeriesBrowseScreen: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .padding(.horizontal, Spacing.s4)
+                .pageBarPadding()
                 .padding(.vertical, Spacing.s2)
                 .accessibilityIdentifier("browse-scope")
                 if scope == .shows { chips }
@@ -532,7 +533,7 @@ struct SeriesBrowseScreen: View {
                     }
                 }
             }
-            .padding(.horizontal, Spacing.s4)
+            .pageBarPadding()
             .padding(.vertical, Spacing.s2)
         }
         .scrollIndicators(.hidden)
@@ -791,16 +792,13 @@ struct EpisodeScreen: View {
         let genre = show?.genre ?? episode.seriesGenre
         let onAir = Grammar.onAirOf(detail.credits)
         let downloadState = downloads.record(for: episode.id)?.state
-        let rowInsets = EdgeInsets(top: 0, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4)
         return PageBody(measure: 960) {
             PageSection {
                 HeadBoard(kicker: show?.genre.map(GenreDisplay.name) ?? "Show", name: episode.seriesName, genre: genre, art: lead,
                           first: show?.firstDate, last: show?.lastDate, years: show?.yearCounts,
                           facts: show.map { [$0.yearSpan ?? "Undated", $0.episodeCount == 1 ? "1 episode" : "\($0.episodeCount.formatted()) episodes"] } ?? ["Undated"],
                           link: .series(episode.seriesKey), showsCredit: true)
-                    .listRowInsets(EdgeInsets(top: Spacing.s2, leading: Spacing.s4, bottom: Spacing.s2, trailing: Spacing.s4))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+                    .gridRow()
                 VStack(alignment: .leading, spacing: Spacing.s1) {
                     Text(episode.displayTitle)
                         .font(TypeRamp.pageTitle)
@@ -810,9 +808,7 @@ struct EpisodeScreen: View {
                                                           length: episode.durationText, season: episode.season,
                                                           title: episode.title, number: episode.number))
                 }
-                .listRowInsets(rowInsets)
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                .gridRow(.words, top: 0)
 
                 ActionRow {
                     Button {
@@ -842,23 +838,17 @@ struct EpisodeScreen: View {
                     }
                     #endif
                 }
-                .listRowInsets(rowInsets)
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
+                .gridRow(.words, top: 0)
 
                 // Decision 068: an episode linked to a castable script this bundle holds.
                 if let id = detail.script, plays.has(id) {
                     StartEarDramaButton(scriptID: id)
                         .pageAction()
-                        .listRowInsets(rowInsets)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                        .gridRow(.words, top: 0)
                 }
                 if let access = detail.scriptAccess {
                     ReadScriptControl(access: access)
-                        .listRowInsets(rowInsets)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
+                        .gridRow(.words, top: 0)
                 }
                 if downloadState != nil { DownloadControl(detail: detail) }
                 #if !os(macOS)
@@ -1341,8 +1331,9 @@ struct LibraryScreen: View {
                     Section { SiteLinkRows() }
                     #endif
                 }
+                .pageMargins()
             } else {
-                List { SkeletonRows() }
+                List { SkeletonRows() }.pageMargins()
             }
         }
         .navigationTitle("Library")

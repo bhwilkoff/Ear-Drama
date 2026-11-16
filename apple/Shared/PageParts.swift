@@ -305,7 +305,7 @@ struct PageBody<Content: View>: View {
         #if os(macOS)
         WidePage(measure: measure, content: content)
         #else
-        List(content: content)
+        List(content: content).pageMargins()
         #endif
     }
 }
@@ -463,6 +463,112 @@ extension View {
     }
 }
 #endif
+
+// MARK: - Page edges at regular width (iOS-DESIGN §3.6)
+
+/// Which edge a clear row of a page's List stands on (iOS-DESIGN §3.6b).
+enum RowLine: Sendable {
+    /// A filled block (a card, a board, a grid of tiles): on the edge of the List's grouped cards.
+    case box
+    /// Unfilled content (text, a row of buttons, a picture and its words): on the List's own row margin, where the
+    /// section headings and the words inside the cards begin.
+    case words
+}
+
+/// A clear row's insets. A compact phone keeps the 16 pt it always had. At regular width (the open Duo, an iPad) a
+/// box takes the cards' full width, so its edges line up with theirs, and words keep the List's own margin, so they
+/// start where the headings and the cards' words do (owner, 2026-11-16, of the open Duo: *"most of the interface
+/// elements don't seem to be well positioned"*; the Yours card stood 16 pt left of Today's Scene).
+struct PageRowInsets: ViewModifier {
+    /// A grouped List's row margin at regular width (UIKit's 20 pt layout margin there), where `.words` stands.
+    static let wordsMargin: CGFloat = 20
+    let line: RowLine
+    var top: CGFloat = Spacing.s2
+    var bottom: CGFloat = Spacing.s2
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var size
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if size == .regular {
+            switch line {
+            case .box:
+                content.listRowInsets(EdgeInsets(top: top, leading: 0, bottom: bottom, trailing: 0))
+            case .words:
+                if #available(iOS 26.0, *) {
+                    content.listRowInsets(.top, top).listRowInsets(.bottom, bottom)
+                } else {
+                    content.listRowInsets(EdgeInsets(top: top, leading: Spacing.s4, bottom: bottom, trailing: Spacing.s4))
+                }
+            }
+        } else {
+            content.listRowInsets(EdgeInsets(top: top, leading: Spacing.s4, bottom: bottom, trailing: Spacing.s4))
+        }
+        #else
+        content.listRowInsets(EdgeInsets(top: top, leading: Spacing.s4, bottom: bottom, trailing: Spacing.s4))
+        #endif
+    }
+}
+
+/// A page List's margin at regular width (iOS-DESIGN §3.6a): Spacing.s6 from the display's leading edge and from the
+/// trailing safe area, where the open Duo's vertical strip stands, the margin `WidePage` keeps. The system's own
+/// margin hugs the safe area, which put the cards 13 pt from the strip and 20 pt from the other edge.
+struct PageMargins: ViewModifier {
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var size
+    /// A List spans the horizontal safe area and its content margins count from its own edges, so the strip's inset
+    /// is added to the page margin, read from the List itself (it changes as the strip collapses on a scroll).
+    @State private var safe = EdgeInsets()
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if size == .regular {
+            content
+                .contentMargins(.leading, Spacing.s6 + safe.leading, for: .scrollContent)
+                .contentMargins(.trailing, Spacing.s6 + safe.trailing, for: .scrollContent)
+                .onGeometryChange(for: EdgeInsets.self) { $0.safeAreaInsets } action: { safe = $0 }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
+/// A horizontal padding that changes with the width: `compact` on a phone, `regular` at regular width.
+struct WidthPadding: ViewModifier {
+    let compact: CGFloat
+    let regular: CGFloat
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var size
+    #endif
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        content.padding(.horizontal, size == .regular ? regular : compact)
+        #else
+        content.padding(.horizontal, compact)
+        #endif
+    }
+}
+
+extension View {
+    /// A full page List's margins (iOS-DESIGN §3.6a).
+    func pageMargins() -> some View { modifier(PageMargins()) }
+
+    /// The padding of a strip that scrolls sideways inside a zero-inset List row (chips, a rail of tiles): its first
+    /// item starts on the words line, under the section's heading, and the strip scrolls out to the card's edges
+    /// (iOS-DESIGN §3.6b). The List's row margin is UIKit's layout margin, 16 pt on a phone and 20 pt at regular
+    /// width; on the box edge itself the grouped section's rounded corner clipped the first chip.
+    func railPadding() -> some View { modifier(WidthPadding(compact: Spacing.s4, regular: PageRowInsets.wordsMargin)) }
+
+    /// The padding of a bar pinned above a page List (Browse's scope and chips): 16 pt on a phone, the page margin at
+    /// regular width, so it lines up with the List under it (iOS-DESIGN §3.6a).
+    func pageBarPadding() -> some View { modifier(WidthPadding(compact: Spacing.s4, regular: Spacing.s6)) }
+}
 
 /// The page's column: at regular width the content keeps a readable measure and the head board
 /// spans it, instead of a portrait on the left and a wide empty area.
