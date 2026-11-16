@@ -62,6 +62,9 @@ import androidx.compose.ui.unit.dp
 import com.example.appname.data.EpisodeRow
 import com.example.appname.data.SeriesRow
 import com.example.appname.plays.DramaAudio
+import com.example.appname.BuildConfig
+import com.example.appname.navigation.AlongDoor
+import com.example.appname.navigation.LaunchDoors
 import com.example.appname.navigation.SiteLinks
 import com.example.appname.plays.FinishedList
 import com.example.appname.plays.ReadAlong
@@ -100,6 +103,7 @@ import com.example.appname.ui.tvFocusMark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -550,6 +554,14 @@ fun DramaScreen(id: String, onBack: () -> Unit, onReadAlong: (FinishedPlay, List
     var attempt by remember { mutableIntStateOf(0) }
     val result by androidx.compose.runtime.produceState<Result<FinishedPlay>?>(null, id, attempt) {
         value = null
+        if (BuildConfig.DEBUG && id.startsWith(LaunchDoors.REHEARSAL_PREFIX)) {
+            container.plays.load()
+            val bundle = (container.plays.state.value as? com.example.appname.plays.PlaysLibrary.State.Ready)?.scripts.orEmpty()
+            val want = id.removePrefix(LaunchDoors.REHEARSAL_PREFIX)
+            val s = if (want == "auto") bundle.firstOrNull { b -> b.lines.count { it.kind == com.example.appname.plays.ScriptLine.Kind.Speech } >= 60 && b.roles.size >= 3 } else bundle.firstOrNull { it.id == want }
+            value = if (s == null) Result.failure(IllegalStateException("no script")) else Result.success(FinishedPlay(id = id, scriptId = s.id, title = s.title, archiveUrl = "", scriptRevision = s.revision))
+            return@produceState
+        }
         val cached = (container.finished.state.value as? FinishedList.State.Ready)?.plays?.firstOrNull { it.id == id }
         value = if (cached != null) Result.success(cached) else try {
             Result.success(container.openPlays.finished(id))
@@ -583,7 +595,24 @@ fun DramaScreen(id: String, onBack: () -> Unit, onReadAlong: (FinishedPlay, List
                 }
                 val plan = remember(audio, script) { script?.let { s -> (audio as? DramaAudio.Lines)?.let { ReadAlong.dramaPlan(it.files, s, play.scriptRevision) } } }
                 val now by container.playback.state.collectAsState()
-                val heard = ReadAlong.fileLine(plan.orEmpty(), plan.orEmpty().indexOfFirst { dramaRowId(play.id, it.seq) == now.episode?.id }.takeIf { now.isPlaying } ?: -1)
+                LaunchedEffect(plan) {
+                    val files = (audio as? DramaAudio.Lines)?.files
+                    if (plan != null && files != null && AlongDoor.autoplay == play.id) {
+                        AlongDoor.autoplay = null
+                        container.playback.playFiles(files.map { dramaRow(play, dramaRowId(play.id, it.seq)) }, files.map { it.url })
+                    }
+                }
+                val rehearsal = BuildConfig.DEBUG && play.id.startsWith(LaunchDoors.REHEARSAL_PREFIX)
+                val rehearsed by androidx.compose.runtime.produceState<String?>(null, script) {
+                    val s = script
+                    if (rehearsal && s != null && AlongDoor.autoplay == play.id) {
+                        AlongDoor.autoplay = null
+                        val ids = s.lines.filter { it.kind == com.example.appname.plays.ScriptLine.Kind.Speech }.map { it.id }
+                        for (i in 8 until ids.size) { value = ids[i]; delay(3000) }
+                        value = null
+                    }
+                }
+                val heard = if (rehearsal) rehearsed else ReadAlong.fileLine(plan.orEmpty(), plan.orEmpty().indexOfFirst { dramaRowId(play.id, it.seq) == now.episode?.id }.takeIf { now.isPlaying } ?: -1)
                 DramaContent(
                     play, padding, audio,
                     onPlay = { url ->
@@ -613,7 +642,10 @@ fun DramaContent(
 ) {
     val uri = LocalUriHandler.current
     val named = play.credits.filter { it.name.isNotBlank() }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = contentPadding) {
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    // The head board fills a TV's first screen; with the panel up, Listen leads and the panel sits whole under it.
+    LaunchedEffect(panel != null) { if (panel != null) list.animateScrollToItem(1) }
+    LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = contentPadding) {
         item(key = "head") {
             HeadBoard(
                 name = play.title,
@@ -659,7 +691,7 @@ fun DramaContent(
                 ShareButton(play.title, SiteLinks.drama(play.id), fit.folded)
             }
         }
-        if (panel != null) item(key = "panel") { Box(Modifier.padding(horizontal = Spacing.S4.dp)) { panel() } }
+        if (panel != null) item(key = "panel") { Box(Modifier.padding(horizontal = Spacing.S4.dp, vertical = Spacing.S3.dp)) { panel() } }
         item(key = "audio-line") {
             Column(Modifier.padding(horizontal = Spacing.S4.dp), verticalArrangement = Arrangement.spacedBy(Spacing.S1.dp)) {
                 if (audio is DramaAudio.Deriving) Text("The audio is still being prepared.", style = MaterialTheme.typography.bodyMedium)

@@ -11,6 +11,12 @@ struct EmptyStateTests {
         #expect(!LaunchDoors.from(environment: [:], arguments: []).emptyLibrary)
     }
 
+    @Test func alongDoorNamesTheProductionAndIgnoresEmpty() {
+        #expect(LaunchDoors.from(environment: ["APP_START_ALONG": "p1"], arguments: []).along == "p1")
+        #expect(LaunchDoors.from(environment: ["APP_START_ALONG": ""], arguments: []).along == nil)
+        #expect(LaunchDoors.from(environment: [:], arguments: []).along == nil)
+    }
+
     /// The reset door erases the listening lists and nothing else, and only when asked.
     @Test func resetUserStateDoorErasesTheListsOnlyWhenAsked() throws {
         let defaults = try #require(UserDefaults(suiteName: "reset-door-test"))
