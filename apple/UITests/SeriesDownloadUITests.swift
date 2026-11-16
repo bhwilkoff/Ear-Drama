@@ -39,7 +39,7 @@ final class SeriesDownloadUITests: DeviceTestCase {
         openTab(app, "Library")
         let row = app.cells.containing(NSPredicate(format: "label CONTAINS 'Downloads'")).firstMatch
         var n = 0
-        while !row.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 8 { app.swipeUp(); n += 1 }
+        while !row.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 8 { app.scrollUp(); n += 1 }
         XCTAssertTrue(row.exists, "Downloads row in Library")
         row.tap()
         XCTAssertTrue(app.navigationBars["Downloads"].waitForExistence(timeout: 10), "the place opened")

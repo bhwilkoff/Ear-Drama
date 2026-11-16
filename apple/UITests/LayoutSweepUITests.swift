@@ -49,16 +49,16 @@ final class LayoutSweepUITests: DeviceTestCase {
         sweep(app, "create-record", pages: 3)
         for _ in 0..<3 { app.swipeDown(velocity: .fast) }
         let tile = app.buttons.matching(identifier: "play-tile").firstMatch
-        for _ in 0..<8 where !(tile.exists && tile.isHittable) { app.swipeUp() }
+        for _ in 0..<8 where !(tile.exists && tile.isHittable) { app.scrollUp() }
         XCTAssertTrue(tile.waitForExistence(timeout: 20) && tile.isHittable, "a play tile on Record")
         tile.tap(); sleep(3)
         sweep(app, "create-script", pages: 4)
-        for _ in 0..<4 { app.swipeDown() }
+        for _ in 0..<4 { app.scrollDown() }
         let start = app.buttons["Record This"]
         XCTAssertTrue(start.waitForExistence(timeout: 5), "Record This")
         start.tap(); sleep(3)
         sweep(app, "create-cast", pages: 6)
-        for _ in 0..<6 { app.swipeDown() }
+        for _ in 0..<6 { app.scrollDown() }
         let record = app.buttons["Record"].firstMatch
         if record.waitForExistence(timeout: 3) {
             record.tap(); sleep(3)
@@ -69,7 +69,7 @@ final class LayoutSweepUITests: DeviceTestCase {
             }
             app.navigationBars.buttons.firstMatch.tap(); sleep(2)
         }
-        for _ in 0..<12 where !app.buttons["Delete Production"].isHittable { app.swipeUp() }
+        for _ in 0..<12 where !app.buttons["Delete Production"].isHittable { app.scrollUp() }
         if app.buttons["Delete Production"].isHittable {
             app.buttons["Delete Production"].tap()
             let confirm = app.buttons["Delete Production and Its Recordings"]

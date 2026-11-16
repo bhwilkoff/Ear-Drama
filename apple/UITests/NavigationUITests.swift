@@ -56,7 +56,7 @@ final class NavigationUITests: DeviceTestCase {
         sleep(3)
         var wrong: [String] = []
         for round in 0..<10 {
-            if round > 0 { app.swipeUp(); app.swipeUp() }
+            if round > 0 { app.scrollUp(); app.scrollUp() }
             let visible = tiles(app).allElementsBoundByIndex.filter { onScreen(app, $0) }
             guard !visible.isEmpty else { continue }
             let tile = visible[round % visible.count]
@@ -76,7 +76,7 @@ final class NavigationUITests: DeviceTestCase {
         let app = launch(["APP_START_TAB": "browse", "APP_DOOR_SECONDS": "600"])
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "tiles")
         let tile = tiles(app).matching(NSPredicate(format: "label BEGINSWITH 'The Adventures of Superman'")).firstMatch
-        for _ in 0..<40 where !(tile.exists && tile.isHittable) { app.swipeUp() }
+        for _ in 0..<40 where !(tile.exists && tile.isHittable) { app.scrollUp() }
         XCTAssertTrue(tile.isHittable, "Superman tile found")
         tile.tap()
         XCTAssertTrue(app.navigationBars["The Adventures of Superman"].waitForExistence(timeout: 10), "opened \(title(app))")
@@ -85,7 +85,7 @@ final class NavigationUITests: DeviceTestCase {
     func testBackReturnsToTheShowThenTheStart() throws {
         let app = launch(["APP_START_TAB": "browse", "APP_DOOR_SECONDS": "600"])
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "tiles")
-        app.swipeUp(); app.swipeUp()
+        app.scrollUp(); app.scrollUp()
         guard let tile = firstHittable(app) else { return XCTFail("no tile") }
         let show = name(tile)
         tile.tap()
@@ -119,7 +119,7 @@ final class NavigationUITests: DeviceTestCase {
         XCTAssertNotEqual(aTitle, "Ear Drama", "Home's tile opened a page (\(aName))")
         openTab(app, "Browse")
         XCTAssertTrue(tiles(app).firstMatch.waitForExistence(timeout: 30), "browse tiles")
-        app.swipeUp(); app.swipeUp()
+        app.scrollUp(); app.scrollUp()
         guard let b = firstHittable(app) else { return XCTFail("no browse tile") }
         let bName = name(b)
         b.tap()

@@ -50,8 +50,8 @@ final class AppReviewTourUITests: DeviceTestCase {
 
         // Home: On the air, then Listen Live.
         mark("home")
-        app.swipeUp(); pause(2)
-        app.swipeDown(); pause(1.5)
+        app.scrollUp(); pause(2)
+        app.scrollDown(); pause(1.5)
         if tap(app.buttons["listen-live"], wait: 10) {
             mark("listen-live")
             sleep(5)
@@ -65,14 +65,14 @@ final class AppReviewTourUITests: DeviceTestCase {
         mark("browse")
         openTab(app, "Browse")
         sleep(3)
-        app.swipeUp(); pause(2)
+        app.scrollUp(); pause(2)
         dump(app, "browse")
         if let tile = firstHittable(app.buttons.matching(identifier: "show-tile"), app: app) {
             tile.tap()
             mark("series")
             sleep(3)
             dump(app, "series")
-            app.swipeUp(); pause(2)
+            app.scrollUp(); pause(2)
             let rows = app.buttons.allElementsBoundByIndex.filter {
                 $0.isHittable && $0.frame.minY > 200 && $0.frame.height > 40 && $0.frame.maxY < app.frame.height - 120
                     && !["Follow", "Following", "Share", "Back", "Play", "Add to queue", "In queue"].contains($0.label)
@@ -155,7 +155,7 @@ final class AppReviewTourUITests: DeviceTestCase {
                     pause(2)
                     dump(app, "part-menu")
                     let parts = app.buttons.allElementsBoundByIndex.filter { $0.label.contains("(") && $0.label.hasSuffix(")") && $0.isHittable }
-                    if let part = parts.first { part.tap() } else { app.swipeDown() }
+                    if let part = parts.first { part.tap() } else { app.scrollDown() }
                     sleep(3)
                 }
                 mark("studio")
@@ -176,7 +176,7 @@ final class AppReviewTourUITests: DeviceTestCase {
                             mark("signed-in")
                             sleep(3)
                             dump(app, "studio-signed-in")
-                            if tap(app.buttons["studio-takes"], wait: 2) { sleep(3); app.swipeDown(); pause() }
+                            if tap(app.buttons["studio-takes"], wait: 2) { sleep(3); app.scrollDown(); pause() }
                             pause(2)
                         } else {
                             mark("apple-sheet-cancel")
@@ -202,7 +202,7 @@ final class AppReviewTourUITests: DeviceTestCase {
         let back = app.navigationBars.firstMatch.buttons.element(boundBy: 0)
         if !app.navigationBars["Record"].exists, back.exists { back.tap(); pause(1.5) }
         if !app.navigationBars["Record"].exists, back.exists { back.tap(); pause(1.5) }
-        app.swipeDown(); pause()
+        app.scrollDown(); pause()
         dump(app, "yours")
         let yours = app.staticTexts["Yours"]
         if yours.exists {
@@ -223,7 +223,7 @@ final class AppReviewTourUITests: DeviceTestCase {
         mark("library")
         openTab(app, "Library")
         sleep(3)
-        for _ in 0..<4 { app.swipeUp(); pause(0.8) }
+        for _ in 0..<4 { app.scrollUp(); pause(0.8) }
         dump(app, "library")
         let account = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Account'")).firstMatch
         let cell = app.cells.matching(NSPredicate(format: "label BEGINSWITH 'Account'")).firstMatch

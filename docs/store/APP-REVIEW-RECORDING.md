@@ -135,6 +135,9 @@ two workers loop `xcrun devicectl device capture screenshot --display-unique-id
 123-456-789` (the open Duo's inner display; `devicectl info displays` wrongly marks
 the outer one active) at about 0.7 frames a second, and ffmpeg's concat demuxer turns
 the stamped frames into video. pymobiledevice3's DVT screenshot sees only the outer
-display. Synthesized swipes do not scroll on the open Duo while element taps work, so
-the test reaches Account through the DEBUG door `APP_START_TAB=account`; finding why
-the swipes fail is open (DESIGN-LOOP N14).
+display. Swipes on the application element did not scroll on the open Duo because
+XCUITest reports the app's frame in portrait (669 x 951) while the window is landscape
+(951 x 669); a swipe on the scroll view itself works. Every UI test now scrolls with
+`app.scrollUp()` (apple/UITests/UITestScrolling.swift), which swipes the largest scroll
+container. The recorded take reached Account through the DEBUG door
+`APP_START_TAB=account`, made before the cause was found.

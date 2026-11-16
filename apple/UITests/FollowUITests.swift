@@ -5,7 +5,7 @@ final class FollowUITests: DeviceTestCase {
     /// exposes the rows on screen: swipe until it appears (seen 2026-10-28).
     @discardableResult
     private func scrollTo(_ el: XCUIElement, in app: XCUIApplication, swipes: Int = 10) -> Bool {
-        for _ in 0..<swipes where !(el.exists && el.isHittable) { app.swipeUp() }
+        for _ in 0..<swipes where !(el.exists && el.isHittable) { app.scrollUp() }
         return el.exists
     }
 

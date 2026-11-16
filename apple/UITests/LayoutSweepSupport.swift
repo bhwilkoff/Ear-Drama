@@ -35,18 +35,12 @@ extension DeviceTestCase {
             .joined(separator: "|")
     }
 
-    /// One page up by a drag inside the scroll view's own frame, above the floating bar; `swipeUp` on the
-    /// app did not scroll in landscape on the iPhone 12.
+    /// One page up by swiping the scroll view itself. A drag computed from the app element lands sideways
+    /// whenever XCUITest reports the app's frame in portrait while the window is landscape (the iPhone 12 in
+    /// landscape, the open iPhone Duo: DuoScrollProbeUITests 2026-11-16); an element's own swipe does not.
     private func scrollPage(_ app: XCUIApplication, far: Bool = false) {
         let area = [app.scrollViews, app.collectionViews, app.tables].map { $0.firstMatch }.first { $0.exists && $0.frame.height > 100 }
-        let frame = area?.frame ?? app.frame
-        let top = frame.minY + frame.height * (far ? 0.12 : 0.3)
-        let bottom = frame.minY + frame.height * (far ? 0.7 : 0.6)
-        let x = frame.midX
-        let origin = app.coordinate(withNormalizedOffset: .zero)
-        let from = origin.withOffset(CGVector(dx: x, dy: bottom))
-        let to = origin.withOffset(CGVector(dx: x, dy: top))
-        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.1)
+        if let area { area.swipeUp(velocity: far ? .fast : .slow) } else { app.scrollUp() }
     }
 
     func sweep(_ app: XCUIApplication, _ name: String, pages: Int = 3) {

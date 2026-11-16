@@ -10,10 +10,10 @@ final class EmptyStateUITests: DeviceTestCase {
         XCTAssertTrue(text(app, matching: "^Account").waitForExistence(timeout: 5), "the Account row under it")
         let credits = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Credits")).firstMatch
         var n = 0
-        while !credits.waitForExistence(timeout: n == 0 ? 5 : 1) && n < 6 { app.swipeUp(); n += 1 }
+        while !credits.waitForExistence(timeout: n == 0 ? 5 : 1) && n < 6 { app.scrollUp(); n += 1 }
         XCTAssertTrue(credits.exists, "the site pages under it")
         shot(app, "empty-library")
-        app.swipeDown()
+        app.scrollDown()
         let browse = hittable(app, "empty-action")
         XCTAssertTrue(browse.waitForExistence(timeout: 5), "the Browse action")
         browse.tap()

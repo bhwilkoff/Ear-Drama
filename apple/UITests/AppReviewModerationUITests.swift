@@ -38,7 +38,7 @@ final class AppReviewModerationUITests: DeviceTestCase {
         let back = app.navigationBars.firstMatch.buttons.element(boundBy: 0)
         for _ in 0..<2 where !app.navigationBars["Record"].exists && back.exists { back.tap(); pause(1) }
         let row = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
-        for _ in 0..<4 where !(row.exists && row.isHittable) { app.swipeUp(); pause(0.8) }
+        for _ in 0..<4 where !(row.exists && row.isHittable) { app.scrollUp(); pause(0.8) }
         return tap(row, wait: 4)
     }
 
@@ -72,7 +72,7 @@ final class AppReviewModerationUITests: DeviceTestCase {
         let first = take.first { $0.label == "Take URIAH" } ?? take.first
         XCTAssertNotNil(first, "a Take button")
         if let first {
-            for _ in 0..<6 where !first.isHittable { app.swipeUp(); pause(0.6) }
+            for _ in 0..<6 where !first.isHittable { app.scrollUp(); pause(0.6) }
             first.tap()
             let field = app.textFields["Your name"]
             let signIn = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] 'Sign in with Apple'")).firstMatch

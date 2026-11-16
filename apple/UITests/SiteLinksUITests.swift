@@ -9,7 +9,7 @@ final class SiteLinksUITests: DeviceTestCase {
         for name in ["Credits", "Privacy", "Take-down requests"] {
             let link = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", name)).firstMatch
             var n = 0
-            while !link.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 6 { app.swipeUp(); n += 1 }
+            while !link.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 6 { app.scrollUp(); n += 1 }
             XCTAssertTrue(link.exists, "\(name) link in Library")
         }
         shot(app, "01-library-links")
@@ -22,7 +22,7 @@ final class SiteLinksUITests: DeviceTestCase {
         let app = launch(["APP_START_TAB": "library", "APP_DOOR_SECONDS": "120"])
         let link = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Credits")).firstMatch
         var n = 0
-        while !link.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 6 { app.swipeUp(); n += 1 }
+        while !link.waitForExistence(timeout: n == 0 ? 25 : 1) && n < 6 { app.scrollUp(); n += 1 }
         XCTAssertTrue(link.exists, "Credits link in Library")
         link.tap()
 

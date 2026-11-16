@@ -36,7 +36,7 @@ final class BrowseUITests: DeviceTestCase {
         shot(app, "03a-az-top")
         // A to Z is sections of lazy rows under the genre field: the first tile exists once scrolled to.
         let tiles = app.buttons.matching(identifier: "show-tile")
-        for _ in 0..<8 where !tiles.firstMatch.exists { app.swipeUp() }
+        for _ in 0..<8 where !tiles.firstMatch.exists { app.scrollUp() }
         XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 10), "tiles under A to Z")
         XCTAssertNotEqual(firstRow(app), before, "the list reordered")
         shot(app, "03-sort-az")

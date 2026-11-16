@@ -17,7 +17,7 @@ final class DetailUITests: DeviceTestCase {
 
     private func scrollTo(_ app: XCUIApplication, _ element: XCUIElement) {
         var n = 0
-        while !element.exists && n < 12 { app.swipeUp(); n += 1 }
+        while !element.exists && n < 12 { app.scrollUp(); n += 1 }
     }
 
     func testVersionsListsEveryCopy() throws {
@@ -27,7 +27,7 @@ final class DetailUITests: DeviceTestCase {
         let header = app.staticTexts["Recordings"]
         scrollTo(app, header)
         guard header.exists else { throw XCTSkip("\(Multi.id) has one recording in this catalog") }
-        app.swipeUp()
+        app.scrollUp()
         XCTAssertTrue(header.exists, "Recordings header still on screen")
         shot(app, "01-versions")
         let floor = app.frame.height - 140
