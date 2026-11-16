@@ -106,6 +106,9 @@ const StudioCore = (() => {
       if (session.mode === 'run') {
         if (ph.kind === 'runReview') return;
         if (session.run) { session.pause(); return; }
+        // A single take outside a run (Again on a line gone back to) stops or cancels like Line by line.
+        if (ph.kind === 'listening') { session.stopListening(); return; }
+        if (ph.kind === 'cue') { session.cancel(); return; }
         if (!session.isBusy()) await session.runThrough(st.current);
         return;
       }

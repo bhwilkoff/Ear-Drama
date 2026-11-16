@@ -148,6 +148,8 @@ final class ReaderModel {
     @ObservationIgnored var dragStart: Int?
     /// A tapped mark (its popover), and a Beat or Note being written.
     var markTarget: MarkTarget?
+    /// The part whose device voice the studio's ring opened the picker for.
+    var castingPart: PartID?
     var compose: MarkCompose?
     var markNotice: String?
     /// What the last Delete took, for the Undo bar.
@@ -445,11 +447,31 @@ final class ReaderModel {
         return out
     }
 
-    /// A tap on my line's name or its mark opens its take list; elsewhere on one of my lines it becomes current. Either
-    /// way the page does not turn (§2.9 rule 2).
+    /// Each other part's speech line without a usable take, on a page: its voice's short name, for the ring after the
+    /// speaker's name (§2.9 rule 3a).
+    func studioRings(onPage page: Int) -> [ReaderLayout.RingKey: String] {
+        guard let studio, let layout, let me = studio.part.roleName else { return [:] }
+        var said: [String: String] = [:]
+        var out: [ReaderLayout.RingKey: String] = [:]
+        for i in layout.lines(onPage: page) {
+            let line = script.lines[i]
+            guard line.kind == .speech, let role = line.role, role != me,
+                  studio.session.production.usableTake(for: line.id) == nil else { continue }
+            if said[role] == nil { said[role] = VoiceChipText.short(voices.resolve(.role(role))) }
+            out[ReaderLayout.RingKey(line: i, role: role)] = said[role]
+        }
+        return out
+    }
+
+    /// A tap on my line's name or its mark opens its take list; elsewhere on one of my lines it becomes current. A tap on
+    /// another part's ring opens that part's voice picker. Either way the page does not turn (§2.9 rule 2).
     private func studioTap(_ point: CGPoint) -> Bool {
         guard let studio, let me = part?.roleName, let layout, let at = pagePoint(point) else { return false }
         let up = CGPoint(x: at.local.x - ReaderLayout.inset, y: layout.pageSize.height - at.local.y)
+        if let ring = layout.ringSpots(page: at.page, rings: studioRings(onPage: at.page)).first(where: { $0.hit.contains(up) }) {
+            castingPart = .role(ring.key.role)
+            return true
+        }
         if let spot = layout.takeMarkSpots(page: at.page, role: me, takes: studioTakes(onPage: at.page)).first(where: { $0.hit.contains(up) }) {
             studio.openTakes(script.lines[spot.line].id)
             return true
@@ -713,6 +735,27 @@ private struct ReaderScreen: View {
         #endif
         .toolbar { toolbar }
         .sheet(item: $model.compose) { c in MarkComposeSheet(model: model, compose: c) }
+        .sheet(item: $model.castingPart) { part in
+            #if os(iOS)
+            NavigationStack {
+                VoicePickerScreen(model: model.voices, script: model.script, part: part) { model.castingPart = nil }
+                    .navigationTitle(part.title)
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .presentationDetents([.medium, .large])
+            #else
+            VStack(spacing: 0) {
+                VoicePickerForm(model: model.voices, script: model.script, part: part)
+                Divider()
+                HStack {
+                    Spacer()
+                    Button("Done") { model.castingPart = nil }.keyboardShortcut(.defaultAction)
+                }
+                .padding(Spacing.s3)
+            }
+            .frame(width: 360, height: 520)
+            #endif
+        }
         .overlay(alignment: .bottom) { MarkUndoBar(model: model) }
         .onChange(of: undoManager, initial: true) { _, u in model.undoManager = u }
         .onChange(of: body17, initial: true) { _, size in model.base = size }
@@ -1090,6 +1133,7 @@ private struct ReaderPageView: View {
     var body: some View {
         var marks = ReaderLayout.Marks(role: model.part?.roleName, hide: model.hide, peeked: model.peeked)
         let takes = model.studioTakes(onPage: page)
+        let rings = model.studioRings(onPage: page)
         marks.marks = model.visibleMarks
         marks.lineIndex = model.structure.indexByID
         marks.selection = model.selection
@@ -1098,6 +1142,7 @@ private struct ReaderPageView: View {
             marks.current = studio.studio.current.flatMap { model.structure.indexByID[$0] }
             marks.outline = Self.outline(studio)
             marks.takes = takes
+            marks.rings = rings
         }
         let scheme = scheme
         let ink = model.inkImage(layout, page: page, dark: scheme == .dark, scale: displayScale)
@@ -1130,6 +1175,11 @@ private struct ReaderPageView: View {
                 } else {
                     Text(verbatim: Self.spoken(model.script.lines[i]))
                         .modifier(MarkActions(model: model, line: i))
+                }
+                if let role = model.script.lines[i].role, rings[ReaderLayout.RingKey(line: i, role: role)] != nil {
+                    Button("Device voice for \(PartID.role(role).title): \(VoiceChipText.title(model.voices.resolve(.role(role))))") {
+                        model.castingPart = .role(role)
+                    }
                 }
             }
         }

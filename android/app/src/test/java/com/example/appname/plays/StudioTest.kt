@@ -5,6 +5,8 @@ import kotlin.math.abs
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -171,6 +173,61 @@ class StudioTest {
         tidy(r)
     }
 
+    /** Nothing is heard (after the room tone), and a cue holds until [stopPlayback]: a single take stays in its cue or listening phase. */
+    private class HoldAudio : LiveAudio {
+        private var captures = 0
+        private val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        var stopped = false
+        override fun outputRoute() = AudioRoute.Headphones
+        override fun start(echoCancelled: Boolean) {}
+        override fun stop() {}
+        override suspend fun play(cue: CueAudio) { gate.await() }
+        override fun stopPlayback() { stopped = true; gate.complete(Unit) }
+        override fun beginCapture(onChunk: (FloatArray) -> Unit) {
+            captures += 1
+            if (captures == 1) for (start in 0 until 48_000 step 960) onChunk(FloatArray(960))
+        }
+        override fun endCapture(): MicrophoneCapture = MicrophoneCapture(FloatArray(0), 48_000.0)
+    }
+
+    private suspend fun holdRig(): Pair<StudioController, HoldAudio> {
+        val script = fixtureScript()
+        val store = ProductionStore(temporaryRoot())
+        var p = store.create(script)
+        p = Relay.take(molly, null, p, script)
+        store.save(p)
+        val audio = HoldAudio()
+        val session = RecordingSession(p, script, molly, store, audio, ChirpVoice(), wait = {}, announce = {})
+        session.begin(echoCancelled = false)
+        session.setMode(RecordingSession.Mode.Run)
+        return StudioController(session, store, null) to audio
+    }
+
+    @Test fun `Run through with no run - the round control stops a single listening take and cancels a cue, never starts a run`() = runTest {
+        val (studio, audio) = holdRig()
+        val session = studio.session
+        studio.select("L0006")
+        val listening = launch { session.record("L0006") }
+        runCurrent()
+        assertTrue("a cue holds the first press", session.phase.value is RecordingSession.Phase.Cue)
+        studio.primary()
+        assertTrue("the press cancelled the cue", audio.stopped)
+        runCurrent()
+        assertTrue("and no run started", session.run.value == null)
+        assertEquals(RecordingSession.Phase.Idle, session.phase.value)
+        listening.join()
+
+        val take = launch { session.record("L0003") }
+        runCurrent()
+        assertTrue("the microphone is open", session.phase.value is RecordingSession.Phase.Listening)
+        studio.primary()
+        runCurrent()
+        assertTrue("the press stopped the take", session.phase.value !is RecordingSession.Phase.Listening)
+        assertNull("not a run", session.run.value)
+        take.join()
+        session.end()
+    }
+
     // ---- takes: choose, delete, delete unused, record again ----
 
     @Test fun `Record again keeps every older take and chooses the new one`() = runTest {
@@ -252,6 +309,12 @@ class StudioTest {
     }
 
     // ---- where the reader's Record records ----
+
+    @Test fun `a device voice's name drops its trailing tier`() {
+        assertEquals("Ava", StudioCore.shortVoiceName("Ava (Premium)"))
+        assertEquals("Not read", StudioCore.shortVoiceName("Not read"))
+        assertEquals("Google US English", StudioCore.shortVoiceName("Google US English"))
+    }
 
     @Test fun `the reader's Record continues the part, else takes it where it is open, else makes a production`() {
         val script = fixtureScript()

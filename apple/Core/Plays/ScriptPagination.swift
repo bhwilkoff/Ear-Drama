@@ -704,6 +704,8 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         var along: Int? = nil
         /// The take state of each of my lines on the page (the studio).
         var takes: [Int: StudioCore.LineState] = [:]
+        /// The device-voice ring on each other part's line the studio marks: its voice's short name.
+        var rings: [RingKey: String] = [:]
         /// The reader's marks (PLAYS-DESIGN §2.10) on this script, the line index of each id, and the selection (a range of the page string).
         var marks: [Mark] = []
         var lineIndex: [String: Int] = [:]
@@ -722,24 +724,50 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
 
     private var markFont: ReaderFont { ReaderFonts.sans(style.size * 0.8125, weight: .semibold) }
 
-    /// One mark per line of mine on the page, after the speaker's name; in the gutter the name is right-aligned, so the
-    /// mark sits under it when the speech goes on, else before it.
-    func takeMarkSpots(page: Int, role: String, takes: [Int: StudioCore.LineState]) -> [TakeMarkSpot] {
-        guard !takes.isEmpty else { return [] }
+    /// Another part's line a device voice reads: the ring and the voice's short name after the speaker's name.
+    struct RingKey: Hashable, Sendable {
+        let line: Int
+        let role: String
+    }
+
+    struct RingSpot {
+        let key: RingKey
+        let text: String
+        let glyph: CGRect
+        let label: CGPoint
+        let hit: CGRect
+    }
+
+    /// One placement after a speaker's name: where the mark's left edge and baseline sit, and the name's own box.
+    private struct NameSpot {
+        let line: Int
+        let role: String
+        let x: CGFloat
+        let y: CGFloat
+        let width: CGFloat
+        let name: CGRect
+        let asc: CGFloat
+        let desc: CGFloat
+    }
+
+    /// Each speaker's name on the page that `width` accepts (nil skips it), the mark placed after it; in the gutter the
+    /// name is right-aligned, so the mark sits under it when the speech goes on, else before it.
+    private func nameSpots(page: Int, width markWidth: (_ role: String, _ line: Int) -> CGFloat?) -> [NameSpot] {
         let frame = self.frame(page)
         let lines = CTFrameGetLines(frame) as! [CTLine]
         var origins = [CGPoint](repeating: .zero, count: lines.count)
         CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
         let g = style.size * 0.8125
-        var seen = Set<Int>()
-        var out: [TakeMarkSpot] = []
+        var seen = Set<RingKey>()
+        var out: [NameSpot] = []
         for (i, line) in lines.enumerated() {
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
                 let attrs = CTRunGetAttributes(run) as NSDictionary
                 guard (attrs[NSAttributedString.Key.edInk] as? Int) == ReaderInk.speaker.rawValue,
-                      (attrs[NSAttributedString.Key.edRole] as? String) == role,
-                      let at = attrs[NSAttributedString.Key.edLine] as? Int, let state = takes[at], !seen.contains(at) else { continue }
-                seen.insert(at)
+                      let role = attrs[NSAttributedString.Key.edRole] as? String,
+                      let at = attrs[NSAttributedString.Key.edLine] as? Int, !seen.contains(RingKey(line: at, role: role)),
+                      var width = markWidth(role, at) else { continue }
+                seen.insert(RingKey(line: at, role: role))
                 var asc: CGFloat = 0, desc: CGFloat = 0, lead: CGFloat = 0
                 _ = CTLineGetTypographicBounds(line, &asc, &desc, &lead)
                 let rr = CTRunGetStringRange(run)
@@ -748,28 +776,63 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
                 let x1 = CTLineGetOffsetForStringIndex(line, rr.location + rr.length, nil)
                 let lineEnd = CTLineGetStringRange(line).location + CTLineGetStringRange(line).length
                 let beside = gutter && rr.location + rr.length + 1 < lineEnd
-                let countText = state.state == .chosen ? "\(state.takes)" : nil
-                let countW = countText.map { ($0 as NSString).size(withAttributes: [.font: markFont]).width + 3 } ?? 0
-                let width = g + countW
                 var x: CGFloat, y: CGFloat
                 if !beside {
                     x = o.x + x1 + g * 0.5
                     y = o.y
                 } else if i + 1 < lines.count, sameSpeech(lines[i + 1], attrs[NSAttributedString.Key.edSpeech] as? Int) {
+                    width = min(width, max(g, o.x + x1 + Self.inset - 2))
                     x = o.x + x1 - width
                     y = origins[i + 1].y
                 } else {
-                    x = max(-Self.inset + 2, o.x + x0 - width - g * 0.4)
+                    width = min(width, max(g, o.x + x0 - g * 0.4 + Self.inset - 2))
+                    x = o.x + x0 - width - g * 0.4
                     y = o.y
                 }
-                let glyph = CGRect(x: x, y: y - 1, width: g, height: g)
-                let count = countText.map { _ in CGPoint(x: x + g + 3, y: y) }
-                let name = CGRect(x: o.x + x0, y: o.y - desc, width: x1 - x0, height: asc + desc)
-                out.append(TakeMarkSpot(line: at, state: state, glyph: glyph, count: count,
-                                        hit: name.union(CGRect(x: x, y: y - desc, width: width, height: asc + desc)).insetBy(dx: -6, dy: -6)))
+                out.append(NameSpot(line: at, role: role, x: x, y: y, width: width,
+                                    name: CGRect(x: o.x + x0, y: o.y - desc, width: x1 - x0, height: asc + desc), asc: asc, desc: desc))
             }
         }
         return out
+    }
+
+    /// One mark per line of mine on the page, after the speaker's name.
+    func takeMarkSpots(page: Int, role: String, takes: [Int: StudioCore.LineState]) -> [TakeMarkSpot] {
+        guard !takes.isEmpty else { return [] }
+        let g = style.size * 0.8125
+        func countText(_ state: StudioCore.LineState) -> String? { state.state == .chosen ? "\(state.takes)" : nil }
+        func countW(_ state: StudioCore.LineState) -> CGFloat {
+            countText(state).map { ($0 as NSString).size(withAttributes: [.font: markFont]).width + 3 } ?? 0
+        }
+        return nameSpots(page: page) { r, at in r == role ? takes[at].map { g + countW($0) } : nil }.compactMap { spot in
+            guard let state = takes[spot.line] else { return nil }
+            let glyph = CGRect(x: spot.x, y: spot.y - 1, width: g, height: g)
+            let count = countText(state).map { _ in CGPoint(x: spot.x + g + 3, y: spot.y) }
+            return TakeMarkSpot(line: spot.line, state: state, glyph: glyph, count: count,
+                                hit: spot.name.union(CGRect(x: spot.x, y: spot.y - spot.desc, width: spot.width, height: spot.asc + spot.desc))
+                                    .insetBy(dx: -6, dy: -6))
+        }
+    }
+
+    /// One ring and voice name per other-part line the studio marks, after the speaker's name.
+    func ringSpots(page: Int, rings: [RingKey: String]) -> [RingSpot] {
+        guard !rings.isEmpty else { return [] }
+        let g = style.size * 0.8125
+        func textW(_ text: String) -> CGFloat { (text as NSString).size(withAttributes: [.font: markFont]).width }
+        return nameSpots(page: page) { r, at in rings[RingKey(line: at, role: r)].map { g + 4 + textW($0) } }.compactMap { spot in
+            let key = RingKey(line: spot.line, role: spot.role)
+            guard var text = rings[key] else { return nil }
+            // A name too long for the room beside the speaker's name is cut short, never drawn over it.
+            if g + 4 + textW(text) > spot.width + 0.5 {
+                repeat { text = String(text.dropLast()).trimmingCharacters(in: .whitespaces) }
+                while !text.isEmpty && g + 4 + textW(text + "\u{2026}") > spot.width + 0.5
+                text += "\u{2026}"
+            }
+            return RingSpot(key: key, text: text, glyph: CGRect(x: spot.x, y: spot.y - 1, width: g, height: g),
+                            label: CGPoint(x: spot.x + g + 4, y: spot.y),
+                            hit: spot.name.union(CGRect(x: spot.x, y: spot.y - spot.desc, width: spot.width, height: spot.asc + spot.desc))
+                                .insetBy(dx: -6, dy: -6))
+        }
     }
 
     /// Whether a frame line opens inside the given speech (the mark may sit under the name only then).
@@ -964,6 +1027,31 @@ nonisolated final class ReaderLayout: @unchecked Sendable {
         }
 
         drawMarkRules(page: page, in: cg, theme: theme, marks: marks)
+
+        // Another part's line a device voice reads: a dashed ring in the part's hue holding a waveform, and the voice's name.
+        if !marks.rings.isEmpty {
+            let g = style.size * 0.8125
+            for spot in ringSpots(page: page, rings: marks.rings) {
+                let color = hueColor(hueByRole[spot.key.role] ?? -1)
+                let r = spot.glyph.insetBy(dx: 0.75, dy: 0.75)
+                cg.saveGState()
+                cg.setStrokeColor(color)
+                cg.setLineWidth(1.5)
+                cg.setLineDash(phase: 0, lengths: [2.4, 2.4])
+                cg.strokeEllipse(in: r)
+                cg.restoreGState()
+                if let image = ReaderGlyph.symbol("waveform", size: g * 0.6, color: color) {
+                    let h = g * 0.55
+                    let w = h * CGFloat(image.width) / CGFloat(image.height)
+                    cg.draw(image, in: CGRect(x: spot.glyph.midX - w / 2, y: spot.glyph.midY - h / 2, width: w, height: h))
+                }
+                let text = NSAttributedString(string: spot.text, attributes: [
+                    .font: markFont, NSAttributedString.Key(kCTForegroundColorAttributeName as String): theme.muted,
+                ])
+                cg.textPosition = spot.label
+                CTLineDraw(CTLineCreateWithAttributedString(text), cg)
+            }
+        }
 
         // Each of my lines' take state after the speaker's name (§2.9 rule 3).
         if let me = marks.role {

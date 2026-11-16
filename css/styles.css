@@ -1549,6 +1549,14 @@ body.reading #main-content { overflow: hidden; }
 .rd-take svg { width: 1em; height: 1em; fill: var(--color-warning); }
 .rd-take-n { font-weight: var(--type-body-strong-weight); color: var(--color-text); }
 .rd[data-gutter="true"] .rd-take { display: flex; width: max-content; margin: 0.2em 0 0 auto; }
+/* Another part's line a device voice reads: the dashed ring (never a face) and the voice's name; a tap casts the part. */
+.rd-vc { display: inline-flex; align-items: center; gap: 0.35em; margin-left: 0.5em; padding: 0.15em 0.4em 0.15em 0.15em; border: 0; border-radius: 999px;
+  background: transparent; color: var(--color-text-muted); font: inherit; font-size: 0.8125em; line-height: 1; vertical-align: 0.05em; cursor: pointer; }
+.rd-vc:hover { background: color-mix(in srgb, var(--hue) 14%, transparent); color: var(--color-text); }
+.rd-vc[hidden] { display: none; }
+.rd-vc-ring { display: inline-flex; align-items: center; justify-content: center; width: 1.25em; height: 1.25em; border: 1.5px dashed var(--hue); border-radius: 50%; box-sizing: border-box; }
+.rd-vc-ring svg { width: 0.85em; height: 0.85em; fill: var(--hue); }
+.rd[data-gutter="true"] .rd-vc { display: flex; width: max-content; margin: 0.2em 0 0 auto; }
 /* In the studio a line of mine never splits across pages, so the line being recorded is always whole on screen. */
 .rd.rd-studio .rd-line.rd-mine { break-inside: avoid; }
 /* Room at each page's head and foot for the current line's outline (the page clips what overflows it). */
@@ -1567,6 +1575,7 @@ body.reading #main-content { overflow: hidden; }
 .st-takes-btn { min-height: 32px; padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: 999px; background: transparent;
   color: var(--color-text); font: inherit; cursor: pointer; white-space: nowrap; }
 .st-takes-btn:hover { background: var(--color-surface-alt); }
+.st-again-line { min-height: 32px; padding: 0 var(--space-3); }
 .st-warn-t { color: var(--color-warning); }
 .st-who { color: var(--hue); font-weight: var(--type-body-strong-weight); }
 .st-muted { color: var(--color-text-muted); }
@@ -1592,6 +1601,7 @@ body.reading #main-content { overflow: hidden; }
 .st-transport > .btn { flex: 0 1 auto; min-width: 0; white-space: nowrap; padding-left: var(--space-2); padding-right: var(--space-2); }
 .st-recbtn { flex: none; width: 52px; height: 52px; box-shadow: 0 0 0 3px var(--color-background), 0 0 0 5px color-mix(in srgb, var(--color-record) 40%, transparent); }
 .st-recbtn svg { width: 22px; height: 22px; }
+.st-hear[aria-pressed="true"] { color: var(--color-text); background: var(--color-surface-alt); }
 .rd[data-studio="wide"] .st-open { display: none; }
 /* A review's three buttons take the phone's whole bar. */
 @media (max-width: 559px) { .st-reviewing .rd-page, .st-reviewing .st-open, .st-reviewing .rd-tool[aria-pressed] { display: none; } }

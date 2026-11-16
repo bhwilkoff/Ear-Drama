@@ -20,6 +20,7 @@ const Studio = (() => {
     stop: 'M7 7h10v10H7z',
     pause: 'M7 5h4v14H7zm6 0h4v14h-4z',
     play: 'M8 5v14l11-7z',
+    wave: 'M7 9h2v6H7zm4-3h2v12h-2zm4 3h2v6h-2z',
     prev: 'M15.4 7.4 14 6l-6 6 6 6 1.4-1.4-4.6-4.6z',
     next: 'M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z',
     check: 'M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z',
@@ -121,6 +122,41 @@ const Studio = (() => {
         : st.state === 'flagged' ? 'Re-take: the microphone heard the device voice'
           : `${n === 1 ? '1 take' : `${num.format(n)} takes`}, take ${st.chosen} chosen`);
     }
+    // Every other part's line a device voice reads carries a dashed ring and the voice's name; a tap casts it (§2.9 rule 3a).
+    const rings = [];
+    for (const line of script.lines) {
+      if (line.kind !== 'speech' || core.mine.includes(line.id)) continue;
+      const node = api.line(line.id);
+      if (!node) continue;
+      for (const sp of node.querySelectorAll('.rd-sp')) {
+        const pp = sp.dataset.part;
+        const who = sp.querySelector('.rd-who');
+        if (!who || pp === part || !C.isSpeaking(pp)) continue;
+        const b = el('button', { type: 'button', class: 'rd-vc', dataset: { part: pp, line: line.id } });
+        who.append(b);
+        rings.push(b);
+      }
+    }
+    const shortName = (n) => String(n || '').replace(/\s*\([^)]*\)\s*$/, '');
+    function paintRings() {
+      const said = new Map();
+      for (const b of rings) {
+        const pp = b.dataset.part;
+        b.hidden = !!C.usableTake(s.production, b.dataset.line);
+        if (b.hidden) continue;
+        if (!said.has(pp)) said.set(pp, CastUI.describe(api.cast, pp));
+        const d = said.get(pp);
+        const text = d.r && d.r.read && !d.r.none ? shortName(d.text) : d.text;
+        if (b.dataset.text === text) continue;
+        b.dataset.text = text;
+        b.replaceChildren(el('span', { class: 'rd-vc-ring' }, icon('wave')), el('span', { class: 'rd-vc-name' }, text));
+        b.setAttribute('aria-label', `Device voice for ${C.partTitle(pp)}: ${d.label}`);
+      }
+    }
+    function castPart(pp) {
+      CastUI.picker({ script, cast: api.cast, voice: api.voice, part: pp, onChange: () => { paintRings(); castBox.paint(); } });
+    }
+
     let marked = [];
     function paintLines() {
       for (const n of marked) n.classList.remove('rd-cur', 'rd-armed', 'rd-rec');
@@ -221,7 +257,13 @@ const Studio = (() => {
         return row;
       }
       const i = core.mine.indexOf(core.current);
-      row.append(el('span', { class: 'tabular' }, `Line ${num.format(i + 1)} of ${num.format(core.mine.length)}`),
+      row.append(el('span', { class: 'tabular' }, `Line ${num.format(i + 1)} of ${num.format(core.mine.length)}`));
+      // Run through's round control runs on from here; a line gone back to is re-taken alone (§2.9 rule 5).
+      if (s.mode === 'run' && !s.run && core.lineState(core.current).state !== 'none') {
+        row.append(el('button', { type: 'button', class: 'btn btn-again st-again-line', dataset: { act: 'again-line' }, disabled: s.isBusy(),
+                                  onclick: () => { quiet(); core.again(); } }, el('span', { class: 'dot' }), 'Again'));
+      }
+      row.append(
         el('button', { type: 'button', class: 'st-takes-btn', 'aria-label': `${takesLabel(core.current)}: the takes`, onclick: () => openPanel() },
           el('span', { class: core.lineState(core.current).state === 'flagged' ? 'st-warn-t' : '' }, takesLabel(core.current))));
       if (failed) row.append(el('span', { class: 'caption refusal', role: 'alert' }, failed));
@@ -285,7 +327,9 @@ const Studio = (() => {
       }
       const listening = ph.kind === 'listening';
       let center;
-      if (s.mode === 'run') {
+      if (s.mode === 'run' && !s.run && (listening || ph.kind === 'cue')) {
+        center = listening ? round('stop', 'stop', 'stop', 'Stop', () => s.stopListening()) : round('cancel', 'ink', 'stop', 'Cancel', () => s.cancel());
+      } else if (s.mode === 'run') {
         center = !s.run ? round('record', '', 'record', 'From here', () => { api.refollow(); core.primary(); }, busy)
           : listening ? round('pause', 'stop', 'stop', 'Stop', () => s.pause())
             : round('pause', 'ink', 'pause', 'Pause', () => s.pause());
@@ -296,13 +340,20 @@ const Studio = (() => {
       }
       const i = core.mine.indexOf(core.current);
       const locked = busy || !!s.run;
+      const hearing = !!(ss.listen && ss.listen.playing);
+      center.addEventListener('click', quiet, true);
       transport.replaceChildren(
         el('button', { type: 'button', class: 'icon-btn', dataset: { act: 'prev' }, 'aria-label': 'Previous line', title: 'Previous line',
                        disabled: locked || i <= 0, onclick: () => { core.move(-1); revealCurrent(); } }, icon('prev')),
         center,
         el('button', { type: 'button', class: 'icon-btn', dataset: { act: 'next' }, 'aria-label': 'Next line', title: 'Next line',
-                       disabled: locked || i + 1 >= core.mine.length, onclick: () => { core.move(1); revealCurrent(); } }, icon('next')));
+                       disabled: locked || i + 1 >= core.mine.length, onclick: () => { core.move(1); revealCurrent(); } }, icon('next')),
+        el('button', { type: 'button', class: 'icon-btn st-hear', dataset: { act: 'listen' }, 'aria-label': hearing ? 'Stop' : 'Listen from here',
+                       title: hearing ? 'Stop' : 'Listen from here', 'aria-pressed': hearing ? 'true' : 'false',
+                       disabled: !hearing && locked, onclick: () => listenFromHere() }, icon(hearing ? 'stop' : 'play')));
     }
+    /** Recording and listening never overlap: a record press stops the listen-through first. */
+    function quiet() { if (ss.listen && ss.listen.playing) ss.listen.stop(); }
 
     /* ---- The panel: the line's takes, the run, the cast, Listen through, the rest ---- */
 
@@ -382,7 +433,7 @@ const Studio = (() => {
       const lt = ListenThrough.create({
         production: s.production, script, store, audio: LiveAudio.create({ muted: muted() }),
         voice: StandInVoice.create({ muted: muted(), cast: api.cast }),
-        onChange: (x) => { const e = x.playing ? x.current() : null; api.follow(e ? e.lineID : null); paintListen(); },
+        onChange: (x) => { const e = x.playing ? x.current() : null; api.follow(e ? e.lineID : null); paintListen(); paintTransport(); },
       });
       const k = script.lines.findIndex(l => l.id === core.current);
       const from = lt.plan.findIndex(e => script.lines.findIndex(l => l.id === e.lineID) >= k);
@@ -458,6 +509,7 @@ const Studio = (() => {
       // A repaint keeps the keyboard where it was.
       const had = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.act : null;
       for (const lid of badges.keys()) paintBadge(lid);
+      paintRings();
       paintLines();
       paintDock();
       paintTransport();
@@ -473,6 +525,8 @@ const Studio = (() => {
     const ctl = {
       /** A tap on the page (js/reader.js): true when the studio used it. */
       tap(target, lineNode) {
+        const ring = target.closest && target.closest('.rd-vc');
+        if (ring) { castPart(ring.dataset.part); return true; }
         const badge = target.closest && target.closest('.rd-take');
         const lid = badge ? badge.dataset.line : lineNode && lineNode.dataset.line;
         if (!lid || !core.mine.includes(lid)) return false;
@@ -504,10 +558,10 @@ const Studio = (() => {
       const t = e.target;
       if (t && t.closest && t.closest('input:not([type="radio"]):not([type="checkbox"]), select, textarea, [contenteditable="true"]')) return;
       const k = e.key;
-      if (k === ' ') { if (!s.started) return; core.primary(); }
+      if (k === ' ') { if (!s.started) return; quiet(); core.primary(); }
       else if (k === 'j' || k === 'J') { if (core.move(1)) revealCurrent(); }
       else if (k === 'k' || k === 'K') { if (core.move(-1)) revealCurrent(); }
-      else if (k === 'r' || k === 'R') { if (!s.started || s.isBusy()) return; core.again(); }
+      else if (k === 'r' || k === 'R') { if (!s.started || s.isBusy()) return; quiet(); core.again(); }
       else if (k === 'Enter' && !(t && t.closest && t.closest('button, a'))) { if (['review', 'runReview'].includes(s.phase.kind)) core.keep(); else return; }
       else return;
       e.preventDefault();

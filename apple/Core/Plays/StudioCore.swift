@@ -174,6 +174,8 @@ final class StudioController {
         if session.mode == .run {
             if session.phase == .runReview { return }
             if session.run != nil { session.pause(); return }
+            if case .listening = session.phase { session.stopListening(); return }
+            if case .cue = session.phase { session.cancel(); return }
             if !session.isBusy { await session.runThrough(from: current) }
             return
         }

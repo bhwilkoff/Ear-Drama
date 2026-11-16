@@ -197,6 +197,22 @@ test('Run through: the current line follows the run through my lines, which reco
   s.end();
 });
 
+test('Run through, no run on: the round control stops or cancels a single take (Again on a line gone back to), never starts a run', async () => {
+  const calls = [];
+  const script = fixtureScript();
+  const fake = (kind) => ({
+    production: C.newProduction(script), started: true, mode: 'run', run: null, phase: { kind, lineID: 'L0003' },
+    isBusy: () => kind !== 'idle',
+    stopListening: () => calls.push('stop'), cancel: () => calls.push('cancel'),
+    runThrough: async () => calls.push('run'), record: async () => calls.push('record'), pause: () => calls.push('pause'),
+  });
+  const store = { production: () => null };
+  await SC.create({ session: fake('listening'), script, part: MOLLY, store }).primary();
+  await SC.create({ session: fake('cue'), script, part: MOLLY, store }).primary();
+  await SC.create({ session: fake('idle'), script, part: MOLLY, store }).primary();
+  eq(calls, ['stop', 'cancel', 'run'], 'listening stops, a cue cancels, idle starts the run');
+});
+
 /* ---- Takes: choose, delete, delete unused, record again ---- */
 
 test('Record again keeps every older take and chooses the new one', async () => {
