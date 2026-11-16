@@ -92,7 +92,9 @@ TV_SET = [
 SLOTS = {
     "iphone-large": ("iphone", 1320, 2868, "phone", TOUCH_SET),
     "iphone": ("iphone", 1206, 2622, "phone", TOUCH_SET),
-    "iphone-duo": ("duo", 1398, 2034, "duo", TOUCH_SET),
+    # The open Duo: the inner display in landscape, the device's own pose (Apple accepts 2853x2007 or 2007x2853
+    # inner, 1398x2034 or 2034x1398 outer; screenshot-specifications, read 2026-11-16).
+    "iphone-duo": ("duo", 2853, 2007, "duo", TOUCH_SET),
     "ipad": ("ipad", 2752, 2064, "ipad", TOUCH_SET),
     "mac": ("mac", 2560, 1600, "wide", MAC_SET),
     "tv": ("tv", 3840, 2160, "wide", TV_SET),
@@ -224,6 +226,7 @@ def label(canvas, text, cx, y, size):
 # are cropped away so two landscape screens side by side stay legible. The crop
 # removes chrome, never content.
 IPAD_SIDEBAR = 0.205
+DUO_STRIP = 0.076  # 216 of 2853 px: the strip's glass and its margin, measured on 1.0.135 frames
 IPAD_HAS_SIDEBAR = {"home", "record", "series", "playing", "stations", "sleep", "browse"}
 
 
@@ -235,6 +238,10 @@ def load(raw_dir, screen, device, paired=False):
     if device == "ipad" and paired:
         x0 = round(img.width * IPAD_SIDEBAR) if screen in IPAD_HAS_SIDEBAR else 0
         return img.crop((x0, STATUS["ipad"]["band"], img.width, img.height))
+    if device == "duo" and paired:
+        # The open Duo's vertical strip (status, toolbar, tabs) is chrome: a pair shows the content beside it,
+        # and a single frame keeps it, so the Duo's own look is in the set.
+        return img.crop((0, 0, round(img.width * (1 - DUO_STRIP)), img.height))
     return clean_status_bar(img, device)
 
 
@@ -242,7 +249,7 @@ def load(raw_dir, screen, device, paired=False):
 
 def compose_touch(W, H, kind, caption, panes, device):
     c = Image.new("RGB", (W, H), INK_BG)
-    landscape = kind == "ipad"
+    landscape = kind in ("ipad", "duo")
     if landscape:
         cap_size, cap_top = round(H * 0.075), round(H * 0.05)
         text = caption.replace("\n", " ")
