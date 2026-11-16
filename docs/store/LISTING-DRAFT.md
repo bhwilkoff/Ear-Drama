@@ -29,38 +29,61 @@ lacks (PARITY.md); US English.
 
 ## App Store (iOS, iPadOS, macOS, tvOS)
 
+Rewritten 2026-11-16 for the second submission, on the owner's positioning
+(memory "dual purpose"): the app is for exploring old-time radio AND making new
+ear dramas from scripts, with equal weight. Facts checked 2026-11-16: 73,642
+episodes and 4,842 series served (eardrama.org/data/manifest.json, 2026-11-15
+publish), 803 plays in the play library. No radio script is castable yet
+(SCRATCHPAD item 16), so the making half names stage plays only.
+
 **Name** (30 max): `Ear Drama`
 
-**Subtitle** (30 max): `Old-time radio, as it aired`
+**Subtitle** (30 max): `Hear old radio. Make new drama`
+
+Subtitle options for the owner: "Hear old radio. Make new drama" (30); "Classic radio. New audio drama" (30); "Listen to and make audio drama" (30); "Radio drama to hear and make" (28).
 
 **Promotional text** (170 max):
-> Hear a real evening of old-time radio, rebuilt from the newspaper's listings and played at the hour it aired. Over 100,000 episodes, free, with no ads.
+> Ear Dramas, past and present: 73,000 old-time radio episodes to hear, and 800 plays to read and record with friends, one part at a time. Free, with no ads.
 
 **Description:**
-> Ear Drama is a place to listen to old-time radio and radio drama from the Internet Archive's collections.
+> Ear Drama is a home for drama made to be heard. Listen to the golden age of radio, then make new ear dramas yourself from real scripts.
 >
-> RADIO
-> Tonight in 19xx rebuilds a real broadcast evening from the newspaper's listings and plays it on its own clock. Where a program does not survive, Ear Drama says so instead of filling the gap.
+> LISTEN
+> • 73,000 old-time radio episodes from the Internet Archive's collections, in 4,800 series with air dates, networks, and casts where the records carry them.
+> • On the Air plays a real broadcast evening at the hour it aired, rebuilt from the day's listings. Where a program does not survive, Ear Drama says so instead of filling the gap.
+> • Browse by genre, decade, and network. Search titles, people, and air dates.
+> • A sleep timer that ends with the episode or fades out, your place saved as you listen, and downloads for the car or a flight.
 >
-> SERIES AND EPISODES
-> Browse series by genre and decade, with air dates, networks, casts, and sponsors where the records carry them. Each episode plays the best surviving copy, and you can choose another.
+> MAKE
+> • 800 stage plays in a script reader built for performers: turn pages, follow your part, highlight, underline, and write notes.
+> • Record your part line by line in the script. Retake any line, and hear it in the scene.
+> • Until someone records a part, a device voice reads it, so you can rehearse alone. That voice is never saved.
+> • Invite friends to a shared production: each person records their own part on their own device, and the play comes together as one ear drama.
+> • Read along: the script follows the voices as an ear drama plays.
 >
-> FOR BEDTIME AND THE CAR
-> A sleep timer that ends the episode or fades out over ten seconds. Your place is saved as you listen.
->
-> PLAYS
-> Record a stage play with friends, one part at a time, on one device. Until someone records a part, a device voice reads its cues aloud; that voice is never saved.
->
-> Free, with no ads. Signing in is optional and only syncs your listening between devices.
+> Free, with no ads. No account is needed; signing in is optional and syncs your listening and your shared productions.
 >
 > Recordings with no known rights claim are removed on request: eardrama.org/takedown
 
-*Check before submission: genre and decade filters, sponsors on Detail, and
-the versions picker on every platform (ANDROID-DESIGN §12 lists Detail's
-missing sponsor).*
+**Description, tvOS** (Apple TV has no script reader or studio; it plays and reads along):
+> Ear Drama is a home for drama made to be heard. Listen to the golden age of radio, then make new ear dramas yourself from real scripts.
+>
+> LISTEN
+> • 73,000 old-time radio episodes from the Internet Archive's collections, in 4,800 series with air dates, networks, and casts where the records carry them.
+> • On the Air plays a real broadcast evening at the hour it aired, rebuilt from the day's listings. Where a program does not survive, Ear Drama says so instead of filling the gap.
+> • Browse by genre, decade, and network. Search titles, people, and air dates.
+> • A sleep timer that ends with the episode or fades out, your place saved as you listen, and downloads for the car or a flight.
+>
+>
+> EAR DRAMAS YOU MAKE
+> • Plays recorded with Ear Drama on iPhone, iPad, and Mac play here too, with the script alongside as the voices speak.
+>
+> Free, with no ads. No account is needed; signing in is optional and syncs your listening.
+>
+> Recordings with no known rights claim are removed on request: eardrama.org/takedown
 
 **Keywords** (100 max, comma-separated, no spaces after commas):
-`old time radio,OTR,radio drama,radio shows,audio drama,classic radio,mystery,western,comedy,sleep`
+`old time radio,OTR,radio drama,audio drama,radio plays,stage plays,script,record,acting,theater`
 
 **Category**: Entertainment (secondary: Education). *Owner's call.*
 

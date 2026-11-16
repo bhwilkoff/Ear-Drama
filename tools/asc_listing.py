@@ -5,7 +5,8 @@ which the public API cannot set).
     python3 tools/asc_listing.py            # set everything, every platform
     python3 tools/asc_listing.py --dry-run
 
-Words are docs/store/LISTING-DRAFT.md, approved by the owner 2026-11-14, verbatim.
+Words are docs/store/LISTING-DRAFT.md, verbatim (subtitle chosen by the owner 2026-11-16);
+review notes are docs/store/APP-REVIEW-NOTES.md (APP-REVIEW-NOTES-TVOS.md for Apple TV).
 Needs ASC_KEY_ID and ASC_ISSUER_ID in the environment (see asc_release.py).
 """
 import argparse
@@ -25,17 +26,6 @@ MARKETING_URL = "https://eardrama.org/"
 COPYRIGHT = "2026 Learning is Change, Inc."
 CONTACT = {"contactFirstName": "Ben", "contactLastName": "Wilkoff",
            "contactPhone": "+13034789812", "contactEmail": "ben@learningischange.com"}
-REVIEW_NOTES = (
-    "No account is needed. Every screen works without signing in; signing in "
-    "(Sign in with Apple) is optional and only syncs the user's listening between devices.\n"
-    "Recordings are streamed from the Internet Archive (archive.org). Ear Drama does not "
-    "host audio, and recordings with no known rights claim are removed on request "
-    "(eardrama.org/takedown).\n"
-    "Record: the Record tab (microphone icon in the tab bar on iPhone and iPad, the sidebar on "
-    "Mac and Apple TV) lists stage plays to record part by part on one device. Recording uses the "
-    "microphone, stays on the device, and is never uploaded. Until a part is recorded, a device "
-    "voice reads its cues aloud; that voice is never saved.\n"
-    "Radio: Home shows what is on tonight; Listen Live plays it.")
 
 
 def between(start, end):
@@ -63,7 +53,12 @@ SUBTITLE = field("Subtitle")
 KEYWORDS = field("Keywords")
 PROMO = blockquote("**Promotional text**")
 DESCRIPTION = blockquote("**Description:**")
-assert len(SUBTITLE) <= 30 and len(KEYWORDS) <= 100 and len(PROMO) <= 170 and len(DESCRIPTION) <= 4000
+DESCRIPTION_TV = blockquote("**Description, tvOS**")
+REVIEW_NOTES = (REPO / "docs/store/APP-REVIEW-NOTES.md").read_text().strip()
+_tv_notes = REPO / "docs/store/APP-REVIEW-NOTES-TVOS.md"
+REVIEW_NOTES_TV = _tv_notes.read_text().strip() if _tv_notes.exists() else REVIEW_NOTES
+assert len(SUBTITLE) <= 30 and len(KEYWORDS) <= 100 and len(PROMO) <= 170 and len(DESCRIPTION) <= 4000 and len(DESCRIPTION_TV) <= 4000
+assert len(REVIEW_NOTES) <= 4000 and len(REVIEW_NOTES_TV) <= 4000
 
 AGE = {
     "alcoholTobaccoOrDrugUseOrReferences": "INFREQUENT_OR_MILD",
@@ -74,7 +69,7 @@ AGE = {
     "sexualContentGraphicAndNudity": "NONE", "sexualContentOrNudity": "NONE",
     "violenceCartoonOrFantasy": "NONE", "violenceRealistic": "INFREQUENT_OR_MILD",
     "violenceRealisticProlongedGraphicOrSadistic": "NONE",
-    "unrestrictedWebAccess": False, "userGeneratedContent": False,
+    "unrestrictedWebAccess": False, "userGeneratedContent": True,
     "messagingAndChat": False, "socialMedia": False, "gunsOrOtherWeapons": "NONE", "advertising": False, "lootBox": False,
     "healthOrWellnessTopics": False, "parentalControls": False, "ageAssurance": False,
 }
@@ -121,11 +116,11 @@ def main():
         patch(f"v1/appStoreVersions/{vid}", "appStoreVersions", vid, {"copyright": COPYRIGHT}, dry)
         for loc in r.call(f"v1/appStoreVersions/{vid}/appStoreVersionLocalizations")["data"]:
             patch(f"v1/appStoreVersionLocalizations/{loc['id']}", "appStoreVersionLocalizations",
-                  loc["id"], {"description": DESCRIPTION, "keywords": KEYWORDS,
+                  loc["id"], {"description": DESCRIPTION_TV if platform == "TV_OS" else DESCRIPTION, "keywords": KEYWORDS,
                               "promotionalText": PROMO, "supportUrl": SUPPORT_URL,
                               "marketingUrl": MARKETING_URL}, dry)
         det = r.call(f"v1/appStoreVersions/{vid}/appStoreReviewDetail").get("data")
-        attrs = dict(CONTACT, notes=REVIEW_NOTES, demoAccountRequired=False)
+        attrs = dict(CONTACT, notes=REVIEW_NOTES_TV if platform == "TV_OS" else REVIEW_NOTES, demoAccountRequired=False)
         if det:
             patch(f"v1/appStoreReviewDetails/{det['id']}", "appStoreReviewDetails", det["id"], attrs, dry)
         elif not dry:
