@@ -1,0 +1,4229 @@
+{
+ "0423barbaras10thbirthdaytelegraphbinghamcanyonutah": {
+  "match": null,
+  "subject": null
+ },
+ "0801noelcowardtonightat830redpeppersstilllife": {
+  "match": null,
+  "subject": null
+ },
+ "1daviddcalcuttthelastofengland": {
+  "match": null,
+  "subject": null
+ },
+ "2000plus": {
+  "match": {
+   "born": [],
+   "desc": "American old-time radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "2000 Plus",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "2000 Plus",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4597771",
+   "start": []
+  },
+  "subject": null
+ },
+ "21stprecinct": {
+  "match": {
+   "born": [],
+   "desc": "police radio drama (1953 to 1956)",
+   "died": [],
+   "end": [],
+   "enwiki": "21st Precinct",
+   "identity": "years",
+   "imgs": {},
+   "label": "21st Precinct",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4631152",
+   "start": []
+  },
+  "subject": null
+ },
+ "34habakkuk": {
+  "match": null,
+  "subject": null
+ },
+ "35zephaniahandhaggai": {
+  "match": null,
+  "subject": null
+ },
+ "abbottandcostelloshow": {
+  "match": {
+   "born": [],
+   "desc": "US comedy program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Abbott and Costello Show (radio program)",
+   "identity": "years",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Abbott and Costello 1942.jpg"
+     }
+    ]
+   },
+   "label": "The Abbott and Costello Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q28441314",
+   "start": [
+    "1940"
+   ]
+  },
+  "subject": null
+ },
+ "abcclosedset": {
+  "match": null,
+  "subject": null
+ },
+ "abcmysterytime": {
+  "match": null,
+  "subject": null
+ },
+ "abcradioworkshop": {
+  "match": null,
+  "subject": null
+ },
+ "academyawardtheater": {
+  "match": {
+   "born": [],
+   "desc": "CBS radio anthology series (1946)",
+   "died": [],
+   "end": [],
+   "enwiki": "Academy Award (radio series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Academy Award",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4671334",
+   "start": []
+  },
+  "subject": null
+ },
+ "acommonvirtue": {
+  "match": null,
+  "subject": null
+ },
+ "aconversationwithavrahambiramavrahambiramairdate": {
+  "match": null,
+  "subject": null
+ },
+ "acrossthedial": {
+  "match": null,
+  "subject": null
+ },
+ "actiontheater": {
+  "match": {
+   "born": [],
+   "desc": "Motion simulator ride at multiple Cedar Fair parks",
+   "died": [],
+   "end": [],
+   "enwiki": "Action Theater",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Action Theater",
+   "p31": [
+    "Q1144661",
+    "Q19680204"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4677166",
+   "start": []
+  },
+  "subject": null
+ },
+ "adayinthelifeofdennisday": {
+  "match": {
+   "born": [],
+   "desc": "American old-time radio situation comedy",
+   "died": [],
+   "end": [],
+   "enwiki": "A Day in the Life of Dennis Day",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Dennis Day 1960.JPG"
+     }
+    ]
+   },
+   "label": "A Day in the Life of Dennis Day",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q39053633",
+   "start": []
+  },
+  "subject": null
+ },
+ "addresses": {
+  "match": null,
+  "subject": null
+ },
+ "adelaidehawleyprogram": {
+  "match": null,
+  "subject": null
+ },
+ "adopteddaughter": {
+  "match": {
+   "born": [],
+   "desc": "radio soap opera",
+   "died": [],
+   "end": [],
+   "enwiki": "Adopted Daughter",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Adopted Daughter",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q16960328",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventureparade": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Adventure Parade",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Adventure Parade",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4686518",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresbymorse": {
+  "match": {
+   "born": [],
+   "desc": "American radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Adventures by Morse",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Adventures by Morse",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4686595",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresinresearch": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresinscience": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofalioop": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofbaberuth": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofcaptaincourage": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofelleryqueen": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Adventures of Ellery Queen (radio program)",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Santos Ortega Hugh Marlowe Marian Shockley Ellery Queen on radio 1939.JPG"
+     }
+    ]
+   },
+   "label": "The Adventures of Ellery Queen",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q17183719",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresoffrankrace": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Adventures of Frank Race",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Adventures of Frank Race",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7712537",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresofjanearden": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofmaisie": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Adventures of Maisie",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Ann Sothern in A Letter to Three Wives trailer.jpg"
+     }
+    ]
+   },
+   "label": "The Adventures of Maisie",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7712583",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresofnerowolfe": {
+  "match": {
+   "born": [],
+   "desc": "radio drama in the United States of America",
+   "died": [],
+   "end": [],
+   "enwiki": "The Adventures of Nero Wolfe",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Adventures of Nero Wolfe",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q19866590",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresofozzieandharriet": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofphilipmarlowe": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Adventures of Philip Marlowe",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Gerald Mohr 1951.JPG"
+     }
+    ]
+   },
+   "label": "The Adventures of Philip Marlowe",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [
+    "The Adventures of Philip Marlowe"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7712609",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresofsamspadedetective": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofsanta": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofsuperman": {
+  "match": {
+   "born": [],
+   "desc": "US 1951 - 1959 television series starring tv's first legendary superman: George Bessolo Reeves. Bud Collyer provided voice for the Adventures of Superman radio show that aired from 1940 to 1951!",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "years",
+   "imgs": {},
+   "label": "Adventures of Superman",
+   "p31": [
+    "Q1760610"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q20047685",
+   "start": []
+  },
+  "subject": null
+ },
+ "adventuresofteddrake": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofthefederatedtecseason2": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofthelonewolf": {
+  "match": null,
+  "subject": null
+ },
+ "adventuresofthescarletcloak": {
+  "match": null,
+  "subject": null
+ },
+ "adventureswithadmiralbyrd": {
+  "match": null,
+  "subject": null
+ },
+ "adventuretheseries": {
+  "match": null,
+  "subject": null
+ },
+ "affairsofdrgentry": {
+  "match": null,
+  "subject": null
+ },
+ "agathachristiesherculepoirotbbc": {
+  "match": null,
+  "subject": null
+ },
+ "agathachristiespoirotusa": {
+  "match": null,
+  "subject": null
+ },
+ "airmailmystery": {
+  "match": null,
+  "subject": null
+ },
+ "airnationalguardshow": {
+  "match": null,
+  "subject": null
+ },
+ "alalexandersboardofmediation": {
+  "match": null,
+  "subject": null
+ },
+ "alcappradioshow": {
+  "match": null,
+  "subject": null
+ },
+ "alittlebitofeverything": {
+  "match": null,
+  "subject": null
+ },
+ "alvenhelfernews": {
+  "match": null,
+  "subject": null
+ },
+ "amandaofhoneymoonhill": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Amanda of Honeymoon Hill",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Amanda of Honeymoon Hill",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4739806",
+   "start": []
+  },
+  "subject": null
+ },
+ "amanwithacause": {
+  "match": null,
+  "subject": null
+ },
+ "amazingmrsmith": {
+  "match": null,
+  "subject": null
+ },
+ "amazingmrtutt": {
+  "match": null,
+  "subject": null
+ },
+ "amazingnerowolfe": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Amazing Nero Wolfe",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Wolfe-Bushman-1945.jpg"
+     }
+    ]
+   },
+   "label": "The Amazing Nero Wolfe",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q19866698",
+   "start": []
+  },
+  "subject": null
+ },
+ "americacalling": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "America Calling",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "America Calling",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4742744",
+   "start": []
+  },
+  "subject": null
+ },
+ "americanbandofthesupremealliedcommand": {
+  "match": null,
+  "subject": null
+ },
+ "americanfamilyrobinson": {
+  "match": {
+   "born": [],
+   "desc": "anti new deal propaganda program in US (1930s)",
+   "died": [],
+   "end": [],
+   "enwiki": "American Family Robinson",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "American Family Robinson",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q136090448",
+   "start": []
+  },
+  "subject": null
+ },
+ "americanhistorythroughtheeyesofradio": {
+  "match": null,
+  "subject": null
+ },
+ "amyconroyiheartalicehearti": {
+  "match": null,
+  "subject": null
+ },
+ "aneveningwithgroucho": {
+  "match": null,
+  "subject": null
+ },
+ "annemarieoconnoroutofseason": {
+  "match": null,
+  "subject": null
+ },
+ "annoftheairlanes": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Ann of the Airlanes",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Ann of the Airlanes",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4766764",
+   "start": []
+  },
+  "subject": null
+ },
+ "antoninartaudtoendgodsjudgmentkpfa": {
+  "match": null,
+  "subject": null
+ },
+ "arabianafternoons": {
+  "match": null,
+  "subject": null
+ },
+ "arboaudition": {
+  "match": null,
+  "subject": null
+ },
+ "archieandrews": {
+  "match": null,
+  "subject": null
+ },
+ "armedforcesnetwork": {
+  "match": null,
+  "subject": null
+ },
+ "armstrongofthesbi": {
+  "match": null,
+  "subject": null
+ },
+ "armstrongtheateroftoday": {
+  "match": null,
+  "subject": null
+ },
+ "armyhour": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Army Hour",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Army Hour",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q18389160",
+   "start": []
+  },
+  "subject": null
+ },
+ "arnoldgrimmsdaughter": {
+  "match": null,
+  "subject": null
+ },
+ "artbakersnotebook": {
+  "match": null,
+  "subject": null
+ },
+ "artgilmoreshow": {
+  "match": null,
+  "subject": null
+ },
+ "arthurmanninlondon": {
+  "match": null,
+  "subject": null
+ },
+ "asamartinshow": {
+  "match": null,
+  "subject": null
+ },
+ "aspectsofthefringer4": {
+  "match": null,
+  "subject": null
+ },
+ "atlanticspotlight": {
+  "match": null,
+  "subject": null
+ },
+ "attorneyatlaw": {
+  "match": null,
+  "subject": null
+ },
+ "avalontime": {
+  "match": {
+   "born": [],
+   "desc": "American old-time radio comedy/variety program (1938 to 1940)",
+   "died": [],
+   "end": [],
+   "enwiki": "Avalon Time",
+   "identity": "years",
+   "imgs": {},
+   "label": "Avalon Time",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q23020027",
+   "start": []
+  },
+  "subject": null
+ },
+ "avoiceinthenight": {
+  "match": null,
+  "subject": null
+ },
+ "awomanofamerica": {
+  "match": null,
+  "subject": null
+ },
+ "awomansstory": {
+  "match": null,
+  "subject": null
+ },
+ "babysnooksshow": {
+  "match": {
+   "born": [],
+   "desc": "American radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Baby Snooks Show",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Baby Snooks Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [
+    "The Baby Snooks Show"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7715188",
+   "start": []
+  },
+  "subject": null
+ },
+ "barriecraigconfidentialinvestigator": {
+  "match": null,
+  "subject": null
+ },
+ "battleofguadalcanal": {
+  "match": null,
+  "subject": null
+ },
+ "believeitornot": {
+  "match": null,
+  "subject": null
+ },
+ "bennyallenfeud": {
+  "match": null,
+  "subject": null
+ },
+ "beyondmidnight": {
+  "match": {
+   "born": [],
+   "desc": "South African radio anthology series",
+   "died": [],
+   "end": [],
+   "enwiki": "Beyond Midnight",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Beyond Midnight",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q20981383",
+   "start": []
+  },
+  "subject": null
+ },
+ "bigjonandsparkie": {
+  "match": null,
+  "subject": null
+ },
+ "bingcrosbyphilcoradiotime": {
+  "match": null,
+  "subject": null
+ },
+ "biographyinsound": {
+  "match": null,
+  "subject": null
+ },
+ "blairofthemounties": {
+  "match": {
+   "born": [],
+   "desc": "1930s radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Blair of the Mounties",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Blair of the Mounties",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q112132217",
+   "start": []
+  },
+  "subject": null
+ },
+ "bloodnoiraudiodrama": {
+  "match": null,
+  "subject": null
+ },
+ "bloopers": {
+  "match": null,
+  "subject": null
+ },
+ "bluebeetle": {
+  "match": {
+   "born": [],
+   "desc": "1940 American radio series on CBS Radio",
+   "died": [],
+   "end": [],
+   "enwiki": "The Blue Beetle",
+   "identity": "years",
+   "imgs": {},
+   "label": "The Blue Beetle",
+   "p31": [],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q23020064",
+   "start": []
+  },
+  "subject": null
+ },
+ "bobandrayshow": {
+  "match": null,
+  "subject": null
+ },
+ "boldventure": {
+  "match": {
+   "born": [],
+   "desc": "radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Bold Venture",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Bold Venture",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q937493",
+   "start": []
+  },
+  "subject": null
+ },
+ "bostonblackie": {
+  "match": {
+   "born": [],
+   "desc": "American radio detective drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Boston Blackie (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Boston Blackie",
+   "p31": [],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q130471188",
+   "start": []
+  },
+  "subject": null
+ },
+ "box13": {
+  "match": {
+   "born": [],
+   "desc": "radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Box 13",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Box 13",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4951486",
+   "start": []
+  },
+  "subject": null
+ },
+ "brightstar": {
+  "match": {
+   "born": [],
+   "desc": "Radio comedy-drama show",
+   "died": [],
+   "end": [],
+   "enwiki": "Bright Star (radio)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Bright Star",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4967487",
+   "start": []
+  },
+  "subject": null
+ },
+ "broadcastday": {
+  "match": null,
+  "subject": null
+ },
+ "broadcastddaynbc": {
+  "match": null,
+  "subject": null
+ },
+ "broadwayismybeat": {
+  "match": {
+   "born": [],
+   "desc": "radio crime drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Broadway Is My Beat",
+   "identity": "years",
+   "imgs": {},
+   "label": "Broadway Is My Beat",
+   "p31": [
+    "Q3511312"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4972462",
+   "start": [
+    "1949"
+   ]
+  },
+  "subject": null
+ },
+ "brownstonetheater": {
+  "match": {
+   "born": [],
+   "desc": "American old-time radio anthology",
+   "died": [],
+   "end": [],
+   "enwiki": "Brownstone Theater",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Brownstone Theater",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q29096562",
+   "start": []
+  },
+  "subject": null
+ },
+ "bulldogdrummond": {
+  "match": {
+   "born": [],
+   "desc": "",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Bulldog Drummond",
+   "p31": [
+    "Q24862"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q140065850",
+   "start": []
+  },
+  "subject": null
+ },
+ "burnsandallen": {
+  "match": null,
+  "subject": null
+ },
+ "callingallcars": {
+  "match": {
+   "born": [],
+   "desc": "old-time American radio police drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Calling All Cars (radio program)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Calling All Cars",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q30598731",
+   "start": []
+  },
+  "subject": null
+ },
+ "campbellplayhouse": {
+  "match": {
+   "born": [],
+   "desc": "radio series",
+   "died": [],
+   "end": [
+    "1940"
+   ],
+   "enwiki": "The Campbell Playhouse (radio series)",
+   "identity": "years",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Orson-Welles-CBS-Radio-Studio-1938.jpg"
+     }
+    ]
+   },
+   "label": "The Campbell Playhouse",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [
+    "The Campbell Playhouse"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4906829",
+   "start": [
+    "1938"
+   ]
+  },
+  "subject": null
+ },
+ "candymatson": {
+  "match": {
+   "born": [],
+   "desc": "radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Candy Matson",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Candy Matson",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5032106",
+   "start": []
+  },
+  "subject": null
+ },
+ "canyouimaginethat": {
+  "match": null,
+  "subject": null
+ },
+ "casebookofgregoryhood": {
+  "match": {
+   "born": [],
+   "desc": "radio detective program in the United States",
+   "died": [],
+   "end": [],
+   "enwiki": "The Casebook of Gregory Hood",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Casebook of Gregory Hood",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q16934310",
+   "start": []
+  },
+  "subject": null
+ },
+ "caseclosed": {
+  "match": {
+   "born": [],
+   "desc": "podcast",
+   "died": [],
+   "end": [
+    "2023"
+   ],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Case Closed",
+   "p31": [
+    "Q24634210"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q110574507",
+   "start": []
+  },
+  "subject": null
+ },
+ "casedismissed": {
+  "match": null,
+  "subject": null
+ },
+ "caseycrimephotographer": {
+  "match": null,
+  "subject": null
+ },
+ "catholichour": {
+  "match": null,
+  "subject": null
+ },
+ "cavalcadeofamerica": {
+  "match": null,
+  "subject": null
+ },
+ "cbseuropeannews": {
+  "match": null,
+  "subject": null
+ },
+ "cbsmysterytheaterfantasy": {
+  "match": null,
+  "subject": null
+ },
+ "cbsnews": {
+  "match": null,
+  "subject": null
+ },
+ "cbsradioworkshop": {
+  "match": {
+   "born": [],
+   "desc": "American radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "CBS Radio Workshop",
+   "identity": "years",
+   "imgs": {},
+   "label": "CBS Radio Workshop",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5009266",
+   "start": [
+    "1956"
+   ]
+  },
+  "subject": null
+ },
+ "cbstodayineurope": {
+  "match": null,
+  "subject": null
+ },
+ "cbsworldnewstoday": {
+  "match": null,
+  "subject": null
+ },
+ "challengeoftheyukon": {
+  "match": {
+   "born": [],
+   "desc": "American radio adventure series",
+   "died": [],
+   "end": [],
+   "enwiki": "Challenge of the Yukon",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Challenge of the Yukon",
+   "p31": [
+    "Q15416"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2947979",
+   "start": []
+  },
+  "subject": null
+ },
+ "chanduthemagician": {
+  "match": {
+   "born": [],
+   "desc": "American radio drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Chandu the Magician",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Chandu the Magician",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5071505",
+   "start": []
+  },
+  "subject": null
+ },
+ "chanduthemagicianundated": {
+  "match": {
+   "born": [],
+   "desc": "American radio drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Chandu the Magician",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Chandu the Magician",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5071505",
+   "start": []
+  },
+  "subject": null
+ },
+ "chase": {
+  "match": {
+   "born": [],
+   "desc": "IQ 151's computer game",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Chase",
+   "p31": [
+    "Q7889"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q135916271",
+   "start": []
+  },
+  "subject": null
+ },
+ "chetchetterstalesfromthemorgue": {
+  "match": null,
+  "subject": null
+ },
+ "ciscokid": {
+  "match": {
+   "born": [],
+   "desc": "fictional character found in numerous film, radio, television and comic book series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Cisco Kid",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Cisco Kid and Diablo photo 1950s.jpg"
+     }
+    ]
+   },
+   "label": "The Cisco Kid",
+   "p31": [
+    "Q3658341",
+    "Q15632617",
+    "Q15773347",
+    "Q15773317"
+   ],
+   "p373": [
+    "The Cisco Kid"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2364715",
+   "start": []
+  },
+  "subject": null
+ },
+ "claudia": {
+  "match": null,
+  "subject": null
+ },
+ "claybourne": {
+  "match": {
+   "born": [],
+   "desc": "New Zealand radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Claybourne",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Claybourne",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q16949093",
+   "start": []
+  },
+  "subject": null
+ },
+ "cloakanddagger": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Cloak and Dagger (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Cloak and Dagger",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5134748",
+   "start": []
+  },
+  "subject": null
+ },
+ "clock": {
+  "match": {
+   "born": [],
+   "desc": "Radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Clock (radio series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "The Clock",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7723434",
+   "start": [
+    "1946"
+   ]
+  },
+  "subject": null
+ },
+ "columbiapresents": {
+  "match": null,
+  "subject": null
+ },
+ "columbiaworkshop": {
+  "match": {
+   "born": [],
+   "desc": "radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Columbia Workshop",
+   "identity": "years",
+   "imgs": {},
+   "label": "Columbia Workshop",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5149917",
+   "start": [
+    "1936"
+   ]
+  },
+  "subject": null
+ },
+ "commandperformance": {
+  "match": {
+   "born": [],
+   "desc": "US Armed Forces Radio show from 1942-49",
+   "died": [],
+   "end": [],
+   "enwiki": "Command Performance (radio series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Command Performance",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [
+    "Command Performance (radio series)"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5152096",
+   "start": []
+  },
+  "subject": null
+ },
+ "completebroadcastday": {
+  "match": null,
+  "subject": null
+ },
+ "cormanroger86": {
+  "match": null,
+  "subject": null
+ },
+ "counterspy": {
+  "match": {
+   "born": [],
+   "desc": "American espionage drama radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Counterspy (radio series)",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Mandell Kramer Don MacLaughlin Counterspy 1952.jpg"
+     }
+    ]
+   },
+   "label": "Counterspy",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5177038",
+   "start": []
+  },
+  "subject": null
+ },
+ "crimeandpeterchambers": {
+  "match": {
+   "born": [],
+   "desc": "American radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Crime and Peter Chambers",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Crime and Peter Chambers",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q30636281",
+   "start": []
+  },
+  "subject": null
+ },
+ "crimeclassics": {
+  "match": {
+   "born": [],
+   "desc": "American radio docudrama series (1953–1954)",
+   "died": [],
+   "end": [],
+   "enwiki": "Crime Classics",
+   "identity": "years",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Elliott Lewis 1954.jpg"
+     }
+    ]
+   },
+   "label": "Crime Classics",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5185176",
+   "start": []
+  },
+  "subject": null
+ },
+ "crimeclub": {
+  "match": null,
+  "subject": null
+ },
+ "cruiseofthepollparrot": {
+  "match": null,
+  "subject": null
+ },
+ "damonrunyontheater": {
+  "match": null,
+  "subject": null
+ },
+ "dangerousassignment": {
+  "match": {
+   "born": [],
+   "desc": "NBC radio and television series",
+   "died": [],
+   "end": [
+    "1951"
+   ],
+   "enwiki": "Dangerous Assignment",
+   "identity": "years",
+   "imgs": {},
+   "label": "Dangerous Assignment",
+   "p31": [
+    "Q5398426"
+   ],
+   "p373": [
+    "Dangerous Assignment"
+   ],
+   "p449": [
+    "Q13974"
+   ],
+   "p50": [],
+   "qid": "Q3859270",
+   "start": [
+    "1950"
+   ]
+  },
+  "subject": null
+ },
+ "dangerouslyyours": {
+  "match": {
+   "born": [],
+   "desc": "radio show",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Dangerously Yours",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q120883215",
+   "start": []
+  },
+  "subject": null
+ },
+ "darkfantasy": {
+  "match": {
+   "born": [],
+   "desc": "American radio series",
+   "died": [],
+   "end": [
+    "1942"
+   ],
+   "enwiki": "Dark Fantasy (series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Dark Fantasy",
+   "p31": [
+    "Q3511312"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q21196423"
+   ],
+   "qid": "Q5223224",
+   "start": [
+    "1941"
+   ]
+  },
+  "subject": null
+ },
+ "deathofmyauntbychbkitchin": {
+  "match": null,
+  "subject": null
+ },
+ "devilandmro": {
+  "match": null,
+  "subject": null
+ },
+ "dicktracy": {
+  "match": {
+   "born": [],
+   "desc": "radio program (1934–1948)",
+   "died": [],
+   "end": [],
+   "enwiki": "Dick Tracy (radio series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Dick Tracy",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q22907778",
+   "start": []
+  },
+  "subject": null
+ },
+ "dimensionx": {
+  "match": {
+   "born": [],
+   "desc": "1950–1951 NBC science fiction radio program",
+   "died": [],
+   "end": [
+    "1951"
+   ],
+   "enwiki": "Dimension X (radio program)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Dimension X",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [
+    "Q13974"
+   ],
+   "p50": [],
+   "qid": "Q4355674",
+   "start": [
+    "1950"
+   ]
+  },
+  "subject": null
+ },
+ "donrosstrio": {
+  "match": null,
+  "subject": null
+ },
+ "dragnet": {
+  "match": {
+   "born": [],
+   "desc": "multiple radio and television series and films, usually about policeman Joe Friday",
+   "died": [],
+   "end": [
+    "2004"
+   ],
+   "enwiki": "Dragnet (franchise)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Dragnet franchise",
+   "p31": [
+    "Q196600"
+   ],
+   "p373": [
+    "Dragnet (series)"
+   ],
+   "p449": [
+    "Q13974"
+   ],
+   "p50": [],
+   "qid": "Q16909472",
+   "start": [
+    "1951"
+   ]
+  },
+  "subject": null
+ },
+ "drchristian": {
+  "match": null,
+  "subject": null
+ },
+ "dreamofwhitehorses": {
+  "match": null,
+  "subject": null
+ },
+ "drtimdetective": {
+  "match": null,
+  "subject": null
+ },
+ "duffystavern": {
+  "match": {
+   "born": [],
+   "desc": "American radio situation comedy",
+   "died": [],
+   "end": [],
+   "enwiki": "Duffy's Tavern",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Duffy's Tavern",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q27908822",
+   "start": []
+  },
+  "subject": null
+ },
+ "easyaces": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Easy Aces",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Goodman jane ace 1939.jpg"
+     }
+    ]
+   },
+   "label": "Easy Aces",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [
+    "Easy Aces"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5331093",
+   "start": []
+  },
+  "subject": null
+ },
+ "edgarbergan": {
+  "match": null,
+  "subject": null
+ },
+ "edgarbergenandcharliemccarthy": {
+  "match": null,
+  "subject": null
+ },
+ "educationinthenews": {
+  "match": null,
+  "subject": null
+ },
+ "elleryqueensminutemysteries": {
+  "match": null,
+  "subject": null
+ },
+ "elmerdavisandthenews": {
+  "match": null,
+  "subject": null
+ },
+ "escape": {
+  "match": {
+   "born": [],
+   "desc": "Sirius XM radio channel",
+   "died": [],
+   "end": [],
+   "enwiki": "Escape (SiriusXM)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Escape",
+   "p31": [
+    "Q14350"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q15995050",
+   "start": []
+  },
+  "subject": null
+ },
+ "evangelinebakershow": {
+  "match": null,
+  "subject": null
+ },
+ "exploringtomorrow": {
+  "match": {
+   "born": [],
+   "desc": "",
+   "died": [],
+   "end": [],
+   "enwiki": "Exploring Tomorrow",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Exploring Tomorrow",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5421412",
+   "start": []
+  },
+  "subject": null
+ },
+ "falcon": {
+  "match": {
+   "born": [],
+   "desc": "radio show",
+   "died": [],
+   "end": [],
+   "enwiki": "The Falcon (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Falcon",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7733166",
+   "start": []
+  },
+  "subject": null
+ },
+ "fantastic41975": {
+  "match": null,
+  "subject": null
+ },
+ "fathercoughlin": {
+  "match": null,
+  "subject": {
+   "born": [
+    "1891"
+   ],
+   "desc": "Canadian-American Catholic priest and radio commentator (1891–1979)",
+   "died": [
+    "1979"
+   ],
+   "end": [],
+   "enwiki": "Charles Coughlin",
+   "imgs": {
+    "P1442": [
+     {
+      "file": "Grave of Charles Edward Coughlin (1891–1979) at Holy Sepulchre Cemetery, Southfield, Michigan 1.jpg"
+     },
+     {
+      "file": "Grave of Charles Edward Coughlin (1891–1979) at Holy Sepulchre Cemetery, Southfield, Michigan 2.jpg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "CharlesCouglinCraineDetroitPortrait.jpg"
+     }
+    ]
+   },
+   "label": "Charles Coughlin",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Charles Coughlin"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q181249",
+   "start": []
+  }
+ },
+ "fatherknowsbest": {
+  "match": null,
+  "subject": null
+ },
+ "fatman": {
+  "match": {
+   "born": [],
+   "desc": "popular mid-20th century radio detective show",
+   "died": [],
+   "end": [],
+   "enwiki": "The Fat Man (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Fat Man",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7733509",
+   "start": []
+  },
+  "subject": null
+ },
+ "fbiinpeaceandwar": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The FBI in Peace and War",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The FBI in Peace and War",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7732963",
+   "start": []
+  },
+  "subject": null
+ },
+ "fibbermcgeeandmolly": {
+  "match": {
+   "born": [],
+   "desc": "American radio comedy series",
+   "died": [],
+   "end": [],
+   "enwiki": "Fibber McGee and Molly",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "FibberAndMolly1941.png"
+     }
+    ]
+   },
+   "label": "Fibber McGee and Molly",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [
+    "Fibber McGee and Molly"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4355416",
+   "start": []
+  },
+  "subject": null
+ },
+ "firefighters": {
+  "match": null,
+  "subject": null
+ },
+ "fiveminutemysteries": {
+  "match": null,
+  "subject": null
+ },
+ "flashgordon": {
+  "match": null,
+  "subject": null
+ },
+ "flyinghutchinsons": {
+  "match": null,
+  "subject": null
+ },
+ "fortherecord": {
+  "match": {
+   "born": [],
+   "desc": "Dutch radio program",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "For the Record",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [],
+   "p449": [
+    "Q1771108"
+   ],
+   "p50": [],
+   "qid": "Q1998578",
+   "start": []
+  },
+  "subject": null
+ },
+ "fortlaramie": {
+  "match": {
+   "born": [],
+   "desc": "1956 Western show",
+   "died": [],
+   "end": [],
+   "enwiki": "Fort Laramie (radio series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Fort Laramie",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5471459",
+   "start": []
+  },
+  "subject": null
+ },
+ "frankfontaineshow": {
+  "match": null,
+  "subject": null
+ },
+ "franklindroosevelt": {
+  "match": null,
+  "subject": null
+ },
+ "fredallenshow": {
+  "match": {
+   "born": [],
+   "desc": "American radio comedy program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Fred Allen Show",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Fred Allen Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q23019988",
+   "start": []
+  },
+  "subject": null
+ },
+ "friarsclubroast": {
+  "match": null,
+  "subject": null
+ },
+ "frontierfighters": {
+  "match": null,
+  "subject": null
+ },
+ "frontiertown": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Frontier Town (radio show)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Frontier Town",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5506042",
+   "start": []
+  },
+  "subject": null
+ },
+ "gabrielheatter": {
+  "match": {
+   "born": [
+    "1890"
+   ],
+   "desc": "American radio commentator",
+   "died": [
+    "1972"
+   ],
+   "end": [],
+   "enwiki": "Gabriel Heatter",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Gabriel Heatter",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3093777",
+   "start": []
+  },
+  "subject": {
+   "born": [
+    "1890"
+   ],
+   "desc": "American radio commentator",
+   "died": [
+    "1972"
+   ],
+   "end": [],
+   "enwiki": "Gabriel Heatter",
+   "imgs": {},
+   "label": "Gabriel Heatter",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3093777",
+   "start": []
+  }
+ },
+ "gangbusters": {
+  "match": null,
+  "subject": null
+ },
+ "genesis": {
+  "match": {
+   "born": [],
+   "desc": "music by Iris",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Genesis",
+   "p31": [
+    "Q105543609"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q126454848",
+   "start": []
+  },
+  "subject": null
+ },
+ "gerberprogram": {
+  "match": null,
+  "subject": null
+ },
+ "gg195401": {
+  "match": null,
+  "subject": null
+ },
+ "ghoststories": {
+  "match": null,
+  "subject": null
+ },
+ "gijournal": {
+  "match": null,
+  "subject": null
+ },
+ "gordongray": {
+  "match": null,
+  "subject": null
+ },
+ "greatgildersleeve": {
+  "match": {
+   "born": [],
+   "desc": "American radio comedy series",
+   "died": [],
+   "end": [
+    "1958"
+   ],
+   "enwiki": "The Great Gildersleeve",
+   "identity": "years",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Harold peary.jpg"
+     }
+    ]
+   },
+   "label": "The Great Gildersleeve",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [
+    "The Great Gildersleeve"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q11897194",
+   "start": [
+    "1941"
+   ]
+  },
+  "subject": null
+ },
+ "gunsmoke": {
+  "match": {
+   "born": [],
+   "desc": "American radio Western drama series (1952-1961)",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "years",
+   "imgs": {},
+   "label": "Gunsmoke",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q120202692",
+   "start": []
+  },
+  "subject": null
+ },
+ "hallmarkplayhouse": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Hallmark Playhouse",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Hallmark Playhouse",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q55613313",
+   "start": []
+  },
+  "subject": null
+ },
+ "halloffantasy": {
+  "match": {
+   "born": [],
+   "desc": "American old-time radio dramatic anthology",
+   "died": [],
+   "end": [],
+   "enwiki": "The Hall of Fantasy",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Hall of Fantasy",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q55635269",
+   "start": []
+  },
+  "subject": null
+ },
+ "hallsofivy": {
+  "match": null,
+  "subject": null
+ },
+ "happythehumbug": {
+  "match": null,
+  "subject": null
+ },
+ "henrymorganshow": {
+  "match": null,
+  "subject": null
+ },
+ "henryv": {
+  "match": null,
+  "subject": null
+ },
+ "hermitscave": {
+  "match": {
+   "born": [],
+   "desc": "syndicated radio horror series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Hermit's Cave",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Hermit's Cave",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7739464",
+   "start": []
+  },
+  "subject": null
+ },
+ "hollywoodbyline": {
+  "match": null,
+  "subject": null
+ },
+ "hourofmystery": {
+  "match": null,
+  "subject": null
+ },
+ "howardksmithnovember30th": {
+  "match": null,
+  "subject": null
+ },
+ "howardmillershow": {
+  "match": null,
+  "subject": null
+ },
+ "hvkaltenborn": {
+  "match": null,
+  "subject": null
+ },
+ "iloveamystery": {
+  "match": null,
+  "subject": null
+ },
+ "incrediblebuttrue": {
+  "match": null,
+  "subject": null
+ },
+ "informationplease": {
+  "match": {
+   "born": [],
+   "desc": "American radio quiz show",
+   "died": [],
+   "end": [],
+   "enwiki": "Information Please",
+   "identity": "network",
+   "imgs": {},
+   "label": "Information Please",
+   "p31": [
+    "Q15416"
+   ],
+   "p373": [
+    "Information Please"
+   ],
+   "p449": [
+    "Q13974"
+   ],
+   "p50": [],
+   "qid": "Q6030765",
+   "start": []
+  },
+  "subject": null
+ },
+ "innersanctummysteries": {
+  "match": {
+   "born": [],
+   "desc": "American radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Inner Sanctum Mystery",
+   "identity": "years",
+   "imgs": {},
+   "label": "Inner Sanctum Mystery",
+   "p31": [
+    "Q1555508",
+    "Q11424"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6035571",
+   "start": [
+    "1941"
+   ]
+  },
+  "subject": null
+ },
+ "insomniatheaterthekaiserofnewyork": {
+  "match": null,
+  "subject": null
+ },
+ "interviewsmadeat4hclubconventionheldinsprongfield": {
+  "match": null,
+  "subject": null
+ },
+ "inthenameofthelaw": {
+  "match": null,
+  "subject": null
+ },
+ "isleofmancelebratesveday": {
+  "match": null,
+  "subject": null
+ },
+ "itpaystobeignorant": {
+  "match": null,
+  "subject": null
+ },
+ "itsmurder": {
+  "match": null,
+  "subject": null
+ },
+ "iwasacommunistforthefbi": {
+  "match": null,
+  "subject": null
+ },
+ "jackbennyprogram": {
+  "match": null,
+  "subject": null
+ },
+ "jamefollettthespanishpackage": {
+  "match": null,
+  "subject": null
+ },
+ "jasonexplanation": {
+  "match": null,
+  "subject": null
+ },
+ "jeffreganinvestigator": {
+  "match": null,
+  "subject": null
+ },
+ "jerryofthecircus": {
+  "match": {
+   "born": [],
+   "desc": "Syndicated radio serial broadcast.",
+   "died": [],
+   "end": [],
+   "enwiki": "Jerry of the Circus",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Jerry of the Circus",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6184712",
+   "start": []
+  },
+  "subject": null
+ },
+ "johnsteeleadventurer": {
+  "match": null,
+  "subject": null
+ },
+ "jonathanbrixton": {
+  "match": null,
+  "subject": null
+ },
+ "journeyacrossanatlasofremoteislands": {
+  "match": null,
+  "subject": null
+ },
+ "junglejim": {
+  "match": null,
+  "subject": null
+ },
+ "kingsleyamisiwantitnow": {
+  "match": null,
+  "subject": null
+ },
+ "letgeorgedoit": {
+  "match": {
+   "born": [],
+   "desc": "American radio drama series produced from 1946 to 1954",
+   "died": [],
+   "end": [],
+   "enwiki": "Let George Do It (radio)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Let George Do It",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5407842",
+   "start": []
+  },
+  "subject": null
+ },
+ "librivox10048": {
+  "match": null,
+  "subject": null
+ },
+ "librivox10204": {
+  "match": null,
+  "subject": null
+ },
+ "librivox12395": {
+  "match": null,
+  "subject": null
+ },
+ "librivox13116": {
+  "match": null,
+  "subject": null
+ },
+ "librivox15166": {
+  "match": null,
+  "subject": null
+ },
+ "librivox15366": {
+  "match": null,
+  "subject": null
+ },
+ "librivox18671": {
+  "match": null,
+  "subject": null
+ },
+ "librivox20771": {
+  "match": null,
+  "subject": null
+ },
+ "librivox21603": {
+  "match": null,
+  "subject": null
+ },
+ "librivox4603": {
+  "match": null,
+  "subject": null
+ },
+ "librivox4611": {
+  "match": null,
+  "subject": null
+ },
+ "librivox5100": {
+  "match": null,
+  "subject": null
+ },
+ "librivox5241": {
+  "match": null,
+  "subject": null
+ },
+ "librivox5897": {
+  "match": null,
+  "subject": null
+ },
+ "librivox6060": {
+  "match": null,
+  "subject": null
+ },
+ "librivox6793": {
+  "match": null,
+  "subject": null
+ },
+ "librivox8264": {
+  "match": null,
+  "subject": null
+ },
+ "lifewithluigi": {
+  "match": {
+   "born": [],
+   "desc": "American radio comedy series",
+   "died": [],
+   "end": [],
+   "enwiki": "Life with Luigi",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Life with Luigi",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6545321",
+   "start": []
+  },
+  "subject": null
+ },
+ "lightsout": {
+  "match": {
+   "born": [],
+   "desc": "extremely popular American old-time radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Lights Out (radio show)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Lights Out",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6546539",
+   "start": []
+  },
+  "subject": null
+ },
+ "lightsout1945": {
+  "match": {
+   "born": [],
+   "desc": "extremely popular American old-time radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Lights Out (radio show)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Lights Out",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6546539",
+   "start": []
+  },
+  "subject": null
+ },
+ "lightsoutundated": {
+  "match": {
+   "born": [],
+   "desc": "extremely popular American old-time radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Lights Out (radio show)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Lights Out",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6546539",
+   "start": []
+  },
+  "subject": null
+ },
+ "lineup": {
+  "match": null,
+  "subject": null
+ },
+ "listenlive": {
+  "match": null,
+  "subject": null
+ },
+ "living1949": {
+  "match": null,
+  "subject": null
+ },
+ "lordhawhaw": {
+  "match": null,
+  "subject": null
+ },
+ "lukeslaughteroftombstone": {
+  "match": null,
+  "subject": null
+ },
+ "luxradiotheater": {
+  "match": null,
+  "subject": null
+ },
+ "macabre": {
+  "match": null,
+  "subject": null
+ },
+ "magicisland": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Magic Island (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Magic Island",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6730723",
+   "start": []
+  },
+  "subject": null
+ },
+ "mancalledx": {
+  "match": {
+   "born": [],
+   "desc": "American radio espionage drama series (1944–1952)",
+   "died": [],
+   "end": [],
+   "enwiki": "The Man Called X",
+   "identity": "years",
+   "imgs": {},
+   "label": "The Man Called X",
+   "p31": [
+    "Q1555508",
+    "Q5398426"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7749862",
+   "start": []
+  },
+  "subject": null
+ },
+ "manhunt": {
+  "match": null,
+  "subject": null
+ },
+ "martinandlewisshow": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Martin and Lewis Show",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Lewis and Martin.jpg"
+     }
+    ]
+   },
+   "label": "The Martin and Lewis Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q18154995",
+   "start": []
+  },
+  "subject": null
+ },
+ "melblancshow": {
+  "match": {
+   "born": [],
+   "desc": "Blanc played himself as the hapless owner of a fix-it shop, as well as a wide range of comical support characters. Other characters were played by Mary Jane Croft, Joseph Kearns, Hans Conreid, Alan Reed, Earle Ross, Jim Backus & Bea Benaderet.",
+   "died": [],
+   "end": [],
+   "enwiki": "The Mel Blanc Show",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Mel Blanc Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q18152644",
+   "start": []
+  },
+  "subject": null
+ },
+ "melodyranch": {
+  "match": null,
+  "subject": null
+ },
+ "mercurytheater": {
+  "match": null,
+  "subject": null
+ },
+ "michaelshayne": {
+  "match": {
+   "born": [],
+   "desc": "",
+   "died": [],
+   "end": [],
+   "enwiki": "Michael Shayne (radio program)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Michael Shayne",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q112610038",
+   "start": []
+  },
+  "subject": null
+ },
+ "mildredbailey": {
+  "match": null,
+  "subject": null
+ },
+ "mollemysterytheater": {
+  "match": null,
+  "subject": null
+ },
+ "mrandmrsnorth": {
+  "match": null,
+  "subject": null
+ },
+ "mrdistrictattorney": {
+  "match": null,
+  "subject": null
+ },
+ "mrkeentraceroflostpersons": {
+  "match": null,
+  "subject": null
+ },
+ "murderatmidnight": {
+  "match": {
+   "born": [],
+   "desc": "old-time radio show featuring suspense stories",
+   "died": [],
+   "end": [],
+   "enwiki": "Murder at Midnight (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Murder at Midnight",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6937704",
+   "start": []
+  },
+  "subject": null
+ },
+ "musicremote": {
+  "match": null,
+  "subject": null
+ },
+ "myfavoritehusband": {
+  "match": {
+   "born": [],
+   "desc": "late 40's–early 50's American comedy radio program",
+   "died": [],
+   "end": [
+    "1951"
+   ],
+   "enwiki": "My Favorite Husband",
+   "identity": "years",
+   "imgs": {},
+   "label": "My Favorite Husband",
+   "p31": [
+    "Q1555508",
+    "Q14623351"
+   ],
+   "p373": [
+    "My Favorite Husband"
+   ],
+   "p449": [
+    "Q43380"
+   ],
+   "p50": [],
+   "qid": "Q6945421",
+   "start": [
+    "1947"
+   ]
+  },
+  "subject": null
+ },
+ "myfriendirma": {
+  "match": {
+   "born": [],
+   "desc": "radio comedy of the 1940s and 1950s",
+   "died": [],
+   "end": [
+    "1954"
+   ],
+   "enwiki": "My Friend Irma",
+   "identity": "years",
+   "imgs": {},
+   "label": "My Friend Irma",
+   "p31": [
+    "Q3071014"
+   ],
+   "p373": [
+    "My Friend Irma (radio-TV)"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3283985",
+   "start": []
+  },
+  "subject": null
+ },
+ "mysterioustraveler": {
+  "match": {
+   "born": [],
+   "desc": "anthology radio series, magazine, and comic book",
+   "died": [],
+   "end": [],
+   "enwiki": "The Mysterious Traveler",
+   "identity": "years",
+   "imgs": {},
+   "label": "The Mysterious Traveler",
+   "p31": [
+    "Q7093850"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7752863",
+   "start": [
+    "1951"
+   ]
+  },
+  "subject": null
+ },
+ "mysteryhouse": {
+  "match": {
+   "born": [],
+   "desc": "American radio drama series",
+   "died": [],
+   "end": [],
+   "enwiki": "Mystery House (radio drama)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Mystery House",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6948841",
+   "start": []
+  },
+  "subject": null
+ },
+ "mysteryintheair": {
+  "match": null,
+  "subject": null
+ },
+ "mysteryismyhobby": {
+  "match": {
+   "born": [],
+   "desc": "American radio mystery series",
+   "died": [],
+   "end": [],
+   "enwiki": "Murder Is My Hobby",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Murder Is My Hobby",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q109534941",
+   "start": []
+  },
+  "subject": null
+ },
+ "nbcnews": {
+  "match": null,
+  "subject": null
+ },
+ "nbcshortstory": {
+  "match": null,
+  "subject": null
+ },
+ "nbcuniversitytheater": {
+  "match": null,
+  "subject": null
+ },
+ "newadventuresofsherlockholmes": {
+  "match": {
+   "born": [],
+   "desc": "old-time radio show which aired in the USA from 1939 to 1950",
+   "died": [],
+   "end": [
+    "1950"
+   ],
+   "enwiki": "The New Adventures of Sherlock Holmes",
+   "identity": "years",
+   "imgs": {},
+   "label": "The New Adventures of Sherlock Holmes",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [
+    "Q3334260",
+    "Q169889"
+   ],
+   "p50": [],
+   "qid": "Q7753486",
+   "start": [
+    "1939"
+   ]
+  },
+  "subject": null
+ },
+ "newsoftheworldtoday": {
+  "match": null,
+  "subject": null
+ },
+ "newsreports02": {
+  "match": null,
+  "subject": null
+ },
+ "nightbeat": {
+  "match": {
+   "born": [],
+   "desc": "1950s radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Night Beat (radio program)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Night Beat",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7033216",
+   "start": []
+  },
+  "subject": null
+ },
+ "nighttransmissionslowfi64kbs": {
+  "match": null,
+  "subject": null
+ },
+ "nightwatch": {
+  "match": {
+   "born": [],
+   "desc": "Radio Drama based on Doctor Who",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Night Watch",
+   "p31": [
+    "Q2635894"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q132524275",
+   "start": []
+  },
+  "subject": null
+ },
+ "olddominionbarndance": {
+  "match": {
+   "born": [],
+   "desc": "radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Old Dominion Barn Dance",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Old Dominion Barn Dance",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1396350",
+   "start": []
+  },
+  "subject": null
+ },
+ "orsonwellesmercurytheaterrecordings": {
+  "match": null,
+  "subject": null
+ },
+ "orsonwellesontheair2": {
+  "match": null,
+  "subject": null
+ },
+ "ourmissbrooks": {
+  "match": null,
+  "subject": null
+ },
+ "owota": {
+  "match": null,
+  "subject": null
+ },
+ "pacificpowerland": {
+  "match": null,
+  "subject": null
+ },
+ "pacificstory": {
+  "match": null,
+  "subject": null
+ },
+ "panamericancoffeebureau": {
+  "match": null,
+  "subject": null
+ },
+ "pastorchucksmith": {
+  "match": null,
+  "subject": null
+ },
+ "patnovakforhire": {
+  "match": null,
+  "subject": null
+ },
+ "paulsellarthemoonflask": {
+  "match": null,
+  "subject": null
+ },
+ "perrymason": {
+  "match": {
+   "born": [],
+   "desc": "Radio program.",
+   "died": [],
+   "end": [],
+   "enwiki": "Perry Mason (radio series)",
+   "identity": "title-only",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Perrymason-book-radio.jpg"
+     }
+    ]
+   },
+   "label": "Perry Mason",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7169840",
+   "start": []
+  },
+  "subject": null
+ },
+ "petekellysblues": {
+  "match": {
+   "born": [],
+   "desc": "American crime-musical radio drama which aired over NBC",
+   "died": [],
+   "end": [],
+   "enwiki": "Pete Kelly's Blues (radio series)",
+   "identity": "network",
+   "imgs": {},
+   "label": "Pete Kelly's Blues",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [
+    "Q13974"
+   ],
+   "p50": [],
+   "qid": "Q7172057",
+   "start": []
+  },
+  "subject": null
+ },
+ "peterredgrovethevalleyoftrelamia": {
+  "match": null,
+  "subject": null
+ },
+ "philharrisandalicefaye": {
+  "match": null,
+  "subject": null
+ },
+ "philiplevinecoldstorage": {
+  "match": null,
+  "subject": null
+ },
+ "philovance": {
+  "match": null,
+  "subject": null
+ },
+ "planetman": {
+  "match": null,
+  "subject": null
+ },
+ "portsofcall": {
+  "match": null,
+  "subject": null
+ },
+ "psychedelicpromosandradiospots": {
+  "match": null,
+  "subject": null
+ },
+ "purpleprogramme4march": {
+  "match": null,
+  "subject": null
+ },
+ "quietplease": {
+  "match": null,
+  "subject": null
+ },
+ "radiocityplayhouse": {
+  "match": {
+   "born": [],
+   "desc": "American radio dramatic anhology series (1948–1950)",
+   "died": [],
+   "end": [],
+   "enwiki": "Radio City Playhouse",
+   "identity": "years",
+   "imgs": {},
+   "label": "Radio City Playhouse",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7280722",
+   "start": []
+  },
+  "subject": null
+ },
+ "radiocommercials": {
+  "match": null,
+  "subject": null
+ },
+ "radiocommercialsshows": {
+  "match": null,
+  "subject": null
+ },
+ "radioreadersdigest": {
+  "match": {
+   "born": [],
+   "desc": "American anthology radio series (1942–1948)",
+   "died": [],
+   "end": [],
+   "enwiki": "Radio Reader's Digest",
+   "identity": "years",
+   "imgs": {},
+   "label": "Radio Reader's Digest",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q135682414",
+   "start": []
+  },
+  "subject": null
+ },
+ "radiorerunsincludingcommercialscassette": {
+  "match": null,
+  "subject": null
+ },
+ "raffles": {
+  "match": null,
+  "subject": null
+ },
+ "railroadhour": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Railroad Hour",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Railroad Hour",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7759289",
+   "start": []
+  },
+  "subject": null
+ },
+ "rangerbill": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Ranger Bill",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Ranger Bill",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7292759",
+   "start": []
+  },
+  "subject": null
+ },
+ "raybradbury": {
+  "match": null,
+  "subject": null
+ },
+ "raybradburybradburyreadsbradburylistening": {
+  "match": null,
+  "subject": null
+ },
+ "rayherbeckandhisromanticmusic": {
+  "match": null,
+  "subject": null
+ },
+ "redskeltonshow": {
+  "match": null,
+  "subject": null
+ },
+ "relicradiosciencefiction": {
+  "match": null,
+  "subject": null
+ },
+ "relicradioshow": {
+  "match": null,
+  "subject": null
+ },
+ "relicradiothrillers": {
+  "match": null,
+  "subject": null
+ },
+ "richandthefilthy7tedbrainsrebephanie": {
+  "match": null,
+  "subject": null
+ },
+ "richarddiamondprivatedetective": {
+  "match": null,
+  "subject": null
+ },
+ "roberteasbyoneira": {
+  "match": null,
+  "subject": null
+ },
+ "rockyfortune": {
+  "match": {
+   "born": [],
+   "desc": "American radio drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Rocky Fortune",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Rocky Fortune",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7355780",
+   "start": []
+  },
+  "subject": null
+ },
+ "rockyjordan": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Rocky Jordan",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Rocky Jordan",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7355829",
+   "start": []
+  },
+  "subject": null
+ },
+ "roguesgallery": {
+  "match": {
+   "born": [],
+   "desc": "American radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Rogue's Gallery (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Rogue's Gallery",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q65091608",
+   "start": []
+  },
+  "subject": null
+ },
+ "romance": {
+  "match": {
+   "born": [],
+   "desc": "",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Romance",
+   "p31": [
+    "Q105543609"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q10364205",
+   "start": []
+  },
+  "subject": null
+ },
+ "rosaleenmcdonaghshesnotmine": {
+  "match": null,
+  "subject": null
+ },
+ "royrogersshow": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Roy Rogers Show (radio program)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Roy Rogers Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q17183823",
+   "start": []
+  },
+  "subject": null
+ },
+ "saint": {
+  "match": {
+   "born": [],
+   "desc": "radio program starring Vincent Price",
+   "died": [],
+   "end": [],
+   "enwiki": "The Saint (radio program)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Saint",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q18153704",
+   "start": []
+  },
+  "subject": null
+ },
+ "saladbowlrevue": {
+  "match": null,
+  "subject": null
+ },
+ "saneviewstheworld185thedisarmamentgame": {
+  "match": null,
+  "subject": null
+ },
+ "saturdaydancedate": {
+  "match": null,
+  "subject": null
+ },
+ "sciencefiction1968": {
+  "match": null,
+  "subject": null
+ },
+ "sciencemagazineoftheair": {
+  "match": null,
+  "subject": null
+ },
+ "screendirectorsplayhouse": {
+  "match": {
+   "born": [],
+   "desc": "American radio dramatic anthology series (1949–1951)",
+   "died": [],
+   "end": [],
+   "enwiki": "Screen Directors Playhouse (radio series)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Screen Directors Playhouse",
+   "p31": [],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q125389046",
+   "start": []
+  },
+  "subject": null
+ },
+ "screenguildtheater": {
+  "match": {
+   "born": [],
+   "desc": "American radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Screen Guild Theater",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Screen Guild Theater",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [
+    "The Screen Guild Theater"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7762704",
+   "start": []
+  },
+  "subject": null
+ },
+ "sealedbook": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "The Sealed Book",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Sealed Book",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7762813",
+   "start": []
+  },
+  "subject": null
+ },
+ "secretsofscotlandyard": {
+  "match": null,
+  "subject": null
+ },
+ "seeingeartheater": {
+  "match": {
+   "born": [],
+   "desc": "drama Troupe",
+   "died": [],
+   "end": [],
+   "enwiki": "Seeing Ear Theater",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Seeing Ear Theater",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q17079847",
+   "start": []
+  },
+  "subject": null
+ },
+ "sextonblake": {
+  "match": null,
+  "subject": null
+ },
+ "sherlockholmes": {
+  "match": {
+   "born": [],
+   "desc": "radio show",
+   "died": [],
+   "end": [],
+   "enwiki": "Sherlock Holmes (1952 radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Sherlock Holmes",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q97169169",
+   "start": []
+  },
+  "subject": null
+ },
+ "sherlockholmes1932": {
+  "match": {
+   "born": [],
+   "desc": "radio show",
+   "died": [],
+   "end": [],
+   "enwiki": "Sherlock Holmes (1952 radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Sherlock Holmes",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q97169169",
+   "start": []
+  },
+  "subject": null
+ },
+ "showtimewithfrankiemasters": {
+  "match": null,
+  "subject": null
+ },
+ "singinglady": {
+  "match": null,
+  "subject": null
+ },
+ "sixshooter": {
+  "match": {
+   "born": [],
+   "desc": "Serialized Radio Drama",
+   "died": [],
+   "end": [],
+   "enwiki": "The Six Shooter",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Six Shooter",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7764561",
+   "start": []
+  },
+  "subject": null
+ },
+ "soldiersofthepress": {
+  "match": null,
+  "subject": null
+ },
+ "songofatroubledheart": {
+  "match": null,
+  "subject": null
+ },
+ "soundoff": {
+  "match": null,
+  "subject": null
+ },
+ "soundofwar": {
+  "match": null,
+  "subject": null
+ },
+ "spacepatrol": {
+  "match": null,
+  "subject": null
+ },
+ "speedgibsonoftheintlsecretpolice": {
+  "match": null,
+  "subject": null
+ },
+ "spikejones": {
+  "match": null,
+  "subject": null
+ },
+ "spikejonesspotlightrevue": {
+  "match": null,
+  "subject": null
+ },
+ "spycatcher": {
+  "match": null,
+  "subject": null
+ },
+ "standbyforcrime": {
+  "match": null,
+  "subject": null
+ },
+ "stanfrebergshow": {
+  "match": {
+   "born": [],
+   "desc": "",
+   "died": [],
+   "end": [
+    "1957"
+   ],
+   "enwiki": "The Stan Freberg Show",
+   "identity": "years",
+   "imgs": {},
+   "label": "The Stan Freberg Show",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [
+    "Q18336099"
+   ],
+   "p50": [],
+   "qid": "Q7766206",
+   "start": [
+    "1957"
+   ]
+  },
+  "subject": null
+ },
+ "stephenwakelamlyinglowsamuelbeckett": {
+  "match": null,
+  "subject": null
+ },
+ "stevecanyon": {
+  "match": null,
+  "subject": null
+ },
+ "storyofdrkildare": {
+  "match": null,
+  "subject": null
+ },
+ "storyofsatanplace": {
+  "match": null,
+  "subject": null
+ },
+ "straightarrow": {
+  "match": {
+   "born": [],
+   "desc": "American radio drama and comic series",
+   "died": [],
+   "end": [],
+   "enwiki": "Straight Arrow",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Straight Arrow",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q17143091",
+   "start": []
+  },
+  "subject": null
+ },
+ "strange": {
+  "match": null,
+  "subject": null
+ },
+ "strangeadventure": {
+  "match": null,
+  "subject": null
+ },
+ "strangeasitseems": {
+  "match": null,
+  "subject": null
+ },
+ "studentforumforeignstudentdiscussion": {
+  "match": null,
+  "subject": null
+ },
+ "suspense": {
+  "match": {
+   "born": [],
+   "desc": "radio drama series",
+   "died": [],
+   "end": [
+    "1962"
+   ],
+   "enwiki": "Suspense (radio drama)",
+   "identity": "years",
+   "imgs": {},
+   "label": "Suspense",
+   "p31": [
+    "Q3511312"
+   ],
+   "p373": [
+    "Suspense"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1548940",
+   "start": [
+    "1942"
+   ]
+  },
+  "subject": null
+ },
+ "suspenseproject12eyewitness": {
+  "match": null,
+  "subject": null
+ },
+ "suspicion": {
+  "match": null,
+  "subject": null
+ },
+ "talesfromthecrypt": {
+  "match": {
+   "born": [],
+   "desc": "radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "Tales from the Crypt (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Tales from the Crypt",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7679274",
+   "start": []
+  },
+  "subject": null
+ },
+ "talesoffatima": {
+  "match": {
+   "born": [],
+   "desc": "US radio program",
+   "died": [],
+   "end": [],
+   "enwiki": "Tales of Fatima",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Tales of Fatima",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7679320",
+   "start": []
+  },
+  "subject": null
+ },
+ "talesofthetexasrangers": {
+  "match": null,
+  "subject": null
+ },
+ "tarzan": {
+  "match": {
+   "born": [],
+   "desc": "composition by Noel Rosa",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Tarzan",
+   "p31": [
+    "Q105543609"
+   ],
+   "p373": [
+    "Sheet music of Noel Rosa"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q124342954",
+   "start": []
+  },
+  "subject": null
+ },
+ "tarzanoftheapes": {
+  "match": null,
+  "subject": null
+ },
+ "thathammerguy": {
+  "match": null,
+  "subject": null
+ },
+ "theaterfive": {
+  "match": null,
+  "subject": null
+ },
+ "theaterguildontheair": {
+  "match": null,
+  "subject": null
+ },
+ "thefirstcenturychurchinthetwentieth": {
+  "match": null,
+  "subject": null
+ },
+ "thisiswichita": {
+  "match": null,
+  "subject": null
+ },
+ "thisisyourfbi": {
+  "match": null,
+  "subject": null
+ },
+ "thunderbirdsminialbumma113": {
+  "match": null,
+  "subject": null
+ },
+ "tomsnyderrecordingsfromthes": {
+  "match": null,
+  "subject": null
+ },
+ "truedetectivemysteries": {
+  "match": null,
+  "subject": null
+ },
+ "twilightzone": {
+  "match": {
+   "born": [],
+   "desc": "21st century radio remakes of original Twilight Zone episodes",
+   "died": [],
+   "end": [],
+   "enwiki": "The Twilight Zone (radio series)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Twilight Zone Radio Dramas",
+   "p31": [
+    "Q3511312"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2228924",
+   "start": []
+  },
+  "subject": null
+ },
+ "unclesam": {
+  "match": null,
+  "subject": {
+   "born": [
+    "1971"
+   ],
+   "desc": "American singer",
+   "died": [],
+   "end": [],
+   "enwiki": "Uncle Sam (singer)",
+   "imgs": {},
+   "label": "Uncle Sam",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2854991",
+   "start": []
+  }
+ },
+ "unibaptistchurchservice": {
+  "match": null,
+  "subject": null
+ },
+ "universityorchestra": {
+  "match": null,
+  "subject": null
+ },
+ "usafrolandbynums11a1173": {
+  "match": null,
+  "subject": null
+ },
+ "vincentwoodsbrokenmoon": {
+  "match": null,
+  "subject": null
+ },
+ "voyageofthescarletqueen": {
+  "match": {
+   "born": [],
+   "desc": "radio drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Voyage of the Scarlet Queen",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Voyage of the Scarlet Queen",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7942420",
+   "start": []
+  },
+  "subject": null
+ },
+ "wednesdayswithyou": {
+  "match": null,
+  "subject": null
+ },
+ "weirdcircle": {
+  "match": {
+   "born": [],
+   "desc": "radio drama series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Weird Circle",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Weird Circle",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q17141890",
+   "start": []
+  },
+  "subject": null
+ },
+ "whisperingstreets": {
+  "match": {
+   "born": [],
+   "desc": "American radio romance drama",
+   "died": [],
+   "end": [],
+   "enwiki": "Whispering Streets",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Whispering Streets",
+   "p31": [],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q123018671",
+   "start": []
+  },
+  "subject": null
+ },
+ "whistler": {
+  "match": {
+   "born": [],
+   "desc": "radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Whistler (radio series)",
+   "identity": "network",
+   "imgs": {},
+   "label": "The Whistler",
+   "p31": [
+    "Q14623351"
+   ],
+   "p373": [],
+   "p449": [
+    "Q43380"
+   ],
+   "p50": [],
+   "qid": "Q3989988",
+   "start": []
+  },
+  "subject": null
+ },
+ "whitecoolies": {
+  "match": null,
+  "subject": null
+ },
+ "whitehall1212": {
+  "match": {
+   "born": [],
+   "desc": "crime drama radio show",
+   "died": [],
+   "end": [],
+   "enwiki": "Whitehall 1212 (radio show)",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "Whitehall 1212",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7995977",
+   "start": []
+  },
+  "subject": null
+ },
+ "wildbillhickok": {
+  "match": null,
+  "subject": null
+ },
+ "williamshakespearekinglearrteradio": {
+  "match": null,
+  "subject": null
+ },
+ "winstonchurchillspeechesandradiobroadcasts": {
+  "match": null,
+  "subject": null
+ },
+ "witchstale": {
+  "match": {
+   "born": [],
+   "desc": "1930s American horror-fantasy radio series",
+   "died": [],
+   "end": [],
+   "enwiki": "The Witch's Tale",
+   "identity": "title-only",
+   "imgs": {},
+   "label": "The Witch's Tale",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q7775269",
+   "start": []
+  },
+  "subject": null
+ },
+ "wordsatwar": {
+  "match": null,
+  "subject": null
+ },
+ "worldadventurersclub": {
+  "match": null,
+  "subject": null
+ },
+ "xminusone": {
+  "match": {
+   "born": [],
+   "desc": "NBC science fiction radio series from 1955–1958",
+   "died": [],
+   "end": [],
+   "enwiki": "X Minus One",
+   "identity": "years",
+   "imgs": {},
+   "label": "X Minus One",
+   "p31": [
+    "Q1555508"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q8042761",
+   "start": []
+  },
+  "subject": null
+ },
+ "youarethere": {
+  "match": null,
+  "subject": null
+ },
+ "youbetyourlife": {
+  "match": {
+   "born": [],
+   "desc": "American comedy quiz series",
+   "died": [],
+   "end": [
+    "1961"
+   ],
+   "enwiki": "You Bet Your Life",
+   "identity": "years",
+   "imgs": {
+    "P18": [
+     {
+      "file": "George Fenneman and Groucho Marx You Bet Your Life 1951.jpg"
+     }
+    ]
+   },
+   "label": "You Bet Your Life",
+   "p31": [
+    "Q1555508",
+    "Q5398426"
+   ],
+   "p373": [],
+   "p449": [
+    "Q13974"
+   ],
+   "p50": [],
+   "qid": "Q466776",
+   "start": [
+    "1947"
+   ]
+  },
+  "subject": null
+ },
+ "youcantdobusinesswithhitler": {
+  "match": null,
+  "subject": null
+ },
+ "yourdaytimeradionewspaper": {
+  "match": null,
+  "subject": null
+ },
+ "yourstrulyjohnnydollar": {
+  "match": null,
+  "subject": null
+ }
+}

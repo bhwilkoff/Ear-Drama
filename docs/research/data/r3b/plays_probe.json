@@ -1,0 +1,2896 @@
+{
+ "gut-10722-2": {
+  "author": {
+   "born": [
+    "1823"
+   ],
+   "desc": "Russian playwright (1823-1886)",
+   "died": [
+    "1886"
+   ],
+   "end": [],
+   "enwiki": "Alexander Ostrovsky",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Alexander Ostrovsky by Vasily Perov.jpg"
+     }
+    ]
+   },
+   "label": "Alexander Ostrovsky",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Alexander Ostrovsky (playwright)"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q171976",
+   "start": []
+  },
+  "authors": [
+   "Aleksandr Nikolaevich Ostrovsky"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [
+   {
+    "id": "playsbyalexander0000unse_q6d0",
+    "pcs": null,
+    "year": 1917
+   }
+  ],
+  "title": "Poverty Is No Crime",
+  "work": null,
+  "wp": null
+ },
+ "gut-10747": {
+  "author": {
+   "born": [
+    "1868"
+   ],
+   "desc": "French poet and dramatist (1868–1918)",
+   "died": [
+    "1918"
+   ],
+   "end": [],
+   "enwiki": "Edmond Rostand",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Edmond Rostand.jpg"
+     }
+    ]
+   },
+   "label": "Edmond Rostand",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Edmond Rostand"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q202749",
+   "start": []
+  },
+  "authors": [
+   "Edmond Rostand"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "bwb_S0-BPN-143",
+    "pcs": null,
+    "year": 1919
+   },
+   {
+    "id": "chanteclerpic00rost",
+    "pcs": null,
+    "year": 1910
+   },
+   {
+    "id": "chanteclerpice00rostuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1910
+   },
+   {
+    "id": "chanteclerplayi00rostgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1910
+   },
+   {
+    "id": "in.ernet.dli.2015.213768",
+    "pcs": null,
+    "year": 1912
+   }
+  ],
+  "title": "Chantecler",
+  "work": {
+   "born": [],
+   "desc": "1911 play by Edmond Rostand",
+   "died": [],
+   "end": [],
+   "enwiki": "Chantecler (play)",
+   "imgs": {
+    "P18": [
+     {
+      "file": "M.Blayney & M.Adams.jpg"
+     }
+    ]
+   },
+   "label": "Chantecler",
+   "p31": [
+    "Q7725634"
+   ],
+   "p373": [
+    "Chantecler (play)"
+   ],
+   "p449": [],
+   "p50": [
+    "Q202749"
+   ],
+   "qid": "Q696502",
+   "start": [
+    "1911"
+   ]
+  },
+  "wp": {
+   "h": 2788,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/6/63/The_canadian_magazine_of_politics%2C_science%2C_art_and_literature%2C_November_1910-April_1911_%281893%29_%2814591261188%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Chantecler (play)",
+   "w": 1530
+  }
+ },
+ "gut-11878-2": {
+  "author": {
+   "born": [
+    "1881"
+   ],
+   "desc": "Irish writer (1881-1972)",
+   "died": [
+    "1972"
+   ],
+   "end": [],
+   "enwiki": "Padraic Colum",
+   "imgs": {
+    "P18": [
+     {
+      "P585": "1959",
+      "file": "PadraicColum.jpeg"
+     }
+    ]
+   },
+   "label": "Padraic Colum",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Padraic Colum"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q429440",
+   "start": []
+  },
+  "authors": [
+   "Padraic Colum"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 11,
+  "ia_pre1931": [
+   {
+    "id": "landplayinthreea00col",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1905
+   },
+   {
+    "id": "landaplayinthre00colugoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1905
+   },
+   {
+    "id": "30081001440720",
+    "pcs": null,
+    "year": 1917
+   },
+   {
+    "id": "threeplaysfiddle00colu",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1916
+   },
+   {
+    "id": "threeplaysfiddle00colurich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1916
+   }
+  ],
+  "title": "The Land",
+  "work": null,
+  "wp": null
+ },
+ "gut-12040": {
+  "author": {
+   "born": [
+    "1941"
+   ],
+   "desc": "English tubist (1941–1987)",
+   "died": [
+    "1987"
+   ],
+   "end": [],
+   "enwiki": "John Fletcher (tubist)",
+   "imgs": {},
+   "label": "John Fletcher",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1291291",
+   "start": []
+  },
+  "authors": [
+   "John Fletcher",
+   "Francis Beaumont"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "beaumontfletcher0000fran",
+    "pcs": null,
+    "year": 1906
+   },
+   {
+    "id": "overturemarchess00bish",
+    "pcs": null,
+    "year": 1800
+   }
+  ],
+  "title": "The Humourous Lieutenant,",
+  "work": null,
+  "wp": null
+ },
+ "gut-14347-2": {
+  "author": null,
+  "authors": [
+   "August Strindberg"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 8,
+  "ia_pre1931": [
+   {
+    "id": "therearecrimescr00stri",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1912
+   },
+   {
+    "id": "therearecrimesa00bjgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1912
+   },
+   {
+    "id": "therearecrimescr0000augu",
+    "pcs": null,
+    "year": 1912
+   },
+   {
+    "id": "in.ernet.dli.2015.123403",
+    "pcs": null,
+    "year": 1912
+   },
+   {
+    "id": "playsbyaugustst00strigoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1913
+   }
+  ],
+  "title": "There Are Crimes and Crimes",
+  "work": null,
+  "wp": null
+ },
+ "gut-14519-3": {
+  "author": {
+   "born": [
+    "1863"
+   ],
+   "desc": "British playwright",
+   "died": [
+    "1933"
+   ],
+   "end": [],
+   "enwiki": "Alfred Sutro",
+   "imgs": {},
+   "label": "Alfred Sutro",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Alfred Sutro"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4723494",
+   "start": []
+  },
+  "authors": [
+   "Alfred Sutro"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 5,
+  "ia_pre1931": [
+   {
+    "id": "marriagehasbeena00sutriala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1904
+   },
+   {
+    "id": "amakermenaduolo00sutrgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1902
+   },
+   {
+    "id": "guttertimeaduol00sutrgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1902
+   },
+   {
+    "id": "opendoorduologue00sutr",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1912
+   },
+   {
+    "id": "makerofmenduolog00sutrrich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1902
+   }
+  ],
+  "title": "A Duologue",
+  "work": null,
+  "wp": null
+ },
+ "gut-14519-4": {
+  "author": {
+   "born": [
+    "1863"
+   ],
+   "desc": "British playwright",
+   "died": [
+    "1933"
+   ],
+   "end": [],
+   "enwiki": "Alfred Sutro",
+   "imgs": {},
+   "label": "Alfred Sutro",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Alfred Sutro"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4723494",
+   "start": []
+  },
+  "authors": [
+   "Alfred Sutro"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [
+   {
+    "id": "opendoorduologue00sutr",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1912
+   }
+  ],
+  "title": "The Open Door",
+  "work": null,
+  "wp": null
+ },
+ "gut-14734-3": {
+  "author": null,
+  "authors": [
+   "Alan Alexander Milne"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "The Camberley Triangle",
+  "work": null,
+  "wp": null
+ },
+ "gut-14771": {
+  "author": {
+   "born": [
+    "1584"
+   ],
+   "desc": "English playwright (1584–1616)",
+   "died": [
+    "1616"
+   ],
+   "end": [],
+   "enwiki": "Francis Beaumont",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Francis Beaumont.jpg"
+     }
+    ]
+   },
+   "label": "Francis Beaumont",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Francis Beaumont"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q313932",
+   "start": []
+  },
+  "authors": [
+   "Francis Beaumont",
+   "John Fletcher"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "The False One",
+  "work": {
+   "born": [],
+   "desc": "jacobean stage play by John Fletcher and Philip Massinger",
+   "died": [],
+   "end": [],
+   "enwiki": "The False One",
+   "imgs": {
+    "P18": [
+     {
+      "file": "The False One frontispiece.jpg"
+     }
+    ]
+   },
+   "label": "The False One",
+   "p31": [
+    "Q7725634"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q312444",
+    "Q380291"
+   ],
+   "qid": "Q7733262",
+   "start": []
+  },
+  "wp": {
+   "h": 804,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/7/72/The_False_One_frontispiece.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "The False One",
+   "w": 943
+  }
+ },
+ "gut-15378": {
+  "author": {
+   "born": [
+    "1837"
+   ],
+   "desc": "English poet, playwright and novelist (1837–1909)",
+   "died": [
+    "1909"
+   ],
+   "end": [],
+   "enwiki": "Algernon Charles Swinburne",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Picture of Algernon C. Swinburne.jpg"
+     }
+    ]
+   },
+   "label": "Algernon Charles Swinburne",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Algernon Charles Swinburne"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q315511",
+   "start": []
+  },
+  "authors": [
+   "Algernon Charles Swinburne"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 16,
+  "ia_pre1931": [
+   {
+    "id": "bmshri.atalantaincalydo0000alge_s2v0",
+    "pcs": null,
+    "year": 1917
+   },
+   {
+    "id": "atalantaincalydo00swiniala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1908
+   },
+   {
+    "id": "atalantaincalydo00swin",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1866
+   },
+   {
+    "id": "atalantaincalyd02swingoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1901
+   },
+   {
+    "id": "atalantaincaly00swiniala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1917
+   }
+  ],
+  "title": "Atalanta in Calydon",
+  "work": {
+   "born": [],
+   "desc": "debut poetry collection (1865) by Algernon Charles Swinburne",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "Atalanta in Calydon",
+   "p31": [
+    "Q9210656"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q315511"
+   ],
+   "qid": "Q19051626",
+   "start": [
+    "1865"
+   ]
+  },
+  "wp": null
+ },
+ "gut-1977": {
+  "author": {
+   "born": [
+    "1639"
+   ],
+   "desc": "French dramatist (1639-1699)",
+   "died": [
+    "1699"
+   ],
+   "end": [],
+   "enwiki": "Jean Racine",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Portrait de Jean Racine d'après Jean-Baptiste Santerre.jpg"
+     },
+     {
+      "file": "Jean racine.jpg"
+     },
+     {
+      "P585": "1673",
+      "file": "Jean Racine - Versailles MV 2926.jpg"
+     }
+    ]
+   },
+   "label": "Jean Racine",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Jean Racine"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q742",
+   "start": []
+  },
+  "authors": [
+   "Jean Racine"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "phaedraaclassic00racigoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1858
+   }
+  ],
+  "title": "Phaedra",
+  "work": {
+   "born": [],
+   "desc": "",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "Phaedra",
+   "p31": [
+    "Q3331189"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q742"
+   ],
+   "qid": "Q42512088",
+   "start": []
+  },
+  "wp": null
+ },
+ "gut-2270-28": {
+  "author": {
+   "born": [
+    "1564"
+   ],
+   "desc": "English playwright and poet (1564–1616)",
+   "died": [
+    "1616"
+   ],
+   "end": [],
+   "enwiki": "William Shakespeare",
+   "imgs": {
+    "P1442": [
+     {
+      "file": "Shakespeare grave -Stratford-upon-Avon -3June2007.jpg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Shakespeare.jpg"
+     }
+    ]
+   },
+   "label": "William Shakespeare",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "William Shakespeare"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q692",
+   "start": []
+  },
+  "authors": [
+   "William Shakespeare"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "The Life of Tymon of Athens",
+  "work": {
+   "born": [],
+   "desc": "play by Shakespeare",
+   "died": [],
+   "end": [],
+   "enwiki": "Timon of Athens",
+   "imgs": {
+    "P18": [
+     {
+      "file": "TimonAthens01.JPG"
+     }
+    ]
+   },
+   "label": "Timon of Athens",
+   "p31": [
+    "Q116476516"
+   ],
+   "p373": [
+    "Timon of Athens"
+   ],
+   "p449": [],
+   "p50": [
+    "Q692"
+   ],
+   "qid": "Q284641",
+   "start": [
+    "1606"
+   ]
+  },
+  "wp": {
+   "h": 925,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Brooklyn_Museum_-_The_Fugitive_Study_for_Timon_of_Athens_-_Thomas_Couture.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Timon of Athens",
+   "w": 1199
+  }
+ },
+ "gut-2543": {
+  "author": {
+   "born": [
+    "1606"
+   ],
+   "desc": "French tragedian (1606–1684)",
+   "died": [
+    "1684"
+   ],
+   "end": [],
+   "enwiki": "Pierre Corneille",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Pierre Corneille 2.jpg"
+     }
+    ]
+   },
+   "label": "Pierre Corneille",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Pierre Corneille"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q747",
+   "start": []
+  },
+  "authors": [
+   "Pierre Corneille"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "polyeucte00corngoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1900
+   },
+   {
+    "id": "polyeucte03corngoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1887
+   },
+   {
+    "id": "polyeuctemartyr00henngoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1907
+   },
+   {
+    "id": "bub_gb_n6C-pTPqXAIC",
+    "pcs": null,
+    "year": 1841
+   },
+   {
+    "id": "polyeucte00fortgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1891
+   }
+  ],
+  "title": "Polyeucte",
+  "work": {
+   "born": [],
+   "desc": "1643 drama by French writer Pierre Corneille",
+   "died": [],
+   "end": [],
+   "enwiki": "Polyeucte",
+   "imgs": {},
+   "label": "Polyeucte",
+   "p31": [
+    "Q7725634"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q747"
+   ],
+   "qid": "Q546217",
+   "start": []
+  },
+  "wp": {
+   "h": 1255,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/3/31/Polyeuctus_of_Meletine_in_Armenia_%28Menologion_of_Basil_II%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Polyeucte",
+   "w": 1890
+  }
+ },
+ "gut-28488": {
+  "author": {
+   "born": [
+    "1982"
+   ],
+   "desc": "Ivorian singer artist",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "Molière",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q118522451",
+   "start": []
+  },
+  "authors": [
+   "Molière"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "ninonmolireett00simo",
+    "pcs": null,
+    "year": 1815
+   },
+   {
+    "id": "letartuffeedited00moliuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1905
+   },
+   {
+    "id": "neletartuffeouli00moliuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1900
+   },
+   {
+    "id": "bim_early-english-books-1641-1700_tartuffe-_moliere-jean-baptiste-p_1670",
+    "pcs": null,
+    "year": 1670
+   },
+   {
+    "id": "letartuffeoulimp00moliuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1918
+   }
+  ],
+  "title": "Tartuffe",
+  "work": {
+   "born": [],
+   "desc": "comedy play by Molière",
+   "died": [],
+   "end": [],
+   "enwiki": "Tartuffe",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Tartuffe1739EnglishEdition.jpg"
+     }
+    ]
+   },
+   "label": "Tartuffe",
+   "p31": [
+    "Q116476516"
+   ],
+   "p373": [
+    "Tartuffe"
+   ],
+   "p449": [],
+   "p50": [
+    "Q687"
+   ],
+   "qid": "Q205875",
+   "start": [
+    "1664"
+   ]
+  },
+  "wp": {
+   "h": 870,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/d/d2/Tartuffe.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Tartuffe",
+   "w": 512
+  }
+ },
+ "gut-2908": {
+  "author": {
+   "born": [
+    "1867"
+   ],
+   "desc": "English novelist and playwright (1867–1933)",
+   "died": [
+    "1933"
+   ],
+   "end": [],
+   "enwiki": "John Galsworthy",
+   "imgs": {
+    "P18": [
+     {
+      "file": "John Galsworthy 2.jpg"
+     },
+     {
+      "file": "Photo Portrait of the British writer John Galsworthy correcting a manuscript 1930 - Touring Club Italiano 11 5336.jpg"
+     }
+    ]
+   },
+   "label": "John Galsworthy",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "John Galsworthy"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q82248",
+   "start": []
+  },
+  "authors": [
+   "John Galsworthy"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 19,
+  "ia_pre1931": [
+   {
+    "id": "playssilverboxj00galsgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1909
+   },
+   {
+    "id": "strifedramainthr0000john_z1h3",
+    "pcs": null,
+    "year": 1909
+   },
+   {
+    "id": "dli.bengal.10689.11191",
+    "pcs": null,
+    "year": 1911
+   },
+   {
+    "id": "playsvoli00gals",
+    "pcs": null,
+    "year": 1909
+   },
+   {
+    "id": "playssilverboxjo00galsiala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1909
+   }
+  ],
+  "title": "Strife",
+  "work": {
+   "born": [],
+   "desc": "play by John Galsworthy",
+   "died": [],
+   "end": [],
+   "enwiki": "Strife (play)",
+   "imgs": {},
+   "label": "Strife",
+   "p31": [
+    "Q7725634"
+   ],
+   "p373": [
+    "Strife (play)"
+   ],
+   "p449": [],
+   "p50": [
+    "Q82248"
+   ],
+   "qid": "Q23747075",
+   "start": []
+  },
+  "wp": {
+   "h": 3531,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/7/71/Plakat_za_predstavo_Borba_v_Narodnem_gledali%C5%A1%C4%8Du_v_Mariboru_20._maja_1922.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Strife (play)",
+   "w": 2481
+  }
+ },
+ "gut-2915": {
+  "author": {
+   "born": [
+    "1867"
+   ],
+   "desc": "English novelist and playwright (1867–1933)",
+   "died": [
+    "1933"
+   ],
+   "end": [],
+   "enwiki": "John Galsworthy",
+   "imgs": {
+    "P18": [
+     {
+      "file": "John Galsworthy 2.jpg"
+     },
+     {
+      "file": "Photo Portrait of the British writer John Galsworthy correcting a manuscript 1930 - Touring Club Italiano 11 5336.jpg"
+     }
+    ]
+   },
+   "label": "John Galsworthy",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "John Galsworthy"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q82248",
+   "start": []
+  },
+  "authors": [
+   "John Galsworthy"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 14,
+  "ia_pre1931": [
+   {
+    "id": "playsfourthserie00galsrich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1920
+   },
+   {
+    "id": "playsfourthserie0000unse",
+    "pcs": null,
+    "year": 1920
+   },
+   {
+    "id": "playsfourthseri01galsgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1920
+   },
+   {
+    "id": "abitoloveaplayi01galsgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1915
+   },
+   {
+    "id": "abitoloveaplayi00galsgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1915
+   }
+  ],
+  "title": "A Bit O' Love",
+  "work": null,
+  "wp": null
+ },
+ "gut-29231": {
+  "author": {
+   "born": [
+    "1785"
+   ],
+   "desc": "American playwright, diplomat, journalist, and utopian",
+   "died": [
+    "1851"
+   ],
+   "end": [],
+   "enwiki": "Mordecai Manuel Noah",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Mordecai-Manuel-Noah.png"
+     }
+    ]
+   },
+   "label": "Mordecai Manuel Noah",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Mordecai Manuel Noah"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1618997",
+   "start": []
+  },
+  "authors": [
+   "Mordecai Manuel Noah"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [],
+  "title": "She Would Be a Soldier",
+  "work": null,
+  "wp": null
+ },
+ "gut-3012": {
+  "author": {
+   "born": [
+    "0448"
+   ],
+   "desc": "Classical Athenian comic playwright (c. 446 – c. 386 BC)",
+   "died": [
+    "0386"
+   ],
+   "end": [],
+   "enwiki": "Aristophanes",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Aristofanes.jpg"
+     },
+     {
+      "file": "Bust of Aristophanes.jpg"
+     }
+    ]
+   },
+   "label": "Aristophanes",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Aristophanes"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q43353",
+   "start": []
+  },
+  "authors": [
+   "Aristophanes"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "acharniansrevwit00arisuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1876
+   },
+   {
+    "id": "acharnianswithin00arisuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1909
+   },
+   {
+    "id": "acharnians00aris",
+    "pcs": null,
+    "year": 1893
+   },
+   {
+    "id": "acharniansthreeo0000aris",
+    "pcs": null,
+    "year": 1911
+   },
+   {
+    "id": "aristophanesiach00arisrich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1898
+   }
+  ],
+  "title": "The Acharnians",
+  "work": {
+   "born": [],
+   "desc": "comedy by Aristophanes",
+   "died": [],
+   "end": [],
+   "enwiki": "The Acharnians",
+   "imgs": {},
+   "label": "The Acharnians",
+   "p31": [
+    "Q116476516"
+   ],
+   "p373": [
+    "Acharnians (Aristophanes)"
+   ],
+   "p449": [],
+   "p50": [
+    "Q43353"
+   ],
+   "qid": "Q1059987",
+   "start": [
+    "0425"
+   ]
+  },
+  "wp": {
+   "h": null,
+   "image": null,
+   "title": "The Acharnians",
+   "w": null
+  }
+ },
+ "gut-3304-2": {
+  "author": {
+   "born": [
+    "1878"
+   ],
+   "desc": "American writer (1878–1968)",
+   "died": [
+    "1968"
+   ],
+   "end": [],
+   "enwiki": "Upton Sinclair",
+   "imgs": {
+    "P1442": [
+     {
+      "file": "Upton Sinclair grave.jpg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Upton Sinclair Portrait 1934.jpg"
+     }
+    ]
+   },
+   "label": "Upton Sinclair",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Upton Sinclair"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q216134",
+   "start": []
+  },
+  "authors": [
+   "Upton Sinclair"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 8,
+  "ia_pre1931": [
+   {
+    "id": "playsofprotestna00sincuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1912
+   },
+   {
+    "id": "cu31924021691203",
+    "pcs": null,
+    "year": 1912
+   },
+   {
+    "id": "playsprotestnat00sincgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1911
+   },
+   {
+    "id": "playsofprotestna00sinc",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1912
+   },
+   {
+    "id": "playsprotestnat01sincgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1912
+   }
+  ],
+  "title": "The Machine",
+  "work": null,
+  "wp": null
+ },
+ "gut-3401": {
+  "author": {
+   "born": [
+    "1837"
+   ],
+   "desc": "American author, critic, and playwright (1837–1920)",
+   "died": [
+    "1920"
+   ],
+   "end": [],
+   "enwiki": "William Dean Howells",
+   "imgs": {
+    "P18": [
+     {
+      "file": "William Dean Howells (ca1870).jpg"
+     }
+    ]
+   },
+   "label": "William Dean Howells",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "William Dean Howells"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q526709",
+   "start": []
+  },
+  "authors": [
+   "William Dean Howells"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "elevatorfarce00howegoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1885
+   },
+   {
+    "id": "elevatorfarce00howerich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1913
+   }
+  ],
+  "title": "The Elevator",
+  "work": null,
+  "wp": null
+ },
+ "gut-34860": {
+  "author": {
+   "born": [
+    "1874"
+   ],
+   "desc": "English playwright and author (1874–1965)",
+   "died": [
+    "1965"
+   ],
+   "end": [],
+   "enwiki": "W. Somerset Maugham",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Maugham retouched.jpg"
+     },
+     {
+      "file": "Maugham caric.jpg"
+     }
+    ]
+   },
+   "label": "William Somerset Maugham",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "William Somerset Maugham"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q134942",
+   "start": []
+  },
+  "authors": [
+   "William Somerset Maugham"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 7,
+  "ia_pre1931": [
+   {
+    "id": "eastsuezaplayin01mauggoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1922
+   },
+   {
+    "id": "eastofsuezplayin00maug",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1922
+   },
+   {
+    "id": "eastsuezaplayin00mauggoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1922
+   },
+   {
+    "id": "eastofsuez00maug",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1922
+   },
+   {
+    "id": "bwb_Y0-AAC-674",
+    "pcs": null,
+    "year": 1922
+   }
+  ],
+  "title": "East of Suez",
+  "work": null,
+  "wp": null
+ },
+ "gut-35305-2": {
+  "author": null,
+  "authors": [
+   "F. Anstey"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "Nora; Or, the Bird-cage",
+  "work": null,
+  "wp": null
+ },
+ "gut-36515": {
+  "author": {
+   "born": [],
+   "desc": "British Royal Navy officer, lieutenant in 1815",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "George Colman",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q108126352",
+   "start": []
+  },
+  "authors": [
+   "George Colman"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 6,
+  "ia_pre1931": [
+   {
+    "id": "bim_eighteenth-century_the-battle-of-hexham-a-_colman-george_1790_0",
+    "pcs": null,
+    "year": 1790
+   },
+   {
+    "id": "bim_eighteenth-century_the-battle-of-hexham-s_colman-george_1789",
+    "pcs": null,
+    "year": 1789
+   },
+   {
+    "id": "bim_eighteenth-century_the-battle-of-hexham-a-_colman-george_1790",
+    "pcs": null,
+    "year": 1790
+   },
+   {
+    "id": "bim_eighteenth-century_the-battle-of-hexham-a-_colman-george_1796",
+    "pcs": null,
+    "year": 1796
+   },
+   {
+    "id": "bim_eighteenth-century_the-battle-of-hexham-a-_colman-george_1790_1",
+    "pcs": null,
+    "year": 1790
+   }
+  ],
+  "title": "The Battle of Hexham",
+  "work": null,
+  "wp": null
+ },
+ "gut-3790": {
+  "author": {
+   "born": [
+    "1940"
+   ],
+   "desc": "American journalist (1940–2022)",
+   "died": [
+    "2022"
+   ],
+   "end": [],
+   "enwiki": "Bernard Shaw (journalist)",
+   "imgs": {
+    "P18": [
+     {
+      "P585": "2004",
+      "file": "Bernard Shaw.JPG"
+     }
+    ]
+   },
+   "label": "Bernard Shaw",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Bernard Shaw (journalist)"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q322736",
+   "start": []
+  },
+  "authors": [
+   "Bernard Shaw"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "johnbullsotheris0000bern_j5c8",
+    "pcs": null,
+    "year": 1926
+   },
+   {
+    "id": "playsxijohnbulls0000bern",
+    "pcs": null,
+    "year": 1930
+   },
+   {
+    "id": "majorbarbarainth0000bsha",
+    "pcs": null,
+    "year": 1928
+   },
+   {
+    "id": "johnbullsotheri00shawgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1907
+   },
+   {
+    "id": "dli.ministry.15084",
+    "pcs": null,
+    "year": 1929
+   }
+  ],
+  "title": "Major Barbara",
+  "work": {
+   "born": [],
+   "desc": "play written by George Bernard Shaw",
+   "died": [],
+   "end": [],
+   "enwiki": "Major Barbara",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Major Barbara 01.PNG"
+     }
+    ]
+   },
+   "label": "Major Barbara",
+   "p31": [
+    "Q116476516"
+   ],
+   "p373": [
+    "Major Barbara"
+   ],
+   "p449": [],
+   "p50": [
+    "Q19185"
+   ],
+   "qid": "Q6738028",
+   "start": []
+  },
+  "wp": {
+   "h": 600,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Major_Barbara_01.PNG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Major Barbara",
+   "w": 583
+  }
+ },
+ "gut-37962-1": {
+  "author": {
+   "born": [
+    "1874"
+   ],
+   "desc": "English playwright and author (1874–1965)",
+   "died": [
+    "1965"
+   ],
+   "end": [],
+   "enwiki": "W. Somerset Maugham",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Maugham retouched.jpg"
+     },
+     {
+      "file": "Maugham caric.jpg"
+     }
+    ]
+   },
+   "label": "William Somerset Maugham",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "William Somerset Maugham"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q134942",
+   "start": []
+  },
+  "authors": [
+   "William Somerset Maugham"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 5,
+  "ia_pre1931": [
+   {
+    "id": "in.ernet.dli.2015.210105",
+    "pcs": null,
+    "year": 1927
+   },
+   {
+    "id": "ladyfrederickcom0000wsma",
+    "pcs": null,
+    "year": 1912
+   },
+   {
+    "id": "ladyfrederickcom00maugrich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1912
+   }
+  ],
+  "title": "Lady Frederick",
+  "work": {
+   "born": [],
+   "desc": "comedy by the British writer W. Somerset Maugham",
+   "died": [],
+   "end": [],
+   "enwiki": "Lady Frederick",
+   "imgs": {},
+   "label": "Lady Frederick",
+   "p31": [
+    "Q7725634"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q134942"
+   ],
+   "qid": "Q27859408",
+   "start": []
+  },
+  "wp": {
+   "h": 760,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/0/0c/Maugham_facing_camera.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Lady Frederick",
+   "w": 502
+  }
+ },
+ "gut-38909": {
+  "author": {
+   "born": [
+    "1866"
+   ],
+   "desc": "Anglo-Australian scholar (1866-1957)",
+   "died": [
+    "1957"
+   ],
+   "end": [],
+   "enwiki": "Gilbert Murray",
+   "imgs": {
+    "P18": [
+     {
+      "P585": "1916",
+      "file": "Gilbert Murray 1916 full.jpg"
+     }
+    ]
+   },
+   "label": "Gilbert Murray",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Gilbert Murray"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q538478",
+   "start": []
+  },
+  "authors": [
+   "Gilbert Murray"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 10,
+  "ia_pre1931": [
+   {
+    "id": "andromacheplayin00murr",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1913
+   },
+   {
+    "id": "andromacheaplay01murrgoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1913
+   },
+   {
+    "id": "andromacheplayin00murriala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1914
+   },
+   {
+    "id": "andromache00murriala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1900
+   },
+   {
+    "id": "in.ernet.dli.2015.113281",
+    "pcs": null,
+    "year": 1900
+   }
+  ],
+  "title": "Andromache",
+  "work": null,
+  "wp": null
+ },
+ "gut-41369": {
+  "author": {
+   "born": [
+    "1848"
+   ],
+   "desc": "British dramatist (1848–1914)",
+   "died": [
+    "1914"
+   ],
+   "end": [],
+   "enwiki": "Sydney Grundy",
+   "imgs": {
+    "P18": [
+     {
+      "file": "SydneyGrundy1894.jpg"
+     }
+    ]
+   },
+   "label": "Sydney Grundy",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Sydney Grundy"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5773814",
+   "start": []
+  },
+  "authors": [
+   "Sydney Grundy"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "inhonourboundano00grunuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1885
+   }
+  ],
+  "title": "In Honour Bound",
+  "work": {
+   "born": [],
+   "desc": "1925 radio play",
+   "died": [],
+   "end": [],
+   "enwiki": "In Honour Bound",
+   "imgs": {},
+   "label": "In Honour Bound",
+   "p31": [
+    "Q2635894"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q5773814"
+   ],
+   "qid": "Q124661414",
+   "start": []
+  },
+  "wp": {
+   "h": null,
+   "image": null,
+   "title": "In Honour Bound",
+   "w": null
+  }
+ },
+ "gut-44233-4": {
+  "author": null,
+  "authors": [
+   "August Strindberg"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 4,
+  "ia_pre1931": [
+   {
+    "id": "playsbyauguststrind00stri",
+    "pcs": null,
+    "year": 1921
+   },
+   {
+    "id": "PlaysByAugustStrindberg3rd",
+    "pcs": null,
+    "year": 1913
+   },
+   {
+    "id": "adventeinweihnac00stri",
+    "pcs": null,
+    "year": 1917
+   },
+   {
+    "id": "cihm_86025",
+    "pcs": null,
+    "year": 1914
+   }
+  ],
+  "title": "Advent",
+  "work": null,
+  "wp": null
+ },
+ "gut-49610-2": {
+  "author": {
+   "born": [
+    "1806"
+   ],
+   "desc": "(1806-1862)",
+   "died": [
+    "1862"
+   ],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "William Butler Yeats",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q96078879",
+   "start": []
+  },
+  "authors": [
+   "William Butler Yeats"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "To Florence Farr",
+  "work": null,
+  "wp": null
+ },
+ "gut-51984": {
+  "author": {
+   "born": [
+    "1890"
+   ],
+   "desc": "American journalist, novelist, essayist and poet (1890–1957)",
+   "died": [
+    "1957"
+   ],
+   "end": [],
+   "enwiki": "Christopher Morley",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Christopher Darlington Morley cph.3b14371.jpg"
+     }
+    ]
+   },
+   "label": "Christopher Morley",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Christopher Morley"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q931105",
+   "start": []
+  },
+  "authors": [
+   "Christopher Morley"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "cu31924021801059",
+    "pcs": null,
+    "year": 1922
+   },
+   {
+    "id": "thursdayeve00morlrich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1922
+   }
+  ],
+  "title": "Thursday Evening",
+  "work": null,
+  "wp": null
+ },
+ "gut-52348-7": {
+  "author": {
+   "born": [
+    "1832"
+   ],
+   "desc": "American playwright and publisher (1832-1890)",
+   "died": [
+    "1890"
+   ],
+   "end": [],
+   "enwiki": "George Melville Baker",
+   "imgs": {},
+   "label": "George Melville Baker",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "George Melville Baker"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5542401",
+   "start": []
+  },
+  "authors": [
+   "George Melville Baker"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "A Thorn Among the Roses",
+  "work": null,
+  "wp": null
+ },
+ "gut-52661": {
+  "author": null,
+  "authors": [
+   "Adolphus Charles Troughton"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [
+   {
+    "id": "TroughtonShortSweet",
+    "pcs": null,
+    "year": 1861
+   }
+  ],
+  "title": "Short and Sweet",
+  "work": null,
+  "wp": null
+ },
+ "gut-54063-10": {
+  "author": {
+   "born": [
+    "1832"
+   ],
+   "desc": "American playwright and publisher (1832-1890)",
+   "died": [
+    "1890"
+   ],
+   "end": [],
+   "enwiki": "George Melville Baker",
+   "imgs": {},
+   "label": "George Melville Baker",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "George Melville Baker"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5542401",
+   "start": []
+  },
+  "authors": [
+   "George Melville Baker"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "Bread on the Waters",
+  "work": null,
+  "wp": null
+ },
+ "gut-54698-2": {
+  "author": {
+   "born": [
+    "1859"
+   ],
+   "desc": "English humorist (1859-1927)",
+   "died": [
+    "1927"
+   ],
+   "end": [],
+   "enwiki": "Jerome K. Jerome",
+   "imgs": {
+    "P1442": [
+     {
+      "file": "Jerome K Jerome, Grabstein in Ewelme.jpg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Jerome K. Jerome 02.jpg"
+     }
+    ]
+   },
+   "label": "Jerome K. Jerome",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Jerome K. Jerome"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q218698",
+   "start": []
+  },
+  "authors": [
+   "Jerome Klapka Jerome"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "woodbarrowfarmp00jerogoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1904
+   },
+   {
+    "id": "woodbarrowfarmpl00jero",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1904
+   }
+  ],
+  "title": "Woodbarrow Farm",
+  "work": null,
+  "wp": null
+ },
+ "gut-56151": {
+  "author": {
+   "born": [
+    "1855"
+   ],
+   "desc": "British writer (1855-1934)",
+   "died": [
+    "1934"
+   ],
+   "end": [],
+   "enwiki": "Arthur Wing Pinero",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Sir Arthur Pinero.jpg"
+     }
+    ]
+   },
+   "label": "Arthur Wing Pinero",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Arthur Wing Pinero"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q712073",
+   "start": []
+  },
+  "authors": [
+   "Arthur Wing Pinero"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 9,
+  "ia_pre1931": [
+   {
+    "id": "india.history.resource.74966",
+    "pcs": null,
+    "year": 1896
+   },
+   {
+    "id": "benefitdoubtaco00pinegoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1896
+   },
+   {
+    "id": "benefitofdoubtco00pine",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1895
+   },
+   {
+    "id": "thebenefitofdoub00pineuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1896
+   },
+   {
+    "id": "cu31924013536333",
+    "pcs": null,
+    "year": 1898
+   }
+  ],
+  "title": "The Benefit of the Doubt",
+  "work": null,
+  "wp": null
+ },
+ "gut-57451": {
+  "author": {
+   "born": [
+    "1811"
+   ],
+   "desc": "English playwright",
+   "died": [
+    "1891"
+   ],
+   "end": [],
+   "enwiki": "John Maddison Morton",
+   "imgs": {},
+   "label": "John Maddison Morton",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "John Maddison Morton"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q6246357",
+   "start": []
+  },
+  "authors": [
+   "John Maddison Morton"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "MortonWoodcocksLittleGame",
+    "pcs": null,
+    "year": 1864
+   },
+   {
+    "id": "woodcockslittleg00mort",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1889
+   }
+  ],
+  "title": "Woodcock's Little Game",
+  "work": null,
+  "wp": null
+ },
+ "gut-57999-5": {
+  "author": {
+   "born": [
+    "0004"
+   ],
+   "desc": "Roman Stoic philosopher, statesman and dramatist (c. 4 BCE–65 CE)",
+   "died": [
+    "0065"
+   ],
+   "end": [],
+   "enwiki": "Seneca the Younger",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Duble herma of Socrates and Seneca Antikensammlung Berlin 07.jpg"
+     }
+    ]
+   },
+   "label": "Seneca",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Lucius Annaeus Seneca"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2054",
+   "start": []
+  },
+  "authors": [
+   "Lucius Annaeus Seneca"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "Hippolytus or Phaedra",
+  "work": {
+   "born": [],
+   "desc": "1907 English translation by Frank Justus Miller",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "Hippolytus or Phaedra",
+   "p31": [
+    "Q3331189"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [
+    "Q2054"
+   ],
+   "qid": "Q110954798",
+   "start": [
+    "1907"
+   ]
+  },
+  "wp": null
+ },
+ "gut-5806": {
+  "author": {
+   "born": [
+    "1878"
+   ],
+   "desc": "American writer (1878–1968)",
+   "died": [
+    "1968"
+   ],
+   "end": [],
+   "enwiki": "Upton Sinclair",
+   "imgs": {
+    "P1442": [
+     {
+      "file": "Upton Sinclair grave.jpg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Upton Sinclair Portrait 1934.jpg"
+     }
+    ]
+   },
+   "label": "Upton Sinclair",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Upton Sinclair"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q216134",
+   "start": []
+  },
+  "authors": [
+   "Upton Sinclair"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 2,
+  "ia_pre1931": [
+   {
+    "id": "potboilercomedyi00sinc",
+    "pcs": null,
+    "year": 1913
+   }
+  ],
+  "title": "The Pot Boiler",
+  "work": null,
+  "wp": null
+ },
+ "gut-58546-4": {
+  "author": null,
+  "authors": [
+   "Elsie Hobart Carter"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "Their Christmas Party",
+  "work": null,
+  "wp": null
+ },
+ "gut-63198": {
+  "author": {
+   "born": [
+    "1849"
+   ],
+   "desc": "American writer",
+   "died": [
+    "1925"
+   ],
+   "end": [],
+   "enwiki": "Ella Cheever Thayer",
+   "imgs": {},
+   "label": "Ella Cheever Thayer",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Ella Cheever Thayer"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5364476",
+   "start": []
+  },
+  "authors": [
+   "Ella Cheever Thayer"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [
+   {
+    "id": "lordsofcreation00thay",
+    "pcs": "The Library of Congress is unaware of any copyright restrictions for this item.",
+    "year": 1883
+   }
+  ],
+  "title": "Lords of Creation",
+  "work": null,
+  "wp": null
+ },
+ "gut-6347": {
+  "author": {
+   "born": [
+    "1882"
+   ],
+   "desc": "British writer (1882-1958)",
+   "died": [
+    "1958"
+   ],
+   "end": [],
+   "enwiki": "Harold Brighouse",
+   "imgs": {},
+   "label": "Harold Brighouse",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Harold Brighouse"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q5660172",
+   "start": []
+  },
+  "authors": [
+   "Harold Brighouse"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 15,
+  "ia_pre1931": [
+   {
+    "id": "hobsonschoicethr00brigiala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1916
+   },
+   {
+    "id": "hobsonschoiceat00briggoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1916
+   },
+   {
+    "id": "cu31924097507101",
+    "pcs": null,
+    "year": 1916
+   },
+   {
+    "id": "hobsonschoicethr00brigrich",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1916
+   },
+   {
+    "id": "hobsonschoicethr0000haro_i4q3",
+    "pcs": null,
+    "year": 1916
+   }
+  ],
+  "title": "Hobson's Choice",
+  "work": {
+   "born": [],
+   "desc": "play written by Harold Brighouse",
+   "died": [],
+   "end": [],
+   "enwiki": "Hobson's Choice (play)",
+   "imgs": {},
+   "label": "Hobson's Choice",
+   "p31": [
+    "Q7725634",
+    "Q2635894"
+   ],
+   "p373": [
+    "Hobson's Choice (play)"
+   ],
+   "p449": [],
+   "p50": [
+    "Q5660172"
+   ],
+   "qid": "Q5875203",
+   "start": []
+  },
+  "wp": {
+   "h": null,
+   "image": null,
+   "title": "Hobson's Choice (play)",
+   "w": null
+  }
+ },
+ "gut-63776-1": {
+  "author": {
+   "born": [
+    "1600"
+   ],
+   "desc": "Spanish dramatist (1600-1681)",
+   "died": [
+    "1681"
+   ],
+   "end": [],
+   "enwiki": "Pedro Calderón de la Barca",
+   "imgs": {
+    "P1442": [
+     {
+      "file": "Gedenktafel Grab Calderon de la Barca.jpg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Primera parte de comedias verdaderas portrait detail.jpg"
+     },
+     {
+      "file": "Monumento a Calderón de la Barca (Madrid) 01.jpg"
+     },
+     {
+      "file": "Pedro de Villafranca (1676) retrato de Pedro Calderón de la Barca.png"
+     }
+    ]
+   },
+   "label": "Pedro Calderón de la Barca",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Pedro Calderón de la Barca"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q170800",
+   "start": []
+  },
+  "authors": [
+   "Pedro Calderón de la Barca"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "The Painter of His Own Dishonour",
+  "work": null,
+  "wp": null
+ },
+ "gut-70635-3": {
+  "author": {
+   "born": [
+    "1848"
+   ],
+   "desc": "American writer and educator (1848–1911)",
+   "died": [
+    "1911"
+   ],
+   "end": [],
+   "enwiki": "T. S. Denison",
+   "imgs": {
+    "P18": [
+     {
+      "file": "T. S. Denison.png"
+     }
+    ]
+   },
+   "label": "Thomas Stewart Denison",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q109859285",
+   "start": []
+  },
+  "authors": [
+   "Thomas Stewart Denison"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "Rejected",
+  "work": null,
+  "wp": null
+ },
+ "gut-70729": {
+  "author": {
+   "born": [
+    "1775"
+   ],
+   "desc": "English forger of Shakespearean documents and plays (1775 or 1777-1835)",
+   "died": [
+    "1835"
+   ],
+   "end": [],
+   "enwiki": "William Henry Ireland",
+   "imgs": {
+    "P18": [
+     {
+      "file": "William Henry Ireland.jpg"
+     }
+    ]
+   },
+   "label": "William Henry Ireland",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "William Henry Ireland"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4058973",
+   "start": []
+  },
+  "authors": [
+   "William Henry Ireland"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 8,
+  "ia_pre1931": [
+   {
+    "id": "bib_fict_6065896",
+    "pcs": null,
+    "year": 1799
+   },
+   {
+    "id": "bib_fict_4103221_1",
+    "pcs": null,
+    "year": 1799
+   },
+   {
+    "id": "lettertogeorgest00boad",
+    "pcs": null,
+    "year": 1796
+   },
+   {
+    "id": "bib_fict_4103288_1",
+    "pcs": null,
+    "year": 1798
+   },
+   {
+    "id": "bib_fict_1740638",
+    "pcs": null,
+    "year": 1832
+   }
+  ],
+  "title": "Vortigern",
+  "work": null,
+  "wp": null
+ },
+ "gut-7366-1": {
+  "author": {
+   "born": [
+    "1832"
+   ],
+   "desc": "Norwegian writer (1832–1910)",
+   "died": [
+    "1910"
+   ],
+   "end": [],
+   "enwiki": "Bjørnstjerne Bjørnson",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Bjørnson blds 01655.jpg"
+     },
+     {
+      "file": "Bjørnstjerne Bjørnson (Stories By Foreign Authors).jpg"
+     },
+     {
+      "file": "Portrett av Bjørnstjerne Bjørnson, 1909 - no-nb digifoto 20150129 00043 bldsa BB0791 - Restoration.jpg"
+     },
+     {
+      "file": "Björnstjerne Björnson.jpg"
+     }
+    ]
+   },
+   "label": "Bjørnstjerne Bjørnson",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Bjørnstjerne Bjørnson"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q46405",
+   "start": []
+  },
+  "authors": [
+   "Bjørnstjerne Bjørnson"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "The Newly-married Couple",
+  "work": null,
+  "wp": null
+ },
+ "gut-7366-3": {
+  "author": {
+   "born": [
+    "1832"
+   ],
+   "desc": "Norwegian writer (1832–1910)",
+   "died": [
+    "1910"
+   ],
+   "end": [],
+   "enwiki": "Bjørnstjerne Bjørnson",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Bjørnson blds 01655.jpg"
+     },
+     {
+      "file": "Bjørnstjerne Bjørnson (Stories By Foreign Authors).jpg"
+     },
+     {
+      "file": "Portrett av Bjørnstjerne Bjørnson, 1909 - no-nb digifoto 20150129 00043 bldsa BB0791 - Restoration.jpg"
+     },
+     {
+      "file": "Björnstjerne Björnson.jpg"
+     }
+    ]
+   },
+   "label": "Bjørnstjerne Bjørnson",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Bjørnstjerne Bjørnson"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q46405",
+   "start": []
+  },
+  "authors": [
+   "Bjørnstjerne Bjørnson"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [
+   {
+    "id": "gauntletbeingnor00bjrniala",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1894
+   }
+  ],
+  "title": "A Gauntlet",
+  "work": null,
+  "wp": null
+ },
+ "gut-76327": {
+  "author": {
+   "born": [
+    "1699"
+   ],
+   "desc": "Irish actor and playwright who introduced natural acting",
+   "died": [
+    "1797"
+   ],
+   "end": [],
+   "enwiki": "Charles Macklin",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Charles Macklin by John Opie.jpg"
+     }
+    ]
+   },
+   "label": "Charles Macklin",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Charles Macklin"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2411008",
+   "start": []
+  },
+  "authors": [
+   "Charles Macklin"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 1,
+  "ia_pre1931": [
+   {
+    "id": "bim_eighteenth-century_the-true-born-irishman-_macklin-charles_1783",
+    "pcs": null,
+    "year": 1783
+   }
+  ],
+  "title": "The true-born Irishman",
+  "work": null,
+  "wp": null
+ },
+ "gut-77336": {
+  "author": {
+   "born": [
+    "0480"
+   ],
+   "desc": "Classical Athenian playwright",
+   "died": [
+    "0406"
+   ],
+   "end": [],
+   "enwiki": "Euripides",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Euripides Pio-Clementino Inv302.jpg"
+     }
+    ]
+   },
+   "label": "Euripides",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Euripides"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q48305",
+   "start": []
+  },
+  "authors": [
+   "Euripides"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 25,
+  "ia_pre1931": [
+   {
+    "id": "hecubaandotherp00eurigoog",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1888
+   },
+   {
+    "id": "bub_gb_m24nx0tx0rcC",
+    "pcs": null,
+    "year": 1544
+   },
+   {
+    "id": "bim_eighteenth-century_hecuba-translated-from-_euripides_1749",
+    "pcs": null,
+    "year": 1749
+   },
+   {
+    "id": "hecubaofeuripide00euririch",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1882
+   },
+   {
+    "id": "hecubaeditedwith00euriuoft",
+    "pcs": "NOT_IN_COPYRIGHT",
+    "year": 1889
+   }
+  ],
+  "title": "Hecuba",
+  "work": {
+   "born": [],
+   "desc": "ancient Greek tragedy by Euripides",
+   "died": [],
+   "end": [],
+   "enwiki": "Hecuba (play)",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Euripides, Hekabe, with a latin translation and marginalia by Leontius Pilatus, Florence, San Marco 226, fol. 1r.jpg"
+     }
+    ]
+   },
+   "label": "Hecuba",
+   "p31": [
+    "Q116476516"
+   ],
+   "p373": [
+    "Hecuba (Euripides)"
+   ],
+   "p449": [],
+   "p50": [
+    "Q48305"
+   ],
+   "qid": "Q1115611",
+   "start": [
+    "0424"
+   ]
+  },
+  "wp": {
+   "h": 846,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Hecuba.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "Hecuba (play)",
+   "w": 904
+  }
+ },
+ "gut-7844-1": {
+  "author": {
+   "born": [
+    "1832"
+   ],
+   "desc": "Norwegian writer (1832–1910)",
+   "died": [
+    "1910"
+   ],
+   "end": [],
+   "enwiki": "Bjørnstjerne Bjørnson",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Bjørnson blds 01655.jpg"
+     },
+     {
+      "file": "Bjørnstjerne Bjørnson (Stories By Foreign Authors).jpg"
+     },
+     {
+      "file": "Portrett av Bjørnstjerne Bjørnson, 1909 - no-nb digifoto 20150129 00043 bldsa BB0791 - Restoration.jpg"
+     },
+     {
+      "file": "Björnstjerne Björnson.jpg"
+     }
+    ]
+   },
+   "label": "Bjørnstjerne Bjørnson",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [
+    "Bjørnstjerne Bjørnson"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q46405",
+   "start": []
+  },
+  "authors": [
+   "Bjørnstjerne Bjørnson"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 0,
+  "ia_pre1931": [],
+  "title": "The Editor",
+  "work": null,
+  "wp": null
+ },
+ "gut-901": {
+  "author": {
+   "born": [
+    "1977"
+   ],
+   "desc": "Swedish local politician",
+   "died": [],
+   "end": [],
+   "enwiki": null,
+   "imgs": {},
+   "label": "Christopher Marlowe",
+   "p31": [
+    "Q5"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q106878302",
+   "start": []
+  },
+  "authors": [
+   "Christopher Marlowe"
+  ],
+  "gutenberg_cover": null,
+  "ia_docs": 15,
+  "ia_pre1931": [],
+  "title": "The Jew of Malta",
+  "work": {
+   "born": [],
+   "desc": "play by Christopher Marlowe",
+   "died": [],
+   "end": [],
+   "enwiki": "The Jew of Malta",
+   "imgs": {
+    "P18": [
+     {
+      "file": "The-jew-of-malta-1633.jpg"
+     }
+    ]
+   },
+   "label": "The Jew of Malta",
+   "p31": [
+    "Q7725634"
+   ],
+   "p373": [
+    "The Jew of Malta"
+   ],
+   "p449": [],
+   "p50": [
+    "Q28975"
+   ],
+   "qid": "Q649741",
+   "start": []
+  },
+  "wp": {
+   "h": 713,
+   "image": "https://upload.wikimedia.org/wikipedia/commons/a/a3/Marlowe-jew-of-malta-titlepage_2.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=thumbnail_unscaled",
+   "title": "The Jew of Malta",
+   "w": 483
+  }
+ }
+}

@@ -1,0 +1,1356 @@
+{
+ "networks": {
+  "American Broadcasting Company": {
+   "born": [],
+   "desc": "American broadcast television network owned by The Walt Disney Company",
+   "died": [],
+   "end": [],
+   "enwiki": "American Broadcasting Company",
+   "imgs": {
+    "P154": [
+     {
+      "P580": "2021",
+      "file": "ABC-2021-LOGO.svg"
+     },
+     {
+      "P580": "2013",
+      "P582": "2021",
+      "file": "ABC (2013) Dark Grey.svg"
+     },
+     {
+      "file": "ABC 2021 Red.svg"
+     },
+     {
+      "P580": "1962",
+      "file": "American Broadcasting Company Logo.svg"
+     },
+     {
+      "file": "ABC 2021 Invert.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "ABC 77 W66 jeh.JPG"
+     }
+    ]
+   },
+   "label": "American Broadcasting Company",
+   "p31": [
+    "Q1616075",
+    "Q1254874",
+    "Q1061197",
+    "Q1762059"
+   ],
+   "p373": [
+    "American Broadcasting Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q169889",
+   "start": [
+    "1943"
+   ]
+  },
+  "Armed Forces Radio Service": {
+   "born": [],
+   "desc": "American broadcast radio and television network operated by the United States Armed Forces",
+   "died": [],
+   "end": [],
+   "enwiki": "American Forces Network",
+   "imgs": {
+    "P154": [
+     {
+      "file": "American Forces Network logo.png"
+     }
+    ],
+    "P18": [
+     {
+      "file": "AFN Sigonella 105.9 hosts former NFL players during the Armed Forces Entertainment tour to NAS Sigonella (8163985).jpg"
+     }
+    ]
+   },
+   "label": "American Forces Network",
+   "p31": [
+    "Q141683",
+    "Q176799"
+   ],
+   "p373": [
+    "American Forces Network"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q464570",
+   "start": [
+    "1942"
+   ]
+  },
+  "Australian Broadcasting Corporation": {
+   "born": [],
+   "desc": "state-funded independent national public broadcaster of Australia",
+   "died": [],
+   "end": [],
+   "enwiki": "Australian Broadcasting Corporation",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Australian Broadcasting Corporation logo (1974-).svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "ABC Sydney.jpg"
+     }
+    ]
+   },
+   "label": "Australian Broadcasting Corporation",
+   "p31": [
+    "Q1254874",
+    "Q699386",
+    "Q1061197",
+    "Q11028",
+    "Q1126006",
+    "Q43229"
+   ],
+   "p373": [
+    "Australian Broadcasting Corporation"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q781365",
+   "start": [
+    "1932"
+   ]
+  },
+  "BBC": {
+   "born": [],
+   "desc": "British public service broadcaster",
+   "died": [],
+   "end": [],
+   "enwiki": "BBC",
+   "imgs": {
+    "P154": [
+     {
+      "P580": "2021",
+      "file": "BBC Logo 2021.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Broadcasting House 20160816.jpg"
+     }
+    ]
+   },
+   "label": "British Broadcasting Corporation",
+   "p31": [
+    "Q1126006",
+    "Q141255352"
+   ],
+   "p373": [
+    "BBC"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q9531",
+   "start": [
+    "1922"
+   ]
+  },
+  "Blue Network": {
+   "born": [],
+   "desc": "US radio network (1927–1945), business division of National Broadcasting Company",
+   "died": [],
+   "end": [],
+   "enwiki": "Blue Network",
+   "imgs": {
+    "P154": [
+     {
+      "file": "NBC Blue Network.svg"
+     }
+    ]
+   },
+   "label": "Blue Network",
+   "p31": [
+    "Q1061197",
+    "Q334453"
+   ],
+   "p373": [
+    "Blue Network"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3334260",
+   "start": [
+    "1927"
+   ]
+  },
+  "CBS": {
+   "born": [],
+   "desc": "American broadcast television and radio network",
+   "died": [],
+   "end": [],
+   "enwiki": "CBS",
+   "imgs": {
+    "P154": [
+     {
+      "file": "CBS logo (2020).svg"
+     },
+     {
+      "file": "CBS classic logo.svg"
+     },
+     {
+      "file": "CBS Eye (Didot).svg"
+     },
+     {
+      "file": "CBS logo (2011).svg"
+     },
+     {
+      "file": "CBS logo (2015).svg"
+     },
+     {
+      "file": "CBS logo.svg"
+     },
+     {
+      "file": "CBS modern logo wordmark.svg"
+     },
+     {
+      "file": "CBS Alt logo.svg"
+     },
+     {
+      "file": "CBS 1946.svg"
+     },
+     {
+      "file": "CBS 1941.svg"
+     }
+    ]
+   },
+   "label": "CBS",
+   "p31": [
+    "Q1254874",
+    "Q1061197"
+   ],
+   "p373": [
+    "CBS"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q43380",
+   "start": [
+    "1927"
+   ]
+  },
+  "CBS Radio": {
+   "born": [],
+   "desc": "defunct owners and operators of radio stations in the United States",
+   "died": [],
+   "end": [],
+   "enwiki": "CBS Radio",
+   "imgs": {
+    "P154": [
+     {
+      "file": "CBS Radio logo.png"
+     }
+    ]
+   },
+   "label": "CBS Radio",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [
+    "CBS Radio"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1022995",
+   "start": [
+    "1928"
+   ]
+  },
+  "Canadian Broadcasting Corporation": {
+   "born": [],
+   "desc": "Canadian public broadcaster",
+   "died": [],
+   "end": [],
+   "enwiki": "Canadian Broadcasting Corporation",
+   "imgs": {
+    "P154": [
+     {
+      "file": "CBC Logo 1992-Present.svg"
+     },
+     {
+      "file": "CBC logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "P585": "2019",
+      "file": "CBC Ottawa Broadcast Centre - 06a.jpg"
+     }
+    ]
+   },
+   "label": "Canadian Broadcasting Corporation",
+   "p31": [
+    "Q15265344",
+    "Q11396960",
+    "Q5189488",
+    "Q4830453"
+   ],
+   "p373": [
+    "Canadian Broadcasting Corporation"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q461761",
+   "start": [
+    "1936"
+   ]
+  },
+  "Columbia Broadcasting System": {
+   "born": [],
+   "desc": "American broadcast television and radio network",
+   "died": [],
+   "end": [],
+   "enwiki": "CBS",
+   "imgs": {
+    "P154": [
+     {
+      "file": "CBS logo (2020).svg"
+     },
+     {
+      "file": "CBS classic logo.svg"
+     },
+     {
+      "file": "CBS Eye (Didot).svg"
+     },
+     {
+      "file": "CBS logo (2011).svg"
+     },
+     {
+      "file": "CBS logo (2015).svg"
+     },
+     {
+      "file": "CBS logo.svg"
+     },
+     {
+      "file": "CBS modern logo wordmark.svg"
+     },
+     {
+      "file": "CBS Alt logo.svg"
+     },
+     {
+      "file": "CBS 1946.svg"
+     },
+     {
+      "file": "CBS 1941.svg"
+     }
+    ]
+   },
+   "label": "CBS",
+   "p31": [
+    "Q1254874",
+    "Q1061197"
+   ],
+   "p373": [
+    "CBS"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q43380",
+   "start": [
+    "1927"
+   ]
+  },
+  "Don Lee Broadcasting System": null,
+  "Mutual Broadcasting System": {
+   "born": [],
+   "desc": "former radio broadcasting network",
+   "died": [],
+   "end": [],
+   "enwiki": "Mutual Broadcasting System",
+   "imgs": {},
+   "label": "Mutual Broadcasting System",
+   "p31": [
+    "Q4830453",
+    "Q1061197"
+   ],
+   "p373": [
+    "Mutual Broadcasting System"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3034218",
+   "start": [
+    "1934"
+   ]
+  },
+  "NBC Radio Network": {
+   "born": [],
+   "desc": "US radio network, business division of National Broadcasting Company",
+   "died": [],
+   "end": [],
+   "enwiki": "NBC Radio Network",
+   "imgs": {},
+   "label": "NBC Red Network",
+   "p31": [
+    "Q1061197",
+    "Q334453",
+    "Q4830453"
+   ],
+   "p373": [
+    "NBC Red Network"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q58037172",
+   "start": [
+    "1927"
+   ]
+  },
+  "NPR": {
+   "born": [],
+   "desc": "UK radio station for prisoners",
+   "died": [],
+   "end": [],
+   "enwiki": "National Prison Radio",
+   "imgs": {
+    "P18": [
+     {
+      "file": "National Prison Radio.jpg"
+     }
+    ]
+   },
+   "label": "National Prison Radio",
+   "p31": [
+    "Q14350"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q29467117",
+   "start": []
+  },
+  "National Broadcasting Company": {
+   "born": [],
+   "desc": "American television and radio network",
+   "died": [],
+   "end": [],
+   "enwiki": "NBC",
+   "imgs": {
+    "P154": [
+     {
+      "P580": "2022",
+      "file": "NBC logo 2022 (vertical).svg"
+     },
+     {
+      "P580": "2022",
+      "file": "NBC logo 2022.svg"
+     },
+     {
+      "P580": "2023",
+      "file": "NBC 2023 white logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "NBC Tower, Chicago.jpg"
+     }
+    ]
+   },
+   "label": "NBC",
+   "p31": [
+    "Q1254874",
+    "Q1061197",
+    "Q11396960"
+   ],
+   "p373": [
+    "NBC"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q13974",
+   "start": [
+    "1926"
+   ]
+  },
+  "WOR (AM)": {
+   "born": [],
+   "desc": "AM radio station in the United States",
+   "died": [],
+   "end": [],
+   "enwiki": "WOR (AM)",
+   "imgs": {
+    "P154": [
+     {
+      "file": "WOR (AM) logo 2011-2013.jpg"
+     }
+    ]
+   },
+   "label": "WOR",
+   "p31": [
+    "Q14350"
+   ],
+   "p373": [
+    "WOR (AM)"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3564763",
+   "start": [
+    "1922"
+   ]
+  }
+ },
+ "sponsors": {
+  "AT&T": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "transport company",
+   "died": [],
+   "end": [],
+   "enwiki": "Aircraft Transport and Travel",
+   "imgs": {
+    "P18": [
+     {
+      "file": "DH16-AT&T.jpg"
+     }
+    ]
+   },
+   "label": "Aircraft Transport and Travel",
+   "p31": [
+    "Q46970"
+   ],
+   "p373": [
+    "Aircraft Transport and Travel"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q408507",
+   "start": [
+    "1916"
+   ]
+  },
+  "Alka-Seltzer": {
+   "ads_no_notice": 0
+  },
+  "Camel (cigarette)": {
+   "ads_no_notice": 0
+  },
+  "Campbell Soup Company": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American food manufacturer",
+   "died": [],
+   "end": [],
+   "enwiki": "Campbell's",
+   "imgs": {
+    "P154": [
+     {
+      "P580": "2021",
+      "file": "Campbell's 2021.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Campbells.jpg"
+     }
+    ]
+   },
+   "label": "Campbell's",
+   "p31": [
+    "Q4830453",
+    "Q6881511",
+    "Q891723"
+   ],
+   "p373": [
+    "Campbell Soup Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1030544",
+   "start": [
+    "1869"
+   ]
+  },
+  "Chase & Sanborn Coffee": {
+   "ads_no_notice": 0
+  },
+  "Chevrolet": {
+   "ads_no_notice": 0
+  },
+  "Colgate-Palmolive": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American multinational consumer products company",
+   "died": [],
+   "end": [],
+   "enwiki": "Colgate-Palmolive",
+   "imgs": {
+    "P154": [
+     {
+      "P580": "2025",
+      "file": "Colgate-Palmolive (2025).svg"
+     },
+     {
+      "P580": "1983",
+      "P582": "2025",
+      "file": "Colgate-Palmolive logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Colgate-Palmolive Building 300 Park Avenue.jpg"
+     }
+    ]
+   },
+   "label": "Colgate-Palmolive Company",
+   "p31": [
+    "Q4830453",
+    "Q891723"
+   ],
+   "p373": [
+    "Colgate-Palmolive"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q609466",
+   "start": [
+    "1806"
+   ]
+  },
+  "Ford Motor Company": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American multinational automotive company",
+   "died": [],
+   "end": [],
+   "enwiki": "Ford Motor Company",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Ford logo flat.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "FordGlassHouse.jpg"
+     }
+    ]
+   },
+   "label": "Ford Motor Company",
+   "p31": [
+    "Q786820",
+    "Q4830453",
+    "Q891723",
+    "Q219577",
+    "Q43229"
+   ],
+   "p373": [
+    "Ford Motor Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q44294",
+   "start": [
+    "1903"
+   ]
+  },
+  "General Foods": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "defunct food company",
+   "died": [],
+   "end": [],
+   "enwiki": "General Foods",
+   "imgs": {
+    "P154": [
+     {
+      "file": "General foods company logo.svg"
+     }
+    ]
+   },
+   "label": "General Foods",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [
+    "General Foods"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q4272111",
+   "start": [
+    "1929"
+   ]
+  },
+  "General Mills": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American consumer goods manufacturer",
+   "died": [],
+   "end": [],
+   "enwiki": "General Mills",
+   "imgs": {
+    "P154": [
+     {
+      "file": "General Mills logo.svg"
+     }
+    ]
+   },
+   "label": "General Mills",
+   "p31": [
+    "Q161726",
+    "Q891723"
+   ],
+   "p373": [
+    "General Mills"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q629998",
+   "start": [
+    "1866"
+   ]
+  },
+  "Gulf Oil": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "former global oil company",
+   "died": [],
+   "end": [],
+   "enwiki": "Gulf Oil",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Gulf Oil logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Bellwood gas grocery gulf virginia.jpg"
+     }
+    ]
+   },
+   "label": "Gulf Oil",
+   "p31": [
+    "Q14941854",
+    "Q64027599"
+   ],
+   "p373": [
+    "Gulf Oil"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1296860",
+   "start": [
+    "1901"
+   ]
+  },
+  "Jell-O": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "gelatin dessert",
+   "died": [],
+   "end": [],
+   "enwiki": "Jell-O",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Jell-O new logo (2023).svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "2019-10-10 22 15 43 Gelatin from a single opened cup of Jell-O strawberry gelatin snack being lifted by a spoon in the Franklin Farm section of Oak Hill, Fairfax County, Virginia.jpg"
+     }
+    ]
+   },
+   "label": "Jell-O",
+   "p31": [
+    "Q167270",
+    "Q16323605"
+   ],
+   "p373": [
+    "Jell-O"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1686705",
+   "start": []
+  },
+  "Johnson & Johnson": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "U.S. multinational manufacturer of pharmaceuticals and medical devices",
+   "died": [],
+   "end": [],
+   "enwiki": "Johnson & Johnson",
+   "imgs": {
+    "P154": [
+     {
+      "file": "JNJ Logo New.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Johnson & Johnson HQ - IMG 2615.JPG"
+     }
+    ]
+   },
+   "label": "Johnson & Johnson",
+   "p31": [
+    "Q4830453",
+    "Q891723",
+    "Q19644607",
+    "Q63383584"
+   ],
+   "p373": [
+    "Johnson & Johnson"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q333718",
+   "start": [
+    "1886"
+   ]
+  },
+  "Kellogg's": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American food company",
+   "died": [],
+   "end": [],
+   "enwiki": "Kellogg's",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Kellogg's-Logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Kellogg World Headquarters (battlecreekcvb) 001.jpg"
+     }
+    ]
+   },
+   "label": "Kellogg's",
+   "p31": [
+    "Q4830453",
+    "Q6881511",
+    "Q891723"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q856897",
+   "start": [
+    "1906"
+   ]
+  },
+  "Kraft Foods": {
+   "ads_no_notice": 0
+  },
+  "Lady Esther": {
+   "ads_no_notice": 0
+  },
+  "Lever Brothers": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "UK manufacturer",
+   "died": [],
+   "end": [],
+   "enwiki": "Lever Brothers",
+   "imgs": {
+    "P18": [
+     {
+      "file": "LeverHouseNewYork.JPG"
+     }
+    ]
+   },
+   "label": "Lever Brothers",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [
+    "Lever Brothers"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q357536",
+   "start": [
+    "1885"
+   ]
+  },
+  "Lucky Strike": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American cigarette brand",
+   "died": [],
+   "end": [],
+   "enwiki": "Lucky Strike",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Lucky Strike logo.svg"
+     },
+     {
+      "file": "Lucky-strike-login-page-logo-v2.png"
+     }
+    ]
+   },
+   "label": "Lucky Strike",
+   "p31": [
+    "Q19509097"
+   ],
+   "p373": [
+    "Lucky Strike (cigarettes)"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q753556",
+   "start": [
+    "1871"
+   ]
+  },
+  "Lux (soap)": {
+   "ads_no_notice": 0
+  },
+  "Maxwell House": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American coffee brand",
+   "died": [],
+   "end": [],
+   "enwiki": "Maxwell House",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Maxwell House ad 1928 (cropped).jpg"
+     }
+    ]
+   },
+   "label": "Maxwell House",
+   "p31": [
+    "Q167270",
+    "Q4830453",
+    "Q431289"
+   ],
+   "p373": [
+    "Maxwell House coffee"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3306551",
+   "start": [
+    "1892"
+   ]
+  },
+  "Old Gold (cigarette)": {
+   "ads_no_notice": 0
+  },
+  "Ovaltine": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "Ovomaltine drink",
+   "died": [],
+   "end": [],
+   "enwiki": "Ovaltine",
+   "imgs": {
+    "P18": [
+     {
+      "file": "Ovomaltine Pulver.jpg"
+     },
+     {
+      "file": "Ovo Sport.png"
+     },
+     {
+      "file": "Ovomaltine Cup.jpg"
+     }
+    ]
+   },
+   "label": "Ovaltine",
+   "p31": [
+    "Q167270",
+    "Q114392939"
+   ],
+   "p373": [
+    "Ovomaltine"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q685005",
+   "start": [
+    "1904"
+   ]
+  },
+  "Pabst Brewing Company": {
+   "ads_no_notice": 0
+  },
+  "Pepsodent": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American brand of toothpaste",
+   "died": [],
+   "end": [],
+   "enwiki": "Pepsodent",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Pepsodent logo 2018.svg"
+     }
+    ]
+   },
+   "label": "Pepsodent",
+   "p31": [
+    "Q431289"
+   ],
+   "p373": [
+    "Pepsodent"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2709613",
+   "start": [
+    "1915"
+   ]
+  },
+  "Philip Morris USA": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American tobacco company",
+   "died": [],
+   "end": [],
+   "enwiki": "Philip Morris USA",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Philip Morris USA Logo.svg"
+     }
+    ]
+   },
+   "label": "Philip Morris USA",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [],
+   "p449": [],
+   "p50": [],
+   "qid": "Q1726300",
+   "start": [
+    "1902"
+   ]
+  },
+  "Procter & Gamble": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American multinational consumer goods corporation",
+   "died": [],
+   "end": [],
+   "enwiki": "Procter & Gamble",
+   "imgs": {
+    "P154": [
+     {
+      "P585": "2020",
+      "file": "Procter & Gamble logo.svg"
+     },
+     {
+      "P585": "2001",
+      "file": "P&G logo.svg"
+     },
+     {
+      "file": "P&G Logo 2001.svg"
+     }
+    ],
+    "P18": [
+     {
+      "P585": "2005",
+      "file": "Cincinnati-procter-and-gamble-headquarters.jpg"
+     }
+    ]
+   },
+   "label": "Procter & Gamble",
+   "p31": [
+    "Q4830453",
+    "Q6881511",
+    "Q891723",
+    "Q187939"
+   ],
+   "p373": [
+    "Procter & Gamble"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q212405",
+   "start": [
+    "1837"
+   ]
+  },
+  "Quaker Oats Company": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American food conglomerate",
+   "died": [],
+   "end": [],
+   "enwiki": "Quaker Oats Company",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Quaker oats textlogo.png"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Quaker Oats plant by Cupar.jpg"
+     }
+    ]
+   },
+   "label": "Quaker Oats Company",
+   "p31": [
+    "Q4830453",
+    "Q6881511"
+   ],
+   "p373": [
+    "Quaker Oats Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q2699694",
+   "start": [
+    "1877"
+   ]
+  },
+  "RCA": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American electronics company (1919–1988)",
+   "died": [],
+   "end": [],
+   "enwiki": "RCA Corporation",
+   "imgs": {
+    "P154": [
+     {
+      "file": "RCA Electronics logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "RCA Dimensia Victrola logo.JPG"
+     }
+    ]
+   },
+   "label": "RCA Corporation",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [
+    "RCA"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q218038",
+   "start": [
+    "1919"
+   ]
+  },
+  "Ralston Purina": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American animal feed, food and pet food company",
+   "died": [],
+   "end": [],
+   "enwiki": "Ralston Purina",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Lg checker.svg"
+     },
+     {
+      "file": "Purina-logo.svg"
+     }
+    ]
+   },
+   "label": "Ralston Purina",
+   "p31": [
+    "Q167270",
+    "Q4830453"
+   ],
+   "p373": [
+    "Ralston Purina"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q17081865",
+   "start": [
+    "1894"
+   ]
+  },
+  "S. C. Johnson & Son": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "company, American multinational manufacturer of household products",
+   "died": [],
+   "end": [],
+   "enwiki": "S. C. Johnson & Son",
+   "imgs": {
+    "P154": [
+     {
+      "file": "SC Johnson 2018.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Overzicht hoofdkantoor fabriek Johnson Wax, vanaf de openbare weg - Mijdrecht - 20413317 - RCE.jpg"
+     }
+    ]
+   },
+   "label": "S. C. Johnson & Son",
+   "p31": [
+    "Q4830453",
+    "Q6881511"
+   ],
+   "p373": [
+    "S.C. Johnson & Son"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q683170",
+   "start": [
+    "1886"
+   ]
+  },
+  "Texaco": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "oil subsidiary of Chevron Corporation",
+   "died": [],
+   "end": [],
+   "enwiki": "Texaco",
+   "imgs": {
+    "P154": [
+     {
+      "file": "Texaco logo.svg"
+     },
+     {
+      "file": "Texaco Logo.jpg"
+     },
+     {
+      "P580": "2005",
+      "file": "Texacologo.svg"
+     }
+    ]
+   },
+   "label": "Texaco",
+   "p31": [
+    "Q4830453",
+    "Q6881511",
+    "Q64027599",
+    "Q431289"
+   ],
+   "p373": [
+    "Texaco"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q775060",
+   "start": [
+    "1901"
+   ]
+  },
+  "The Coca-Cola Company": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American multinational beverage corporation",
+   "died": [],
+   "end": [],
+   "enwiki": "The Coca-Cola Company",
+   "imgs": {
+    "P154": [
+     {
+      "P580": "2020",
+      "file": "The Coca-Cola Company (2020).svg"
+     },
+     {
+      "P582": "2020",
+      "file": "The Coca-Cola Company logo.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Coca-ColaHQ.jpg"
+     }
+    ]
+   },
+   "label": "The Coca-Cola Company",
+   "p31": [
+    "Q1252971",
+    "Q219577",
+    "Q4830453"
+   ],
+   "p373": [
+    "The Coca-Cola Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q3295867",
+   "start": [
+    "1892"
+   ]
+  },
+  "Wildroot": {
+   "ads_no_notice": 0
+  },
+  "Woodbury Soap Company": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "1870-1901 company",
+   "died": [],
+   "end": [],
+   "enwiki": "Woodbury Soap Company",
+   "imgs": {},
+   "label": "Woodbury Soap Company",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [
+    "Woodbury Soap Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q8032489",
+   "start": [
+    "1870"
+   ]
+  },
+  "Wrigley Company": {
+   "ads_no_notice": 0,
+   "born": [],
+   "desc": "American company headquartered in Chicago, Illinois",
+   "died": [],
+   "end": [],
+   "enwiki": "Wrigley Company",
+   "imgs": {
+    "P154": [
+     {
+      "file": "The Wrigley Company logo. 2012.svg"
+     }
+    ],
+    "P18": [
+     {
+      "file": "Wrigley GIC 20100629.jpg"
+     }
+    ]
+   },
+   "label": "Wrigley Company",
+   "p31": [
+    "Q4830453"
+   ],
+   "p373": [
+    "William Wrigley Jr. Company"
+   ],
+   "p449": [],
+   "p50": [],
+   "qid": "Q819241",
+   "start": [
+    "1891"
+   ]
+  }
+ }
+}

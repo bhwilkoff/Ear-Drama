@@ -1,0 +1,2087 @@
+{
+ "groups": {
+  "news": {
+   "_wd_file_classes": {},
+   "_wd_identity": {
+    "network": 0,
+    "title-only": 3,
+    "years": 0
+   },
+   "_wp_image_classes": {
+    "commons:pd_textlogo": 1,
+    "commons:pd_us": 1
+   },
+   "_wp_pages": 4,
+   "any_new_show_image": {
+    "n": 1,
+    "of": 40,
+    "pct": 2.5
+   },
+   "commons_named": {
+    "n": 2,
+    "of": 40,
+    "pct": 5.0
+   },
+   "commons_named_dated": {
+    "n": 1,
+    "of": 40,
+    "pct": 2.5
+   },
+   "europeana_named": {
+    "n": 0,
+    "of": 4,
+    "pct": 0.0
+   },
+   "live_art": {
+    "n": 6,
+    "of": 40,
+    "pct": 15.0
+   },
+   "live_show": {
+    "n": 0,
+    "of": 40,
+    "pct": 0.0
+   },
+   "loc_named": {
+    "n": 0,
+    "of": 4,
+    "pct": 0.0
+   },
+   "loc_restricted_named": {
+    "n": 1,
+    "of": 4,
+    "pct": 25.0
+   },
+   "loc_usable_any": {
+    "n": 0,
+    "of": 4,
+    "pct": 0.0
+   },
+   "openverse_named": {
+    "n": 1,
+    "of": 4,
+    "pct": 25.0
+   },
+   "subject_person": {
+    "n": 1,
+    "of": 40,
+    "pct": 2.5
+   },
+   "wikidata_any": {
+    "n": 0,
+    "of": 40,
+    "pct": 0.0
+   },
+   "wikidata_strong": {
+    "n": 0,
+    "of": 40,
+    "pct": 0.0
+   },
+   "wikipedia_nonfree": {
+    "n": 0,
+    "of": 40,
+    "pct": 0.0
+   },
+   "wikipedia_strong": {
+    "n": 0,
+    "of": 40,
+    "pct": 0.0
+   }
+  },
+  "random": {
+   "_wd_file_classes": {},
+   "_wd_identity": {
+    "network": 1,
+    "title-only": 7,
+    "years": 0
+   },
+   "_wp_image_classes": {
+    "commons:pd_us": 1
+   },
+   "_wp_pages": 8,
+   "any_new_show_image": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "commons_named": {
+    "n": 3,
+    "of": 100,
+    "pct": 3.0
+   },
+   "commons_named_dated": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "live_art": {
+    "n": 4,
+    "of": 100,
+    "pct": 4.0
+   },
+   "live_show": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "loc_named": {
+    "n": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "loc_restricted_named": {
+    "n": 1,
+    "of": 15,
+    "pct": 6.7
+   },
+   "loc_usable_any": {
+    "n": 0,
+    "of": 15,
+    "pct": 0.0
+   },
+   "subject_person": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "wikidata_any": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "wikidata_strong": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "wikipedia_nonfree": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   },
+   "wikipedia_strong": {
+    "n": 0,
+    "of": 100,
+    "pct": 0.0
+   }
+  },
+  "top": {
+   "_wd_file_classes": {
+    "cc_by": 1,
+    "pd_us": 15
+   },
+   "_wd_identity": {
+    "network": 2,
+    "title-only": 87,
+    "years": 35
+   },
+   "_wp_image_classes": {
+    "commons:cc_by_sa": 1,
+    "commons:pd_other": 1,
+    "commons:pd_textlogo": 1,
+    "commons:pd_us": 29
+   },
+   "_wp_pages": 132,
+   "any_new_show_image": {
+    "n": 32,
+    "of": 300,
+    "pct": 10.7
+   },
+   "commons_named": {
+    "n": 33,
+    "of": 300,
+    "pct": 11.0
+   },
+   "commons_named_dated": {
+    "n": 27,
+    "of": 300,
+    "pct": 9.0
+   },
+   "europeana_named": {
+    "n": 8,
+    "of": 60,
+    "pct": 13.3
+   },
+   "live_art": {
+    "n": 108,
+    "of": 300,
+    "pct": 36.0
+   },
+   "live_show": {
+    "n": 17,
+    "of": 300,
+    "pct": 5.7
+   },
+   "loc_named": {
+    "n": 0,
+    "of": 60,
+    "pct": 0.0
+   },
+   "loc_restricted_named": {
+    "n": 6,
+    "of": 60,
+    "pct": 10.0
+   },
+   "loc_usable_any": {
+    "n": 0,
+    "of": 60,
+    "pct": 0.0
+   },
+   "openverse_named": {
+    "n": 9,
+    "of": 60,
+    "pct": 15.0
+   },
+   "subject_person": {
+    "n": 0,
+    "of": 300,
+    "pct": 0.0
+   },
+   "wikidata_any": {
+    "n": 16,
+    "of": 300,
+    "pct": 5.3
+   },
+   "wikidata_strong": {
+    "n": 5,
+    "of": 300,
+    "pct": 1.7
+   },
+   "wikipedia_nonfree": {
+    "n": 0,
+    "of": 300,
+    "pct": 0.0
+   },
+   "wikipedia_strong": {
+    "n": 8,
+    "of": 300,
+    "pct": 2.7
+   }
+  }
+ },
+ "matches": [
+  {
+   "commons": [
+    "File:Dragnet promo card.jpg",
+    "File:Oude kepaukoevrouw bij het oogsten van bataten. Men lette op het dragnet van boomvezel dat over het hoofd wordt gedragen, Bestanddeelnr 143-0896.tif"
+   ],
+   "desc": "multiple radio and television series and films, usually about policeman Joe Friday",
+   "grp": "top",
+   "identity": "years",
+   "key": "dragnet",
+   "label": "Dragnet franchise",
+   "name": "Dragnet",
+   "net": "NBC",
+   "qid": "Q16909472",
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1949,
+    1957
+   ]
+  },
+  {
+   "commons": [
+    "File:Lana Turner - Suspense Radio (1945).jpg",
+    "File:Virginia Bruce 1948.JPG",
+    "File:Humphrey Bogart 1945.JPG"
+   ],
+   "desc": "radio drama series",
+   "grp": "top",
+   "identity": "years",
+   "key": "suspense",
+   "label": "Suspense",
+   "name": "Suspense",
+   "net": "CBS",
+   "qid": "Q1548940",
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1940,
+    1962
+   ]
+  },
+  {
+   "commons": [
+    "File:Dick Powell as Richard Diamond, Private Detective.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "richarddiamondprivatedetective",
+   "label": null,
+   "name": "Richard Diamond Private Detective",
+   "net": "NBC, ABC, CBS",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1948,
+    1953
+   ]
+  },
+  {
+   "commons": [
+    "File:Mary Lee Rob 1948 NBC photo.jpg",
+    "File:Harold peary.jpg",
+    "File:Lillian randolph birdie 1955.JPG"
+   ],
+   "desc": "American radio comedy series",
+   "grp": "top",
+   "identity": "years",
+   "key": "greatgildersleeve",
+   "label": "The Great Gildersleeve",
+   "name": "The Great Gildersleeve",
+   "net": "NBC, CBS, NBC Red",
+   "qid": "Q11897194",
+   "wd_files": [
+    [
+     "P18",
+     "Harold peary.jpg",
+     "pd_us",
+     "1940"
+    ]
+   ],
+   "wp": "rold_peary.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1941,
+    1993
+   ]
+  },
+  {
+   "commons": [
+    "File:Gerald Mohr 1951.JPG"
+   ],
+   "desc": "US radio program",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "adventuresofphilipmarlowe",
+   "label": "The Adventures of Philip Marlowe",
+   "name": "The Adventures of Philip Marlowe",
+   "net": "CBS, NBC",
+   "qid": "Q7712609",
+   "wd_files": [
+    [
+     "P18",
+     "Gerald Mohr 1951.JPG",
+     "pd_us",
+     "1951-07-03"
+    ]
+   ],
+   "wp": "_Mohr_1951.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1947,
+    1977
+   ]
+  },
+  {
+   "commons": [
+    "File:Benny show 1946.JPG",
+    "File:Sam Hearn 1935.jpg",
+    "File:Eddie Anderson-Rochester 1945.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "jackbennyprogram",
+   "label": null,
+   "name": "Jack Benny Program",
+   "net": "NBC, CBS, NBC Blue, NBC Red",
+   "qid": null,
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1932,
+    1974
+   ]
+  },
+  {
+   "commons": [
+    "File:Gale Gordon 1952.JPG",
+    "File:Eve Arden 1949.JPG"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "ourmissbrooks",
+   "label": null,
+   "name": "Our Miss Brooks",
+   "net": "CBS",
+   "qid": null,
+   "wd_files": [],
+   "wp": "rooks_1955.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1944,
+    1957
+   ]
+  },
+  {
+   "commons": [
+    "File:Weems fibber molly 1937edited.jpg",
+    "File:Fibber McGee and Molly closet photo 1948.jpg",
+    "File:Marian Driscoll Jordan (Q19857104) (cropped).JPG"
+   ],
+   "desc": "American radio comedy series",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "fibbermcgeeandmolly",
+   "label": "Fibber McGee and Molly",
+   "name": "Fibber McGee and Molly",
+   "net": "NBC, NBC Red, Blue, NBC Blue, ABC Blue, AFRTS",
+   "qid": "Q4355416",
+   "wd_files": [
+    [
+     "P18",
+     "FibberAndMolly1941.png",
+     "pd_us",
+     "1941-11-21"
+    ]
+   ],
+   "wp": "dMolly1941.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1931,
+    1982
+   ]
+  },
+  {
+   "commons": [
+    "File:Command-Peformance-H18-175.jpg",
+    "File:Bob Hope.gif",
+    "File:Commandrussellwillsonhope.jpg"
+   ],
+   "desc": "US Armed Forces Radio show from 1942-49",
+   "grp": "top",
+   "identity": "years",
+   "key": "commandperformance",
+   "label": "Command Performance",
+   "name": "Command Performance",
+   "net": "AFRS, AFRTS, CBS, Mutual",
+   "qid": "Q5152096",
+   "wd_files": [],
+   "wp": "illsonhope.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1942,
+    1977
+   ]
+  },
+  {
+   "commons": [
+    "File:Gianni Bisiach.jpg"
+   ],
+   "desc": "radio program starring Vincent Price",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "saint",
+   "label": "The Saint",
+   "name": "The Saint",
+   "net": "Mutual, NBC, CBS",
+   "qid": "Q18153704",
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1944,
+    1995
+   ]
+  },
+  {
+   "commons": [
+    "File:Gregory Peck Old CBS Radio.jpg",
+    "File:Shirley Temple performs on the Screen Guild Theater.jpg",
+    "File:Clark Gable & Lana Turner The Screen Guild Theater 1949.jpg"
+   ],
+   "desc": "American radio series",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "screenguildtheater",
+   "label": "The Screen Guild Theater",
+   "name": "Screen Guild Theater",
+   "net": "CBS, NBC, ABC",
+   "qid": "Q7762704",
+   "wd_files": [],
+   "wp": "k-CBS-1945.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1939,
+    1952
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "US comedy program",
+   "grp": "top",
+   "identity": "years",
+   "key": "abbottandcostelloshow",
+   "label": "The Abbott and Costello Show",
+   "name": "Abbott and Costello Show",
+   "net": "NBC, ABC, NBC Red",
+   "qid": "Q28441314",
+   "wd_files": [
+    [
+     "P18",
+     "Abbott and Costello 1942.jpg",
+     "pd_us",
+     "1942-05-13"
+    ]
+   ],
+   "wp": "tello_1942.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1940,
+    1949
+   ]
+  },
+  {
+   "commons": [
+    "File:NBC Radio news room 1941.JPG",
+    "File:FDR-January-11-1944.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "nbcnews",
+   "label": null,
+   "name": "NBC News",
+   "net": "NBC, Blue",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1940,
+    1961
+   ]
+  },
+  {
+   "commons": [
+    "File:Burns and Allen Maxwell House Coffee Time.JPG"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "burnsandallen",
+   "label": null,
+   "name": "Burns and Allen",
+   "net": "CBS, NBC, AFRS, NBC Red",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1933,
+    1950
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "American radio docudrama series (1953–1954)",
+   "grp": "top",
+   "identity": "years",
+   "key": "crimeclassics",
+   "label": "Crime Classics",
+   "name": "Crime Classics",
+   "net": "CBS",
+   "qid": "Q5185176",
+   "wd_files": [
+    [
+     "P18",
+     "Elliott Lewis 1954.jpg",
+     "pd_us",
+     "<a rel=\"nofollow\" class=\"external text\" href=\"https://archiv"
+    ]
+   ],
+   "wp": "Lewis_1954.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1953,
+    1954
+   ]
+  },
+  {
+   "commons": [
+    "File:Ed Gardner Ransom Sherman circa early 1940s.JPG",
+    "File:Ed Gardner Duffy 1941.JPG",
+    "File:Ed Gardner Duffy 1950.JPG"
+   ],
+   "desc": "American radio situation comedy",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "duffystavern",
+   "label": "Duffy's Tavern",
+   "name": "Duffy's Tavern",
+   "net": "NBC, Blue, CBS, NBC Blue",
+   "qid": "Q27908822",
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1940,
+    1951
+   ]
+  },
+  {
+   "commons": [
+    "File:Joel McCrea Tales of the Texas Rangers 1950.JPG"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "talesofthetexasrangers",
+   "label": null,
+   "name": "Tales of the Texas Rangers",
+   "net": "NBC, CBS",
+   "qid": null,
+   "wd_files": [],
+   "wp": "ngers_1957.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1950,
+    1952
+   ]
+  },
+  {
+   "commons": [
+    "File:Kathleen Wilson of Arizona FAP directing radio program written and put on by children of Junior Artists Club - DPLA - 09871409570f33bd041cb60f78e4c443.gif",
+    "File:Girl listening to radio.gif",
+    "File:Franklin D Roosevelt - radio broadcast.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "franklindroosevelt",
+   "label": null,
+   "name": "Franklin D Roosevelt",
+   "net": null,
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1934,
+    1945
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "American old-time radio situation comedy",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "adayinthelifeofdennisday",
+   "label": "A Day in the Life of Dennis Day",
+   "name": "A Day in the Life of Dennis Day",
+   "net": "NBC",
+   "qid": "Q39053633",
+   "wd_files": [
+    [
+     "P18",
+     "Dennis Day 1960.JPG",
+     "pd_us",
+     "Press release is dated 4 April 1960"
+    ]
+   ],
+   "wp": "s_Day_1960.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1946,
+    1955
+   ]
+  },
+  {
+   "commons": [
+    "File:George Fenneman and Groucho Marx You Bet Your Life 1951.jpg",
+    "File:Groucho and Melinda Marx 1953.JPG",
+    "File:You bet your life postcard 1953.JPG"
+   ],
+   "desc": "American comedy quiz series",
+   "grp": "top",
+   "identity": "years",
+   "key": "youbetyourlife",
+   "label": "You Bet Your Life",
+   "name": "You Bet Your Life",
+   "net": "NBC, ABC, CBS, AFRS",
+   "qid": "Q466776",
+   "wd_files": [
+    [
+     "P18",
+     "George Fenneman and Groucho Marx You Bet Your Life 1951.jpg",
+     "pd_us",
+     "1951-10-03"
+    ]
+   ],
+   "wp": "",
+   "y": [
+    1944,
+    1960
+   ]
+  },
+  {
+   "commons": [
+    "File:Adventures-of-Sherlock-Holmes-December-1930.jpg",
+    "File:Adventures-of-Sherlock-Holmes-Gordon-Lovel.jpg",
+    "File:Adventures-of-Sherlock-Holmes-NBC-1930.jpg"
+   ],
+   "desc": "radio show",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "sherlockholmes1932",
+   "label": "Sherlock Holmes",
+   "name": "Sherlock Holmes",
+   "net": "NBC Red, NBC Blue, Mutual, NBC",
+   "qid": "Q97169169",
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1932,
+    1957
+   ]
+  },
+  {
+   "commons": [
+    "File:Radio and television mirror page 17 (December 1950).jpg",
+    "File:My Favorite Husband and Desi Arnaz (December 1950) (cropped).jpg"
+   ],
+   "desc": "late 40's–early 50's American comedy radio program",
+   "grp": "top",
+   "identity": "years",
+   "key": "myfavoritehusband",
+   "label": "My Favorite Husband",
+   "name": "My Favorite Husband",
+   "net": "CBS",
+   "qid": "Q6945421",
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1948,
+    1951
+   ]
+  },
+  {
+   "commons": [
+    "File:Ozzie Nelson and Harriet Nelson, 1953.jpg",
+    "File:David Nelson and Ricky Nelson 1953.jpg",
+    "File:Buttons and Bows.ogg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "adventuresofozzieandharriet",
+   "label": null,
+   "name": "The Adventures of Ozzie and Harriet",
+   "net": "ABC, NBC, CBS, AFRTS",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1944,
+    1954
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "Radio program.",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "perrymason",
+   "label": "Perry Mason",
+   "name": "Perry Mason",
+   "net": "CBS",
+   "qid": "Q7169840",
+   "wd_files": [
+    [
+     "P18",
+     "Perrymason-book-radio.jpg",
+     "cc_by",
+     "2009-06-30"
+    ]
+   ],
+   "wp": "",
+   "y": [
+    1949,
+    1954
+   ]
+  },
+  {
+   "commons": [
+    "File:Mr. District Attorney cast 1947.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "mrdistrictattorney",
+   "label": null,
+   "name": "Mr District Attorney",
+   "net": "NBC, NBC Red, Mutual, ABC, NBC Blue, Syndicated",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1939,
+    1975
+   ]
+  },
+  {
+   "commons": [
+    "File:Casey Crime Photographer 1951.JPG"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "caseycrimephotographer",
+   "label": null,
+   "name": "Casey Crime Photographer",
+   "net": "CBS",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1943,
+    1967
+   ]
+  },
+  {
+   "commons": [
+    "File:Gloria Blondell I Love a Mystery 1948.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "iloveamystery",
+   "label": null,
+   "name": "I Love A Mystery",
+   "net": "Mutual, Blue, NBC, CBS, NBC Red, NBC Blue, NBC Pacific, ABC",
+   "qid": null,
+   "wd_files": [],
+   "wp": "",
+   "y": [
+    1939,
+    2007
+   ]
+  },
+  {
+   "commons": [
+    "File:Father Knows Best - A Carnival In Town.ogg",
+    "File:Rhoda Williams 1953.jpg"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "fatherknowsbest",
+   "label": null,
+   "name": "Father Knows Best",
+   "net": "NBC",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1948,
+    1954
+   ]
+  },
+  {
+   "commons": [
+    "File:Rosemary DeCamp Jean Hersholt Dr. Christian 1953.JPG",
+    "File:Jean Hersholt Dr. Christian 1953 (cropped).JPG"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "drchristian",
+   "label": null,
+   "name": "Dr Christian",
+   "net": "CBS",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1937,
+    1953
+   ]
+  },
+  {
+   "commons": [
+    "File:Alice Frost Joseph Curtin Mr. and Mrs. North 1950.JPG"
+   ],
+   "desc": null,
+   "grp": "top",
+   "identity": null,
+   "key": "mrandmrsnorth",
+   "label": null,
+   "name": "Mr and Mrs North",
+   "net": "CBS, NBC, AFRS",
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1943,
+    1955
+   ]
+  },
+  {
+   "commons": [
+    "File:Orson-Welles-CBS-Radio-Studio-1938.jpg",
+    "File:Welles-Campbell-Playhouse-Rehearsal-1938.jpg",
+    "File:Campbell-Playhouse-Ah-Wilderness.jpg"
+   ],
+   "desc": "radio series",
+   "grp": "top",
+   "identity": "years",
+   "key": "campbellplayhouse",
+   "label": "The Campbell Playhouse",
+   "name": "The Campbell Playhouse",
+   "net": "CBS",
+   "qid": "Q4906829",
+   "wd_files": [
+    [
+     "P18",
+     "Orson-Welles-CBS-Radio-Studio-1938.jpg",
+     "pd_us",
+     "1939-01-29"
+    ]
+   ],
+   "wp": "tudio-1938.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1938,
+    1940
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "US radio program",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "adventuresofelleryqueen",
+   "label": "The Adventures of Ellery Queen",
+   "name": "The Adventures of Ellery Queen",
+   "net": "CBS, NBC, ABC",
+   "qid": "Q17183719",
+   "wd_files": [
+    [
+     "P18",
+     "Santos Ortega Hugh Marlowe Marian Shockley Ellery Queen on radio 1939.JPG",
+     "pd_us",
+     "1939-11-27"
+    ]
+   ],
+   "wp": "radio_1939.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1939,
+    1948
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "US radio program",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "martinandlewisshow",
+   "label": "The Martin and Lewis Show",
+   "name": "The Martin and Lewis Show",
+   "net": "NBC",
+   "qid": "Q18154995",
+   "wd_files": [
+    [
+     "P18",
+     "Lewis and Martin.jpg",
+     "pd_us",
+     "1950"
+    ]
+   ],
+   "wp": "and_Martin.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1948,
+    1953
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "US radio program",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "amazingnerowolfe",
+   "label": "The Amazing Nero Wolfe",
+   "name": "The Amazing Nero Wolfe",
+   "net": "NBC, Don Lee Network, Mutual",
+   "qid": "Q19866698",
+   "wd_files": [
+    [
+     "P18",
+     "Wolfe-Bushman-1945.jpg",
+     "pd_us",
+     "1945-09-23"
+    ]
+   ],
+   "wp": "shman-1945.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1945,
+    1951
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "American espionage drama radio series",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "counterspy",
+   "label": "Counterspy",
+   "name": "Counterspy",
+   "net": "ABC, NBC, Blue, Mutual, CBS, NBC Blue",
+   "qid": "Q5177038",
+   "wd_files": [
+    [
+     "P18",
+     "Mandell Kramer Don MacLaughlin Counterspy 1952.jpg",
+     "pd_us",
+     "1952-04-30"
+    ]
+   ],
+   "wp": "erspy_1952.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1942,
+    1953
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "US radio program",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "easyaces",
+   "label": "Easy Aces",
+   "name": "Easy Aces",
+   "net": "CBS, Blue, NBC Blue, Syndicated, Mutual, NBC Red",
+   "qid": "Q5331093",
+   "wd_files": [
+    [
+     "P18",
+     "Goodman jane ace 1939.jpg",
+     "pd_us",
+     "1939"
+    ]
+   ],
+   "wp": "e_ace_1939.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1937,
+    1948
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "radio comedy of the 1940s and 1950s",
+   "grp": "top",
+   "identity": "years",
+   "key": "myfriendirma",
+   "label": "My Friend Irma",
+   "name": "My Friend Irma",
+   "net": "CBS, CBC, NBC",
+   "qid": "Q3283985",
+   "wd_files": [],
+   "wp": "ilson_1954.JPG?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1946,
+    1954
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "fictional character found in numerous film, radio, television and comic book series",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "ciscokid",
+   "label": "The Cisco Kid",
+   "name": "The Cisco Kid",
+   "net": "Mutual-Don Lee, Mutual, Syndicated",
+   "qid": "Q2364715",
+   "wd_files": [
+    [
+     "P18",
+     "Cisco Kid and Diablo photo 1950s.jpg",
+     "pd_us",
+     "Circa <a rel=\"nofollow\" class=\"external text\" href=\"https://"
+    ]
+   ],
+   "wp": "iscocomics.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1952,
+    1977
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "US radio program",
+   "grp": "top",
+   "identity": "title-only",
+   "key": "adventuresofmaisie",
+   "label": "The Adventures of Maisie",
+   "name": "The Adventures of Maisie",
+   "net": "CBS, Mutual",
+   "qid": "Q7712583",
+   "wd_files": [
+    [
+     "P18",
+     "Ann Sothern in A Letter to Three Wives trailer.jpg",
+     "pd_us",
+     "1949"
+    ]
+   ],
+   "wp": "es_trailer.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1949,
+    1951
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "1940 American radio series on CBS Radio",
+   "grp": "top",
+   "identity": "years",
+   "key": "bluebeetle",
+   "label": "The Blue Beetle",
+   "name": "The Blue Beetle",
+   "net": null,
+   "qid": "Q23020064",
+   "wd_files": [],
+   "wp": "_Beetle_04.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1940,
+    1940
+   ]
+  },
+  {
+   "commons": [],
+   "desc": "radio series",
+   "grp": "top",
+   "identity": "years",
+   "key": "columbiaworkshop",
+   "label": "Columbia Workshop",
+   "name": "Columbia Workshop",
+   "net": "CBS, WCBS",
+   "qid": "Q5149917",
+   "wd_files": [],
+   "wp": "_Billboard.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original",
+   "y": [
+    1936,
+    1947
+   ]
+  },
+  {
+   "commons": [
+    "File:Kathleen Wilson of Arizona FAP directing radio program written and put on by children of Junior Artists Club - DPLA - 09871409570f33bd041cb60f78e4c443.gif",
+    "File:Girl listening to radio.gif",
+    "File:Franklin D Roosevelt - radio broadcast.jpg"
+   ],
+   "desc": null,
+   "grp": "news",
+   "identity": null,
+   "key": "franklindroosevelt",
+   "label": null,
+   "name": "Franklin D Roosevelt",
+   "net": null,
+   "qid": null,
+   "wd_files": [],
+   "wp": null,
+   "y": [
+    1934,
+    1945
+   ]
+  }
+ ],
+ "orgs": {
+  "networks": [
+   {
+    "ads_no_notice": null,
+    "dated_logos": 3,
+    "label": "American Broadcasting Company",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "ABC-2021-LOGO.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "ABC (2013) Dark Grey.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "ABC 2021 Red.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "American Broadcasting Company Logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "ABC 2021 Invert.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "American Broadcasting Company",
+    "qid": "Q169889"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "American Forces Network",
+    "logo_classes": [
+     "pd_us"
+    ],
+    "logos": [
+     [
+      "American Forces Network logo.png",
+      "pd_us",
+      null
+     ]
+    ],
+    "name": "Armed Forces Radio Service",
+    "qid": "Q464570"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "Australian Broadcasting Corporation",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Australian Broadcasting Corporation logo (1974-).svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Australian Broadcasting Corporation",
+    "qid": "Q781365"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 1,
+    "label": "British Broadcasting Corporation",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "BBC Logo 2021.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "BBC",
+    "qid": "Q9531"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "Blue Network",
+    "logo_classes": [
+     "pd_us"
+    ],
+    "logos": [
+     [
+      "NBC Blue Network.svg",
+      "pd_us",
+      null
+     ]
+    ],
+    "name": "Blue Network",
+    "qid": "Q3334260"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "CBS",
+    "logo_classes": [
+     "pd_textlogo",
+     "pd_us"
+    ],
+    "logos": [
+     [
+      "CBS logo (2020).svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS classic logo.svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS Eye (Didot).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS logo (2011).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS logo (2015).svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS logo.svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS modern logo wordmark.svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS Alt logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS 1946.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS 1941.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "CBS",
+    "qid": "Q43380"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "CBS Radio",
+    "logo_classes": [
+     "pd_us"
+    ],
+    "logos": [
+     [
+      "CBS Radio logo.png",
+      "pd_us",
+      null
+     ]
+    ],
+    "name": "CBS Radio",
+    "qid": "Q1022995"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "Canadian Broadcasting Corporation",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "CBC Logo 1992-Present.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBC logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Canadian Broadcasting Corporation",
+    "qid": "Q461761"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "CBS",
+    "logo_classes": [
+     "pd_textlogo",
+     "pd_us"
+    ],
+    "logos": [
+     [
+      "CBS logo (2020).svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS classic logo.svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS Eye (Didot).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS logo (2011).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS logo (2015).svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS logo.svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS modern logo wordmark.svg",
+      "pd_us",
+      null
+     ],
+     [
+      "CBS Alt logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS 1946.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "CBS 1941.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Columbia Broadcasting System",
+    "qid": "Q43380"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Don Lee Broadcasting System",
+    "qid": null
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "Mutual Broadcasting System",
+    "logo_classes": [],
+    "logos": [],
+    "name": "Mutual Broadcasting System",
+    "qid": "Q3034218"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "NBC Red Network",
+    "logo_classes": [],
+    "logos": [],
+    "name": "NBC Radio Network",
+    "qid": "Q58037172"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "National Prison Radio",
+    "logo_classes": [],
+    "logos": [],
+    "name": "NPR",
+    "qid": "Q29467117"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 3,
+    "label": "NBC",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "NBC logo 2022 (vertical).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "NBC logo 2022.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "NBC 2023 white logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "National Broadcasting Company",
+    "qid": "Q13974"
+   },
+   {
+    "ads_no_notice": null,
+    "dated_logos": 0,
+    "label": "WOR",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "WOR (AM) logo 2011-2013.jpg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "WOR (AM)",
+    "qid": "Q3564763"
+   }
+  ],
+  "sponsors": [
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Aircraft Transport and Travel",
+    "logo_classes": [],
+    "logos": [],
+    "name": "AT&T",
+    "qid": "Q408507"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Alka-Seltzer",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Camel (cigarette)",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 1,
+    "label": "Campbell's",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Campbell's 2021.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Campbell Soup Company",
+    "qid": "Q1030544"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Chase & Sanborn Coffee",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Chevrolet",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 2,
+    "label": "Colgate-Palmolive Company",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Colgate-Palmolive (2025).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "Colgate-Palmolive logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Colgate-Palmolive",
+    "qid": "Q609466"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Ford Motor Company",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Ford logo flat.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Ford Motor Company",
+    "qid": "Q44294"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "General Foods",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "General foods company logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "General Foods",
+    "qid": "Q4272111"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "General Mills",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "General Mills logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "General Mills",
+    "qid": "Q629998"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Gulf Oil",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Gulf Oil logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Gulf Oil",
+    "qid": "Q1296860"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Jell-O",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Jell-O new logo (2023).svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Jell-O",
+    "qid": "Q1686705"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Johnson & Johnson",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "JNJ Logo New.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Johnson & Johnson",
+    "qid": "Q333718"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Kellogg's",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Kellogg's-Logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Kellogg's",
+    "qid": "Q856897"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Kraft Foods",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Lady Esther",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Lever Brothers",
+    "logo_classes": [],
+    "logos": [],
+    "name": "Lever Brothers",
+    "qid": "Q357536"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Lucky Strike",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Lucky Strike logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "Lucky-strike-login-page-logo-v2.png",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Lucky Strike",
+    "qid": "Q753556"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Lux (soap)",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Maxwell House",
+    "logo_classes": [],
+    "logos": [],
+    "name": "Maxwell House",
+    "qid": "Q3306551"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Old Gold (cigarette)",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Ovaltine",
+    "logo_classes": [],
+    "logos": [],
+    "name": "Ovaltine",
+    "qid": "Q685005"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Pabst Brewing Company",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Pepsodent",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Pepsodent logo 2018.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Pepsodent",
+    "qid": "Q2709613"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Philip Morris USA",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Philip Morris USA Logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Philip Morris USA",
+    "qid": "Q1726300"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Procter & Gamble",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Procter & Gamble logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "P&G logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "P&G Logo 2001.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Procter & Gamble",
+    "qid": "Q212405"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Quaker Oats Company",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Quaker oats textlogo.png",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Quaker Oats Company",
+    "qid": "Q2699694"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "RCA Corporation",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "RCA Electronics logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "RCA",
+    "qid": "Q218038"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Ralston Purina",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "Lg checker.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "Purina-logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Ralston Purina",
+    "qid": "Q17081865"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "S. C. Johnson & Son",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "SC Johnson 2018.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "S. C. Johnson & Son",
+    "qid": "Q683170"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 1,
+    "label": "Texaco",
+    "logo_classes": [
+     "pd_textlogo",
+     "pd_us"
+    ],
+    "logos": [
+     [
+      "Texaco logo.svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "Texaco Logo.jpg",
+      "pd_us",
+      null
+     ],
+     [
+      "Texacologo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Texaco",
+    "qid": "Q775060"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 2,
+    "label": "The Coca-Cola Company",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "The Coca-Cola Company (2020).svg",
+      "pd_textlogo",
+      null
+     ],
+     [
+      "The Coca-Cola Company logo.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "The Coca-Cola Company",
+    "qid": "Q3295867"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": null,
+    "logo_classes": [],
+    "logos": [],
+    "name": "Wildroot",
+    "qid": null
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Woodbury Soap Company",
+    "logo_classes": [],
+    "logos": [],
+    "name": "Woodbury Soap Company",
+    "qid": "Q8032489"
+   },
+   {
+    "ads_no_notice": 0,
+    "dated_logos": 0,
+    "label": "Wrigley Company",
+    "logo_classes": [
+     "pd_textlogo"
+    ],
+    "logos": [
+     [
+      "The Wrigley Company logo. 2012.svg",
+      "pd_textlogo",
+      null
+     ]
+    ],
+    "name": "Wrigley Company",
+    "qid": "Q819241"
+   }
+  ]
+ },
+ "plays": {
+  "any_image_incl_author": 44,
+  "any_work_image": 38,
+  "author_matched": 44,
+  "author_portrait": 28,
+  "gutenberg_cover_200": 0,
+  "ia_scan_any": 37,
+  "ia_scan_pre1931": 35,
+  "n": 50,
+  "wikipedia_image_any": 10,
+  "wikipedia_image_evidence": 7,
+  "work_image": 5,
+  "work_matched": 16
+ },
+ "shapes": {
+  "plays:author": {
+   "landscape": 2,
+   "portrait": 32,
+   "square": 2
+  },
+  "plays:work": {
+   "landscape": 3,
+   "portrait": 1,
+   "square": 1
+  },
+  "series:P18": {
+   "landscape": 5,
+   "portrait": 10,
+   "square": 1
+  },
+  "series:commons": {
+   "landscape": 14,
+   "portrait": 39,
+   "square": 5,
+   "unknown": 2
+  }
+ }
+}

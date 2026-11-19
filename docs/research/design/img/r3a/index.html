@@ -1,0 +1,82 @@
+<!doctype html><html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:BS;src:url(file:///Users/bhwilkoff/Documents/GitHub/Ear-Drama/fonts/big-shoulders.woff2);font-weight:100 900}
+@font-face{font-family:PS;src:url(file:///Users/bhwilkoff/Documents/GitHub/Ear-Drama/fonts/public-sans.woff2);font-weight:100 900}
+body{margin:0;padding:16px;font:13px PS,sans-serif;background:var(--bg);color:var(--tx)}
+body.light{--bg:#fff;--tx:#131316} body.dark{--bg:#0F0F11;--tx:#F2F2F4}
+h2{font:700 22px BS;margin:18px 0 6px} .row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:6px}
+.cell{display:flex;flex-direction:column;gap:4px;align-items:flex-start} .cap{font-size:11px;opacity:.75;max-width:200px}
+svg{display:block;border-radius:6px}
+</style></head><body class="light">
+<script>
+const DARK = location.hash === '#dark'; if (DARK) document.body.className = 'dark';
+const BOARD = DARK ? {drama:'#5F2A4D',mystery:'#223F6F',scifi:'#004854',western:'#623018',comedy:'#543B00',news:'#424038',documentary:'#154C22',serial:'#473368','':'#232327'}
+                   : {drama:'#86426F',mystery:'#375C9B',scifi:'#006A79',western:'#8B492A',comedy:'#795700',news:'#615D53',documentary:'#296E38',serial:'#684D92','':'#E8E8EB'};
+const ON = g => g === '' ? (DARK ? '#F2F2F4' : '#131316') : (DARK ? '#F2F2F4' : '#FFFFFF');
+const HUES = ['#2459A5','#007C88','#9D547C','#816B01'];
+function fnv(s){let h=0x811c9dc5;for(const b of new TextEncoder().encode(s)){h^=b;h=Math.imul(h,0x01000193)>>>0}return h}
+const STOP=new Set(['the','a','an','of','and','in','on','to','for']);
+function mono(n){const w=n.split(/\s+/).filter(x=>/^\p{L}/u.test(x)&&!STOP.has(x.toLowerCase()));return w.slice(0,2).map(x=>x[0].toUpperCase()).join('')}
+const NS='http://www.w3.org/2000/svg';
+function S(px, inner){return `<svg width="${px}" height="${px}" viewBox="0 0 100 100" xmlns="${NS}">${inner}</svg>`}
+const yA = y => 210 - (Math.min(1962,Math.max(1930,y))-1930)/32*240; // dial: 1930 at 210deg (lower left) to 1962 at -30deg (lower right)
+function pol(r,deg){const a=deg*Math.PI/180;return [50+r*Math.cos(a),50-r*Math.sin(a)]}
+function arc(r,d0,d1){const [x0,y0]=pol(r,d0),[x1,y1]=pol(r,d1);const large=Math.abs(d0-d1)>180?1:0;return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`}
+
+/* Option A: title card (Marber-grid typographic). */
+function optA(it, px){
+  const b=BOARD[it.genre], on=ON(it.genre), small=px<96;
+  const kick=[it.net,it.decade].filter(Boolean).join(' · ').toUpperCase();
+  let s=`<rect width="100" height="100" fill="${b}"/>`;
+  if(small){ s+=`<rect x="0" y="0" width="100" height="16" fill="${on}" opacity=".18"/><text x="8" y="90" font-family="BS" font-weight="800" font-size="${it.m.length>1?58:72}" fill="${on}">${it.m}</text>`; }
+  else { s+=`<rect x="0" y="0" width="100" height="22" fill="${on}" opacity=".16"/><text x="7" y="14.5" font-family="PS" font-weight="700" font-size="7" letter-spacing=".6" fill="${on}">${kick||'UNDATED'}</text>`;
+    const words=it.name.toUpperCase().split(' '); const fs=words.length>2?17:22; words.forEach((w,i)=>{s+=`<text x="7" y="${44+i*fs*0.95}" font-family="BS" font-weight="800" font-size="${fs}" fill="${on}">${w}</text>`});
+    s+=`<line x1="7" x2="93" y1="92" y2="92" stroke="${on}" stroke-width="1"/>`; }
+  return S(px,s);
+}
+/* Option B: signal, a genre motif with hash-seeded parameters. */
+function optB(it, px){
+  const b=BOARD[it.genre], on=ON(it.genre), h=fnv(it.key), small=px<96; let s=`<rect width="100" height="100" fill="${b}"/>`;
+  const n=small?3:4+(h%4), ph=(h>>>4)%360, rot=((h>>>12)%7-3)*6;
+  const g=it.genre;
+  if(g==='mystery'){for(let i=1;i<=n;i++)s+=`<circle cx="${30+(h>>>8)%40}" cy="${30+(h>>>16)%40}" r="${i*(small?16:11)}" fill="none" stroke="${on}" stroke-width="${small?4:2}" opacity="${1-i/(n+1)}"/>`}
+  else if(g==='scifi'){for(let i=0;i<n;i++){let d='';for(let x=0;x<=100;x+=2){const y=20+i*(70/n)+8*Math.sin((x/100)*Math.PI*2*(1+(h>>>i)%3)+ph*Math.PI/180);d+=(x?'L':'M')+x+' '+y.toFixed(1)}s+=`<path d="${d}" fill="none" stroke="${on}" stroke-width="${small?4:2}"/>`}}
+  else if(g==='drama'){for(let i=0;i<n*2;i++)s+=`<rect x="${i*100/(n*2)}" y="0" width="${50/(n*2)}" height="${70+((h>>>i)%25)}" fill="${on}" opacity=".35"/>`}
+  else {for(let i=0;i<n;i++)s+=`<rect x="10" y="${15+i*(70/n)}" width="${30+((h>>>(i*3))%60)}" height="${small?8:5}" fill="${on}" opacity=".6"/>`}
+  if(!small) s+=`<text x="7" y="93" font-family="BS" font-weight="800" font-size="20" fill="${on}">${it.m}</text>`;
+  return S(px,`<g transform="rotate(${rot} 50 50)">${s}</g>`.replace(`<g transform="rotate(${rot} 50 50)"><rect width="100" height="100" fill="${b}"/>`,`<rect width="100" height="100" fill="${b}"/><g transform="rotate(${rot} 50 50)">`));
+}
+/* Option C: the label, a transcription disc drawn from data. */
+function optC(it, px){
+  const b=BOARD[it.genre], on=ON(it.genre), small=px<96, big=px>=300;
+  let s=`<rect width="100" height="100" fill="${b}"/><circle cx="50" cy="50" r="46" fill="${on}" opacity=".10"/>`;
+  if(!small) for(let r=22;r<=43;r+=1.8) s+=`<circle cx="50" cy="50" r="${r}" fill="none" stroke="${on}" stroke-width=".35" opacity=".35"/>`;
+  // dial ticks for decades
+  if(!small) [1930,1940,1950,1960].forEach(y=>{const [x0,y0]=pol(44,yA(y)),[x1,y1]=pol(47,yA(y));s+=`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${on}" stroke-width=".8" opacity=".6"/>`});
+  if(it.parts){ // made here: the cast's part hues as segments around the rim
+    const tot=it.parts.reduce((a,c)=>a+c,0);let a=90;it.parts.forEach((p,i)=>{const d=p/tot*360;s+=`<path d="${arc(45,a,a-d+3)}" fill="none" stroke="${HUES[i%4]}" stroke-width="${small?7:5}"/>`;a-=d});
+  } else if(it.first){ s+=`<path d="${arc(45,yA(it.first),Math.min(yA(it.first)-4,yA(it.last)))}" fill="none" stroke="${on}" stroke-width="${small?7:4.5}" stroke-linecap="round"/>`; }
+  const lr=small?28:19; s+=`<circle cx="50" cy="50" r="${lr}" fill="${on}"/>`;
+  if(it.date){ s+=`<text x="50" y="${small?44:45}" text-anchor="middle" font-family="PS" font-weight="700" font-size="${small?9:6}" fill="${b}">${it.date[0]}</text><text x="50" y="${small?66:60}" text-anchor="middle" font-family="BS" font-weight="800" font-size="${small?24:17}" fill="${b}">${it.date[1]}</text>`; }
+  else s+=`<text x="50" y="${50+(small?11:7.5)}" text-anchor="middle" font-family="BS" font-weight="800" font-size="${(small?30:21)*(it.m.length>1?1:1.2)}" fill="${b}">${it.m}</text>`;
+  if(big && it.net){ s+=`<defs><path id="rim${it.key}" d="${arc(39,200,-20)}"/></defs><text font-family="PS" font-weight="700" font-size="4" letter-spacing=".8" fill="${on}" opacity=".85"><textPath href="#rim${it.key}" startOffset="50%" text-anchor="middle">${(it.net+' · '+it.decade).toUpperCase()}</textPath></text>`; }
+  return S(px,s);
+}
+const items=[
+ {key:'suspense',name:'Suspense',genre:'mystery',first:1940,last:1962,net:'CBS',decade:'1940s'},
+ {key:'xminusone',name:'X Minus One',genre:'scifi',first:1955,last:1958,net:'NBC',decade:'1950s'},
+ {key:'rangerbill',name:'Ranger Bill',genre:'drama',first:null,last:null},
+ {key:'casesclosed',name:'Case Closed',genre:'',first:null,last:null},
+ {key:'suspense|1942-12-22',name:'Suspense',genre:'mystery',first:1940,last:1962,net:'CBS',decade:'1940s',date:["DEC '42",'22']},
+ {key:'made-1',name:'The Lost Lady',genre:'drama',parts:[50,42],date:null},
+];
+items.forEach(i=>i.m=mono(i.name));
+const cap={suspense:'Suspense: mystery, 1940-62, CBS',xminusone:'X Minus One: sci-fi, 1955-58, NBC',rangerbill:'Ranger Bill: drama, undated, no network',casesclosed:'Case Closed: no genre, no date',['suspense|1942-12-22']:'Episode: Suspense, Dec 22 1942','made-1':'Made here: The Lost Lady, 2 voices'};
+let html='';
+for(const [nm,fn] of [['A, Title card',optA],['B, Signal (hash-seeded motif)',optB],['C, The label (disc from data)',optC]]){
+  html+=`<h2>${nm}</h2><div class="row">`;
+  for(const it of items){ if(fn!==optC && (it.parts||it.date)) continue; html+=`<div class="cell">${fn(it,56)}${fn(it,128)}<span class="cap">${cap[it.key]}</span></div>`; }
+  html+=`<div class="cell">${fn(items[0],320)}<span class="cap">320 px hero</span></div></div>`;
+}
+document.body.innerHTML=html;
+</script></body></html>
