@@ -535,3 +535,9 @@ Ticks 1-30 are in `docs/progress/ticks-001-030.md`, verbatim.
 - Owner: "I'd really love to move on to new features after these tests and audits of screens on each platform are complete." Play internal got direction D (1.0.117). P-9 and title passes live; take-down process live (Decision 074); real-data dry run and honest CI (tools/catalog_dryrun.sh).
 - Owner: "What is the audit even doing if you aren't looking at the results of the audit?!" Sonnet audits passed glaring faults; Apple TV, iPad and Mac redone on Opus with the design skills, frames read by the main thread before each merge. Android portraits were refused by Commons (bare User-Agent), fixed.
 - 1.0.118 on the merged tree: web 17 suites, catalog 38, Worker 250, Android tests and lint, macOS 294, design rules 14, iPhone 12 Release launch held. Left: DESIGN-LOOP N5, N7 to N10, N12, N13, owner list.
+
+### Round 3 tick 1, 2026-11-19, both tracks: research done, first batches launched
+- Context: owner's round 3 scope (ROUND3-LOOP.md); R3a/R3b/R3c research committed (0bae694); rulings: label art C, Home rules, class bundle, archive.org storage only, pass-through takes.
+- Implementation: DECISIONS 046-065 rolled verbatim; AGENT-BRIEF says SHELL_VERSION is stamped. Launched V0+V1 and T0+T1 (Opus, worktrees).
+- Verification: none yet (docs only). CI green.
+- Next: merge V0+V1 and T0+T1 when they report; then V3 and T2.

@@ -195,5 +195,8 @@ privacy words) is folded in when it arrives, never waited on.
 
 ## State
 
-- **2026-11-19, tick 0**: research merged; rulings recorded; nothing built. Next: tick 1 launches
-  V0+V1 and T0+T1. iOS and macOS in App Review; tvOS approved.
+- **2026-11-19, tick 0**: research merged; rulings recorded; nothing built. iOS and macOS in App
+  Review; tvOS approved (owner). `asc_release.py status` needs this repo's own ASC env (the
+  classifier refused borrowing Archive Watch's credentials file); ask the owner where it lives.
+- **2026-11-19, tick 1**: DECISIONS 046-065 rolled (43 KB). Running: V0+V1 (Opus, worktree),
+  T0+T1 (Opus, worktree). Next: merge each when it reports, then V3 (after V0) and T2.
