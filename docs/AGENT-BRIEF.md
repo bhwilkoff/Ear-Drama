@@ -23,7 +23,7 @@ touches. Your brief adds the feature's goal, decisions, and acceptance tests.
 
 ## Verification (judge by logs, never a trailing exit code)
 - Web: `node --check` every js; the `js/*.test.js` you touch; `tools/test_web.sh`;
-  bump `SHELL_VERSION` in `sw.js` when the shell changes. Screenshots at 375 px
+  never hand-bump `SHELL_VERSION` (the deploy stamps it, WEB-DESIGN §10.1). Screenshots at 375 px
   only through a 375 px iframe (headless Chrome will not lay out narrower),
   on a port of your own; stop the server and Chrome after.
 - Apple: `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`;
