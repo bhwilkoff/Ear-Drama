@@ -636,9 +636,11 @@ private fun ClassItem(row: ClassRow) {
         row.code?.let { PlaysShare.classCodeDisplay(it) },
         "Waits for the school's consent".takeIf { row.under13 && row.code != null && !row.schoolConsent },
     )
+    val nav = LocalReadNav.current
     ListItem(
         headlineContent = { Text(row.name, style = MaterialTheme.typography.titleMedium) },
         supportingContent = if (lines.isNotEmpty()) ({ Text(lines.joinToString(" · "), style = MaterialTheme.typography.labelMedium) }) else null,
+        modifier = if (row.code != null) Modifier.clickable { nav.openClass(row.id) } else Modifier,
     )
 }
 

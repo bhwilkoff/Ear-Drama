@@ -324,7 +324,7 @@ The only shapes; a new one needs a new rule.
   how many are here (a fact). When the leader turns on **Read open parts**, the TV
   speaks an unheld line with the device cast, never during a take. The TV records
   nothing, holds no part, never leads, and takes no focus from the panel but one
-  **Leave** button. A dropped socket falls back to polling silently; the panel says
+  **Leave** button. (T4, 2026-11-19: built as `ReadScreenHost`, joined by `eardrama://read/CODE?screen` or the debug door; the TV-shows-the-code direction needs a Worker pairing route, so the TV has no in-app entry yet.) A dropped socket falls back to polling silently; the panel says
   "Slow connection" only past 2 s (a warning). "Waiting for Ms. Ortiz" appears when a
   class's leader is away (the room holds still).
 

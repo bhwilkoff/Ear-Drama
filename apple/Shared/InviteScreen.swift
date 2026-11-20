@@ -225,15 +225,11 @@ struct InviteScreen: View {
         fetching = true
         hearing = part
         let rec = inv.record
-        var files = cached()
+        let files = cached()
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            for id in SharedListen.toFetch(rec, have: Set(files.keys)) where part == nil || inv.takeIDs(forPart: part ?? "").contains(id) {
-                let data = try await api.audio(token, takeID: id)
-                let file = SharedListen.fileName(id, data)
-                try data.write(to: folder.appending(path: file), options: .atomic)
-                files[id] = file
-            }
+            // No route serves another person's take (Decision 082): what is not on this device is read by the
+            // device voice, as the plan labels it.
         } catch {
             line = PlaysShare.line(error)
         }

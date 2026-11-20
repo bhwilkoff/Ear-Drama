@@ -6,6 +6,14 @@ import org.junit.Test
 
 /** DEEP_LINKS.md's shapes: each `eardrama://` link and its `https://eardrama.org` twin route alike. */
 class DeepLinkTest {
+    @Test fun `a read room opens its code and says when it is the screen`() {
+        assertEquals(InboxRequest.ReadRoom("ABC123", false), DeepLink.parse("eardrama://read/abc-123"))
+        assertEquals(InboxRequest.ReadRoom("ABC123", true), DeepLink.parse("https://eardrama.org/read/ABC123?screen"))
+        assertEquals(InboxRequest.ReadRoom("ABC123", true), DeepLink.parse("https://eardrama.org/read/ABC123?screen=1"))
+        assertEquals(null, DeepLink.parse("eardrama://read/ABCDEU"))
+        assertEquals(null, DeepLink.parse("https://eardrama.org/read"))
+    }
+
     @Test fun `a series link and its twin open the series`() {
         assertEquals(InboxRequest.Series("suspense"), DeepLink.parse("eardrama://series/suspense"))
         assertEquals(InboxRequest.Series("suspense"), DeepLink.parse("https://eardrama.org/series/suspense"))

@@ -63,13 +63,6 @@ class OpenPlaysTest {
         assertEquals(Seen("GET", "/v1/plays/open/invite", null, "TOKEN-0123456789012345"), seen.single())
     }
 
-    @Test fun `a take plays with the same header and no bearer`() = runBlocking {
-        answer = "abcd"
-        val bytes = api().audio("TOKEN-0123456789012345", "T 1")
-        assertEquals(4, bytes.size)
-        assertEquals(Seen("GET", "/v1/plays/open/invite/takes/T%201/audio", null, "TOKEN-0123456789012345"), seen.single())
-    }
-
     @Test fun `a revoked or expired invite is gone and an unknown one is not`() = runBlocking {
         status = HttpStatusCode.Gone
         answer = """{"error":"invite_gone"}"""

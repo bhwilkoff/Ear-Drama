@@ -262,6 +262,36 @@ actor APIClient {
         try await rawWorker("GET", path, nil, nil, headers, token: nil)
     }
 
+    /// The takes inbox long poll (docs/WORKER.md): refreshed first, a 40 second wait, and the `x-take` header back with the bytes.
+    func workerInboxResponse(path: String) async throws -> (Data, Int, String?) {
+        let current = try await refreshIfNeeded()
+        guard let base = config.workerURL else { throw WorkerError.notConfigured }
+        let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
+        guard let url = URL(string: root + path) else { throw WorkerError.badResponse }
+        var request = URLRequest(url: url, timeoutInterval: 40)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(current.accessToken)", forHTTPHeaderField: "Authorization")
+        let data: Data
+        let response: URLResponse
+        do { (data, response) = try await session.data(for: request) } catch { throw WorkerError.transport }
+        guard let http = response as? HTTPURLResponse else { throw WorkerError.badResponse }
+        return (data, http.statusCode, http.value(forHTTPHeaderField: "x-take"))
+    }
+
+    /// A Worker call that needs no account (a read room, a seat): no bearer, no refresh. `path` is already percent-encoded.
+    func anonWorkerResponse(_ method: String, path: String, body: Data? = nil,
+                            headers: [String: String] = [:]) async throws -> (Data, Int) {
+        try await rawWorker(method, path, body, nil, headers, token: nil)
+    }
+
+    /// The `wss://` form of a Worker path, for a read room's socket; nil when no Worker is configured.
+    nonisolated func workerSocketURL(path: String) -> URL? {
+        guard let base = config.workerURL else { return nil }
+        let root = base.absoluteString.hasSuffix("/") ? String(base.absoluteString.dropLast()) : base.absoluteString
+        guard root.hasPrefix("http") else { return nil }
+        return URL(string: "ws" + root.dropFirst(4) + path)
+    }
+
     private func rawWorker(_ method: String, _ path: String, _ body: Data?, _ contentType: String?,
                            _ headers: [String: String], token: String?) async throws -> (Data, Int) {
         guard let base = config.workerURL else { throw WorkerError.notConfigured }

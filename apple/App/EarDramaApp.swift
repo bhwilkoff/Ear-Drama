@@ -143,6 +143,13 @@ struct EarDramaApp: App {
             }
         }
         .defaultSize(width: 560, height: 680)
+        WindowGroup("Shared Screen", id: ReadScreenWindow_macOS.id, for: String.self) { $code in
+            if let code {
+                ReadScreenWindow_macOS(code: code)
+                    .tint(Color.brandSecondary)
+            }
+        }
+        .defaultSize(width: 1024, height: 640)
         WindowGroup("Production", id: ProductionWindow_macOS.id, for: String.self) { $id in
             if let id {
                 ProductionWindow_macOS(productionID: id)

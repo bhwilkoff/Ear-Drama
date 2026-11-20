@@ -118,7 +118,7 @@ class PlayLibraryFeedTest {
         override suspend fun partAction(pid: String, part: String, action: String) = error("not used")
         override suspend fun agree(pid: String, version: String) = error("not used")
         override suspend fun upload(pid: String, takeId: String, bytes: ByteArray, meta: JsonObject) = error("not used")
-        override suspend fun audio(pid: String, takeId: String) = error("not used")
+        override suspend fun nextTake(pid: String) = error("not used")
         override suspend fun choose(pid: String, takeId: String) = error("not used")
         override suspend fun publish(pid: String) = error("not used")
         override suspend fun removeLine(pid: String, lineId: String, reason: String) = error("not used")

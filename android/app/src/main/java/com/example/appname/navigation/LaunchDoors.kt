@@ -1,5 +1,6 @@
 package com.example.appname.navigation
 
+import com.example.appname.plays.ReadCore
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /**
@@ -27,6 +28,9 @@ sealed interface InboxRequest {
 
     /** DEBUG door `appname_start_along`: a finished drama's page with Listen pressed, so its read-along follows the files (a TV too). */
     data class Along(val pid: String) : InboxRequest
+
+    /** A read room by code (DEEP_LINKS.md `read/{CODE}`); [screen] opens it as the shared screen; [seat] is the DEBUG seat door. */
+    data class ReadRoom(val code: String, val screen: Boolean = false, val seat: String? = null) : InboxRequest
 
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
@@ -63,10 +67,17 @@ data class LaunchDoors(
      * script and the panel steps through its lines on a timer, playing nothing.
      */
     val startAlong: String? = null,
+    /** `appname_start_read_room`: a read room's code. `appname_start_seat` is `<class code>:<seat id or label>`; `appname_start_screen` opens it as the shared screen. */
+    val startReadRoom: String? = null,
+    val startSeat: String? = null,
+    val startScreen: Boolean = false,
 ) {
     fun requests(): List<InboxRequest> =
         listOfNotNull(
-            startTab?.let(InboxRequest::Tab), startItem?.let(InboxRequest::Item),
+            startTab?.let(InboxRequest::Tab),
+            // A series key has no `|`; an episode id always does (Apple's door reads it the same way).
+            startItem?.let { if ('|' in it) InboxRequest.Item(it) else InboxRequest.Series(it) },
+            startReadRoom?.let { ReadCore.normalizeCode(it) }?.let { InboxRequest.ReadRoom(it, startScreen, startSeat) },
             startAlong?.takeIf { it.isNotBlank() }?.let { InboxRequest.Along(alongPid(it)) },
             startRead?.let {
                 InboxRequest.Read(
@@ -93,10 +104,18 @@ data class LaunchDoors(
         const val EXTRA_STUDIO_STUB = "appname_studio_stub"
         const val EXTRA_STUDIO_PHASE = "appname_studio_phase"
         const val EXTRA_START_ALONG = "appname_start_along"
+        const val EXTRA_START_READ_ROOM = "appname_start_read_room"
+        const val EXTRA_START_SEAT = "appname_start_seat"
+        const val EXTRA_START_SCREEN = "appname_start_screen"
+        const val EXTRA_READ_DIAG = "appname_read_diag"
+
+        /** DEBUG `appname_read_diag`: the read session prints its transport, cursor delay and clock offset. Set once by MainActivity. */
+        @Volatile var diag = false
 
         /** [extras] is the intent's extras as a map; `am start` sends --es/--ez/--ei types. */
         fun from(extras: Map<String, Any?>, debug: Boolean): LaunchDoors {
             if (!debug) return LaunchDoors()
+            diag = extras[EXTRA_READ_DIAG].let { it == true || it == "1" || it == "true" }
             return LaunchDoors(
                 startTab = extras[EXTRA_START_TAB]?.toString(),
                 startItem = extras[EXTRA_START_ITEM]?.toString(),
@@ -108,6 +127,9 @@ data class LaunchDoors(
                 studioStub = extras[EXTRA_STUDIO_STUB].let { it == true || it == "1" || it == "true" },
                 studioPhase = extras[EXTRA_STUDIO_PHASE]?.toString(),
                 startAlong = extras[EXTRA_START_ALONG]?.toString(),
+                startReadRoom = extras[EXTRA_START_READ_ROOM]?.toString()?.takeIf { it.isNotBlank() },
+                startSeat = extras[EXTRA_START_SEAT]?.toString()?.takeIf { it.isNotBlank() },
+                startScreen = extras[EXTRA_START_SCREEN].let { it == true || it == "1" || it == "true" },
             )
         }
     }

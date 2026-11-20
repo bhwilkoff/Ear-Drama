@@ -48,6 +48,11 @@ sealed interface Route : NavKey {
     @Serializable data object Invitation : Route
     /** A finished ear drama's page. */
     @Serializable data class Drama(val id: String) : Route
+    /** A read room (DEEP_LINKS.md `read/{CODE}`): a reader on a phone or tablet; the shared screen on a TV or with [screen]. */
+    @Serializable data class ReadRoom(val code: String, val screen: Boolean = false, val seat: String? = null) : Route
+    /** The teacher's class page and its casting board (PLAYS-DESIGN §12.4). Not on a TV. */
+    @Serializable data class ClassPage(val id: String) : Route
+    @Serializable data class ClassCasting(val classId: String, val productionId: String) : Route
     /** The recorder before the studio moved into the reader (S3): no door opens it any more; [part] is the raw `PartID`. */
     @Serializable data class Recording(val production: String, val part: String, val line: String? = null) : Route
 }

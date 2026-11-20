@@ -71,6 +71,12 @@ data class SharedArchive(
     val reason: String? = null,
 )
 
+/** A take that passed through to this device: its bytes and the fields the sender gave it (`x-take`). */
+@Serializable
+data class PickedFields(val id: String, val lineID: String, val part: String, val frames: Int, val sampleRate: Double, val capture: String? = null, val seat: String? = null)
+
+class PickedTake(val fields: PickedFields, val bytes: ByteArray)
+
 /** The Worker's record (docs/WORKER.md, "The record"): production.json's fields plus the Worker's own. */
 @Serializable
 data class SharedRecord(
@@ -160,7 +166,8 @@ interface PlaysTransport {
     suspend fun partAction(pid: String, part: String, action: String): SharedRecord
     suspend fun agree(pid: String, version: String)
     suspend fun upload(pid: String, takeId: String, bytes: ByteArray, meta: JsonObject)
-    suspend fun audio(pid: String, takeId: String): ByteArray
+    /** The next take waiting in the director's inbox (a long poll), or null when none came; the audio is deleted on delivery. */
+    suspend fun nextTake(pid: String): PickedTake?
     suspend fun choose(pid: String, takeId: String): SharedRecord
     suspend fun publish(pid: String): PublishAnswer
     suspend fun removeLine(pid: String, lineId: String, reason: String)
@@ -427,15 +434,18 @@ object PlaysShare {
     suspend fun bringHome(api: PlaysTransport, store: ShareStore, localId: String, rec: SharedRecord, script: PlayScript, me: String?): Int {
         val local = store.production(localId) ?: return 0
         val add = mutableListOf<Take>()
-        for (takeId in missingHere(local, rec)) {
-            val t = rec.takes.first { it.id == takeId }
-            val file = "m-$takeId.wav"
-            store.importTake(localId, file, api.audio(rec.id, takeId))
+        // Takes are on the devices that made them (Decision 082): the director's device picks up what was sent to it,
+        // one at a time, from the takes inbox, never by fetching a stored file.
+        for (unused in missingHere(local, rec)) {
+            val picked = api.nextTake(rec.id) ?: break
+            val t = picked.fields
+            val file = "m-${t.id}.wav"
+            store.importTake(localId, file, picked.bytes)
             add += Take(
-                id = t.id, lineID = t.lineID, part = PartID(t.part), file = file, created = t.created, frames = t.frames,
+                id = t.id, lineID = t.lineID, part = PartID(t.part), file = file, created = System.currentTimeMillis() / 1000.0, frames = t.frames,
                 sampleRate = t.sampleRate,
                 capture = if (t.capture == "aec") Take.Capture.Aec else Take.Capture.Direct,
-                heard = t.heard, loudness = t.loudness, peak = t.peak, bleed = false,
+                heard = emptyMap(), loudness = null, peak = 0f, bleed = false,
             )
         }
         val withTakes = local.copy(takes = local.takes + add)

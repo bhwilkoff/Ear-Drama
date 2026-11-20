@@ -107,6 +107,8 @@ private struct RouteDestinations_tvOS: ViewModifier {
             case .stations: RadioScreen_tvOS()
             case let .drama(pid): FinishedDramaScreen(id: pid)
             case .invitation: EmptyView()
+            case let .readRoom(code), let .readScreen(code): ReadScreenHost(code: code)
+            case .classPage, .classCasting: EmptyView()
             }
         }
         .navigationDestination(for: SharedPlayRoute.self) { SharedPlayScreen_tvOS(route: $0) }

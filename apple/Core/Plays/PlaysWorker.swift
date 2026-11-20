@@ -178,6 +178,21 @@ nonisolated struct PlayClasses: Codable, Equatable, Sendable {
     enum CodingKeys: String, CodingKey { case teaching, memberOf = "member_of" }
 }
 
+/// A take that passed through to this device: its bytes and the fields the sender gave it (`x-take`).
+nonisolated struct PickedTake: Sendable {
+    struct Fields: Codable, Equatable, Sendable {
+        var id: String
+        var lineID: String
+        var part: String
+        var frames: Int
+        var sampleRate: Double
+        var capture: String?
+        var seat: String?
+    }
+    var fields: Fields
+    var data: Data
+}
+
 nonisolated struct PublishJob: Codable, Equatable, Sendable {
     var status: String
 }
@@ -257,7 +272,8 @@ protocol PlaysTransport {
     func partAction(_ pid: String, part: PartID, action: String) async throws -> SharedRecord
     func agree(_ pid: String, version: String) async throws
     func upload(_ pid: String, takeID: String, audio: Data, contentType: String, meta: TakeMeta) async throws
-    func audio(_ pid: String, takeID: String) async throws -> Data
+    /// The next take waiting in the director's inbox (a long poll), or nil when none came; the audio is deleted on delivery.
+    func nextTake(_ pid: String) async throws -> PickedTake?
     func choose(_ pid: String, takeID: String) async throws -> SharedRecord
     func publish(_ pid: String) async throws -> PublishJob
     func removeLine(_ pid: String, lineID: String, reason: String) async throws
@@ -387,8 +403,21 @@ struct WorkerPlays: PlaysTransport {
                            headers: ["x-take": header])
     }
 
-    func audio(_ pid: String, takeID: String) async throws -> Data {
-        try await call("GET", "\(Self.at(pid))/takes/\(Self.escape(takeID))/audio")
+    func nextTake(_ pid: String) async throws -> PickedTake? {
+        let data: Data
+        let status: Int
+        let header: String?
+        do {
+            (data, status, header) = try await api.workerInboxResponse(path: "\(Self.at(pid))/takes/inbox")
+        } catch {
+            throw PlaysRefusal.from(error)
+        }
+        if status == 204 { return nil }
+        guard 200...299 ~= status else { throw Self.refusal(status, data) }
+        guard let header, let fields = try? JSONDecoder().decode(PickedTake.Fields.self, from: Data(header.utf8)) else {
+            throw PlaysRefusal(kind: .unreachable)
+        }
+        return PickedTake(fields: fields, data: data)
     }
 
     func choose(_ pid: String, takeID: String) async throws -> SharedRecord {

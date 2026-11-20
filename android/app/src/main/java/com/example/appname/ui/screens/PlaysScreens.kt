@@ -343,7 +343,7 @@ fun LazyListScope.playPage(
     script: PlayScript,
     television: Boolean,
     onOpenProduction: (String) -> Unit,
-    start: @Composable () -> Unit = { StartEarDramaButton(script, onOpenProduction) },
+    start: @Composable () -> Unit = { StartEarDramaButton(script, onOpenProduction); ReadTogetherButton(script) },
     onRead: (() -> Unit)? = null,
 ) {
     item(key = "head") { PlayHeadBoard(script, kicker = if (script.kind == "stage") "Stage play" else "Radio play") }

@@ -268,6 +268,7 @@ struct PlayPageBody: View {
             ActionRow {
                 StartEarDramaButton(script: script)
                 ReadButton(scriptID: script.id)
+                ReadStartButton(script: script)
             }
             Text("Parts").font(TypeRamp.sectionHeader)
             PartGrid {

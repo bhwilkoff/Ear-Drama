@@ -92,8 +92,11 @@ class PlaysApi(private val worker: WorkerApi) : PlaysTransport {
         }
     }
 
-    override suspend fun audio(pid: String, takeId: String): ByteArray =
-        guarded { worker.callBytes(HttpMethod.Get, "${at(pid)}/takes/${enc(takeId)}/audio") }
+    override suspend fun nextTake(pid: String): PickedTake? = guarded {
+        val (bytes, header) = worker.callInbox("${at(pid)}/takes/inbox") ?: return@guarded null
+        val fields = header?.let { runCatching { ShareJson.decodeFromString(PickedFields.serializer(), it) }.getOrNull() } ?: throw PlaysException("", PlaysException.Kind.Offline)
+        PickedTake(fields, bytes)
+    }
 
     override suspend fun choose(pid: String, takeId: String): SharedRecord =
         decode(HttpMethod.Post, "${at(pid)}/chosen", buildJsonObject { put("take_id", takeId) })

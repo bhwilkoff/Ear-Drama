@@ -18,6 +18,10 @@ struct RouteDestinations: ViewModifier {
             case .stations: RadioScreen()
             case let .drama(pid): FinishedDramaScreen(id: pid)
             case let .invitation(token): InviteScreen(token: token)
+            case let .readRoom(code): ReadRoomScreen(code: code, seat: LaunchDoors.current.readSeat)
+            case let .readScreen(code): ReadScreenHost(code: code)
+            case let .classPage(id): ClassPageScreen(id: id)
+            case let .classCasting(classID, pid): CastingBoardScreen(classID: classID, productionID: pid)
             }
         }
         .navigationDestination(for: DownloadsRoute.self) { _ in DownloadsScreen() }

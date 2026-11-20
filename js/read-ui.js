@@ -140,6 +140,16 @@ const ReadUI = (() => {
     } }, input, next);
     slot.replaceChildren(form, names);
     input.focus();
+    const door = seatDoor();
+    if (door) { input.value = door.classCode; form.requestSubmit(); }
+  }
+
+  /** The `?seat=<class code>:<seat id or label>` door picks that name without a person at the form; local pages only, so no shared link carries one. */
+  function seatDoor() {
+    if (typeof location === 'undefined' || !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return null;
+    const v = new URLSearchParams(location.search).get('seat') || '';
+    const i = v.indexOf(':');
+    return i > 0 ? { classCode: v.slice(0, i), seat: v.slice(i + 1) } : null;
   }
 
   function pickName(box, my, roomCode, classCode, list, line) {
@@ -163,10 +173,12 @@ const ReadUI = (() => {
         line.textContent = R.refusal(codeOf(err));
       }
     };
+    const door = seatDoor();
     for (const s of list.seats || []) {
       const b = h.el('button', { type: 'button', class: 'btn rr-name' }, s.label);
       b.addEventListener('click', () => claim(s, false, b));
       ul.append(h.el('li', {}, b));
+      if (door && (s.id === door.seat || s.label === door.seat)) setTimeout(() => claim(s, true, b), 0);
     }
     box.replaceChildren(h.el('h2', { class: 'section-header' }, list.class ? list.class.name : 'Names'),
       (list.seats || []).length ? ul : h.el('p', { class: 'caption' }, 'No names yet.'));
@@ -244,10 +256,12 @@ const ReadUI = (() => {
         el('input', { type: 'radio', name: 'rr-mode', value, checked: s.mode === value, onchange: () => send({ type: 'mode', mode: value }) }),
         el('span', { class: 'body' }, label));
       const lock = el('input', { type: 'checkbox', checked: !!s.locked, onchange: (e) => send({ type: 'lock', locked: e.currentTarget.checked }) });
+      const openParts = el('input', { type: 'checkbox', checked: !!s.read_open, onchange: (e) => send({ type: 'read-open', open: e.currentTarget.checked }) });
       menu.replaceChildren(el('summary', { class: 'btn btn-ghost' }, 'Reading'),
         el('div', { class: 'rr-menu-body' },
           el('fieldset', { class: 'rd-choice' }, el('legend', { class: 'caption' }, 'Mode'), radio('read', 'Table read'), radio('rehearse', 'Rehearse')),
           el('label', { class: 'check' }, lock, el('span', { class: 'body' }, 'Lock joining')),
+          el('label', { class: 'check' }, openParts, el('span', { class: 'body' }, 'Read open parts')),
           el('a', { class: 'btn btn-ghost', href: `?read-room=${s.code}&screen=1`, target: '_blank', rel: 'noopener' }, 'Open the screen'),
           el('button', { type: 'button', class: 'btn btn-ghost rr-end', onclick: () => { if (confirm('End the reading for everyone?')) send({ type: 'end' }); } }, 'End the reading')));
     }
@@ -354,7 +368,6 @@ const ReadUI = (() => {
     const lines = script.lines;
     const cast = castOf(script);
     const voice = StandInVoice.create({ muted: muted() });
-    let readOpen = false;
     let spokenAt = null;
     const before = h.el('div', { class: 'rs-before' });
     const now = h.el('div', { class: 'rs-now' });
@@ -363,11 +376,10 @@ const ReadUI = (() => {
     const here = h.el('span', { class: 'caption tabular' });
     const codeEl = h.el('span', { class: 'rs-code tabular' });
     const full = h.el('button', { type: 'button', class: 'btn btn-ghost', onclick: () => document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}) }, 'Full screen');
-    const openBox = h.el('input', { type: 'checkbox', disabled: !voice.available(), onchange: (e) => { readOpen = e.currentTarget.checked; spokenAt = null; paint(); } });
     const root = h.el('div', { class: 'rs' },
       h.el('div', { class: 'rs-page' }, before, now, after),
       h.el('div', { class: 'rs-foot' }, status,
-        h.el('label', { class: 'check' }, openBox, h.el('span', { class: 'caption' }, 'Read open parts')), full,
+        full,
         h.el('span', { class: 'rs-corner' }, codeEl, here)));
     const speech = (line, cls) => {
       if (!line) return h.el('p', { class: cls });
@@ -395,7 +407,7 @@ const ReadUI = (() => {
       // Read open parts: only a line nobody holds, only on the screen, only live (PLAYS-DESIGN §5).
       const reads = s.reads_now;
       const open = reads && (s.kind === 'class' ? !reads.seat : !reads.holder);
-      if (readOpen && open && spokenAt !== s.cursor && lines[i] && lines[i].kind === 'speech') {
+      if (s.read_open && voice.available() && open && spokenAt !== s.cursor && lines[i] && lines[i].kind === 'speech') {
         spokenAt = s.cursor;
         voice.speak(C.spokenText(lines[i]), C.linePart(lines[i]));
       }

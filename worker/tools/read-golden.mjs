@@ -133,6 +133,9 @@ add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "mode", 
 add("applyMessage", [world(adultClaimed, adultMembers), "ann", { type: "release", part: "role:LUCY" }, T + 1000], "a reader releases their part");
 add("applyMessage", [world(adultClaimed, adultMembers), "bob", { type: "ping", t0: 42 }, T + 1000], "a ping is a clock sample and changes nothing");
 add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "lock", locked: true }, T + 1000], "Lock joining");
+add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "read-open", open: true }, T + 1000], "the leader turns Read open parts on");
+add("applyMessage", [world(adultClaimed, adultMembers), "ann", { type: "read-open", open: true }, T + 1000], "only the leader turns Read open parts on");
+add("applyMessage", [world(adultClaimed, adultMembers), "host", { type: "read-open", open: "yes" }, T + 1000], "read-open takes a boolean");
 
 // Settling and the snapshot.
 add("settle", [adult, adultMembers.map((x) => (x.id === "host" ? x : { ...x, seen_at: T + 3 * MIN })), T + 3 * MIN], "an adult room's lead moves after 2 minutes");
@@ -140,6 +143,8 @@ add("settle", [klass, classMembers.map((x) => (x.id === "d3" ? x : { ...x, seen_
 add("settle", [klass, classMembers.map((x) => (x.id === "d3" ? x : { ...x, seen_at: T + 10 * MIN })), T + 10 * MIN], "a device gone 10 minutes keeps its place, so its key rejoins");
 add("joinSnapshot", [klass, cast, classMembers, "d3", T + 1000], "a late joiner's snapshot: cursor, parts, next line");
 add("joinSnapshot", [adultClaimed, cast, adultMembers, "ann", T + 1000], "an adult reader's snapshot");
+add("joinSnapshot", [{ ...adultClaimed, owner: "host", owner_name: "Ben", read_open: true }, cast, adultMembers, "ann", T + 1000], "the leader's name and Read open parts travel in the snapshot");
+add("joinSnapshot", [{ ...klass, leader: "d2" }, cast, classMembers, "d1", T + 1000], "a seat that leads is named by its label");
 
 const constants = {
   PROTOCOL_VERSION: P.PROTOCOL_VERSION,

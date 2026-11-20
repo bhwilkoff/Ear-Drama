@@ -1,5 +1,5 @@
 {
- "protocol_sha256": "89b2574500b82eb8e304f08cca6ee79671734648e180561ff581f4216f1b0563",
+ "protocol_sha256": "6c4d58fc52ac3bb31a28792335bcbe098ce82bd1e42e9d81eff5d2f996ebb96c",
  "constants": {
   "PROTOCOL_VERSION": 1,
   "CODE_ALPHABET": "0123456789ABCDEFGHJKMNPQRSTVWXYZ",
@@ -185,6 +185,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -291,6 +293,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -613,6 +617,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -644,6 +650,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -675,6 +683,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -721,6 +731,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -796,6 +808,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -865,6 +879,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -971,6 +987,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -1075,6 +1093,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -1179,6 +1199,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -1320,6 +1342,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -1461,6 +1485,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -1596,6 +1622,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -1703,6 +1731,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -1810,6 +1840,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -1914,6 +1946,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -2021,6 +2055,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -2099,6 +2135,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -2202,6 +2240,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -2266,6 +2306,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -2330,6 +2372,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -2380,6 +2424,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -2458,6 +2504,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -2528,6 +2576,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host",
@@ -2562,6 +2612,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -2632,6 +2684,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -2665,6 +2719,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -2771,6 +2827,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -2845,6 +2903,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -3161,6 +3221,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -3470,6 +3532,8 @@
      "owner": "host",
      "leader": "host",
      "locked": true,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -3534,6 +3598,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -3637,6 +3703,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -3741,6 +3809,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -3844,6 +3914,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -3956,6 +4028,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -4112,6 +4186,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4177,6 +4253,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4207,6 +4285,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4279,6 +4359,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4344,6 +4426,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4374,6 +4458,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4447,6 +4533,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -4520,6 +4608,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -4656,6 +4746,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -4758,6 +4850,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -4894,6 +4988,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -4996,6 +5092,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -5140,6 +5238,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -5278,6 +5378,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -5380,6 +5482,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -5518,6 +5622,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -5618,6 +5724,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -5753,6 +5861,8 @@
      "owner": "teacher",
      "leader": "d1",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -5853,6 +5963,8 @@
       "owner": "teacher",
       "leader": "teacher",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -5996,6 +6108,8 @@
       "owner": "teacher",
       "leader": "d1",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {},
       "seats": [
        {
@@ -6131,6 +6245,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -6231,6 +6347,8 @@
       "owner": "host",
       "leader": "host",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {
        "role:LUCY": "ann",
        "role:TOM": "host"
@@ -6338,6 +6456,8 @@
       "owner": "host",
       "leader": "host",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {
        "role:LUCY": "ann",
        "role:TOM": "host"
@@ -6437,6 +6557,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -6501,6 +6623,8 @@
       "owner": "host",
       "leader": "host",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {
        "role:LUCY": "ann",
        "role:TOM": "host"
@@ -6600,6 +6724,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:TOM": "host"
      },
@@ -6663,6 +6789,8 @@
       "owner": "host",
       "leader": "host",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {
        "role:LUCY": "ann",
        "role:TOM": "host"
@@ -6762,6 +6890,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -6831,6 +6961,8 @@
       "owner": "host",
       "leader": "host",
       "locked": false,
+      "read_open": false,
+      "owner_name": null,
       "claims": {
        "role:LUCY": "ann",
        "role:TOM": "host"
@@ -6930,6 +7062,8 @@
      "owner": "host",
      "leader": "host",
      "locked": true,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -6975,6 +7109,391 @@
    }
   },
   {
+   "fn": "applyMessage",
+   "note": "the leader turns Read open parts on",
+   "args": [
+    {
+     "room": {
+      "v": 1,
+      "code": "ABC123",
+      "kind": "adult",
+      "script_id": "gut-1",
+      "script_revision": "r1",
+      "production_id": null,
+      "class_id": null,
+      "mode": "read",
+      "cursor": "l1",
+      "cursor_gen": 0,
+      "generation": 1,
+      "owner": "host",
+      "leader": "host",
+      "locked": false,
+      "read_open": false,
+      "owner_name": null,
+      "claims": {
+       "role:LUCY": "ann",
+       "role:TOM": "host"
+      },
+      "seats": [],
+      "assignments": [],
+      "done": [],
+      "ended": false,
+      "created_at": 1763500000000,
+      "touched_at": 1763500000000
+     },
+     "cast": [
+      [
+       "l1",
+       "directions"
+      ],
+      [
+       "l2",
+       "role:LUCY"
+      ],
+      [
+       "l3",
+       "role:TOM"
+      ],
+      [
+       "l4",
+       "role:LUCY"
+      ],
+      [
+       "l5",
+       "sound"
+      ],
+      [
+       "l6",
+       "role:TOM"
+      ],
+      [
+       "l7",
+       "role:NURSE"
+      ],
+      [
+       "l8",
+       "role:LUCY"
+      ]
+     ],
+     "members": [
+      {
+       "id": "host",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500000000,
+       "seen_at": 1763500000000
+      },
+      {
+       "id": "ann",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500001000,
+       "seen_at": 1763500001000
+      },
+      {
+       "id": "bob",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500002000,
+       "seen_at": 1763500002000
+      },
+      {
+       "id": "tv",
+       "role": "screen",
+       "seat": null,
+       "joined_at": 1763500000500,
+       "seen_at": 1763500000500
+      }
+     ]
+    },
+    "host",
+    {
+     "type": "read-open",
+     "open": true
+    },
+    1763500001000
+   ],
+   "expect": {
+    "room": {
+     "v": 1,
+     "code": "ABC123",
+     "kind": "adult",
+     "script_id": "gut-1",
+     "script_revision": "r1",
+     "production_id": null,
+     "class_id": null,
+     "mode": "read",
+     "cursor": "l1",
+     "cursor_gen": 0,
+     "generation": 2,
+     "owner": "host",
+     "leader": "host",
+     "locked": false,
+     "read_open": true,
+     "owner_name": null,
+     "claims": {
+      "role:LUCY": "ann",
+      "role:TOM": "host"
+     },
+     "seats": [],
+     "assignments": [],
+     "done": [],
+     "ended": false,
+     "created_at": 1763500000000,
+     "touched_at": 1763500001000
+    },
+    "members": [
+     {
+      "id": "host",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500000000,
+      "seen_at": 1763500001000
+     },
+     {
+      "id": "ann",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500001000,
+      "seen_at": 1763500001000
+     },
+     {
+      "id": "bob",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500002000,
+      "seen_at": 1763500002000
+     },
+     {
+      "id": "tv",
+      "role": "screen",
+      "seat": null,
+      "joined_at": 1763500000500,
+      "seen_at": 1763500000500
+     }
+    ],
+    "changed": true
+   }
+  },
+  {
+   "fn": "applyMessage",
+   "note": "only the leader turns Read open parts on",
+   "args": [
+    {
+     "room": {
+      "v": 1,
+      "code": "ABC123",
+      "kind": "adult",
+      "script_id": "gut-1",
+      "script_revision": "r1",
+      "production_id": null,
+      "class_id": null,
+      "mode": "read",
+      "cursor": "l1",
+      "cursor_gen": 0,
+      "generation": 1,
+      "owner": "host",
+      "leader": "host",
+      "locked": false,
+      "read_open": false,
+      "owner_name": null,
+      "claims": {
+       "role:LUCY": "ann",
+       "role:TOM": "host"
+      },
+      "seats": [],
+      "assignments": [],
+      "done": [],
+      "ended": false,
+      "created_at": 1763500000000,
+      "touched_at": 1763500000000
+     },
+     "cast": [
+      [
+       "l1",
+       "directions"
+      ],
+      [
+       "l2",
+       "role:LUCY"
+      ],
+      [
+       "l3",
+       "role:TOM"
+      ],
+      [
+       "l4",
+       "role:LUCY"
+      ],
+      [
+       "l5",
+       "sound"
+      ],
+      [
+       "l6",
+       "role:TOM"
+      ],
+      [
+       "l7",
+       "role:NURSE"
+      ],
+      [
+       "l8",
+       "role:LUCY"
+      ]
+     ],
+     "members": [
+      {
+       "id": "host",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500000000,
+       "seen_at": 1763500000000
+      },
+      {
+       "id": "ann",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500001000,
+       "seen_at": 1763500001000
+      },
+      {
+       "id": "bob",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500002000,
+       "seen_at": 1763500002000
+      },
+      {
+       "id": "tv",
+       "role": "screen",
+       "seat": null,
+       "joined_at": 1763500000500,
+       "seen_at": 1763500000500
+      }
+     ]
+    },
+    "ann",
+    {
+     "type": "read-open",
+     "open": true
+    },
+    1763500001000
+   ],
+   "expect": {
+    "error": "leader_only"
+   }
+  },
+  {
+   "fn": "applyMessage",
+   "note": "read-open takes a boolean",
+   "args": [
+    {
+     "room": {
+      "v": 1,
+      "code": "ABC123",
+      "kind": "adult",
+      "script_id": "gut-1",
+      "script_revision": "r1",
+      "production_id": null,
+      "class_id": null,
+      "mode": "read",
+      "cursor": "l1",
+      "cursor_gen": 0,
+      "generation": 1,
+      "owner": "host",
+      "leader": "host",
+      "locked": false,
+      "read_open": false,
+      "owner_name": null,
+      "claims": {
+       "role:LUCY": "ann",
+       "role:TOM": "host"
+      },
+      "seats": [],
+      "assignments": [],
+      "done": [],
+      "ended": false,
+      "created_at": 1763500000000,
+      "touched_at": 1763500000000
+     },
+     "cast": [
+      [
+       "l1",
+       "directions"
+      ],
+      [
+       "l2",
+       "role:LUCY"
+      ],
+      [
+       "l3",
+       "role:TOM"
+      ],
+      [
+       "l4",
+       "role:LUCY"
+      ],
+      [
+       "l5",
+       "sound"
+      ],
+      [
+       "l6",
+       "role:TOM"
+      ],
+      [
+       "l7",
+       "role:NURSE"
+      ],
+      [
+       "l8",
+       "role:LUCY"
+      ]
+     ],
+     "members": [
+      {
+       "id": "host",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500000000,
+       "seen_at": 1763500000000
+      },
+      {
+       "id": "ann",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500001000,
+       "seen_at": 1763500001000
+      },
+      {
+       "id": "bob",
+       "role": "reader",
+       "seat": null,
+       "joined_at": 1763500002000,
+       "seen_at": 1763500002000
+      },
+      {
+       "id": "tv",
+       "role": "screen",
+       "seat": null,
+       "joined_at": 1763500000500,
+       "seen_at": 1763500000500
+      }
+     ]
+    },
+    "host",
+    {
+     "type": "read-open",
+     "open": "yes"
+    },
+    1763500001000
+   ],
+   "expect": {
+    "error": "bad_message"
+   }
+  },
+  {
    "fn": "settle",
    "note": "an adult room's lead moves after 2 minutes",
    "args": [
@@ -6993,6 +7512,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -7049,6 +7570,8 @@
      "owner": "host",
      "leader": "ann",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [],
      "assignments": [],
@@ -7110,6 +7633,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -7205,6 +7730,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -7298,6 +7825,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -7393,6 +7922,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -7493,6 +8024,8 @@
      "owner": "teacher",
      "leader": "teacher",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {},
      "seats": [
       {
@@ -7623,6 +8156,8 @@
     "locked": false,
     "ended": false,
     "leader": "teacher",
+    "leader_name": null,
+    "read_open": false,
     "waiting_for_leader": false,
     "you": {
      "id": "d3",
@@ -7738,6 +8273,8 @@
      "owner": "host",
      "leader": "host",
      "locked": false,
+     "read_open": false,
+     "owner_name": null,
      "claims": {
       "role:LUCY": "ann",
       "role:TOM": "host"
@@ -7832,6 +8369,8 @@
     "locked": false,
     "ended": false,
     "leader": "host",
+    "leader_name": null,
+    "read_open": false,
     "waiting_for_leader": false,
     "you": {
      "id": "ann",
@@ -7890,6 +8429,434 @@
     },
     "seats": [],
     "assignments": [],
+    "done": [],
+    "server_time": 1763500001000
+   }
+  },
+  {
+   "fn": "joinSnapshot",
+   "note": "the leader's name and Read open parts travel in the snapshot",
+   "args": [
+    {
+     "v": 1,
+     "code": "ABC123",
+     "kind": "adult",
+     "script_id": "gut-1",
+     "script_revision": "r1",
+     "production_id": null,
+     "class_id": null,
+     "mode": "read",
+     "cursor": "l1",
+     "cursor_gen": 0,
+     "generation": 1,
+     "owner": "host",
+     "leader": "host",
+     "locked": false,
+     "read_open": true,
+     "owner_name": "Ben",
+     "claims": {
+      "role:LUCY": "ann",
+      "role:TOM": "host"
+     },
+     "seats": [],
+     "assignments": [],
+     "done": [],
+     "ended": false,
+     "created_at": 1763500000000,
+     "touched_at": 1763500000000
+    },
+    [
+     [
+      "l1",
+      "directions"
+     ],
+     [
+      "l2",
+      "role:LUCY"
+     ],
+     [
+      "l3",
+      "role:TOM"
+     ],
+     [
+      "l4",
+      "role:LUCY"
+     ],
+     [
+      "l5",
+      "sound"
+     ],
+     [
+      "l6",
+      "role:TOM"
+     ],
+     [
+      "l7",
+      "role:NURSE"
+     ],
+     [
+      "l8",
+      "role:LUCY"
+     ]
+    ],
+    [
+     {
+      "id": "host",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500000000,
+      "seen_at": 1763500000000
+     },
+     {
+      "id": "ann",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500001000,
+      "seen_at": 1763500001000
+     },
+     {
+      "id": "bob",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500002000,
+      "seen_at": 1763500002000
+     },
+     {
+      "id": "tv",
+      "role": "screen",
+      "seat": null,
+      "joined_at": 1763500000500,
+      "seen_at": 1763500000500
+     }
+    ],
+    "ann",
+    1763500001000
+   ],
+   "expect": {
+    "v": 1,
+    "type": "snapshot",
+    "code": "ABC123",
+    "kind": "adult",
+    "mode": "read",
+    "script_id": "gut-1",
+    "script_revision": "r1",
+    "production_id": null,
+    "class_id": null,
+    "cursor": "l1",
+    "cursor_gen": 0,
+    "generation": 1,
+    "locked": false,
+    "ended": false,
+    "leader": "host",
+    "leader_name": "Ben",
+    "read_open": true,
+    "waiting_for_leader": false,
+    "you": {
+     "id": "ann",
+     "role": "reader",
+     "seat": null,
+     "leads": false,
+     "owner": false,
+     "parts": [
+      {
+       "part": "role:LUCY",
+       "from": null,
+       "to": null
+      }
+     ]
+    },
+    "next_mine": {
+     "line": "l2",
+     "in": 1
+    },
+    "reads_now": {
+     "part": "directions",
+     "seat": null,
+     "holder": null,
+     "members": []
+    },
+    "members": [
+     {
+      "id": "host",
+      "role": "reader",
+      "seat": null,
+      "live": true
+     },
+     {
+      "id": "ann",
+      "role": "reader",
+      "seat": null,
+      "live": true
+     },
+     {
+      "id": "bob",
+      "role": "reader",
+      "seat": null,
+      "live": true
+     },
+     {
+      "id": "tv",
+      "role": "screen",
+      "seat": null,
+      "live": true
+     }
+    ],
+    "present": 4,
+    "claims": {
+     "role:LUCY": "ann",
+     "role:TOM": "host"
+    },
+    "seats": [],
+    "assignments": [],
+    "done": [],
+    "server_time": 1763500001000
+   }
+  },
+  {
+   "fn": "joinSnapshot",
+   "note": "a seat that leads is named by its label",
+   "args": [
+    {
+     "v": 1,
+     "code": "KLS456",
+     "kind": "class",
+     "script_id": "gut-1",
+     "script_revision": "r1",
+     "production_id": null,
+     "class_id": "C1",
+     "mode": "read",
+     "cursor": "l1",
+     "cursor_gen": 0,
+     "generation": 1,
+     "owner": "teacher",
+     "leader": "d2",
+     "locked": false,
+     "read_open": false,
+     "owner_name": null,
+     "claims": {},
+     "seats": [
+      {
+       "id": "s1",
+       "label": "Lucy"
+      },
+      {
+       "id": "s2",
+       "label": "Tom"
+      },
+      {
+       "id": "s3",
+       "label": "Group 3"
+      }
+     ],
+     "assignments": [
+      {
+       "part": "role:LUCY",
+       "seat": "s1",
+       "from": "l2",
+       "to": "l4"
+      },
+      {
+       "part": "role:LUCY",
+       "seat": "s3",
+       "from": "l8",
+       "to": "l8"
+      },
+      {
+       "part": "role:TOM",
+       "seat": "s2",
+       "from": null,
+       "to": null
+      }
+     ],
+     "done": [],
+     "ended": false,
+     "created_at": 1763500000000,
+     "touched_at": 1763500000000
+    },
+    [
+     [
+      "l1",
+      "directions"
+     ],
+     [
+      "l2",
+      "role:LUCY"
+     ],
+     [
+      "l3",
+      "role:TOM"
+     ],
+     [
+      "l4",
+      "role:LUCY"
+     ],
+     [
+      "l5",
+      "sound"
+     ],
+     [
+      "l6",
+      "role:TOM"
+     ],
+     [
+      "l7",
+      "role:NURSE"
+     ],
+     [
+      "l8",
+      "role:LUCY"
+     ]
+    ],
+    [
+     {
+      "id": "teacher",
+      "role": "reader",
+      "seat": null,
+      "joined_at": 1763500000000,
+      "seen_at": 1763500000000
+     },
+     {
+      "id": "d1",
+      "role": "reader",
+      "seat": "s1",
+      "joined_at": 1763500000100,
+      "seen_at": 1763500000100
+     },
+     {
+      "id": "d2",
+      "role": "reader",
+      "seat": "s2",
+      "joined_at": 1763500000200,
+      "seen_at": 1763500000200
+     },
+     {
+      "id": "d3",
+      "role": "reader",
+      "seat": "s3",
+      "joined_at": 1763500000300,
+      "seen_at": 1763500000300
+     },
+     {
+      "id": "tv",
+      "role": "screen",
+      "seat": null,
+      "joined_at": 1763500000050,
+      "seen_at": 1763500000050
+     }
+    ],
+    "d1",
+    1763500001000
+   ],
+   "expect": {
+    "v": 1,
+    "type": "snapshot",
+    "code": "KLS456",
+    "kind": "class",
+    "mode": "read",
+    "script_id": "gut-1",
+    "script_revision": "r1",
+    "production_id": null,
+    "class_id": "C1",
+    "cursor": "l1",
+    "cursor_gen": 0,
+    "generation": 1,
+    "locked": false,
+    "ended": false,
+    "leader": "d2",
+    "leader_name": "Tom",
+    "read_open": false,
+    "waiting_for_leader": false,
+    "you": {
+     "id": "d1",
+     "role": "reader",
+     "seat": "s1",
+     "leads": false,
+     "owner": false,
+     "parts": [
+      {
+       "part": "role:LUCY",
+       "from": "l2",
+       "to": "l4"
+      }
+     ]
+    },
+    "next_mine": {
+     "line": "l2",
+     "in": 1
+    },
+    "reads_now": {
+     "part": "directions",
+     "seat": null,
+     "members": []
+    },
+    "members": [
+     {
+      "id": "teacher",
+      "role": "reader",
+      "seat": null,
+      "live": true
+     },
+     {
+      "id": "d1",
+      "role": "reader",
+      "seat": "s1",
+      "live": true
+     },
+     {
+      "id": "d2",
+      "role": "reader",
+      "seat": "s2",
+      "live": true
+     },
+     {
+      "id": "d3",
+      "role": "reader",
+      "seat": "s3",
+      "live": true
+     },
+     {
+      "id": "tv",
+      "role": "screen",
+      "seat": null,
+      "live": true
+     }
+    ],
+    "present": 5,
+    "claims": {},
+    "seats": [
+     {
+      "id": "s1",
+      "label": "Lucy"
+     },
+     {
+      "id": "s2",
+      "label": "Tom"
+     },
+     {
+      "id": "s3",
+      "label": "Group 3"
+     }
+    ],
+    "assignments": [
+     {
+      "part": "role:LUCY",
+      "seat": "s1",
+      "from": "l2",
+      "to": "l4"
+     },
+     {
+      "part": "role:LUCY",
+      "seat": "s3",
+      "from": "l8",
+      "to": "l8"
+     },
+     {
+      "part": "role:TOM",
+      "seat": "s2",
+      "from": null,
+      "to": null
+     }
+    ],
     "done": [],
     "server_time": 1763500001000
    }

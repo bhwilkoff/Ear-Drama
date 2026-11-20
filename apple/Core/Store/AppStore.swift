@@ -71,6 +71,13 @@ enum Route: Hashable {
     case drama(String)
     /// An invite link's page (DEEP_LINKS.md): readable signed out. Never on a TV.
     case invitation(String)
+    /// A read room (DEEP_LINKS.md `read/{CODE}`): a reader on iPhone, iPad and Mac; the shared screen on a TV.
+    case readRoom(String)
+    /// The room's shared screen: a projector window or the Apple TV (PLAYS-DESIGN §12.5).
+    case readScreen(String)
+    /// The teacher's class page and its casting board (PLAYS-DESIGN §12.4).
+    case classPage(String)
+    case classCasting(String, String)
 
     /// Episode ids carry the series key and a `|`; series keys never do.
     init(id: String) {
@@ -126,6 +133,8 @@ final class AppStore {
         case search(String)
         /// A finished ear drama, by its production id.
         case drama(String)
+        /// A read room by code; `screen` opens it as the shared screen.
+        case readRoom(String, screen: Bool)
     }
 
     /// A deep link's search query, taken once by the Search screen.
@@ -227,6 +236,8 @@ final class AppStore {
                 #endif
             case .drama(let pid):
                 push(Route.drama(pid))
+            case .readRoom(let code, let screen):
+                push(screen ? Route.readScreen(code) : Route.readRoom(code))
             case .series(let key):
                 push(Route.series(key))
             case .episode(let id):
@@ -258,6 +269,9 @@ final class AppStore {
         if doors.autoplay { isPlayerPresented = true }
         if doors.sleepMenu { isSleepMenuPresented = true }
         productionDoor = doors.production
+        if let room = doors.readRoom, let code = ReadCore.normalizeCode(room) {
+            post(.readRoom(code, screen: doors.readScreen))
+        }
         if let along = doors.along {
             let pid = along.hasPrefix("rehearsal") ? "door-along:" + (along.split(separator: ":", maxSplits: 1).dropFirst().first.map(String.init) ?? "auto") : along
             alongDoor = pid

@@ -115,6 +115,10 @@ class AppContainer(context: Context, scope: CoroutineScope) {
 
     /** Plays that need no account: an invite read and the finished ear dramas (owner, 2026-10-29). */
     val openPlays: OpenPlaysApi by lazy { OpenPlaysApi(accounts.worker) }
+
+    /** Reading together (Decision 082): the read room's routes and the class's, both on the one Worker client. */
+    val readWire: com.example.appname.plays.ReadWire by lazy { com.example.appname.plays.WorkerReadWire(accounts.worker) }
+    val readClass: com.example.appname.plays.ReadClassWire by lazy { com.example.appname.plays.WorkerReadClass(accounts.worker) }
     val finished: FinishedList by lazy {
         FinishedList(openPlays) { item -> api.client.get("https://archive.org/metadata/$item").bodyAsText() }
     }
