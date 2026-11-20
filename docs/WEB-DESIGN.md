@@ -57,8 +57,10 @@ web app follows today.
   (§4.14), `?view=search&q=`,
   `?view=library&tab=`, the script reader (§4.16) `?read={script id}` with an
   optional `&line={line id}` to open at a line, and for an ear drama (§4.10) `?play={script id}`,
-  `?production={id}`, `?production={id}&part={part id}`, and `?room={CODE}`
-  (§4.12), which opens the Listen Together sheet over the Home view. Every
+  `?production={id}`, `?production={id}&part={part id}`, `?room={CODE}`
+  (§4.12), which opens the Listen Together sheet over the Home view, `?read-room={CODE}` (and
+  `&screen=1`) for reading together (§4.17, §4.18; the path twin `/read/{CODE}`), and
+  `?class={id}` (`&cast={production id}`) for the class page (§4.19). Every
   older name still opens, rewritten in place (`history.replaceState`) so the
   address shows the new one: `?view=listen` is Home, `?view=series` Browse,
   `?view=radio` Stations, and `?view=plays` and `?view=browse&kind=plays`
@@ -606,8 +608,9 @@ web app follows today.
     **Done with this part**, with one line under them: "Uploads are off."
     while the record's `uploads` is false (the button disabled), or the
     bleed warning when a chosen take is flagged. Uploading asks no consent
-    (Decision 072). Then Listen through (it first fetches the other
-    members' chosen takes, then is §4.10's), "N takes are hidden from you."
+    (Decision 072). Then Listen through (§4.10's, over the takes on this
+    device; Decision 082 removed the route that fetched other members' takes: a take passes
+    through to the director's device, which holds the pickup while the cast sheet is open), "N takes are hidden from you."
     when the Worker hides any; Publish (director, complete play) opens a modal
     `<dialog>` with the Worker's consent words and "I agree to publish my
     recording under CC0." / "Not now", and is offered only while `GET
@@ -620,8 +623,8 @@ web app follows today.
     browser's copy only). Showing the tab again (`visibilitychange`)
     redraws a shared production unless a take records or something plays,
     so parts recorded elsewhere arrive (PLAYS-DESIGN §11.7 rule 7).
-  - **Another member's part** (`?production=&part=`) is read-along with a
-    Take button (plays that take in its own `<audio>`) and Report per line.
+  - **Another member's part** (`?production=&part=`) is read-along with Report per line (the
+    Take button went with the take audio route, Decision 082).
   - **An invite** arrives as `/invite#{token}` (forwarded by `404.html` as
     `#invite={token}`); `app.js` holds it in `sessionStorage` for the tab,
     clears it from the address, and opens `?view=library&tab=dramas`, where
@@ -630,7 +633,8 @@ web app follows today.
     the shared ones not yet opened here (a button that makes the production
     here, then opens it); shared rows say "Shared". Signed in, **Classes**
     follows the list: each class with its code (two groups of four, tabular),
-    Make a class (name, "Under 13"), Join a class (code, optional name).
+    Make a class (name, "Under 13"), Join a class (code, optional name). A class the person
+    teaches is a link to its class page (§4.19, T3).
 - **§4.13 Surprise** (`?view=surprise`, Decision 068; opened from the
   Surprise button in Home's heading row since Decision 075, and lighting
   the Home tab; Archive Watch WEB-DESIGN §4.9): three random picks drawn from the data on each visit,
@@ -1033,6 +1037,105 @@ web app follows today.
      - **With the studio**: the page's marks are drawn under the studio's
        take state and outlines; a tap on a mark opens the mark, any other
        tap on my line makes it current (`Studio.tap` runs after the marks').
+
+
+- **§4.17 Reading together: the read room** (Decision 082; PLAYS-DESIGN §12 is binding on the
+  verbs, roles, modes and failure words; research R3c §3.2, §3.3, §5.0, §5.0a, §6; built T3,
+  2026-11-19). Owner, 2026-11-19: *"We also need to build out how someone would do this with a
+  bunch of different devices in the same room (whether a classroom of kids or a group of adults
+  doing a table read)."* Code: `js/read-core.js` (pure, the protocol's client side, golden-checked
+  against `worker/test/read-golden.json` in `js/read.test.js`), `js/read-session.js` (the
+  transport, no DOM), `js/read-ui.js` (the join page, the room bar on the reader, the screen);
+  every call is `API.read` (§2.1a). Not on a TV (`html.tv`), as §4.11.
+  1. **The link**: `/read/{CODE}` (forwarded by `404.html` to `?read-room={CODE}`; DEEP_LINKS.md)
+     and `?read-room={CODE}` open the **join page** (`view-readroom`, lighting Record).
+     `?read-room={CODE}&screen=1` (the path's `?screen`) opens the shared screen (§4.18). The
+     code is normalized as the protocol says; a bad one is the refusal "That is not a reading
+     code." Joining takes a tap (Join), never the link alone.
+  2. **The join page** (one column, 560 px max): the code large in tabular figures split 3 + 3,
+     then one primary action. An adult room: **Join** opens the reader following; **Parts** in the
+     room bar opens a `<dialog>` of the parts, largest first, each a row with its line count and
+     **Take** (first claim wins; a taken part reads "Taken", because a read room carries no
+     names) or **Release**; following without a part is the default. A class room: the
+     device's seat key from this tab (`sessionStorage` `ed.seats`) joins at once; without one,
+     **Class code**, then the class's names as a list of buttons (no typing a name, R3c §4.2).
+     A held name answers "Someone is already in on another device." with **Move here**. "This
+     reading is full." (409 `room_full`) and "Joining is locked." are the only lines under the
+     action, with the other refusals of `ReadCore.refusal`.
+  3. **Following** reuses the reader (§4.16) with a room attached (`Reader.open(..., { room })`,
+     the studio's seam pattern): the page turns to the room's cursor and lights it (`rd-now`),
+     my lines carry the I'm playing tint (from my claims or my seat's assignments, ranges
+     included; the reader's own part select steps aside), and a touch to the text stops
+     following, with **Back to the line** (§4.16a's seam). The room bar sits above the bottom
+     bar: on the left one fact, "Next: you, in 3 lines" / "Your line" / the part now reading; on
+     the right "{n} here" (tabular). No sound plays from a reader's device.
+  4. **The leader** (whoever `you.leads`): **Back** and **Next** in the room bar (Next is the
+     ink primary, 44 px), and the keys: ArrowRight, ArrowDown, PageDown, Space and Enter move on;
+     ArrowLeft, ArrowUp, PageUp move back (a page-turn pedal is a keyboard). Every move carries
+     the cursor generation; a stale one resyncs silently. A `<details>` "Reading" disclosure in
+     the bar holds the rare jobs: the mode (Table read / Rehearse, a native radio group), **Lock
+     joining**, **Open the screen** (the `&screen=1` link in a new window), **End the reading**
+     (`confirm()`). A reader's own arrows turn their page as in §4.16 and stop following.
+  5. **Rehearse** adds the reader's **Hide my lines** (peek on tap) and, for the leader,
+     **Again** (the cursor back to the scene's first line, ReadCore.sceneStart).
+  6. **Failure words** (PLAYS-DESIGN §12.6, each a warning or a refusal): "Waiting for the
+     teacher" / "Waiting for {seat}" / "Waiting for the leader" while `waiting_for_leader`;
+     "{seat}'s device is away" with **Skip** for the leader when the line now is a seat's and no
+     device holds it; "Slow connection" only while the cursor is slower than 2 s; "You are
+     offline."; "This reading has ended." with Close. A reload rejoins with this tab's member key
+     (`sessionStorage` `ed.read`), never localStorage or a URL.
+  7. **Start a reading** (Read together): on a play's page it opens an adult room as leader; on
+     the class page (§4.19) a class room. Both land on `?read-room={CODE}`.
+  8. **The clock**: every answer and pong is a sample (`API.read.samples()`), and the session's
+     `offset()` is ReadCore.clockOffset for T4's delay gate; `?readdiag=1` logs it, nothing on
+     screen.
+
+- **§4.18 The shared screen** (`?read-room={CODE}&screen=1`; PLAYS-DESIGN §12.2 "Screen"; R3c
+  §3.2). A projector's browser, full screen: joins as `role: "screen"` (no seat, holds nothing,
+  never leads, records nothing). One centered column on the page ground: the line before
+  (muted), **the current line large** (the speaker's name over it in the part hue), then the two
+  after (muted); the bottom corner holds the code split 3 + 3 (the code TVs will pair with, T4)
+  and "{n} here". The browser's own Fullscreen (a tap on **Full screen**) and **Read open parts**,
+  off by default, are its only controls: turned on at the screen, a line nobody holds is read
+  aloud by the existing live stand-in voice (`StandInVoice`, PLAYS-DESIGN §5: never stored,
+  never mixed), and only by the screen. (The protocol carries no leader switch for it yet, so the
+  person at the screen, the leader in a classroom, turns it on there; T4 asks for the message.)
+  `?mute=1` keeps it silent. Waiting and ended states read as §4.17 item 6.
+
+- **§4.19 The class page** (`?class={id}`, lighting Library; R3c §4.1-§4.6; PLAYS-DESIGN §12.4;
+  `learner-experience-design` §2-§3). Reached from Library's Ear dramas, where each class the
+  person teaches is now a link. Code: `js/class-ui.js`; every call `API.plays`. The order is
+  what needs the teacher now, never a dashboard:
+  1. The head: the class name (h1) and the code, two groups of four in tabular figures, with
+     **Show code** (a full-screen `<dialog>` for the projector). Under 13 without the school's
+     consent reads "Waits for the school's consent" (a fact).
+  2. **Now**: **Start a reading**: a native select of the class's plays when there are several,
+     the mode (Table read / Rehearse, native radios), then the button, which opens a class room
+     as leader and goes to it.
+  3. **Waiting for you**: "{n} takes to review" when any wait, a link to the review section.
+  4. **Seats**: one row per name with "On a device" when claimed, **Release** (a claimed seat)
+     and **Remove** (`confirm()`, it drops the seat's casting); under them a `<textarea>`
+     "Names, one a line" and **Add**, its refusals listed under it by name. Empty: one fact,
+     "No names yet.", and the textarea is the one action.
+  5. **Plays**: each class production with its progress per seat ("12 of 15 lines recorded",
+     approved and again counts; counts only, never a ranking) and **Cast** (the casting board);
+     under them **Pick a play** (a native select of the castable plays) and **Make**.
+  6. **The casting board** (`?class={id}&cast={production id}`): the seats as draggable chips
+     with their totals (lines, words; tabular), then the parts largest first, each row the part
+     name in its hue, its facts (lines, words, scenes, longest speech) and a native `<select>` of
+     the seats (the keyboard alternative to dragging; drop a chip on a row to assign).
+     **Split by scene** opens a `<dialog>` with one select per scene range of that part. **Fill
+     evenly** (a proposal over the open parts, ReadCore.fillEvenly) and **Clear**, then **Save**
+     (PUT the whole casting; `422 bad_assignments` reads "Two seats hold one line."). The app
+     never suggests who reads what and never labels a reader.
+  7. **Review**: while the class page is open the teacher's device holds the pickup
+     (`GET .../takes/inbox`) so seats' takes pass through to it (Decision 082; nothing waits on
+     the Worker); each arriving take is kept in this tab for listening. The queue lists the
+     seats' chosen takes without a review, in script order: the line, the seat, **Play** (when the
+     take reached this device; otherwise "On another device"), **Approve**, and **Again** with a
+     typed note (500 characters at most, shown to that seat only).
+  8. **States**: loading (the state box), error with Retry, offline ("You are offline." and the
+     writes disabled), signed out ("Classes need an account." with Sign in).
 
 
 - **§4.8 Site pages live in a quiet footer**, at the end of every view's

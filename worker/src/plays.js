@@ -945,6 +945,8 @@ export async function playsBeforeDeletion(env, userId) {
     env.DB.prepare(`UPDATE play_parts SET user_id = ?2 WHERE user_id = ?1 AND production_id IN (${submitted})`).bind(userId, DELETED_PERSON),
     env.DB.prepare(`UPDATE play_productions SET user_id = ?2 WHERE user_id = ?1 AND id IN (${submitted})`).bind(userId, DELETED_PERSON),
     env.DB.prepare("UPDATE play_archive_jobs SET user_id = ?2 WHERE user_id = ?1").bind(userId, DELETED_PERSON),
+    // A class's production cascades with the class: a submitted one is detached first, so it stays published.
+    env.DB.prepare(`UPDATE play_productions SET class_id = NULL WHERE id IN (${submitted}) AND class_id IN (SELECT id FROM play_classes WHERE user_id = ?1)`).bind(userId),
   ]);
   await env.DB.prepare(
     "UPDATE play_productions SET user_id = (SELECT m.user_id FROM play_members m WHERE m.production_id = play_productions.id AND m.user_id <> ?1 ORDER BY m.joined_at, m.user_id LIMIT 1) " +

@@ -1574,3 +1574,27 @@ break in `worker/test/mutations.mjs`.
    every production's files now that no take is stored (an invite production's director
    sends them; a performer sends their own replacement, P12).
 
+
+### §12.9 As built on the web (T3, 2026-11-19)
+
+WEB-DESIGN §4.17 to §4.19 hold the web's idiom; what the other ports need to know:
+
+1. **One client port of the protocol**, `js/read-core.js`, runs the shared goldens
+   (`worker/test/read-golden.json`): every client-side function the golden file covers, and from
+   each `joinSnapshot` case the client's own next line and lit lines rebuilt from the snapshot
+   alone. Swift and Kotlin ports run the same file (T4).
+2. **The transport**: the socket first (the key in a first `hello`), polling the same room every
+   second when the socket will not open or closes, and the socket tried again (2, 5, 15, 30 s). A
+   snapshot older than the one in hand is dropped, so a slow poll never rewinds the cursor.
+3. **A class room's join** needs the seat key, and a room code does not say which class it is: a
+   device without a key for this room asks for the class code and the name. Seat keys live in the
+   tab (the shared-cart rule, R3c §4.2).
+4. **Gaps the protocol leaves** (T4 asks before porting): the snapshot carries no names, so a
+   class room waiting for its teacher says "Waiting for the teacher", not the teacher's name; and
+   there is no message for **Read open parts**, so the screen's own switch turns it on.
+5. **Takes on the web**: nothing fetches take audio any more (the routes went with Decision 082).
+   A director's cast sheet holds the pickup while it is open and imports what passes through; the
+   class page holds it for review, keeping arrived takes in the tab only.
+6. **Deleting a class keeps its published production**: the account deletion detaches a submitted
+   class production from its class before the class goes (worker test and mutant, owner ruling
+   2026-10-29 that published works stay).

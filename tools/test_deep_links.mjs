@@ -71,6 +71,8 @@ const cases = [
   ['/drama/abc123', '', '', '/?drama=abc123'],
   ['/invite', '', `#${token}`, `/?view=invite#invite=${token}`],
   ['/invite/', '', `#${token}`, `/?view=invite#invite=${token}`],
+  ['/read/ABC123', '', '', '/?read-room=ABC123'],
+  ['/read/ABC123', '?screen', '', '/?read-room=ABC123&screen=1'],
 ];
 for (const [p, s, h, want] of cases) {
   const got = forward(p, s, h);

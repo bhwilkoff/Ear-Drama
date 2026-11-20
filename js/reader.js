@@ -597,6 +597,8 @@ const Reader = (() => {
     if (st.hiding && t && t.classList && t.classList.contains('rd-mine') && (e.key === 'Enter' || e.key === ' ')) {
       e.preventDefault(); peek(st, t); return;
     }
+    // A read room's leader moves the room with the keys and a pedal (WEB-DESIGN §4.17 item 4).
+    if (st.room && st.room.key(e)) { e.preventDefault(); return; }
     if (st.prefs.layout !== 'pages') return;
     if (t && t.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
     const k = R.keyTurn(e.key, e.shiftKey);
@@ -777,7 +779,7 @@ const Reader = (() => {
     wire(st);
     document.addEventListener('keydown', onKey);
     window.addEventListener('keydown', onMyLineKey, true);
-    const startPart = opts.studio ? opts.studio.part : saved.part;
+    const startPart = opts.studio ? opts.studio.part : opts.room ? null : saved.part;
     if (startPart && parts.some(p => p.id === startPart)) { partSel.value = startPart; setPart(st, startPart); }
     if (opts.studio && typeof Studio !== 'undefined') st.studio = Studio.attach(studioApi(st, opts), opts.studio);
     if (typeof Marks !== 'undefined') st.marks = Marks.attach(marksApi(st, markHost));
@@ -793,7 +795,8 @@ const Reader = (() => {
     stage.focus({ preventScroll: true });
     st.handle = handle(st);
     if (st.along) paintAlong(st);
-    st.key = opts.studio ? `${script.id} ${opts.studio.production} ${opts.studio.part}` : script.id;
+    if (opts.room) st.room = opts.room.attach(roomApi(st));
+    st.key = opts.room ? `${script.id} room ${opts.room.code}` : opts.studio ? `${script.id} ${opts.studio.production} ${opts.studio.part}` : script.id;
     return st.handle;
   }
 
@@ -822,6 +825,7 @@ const Reader = (() => {
     document.removeEventListener('keydown', onKey);
     window.removeEventListener('keydown', onMyLineKey, true);
     if (cur.studio) cur.studio.detach();
+    if (cur.room) cur.room.detach();
     if (cur.marks) cur.marks.detach();
     if (cur.table) cur.table.stop();
     if (cur.along && cur.along.listen) cur.along.listen.end();
@@ -879,6 +883,43 @@ const Reader = (() => {
         st.nextBtn.hidden = on || !st.part;
         if (on && st.table && st.table.playing) st.table.stop();
       },
+    };
+  }
+
+  /**
+   * What a read room (js/read-ui.js, WEB-DESIGN §4.17) may touch: the page's lines, the bars, the
+   * dock, following the room's cursor, and which lines are mine (a room's parts, ranges included).
+   */
+  function roomApi(st) {
+    const index = (id) => st.script.lines.findIndex(l => l.id === id);
+    // No sound from a reader's device in a room (PLAYS-DESIGN §12.3): only the screen speaks.
+    st.hearBtn.hidden = true;
+    return {
+      root: st.root, script: st.script, footer: st.footer, dock: st.dock, hideBtn: st.hideBtn, el, svg,
+      follow: (id) => st.handle && st.handle.follow(id),
+      refollow: () => st.handle && st.handle.refollow(),
+      following: () => !st.backBtn || st.backBtn.hidden,
+      line: (id) => st.lines[index(id)] || null,
+      /** My lines by index (from the room, never the part select): tinted, Hide my lines offered. */
+      setMine(indexes) {
+        const mine = new Set(indexes);
+        st.part = null;
+        st.mine = [...mine].sort((a, b) => a - b);
+        st.lines.forEach((n, i) => {
+          const on = mine.has(i);
+          n.classList.toggle('rd-mine', on);
+          for (const sp of n.querySelectorAll('.rd-sp')) sp.classList.toggle('rd-mine', on);
+        });
+        const first = st.mine.length ? st.lines[st.mine[0]].querySelector('.rd-sp') : null;
+        const hue = first ? first.dataset.hue : 'none';
+        st.root.style.setProperty('--mine', !hue || hue === 'none' ? 'var(--color-text-muted)' : `var(--color-genre-${hue})`);
+        st.partSel.closest('.rd-part').hidden = true;
+        st.nextBtn.hidden = true;
+        st.recBtn.hidden = true;
+        st.hideBtn.hidden = !st.mine.length;
+        if (!st.mine.length) setHiding(st, false); else paintHidden(st);
+      },
+      hideAllowed(on) { st.hideBtn.hidden = !on || !(st.mine || []).length; if (!on) setHiding(st, false); },
     };
   }
 
