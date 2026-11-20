@@ -266,6 +266,10 @@ struct ClassPageScreen: View {
     @State private var choosing = false
     @State private var starting = false
     @State private var inbox: ClassInbox?
+    @State private var waiting: [ClassReviewItem] = []
+    @State private var reviewScripts: [String: PlayScript] = [:]
+    @State private var recordScripts: [String: String] = [:]
+    @State private var heard = SystemTakePlayer()
 
     private let wire = WorkerReadClass(api: .shared)
 
@@ -298,6 +302,16 @@ struct ClassPageScreen: View {
             }
             Section {
                 Button("Start a Reading") { choosing = true }
+            }
+            if !waiting.isEmpty {
+                Section("Review") {
+                    ForEach(waiting) { item in
+                        let line = reviewScripts[scriptID(of: item)]?.lines.first { $0.id == item.take.lineID }
+                        ClassReviewRow(item: item, seatLabel: seatLabel(item), partTitle: PartID(rawValue: item.take.part).title,
+                                       words: line?.spokenText ?? "", canPlay: localTake(item) != nil,
+                                       play: { play(item) }, decide: { state, note in decide(item, state, note) })
+                    }
+                }
             }
             if let progress, !progress.productions.isEmpty {
                 ForEach(progress.productions) { p in
@@ -336,6 +350,7 @@ struct ClassPageScreen: View {
             (detail, progress) = try await (d, p)
             failure = nil
             holdPickups()
+            await loadReviews()
         } catch let f as ReadFailure { failure = ReadCore.refusal(f.code) } catch { failure = ReadCore.refusal("error") }
     }
 
@@ -344,7 +359,7 @@ struct ClassPageScreen: View {
     private func holdPickups() {
         let box = inbox ?? ClassInbox(store: plays.store, script: { id, rev in await plays.script(id: id, revision: rev) })
         if inbox == nil {
-            box.onArrival = { Task { @MainActor in progress = try? await wire.progress(id) } }
+            box.onArrival = { Task { @MainActor in progress = try? await wire.progress(id); await loadReviews() } }
             inbox = box
         }
         for p in progress?.productions ?? [] {
@@ -352,6 +367,50 @@ struct ClassPageScreen: View {
                 guard let info = try? await wire.production(p.id) else { return }
                 box.hold(p.id, scriptID: info.scriptID, revision: info.scriptRevision)
             }
+        }
+    }
+
+    /// The seats' chosen takes with no review, read from each class production's record (the Worker merges them).
+    private func loadReviews() async {
+        let transport = WorkerPlays(api: .shared)
+        var records: [SharedRecord] = []
+        for p in progress?.productions ?? [] { if let r = try? await transport.get(p.id) { records.append(r) } }
+        var scripts = reviewScripts
+        for r in records where scripts[r.scriptID] == nil {
+            if let s = await plays.script(id: r.scriptID, revision: r.scriptRevision) { scripts[r.scriptID] = s }
+        }
+        reviewScripts = scripts
+        recordScripts = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0.scriptID) })
+        waiting = ClassReview.queue(records) { rec, line in scripts[rec.scriptID]?.lines.firstIndex { $0.id == line } ?? -1 }
+    }
+
+    private func scriptID(of item: ClassReviewItem) -> String { recordScripts[item.pid] ?? "" }
+
+    private func seatLabel(_ item: ClassReviewItem) -> String {
+        (detail?.seats ?? []).first { $0.id == item.take.seat }?.label ?? "A seat"
+    }
+
+    /// The take, when it passed through to this device and is kept in the class production's folder.
+    private func localTake(_ item: ClassReviewItem) -> (Production, Take)? {
+        guard let local = plays.store.findShared(item.pid), let take = local.take(item.take.id) else { return nil }
+        return (local, take)
+    }
+
+    private func play(_ item: ClassReviewItem) {
+        guard let (local, take) = localTake(item) else { return }
+        let url = plays.store.takeURL(local, take)
+        heard.stop()
+        Task { await heard.play(url) }
+    }
+
+    private func decide(_ item: ClassReviewItem, _ state: String, _ note: String?) {
+        Task {
+            do {
+                try await WorkerPlays(api: .shared).reviewTake(item.pid, takeID: item.take.id, state: state, note: note)
+                waiting.removeAll { $0.id == item.id }
+                failure = nil
+                progress = try? await wire.progress(id)
+            } catch let r as PlaysRefusal { failure = ReadCore.refusal(r.code ?? "error") } catch { failure = ReadCore.refusal("error") }
         }
     }
 

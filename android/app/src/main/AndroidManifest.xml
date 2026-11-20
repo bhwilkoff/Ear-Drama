@@ -65,6 +65,7 @@
                 <data android:path="/search"/>
                 <data android:path="/library"/>
                 <data android:path="/library/"/>
+                <data android:path="/parts"/>
                 <data android:path="/invite"/>
                 <data android:path="/invite/"/>
             </intent-filter>

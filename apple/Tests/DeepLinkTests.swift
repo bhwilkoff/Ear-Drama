@@ -49,6 +49,8 @@ struct DeepLinkTests {
         #expect(parse("eardrama://search") == .search(""))
         #expect(parse("https://eardrama.org/library") == .tab("library"))
         #expect(parse("https://eardrama.org/library/") == .tab("library"))
+        #expect(parse("eardrama://parts") == .parts)
+        #expect(parse("https://eardrama.org/parts") == .parts)
     }
 
     @Test func otherHostsUnknownPathsAndCallbacksOpenNothing() {

@@ -176,7 +176,7 @@ fun HeadWindow(
             }
         }
         round -> Box(size, contentAlignment = Alignment.Center) {
-            LabelArt(label, Modifier.fillMaxSize().padding(Spacing.S4.dp).clip(CircleShape))
+            LabelArt(label, Modifier.fillMaxSize().padding(Spacing.S4.dp).clip(CircleShape), tierSize = minOf(frame.width, frame.height).toDouble())
         }
         else -> LabelArt(label, size)
     }

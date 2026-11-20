@@ -60,7 +60,7 @@ struct ItemHeadBoard: View {
                     HeadPicture(art: shown, size: geo.size) { failed = true }
                 } else {
                     let side = round ? max(geo.size.width - 2 * Spacing.s4, 1) : geo.size.width
-                    LabelView(item: label, side: side)
+                    LabelView(item: label, side: side, tierSide: geo.size.width)
                         .frame(width: side, height: side)
                         .clipShape(round ? AnyShape(Circle()) : AnyShape(Rectangle()))
                         .frame(width: geo.size.width, height: geo.size.height)

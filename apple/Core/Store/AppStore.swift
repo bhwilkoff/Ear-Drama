@@ -78,7 +78,7 @@ enum Route: Hashable {
     /// The teacher's class page and its casting board (PLAYS-DESIGN §12.4).
     case classPage(String)
     case classCasting(String, String)
-    /// A seat's parts at home and each take's state (PLAYS-DESIGN §12.11). Never a deep link.
+    /// A seat's parts at home and each take's state (PLAYS-DESIGN §12.11). DEEP_LINKS.md `parts`; not on a TV.
     case parts
 
     /// Episode ids carry the series key and a `|`; series keys never do.
@@ -137,6 +137,8 @@ final class AppStore {
         case drama(String)
         /// A read room by code; `screen` opens it as the shared screen.
         case readRoom(String, screen: Bool)
+        /// "Your parts" (DEEP_LINKS.md `parts`): never on a TV.
+        case parts
     }
 
     /// A deep link's search query, taken once by the Search screen.
@@ -240,6 +242,10 @@ final class AppStore {
                 push(Route.drama(pid))
             case .readRoom(let code, let screen):
                 push(screen ? Route.readScreen(code) : Route.readRoom(code))
+            case .parts:
+                #if !os(tvOS)
+                push(Route.parts)
+                #endif
             case .series(let key):
                 push(Route.series(key))
             case .episode(let id):

@@ -48,9 +48,11 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         var loudness: Double?
         var peak: Double?
         var userID: String?
+        /// The class seat that made it (a take recorded at home), else nil.
+        var seat: String?
 
         enum CodingKeys: String, CodingKey {
-            case id, lineID, part, created, frames, sampleRate, capture, heard, loudness, peak, userID = "user_id"
+            case id, lineID, part, created, frames, sampleRate, capture, heard, loudness, peak, seat, userID = "user_id"
         }
     }
 
@@ -93,8 +95,12 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
 
     struct Credit: Codable, Equatable, Sendable { var name: String; var lines: Int; var consented: Bool? }
 
+    /// The teacher's review of a take (a class production the caller directs): `approved` or `again`, with a note only that seat sees.
+    struct Review: Codable, Equatable, Sendable { var state: String; var note: String? }
+    var reviews: [String: Review] = [:]
+
     enum CodingKeys: String, CodingKey {
-        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits
+        case id, scriptID, scriptRevision, title, parts, takes, chosen, director, members, next, archive, uploads, credits, reviews
         case hiddenTakes = "hidden_takes"
     }
 
@@ -132,6 +138,7 @@ nonisolated struct SharedRecord: Codable, Equatable, Sendable {
         archive = try c.decodeIfPresent(Archive.self, forKey: .archive)
         uploads = try c.decodeIfPresent(Bool.self, forKey: .uploads)
         credits = try c.decodeIfPresent([Credit].self, forKey: .credits) ?? []
+        reviews = try c.decodeIfPresent([String: Review].self, forKey: .reviews) ?? [:]
     }
 
     func part(_ id: PartID) -> Part { parts[id.rawValue] ?? Part(status: .open) }

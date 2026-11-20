@@ -68,6 +68,7 @@ const cases = [
   ['/search', '?q=sorry', '', '/?view=search&q=sorry'],
   ['/library', '', '', '/?view=library'],
   ['/library/', '', '', '/?view=library'],
+  ['/parts', '', '', '/?read-room=parts'],
   ['/drama/abc123', '', '', '/?drama=abc123'],
   ['/invite', '', `#${token}`, `/?view=invite#invite=${token}`],
   ['/invite/', '', `#${token}`, `/?view=invite#invite=${token}`],

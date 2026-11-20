@@ -173,6 +173,53 @@ nonisolated final class ReadRenderTests: XCTestCase {
             }
         }
 
+        // The Takes sheet with its foot: every speaking line taken, so Listen through and Export show, then Publish under my name.
+        let fullSnap = try snap(Self.snapshotJSON(you: "host", mode: "record", cursor: "l6", receives: true, done: ["l1", "l2", "l3", "l4", "l5", "l6"], nurse: false))
+        let fullSession = ReadSession(wire: RenderWire())
+        fullSession.adopt(ReadJoined(snapshot: fullSnap, key: "k", transport: "poll"))
+        let fullRoom = RoomReaderModel(session: fullSession, script: play, store: store, publishing: nil)
+        for line in play.lines where line.kind == .speech {
+            fullRoom.recorder.accept(PickedTake(fields: .init(id: "f-\(line.id)", lineID: line.id, part: line.part.rawValue, frames: 48_000, sampleRate: 48_000,
+                                                              capture: "room", seat: nil, file: "\(line.id).wav", member: "ann"), data: Data([1])))
+        }
+        let footProduction = try XCTUnwrap(fullRoom.recorder.production)
+        XCTAssertTrue(Relay.isComplete(footProduction, play), "every speaking line has a take, so the foot offers Export")
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "render-read-\(UUID().uuidString)"))
+        let audio = AudioPlayer(history: ListeningHistory(defaults: defaults))
+        for dark in [false, true] {
+            try png("apple-read-takes-foot", width: 390, height: 900, dark: dark, scale: 2, out: out) {
+                ReadTakesContent(room: fullRoom, scrolls: false) {
+                    VStack(alignment: .leading, spacing: Spacing.s3) {
+                        ListenThrough(production: footProduction, script: play)
+                        RoomPublishForm(room: fullRoom, pid: "p1")
+                    }
+                }
+                .environment(app).environment(plays).environment(audio)
+            }
+        }
+
+        // The class page's review queue: takes recorded at home that reached the teacher's app, each waiting for Approve or Again.
+        let reviewScript = play
+        let items = [
+            ClassReviewItem(pid: "p1", playTitle: "The Lost Lady", take: .init(id: "r1", lineID: "l1", part: "role:LUCY", created: nil, frames: 1, sampleRate: 48_000,
+                                                                              capture: nil, heard: nil, loudness: nil, peak: nil, userID: nil, seat: "s1")),
+            ClassReviewItem(pid: "p1", playTitle: "The Lost Lady", take: .init(id: "r2", lineID: "l2", part: "role:TOM", created: nil, frames: 1, sampleRate: 48_000,
+                                                                              capture: nil, heard: nil, loudness: nil, peak: nil, userID: nil, seat: "s2")),
+        ]
+        for dark in [false, true] {
+            try png("apple-class-review", width: 390, height: 520, dark: dark, scale: 2, out: out) {
+                VStack(alignment: .leading, spacing: Spacing.s3) {
+                    Text("Review").font(TypeRamp.bodyStrong)
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                        ClassReviewRow(item: item, seatLabel: index == 0 ? "Ada" : "Ben", partTitle: PartID(rawValue: item.take.part).title,
+                                       words: reviewScript.lines.first { $0.id == item.take.lineID }?.spokenText ?? "", canPlay: index == 0)
+                        Divider()
+                    }
+                }
+                .padding(Spacing.s4)
+            }
+        }
+
         // The TV's pairing screen at 1920 x 1080.
         for dark in [false, true] {
             try png("apple-tv-pair", width: 1920, height: 1080, dark: dark, out: out) {
@@ -188,5 +235,6 @@ nonisolated final class ReadRenderTests: XCTestCase {
         session.pause()
         hostSession.pause()
         waitSession.pause()
+        fullSession.pause()
     }
 }

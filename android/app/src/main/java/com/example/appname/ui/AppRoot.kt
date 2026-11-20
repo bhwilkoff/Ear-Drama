@@ -139,6 +139,7 @@ fun AppRoot(
                 is InboxRequest.Item -> stacks.getValue(selected).navigateTo(if ('|' in request.id) Route.Episode(request.id) else Route.Series(request.id))
                 is InboxRequest.ReadRoom -> stacks.getValue(selected).navigateTo(Route.ReadRoom(request.code, request.screen || container.isTelevision, request.seat))
                 is InboxRequest.ReadPair -> stacks.getValue(selected).navigateTo(Route.ReadPair)
+                is InboxRequest.Parts -> if (!container.isTelevision) stacks.getValue(selected).navigateTo(Route.Parts)
                 is InboxRequest.Series -> stacks.getValue(selected).navigateTo(Route.Series(request.key))
                 is InboxRequest.Person -> stacks.getValue(selected).navigateTo(Route.Person(request.id))
                 is InboxRequest.Search -> {

@@ -259,6 +259,32 @@ def item_files(rec, budget, fails):
     rec["image_master"] = tif[0]["url"] if tif else None
 
 
+def merge_records(existing, fresh):
+    """A job reaches only some records; the file keeps every one a past job found.
+    A fresh record wins field by field, except that a field it could not fill (files
+    from the item pass) keeps the old value, and the queries that found it are unioned."""
+    out = dict(existing)
+    for rid, rec in fresh.items():
+        old = existing.get(rid)
+        if not old:
+            out[rid] = rec
+            continue
+        merged = dict(rec)
+        for k, v in old.items():
+            if merged.get(k) is None and v is not None:
+                merged[k] = v
+        merged["queries"] = list(dict.fromkeys((old.get("queries") or []) + (rec.get("queries") or [])))
+        out[rid] = merged
+    return out
+
+
+def save_records(path, fresh):
+    existing = L.read_json(path) if os.path.exists(path) else {}
+    merged = merge_records(existing, fresh)
+    L.write_json(path, merged, gz=True)
+    return merged
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--phase", default="all", choices=["search", "items", "all"])
@@ -290,9 +316,9 @@ def main():
     for rec in recs.values():
         if rec["files"] is None and os.path.exists(os.path.join(IDIR, re.sub(r"[^\w.-]", "_", rec["id"]) + ".json.gz")):
             item_files(rec, 0, fails)
-    L.write_json(RECORDS, recs, gz=True)
+    merged = save_records(RECORDS, recs)
     L.write_json(FAILS, {"status": status, "requests_this_run": _count[0], "failures": fails})
-    print(f"{len(recs)} records; {_count[0]} requests; {len(fails)} failures; {status}", file=sys.stderr)
+    print(f"{len(recs)} records this run, {len(merged)} kept; {_count[0]} requests; {len(fails)} failures; {status}", file=sys.stderr)
     if not recs:
         sys.exit(1)
     if status != "complete":

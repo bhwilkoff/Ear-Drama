@@ -343,7 +343,7 @@ struct ReadTakesSheet: View {
 }
 
 /// A head line of counts per reader, then each speaking line in script order with its state; Play and Again, and in a
-/// class room with a production Approve and Again with a note; Listen Through, Export and Publish at the foot. Counts,
+/// class room with a production Approve and Again (which offers an optional note); Listen Through, Export and Publish at the foot. Counts,
 /// never a ranking. Drawn without a List so it can be rendered (ImageRenderer cannot draw one).
 struct ReadTakesContent<Foot: View>: View {
     @Bindable var room: RoomReaderModel
@@ -407,19 +407,21 @@ struct ReadTakesContent<Foot: View>: View {
             }
             HStack(spacing: Spacing.s2) {
                 if let take { Button("Play") { play(take) } }
-                if row.state != .open { Button("Again") { again(snap, row.line) } }
-                if let take, let pid = snap.productionID, snap.kind == "class" {
-                    Button("Approve") { review(pid, take, state: "approved", note: nil) }
-                    Button("Again with a Note") { noteFor = noteFor == row.line ? nil : row.line; note = "" }
+                if let take, snap.productionID != nil, snap.kind == "class" {
+                    Button("Approve") { review(snap.productionID ?? "", take, state: "approved", note: nil) }
+                    Button("Again") { noteFor = noteFor == row.line ? nil : row.line; note = "" }
+                } else if row.state != .open {
+                    Button("Again") { again(snap, row.line) }
                 }
             }
             .buttonStyle(.bordered)
             .font(TypeRamp.caption)
             if let take, noteFor == row.line, let pid = snap.productionID {
                 HStack {
-                    TextField("Note", text: $note).textFieldStyle(.roundedBorder)
+                    TextField("Note (optional)", text: $note).textFieldStyle(.roundedBorder)
                     Button("Send") {
-                        review(pid, take, state: "again", note: String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500)))
+                        let said = String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(500))
+                        if !said.isEmpty { review(pid, take, state: "again", note: said) }
                         again(snap, row.line)
                         noteFor = nil
                     }

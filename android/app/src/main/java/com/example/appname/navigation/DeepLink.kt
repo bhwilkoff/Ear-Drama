@@ -7,7 +7,7 @@ import com.example.appname.plays.ReadCore
  * DEEP_LINKS.md's URL shapes, parsed into inbox requests. Every
  * `eardrama://` link has its `https://eardrama.org` twin with the same path:
  * `series/{key}`, `episode/{percent-encoded id}`, `person/{id}`, `search?q=`,
- * `library`, `drama/{id}`, `invite#{token}`. Anything else (the OAuth callback, an unknown
+ * `library`, `parts`, `drama/{id}`, `invite#{token}`. Anything else (the OAuth callback, an unknown
  * path) yields nothing, so the app opens where it was. Pure Kotlin, tested
  * without a device.
  */
@@ -40,6 +40,7 @@ object DeepLink {
             "search" -> InboxRequest.Search(queryParam(query, "q").orEmpty())
             "drama" -> segments.getOrNull(1)?.let(InboxRequest::Drama)
             "library" -> InboxRequest.Tab(Tab.Library.name)
+            "parts" -> InboxRequest.Parts
             // `/read/CODE` (`?screen` for the shared screen): a malformed code opens nothing.
             "read" -> if (segments.getOrNull(1) == "pair") InboxRequest.ReadPair else segments.getOrNull(1)?.let { ReadCore.normalizeCode(it) }?.let { InboxRequest.ReadRoom(it, queryParam(query, "screen") != null || "screen" in query.split('&')) }
             // `/invite#TOKEN` (DEEP_LINKS.md): the token rides the fragment; a malformed one opens nothing.

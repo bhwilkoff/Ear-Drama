@@ -43,7 +43,7 @@ private final class RenderRig {
     private var out: URL
     private var script: PlayScript
     private var store: ProductionStore
-    private var env: (app: AppStore, plays: PlaysLibrary)
+    private var env: (app: AppStore, plays: PlaysLibrary, account: AccountStore)
 
     init() throws {
         guard let path = ProcessInfo.processInfo.environment["GRAMMAR_RENDER_DIR"], !path.isEmpty else {
@@ -60,7 +60,10 @@ private final class RenderRig {
         script = try XCTUnwrap(library.scripts.first { $0.id == "gut-28051" })
         let made = ProductionStore(root: FileManager.default.temporaryDirectory.appending(path: "render-\(UUID().uuidString)"))
         store = made
-        env = (AppStore(), PlaysLibrary(store: made))
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "render-\(UUID().uuidString)"))
+        let account = AccountStore(history: ListeningHistory(defaults: defaults), follows: FollowedSeries(defaults: defaults),
+                                   queue: ListeningQueue(defaults: defaults), defaults: defaults, device: "render")
+        env = (AppStore(), PlaysLibrary(store: made), account)
     }
 
     func cleanup() { try? FileManager.default.removeItem(at: store.root) }
@@ -71,6 +74,7 @@ private final class RenderRig {
         let view = content()
             .environment(env.app)
             .environment(env.plays)
+            .environment(env.account)
             .tint(Color.brandSecondary)
             .frame(width: width, height: height, alignment: .top)
             .background(Color.brandBackground)

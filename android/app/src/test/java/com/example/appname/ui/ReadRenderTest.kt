@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import io.mockk.coEvery
@@ -46,6 +48,9 @@ import com.example.appname.ui.screens.PairContent
 import com.example.appname.ui.screens.ReaderBody
 import com.example.appname.ui.screens.RoomSeam
 import com.example.appname.ui.screens.TakesContent
+import com.example.appname.ui.screens.ClassReviewRow
+import com.example.appname.plays.ClassReviewItem
+import com.example.appname.plays.SharedTake
 import com.example.appname.ui.screens.ReadScreenContent
 import com.example.appname.ui.theme.AppTheme
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -189,6 +194,35 @@ class ReadRenderTest {
         }
         CompositionLocalProvider(LocalAppContainer provides mockk<AppContainer>(relaxed = true)) {
             Column(Modifier.height(900.dp)) { TakesContent(seam, snap, script, script.lines.map { it.id to it.part.raw }, local, null, store, {}) }
+        }
+    }
+
+    /** The receiver's Takes in a class production: Approve and one Again that offers an optional note. */
+    @Test fun theTakesSheetInAClass() = shoot("read-takes-class", settle = 40) {
+        val leader = """{"id":"teacher","role":"reader","name":"Ms. Ortiz","leads":true,"owner":true,"receives":true}"""
+        val snap = snap("l5", leader, """{"line":"l5","in":0}""").copy(productionId = "P1")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val seam = remember { seamFor(snap, scope) }
+        val store = remember { ProductionStore(temporaryRoot()) }
+        val local = remember {
+            var p = store.create(script).copy(room = "KLS456")
+            p = p.add(Take("a1", "l1", PartID.role("LUCY"), "a1.wav", 0.0, 4_800, 48_000.0, Take.Capture.Room, emptyMap(), null, 0.1f, false, member = "d1"))
+            p = p.add(Take("a2", "l2", PartID.role("TOM"), "a2.wav", 0.0, 4_800, 48_000.0, Take.Capture.Room, emptyMap(), null, 0.1f, false, member = "d2"))
+            p
+        }
+        CompositionLocalProvider(LocalAppContainer provides mockk<AppContainer>(relaxed = true)) {
+            Column(Modifier.height(900.dp)) { TakesContent(seam, snap, script, script.lines.map { it.id to it.part.raw }, local, null, store, {}) }
+        }
+    }
+
+    /** The class page's review queue: takes recorded at home that reached the teacher's app, each waiting for Approve or Again. */
+    @Test fun theClassReviewQueue() = shoot("class-review") {
+        fun item(id: String, line: String, part: String, seat: String) =
+            ClassReviewItem("p1", "The Lost Lady", SharedTake(id, line, part, "$id.wav", seat = seat))
+        Column(Modifier.padding(16.dp)) {
+            Text("Review", style = MaterialTheme.typography.titleMedium)
+            ClassReviewRow(item("r1", "l1", "role:LUCY", "s1"), "Ada", PartID("role:LUCY").title, script.lines[0].spokenText, canPlay = true)
+            ClassReviewRow(item("r2", "l2", "role:TOM", "s2"), "Ben", PartID("role:TOM").title, script.lines[1].spokenText, canPlay = false)
         }
     }
 

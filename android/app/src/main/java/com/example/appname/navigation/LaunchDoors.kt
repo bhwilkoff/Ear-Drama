@@ -35,6 +35,9 @@ sealed interface InboxRequest {
     /** `read/pair` or the DEBUG door `appname_start_read_pair`: a TV's pairing screen. */
     data object ReadPair : InboxRequest
 
+    /** `parts` (`https://eardrama.org/parts`): the "Your parts" screen, a seat's parts at home. Not on a TV. */
+    data object Parts : InboxRequest
+
     /** APP_DOOR_SECONDS elapsed: end the door's activity (stop playback, leave the room). */
     data object EndDoor : InboxRequest
 }

@@ -20,7 +20,7 @@ Every function here exists because the obvious one-liner lied at least once:
   * Launch env is JSON (`-e '{"K":"V"}'`); the KEY=VALUE form fails with
     NSCocoaErrorDomain 3840.
 
-    python3 tools/apple_device.py teardown --device atv   # leave it as found
+    python3 tools/apple_device.py teardown --device atv   # stop the app; power is never touched
     python3 tools/apple_device.py power --device atv      # On / Off / unknown
     python3 tools/apple_device.py processes --device ipad
 """
@@ -218,26 +218,6 @@ class ATV:
         r = self._run(f"launch_app={bundle}", timeout=40)
         return r.returncode == 0
 
-    def turn_off_verified(self, tries=3, polls=4):
-        """Power off, POLLED like wake, and READ IT BACK from the TV. (ok, state).
-        A turn_off the TV has not honored yet is sent again; the last state read is
-        reported if it never goes off."""
-        if not self.available:
-            return False, self.why_unavailable()
-        state = None
-        for attempt in range(tries):
-            try:
-                self._run("turn_off", timeout=40)
-            except subprocess.SubprocessError as e:
-                print(f"[atv] turn_off failed: {e}")
-            for _ in range(polls):
-                time.sleep(3)
-                state = self.power_state()
-                if state == "off":
-                    return True, "off"
-            print(f"[atv] TV still {state or 'unknown'} after turn_off (attempt {attempt + 1})")
-        return False, state or "unknown"
-
 
 # ── a launch that survives the bench's known failure modes ───────────────────
 
@@ -343,11 +323,11 @@ def launch_guarded(entry, bundle, env, outdir, settle=6, executable=None,
 # ── leave-as-found ───────────────────────────────────────────────────────────
 
 def teardown(entry, found_power=None, executable=None):
-    """Put the device back as it was found. Returns (ok, lines).
+    """Terminate the app and verify from the device. Returns (ok, lines).
 
-    Terminates the app and verifies from the device; for an Apple TV that was OFF
-    when the run found it (found_power == "off"), powers it back off and reads the
-    state back. A TV that was already on is left on — someone may be using it.
+    Power is never touched (owner: never sleep a test device): an Apple TV found off
+    stays off only if it was off before the run, and one that was woken for the run
+    is left on. `found_power` is kept so callers still report what they found.
     A teardown is a STEP with an assertion, not an intention: a harness that touches
     someone's living room cleans up or reports that it could not."""
     lines, ok = [], True
@@ -356,11 +336,6 @@ def teardown(entry, found_power=None, executable=None):
         t_ok, detail = terminate_verified(udid, executable)
         lines.append(f"app: {detail}")
         ok &= t_ok
-    if entry.get("platform") == "tvos" and found_power == "off":
-        atv = ATV(entry)
-        p_ok, state = atv.turn_off_verified()
-        lines.append(f"power: {state}" + ("" if p_ok else " — did NOT power off; check it by hand"))
-        ok &= p_ok
     return ok, lines
 
 
@@ -401,12 +376,9 @@ def frame_is_home_screen(png, ocr_bin=None):
 def _main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("action", choices=["teardown", "power", "wake", "processes", "off"])
+    ap.add_argument("action", choices=["teardown", "power", "wake", "processes"])
     ap.add_argument("--device", required=True, help="bench name (or raw UDID)")
     ap.add_argument("--owner-ok", action="store_true")
-    ap.add_argument("--power-off", action="store_true",
-                    help="teardown: also power an Apple TV off (default: only if "
-                         "--found-off)")
     a = ap.parse_args()
     e = bench.require(a.device, allow_owner=a.owner_ok)
     if a.action == "power":
@@ -414,14 +386,10 @@ def _main():
         return 0
     if a.action == "wake":
         return 0 if ATV(e).wake() else 1
-    if a.action == "off":
-        ok, st = ATV(e).turn_off_verified()
-        print(f"power now: {st}")
-        return 0 if ok else 1
     if a.action == "processes":
         print(app_pids(e["udid"]))
         return 0
-    ok, lines = teardown(e, found_power="off" if a.power_off else None)
+    ok, lines = teardown(e)
     for l in lines:
         print(f"  {l}")
     return 0 if ok else 1
