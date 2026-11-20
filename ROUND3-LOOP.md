@@ -131,7 +131,7 @@ next. Check a box only with evidence (suite counts, frames read, device runs).
 - [x] **V5 Home composition, web (Opus).** R3a §4.1 rules 1-8; the hero is the largest window on the
   first screen; no rail opens on the show above it; a show at most once. Frames at 320-1440, light and
   dark, read by the main thread.
-- [ ] **V6 Home composition, Apple and Android (Sonnet, Opus review).** iPhone, Duo open, iPad, Mac,
+- [x] **V6 Home composition, Apple and Android (Sonnet, Opus review).** iPhone, Duo open, iPad, Mac,
   Apple TV (focus does the work), Pixel, Google TV.
 - [ ] **V7 Detail pages (Opus web, Sonnet ports).** Series, episode, person, play pages with R3a §4.3:
   hero or label, gallery when there is one, an episode's own label, the recordings section quieter.
@@ -267,3 +267,9 @@ privacy words) is folded in when it arrives, never waited on.
   batch after V2 (upload tags "AbyM #001", "AC400320 - ...", "Dimaggio397", "CBS Forecast-..."). V7
   ports to Apple/Android after V6. Running: V2, V6, T5 (Opus: record in the room, room inside the
   existing reader on Apple/Android, TV pairing route, not-found state, stand-in voice, adult names).
+- **2026-11-19, tick 13**: V6 merged locally (1.0.145; macOS 488, Android 579, 0 warnings, lint
+  clean): Home on Apple (iPhone/Duo/iPad/Mac/tvOS) and Android (phone/tablet/Google TV); tvOS hero
+  arc and Android episode-row arcs fixed. Renders read (Apple 390, Android phone dark): Android
+  hero drew a gray placeholder circle in the render rig: device check must confirm the real photo
+  or label shows. Web dial fixed to draw genre letters (31ce491). Push held for the device check
+  (iPhone 12, Pixel, Apple TV, Google TV). Running: V2, T5, device check.
