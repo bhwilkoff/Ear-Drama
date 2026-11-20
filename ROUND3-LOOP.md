@@ -378,3 +378,12 @@ privacy words) is folded in when it arrives, never waited on.
   publish with titles batch 2: green. Running (last batch, Opus): repeated mic opens (Duo 3 lines,
   Pixel 1), web Back to the line in rooms, T10-T12 against a local Worker, web_fit_cast widths.
   Open, needs devices: Duo Record "Plays" indent (frames blind), Apple class review on a device.
+- **2026-11-20, tick 29**: T7c merged and pushed (cb17673, 1.0.153; Worker 438, web 25, macOS 540,
+  Android 650, 0 warnings). Root cause of repeated mic opens: a take ending after the leader moved
+  the cursor never marked its line done (client skipped line-done; Worker would refuse it stale);
+  fix in the protocol (held line marked done, cursor stays) + clients always send line-done; two
+  local-Worker bench runs 16/16 single opens, 0 repeats. Web Back to the line appears on scroll.
+  tools/class_bench.py on a local Worker (test keys refused on public hosts): T10-T12 47/47 (web).
+  DEBUG worker-URL doors checked: Apple #if DEBUG, Android debug + private-host only. Full mutation
+  run going; then deploy the Worker (no migrations). Open: class-room takes did not end on silence
+  (adult rooms did); "Ada is reading" after a seat switch is room presence, not leftover data.
