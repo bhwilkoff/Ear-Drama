@@ -54,6 +54,8 @@ const SHELL = [
   'js/together-core.js',
   'js/together.js',
   'js/together-ui.js',
+  'js/label-core.js',
+  'js/label.js',
   'js/app.js',
   'js/site.js',
   'js/takedown.js',

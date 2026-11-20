@@ -279,13 +279,6 @@
     fig.querySelector('img').addEventListener('error', () => { fig.remove(); head.classList.remove('has-face', 'face-print', 'face-plate'); });
     return fig;
   }
-  /** The typographic card (R11): the name, one meta line, on the genre. Any titled work with a year
-      and a genre draws one: a series, or a stage play. */
-  function typeCard({ name, line, genre }) {
-    return el('span', { class: 'type-card', dataset: { genre: genre || '' } },
-      el('span', { class: 'type-card-name' }, name || ''), line ? el('span', { class: 'caption' }, line) : null);
-  }
-
   /* ---- The grammar (WEB-DESIGN §6.4b): one skeleton per object, whatever it carries ---- */
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -314,22 +307,27 @@
     gradeIds.set(key, id);
     return id;
   }
-  /** The title block: the name's monogram as an outline in the board's onBoard color. */
-  function titleBlock(name, round = false) {
-    const m = API.monogram(name);
-    // A round window: set at 70 % and centered, the baseline half a cap height (0.8 em) below the middle.
-    const size = API.blockSize(m) * (round ? 0.7 : 1);
-    return svgEl('svg', { class: 'g-block', viewBox: '0 0 100 100', 'aria-hidden': 'true' },
-      round ? svgEl('text', { x: 50, y: +(50 + size * 0.4).toFixed(2), 'font-size': +size.toFixed(2), 'text-anchor': 'middle' }, m)
-        : svgEl('text', { x: 9, y: 93, 'font-size': size }, m));
+  /** What the label (WEB-DESIGN §6.4r) draws for a window: an item that names its own kind (an ear
+      drama, a play), a person in a round window, an episode of the show, or the show. */
+  function labelItem(s, round, ep) {
+    const o = s || {};
+    if (o.kind) return o;
+    if (round) return { kind: 'person', name: o.name, genre: o.genre };
+    const show = { name: o.name, genre: o.genre, first: o.first, last: o.last, network: o.network, tickYear: o.tickYear };
+    return ep ? { kind: 'episode', ...show, date: ep.date, num: ep.num } : { kind: 'series', ...show };
   }
-  /** Fills a window with the series' picture (crop or whole, graded) or the title block. */
-  function fillWindow(win, s, slot, round = false) {
+  /** Fills a window with the series' picture (crop or whole, graded) or, with none that passes the
+      size floor, the label: drawn from the item's own data, an episode's with its own date. */
+  function fillWindow(win, s, slot, round = false, ep = null) {
     const pic = s && (s.picture !== undefined ? s.picture : s.art);
     const fill = API.windowFill(pic, slot);
     win.replaceChildren();
     win.dataset.genre = (s && s.genre) || '';
-    const block = () => { win.dataset.fill = 'block'; win.replaceChildren(titleBlock(s && s.name, round)); };
+    const block = () => {
+      win.dataset.fill = 'block';
+      win.dataset.art = 'label';
+      win.replaceChildren(Label.svg(LabelCore.labelSpec(labelItem(s, round, ep), slot)));
+    };
     if (fill.kind === 'block') return block();
     const dpr = typeof devicePixelRatio === 'number' && devicePixelRatio > 1 ? 2 : 1;
     const r = fill.kind === 'crop' ? fill.rect : null;
@@ -338,14 +336,20 @@
       style: `filter: url(#${gradeFilter(pic)})${r ? `; width: ${pct(1 / r.w)}; height: ${pct(1 / r.h)}; left: ${pct(-r.x / r.w)}; top: ${pct(-r.y / r.h)}` : ''}` });
     img.addEventListener('error', block);
     win.dataset.fill = fill.kind;
+    delete win.dataset.art;
     win.append(img);
   }
-  /** The window (one square slot): from the series when it is in hand, else from the index by key. */
-  function pictureWindow(s, slot, round = false) {
+  /** The window (one square slot): from the series when it is in hand, else from the index by key.
+      `ep` (an episode of the show: its date and number) gives the label the episode's own date. */
+  function pictureWindow(s, slot, round = false, ep = null) {
     const win = el('span', { class: 'g-window', 'aria-hidden': 'true', dataset: { slot: String(slot) } });
-    if (s && (s.picture !== undefined || !s.key)) fillWindow(win, s, slot, round);
+    if (ep) {
+      if (ep.date) win.dataset.epDate = ep.date;
+      if (ep.num !== null && ep.num !== undefined) win.dataset.epNum = String(ep.num);
+    }
+    if (s && (s.picture !== undefined || !s.key)) fillWindow(win, s, slot, round, ep);
     else {
-      fillWindow(win, { name: s && s.name, genre: s && s.genre }, slot, round);
+      fillWindow(win, { name: s && s.name, genre: s && s.genre }, slot, round, ep);
       if (s && s.key) win.dataset.series = s.key;
     }
     return win;
@@ -367,12 +371,12 @@
   }
   /** The show tile: window, name, run strip, facts, on the genre's board. `facts` replaces the two
       default facts (Home's night tiles say the episode, not the run); `href` replaces the series link. */
-  function showTile(s, { href = null, facts = null, mark = null } = {}) {
+  function showTile(s, { href = null, facts = null, mark = null, ep = null } = {}) {
     const eps = typeof s.episodes === 'number' ? s.episodes : null;
     const lines = facts || [years(s.first, s.last) || 'Undated', eps !== null ? plural(eps, 'episode', 'episodes') : null];
     return el('li', { class: 'g-tile-li' },
       el('a', { class: 'g-tile', href: href || `?series=${encodeURIComponent(s.key)}`, dataset: { genre: s.genre || '' } },
-        pictureWindow(s, 200),
+        pictureWindow(s, 200, false, ep),
         el('span', { class: 'g-name', dataset: { step: String(API.nameStep(s.name)) } }, s.name),
         mark || runStrip(s.first, s.last, 'g-strip', 18, s.years),
         el('span', { class: 'g-facts caption' }, ...lines.filter(Boolean).map(t => el('span', {}, t)))));
@@ -389,13 +393,13 @@
   function headStripH() {
     return typeof matchMedia === 'function' && matchMedia('(min-width: 600px)').matches ? 40 : 32;
   }
-  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null, mark = null }) {
+  function headBoard({ series, kicker, name, facts, first, last, picture, href = null, years = null, mark = null, ep = null, win = null }) {
     const slot = headSlot();
     const lead = picture === undefined ? series : { ...series, picture };
     const nm = { class: 'g-head-name', dataset: { step: String(API.headNameStep(name)) } };
     return el(href ? 'a' : 'header', { class: `g-head${href ? ' g-head-link' : ''}`, ...(href ? { href } : {}),
                                        dataset: { genre: (series && series.genre) || '' } },
-      pictureWindow(lead, slot),
+      win || pictureWindow(lead, slot, false, ep),
       el('div', { class: 'g-head-text' },
         kicker ? el('span', { class: 'g-kicker caption' }, ...[].concat(kicker)) : null,
         href ? el('p', nm, name) : el('h1', { ...nm, tabindex: '-1' }, name),
@@ -421,6 +425,8 @@
     if (!genre && key) b.dataset.series = key;
     return b;
   }
+  /** The episode a window was drawn for (its date and number), or null for the show. */
+  const windowEp = (n) => (n.dataset.epDate || n.dataset.epNum ? { date: n.dataset.epDate || null, num: n.dataset.epNum ?? null } : null);
   /** Fills windows and date blocks that know only their series key, from the series index. */
   let gPending = false;
   function paintGrammar() {
@@ -434,7 +440,7 @@
       API.seriesIndex().then(({ byKey }) => nodes.forEach(n => {
         const s = byKey.get(n.dataset.series);
         if (!s) return;
-        if (n.classList.contains('g-window')) fillWindow(n, s, +n.dataset.slot || 48);
+        if (n.classList.contains('g-window')) fillWindow(n, s, +n.dataset.slot || 48, false, windowEp(n));
         else n.dataset.genre = s.genre || '';
       })).catch(() => nodes.forEach(n => { delete n.dataset.done; }));
     });
@@ -452,7 +458,7 @@
     const len = fmtLength(ep.length);
     const link = el('a', { class: 'ep-link g-link', href: `?item=${encodeURIComponent(ep.id)}`,
                            'aria-label': [epTitle(ep), showSeries ? ep.seriesName : null, dateText || 'Undated', note, len].filter(Boolean).join(', ') },
-      showSeries || API.undatedBare(ep) ? pictureWindow({ key: ep.series, name: ep.seriesName, ...(genre ? { genre } : {}) }, 48) : dateBlock(ep, genre, ep.series),
+      showSeries || API.undatedBare(ep) ? pictureWindow({ key: ep.series, name: ep.seriesName, ...(genre ? { genre } : {}) }, 48, false, ep) : dateBlock(ep, genre, ep.series),
       el('span', { class: 'g-text' },
         el('span', { class: 'ep-title body-strong' }, epTitle(ep)),
         sub ? el('span', { class: 'ep-sub' }, sub) : null,
@@ -668,7 +674,7 @@
   /** An episode as a show tile with Play on it: its series' window and name, the title and length. */
   function episodeTile(ep, idx) {
     const s = (idx && idx.byKey.get(ep.series)) || { key: ep.series, name: ep.seriesName || '' };
-    const li = showTile(s, { href: `?item=${encodeURIComponent(ep.id)}`, facts: [epTitle(ep), fmtLength(ep.length)] });
+    const li = showTile(s, { href: `?item=${encodeURIComponent(ep.id)}`, facts: [epTitle(ep), fmtLength(ep.length)], ep });
     li.classList.add('g-tile-playable');
     if (ep.url) {
       li.append(el('button', { type: 'button', class: 'icon-btn icon-btn-primary g-tile-play',
@@ -772,7 +778,7 @@
     box.replaceChildren(el('section', { class: 'home-live', 'aria-labelledby': 'live-h' },
       el('p', { class: 'g-kicker caption', id: 'live-h' }, ...kicker),
       el('a', { class: 'g-link home-live-row', href: `?item=${encodeURIComponent(ep.id)}` },
-        pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 64),
+        pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 64, false, ep),
         el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, ep.series),
           eventLine([ep.title, `${mins} min in`]))),
       on.note ? el('p', { class: 'caption home-live-note' }, on.note) : null,
@@ -895,21 +901,20 @@
   const KIND_LABEL = { radio: 'Radio play', stage: 'Stage play' };
   const PLAY_SORT = { voices: 'Fewest voices', short: 'Shortest', name: 'A to Z' };
 
-  /** A play tile (§4.15): the cast drawn in the window, one bar per speaking part, largest first. */
+  /** A play's label without its opening (§6.4r): its cast drawn on the drama board, one bar per speaking part, largest first. */
+  const playArt = (script) => ({ kind: 'play', voices: PlaysCore.voicesOf(script), cast: PlaysCore.castOf(script), name: script.title, picture: null, genre: PlaysUI.BOARD });
   function castWindow(script) {
-    const parts = PlaysCore.castOf(script);
-    const most = parts.length ? parts[0] || 1 : 1;
-    const shown = parts.slice(0, 7);
-    return el('span', { class: 'g-window pl-cast', 'aria-hidden': 'true', dataset: { fill: 'block', n: String(shown.length) } },
-      ...shown.map(n => el('i', { style: `width: ${Math.max(6, Math.round(100 * n / most))}%` })),
-      parts.length > shown.length ? el('span', { class: 'pl-cast-more tabular' }, `+${parts.length - shown.length}`) : null);
+    const win = pictureWindow(playArt(script), 200);
+    win.classList.add('pl-cast');
+    return win;
   }
   /** A play tile's window: its opening speeches as a page (the row's `opening`), else its cast drawn. */
   function openingWindow(script) {
     const lines = PlaysCore.openingOf(script, 2);
     if (!lines.length) return null;
-    return el('span', { class: 'g-window pl-open', 'aria-hidden': 'true' },
-      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), el('span', { class: 'pl-open-said' }, l.text))));
+    return el('span', { class: 'g-window pl-open', 'aria-hidden': 'true', dataset: { art: 'label' } },
+      ...lines.map(l => el('span', { class: 'pl-open-sp' }, el('b', {}, l.name), el('span', { class: 'pl-open-said' }, l.text))),
+      Label.svg(LabelCore.labelSpec({ kind: 'play', voices: PlaysCore.voicesOf(script), opening: true }, 200), { overlay: true }));
   }
   function playTile(script) {
     const win = openingWindow(script) || castWindow(script);
@@ -1076,7 +1081,7 @@
         const ul = el('ul', { class: 'g-grid' });
         all.slice(0, n).forEach(r => {
           const s = idx.byKey.get(r.series);
-          ul.append(showTile(s, { href: `?item=${encodeURIComponent(r.id)}`, facts: [epTitle(r), fmtLength(r.length)] }));
+          ul.append(showTile(s, { href: `?item=${encodeURIComponent(r.id)}`, facts: [epTitle(r), fmtLength(r.length)], ep: r }));
         });
         return ul;
       };
@@ -1250,8 +1255,8 @@
       block), the station's name, an event line of what is on, and Listen live. */
   function stationRow(name, slot, note, button, { genre = '', live: tuned = false } = {}) {
     const ep = slot && !slot.withheld && slot.episode;
-    const win = ep ? pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 48)
-      : pictureWindow({ name, picture: null, genre }, 48);
+    const win = ep ? pictureWindow({ key: ep.id.split('|')[0], name: ep.series }, 48, false, ep)
+      : pictureWindow({ kind: 'station', name, picture: null, genre }, 48);
     const text = [el('span', { class: 'ep-title body-strong' }, name),
       eventLine(ep ? [ep.series, ep.title, note] : [note])];
     const li = el('li', { class: `station g-row${tuned ? ' station-live' : ''}${button ? ' station-tap' : ''}` },
@@ -1324,7 +1329,7 @@
       let link;
       if (d) {
         link = el('a', { class: 'g-link', href: `?item=${encodeURIComponent(d.id)}` },
-          pictureWindow({ key: d.series, name: s.episode.series }, 48),
+          pictureWindow({ key: d.series, name: s.episode.series }, 48, false, d),
           el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, s.episode.series),
             eventLine([time, et, epTitle(d), now ? len : null])));
       } else {
@@ -1421,7 +1426,7 @@
       plural(PlaysCore.partCountOf(script), 'part', 'parts')]);
     return el('li', { class: 'series-row g-row ear-drama-only' },
       el('a', { class: 'g-link', href: `?play=${encodeURIComponent(script.id)}` },
-        pictureWindow({ name: script.title, picture: null, genre: PlaysUI.BOARD }, 48),
+        pictureWindow(playArt(script), 48),
         el('span', { class: 'g-text' }, el('span', { class: 'ep-title body-strong' }, script.title),
           sub ? el('span', { class: 'ep-sub' }, sub) : null)));
   }
@@ -1772,11 +1777,12 @@
       // An undated episode with no network or credits is most of the catalog: its event line says
       // "Undated" and nothing more, in the same structure as a rich one.
       const lead = API.leadPicture(s, d.credits, d.star);
-      const showName = { key: d.series, name: seriesName, genre: (s && s.genre) || '', picture: lead };
+      const showName = { key: d.series, name: seriesName, genre: (s && s.genre) || '', picture: lead,
+                         first: s && s.first, last: s && s.last, network: s && s.network };
       const head = headBoard({ series: showName, href: `?series=${encodeURIComponent(d.series)}`,
         kicker: genre || 'Show', name: seriesName,
         facts: s ? API.showFacts(s, years(s.first, s.last), plural(s.episodes.length, 'episode', 'episodes')) : ['Undated'],
-        first: s && s.first, last: s && s.last, years: s && s.years });
+        first: s && s.first, last: s && s.last, years: s && s.years, ep: d });
       const startBtn = script ? PlaysUI.startButton(script, playsHelpers) : null;
       body.append(...[head,
         el('h1', { class: 'view-heading ep-heading', id: 'episode-h', tabindex: '-1' }, title),
@@ -1871,7 +1877,7 @@
       };
       const all = groups.flatMap(g => g.episodes);
       const span = yearsOf(all);
-      body.append(headBoard({ series: { name: p.name, genre: '', picture: p.art || null }, name: p.name,
+      body.append(headBoard({ series: { kind: 'person', name: p.name, genre: '', picture: p.art || null }, name: p.name,
         facts: [API.lifeYears(p.birth, p.death), plural(count, 'episode', 'episodes'),
           groups.length > 1 ? plural(groups.length, 'show', 'shows') : null],
         first: span && String(span[0]), last: span && String(span[1]), years: stripOf(all) }));
@@ -2259,19 +2265,19 @@
         const card = { ...ep, title: epTitle(ep) };
         const sr = index.byKey.get(ep.series) || { key: ep.series, name: ep.seriesName };
         picks.append(pickBox('An episode', headBoard({ series: sr, name: sr.name, href: `?item=${encodeURIComponent(ep.id)}`,
-          facts: [epTitle(ep), factDate(ep.date)], first: sr.first, last: sr.last, years: sr.years }),
+          facts: [epTitle(ep), factDate(ep.date)], first: sr.first, last: sr.last, years: sr.years, ep }),
           playBtn('Play', () => Player.load(card))));
       }
       if (evening) {
         const { day, first } = evening;
         const sr = (first && index.byKey.get(first.series)) || { name: first ? first.seriesName : '' };
-        picks.append(pickBox('An evening', headBoard({ series: sr, name: fmtLongDate(day.evening),
+        picks.append(pickBox('An evening', headBoard({ series: { ...sr, tickYear: day.evening }, name: fmtLongDate(day.evening),
           facts: [day.network, day.station, first && first.seriesName], first: null, last: null }),
           first ? playBtn('Play', () => { if (live) stopLive(); Player.load(first); }) : null));
       }
       if (scripts.length) {
         const script = pickOf(scripts);
-        picks.append(pickBox('A play', headBoard({ series: { name: script.title, genre: PlaysUI.BOARD, picture: null },
+        picks.append(pickBox('A play', headBoard({ series: playArt(script),
           name: script.title, href: `?play=${encodeURIComponent(script.id)}`,
           facts: [PlaysCore.authorLine(script),
             plural(PlaysCore.partCountOf(script), 'part', 'parts')],
@@ -2510,7 +2516,7 @@
   }
   /** The mini player's window: the show's own picture through the grammar's window fill. */
   function paintMiniWindow(cur) {
-    $('mini-window').replaceChildren(pictureWindow({ key: cur.series, name: cur.seriesName }, 48));
+    $('mini-window').replaceChildren(pictureWindow({ key: cur.series, name: cur.seriesName }, 48, false, cur));
   }
   /** Now Playing's picture (D3-4): the show's picture, else its star's, else the title block,
       through the grammar's window fill at the size floor; the lock screen gets the same picture. */
@@ -2523,7 +2529,7 @@
       if (!Player.current || Player.current.id !== cur.id) return;
       const s = (idx && idx.byKey.get(cur.series)) || { key: cur.series, name: cur.seriesName, genre: '' };
       const win = el('span', { class: 'g-window np-window', 'aria-hidden': 'true', dataset: { slot: '360' } });
-      fillWindow(win, s, 360);
+      fillWindow(win, s, 360, false, cur);
       box.append(win);
       const pic = s.picture !== undefined ? s.picture : s.art;
       if (win.dataset.fill !== 'block' && pic) {
@@ -2538,51 +2544,17 @@
         });
         return;
       }
-      const name = s.name || cur.seriesName;
-      if (!name) return;
-      const line = s.first !== undefined ? [years(s.first, s.last), s.networks].filter(Boolean).join(' · ') : null;
-      const card = typeCard({ name, line, genre: s.genre });
-      card.hidden = true;
-      box.append(card);
-      const png = cardImage(card, name, line);
+      // The lock screen gets the label at L, the episode's own (Decision 081); the system sets the name beside it.
+      const png = Label.png(LabelCore.labelSpec(labelItem(s, false, cur), 512), 512, win);
       if (png) {
         png.then(url => {
+          if (!url) return;
+          if (lockArtURL) URL.revokeObjectURL(lockArtURL);
+          lockArtURL = url;
           if (Player.current && Player.current.id === cur.id) Player.setArtwork([{ src: url, sizes: '512x512', type: 'image/png' }]);
         });
       }
     });
-  }
-  let cardURL = null;
-  /** The typographic card painted for the lock screen, from the drawn card's own colors. */
-  function cardImage(card, name, line) {
-    const c = document.createElement('canvas');
-    c.width = c.height = 512;
-    const g = c.getContext && c.getContext('2d');
-    if (!g || !c.toBlob) return null;
-    const cs = getComputedStyle(card);
-    g.fillStyle = cs.backgroundColor || '#F4F4F5';
-    g.fillRect(0, 0, 512, 512);
-    g.fillStyle = cs.getPropertyValue('--genre-accent').trim() || cs.color;
-    g.fillRect(0, 0, 24, 512);
-    g.fillStyle = cs.color;
-    g.font = `700 56px ${cs.fontFamily}`;
-    const lines = [];
-    let at = '';
-    for (const w of String(name).split(/\s+/)) {
-      const t = at ? `${at} ${w}` : w;
-      if (g.measureText(t).width > 420 && at) { lines.push(at); at = w; } else at = t;
-    }
-    if (at) lines.push(at);
-    const shown = lines.slice(0, 5);
-    let y = 512 - 64 - (line ? 52 : 0) - (shown.length - 1) * 64;
-    shown.forEach(l => { g.fillText(l, 56, y); y += 64; });
-    if (line) { g.font = `400 34px ${cs.fontFamily}`; g.fillText(line, 56, y - 8); }
-    return new Promise(res => c.toBlob(b => {
-      if (!b) return;
-      if (cardURL) URL.revokeObjectURL(cardURL);
-      cardURL = URL.createObjectURL(b);
-      res(cardURL);
-    }, 'image/png'));
   }
 
   /** The player's way to the transcript (R16): Detail with the transcript open. */

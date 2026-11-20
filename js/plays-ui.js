@@ -288,8 +288,8 @@ const PlaysUI = (() => {
   }
 
   /** The head board of a play or a production: the title block on the drama board, the fingerprint as its mark. */
-  function playBoard(script, name, kicker, facts) {
-    return h.headBoard({ series: { name, genre: BOARD, picture: null }, kicker, name, facts,
+  function playBoard(script, name, kicker, facts, art = null) {
+    return h.headBoard({ series: { kind: 'play', voices: C.voicesOf(script), cast: C.castOf(script), name, genre: BOARD, picture: null, ...(art || {}) }, kicker, name, facts,
                          mark: fingerprint(script, 'g-head-strip pl-print-head') });
   }
   const kindOf = (script) => (script.kind === 'radio' ? 'Radio play' : 'Stage play');
@@ -1178,12 +1178,19 @@ const PlaysUI = (() => {
     ? `${names.slice(0, max).join(', ')} and ${names.length - max} more`
     : names.length === 2 ? names.join(' and ') : names.join(', '));
 
+  /** An ear drama's label (WEB-DESIGN §6.4r): its cast's part hues around the rim, each sized by the part's lines, and the month it was published. */
+  function dramaArt(d, script) {
+    const parts = script ? C.castOf(script).map((lines, i) => ({ lines, hue: C.PART_HUES[i] || '' })) : [];
+    const t = d && d.published_at;
+    return { kind: 'drama', parts, finished: t ? new Date(t > 1e11 ? t : t * 1000).toISOString().slice(0, 10) : null };
+  }
+
   /** A finished drama as a tile in the show tile's grammar: the title on the drama board, the voice strip as its mark. */
   function dramaTile(d, scripts) {
     const script = scripts.find(s => s.id === d.script_id);
     const names = creditNames(d);
     const mark = script ? fingerprint(script) : null;
-    return h.showTile({ key: d.id, name: d.title, genre: BOARD, first: null, picture: null },
+    return h.showTile({ key: d.id, name: d.title, genre: BOARD, first: null, picture: null, ...dramaArt(d, script) },
       { href: `?drama=${encodeURIComponent(d.id)}`, mark, facts: [names.length ? namesLine(names) : null, publishedOn(d.published_at)] });
   }
 
@@ -1310,8 +1317,8 @@ const PlaysUI = (() => {
     h.setTitle(d.title);
     const names = creditNames(d);
     const facts = [publishedOn(d.published_at), names.length ? namesLine(names, 4) : null];
-    const board = script ? playBoard(script, d.title, `Ear drama · ${kindOf(script)}`, facts)
-      : h.headBoard({ series: { name: d.title, genre: BOARD, picture: null }, kicker: 'Ear drama', name: d.title, facts });
+    const board = script ? playBoard(script, d.title, `Ear drama · ${kindOf(script)}`, facts, dramaArt(d, script))
+      : h.headBoard({ series: { name: d.title, genre: BOARD, picture: null, ...dramaArt(d, script) }, kicker: 'Ear drama', name: d.title, facts });
     const listen = h.el('span', { class: 'drama-listen' });
     const acts = h.el('div', { class: 'actions' }, listen,
       h.el('button', { type: 'button', class: 'btn btn-ghost', 'aria-label': `Share ${d.title}`,
@@ -1394,8 +1401,8 @@ const PlaysUI = (() => {
     const director = (inv.members || []).find(m => m.director);
     const facts = [director && director.name ? `Directed by ${director.name}` : null,
                    `${num.format(taken)} of ${num.format(inv.parts.length)} parts taken`];
-    const board = script ? playBoard(script, inv.title, 'Ear drama · in progress', facts)
-      : h.headBoard({ series: { name: inv.title, genre: BOARD, picture: null }, kicker: 'Ear drama · in progress', name: inv.title, facts });
+    const board = script ? playBoard(script, inv.title, 'Ear drama · in progress', facts, dramaArt(inv, script))
+      : h.headBoard({ series: { name: inv.title, genre: BOARD, picture: null, ...dramaArt(inv, script) }, kicker: 'Ear drama · in progress', name: inv.title, facts });
 
     const takeIDs = (part) => {
       if (!script) return [];

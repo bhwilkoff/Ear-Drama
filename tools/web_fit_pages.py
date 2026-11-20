@@ -51,7 +51,7 @@ JS = r"""(async () => {
   await document.fonts.load('700 100px "Big Shoulders"');
   const cx = document.createElement('canvas').getContext('2d');
   view.querySelectorAll('.g-face > .g-window[data-fill="block"], .g-round[data-fill="block"]').forEach(w => {
-    const t = w.querySelector('svg.g-block text'), box = w.getBoundingClientRect();
+    const t = w.querySelector('svg.lb text.lb-display'), box = w.getBoundingClientRect();
     if (!t || !box.width) return;
     const u = box.width / 100, size = parseFloat(t.getAttribute('font-size'));
     cx.font = `700 ${size * u}px "Big Shoulders"`;
