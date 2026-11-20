@@ -387,3 +387,11 @@ privacy words) is folded in when it arrives, never waited on.
   DEBUG worker-URL doors checked: Apple #if DEBUG, Android debug + private-host only. Full mutation
   run going; then deploy the Worker (no migrations). Open: class-room takes did not end on silence
   (adult rooms did); "Ada is reading" after a seat switch is room presence, not leftover data.
+- **2026-11-20, tick 30 (loop stopped)**: owner: "My computer is running very slow. Is there
+  anything you need to clean up?" Disk was 99% (7.7 GB free): removed 17 merged agent worktrees,
+  10 stale DerivedData caches, scratch build outputs: 35 GB free. Stopped a leftover scratch web
+  server (port 8731; two ACR-Helper servers left alone: not ours). Stopped the Worker mutation run
+  (61 caught, 0 survived when stopped) to free the CPU. NOT DONE: the full mutation run and the
+  Worker deploy for T7c's protocol fix (production still on the old rule; the 1.0.153 apps work
+  against it). Resume: run `npm run test:mutations` in a scratch worktree when the Mac is idle,
+  then `wrangler deploy` (no migrations). Owner items: see the summary below this line in chat.
